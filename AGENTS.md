@@ -6,6 +6,7 @@ Route first; never probe unmatched context.
 
 - Route all axes; missing context: `yarn mercato agentic:init --update-harness`.
 - Lessons: scan `.ai/lessons.md` tags; open/update one matching record + row.
+- Follow **Project memory (`.ai/`)** below for every spec, autonomous run and lesson — it is mandatory, not optional documentation.
 - App code: `src/modules/<id>/`; framework context only for named gaps.
 - Derive trusted `tenantId` + `organizationId` and fail closed. Only an installed contract may use system scope (`organizationId: null`).
 - Use commands/`makeCrudRoute`/`CrudForm`/`DataTable`, DI/events/UMES; effects stay post-commit.
@@ -15,6 +16,7 @@ Route first; never probe unmatched context.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
 - Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI) MUST read `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`; tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
+- Repository language is English: docs, specs, research, code, comments and commit messages. UI text lives only in i18n catalogs; every Vereino module ships `i18n/en.json` and `i18n/pl.json`, and a new language is added by adding catalog files.
 - Git: after each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a Conventional Commits message (`docs:`, `feat(<module>):`, `fix:`, `chore:`); one task = one commit, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
 
 ## Ask First
@@ -29,6 +31,23 @@ Route first; never probe unmatched context.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
 - Never hard-code user strings/status colors; expose secrets/transcripts; or guess answerable contracts.
+
+## Project memory (`.ai/`)
+
+| Path | Holds | Name |
+|---|---|---|
+| `.ai/specs/` | active specs for spec-driven development (`Draft`, `Ready for implementation`, `In progress`); `research/` = read-only discovery inputs | `YYYY-MM-DD-slug.md` |
+| `.ai/specs/implemented/` | specs whose every phase landed and acceptance criteria are met (`Status: Implemented`) | same file name, moved with `git mv` |
+| `.ai/specs/archive/` | superseded or abandoned specs (`Status: Archived`, reason + successor link in the Changelog) | same file name, moved with `git mv` |
+| `.ai/runs/` | one log per autonomous AI run | `YYYY-MM-DD-slug.md` (`-2`, `-3` … for a second run with the same slug that day) |
+| `.ai/lessons.md` + `.ai/lessons/` | durable findings, conclusions and improvements for future agents (catalog + one record per lesson) | record `kebab-case-slug.md` from `.ai/lessons/_template.md` |
+
+Rules (MUST):
+
+- **Specs:** create new specs only as `.ai/specs/YYYY-MM-DD-slug.md` (date = creation day, slug = kebab-case English). Never delete a spec. When a spec is fully implemented, set `Status: Implemented`, add a Changelog row and move it to `implemented/`; when it is superseded or dropped, set `Status: Archived`, link the successor and move it to `archive/`. Fix every link to a moved spec in the same commit. Before writing a new spec, search `specs/`, `implemented/` and `archive/` for a covering one and update it instead of duplicating.
+- **Runs:** an autonomous run is any multi-step AI work done without the user steering each step (auto-implement, scheduled or background agents, workflows, side sessions, overnight tasks). Create `.ai/runs/YYYY-MM-DD-slug.md` when the run starts and complete it before the run ends, with: goal and trigger, spec/issue/branch, steps taken, decisions and their reasons, files changed, commands and test results (failures verbatim), open problems, next steps. Commit the log together with the run's work; a run that changed nothing still commits its log.
+- **Lessons:** after fixing a bug, after a user correction, after a failed approach, or when a fact is worth keeping long-term, update the matching record or add one: copy `.ai/lessons/_template.md` to `.ai/lessons/<slug>.md`, fill Context / Problem / Rule / Applies to, add exactly one catalog row to `.ai/lessons.md`, run `node scripts/check-lessons.mjs`. Hard boundaries go to this file instead; lessons hold evidence and the durable rule.
+- **Before finishing any task:** spec status and folder are correct, the run log (if autonomous) is complete, new lessons are recorded, and these files are in the same commit.
 
 ## Validation
 
