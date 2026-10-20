@@ -8,7 +8,7 @@ export NEXT_PUBLIC_QUEUE_STRATEGY="${NEXT_PUBLIC_QUEUE_STRATEGY:-async}"
 
 sh ./docker/scripts/init-or-migrate.sh
 
-if [ ! -d ".mercato/generated" ]; then
+if [ ! -d "packages/app/.mercato/generated" ]; then
   yarn generate
 fi
 

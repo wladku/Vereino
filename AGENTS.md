@@ -1,16 +1,34 @@
-# vereino — Standalone App Agent Rules
+# vereino — Agent Rules (monorepo; Open Mercato app in `packages/app`)
 
 Route first; never probe unmatched context.
+
+## Stack and Monorepo (MUST)
+
+- **Stack:** Open Mercato on the latest Next.js (App Router) + React + TypeScript (strict); PostgreSQL through MikroORM (entities, migrations, connection pool); Awilix for dependency injection (services registered in a module's `di.ts` and resolved from the container); Tailwind CSS for member and public (frontend) pages; shadcn/ui through `@open-mercato/ui` primitives for admin (backend) pages. Never add a parallel framework: no other ORM, query builder, DI container, CSS framework or component library.
+- **Workspaces:** Yarn 4 workspaces under `packages/`, each with its own `node_modules` (`nmHoistingLimits: workspaces`).
+
+| Package | Name | Holds | May import |
+|---|---|---|---|
+| `packages/app` | `@vereino/app` | the Open Mercato application: Next.js app, Vereino modules in `src/modules/<id>/` (entities, migrations, commands, API routes, pages, events, i18n, DI), configuration, dev/runtime scripts, `.ai/qa` integration tests | `@vereino/core`, `@vereino/db`, `@vereino/ui`, `@open-mercato/*` |
+| `packages/core` | `@vereino/core` | reusable domain logic: pure functions, types, validation schemas (e.g. discount rules, money, date ranges) | nothing app-, React-, Next.js- or database-specific |
+| `packages/db` | `@vereino/db` | MikroORM/PostgreSQL tooling: shared persistence helpers, migration and seed utilities, test-database helpers | `@vereino/core`, MikroORM |
+| `packages/ui` | `@vereino/ui` | reusable React components: admin components on shadcn/ui (`@open-mercato/ui`), member/public components styled with Tailwind | `@vereino/core`, React, `@open-mercato/ui` |
+
+- Dependency direction is `app → ui | db → core`; no cycles, and no package imports `@vereino/app`.
+- Module entities, migrations, routes and pages stay in `packages/app/src/modules/<id>/` — Open Mercato discovers them only there. Move code into `core`, `db` or `ui` only when at least two modules reuse it or it is framework-free; module-specific code stays in its module.
+- Each package exposes its public API from `src/index.ts`; never deep-import another package's internals. New packages are wired into `transpilePackages` in `packages/app/next.config.ts`; UI packages also need an `@source` line in `packages/app/src/app/globals.css`.
+- Add a dependency to the workspace that uses it (`yarn workspace @vereino/<name> add …`), never to the root `package.json` (root holds only workspaces, `resolutions` and delegating scripts).
+- Paths in this file and in `.ai/guides` that start with `src/`, `scripts/`, `public/`, `.mercato/` or name app config files (`next.config.ts`, `tsconfig.json`, `jest.config.cjs`, `.env`) are relative to `packages/app/`. Run app commands from the root (`yarn dev`, `yarn generate`, `yarn typecheck`, `yarn mercato …` delegate to `@vereino/app`) or with `yarn workspace @vereino/app <script>`.
 
 ## Always
 
 - Route all axes; missing context: `yarn mercato agentic:init --update-harness`.
 - Lessons: scan `.ai/lessons.md` tags; open/update one matching record + row.
 - Follow **Project memory (`.ai/`)** below for every spec, autonomous run and lesson — it is mandatory, not optional documentation.
-- App code: `src/modules/<id>/`; framework context only for named gaps.
+- App code: `packages/app/src/modules/<id>/`; framework context only for named gaps.
 - Derive trusted `tenantId` + `organizationId` and fail closed. Only an installed contract may use system scope (`organizationId: null`).
 - Use commands/`makeCrudRoute`/`CrudForm`/`DataTable`, DI/events/UMES; effects stay post-commit.
-- Put entities in `src/modules/<id>/data/entities.ts`; API routes need per-method `metadata` + `openApi`.
+- Put entities in `packages/app/src/modules/<id>/data/entities.ts`; API routes need per-method `metadata` + `openApi`.
 - Editable records expose `updated_at`/`updatedAt`; custom update/delete clients send the version and surface 409s.
 - Run `yarn db:generate`, review scoped SQL/snapshot, and ask before applying it.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
@@ -59,7 +77,7 @@ Rules (MUST):
 
 ## Validation
 
-Broad: `yarn generate && yarn typecheck && yarn lint && yarn ds:check && yarn test && yarn build`; integration: `yarn test:integration:ephemeral`. Never migrate to validate.
+Broad: `yarn generate && yarn typecheck && yarn typecheck:packages && yarn lint && yarn ds:check && yarn test && yarn build`; integration: `yarn test:integration:ephemeral`; lessons: `yarn lessons:check`. Never migrate to validate.
 
 ## Three-Axis Context Assembler
 
@@ -82,7 +100,7 @@ Existing installed form/table fields, filters, row/bulk actions without app pers
 | Route | Match | Context |
 |---|---|---|
 | `architecture` | Capability/ownership/field-vs-history choice, boundary, upgrade, override, or registry failure; routine discovery stays in its area | `.ai/guides/architecture.md` + named facts |
-| `module-data` | App-owned domain/data/API | `src/modules/<id>/` + `.ai/guides/contracts.md`; add architecture only when ownership is unresolved |
+| `module-data` | App-owned domain/data/API | `packages/app/src/modules/<id>/` + `.ai/guides/contracts.md`; add architecture only when ownership is unresolved |
 | `umes` | Extend/replace installed behavior | `.ai/guides/extensions.md` + named facts |
 | `backend-ui` | Authored/restyled rendered surface or browser UI state/session bootstrap | `.ai/guides/backend-ui.md` + host facts; host-provided integration credentials/health UI alone does not match |
 | `integration` | Provider, spreadsheet/CSV/file I/O, sync/webhook/storage | `.ai/guides/integrations.md`; imports = `integration`; AI consuming files = `ai-workflow`, NEVER `integration` unless transport/storage changes |

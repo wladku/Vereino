@@ -75,6 +75,9 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
   // Transpile @open-mercato packages that have TypeScript in src/
   // Note: @open-mercato/shared is excluded as it has pre-built dist/ files
   transpilePackages: [
+    '@vereino/core',
+    '@vereino/db',
+    '@vereino/ui',
     '@open-mercato/core',
     '@open-mercato/ui',
     '@open-mercato/events',

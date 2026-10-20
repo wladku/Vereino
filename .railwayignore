@@ -1,6 +1,6 @@
 .git/
 .railway/
-.mercato/railway.json*
+packages/app/.mercato/railway.json*
 .next/
 .turbo/
 .yarn/cache/
