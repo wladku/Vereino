@@ -1,0 +1,442 @@
+<title>Mapa systemu Vereino</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root{
+  --paper:#F6F7F3; --ink:#172019; --muted:#66736A; --line:#D5DACF; --panel:#FFFFFF;
+  --accent:#1D6B45; --accent-soft:#E3F0E8; --later:#8B948D; --later-soft:#EEF0EC;
+  --warn:#B8690F; --warn-soft:#FBEEDC; --person:#FFF4D6; --person-line:#C9A24B;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#141A16; --ink:#E8ECE6; --muted:#9AA69E; --line:#2E3832; --panel:#1B231E;
+    --accent:#5DBE8A; --accent-soft:#1E3128; --later:#7C877F; --later-soft:#1F2622;
+    --warn:#E5A04B; --warn-soft:#3A2A14; --person:#3A3320; --person-line:#C9A24B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#141A16; --ink:#E8ECE6; --muted:#9AA69E; --line:#2E3832; --panel:#1B231E;
+  --accent:#5DBE8A; --accent-soft:#1E3128; --later:#7C877F; --later-soft:#1F2622;
+  --warn:#E5A04B; --warn-soft:#3A2A14; --person:#3A3320; --person-line:#C9A24B;
+}
+body{background:var(--paper);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;font-size:16px;line-height:1.5;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 64px;padding-inline:20px}
+h1,h2,h3{font-family:"Archivo",system-ui,sans-serif;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700;margin-block:48px 12px;padding-top:12px;border-top:2px solid var(--accent)}
+h3{font-size:16px;font-weight:700}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.lead{color:var(--muted);max-width:68ch;margin-top:8px}
+p{max-width:72ch}
+figure{margin:0}
+figure svg{max-width:100%;height:auto;display:block}
+.figwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+figcaption{font-size:14px;color:var(--muted);margin-top:8px;max-width:80ch}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:22px;height:12px;border-radius:2px;border:2px solid var(--accent);display:inline-block}
+.sw.later{border:2px dashed var(--later)}
+.sw.person{background:var(--person);border-color:var(--person-line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.card h3{margin-bottom:6px}
+.card ul{margin:0;padding-left:18px}
+.card li{margin-block:2px}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--accent-soft);color:var(--accent);margin-left:6px;vertical-align:middle}
+.tag.later{background:var(--later-soft);color:var(--later)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:"Archivo",sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td code,li code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--paper);padding:1px 5px;border-radius:3px;border:1px solid var(--line)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.q{border-left:3px solid var(--warn);padding:8px 14px;background:var(--panel);border-radius:0 8px 8px 0;margin-block:8px}
+.q b{display:block}
+.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.decisions .card{border-top:3px solid var(--accent)}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;counter-reset:step}
+.flow .step{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;position:relative}
+.flow .step::before{counter-increment:step;content:counter(step);font-family:"Archivo",sans-serif;font-weight:800;color:var(--accent);font-size:20px;display:block;line-height:1}
+.flow .step b{display:block;margin-top:4px}
+.flow .step small{color:var(--muted);display:block;font-size:13px}
+.meta{font-size:13px;color:var(--muted);margin-top:6px}
+@media (max-width:640px){h2{margin-block:36px 10px}}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Vereino · Open Mercato · spotkanie 1 (26.09.2026, WK + KK) · v0.3</div>
+  <h1>Mapa systemu Vereino</h1>
+  <p class="lead">Wspólny obraz systemu do zarządzania klubem sportowym na przykładzie KS Gwiazda Ściejowice: byty, relacje, role i granica pierwszej wersji. Wersja 0.2 dodaje obiekt sportowy (Orlik 2024) administrowany przez klub w imieniu Gminy Liszki.</p>
+
+  <h2>1. Model domenowy</h2>
+  <figure>
+    <div class="figwrap">
+    <svg viewBox="0 0 940 760" role="img" aria-label="Diagram bytów systemu Vereino: Osoba w centrum, powiązana z grupami przez członkostwo, z terminami przez obecność, z opiekunami przez opiekę prawną; aktywności generują terminy; opłaty naliczają należności; warstwa obiektu: instytucja-właściciel, umowa administracyjna, strefy godzinowe, cennik, rezerwacje, dziennik animatora, incydenty i zakazy; obszary późniejsze narysowane linią przerywaną.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)">
+        <!-- Klub -> Sekcja -->
+        <line x1="180" y1="72" x2="219" y2="72"/>
+        <!-- Sekcja -> Grupa -->
+        <line x1="290" y1="94" x2="290" y2="159"/>
+        <!-- Grupa -> Członkostwo -->
+        <line x1="360" y1="182" x2="399" y2="182"/>
+        <!-- Członkostwo -> Osoba -->
+        <line x1="540" y1="182" x2="579" y2="182"/>
+        <!-- Opieka -> Osoba -->
+        <line x1="650" y1="94" x2="650" y2="159"/>
+        <!-- Przypisanie roli -> Osoba -->
+        <polyline points="830,94 830,130 700,130 700,159"/>
+        <!-- Konto -> Osoba -->
+        <line x1="760" y1="182" x2="721" y2="182"/>
+        <!-- Obecność -> Osoba -->
+        <line x1="650" y1="270" x2="650" y2="205"/>
+        <!-- Dyżur -> Osoba -->
+        <polyline points="830,270 830,232 700,232 700,205"/>
+        <!-- Termin -> Osoba (trener / zastępca) -->
+        <polyline points="530,270 530,244 610,244 610,205"/>
+        <!-- Termin -> Miejsce -->
+        <polyline points="410,270 410,252 380,252 380,72 399,72"/>
+        <!-- Aktywność -> Grupa -->
+        <line x1="290" y1="270" x2="290" y2="205"/>
+        <!-- Aktywność -> Termin -->
+        <line x1="360" y1="292" x2="399" y2="292"/>
+        <!-- Termin -> Obecność -->
+        <line x1="540" y1="292" x2="579" y2="292"/>
+        <!-- Drużyna zewn -> Aktywność -->
+        <line x1="180" y1="292" x2="219" y2="292"/>
+        <!-- Komunikat -> Aktywność (adresat) -->
+        <polyline points="110,380 110,342 250,342 250,315"/>
+        <!-- Opłata -> Aktywność / Grupa -->
+        <line x1="300" y1="380" x2="300" y2="315"/>
+        <!-- Opłata -> Należność -->
+        <line x1="360" y1="402" x2="399" y2="402"/>
+        <!-- Należność -> Płatność -->
+        <line x1="540" y1="402" x2="579" y2="402"/>
+        <!-- Zniżka -> Należność -->
+        <polyline points="830,380 830,352 470,352 470,379"/>
+        <!-- Instytucja -> Miejsce (właściciel) -->
+        <polyline points="110,500 110,470 20,470 20,72 39,72"/>
+        <!-- Umowa -> Instytucja -->
+        <line x1="220" y1="522" x2="181" y2="522"/>
+        <!-- Umowa -> Cennik -->
+        <line x1="360" y1="522" x2="399" y2="522"/>
+        <!-- Cennik -> Rezerwacja -->
+        <line x1="540" y1="522" x2="579" y2="522"/>
+        <!-- Rezerwacja / Strefa -> Miejsce (blokują sloty), szyna y=470 i pion x=930 -->
+        <polyline points="610,500 610,470 930,470 930,30 470,30 470,49"/>
+        <!-- Strefa -> szyna -->
+        <polyline points="360,612 380,612 380,470 400,470"/>
+        <!-- Rezerwacja -> Należność (payee: gmina) -->
+        <line x1="650" y1="500" x2="650" y2="425"/>
+        <!-- Dziennik -> Rezerwacja/Termin -->
+        <line x1="760" y1="522" x2="721" y2="522"/>
+        <!-- Incydent -> Dziennik -->
+        <line x1="830" y1="590" x2="830" y2="545"/>
+        <!-- Zakaz -> Rezerwacja -->
+        <polyline points="740,590 740,565 690,565 690,545"/>
+        <!-- Zamknięcie -> Rezerwacja -->
+        <polyline points="470,590 470,565 620,565 620,545"/>
+      </g>
+      <g fill="none" stroke="var(--later)" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar)">
+        <line x1="180" y1="682" x2="219" y2="682"/>
+      </g>
+
+      <!-- labels on edges -->
+      <g font-size="10.5" fill="var(--muted)" font-family="Source Sans 3, system-ui, sans-serif">
+        <text x="200" y="64" text-anchor="middle">sekcje</text>
+        <text x="296" y="132">obejmuje grupy</text>
+        <text x="380" y="176" text-anchor="middle">członkowie</text>
+        <text x="560" y="176" text-anchor="middle">osoba + rola</text>
+        <text x="656" y="132">opiekun → dziecko</text>
+        <text x="765" y="124" text-anchor="middle">rola w sekcji / klubie</text>
+        <text x="740" y="176" text-anchor="middle">loguje jako</text>
+        <text x="656" y="242">uczestnik</text>
+        <text x="765" y="226" text-anchor="middle">dyżurny (rodzic)</text>
+        <text x="570" y="240" text-anchor="middle">trener / zastępca</text>
+        <text x="372" y="160" text-anchor="end">w miejscu</text>
+        <text x="296" y="242">dla grupy</text>
+        <text x="380" y="286" text-anchor="middle">generuje</text>
+        <text x="560" y="286" text-anchor="middle">obecność</text>
+        <text x="200" y="286" text-anchor="middle">przeciwnik</text>
+        <text x="180" y="336" text-anchor="middle">adresat: grupa / aktywność / klub</text>
+        <text x="306" y="352">cennik</text>
+        <text x="380" y="396" text-anchor="middle">nalicza</text>
+        <text x="560" y="396" text-anchor="middle">rozlicza</text>
+        <text x="650" y="347" text-anchor="middle">obniża (np. 2. dziecko)</text>
+        <text x="200" y="674" text-anchor="middle">dofinansowanie</text>
+        <text x="30" y="300" text-anchor="middle" transform="rotate(-90 30 300)">właściciel obiektu</text>
+        <text x="200" y="516" text-anchor="middle">strony</text>
+        <text x="560" y="516" text-anchor="middle">wycenia</text>
+        <text x="656" y="492">należność → konto gminy</text>
+        <text x="740" y="516" text-anchor="middle">wpis dnia</text>
+        <text x="836" y="572">zgłoszenie</text>
+        <text x="715" y="580" text-anchor="end">blokuje</text>
+        <text x="545" y="580" text-anchor="middle">blokuje rezerwacje</text>
+        <text x="700" y="24" text-anchor="middle">rezerwacje i strefy blokują sloty miejsca</text>
+      </g>
+
+      <!-- boxes: MVP -->
+      <g font-family="Archivo, system-ui, sans-serif" font-size="13" font-weight="700" fill="var(--ink)">
+        <g stroke="var(--accent)" stroke-width="1.6">
+          <rect x="40" y="50" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="50" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="50" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="50" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="50" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="160" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="160" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="160" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="40" y="270" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="270" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="270" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="270" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="270" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="40" y="380" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="380" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="380" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="380" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="380" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="40" y="500" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="500" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="500" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="500" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="500" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="590" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="590" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="590" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="590" width="140" height="44" rx="5" fill="var(--panel)"/>
+        </g>
+        <rect x="580" y="160" width="140" height="44" rx="5" fill="var(--person)" stroke="var(--person-line)" stroke-width="2"/>
+        <g stroke="var(--later)" stroke-width="1.4" stroke-dasharray="5 4">
+          <rect x="40" y="660" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="220" y="660" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="400" y="660" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="580" y="660" width="140" height="44" rx="5" fill="var(--panel)"/>
+          <rect x="760" y="660" width="140" height="44" rx="5" fill="var(--panel)"/>
+        </g>
+
+        <!-- titles -->
+        <text x="110" y="69" text-anchor="middle">Klub</text>
+        <text x="290" y="69" text-anchor="middle">Sekcja</text>
+        <text x="470" y="69" text-anchor="middle">Miejsce</text>
+        <text x="650" y="69" text-anchor="middle">Opieka prawna</text>
+        <text x="830" y="69" text-anchor="middle">Przypisanie roli</text>
+        <text x="290" y="179" text-anchor="middle">Grupa</text>
+        <text x="470" y="179" text-anchor="middle">Członkostwo</text>
+        <text x="650" y="179" text-anchor="middle">Osoba</text>
+        <text x="830" y="179" text-anchor="middle">Konto</text>
+        <text x="110" y="289" text-anchor="middle">Drużyna zewn.</text>
+        <text x="290" y="289" text-anchor="middle">Aktywność</text>
+        <text x="470" y="289" text-anchor="middle">Termin</text>
+        <text x="650" y="289" text-anchor="middle">Obecność</text>
+        <text x="830" y="289" text-anchor="middle">Dyżur</text>
+        <text x="110" y="399" text-anchor="middle">Komunikat</text>
+        <text x="290" y="399" text-anchor="middle">Opłata</text>
+        <text x="470" y="399" text-anchor="middle">Należność</text>
+        <text x="650" y="399" text-anchor="middle">Płatność</text>
+        <text x="830" y="399" text-anchor="middle">Zniżka</text>
+        <text x="110" y="519" text-anchor="middle">Instytucja</text>
+        <text x="290" y="519" text-anchor="middle">Umowa</text>
+        <text x="470" y="519" text-anchor="middle">Cennik wynajmu</text>
+        <text x="650" y="519" text-anchor="middle">Rezerwacja</text>
+        <text x="830" y="519" text-anchor="middle">Dziennik obiektu</text>
+        <text x="290" y="609" text-anchor="middle">Strefa godzinowa</text>
+        <text x="470" y="609" text-anchor="middle">Zamknięcie</text>
+        <text x="650" y="609" text-anchor="middle">Zakaz wstępu</text>
+        <text x="830" y="609" text-anchor="middle">Incydent</text>
+
+        <text x="110" y="679" text-anchor="middle" fill="var(--later)">Projekt</text>
+        <text x="290" y="679" text-anchor="middle" fill="var(--later)">Regulamin (zgody)</text>
+        <text x="470" y="679" text-anchor="middle" fill="var(--later)">Stawki trenerów</text>
+        <text x="650" y="679" text-anchor="middle" fill="var(--later)">Zamówienie</text>
+        <text x="830" y="679" text-anchor="middle" fill="var(--later)">Rezerwacja online</text>
+      </g>
+      <!-- subtitles -->
+      <g font-size="9.5" fill="var(--muted)" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">
+        <text x="110" y="85">LKS Gwiazda (tenant)</text>
+        <text x="290" y="85">akademia · basen · dodatkowe</text>
+        <text x="470" y="85">kompleks → boiska, szatnia; właściciel</text>
+        <text x="650" y="85">opiekun ↔ niepełnoletni</text>
+        <text x="830" y="85">koordynator · admin · trener</text>
+        <text x="290" y="195">typ: drużyna | grupa zajęciowa</text>
+        <text x="470" y="195">rola: uczestnik · trener · koord.</text>
+        <text x="650" y="195">imię, nazwisko, PESEL, zdjęcie</text>
+        <text x="830" y="195">login; dziecko od 13 lat</text>
+        <text x="110" y="305">przeciwnik z listy</text>
+        <text x="290" y="305">trening · mecz · sparing · obóz</text>
+        <text x="470" y="305">data, trener, miejsce, status</text>
+        <text x="650" y="305">deklaracja + faktyczna</text>
+        <text x="830" y="305">rodzic na konkretnym terminie</text>
+        <text x="110" y="415">autor, treść, odpowiedzi, „sprawa”</text>
+        <text x="290" y="415">cennik za grupę / aktywność</text>
+        <text x="470" y="415">kwota, termin, uczestnik</text>
+        <text x="650" y="415">wpłata, metoda, data</text>
+        <text x="830" y="415">reguła: 2. dziecko, projekt…</text>
+        <text x="110" y="535">gmina · szkoła · klub · firma</text>
+        <text x="290" y="535">administracyjna · najem · trener</text>
+        <text x="470" y="535">3 kategorie · 60/90 min · zima</text>
+        <text x="650" y="535">n × 90 min · 24 h · status</text>
+        <text x="830" y="535">animator: otwarcie, stan, grupy</text>
+        <text x="290" y="625">bezpłatne · klub · wynajem</text>
+        <text x="470" y="625">śnieg · konserwacja · przegląd</text>
+        <text x="650" y="625">osoba/instytucja · od–do</text>
+        <text x="830" y="625">naruszenie · szkoda · uraz</text>
+
+        <text x="110" y="695">dofinansowania, rozliczenie</text>
+        <text x="290" y="695">akceptacja przez opiekunów</text>
+        <text x="470" y="695">100 zł/mecz, zastępstwa</text>
+        <text x="650" y="695">stroje, gadżety kibica</text>
+        <text x="830" y="695">formularz + płatność online</text>
+      </g>
+      <text x="40" y="485" font-size="11" fill="var(--accent)" font-family="Archivo, sans-serif" font-weight="700" letter-spacing=".06em">OBIEKT (ORLIK) — moduł facilities, w MVP</text>
+      <text x="40" y="655" font-size="11" fill="var(--later)" font-family="Archivo, sans-serif" font-weight="700" letter-spacing=".06em">PÓŹNIEJ (poza MVP) — puste „pudełka” z zarezerwowanym miejscem</text>
+      <text x="40" y="740" font-size="11" fill="var(--muted)" font-family="Source Sans 3, sans-serif">Zastępstwo = zmiana „trenera” na Terminie + historia. Historia uczestnika = Członkostwa + Obecności. Harmonogram publiczny = widok Strefy + Terminy + Rezerwacje + Zamknięcia.</text>
+    </svg>
+    </div>
+    <div class="legend">
+      <span><i class="sw"></i> byt w pierwszej wersji (MVP)</span>
+      <span><i class="sw person"></i> Osoba – jeden rekord, wiele ról</span>
+      <span><i class="sw later"></i> obszar późniejszy</span>
+    </div>
+    <figcaption>Osoba jest w centrum: ta sama osoba może być opiekunem, trenerem i wiceprezesem. Kalendarz nie jest bytem, tylko widokiem Terminów, Rezerwacji i Stref przefiltrowanym przez rolę. Warstwa obiektu odwzorowuje regulamin Orlika: gmina jest właścicielem, klub administratorem, opłaty za wynajem trafiają na konto gminy.</figcaption>
+  </figure>
+
+  <h2>2. Cztery decyzje ze spotkania i doprecyzowania</h2>
+  <div class="decisions">
+    <div class="card"><h3>Zakres MVP</h3><p>Rdzeń kalendarzowy plus płatności. Projekty, sklep, umowy, wynajem tylko jako zarezerwowane moduły.</p></div>
+    <div class="card"><h3>Jedna Aktywność</h3><p>Trening, mecz, sparing, obóz to jeden byt z polem <code>type</code>. Cykliczność jest atrybutem, nie osobną klasą.</p></div>
+    <div class="card"><h3>Jedna Grupa</h3><p>Drużyna piłkarska i grupa zumby to ten sam byt z polem <code>kind</code>. Drużyna ma dodatkowo kategorię wiekową i ligę.</p></div>
+    <div class="card"><h3>Konto dziecka</h3><p>Opiekun ma konto i profile dzieci. Dziecko od 13 lat dostaje własny login z ograniczonym widokiem. Zgody i płatności zawsze u opiekuna.</p></div>
+    <div class="card"><h3>Wiele ról na osobie</h3><p>Koordynator może być też trenerem, opiekun trenerem. Uprawnienia się sumują, UI ma przełącznik kontekstu, akcje zapisują rolę.</p></div>
+    <div class="card"><h3>Deklaracja dziecka 13+</h3><p>Konfigurowalne per klub / grupa / typ aktywności: od razu z powiadomieniem opiekuna, wymaga potwierdzenia opiekuna, lub tylko opiekun deklaruje.</p></div>
+    <div class="card"><h3>Zastępstwo a wypłata</h3><p>Trener = podstawa + jednostki treningowe. Jednostkę dostaje ten, kto poprowadził termin, więc zastępstwo przenosi ją na zastępcę automatycznie w raporcie miesięcznym.</p></div>
+    <div class="card"><h3>Orlik w MVP</h3><p>Pełny moduł obiektu: strefy godzinowe, publiczny harmonogram, rezerwacje po telefonie, cennik, dziennik animatora, incydenty, zakazy, raport dla gminy. Rezerwacja online później.</p></div>
+  </div>
+
+  <h2>3. Role i to, co każda widzi po zalogowaniu</h2>
+  <div class="grid">
+    <div class="card"><h3>Uczestnik <span class="tag">MVP</span></h3><ul><li>Cztery kafle: dziś/kalendarz, wiadomości, obecność, płatności (tylko podgląd)</li><li>„Będę / nie będę” na terminie</li><li>Profil ze zdjęciem, moje grupy</li><li>Historia: grupy, mecze <span class="tag later">później</span></li></ul></div>
+    <div class="card"><h3>Opiekun prawny <span class="tag">MVP</span></h3><ul><li>Kalendarz wszystkich swoich dzieci na jednym ekranie</li><li>Deklaruje obecność w imieniu dziecka</li><li>Płaci składki, widzi zniżki</li><li>Pisze do trenera; zgłasza się na dyżur</li></ul></div>
+    <div class="card"><h3>Trener <span class="tag">MVP</span></h3><ul><li>Moje grupy → terminy → lista obecności</li><li>Odwołuje termin, zgłasza nieobecność, wskazuje zastępcę</li><li>Komunikat do grupy lub konkretnego terminu</li><li>Podgląd własnej umowy i stawek <span class="tag later">później</span></li></ul></div>
+    <div class="card"><h3>Koordynator sekcji <span class="tag">MVP</span></h3><ul><li>Definiuje grupy, aktywności, miejsca w swojej sekcji</li><li>Widzi terminy bez trenera (do obsadzenia)</li><li>Wysyła komunikaty do trenerów i całej sekcji</li><li>Rejestr „spraw” (trudne sytuacje) z historią</li></ul></div>
+    <div class="card"><h3>Administrator klubu <span class="tag">MVP</span></h3><ul><li>Cenniki, zniżki, należności, płatności</li><li>Osoby i przypisania ról, dane sekcji</li><li>Instytucje, umowy (administracyjna z gminą, najem), cennik wynajmu, strefy godzinowe</li><li>Księguje wpłaty za wynajem na koncie gminy; raport dla właściciela</li><li>Projekty, sklep <span class="tag later">później</span></li></ul></div>
+    <div class="card"><h3>Animator obiektu <span class="tag">MVP</span></h3><ul><li>Kalendarz obiektu: treningi klubu, rezerwacje, godziny ogólnodostępne</li><li>Wpisuje rezerwację po telefonie, zmienia status</li><li>Dziennik dnia: otwarcie, stan boiska przed/po, obecne grupy i ich opiekunowie</li><li>Zgłasza incydent, wnioskuje o zakaz wstępu</li></ul></div>
+    <div class="card"><h3>Gość (bez logowania) <span class="tag">MVP</span></h3><ul><li>Publiczny harmonogram miesięczny orlika: ogólnodostępne / klub / wolne do rezerwacji / zarezerwowane / zamknięte</li><li>Godziny otwarcia, cennik, regulamin, telefon do rezerwacji</li><li>Nie widzi, kto zarezerwował</li></ul></div>
+    <div class="card"><h3>Administrator techniczny <span class="tag">MVP</span></h3><ul><li>Konfiguracja tenantów (klubów), moduły, wygląd</li><li>Nie widzi danych osobowych poza koniecznymi</li></ul></div>
+  </div>
+
+  <h2>4. Jak działa kalendarz (ścieżka jednego treningu)</h2>
+  <div class="flow">
+    <div class="step"><b>Koordynator tworzy Aktywność</b><small>„Trening żaki”, grupa Żaki, wtorki 17:00–18:30, Orlik, trener Wojtek, reguła: co tydzień do 30.06</small></div>
+    <div class="step"><b>System generuje Terminy</b><small>Jeden Termin na każdy wtorek; każdy ma własny status, trenera i miejsce (może się różnić od domyślnych)</small></div>
+    <div class="step"><b>Kalendarze się wypełniają</b><small>Opiekun widzi terminy dzieci, uczestnik swoje, trener swoje grupy, koordynator całą sekcję</small></div>
+    <div class="step"><b>Deklaracja obecności</b><small>Opiekun lub uczestnik 13+ klika „będę / nie będę”. Czy deklaracja dziecka wymaga potwierdzenia opiekuna – ustawienie klubu / grupy / typu aktywności</small></div>
+    <div class="step"><b>Zastępstwo</b><small>Trener zgłasza nieobecność → termin „bez trenera” trafia do koordynatora → wskazany zastępca. Jednostka treningowa liczy się zastępcy, nie trenerowi domyślnemu</small></div>
+    <div class="step"><b>Po treningu</b><small>Trener odhacza faktyczną obecność. Termin → „odbyty”. Z obecności powstaje historia uczestnika i podstawa rozliczeń</small></div>
+  </div>
+  <p class="meta">Statusy Terminu: <code>planned</code> → <code>confirmed</code> → <code>done</code> | <code>cancelled</code>. Termin bez trenera to <code>planned</code> z pustym polem <code>coach</code>, co koordynator widzi na osobnej liście.</p>
+
+
+  <h2>4a. Jak działa wynajem orlika (z regulaminu §2–§6)</h2>
+  <div class="flow">
+    <div class="step"><b>Gość widzi wolny slot</b><small>Publiczny harmonogram: środa 19:30–21:00 „do rezerwacji”. Dzwoni na numer z harmonogramu</small></div>
+    <div class="step"><b>Animator zakłada rezerwację</b><small>Boisko piłkarskie, 1 jednostka (90 min), najemca „KS Sąsiedzi” (klub z gminy, zima → stawka z oświetleniem). System liczy kwotę, termin wpłaty i 24 h na odwołanie</small></div>
+    <div class="step"><b>Slot zablokowany</b><small>Harmonogram pokazuje „zarezerwowane” bez nazwy. Koordynator widzi kolizję, gdyby chciał tam trening</small></div>
+    <div class="step"><b>Wpłata na konto gminy</b><small>Administrator odnotowuje wpłatę → należność opłacona, rezerwacja potwierdzona. Brak wpłaty w terminie → rezerwacja wygasa (do decyzji)</small></div>
+    <div class="step"><b>Dzień wynajmu</b><small>Animator: otwarcie, stan boiska przed, obecność pełnoletniego opiekuna grupy, stan po, zamknięcie. Naruszenie → incydent, ew. zakaz wstępu</small></div>
+    <div class="step"><b>Raport dla gminy</b><small>Miesięcznie: godziny w strefach, rezerwacje, wpłaty, incydenty, konserwacja i przeglądy</small></div>
+  </div>
+  <p class="meta">Statusy Rezerwacji: <code>requested</code> → <code>confirmed</code> → <code>paid</code> → <code>done</code> | <code>cancelled_free</code> (≥ 24 h) | <code>cancelled_late</code> (opłata przepada) | <code>no_show</code>. Imprezy gminy i zajęcia szkolne mają priorytet – administrator może przesunąć rezerwację z powiadomieniem.</p>
+
+  <h2>5. Słownik bytów pod Open Mercato</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Byt (PL)</th><th>Encja / moduł</th><th>Kluczowe pola</th><th>Relacje</th></tr></thead>
+    <tbody>
+      <tr><td>Klub</td><td><code>club</code> · moduł <code>club_core</code></td><td>name, logo, address, settings</td><td>tenant Open Mercato = 1 klub</td></tr>
+      <tr><td>Sekcja</td><td><code>section</code> · <code>club_core</code></td><td>name, description</td><td>club 1:n; koordynator przez <code>role_assignment</code></td></tr>
+      <tr><td>Miejsce</td><td><code>place</code> · <code>club_core</code></td><td>parent_place_id (kompleks → boiska, szatnia), name, kind, surface (→ wymagane obuwie), owner_institution_id, managed_by_club, opening_hours, closure_rules, regulations_document_id, contacts</td><td>club 1:n; termin i rezerwacja wskazują konkretne boisko</td></tr>
+      <tr><td>Osoba</td><td><code>person</code> · <code>people</code></td><td>first_name, last_name, birth_date, pesel (szyfrowany), phone, email, photo</td><td>1 osoba : 0..1 konto; wiele ról</td></tr>
+      <tr><td>Konto</td><td>Open Mercato <code>user</code></td><td>login, hasło, status</td><td>user → person; brak konta dla dzieci &lt;13</td></tr>
+      <tr><td>Opieka prawna</td><td><code>guardianship</code> · <code>people</code></td><td>guardian_id, ward_id, relation (rodzic/babcia/inny), consents</td><td>person ↔ person; n:m (rodzeństwo, dwoje rodziców)</td></tr>
+      <tr><td>Przypisanie roli</td><td><code>role_assignment</code> · <code>people</code></td><td>person_id, role (coordinator/club_admin/coach/facility_operator/tech_admin), section_id, place_id, from, to</td><td>koordynator per sekcja, animator per miejsce</td></tr>
+      <tr><td>Grupa</td><td><code>group</code> · <code>groups</code></td><td>name, kind (team/class_group), section_id, age_category, league, season</td><td>section 1:n; członkostwa</td></tr>
+      <tr><td>Członkostwo</td><td><code>group_membership</code> · <code>groups</code></td><td>group_id, person_id, role (participant/coach/coordinator), from, to</td><td>historia przejść między grupami = kolejne członkostwa</td></tr>
+      <tr><td>Drużyna zewn.</td><td><code>external_team</code> · <code>groups</code></td><td>name, club_name, contact</td><td>przeciwnik w aktywności typu mecz/sparing</td></tr>
+      <tr><td>Aktywność</td><td><code>activity</code> · <code>activities</code></td><td>name, type (training/match/sparring/camp/other), group_id, default_place_id, default_coach_id, recurrence_rule (RRULE), start, end, opponent_id</td><td>generuje terminy; adresat komunikatów; podstawa cennika</td></tr>
+      <tr><td>Termin</td><td><code>occurrence</code> · <code>activities</code></td><td>activity_id, date, start, end, place_id, coach_id, status, notes, substitution_log</td><td>to, co widać w kalendarzu</td></tr>
+      <tr><td>Obecność</td><td><code>attendance</code> · <code>activities</code></td><td>occurrence_id, person_id, declared, declared_by, declaration_status (final/pending_guardian/rejected), actual, marked_as_role</td><td>1 na uczestnika i termin; polityka w <code>attendance_policy</code></td></tr>
+      <tr><td>Dyżur</td><td><code>occurrence_supervisor</code> · <code>activities</code></td><td>occurrence_id, person_id, note</td><td>rodzic-wolontariusz na konkretnym terminie</td></tr>
+      <tr><td>Komunikat</td><td><code>message</code> · <code>communication</code></td><td>author_id, scope (club/section/group/activity/occurrence/direct), body, parent_id, is_case, attachments</td><td>odpowiedzi jako wątek; „sprawa” = wątek z flagą, widoczny dla koordynatora</td></tr>
+      <tr><td>Opłata (cennik)</td><td><code>fee</code> · <code>payments</code></td><td>name, amount, period (monthly/one_off/per_occurrence), group_id lub activity_id, valid_from/to</td><td>nalicza należności</td></tr>
+      <tr><td>Należność</td><td><code>charge</code> · <code>payments</code></td><td>person_id lub payer_institution_id, fee_id lub rental_id, amount, discount_id, due_date, payee (club / owner_institution), status (… forfeited)</td><td>opłata za wynajem: payee = gmina</td></tr>
+      <tr><td>Płatność</td><td><code>payment</code> · <code>payments</code></td><td>charge_id, amount, method, paid_at, reference</td><td>—</td></tr>
+      <tr><td>Zniżka</td><td><code>discount_rule</code> · <code>payments</code></td><td>name, kind (sibling/project/custom), percent lub amount, conditions</td><td>obniża należność</td></tr>
+      <tr><td>Instytucja</td><td><code>institution</code> · <code>facilities</code></td><td>name, type (municipality/school/club/company/sponsor), contact, bank_account</td><td>właściciel obiektu; najemca; później: grantodawca</td></tr>
+      <tr><td>Umowa</td><td><code>contract</code> · <code>facilities</code></td><td>party_type (person/institution), party_id, kind (coach/facility_management/rental/grant), terms (coach: base_monthly, unit_rate, unit_minutes, match_rate), valid_from/to, file</td><td>umowa z gminą definiuje cennik; umowa trenera – podstawę i stawkę za jednostkę</td></tr>
+      <tr><td>Strefa godzinowa</td><td><code>place_zone_rule</code> · <code>facilities</code></td><td>place_id, weekday, time_from/to, zone (public_free/club_training/reservable_paid/closed), priority</td><td>z reguł + terminów + rezerwacji powstaje harmonogram miesięczny</td></tr>
+      <tr><td>Zamknięcie</td><td><code>place_closure</code> · <code>facilities</code></td><td>place_id, date_from/to, reason (snow/maintenance/event)</td><td>blokuje rezerwacje, oznacza terminy do przeniesienia</td></tr>
+      <tr><td>Cennik wynajmu</td><td><code>rental_rate</code> · <code>facilities</code></td><td>place_id, renter_category (municipal_club / municipal_club_winter_lighting / external_commercial), price_per_60, price_per_90, season</td><td>widełki z notatki: 80–150 / 150–220 / 220–350 zł za 90 min</td></tr>
+      <tr><td>Rezerwacja</td><td><code>rental</code> · <code>facilities</code></td><td>place_id, renter (institution/person), starts_at, ends_at, units (× 90 min), rate_id, amount, charge_id, status, cancellation_deadline (−24 h), payment_deadline, regulations_accepted_at</td><td>koliduje z terminami; należność z payee = gmina</td></tr>
+      <tr><td>Dziennik obiektu</td><td><code>facility_log</code> · <code>facilities</code></td><td>place_id, date, operator_id, opened_at, closed_at, condition_before/after, groups_present, remarks</td><td>prowadzi animator</td></tr>
+      <tr><td>Incydent</td><td><code>facility_incident</code> · <code>facilities</code></td><td>place_id, occurred_at, kind (rule_violation/damage/injury), description, involved, action_taken, attachments, linked_message_id</td><td>materiał dowodowy (§6); może być „sprawą” w komunikatach</td></tr>
+      <tr><td>Zakaz wstępu</td><td><code>entry_ban</code> · <code>facilities</code></td><td>place_id, subject (person/institution), from, to (null = stały), reason, incident_id</td><td>blokuje nowe rezerwacje podmiotu</td></tr>
+      <tr><td>Konserwacja / przegląd</td><td><code>maintenance_task</code> · <code>facilities</code></td><td>place_id, kind (cleaning/turf_brushing/granulate/lighting/annual_inspection/five_year_inspection), responsible (club/owner), due_date, done_at, cost</td><td>podział obowiązków klub ↔ gmina</td></tr>
+      <tr><td>Projekt <span class="tag later">później</span></td><td><code>project</code> · <code>projects</code></td><td>name, institution_id, budget, coordinator_id, status, settlement</td><td>łączy aktywności, płatności, umowy</td></tr>
+      <tr><td>Zamówienie <span class="tag later">później</span></td><td><code>order</code> + <code>product</code> · <code>shop</code></td><td>person_id, items, sizes, status</td><td>stroje dla uczestników, gadżety dla kibiców</td></tr>
+      <tr><td>Rezerwacja online <span class="tag later">później</span></td><td>rozszerzenie <code>facilities</code></td><td>formularz dla najemcy, akceptacja regulaminu, płatność online</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>6. Zakres pierwszej wersji</h2>
+  <div class="two">
+    <div class="card"><h3>W MVP</h3><ul>
+      <li>Moduły <code>club_core</code>, <code>people</code>, <code>groups</code>, <code>activities</code>, <code>communication</code>, <code>payments</code>, <code>facilities</code></li>
+      <li>Kalendarz w czterech widokach (uczestnik, opiekun, trener, koordynator)</li>
+      <li>Deklaracja i faktyczna obecność (polityka dla 13+); zastępstwa z historią; miesięczne wyliczenie jednostek treningowych per trener</li>
+      <li>Komunikaty do grupy/terminu/sekcji/klubu, wątki, flaga „sprawa”</li>
+      <li>Cennik, zniżki na rodzeństwo, należności, ręczne księgowanie wpłat</li>
+      <li>Lista drużyn zewnętrznych (przeciwnicy z listy)</li>
+      <li>Orlik: strefy, publiczny harmonogram, rezerwacje po telefonie, cennik, dziennik animatora, incydenty, zakazy, raport dla gminy</li>
+    </ul></div>
+    <div class="card"><h3>Później</h3><ul>
+      <li>Projekty i dofinansowania z rozliczeniem wobec instytucji</li>
+      <li>Księgowanie wypłat trenerów (wyliczenie jest w MVP); regulaminy do akceptacji przez opiekunów</li>
+      <li>Sklep: stroje i gadżety</li>
+      <li>Rezerwacja orlika online z płatnością i kontami stałych najemców</li>
+      <li>Płatności online (bramka), powiadomienia push, integracja z WhatsApp/Messenger</li>
+      <li>Historia rozwoju uczestnika, dane z zegarków</li>
+    </ul></div>
+  </div>
+
+  <h2>7. Pytania, które trzeba rozstrzygnąć przed kodowaniem</h2>
+  <div class="q"><b>Sekcje: jakie i kto jest koordynatorem?</b>Z rozmowy wynikają trzy: akademia piłkarska (Wojtek?), basen (Aneta?), zajęcia dodatkowe. Czy seniorzy to osobna sekcja? Bez tego nie da się nadać uprawnień koordynatora.</div>
+  <div class="q"><b>Granica koordynator ↔ administrator klubu.</b>Propozycja: koordynator = „co się dzieje” (grupy, aktywności, terminy, obsada), administrator = „pieniądze i ludzie” (cenniki, należności, role, dane osobowe, miejsca). Zgoda?</div>
+  <div class="q"><b>Składki: model rozliczeń.</b>Miesięczna składka za grupę, opłata za konkretną aktywność (obóz, mecz wyjazdowy), czy obie? Kto jest płatnikiem dla dorosłego uczestnika (on sam)? Czy w MVP wpłaty księguje ręcznie administrator, czy od razu bramka płatnicza?</div>
+  <div class="q"><b>Obóz: aktywność czy projekt?</b>Propozycja: aktywność typu <code>camp</code> (wielodniowa, z listą uczestników i opłatą), a projekt tylko wtedy, gdy jest dofinansowanie zewnętrzne. Zgoda?</div>
+  <div class="q"><b>Dane osobowe i RODO.</b>Czy PESEL jest naprawdę potrzebny w MVP (ubezpieczenie, licencje PZPN)? Kto ma prawo go widzieć? Jakie zgody opiekun potwierdza w systemie (wizerunek, regulamin, wyjazd)?</div>
+  <div class="q"><b>Komunikaty: zastępują WhatsApp czy go uzupełniają?</b>W MVP proponujemy: komunikaty tylko w aplikacji, z powiadomieniem e-mail. Integracja z komunikatorami później. Czy „sprawy” (skargi, konflikty) mają być zakładane przez koordynatora ręcznie, czy każdy wątek można oznaczyć jako sprawę?</div>
+  <div class="q"><b>Wielu klubów.</b>Od razu multi-tenant (1 tenant = 1 klub, jak w Open Mercato) czy na start jedna instancja dla Gwiazdy?</div>
+  <div class="q"><b>Platforma.</b>Kacper wspominał o aplikacji na telefon. Open Mercato daje web. Czy MVP = responsywna aplikacja webowa (PWA), a natywna aplikacja później?</div>
+  <div class="card" style="border-top:3px solid var(--accent);margin-block:8px"><h3>Nazwa produktu: Vereino</h3><p>Od niem. <i>Verein</i> (stowarzyszenie, klub). Odrzucone: CoolClub (robocza), Clubio i Klubio (zajęte). Projekt założony w Lead Hub. Do ustalenia: domena (.org / .com / .app) – zakup wstrzymany.</p></div>
+  <h3 style="margin-top:20px">Z regulaminu i umowy administracyjnej Orlika</h3>
+  <div class="q"><b>Godziny i strefy.</b>Regulamin ma placeholdery (8:00–22:00 / 9:00–20:30). Jakie są faktyczne godziny otwarcia i jaki tygodniowy podział: ogólnodostępne bezpłatne / treningi klubu / wynajem płatny?</div>
+  <div class="q"><b>Termin wpłaty i wygasanie.</b>„Najpóźniej N dni przed” – ile? Czy rezerwacja bez wpłaty w terminie ma sama wygasać, czy administrator decyduje?</div>
+  <div class="q"><b>Kto wpisuje rezerwacje.</b>Animator, administrator klubu, czy obaj? Czy animator widzi kwoty i cennik?</div>
+  <div class="q"><b>Cennik.</b>Które kwoty z widełek (80–150 / 150–220 / 220–350 zł za 90 min) wchodzą do umowy? Od kiedy liczy się „sezon zimowy / oświetlenie” – od daty czy od godziny po zmroku?</div>
+  <div class="q"><b>Pieniądze gminy.</b>Wpłaty idą na konto gminy. System tylko rejestruje „opłacono” na podstawie potwierdzenia? Czy część przychodu wraca do klubu (fundusz remontowy)?</div>
+  <div class="q"><b>Priorytet gminy i szkół.</b>Gmina nie ma konta – kto wpisuje jej imprezy i zajęcia szkolne do harmonogramu i z jakim wyprzedzeniem?</div>
+  <div class="q"><b>Animator.</b>Pracownik klubu czy gminy? Czy dziennik ma być obowiązkowy (nie da się „zamknąć dnia” bez wpisu)?</div>
+  <div class="q"><b>Zakazy wstępu.</b>Wystarczy rejestr, czy potrzebna procedura: kto wydaje, na jak długo, jak się odwołać?</div>
+  <div class="q"><b>OC, przeglądy roczne i 5-letnie.</b>Ma system pilnować terminów (przypomnienia dla administratora), czy zostaje to poza nim?</div>
+  <div class="q"><b>Akceptacja regulaminu.</b>Przy rezerwacji telefonicznej wystarczy zapis „zaakceptowano telefonicznie” + regulamin w mailu potwierdzającym?</div>
+
+</div>
