@@ -21,7 +21,8 @@ Podmiotem jest **mały klub wielosekcyjny** (stowarzyszenie), z akademią piłka
 | **Uczestnik dorosły** | uczestniczka zumby lub pilatesu | grafik, odwołania, składka | jak opiekun, ale za siebie | telefon | ogłoszenia w grupie |
 | **Trener / instruktor** („Wojtek”, „Piotr”, „Anna”) | prowadzi 1–3 grupy, często na zleceniu; rozliczany „podstawa + jednostki” | wiedzieć, kto przyjdzie; obecność w 30 s; zastępstwo bez sporu o pieniądze; jeden komunikat do grupy; zarezerwować boisko na turniej bez dzwonienia | lista obecności, zamknięcie terminu, zgłoszenie nieobecności, odwołanie, komunikat + tekst na grupę, kalendarz obiektów i rezerwacja, turniej, podgląd własnych jednostek | telefon | ankiety giną w czacie; zastępstwa i rezerwacje telefonicznie |
 | **Koordynator sekcji** („Wojtek” — akademia, „Aneta” — basen) | odpowiada za grupy, grafik i trenerów jednej lub kilku sekcji | grafik bez kolizji; widzieć terminy bez trenera; szybko wskazać zastępcę; komunikat do całej sekcji; rejestr trudnych spraw; prowadzić stronę sekcji | grupy i składy, kreator aktywności, terminy „do obsadzenia” i „nierozliczone”, zastępstwa, raport jednostek sekcji, sprawy, treści publiczne sekcji | komputer + telefon | grafik w głowie i w Excelu; zastępstwa przez telefon |
-| **Administrator klubu / skarbnik** („Aneta”) | prowadzi klub po godzinach: osoby, role, pieniądze, obiekt | wiedzieć, kto zalega, bez Excela; naliczanie i zniżki automatycznie; rozliczenie trenerów i raport dla gminy jednym kliknięciem; decydować o zgłoszeniach zewnętrznych; kontrolować, co klub publikuje | kartoteka osób i rodzin, konta, role, cenniki, zniżki, należności, księgowanie wpłat, akceptacja zgłoszeń, strefy i stawki, raporty, konfiguracja publikacji | komputer | upomnienia ręcznie; jednostki trenerów i godziny orlika z pamięci |
+| **Administrator klubu** („Aneta”, może też pełnić funkcję skarbnika) | prowadzi klub po godzinach: osoby, role, pieniądze, obiekt | wiedzieć, kto zalega, bez Excela; naliczanie i zniżki automatycznie; rozliczenie trenerów i raport dla gminy jednym kliknięciem; decydować o zgłoszeniach zewnętrznych; kontrolować, co klub publikuje | kartoteka osób i rodzin, konta, role, cenniki, zniżki, należności, księgowanie wpłat, akceptacja zgłoszeń, strefy i stawki, raporty, konfiguracja publikacji | komputer | upomnienia ręcznie; jednostki trenerów i godziny orlika z pamięci |
+| **Skarbnik** („Beata”) | odpowiada tylko za pieniądze klubu | wiedzieć, kto zalega i u kogo jest gotówka; rozliczyć wyciąg i gotówkę od trenerów bez Excela | należności, wyciągi, gotówka, zbiórki zamówień, rozliczenia z trenerami — bez kartoteki osób, grup i obiektów | komputer | gotówka od trenerów „na słowo”, zeszyt wpłat |
 | **Animator obiektu** („Tomek”) | otwiera i zamyka Orlik, pilnuje regulaminu | wiedzieć, kto dziś jest na obiekcie; wpisać rezerwację po telefonie; prowadzić dziennik i zgłosić incydent | Dziś na obiekcie, dziennik, incydent, wynajem po telefonie, `no_show` | telefon na obiekcie | zeszyt, telefon do klubu |
 | **Gość — rodzic szukający zajęć** | ktoś spoza klubu | zobaczyć, jakie sekcje i zajęcia są, dla kogo, kiedy, za ile, kto prowadzi; z kim się kontaktować | strona klubu, strona sekcji, materiały | telefon / komputer | brak jednej informacji o klubie |
 | **Najemca z zewnątrz** (inny klub, szkoła, firma) | chce wynająć Orlik lub salkę | zobaczyć wolne terminy; złożyć zgłoszenie bez telefonu; wiedzieć, czy zostało przyjęte | publiczny kalendarz obiektów, zgłoszenie, potwierdzenie e-mailem, e-mail z decyzją | komputer / telefon | dzwoni do klubu, nie widzi wolnych godzin |
@@ -58,7 +59,7 @@ Podmiotem jest **mały klub wielosekcyjny** (stowarzyszenie), z akademią piłka
 | UC-20 | Administrator | Wygenerować raport dla gminy | Must | REQ-015 | 5 |
 | UC-21 | Administrator | Utworzyć formularz zamówień (np. stroje) i wysłać link na grupę w Messengerze | Must | REQ-032 | 4 |
 | UC-22 | Opiekun | Zamówić strój dla dziecka (w aplikacji lub z osobistego linku) i zapłacić | Must | REQ-032 | 4 |
-| UC-23 | Trener + skarbnik | Przyjąć gotówkę za strój, wydać strój, rozliczyć gotówkę od trenera | Must | REQ-033 | 4 |
+| UC-23 | Trener + skarbnik | Sprawdzić płatności swojej grupy (składki i stroje), przyjąć gotówkę, wydać strój, rozliczyć gotówkę od trenera | Must | REQ-033, REQ-034 | 4 |
 
 ### 2.2 Kompletne przepływy
 
@@ -126,9 +127,15 @@ Każdy przepływ: warunki wstępne → ścieżka główna (z ekranami) → odga�
 #### F-13 Zamówienie strojów i rozliczenie (UC-21, UC-22, UC-23)
 - **Ścieżka administratora:** B-30 Zbiórki zamówień → „Nowy formularz” (B-31) → „Wczytaj szablon” (koszulka, spodenki, getry, komplet 120 zł, dres 180/200 zł, ortalion, czapka, bidon) → grupy Akademii, zamówienia do 20.11, płatność do 04.12, imię i numer do nadruku → „Zapisz i otwórz zbieranie” → tekst z linkiem w schowku → wklejenie na grupę w Messengerze.
 - **Ścieżka opiekuna:** link → M-17 (zalogowana: dzieci z grup zbiórki; bez konta: e-mail → osobisty link → M-19) → komplet z rozmiarami, dres, nadruk „JAŚ 8” → suma na żywo → „Złóż zamówienie” → kopia e-mailem, należność w M-08 → „Zapłać online”, przelew z kodem płatnika albo gotówka u trenera.
-- **Ścieżka trenera (telefon):** M-02 kafel „Zamówienia w moich grupach” → M-18: dzieci grupy, pozycje i status płatności → „Przyjmij gotówkę” (KP, e-mail do rodzica) → „Gotówka u Ciebie: 385 zł” → „Przypomnij opiekunom”; po dostawie „Wydaj strój”.
-- **Ścieżka skarbnika:** B-33 Gotówka do rozliczenia → „Przyjmij rozliczenie” (RG/2026/11/001); B-32 → „Zamknij zamówienia” → Zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki, CSV) → „Zamówione u dostawcy” → „Dostarczone” (e-mail „do odbioru u trenera”) → „Zakończ zbiórkę”.
+- **Ścieżka trenera (telefon):** M-02 kafel „Płatności moich grup” → M-18: dzieci grupy ze składkami i strojami do zapłaty → „Przyjmij gotówkę” (KP, e-mail do rodzica) → „Gotówka u Ciebie” → „Przypomnij opiekunom”; po dostawie „Wydaj strój”.
+- **Ścieżka skarbnika (Beata lub Aneta):** B-33 Gotówka do rozliczenia → „Przyjmij rozliczenie” (RG/2026/11/001); B-32 → „Zamknij zamówienia” → Zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki, CSV) → „Zamówione u dostawcy” → „Dostarczone” (e-mail „do odbioru u trenera”) → „Zakończ zbiórkę”.
 - **Odgałęzienia:** komplet bez rozmiaru getrów → błąd przy polu; numer zajęty w grupie → błąd z imieniem dziecka, które go ma; zmiana poniżej wpłaconej kwoty lub anulowanie opłaconego → 409; po terminie formularz zamknięty; wydanie przed dostawą → 409; wydanie nieopłaconego → ostrzeżenie i potwierdzenie; uczestniczka 14 lat → brak zamówień.
+
+#### F-14 Płatności grupy u trenera i rozliczenie gotówki (UC-23)
+- **Ścieżka administratora:** B-20 → „Trenerzy a płatności”: składki i zamówienia z gotówką (domyślnie) / składki tylko do podglądu / tylko zamówienia.
+- **Ścieżka trenera (telefon):** M-02 kafel „Płatności moich grup: 5 osób ma należności, w tym 3 po terminie; gotówka u Ciebie 300 zł” → M-18 → chip „Orlik młodszy”, filtr „Do zapłaty” → Bartek: składka październikowa (po terminie), listopadowa i strój → „Przyjmij gotówkę”: zaznaczone składka 10/2026 i strój, 235 zł → jeden KP, e-mail do mamy → „Gotówka u Ciebie: 535 zł”; Adam: „Przypomnij” → e-mail do taty z listą zaległości.
+- **Ścieżka skarbnika:** B-01 pulpit tylko z finansami → B-33 → Wojtek Malinowski 535 zł (3 wpłaty) → „Przyjmij rozliczenie” → RG/2026/11/001.
+- **Odgałęzienia:** dziecko bez płatnika → widoczne, bez przyjmowania gotówki („sprawa skarbnika”); ustawienie „tylko podgląd” → brak „Przyjmij gotówkę” przy składkach; trener nie widzi składek innych sekcji ani powodów zniżek; kwota większa niż zaznaczone należności → 422.
 
 ---
 
@@ -154,7 +161,7 @@ flowchart LR
     M13[M-13 Prośba o link] -.e-mail.-> M14[M-14 Deklaracja z linku]
     M08 --> M16[M-16 Zamówienia] --> M17[M-17 Zamówienie] -.e-mail.-> M19[M-19 Zamówienie z linku]
     M10 --> M15[M-15 Przyjmij gotówkę]
-    M10 --> M18[M-18 Zamówienia moich grup]
+    M10 --> M18[M-18 Płatności moich grup]
   end
   subgraph BCK[Panel /backend — komputer]
     B01[B-01 Pulpit] --> KLUB[Klub: B-02 Ustawienia, B-03 Publikacja, B-04/B-05 Sekcje, B-06 Miejsca, B-07 Instytucje i umowy]
@@ -173,7 +180,7 @@ flowchart LR
 
 | Powłoka | Struktura | Kto widzi |
 |---|---|---|
-| **Członkowska `/club`** | dolny pasek: **Dziś · Kalendarz · Wiadomości · Płatności · Więcej** (Więcej: Profil, Obiekty, Dziś na obiekcie, Zamówienia, Zamówienia w moich grupach, Przyjmij gotówkę, Wyloguj); w nagłówku przełącznik dziecka (opiekun) i kontekstu roli („jako opiekun / jako trener”) — tylko gdy osoba ma więcej niż jedną rolę | pozycje filtrowane funkcjami ACL: Płatności — `payments.view_own` (tylko osoby pełnoletnie: opiekun, dorosły uczestnik; niepełnoletni uczestnik nie ma tej pozycji); Obiekty — `facilities.view`; Dziś na obiekcie — `facilities.log.write` |
+| **Członkowska `/club`** | dolny pasek: **Dziś · Kalendarz · Wiadomości · Płatności · Więcej** (Więcej: Profil, Obiekty, Dziś na obiekcie, Zamówienia, Płatności moich grup, Przyjmij gotówkę, Wyloguj); w nagłówku przełącznik dziecka (opiekun) i kontekstu roli („jako opiekun / jako trener”) — tylko gdy osoba ma więcej niż jedną rolę | pozycje filtrowane funkcjami ACL: Płatności — `payments.view_own` (tylko osoby pełnoletnie: opiekun, dorosły uczestnik; niepełnoletni uczestnik nie ma tej pozycji); Obiekty — `facilities.view`; Dziś na obiekcie — `facilities.log.write` |
 | **Panel `/backend`** | menu boczne w grupach: **Pulpit · Klub** (Sekcje, Miejsca, Instytucje, Umowy, Ustawienia, Publikacja) **· Ludzie** (Osoby) **· Zajęcia** (Grupy, Aktywności, Terminy, Raport jednostek, Polityki deklaracji) **· Komunikacja** (Wątki, Sprawy) **· Finanse** (Cenniki i zniżki, Należności, Wyciągi bankowe, Zbiórki zamówień, Gotówka do rozliczenia) **· Obiekt** (Kalendarz, Wynajmy, Zgłoszenia, Strefy i cennik, Dziennik i incydenty, Raport dla gminy) | grupy i pozycje według `requireFeatures` stron; koordynator nie widzi Finansów; animator widzi tylko Obiekt |
 | **Publiczna `/p/[klub]`** | nagłówek: **Klub · Sekcje · Obiekty**; stopka: kontakt, regulamin, polityka prywatności (`/privacy` modułu `content`) | wszyscy; bloki według konfiguracji publikacji |
 
@@ -198,7 +205,7 @@ flowchart LR
 | M-15 | `/club/cash` | Przyjmij gotówkę | `payments.cash.record` | 4 |
 | M-16 | `/club/orders` | Zamówienia | `payments.orders.place` | 4 |
 | M-17 | `/club/orders/[campaignId]` | Zamówienie (formularz i podsumowanie) | `payments.orders.place`; bez sesji — wejście z logowaniem lub prośbą o link | 4 |
-| M-18 | `/club/coach/orders` | Zamówienia moich grup | `payments.orders.collect` | 4 |
+| M-18 | `/club/coach/payments` | Płatności moich grup | `payments.groups.view` (+ `payments.groups.collect`) | 4 |
 | M-19 | `/club/o/[token]` | Zamówienie z linku | token | 4 |
 | B-01 | `/backend` | Pulpit | personel | 1–5 |
 | B-02 | `/backend/club/settings` | Ustawienia klubu | `club_core.manage` | 1 |
@@ -219,7 +226,7 @@ flowchart LR
 | B-30 | `/backend/payments/orders` | Zbiórki zamówień | `payments.orders.manage` | 4 |
 | B-31 | `/backend/payments/orders/create`, `…/[id]/edit` | Kreator formularza zamówień | `payments.orders.manage` | 4 |
 | B-32 | `/backend/payments/orders/[id]` | Zbiórka: zamówienia, zestawienie, etapy | `payments.orders.manage` | 4 |
-| B-33 | `/backend/payments/cash-custody` | Gotówka do rozliczenia | `payments.manage` | 4 |
+| B-33 | `/backend/payments/cash-custody` | Gotówka do rozliczenia | `payments.cash.settle` (skarbnik, administrator) | 4 |
 | B-23 | `/backend/facilities/calendar` | Kalendarz obiektu | `facilities.view` | 5 |
 | B-24 | `/backend/facilities/rentals` | Wynajmy | `facilities.rentals.manage` | 5 |
 | B-25 | `/backend/facilities/requests` | Zgłoszenia do akceptacji | `facilities.rentals.approve` | 5 |
@@ -502,7 +509,7 @@ Wspólne zasady (dotyczą każdego ekranu, nie są powtarzane):
 
 #### B-20 Cenniki i zniżki — `/backend/payments/fees`, `/backend/payments/discounts`
 - **Cel:** stawki składek i reguły zniżek.
-- **Funkcje:** cennik: nazwa, grupa **albo** aktywność, okres (miesięczny / jednorazowy / za termin), kwota, dzień płatności, ważność; zniżki: rodzeństwo (%) / własna.
+- **Funkcje:** cennik: nazwa, grupa **albo** aktywność, okres (miesięczny / jednorazowy / za termin), kwota, dzień płatności, ważność; zniżki: rodzeństwo (%) / własna; ustawienie **„Trenerzy a płatności”**: składki i zamówienia z gotówką (domyślnie) / składki do podglądu, gotówka tylko za zamówienia / tylko zamówienia.
 - **Komponenty:** `DataTable`, `CrudForm`.
 - **Stany:** standardowe.
 - **Walidacje:** dokładnie jedno z grupa/aktywność (422); kwota > 0; procent 1–100; dzień płatności 1–28.
@@ -558,7 +565,7 @@ Wspólne zasady (dotyczą każdego ekranu, nie są powtarzane):
 - **API:** `GET /api/payments/order-campaigns/{id}`; `GET /api/payments/orders?campaignId=`; `GET …/{id}/summary?format=csv`; `POST …/{id}/open|close|mark-ordered|mark-delivered|complete`; `POST …/{id}/remind`; `GET …/{id}/share-text`; `POST /api/payments/cash`; `POST /api/payments/orders/{id}/hand-over`.
 
 #### B-33 Gotówka do rozliczenia — `/backend/payments/cash-custody`
-- **Cel:** wiedzieć, u kogo jest gotówka klubu, i potwierdzić jej odbiór (REQ-033).
+- **Cel:** skarbnik wie, u kogo jest gotówka klubu, i potwierdza jej odbiór na podstawie wpisów trenera (REQ-033, REQ-034).
 - **Funkcje:** osoby z nierozliczoną gotówką (trenerzy, inne osoby z prawem przyjmowania): wpłaty z numerami KP, najstarsza, suma; „Przyjmij rozliczenie” — wybór wpłat, numer `RG/RRRR/MM/NNN`; historia rozliczeń. Gotówka przyjęta przez skarbnika jest rozliczona od razu.
 - **Komponenty:** `DataTable`, okno `CrudForm`.
 - **Stany:** loading; empty — „Cała przyjęta gotówka jest u skarbnika”; conflict — wpłata już rozliczona (409).
@@ -634,11 +641,12 @@ Wspólne zasady (dotyczą każdego ekranu, nie są powtarzane):
 - **Walidacje:** odpowiedź przy produktach wymaganych; komplet wymaga rozmiarów elementów; co najmniej jedna pozycja; numer 1–99, wolny w grupie; imię do 12 znaków; e-mail i telefon poprawne; zmiana nie poniżej wpłaconej kwoty; anulowanie tylko bez wpłat.
 - **API:** `GET /api/payments/order-campaigns/{id}/form`; `POST /api/payments/orders`; `PUT /api/payments/orders/{id}`; `POST /api/payments/orders/{id}/cancel`; `POST /api/payments/public/order-campaigns/{id}/link-request`.
 
-#### M-18 Zamówienia moich grup — `/club/coach/orders`
-- **Cel:** trener na treningu przyjmuje gotówkę za stroje i je wydaje (REQ-033).
-- **Funkcje:** „Gotówka u Ciebie” z listą KP i sumą do przekazania skarbnikowi; zbiórki obejmujące grupy trenera; chipy grup z liczbą zamówień (koordynator widzi też pozostałe grupy sekcji); per dziecko: pozycje, nadruk, kwota, zamawiający z telefonem, status płatności; „Przyjmij gotówkę” (kwota, data, e-mail z potwierdzeniem; częściowa dozwolona), „Wydaj strój” po dostawie (nieopłacony — z ostrzeżeniem), „Przypomnij opiekunom”, „Tekst z linkiem na grupę”.
-- **Stany:** loading; empty — „Brak zamówień w Twoich grupach”; 403 — dziecko spoza zakresu; 409 — wydanie przed dostawą; 422 — kwota większa niż należność.
-- **API:** `GET /api/payments/orders?scope=coach`; `POST /api/payments/cash`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/order-campaigns/{id}/remind`.
+#### M-18 Płatności moich grup — `/club/coach/payments`
+- **Cel:** trener przy boisku wie, kto ma coś do zapłaty, przyjmuje gotówkę za składki i stroje i wydaje stroje (REQ-033).
+- **Funkcje:** „Gotówka u Ciebie” z listą KP i sumą do przekazania skarbnikowi; chipy grup z liczbą osób do zapłaty (koordynator widzi też pozostałe grupy sekcji); filtr **Wszyscy / Do zapłaty**; suma grupy i liczba osób po terminie; per dziecko: składki grupy (bieżący okres i zaległości) i zamówienia ze strojami — kwota do zapłaty, termin, status, bez powodu zniżki; „Przyjmij gotówkę” (zaznaczenie kilku należności, kwota, data, e-mail do każdego płatnika; częściowa od najstarszej), „Przypomnij” (zaległości), „Wydaj strój” po dostawie (nieopłacony — z ostrzeżeniem); pod listą zbiórki grupy z „Przypomnij opiekunom” i „Tekst z linkiem na grupę”.
+- **Reguły:** tylko należności powiązane z grupą — składki z cennika tej grupy i zamówienia ze zbiórek obejmujących grupę; zakres składek według ustawienia klubu; dziecko bez płatnika — widoczne, bez gotówki.
+- **Stany:** loading; empty — „Wszystko opłacone”; 403 — dziecko lub należność spoza zakresu; 409 — wydanie przed dostawą; 422 — kwota większa niż zaznaczone należności.
+- **API:** `GET /api/payments/group-charges?groupId=&due=`; `POST /api/payments/cash`; `POST /api/payments/group-charges/remind`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/order-campaigns/{id}/remind`.
 
 #### M-19 Zamówienie z linku — `/club/o/[token]`
 - **Cel:** opiekun bez konta zamawia tak samo jak w aplikacji.
@@ -693,9 +701,9 @@ Wspólne zasady (dotyczą każdego ekranu, nie są powtarzane):
 
 Plik [`mockups/index.html`](mockups/index.html) otwiera się bezpośrednio w przeglądarce. Pasek nad aplikacją pozwala:
 
-- **Osoba** — zalogować się jako: Kasia (opiekun), Ola (uczestniczka 14), Wojtek (trener + koordynator akademii), Anna (instruktorka basenu), Aneta (administrator / skarbnik + koordynator basenu), Tomek (animator) lub Gość (strona publiczna, także jako najemca składający zgłoszenie).
+- **Osoba** — zalogować się jako: Kasia (opiekun), Ola (uczestniczka 14), Wojtek (trener + koordynator akademii), Anna (instruktorka basenu), Aneta (administratorka z prawami skarbnika + koordynatorka basenu), Beata (skarbniczka — tylko finanse), Tomek (animator) lub Gość (strona publiczna, także jako najemca składający zgłoszenie).
 - **Stan ekranu** — wymusić *Normalny*, *Ładowanie*, *Pusty*, *Błąd* na dowolnym ekranie (punkt 4: stany).
-- **Ścieżki** — panel z przewodnikami F-01…F-13: kroki z linkami do ekranów.
+- **Ścieżki** — panel z przewodnikami F-01…F-14: kroki z linkami do ekranów.
 - **Ekrany** — indeks wszystkich ekranów M/B/P.
 - **Motyw** — jasny / ciemny (tokeny odwzorowują `src/app/globals.css` Open Mercato).
 
@@ -716,3 +724,4 @@ Koncepcja nie wprowadza nowych wymagań. Doprecyzowuje dla UX:
 7. Hurtowe ustawianie dostępności do rezerwacji z zewnątrz w kalendarzu obiektu (REQ-029) — opis w B-23.
 8. Rozliczanie należności: import wyciągu bankowego z automatycznym dopasowaniem (B-29, REQ-030) i przyjmowanie gotówki w panelu i na telefonie (M-15, REQ-031); rodzic widzi swój kod płatnika do tytułu przelewu w M-08.
 9. Zbiórki zamówień (np. stroje) zamiast Formularza Google: kreator w panelu (B-30…B-32), zamówienie opiekuna w aplikacji lub z osobistego linku (M-16, M-17, M-19), trener w aplikacji przyjmuje gotówkę i wydaje stroje (M-18), skarbnik rozlicza gotówkę od trenerów (B-33) — REQ-032, REQ-033.
+10. „Płatności moich grup” u trenera (M-18) zamiast samych zamówień: składki grupy i stroje, gotówka za kilka należności naraz, ustawienie klubu „Trenerzy a płatności” (B-20); osobna rola skarbnika (persona Beata) z prawem przyjmowania gotówki od trenerów (B-33) — REQ-033, REQ-034.
