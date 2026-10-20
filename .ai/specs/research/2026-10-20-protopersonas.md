@@ -1,20 +1,20 @@
 ---
-typ: protopersony
-data: 2026-10-20
-autor: Władek Kuć
-status: ZAŁOŻENIE — zbudowane z przekonań zespołu, nie z badań
+type: protopersonas
+date: 2026-10-20
+author: Władek Kuć
+status: ASSUMPTION — built from the team's beliefs, not from research
 ---
 
-# Protopersony (wszystko poniżej to założenia do sprawdzenia)
+# Protopersonas (everything below is assumptions to verify)
 
-## Skarbnik — „Aneta”
-Administrator klubu po godzinach, często rodzic. Ściąga składki od ~150 rodzin, pilnuje zniżek na rodzeństwo, rozlicza trenerów na zleceniu, prowadzi rozliczenie orlika z gminą. Narzędzia dziś: Excel, bank, Messenger. Ból: nie wie na bieżąco, kto zalega; upomnienia robi ręcznie; na koniec miesiąca zbiera jednostki trenerów z pamięci i telefonów. Chce: listę zaległości jednym kliknięciem, płatność online, raport dla gminy, żeby nie liczyć godzin orlika ręcznie. Nie obchodzi jej: rysunki treningowe, statystyki.
+## Treasurer — "Aneta"
+Club administrator after hours, often a parent. Collects membership fees from ~150 families, keeps track of sibling discounts, settles with contract coaches, handles the Orlik settlement with the municipality. Tools today: Excel, the bank, Messenger. Pain: doesn't know at any given moment who is overdue; sends reminders manually; at the end of the month collects coaches' units from memory and phone calls. Wants: the overdue list in one click, online payment, a municipality report so she doesn't have to count Orlik hours manually. Doesn't care about: training diagrams, statistics.
 
-## Trener na zleceniu — „Wojtek”
-Prowadzi 2–3 roczniki, 6–9 treningów tygodniowo, mecze w weekendy, czasem zastępstwa. Rozliczany: podstawa + jednostki. Narzędzia: Messenger, WhatsApp, własny telefon. Ból: ankieta „kto będzie” w grupie ginie w rozmowie; zastępstwo ustala telefonicznie i potem spiera się o jednostki; nie ma listy kontaktów do rodziców w jednym miejscu. Chce: listę obecności z telefonu, jeden komunikat do grupy, żeby zastępstwo samo się rozliczyło. Może chcieć PTU Coach dla siebie (ćwiczenia) — wtedy Vereino musi być „obok”, nie „zamiast”.
+## Contract coach — "Wojtek"
+Runs 2–3 age groups, 6–9 training sessions a week, matches on weekends, sometimes substitutions. Paid: base + units. Tools: Messenger, WhatsApp, his own phone. Pain: the "who's coming" poll in the group gets lost in the conversation; he arranges substitutions by phone and then argues about units; he has no list of parents' contacts in one place. Wants: an attendance list on the phone, one announcement to the group, substitutions that settle themselves. May want PTU Coach for himself (exercises) — then Vereino has to sit "alongside", not "instead".
 
-## Rodzic dwójki dzieci — „Kasia”
-Dwoje dzieci w różnych rocznikach, czasem trzecie na basenie. Jest w 3–4 grupach na Messengerze. Ból: nie wie, czy dziś jest trening, aż przewinie grupę; przegapia zmiany; płaci przelewem „jak sobie przypomni”; musi odpowiadać „będzie / nie będzie” w każdej grupie osobno. Chce: jeden ekran z dziś/jutro dla wszystkich dzieci, powiadomienie o odwołaniu, płatność z telefonu, „będę” jednym kliknięciem. Nie chce: kolejnej aplikacji, w której trzeba się logować codziennie.
+## Parent of two children — "Kasia"
+Two children in different age groups, sometimes a third at the pool. Is in 3–4 Messenger groups. Pain: doesn't know whether there is training today until she scrolls through the group; misses changes; pays by bank transfer "when she remembers"; has to answer "attending / not attending" separately in each group. Wants: one screen with today/tomorrow for all her children, a notification about cancellations, payment from the phone, "attending" in one click. Doesn't want: another app she has to sign in to every day.
 
-## Czego nie wiemy o żadnej z nich
-Ile czasu tygodniowo naprawdę tracą; co próbowały zamiast Messengera; kto decyduje o narzędziu w klubie; czy „darmowe” jest argumentem czy sygnałem ryzyka. → scenariusze w `interviews/`.
+## What we don't know about any of them
+How much time they really lose each week; what they have tried instead of Messenger; who decides on the tool in the club; whether "free" is an argument or a risk signal. → scripts in `interviews/`.

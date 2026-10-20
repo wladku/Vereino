@@ -1,17 +1,17 @@
 ---
-typ: notatka-ze-spotkania (NIE wywiad z odbiorcą)
-data: 2026-09-26
-uczestnicy: Władek Kuć (wiceprezes KS Gwiazda, opiekun), Kacper Kuć (developer)
-źródło: transkrypcja audio „20260926 Spotkanie1 -WK KK”
-znacznik: [DOKUMENT] — wiedza zarządu klubu o własnym klubie; przekonania o rodzicach i trenerach to [ZAŁOŻENIE]
+type: meeting-note (NOT an interview with a target user)
+date: 2026-09-26
+participants: Władek Kuć (vice-president of KS Gwiazda, guardian), Kacper Kuć (developer)
+source: audio transcript "20260926 Spotkanie1 -WK KK"
+tag: [DOCUMENT] — the club board's knowledge of its own club; beliefs about parents and coaches are [ASSUMPTION]
 ---
 
-# Spotkanie założycieli — skrót
+# Founders' meeting — summary
 
-**Co ustalono o klubie (wiedza wewnętrzna):** klub wielosekcyjny; byty: miejsce (orlik, boisko, sala, szatnia, basen zewnętrzny), uczestnik, opiekun prawny (nie zawsze rodzic), trener, drużyna/zespół (także zumba, pilates, siłownia), zajęcia cykliczne i wydarzenia (mecz, sparing, obóz), kalendarz per rola, obecność, komunikaty, płatności i zniżki (drugie dziecko), zakupy strojów i gadżetów, projekty z dofinansowaniem gminy, umowy z trenerami, wynajem orlika, zastępstwa, rejestr trudnych spraw jako materiał dowodowy. Koordynatorzy per sekcja (Wojtek — akademia?, Aneta — basen/administracja?). Trenerzy rozliczani m.in. za mecz (np. 100 zł).
+**What was established about the club (internal knowledge):** multi-section club; entities: place (Orlik, pitch, hall, locker room, outdoor pool), participant, legal guardian (not always a parent), coach, team/squad (also zumba, pilates, gym), recurring classes and events (match, friendly, camp), per-role calendar, attendance, announcements, payments and discounts (second child), purchases of kits and merchandise, projects with municipal co-funding, contracts with coaches, Orlik rental, substitutions, a record of difficult cases as evidence. Coordinators per section (Wojtek — academy?, Aneta — pool/administration?). Coaches are paid, among other things, per match (e.g. PLN 100).
 
-**Przekonania o użytkownikach (ZAŁOŻENIA):** rodzice chcą prostego ekranu „czy dziś są zajęcia”; za dużo informacji = nic z tego nie mają; dzieci 13+ mogą same logować się i deklarować obecność; rodzice mogą nie chcieć wyjść z Messengera; mogą pojawić się skargi i konflikty wymagające rejestru.
+**Beliefs about users (ASSUMPTIONS):** parents want a simple "are there classes today" screen; too much information = they get nothing out of it; children 13+ can sign in themselves and declare attendance; parents may not want to leave Messenger; complaints and conflicts requiring a record may arise.
 
-**Parafraza (nie cytat):** Kacper — zacząć od małego wycinka; Władek — narysować większą mapę, żeby puste obszary miały powiązania.
+**Paraphrase (not a quote):** Kacper — start with a small slice; Władek — draw a bigger map so that the empty areas have connections.
 
-**Otwarte po spotkaniu:** zajęcia vs wydarzenia (rozstrzygnięte D-002), drużyna vs grupa (D-003), opiekun prawny vs opiekun zajęć (dwa byty), granica koordynator/administrator, sekcje i ich koordynatorzy, model składek, PESEL i zgody.
+**Open after the meeting:** classes vs events (resolved by D-002), team vs group (D-003), legal guardian vs class supervisor (two entities), the coordinator/administrator boundary, sections and their coordinators, the membership fee model, PESEL and consents.
