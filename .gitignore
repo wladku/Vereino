@@ -121,3 +121,9 @@ skills-lock.json
 # per-session validation-gate evidence written by the gate-evidence hook on every
 # Bash call — machine-local observation, never source
 .ai/.gate-state.json
+
+# Makieta Vereino: pliki z logo i prawdziwą nazwą klubu tylko lokalnie
+docs/ux-concept/mockups/makieta-lks-gwiazda.html
+docs/ux-concept/mockups/logo-klubu*.png
+docs/ux-concept/mockups/logo.js
+docs/ux-concept/vereino-mockupy.zip

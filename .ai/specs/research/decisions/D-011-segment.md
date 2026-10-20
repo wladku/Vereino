@@ -5,8 +5,8 @@ właściciel: Władek Kuć
 źródło: wiadomość Władka
 status: confirmed
 ---
-# D-011 Segment docelowy: małe akademie piłkarskie do ~200 zawodników
-**Decyzja:** nie kluby ligowe; podmiejskie akademie 100–200 dzieci, zwykle na obiekcie gminnym. Sekcje niesportowe zostają możliwe w modelu, ale nie są na pierwszym planie.
+# D-011 Segment docelowy: małe kluby wielosekcyjne z akademią piłkarską jako główną sekcją
+**Decyzja (skorygowana 2026-10-20):** podmiotem jest **klub wielosekcyjny** (stowarzyszenie), a nie sama akademia. Akademia piłkarska jest jego główną, najliczniejszą sekcją (orientacyjnie do ~200 zawodników — to opis skali, nie limit w systemie). Pozostałe sekcje (basen, zajęcia dodatkowe: zumba, pilates, siłownia, szachy…) są pełnoprawnym przypadkiem użycia, nie dodatkiem. Nie kluby ligowe / duże akademie.
 **Dlaczego:** Władek zna ten segment od środka; PTU jest tam obecne, ale ciężkie i płatne.
-**Konsekwencje:** kategorie wiekowe PZPN i sezon jako byty (Should), obóz bliżej 1.0, nie budujemy narzędzi trenerskich.
-**Wrócić:** po 5 rozmowach z koordynatorami/prezesami innych akademii.
+**Konsekwencje:** sekcja pozostaje bytem pierwszego rzędu z własnym koordynatorem; grupa z `kind = team | class_group` (D-003) zostaje; kategorie wiekowe PZPN i sezon jako byty dotyczą tylko `team` (Should); obóz bliżej 1.0; nie budujemy narzędzi trenerskich. Przewaga wobec ProTrainUp: obiekt gminny **i** wielosekcyjność (PTU jest piłkarsko-sportowe).
+**Wrócić:** po 5 rozmowach z koordynatorami/prezesami innych klubów (w tym koordynatorem sekcji niepiłkarskiej).

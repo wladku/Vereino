@@ -1,0 +1,1207 @@
+# Vereino — zarządzanie małym klubem wielosekcyjnym
+
+**Date**: 2026-10-20
+**Status**: Draft
+
+> Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
+
+Źródła: `.ai/specs/research/` (tylko do odczytu) — szkic modelu domenowego v0.3 (`2026-10-20-domain-model-draft.md`), zakres MoSCoW (`2026-10-20-moscow.md`), decyzje `decisions/D-001…D-012`, business case, interesariusze, VPC, protopersony, benchmark ProTrainUp, scenariusze rozmów i notatka ze spotkania 26.09.2026. Encje i kod są po angielsku, UI i treść domenowa po polsku. Bramka pytań `om-spec-writing` (Q-001…Q-004) została zamknięta 2026-10-20 odpowiedziami Władka Kucia; rozstrzygnięcia są w *Open Questions*. Segment według D-011 skorygowanej 2026-10-20: podmiotem systemu jest klub wielosekcyjny, nie sama akademia. Drugą rundą pytań (Q-021…Q-024, 2026-10-20) do 1.0 weszły jako Must: rezerwacje wewnętrzne obiektów przez personel bez akceptacji, zgłoszenia rezerwacji online od osób z zewnątrz wymagające akceptacji administratora oraz publiczna strona klubu z sekcjami — to świadome odstępstwo od `moscow.md` (Won't: „rezerwacja online dla najemców”) i D-001.
+
+## TLDR
+
+Vereino to otwartoźródłowa aplikacja Open Mercato dla małego klubu wielosekcyjnego (stowarzyszenia), którego główną sekcją jest akademia piłkarska, a obok niej działają sekcje niepiłkarskie — basen, zumba, pilates, siłownia — jako pełnoprawny przypadek użycia (D-011). Skala odniesienia to ~200 zawodników w akademii; to opis skali, nie limit w systemie. Pilot: KS Gwiazda Ściejowice, która administruje też Orlikiem 2024 w imieniu Gminy Liszki. Vereino zastępuje grupy na Messengerze, Excel i telefony: jeden rekord osoby z wieloma rolami i jednym kontem, sekcje z koordynatorami, grupy dwóch równorzędnych rodzajów (drużyna `team` i grupa zajęciowa `class_group`), aktywności z cyklicznością generujące terminy, kalendarze per rola — jeden dla rodzica, którego dzieci są w różnych sekcjach, deklarowaną i faktyczną obecność, zastępstwa trenerów z automatycznym rozliczeniem jednostek, komunikaty z powiadomieniem w aplikacji i e-mailem, składki z płatnością online przez Stripe oraz obiekty klubu (w tym gminny Orlik) ze strefami, raportem dla gminy i kalendarzami rezerwacji: personel każdej sekcji rezerwuje obiekt od razu (np. trener na turniej), a osoba z zewnątrz zgłasza rezerwację w publicznym kalendarzu obiektów i ta jest ważna dopiero po akceptacji administratora. Publiczna strona klubu pokazuje sekcje, zajęcia, harmonogram, warunki, ceny, prowadzących, materiały i kontakt — każdy z tych bloków klub włącza lub wyłącza w konfiguracji. Ponownie używamy modułów Open Mercato: `directory`, `auth`, `notifications`, `attachments`, `entities`, `configs`, `audit_logs`, `dashboards`, a w kolejnych fazach `scheduler`, `messages`, `payment_gateways` z `gateway_stripe`. Domenę klubu posiada siedem nowych modułów aplikacji. Najmniejszy spójny wynik to faza 1 (`club_core` + `people`): klub, sekcje, miejsca, instytucje, osoby, opieka prawna, role i konta, z zalogowanym rodzicem widzącym swoje dzieci.
+
+## Problem Statement
+
+Mały klub wielosekcyjny prowadzi dziś grafik i obecność przez kilka grup na Messengerze (osobno dla każdej sekcji i grupy), składki w Excelu, zastępstwa trenerów i instruktorów telefonicznie, a rezerwacje orlika przez telefon do klubu; nie zostaje ślad trudnych spraw [DOKUMENT: notatka ze spotkania założycieli 26.09.2026 — wiedza zarządu Gwiazdy, nie rozmowa z użytkownikiem].
+
+- **Rodzic** dwójki dzieci — często w różnych sekcjach (piłka i basen) — przewija 3–4 grupy, żeby ustalić, czy są zajęcia, przegapia odwołania i odpowiada „będzie / nie będzie” w każdej grupie osobno [ZAŁOŻENIE].
+- **Trener lub instruktor** organizujący turniej czy szkolenie ustala telefonicznie, czy boisko lub salka są wolne; nie widzi kalendarza obiektów klubu [ZAŁOŻENIE — wymaganie Władka z 2026-10-20].
+- **Osoba z zewnątrz** (inny klub, szkoła, rodzic szukający zajęć) nie ma gdzie sprawdzić, jakie sekcje i zajęcia prowadzi klub, na jakich warunkach i kiedy obiekt jest wolny; rezerwuje wyłącznie telefonicznie [ZAŁOŻENIE].
+- **Koordynator sekcji niepiłkarskiej** (basen, zumba, pilates) ma te same potrzeby co koordynator akademii — grupy, terminy, obecność, składki — ale narzędzia rynkowe są modelowane pod drużynę piłkarską [BENCHMARK, D-011].
+- **Trener** zbiera deklaracje w czacie, gdzie giną; zastępstwo ustala telefonicznie i potem spiera się o jednostki [ZAŁOŻENIE].
+- **Skarbnik** nie widzi zaległości na bieżąco, upomina ręcznie, liczy jednostki trenerów i godziny orlika z pamięci [ZAŁOŻENIE].
+- **Koordynator** układa grafik roczników na jednym obiekcie bez narzędzia do wykrywania kolizji; orlik nie ma publicznego harmonogramu [DOKUMENT: regulamin Orlika 2024 Ściejowice].
+
+ProTrainUp (125–245 zł/mies.) pokrywa rdzeń kalendarz/obecność/składki, ale nie obsługuje obiektu administrowanego w imieniu gminy (strefy, publiczny harmonogram, rezerwacje, raport dla właściciela), nie traktuje sekcji niepiłkarskich jako naturalnego przypadku (model piłkarsko-sportowy), jest rozbudowany ponad potrzeby małego klubu i trzyma dane u dostawcy [BENCHMARK 30.09.2026]. W pakiecie nie ma ani jednej notatki z rozmowy z osobą spoza zespołu, więc wszystko o użytkownikach jest hipotezą do sprawdzenia rozmowami (scenariusze w `research/interviews/`).
+
+## Overview and Success Measures
+
+- **Primary outcome:** Gwiazda — cały klub, wszystkie sekcje — pracuje na Vereino przez pełny sezon 2027/28 bez powrotu do Messengera dla obecności — ≥80% deklaracji obecności złożonych w aplikacji, mierzone osobno dla każdej sekcji (miara: `attendance` z `declared_by_person_id` ≠ null wobec liczby uczestników w terminach `done`).
+- **Leading indicators:** liczba sekcji z co najmniej jedną aktywną grupą w systemie (cel: wszystkie sekcje pilota, nie tylko akademia); odsetek opiekunów z aktywnym kontem po 4 tygodniach; odsetek terminów `done` z odhaczoną obecnością faktyczną; odsetek należności opłaconych przed `due_date`; liczba terminów „do obsadzenia” rozwiązanych przed startem; miesięczny raport dla gminy wygenerowany bez ręcznych poprawek.
+- **Baseline:** `unknown — measurement plan`: przed wdrożeniem skarbnik podaje liczbę rodzin i zaległości na koniec ostatniego miesiąca (zobowiązanie ze scenariusza rozmowy ze skarbnikiem); deklaracje na Messengerze — liczone ręcznie w jednej grupie przez 4 tygodnie.
+- **Market / product reference:** ProTrainUp (benchmark 30.09.2026). Przejmujemy rdzeń: kalendarz, obecność, składki z przypomnieniami i płatnością online, wiele ról. Odrzucamy: narzędzia trenerskie (rysunki, baza ćwiczeń, medycyna, skauting, statystyki), bo mały klub użyje ułamka funkcji, a PTU jest w tym silny. Dodajemy to, czego PTU nie ma (D-011): klub jako całość — wiele sekcji na równych prawach, w tym niepiłkarskie, i jeden kalendarz rodzica przez wszystkie sekcje — oraz obiekt gminny jako funkcję centralną i dane u klubu (open source, MIT).
+
+## Goals
+
+Priorytet według `moscow.md`, z korektami wynikającymi z Q-002 i Q-003.
+
+- **REQ-001** (Must, D-005) — Osoba jest jednym rekordem niezależnie od liczby ról i ma najwyżej jedno konto logowania; uprawnienia się sumują, UI ma przełącznik kontekstu, a akcje zapisują rolę, w której je wykonano.
+- **REQ-002** (Must, D-004) — Opiekun widzi profile wszystkich podopiecznych; podopieczny od progu wieku (domyślnie 13) może mieć własne konto z ograniczonym widokiem; młodszy nie ma konta; zgody i płatności są zawsze po stronie opiekuna — uczestnik niepełnoletni (poniżej 18 lat) nie widzi płatności w ogóle (ani kafla, ani ekranu, ani API); płatności widzi i opłaca opiekun, a pełnoletni uczestnik — sam za siebie.
+- **REQ-003** (Must, D-001, D-011) — Klub wielosekcyjny ma sekcje jako byty pierwszej klasy — każda z własnym koordynatorem (lub kilkoma), własnymi grupami, aktywnościami i zakresem uprawnień — oraz hierarchię miejsc (kompleks → boisko, basen, sala) i instytucje (gmina, szkoły, kluby, firmy). Liczba sekcji i uczestników nie ma limitu w systemie.
+- **REQ-004** (Must, D-003, D-011) — Grupa jest jednym bytem z rodzajem `team` (drużyna) lub `class_group` (grupa zajęciowa: basen, zumba, pilates); oba rodzaje są równorzędne — mają te same członkostwa z historią, terminy, obecność, zastępstwa, komunikaty i składki; `team` ma tylko dodatkowe pola (kategoria wiekowa, liga, sezon, mecze).
+- **REQ-005** (Must, D-002) — Aktywność z cyklicznością RRULE generuje terminy; pojedynczy termin można edytować lub odwołać bez psucia serii.
+- **REQ-006** (Must) — Kalendarz jest widokiem terminów filtrowanym przez rolę: uczestnik, opiekun (suma podopiecznych we wszystkich sekcjach — jeden kalendarz), trener lub instruktor (własne grupy + zastępstwa), koordynator (jego sekcje + lista „do obsadzenia”), administrator (cały klub).
+- **REQ-007** (Must, D-006) — Deklaracja obecności („będę / nie będę”) i obecność faktyczna; tryb deklaracji dla podopiecznego z kontem jest konfigurowalny per klub / grupa / typ aktywności (`immediate`, `guardian_confirm`, `guardian_only`) z limitem czasu i wartością domyślną.
+- **REQ-008** (Must, D-007, Q-004) — Zastępstwo zmienia trenera terminu z pełną historią; terminy bez trenera trafiają na listę koordynatora; raport miesięczny jednostek per trener pokazuje planowe, oddane, przejęte i bilans; jednostka = jeden termin typu `training` (trening drużyny albo zajęcia grupy zajęciowej) w statusie `done`, należna temu, kto go poprowadził — tak samo w każdej sekcji.
+- **REQ-009** (Must, D-009 potwierdzona w Q-002) — Komunikaty do klubu, sekcji, grupy, aktywności, terminu i bezpośrednie, z wątkami; adresaci dostają powiadomienie w aplikacji i e-mail; autor może wygenerować tekst z linkiem do wklejenia na grupę w komunikatorze.
+- **REQ-010** (Must) — „Sprawa” to wątek oznaczony jako dowodowy: nieusuwalny, z pełną historią, widoczny dla koordynatora sekcji i administratora klubu.
+- **REQ-011** (Must) — Cennik składek (za grupę lub za aktywność), zniżka na rodzeństwo, automatyczne naliczanie należności i lista zaległości.
+- **REQ-012** (Must, D-010 potwierdzona w Q-003) — Opiekun lub dorosły uczestnik płaci składki online przez Stripe; administrator księguje ręcznie gotówkę i przelewy.
+- **REQ-013** (Must, D-008) — Obiekt: strefy godzinowe, zamknięcia, cennik wynajmu w trzech kategoriach, rezerwacje wprowadzane ręcznie (jednostka 90 min, bezpłatne odwołanie do 24 h przed, wpłata na konto gminy), wykrywanie kolizji z terminami klubu i innymi rezerwacjami, kalendarz obiektu dla animatora.
+- **REQ-014** (Must, D-008) — Publiczny harmonogram obiektu bez logowania, bez danych osobowych, pod stałym adresem nadającym się na kod QR.
+- **REQ-015** (Must, D-008) — Raport dla właściciela obiektu za miesiąc lub kwartał: godziny w strefach (w tym czas klubu: terminy i rezerwacje wewnętrzne), liczba i wartość rezerwacji, wpłaty na konto gminy, incydenty, prace konserwacyjne.
+- **REQ-016** (Should) — Dziennik animatora (otwarcie, zamknięcie, stan przed i po, obecne grupy), incydenty i zakazy wstępu blokujące rezerwacje.
+- **REQ-017** (Should, H6) — Osobisty link do deklaracji obecności bez logowania, wysyłany e-mailem; link wklejony na grupę nie ujawnia danych bez uwierzytelnienia.
+- **REQ-018** (Should) — Obóz jako aktywność typu `camp` z opłatą jednorazową i listą uczestników.
+- **REQ-019** (Should, D-011) — Dla grup `team`: kategorie wiekowe PZPN jako słownik edytowalny przez klub i sezon jako byt. Grupy `class_group` tych pól nie mają i niczego nie tracą.
+- **REQ-020** (Should) — Dla grup `team`: mecz i sparing z przeciwnikiem wybieranym z listy drużyn zewnętrznych i z wynikiem.
+- **REQ-021** (Should) — Miesięczne rozliczenie trenera do eksportu: podstawa + jednostki × stawka + mecze i wyjazdy według umowy.
+- **REQ-022** (Could) — Konserwacja i przeglądy obiektu (codzienne, roczne, 5-letnie) z podziałem klub/gmina i przypomnieniami.
+- **REQ-023** (Must, Q-021, Q-022) — Rezerwacja wewnętrzna: trener, instruktor, koordynator lub administrator dowolnej sekcji wybiera w kalendarzu obiektów dowolny obiekt klubu (boisko, salka szkoleniowa, basen…), datę i godziny i rezerwuje go od razu, bez akceptacji, jeśli slot jest wolny (godziny otwarcia, brak zamknięcia, brak kolizji) — w każdej strefie. Rezerwacja jest widoczna dla personelu z celem i rezerwującym. Rezerwacja dla grupy tworzy wydarzenie w kalendarzu grupy (REQ-027).
+- **REQ-024** (Must, Q-021, Q-023) — Zgłoszenie zewnętrzne: osoba z zewnątrz w publicznym kalendarzu obiektów klubu wybiera wolny slot „do rezerwacji” i wysyła zgłoszenie (dane kontaktowe, cel, akceptacja regulaminu, potwierdzenie e-mailem). Zgłoszenie nie jest ważne bez akceptacji administratora; do decyzji blokuje slot dla innych zgłoszeń zewnętrznych najwyżej 48 h i wygasa bez decyzji; rezerwacja wewnętrzna może je przebić (zgłaszający dostaje e-mail). Po akceptacji powstaje rezerwacja z wyliczoną kwotą i należnością na konto właściciela obiektu (jak REQ-013).
+- **REQ-025** (Must, Q-021, Q-024) — Publiczna strona klubu `/p/[clubSlug]`: lista sekcji i obiektów; strona każdej sekcji z opisem, zajęciami (grupy oznaczone jako publiczne) z harmonogramem (dni, godziny, miejsce), kategorią wiekową lub poziomem, warunkami, prowadzącym, materiałami do pobrania i kontaktem. Treści wpisuje się w panelu przy sekcji i przy grupie; konfiguracja klubu decyduje, które bloki są publikowane (opis i harmonogram, warunki, ceny, prowadzący, materiały, kontakt, kalendarz obiektów, zgłoszenia online). Nazwisko prowadzącego wymaga dodatkowo zgody tej osoby.
+- **REQ-026** (Must, Q-024) — Blok cen na stronie sekcji: składka z cennika grupy i zniżka na rodzeństwo, publikowane tylko gdy klub włączył blok cen.
+- **REQ-027** (Must, Q-022) — Wydarzenie jednorazowe dla własnej grupy (`tournament` lub `other`) zakłada trener lub instruktor bez zgody koordynatora; turniej ma listę zaproszonych drużyn zewnętrznych.
+- **REQ-028** (Must) — Administrator wgrywa logo klubu; administrator lub koordynator sekcji może wgrać osobne logo sekcji. Sekcja bez własnego logo pokazuje logo klubu. Logo klubu widać w nagłówku panelu, interfejsu członkowskiego i strony publicznej; logo sekcji — na kafelku sekcji, stronie sekcji i przy jej grupach.
+- **REQ-029** (Must) — W kalendarzu obiektu administrator szybko i hurtowo ustala tygodniową dostępność do rezerwacji z zewnątrz: wybiera jeden lub kilka obiektów, dni tygodnia (skróty pn–pt, weekend, codziennie) i godziny (np. pn–pt 16:00–22:00) albo różne godziny dla poszczególnych dni, oraz okres obowiązywania. Domyślnie nowe godziny zastępują dotychczasową dostępność w wybrane dni; można je też dopisać. Dostępność nie zwalnia zajętego czasu — zajęcia i rezerwacje klubu oraz wynajmy w tych godzinach pozostają zajęte, a zgłosić można tylko wolny fragment co najmniej 90 min. Dostępność dzienną można usunąć jednym kliknięciem.
+- **REQ-030** (Must) — Rozliczanie wyciągu bankowego: administrator importuje wyciąg rachunku klubu (CSV z bankowym układem kolumn albo MT940); system dopasowuje wpływy do należności — przelew z kodem płatnika w tytule i kwotą pokrywającą całe należności (od najstarszej) księguje się automatycznie, gdy włączono automatyczne księgowanie; przelewy dopasowane po nazwisku i kwocie, z nadpłatą lub niedopłatą trafiają do „do potwierdzenia”; pozostałe do „niedopasowane” (przypisz ręcznie lub pomiń, np. darowizna). Obciążenia rachunku są pomijane, ponowny import nie tworzy duplikatów, każde zaksięgowanie da się cofnąć. Każdy płatnik ma stały kod płatnika pokazywany przy płatnościach.
+- **REQ-031** (Must) — Wpłata gotówkowa: administrator (oraz osoba, której nadano funkcję `payments.cash.record`) w panelu lub na telefonie wybiera płatnika, jego należności i kwotę (wpłata częściowa rozliczana od najstarszej należności); system nadaje numer potwierdzenia (KP/rok/miesiąc/nr), zapisuje, kto przyjął, i opcjonalnie wysyła płatnikowi potwierdzenie e-mail; przyjmujący widzi sumę gotówki przyjętej danego dnia do przekazania skarbnikowi, a administrator — perspektywę „Wpłaty gotówką”.
+- **REQ-032** (Must) — Zbiórka zamówień (np. stroje): administrator tworzy w panelu formularz zamówień — nazwa, opis, sekcja i grupy, termin zamknięcia i termin płatności, produkty z rozmiarami dziecięcymi i dorosłymi (cena może zależeć od rozmiaru) i bez rozmiaru, opcjonalny komplet z kilku produktów w cenie kompletu, wymagana odpowiedź (rozmiar albo „nie zamawiam”), imię i numer do nadruku (numer unikalny w grupie), pytanie o uwagi — i otwiera zbieranie z tekstem z linkiem do wklejenia na grupę w Messengerze. Opiekun dziecka z wybranych grup zamawia w aplikacji albo — bez konta — z osobistego linku wysłanego na e-mail znany klubowi; dostaje kopię e-mailem i do terminu może zamówienie zmienić lub anulować. Każde zamówienie tworzy należność zamawiającego, płatną online, przelewem z kodem płatnika (dopasowanie z wyciągu, REQ-030) albo gotówką. Po terminie zbieranie zamyka się samo; administrator pobiera zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki, CSV), oznacza zamówienie u dostawcy i dostawę (zamawiający dostają e-mail „do odbioru u trenera”), a trener lub administrator oznacza wydanie — nieopłaconego stroju tylko po potwierdzeniu ostrzeżenia. Uczestnik niepełnoletni nie widzi zamówień ani cen (REQ-002).
+- **REQ-033** (Must) — Gotówka za zamówienia u trenera i jej rozliczenie: trener (oraz koordynator w swoich sekcjach) w aplikacji mobilnej widzi zamówienia dzieci ze swoich grup — pozycje, rozmiary, nadruk, kontakt do zamawiającego i status płatności — przyjmuje gotówkę za należności z tych zamówień (numer KP, potwierdzenie e-mail, wpłata częściowa), przypomina opiekunom bez zamówienia i oznacza wydanie stroju. Gotówka przyjęta przez osobę inną niż skarbnik jest „u przyjmującego”, dopóki administrator nie potwierdzi jej odbioru w perspektywie „Gotówka do rozliczenia”; rozliczenie ma numer (RG/rok/miesiąc/nr), listę wpłat i kwotę. Trener widzi sumę gotówki u siebie. Wpłata zalicza się rodzicowi od razu, niezależnie od rozliczenia.
+
+## Non-goals
+
+- Narzędzia trenerskie: rysunki treningowe, baza ćwiczeń, moduł medyczny, skauting i oceny, statystyki indywidualne (`moscow.md` Won't; benchmark).
+- **Push w 1.0** (Q-002): powiadomienia push wracają razem z aplikacją natywną. W 1.0 kanały to powiadomienie w aplikacji i e-mail. To świadome odstępstwo od `moscow.md`, gdzie push był w Must.
+- Integracja z Messengerem/WhatsApp (D-009) — zastępuje ją tekst z linkiem do wklejenia na grupę.
+- Bramki inne niż Stripe, w tym własny adapter Przelewy24/PayU (Q-003).
+- Płatność online dla najemców i konta dla stałych najemców (zgłoszenie online jest w 1.0 — REQ-024 — ale wpłata nadal idzie przelewem na konto właściciela obiektu).
+- Edytor stron (CMS) — publiczna strona klubu składa się z danych sekcji, grup, terminów, cenników i obiektów, a nie z dowolnych stron; moduł `content` w faktach zawiera tylko statyczne strony `/privacy` i `/terms`.
+- Projekty i dofinansowania, sklep, zamówienia strojów, historia rozwoju z urządzeń.
+- Księgowanie wypłat trenerów i eksport do kadr — w 1.0 tylko wyliczenie i eksport CSV (D-007).
+- Wiele klubów na jednej instancji. Architektura tego nie blokuje: każdy rekord ma `tenant_id` + `organization_id`, a klub = organizacja.
+- Aplikacja natywna; integracja z PZPN / Łączy nas piłka; zbiorczy import osób z arkusza (patrz Q-018).
+
+## Proposed Solution
+
+Siedem modułów aplikacji w `src/modules/<id>/`, każdy z encjami, poleceniami, trasami API (`makeCrudRoute` lub trasy poleceń), stronami i zdarzeniami:
+
+| Moduł | Posiada | Faza |
+|---|---|---|
+| `club_core` | ustawienia klubu z konfiguracją publikacji, sekcje (z treściami publicznymi), miejsca (hierarchia), instytucje, umowy; publiczna strona klubu i sekcji składana z bloków dostarczanych przez inne moduły | 1 (blok grup i harmonogramu — 2, cen — 4, obiektów — 5; umowy trenerów — 2, umowa administracyjna — 5) |
+| `people` | osoby, opieka prawna ze zgodami, przypisania ról, usługa zakresu rekordów, zakładanie kont | 1 |
+| `groups` | grupy, członkostwa, sezony, drużyny zewnętrzne | 2 |
+| `activities` | aktywności z RRULE, wydarzenia jednorazowe (turniej) zakładane przez trenera, terminy, obecność, polityka deklaracji, zastępstwa, dyżury, raport jednostek i rozliczenie trenera, linki do deklaracji, publiczny blok harmonogramu | 2 (linki — 3) |
+| `communication` | wątki z zakresem, „sprawy”, tekst do udostępnienia, rozsyłanie e-mail | 3 |
+| `payments` | cenniki, zniżki, należności, wpłaty, sesje płatności online, import wyciągów, gotówka i jej rozliczanie, zbiórki zamówień (np. stroje) | 4 |
+| `facilities` | strefy, zamknięcia, cennik wynajmu, rezerwacje wewnętrzne personelu, wynajmy zewnętrzne (wpisane przez personel lub zgłoszone online z akceptacją administratora), kalendarz obiektów dla personelu, publiczny kalendarz obiektów, dziennik, incydenty, zakazy, konserwacja, raport dla właściciela | 5 |
+
+Żaden moduł nie zakłada, że sekcja jest piłkarska: sekcja, grupa (`team` lub `class_group`), aktywność, termin, obecność, zastępstwo, komunikat i składka działają tak samo dla akademii, basenu i zumby. Elementy piłkarskie (kategorie wiekowe PZPN, liga, sezon, mecz z przeciwnikiem i wynikiem) są dodatkowymi polami grupy `team`, a nie osobną ścieżką.
+
+Jak to zamyka problemy: rodzic dostaje jeden mobilny ekran „Dziś” z terminami wszystkich dzieci ze wszystkich sekcji, deklaracją jednym dotknięciem, wiadomościami i płatnościami (REQ-002, 006, 007, 009, 012); trener — listę obecności z telefonu i zgłoszenie nieobecności, po którym koordynator wskazuje zastępcę, a jednostki przechodzą same (REQ-007, 008); skarbnik — naliczanie, zniżki i listę zaległości z płatnością online (REQ-011, 012); koordynator — grafik z wykrywaniem kolizji na miejscu i publiczny harmonogram orlika (REQ-005, 013, 014); zarząd — nieusuwalny rejestr spraw (REQ-010).
+
+Dlaczego to najmniejsze rozwiązanie natywne dla platformy: tożsamość, RBAC, izolacja danych, powiadomienia, pliki, pola własne, audyt, zadania okresowe, przechowywanie wiadomości i bramka płatności pochodzą z zainstalowanych modułów (patrz *Reuse and Ownership Map*). Własny kod powstaje tylko tam, gdzie module-facts nie zawierają odpowiednika: domena klubu, terminy z obecnością, zakres per sekcja/miejsce/podopieczny, należności klubowe i reguły obiektu z regulaminu Orlika.
+
+Interfejsy: personel konfiguruje klub w panelu (`/backend/...`) na `DataTable` i `CrudForm`; codzienna praca wszystkich ról — rodzica, uczestnika, trenera, animatora — odbywa się w mobilnym interfejsie członkowskim `/club/...` (strony frontowe modułów z `requireAuth`), zgodnie z Q-001: jedno konto `auth` dla wszystkich.
+
+### Design Decisions and Alternatives
+
+| Decision | Rationale | Alternative considered | Why rejected / deferred |
+|---|---|---|---|
+| **DD-01** Jedna specyfikacja całej aplikacji, pięć faz w kolejności club_core+people → groups+activities → communication → payments → facilities | Brief i `research/README.md` wskazują jeden dokument docelowy; każda faza jest osobno wdrażalnym wycinkiem z własną bramką | Osobna specyfikacja na moduł | Rozbiłoby wspólny słownik, zakresy i role; fazy dają tę samą niezależność wdrożeń |
+| **DD-02** Klub = `directory:organization` (1 tenant + 1 organizacja na instancję w 1.0); dane klubu w `club_core_club_settings` 1:1 z organizacją | Zakres `tenantId`/`organizationId` daje izolację wymaganą przez AGENTS.md; wiele klubów w przyszłości = kolejne organizacje bez migracji | Encja `club` niezależna od organizacji | Duplikowałaby granicę zakresu, którą platforma już egzekwuje |
+| **DD-03** Sekcja to byt pierwszej klasy app-owned (D-011): ma koordynatora (przez `role_assignment` z `section_id`), własne grupy, aktywności, wątki i raporty; nie jest podorganizacją | Klub wielosekcyjny to teza produktu; opiekun ma dzieci w kilku sekcjach, a trener i koordynator działają w wielu — jeden kalendarz i jedna kartoteka osób wymagają wspólnego zakresu danych klubu | Sekcje jako organizacje potomne (`organizationHierarchyService`); sekcja jako zwykły tag grupy | Organizacje potomne rozdzieliłyby kartotekę osób i kalendarz rodzica; tag nie miałby koordynatora ani zakresu. Zakres koordynatora per sekcja realizuje `people.scopeService` |
+| **DD-03a** `team` i `class_group` równorzędne: wspólny cykl życia, członkostwa, terminy, obecność, zastępstwa, komunikaty i składki; `team` ma tylko pola dodatkowe; typy aktywności `match`/`sparring` dostępne wyłącznie dla `team` | D-003 i D-011: sekcje niepiłkarskie są pełnoprawne, nie dodatkiem | Osobne encje drużyny i grupy zajęciowej | Podwojenie kodu członkostw i obecności (D-003) |
+| **DD-04** Osoba app-owned w `people`; konto = `auth:user` 0..1 na osobę (**Q-001**) | Jeden rekord i jedno konto dla rodzica-trenera (D-005); `auth` daje logowanie, sesje, reset hasła, RBAC | Portal `customer_accounts` + `portal` dla rodziców; `customers` lub `staff` jako baza osoby | Portal dawałby dwa loginy jednej osobie; `customers` wnosi deale i nie modeluje opieki nad małoletnim; `staff_team_member` to drugi rekord trenera |
+| **DD-05** Interfejs członkowski `/club/*` jako strony frontowe modułów z `requireAuth` i `requireFeatures`; panel `/backend/*` dla konfiguracji | Rodzic potrzebuje „czterech kafli”, nie panelu administracyjnego; trener i animator pracują z telefonu | Wszystko w panelu backend | Panel jest ciężki na telefonie; strony frontowe są tym samym mechanizmem odkrywania stron (`ui.frontend-page`) |
+| **DD-06** Autoryzacja = funkcja ACL (`requireFeatures`) **i** zakres rekordu z `people.scopeService`; rola `auth` jest pochodną `role_assignment`; nigdy sprawdzanie nazw ról | AGENTS.md zabrania strażników po nazwach ról; RBAC `auth` nie zna sekcji ani miejsc | Osobne role `auth` per sekcja | Mnożyłoby role przy każdej sekcji i nie obsłużyłoby opieki nad podopiecznym |
+| **DD-07** Rola wykonania akcji (`acting_role`) wyznacza serwer z zakresu, który dopuścił akcję, nie klient | D-005 wymaga zapisu roli; wartość od klienta byłaby niewiarygodna | Przełącznik kontekstu wysyłany w żądaniu | Przełącznik zostaje filtrem widoku w UI, nie źródłem prawdy |
+| **DD-08** `place` app-owned w `club_core` | Miejsce jest potrzebne w fazie 1; ma hierarchię, nawierzchnię, właściciela-instytucję i `managed_by_club` | `resources:resources_resource` (+ wymagany `planner`) | Wymagałby dwóch modułów od fazy 1, a pola i tak byłyby rozszerzeniem; do ponownej oceny w fazie 5 |
+| **DD-09** `institution` i `contract` w `club_core` (odstępstwo od draftu, gdzie były w `facilities`) | Instytucja jest potrzebna od fazy 1 (właściciel miejsca), w fazie 2 (drużyna zewnętrzna), 4 (płatnik) i 5 (najemca); umowa trenera — w fazie 2 | Instytucja w `facilities` | Fazy 1–4 zależałyby od modułu z fazy 5 |
+| **DD-10** Terminy generowane z RRULE na horyzont (domyślnie 16 tygodni, nie dalej niż `ends_on`) przez zadanie okresowe; terminy edytowane ręcznie są „odłączone” i regeneracja ich nie dotyka | Edycja pojedynczego terminu nie może zginąć przy zmianie serii; horyzont ogranicza liczbę wierszy | Generowanie całej serii naraz; wirtualne terminy liczone w locie | Cała seria do czerwca to wiele wierszy do przeliczania przy każdej zmianie; wirtualne terminy nie mają obecności ani zastępstw |
+| **DD-11** Rozwinięcie RRULE biblioteką `rrule` (MIT) — **nowa zależność, wymaga zgody przy implementacji** (AGENTS.md *Ask First*) | Strefy czasowe, wyjątki, UNTIL/COUNT bez własnej implementacji | Własny podzbiór (tylko co tydzień / co 2 tygodnie) | Zostaje planem awaryjnym, jeśli zależność nie zostanie zaakceptowana |
+| **DD-12** Historia zastępstw jako tabela tylko do dopisywania `activities_substitution_entries` zamiast JSON `substitution_log` | Raport jednostek i dowód w sporze potrzebują zapytań i nienaruszalności | JSON na terminie (draft) | JSON nie da się indeksować ani chronić przed nadpisaniem |
+| **DD-13** Wiersze `attendance` powstają przy deklaracji lub odhaczeniu; lista trenera = członkowie grupy w dniu terminu ∪ istniejące wiersze | 200 osób × kilkanaście terminów tygodniowo bez masowych pustych wierszy; zmiana składu grupy działa od razu | Wiersz na każdego członka przy generowaniu terminu | Wymagałby synchronizacji przy każdej zmianie członkostwa |
+| **DD-14** Jednostka = 1 termin treningowy (`type = training`) w statusie `done` dla `coach_id` (**Q-004**); mecze, sparingi i wyjazdy liczone osobno według stawek umowy | Najprostsze, bez ułamków; zgodne z praktyką Gwiazdy | Proporcja z `unit_minutes` | Odrzucone w Q-004 |
+| **DD-15** Kanały w 1.0: powiadomienie w aplikacji (`notifications`) + e-mail; brak pusha (**Q-002**) | Module-facts nie zawierają web pusha dla PWA; `push_notifications` wysyła wyłącznie przez kanały natywne (`channel_apns`, `channel_fcm`, `channel_expo`) | Własny adapter Web Push; opakowanie Expo | Nowa integracja z ryzykiem na iOS; aplikacja natywna wykluczona w MoSCoW |
+| **DD-16** Treść komunikatów przechowywana w `messages` (wątek, odbiorcy, e-mail, szyfrowanie `body`/`subject`); zakres, „sprawa” i rozwiązywanie adresatów w `communication` — **pod warunkiem weryfikacji V-4 na początku fazy 3** | Nie duplikujemy zainstalowanego przechowywania wiadomości ani wysyłki e-mail | Własna tabela wiadomości w `communication` | Plan awaryjny, gdy V-4 pokaże, że `messages` nie obsłuży rozsyłki do ~200 adresatów lub nieusuwalności sprawy |
+| **DD-17** Link do deklaracji jest osobisty i wysyłany e-mailem; tekst do wklejenia na grupę prowadzi do strony terminu, która bez logowania pozwala tylko poprosić o osobisty link | Link z grupy jest publiczny — nie może identyfikować rodzica ani pokazywać dzieci | Jeden link grupowy pozwalający deklarować bez logowania | Ujawniałby skład grupy i pozwalał deklarować za cudze dzieci |
+| **DD-18** Należności i wpłaty app-owned w `payments`; płatność online przez `payment_gateways` + `gateway_stripe` (**Q-003**); własna tabela `payments_checkouts` wiąże transakcję bramki z należnościami | Należność klubowa (składka, wynajem z `payee` = gmina) nie jest zamówieniem; mapowanie nie zależy od metadanych zdarzeń bramki | `sales` (zamówienia, faktury) | `sales` wymaga `catalog` + `customers` + `dictionaries` |
+| **DD-19** `facilities` deklaruje `requires: ['payments']` i tworzy należność za wynajem przez usługę DI `payments` w tej samej transakcji; `payments` zna tylko `source_type` + `source_id` | Rezerwacja bez należności jest stanem nieprawidłowym | Zdarzenie i asynchroniczny subskrybent | Okno niespójności między rezerwacją a należnością |
+| **DD-20** Kolizje terminów z rezerwacjami i zamknięciami egzekwuje `facilities` przez strażnika mutacji (`umes.mutation-guard`) na zapisie terminu; `activities` nie zna `facilities` | Kierunek zależności zgodny z fazami; `activities` działa bez `facilities` | `activities` odpytuje `facilities` | Odwrócona zależność między fazami 2 i 5 |
+| **DD-21** Strefy (`facilities_zone_rules`) app-owned; godziny otwarcia na `planner` tylko jeśli V-7 potwierdzi pola reguł | Fakty `planner` nie opisują pól reguły, a strefy mają cztery wartości i priorytet | Strefy na regułach `planner` | Brak potwierdzenia w faktach |
+| **DD-22** Imprezy gminne i szkolne to zamknięcia z zakresem godzin (`facilities_closures` z `reason`) wpisywane przez administratora w imieniu gminy | Gmina nie ma konta; zamknięcie już blokuje rezerwacje i oznacza terminy do przeniesienia | Rezerwacja z kwotą 0 i priorytetem | Mieszałaby rozliczenia z blokadami |
+| **DD-23** Publiczne strony pod `/p/[clubSlug]` (klub), `/p/[clubSlug]/sections/[sectionSlug]` (sekcja), `/p/[clubSlug]/places` i `/p/[clubSlug]/places/[placeSlug]` (kalendarz obiektu); zakres wyprowadzany z `club_settings.public_slug` (globalnie unikalny) i slugów sekcji/miejsca | Trasa bez sesji musi bezpiecznie wyznaczyć klub; nieznany, niepubliczny lub wyłączony slug → 404 | Identyfikatory UUID w adresie | Nieczytelne na tablicy i w kodzie QR |
+| **DD-25** Rezerwacja wewnętrzna to osobna encja `facilities_internal_bookings` (bez najemcy, kwoty i należności, od razu `confirmed`); wynajem zewnętrzny pozostaje w `facilities_rentals`; jedna usługa kolizji obiektu liczy razem terminy, rezerwacje wewnętrzne, wynajmy, wstępne blokady zgłoszeń i zamknięcia | Inny cykl życia, strony i pieniądze; jedna reguła zajętości slotu | Jedna tabela z polem `kind` | Połowa kolumn byłaby pusta dla każdego rodzaju, a statusy wymagałyby warunków per rodzaj |
+| **DD-26** „Rezerwuj dla grupy” w kalendarzu obiektów nie tworzy rezerwacji, tylko wydarzenie jednorazowe grupy (`activities`, typ `tournament`/`other`), którego termin zajmuje obiekt; rezerwacja wewnętrzna bez grupy służy celom ogólnym (szkolenie trenerów, zebranie) | Jedno źródło zajętości na każde użycie — bez podwójnego liczenia; turniej trafia do kalendarzy uczestników i ma obecność | Rezerwacja + osobno aktywność, połączone ID | Dwa rekordy tego samego zajęcia, które mogą się rozjechać |
+| **DD-27** Zgłoszenie zewnętrzne jest wynajmem w statusie `pending_verification` → `pending_approval` (po kliknięciu linku z e-maila); dopiero akceptacja tworzy należność; wstępna blokada slotu dotyczy tylko innych zgłoszeń zewnętrznych i trwa najwyżej 48 h od potwierdzenia e-maila | Q-023; potwierdzenie e-mailem odsiewa spam i literówki w adresie | Formularz modułu `forms` (`/f/[slug]`, `requireAuth: false`, zapis zgód) | `forms` wymaga `customer_accounts` i zapisuje zgłoszenie asynchronicznie, a dostępność slotu trzeba sprawdzić w tej samej transakcji co zapis |
+| **DD-28** Publiczna strona sekcji składana w `club_core` z bloków dostarczanych przez inne moduły przez opcjonalne usługi DI (`groups.publicCatalog`, `activities.publicSchedule`, `payments.publicPrices`, `facilities.publicPlaces`); brak modułu = brak bloku | `club_core` (faza 1) nie może zależeć od modułów późniejszych faz; wzorzec „Optional service call” z `contracts.md` | Osobny moduł `public_site` | Ósmy moduł dla jednej strony; zależałby od wszystkich pozostałych |
+| **DD-29** Widoczność publiczna = trzy warunki naraz: blok włączony w `club_settings.publication`, sekcja/grupa oznaczona jako publiczna, a dla nazwiska prowadzącego — zgoda tej osoby (`publish_name_consent`) | Q-024: kluby różnią się tym, co publikują; nazwisko to dana osobowa (RODO) | Jeden przełącznik per klub | Nie pozwala ukryć pojedynczej grupy ani uszanować sprzeciwu trenera |
+| **DD-30** Zbiórki zamówień (np. stroje) app-owned w `payments` (`payments_order_campaigns`, `payments_order_products`, `payments_orders`, `payments_order_lines`, `payments_order_links`); zamówienie tworzy należność `source_type = order` w tej samej transakcji (Q-031…Q-033) | Zamówienie istnieje po to, by je rozliczyć — płatnik, kod płatnika, wyciąg, gotówka i przypomnienia są już w `payments`; formularz musi znać dzieci opiekuna i ich grupy (`people`, `groups` przez DI) | `catalog` + `sales` (zamówienia sprzedażowe); formularz `forms` (`/f/[slug]`); osobny moduł `orders` | `sales` wymaga `catalog` + `customers` + `dictionaries` i modelu klienta, którego klub nie ma (DD-18); `forms` wymaga `customer_accounts`, zapisuje odpowiedzi asynchronicznie i nie zna dzieci opiekuna — należność i unikalność numeru trzeba sprawdzić w jednej transakcji; ósmy moduł dla jednego cyklu, który w całości kończy się na należnościach |
+| **DD-31** Gotówka „u przyjmującego”: wpłata `cash` przyjęta przez osobę bez `payments.manage` ma `cash_handover_id = null`, dopóki administrator nie potwierdzi odbioru w rozliczeniu (`payments_cash_handovers`); gotówka przyjęta przez skarbnika jest rozliczona od razu. Trener przyjmuje gotówkę tylko za należności `order` dzieci ze swojego zakresu (`payments.orders.collect`) | Wpłata zalicza się rodzicowi od razu (potwierdzenie, brak przypomnień), a klub wie, u kogo leży gotówka | Wpłata trenera „oczekująca” do czasu przekazania; nadanie trenerom pełnego `payments.cash.record` | Rodzic, który zapłacił trenerowi, widziałby zaległość i dostawał przypomnienia; pełna funkcja pozwalałaby trenerowi księgować składki dowolnej rodziny |
+| **DD-24** W 1.0 nie używamy `staff`, `business_rules`, `workflows`, `customers`, `sales`, `resources` | Uzasadnienia w *Reuse and Ownership Map* | — | — |
+
+## Domain Vocabulary and Business Rules
+
+| Term / invariant | Precise meaning or rule | Source of truth | Failure behavior |
+|---|---|---|---|
+| Klub | Podmiot systemu: stowarzyszenie wielosekcyjne (D-011) — organizacja Open Mercato z rekordem `club_core_club_settings` (nazwa skrócona, strefa czasowa domyślnie `Europe/Warsaw`, waluta `PLN`, `own_account_min_age` domyślnie 13, `public_slug`). Kartoteka osób, opieka prawna, płatnik, cenniki, obiekt i komunikaty klubowe są wspólne dla wszystkich sekcji. Brak limitu liczby sekcji, grup i uczestników | `directory:organization` + `club_core` | Brak ustawień → setup tworzy je idempotentnie przy `onTenantCreated` |
+| Sekcja | Byt pierwszej klasy: wyodrębniona część klubu (np. akademia piłkarska — sekcja główna, basen, zajęcia dodatkowe: zumba, pilates, siłownia) z co najmniej jednym koordynatorem (`role_assignment` `coordinator` z `section_id`); każda grupa i aktywność należy do dokładnie jednej sekcji; sekcja jest jednostką zakresu uprawnień koordynatora, filtrem kalendarzy, raportów jednostek i należności oraz adresatem komunikatów (`scope_type = section`). Żadna reguła nie wyróżnia sekcji piłkarskiej | `club_core_sections` | Dezaktywacja sekcji z aktywnymi grupami → 409 z listą grup; aktywna sekcja bez koordynatora → ostrzeżenie na liście sekcji i widżecie administratora (nie błąd) |
+| Logo | Plik obrazu przechowywany w `attachments`: logo klubu (`club_core_club_settings.logo_attachment_id`) i opcjonalne logo sekcji (`club_core_sections.logo_attachment_id`). **Logo efektywne sekcji = logo sekcji ?? logo klubu ?? inicjał nazwy klubu**. Formaty PNG, JPG, WebP (bez SVG — ryzyko skryptów), do 2 MB, zalecany kwadrat ≥ 256 px; usunięcie logo sekcji przywraca logo klubu | `club_core` + `attachments` | Zły format lub rozmiar → 422 z komunikatem przy polu; brak logo klubu → inicjał (nigdy pusty obrazek) |
+| Miejsce | Węzeł hierarchii `complex` → `pitch` / `multi_pitch` / `hall` / `locker_room` / `pool` / `other`; terminy i rezerwacje wskazują liść, nie kompleks; `capacity_groups` (domyślnie 1) — ile grup klubu może jednocześnie korzystać z miejsca | `club_core_places` | Wskazanie kompleksu z dziećmi w terminie lub rezerwacji → 422; cykl w hierarchii → 422 |
+| Osoba | Jeden rekord człowieka; wiek liczony z `birth_date` w strefie czasowej klubu decyduje o pełnoletności i prawie do konta | `people_persons` | Duplikat PESEL w klubie → 409 (porównanie po `pesel_hash`) |
+| Konto | `auth:user` powiązany przez `people_persons.user_id`; najwyżej jedno na osobę; tylko gdy wiek ≥ `own_account_min_age` | `auth` | Próba dla młodszej osoby → 422 `account_age_below_threshold` |
+| Opieka prawna | Relacja n:m opiekun → podopieczny z `relation`, `is_primary_payer`, zgodami i okresem; najwyżej jeden aktywny `is_primary_payer` na podopiecznego | `people_guardianships` | Drugi aktywny płatnik → 409; opiekun = podopieczny → 422 |
+| Zgody | `consents` = `{ regulations, image, trips }`, każda `{ granted: bool, at, by_person_id }`; nadaje lub cofa wyłącznie opiekun lub administrator | `people_guardianships.consents` | Zmiana przez podopiecznego → 403 |
+| Przypisanie roli | `role` ∈ `club_admin` / `coordinator` / `coach` / `facility_operator`; `coordinator` wymaga `section_id`, `facility_operator` wymaga `place_id`; okres `valid_from`–`valid_to`; aktywne przypisanie danej roli nadaje odpowiadającą rolę `auth` | `people_role_assignments` | Brak wymaganego zakresu → 422; osoba bez konta → przypisanie zapisane, rola `auth` nadana przy założeniu konta |
+| Członek (rola pochodna) | Każda osoba z kontem dostaje rolę `auth` `member` (strony `/club`); uczestnik i opiekun wynikają z członkostw i opieki, nie z ręcznego nadania | `people` + `groups` | — |
+| Płatnik z konta (rola pochodna) | Rola `auth` `vereino_payer` (funkcje `payments.view_own`, `payments.pay_online`) przysługuje tylko osobie pełnoletniej z kontem: opiekunowi lub dorosłemu uczestnikowi. Uczestnik poniżej 18 lat nigdy jej nie ma — nie widzi kafla „Płatności”, ekranu płatności ani swoich należności. Rolę nadaje polecenie zakładania konta i codzienne zadanie `people:sync-role-expiry` w dniu 18. urodzin | `people` + `auth` | `GET /api/payments/my-charges` przez niepełnoletniego → 403 (również przy ręcznie nadanej funkcji: trasa sprawdza wiek osoby) |
+| Zakres rekordu | `people.scopeService` zwraca dla bieżącego użytkownika: `club_wide` (aktywny `club_admin`), `section_ids` (koordynator), `coached_group_ids` (członkostwo `coach`/`assistant` lub trener domyślny aktywności), `substitute_occurrence_ids`, `place_ids` (animator), `ward_person_ids`, `self_person_id` | `people` | Brak osoby powiązanej z użytkownikiem → zakres pusty (fail closed), nie „wszystko” |
+| Grupa | `kind` ∈ `team` (drużyna, np. Żaki) / `class_group` (grupa zajęciowa, np. „Basen — początkujący”, „Zumba wtorek”); oba rodzaje są równorzędne: te same członkostwa, aktywności, terminy, obecność, zastępstwa, komunikaty, składki i uprawnienia. Tylko `team` ma pola dodatkowe `age_category_entry_id` (słownik PZPN), `league`, `season_id` i dostęp do typów aktywności `match`/`sparring` | `groups_groups` | Pola drużyny w `class_group` → 422; zmiana `kind` z `team` na `class_group`, gdy grupa ma mecze → 409 |
+| Trener / instruktor | Osoba prowadząca grupę (członkostwo `coach`/`assistant`) lub termin (`coach_person_id`), niezależnie od sekcji; w UI etykieta „trener” dla `team`, „instruktor” dla `class_group` — ta sama rola `coach` w danych | `groups`, `activities` | — |
+| Członkostwo | `role` ∈ `participant` / `coach` / `assistant`; okres od–do; historia uczestnika = kolejne członkostwa; nakładające się aktywne członkostwo tej samej osoby w tej samej grupie i roli jest zabronione | `groups_memberships` | Nakładanie → 409 |
+| Aktywność | `type` ∈ `training` (UI: „trening” dla `team`, „zajęcia” dla `class_group`) / `match` / `sparring` / `tournament` / `camp` / `other`; `match` i `sparring` tylko dla grup `team` (`tournament` — turniej lub zawody — dla każdej grupy, np. turniej szachowy, zawody cheerleaderek); `recurrence_rule` (RRULE, null = jednorazowa); domyślne miejsce, trener/instruktor, godziny; `opponent_external_team_id` dla meczu i sparingu; sekcja aktywności = sekcja grupy | `activities_activities` | RRULE nieparsowalny lub dający 0 terminów → 422; `match`/`sparring` dla `class_group` → 422 |
+| Termin | Konkretne wystąpienie aktywności: `start_at`/`end_at` (timestamptz liczone w strefie klubu), miejsce, `coach_id` (null = nieobsadzony), `status` `planned` → `done` lub `cancelled`; `is_detached` = edytowany ręcznie | `activities_occurrences` | Przejście z `cancelled`/`done` do `planned` tylko przez administratora z powodem (audyt) |
+| Kolizja terminów | Na tym samym miejscu, jego przodkach lub potomkach liczba nakładających się terminów `planned` nie może przekroczyć `capacity_groups` miejsca | `activities` | 409 `occurrence_place_conflict` ze wskazaniem kolidujących terminów |
+| Do obsadzenia | Termin `planned` z `coach_id = null` i `start_at` w przyszłości | `activities` (widok) | — |
+| Zastępstwo | Zmiana `coach_id` terminu z innego trenera; wpis w `activities_substitution_entries` (poprzedni, nowy, kto zatwierdził, rola, powód, czas); trener może zgłosić nieobecność (→ `coach_id = null` + powiadomienie koordynatora); zastępcę wskazuje koordynator lub administrator | `activities` | Wpisy nieedytowalne; korekta = nowy wpis |
+| Jednostka (Q-004) | 1 termin z `type = training` (trening lub zajęcia, w dowolnej sekcji), `status = done`, policzona dla `coach_id`. Raport miesiąca: **planowe** = terminy, gdzie osoba jest trenerem domyślnym aktywności; **oddane** = planowe poprowadzone przez kogoś innego; **przejęte** = poprowadzone, choć nie była trenerem domyślnym; **bilans** = planowe − oddane + przejęte = terminy `done` poprowadzone | `activities` | Termin bez odhaczonej obecności 24 h po końcu → lista „nierozliczone” u koordynatora; nie liczy się do jednostek |
+| Rozliczenie trenera | `base_monthly + units × unit_rate + matches × match_rate + travels × travel_rate` z aktywnej umowy `kind = coach`; mecz = termin `match`/`sparring` `done`; wyjazd = termin z `is_away = true` | `activities` (wyliczenie) + `club_core_contracts` (stawki) | Brak umowy → wiersz raportu ze stawkami „—” i ostrzeżeniem |
+| Deklaracja | `declared` ∈ `yes` / `no` / `unknown`; składa uczestnik z kontem, opiekun lub personel; unikalna para (termin, osoba); zmiana dozwolona do `start_at` | `activities_attendances` | Po `start_at` → 409 `declaration_closed`; deklaracja za osobę spoza zakresu → 403 |
+| Polityka deklaracji | `scope` `club` / `group` / `activity_type`; dla podopiecznego z kontem: `immediate` (status od razu, opiekun dostaje powiadomienie), `guardian_confirm` (`declaration_status = pending_guardian` do decyzji; po `confirm_timeout_hours` → `default_after_timeout`), `guardian_only` (podopieczny widzi, nie deklaruje); pierwszeństwo: grupa > typ aktywności > klub; domyślnie treningi `immediate`, mecze i obozy `guardian_confirm` (D-006) | `activities_attendance_policies` | `guardian_only` i próba deklaracji przez podopiecznego → 403 |
+| Obecność faktyczna | `actual` ∈ `present` / `absent` / `late` / null; odhacza trener terminu, koordynator lub administrator; zapisane `marked_by_person_id` + `marked_as_role` | `activities_attendances` | Odhaczenie terminu `cancelled` → 409 |
+| Odwołanie terminu | Status `cancelled` + `cancel_reason`; zdarzenie `activities.occurrence.cancelled` → powiadomienie w aplikacji (faza 2), komunikat z e-mailem do zakresu terminu (faza 3) | `activities` | Odwołanie terminu `done` → 409 |
+| Dyżur | Opiekun-wolontariusz przypisany do terminu (`occurrence_supervisor`) | `activities` | — |
+| Wątek | Rozmowa z zakresem `club` / `section` / `group` / `activity` / `occurrence` / `direct`; adresaci rozwiązywani w chwili wysłania: członkowie zakresu z kontem, opiekunowie małoletnich członków, trenerzy zakresu | `communication_threads` + `messages` | Zakres spoza uprawnień autora → 403 |
+| Sprawa | Wątek z `is_case = true`; oznacza koordynator sekcji lub administrator; oznaczenia nie da się cofnąć; wiadomości sprawy są nieusuwalne i nieedytowalne; widoczna dla uczestników wątku, koordynatora sekcji zakresu i administratora | `communication` | Usunięcie lub edycja wiadomości sprawy → 409 `case_immutable` |
+| Cennik (fee) | `period` ∈ `monthly` / `one_off` / `per_occurrence`; przypięty do grupy **albo** aktywności; kwota w groszach | `payments_fees` | Oba lub żadne → 422 |
+| Zniżka na rodzeństwo | Liczona na poziomie klubu, nie sekcji: dla płatnika i okresu podopieczni z należnościami miesięcznymi we wszystkich sekcjach szeregowani po dacie urodzenia (najstarszy pierwszy); pełna stawka dla pierwszego, zniżka reguły `sibling` dla każdego kolejnego (do potwierdzenia — Q-006) | `payments_discount_rules` | Kilka pasujących reguł → stosowana najkorzystniejsza dla płatnika, zapisana w `discount_rule_id` |
+| Należność (charge) | Kwota do zapłaty: `source_type` `fee` / `rental` / `order` / `manual`; dłużnik (`person_id` lub `payer_institution_id`), płatnik (`payer_person_id`), `period_label` (`YYYY-MM` dla miesięcznych), `payee` `club` / `owner_institution`; statusy `open` → `partially_paid` → `paid`, `cancelled`, `forfeited` | `payments_charges` | Unikalne (`fee_id`, `person_id`, `period_label`) → naliczanie idempotentne |
+| Płatnik | Aktywny opiekun z `is_primary_payer`; dla dorosłego uczestnika bez takiego opiekuna — on sam; dla małoletniego bez płatnika należność dostaje flagę `payer_missing` | `payments` | `payer_missing` widoczne na liście administratora; nie da się jej zapłacić online |
+| Wpłata | `method` `cash` / `transfer` / `online`; suma wpłat ≤ kwota należności; online tylko pełna kwota otwartych należności | `payments_payments` | Nadpłata → 422; podwójny webhook → no-op (unikalny `gateway_transaction_id` + `charge_id`) |
+| Kod płatnika | Stały, unikalny w klubie kod osoby płacącej (np. `GW-K7Q2`), pokazywany opiekunowi w M-08 i w e-mailach z należnościami; wpisany w tytule przelewu jednoznacznie wskazuje płatnika | `payments_payer_refs` | Kod nieznany → dopasowanie po nazwisku (do potwierdzenia) lub niedopasowane |
+| Dopasowanie przelewu | 1) kod płatnika w tytule → płatnik; kwota rozdzielana od najstarszej otwartej należności; pełne pokrycie należności → `booked` (automatycznie, gdy `auto_book_bank_matches`), nadpłata/niedopłata → `suggested`; 2) bez kodu: dokładnie jeden płatnik, którego nazwisko lub nazwisko podopiecznego występuje jako całe słowo w nadawcy lub tytule → `suggested`; 3) inaczej `unmatched`. Kwota ujemna (obciążenie) → pominięta. Duplikat (ten sam hash: data, kwota, nadawca, tytuł, numer rachunku) → pominięty | `payments_bank_transactions` | Błędne dopasowanie → „Cofnij” usuwa wpłaty i przywraca stan należności (wpis w audycie) |
+| Wpłata gotówkowa | Wpłata `cash` z `collected_by_person_id` i `receipt_number` (`KP/RRRR/MM/NNN`, kolejny w klubie); kwota ≤ suma wybranych należności | `payments_payments` | Nadpłata → 422; korekta wyłącznie wpisem odwrotnym |
+| Zbiórka zamówień | Formularz zamówień dla wybranych grup jednej sekcji: produkty, opcjonalny komplet, personalizacja (imię, numer), uwagi, `closes_on`, `payment_due_on` (≥ `closes_on`); statusy `draft` → `open` → `closed` (ręcznie lub automatycznie po `closes_on`) → `ordered` → `delivered` → `completed`; formularz edytowalny tylko w `draft`/`open`; zmiana ceny nie zmienia złożonych zamówień | `payments_order_campaigns`, `payments_order_products` | Przejście spoza kolejności → 409; usunięcie produktu użytego w zamówieniach → 409 |
+| Zamówienie | Jedno na dziecko w zbiórce; składa opiekun dziecka z grup zbiórki (w aplikacji lub z osobistego linku) albo pełnoletni członek grupy dla siebie; produkty z wymaganą odpowiedzią muszą mieć rozmiar albo „nie zamawiam”; co najmniej jedna pozycja; numer do nadruku 1–99, unikalny w grupie w obrębie zbiórki; tworzy należność `order` (płatnik = zamawiający, termin = `payment_due_on`, cena zapisana w chwili zamówienia); zmiana do `closes_on` przelicza należność, ale nie poniżej wpłaconej kwoty; anulowanie tylko bez wpłat | `payments_orders`, `payments_order_lines` | Po zamknięciu → 409 `campaign_closed`; numer zajęty → 422; nowa kwota < wpłacone → 409 |
+| Komplet | Produkt `set` z co najmniej dwoma produktami składowymi; opiekun wybiera rozmiary składowych, a liczona jest cena kompletu zamiast cen pojedynczych; najwyżej jeden komplet w formularzu; w zestawieniu dla dostawcy elementy kompletów liczone są przy swoich produktach | `payments_order_products`, `payments_order_lines.component_sizes` | Komplet bez rozmiaru składowej → 422 |
+| Wydanie zamówienia | `handed_over_at` + `handed_over_by_person_id`; możliwe od `delivered`; przy nieopłaconej należności wymaga potwierdzenia (`confirmUnpaid`), należność pozostaje otwarta | `payments_orders` | Przed dostawą → 409 |
+| Gotówka u przyjmującego / rozliczenie gotówki | Wpłata `cash` z `collected_by_person_id` osoby bez `payments.manage` i `cash_handover_id = null`; administrator potwierdza odbiór wybranych wpłat tej osoby — powstaje rozliczenie `RG/RRRR/MM/NNN` z kwotą i listą wpłat | `payments_cash_handovers` | Wpłata już rozliczona lub innego przyjmującego → 409 |
+| Strefa | Reguła tygodniowa dla miejsca: dni tygodnia, `time_from`–`time_to`, `zone` `public_free` / `club_training` / `reservable_paid` / `closed`, `priority`, okres ważności; nakładające się reguły rozstrzyga wyższy priorytet | `facilities_zone_rules` | Równy priorytet i nakładanie → 409 przy zapisie reguły |
+| Dostępność do rezerwacji | Reguły stref `reservable_paid` ze źródłem `availability`, priorytetem 3 (wyższym niż reguły regulaminowe) i okresem `valid_from`–`valid_to`; tworzone hurtowo (obiekty × dni × godziny). Strefa efektywna w danej chwili = reguła o najwyższym priorytecie, która obowiązuje w tym dniu. Okno musi mieścić się w godzinach otwarcia miejsca i trwać ≥ 90 min. Tryb „zastąp” usuwa dotychczasową dostępność (`reservable_paid`) w wybranych dniach przed zapisem; tryb „dopisz” zgłasza 409 przy nakładaniu się okien o tym samym priorytecie | `facilities_zone_rules` | Zła godzina, poza otwarciem, < 90 min → 422 per dzień; zgłoszenia `pending_approval` poza nową dostępnością zostają do decyzji administratora (ostrzeżenie) |
+| Zamknięcie | Okres (data lub data+godziny) z powodem `snow` / `maintenance` / `municipal_event` / `school` / `other`; blokuje nowe rezerwacje; istniejące rezerwacje i terminy klubu w tym czasie dostają flagę do przeniesienia | `facilities_closures` | — |
+| Zajętość slotu | Slot miejsca jest zajęty, jeśli w tym czasie na nim, jego przodkach lub potomkach istnieje: termin `planned`, rezerwacja wewnętrzna `confirmed`, wynajem `requested`/`confirmed`, zamknięcie, a — tylko dla kolejnych zgłoszeń zewnętrznych — zgłoszenie `pending_approval` z ważną blokadą. Liczy to jedna usługa `facilities.occupancyService`; terminy klubu sprawdzają się dodatkowo z `capacity_groups` | `facilities` | 409 z listą kolidujących wpisów (bez danych osobowych dla tras publicznych) |
+| Rezerwacja wewnętrzna | Zajęcie miejsca przez klub bez grupy (szkolenie trenerów, zebranie, przygotowanie turnieju): miejsce, `starts_at`–`ends_at` (dowolna długość, w godzinach otwarcia), cel, sekcja, rezerwujący i jego rola; od razu `confirmed`, bez akceptacji, kwoty i należności (Q-022); w każdej strefie, także „ogólnodostępne” i „do rezerwacji”; anuluje rezerwujący, koordynator jego sekcji lub administrator | `facilities_internal_bookings` | Kolizja → 409; poza godzinami otwarcia lub w zamknięciu → 409 `place_closed` |
+| Wydarzenie jednorazowe | Aktywność bez RRULE typu `tournament` (dowolna grupa) lub `other`, zakładana przez trenera/instruktora dla własnej grupy bez zgody koordynatora (REQ-027) — także z kalendarza obiektów („Rezerwuj dla grupy”); turniej ma `invited_external_team_ids` | `activities` | Grupa spoza zakresu trenera → 403 |
+| Zgłoszenie zewnętrzne | Wynajem utworzony z publicznego kalendarza przez osobę bez konta: `requested_via = online_form`, status `pending_verification` (do kliknięcia linku z e-maila, ważny 1 h) → `pending_approval` (blokada slotu dla innych zgłoszeń zewnętrznych do `hold_expires_at` = potwierdzenie + 48 h) → akceptacja administratora → `requested` (należność utworzona) albo `rejected` (z powodem, e-mail) / `expired` (brak decyzji) / `superseded` (slot zajęła rezerwacja klubu; e-mail). Tylko w strefie `reservable_paid`, tylko w miejscach z `accepts_online_requests` i gdy klub włączył zgłoszenia online | `facilities_rentals` | Zgłoszenie bez akceptacji nigdy nie jest ważną rezerwacją: nie pojawia się jako „zarezerwowane”, nie tworzy należności, nie blokuje terminów klubu |
+| Publikacja | `club_settings.publication` = `{ enabled, blocks: { description_schedule, conditions, prices, coaches, materials, contact, places_calendar, online_requests } }`; blok jest widoczny, gdy klub go włączył **i** sekcja/grupa/miejsce ma `is_public`; nazwisko prowadzącego dodatkowo wymaga `publish_name_consent` osoby | `club_core` | Wyłączony blok nie trafia do odpowiedzi API (nie tylko jest ukryty w UI) |
+| Rezerwacja (wynajem zewnętrzny) | Wynajem miejsca przez najemcę: `units` × 90 min (§3 ust. 2), tylko w strefie `reservable_paid`, bez kolizji (patrz „Zajętość slotu”) ani aktywnego zakazu najemcy; `cancellation_deadline = starts_at − 24 h` (§3 ust. 4); `payment_deadline = starts_at − N dni` (N z umowy administracyjnej, §3 ust. 3); kwota z cennika według kategorii najemcy i sezonu | `facilities_rentals` | Każde naruszenie → 409 z kodem (`zone_not_reservable`, `rental_conflict`, `entry_ban_active`, `place_closed`) |
+| Statusy wynajmu | zgłoszenie online: `pending_verification` → `pending_approval` → (`requested` \| `rejected` \| `expired` \| `superseded`); wpis personelu zaczyna od `requested` (wpisanie przez personel = akceptacja); dalej `requested` → `confirmed` (wpłata zaksięgowana lub ręczne potwierdzenie) → `done` (po `ends_at`); `cancelled_free` (odwołanie przed terminem; należność `cancelled`), `cancelled_late` (po terminie; należność `forfeited`), `no_show` (animator; należność pozostaje) | `facilities` | Przejścia spoza tej listy → 409 |
+| Publiczny kalendarz obiektu | Miesiąc miejsca: strefy, zajęcia klubu i rezerwacje wewnętrzne („zajęte przez klub”, bez nazw), wynajmy („zarezerwowane”), zgłoszenia z blokadą („zgłoszone — oczekuje”), zamknięcia, godziny otwarcia, cennik, regulamin, telefon; przy wolnych slotach „do rezerwacji” przycisk „Zgłoś rezerwację”, gdy zgłoszenia online są włączone | `facilities` (widok) | Nigdy nie zawiera nazw najemców, osób ani grup |
+| Publiczna strona sekcji | Opis sekcji, materiały i kontakt (`club_core`); publiczne grupy z kategorią wiekową lub poziomem, warunkami i prowadzącym (`groups`); harmonogram zajęć — regularne dni i godziny z RRULE oraz najbliższe 4 tygodnie terminów, z odwołaniami (`activities`); ceny (`payments`); link do kalendarzy obiektów (`facilities`) | `club_core` + bloki DI | Brak modułu lub wyłączony blok → sekcja strony nie jest renderowana |
+
+## Users, Permissions, and Scope
+
+| Actor | Allowed outcomes | Scope rule | Required feature IDs |
+|---|---|---|---|
+| Gość (bez logowania) | publiczna strona klubu i sekcji (bloki włączone przez klub); publiczny kalendarz obiektów; zgłoszenie rezerwacji z potwierdzeniem e-mailem (nieważne bez akceptacji administratora); prośba o osobisty link do deklaracji | klub, sekcja i miejsce z publicznych slugów; tylko rekordy `is_public`; zero danych osobowych poza nazwiskiem prowadzącego za jego zgodą | brak (trasy `requireAuth: false`, limity żądań w `metadata` tras) |
+| Uczestnik niepełnoletni z kontem (13–17) | własny kalendarz ze wszystkich sekcji, w których ma członkostwo, deklaracja zgodnie z polityką, komunikaty swoich grup i sekcji, profil; **bez płatności** (widzi je i opłaca opiekun) | `self_person_id` + grupy, w których ma członkostwo (dowolne sekcje) | `people.self`, `activities.attendance.declare`, `communication.view` |
+| Uczestnik pełnoletni | jak wyżej + swoje należności i płatność online (jest swoim płatnikiem) | `self_person_id` + grupy, w których ma członkostwo | jak wyżej + `payments.view_own`, `payments.pay_online`, `payments.orders.place` (rola `vereino_payer`) |
+| Opiekun | jeden kalendarz wszystkich podopiecznych ze wszystkich sekcji klubu, deklaracje i decyzje `guardian_confirm`, zgody, płatności (jedna lista należności za cały klub), zamówienia (np. stroje) dla podopiecznych z grup zbiórki, wiadomość do trenera/instruktora, zgłoszenie dyżuru | `ward_person_ids` (+ `self`) — bez filtra sekcji | jak wyżej + `payments.pay_online`, `payments.orders.place` |
+| Trener / instruktor | terminy i listy obecności swoich grup (`team` lub `class_group`, w dowolnej sekcji) i zastępstw, odwołanie terminu, zgłoszenie nieobecności, komunikaty do grupy/terminu, podgląd własnych jednostek ze wszystkich sekcji; wydarzenie jednorazowe (turniej) dla własnej grupy bez zgody koordynatora; kalendarz wszystkich obiektów klubu i rezerwacja wewnętrzna dowolnego wolnego obiektu bez akceptacji; anulowanie własnych rezerwacji; zgoda na publikację własnego nazwiska; zamówienia dzieci ze swoich grup: gotówka za zamówienie, przypomnienie, wydanie stroju, suma gotówki u siebie | `coached_group_ids` ∪ `substitute_occurrence_ids`; obiekty — cały klub; zamówienia — dzieci z `coached_group_ids` | `groups.view`, `activities.coach`, `activities.events.create`, `communication.post`, `activities.reports.view_own`, `facilities.view`, `facilities.bookings.create`, `payments.orders.collect` |
+| Koordynator sekcji | dla każdej przypisanej sekcji (akademia, basen, zajęcia dodatkowe — na tych samych zasadach): grupy obu rodzajów, członkostwa, aktywności, terminy; lista „do obsadzenia” i „nierozliczone”; wskazanie zastępcy; komunikaty do sekcji; oznaczanie spraw; raport jednostek sekcji; treści publicznej strony swojej sekcji i jej grup (opis, warunki, materiały, kontakt, `is_public`); rezerwacje wewnętrzne jak trener i anulowanie rezerwacji swojej sekcji. Odczyt kartoteki osób klubu (dane podstawowe), by zapisywać do grup; bez PESEL i zgód; zamówienia dzieci w swoich sekcjach jak trener | `section_ids` (może być kilka; jedna osoba może koordynować kilka sekcji) | `club_core.view`, `club_core.sections.public_content`, `people.view`, `groups.manage`, `activities.manage`, `activities.coach`, `activities.events.create`, `activities.reports.view`, `communication.post`, `communication.cases.manage`, `facilities.view`, `facilities.bookings.create`, `payments.orders.collect` |
+| Animator obiektu | kalendarz obiektu, wynajmy wpisywane po telefonie (zakładanie, potwierdzanie, odwoływanie, `no_show`), dziennik, incydenty, wniosek o zakaz; widzi zgłoszenia online, ale ich nie akceptuje (domyślnie) | `place_ids` (miejsce i jego potomkowie) | `facilities.view`, `facilities.rentals.manage`, `facilities.log.write`, `facilities.incidents.manage` |
+| Administrator klubu (w tym skarbnik) | wszystko w klubie, przekrojowo przez sekcje: osoby, role, PESEL, sekcje i ich koordynatorzy, cenniki, zniżki, należności, wpłaty, instytucje, umowy, strefy, stawki, zakazy, raporty; **akceptacja lub odrzucenie zgłoszeń zewnętrznych**; konfiguracja publikacji strony klubu; zbiórki zamówień i rozliczanie gotówki od trenerów | `club_wide` | wszystkie `*.manage` modułów Vereino + `people.pesel.view`, `people.roles.manage`, `payments.manage`, `payments.orders.manage`, `facilities.manage`, `facilities.rentals.approve`, `facilities.reports.view`, `club_core.publication.manage` |
+| Administrator techniczny | tenant, moduły, konfiguracja; bez dostępu do danych osobowych poza koniecznymi | system | wbudowane role Open Mercato `admin`/`superadmin`; nie dostaje funkcji Vereino domyślnie |
+
+Pełna lista funkcji (`acl.ts` każdego modułu, z `dependsOn` tak, by `*.manage` implikowało `*.view`): `club_core.view`, `club_core.manage`, `club_core.contracts.manage`, `club_core.publication.manage`, `club_core.sections.public_content`; `people.self`, `people.view`, `people.manage`, `people.roles.manage`, `people.pesel.view`, `people.accounts.manage`; `groups.view`, `groups.manage`; `activities.view`, `activities.manage`, `activities.coach`, `activities.events.create`, `activities.attendance.declare`, `activities.reports.view`, `activities.reports.view_own`; `communication.view`, `communication.post`, `communication.cases.manage`; `payments.view_own`, `payments.pay_online`, `payments.view`, `payments.manage`, `payments.bank.import`, `payments.cash.record`, `payments.orders.manage`, `payments.orders.place`, `payments.orders.collect`; `facilities.view`, `facilities.manage`, `facilities.bookings.create`, `facilities.rentals.manage`, `facilities.rentals.approve`, `facilities.log.write`, `facilities.incidents.manage`, `facilities.reports.view`. Role `auth` zasiewane w `setup.ts` (`defaultRoleFeatures`): `vereino_club_admin`, `vereino_coordinator`, `vereino_coach`, `vereino_facility_operator`, `vereino_member`, `vereino_payer` (tylko osoby pełnoletnie) — nazwy służą tylko do nadawania, nigdy do sprawdzania.
+
+**Wyprowadzanie zakresu:** `tenantId` i `organizationId` zawsze z uwierzytelnionego kontekstu. Każda trasa listy dodaje filtr zakresu z `people.scopeService` po filtrze organizacji; brak powiązanej osoby lub pusty zakres daje pustą listę, a zapis spoza zakresu — 403. Operacje bez sesji to publiczne strony klubu, sekcji i kalendarzy obiektów, zgłoszenie rezerwacji z jego potwierdzeniem e-mailem oraz strony linku do deklaracji: zakres wyprowadzany z `club_settings.public_slug` (+ slug sekcji/miejsca) albo z rekordu tokenu (hash), nigdy z treści żądania. Nie ma operacji w zakresie systemowym (`organizationId: null`).
+
+## Reuse and Ownership Map
+
+Źródło faktów: `.ai/guides/module-facts.json` (generator `create-mercato-app@0.9.0`, core 0.9.0). `module-facts.v2.json` ma dla badanych modułów identyczne dane (różni się tylko `staff`, poza encjami). Module-facts opisują encje (id, klasa, tabela, `customFields`), zdarzenia, funkcje ACL, tokeny DI, polecenia, workery, hosty rozszerzeń i powiadomienia — **nie opisują pól encji**. Tam, gdzie dopasowanie zależy od pól, wiersz mówi to wprost i odsyła do weryfikacji V-n (w repozytorium nie ma jeszcze `node_modules`).
+
+Moduły włączone dziś w `src/modules.ts`: `auth`, `directory`, `configs`, `entities`, `query_index`, `api_docs`, `audit_logs`, `notifications`, `dashboards`, `events`, `search`, `attachments`. Pozostałe moduły wymienione niżej są w zależnościach (`@open-mercato/core`, `@open-mercato/scheduler`, `@open-mercato/gateway-stripe`); ich włączenie to zmiana `src/modules.ts`, którą każda faza zgłasza do akceptacji (AGENTS.md → *Ask First*).
+
+### Ocena ośmiu modułów kandydujących
+
+| Moduł | Co mówią fakty | Wniosek dla Vereino |
+|---|---|---|
+| `directory` | encje `directory:tenant`, `directory:organization`; DI `organizationHierarchyService`, `organizationScopeService`; polecenia `directory.organizations.*`; host `entity-extension` na `directory:organization` | **Reuse** jako granica klubu: 1 tenant + 1 organizacja = 1 klub (DD-02). Sekcje nie są podorganizacjami (DD-03). |
+| `notifications` | encje `notifications:notification`, `notification_type`, `notification_type_override`, `notification_preference`; DI `notificationService`, `notificationPreferenceService`; worker `notifications:create`; pluginy generatora `notifications.channels`, `notifications.delivery-strategies` | **Reuse** dla każdego powiadomienia w aplikacji. Vereino rejestruje typy (`notifications.ts`, wzorzec `notifications.type`), nie tworzy własnej encji. Czy istnieje strategia e-mail — V-4. |
+| `attachments` | encje `attachments:attachment` (`customFields: true`), `attachment_partition`, `attachment_quota_reservation`; DI `attachmentService`, `attachmentScopedUploadService`, `attachmentTargetAccessService` | **Reuse** dla logo klubu, zdjęć osób i miejsc, regulaminu obiektu, plików umów, załączników incydentów. Encje Vereino nie przechowują plików. |
+| `planner` | encje `planner:planner_availability_rule_set`, `planner_availability_rule`; DI `plannerAvailabilityService`; polecenia `planner.availability.weekly.replace`, `planner.availability.date-specific.replace`; ACL `planner.manage_availability` | **Częściowy kandydat** na godziny otwarcia (reguły tygodniowe) i zamknięcia w konkretne daty. Fakty nie pokazują pól reguły, więc nie wiadomo, czy da się zapisać cztery strefy z priorytetem → strefy app-owned (DD-21); godziny otwarcia na plannerze tylko po V-7. |
+| `resources` | encje `resources:resources_resource`, `resources_resource_type`, komentarze, aktywności, tagi; `requires: ["planner"]`; ACL `resources.view`, `resources.manage_resources`; hosty `entity-extension` | **Rozważony, odrzucony dla 1.0** jako baza `place` (DD-08). Do ponownej oceny w fazie 5 razem z V-7. |
+| `staff` | 22 encje (`staff_team`, `staff_team_member`, `staff_leave_request`, `staff_time_entry`, `staff_time_report`…); `requires: ["planner","resources"]`; ACL `staff.timesheets.*`, `staff.leave_requests.*` | **Nie używamy.** Model pracowników, urlopów i ewidencji godzin z zatwierdzaniem; trener Vereino jest rozliczany z terminów `done` (D-007), a `staff_team_member` byłby drugim rekordem osoby, która bywa też opiekunem (D-005). AGENTS.md: „staff/employee ≠ optional staff”. |
+| `business_rules` | encje `business_rules:business_rule`, `rule_set`, `rule_set_member`, `rule_execution_log`; DI `ruleEngine`, `ruleEvaluator`, `actionExecutor`; CLI `seed-guard-rules` | **Nie w 1.0.** Niezmienniki domeny (kolizje, zakaz wstępu, 24 h) egzekwują polecenia modułów, a nie reguły, które administrator może wyłączyć. Kandydat na później: konfigurowalne reguły zniżek. |
+| `workflows` | 9 encji (`workflow_definition`, `workflow_instance`, `user_task`…); DI `workflowExecutor`, `timerHandler`, `signalHandler`, `workInboxService`; zdarzenia `workflows.task.portal_assigned`, `workflows.task.deadline_breached` | **Nie w 1.0.** Potwierdzenie opiekuna z limitem czasu i terminy rezerwacji to statusy z jednym terminem — AGENTS.md kieruje przypomnienia i harmonogramy wsadowe do `module-data` (scheduler + worker), nie do trwałych procesów. |
+
+### Pozostałe moduły z faktów, które dotyczą encji z draftu
+
+| Moduł | Co mówią fakty | Rola w Vereino |
+|---|---|---|
+| `auth` | encje `auth:user` (szyfrowane `email`, `name`), `auth:role`, `auth:user_role`, `auth:role_acl`, `auth:user_consent`; DI `authService`, `rbacService`; polecenia `auth.users.create/update/delete`; zdarzenia `auth.password.reset.requested/completed`; strony `/login`, `/reset`, `/reset/[token]` | **Reuse** jako jedyne konto logowania wszystkich ról (Q-001, DD-04). |
+| `customer_accounts` + `portal` | `customer_accounts:customer_user`, `customer_role`, `customer_user_invitation`; `portal` `requires: ["customer_accounts"]`, strony `/[orgSlug]/portal/*` z `requireCustomerAuth` | **Nie używamy** — odrzucone w Q-001. |
+| `customers` | `customers:customer_person_profile` (`customFields: true`, szyfrowane imię i nazwisko), `customer_company_profile`, deale, pipeline'y; `requires: ["progress"]` | **Nie używamy** jako bazy `person` ani `institution` (DD-04). Strona `/backend/calendar` tego modułu jest referencją UI widoku kalendarza. |
+| `messages` | encje `messages:message` (szyfrowane `body`, `subject`, `external_email`, `external_name`), `message_recipient`, `message_object`, `message_access_token`, `message_confirmation`; polecenia `messages.messages.compose/reply/forward`, `messages.messages.delete_for_actor`, `messages.tokens.consume`; worker `messages:send-email`; zdarzenia `messages.message.sent`, `messages.message.email_sent`, `messages.message.email_failed`; strona `/messages/view/[token]` (`requireAuth: false`) | **Reuse warunkowe** jako magazyn treści i wysyłka e-mail (DD-16, V-4). Zakres, adresaci i „sprawa” są app-owned w `communication`. |
+| `scheduler` | encja `scheduler:scheduled_job`; DI `schedulerService`; polecenia `scheduler.jobs.*`; zdarzenia `scheduler.job.completed/failed` | **Reuse** dla zadań okresowych wszystkich faz (rejestracja w `setup.ts`, wzorzec `module.setup-scheduler-target`). |
+| `payment_gateways` + `gateway_stripe` | encje `payment_gateways:gateway_transaction` (szyfrowane `client_secret`, `gateway_metadata`), `gateway_payment_operation`, `gateway_session_initialization`, `webhook_processed_event`; DI `paymentGatewayService`; zdarzenia `payment_gateways.payment.captured/failed/cancelled/refunded`, `payment_gateways.session.expired`; workery webhooków; `gateway_stripe`: karty, Apple Pay, Google Pay, przelewy, worker `gateway-stripe:webhook-processor` | **Reuse** dla płatności online (Q-003, DD-18). |
+| `dictionaries` | encje `dictionaries:dictionary`, `dictionary_entry`; polecenia `dictionaries.entries.*` | **Reuse** dla kategorii wiekowych PZPN (REQ-019) i rodzajów nawierzchni. |
+| `entities` | `custom_field_def`, `custom_field_value`, `encryption_map` | **Reuse** dla pól własnych na encjach Vereino (`ce.ts`) tam, gdzie kluby będą się różnić. |
+| `audit_logs` | `audit_logs:action_log`, `access_log`; DI `actionLogService`, `accessLogService` | **Reuse** jako ślad zmian poleceń; nie zastępuje `activities_substitution_entries` ani nieusuwalnej sprawy. |
+| `configs` | `configs:module_config` | **Reuse** pomocniczo; ustawienia klubu mają własny rekord `club_core_club_settings`, bo są edytowane w `CrudForm` z wersją. |
+| `dashboards` | `dashboards:dashboard_layout`, `dashboard_role_widgets`; DI `analyticsRegistry` | **Reuse** dla widżetów: „do obsadzenia”, „nierozliczone”, „zaległości”, „dziś na obiekcie”. |
+| `sales` | `requires: ["catalog","customers","dictionaries"]`; zamówienia, faktury, `sales_payment` | **Nie używamy** (DD-18); także nie dla zbiórek strojów (DD-30). |
+| `forms` | encje `forms:form`, `form_version`, `form_submission`, `form_consent_record`…; `requires: ["attachments","customer_accounts"]`; strony `/f/[slug]` i `/embed/[slug]` z `requireAuth: false` | **Rozważony, odrzucony** dla zgłoszenia rezerwacji (DD-27): wymaga `customer_accounts`, a zapis zgłoszenia musi w jednej transakcji sprawdzić zajętość slotu. Odrzucony także dla formularza zamówień (DD-30): nie zna dzieci opiekuna, a należność i numer do nadruku trzeba sprawdzić w tej samej transakcji. |
+| `content` | brak encji; strony frontowe `/privacy`, `/terms` | **Nie wystarcza** na stronę klubu (statyczne strony, brak edycji); polityka prywatności z `content` może być podlinkowana z formularza zgłoszenia. |
+
+### Mapa encji z draftu v0.3
+
+Legenda: **reuse** — zainstalowany moduł jest źródłem prawdy; **extend** — rekord zainstalowany + dane Vereino powiązane przez ID (bez relacji ORM między modułami); **app-owned** — nowa encja w module Vereino.
+
+| Capability / encja draftu | Reuse / extend / app-own | Existing module or new module | Integration seam | Why |
+|---|---|---|---|---|
+| `club` | extend | `directory:organization` + `club_core` (`club_core_club_settings`) | `organization_id` jako klucz 1:1; logo przez `attachments` | DD-02 |
+| `section` | app-owned | `club_core` | — | brak w faktach; DD-03 |
+| `place` | app-owned | `club_core` | zdjęcia, regulamin → `attachments`; `owner_institution_id` (ID) | DD-08 |
+| `institution` | app-owned | `club_core` | `bank_account` odbiorcy płatności | DD-09; `customers` odrzucony |
+| `contract` | app-owned | `club_core` | plik → `attachments`; stawki trenera czyta `activities` przez DI `club_core` | DD-09; `staff.timesheets.rates.view` dotyczy stawek ewidencji godzin |
+| `person` | app-owned | `people` | `user_id` → `auth:user` (ID); PESEL przez mapę szyfrowania | DD-04 |
+| `user` (konto) | reuse | `auth:user` | polecenie `people.persons.create_account` wywołuje `auth.users.create` i reset hasła | Q-001 |
+| `guardianship` (+ zgody) | app-owned | `people` | — | `auth:user_consent` dotyczy zgód konta, nie zgód opiekuna za podopiecznego |
+| `role_assignment` | extend | `people` + `auth:role` / `auth:user_role` | `rbacService`; polecenie Vereino nadaje i odbiera rolę `auth` | DD-06 |
+| `group`, `group_membership`, `season` | app-owned | `groups` | kategoria wiekowa → `dictionaries:dictionary_entry` (ID) | brak w faktach; `staff_team` odrzucony |
+| `external_team` | app-owned | `groups` | `institution_id` (ID, opcjonalne) | brak w faktach |
+| `activity` | app-owned | `activities` | `scheduler` generuje terminy na horyzont | `planner` opisuje dostępność, nie wydarzenia |
+| `occurrence`, `substitution_log` | app-owned | `activities` (`activities_substitution_entries`) | zdarzenia `activities.occurrence.*`; strażnik mutacji z `facilities` | DD-12, DD-20 |
+| `attendance`, `attendance_policy`, `occurrence_supervisor` | app-owned | `activities` | — | brak w faktach; `business_rules` odrzucone |
+| magic link deklaracji | app-owned | `activities` (`activities_declaration_tokens`) | e-mail przez `communication` | token autoryzuje zapis obecności; `message_access_token` służy do podglądu wiadomości |
+| `message` (+ wątek, sprawa) | extend | `messages:message` + `communication` (`communication_threads`, `communication_thread_messages`) | ID wiadomości; typ obiektu wiadomości (`message-objects.ts`) dla terminu | DD-16, V-4 |
+| powiadomienia | reuse | `notifications` | typy powiadomień Vereino | DD-15 |
+| `fee`, `discount_rule`, `charge` | app-owned | `payments` | `source_type` + `source_id` dla rezerwacji | DD-18 |
+| `payment` | app-owned + reuse | `payments` + `payment_gateways:gateway_transaction` | `gateway_transaction_id` (ID) i `payments_checkouts` | DD-18 |
+| zbiórka zamówień (stroje), zamówienie, rozliczenie gotówki | app-owned | `payments` (`payments_order_campaigns`, `payments_order_products`, `payments_orders`, `payments_order_lines`, `payments_order_links`, `payments_cash_handovers`) | należność `order` w tej samej transakcji; dzieci i grupy przez DI `people`/`groups`; kopia zamówienia i osobisty link e-mailem przez `communication` | DD-30, DD-31; `sales`, `forms` odrzucone |
+| `place_zone_rule`, `place_closure` | app-owned | `facilities` | ewentualnie `planner` dla godzin otwarcia (V-7) | DD-21, DD-22 |
+| `rental_rate`, `rental` | app-owned | `facilities` | należność przez DI `payments` | DD-19 |
+| `facility_log`, `facility_incident`, `entry_ban`, `maintenance_task` | app-owned | `facilities` | załączniki → `attachments`; incydent ↔ wątek sprawy przez ID | brak w faktach |
+| rezerwacja wewnętrzna | app-owned | `facilities` (`facilities_internal_bookings`) | `facilities.occupancyService` | DD-25; brak w faktach |
+| zgłoszenie zewnętrzne online | app-owned | `facilities` (`facilities_rentals` ze statusami zgłoszenia) | e-mail przez `communication`/`messages`; należność przez DI `payments` po akceptacji | DD-27; `forms` odrzucony |
+| wydarzenie jednorazowe (turniej) | app-owned | `activities` | wywoływane też z kalendarza obiektów przez DI | DD-26 |
+| konfiguracja publikacji i treści publiczne | app-owned | `club_core` (ustawienia, sekcje), `groups` (grupy) | materiały → `attachments`; zgoda na nazwisko w `people` | DD-28, DD-29 |
+| kalendarze ról, publiczny kalendarz obiektów, publiczna strona klubu, raporty | app-owned (widoki) | `activities`, `facilities`, `club_core` | bloki DI | widoki, nie encje (draft §3) |
+
+## Architecture and Data Flow
+
+```text
+Opiekun /club (Dziś) ─► GET /api/activities/calendar?as=guardian ─► people.scopeService (ward_person_ids)
+                                                                  ─► groups (członkostwa w dniu) ─► activities_occurrences
+Opiekun ─► POST /api/activities/attendance/declare ─► activities.attendance.declare (polityka, zakres)
+                                                   ─► event activities.attendance.declared ─► notifications (opiekun/trener)
+Koordynator /backend ─► POST /api/activities/activities ─► activities.activities.create
+                                                        ─► rozwinięcie RRULE (horyzont) ─► activities_occurrences
+                                                        ─► [faza 5] strażnik facilities: kolizje z rezerwacjami/zamknięciami
+scheduler (codziennie) ─► worker activities:generate-occurrences ─► dopisuje terminy do horyzontu
+Trener /club ─► POST /api/activities/occurrences/{id}/absence ─► coach_id = null ─► event ─► notifications (koordynator)
+Koordynator ─► POST /api/activities/occurrences/{id}/coach ─► substitution entry ─► event ─► notifications (zastępca)
+Trener ─► PUT /api/activities/occurrences/{id}/attendance ─► status done ─► raport jednostek (zapytanie)
+Odwołanie ─► activities.occurrence.cancelled ─► [faza 3] communication: wątek terminu + e-mail (messages)
+scheduler (1. dnia miesiąca) ─► payments:generate-charges ─► groups (członkowie) + people (płatnik) ─► payments_charges
+Opiekun ─► POST /api/payments/checkout ─► paymentGatewayService (stripe) ─► przekierowanie do Stripe
+Stripe ─► webhook ─► payment_gateways ─► payment_gateways.payment.captured ─► subskrybent payments (idempotentny) ─► payments_payments
+Animator ─► POST /api/facilities/rentals ─► facilities.rentals.create ─► DI payments: należność (payee = gmina) w tej samej transakcji
+Gość ─► GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule ─► strefy + zajętość (bez danych osobowych)
+Gość ─► POST …/places/{placeSlug}/requests ─► wynajem pending_verification ─► e-mail z linkiem ─► pending_approval (blokada 48 h)
+       ─► notifications: administratorzy „zgłoszenie do akceptacji”
+Administrator ─► POST /api/facilities/rentals/{id}/approve ─► requested + należność (DI payments) ─► e-mail do zgłaszającego
+Trener /club/places ─► POST /api/facilities/internal-bookings ─► occupancyService ─► confirmed (bez akceptacji)
+                    ─► [dla grupy] DI activities: wydarzenie jednorazowe (tournament) ─► termin zajmuje obiekt
+                    ─► kolidujące zgłoszenia pending_approval → superseded + e-mail
+Gość ─► GET /api/club_core/public/{clubSlug}/sections/{sectionSlug} ─► club_core (opis, materiały, kontakt)
+       ─► DI opcjonalne: groups.publicCatalog, activities.publicSchedule, payments.publicPrices, facilities.publicPlaces
+       ─► filtr club_settings.publication + is_public + zgoda na nazwisko
+```
+
+- **Module boundaries:** `club_core` posiada strukturę klubu i umowy; `people` — tożsamość, opiekę i zakres (jedyne źródło `scopeService`); `groups` — składy w czasie; `activities` — terminy i wszystko, co dzieje się na terminie (obecność, zastępstwa, jednostki), bo obecność i zastępstwo muszą być transakcyjnie spójne z terminem; `communication` — zakres rozmów i sprawy; `payments` — pieniądze klubu i gminy; `facilities` — reguły obiektu z regulaminu. Zależności (`requires`): `people` → `club_core`; `groups` → `people`; `activities` → `groups`; `communication` → `activities` (zakres `occurrence`), `messages`; `payments` → `groups`, `payment_gateways`; `facilities` → `activities`, `payments`. Brak relacji ORM między modułami — tylko ID, migawki nazw do wyświetlania, zdarzenia, usługi DI i strażnicy mutacji.
+- **Extension points:** strony frontowe i backendowe odkrywane z plików; typy powiadomień (`notifications.ts`); typ obiektu wiadomości dla terminu (`message-objects.ts`); widżety pulpitu (`widgets/dashboard/**`); strażnik mutacji `facilities` na zapisie terminu (`data/guards.ts`); cele harmonogramu rejestrowane w `setup.ts`; mapy szyfrowania (`encryption.ts`); konfiguracja wyszukiwania (`search.ts`); pola własne (`ce.ts`). Nie modyfikujemy kodu zainstalowanych modułów.
+- **Alternatives considered:** portal klienta dla rodziców (odrzucony w Q-001); jeden moduł `club` ze wszystkimi encjami (odrzucony: fazy nie byłyby osobno wdrażalne, a uprawnienia i zdarzenia mieszałyby się); `staff` + `resources` + `planner` jako rdzeń (odrzucony w mapie reuse).
+- **Compatibility:** aplikacja jest nowa — nie ma istniejących kontraktów Vereino. Od pierwszego wdrożenia stabilne są: trasy API, ID zdarzeń, funkcji ACL, typów powiadomień, celów harmonogramu i schemat bazy (AGENTS.md → kontrakty zamrożone; zmiany przez addytywne pola lub mostek deprecjacji). Włączenie modułów `scheduler`, `messages`, `payment_gateways`, `gateway_stripe` nie zmienia zachowania już włączonych modułów.
+
+## User Journeys
+
+### Journey J-001 — Struktura klubu i rodzina na start (faza 1)
+
+1. Administrator klubu w `/backend/club/settings` uzupełnia nazwę skróconą, publiczny slug i próg wieku konta; w `/backend/club/sections` tworzy „Akademia piłkarska”, „Basen” i „Zajęcia dodatkowe”, a na karcie każdej sekcji przypisuje koordynatora (Wojtek — akademia, Aneta — basen); sekcja bez koordynatora jest oznaczona ostrzeżeniem; w `/backend/club/places` tworzy kompleks „Orlik 2024” z dziećmi „Boisko piłkarskie”, „Boisko wielofunkcyjne”, „Zaplecze szatniowe”, salę i basen zewnętrzny (`is_external`); w `/backend/club/institutions` — „Gmina Liszki” jako właściciela.
+2. W `/backend/people/persons/create` zakłada Kasię (opiekun) oraz Jasia (11 lat) i Olę (14 lat); na karcie osoby w zakładce „Opieka” łączy Kasię z dziećmi, zaznacza „główny płatnik” i zgody.
+3. Na karcie Kasi wybiera „Załóż konto”: system tworzy `auth:user` z rolami `vereino_member` i `vereino_payer` (Kasia jest pełnoletnia) i wysyła e-mail z ustawieniem hasła. Dla Jasia przycisk jest nieaktywny z wyjaśnieniem „poniżej progu wieku konta (13)”. Dla Oli zakłada konto z ograniczonym widokiem — bez roli `vereino_payer`, więc Ola nie widzi płatności.
+4. Kasia ustawia hasło, loguje się i trafia na `/club` — widzi profile Jasia i Oli oraz zgody.
+5. Błędy: e-mail już używany przez inne konto → 409 z komunikatem przy polu; zapis karty osoby nieaktualnej wersji → 409 i wspólne okno konfliktu; użytkownik bez funkcji `people.manage` widzi stronę „Brak uprawnień”.
+
+### Journey J-002 — Trening z deklaracją, zastępstwem i rozliczeniem (fazy 2–3; draft §7)
+
+1. Koordynator tworzy aktywność „Trening żaki”: grupa Żaki, wtorki 17:00–18:30, Boisko piłkarskie, trener Wojtek, co tydzień do 30.06. Kreator pokazuje podgląd pierwszych terminów i kolizje na miejscu przed zapisem.
+2. System generuje terminy na horyzont 16 tygodni; kalendarze ról wypełniają się.
+3. Równolegle koordynatorka basenu Aneta tworzy w swojej sekcji grupę zajęciową (`class_group`) „Basen — początkujący” z aktywnością „Zajęcia” w czwartki i instruktorką; Jaś jest członkiem obu grup. Kasia na `/club` widzi w jednym kalendarzu „Wtorek 17:00 — Jaś, trening, Boisko piłkarskie” i „Czwartek 16:00 — Jaś, zajęcia, Basen” i dotyka „Będzie”. Ola (14 lat) deklaruje mecz sama → status „czeka na potwierdzenie opiekuna”; Kasia dostaje powiadomienie i zatwierdza albo nie odpowiada — po 24 h stosuje się wartość domyślna polityki.
+4. Wojtek w poniedziałek zgłasza nieobecność → termin trafia na listę „do obsadzenia” i koordynator dostaje powiadomienie; koordynator wskazuje Piotra → wpis w historii zastępstw, Piotr dostaje powiadomienie, termin pojawia się w jego kalendarzu.
+5. Po treningu Piotr odhacza obecność na `/club/occurrences/{id}/attendance` i zamyka termin → `done`. W raporcie miesiąca Wojtek ma jednostkę „oddaną”, Piotr „przejętą”.
+6. Błędy: deklaracja po rozpoczęciu → komunikat „deklaracje zamknięte”; dwóch użytkowników odhacza jednocześnie → drugi dostaje konflikt wersji i odświeżoną listę; trener spoza grupy otwiera listę → 403.
+
+### Journey J-003 — Odwołanie i komunikat (faza 3)
+
+1. Koordynator odwołuje termin z powodem „ulewa”. Adresaci (opiekunowie małoletnich, uczestnicy z kontem, trener) dostają powiadomienie w aplikacji i e-mail.
+2. Koordynator kopiuje gotowy tekst „Trening żaków we wtorek 17:00 odwołany — szczegóły: {link}” i wkleja go na grupę w Messengerze.
+3. Rodzic bez zalogowania otwiera link → widzi tylko nazwę aktywności, datę i status oraz formularz „Wyślij mi link” (e-mail); dostaje osobisty link i z niego deklaruje obecność na kolejny termin.
+4. Rodzic pisze do trenera w wątku grupy; koordynator oznacza wątek jako sprawę → od tej chwili wiadomości są nieusuwalne.
+5. Błędy: e-mail nie dochodzi → zdarzenie `messages.message.email_failed`, status „nie dostarczono” przy adresacie w wątku; prośba o link dla nieznanego e-maila → ta sama odpowiedź co dla znanego (brak enumeracji).
+
+### Journey J-004 — Składki (faza 4)
+
+1. Skarbnik w `/backend/payments/fees` ustala „Składka Żaki 150 zł / mies.” i regułę „rodzeństwo −30%”.
+2. 1. dnia miesiąca system nalicza należności: Jaś 150 zł, jego starsza siostra w innej grupie — pełna stawka swojej grupy, Jaś jako drugie dziecko — 105 zł; płatnik Kasia; termin płatności 10. dnia.
+3. Kasia na `/club/payments` zaznacza obie należności i płaci przez Stripe; po powrocie widzi „Opłacone”, a skarbnik — wpłatę online przypiętą do należności.
+4. Rodzina płacąca gotówką: skarbnik księguje wpłatę ręcznie; częściowa wpłata → „częściowo opłacona”.
+5. Błędy: płatność odrzucona → należności pozostają otwarte, komunikat i ponowienie; podwójny webhook → jedna wpłata; należność bez płatnika → oznaczona na liście administratora.
+
+### Journey J-005 — Wynajem orlika (faza 5; draft §7a)
+
+1. Trener z sąsiedniej gminy otwiera `/p/gwiazda/places/orlik-boisko`, widzi wolny slot „do rezerwacji” w środę 19:30–21:00 i dzwoni na numer z harmonogramu (wariant online — J-007).
+2. Animator zakłada rezerwację: Boisko piłkarskie, 1 jednostka (90 min), najemca „KS Sąsiedzi” (kategoria: klub z gminy, sezon zimowy) → system wylicza kwotę, termin wpłaty, termin bezpłatnego odwołania, tworzy należność z `payee` = Gmina Liszki i wysyła najemcy e-mail z podsumowaniem, numerem konta gminy i regulaminem.
+3. Slot w harmonogramie publicznym zmienia się na „zarezerwowane”; koordynator próbujący wstawić tam trening dostaje konflikt.
+4. Administrator odnotowuje wpłatę na konto gminy → należność `paid`, rezerwacja `confirmed`.
+5. W dniu wynajmu animator otwiera obiekt, wpisuje stan boiska i obecność pełnoletniego opiekuna grupy, po zakończeniu — stan po i zamknięcie; naruszenie regulaminu → incydent, opcjonalnie zakaz wstępu.
+6. Na koniec miesiąca administrator generuje raport dla gminy i eksportuje CSV.
+7. Warianty: odwołanie 10 h przed → `cancelled_late`, należność `forfeited`, slot wraca do „do rezerwacji”; gmina zgłasza imprezę → administrator wpisuje zamknięcie z powodem „impreza gminna”, rezerwacja dostaje flagę do przeniesienia, przesunięcie wysyła najemcy powiadomienie e-mail.
+
+### Journey J-006 — Trener rezerwuje obiekt na turniej (fazy 2 i 5)
+
+1. Trener Wojtek otwiera `/club/places`, wybiera „Boisko piłkarskie” i sobotę; widzi strefy, zajęcia klubu, rezerwacje i wolne godziny wszystkich obiektów klubu.
+2. Zaznacza 9:00–12:00 i klika „Rezerwuj” → wybiera „Dla grupy: Orliki” i typ „Turniej”, dopisuje zaproszone drużyny z listy drużyn zewnętrznych.
+3. System sprawdza zajętość (godziny otwarcia, zamknięcia, terminy, rezerwacje, wynajmy) i bez akceptacji koordynatora tworzy wydarzenie jednorazowe grupy; jego termin zajmuje boisko, trafia do kalendarzy uczestników i rodziców z możliwością deklaracji.
+4. Wcześniejsze zgłoszenie zewnętrzne czekające na akceptację w tym czasie dostaje status `superseded`, a zgłaszający — e-mail z informacją i linkiem do kalendarza.
+5. Instruktorka zumby w ten sam sposób rezerwuje „Salkę szkoleniową” na szkolenie bez grupy → rezerwacja wewnętrzna z celem „szkolenie instruktorów”.
+6. Błędy: slot zajęty → 409 z listą kolidujących wpisów (z nazwami — personel je widzi); poza godzinami otwarcia lub w zamknięciu → 409 `place_closed`; „Dla grupy” spoza własnych grup → 403.
+
+### Journey J-007 — Zgłoszenie rezerwacji z zewnątrz (faza 5)
+
+1. Organizator z innego klubu wchodzi na `/p/gwiazda/places`, widzi listę obiektów klubu i wybiera Orlik; w kalendarzu klika wolny slot „do rezerwacji” w środę 19:30–21:00 i „Zgłoś rezerwację”.
+2. Formularz: organizacja/osoba, imię i nazwisko kontaktu, telefon, e-mail, kategoria (klub z gminy / zewnętrzny), liczba jednostek 90 min, cel, akceptacja regulaminu obiektu (wymagana), informacja o przetwarzaniu danych. System pokazuje orientacyjną kwotę z cennika.
+3. Po wysłaniu: „Sprawdź skrzynkę — potwierdź zgłoszenie linkiem”. Kliknięcie linku → status „oczekuje na akceptację”; slot w kalendarzu publicznym widać jako „zgłoszone — oczekuje”, a kolejne zgłoszenia na ten czas są odrzucane z komunikatem.
+4. Administratorzy dostają powiadomienie; w `/backend/facilities/requests` (i widżecie „Zgłoszenia do akceptacji”) administrator widzi zgłoszenie, kolizje, ewentualną zgodność z rejestrem zakazów i akceptuje → wynajem `requested` z należnością na konto gminy; zgłaszający dostaje e-mail z kwotą, numerem konta, terminem wpłaty i terminem bezpłatnego odwołania. Dalej jak J-005 od kroku 3.
+5. Warianty: odrzucenie z powodem → e-mail, slot wolny; brak decyzji w 48 h → `expired`, e-mail, slot wolny; niepotwierdzony e-mail w 1 h → zgłoszenie usuwane; zgłoszenie nigdy nie jest „zarezerwowane”, dopóki administrator go nie zaakceptuje.
+
+### Journey J-008 — Gość poznaje klub i sekcje (fazy 1–5)
+
+1. Rodzic szukający zajęć dla dziecka wchodzi na `/p/gwiazda`: nazwa i opis klubu, kafle sekcji (Akademia piłkarska, Basen, Zajęcia dodatkowe) i link do kalendarzy obiektów.
+2. Na stronie „Basen” widzi opis sekcji, grupy „Basen — początkujący (6–9 lat)” i „Basen — średniozaawansowani”, z dniami, godzinami i miejscem, warunkami (wiek, wymagany strój), składką i zniżką na rodzeństwo, prowadzącą (za jej zgodą), materiałami (regulamin sekcji, deklaracja członkowska) i kontaktem do koordynatorki.
+3. W klubie, który wyłączył blok cen, ta sama strona nie zawiera cen — API ich nie zwraca.
+4. Grupa nieoznaczona jako publiczna i sekcja niepubliczna nie pojawiają się; nieznany slug → 404.
+
+## UI and Interaction Contracts
+
+Referencje stron z module-facts (`backendPages`/`frontendPages`) i `.ai/guides/backend-ui.md`. Moduły `customers`, `staff`, `resources`, `planner`, `sales`, `messages` nie są włączone — ich strony są referencjami kodu, czytanymi ze źródeł w `node_modules` po `yarn install`, nie zależnościami w czasie działania. Wszystkie tabele to `DataTable` (stały `entityId` w formie z dwukropkiem, `extensionTableId`), formularze — `CrudForm` z `updatedAt`, odczyty — `apiCall`/`apiCallOrThrow`; pola odwołań to selektory z trasami źródeł opcji (wzorzec `api.option-source-routes`): `/api/club_core/options/sections`, `/places`, `/institutions`, `/api/people/options/persons?role=…`, `/api/groups/options/groups`, `/api/groups/options/external-teams`, `/api/activities/options/activities`; kategorie wiekowe — wspólny selektor słownika `dictionaries`. Tabele pokazują nazwy, nigdy UUID.
+
+| Surface / route | Purpose and primary actions | Data source / mutations | Closest installed reference | Canonical shell / components | Required states | Requirement IDs |
+|---|---|---|---|---|---|---|
+| `/backend/club/settings` | ustawienia klubu; wgranie, podmiana i usunięcie logo klubu z podglądem | `GET/PUT /api/club_core/settings` (`logoAttachmentId`), wgrywanie przez `attachments` | `/backend/directory/branding` | `Page`, `PageBody`, `CrudForm` (`pageContext: 'settings'`) | loading, error, conflict, success, permission denied | REQ-003 |
+| `/backend/club/sections` (+ `create`, `[id]/edit`) | lista z kolumną koordynatorów i ostrzeżeniem „bez koordynatora”, dodaj, edytuj, dezaktywuj; na karcie sekcji przypisanie koordynatora (selektor osób) oraz logo sekcji (wgraj / usuń — wtedy logo klubu) | `/api/club_core/sections` (`logoAttachmentId`), `/api/people/role-assignments`, wgrywanie przez `attachments` | `/backend/directory/organizations` | `DataTable`, `CrudForm` | loading, empty, error, conflict, success, permission denied | REQ-003 |
+| `/backend/club/places` (+ `create`, `[id]/edit`) | drzewo miejsc, zdjęcia, regulamin | `/api/club_core/places` | `/backend/resources/resources` | `DataTable` (kolumna rodzica), `CrudForm`, załączniki | jw. | REQ-003 |
+| `/backend/club/institutions` (+ `create`, `[id]/edit`) | instytucje | `/api/club_core/institutions` | `/backend/customers/companies` | `DataTable`, `CrudForm` | jw. | REQ-003 |
+| `/backend/club/contracts` (+ `create`, `[id]/edit`) | umowy trenerów (faza 2) i administracyjna (faza 5) | `/api/club_core/contracts` | `/backend/customers/deals` | `DataTable`, `CrudForm` (grupy pól zależne od `kind`) | jw. | REQ-021, REQ-013 |
+| `/backend/people/persons` (+ `create`) | osoby, wyszukiwanie po nazwisku | `/api/people/persons` | `/backend/customers/people` | `DataTable`, `CrudForm` | jw. | REQ-001, REQ-002 |
+| `/backend/people/persons/[id]` | karta osoby: dane, opieka i zgody, role, konto, grupy (f2), należności (f4) | `/api/people/persons/{id}`, `/guardianships`, `/role-assignments`, `POST …/account` | `/backend/customers/people/[id]` | `Page`, sekcje szczegółów, `CrudForm`, `DataTable` w zakładkach | jw. + „poniżej progu wieku” | REQ-001, REQ-002 |
+| `/backend/groups/groups` (+ `create`, `[id]`) | grupy, skład z historią | `/api/groups/groups`, `/api/groups/memberships` | `/backend/staff/teams` | `DataTable`, `CrudForm` | jw. | REQ-004, REQ-019 |
+| `/backend/groups/external-teams`, `/backend/groups/seasons` | słowniki przeciwników i sezonów | CRUD | `/backend/resources/resource-types` | `DataTable`, `CrudForm` | jw. | REQ-019, REQ-020 |
+| `/backend/activities/activities` (+ `create`, `[id]`) | aktywności; kreator RRULE z podglądem terminów i kolizji | `/api/activities/activities`, `POST …/preview` | `/backend/planner/availability-rulesets/create` | `CrudForm` z grupą „Powtarzanie”, `DataTable` podglądu | jw. + „brak terminów w regule” | REQ-005, REQ-018, REQ-020 |
+| `/backend/activities/occurrences` | terminy z filtrami; zakładki „do obsadzenia”, „nierozliczone”; wskazanie zastępcy | `/api/activities/occurrences`, `POST …/{id}/coach` | `/backend/customers/deals` (filtry, perspektywy) | `DataTable` (perspektywy), okno wyboru trenera | jw. | REQ-006, REQ-008 |
+| `/backend/activities/calendar` | kalendarz sekcji (koordynator) | `GET /api/activities/calendar?as=coordinator` | `/backend/calendar` | wspólna rodzina komponentów harmonogramu (V-8) | loading, empty, error | REQ-006 |
+| `/backend/activities/reports/coach-units` | raport jednostek i rozliczenie trenera; eksport CSV | `GET /api/activities/reports/coach-units?month=` | `/backend/staff/time-tracking/reports` | `DataTable` z eksportem | loading, empty, error, permission denied | REQ-008, REQ-021 |
+| `/backend/activities/policies` | polityki deklaracji | `/api/activities/attendance-policies` | `/backend/config/notifications` | `DataTable`, `CrudForm` (`pageContext: 'settings'`) | jw. | REQ-007 |
+| `/backend/communication/threads` (+ `[id]`), `/backend/communication/cases` | wątki i sprawy w zakresie | `/api/communication/threads` | `/backend/messages`, `/backend/messages/[id]` | `DataTable`, komponenty rodziny wiadomości | jw. + „sprawa — tylko odczyt” | REQ-009, REQ-010 |
+| `/backend/payments/fees`, `/discounts` | cenniki i zniżki | CRUD | `/backend/sales/channels` | `DataTable`, `CrudForm` | jw. | REQ-011 |
+| `/backend/payments/charges` (+ `[id]`), `/backend/payments/overdue` | należności, księgowanie wpłat, „Przyjmij gotówkę” (okno), perspektywa „Wpłaty gotówką”, zaległości, ręczne naliczenie okresu | `/api/payments/charges`, `POST …/{id}/payments`, `POST /api/payments/charges/generate` | `/backend/sales/orders`, `/backend/payment-gateways` | `DataTable`, `CrudForm`, `StatusBadge` | jw. | REQ-011, REQ-012 |
+| `/backend/facilities/calendar` | kalendarz obiektu: strefy, terminy, rezerwacje, zamknięcia; nowa rezerwacja z poziomu slotu; **„Ustaw dostępność do rezerwacji”** — okno hurtowego ustawiania (obiekty, dni ze skrótami, godziny lub siatka „różne godziny dla dni”, okres, zastąp/dopisz) i tabela tygodniowej dostępności z usuwaniem dnia | `GET /api/facilities/calendar`, `POST /api/facilities/rentals`, `POST /api/facilities/zone-rules/bulk` | `/backend/calendar` | rodzina harmonogramu (V-8), okno `CrudForm` (dni jako chipy ze skrótami, siatka dni w trybie „różne godziny”) | loading, empty, error (422 przy dniu), conflict | REQ-013, REQ-029 |
+| `/backend/facilities/rentals` (+ `create`, `[id]`) | rezerwacje, statusy, przesunięcie | `/api/facilities/rentals`, `POST …/{id}/cancel|confirm|move|no-show` | `/backend/sales/orders/[id]` | `DataTable`, `CrudForm`, `StatusBadge` | jw. | REQ-013 |
+| `/backend/facilities/zones`, `/closures`, `/rates` | strefy, zamknięcia, cennik | CRUD | `/backend/planner/availability-rulesets` | `DataTable`, `CrudForm` | jw. | REQ-013 |
+| `/backend/facilities/logs`, `/incidents`, `/bans`, `/maintenance` | dziennik, incydenty, zakazy, konserwacja | CRUD | `/backend/staff/leave-requests` | `DataTable`, `CrudForm`, załączniki | jw. | REQ-016, REQ-022 |
+| `/backend/facilities/reports/owner` | raport dla gminy + CSV | `GET /api/facilities/reports/owner?from=&to=` | `/backend/staff/time-tracking/reports/[id]` | sekcje KPI, `DataTable` | loading, empty, error | REQ-015 |
+| `/club` | „Dziś”: cztery kafle (kalendarz, wiadomości, obecność, płatności), przełącznik dzieci i kontekstu roli | `GET /api/activities/calendar?as=self`, liczniki z modułów | `/[orgSlug]/portal/dashboard` (układ kafli) | strona frontowa `requireAuth` + `requireFeatures: ['people.self']`, komponenty design systemu | loading, empty („Brak zajęć dziś”), error | REQ-002, REQ-006 |
+| `/club/calendar` | kalendarz tygodnia/miesiąca dla bieżącego kontekstu | jw. | `/backend/calendar` | rodzina harmonogramu (V-8) | loading, empty, error | REQ-006 |
+| `/club/occurrences/[id]` | szczegóły terminu, „Będzie / Nie będzie” dla każdego podopiecznego, decyzje `pending_guardian` | `GET …/{id}`, `POST /api/activities/attendance/declare`, `POST …/{id}/guardian-decision` | `/[orgSlug]/portal/tasks/[id]` | strona frontowa, przyciski design systemu | loading, error, conflict, „deklaracje zamknięte” | REQ-007 |
+| `/club/occurrences/[id]/attendance` | lista trenera: odhaczanie, zamknięcie terminu, zgłoszenie nieobecności, odwołanie | `GET/PUT /api/activities/occurrences/{id}/attendance` | `/backend/staff/my-availability` | lista z przełącznikami, `useConfirmDialog` | loading, empty, error, conflict | REQ-007, REQ-008 |
+| `/club/messages` (+ `[threadId]`) | wątki, odpowiedź, „Skopiuj tekst na grupę” | `/api/communication/threads` | `/backend/messages/[id]` | rodzina wiadomości | loading, empty, error | REQ-009 |
+| `/club/payments` | należności płatnika, wybór i płatność online | `GET /api/payments/my-charges`, `POST /api/payments/checkout` | `/[orgSlug]/portal/dashboard` | `DataTable` (zgodnie z regułą dla list w portalu), `StatusBadge` | loading, empty („Wszystko opłacone”), error, płatność anulowana | REQ-012 |
+| `/backend/payments/bank` (B-29) | import wyciągu (plik), przełącznik automatycznego księgowania, perspektywy Do potwierdzenia / Niedopasowane / Zaksięgowane / Pominięte; akcje Potwierdź, Zmień/Przypisz (płatnik z kodem i saldem), Pomiń (powód), Cofnij; historia importów | `POST /api/payments/bank-imports`, `GET /api/payments/bank-transactions`, `POST /api/payments/bank-transactions/{id}/confirm\|assign\|ignore\|undo` | `/backend/sales/orders` (lista z perspektywami), `/backend/payment-gateways` | `DataTable` z perspektywami, wgrywanie pliku, `StatusBadge`, okna `CrudForm`, `ProgressJob` dla dużych plików | loading, empty, error (nierozpoznane kolumny), success z podsumowaniem, conflict | REQ-030 |
+| `/club/cash` (M-15) | przyjęcie gotówki na telefonie (np. przed treningiem): płatnik, należności, kwota, potwierdzenie e-mail; lista „przyjęte dziś” z sumą do przekazania | `GET /api/payments/charges?payer=&status=open`, `POST /api/payments/cash` | `/[orgSlug]/portal/dashboard` | strona frontowa `requireAuth` + `payments.cash.record`, formularz design systemu | loading, empty, error (422 nadpłata), success | REQ-031 |
+| `/backend/payments/orders` (B-30) | lista zbiórek: sekcja i grupy, termin, status, zamówienia / dzieci, wartość, wpłacono, wydano | `GET /api/payments/order-campaigns` | `/backend/sales/orders` | `DataTable`, `StatusBadge` | loading, empty, error | REQ-032 |
+| `/backend/payments/orders/create`, `/[id]/edit` (B-31) | kreator formularza: sekcja i grupy, terminy, personalizacja, pytanie o uwagi, produkty z rozmiarami dziecięcymi i dorosłymi i cenami, komplet, „wymagana odpowiedź”; start od kopii poprzedniej zbiórki (w makiecie: szablon strojów Akademii); „Zapisz szkic” / „Zapisz i otwórz zbieranie” → tekst na Messengera | `POST /api/payments/order-campaigns`, `GET/PUT /api/payments/order-campaigns/{id}` | `ui.form-create`, `ui.form-edit` | `CrudForm` z powtarzalną grupą pól (produkty) | błędy per pole, 409 (zbiórka zamknięta, produkt w zamówieniach) | REQ-032 |
+| `/backend/payments/orders/[id]` (B-32) | zbiórka: etapy (szkic → zbieranie → zamknięta → zamówiona u dostawcy → dostarczona → zakończona), KPI, perspektywy Zamówienia / Zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki, CSV) / Bez zamówienia (przypomnienie); akcje: tekst na Messengera, gotówka, wydanie, przejście do należności | `GET /api/payments/order-campaigns/{id}`, `GET /api/payments/orders?campaignId=`, `GET …/{id}/summary?format=csv`, `POST …/{id}/open\|close\|mark-ordered\|mark-delivered\|complete`, `POST …/{id}/remind`, `GET …/{id}/share-text` | `/backend/sales/orders/[id]` | `DataTable` z perspektywami, `StatusBadge`, okna potwierdzeń | loading, empty, error, conflict | REQ-032 |
+| `/backend/payments/cash-custody` (B-33) | gotówka u przyjmujących (trenerzy, inne osoby): wpłaty z numerami KP i suma per osoba; „Przyjmij rozliczenie” (wybór wpłat) i historia rozliczeń | `GET /api/payments/cash-custody`, `GET/POST /api/payments/cash-handovers` | `/backend/sales/orders` | `DataTable`, okno `CrudForm` | loading, empty, conflict (wpłata już rozliczona) | REQ-033 |
+| `/club/orders`, `/club/orders/[campaignId]` (M-16, M-17) | lista zbiórek opiekuna; formularz per dziecko (komplet, produkty, nadruk z zajętymi numerami grupy, kontakt, uwagi, suma na żywo); podsumowanie z płatnością (online, przelew z kodem płatnika, gotówka u trenera), zmiana i anulowanie do terminu, status „do odbioru”; bez sesji: logowanie albo prośba o osobisty link | `GET /api/payments/order-campaigns/{id}/form`, `POST /api/payments/orders`, `PUT /api/payments/orders/{id}`, `POST /api/payments/orders/{id}/cancel`, `POST /api/payments/public/order-campaigns/{id}/link-request` | `/[orgSlug]/portal` | strona frontowa (`requireAuth` poza widokiem wejściowym z linku), formularz design systemu | loading, empty (brak dzieci w grupach), error, 409 zamknięte, 422 walidacja, success | REQ-032 |
+| `/club/o/[token]` (M-19) | formularz zamówienia z osobistego linku z e-maila, bez logowania; dzieci opiekuna z grup zbiórki; bez płatności online (przelew z kodem lub gotówka) | `GET /api/payments/order-links/{token}`, `POST /api/payments/order-links/{token}/orders` | — | strona frontowa `requireAuth: false` | 410 (wygasły link), jak M-17 | REQ-032 |
+| `/club/coach/orders` (M-18) | trener: zamówienia dzieci ze swoich grup (koordynator — z sekcji) z pozycjami, nadrukiem i statusem płatności; „Przyjmij gotówkę”, „Wydaj strój”, „Przypomnij opiekunom”, tekst z linkiem; „Gotówka u Ciebie” z listą KP | `GET /api/payments/orders?scope=coach`, `POST /api/payments/cash`, `POST /api/payments/orders/{id}/hand-over`, `POST /api/payments/order-campaigns/{id}/remind` | `/[orgSlug]/portal/dashboard` | strona frontowa `requireAuth` + `payments.orders.collect` | loading, empty, 403, 409 (przed dostawą), 422 (nadpłata) | REQ-033 |
+| `/club/profile`, `/club/wards/[personId]` | profil, zgody podopiecznych | `/api/people/me`, `/api/people/guardianships` | `/backend/profile` | `CrudForm` | jw. | REQ-002 |
+| `/club/facility` | dziś na obiekcie (animator): rezerwacje, dziennik, incydent | `/api/facilities/today`, `/api/facilities/logs`, `/api/facilities/incidents` | `/backend/staff/my-availability` | lista + okna `CrudForm` | loading, empty, error, conflict | REQ-013, REQ-016 |
+| `/club/link`, `/club/d/[token]` | prośba o osobisty link; deklaracja z linku bez logowania | `POST /api/activities/declaration-links`, `GET/POST /api/activities/declaration-links/{token}` | `/messages/view/[token]` | strona frontowa `requireAuth: false` | loading, error, wygasły link (410), sukces | REQ-017 |
+| `/p/[clubSlug]/places` | lista obiektów klubu z publicznym kalendarzem | `GET /api/facilities/public/{clubSlug}/places` | `/[orgSlug]/portal` (strona publiczna) | strona frontowa `requireAuth: false` | loading, empty, error, 404 | REQ-014, REQ-024 |
+| `/p/[clubSlug]/places/[placeSlug]` | publiczny kalendarz miesiąca; „Zgłoś rezerwację” przy slotach „do rezerwacji” (gdy włączone) | `GET …/places/{placeSlug}/schedule?month=`, `POST …/places/{placeSlug}/requests` | `/[orgSlug]/portal`; formularz — `/f/[slug]` (`forms`) | strona frontowa `requireAuth: false`, rodzina harmonogramu, formularz design systemu w oknie | loading, error, 404, miesiąc bez danych, slot już zgłoszony (409), wysłano — sprawdź e-mail | REQ-014, REQ-024 |
+| `/p/[clubSlug]/requests/verify/[token]` | potwierdzenie zgłoszenia linkiem z e-maila | `POST /api/facilities/public/requests/verify/{token}` | `/messages/view/[token]` | strona frontowa `requireAuth: false` | sukces („oczekuje na akceptację administratora”), wygasły link, slot zajęty w międzyczasie | REQ-024 |
+| `/p/[clubSlug]` | strona klubu: opis, kafle sekcji, link do obiektów | `GET /api/club_core/public/{clubSlug}` | `/[orgSlug]/portal` | strona frontowa `requireAuth: false` | loading, error, 404, „klub nie publikuje strony” | REQ-025 |
+| `/p/[clubSlug]/sections/[sectionSlug]` | strona sekcji: opis, zajęcia z harmonogramem, warunki, ceny, prowadzący, materiały, kontakt — tylko bloki włączone | `GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}` | `/[orgSlug]/portal` | strona frontowa `requireAuth: false`, sekcje i karty design systemu | loading, error, 404, sekcja bez publicznych grup | REQ-025, REQ-026 |
+| `/backend/club/publication` | konfiguracja publikacji: włącz stronę, bloki, zgłoszenia online | `GET/PUT /api/club_core/settings` (`publication`) | `/backend/directory/branding` | `CrudForm` (`pageContext: 'settings'`), przełączniki z opisem skutku | loading, error, conflict, success, permission denied | REQ-025 |
+| grupa „Strona publiczna” w formularzach sekcji (`/backend/club/sections/[id]/edit`), grupy (`/backend/groups/groups/[id]`) i miejsca | `is_public`, slug, opis publiczny, warunki, wiek od–do / poziom, kontakt, materiały (`attachments` z flagą publiczną), `accepts_online_requests` (miejsce) | CRUD modułów | `/backend/customers/people/[id]` (grupy pól) | `CrudForm` z `CollapsibleSection`; podgląd publiczny jako link | jw. | REQ-025, REQ-024 |
+| `/backend/facilities/requests` | kolejka zgłoszeń zewnętrznych: kolizje, zgodność z rejestrem zakazów, czas do wygaśnięcia; akceptuj / odrzuć z powodem | `GET /api/facilities/rentals?status=pending_approval`, `POST …/{id}/approve|reject` | `/backend/staff/leave-requests` (akceptacja wniosków) | `DataTable`, okno decyzji, `StatusBadge` | loading, empty („Brak zgłoszeń”), error, conflict, permission denied | REQ-024 |
+| `/club/places` (+ `[placeId]`) | kalendarz obiektów dla personelu; „Rezerwuj” (cel ogólny) lub „Rezerwuj dla grupy” (wydarzenie, turniej) | `GET /api/facilities/calendar`, `POST /api/facilities/internal-bookings`, `POST /api/activities/events` | `/backend/calendar` | strona frontowa `requireAuth` + `facilities.view`, rodzina harmonogramu, okno `CrudForm` | loading, empty, error, conflict (409 z listą kolizji), permission denied | REQ-023, REQ-027 |
+
+### UI architecture
+
+| Role | Navigation groups in order | Dashboard / injected widgets | Login-to-primary-task flow |
+|---|---|---|---|
+| Opiekun / uczestnik | `/club`: Dziś → Kalendarz → Wiadomości → Płatności → Profil | kafle „Dziś” | logowanie → `/club` → „Będzie” przy terminie (2 dotknięcia) |
+| Trener / instruktor | `/club`: Dziś (moje terminy) → Kalendarz → Obiekty → Wiadomości; przełącznik „jako trener / jako opiekun” | kafel „Moje dzisiejsze terminy” | logowanie → `/club` → termin → lista obecności (3 dotknięcia); logowanie → Obiekty → slot → „Rezerwuj” (3 dotknięcia) |
+| Gość | `/p/[clubSlug]`: Klub → Sekcje → Obiekty | — | strona klubu → obiekt → slot → „Zgłoś rezerwację” (3 kliknięcia + formularz + link z e-maila) |
+| Koordynator | backend: Klub → Ludzie → Zajęcia (Grupy, Aktywności, Terminy, Kalendarz, Raport jednostek) → Komunikacja | widżety „Terminy do obsadzenia”, „Nierozliczone terminy” (klik → zakładka listy terminów) | logowanie → pulpit → widżet → wskazanie zastępcy (3 kliknięcia) |
+| Animator | `/club/facility` + backend: Obiekt (Kalendarz, Rezerwacje, Dziennik, Incydenty) | widżet „Dziś na obiekcie” | logowanie → `/club/facility` → „Otwórz obiekt” |
+| Administrator / skarbnik | backend: Klub → Ludzie → Zajęcia → Komunikacja → Finanse (Cenniki, Zniżki, Należności, Zaległości) → Obiekt (+ Zgłoszenia do akceptacji, Strefy, Zamknięcia, Cennik, Zakazy, Konserwacja, Raport dla gminy) → Ustawienia (Publikacja strony klubu) | widżety „Zaległości”, „Należności bez płatnika”, „Zgłoszenia do akceptacji” (klik → kolejka) | logowanie → pulpit → „Zaległości” → księgowanie wpłaty (3 kliknięcia) |
+
+| Surface / widget | Empty state guidance and action | Responsive behavior | Keyboard / focus behavior |
+|---|---|---|---|
+| `/club` Dziś | „Dziś nie ma zajęć. Najbliższy termin: …” + link do kalendarza | jedna kolumna < 640 px; kafle 2×2 powyżej | kafle jako przyciski w kolejności czytania; komunikat po deklaracji ogłaszany przez `aria-live` |
+| Lista obecności trenera | „Grupa nie ma członków w dniu terminu” + link do składu (koordynator) | pełna szerokość, duże pola dotyku | spacja przełącza obecność, Ctrl/Cmd+Enter zamyka termin, Escape anuluje okno |
+| Widżet „Terminy do obsadzenia” | „Wszystkie terminy w najbliższych 14 dniach mają trenera” | karta pulpitu | wiersze jako linki |
+| Kalendarz obiektu | „Brak reguł stref — dodaj strefy, aby udostępnić rezerwacje” + przycisk | widok dnia na telefonie, tydzień na desktopie | strzałki zmieniają dzień/tydzień; slot otwiera okno rezerwacji |
+| Publiczny harmonogram | „W tym miesiącu obiekt nie ma opublikowanego harmonogramu” + telefon | widok listy dni na telefonie, siatka miesiąca powyżej | legenda stref czytelna bez koloru (wzór + etykieta) |
+
+### `/club` — Dziś
+
+```text
+┌──────────────────────────────────────────────┐
+│ Dzień dobry, Kasia      [Jaś ▾] [jako: opiekun ▾] │
+├──────────────────────────────────────────────┤
+│ ┌ Kalendarz ─────────┐ ┌ Wiadomości ────────┐ │
+│ │ Wt 17:00 Jaś       │ │ 2 nowe             │ │
+│ │ Boisko piłkarskie  │ │ „Zmiana godziny…”  │ │
+│ │ [Będzie][Nie będzie]│ └────────────────────┘ │
+│ └────────────────────┘ ┌ Płatności ─────────┐ │
+│ ┌ Obecność ──────────┐ │ 255 zł do 10.11    │ │
+│ │ Ola: mecz sob. —   │ │ [Zapłać]           │ │
+│ │ czeka na Ciebie    │ └────────────────────┘ │
+│ └────────────────────┘                         │
+└──────────────────────────────────────────────┘
+```
+
+- **Behavior:** kafle pokazują dziś i jutro dla wszystkich podopiecznych (lub wybranego); kafle wiadomości i płatności pojawiają się wraz z fazami 3 i 4 — do tego czasu nie są renderowane (bez pustych atrap). Przełącznik kontekstu widoczny tylko dla osób z więcej niż jedną rolą.
+- **Responsive and accessibility:** układ jednokolumnowy na telefonie; przyciski ≥ 44 px; status deklaracji ogłaszany przez `aria-live`.
+- **Localization:** przestrzeń `activities.club.today.*`, `people.club.*`; daty i godziny w strefie klubu, format `pl-PL`.
+- **Design-system and theming:** tokeny semantyczne, `StatusBadge` dla statusu deklaracji, tryb jasny i ciemny, brak kolorów zakodowanych na sztywno.
+
+### `/club/occurrences/[id]/attendance` — Lista obecności trenera
+
+```text
+┌──────────────────────────────────────────────┐
+│ ← Trening żaki · wt 12.11 17:00–18:30        │
+│ Boisko piłkarskie · trener: Piotr (zastępstwo) │
+├──────────────────────────────────────────────┤
+│ Zadeklarowani: 11 tak · 2 nie · 3 brak        │
+│ ☑ Adam K.        tak     [obecny ▾]           │
+│ ☐ Jaś N.         tak     [nieobecny ▾]        │
+│ ☑ Ola P.         brak    [spóźniony ▾]        │
+├──────────────────────────────────────────────┤
+│ [Zgłoś nieobecność] [Odwołaj]  [Zamknij termin]│
+└──────────────────────────────────────────────┘
+```
+
+- **Behavior:** lista = członkowie grupy w dniu terminu ∪ osoby z wierszami obecności; zapis zbiorczy z wersją terminu; „Zamknij termin” → `done` (potwierdzenie `useConfirmDialog`); konflikt wersji pokazuje wspólne okno konfliktu i odświeża listę bez utraty zaznaczeń w toku.
+- **Responsive and accessibility:** jedna kolumna; każdy wiersz ma etykietę z nazwiskiem; nawigacja klawiaturą w kolejności listy.
+- **Localization:** `activities.club.attendance.*`.
+- **Design-system and theming:** jak wyżej.
+
+### `/backend/activities/reports/coach-units` — Raport jednostek
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│ Raport jednostek            Miesiąc: [2026-11 ▾] [Eksport CSV] │
+│ Sekcja: [Akademia ▾]                                      │
+├──────────────────────────────────────────────────────────┤
+│ Trener   Planowe Oddane Przejęte Bilans Mecze Kwota      │
+│ Wojtek   12      1      0        11     2     1 990 zł   │
+│ Piotr    8       0      1        9      0     1 530 zł   │
+├──────────────────────────────────────────────────────────┤
+│ Nierozliczone terminy: 1 (link)                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+- **Behavior:** `DataTable` z filtrami miesiąca i sekcji; wiersz rozwija listę terminów składowych; kolumna „Kwota” tylko z `club_core.contracts.manage` (administrator), trener z `activities.reports.view_own` widzi wyłącznie swój wiersz bez cudzych kwot.
+- **Responsive and accessibility:** przewijanie poziome tabeli na wąskim ekranie; nagłówki kolumn jako `th`.
+- **Localization:** `activities.reports.*`; kwoty w `PLN`, `pl-PL`.
+- **Design-system and theming:** jak wyżej.
+
+### `/backend/facilities/calendar` — Kalendarz obiektu
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│ Kalendarz obiektu  Miejsce: [Boisko piłkarskie ▾]  [< tydz. >] │
+├──────────────────────────────────────────────────────────┤
+│        pn        wt          śr               czw         │
+│ 16:00  ░ogólnod. ▓Trening żaki ░ogólnodostępne ░          │
+│ 17:30  ▓Orliki   ▓Trening żaki ▒do rezerwacji  ▓Juniorzy  │
+│ 19:30  ▒rezerw.  ■KS Sąsiedzi  ▒do rezerwacji  ✕zamknięte │
+├──────────────────────────────────────────────────────────┤
+│ Legenda: ░ ogólnodostępne ▓ klub ▒ do rezerwacji ■ zarezerwowane ✕ zamknięte │
+└──────────────────────────────────────────────────────────┘
+```
+
+- **Behavior:** klik w slot „do rezerwacji” otwiera okno nowej rezerwacji z wyliczoną kwotą i terminami; kolizje i zakazy pokazywane przy polu przed zapisem; rezerwacje z flagą „do przeniesienia” wyróżnione i filtrowalne.
+- **Responsive and accessibility:** widok dnia na telefonie; legenda tekstowa niezależna od koloru.
+- **Localization:** `facilities.calendar.*`.
+- **Design-system and theming:** kolory stref z tokenów semantycznych.
+
+### `/p/[clubSlug]/places/[placeSlug]` — Publiczny kalendarz obiektu ze zgłoszeniem
+
+```text
+┌──────────────────────────────────────────────┐
+│ ← Obiekty klubu · Orlik 2024 · Boisko piłkarskie │
+│ Listopad 2026  [<] [>]   Tel.: 600 000 000    │
+├──────────────────────────────────────────────┤
+│ śr 13.11  16:00–17:30 ogólnodostępne          │
+│           17:30–19:30 zajęte przez klub       │
+│           19:30–21:00 do rezerwacji [Zgłoś rezerwację] │
+│ sob 16.11 09:00–12:00 zajęte przez klub       │
+│           12:00–13:30 zgłoszone — oczekuje    │
+│ czw 14.11 cały dzień zamknięte (śnieg)        │
+├──────────────────────────────────────────────┤
+│ Godziny otwarcia · Cennik · Regulamin (PDF)   │
+└──────────────────────────────────────────────┘
+┌ Zgłoś rezerwację (okno) ─────────────────────┐
+│ śr 13.11 19:30–21:00 · 1 × 90 min · ok. 150 zł │
+│ Organizacja / osoba [          ]             │
+│ Kontakt: imię i nazwisko, telefon, e-mail     │
+│ Kategoria [klub z gminy ▾]  Cel [        ]    │
+│ ☐ Akceptuję regulamin obiektu (wymagane)      │
+│ Zgłoszenie jest ważne dopiero po akceptacji   │
+│ administratora klubu.         [Wyślij]        │
+└──────────────────────────────────────────────┘
+```
+
+- **Behavior:** bez logowania; brak nazw najemców, grup i osób; stały adres do kodu QR; przycisk „Zgłoś rezerwację” tylko przy slotach `reservable_paid`, gdy klub włączył zgłoszenia online, a miejsce ma `accepts_online_requests`; po wysłaniu komunikat o linku w e-mailu; kwota oznaczona jako orientacyjna; odpowiedź kalendarza buforowana na krótko i unieważniana zapisami terminów, rezerwacji, wynajmów, stref i zamknięć.
+- **Responsive and accessibility:** lista dni na telefonie, siatka miesiąca na szerszym ekranie; strefy opisane tekstem.
+- **Localization:** `facilities.public.*`.
+- **Design-system and theming:** jak wyżej; strona działa w trybie jasnym i ciemnym.
+
+### `/p/[clubSlug]/sections/[sectionSlug]` — Publiczna strona sekcji
+
+```text
+┌──────────────────────────────────────────────┐
+│ KS Gwiazda › Sekcje › Basen                  │
+│ Nauka i doskonalenie pływania dla dzieci…    │
+├──────────────────────────────────────────────┤
+│ Zajęcia                                       │
+│ ┌ Basen — początkujący · 6–9 lat ───────────┐ │
+│ │ czw 16:00–17:00 · Basen zewnętrzny         │ │
+│ │ Warunki: strój, czepek, deklaracja         │ │
+│ │ Składka: 120 zł / mies. (rodzeństwo −30%)  │ │
+│ │ Prowadzi: Anna K.                          │ │
+│ │ Najbliższe: 14.11, 21.11 (odwołane), 28.11 │ │
+│ └────────────────────────────────────────────┘ │
+├──────────────────────────────────────────────┤
+│ Materiały: Regulamin sekcji (PDF) · Deklaracja │
+│ Kontakt: koordynatorka sekcji, basen@…, tel.   │
+└──────────────────────────────────────────────┘
+```
+
+- **Behavior:** bloki „Warunki”, „Składka”, „Prowadzi”, „Materiały”, „Kontakt” pojawiają się tylko wtedy, gdy klub je włączył; „Prowadzi” dodatkowo tylko za zgodą osoby (inaczej „Prowadzący sekcji”); harmonogram z reguł aktywności grupy, z najbliższymi terminami i odwołaniami; brak list uczestników.
+- **Responsive and accessibility:** karty grup w jednej kolumnie na telefonie; nagłówki hierarchiczne (`h1` sekcja, `h2` bloki, `h3` grupy); linki do plików z nazwą i formatem.
+- **Localization:** `club_core.public.*`, `groups.public.*`, `activities.public.*`, `payments.public.*`.
+- **Design-system and theming:** jak wyżej.
+
+Implementacja każdej powierzchni UI wywołuje `om-backend-ui-design` i przestrzega `.ai/guides/backend-ui.md`; strony publiczne i członkowskie dodatkowo `references/frontend-and-design-system.md`.
+
+## Data Models
+
+Wspólne kolumny każdej encji: `id` UUID (klucz główny), `tenant_id` i `organization_id` UUID (wymagane, tylko z zaufanego kontekstu, indeks złożony z najczęstszymi filtrami), `created_at`, `updated_at` (wersja blokady optymistycznej, zwracana jako `updatedAt`), `deleted_at` (miękkie usuwanie) — chyba że wiersz mówi inaczej. Kwoty jako liczby całkowite w groszach + waluta klubu. Tabele z prefiksem modułu. Brak relacji ORM między modułami: odwołania to skalarne ID, a tam, gdzie lista pokazuje nazwę z innego modułu — migawka nazwy aktualizowana subskrybentem zdarzenia. Pola oznaczone „szyfr.” trafiają do `encryption.ts` (`defaultEncryptionMaps`) i są czytane pomocnikami deszyfrującymi z oboma ID zakresu.
+
+### `club_core`
+
+| Encja / tabela | Pola (typ, wymagalność) | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `ClubSettings` / `club_core_club_settings` | `short_name` text; `timezone` text (IANA); `currency` char(3); `own_account_min_age` int (domyślnie 13, 13–18); `public_slug` text; `contact_phone` text?; `logo_attachment_id` uuid?; `public_description` text?; `publication` jsonb (`{ enabled, blocks: { description_schedule, conditions, prices, coaches, materials, contact, places_calendar, online_requests } }`, wszystkie domyślnie `false`) | unikalne `organization_id`; unikalne globalnie `public_slug` | nie | tworzone idempotentnie w `onTenantCreated`; bez usuwania |
+| `Section` / `club_core_sections` | `name` text; `description` text? (wewnętrzny); `logo_attachment_id` uuid? (puste = logo klubu); `is_active` bool; `is_public` bool; `public_slug` text?; `public_description` text? (markdown); `public_conditions` text?; `public_contact_name`, `public_contact_email`, `public_contact_phone` text? (dane służbowe podane do publikacji); materiały publiczne = `attachments` przypięte do sekcji z polem własnym `is_public` | (`organization_id`, `is_active`); unikalne (`organization_id`, `public_slug`) | nie (kontakt publikowany świadomie) | dezaktywacja zamiast usunięcia, gdy ma grupy; `is_public` wymaga `public_slug` |
+| `Place` / `club_core_places` | `parent_place_id` uuid?; `name`; `kind` enum; `surface` text? (słownik); `address` text?; `geo_lat`, `geo_lng` numeric?; `description`; `owner_institution_id` uuid?; `managed_by_club` bool; `is_external` bool; `capacity_groups` int (≥1, domyślnie 1); `public_slug` text?; `is_public_schedule` bool; `accepts_online_requests` bool; `regulations_attachment_id` uuid?; `contacts` jsonb (`{ role, name, phone }[]`); `opening_hours` jsonb (do czasu decyzji V-7); `is_active` | (`organization_id`, `parent_place_id`); unikalne (`organization_id`, `public_slug`) | `contacts` szyfr. | brak cykli; usunięcie zabronione, gdy ma terminy lub rezerwacje (dezaktywacja) |
+| `Institution` / `club_core_institutions` | `name`; `type` enum (`municipality`/`school`/`club`/`company`/`sponsor`/`other`); `address`; `contact_name`, `contact_phone`, `contact_email` text?; `bank_account` text?; `notes` | (`organization_id`, `type`) | kontakt, `bank_account`, `notes` szyfr. | miękkie usuwanie |
+| `Contract` / `club_core_contracts` | `party_type` enum (`person`/`institution`); `party_id` uuid; `kind` enum (`coach`/`facility_management`/`rental`/`grant`/`other`); `valid_from` date; `valid_to` date?; `terms` jsonb walidowany per `kind` (coach: `base_monthly`, `unit_rate`, `match_rate`, `travel_rate`; facility_management: `payment_deadline_days`, `auto_expire_unpaid` bool); `attachment_id` uuid? | (`organization_id`, `party_type`, `party_id`, `kind`) | `terms` szyfr. (stawki) | nakładające się aktywne umowy tego samego `kind` dla strony → 409 |
+
+### `people`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `Person` / `people_persons` | `first_name`, `last_name` text; `birth_date` date?; `pesel` text?; `pesel_hash` text?; `phone`, `email` text?; `photo_attachment_id` uuid?; `notes` text?; `user_id` uuid? (→ `auth:user`); `publish_name_consent_at` timestamptz? (zgoda na publikację imienia i nazwiska jako prowadzącego; cofnięcie = null); `is_active` | (`organization_id`, `last_name`); unikalne (`organization_id`, `pesel_hash`), unikalne (`organization_id`, `user_id`) | `first_name`, `last_name`, `pesel`, `phone`, `email`, `notes` szyfr.; `pesel_hash` = deterministyczny HMAC do wykrywania duplikatów | miękkie usuwanie; polecenie `people.persons.anonymize` czyści PII, zachowując ID dla obecności i należności; `pesel` w odpowiedzi tylko z `people.pesel.view` |
+| `Guardianship` / `people_guardianships` | `guardian_person_id`, `ward_person_id` uuid; `relation` enum (`parent`/`grandparent`/`legal_guardian`/`other`); `is_primary_payer` bool; `consents` jsonb; `valid_from` date; `valid_to` date? | (`organization_id`, `ward_person_id`), (`organization_id`, `guardian_person_id`); częściowo unikalne aktywne `is_primary_payer` per `ward_person_id` | `consents` — dane osobowe, bez szyfrowania (potrzebne filtry) | zakończenie przez `valid_to`, nie usunięcie |
+| `RoleAssignment` / `people_role_assignments` | `person_id` uuid; `role` enum (`club_admin`/`coordinator`/`coach`/`facility_operator`); `section_id` uuid?; `place_id` uuid?; `valid_from`, `valid_to` date | (`organization_id`, `person_id`, `role`) | nie | zakończenie przez `valid_to`; codzienne zadanie synchronizuje role `auth` po wygaśnięciu |
+
+### `groups`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `Season` / `groups_seasons` | `name`; `starts_on`, `ends_on` date | unikalne (`organization_id`, `name`) | nie | — |
+| `Group` / `groups_groups` | `section_id` uuid; `name`; `kind` enum; `age_category_entry_id` uuid?; `league` text?; `season_id` uuid?; `description`; `is_active`; `is_public` bool; `public_description` text?; `public_conditions` text?; `age_from`, `age_to` int?; `level_label` text? (np. „początkujący”) | (`organization_id`, `section_id`, `is_active`) | nie | pola drużyny dla `class_group` → 422 (walidator warunkowy po `kind`) |
+| `GroupMembership` / `groups_memberships` | `group_id`, `person_id` uuid; `role` enum (`participant`/`coach`/`assistant`); `valid_from` date; `valid_to` date? | (`organization_id`, `group_id`, `valid_to`), (`organization_id`, `person_id`) | nie | zakończenie przez `valid_to`; nakładanie → 409 |
+| `ExternalTeam` / `groups_external_teams` | `name`; `club_name`; `institution_id` uuid?; `contact` text?; `notes` | (`organization_id`, `name`) | `contact` szyfr. | miękkie usuwanie |
+
+### `activities`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `Activity` / `activities_activities` | `section_id`, `group_id` uuid; `name`; `type` enum; `default_place_id` uuid; `default_coach_person_id` uuid?; `opponent_external_team_id` uuid?; `invited_external_team_ids` uuid[] (turniej); `is_away` bool; `recurrence_rule` text?; `starts_on` date; `ends_on` date?; `default_start_time`, `default_end_time` time; `generated_until` date; `description`; `is_active` | (`organization_id`, `group_id`, `is_active`) | nie | zmiana reguły/godzin/miejsca/trenera domyślnego przelicza przyszłe nieodłączone terminy `planned` bez obecności |
+| `Occurrence` / `activities_occurrences` | `activity_id` uuid; `occurrence_date` date; `start_at`, `end_at` timestamptz; `place_id` uuid; `coach_person_id` uuid?; `status` enum (`planned`/`done`/`cancelled`); `cancel_reason` text?; `is_detached` bool; `needs_reschedule` bool; `score_home`, `score_away` int?; `notes` text? | unikalne (`activity_id`, `occurrence_date`) dla nieodłączonych; (`organization_id`, `place_id`, `start_at`); (`organization_id`, `coach_person_id`, `start_at`); (`organization_id`, `status`, `start_at`) | nie | `done` wymaga, by `end_at` minął lub potwierdzenia; `cancelled`/`done` niezmienne poza poleceniem administratora z powodem |
+| `SubstitutionEntry` / `activities_substitution_entries` | `occurrence_id` uuid; `previous_coach_person_id` uuid?; `new_coach_person_id` uuid?; `kind` enum (`absence_reported`/`substitute_assigned`/`coach_restored`); `reason` text?; `decided_by_person_id` uuid; `acting_role` text; `created_at` | (`organization_id`, `occurrence_id`) | `reason` szyfr. | tylko dopisywanie: bez `updated_at`, bez usuwania |
+| `Attendance` / `activities_attendances` | `occurrence_id`, `person_id` uuid; `declared` enum; `declared_by_person_id` uuid?; `declared_at`; `declaration_status` enum (`final`/`pending_guardian`/`rejected_by_guardian`); `guardian_decided_at`; `actual` enum?; `marked_by_person_id` uuid?; `marked_as_role` text?; `source` enum (`app`/`link`/`staff`) | unikalne (`occurrence_id`, `person_id`); (`organization_id`, `declaration_status`) | nie | upsert z wersją; zmiana deklaracji do `start_at` |
+| `AttendancePolicy` / `activities_attendance_policies` | `scope` enum (`club`/`group`/`activity_type`); `group_id` uuid?; `activity_type` enum?; `minor_declaration_mode` enum; `confirm_timeout_hours` int; `default_after_timeout` enum (`declared`/`rejected`) | unikalne (`organization_id`, `scope`, `group_id`, `activity_type`) | nie | domyślne polityki zasiewane w `seedDefaults` |
+| `OccurrenceSupervisor` / `activities_occurrence_supervisors` | `occurrence_id`, `person_id` uuid; `note` text? | unikalne (`occurrence_id`, `person_id`) | nie | — |
+| `DeclarationToken` / `activities_declaration_tokens` | `token_hash` text; `guardian_person_id` uuid; `occurrence_id` uuid; `expires_at` timestamptz; `used_count` int; `last_used_at`; `created_at` | unikalne `token_hash`; (`organization_id`, `occurrence_id`) | token przechowywany tylko jako SHA-256 | wygasa z `end_at` terminu; bez edycji; czyszczony zadaniem |
+
+### `communication`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `Thread` / `communication_threads` | `scope_type` enum; `scope_id` uuid?; `section_id` uuid? (migawka zakresu do uprawnień); `subject` text; `author_person_id` uuid; `is_case` bool; `case_opened_at`; `case_opened_by_person_id` uuid?; `last_message_at` | (`organization_id`, `scope_type`, `scope_id`); (`organization_id`, `is_case`) | `subject` szyfr. | `is_case` tylko false → true; wątek sprawy bez usuwania |
+| `ThreadMessage` / `communication_thread_messages` | `thread_id` uuid; `message_id` uuid (→ `messages:message`); `author_person_id` uuid; `acting_role` text; `recipient_count` int; `created_at` | (`organization_id`, `thread_id`, `created_at`) | treść w `messages` (szyfr. po stronie `messages`) | tylko dopisywanie; plan awaryjny DD-16 dodaje tu `body` szyfr. |
+
+### `payments`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `Fee` / `payments_fees` | `name`; `amount` int; `period` enum; `group_id` uuid? XOR `activity_id` uuid?; `due_day` int (dla miesięcznych); `valid_from` date; `valid_to` date? | (`organization_id`, `group_id`), (`organization_id`, `activity_id`) | nie | zmiana kwoty nie zmienia wystawionych należności |
+| `DiscountRule` / `payments_discount_rules` | `name`; `kind` enum (`sibling`/`custom`); `percent` numeric? XOR `amount` int?; `conditions` jsonb; `valid_from`, `valid_to` | (`organization_id`, `kind`) | nie | — |
+| `Charge` / `payments_charges` | `source_type` enum (`fee`/`rental`/`order`/`manual`); `source_id` uuid?; `person_id` uuid?; `payer_institution_id` uuid?; `payer_person_id` uuid?; `payer_missing` bool; `period_label` text?; `description` text; `amount`, `discount_amount` int; `discount_rule_id` uuid?; `due_date` date; `payee` enum (`club`/`owner_institution`); `payee_institution_id` uuid?; `status` enum | unikalne (`source_id`, `person_id`, `period_label`) dla `fee`; (`organization_id`, `payer_person_id`, `status`); (`organization_id`, `status`, `due_date`) | `description` szyfr. | anulowanie i przepadek przez polecenia; bez twardego usuwania |
+| `Payment` / `payments_payments` | `charge_id` uuid; `amount` int; `method` enum; `paid_at` timestamptz; `bank_transaction_id` uuid?; `collected_by_person_id` uuid? (gotówka); `receipt_number` text? (unikalny w klubie); `reference` text?; `gateway_transaction_id` uuid?; `recorded_by_person_id` uuid?; `cash_handover_id` uuid? (rozliczenie gotówki u przyjmującego) | unikalne (`gateway_transaction_id`, `charge_id`); (`organization_id`, `charge_id`) | `reference` szyfr. | korekta = polecenie `payments.payments.reverse` (wpis odwrotny), bez edycji |
+| `PayerRef` / `payments_payer_refs` | `person_id` uuid; `code` text | unikalne (`organization_id`, `person_id`), unikalne (`organization_id`, `code`) | nie | nadawany przy pierwszej należności płatnika; niezmienny |
+| `BankImport` / `payments_bank_imports` | `attachment_id` uuid (plik w prywatnej partycji `attachments`); `format` enum (`csv`/`mt940`); `column_profile` jsonb? (mapowanie kolumn CSV); `imported_by_person_id` uuid; `total`, `booked`, `suggested`, `unmatched`, `skipped` int; `created_at` | (`organization_id`, `created_at`) | plik zawiera dane osób trzecich — dostęp tylko `payments.bank.import` | bez edycji; usunięcie importu tylko bez zaksięgowanych pozycji |
+| `BankTransaction` / `payments_bank_transactions` | `import_id` uuid; `booked_on` date; `amount` int (grosze); `counterparty_name`, `counterparty_account`, `title` text; `tx_hash` text; `status` enum (`booked`/`suggested`/`unmatched`/`ignored`); `payer_person_id` uuid?; `allocation` jsonb (`{ charge_id, amount }[]`); `match_reason` text; `auto_booked` bool; `decided_by_person_id` uuid?; `decided_at` | unikalne (`organization_id`, `tx_hash`); (`organization_id`, `status`) | `counterparty_name`, `counterparty_account`, `title` szyfr. | zmiany statusu wyłącznie przez polecenia; cofnięcie usuwa powiązane wpłaty |
+| `Checkout` / `payments_checkouts` | `payer_person_id` uuid; `charge_ids` uuid[]; `amount` int; `gateway_transaction_id` uuid?; `status` enum (`created`/`completed`/`failed`/`expired`) | unikalne `gateway_transaction_id` | nie | zamknięcie przez subskrybenta zdarzeń bramki |
+| `OrderCampaign` / `payments_order_campaigns` | `name`; `description` text; `section_id` uuid; `group_ids` uuid[]; `closes_on`, `payment_due_on` date; `status` enum (`draft`/`open`/`closed`/`ordered`/`delivered`/`completed`); `ask_print_name`, `ask_print_number` bool; `notes_label` text; `supplier_name` text?; `created_by_person_id` uuid | (`organization_id`, `status`) | nie | przejścia przez polecenia; `payment_due_on ≥ closes_on`; edycja tylko `draft`/`open` |
+| `OrderProduct` / `payments_order_products` | `campaign_id` uuid; `name`; `kind` enum (`item`/`set`); `component_product_ids` uuid[] (dla `set`); `sizes_child`, `sizes_adult` text[]; `price_child` int; `price_adult` int?; `required_answer` bool; `sort` int | (`campaign_id`, `sort`) | nie | najwyżej jeden `set`; usunięcie użytego w zamówieniach → 409 |
+| `Order` / `payments_orders` | `campaign_id`, `participant_person_id`, `ordered_by_person_id` uuid; `contact_email`, `contact_phone`; `print_name` text?; `print_number` int?; `notes` text?; `status` enum (`submitted`/`cancelled`); `charge_id` uuid; `submitted_via` enum (`app`/`email_link`); `handed_over_at` timestamptz?; `handed_over_by_person_id` uuid? | unikalne (`campaign_id`, `participant_person_id`) dla `submitted`; unikalność numeru w grupie sprawdzana w poleceniu | `contact_email`, `contact_phone`, `notes` szyfr. | zmiana i anulowanie do `closes_on`; wydanie od `delivered` |
+| `OrderLine` / `payments_order_lines` | `order_id`, `product_id` uuid; `size` text?; `component_sizes` jsonb? (`{ product_id: size }` dla kompletu); `unit_price` int | (`order_id`) | nie | cena zapisana w chwili zamówienia |
+| `OrderLink` / `payments_order_links` | `campaign_id`, `guardian_person_id` uuid; `token_hash` text; `expires_at` (koniec `closes_on`) | unikalne `token_hash` | SHA-256 | jak `activities_declaration_tokens` (DD-17) |
+| `CashHandover` / `payments_cash_handovers` | `number` text (`RG/RRRR/MM/NNN`); `collector_person_id`, `received_by_person_id` uuid; `amount` int; `payment_ids` uuid[]; `created_at` | unikalne (`organization_id`, `number`) | nie | bez edycji; korekta wpisem odwrotnym |
+
+### `facilities`
+
+| Encja / tabela | Pola | Indeksy i unikalność | Wrażliwe | Cykl życia i walidacja |
+|---|---|---|---|---|
+| `ZoneRule` / `facilities_zone_rules` | `place_id` uuid; `weekdays` int[] (1–7); `time_from`, `time_to` time; `zone` enum; `priority` int; `source` enum (`regulations`/`availability`); `valid_from` date; `valid_to` date? | (`organization_id`, `place_id`) | nie | nakładanie z równym priorytetem → 409 |
+| `Closure` / `facilities_closures` | `place_id` uuid; `starts_at`, `ends_at` timestamptz; `reason` enum; `note` text? | (`organization_id`, `place_id`, `starts_at`) | nie | utworzenie oznacza kolidujące terminy (`needs_reschedule`) i rezerwacje |
+| `RentalRate` / `facilities_rental_rates` | `place_id` uuid; `renter_category` enum (`municipal_club`/`municipal_club_winter_lighting`/`external_commercial`); `price_per_90`, `price_per_60` int?; `season_from`, `season_to` text (MM-DD)?; `includes_lighting` bool; `valid_from`, `valid_to` | (`organization_id`, `place_id`, `renter_category`) | nie | — |
+| `Rental` / `facilities_rentals` | `place_id` uuid; `renter_type` enum (`institution`/`person`/`unregistered`); `renter_id` uuid? (null dla zgłoszenia online, dopóki administrator nie przypisze lub nie utworzy instytucji/osoby przy akceptacji); `renter_display_name` text (z formularza); `renter_category` enum; `contact_name`, `contact_phone`, `contact_email` text; `purpose` text?; `requested_via` enum (`phone`/`email`/`in_person`/`online_form`); `starts_at`, `ends_at` timestamptz; `units` int; `rate_id` uuid; `amount` int; `charge_id` uuid? (tworzona przy akceptacji / wpisie personelu); `status` enum (`pending_verification`/`pending_approval`/`requested`/`confirmed`/`done`/`rejected`/`expired`/`superseded`/`cancelled_free`/`cancelled_late`/`no_show`); `verification_token_hash` text?; `verification_expires_at`; `email_verified_at`; `hold_expires_at` timestamptz?; `decided_by_person_id` uuid?; `decided_at`; `decision_reason` text?; `entry_ban_match` bool (podpowiedź dla administratora); `cancellation_deadline`, `payment_deadline` timestamptz?; `regulations_accepted_at`, `regulations_accepted_via` (`online_form`/`phone`/`email`/`in_person`); `needs_reschedule` bool; `notes` | (`organization_id`, `place_id`, `starts_at`); (`organization_id`, `status`, `hold_expires_at`); unikalne `verification_token_hash` | `renter_display_name`, `contact_*`, `purpose`, `decision_reason`, `notes` szyfr.; token tylko jako SHA-256 | przejścia statusów tylko przez polecenia; zgłoszenia `pending_verification` niepotwierdzone w 1 h są usuwane zadaniem (nie zawierają decyzji ani pieniędzy) |
+| `InternalBooking` / `facilities_internal_bookings` | `place_id` uuid; `starts_at`, `ends_at` timestamptz; `section_id` uuid; `purpose` text; `booked_by_person_id` uuid; `acting_role` text; `status` enum (`confirmed`/`cancelled`); `cancelled_by_person_id` uuid?; `cancel_reason` text? | (`organization_id`, `place_id`, `starts_at`); (`organization_id`, `booked_by_person_id`) | nie | tworzona od razu jako `confirmed`; anulowanie przez polecenie; widoczna dla personelu z celem i rezerwującym |
+| `FacilityLog` / `facilities_logs` | `place_id` uuid; `log_date` date; `operator_person_id` uuid; `opened_at`, `closed_at`; `condition_before`, `condition_after` text; `groups_present` jsonb (`{ rental_id|occurrence_id, headcount, adult_supervisor_present }[]`); `remarks` | unikalne (`place_id`, `log_date`) | `remarks` szyfr. | edycja do końca następnego dnia, potem tylko administrator |
+| `Incident` / `facilities_incidents` | `place_id` uuid; `occurred_at`; `reported_by_person_id` uuid; `kind` enum; `description` text; `involved` jsonb; `action_taken` enum[]; `thread_id` uuid?; załączniki przez `attachments` | (`organization_id`, `place_id`, `occurred_at`) | `description`, `involved` szyfr. | bez usuwania (dowód, §6) |
+| `EntryBan` / `facilities_entry_bans` | `place_id` uuid; `subject_type` enum; `subject_id` uuid; `starts_on` date; `ends_on` date?; `reason` text; `incident_id` uuid?; `issued_by_person_id` uuid; `revoked_at`? | (`organization_id`, `subject_type`, `subject_id`) | `reason` szyfr. | odwołanie przez `revoked_at`, bez usuwania |
+| `MaintenanceTask` / `facilities_maintenance_tasks` | `place_id` uuid; `kind` enum; `responsible` enum (`club`/`owner`); `due_date` date; `done_at`?; `cost` int?; `notes` | (`organization_id`, `place_id`, `due_date`) | nie | Could — może wypaść bez wpływu na resztę fazy |
+
+Migracje: jedna migracja na moduł na fazę, generowana `yarn db:generate`, przeglądana i zapisana ze snapshotem modułu; `yarn db:migrate` tylko po zgodzie. Zmiany po pierwszym wdrożeniu — wyłącznie migracje korygujące.
+
+## API, Command, and Error Contracts
+
+Wszystkie trasy CRUD przez `makeCrudRoute` (per-metodowe `metadata` z `requireAuth` i `requireFeatures`, osobny eksport `openApi`, `indexer`, filtr zakresu po `organizationId`), zapisy przez polecenia (`commands/*.ts`) z audytem i cofaniem tam, gdzie ma sens. Aktualizacje i usunięcia wymagają wersji (`updatedAt`) i zwracają 409 przy konflikcie. Trasy akcji to trasy poleceń z `metadata`, schematem Zod i `openApi`, uruchamiające strażników mutacji przed zapisem i efekty po zatwierdzeniu transakcji.
+
+| Method / command | Path / ID | Auth and feature gate | Input | Success response / event | Errors and concurrency | Requirement IDs |
+|---|---|---|---|---|---|---|
+| CRUD | `/api/club_core/sections`, `/places`, `/institutions`, `/contracts`; `GET/PUT /api/club_core/settings` | auth + `club_core.view` / `club_core.manage` (`contracts` — `club_core.contracts.manage`; pole `publication` — `club_core.publication.manage`; pola publiczne sekcji — `club_core.sections.public_content` w zakresie sekcji) | schematy encji | `{ items, totalCount }` / 201; `club_core.{entity}.created|updated|deleted` | 400, 403, 404, 409 (wersja, cykl, aktywne zależności), 422 | REQ-003 |
+| CRUD | `/api/people/persons`, `/guardianships`, `/role-assignments` | auth + `people.view` / `people.manage` / `people.roles.manage` + zakres | schematy encji; `pesel` tylko z `people.pesel.view` | `people.person.*`, `people.guardianship.*`, `people.role_assignment.*` | 409 (PESEL, drugi płatnik, wersja), 422 (brak zakresu roli) | REQ-001, REQ-002 |
+| `POST` / `people.persons.create_account` | `/api/people/persons/{id}/account` | auth + `people.accounts.manage` | `{ email }` | 201 `{ userId }`; `people.person.account_created`; e-mail ustawienia hasła przez `auth` | 409 (osoba ma konto, e-mail zajęty), 422 `account_age_below_threshold` | REQ-001, REQ-002 |
+| `GET` | `/api/people/me` | auth + `people.self` | — | `{ person, wards[], roles[], contexts[] }` | 404 gdy użytkownik bez osoby (UI: „Konto niepowiązane z osobą — skontaktuj się z klubem”) | REQ-001 |
+| CRUD | `/api/groups/groups`, `/memberships`, `/seasons`, `/external-teams` | auth + `groups.view` / `groups.manage` + zakres sekcji | schematy | `groups.group.*`, `groups.membership.*` | 409 (nakładanie członkostwa, wersja) | REQ-004, REQ-019, REQ-020 |
+| CRUD + `POST` | `/api/activities/activities`; `/api/activities/activities/preview` | auth + `activities.manage` + zakres | aktywność z RRULE | 201 + `activities.activity.created`, `activities.occurrence.generated` (zbiorczo) | 409 `occurrence_place_conflict` (lista), 422 RRULE | REQ-005, REQ-018 |
+| `POST` / `activities.events.create` | `/api/activities/events` | auth + `activities.events.create` + grupa w `coached_group_ids` (lub sekcja w `section_ids`) | `{ groupId, type: tournament|other, name, placeId, startsAt, endsAt, invitedExternalTeamIds? }` | 201 aktywność jednorazowa + termin; `activities.activity.created` | 403 (grupa spoza zakresu), 409 kolizja (w fazie 5 przez `occupancyService`) | REQ-027 |
+| `GET`, `PATCH` | `/api/activities/occurrences`, `/{id}` | auth + `activities.view` (lista w zakresie) / `activities.manage` (edycja → `is_detached`) | filtry: `status`, `unassigned`, `unsettled`, `from`, `to`, `sectionId`, `groupId` | lista; `activities.occurrence.updated` | 409 wersja/kolizja | REQ-005, REQ-006 |
+| `POST` / `activities.occurrences.cancel` | `/api/activities/occurrences/{id}/cancel` | auth + `activities.coach` (własny termin) lub `activities.manage` | `{ reason }` + wersja | 200; `activities.occurrence.cancelled` | 409 (`done`, wersja) | REQ-005, REQ-009 |
+| `POST` / `activities.occurrences.report_absence` | `/api/activities/occurrences/{id}/absence` | auth + `activities.coach` (trener terminu) | `{ reason? }` | `activities.occurrence.coach_unassigned` | 409 wersja | REQ-008 |
+| `POST` / `activities.occurrences.assign_coach` | `/api/activities/occurrences/{id}/coach` | auth + `activities.manage` + zakres sekcji | `{ coachPersonId, reason? }` | `activities.occurrence.coach_changed` | 409 (kolizja trenera w tym czasie, wersja) | REQ-008 |
+| `GET`, `PUT` / `activities.attendance.mark` | `/api/activities/occurrences/{id}/attendance` | auth + `activities.coach` (trener terminu) lub `activities.manage` | `{ entries: [{ personId, actual }], complete?: bool }` + wersja terminu | lista; `activities.attendance.marked`, przy `complete` `activities.occurrence.completed` | 409 (`cancelled`, wersja), 403 | REQ-007, REQ-008 |
+| `POST` / `activities.attendance.declare` | `/api/activities/attendance/declare` | auth + `activities.attendance.declare` + zakres (self/podopieczny) lub `activities.coach` | `{ occurrenceId, personId, declared }` | `{ declarationStatus }`; `activities.attendance.declared` | 403 (zakres, `guardian_only`), 409 `declaration_closed` | REQ-007 |
+| `POST` / `activities.attendance.guardian_decide` | `/api/activities/attendance/{id}/guardian-decision` | auth + opiekun podopiecznego | `{ approve: bool }` | `activities.attendance.guardian_decided` | 409 (nie `pending_guardian`) | REQ-007 |
+| `GET` | `/api/activities/calendar` | auth + `people.self` lub `activities.view` | `{ from, to, as: self|guardian|coach|coordinator, personId? }` | `{ items: [{ occurrence, groupName, placeName, myDeclarations[] }] }` | 400 (zakres > 62 dni), 403 (`as` bez prawa) | REQ-006 |
+| `GET` | `/api/activities/reports/coach-units` | auth + `activities.reports.view` (zakres sekcji) lub `activities.reports.view_own` | `{ month, sectionId?, format?: csv }` | wiersze per trener: planowe, oddane, przejęte, bilans, mecze, wyjazdy, kwota (tylko z `club_core.contracts.manage`) | 400 miesiąc | REQ-008, REQ-021 |
+| CRUD | `/api/activities/attendance-policies` | auth + `activities.manage` | schemat | `activities.attendance_policy.*` | 409 duplikat zakresu | REQ-007 |
+| `POST` | `/api/activities/declaration-links` | brak auth, limit żądań | `{ email, occurrencePublicRef }` | zawsze 202 (bez enumeracji); e-mail z linkiem, jeśli e-mail należy do opiekuna lub uczestnika terminu | 429 | REQ-017 |
+| `GET`, `POST` | `/api/activities/declaration-links/{token}` | brak auth; zakres z rekordu tokenu | `POST { personId, declared }` | `GET` → termin + podopieczni z tokenu; `POST` → jak deklaracja (`source = link`) | 404/410 (nieznany/wygasły), 403 (osoba spoza tokenu), 409 `declaration_closed`, 429 | REQ-017 |
+| `GET`, `POST` / `communication.threads.create` | `/api/communication/threads` | auth + `communication.view` / `communication.post` + zakres | `{ scopeType, scopeId, subject, body }` | 201; `communication.thread.created`; wiadomość w `messages` + e-mail | 403 zakres; 502→202 z flagą przy błędzie e-mail (ponowienie workerem) | REQ-009 |
+| `POST` / `communication.threads.reply` | `/api/communication/threads/{id}/replies` | auth + uczestnik wątku | `{ body }` | `communication.message.posted` | 403 | REQ-009 |
+| `POST` / `communication.threads.mark_case` | `/api/communication/threads/{id}/case` | auth + `communication.cases.manage` + zakres sekcji | — | `communication.case.opened` | 409 (już sprawa) | REQ-010 |
+| `GET` | `/api/communication/share-text` | auth + `communication.post` | `{ occurrenceId | threadId }` | `{ text, url }` | 403 | REQ-009 |
+| CRUD | `/api/payments/fees`, `/discount-rules` | auth + `payments.manage` | schematy | `payments.fee.*` | 422 (XOR) | REQ-011 |
+| `GET` | `/api/payments/charges`, `/overdue`; `/api/payments/my-charges` | `payments.view` / `payments.view_own` (płatnik, tylko osoba pełnoletnia) | filtry | lista | 403 (w tym niepełnoletni uczestnik z kontem) | REQ-002, REQ-011, REQ-012 |
+| `POST` / `payments.charges.generate` | `/api/payments/charges/generate` | auth + `payments.manage` | `{ period: 'YYYY-MM' }` | `{ created, skipped, payerMissing }`; `payments.charge.created` (zbiorczo) | idempotentne; 409 gdy generowanie w toku | REQ-011 |
+| `POST` / `payments.charges.cancel` | `/api/payments/charges/{id}/cancel` | auth + `payments.manage` | `{ reason }` + wersja | `payments.charge.cancelled` | 409 (ma wpłaty) | REQ-011 |
+| `POST` / `payments.payments.record` | `/api/payments/charges/{id}/payments` | auth + `payments.manage` | `{ amount, method: cash|transfer, paidAt, reference? }` | `payments.payment.recorded` | 422 nadpłata; 409 wersja | REQ-012 |
+| `POST` / `payments.bank_imports.create` | `/api/payments/bank-imports` | auth + `payments.bank.import` | plik (przez `attachments`), `format`, `columnProfile?` | 201 `{ importId, total, booked, suggested, unmatched, skipped }`; `payments.bank_import.completed`; duże pliki jako `ProgressJob` | 422 (nierozpoznany format lub kolumny), 413 (rozmiar) | REQ-030 |
+| `GET`, `POST` | `/api/payments/bank-transactions`, `/{id}/confirm`, `/{id}/assign`, `/{id}/ignore`, `/{id}/undo` | auth + `payments.bank.import` | `assign { payerPersonId }`, `ignore { reason }` + wersja | lista z filtrem `status`; zapis wpłat `transfer` z `bank_transaction_id`; `payments.payment.recorded` | 409 (zmieniony status, wersja), 422 (płatnik bez otwartych należności) | REQ-030 |
+| `POST` / `payments.cash.record` | `/api/payments/cash` | auth + `payments.cash.record`, albo `payments.orders.collect` wyłącznie dla należności `order` dzieci z zakresu trenera (DD-31) | `{ payerPersonId, chargeIds[], amount, paidOn, notify }` | 201 `{ receiptNumber, payments[] }`; `payments.payment.recorded`; e-mail potwierdzenia | 422 (kwota > wybrane należności, data z przyszłości), 409 (należność już opłacona) | REQ-031 |
+| CRUD | `/api/payments/order-campaigns` (+ `/{id}`) | auth + `payments.orders.manage` | zbiórka z produktami (zagnieżdżone) + wersja | 201/200; `payments.order_campaign.created\|updated` | 422 (pola, komplet < 2 produkty, `payment_due_on < closes_on`), 409 (zbiórka zamknięta, produkt w zamówieniach, wersja) | REQ-032 |
+| `POST` / `payments.order_campaigns.transition` | `/api/payments/order-campaigns/{id}/open\|close\|mark-ordered\|mark-delivered\|complete` | auth + `payments.orders.manage` | wersja | 200; `payments.order_campaign.status_changed` | 409 (przejście spoza kolejności) | REQ-032 |
+| `GET`, `POST` | `/api/payments/order-campaigns/{id}/summary`, `/share-text`, `/remind` | auth + `payments.orders.manage`; `share-text` i `remind` także `payments.orders.collect` w zakresie | `format=csv`; `remind { groupId? }` | zestawienie (sztuki per produkt i rozmiar, nadruki); tekst z linkiem; e-maile do opiekunów bez zamówienia | 403 | REQ-032 |
+| `GET` | `/api/payments/order-campaigns/{id}/form` | auth + `payments.orders.place` | — | produkty, dzieci wywołującego z grup zbiórki, zajęte numery w ich grupach, istniejące zamówienia | 404 (szkic, spoza zakresu) | REQ-032 |
+| `POST`, `PUT` / `payments.orders.place` | `/api/payments/orders`, `/api/payments/orders/{id}`, `/{id}/cancel` | auth + `payments.orders.place`; dziecko = podopieczny wywołującego (albo on sam, pełnoletni) w grupach zbiórki | `{ campaignId, participantPersonId, setSelected, choices: { productId: size \| 'none' \| 'yes' }, printName?, printNumber?, contactEmail, contactPhone, notes? }` + wersja | 201 `{ orderId, chargeId, total }`; należność `order` w tej samej transakcji; `payments.order.submitted\|updated\|cancelled` | 422 (brak odpowiedzi, komplet bez rozmiaru, numer zajęty, puste zamówienie), 409 (`campaign_closed`, kwota poniżej wpłat, anulowanie z wpłatą), 403 | REQ-032 |
+| `POST`; `GET`, `POST` | `/api/payments/public/order-campaigns/{id}/link-request`; `/api/payments/order-links/{token}` (+ `/orders`) | publiczne z limitem żądań / token | `{ email }`; jak `POST /api/payments/orders` | zawsze 202; e-mail z linkiem tylko na adres opiekuna dziecka z grup otwartej zbiórki | 410 (wygasły link, zbiórka zamknięta) | REQ-032 |
+| `GET`, `POST` | `/api/payments/orders?scope=coach`, `/api/payments/orders/{id}/hand-over` | auth + `payments.orders.collect` (dzieci z prowadzonych grup i sekcji koordynatora) albo `payments.orders.manage` | `hand-over { confirmUnpaid }` | lista; `payments.order.handed_over` | 409 (przed `delivered`, nieopłacone bez `confirmUnpaid`), 403 | REQ-032, REQ-033 |
+| `GET`, `POST` / `payments.cash_handovers.create` | `/api/payments/cash-custody`, `/api/payments/cash-handovers` | auth + `payments.manage` | `{ collectorPersonId, paymentIds[] }` | 201 `{ number, amount }`; `payments.cash_handover.created` | 409 (wpłata rozliczona lub innego przyjmującego) | REQ-033 |
+| `POST` / `payments.checkout.create` | `/api/payments/checkout` | auth + `payments.pay_online` + płatnik należności | `{ chargeIds[] }` | `{ redirectUrl }`; `payments_checkouts` | 403 (cudza należność), 409 (należność nie `open`), 422 (`payer_missing`), 502 (bramka) | REQ-012 |
+| subskrybent | `payment_gateways.payment.captured|failed|cancelled`, `payment_gateways.session.expired` | system | zdarzenie bramki | wpłaty `online` + `payments.payment.recorded`; zamknięcie `payments_checkouts` | idempotentny po `gateway_transaction_id` | REQ-012 |
+| CRUD | `/api/facilities/zone-rules`, `/closures`, `/rental-rates`, `/logs`, `/incidents`, `/entry-bans`, `/maintenance-tasks` | auth + `facilities.manage` / `facilities.log.write` / `facilities.incidents.manage` + zakres miejsca | schematy | `facilities.{entity}.*` | 409 (nakładanie stref, wersja) | REQ-013, REQ-016, REQ-022 |
+| `POST` / `facilities.zone_rules.bulk_upsert` | `/api/facilities/zone-rules/bulk` | auth + `facilities.manage` | `{ placeIds[], mode: 'replace' \| 'add', validFrom, validTo?, windows: [{ weekday, from, to }] }` (jedne godziny dla wielu dni albo osobne dla każdego dnia) | 200 `{ created, removed, warnings: { clubOccurrencesInWindows, pendingRequestsOutside } }`; `facilities.zone_rules.bulk_updated` | 422 per dzień (kolejność godzin, < 90 min, poza godzinami otwarcia), 409 nakładanie w trybie `add`; jedna transakcja dla wszystkich obiektów — błąd jednego cofa całość | REQ-029 |
+| `POST` / `facilities.rentals.create` | `/api/facilities/rentals` (+ `/quote` bez zapisu) | auth + `facilities.rentals.manage` + zakres miejsca | `{ placeId, renterType, renterId, renterCategory, startsAt, units, contact…, requestedVia }` | 201 `{ rental, charge }`; `facilities.rental.requested` | 409 `zone_not_reservable`/`rental_conflict`/`place_closed`/`entry_ban_active`; 422 (jednostki) | REQ-013 |
+| `POST` | `/api/facilities/rentals/{id}/confirm|cancel|move|no-show` | auth + `facilities.rentals.manage` | wersja (+ `{ startsAt, placeId }` dla `move`) | `facilities.rental.confirmed|cancelled|moved|no_show` | 409 przejście/kolizja | REQ-013 |
+| `GET` | `/api/facilities/calendar`, `/api/facilities/today` | auth + `facilities.view` + zakres miejsca | `{ placeId, from, to }` | bloki stref, terminy, rezerwacje (z najemcą), zamknięcia | 400 zakres dat | REQ-013 |
+| `GET` | `/api/facilities/public/{clubSlug}/places` | brak auth; limit żądań w `metadata`; krótki cache | — | obiekty z `is_public_schedule` (nazwa, rodzaj, adres, zdjęcie, czy przyjmuje zgłoszenia) | 404 (klub nieznany lub blok `places_calendar` wyłączony), 429 | REQ-014, REQ-024 |
+| `GET` | `/api/facilities/public/{clubSlug}/places/{placeSlug}/schedule` | jw. | `{ month }` | bloki bez danych osobowych (strefy, „zajęte przez klub”, „zarezerwowane”, „zgłoszone — oczekuje”, zamknięcia) + godziny, cennik, regulamin, telefon, `canRequest` per slot | 404 (slug nieznany/wyłączony), 429 | REQ-014, REQ-024 |
+| `POST` / `facilities.rentals.submit_request` | `/api/facilities/public/{clubSlug}/places/{placeSlug}/requests` | brak auth; ostry limit żądań (per IP i per e-mail); pole-pułapka | `{ startsAt, units, renterDisplayName, renterCategory, contactName, contactPhone, contactEmail, purpose?, regulationsAccepted: true }` | 202 `{ status: 'pending_verification' }`; e-mail z linkiem; `facilities.rental.request_submitted` | 409 `slot_unavailable` (zajęty lub z ważną blokadą), 422 (poza strefą `reservable_paid`, brak akceptacji regulaminu, jednostki), 403 (zgłoszenia online wyłączone), 429 | REQ-024 |
+| `POST` / `facilities.rentals.verify_request` | `/api/facilities/public/requests/verify/{token}` | brak auth; zakres z rekordu tokenu | — | `pending_approval`, `hold_expires_at` = teraz + 48 h; `facilities.rental.request_verified` → powiadomienie administratorów | 410 (wygasły/użyty), 409 `slot_unavailable` (zajęty w międzyczasie) | REQ-024 |
+| `POST` / `facilities.rentals.approve` | `/api/facilities/rentals/{id}/approve` | auth + `facilities.rentals.approve` | wersja + `{ renterId?, createInstitution?: {…}, amountOverride?, note? }` | `requested` + należność (DI `payments`, `payee` = właściciel); e-mail; `facilities.rental.approved` | 409 (nie `pending_approval`, kolizja, wersja) | REQ-024 |
+| `POST` / `facilities.rentals.reject` | `/api/facilities/rentals/{id}/reject` | auth + `facilities.rentals.approve` | wersja + `{ reason }` | `rejected`; e-mail; `facilities.rental.rejected` | 409 | REQ-024 |
+| `POST`, `DELETE` / `facilities.internal_bookings.create|cancel` | `/api/facilities/internal-bookings`, `/{id}` | auth + `facilities.bookings.create` (anulowanie: rezerwujący, koordynator sekcji rezerwacji lub `facilities.manage`) | `{ placeId, startsAt, endsAt, sectionId, purpose }` | 201 `confirmed`; `facilities.internal_booking.created`; kolidujące zgłoszenia → `superseded` + e-mail | 409 kolizja (lista z nazwami — trasa dla personelu), 409 `place_closed`, 403 | REQ-023 |
+| `GET` | `/api/club_core/public/{clubSlug}`, `/api/club_core/public/{clubSlug}/sections/{sectionSlug}` | brak auth; limit żądań; krótki cache | — | klub i sekcje publiczne; dla sekcji bloki z opcjonalnych usług DI, przefiltrowane przez `publication`, `is_public` i zgodę na nazwisko | 404 (nieznany, niepubliczny, strona wyłączona), 429 | REQ-025, REQ-026 |
+| `GET` | `/api/facilities/reports/owner` | auth + `facilities.reports.view` | `{ placeId, from, to, format?: csv }` | godziny w strefach, rezerwacje (liczba, wartość), wpłaty na konto gminy, incydenty, konserwacja | 400 | REQ-015 |
+| strażnik mutacji | `facilities` na `activities.occurrences.*` (create/update/assign/generate) | system | zapis terminu | dopuszcza lub odrzuca | 409 `rental_conflict` / `place_closed` | REQ-013 |
+
+## Events, Jobs, Notifications, and Cross-Module Flows
+
+| Trigger | Producer | Consumer | Side effect | Retry / idempotency / audit behavior |
+|---|---|---|---|---|
+| `people.role_assignment.created|updated|deleted` | `people` | `people` (subskrybent trwały) | nadanie/odebranie roli `auth` przez `rbacService` | idempotentny (stan docelowy z aktywnych przypisań); ponowienia kolejki |
+| scheduler `people:sync-role-expiry` (codziennie 02:00) | `people` | `people` | odebranie ról po `valid_to`; nadanie roli `vereino_payer` osobom z kontem w dniu 18. urodzin | idempotentny |
+| scheduler `activities:generate-occurrences` (codziennie 03:00) | `activities` | `activities` | dopisanie terminów do horyzontu | unikalność (`activity_id`, `occurrence_date`) — ponowienie nie dubluje |
+| `activities.occurrence.cancelled` | `activities` | `notifications` (faza 2), `communication` (faza 3) | powiadomienie `activities.occurrence_cancelled` do adresatów; wątek terminu + e-mail | subskrybent `communication` trwały, klucz idempotencji = ID terminu + wersja |
+| `activities.occurrence.coach_unassigned` | `activities` | `notifications` | powiadomienie koordynatorów sekcji `activities.coach_needed` | — |
+| `activities.occurrence.coach_changed` | `activities` | `notifications` | powiadomienie nowego trenera `activities.substitution_assigned` | — |
+| `activities.attendance.declared` (tryb `immediate` lub `pending_guardian`) | `activities` | `notifications` | opiekun dostaje `activities.ward_declared` lub `activities.guardian_confirmation_needed` | — |
+| scheduler `activities:expire-guardian-confirmations` (co 15 min) | `activities` | `activities` | `pending_guardian` po limicie → `default_after_timeout` | warunek statusu w UPDATE — ponowienie bez skutku |
+| scheduler `activities:flag-unsettled` (codziennie) | `activities` | widżet / lista | terminy `planned` 24 h po końcu → „nierozliczone” | zapytanie, bez zapisu |
+| scheduler `activities:send-declaration-reminders` (faza 3, codziennie 18:00) | `activities` | `communication` | e-mail z osobistym linkiem dla terminów jutro bez deklaracji | jeden token na (opiekun, termin) |
+| `messages.message.email_failed` | `messages` | `communication` | status „nie dostarczono” przy adresacie wątku | audyt |
+| scheduler `payments:generate-charges` (dzień konfigurowalny, domyślnie 1. dzień miesiąca 06:00) | `payments` | `payments` | należności okresu z grup i aktywności | unikalność (`fee`, osoba, okres); `ProgressJob` przy ręcznym uruchomieniu |
+| scheduler `payments:overdue-reminders` (codziennie) | `payments` | `notifications` (+ e-mail od fazy 3) | przypomnienie płatnika 1 dzień po `due_date` i co 7 dni | znacznik ostatniego przypomnienia na należności |
+| `payment_gateways.payment.captured` | `payment_gateways` | `payments` | wpłaty `online`, statusy należności, `payments.payment.recorded` | trwały subskrybent; unikalność (`gateway_transaction_id`, `charge_id`) |
+| `payments.bank_import.completed` | `payments` | `notifications` | powiadomienie administratora o liczbie pozycji do potwierdzenia | — |
+| `payments.order.submitted\|updated\|cancelled` | `payments` | `communication` | e-mail do zamawiającego z kopią zamówienia, kwotą, kodem płatnika i terminami | trwały subskrybent, klucz = ID zamówienia + wersja |
+| scheduler `payments:close-order-campaigns` (co 15 min) | `payments` | `payments` | `open` po końcu `closes_on` → `closed`; powiadomienie administratora `payments.order_campaign_closed` | warunek statusu w UPDATE |
+| `payments.order_campaign.status_changed` (`delivered`) | `payments` | `communication`, `notifications` | e-mail i powiadomienie `payments.order_ready` („do odbioru u trenera”, z kwotą do zapłaty) do zamawiających; powiadomienie trenerów grup | klucz = ID zbiórki + status |
+| `payments.cash_handover.created` | `payments` | audyt | wpis z listą wpłat i kwotą | — |
+| `payment_gateways.payment.failed|cancelled`, `session.expired` | `payment_gateways` | `payments` | `payments_checkouts.status` | idempotentny |
+| `payments.payment.recorded` | `payments` | `facilities` (subskrybent) | rezerwacja z opłaconą należnością → `confirmed` | idempotentny po statusie |
+| scheduler `facilities:rental-lifecycle` (co 15 min) | `facilities` | `facilities` | `confirmed` po `ends_at` → `done`; rezerwacje bez wpłaty po `payment_deadline` → lista „do wyjaśnienia” (lub wygaszenie, gdy umowa ma `auto_expire_unpaid`) | warunki statusów w UPDATE |
+| `facilities.rental.request_submitted` | `facilities` | `communication` | e-mail z linkiem potwierdzającym do zgłaszającego | klucz idempotencji = ID wynajmu |
+| `facilities.rental.request_verified` | `facilities` | `notifications` | powiadomienie `facilities.rental_request_pending` dla osób z `facilities.rentals.approve` | — |
+| `facilities.rental.approved|rejected|expired|superseded` | `facilities` | `communication` | e-mail do zgłaszającego (akceptacja z kwotą, kontem i terminami; odmowa z powodem; wygaśnięcie; przebicie przez rezerwację klubu) | trwały subskrybent, klucz = ID + status |
+| scheduler `facilities:expire-requests` (co 15 min) | `facilities` | `facilities` | `pending_approval` po `hold_expires_at` → `expired`; `pending_verification` po `verification_expires_at` → usunięcie | warunki statusów w UPDATE |
+| `facilities.internal_booking.created` | `facilities` | `facilities` | kolidujące zgłoszenia `pending_approval` → `superseded` | w tej samej transakcji co rezerwacja; e-mail po zatwierdzeniu |
+| `facilities.closure.created` | `facilities` | `facilities` + polecenie `activities` przez DI | `needs_reschedule` na terminach i rezerwacjach; powiadomienie koordynatora i e-mail najemcy | idempotentny |
+| `facilities.zone_rules.bulk_updated` | `facilities` | `facilities` | unieważnienie pamięci podręcznej publicznego kalendarza obiektów | idempotentny |
+| `facilities.rental.moved|cancelled` | `facilities` | `communication` | e-mail do najemcy | trwały subskrybent |
+| scheduler `facilities:maintenance-reminders` (codziennie, Could) | `facilities` | `notifications` | przypomnienie 14 i 1 dzień przed `due_date` | znacznik wysłania |
+
+Typy powiadomień (ID stabilne, `notifications.ts` każdego modułu): `activities.occurrence_cancelled`, `activities.coach_needed`, `activities.substitution_assigned`, `activities.ward_declared`, `activities.guardian_confirmation_needed`, `payments.charge_created`, `payments.charge_overdue`, `payments.payment_received`, `payments.order_ready`, `payments.order_campaign_closed`, `facilities.rental_moved`, `facilities.rental_request_pending`, `facilities.maintenance_due`. E-maile do zgłaszających z zewnątrz (bez konta) idą przez `communication` na adres zewnętrzny (`messages.external_email`, V-4). Bloki publicznej strony sekcji są usługami DI rejestrowanymi przez `groups`, `activities`, `payments`, `facilities` i rozwiązywanymi przez `club_core` warunkowo (`hasRegistration`), więc strona działa od fazy 1 i zyskuje bloki z kolejnymi fazami. Nieobecność modułu opcjonalnego: subskrybenci `communication` i `facilities` należą do konsumenta, więc wyłączenie fazy 3 lub 5 nie psuje `activities`; usługa DI `payments` jest wymagana przez `facilities` (`requires`).
+
+## Security, Privacy, and Compliance
+
+- **Authorization:** każda trasa ma `requireFeatures`; każdy odczyt i zapis rekordu przechodzi przez `people.scopeService`; rola `auth` nigdy nie jest sprawdzana po nazwie. Akcje zapisują `acting_role` wyznaczony po stronie serwera.
+- **Tenant isolation:** filtry `tenantId` + `organizationId` z kontekstu na każdym zapytaniu, również w workerach (zakres w ładunku zadania pochodzi z rejestracji harmonogramu, nie z danych użytkownika); brak zakresu = brak danych. Trasy bez sesji wyprowadzają zakres z publicznego slugu lub hasha tokenu.
+- **Sensitive data:** szyfrowanie pól według *Data Models* przez `encryption.ts`; wyciągi bankowe zawierają dane osób trzecich (nadawcy, numery rachunków) — plik w prywatnej partycji `attachments`, pola transakcji szyfrowane, dostęp tylko z `payments.bank.import`, retencja zgodna z przepisami rachunkowymi (do potwierdzenia z księgową); PESEL opcjonalny, widoczny tylko z `people.pesel.view`, wykrywanie duplikatów przez HMAC; tokeny linków przechowywane jako SHA-256; wyszukiwanie po nazwisku na polach szyfrowanych według wzorca `search.encrypted-column-list-filter` (V-3); logi bez PII i treści wiadomości (`createLogger`); prawo do usunięcia przez polecenie anonimizacji, które zachowuje wpisy księgowe i obecności bez danych osobowych. Zgody opiekuna z datą i autorem. Dane dzieci < 13 lat nie mają konta i nie są widoczne dla innych rodziców.
+- **Zgłoszenia zewnętrzne i strona publiczna:** dane zgłaszającego szyfrowane, widoczne tylko dla personelu z funkcjami `facilities`; informacja o przetwarzaniu danych i akceptacja regulaminu zapisane przy zgłoszeniu; zgłoszenie nieważne bez akceptacji administratora i bez potwierdzenia e-mailem; ostry limit żądań per IP i per e-mail, pole-pułapka, blokada zgłoszeń na slot z ważną blokadą; zgodność z rejestrem zakazów tylko jako podpowiedź dla administratora (bez ujawniania zgłaszającemu). Publiczne API strony klubu nie zwraca bloków wyłączonych w konfiguracji ani rekordów bez `is_public`; nazwisko prowadzącego tylko przy `publish_name_consent_at`; nigdy listy uczestników, opiekunów ani danych dzieci.
+- **Zamówienia:** link do zbiórki z Messengera bez sesji pokazuje tylko nazwę, opis i termin; dzieci i zamówienia widać po zalogowaniu albo z osobistego tokenu (hash, ważny do zamknięcia zbiórki, jeden opiekun); prośba o link zawsze 202. Kontakt zamawiającego i imię dziecka do nadruku widzą administrator i trenerzy grup; eksport dla dostawcy zawiera tylko imię, numer, grupę i rozmiar — bez kontaktów rodziców. Uczestnik niepełnoletni nie widzi zamówień ani cen. Każda gotówka ma numer KP, przyjmującego i — po przekazaniu — numer rozliczenia.
+- **Abuse and failure modes:** publiczne trasy z limitem żądań (`metadata` tras `makeCrudRoute`, V-10); prośba o link zawsze zwraca 202 (brak enumeracji e-maili); token ograniczony do jednego terminu i podopiecznych jednego opiekuna, wygasa z końcem terminu; publiczny harmonogram nie zawiera nazw; sprawy nieusuwalne i nieedytowalne; operacje pieniężne bez edycji (tylko wpisy odwrotne); podwójne webhooki i ponowienia idempotentne; wszystkie edycje chronione wersją (409). Sekrety Stripe wyłącznie w konfiguracji integracji, nigdy w specyfikacji, logach ani komentarzach.
+- **Compliance (do potwierdzenia przed pilotażem):** próg wieku konta 13 vs 16 lat w świetle RODO i usług społeczeństwa informacyjnego (D-004, Q-007) — ustawienie klubu, nie stała w kodzie; regulamin klubu i obiektu jako załącznik; retencja danych byłych uczestników — Q-019.
+
+## Integration Coverage
+
+Testy samowystarczalne: każdy tworzy własny tenant, organizację, użytkowników i rekordy przez API; bramka Stripe zastąpiona adapterem testowym zgodnym z kontraktem `payment_gateways` (wzorzec `integrations.mock-adapters`).
+
+| Test ID | Level | Setup / fixture | Actions | Assertions | Requirement IDs |
+|---|---|---|---|---|---|
+| TEST-001 | integration | tenant + administrator klubu | CRUD sekcji, miejsc (hierarchia), instytucji, ustawień | zapis, odczyt, czyszczenie pól do `null`, 409 przy cyklu i nieaktualnej wersji | REQ-003 |
+| TEST-002 | security | dwa tenanty; koordynator, członek | odczyt i zapis cudzych osób, sekcji, miejsc | 403/404, brak przecieku w listach i wyszukiwaniu | REQ-001, REQ-003 |
+| TEST-003 | integration | osoby: opiekun, dziecko 11 lat, dziecko 14 lat | opieka, zgody, założenie kont | konto opiekuna (role `vereino_member` + `vereino_payer`) i 14-latka (tylko `vereino_member`) utworzone; 11-latek → 422; drugi główny płatnik → 409 | REQ-002 |
+| TEST-004 | security | osoba z PESEL | odczyt bez i z `people.pesel.view`; odczyt surowy z bazy | PESEL ukryty bez funkcji; w bazie zaszyfrowany; duplikat PESEL → 409 | REQ-001 |
+| TEST-005 | integration | osoba z kontem | przypisanie koordynatora sekcji A, potem trenera; zakończenie przypisania | role `auth` nadane i odebrane; zakres `section_ids` = [A]; `acting_role` zapisany przy akcji | REQ-001 |
+| TEST-006 | UI | administrator | lista osób, karta, opieka, konto; konflikt wersji | stany loading/empty/error/conflict; klawiatura; wąski ekran; tryb jasny i ciemny | REQ-001, REQ-002 |
+| TEST-007 | integration | grupa, aktywność co tydzień | utworzenie, edycja pojedynczego terminu, zmiana godzin serii, zadanie generowania | terminy w horyzoncie; termin odłączony nietknięty; terminy z obecnością nietknięte; ponowione zadanie nie dubluje | REQ-005 |
+| TEST-008 | integration | dwie sekcje (akademia z grupą `team`, basen z grupą `class_group`); uczestnik 14 lat, opiekun dwójki z dziećmi w obu sekcjach, trener, instruktor, zastępca, koordynator każdej sekcji | `GET /calendar` dla każdej roli | opiekun widzi terminy obu sekcji w jednym kalendarzu; koordynator widzi tylko swoją sekcję; zastępca widzi termin zastępstwa | REQ-003, REQ-004, REQ-006 |
+| TEST-009 | integration | polityki `immediate`, `guardian_confirm`, `guardian_only` | deklaracje 14-latka, decyzja opiekuna, zadanie wygaszania | statusy zgodne z polityką; po limicie wartość domyślna; `guardian_only` → 403 | REQ-007 |
+| TEST-010 | integration | dwóch trenerów, 4 terminy, jedno zastępstwo, jeden odwołany | nieobecność, wskazanie zastępcy, odhaczenie, zamknięcie, raport | planowe/oddane/przejęte/bilans zgodne z regułą; odwołany i nierozliczony nie liczą się; historia zastępstw nieedytowalna | REQ-008 |
+| TEST-011 | security | trener grupy A, opiekun | odhaczenie grupy B; deklaracja za cudze dziecko | 403 | REQ-007, REQ-008 |
+| TEST-012 | integration | dwa terminy na tym samym miejscu z `capacity_groups` = 1 | utworzenie nakładającej się aktywności; odwołanie terminu | 409 z listą kolizji; po odwołaniu powiadomienia w aplikacji u adresatów | REQ-005, REQ-009 |
+| TEST-013 | integration | umowa trenera z podstawą i stawkami | raport z kwotą + CSV | kwota = podstawa + jednostki × stawka + mecze; trener widzi tylko swój wiersz bez cudzych kwot | REQ-021 |
+| TEST-014 | UI | trener, opiekun na telefonie | „Dziś” → termin → deklaracja; lista obecności → zamknięcie | ≤ 3 dotknięcia; stany; konflikt dwóch odhaczających | REQ-006, REQ-007 |
+| TEST-015 | integration | grupa z małoletnimi (opiekunowie z kontem i bez), 14-latek z kontem, trener | wątek do grupy | adresaci zgodni z regułą; e-mail wysłany (`messages.message.email_sent`); niedostarczony oznaczony | REQ-009 |
+| TEST-016 | integration | wątek | oznaczenie sprawy; próba usunięcia i edycji; odczyt przez innego koordynatora sekcji i administratora | 409 `case_immutable`; widoczność zgodna z regułą | REQ-010 |
+| TEST-017 | security | termin, opiekun, obcy e-mail | prośba o link (znany i nieznany e-mail), deklaracja z tokenu, token wygasły, osoba spoza tokenu | 202 w obu przypadkach; deklaracja tylko za podopiecznych; 410 po wygaśnięciu; 403 dla obcej osoby | REQ-017 |
+| TEST-018 | integration | dwie grupy z cennikami w dwóch sekcjach (drużyna i basen), rodzeństwo rozdzielone między sekcje, dorosły uczestnik zumby, małoletni bez płatnika | generowanie okresu dwa razy | jedna należność na osobę i okres; zniżka dla drugiego dziecka; dorosły płaci sam; `payer_missing` oznaczony | REQ-011 |
+| TEST-019 | integration | opiekun z dwiema należnościami, adapter testowy bramki | checkout → webhook `captured` → powtórzony webhook | dwie wpłaty `online`, należności `paid`, brak duplikatów | REQ-012 |
+| TEST-020 | integration | należność 150 zł | wpłata 100 zł gotówką, potem 50 zł przelewem; nadpłata | `partially_paid` → `paid`; nadpłata 422; lista zaległości zgodna | REQ-011, REQ-012 |
+| TEST-021 | security | dwóch opiekunów; uczestniczka 14 lat z kontem; uczestniczka kończąca 18 lat | odczyt i checkout cudzej należności; `GET /api/payments/my-charges` jako 14-latka; zadanie ról w dniu 18. urodzin | 403; lista „moje należności” tylko płatnika; 14-latka — 403 i brak kafla „Płatności” w `/club`; po 18. urodzinach rola `vereino_payer` nadana | REQ-002, REQ-012 |
+| TEST-022 | integration | strefy, cennik 3 kategorii, sezon zimowy, zakaz wstępu | rezerwacje w strefie i poza nią, kolizja z terminem i rezerwacją, najemca z zakazem | kwota i terminy wyliczone; 409 z właściwym kodem; należność `payee` = gmina | REQ-013 |
+| TEST-023 | integration | rezerwacja | odwołanie > 24 h i < 24 h; przesunięcie; `no_show`; wpłata | `cancelled_free` + należność `cancelled`; `cancelled_late` + `forfeited`; potwierdzenie po wpłacie; e-mail przy przesunięciu | REQ-013 |
+| TEST-024 | security | publiczny slug | odczyt harmonogramu bez sesji; nieznany slug; wyłączony harmonogram; seria żądań | brak nazw najemców, grup i osób; 404; 429 | REQ-014 |
+| TEST-025 | integration | miesiąc z rezerwacjami, wpłatami, incydentem, konserwacją | raport dla właściciela + CSV | liczby zgodne z danymi testowymi | REQ-015 |
+| TEST-026 | integration | dziennik, incydent, zakaz | wpisy animatora; edycja po terminie; zakaz blokuje nową rezerwację | zakres miejsca; edycja po terminie tylko administrator; 409 `entry_ban_active` | REQ-016 |
+| TEST-027 | integration | rezerwacja, zamknięcie | utworzenie terminu na zarezerwowanym slocie; zamknięcie na dzień z terminem | 409 ze strażnika; `needs_reschedule` na terminie i rezerwacji | REQ-013 |
+| TEST-028 | UI | animator, gość | kalendarz obiektu → nowa rezerwacja; harmonogram publiczny na telefonie | stany, klawiatura, legenda bez koloru, tryb jasny i ciemny | REQ-013, REQ-014 |
+| TEST-029 | integration | obóz `camp` z opłatą jednorazową; mecz z przeciwnikiem | utworzenie, lista, wynik, należność obozu | obóz na liście uczestników i w należnościach; wynik zapisany | REQ-018, REQ-020 |
+| TEST-030 | integration | słownik kategorii wiekowych, sezon; sekcja niepiłkarska | grupa `team` z kategorią i sezonem; grupa `class_group` z pełnym cyklem (członkostwa, aktywność `training`, obecność, zastępstwo); próba pól drużyny i meczu dla `class_group` | selektory pokazują nazwy; `class_group` przechodzi ten sam cykl co `team`; pola drużyny i `match` dla `class_group` → 422 | REQ-004, REQ-019 |
+| TEST-032 | integration | klub z trzema sekcjami | przypisanie koordynatorów (jedna osoba koordynuje dwie sekcje); sekcja bez koordynatora; dezaktywacja sekcji z grupami | zakres `section_ids` obejmuje obie sekcje; ostrzeżenie „bez koordynatora”; 409 przy dezaktywacji | REQ-003 |
+| TEST-033 | integration | dwie sekcje, trener piłki, instruktorka zumby, obiekty: boisko i salka; strefy z `public_free` i `reservable_paid` | rezerwacje wewnętrzne w różnych strefach i obiektach; kolizja z terminem, wynajmem i inną rezerwacją; poza godzinami otwarcia; anulowanie przez rezerwującego, koordynatora i obcego trenera | `confirmed` bez akceptacji w każdej strefie; 409 z listą kolizji; 409 `place_closed`; anulowanie przez obcego → 403; rezerwacje w raporcie dla właściciela jako czas klubu | REQ-023 |
+| TEST-034 | integration | trener grupy A (`team`) i grupy C (`class_group`), grupa B obcego trenera | wydarzenie `tournament` z zaproszonymi drużynami dla A; `tournament` (np. turniej szachowy) dla C; `sparring` dla C; wydarzenie dla B | A i C: termin w kalendarzach uczestników i rodziców, deklaracje działają; `sparring` dla C → 422; B → 403 | REQ-027 |
+| TEST-035 | integration | klub ze zgłoszeniami online, miejsce z `accepts_online_requests` | zgłoszenie → link → drugie zgłoszenie na ten slot → akceptacja (z utworzeniem instytucji); osobno: odrzucenie, wygaśnięcie po 48 h, przebicie rezerwacją wewnętrzną | `pending_verification` → `pending_approval`; drugie → 409; akceptacja tworzy należność na rzecz gminy i e-mail; odrzucenie z powodem; `expired` po 48 h; `superseded` + e-mail; przed akceptacją slot nigdy nie jest „zarezerwowany” | REQ-024 |
+| TEST-036 | security | publiczne trasy zgłoszeń | zgłoszenie poza `reservable_paid`, bez akceptacji regulaminu, przy wyłączonych zgłoszeniach, seria żądań, wypełnione pole-pułapka, wygasły i użyty token; najemca z zakazem; akceptacja bez funkcji | 422/403/429/410 zgodnie z kontraktem; zakaz tylko jako flaga dla administratora; kalendarz publiczny bez danych zgłaszającego; akceptacja bez `facilities.rentals.approve` → 403 | REQ-024 |
+| TEST-037 | integration | dwa kluby z różną konfiguracją publikacji; sekcja publiczna i niepubliczna; grupa publiczna i niepubliczna; trener ze zgodą i bez | `GET /api/club_core/public/…` | wyłączone bloki nie występują w odpowiedzi; niepubliczne rekordy niewidoczne, slug → 404; nazwisko tylko za zgodą; harmonogram z RRULE i najbliższymi terminami z odwołaniami; materiały tylko z flagą publiczną; brak list uczestników | REQ-025 |
+| TEST-038 | integration | cennik grupy, zniżka na rodzeństwo | strona sekcji z włączonym i wyłączonym blokiem cen | ceny i zniżka obecne tylko przy włączonym bloku | REQ-026 |
+| TEST-039 | UI | gość na telefonie; trener na telefonie; administrator | strona klubu → sekcja; obiekty → kalendarz → zgłoszenie; trener: obiekty → slot → „Rezerwuj dla grupy”; administrator: kolejka zgłoszeń | stany loading/empty/error/conflict, klawiatura, 375 px, tryb jasny i ciemny; komunikat „ważne dopiero po akceptacji administratora” widoczny przed wysłaniem | REQ-023, REQ-024, REQ-025 |
+| TEST-040 | integration + UI | klub bez logo; dwie sekcje | wgranie logo klubu; logo dla jednej sekcji; usunięcie go; próba wgrania SVG i pliku 3 MB; koordynator innej sekcji próbuje zmienić logo | nagłówki pokazują logo klubu; sekcja z logo — własne, druga — klubu; po usunięciu — klubu; SVG i 3 MB → 422; obcy koordynator → 403; publiczne API zwraca logo efektywne; bez logo klubu — inicjał | REQ-028 |
+| TEST-041 | integration + UI | dwa boiska z regułami regulaminowymi; zajęcia klubu pn 18:00–19:30; zgłoszenie oczekujące w sobotę | hurtowo pn–pt 16:00–22:00 dla obu boisk (zastąp); osobno sobota 9:00–20:30 (tryb dni); próby: 15:00–16:00, 7:00–10:00, „do” < „od”; dopisanie nakładającego się okna; usunięcie dostępności w piątek | reguły utworzone dla obu obiektów; publiczny kalendarz pn: 16:00–18:00 „do rezerwacji”, 18:00–19:30 „zajęte przez klub”, 19:30–22:00 „do rezerwacji”; 422 z komunikatem przy dniu; 409 przy dopisaniu; ostrzeżenie o zgłoszeniu poza dostępnością; piątek bez dostępności | REQ-029 |
+| TEST-042 | integration | płatnicy z otwartymi należnościami; wyciąg CSV: przelew z kodem i pełną kwotą, z kodem i nadpłatą, bez kodu z nazwiskiem i kwotą, darowizna, obciążenie | import; ponowny import tego samego pliku; Potwierdź, Przypisz, Pomiń, Cofnij; import przy wyłączonym automatycznym księgowaniu | pełna kwota z kodem → zaksięgowane (od najstarszej należności); nadpłata i nazwisko → do potwierdzenia; darowizna → niedopasowane; obciążenie i duplikaty → pominięte; cofnięcie przywraca statusy należności; nazwisko „Lis” nie dopasowuje słowa „listopad”; przy wyłączonym — wszystko do potwierdzenia; plik bez wymaganych kolumn → 422 | REQ-030 |
+| TEST-043 | integration + UI | płatnik z trzema należnościami; administrator; trener bez funkcji | gotówka w panelu (pełna i częściowa) i na telefonie; kwota większa niż wybrane należności; trener próbuje zapisać gotówkę | wpłaty `cash` z numerem KP i przyjmującym; częściowa rozliczona od najstarszej; e-mail potwierdzenia; suma „przyjęte dziś”; nadpłata → 422; trener bez `payments.cash.record` → 403 | REQ-031 |
+| TEST-044 | integration + UI | zbiórka Akademii z kompletem, produktami z rozmiarami dziecięcymi i dorosłymi oraz bez rozmiaru; opiekunka z dwojgiem dzieci w różnych grupach; opiekun bez konta; uczestniczka 14 lat | kreator (szablon, komplet < 2 produkty, `payment_due_on < closes_on`); zamówienie w aplikacji i z osobistego linku; komplet bez rozmiaru; numer zajęty w grupie; zmiana zamówienia (także poniżej wpłaty); anulowanie opłaconego; zamknięcie; zestawienie CSV; dostawa; wydanie nieopłaconego | należność `order` z ceną kompletu zamiast sumy elementów i ceną dorosłą dla S–L; e-mail z kopią; 422 dla braków i zajętego numeru; 409 po zamknięciu, przy zmniejszeniu poniżej wpłat i anulowaniu opłaconego; prośba o link zawsze 202, link tylko na adres opiekuna; zestawienie liczy elementy kompletów przy produktach; e-mail „do odbioru” po dostawie; wydanie nieopłaconego tylko po potwierdzeniu; uczestniczka 14 lat → 403 | REQ-032 |
+| TEST-045 | integration + UI | trener grupy A, koordynator sekcji, trener innej sekcji, skarbnik; zamówienia opłacone i nie | trener przyjmuje gotówkę za zamówienie dziecka z grupy A (pełną i częściową), próbuje za składkę i za dziecko spoza zakresu; skarbnik rozlicza część wpłat trenera, potem resztę; ponowne rozliczenie tej samej wpłaty | wpłaty `cash` z KP i przyjmującym, należność opłacona, e-mail do płatnika; składka i dziecko spoza zakresu → 403; „Gotówka u Ciebie” i „Gotówka do rozliczenia” pokazują sumy; rozliczenie `RG/…` z listą wpłat; ponowne → 409; gotówka przyjęta przez skarbnika nie trafia do rozliczenia | REQ-033 |
+| TEST-031 | integration | zadania konserwacji (Could) | zadanie przypomnień | powiadomienia 14 i 1 dzień przed | REQ-022 |
+
+## Implementation Phases
+
+Fazy w kolejności ustalonej w zleceniu. W toku może być tylko bieżąca faza; równolegle — wyłącznie niezależne wycinki tej fazy. Każda faza kończy się własnymi dowodami. Każda zgłasza do akceptacji włączenie modułów w `src/modules.ts` i nowe zależności. Walidacja każdej fazy: `yarn generate && yarn typecheck && yarn lint && yarn ds:check && yarn test && yarn build`, testy fazy przez `yarn test:integration:ephemeral`, przegląd SQL z `yarn db:generate` (bez `yarn db:migrate` bez zgody).
+
+### Phase 1 — Klub i ludzie (`club_core` + `people`)
+
+- **Depends on:** none
+- **Outcome:** administrator buduje strukturę klubu i rodziny; opiekun i 14-latek logują się i widzą swoje profile; personel ma role z zakresem.
+- **Why this order / value delivered:** każda kolejna faza odwołuje się do osób, sekcji, miejsc i zakresu; już po tej fazie klub ma jedną kartotekę osób zamiast Excela i rejestr zgód.
+- **Deliverables:** moduły `club_core` i `people` (`index.ts`, `acl.ts`, `setup.ts` z rolami `vereino_*` i ustawieniami klubu, `data/entities.ts`, `data/validators.ts`, `encryption.ts`, `commands/*`, `api/*` z `openApi`, `search.ts`, `events.ts`, `i18n/pl.json` + `en.json`, `ce.ts`); trasy źródeł opcji; strony `/backend/club/*`, `/backend/people/*`; strony `/club` (Dziś z profilem i podopiecznymi), `/club/profile`, `/club/wards/[personId]`; usługa DI `people.scopeService`; subskrybent synchronizacji ról `auth`; zadanie `people:sync-role-expiry` (wymaga włączenia `scheduler`); konfiguracja publikacji (`/backend/club/publication`), pola publiczne sekcji, zgoda na publikację nazwiska w profilu; publiczne strony `/p/[clubSlug]` i `/p/[clubSlug]/sections/[sectionSlug]` z blokami opisu, warunków sekcji, materiałów i kontaktu (bloki innych modułów dochodzą w fazach 2, 4, 5).
+- **Steps:**
+  1. Weryfikacje V-1 (strony frontowe z `requireAuth` i `requireFeatures` dla użytkowników `auth`), V-2 (zakładanie użytkownika i e-mail ustawienia hasła przez `auth`), V-3 (filtr list po polach szyfrowanych) — wynik dopisany do sekcji *Open Questions*; zgoda na włączenie `scheduler`.
+  2. `club_core`: encje, polecenia, CRUD, strony ustawień, sekcji, miejsc, instytucji (TEST-001).
+  3. `people`: osoba z szyfrowaniem i HMAC PESEL, opieka ze zgodami, przypisania ról, `scopeService` (TEST-002, TEST-004).
+  4. Konta: polecenie `create_account`, rola `vereino_member`, synchronizacja ról `auth`, `GET /api/people/me` (TEST-003, TEST-005).
+  5. Interfejs członkowski `/club` (profil, podopieczni, zgody) i karta osoby w panelu (TEST-006).
+  6. Konfiguracja publikacji, treści publiczne sekcji, publiczna strona klubu i sekcji z mechanizmem bloków DI (TEST-037 w zakresie bloków `club_core`).
+  7. Logo klubu i sekcji z zastępowaniem logo klubu, w nagłówkach i na stronach publicznych (TEST-040).
+- **Independent slices / estimated commits:** (a) `club_core` 2–3 commity; (b) `people` encje i zakres 3 commity; (c) konta i role 2 commity; (d) UI członkowski 2 commity; (e) strona publiczna 2 commity. (b) zależy od (a) tylko przez ID miejsc i sekcji.
+- **Requirements closed:** REQ-001, REQ-002, REQ-003, REQ-028
+- **Tests:** TEST-001 … TEST-006, TEST-032, TEST-040
+- **Validation:** jak wyżej; testy `club_core` i `people`
+- **Exit gate:** J-001 przechodzi na świeżym tenancie; tester bez funkcji widzi „Brak uprawnień”; strony `/backend/club/*`, `/backend/people/*`, `/club` i `/p/[clubSlug]` sprawdzone w trybie jasnym i ciemnym oraz przy szerokości 375 px; strona sekcji pokazuje tylko bloki włączone w konfiguracji.
+
+### Phase 2 — Grupy i zajęcia (`groups` + `activities`)
+
+- **Depends on:** Phase 1 exit gate
+- **Outcome:** koordynator układa grafik z wykrywaniem kolizji; rodzice i uczestnicy deklarują obecność; trenerzy odhaczają obecność i zastępstwa; skarbnik ma raport jednostek i rozliczenie trenera.
+- **Why this order / value delivered:** to rdzeń produktu („to jest produkt” — MoSCoW); po tej fazie klub może zrezygnować z ankiet obecności na Messengerze.
+- **Deliverables:** moduł `groups` (grupy, członkostwa, sezony, drużyny zewnętrzne, słownik kategorii wiekowych przez `dictionaries` — wymaga włączenia); moduł `activities` (aktywności z RRULE i podglądem, terminy, kolizje na miejscu, obecność, polityki, zastępstwa, dyżury, raport jednostek + CSV); umowy trenerów w `club_core` (`/backend/club/contracts`); typy powiadomień `activities.*`; zadania `activities:generate-occurrences`, `activities:expire-guardian-confirmations`, `activities:flag-unsettled`; widżety pulpitu „Terminy do obsadzenia”, „Nierozliczone terminy”; strony `/backend/groups/*`, `/backend/activities/*`, `/club/calendar`, `/club/occurrences/[id]`, `/club/occurrences/[id]/attendance`; kafle „Kalendarz” i „Obecność” na `/club`.
+- **Steps:**
+  1. Zgoda na zależność `rrule` (DD-11) i włączenie `dictionaries`; weryfikacja V-6 (rejestracja celów harmonogramu) i V-8 (komponenty harmonogramu).
+  2. `groups`: encje, CRUD, skład z historią dla obu rodzajów grup, pola drużyny warunkowe po `kind`, sezony, drużyny zewnętrzne (TEST-030).
+  3. `activities`: aktywność, rozwinięcie RRULE, generator z horyzontem, odłączanie terminów, kolizje (TEST-007, TEST-012).
+  4. Kalendarze ról i interfejs `/club` (TEST-008, TEST-014).
+  5. Obecność i polityki z zadaniem wygaszania (TEST-009, TEST-011).
+  6. Zastępstwa, odwołanie z powiadomieniem, lista „do obsadzenia” i „nierozliczone” z widżetami (TEST-010, TEST-012).
+  7. Umowy trenerów i raport jednostek z kwotą i CSV; obóz i mecz z wynikiem (TEST-013, TEST-029).
+  8. Wydarzenia jednorazowe (turniej) zakładane przez trenera dla własnej grupy (TEST-034).
+  9. Bloki publiczne `groups.publicCatalog` (grupy, wiek/poziom, warunki, prowadzący za zgodą) i `activities.publicSchedule` (regularne dni i godziny, najbliższe terminy z odwołaniami) (TEST-037).
+- **Independent slices / estimated commits:** (a) `groups` 2 commity; (b) generator terminów 3 commity; (c) obecność 2 commity; (d) zastępstwa i raport 3 commity; (e) UI członkowski 2 commity; (f) wydarzenia jednorazowe 1 commit; (g) bloki publiczne 1–2 commity. (c)–(g) po (b).
+- **Requirements closed:** REQ-004, REQ-005, REQ-006, REQ-007, REQ-008, REQ-018, REQ-019, REQ-020, REQ-021, REQ-025, REQ-027
+- **Tests:** TEST-007 … TEST-014, TEST-029, TEST-030, TEST-034, TEST-037
+- **Validation:** jak wyżej
+- **Exit gate:** J-002 kroki 1–6 przechodzą bez e-maila, w tym grupa zajęciowa basenu w drugiej sekcji widoczna w tym samym kalendarzu opiekuna; raport jednostek zgadza się z ręcznym wyliczeniem dla danych testowych; lista obecności sprawdzona na 375 px w obu trybach.
+
+### Phase 3 — Komunikacja (`communication`)
+
+- **Depends on:** Phase 2 exit gate
+- **Outcome:** komunikaty z e-mailem do każdego zakresu, sprawy, tekst do wklejenia na grupę, osobiste linki do deklaracji i przypomnienia.
+- **Why this order / value delivered:** daje rodzicowi powód do wejścia w aplikację (H7) i zastępuje ogłoszenia w grupach; zarząd dostaje rejestr spraw.
+- **Deliverables:** moduł `communication` (wątki, rozwiązywanie adresatów, sprawy, tekst do udostępnienia, subskrybenci zdarzeń `activities`); typ obiektu wiadomości „termin” (`message-objects.ts`); tokeny deklaracji i strony `/club/link`, `/club/d/[token]` w `activities`; zadanie `activities:send-declaration-reminders`; strony `/backend/communication/*`, `/club/messages*`; kafel „Wiadomości”.
+- **Steps:**
+  1. Weryfikacja V-4: model adresatów `messages` dla ~200 osób (użytkownicy i `external_email`), `message_object`, skutek `delete_for_actor`, istnienie strategii e-mail w `notifications`. Decyzja: `messages` jako magazyn albo plan awaryjny DD-16 — zapisana w specyfikacji; zgoda na włączenie `messages`.
+  2. Wątki z zakresem i adresatami + e-mail (TEST-015).
+  3. Sprawy (TEST-016).
+  4. Odwołanie terminu → wątek terminu + e-mail; tekst do udostępnienia.
+  5. Osobiste linki, prośba o link, przypomnienia (TEST-017).
+- **Independent slices / estimated commits:** (a) wątki i adresaci 3 commity; (b) sprawy 1 commit; (c) linki 2 commity; (d) UI 2 commity.
+- **Requirements closed:** REQ-009, REQ-010, REQ-017
+- **Tests:** TEST-015, TEST-016, TEST-017 (+ ponowne TEST-012 z e-mailem)
+- **Validation:** jak wyżej
+- **Exit gate:** J-003 przechodzi w całości; e-maile widoczne w skrzynce testowej; strony sprawdzone w obu trybach i na 375 px.
+
+### Phase 4 — Płatności (`payments`)
+
+- **Depends on:** Phase 3 exit gate (e-mail przypomnień); dane z Phase 2
+- **Outcome:** automatyczne naliczanie składek ze zniżką na rodzeństwo, lista zaległości, płatność online przez Stripe i ręczne księgowanie.
+- **Why this order / value delivered:** pierwszy argument skarbnika i główna przewaga PTU (D-010); wymaga grup i opieki (płatnik).
+- **Deliverables:** moduł `payments` (cenniki, zniżki, należności, wpłaty, sesje płatności, generator okresu, przypomnienia, wyciągi, gotówka i jej rozliczanie, zbiórki zamówień); subskrybenci zdarzeń `payment_gateways`; strony `/backend/payments/*`, `/club/payments`, `/club/cash`, `/club/orders*`, `/club/o/[token]`, `/club/coach/orders`; kafle „Płatności” i „Zamówienie”; widżety „Zaległości”, „Należności bez płatnika”, „Zbiórki zamówień”.
+- **Steps:**
+  1. Weryfikacja V-5 (tworzenie sesji, klucz dostawcy `stripe`, zawartość zdarzeń, przechowywanie danych dostępowych); zgoda na włączenie `payment_gateways` i `gateway_stripe`; konto Stripe klubu (Q-016) — bez niego faza kończy się na adapterze testowym, a produkcja czeka.
+  2. Cenniki, zniżki, generator z idempotencją (TEST-018).
+  3. Ręczne księgowanie i zaległości (TEST-020).
+  4. Checkout i subskrybenci bramki (TEST-019, TEST-021).
+  5. Interfejs `/club/payments` i widżety; kod płatnika w instrukcji przelewu.
+  6. Blok publiczny `payments.publicPrices` na stronie sekcji (TEST-038).
+  7. Import wyciągu bankowego z dopasowaniem i kolejką potwierdzeń (TEST-042) — przy implementacji trasa `integration` (`om-integration-builder`) dla parsera CSV/MT940.
+  8. Wpłaty gotówkowe w panelu i na telefonie z numerem potwierdzenia (TEST-043).
+  9. Zbiórki zamówień: kreator, formularz opiekuna i osobisty link, należności `order`, zestawienie dla dostawcy, etapy i wydanie (TEST-044).
+  10. Gotówka trenera za zamówienia i rozliczenie gotówki u skarbnika (TEST-045).
+- **Independent slices / estimated commits:** (a) naliczanie 3 commity; (b) księgowanie 1 commit; (c) bramka 2 commity; (d) UI 2 commity; (e) blok cen 1 commit; (f) zbiórki zamówień 3 commity; (g) gotówka trenera i rozliczenie 1 commit.
+- **Requirements closed:** REQ-011, REQ-012, REQ-026, REQ-030, REQ-031, REQ-032, REQ-033
+- **Tests:** TEST-018 … TEST-021, TEST-038, TEST-042 … TEST-045
+- **Validation:** jak wyżej
+- **Exit gate:** J-004 przechodzi z adapterem testowym; płatność testowa Stripe (tryb testowy, klucze testowe klubu) kończy się wpłatą w systemie; strony sprawdzone w obu trybach i na 375 px.
+
+### Phase 5 — Obiekty i rezerwacje (`facilities`)
+
+- **Depends on:** Phase 4 exit gate (należności za wynajem)
+- **Outcome:** strefy, zamknięcia, cennik; kalendarz obiektów dla personelu z rezerwacją wewnętrzną bez akceptacji; wynajmy zewnętrzne (po telefonie i zgłaszane online z akceptacją administratora); publiczna lista i kalendarze obiektów; dziennik, incydenty, zakazy, konserwacja i raport dla gminy.
+- **Why this order / value delivered:** jedyna przewaga nad PTU (D-008); korzysta z miejsc, terminów i należności z poprzednich faz.
+- **Deliverables:** moduł `facilities` (encje, polecenia, strażnik mutacji na terminach, subskrybenci, zadania `facilities:rental-lifecycle` i `facilities:maintenance-reminders`); umowa administracyjna w `club_core` (`payment_deadline_days`, `auto_expire_unpaid`); rezerwacje wewnętrzne (`facilities_internal_bookings`), usługa `facilities.occupancyService`, zgłoszenia online z potwierdzeniem e-mailem, blokadą 48 h i akceptacją, zadanie `facilities:expire-requests`, blok DI `facilities.publicPlaces`; strony `/backend/facilities/*` (w tym `/requests`), `/club/facility`, `/club/places`, `/p/[clubSlug]/places`, `/p/[clubSlug]/places/[placeSlug]`, `/p/[clubSlug]/requests/verify/[token]`; widżety „Dziś na obiekcie”, „Zgłoszenia do akceptacji”.
+- **Steps:**
+  1. Weryfikacja V-7 (pola reguł `planner`) i V-9 (strażnik mutacji na encji aplikacji); decyzja o godzinach otwarcia na `planner` albo w `place.opening_hours`.
+  2. Strefy, zamknięcia, cennik; hurtowe ustawianie dostępności do rezerwacji w kalendarzu obiektu (TEST-022 część, TEST-041).
+  3. Rezerwacje z należnością, przejścia statusów, strażnik terminów (TEST-022, TEST-023, TEST-027).
+  4. Usługa zajętości, rezerwacje wewnętrzne personelu i kalendarz obiektów `/club/places` z „Rezerwuj dla grupy” wywołującym wydarzenie jednorazowe (TEST-033).
+  5. Publiczna lista obiektów i kalendarz obiektu (TEST-024, TEST-028).
+  6. Zgłoszenia online: formularz, potwierdzenie e-mailem, blokada 48 h, kolejka akceptacji, akceptacja z należnością, odrzucenie, wygaśnięcie, przebicie (TEST-035, TEST-036).
+  7. Dziennik, incydenty, zakazy (TEST-026).
+  8. Raport dla właściciela z czasem klubu (terminy + rezerwacje wewnętrzne) (TEST-025); konserwacja (Could, TEST-031).
+- **Independent slices / estimated commits:** (a) reguły 2 commity; (b) zajętość i rezerwacje wewnętrzne 2 commity; (c) wynajmy 3 commity; (d) publiczny kalendarz 2 commity; (e) zgłoszenia online 3 commity; (f) dziennik i incydenty 2 commity; (g) raport 1 commit; (h) konserwacja 1 commit (może wypaść).
+- **Requirements closed:** REQ-013, REQ-014, REQ-015, REQ-016, REQ-022, REQ-023, REQ-024, REQ-029
+- **Tests:** TEST-022 … TEST-028, TEST-031, TEST-033, TEST-035, TEST-036, TEST-039, TEST-041
+- **Validation:** jak wyżej
+- **Exit gate:** J-005, J-006 i J-007 przechodzą w całości z wariantami; J-008 pokazuje wszystkie bloki przy włączonej konfiguracji; raport zgadza się z danymi testowymi; publiczny harmonogram bez danych osobowych (TEST-024); strony sprawdzone w obu trybach i na 375 px.
+
+## Requirement Traceability
+
+| Requirement | Journey / surface | Data/API/event contracts | Phase | Tests | Acceptance criterion |
+|---|---|---|---|---|---|
+| REQ-001 | J-001, `/backend/people/persons/[id]`, `/club` | `people_persons`, `people_role_assignments`, `POST …/account`, `GET /api/people/me`, `people.role_assignment.*` | 1 | TEST-002, TEST-004, TEST-005, TEST-006 | AC-001 |
+| REQ-002 | J-001, `/club/wards/[personId]` | `people_guardianships`, `create_account` (próg wieku) | 1 | TEST-003, TEST-006 | AC-002 |
+| REQ-003 | J-001, `/backend/club/*` | `club_core_*`, CRUD `club_core`, `people_role_assignments` (`coordinator` + `section_id`) | 1 | TEST-001, TEST-002, TEST-032 | AC-003 |
+| REQ-004 | `/backend/groups/groups` | `groups_groups`, `groups_memberships` | 2 | TEST-030, TEST-008 | AC-004 |
+| REQ-005 | J-002, `/backend/activities/activities` | `activities_activities`, `activities_occurrences`, `activities:generate-occurrences` | 2 | TEST-007, TEST-012 | AC-005 |
+| REQ-006 | J-002, `/club`, `/club/calendar`, `/backend/activities/calendar` | `GET /api/activities/calendar`, `people.scopeService` | 2 | TEST-008, TEST-014 | AC-006 |
+| REQ-007 | J-002, `/club/occurrences/[id]`, lista trenera | `activities_attendances`, `activities_attendance_policies`, `declare`, `guardian-decision`, zadanie wygaszania | 2 | TEST-009, TEST-011, TEST-014 | AC-007 |
+| REQ-008 | J-002, `/backend/activities/occurrences`, raport jednostek | `activities_substitution_entries`, `absence`, `coach`, `reports/coach-units` | 2 | TEST-010, TEST-011 | AC-008 |
+| REQ-009 | J-003, `/club/messages`, `/backend/communication/threads` | `communication_threads`, `communication_thread_messages`, `messages`, `share-text`, subskrybent `activities.occurrence.cancelled` | 3 | TEST-012, TEST-015 | AC-009 |
+| REQ-010 | J-003, `/backend/communication/cases` | `mark_case`, `case_immutable` | 3 | TEST-016 | AC-010 |
+| REQ-011 | J-004, `/backend/payments/*` | `payments_fees`, `payments_discount_rules`, `payments_charges`, `payments:generate-charges` | 4 | TEST-018, TEST-020 | AC-011 |
+| REQ-012 | J-004, `/club/payments` | `payments_checkouts`, `payments_payments`, `payment_gateways.payment.*` | 4 | TEST-019, TEST-020, TEST-021 | AC-012 |
+| REQ-013 | J-005, `/backend/facilities/calendar`, `/rentals`, `/club/facility` | `facilities_zone_rules`, `facilities_closures`, `facilities_rental_rates`, `facilities_rentals`, strażnik terminów, DI `payments` | 5 | TEST-022, TEST-023, TEST-027, TEST-028 | AC-013 |
+| REQ-014 | J-005, J-007, `/p/[clubSlug]/places/[placeSlug]` | `GET /api/facilities/public/…/places`, `…/schedule` | 5 | TEST-024, TEST-028 | AC-014 |
+| REQ-015 | J-005, `/backend/facilities/reports/owner` | `GET /api/facilities/reports/owner` | 5 | TEST-025 | AC-015 |
+| REQ-016 | J-005, `/backend/facilities/logs`, `/incidents`, `/bans` | `facilities_logs`, `facilities_incidents`, `facilities_entry_bans` | 5 | TEST-026 | AC-016 |
+| REQ-017 | J-003, `/club/link`, `/club/d/[token]` | `activities_declaration_tokens`, `declaration-links` | 3 | TEST-017 | AC-017 |
+| REQ-018 | `/backend/activities/activities` (typ `camp`), `/backend/payments/fees` | `type = camp`, `fee.period = one_off` | 2 (+4 dla opłaty) | TEST-029 | AC-018 |
+| REQ-019 | `/backend/groups/groups`, `/seasons` | `groups_seasons`, `dictionaries` | 2 | TEST-030 | AC-019 |
+| REQ-020 | `/backend/activities/occurrences/[id]` | `opponent_external_team_id`, `score_*` | 2 | TEST-029 | AC-020 |
+| REQ-021 | `/backend/activities/reports/coach-units`, `/backend/club/contracts` | `club_core_contracts` (`kind = coach`), CSV | 2 | TEST-013 | AC-021 |
+| REQ-022 | `/backend/facilities/maintenance` | `facilities_maintenance_tasks`, `facilities:maintenance-reminders` | 5 | TEST-031 | AC-022 |
+| REQ-023 | J-006, `/club/places` | `facilities_internal_bookings`, `POST /api/facilities/internal-bookings`, `facilities.occupancyService` | 5 | TEST-033, TEST-039 | AC-023 |
+| REQ-024 | J-007, `/p/[clubSlug]/places/[placeSlug]`, `/backend/facilities/requests` | `facilities_rentals` (statusy zgłoszenia), `…/requests`, `…/verify/{token}`, `…/approve|reject`, `facilities:expire-requests` | 5 | TEST-035, TEST-036, TEST-039 | AC-024 |
+| REQ-025 | J-008, `/p/[clubSlug]`, `/p/[clubSlug]/sections/[sectionSlug]`, `/backend/club/publication` | `club_settings.publication`, pola publiczne sekcji i grup, `GET /api/club_core/public/…`, bloki DI | 2 (podstawa w 1) | TEST-037, TEST-039 | AC-025 |
+| REQ-026 | J-008, strona sekcji | `payments.publicPrices` | 4 | TEST-038 | AC-026 |
+| REQ-027 | J-006, `/club/places`, `/backend/activities/activities` | `POST /api/activities/events`, `type = tournament`, `invited_external_team_ids` | 2 | TEST-034 | AC-027 |
+| REQ-028 | `/backend/club/settings`, `/backend/club/sections/[id]/edit`, nagłówki `/backend`, `/club`, `/p/[clubSlug]`, strona sekcji | `logo_attachment_id` w ustawieniach i sekcji, `attachments`, publiczne API zwraca URL logo efektywnego | 1 | TEST-040 | AC-028 |
+| REQ-029 | `/backend/facilities/calendar`, `/backend/facilities/zones` | `facilities_zone_rules` (`source`, priorytet 3, okres), `POST /api/facilities/zone-rules/bulk`, `facilities.zone_rules.bulk_updated` | 5 | TEST-041 | AC-029 |
+| REQ-030 | `/backend/payments/bank` | `payments_bank_imports`, `payments_bank_transactions`, `payments_payer_refs`, `POST /api/payments/bank-imports`, `/bank-transactions/*` | 4 | TEST-042 | AC-030 |
+| REQ-031 | `/backend/payments/charges`, `/club/cash` | `payments_payments` (`collected_by_person_id`, `receipt_number`), `POST /api/payments/cash` | 4 | TEST-043 | AC-031 |
+| REQ-032 | `/backend/payments/orders*`, `/club/orders*`, `/club/o/[token]`, `/club/coach/orders` | `payments_order_campaigns`, `payments_order_products`, `payments_orders`, `payments_order_lines`, `payments_order_links`, należność `order`, `/api/payments/order-campaigns*`, `/api/payments/orders*` | 4 | TEST-044 | AC-032 |
+| REQ-033 | `/club/coach/orders`, `/backend/payments/cash-custody` | `payments_cash_handovers`, `payments_payments.cash_handover_id`, `POST /api/payments/cash` (zakres trenera), `/api/payments/cash-handovers` | 4 | TEST-045 | AC-033 |
+
+### Śledzenie powierzchni rozszerzeń (`spec-delivery.md`)
+
+Każda nowa powierzchnia odkrywana przez platformę, z plikiem referencyjnym z `src/modules/example/references/surface-inventory.json`. Moduł referencyjny jest obecny w źródłach i niezarejestrowany — jego aktywacje nie są zachowaniem tej aplikacji. Wszystkie wiersze mają klasyfikację `emitted-example` (moduł referencyjny emituje dany mechanizm).
+
+| Powierzchnia Vereino | Requirement | Capability ID → plik referencyjny | Phase | Test |
+|---|---|---|---|---|
+| `index.ts` siedmiu modułów | REQ-001…REQ-022 | `module.metadata` → `src/modules/example/index.ts` | 1–5 | TEST-001 |
+| `acl.ts` z `dependsOn` | REQ-001 | `module.acl-features` → `src/modules/example/acl.ts` | 1–5 | TEST-002 |
+| `setup.ts` (role `vereino_*`, ustawienia klubu, polityki) | REQ-001, REQ-007 | `module.setup-role-features` → `src/modules/example/setup.ts` | 1, 2 | TEST-005 |
+| cele harmonogramu w `setup.ts` | REQ-005, REQ-007, REQ-011, REQ-013, REQ-032 | `module.setup-scheduler-target` → `src/modules/example/setup.ts` | 1, 2, 4, 5 | TEST-007, TEST-009, TEST-018, TEST-023 |
+| `di.ts` (`people.scopeService`, usługa należności `payments`, `facilities.occupancyService`, bloki publiczne `groups.publicCatalog`, `activities.publicSchedule`, `payments.publicPrices`, `facilities.publicPlaces`) | REQ-001, REQ-013, REQ-023, REQ-025, REQ-026 | `module.di-registration` → `src/modules/example/di.ts` | 1, 2, 4, 5 | TEST-005, TEST-022, TEST-033, TEST-037, TEST-038 |
+| `data/entities.ts` | wszystkie | `data.entities` → `src/modules/example/data/entities.ts` | 1–5 | TEST-001 |
+| `data/validators.ts` | wszystkie | `data.validators` → `src/modules/example/data/validators.ts` | 1–5 | TEST-001 |
+| `encryption.ts` | REQ-001, REQ-016 | `data.encryption-map` → `src/modules/example/encryption.ts` | 1, 5 | TEST-004 |
+| `ce.ts` (pola własne osoby i grupy) | REQ-001, REQ-004 | `data.custom-fields` → `src/modules/example/ce.ts` | 1, 2 | TEST-006 |
+| migracje + snapshot | wszystkie | `data.migrations` → `src/modules/example/migrations/.snapshot-open-mercato.json` | 1–5 | TEST-001 |
+| `search.ts` + filtr list na polach szyfrowanych | REQ-001 | `search.module-config` → `src/modules/example/search.ts`; `search.encrypted-column-list-filter` → `src/modules/example/api/todos/route.ts` | 1 | TEST-002 |
+| trasy CRUD | wszystkie | `api.crud-factory` → `src/modules/example/api/customer-priorities/route.ts` | 1–5 | TEST-001 |
+| trasy poleceń (akcje) | REQ-007, REQ-008, REQ-012, REQ-013 | `api.custom-route` → `src/modules/example/api/organizations/route.ts` | 2, 4, 5 | TEST-009, TEST-019, TEST-023 |
+| `openApi` | wszystkie | `api.openapi` → `src/modules/example/api/openapi.ts` | 1–5 | TEST-001 |
+| trasy źródeł opcji | REQ-003, REQ-004 | `api.option-source-routes` → `src/modules/example/api/tags/route.ts` | 1, 2 | TEST-006 |
+| polecenia zapisu z cofaniem | wszystkie | `commands.write` → `src/modules/example/commands/todos.ts`; `commands.undo-redo` → tamże | 1–5 | TEST-001 |
+| `events.ts` | wszystkie | `events.typed-definitions` → `src/modules/example/events.ts` | 1–5 | TEST-010 |
+| subskrybenci trwali | REQ-001, REQ-009, REQ-012, REQ-013 | `events.sync-subscribers` → `src/modules/example/subscribers/auto-default-priority.ts` | 1, 3, 4, 5 | TEST-005, TEST-015, TEST-019, TEST-023 |
+| strażnik mutacji `facilities` na terminach | REQ-013 | `umes.mutation-guard` → `src/modules/example/data/guards.ts` | 5 | TEST-027 |
+| strony backend (lista) | wszystkie | `ui.page-shell` → `src/modules/example/backend/todos/page.tsx`; `ui.datatable` → `src/modules/example/components/TodosTable.tsx` | 1–5 | TEST-006 |
+| formularze | wszystkie | `ui.form-create` → `src/modules/example/components/TodoForm.tsx`; `ui.form-edit` → `src/modules/example/backend/todos/[id]/edit/page.tsx` | 1–5 | TEST-006 |
+| strony frontowe `/club/*`, `/p/*` | REQ-002, REQ-006, REQ-007, REQ-014, REQ-017, REQ-023, REQ-024, REQ-025, REQ-032, REQ-033 | `ui.frontend-page` → `src/modules/example/frontend/example.tsx` | 1–5 | TEST-014, TEST-024, TEST-039 |
+| widżety pulpitu | REQ-008, REQ-011, REQ-013 | `ui.dashboard-widget` → `src/modules/example/widgets/dashboard/todos/widget.ts` | 2, 4, 5 | TEST-010, TEST-020 |
+| typy powiadomień | REQ-007, REQ-008, REQ-009, REQ-011, REQ-013 | `notifications.type` → `src/modules/example/notifications.ts`; `notifications.client-renderer` → `src/modules/example/notifications.client.ts` | 2–5 | TEST-012 |
+| typ obiektu wiadomości „termin” | REQ-009 | `messages.object-type` → `src/modules/example/message-objects.ts` | 3 | TEST-015 |
+| adapter testowy bramki | REQ-012 | `integrations.mock-adapters` → `src/modules/example/lib/mock-gateway-adapter.ts` | 4 | TEST-019 |
+| ręczne generowanie okresu z postępem | REQ-011 | `runtime.bulk-operation-progress` → `src/modules/example/workers/todos-bulk-complete.ts` | 4 | TEST-018 |
+| katalogi i18n | wszystkie | `module.i18n-catalogs` → `src/modules/example/i18n/pl.json` | 1–5 | TEST-006 |
+
+## Rollout, Migration, and Rollback
+
+- **Migracje:** jedna na moduł na fazę; `yarn db:generate` jako sonda, przegląd SQL, snapshot modułu; `yarn db:migrate` tylko po zgodzie; zmiany po wdrożeniu — migracje korygujące.
+- **Setup i dane:** `seedDefaults` (idempotentne): role `vereino_*` z funkcjami, ustawienia klubu, domyślne polityki deklaracji, słownik kategorii wiekowych PZPN; `seedExamples`: demonstracyjna Gwiazda (trzy sekcje z koordynatorami — akademia, basen, zajęcia dodatkowe; Orlik z boiskami i basen; drużyna Żaki, grupy zajęciowe „Basen — początkujący” i „Zumba”; rodzina z dwójką dzieci w różnych sekcjach) — tylko na życzenie. Po dodaniu funkcji w istniejącym tenancie: `yarn mercato auth sync-role-acls`.
+- **Kolejność wdrożenia pilota:** faza 1 → wprowadzenie osób i rodzin przez administratora → faza 2 z dwiema grupami z różnych sekcji (drużyna Żaki i grupa zajęciowa basenu) przez 4 tygodnie z pomiarem deklaracji → reszta grup wszystkich sekcji → fazy 3–5. Każda faza wymaga zgody na włączenie modułów w `src/modules.ts`.
+- **Obserwowalność:** `createLogger` per moduł; zdarzenia `scheduler.job.failed` i `messages.message.email_failed` jako sygnały operacyjne; widżety „nierozliczone” i „bez płatnika” jako wskaźniki jakości danych.
+- **Rollback:** każda faza jest addytywna. Wycofanie fazy = wyłączenie jej modułu w `src/modules.ts` i wyrejestrowanie zadań; dane zostają w tabelach modułu i wracają po ponownym włączeniu. Bez usuwania tabel ani kolumn bez osobnej decyzji. Płatności: wyłączenie `gateway_stripe` zostawia ręczne księgowanie. Strażnik `facilities` znika wraz z modułem, więc `activities` działa jak w fazie 2.
+- **Otwarte poza specyfikacją:** model hostingu dla klubów bez informatyka i domena (D-012) nie blokują implementacji.
+
+## Risks and Tradeoffs
+
+| Risk / tradeoff | Impact | Mitigation / detection | Residual risk |
+|---|---|---|---|
+| Rodzice nie przejdą z Messengera (H6, H7), a push wypadł z 1.0 (Q-002) | cel ≥80% deklaracji nieosiągnięty | e-mail z osobistym linkiem bez logowania; tekst do wklejenia na grupę; pomiar w 4-tygodniowym pilocie jednej grupy; rozmowy z 5 rodzicami przed fazą 3 | wysokie — największe ryzyko produktu |
+| Regeneracja serii nadpisuje ręczne zmiany | utrata zastępstw i obecności | `is_detached`; terminy z obecnością lub zastępstwem nietykalne; TEST-007 | niskie |
+| Strefa czasowa i zmiana czasu | terminy przesunięte o godzinę | RRULE rozwijane w strefie klubu, zapis `timestamptz`; testy dla tygodnia zmiany czasu | niskie |
+| Równoczesne odhaczanie i deklaracje | nadpisane dane | unikalność (termin, osoba), wersja terminu przy zapisie zbiorczym, 409 | niskie |
+| Podwójne lub spóźnione webhooki | podwójna wpłata | unikalność (`gateway_transaction_id`, `charge_id`); `payments_checkouts` | niskie |
+| Kontrakt `payment_gateways` lub `messages` inny niż zakładany (V-4, V-5) | przesunięcie faz 3–4 | weryfikacja jako pierwszy krok fazy; plan awaryjny DD-16; adapter testowy | średnie |
+| Wyszukiwanie po nazwisku na polach szyfrowanych (V-3) | wolne lub niemożliwe wyszukiwanie | wzorzec `search.encrypted-column-list-filter`; 200 osób to mała skala | niskie |
+| Błędna reguła zniżki rodzeństwa (Q-006) | spory z rodzicami | reguła jawna na należności; potwierdzenie ze skarbnikiem przed fazą 4 | średnie |
+| Próg wieku konta 13 vs 16 (Q-007) | ryzyko prawne | ustawienie klubu; opinia prawna przed pilotem | średnie do czasu opinii |
+| Wysyłka e-mail (spam, limity dostawcy) | komunikaty nie docierają | status dostarczenia przy adresacie; `messages.message.email_failed`; konfiguracja SPF/DKIM przy wdrożeniu | średnie |
+| Scraping publicznego harmonogramu | ujawnienie wzorców korzystania | brak nazw; limit żądań; krótki cache | niskie |
+| Koszt prowizji Stripe i brak BLIK/P24 w faktach `gateway_stripe` (Q-016) | rodzice nie zapłacą online | ręczne księgowanie zawsze dostępne; decyzja zarządu przed produkcją | średnie |
+| Gotówka za stroje u trenerów bez rozliczenia | rozbieżności w kasie, spory z rodzicami | numer KP przy każdej wpłacie, e-mail do płatnika, „Gotówka u Ciebie” u trenera, perspektywa „Gotówka do rozliczenia” i numerowane rozliczenia (DD-31) | niskie |
+| Sprzedaż strojów a obowiązki podatkowe (Q-034) | klub musi wystawiać dokumenty sprzedaży | decyzja zarządu z księgową przed pierwszą zbiórką w systemie; system rejestruje zamówienia i wpłaty | średnie do decyzji |
+| Model ukształtowany przez akademię (słownictwo, ekrany, przykłady) okaże się niewygodny dla sekcji niepiłkarskich | koordynator basenu lub zumby wraca do Excela, a teza wielosekcyjności (D-011) upada | `class_group` przechodzi te same testy co `team` (TEST-030); etykiety UI zależne od rodzaju grupy („trener/instruktor”, „trening/zajęcia”); pilot obejmuje od fazy 2 także grupę basenu; rozmowa z koordynatorem sekcji niepiłkarskiej przed fazą 2 (D-011 „Wrócić”) | średnie |
+| Rezerwacje wewnętrzne bez akceptacji w strefach „ogólnodostępne” i „do rezerwacji” (Q-022) | gmina może uznać, że klub zabiera godziny ogólnodostępne; trenerzy różnych sekcji „zajmują” obiekty na zapas | każda rezerwacja widoczna dla personelu z celem i rezerwującym; raport dla właściciela pokazuje czas klubu per strefa; koordynator i administrator mogą anulować; umowa administracyjna sprawdzona przed pilotem (Q-008) | średnie |
+| Spam i fałszywe zgłoszenia online | kolejka administratora zapchana, sloty blokowane | potwierdzenie e-mailem przed blokadą, blokada tylko dla innych zgłoszeń zewnętrznych i najwyżej 48 h, limity żądań per IP i e-mail, pole-pułapka, przebicie przez rezerwację klubu | niskie |
+| Administrator nie zdąży zdecydować w 48 h | zgłoszenia wygasają, najemcy rezygnują | powiadomienie w aplikacji i widżet z czasem do wygaśnięcia; e-mail o wygaśnięciu do zgłaszającego | średnie |
+| Publikacja danych osobowych na stronie klubu | naruszenie RODO | wszystkie bloki domyślnie wyłączone; nazwisko prowadzącego tylko za zgodą; kontakt sekcji jako pola „do publikacji”, nie dane z kartoteki; TEST-037 | niskie |
+| Pięć faz i siedem modułów to duży zakres na mały zespół | opóźnienie 1.0 | fazy osobno wdrażalne; Could (REQ-022) i Should mogą wypaść bez łamania tezy (MoSCoW: wydłużamy termin, nie tniemy Must) | średnie |
+| Włączenie modułów (`scheduler`, `dictionaries`, `messages`, `payment_gateways`, `gateway_stripe`) i zależności `rrule` | konfiguracja i aktualizacje platformy | zgoda per faza; `yarn generate` + pełna walidacja | niskie |
+
+## Acceptance Criteria
+
+- [ ] **AC-001** — Osoba z rolami opiekuna, trenera i koordynatora ma jeden rekord i jedno konto; w `/club` przełącza kontekst; akcje zapisują rolę wyznaczoną przez serwer; nieuprawniony użytkownik dostaje 403.
+- [ ] **AC-002** — Opiekun widzi i edytuje zgody wszystkich podopiecznych; podopieczny ≥ progu wieku ma konto z ograniczonym widokiem; dla młodszego założenie konta zwraca 422.
+- [ ] **AC-003** — Administrator tworzy dowolną liczbę sekcji i przypisuje każdej koordynatora (jedna osoba może koordynować kilka sekcji, sekcja bez koordynatora jest oznaczona); tworzy hierarchię miejsc i instytucje; cykl w hierarchii i nieaktualna wersja zwracają 409 z komunikatem w formularzu.
+- [ ] **AC-004** — Grupa `team` i grupa `class_group` przechodzą ten sam cykl (skład z historią, terminy, obecność, zastępstwo, komunikat, składka); nakładające się członkostwo zwraca 409; pola drużyny i mecze dla `class_group` zwracają 422.
+- [ ] **AC-005** — Aktywność cykliczna generuje terminy na horyzont; edycja pojedynczego terminu przetrwa zmianę serii; kolizja na miejscu zwraca 409 z listą kolidujących terminów.
+- [ ] **AC-006** — Każda rola widzi w kalendarzu dokładnie swoje terminy (TEST-008), w tym zastępca — termin zastępstwa.
+- [ ] **AC-007** — Deklaracja działa według polityki we wszystkich trzech trybach, z limitem czasu; po rozpoczęciu terminu deklaracja zwraca 409.
+- [ ] **AC-008** — Raport jednostek pokazuje planowe, oddane, przejęte i bilans zgodnie z regułą „1 termin treningowy `done` = 1 jednostka”; historia zastępstw jest nieedytowalna.
+- [ ] **AC-009** — Komunikat do zakresu dociera do właściwych adresatów w aplikacji i e-mailem; odwołanie terminu wysyła go automatycznie; tekst do wklejenia zawiera link bez danych osobowych.
+- [ ] **AC-010** — Oznaczenie sprawy jest nieodwracalne, a usunięcie lub edycja jej wiadomości zwraca 409.
+- [ ] **AC-011** — Naliczanie okresu jest idempotentne, stosuje zniżkę na rodzeństwo i wskazuje należności bez płatnika.
+- [ ] **AC-012** — Opiekun płaci swoje należności przez Stripe i widzi status „Opłacone”; powtórzony webhook nie tworzy drugiej wpłaty; cudza należność zwraca 403; uczestnik niepełnoletni z kontem nie widzi płatności (brak kafla i ekranu, API 403).
+- [ ] **AC-013** — Rezerwacja jest możliwa tylko w strefie „do rezerwacji” bez kolizji i zakazu; wylicza kwotę i terminy; tworzy należność na rzecz gminy; odwołanie po terminie daje przepadek.
+- [ ] **AC-014** — Publiczny harmonogram działa bez logowania i nie zawiera nazw najemców, grup ani osób; nieznany slug zwraca 404.
+- [ ] **AC-015** — Raport dla właściciela za miesiąc zgadza się z danymi (godziny w strefach, rezerwacje, wpłaty, incydenty, konserwacja) i eksportuje się do CSV.
+- [ ] **AC-016** — Animator prowadzi dziennik i zgłasza incydenty w zakresie swojego miejsca; aktywny zakaz blokuje rezerwację najemcy.
+- [ ] **AC-017** — Osobisty link pozwala zadeklarować obecność tylko podopiecznych opiekuna na jednym terminie; prośba o link nie ujawnia, czy e-mail istnieje.
+- [ ] **AC-018** — Obóz jest aktywnością `camp` z opłatą jednorazową i listą uczestników.
+- [ ] **AC-019** — Grupa ma kategorię wiekową ze słownika i sezon.
+- [ ] **AC-020** — Mecz ma przeciwnika z listy i zapisany wynik.
+- [ ] **AC-021** — Rozliczenie trenera wylicza kwotę z umowy i eksportuje się do CSV; trener widzi tylko własny wiersz.
+- [ ] **AC-022** — (Could) Zadania konserwacji wysyłają przypomnienia przed terminem.
+- [ ] **AC-023** — Trener, instruktor, koordynator lub administrator dowolnej sekcji rezerwuje wolny slot dowolnego obiektu klubu w każdej strefie bez akceptacji; zajęty slot, zamknięcie lub godziny poza otwarciem zwracają 409.
+- [ ] **AC-024** — Zgłoszenie z publicznego kalendarza obiektu staje się ważną rezerwacją wyłącznie po akceptacji administratora; do decyzji blokuje slot dla innych zgłoszeń najwyżej 48 h, potem wygasa; rezerwacja klubu je przebija z e-mailem do zgłaszającego; akceptacja tworzy należność na rzecz właściciela obiektu.
+- [ ] **AC-025** — Publiczna strona klubu i sekcji pokazuje opis, zajęcia z harmonogramem, warunki, prowadzących, materiały i kontakt wyłącznie w zakresie włączonym w konfiguracji klubu i dla rekordów oznaczonych jako publiczne; nazwisko prowadzącego tylko za jego zgodą; API nie zwraca wyłączonych bloków.
+- [ ] **AC-026** — Ceny i zniżka na rodzeństwo są na stronie sekcji tylko przy włączonym bloku cen.
+- [ ] **AC-027** — Trener zakłada turniej dla własnej grupy bez zgody koordynatora; turniej trafia do kalendarzy uczestników i opiekunów; dla obcej grupy → 403.
+- [ ] **AC-028** — Administrator wgrywa logo klubu, a koordynator — logo swojej sekcji; sekcja bez logo pokazuje logo klubu; usunięcie logo sekcji przywraca logo klubu; plik SVG lub większy niż 2 MB zwraca 422.
+- [ ] **AC-029** — Administrator w jednym kroku ustawia dla kilku obiektów dostępność pn–pt 16:00–22:00 albo różne godziny dla dni; publiczny kalendarz pokazuje „do rezerwacji” tylko w wolnych fragmentach tych godzin; godziny poza otwarciem, krótsze niż 90 min lub w złej kolejności są odrzucane z komunikatem przy dniu.
+- [ ] **AC-030** — Po imporcie wyciągu przelewy z kodem płatnika i pełną kwotą są rozliczone bez udziału administratora; pozostałe są w kolejce z podpowiedzią; ponowny import nie tworzy duplikatów; każde zaksięgowanie można cofnąć.
+- [ ] **AC-031** — Administrator przyjmuje gotówkę od rodzica w maksymalnie trzech krokach (płatnik → należności → potwierdź), także na telefonie; płatnik dostaje e-mail z numerem potwierdzenia; kwota większa niż należności jest odrzucana.
+- [ ] **AC-032** — Administrator tworzy formularz strojów (komplet i produkty z rozmiarami i cenami, nadruk, termin) i ma tekst z linkiem na Messengera w mniej niż 10 minut; opiekun zamawia dla dziecka w aplikacji albo z osobistego linku w mniej niż 2 minuty i od razu widzi należność; po terminie administrator pobiera zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki) bez ręcznego liczenia.
+- [ ] **AC-033** — Trener w aplikacji przyjmuje gotówkę za strój dziecka ze swojej grupy w najwyżej trzech krokach, a rodzic dostaje potwierdzenie; skarbnik widzi, ile gotówki jest u którego trenera, i potwierdza jej odbiór numerowanym rozliczeniem.
+- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
+- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+
+## Final Compliance Report
+
+| Check | Status | Evidence / resolution |
+|---|---|---|
+| Applicable `AGENTS.md` files and routed guides/skills reviewed | pass | `AGENTS.md`, `.ai/guides/spec-delivery.md`, `contracts.md`, `backend-ui.md`, `module-facts.json` (+ v2), `src/modules/example/references/surface-inventory.json`, skill `om-spec-writing` |
+| Data models, APIs, events, UI, and tests are internally consistent | pass | tabela *Requirement Traceability*: każdy REQ ma powierzchnię, kontrakt, fazę, test i AC |
+| Every workflow completes end to end without a catch-all integration phase | pass | J-001…J-005 kończą się w swoich fazach; brak fazy „integracja i poprawki” |
+| Platform-native reuse and extension points were chosen before custom code | pass | *Reuse and Ownership Map* oparta na module-facts; app-owned tylko tam, gdzie faktów brak |
+| UI contracts identify references, canonical components, and theme/state coverage | pass z zastrzeżeniem | każda powierzchnia ma referencję z faktów; nazwa komponentów harmonogramu — V-8 |
+| Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | sekcja *Implementation Phases* |
+| Kontrakty zainstalowanych modułów potwierdzone na poziomie pól i zachowania | fail | V-1…V-10 wymagają `node_modules` (po `yarn install`); każda jest pierwszym krokiem swojej fazy |
+| Zgoda użytkownika na implementację | fail | brak — status pozostaje `Draft` |
+
+Verdict: `Blocked — weryfikacje kontraktów V-1…V-10 (pierwsze kroki faz) oraz zatwierdzenie specyfikacji przez użytkownika`
+
+## Open Questions
+
+Bramka `om-spec-writing` — wszystkie pytania blokujące rozstrzygnięte 2026-10-20 przez Władka Kucia:
+
+| ID | Question | Owner | Blocking? | Resolution / decision date |
+|---|---|---|---|---|
+| Q-001 | Logowanie opiekunów i uczestników 13+: jedno konto `auth` czy portal klienta + backend? | Władek Kuć | yes | **Jedno konto `auth` dla wszystkich ról**, uproszczone strony `/club` dla rodzica (DD-04, DD-05) — 2026-10-20 |
+| Q-002 | Co jest „push” w 1.0, skoro module-facts nie mają web pusha dla PWA? Potwierdzenie D-009. | Władek Kuć | yes | **E-mail + powiadomienia w aplikacji**; push później z aplikacją natywną; D-009 potwierdzona (DD-15) — 2026-10-20 |
+| Q-003 | Bramka płatności online: Stripe, własny P24/PayU, czy online później? | Władek Kuć | yes | **Stripe (`gateway_stripe`)**; D-010 potwierdzona (DD-18) — 2026-10-20 |
+| Q-004 | Jednostka trenera: cały termin czy proporcja z `unit_minutes`? | Władek Kuć | yes | **Cały termin treningowy `done` = 1 jednostka**; D-007 domknięta (DD-14) — 2026-10-20 |
+| Q-005 | Sekcje pilota i ich koordynatorzy (akademia — Wojtek?, basen — Aneta?, zajęcia dodatkowe — ?); czy seniorzy to osobna sekcja? Czy zumba, pilates i siłownia to jedna sekcja „Zajęcia dodatkowe” czy osobne? | Władek Kuć | no | **Częściowo rozstrzygnięte 2026-10-20:** sekcje pilota to Akademia piłkarska, Basen, Zumba, Szachy, Cheerleader; Akademia ma osiem grup rocznikowych (Kids 2021–2022, Skrzat 2020, Żak młodszy 2019, Żak starszy 2018, Orlik młodszy 2017, Orlik starszy 2015–2016, Młodzik starszy 2014, Trampkarz 2012–2013). Otwarte: koordynatorzy sekcji innych niż Akademia i Basen |
+| Q-006 | Kolejność zniżki rodzeństwa: pełna stawka dla najstarszego dziecka, zniżka dla kolejnych — zgoda? Czy zniżka dotyczy też opłat jednorazowych (obóz)? | skarbnik Gwiazdy / Władek | no (przed fazą 4) | domyślnie: najstarsze pełna, zniżka tylko dla miesięcznych |
+| Q-007 | Próg wieku własnego konta: 13 (D-004) czy 16 (RODO, usługi społeczeństwa informacyjnego)? | Władek Kuć (opinia prawna) | no dla kodu, yes dla pilota | ustawienie klubu `own_account_min_age`, domyślnie 13 |
+| Q-008 | Orlik: faktyczne godziny otwarcia i podział stref, N dni na wpłatę, kwoty z widełek (80–150 / 150–220 / 220–350 zł), początek sezonu zimowego | Władek Kuć / Gmina Liszki | no (dane fazy 5) | konfiguracja w `facilities` i umowie administracyjnej |
+| Q-009 | Kto wpisuje rezerwacje i czy animator widzi kwoty? | Władek Kuć | no | domyślnie animator i administrator; kwoty widoczne dla animatora |
+| Q-010 | Wpłaty za wynajem: tylko rejestr „opłacono na konto gminy”? Czy część przychodu wraca do klubu? | Władek Kuć / gmina | no | domyślnie rejestr na podstawie potwierdzenia; podział przychodu poza 1.0 |
+| Q-011 | Czy rezerwacja bez wpłaty po terminie ma wygasać automatycznie? | Władek Kuć | no | domyślnie nie — lista „do wyjaśnienia”; przełącznik `auto_expire_unpaid` w umowie |
+| Q-012 | Czy dziennik animatora jest obowiązkowy (bez wpisu nie da się „zamknąć” dnia)? Animator — pracownik klubu czy gminy? | Władek Kuć | no | domyślnie nieobowiązkowy, ostrzeżenie na widżecie |
+| Q-013 | Zakazy wstępu: wystarczy rejestr, czy potrzebna procedura (kto wydaje, odwołanie)? | Władek Kuć | no | domyślnie rejestr z wydającym, okresem i odwołaniem |
+| Q-014 | Ubezpieczenie OC i przeglądy: system pilnuje terminów? | Władek Kuć | no | REQ-022 (Could) z przypomnieniami |
+| Q-015 | Akceptacja regulaminu przez najemcę: wystarczy zapis „zaakceptowano telefonicznie”? | Władek Kuć | no | domyślnie `regulations_accepted_at` + `regulations_accepted_via` |
+| Q-016 | Kto akceptuje model prowizji Stripe i czyje konto Stripe (RACI: „unknown”)? Czy BLIK/P24 przez Stripe jest wymagany? | zarząd Gwiazdy / skarbnik | no dla kodu, yes dla produkcji płatności | do decyzji przed końcem fazy 4 |
+| Q-017 | Składki: miesięczna za grupę, za aktywność, czy obie; dorosły płaci sam? | Władek Kuć | no | domyślnie obie (cennik przypięty do grupy albo aktywności); dorosły płaci sam |
+| Q-018 | Czy na start pilota potrzebny jest import osób i rodzin z arkusza (~150 rodzin)? | Władek Kuć | no | poza 1.0; w razie potrzeby osobna specyfikacja (`integration`) |
+| Q-019 | Retencja danych byłych uczestników i opiekunów (jak długo po odejściu)? | Władek Kuć | no | domyślnie bez automatycznego usuwania; anonimizacja na żądanie |
+| Q-020 | „Sprawę” zakłada tylko koordynator/administrator, czy uczestnik wątku może poprosić o oznaczenie? | Władek Kuć | no | domyślnie tylko koordynator sekcji i administrator |
+| Q-021 | Czy rezerwacje wewnętrzne, zgłoszenia zewnętrzne online z akceptacją i publiczna strona klubu z sekcjami wchodzą do 1.0 i z jakim priorytetem? | Władek Kuć | yes | **Wszystkie trzy Must** (REQ-023…REQ-027); strona klubu od fazy 1–2, rezerwacje w fazie 5; online tylko zgłoszenie, bez płatności online — 2026-10-20 |
+| Q-022 | Kto rezerwuje wewnętrznie bez akceptacji i gdzie? | Władek Kuć | yes | **Personel każdej sekcji (trener/instruktor, koordynator, administrator), dowolny obiekt klubu, każda strefa**, o ile slot jest wolny (DD-25, DD-26) — 2026-10-20 |
+| Q-023 | Co dzieje się ze slotem przed akceptacją zgłoszenia zewnętrznego? | Władek Kuć | yes | **Wstępna blokada dla innych zgłoszeń zewnętrznych do 48 h, potem wygaśnięcie; rezerwacja klubu może przebić** (DD-27) — 2026-10-20 |
+| Q-024 | Co publikujemy na stronie sekcji? | Władek Kuć | yes | **Wszystkie bloki (opis i harmonogram, warunki, ceny, prowadzący, materiały, kontakt), każdy włączany w konfiguracji klubu; treści wpisywane w panelu przy sekcji i grupie** (DD-28, DD-29); nazwisko prowadzącego dodatkowo za zgodą osoby (RODO) — 2026-10-20 |
+| Q-025 | Czy animator (lub koordynator) ma też akceptować zgłoszenia zewnętrzne? | Władek Kuć | no | domyślnie tylko administrator (`facilities.rentals.approve`); funkcję można nadać innej roli bez zmian w kodzie |
+| Q-026 | Czy rezerwacja wewnętrzna jednej sekcji może być „przebita” przez koordynatora innej sekcji (konflikt dwóch trenerów)? | Władek Kuć | no | domyślnie nie — pierwszeństwo ma pierwsza rezerwacja; spór rozstrzyga administrator, anulując jedną z nich |
+| Q-027 | Wydarzenia otwarte dla osób spoza klubu (np. II Turniej Szachowy z Gwiazdą: dzieci z gminy, zapisy przez formularz, wpisowe 40 zł, dla zawodników klubu i klubu partnerskiego 10 zł): czy 1.0 ma obsługiwać zapisy zewnętrzne, listę startową i zróżnicowane wpisowe? | Władek Kuć | no | domyślnie poza 1.0: wydarzenie widoczne na stronie klubu z opisem warunków i wpisowego; zapisy i wpłaty obsługiwane poza systemem; do rozważenia jako osobna specyfikacja |
+| Q-028 | W jakim banku klub ma rachunek i w jakim formacie bank eksportuje wyciąg (CSV — jaki układ kolumn, MT940, camt.053)? | skarbnik / Władek Kuć | no (przed fazą 4) | domyślnie CSV z mapowaniem kolumn + MT940 |
+| Q-029 | Czy poza administratorem gotówkę mogą przyjmować trenerzy lub koordynatorzy (funkcja `payments.cash.record`)? Jak przekazują ją skarbnikowi? | zarząd / skarbnik | no | **Częściowo rozstrzygnięte 2026-10-20:** trener i koordynator przyjmują gotówkę za zamówienia dzieci ze swojego zakresu (`payments.orders.collect`, REQ-033), a skarbnik rozlicza ją numerowanym rozliczeniem (DD-31); za składki domyślnie tylko administrator (`payments.cash.record` można nadać innej roli bez zmian w kodzie) |
+| Q-030 | Co z nadpłatą z przelewu: saldo na poczet kolejnych należności czy zwrot? | skarbnik | no | domyślnie oznaczana do decyzji administratora przy potwierdzaniu |
+| Q-031 | Jak rodzic składa zamówienie strojów (dziś link do Formularza Google na grupie w Messengerze)? | Władek Kuć | yes | **Link do zbiórki + logowanie w aplikacji albo osobisty link na e-mail znany klubowi**; zamówienie od razu przypisane do dziecka i grupy (REQ-032, DD-30) — 2026-10-20 |
+| Q-032 | Co trener może robić z zamówieniami? | Władek Kuć | yes | **Widzi zamówienia dzieci ze swoich grup, przyjmuje gotówkę z numerem KP i wydaje stroje — także w aplikacji mobilnej; administrator widzi wszystko, przyjmuje gotówkę i przelewy, rozlicza gotówkę od trenera i zamyka zbiórkę** (REQ-033, DD-31) — 2026-10-20 |
+| Q-033 | Kiedy rodzic płaci i jak kończy się zbiórka? | Władek Kuć | yes | **Termin zamknięcia; należność powstaje przy zamówieniu, płatność do wydania; zestawienie dla dostawcy, oznaczenie zamówienia, dostawy i wydania; wydanie nieopłaconego stroju z ostrzeżeniem** — 2026-10-20 |
+| Q-034 | Czy przy sprzedaży strojów klub musi wystawiać paragon lub fakturę (kasa fiskalna, VAT), czy zbiórka to zwrot kosztów zakupu w imieniu rodziców? | zarząd / księgowa | no (przed pierwszą zbiórką w systemie) | domyślnie system rejestruje zamówienia i wpłaty; dokumenty sprzedaży poza 1.0 |
+| Q-035 | Numer na koszulce: unikalny w grupie czy w całej sekcji? Czy zawodnik zachowuje numer między zbiórkami? | trenerzy akademii | no | domyślnie unikalny w grupie w obrębie zbiórki, bez rezerwacji numerów |
+| Q-036 | Czy trenerzy mają rozliczać gotówkę ze skarbnikiem w terminie (np. 7 dni) z przypomnieniem? | skarbnik | no | domyślnie bez terminu; suma „u Ciebie” u trenera i lista „Gotówka do rozliczenia” u skarbnika |
+
+Weryfikacje kontraktów (nie są pytaniami do użytkownika; wykonywane jako pierwszy krok fazy, po `yarn install`, z wynikiem dopisanym tutaj):
+
+| ID | Co sprawdzić | Faza | Plan, jeśli wynik negatywny |
+|---|---|---|---|
+| V-1 | Strony frontowe modułów z `requireAuth: true` i `requireFeatures` dla użytkowników `auth` (komentarz w `src/modules/example/frontend/middleware.ts` potwierdza rozwiązywanie sesji dla tras z `requireAuth`) | 1 | strony członkowskie jako strony backend z uproszczonym układem |
+| V-2 | Polecenie `auth.users.create` i wysyłka e-maila ustawienia hasła; unikalność e-maila w tenancie | 1 | zaproszenie przez reset hasła wywoływany po utworzeniu |
+| V-3 | Filtrowanie i wyszukiwanie list po polach szyfrowanych (`search.encrypted-column-list-filter`) | 1 | wyszukiwanie po deterministycznym hashu nazwiska |
+| V-4 | `messages`: adresaci (użytkownicy, `external_email`) dla ~200 osób, `message_object`, skutek `delete_for_actor`; strategia e-mail w `notifications` | 3 | DD-16 — własna tabela wiadomości w `communication` i wysyłka przez dostępny kanał e-mail |
+| V-5 | `payment_gateways`: tworzenie sesji, klucz dostawcy `stripe`, zawartość zdarzeń, przechowywanie danych dostępowych; metody płatności dostępne w `gateway_stripe` | 4 | mapowanie wyłącznie przez `payments_checkouts` (już zaprojektowane) |
+| V-6 | Rejestracja celów harmonogramu w `setup.ts` i limit aktywnych harmonogramów na tenant | 2 | jeden zbiorczy cel na moduł zamiast kilku |
+| V-7 | Pola `planner_availability_rule` (podmiot, RRULE, rodzaj) — czy nadają się na godziny otwarcia miejsca | 5 | godziny otwarcia w `place.opening_hours` (już zaprojektowane) |
+| V-8 | Nazwa i API wspólnych komponentów harmonogramu/kalendarza w `@open-mercato/ui` (referencja `/backend/calendar`) | 2 | widok listy dni na `DataTable` + siatka z prymitywów design systemu, z uzasadnieniem w specyfikacji |
+| V-9 | Strażnik mutacji rejestrowany przez jeden moduł aplikacji na encjach innego modułu aplikacji | 5 | sprawdzenie kolizji przez opcjonalną usługę DI wywoływaną przez `activities`, gdy `facilities` jest włączony |
+| V-10 | Limity żądań w `metadata` tras (`framework-contracts.md`: `makeCrudRoute` bramkuje „rate limits per method”) — czy obejmują trasy poleceń bez sesji i klucz per e-mail | 1 (strona publiczna), 5 (zgłoszenia) | własny licznik w pamięci podręcznej rozwiązywanej przez DI, z kluczem IP + e-mail |
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-10-20 | Szkielet: TLDR, problem, mapa reuse z module-facts, pytania bramki Q-001…Q-004 |
+| 2026-10-20 | Bramka zamknięta (Q-001 jedno konto `auth`, Q-002 e-mail + w aplikacji, Q-003 Stripe, Q-004 termin = 1 jednostka); pełna specyfikacja: decyzje DD-01…DD-24, słownik i reguły, uprawnienia, architektura, podróże J-001…J-005, kontrakty UI, modele danych, API, zdarzenia i zadania, bezpieczeństwo, testy TEST-001…TEST-031, fazy 1–5, śledzenie wymagań i powierzchni, ryzyka, AC-001…AC-022, pytania nieblokujące Q-005…Q-020, weryfikacje V-1…V-9 |
+| 2026-10-20 | Segment według D-011 skorygowanej: podmiotem jest klub wielosekcyjny, akademia to sekcja główna (~200 zawodników to skala, nie limit). Zmienione: tytuł, TLDR, Problem Statement, miary sukcesu, REQ-003/004/006/008/019/020, DD-03 i nowa DD-03a (równorzędność `team`/`class_group`), słownik (Klub, Sekcja, Grupa, Trener/instruktor, Aktywność, Jednostka, Zniżka), Users/Scope, J-001, J-002, TEST-008/018/030 i nowy TEST-032, ryzyko modelu „zbyt piłkarskiego”, AC-003/004, dane przykładowe, Q-005 |
+| 2026-10-20 | Kalendarze obiektów i strona klubu (Q-021…Q-024): REQ-023 rezerwacje wewnętrzne personelu bez akceptacji, REQ-024 zgłoszenia zewnętrzne online ważne dopiero po akceptacji administratora (blokada 48 h, potwierdzenie e-mailem), REQ-025/026 publiczna strona klubu i sekcji z konfigurowalnymi blokami, REQ-027 turniej jako wydarzenie jednorazowe trenera; DD-25…DD-29; encja `facilities_internal_bookings`, statusy zgłoszenia w `facilities_rentals`, pola publiczne sekcji/grup/miejsc, `club_settings.publication`, zgoda na publikację nazwiska; trasy publiczne przeniesione pod `/p/[clubSlug]/places/…` i `/p/[clubSlug]/sections/…`; J-006…J-008, TEST-033…TEST-039, AC-023…AC-027, Q-025/026, V-10; odstępstwo od `moscow.md` Won't „rezerwacja online dla najemców” |
+| 2026-10-20 | Uczestnik niepełnoletni nie widzi płatności (decyzja Władka): REQ-002, rola pochodna `vereino_payer` tylko dla pełnoletnich, Users/Scope, API `my-charges`, zadanie ról w dniu 18. urodzin, TEST-021, AC-012 |
+| 2026-10-20 | Logo klubu i logo sekcji (REQ-028): sekcja bez logo pokazuje logo klubu; pole `logo_attachment_id` w sekcji, reguła „logo efektywne”, formaty bez SVG do 2 MB, faza 1, TEST-040, AC-028 |
+| 2026-10-20 | Turniej (`tournament`) dozwolony dla każdej grupy, nie tylko drużyn (turniej szachowy, zawody cheerleaderek); `match`/`sparring` nadal tylko `team`; TEST-034; Q-027 — zapisy osób spoza klubu na wydarzenia i zróżnicowane wpisowe |
+| 2026-10-20 | Hurtowe ustawianie dostępności do rezerwacji z zewnątrz w kalendarzu obiektu (REQ-029): obiekty × dni × godziny lub siatka dni, okres obowiązywania, zastąp/dopisz, priorytet nad regułami regulaminu, `POST /api/facilities/zone-rules/bulk`, TEST-041, AC-029 |
+| 2026-10-20 | Rozliczanie należności: import wyciągu bankowego z automatycznym dopasowaniem (kod płatnika, kolejka potwierdzeń, cofanie, bez duplikatów) — REQ-030; wpłaty gotówkowe w panelu i na telefonie z numerem KP — REQ-031; encje `payments_payer_refs`, `payments_bank_imports`, `payments_bank_transactions`; funkcje `payments.bank.import`, `payments.cash.record`; TEST-042/043, AC-030/031, Q-028…Q-030. Naprawiono położenie wiersza śledzenia REQ-029 |
+| 2026-10-20 | Zbiórki zamówień (np. stroje, jak dotychczasowy Formularz Google): kreator formularza w panelu (produkty z rozmiarami i cenami, komplet, nadruk, terminy), zamówienie opiekuna w aplikacji lub z osobistego linku, należność `order`, zestawienie dla dostawcy, etapy do wydania — REQ-032; gotówka za zamówienia u trenera w aplikacji i jej rozliczenie u skarbnika — REQ-033; DD-30, DD-31; encje `payments_order_*`, `payments_cash_handovers`; funkcje `payments.orders.manage|place|collect`; TEST-044/045, AC-032/033; Q-031…Q-033 rozstrzygnięte, Q-034…Q-036 otwarte; Q-029 częściowo rozstrzygnięte |

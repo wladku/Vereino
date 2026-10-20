@@ -15,10 +15,12 @@ Route first; never probe unmatched context.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
 - Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI) MUST read `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`; tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
+- Git: after each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a Conventional Commits message (`docs:`, `feat(<module>):`, `fix:`, `chore:`); one task = one commit, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
 
 ## Ask First
 
 - Ask before scope/architecture/public contracts/dependencies/ejection/canonical primitives; migrations/resets/DB targets; live credentials/providers; or weakening security/concurrency/retries/idempotency/audit/undo.
+- Ask before `git push`, force-push, rebase of shared branches, or any commit that touches migrations.
 
 ## Never
 

@@ -8,16 +8,16 @@ status: założenia zespołu (żadna odpowiedź nie jest jeszcze potwierdzona ro
 # Business case: Vereino
 
 ## 1. Co chcemy zbudować i dla kogo?
-Otwartoźródłowy system do zarządzania małą akademią piłkarską (do ~200 zawodników), zbudowany na Open Mercato. [ZAŁOŻENIE: segment] Użytkownicy: koordynator sekcji, skarbnik/administrator klubu, trenerzy (często na zleceniu), opiekunowie prawni dzieci, uczestnicy 13+, animator obiektu. Płacący klient: zarząd klubu (stowarzyszenie), docelowo także gmina jako właściciel obiektu. [ZAŁOŻENIE]
+Otwartoźródłowy system do zarządzania małym klubem wielosekcyjnym, w którym główną sekcją jest akademia piłkarska (orientacyjnie do ~200 zawodników; obok niej basen, zajęcia dodatkowe), zbudowany na Open Mercato. [DOKUMENT: decyzja Władka 2026-10-20, D-011] Użytkownicy: koordynator sekcji, skarbnik/administrator klubu, trenerzy (często na zleceniu), opiekunowie prawni dzieci, uczestnicy 13+, animator obiektu. Płacący klient: zarząd klubu (stowarzyszenie), docelowo także gmina jako właściciel obiektu. [ZAŁOŻENIE]
 
-Pilot: KS Gwiazda Ściejowice (klub wielosekcyjny: akademia piłkarska, basen, zajęcia dodatkowe; administruje Orlikiem 2024 w imieniu Gminy Liszki). [DOKUMENT: regulamin Orlika, notatka orlik-ustalenia]
+Pilot: KS Gwiazda Ściejowice — dokładnie taki klub: akademia piłkarska, basen, zajęcia dodatkowe; administruje Orlikiem 2024 w imieniu Gminy Liszki. [DOKUMENT: regulamin Orlika, notatka orlik-ustalenia]
 
 ## 2. W czym produkt ma pomóc i dlaczego ktoś miałby z niego skorzystać?
 Dziś (w Gwieździe): grafik i obecność przez grupy na Messengerze, składki śledzone ręcznie, zastępstwa trenerów ustalane telefonicznie, rezerwacje orlika przez telefon do klubu, brak rejestru trudnych spraw. [DOKUMENT: transkrypcja spotkania 26.09.2026 — to wiedza Władka jako wiceprezesa, nie rozmowa z użytkownikiem]
 
 Produkt ma: (a) dać rodzicowi jeden kalendarz wszystkich dzieci i „będę/nie będę” w dwa kliknięcia, (b) dać trenerowi listę obecności i zastępstwo z telefonu, (c) dać skarbnikowi naliczanie składek i płatność online, (d) dać koordynatorowi grafik bez kolizji na obiekcie i publiczny harmonogram orlika z rezerwacjami, (e) dać zarządowi rejestr spraw jako zabezpieczenie prawne. [ZAŁOŻENIE: które z tych bólów są największe — do sprawdzenia w rozmowach]
 
-Dlaczego nie ProTrainUp (125–245 zł/mies.): [BENCHMARK] PTU jest rozbudowany pod duże kluby i trenerów (rysunki, medycyna, skauting); nie ma zarządzania obiektem gminy ani sekcji niesportowych; to SaaS z danymi u dostawcy. Vereino ma być proste, darmowe (open source) i mieć obiekt gminny jako funkcję centralną. [ZAŁOŻENIE: że „darmowe + proste + orlik” wystarczy, by mała akademia wybrała nas zamiast PTU]
+Dlaczego nie ProTrainUp (125–245 zł/mies.): [BENCHMARK] PTU jest rozbudowany pod duże kluby i trenerów (rysunki, medycyna, skauting); nie ma zarządzania obiektem gminy ani sekcji niesportowych; to SaaS z danymi u dostawcy. Vereino ma być proste, darmowe (open source), obsługiwać klub jako całość (wiele sekcji, jeden rodzic z dziećmi w różnych sekcjach) i mieć obiekt gminny jako funkcję centralną. [ZAŁOŻENIE: że „darmowe + proste + orlik” wystarczy, by mała akademia wybrała nas zamiast PTU]
 
 ## 3. Co już wiemy, skąd, i czego musimy się dowiedzieć?
 Wiemy:
@@ -37,6 +37,6 @@ Nie wiemy (metoda):
 ## 4. Co obejmuje pierwsza wersja, a co odkładamy?
 Zakres 1.0: patrz `2026-10-20-moscow.md` i decyzje D-001…D-012. W skrócie: osoby i role, grupy, aktywności/terminy, kalendarze, obecność, komunikaty z push, składki z płatnością online, obiekt (orlik) z publicznym harmonogramem i rezerwacjami.
 
-Wizja (poza 1.0, do sprawdzenia): wiele klubów na jednej instancji dla gminy; projekty i dofinansowania; sklep; rezerwacja online dla najemców; historia rozwoju zawodnika; sekcje niesportowe jako pełnoprawny przypadek.
+Wizja (poza 1.0, do sprawdzenia): wiele klubów na jednej instancji dla gminy; projekty i dofinansowania; sklep; rezerwacja online dla najemców; historia rozwoju zawodnika.
 
 Świadomie nie budujemy: rysunków treningowych, bazy ćwiczeń, modułu medycznego, skautingu, statystyk indywidualnych, integracji z Messengerem/WhatsApp (brak API dla grup).

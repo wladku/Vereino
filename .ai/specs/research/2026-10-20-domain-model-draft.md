@@ -7,13 +7,13 @@
 
 ## Overview
 
-Vereino is an open-source club management system built on Open Mercato, targeted at small football academies (up to ~200 players), typically suburban clubs playing on municipality-owned facilities. One Open Mercato tenant = one club. Pilot: KS Gwiazda Ściejowice, which also administers the "Orlik 2024" facility on behalf of Gmina Liszki.
+Vereino is an open-source club management system built on Open Mercato, targeted at small multi-section sports clubs (associations) whose main section is a football academy (indicatively up to ~200 players; not a system limit), alongside e.g. a swimming section and extra classes — typically suburban clubs playing on municipality-owned facilities (D-011). One Open Mercato tenant = one club. Pilot: KS Gwiazda Ściejowice, which also administers the "Orlik 2024" facility on behalf of Gmina Liszki.
 
 Research inputs (business case, stakeholders, benchmark, decisions D-001…D-012, interview scripts) live in [`README.md`](README.md) (this folder). The visual system map is [`assets/vereino-system-map.html`](assets/vereino-system-map.html) (in this research folder).
 
 ## Problem Statement
 
-Small academies run schedules, attendance, coach substitutions, fees and facility bookings across Messenger groups, Excel and phone calls. Existing SaaS (ProTrainUp, 125–245 PLN/month) covers the calendar/attendance/fees core but not municipality-facility administration, multi-section clubs or data ownership; it is also heavier than a small academy needs. See `research/2026-09-30-benchmark-protrainup.md`.
+Small clubs run schedules, attendance, coach substitutions, fees and facility bookings across Messenger groups, Excel and phone calls. Existing SaaS (ProTrainUp, 125–245 PLN/month) covers the calendar/attendance/fees core but not municipality-facility administration, non-football sections (zumba, pilates, swimming groups) or data ownership; it is also heavier than a small academy needs. See `research/2026-09-30-benchmark-protrainup.md`.
 
 ## Proposed Solution
 
