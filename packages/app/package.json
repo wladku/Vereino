@@ -26,7 +26,7 @@
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "typecheck:qa": "tsc --noEmit -p .ai/qa/tests/tsconfig.json",
     "test": "jest --config jest.config.cjs",
-    "test:scripts": "node --test --experimental-test-module-mocks --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=\"scripts/vereino-*.mjs\" --test-coverage-include=\"scripts/check-vereino-contracts.mjs\" --test-coverage-include=\"../../scripts/verify.mjs\" --test-coverage-include=\"../../eslint.vereino.mjs\" \"scripts/__tests__/*.test.mjs\"",
+    "test:scripts": "node --test --experimental-test-module-mocks --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=\"scripts/vereino-*.mjs\" --test-coverage-include=\"scripts/check-vereino-contracts.mjs\" --test-coverage-include=\"../../scripts/verify.mjs\" --test-coverage-include=\"../../scripts/setup.mjs\" --test-coverage-include=\"../../eslint.vereino.mjs\" \"scripts/__tests__/*.test.mjs\"",
     "test:integration": "npx playwright test --config .ai/qa/tests/playwright.config.ts",
     "test:integration:ephemeral": "yarn mercato test:integration",
     "test:integration:ephemeral:start": "yarn mercato test:ephemeral",

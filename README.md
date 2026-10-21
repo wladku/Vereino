@@ -90,11 +90,39 @@ The first Vereino modules (`club_core`, `people`, `groups`, `activities`, `commu
 
 Requirements: Node.js ≥ 24, Yarn 4 (Corepack), Docker (PostgreSQL and Redis for local development).
 
+### One command
+
+```
+npm run setup
+```
+
+The installer runs every manual step below. Before each step it checks whether that step is already done and skips it, so you can run it again at any time (for example after pulling new dependencies or migrations). In order, it:
+
+1. checks Node.js;
+2. enables Corepack when the pinned Yarn version is missing;
+3. installs dependencies when `yarn.lock` or a workspace manifest changed;
+4. copies `packages/app/.env.example` when `packages/app/.env` is missing;
+5. starts `postgres` and `redis` with `docker compose` when the local database is unreachable;
+6. runs `generate` and `db:migrate`;
+7. initializes the app only when the database has no users yet;
+8. starts `yarn dev`.
+
+`yarn setup` is the same command. Options:
+
+- `--no-dev`: stop before starting the app.
+- `--reinstall`: re-initialize a database that already has data.
+- `--classic`, `--verbose`, `--database-name <name>`: passed on as before.
+
+If a step fails, the installer stops and names it. Fix the problem and run the installer again.
+
+### Manual steps
+
 ```
 yarn install
 cp packages/app/.env.example packages/app/.env   # database settings; Docker stack in docker-compose*.yml
-yarn setup
-yarn dev
+docker compose --env-file packages/app/.env up -d --wait postgres redis
+yarn workspace @vereino/app setup                # generate, migrate, initialize, then start the dev runtime
+yarn dev                                         # later runs
 ```
 
 Before running the production server (`yarn build && yarn start`, Docker, Railway), replace the placeholder `JWT_SECRET` and `AUTH_SECRET` in `packages/app/.env` with fresh values (`openssl rand -hex 32`); the server refuses to start with the example secrets.

@@ -22,6 +22,7 @@ export function vereinoFormatGlobs(moduleIds) {
     'packages/app/scripts/check-vereino-contracts.mjs',
     'packages/app/scripts/__tests__/**',
     'scripts/verify.mjs',
+    'scripts/setup.mjs',
     'eslint.vereino.mjs',
   ]
 }
