@@ -30,7 +30,7 @@ services:
     working_dir: /app
     volumes:
       - init_marker:/tmp/init-marker
-      - attachments_storage:/app/storage
+      - attachments_storage:/app/packages/app/storage
     ports:
       - "${APP_PORT:-3000}:${CONTAINER_PORT:-3000}"
     environment:

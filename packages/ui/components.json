@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "../app/src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@vereino/ui/components",
+    "ui": "@vereino/ui/components/ui",
+    "utils": "@vereino/ui/lib/utils",
+    "lib": "@vereino/ui/lib",
+    "hooks": "@vereino/ui/hooks"
+  }
+}

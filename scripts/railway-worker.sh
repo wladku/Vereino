@@ -8,7 +8,7 @@ export NEXT_PUBLIC_QUEUE_STRATEGY=async
 export AUTO_SPAWN_WORKERS=false
 export OM_AUTO_SPAWN_WORKERS=false
 
-if [ ! -d ".mercato/generated" ]; then
+if [ ! -d "packages/app/.mercato/generated" ]; then
   yarn generate
 fi
 

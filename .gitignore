@@ -61,10 +61,10 @@ next-env.d.ts
 .tsbuild/
 
 # generated files
-.mercato/*
-!.mercato/railway.json
+packages/app/.mercato/*
+!packages/app/.mercato/railway.json
 generated/
-src/generated/
+packages/app/src/generated/
 .test-cache.json
 
 # runtime state
@@ -72,7 +72,7 @@ src/generated/
 .queue
 
 # uploads and app data
-public/uploads/*
+packages/app/public/uploads/*
 /storage/
 /data/
 

@@ -1,24 +1,24 @@
 ---
-typ: benchmark
-data-sprawdzenia: 2026-09-30
-autor: Claude na zlecenie Władka Kucia; każdy wpis do ponownego sprawdzenia przez człowieka pod linkiem
-pytanie: Czy mała akademia (100–200 zawodników) ma dziś gotowe narzędzie do obecności, składek i grafiku — i za ile?
+type: benchmark
+checked-on: 2026-09-30
+author: Claude at Władek Kuć's request; every entry to be re-checked by a human at the link
+question: Does a small academy (100–200 players) have a ready-made tool for attendance, membership fees and the schedule today — and at what price?
 ---
 
 # [BENCHMARK] ProTrainUp
 
-- **Link:** https://protrainup.com/pl · cennik: https://protrainup.com/pl/pricing · funkcje: https://protrainup.com/en/features
-- **Data sprawdzenia:** 2026-09-30
-- **Dla kogo:** kluby i akademie wielu dyscyplin, federacje, trenerzy indywidualni, rodzice i zawodnicy. Klienci wymienieni na stronie: PZPN, Legia Warszawa, Lech Poznań, FC Porto, federacje Słowenii, Litwy, Łotwy, Słowacji.
-- **Co robi dla zadania użytkownika:** kalendarz, obecność, komunikaty push/SMS/e-mail, składki z automatycznymi przypomnieniami i płatnością online (Przelewy24, PayU, Stripe), wiele ról, profile zawodników, oceny umiejętności, rysunki treningowe i baza ćwiczeń, statystyki meczowe, moduł medyczny, skauting, ewidencja czasu pracy, sklep, strona klubu, funkcje federacyjne, szkolenia trenerów.
-- **Co robi dobrze:** kompletność dla trenera (narzędzia treningowe), ściągalność składek jako główne hasło, aplikacje iOS/Android/AppGallery, integracje płatnicze i z PZPN, skala (strona podaje 10 100+ aktywnych użytkowników miesięcznie i ponad 1 000 000 zarejestrowanych).
-- **Gdzie zawodzi dla naszych użytkowników (ZAŁOŻENIE do sprawdzenia w rozmowach):** brak zarządzania obiektem administrowanym w imieniu gminy (strefy, publiczny harmonogram, rezerwacje zewnętrzne, raport dla właściciela); model piłkarsko-sportowy, grupy niesportowe (zumba, pilates) nie są naturalnym przypadkiem; ciężar platformy dla małej akademii, która użyje ułamka funkcji; SaaS — dane u dostawcy, koszt rośnie z progami.
-- **Cena dokładnie jak na stronie 30.09.2026 (PLN/mies.):** Club Pro 125 (5 trenerów, 100 zawodników, 1 koordynator); Silver 245 (bez limitu trenerów/zawodników, 3 koordynatorów, + medyczny); Gold 495 (+ czas pracy, komunikacja masowa, rekrutacja, magazyn, wyciągi); Platinum 899 (+ zmęczenie, skauting, sklep, strona, zapisy). Rocznie do 10% taniej. Licencje trenerskie: Coach Free 0, Elite 13, Creator 19, Lider 30. Pakiet OneTeam + LiveTag.Pro 239. Okres próbny: strona deklaruje możliwość testu, długość — brak danych.
-- **Oceny:** brak danych (nie sprawdzano sklepów z aplikacjami).
+- **Link:** https://protrainup.com/pl · pricing: https://protrainup.com/pl/pricing · features: https://protrainup.com/en/features
+- **Checked on:** 2026-09-30
+- **For whom:** multi-discipline clubs and academies, federations, individual coaches, parents and players. Customers listed on the website: PZPN (Polish Football Association), Legia Warszawa, Lech Poznań, FC Porto, the federations of Slovenia, Lithuania, Latvia, Slovakia.
+- **What it does for the user's job:** calendar, attendance, push/SMS/e-mail announcements, membership fees with automatic reminders and online payment (Przelewy24, PayU, Stripe), multiple roles, player profiles, skill assessments, training diagrams and an exercise library, match statistics, medical module, scouting, working-time records, shop, club website, federation features, coach education.
+- **What it does well:** completeness for the coach (training tools), fee collection as the headline message, iOS/Android/AppGallery apps, payment and PZPN integrations, scale (the website states 10,100+ monthly active users and over 1,000,000 registered).
+- **Where it falls short for our users (ASSUMPTION to verify in interviews):** no management of a facility administered on behalf of a municipality (zones, public schedule, external bookings, owner report); a football/sports model, non-sports groups (zumba, pilates) are not a natural fit; the weight of the platform for a small academy that will use a fraction of the features; SaaS — data held by the vendor, cost grows with tiers.
+- **Price exactly as on the website on 2026-09-30 (PLN/month):** Club Pro 125 (5 coaches, 100 players, 1 coordinator); Silver 245 (unlimited coaches/players, 3 coordinators, + medical); Gold 495 (+ working time, mass communication, recruitment, inventory, statements); Platinum 899 (+ fatigue, scouting, shop, website, registrations). Up to 10% cheaper annually. Coach licenses: Coach Free 0, Elite 13, Creator 19, Lider 30. OneTeam + LiveTag.Pro package 239. Trial period: the website states that a trial is possible, length — no data.
+- **Ratings:** no data (app stores were not checked).
 
-## Co z tego wynika (wniosek zespołu, nie dane)
-Rdzeń kalendarz+obecność+składki jest u PTU za 125–245 zł. Vereino nie wygra kopią tego rdzenia. Przestrzeń: obiekt gminny, prostota, zero licencji, dane u klubu. Nie budować: rysunków treningowych, medycyny, skautingu, statystyk indywidualnych. Benchmark nie mówi nic o popycie na Vereino.
+## What follows from this (team conclusion, not data)
+The calendar+attendance+fees core costs PLN 125–245 at PTU. Vereino will not win with a copy of that core. The opening: the municipal facility, simplicity, zero license fees, data kept by the club. Do not build: training diagrams, medical, scouting, individual statistics. The benchmark says nothing about demand for Vereino.
 
-## Do zrobienia
-- Wykupić Club Pro na 1 miesiąc (125 zł) i przeklikać ścieżki trenera, rodzica, koordynatora; zapisać notatkę [PRODUKT] z datą.
-- Dodać 1–2 kolejne rozwiązania do porównania (np. narzędzia używane przez akademie w okolicy — zapytać w rozmowach, czego używają).
+## To do
+- Buy Club Pro for 1 month (PLN 125) and click through the coach, parent and coordinator flows; write a dated [PRODUCT] note.
+- Add 1–2 more solutions to the comparison (e.g. tools used by academies in the area — ask in interviews what they use).

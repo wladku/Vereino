@@ -3,7 +3,8 @@ set -e
 
 CONTAINER_REGISTRY_HOST="${OPEN_MERCATO_DOCKER_REGISTRY_HOST:-host.docker.internal}"
 YARNRC_BACKUP=""
-INSTALL_STATE_FILE="/app/node_modules/.open-mercato-install-state"
+APP_NODE_MODULES="/app/packages/app/node_modules"
+INSTALL_STATE_FILE="${APP_NODE_MODULES}/.open-mercato-install-state"
 
 restore_yarn_config() {
   if [ -n "${YARNRC_BACKUP}" ] && [ -f "${YARNRC_BACKUP}" ]; then
@@ -34,7 +35,7 @@ prepare_container_yarn_config() {
 }
 
 compute_install_state() {
-  for file in /app/package.json /app/yarn.lock /app/.yarnrc.yml; do
+  for file in /app/package.json /app/packages/app/package.json /app/yarn.lock /app/.yarnrc.yml; do
     if [ -f "${file}" ]; then
       cksum "${file}"
     else
@@ -44,11 +45,11 @@ compute_install_state() {
 }
 
 is_cli_ready() {
-  [ -d /app/node_modules ] \
-    && [ -n "$(ls -A /app/node_modules 2>/dev/null)" ] \
-    && [ -d /app/node_modules/@open-mercato/cli ] \
-    && [ -x /app/node_modules/.bin/mercato ] \
-    && [ -x /app/node_modules/@open-mercato/cli/bin/mercato ]
+  [ -d ${APP_NODE_MODULES} ] \
+    && [ -n "$(ls -A ${APP_NODE_MODULES} 2>/dev/null)" ] \
+    && [ -d ${APP_NODE_MODULES}/@open-mercato/cli ] \
+    && [ -x ${APP_NODE_MODULES}/.bin/mercato ] \
+    && [ -x ${APP_NODE_MODULES}/@open-mercato/cli/bin/mercato ]
 }
 
 should_install_dependencies() {
@@ -66,15 +67,15 @@ should_install_dependencies() {
 }
 
 reset_node_modules() {
-  if [ ! -d /app/node_modules ]; then
+  if [ ! -d ${APP_NODE_MODULES} ]; then
     return
   fi
 
-  find /app/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  find ${APP_NODE_MODULES} -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 }
 
 record_install_state() {
-  mkdir -p /app/node_modules
+  mkdir -p ${APP_NODE_MODULES}
   compute_install_state > "${INSTALL_STATE_FILE}"
 }
 trap restore_yarn_config EXIT

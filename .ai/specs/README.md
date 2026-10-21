@@ -19,6 +19,17 @@ it's almost certainly an app-level decision.
 {YYYY-MM-DD}-{slug}.md
 Example: 2026-03-01-inventory-module.md
 
+## Folders and lifecycle
+
+| Folder | Specs in it |
+|---|---|
+| `.ai/specs/` | active: `Draft`, `Ready for implementation`, `In progress` |
+| `.ai/specs/implemented/` | `Implemented` — every phase landed, acceptance criteria met |
+| `.ai/specs/archive/` | `Archived` — superseded or abandoned (reason and successor in the Changelog) |
+| `.ai/specs/research/` | read-only discovery inputs (interviews, decisions, drafts), not specs |
+
+Specs move between folders with `git mv`, keep their file name, and are never deleted. Rules: `AGENTS.md` → **Project memory (`.ai/`)**.
+
 ## Workflow
 
 1. Route every new application, multi-module feature, or non-trivial business slice through `om-spec-writing` and `.ai/guides/spec-delivery.md`.

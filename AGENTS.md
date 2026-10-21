@@ -1,20 +1,40 @@
-# vereino — Standalone App Agent Rules
+# vereino — Agent Rules (monorepo; Open Mercato app in `packages/app`)
 
 Route first; never probe unmatched context.
+
+## Stack and Monorepo (MUST)
+
+- **Stack:** Open Mercato on the latest Next.js (App Router) + React + TypeScript (strict); PostgreSQL through MikroORM (entities, migrations, connection pool); Awilix for dependency injection (services registered in a module's `di.ts` and resolved from the container); Tailwind CSS for member and public (frontend) pages; shadcn/ui through `@open-mercato/ui` primitives for admin (backend) pages. Never add a parallel framework: no other ORM, query builder, DI container, CSS framework or component library.
+- **Workspaces:** Yarn 4 workspaces under `packages/`, each with its own `node_modules` (`nmHoistingLimits: workspaces`).
+
+| Package | Name | Holds | May import |
+|---|---|---|---|
+| `packages/app` | `@vereino/app` | the Open Mercato application: Next.js app, Vereino modules in `src/modules/<id>/` (entities, migrations, commands, API routes, pages, events, i18n, DI), configuration, dev/runtime scripts, `.ai/qa` integration tests | `@vereino/core`, `@vereino/db`, `@vereino/ui`, `@open-mercato/*` |
+| `packages/core` | `@vereino/core` | reusable domain logic: pure functions, types, validation schemas (e.g. discount rules, money, date ranges) | nothing app-, React-, Next.js- or database-specific |
+| `packages/db` | `@vereino/db` | MikroORM/PostgreSQL tooling: shared persistence helpers, migration and seed utilities, test-database helpers | `@vereino/core`, MikroORM |
+| `packages/ui` | `@vereino/ui` | reusable React components: admin components on shadcn/ui (`@open-mercato/ui`), member/public components styled with Tailwind | `@vereino/core`, React, `@open-mercato/ui` |
+
+- Dependency direction is `app → ui | db → core`; no cycles, and no package imports `@vereino/app`.
+- Module entities, migrations, routes and pages stay in `packages/app/src/modules/<id>/` — Open Mercato discovers them only there. Move code into `core`, `db` or `ui` only when at least two modules reuse it or it is framework-free; module-specific code stays in its module.
+- Each package exposes its public API from `src/index.ts`; never deep-import another package's internals. New packages are wired into `transpilePackages` in `packages/app/next.config.ts`; UI packages also need an `@source` line in `packages/app/src/app/globals.css`.
+- Add a dependency to the workspace that uses it (`yarn workspace @vereino/<name> add …`), never to the root `package.json` (root holds only workspaces, `resolutions` and delegating scripts).
+- Paths in this file and in `.ai/guides` that start with `src/`, `scripts/`, `public/`, `.mercato/` or name app config files (`next.config.ts`, `tsconfig.json`, `jest.config.cjs`, `.env`) are relative to `packages/app/`. Run app commands from the root (`yarn dev`, `yarn generate`, `yarn typecheck`, `yarn mercato …` delegate to `@vereino/app`) or with `yarn workspace @vereino/app <script>`.
 
 ## Always
 
 - Route all axes; missing context: `yarn mercato agentic:init --update-harness`.
 - Lessons: scan `.ai/lessons.md` tags; open/update one matching record + row.
-- App code: `src/modules/<id>/`; framework context only for named gaps.
+- Follow **Project memory (`.ai/`)** below for every spec, autonomous run and lesson — it is mandatory, not optional documentation.
+- App code: `packages/app/src/modules/<id>/`; framework context only for named gaps.
 - Derive trusted `tenantId` + `organizationId` and fail closed. Only an installed contract may use system scope (`organizationId: null`).
 - Use commands/`makeCrudRoute`/`CrudForm`/`DataTable`, DI/events/UMES; effects stay post-commit.
-- Put entities in `src/modules/<id>/data/entities.ts`; API routes need per-method `metadata` + `openApi`.
+- Put entities in `packages/app/src/modules/<id>/data/entities.ts`; API routes need per-method `metadata` + `openApi`.
 - Editable records expose `updated_at`/`updatedAt`; custom update/delete clients send the version and surface 409s.
 - Run `yarn db:generate`, review scoped SQL/snapshot, and ask before applying it.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
 - Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI) MUST read `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`; tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
+- Repository language is English: docs, specs, research, code, comments and commit messages. UI text lives only in i18n catalogs; every Vereino module ships `i18n/en.json` and `i18n/pl.json`, and a new language is added by adding catalog files.
 - Git: after each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a Conventional Commits message (`docs:`, `feat(<module>):`, `fix:`, `chore:`); one task = one commit, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
 
 ## Ask First
@@ -30,9 +50,34 @@ Route first; never probe unmatched context.
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
 - Never hard-code user strings/status colors; expose secrets/transcripts; or guess answerable contracts.
 
+## Project memory (`.ai/`)
+
+| Path | Holds | Name |
+|---|---|---|
+| `.ai/specs/` | active specs for spec-driven development (`Draft`, `Ready for implementation`, `In progress`); `research/` = read-only discovery inputs | `YYYY-MM-DD-slug.md` |
+| `.ai/specs/implemented/` | specs whose every phase landed and acceptance criteria are met (`Status: Implemented`) | same file name, moved with `git mv` |
+| `.ai/specs/archive/` | superseded or abandoned specs (`Status: Archived`, reason + successor link in the Changelog) | same file name, moved with `git mv` |
+| `.ai/runs/` | one log per autonomous AI run | `YYYY-MM-DD-slug.md` (`-2`, `-3` … for a second run with the same slug that day) |
+| `.ai/lessons.md` + `.ai/lessons/` | durable findings, conclusions and improvements for future agents (catalog + one record per lesson) | record `kebab-case-slug.md` from `.ai/lessons/_template.md` |
+
+Rules (MUST):
+
+- **Specs:** create new specs only as `.ai/specs/YYYY-MM-DD-slug.md` (date = creation day, slug = kebab-case English). Never delete a spec. When a spec is fully implemented, set `Status: Implemented`, add a Changelog row and move it to `implemented/`; when it is superseded or dropped, set `Status: Archived`, link the successor and move it to `archive/`. Fix every link to a moved spec in the same commit. Before writing a new spec, search `specs/`, `implemented/` and `archive/` for a covering one and update it instead of duplicating.
+- **Runs:** an autonomous run is any multi-step AI work done without the user steering each step (auto-implement, scheduled or background agents, workflows, side sessions, overnight tasks). Create `.ai/runs/YYYY-MM-DD-slug.md` when the run starts and complete it before the run ends, with: goal and trigger, spec/issue/branch, steps taken, decisions and their reasons, files changed, commands and test results (failures verbatim), open problems, next steps. Commit the log together with the run's work; a run that changed nothing still commits its log.
+- **Lessons:** after fixing a bug, after a user correction, after a failed approach, or when a fact is worth keeping long-term, update the matching record or add one: copy `.ai/lessons/_template.md` to `.ai/lessons/<slug>.md`, fill Context / Problem / Rule / Applies to, add exactly one catalog row to `.ai/lessons.md`, run `node scripts/check-lessons.mjs`. Hard boundaries go to this file instead; lessons hold evidence and the durable rule. The same mistake corrected twice is no longer a lesson: promote it to a rule here.
+- **Before finishing any task:** spec status and folder are correct, the run log (if autonomous) is complete, new lessons are recorded, and these files are in the same commit.
+
+## Plan, Verify, Learn
+
+- **Plan first:** a task touching several files or areas starts with a plan (plan mode or a written plan the user approves) — the spec's phases when a spec covers it. Invest in the plan so implementation runs in one pass; when work drifts or a fix grows, stop and re-plan instead of patching. Large plans get a critical review (a subagent acting as a staff engineer) before code.
+- **Verify before "done":** prove each change with the narrowest real check — the relevant commands from **Validation**, and for UI the browser (both locales, 375 px, console without errors). Report the evidence (command and result); never claim an unverified change works. Failing tests or CI: read the logs and fix the cause yourself.
+- **Raise the bar:** before committing, review your own diff as a reviewer would; if a fix works but is a hack, redo it cleanly with what you now know.
+- **Subagents and parallel work:** delegate broad search, translation, review and independent pieces to subagents (or parallel sessions in separate git worktrees) to keep the main context clean. Give each one disjoint files; subagents never stage, commit or push — the coordinator integrates, verifies and commits.
+- **Automate repetition:** work done more than twice becomes a committed project skill (`.ai/skills/<id>/SKILL.md`) or a script in `scripts/`.
+
 ## Validation
 
-Broad: `yarn generate && yarn typecheck && yarn lint && yarn ds:check && yarn test && yarn build`; integration: `yarn test:integration:ephemeral`. Never migrate to validate.
+Broad: `yarn generate && yarn typecheck && yarn typecheck:packages && yarn lint && yarn ds:check && yarn test && yarn build`; integration: `yarn test:integration:ephemeral`; lessons: `yarn lessons:check`. Never migrate to validate.
 
 ## Three-Axis Context Assembler
 
@@ -55,7 +100,7 @@ Existing installed form/table fields, filters, row/bulk actions without app pers
 | Route | Match | Context |
 |---|---|---|
 | `architecture` | Capability/ownership/field-vs-history choice, boundary, upgrade, override, or registry failure; routine discovery stays in its area | `.ai/guides/architecture.md` + named facts |
-| `module-data` | App-owned domain/data/API | `src/modules/<id>/` + `.ai/guides/contracts.md`; add architecture only when ownership is unresolved |
+| `module-data` | App-owned domain/data/API | `packages/app/src/modules/<id>/` + `.ai/guides/contracts.md`; add architecture only when ownership is unresolved |
 | `umes` | Extend/replace installed behavior | `.ai/guides/extensions.md` + named facts |
 | `backend-ui` | Authored/restyled rendered surface or browser UI state/session bootstrap | `.ai/guides/backend-ui.md` + host facts; host-provided integration credentials/health UI alone does not match |
 | `integration` | Provider, spreadsheet/CSV/file I/O, sync/webhook/storage | `.ai/guides/integrations.md`; imports = `integration`; AI consuming files = `ai-workflow`, NEVER `integration` unless transport/storage changes |

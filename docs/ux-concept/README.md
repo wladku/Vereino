@@ -1,718 +1,732 @@
-# Vereino — wstępna koncepcja UX
+# Vereino — preliminary UX concept
 
-**Wersja:** 0.1 · **Data:** 2026-10-20 · **Status:** koncepcja do dyskusji (nie jest specyfikacją implementacyjną)
+**Version:** 0.1 · **Date:** 2026-10-20 · **Status:** concept for discussion (not an implementation specification)
 
-**Źródło prawdy:** [`.ai/specs/2026-10-20-vereino-club-management.md`](../../.ai/specs/2026-10-20-vereino-club-management.md) (Draft). Ten dokument przekłada specyfikację na ludzi, ścieżki i ekrany. Trasy, endpointy, statusy i reguły biznesowe są przepisane ze specyfikacji; jeśli się różnią, wygrywa specyfikacja. Identyfikatory wymagań (`REQ-…`), podróży (`J-…`) i decyzji (`DD-…`) odnoszą się do niej.
+**Source of truth:** [`.ai/specs/2026-10-20-vereino-club-management.md`](../../.ai/specs/2026-10-20-vereino-club-management.md) (Draft). This document translates the specification into people, flows and screens. Routes, endpoints, statuses and business rules are copied from the specification; where they differ, the specification wins. Requirement (`REQ-…`), journey (`J-…`) and decision (`DD-…`) identifiers refer to it.
 
-**Mockupy:** [`mockups/index.html`](mockups/index.html) — otwórz plik w przeglądarce (bez serwera). Źródło: `mockups/app.ts` + `mockups/styles.css`; `mockups/app.js` jest wygenerowany poleceniem `node docs/ux-concept/mockups/build.mjs`.
+**Mockups:** [`mockups/index.html`](mockups/index.html) — open the file in a browser (no server needed). Source: `mockups/app.ts` + `mockups/styles.css`; `mockups/app.js` is generated with `node docs/ux-concept/mockups/build.mjs`.
 
-Konwencja identyfikatorów ekranów: **M-** interfejs członkowski `/club` (telefon), **B-** panel `/backend` (komputer), **P-** strony publiczne `/p/...` (bez logowania). Ten sam identyfikator jest widoczny na każdym ekranie mockupu.
+Screen ID convention: **M-** member interface `/club` (phone), **B-** `/backend` panel (desktop), **P-** public pages `/p/...` (no sign-in). The same ID is shown on every mockup screen.
 
 ---
 
-## 1. Użytkownicy systemu i ich potrzeby
+## 1. System users and their needs
 
-Podmiotem jest **mały klub wielosekcyjny** (stowarzyszenie), z akademią piłkarską jako główną sekcją i równorzędnymi sekcjami niepiłkarskimi (basen, zumba, pilates). Jedna osoba ma jeden rekord i jedno konto, a role się sumują (D-005) — np. Wojtek jest trenerem Żaków i koordynatorem akademii.
+The subject is a **small multi-section club** (association), with a football academy as its main section and equal-standing non-football sections (pilot: Basen, Zumba, Szachy, Cheerleader). One person has one record and one account, and roles add up (D-005) — e.g. Wojtek is the Żaki coach and the academy coordinator.
 
-| Użytkownik | Kim jest (pilot: KS Gwiazda) | Najważniejsze potrzeby | Kluczowe zadania w systemie | Urządzenie / kanał | Ból dziś |
+| User | Who they are (pilot: KS Gwiazda) | Key needs | Key tasks in the system | Device / channel | Pain today |
 |---|---|---|---|---|---|
-| **Opiekun prawny** („Kasia”) | rodzic dwójki dzieci w różnych sekcjach (Jaś — Żaki i basen, Ola — Trampkarze) | wiedzieć dziś, czy są zajęcia; jeden kalendarz wszystkich dzieci; „będzie / nie będzie” jednym dotknięciem; zapłacić bez szukania numeru konta; dowiedzieć się o odwołaniu na czas | Dziś, kalendarz, deklaracja, potwierdzenie deklaracji nastolatka, płatność online, zgody, wiadomość do trenera | telefon; e-mail; link z Messengera | 3–4 grupy na Messengerze, przegapione odwołania, płatność „jak sobie przypomni” |
-| **Uczestnik 13+** („Ola”, 14 lat) | zawodniczka z własnym kontem o ograniczonym widoku | sprawdzić grafik bez pytania rodzica; zgłosić się na mecz | Dziś, kalendarz, deklaracja (wg polityki), wiadomości grupy — bez płatności (płaci opiekun) | telefon | grafik zna od rodzica |
-| **Uczestnik dorosły** | uczestniczka zumby lub pilatesu | grafik, odwołania, składka | jak opiekun, ale za siebie | telefon | ogłoszenia w grupie |
-| **Trener / instruktor** („Wojtek”, „Piotr”, „Anna”) | prowadzi 1–3 grupy, często na zleceniu; rozliczany „podstawa + jednostki” | wiedzieć, kto przyjdzie; obecność w 30 s; zastępstwo bez sporu o pieniądze; jeden komunikat do grupy; zarezerwować boisko na turniej bez dzwonienia | lista obecności, zamknięcie terminu, zgłoszenie nieobecności, odwołanie, komunikat + tekst na grupę, kalendarz obiektów i rezerwacja, turniej, podgląd własnych jednostek | telefon | ankiety giną w czacie; zastępstwa i rezerwacje telefonicznie |
-| **Koordynator sekcji** („Wojtek” — akademia, „Aneta” — basen) | odpowiada za grupy, grafik i trenerów jednej lub kilku sekcji | grafik bez kolizji; widzieć terminy bez trenera; szybko wskazać zastępcę; komunikat do całej sekcji; rejestr trudnych spraw; prowadzić stronę sekcji | grupy i składy, kreator aktywności, terminy „do obsadzenia” i „nierozliczone”, zastępstwa, raport jednostek sekcji, sprawy, treści publiczne sekcji | komputer + telefon | grafik w głowie i w Excelu; zastępstwa przez telefon |
-| **Administrator klubu / skarbnik** („Aneta”) | prowadzi klub po godzinach: osoby, role, pieniądze, obiekt | wiedzieć, kto zalega, bez Excela; naliczanie i zniżki automatycznie; rozliczenie trenerów i raport dla gminy jednym kliknięciem; decydować o zgłoszeniach zewnętrznych; kontrolować, co klub publikuje | kartoteka osób i rodzin, konta, role, cenniki, zniżki, należności, księgowanie wpłat, akceptacja zgłoszeń, strefy i stawki, raporty, konfiguracja publikacji | komputer | upomnienia ręcznie; jednostki trenerów i godziny orlika z pamięci |
-| **Animator obiektu** („Tomek”) | otwiera i zamyka Orlik, pilnuje regulaminu | wiedzieć, kto dziś jest na obiekcie; wpisać rezerwację po telefonie; prowadzić dziennik i zgłosić incydent | Dziś na obiekcie, dziennik, incydent, wynajem po telefonie, `no_show` | telefon na obiekcie | zeszyt, telefon do klubu |
-| **Gość — rodzic szukający zajęć** | ktoś spoza klubu | zobaczyć, jakie sekcje i zajęcia są, dla kogo, kiedy, za ile, kto prowadzi; z kim się kontaktować | strona klubu, strona sekcji, materiały | telefon / komputer | brak jednej informacji o klubie |
-| **Najemca z zewnątrz** (inny klub, szkoła, firma) | chce wynająć Orlik lub salkę | zobaczyć wolne terminy; złożyć zgłoszenie bez telefonu; wiedzieć, czy zostało przyjęte | publiczny kalendarz obiektów, zgłoszenie, potwierdzenie e-mailem, e-mail z decyzją | komputer / telefon | dzwoni do klubu, nie widzi wolnych godzin |
-| **Administrator techniczny** | osoba instalująca instancję | uruchomić klub, moduły i konfigurację | wbudowane strony Open Mercato | komputer | — |
-| **Gmina (właściciel obiektu)** | bez konta | rzetelny raport z wykorzystania Orlika | odbiera raport CSV/PDF od administratora | e-mail | raport składany ręcznie |
+| **Legal guardian** ("Kasia") | parent of two children in different sections (Jaś — Żaki and Basen, Ola — Trampkarze) | know today whether there are sessions; one calendar for all children; "attending / not attending" with one tap; pay without looking up the account number; learn about cancellations in time | Today, calendar, declaration, confirming a teenager's declaration, online payment, consents, message to the coach | phone; email; link from Messenger | 3–4 Messenger groups, missed cancellations, paying "whenever she remembers" |
+| **Participant 13+** ("Ola", 14) | player with her own account and a limited view | check the schedule without asking a parent; sign up for a match | Today, calendar, declaration (per policy), group messages — no payments (the guardian pays) | phone | knows the schedule from her parent |
+| **Adult participant** | zumba or pilates participant | schedule, cancellations, membership fee | same as a guardian, but for herself | phone | announcements in the group chat |
+| **Coach / instructor** ("Wojtek", "Piotr", "Anna") | runs 1–3 groups, often on a contract; paid "base + units" | know who will come; attendance in 30 s; substitution without arguing about money; one announcement to the group; book the pitch for a tournament without phoning | attendance list, closing a session, reporting an absence, cancellation, announcement + text for the group chat, facility calendar and booking, tournament, view of own units | phone | polls get lost in the chat; substitutions and bookings by phone |
+| **Section coordinator** ("Wojtek" — academy, "Aneta" — Basen) | responsible for the groups, schedule and coaches of one or more sections | a schedule without collisions; see sessions without a coach; quickly assign a substitute coach; one announcement to the whole section; a register of difficult cases; run the section page | groups and rosters, activity wizard, sessions "needing a coach" and "unsettled", substitutions, section coach units report, cases, section public content | desktop + phone | schedule in their head and in Excel; substitutions by phone |
+| **Club administrator** ("Aneta", may also act as treasurer) | runs the club after hours: people, roles, money, facility | know who is overdue without Excel; automatic charge generation and discounts; coach settlement and municipality report in one click; decide on external requests; control what the club publishes | person and family records, accounts, roles, fee schedules, discounts, charges, recording payments, approving requests, zones and rates, reports, publication settings | desktop | manual reminders; coach units and Orlik (municipal sports pitch complex) hours from memory |
+| **Treasurer** ("Beata") | responsible only for the club's money | know who is overdue and who holds cash; reconcile the bank statement and cash from coaches without Excel | charges, statements, cash, order campaigns, settlements with coaches — no access to person records, groups or facilities | desktop | cash from coaches "on trust", a notebook of payments |
+| **Facility attendant** ("Tomek") | opens and closes the Orlik, enforces the rules | know who is at the facility today; enter a booking after a phone call; keep the log and report an incident | Today at the facility, log, incident, rental by phone, `no_show` | phone at the facility | notebook, phone calls to the club |
+| **Guest — parent looking for activities** | someone from outside the club | see what sections and activities exist, for whom, when, at what price, who runs them; whom to contact | club page, section page, materials | phone / desktop | no single source of information about the club |
+| **External renter** (another club, school, company) | wants to rent the Orlik or the small hall | see free slots; submit a request without phoning; know whether it was accepted | public facility calendar, request, email confirmation, email with the decision | desktop / phone | calls the club, cannot see free hours |
+| **Technical administrator** | the person installing the instance | launch the club, modules and configuration | built-in Open Mercato pages | desktop | — |
+| **Municipality (facility owner)** | no account | a reliable Orlik usage report | receives a CSV/PDF report from the administrator | email | report compiled by hand |
 
 ---
 
-## 2. Najważniejsze use case'y i przepływy
+## 2. Key use cases and flows
 
-### 2.1 Katalog use case'ów
+### 2.1 Use case catalog
 
-| ID | Aktor | Cel | Priorytet | Wymagania | Faza |
+| ID | Actor | Goal | Priority | Requirements | Phase |
 |---|---|---|---|---|---|
-| UC-01 | Administrator | Zbudować strukturę klubu: sekcje z koordynatorami, miejsca, instytucje | Must | REQ-003 | 1 |
-| UC-02 | Administrator | Założyć rodzinę: opiekun, dzieci, opieka, zgody, konta | Must | REQ-001, REQ-002 | 1 |
-| UC-03 | Opiekun | Sprawdzić „Dziś” i zadeklarować obecność dzieci z różnych sekcji | Must | REQ-006, REQ-007 | 2 |
-| UC-04 | Opiekun | Potwierdzić lub odrzucić deklarację nastolatka na mecz | Must | REQ-007 | 2 |
-| UC-05 | Trener | Odhaczyć obecność i zamknąć termin | Must | REQ-007, REQ-008 | 2 |
-| UC-06 | Trener + koordynator | Zgłosić nieobecność i obsadzić zastępstwo | Must | REQ-008 | 2 |
-| UC-07 | Koordynator | Utworzyć cykliczną aktywność bez kolizji | Must | REQ-005 | 2 |
-| UC-08 | Trener | Odwołać termin i powiadomić rodziców (z tekstem na grupę) | Must | REQ-005, REQ-009 | 2–3 |
-| UC-09 | Trener / instruktor | Zarezerwować obiekt na turniej lub szkolenie bez akceptacji | Must | REQ-023, REQ-027 | 2, 5 |
-| UC-10 | Najemca z zewnątrz | Zgłosić rezerwację online i dostać decyzję | Must | REQ-024 | 5 |
-| UC-11 | Administrator | Zaakceptować lub odrzucić zgłoszenie zewnętrzne | Must | REQ-024 | 5 |
-| UC-12 | Animator | Wpisać wynajem po telefonie, prowadzić dziennik, zgłosić incydent | Must / Should | REQ-013, REQ-016 | 5 |
-| UC-13 | Skarbnik | Naliczyć składki okresu i ściągnąć zaległości | Must | REQ-011 | 4 |
-| UC-14 | Opiekun | Zapłacić należności online | Must | REQ-012 | 4 |
-| UC-15 | Skarbnik | Rozliczyć trenerów (raport jednostek + CSV) | Must / Should | REQ-008, REQ-021 | 2 |
-| UC-16 | Koordynator / rodzic | Prowadzić rozmowę w wątku i oznaczyć sprawę | Must | REQ-009, REQ-010 | 3 |
-| UC-17 | Opiekun bez logowania | Zadeklarować obecność z osobistego linku | Should | REQ-017 | 3 |
-| UC-18 | Gość | Poznać klub, sekcje i zajęcia | Must | REQ-025, REQ-026 | 1–4 |
-| UC-19 | Administrator | Skonfigurować, co klub publikuje | Must | REQ-025 | 1 |
-| UC-20 | Administrator | Wygenerować raport dla gminy | Must | REQ-015 | 5 |
-| UC-21 | Administrator | Utworzyć formularz zamówień (np. stroje) i wysłać link na grupę w Messengerze | Must | REQ-032 | 4 |
-| UC-22 | Opiekun | Zamówić strój dla dziecka (w aplikacji lub z osobistego linku) i zapłacić | Must | REQ-032 | 4 |
-| UC-23 | Trener + skarbnik | Przyjąć gotówkę za strój, wydać strój, rozliczyć gotówkę od trenera | Must | REQ-033 | 4 |
+| UC-01 | Administrator | Build the club structure: sections with coordinators, places, institutions | Must | REQ-003 | 1 |
+| UC-02 | Administrator | Set up a family: guardian, children, guardianship, consents, accounts | Must | REQ-001, REQ-002 | 1 |
+| UC-03 | Guardian | Check "Today" and declare attendance for children from different sections | Must | REQ-006, REQ-007 | 2 |
+| UC-04 | Guardian | Confirm or reject a teenager's match declaration | Must | REQ-007 | 2 |
+| UC-05 | Coach | Tick off attendance and close the session | Must | REQ-007, REQ-008 | 2 |
+| UC-06 | Coach + coordinator | Report an absence and arrange a substitute coach | Must | REQ-008 | 2 |
+| UC-07 | Coordinator | Create a recurring activity without collisions | Must | REQ-005 | 2 |
+| UC-08 | Coach | Cancel a session and notify parents (with text for the group chat) | Must | REQ-005, REQ-009 | 2–3 |
+| UC-09 | Coach / instructor | Book a facility for a tournament or training course without approval | Must | REQ-023, REQ-027 | 2, 5 |
+| UC-10 | External renter | Submit an online booking request and get a decision | Must | REQ-024 | 5 |
+| UC-11 | Administrator | Approve or reject an external request | Must | REQ-024 | 5 |
+| UC-12 | Attendant | Enter a rental after a phone call, keep the log, report an incident | Must / Should | REQ-013, REQ-016 | 5 |
+| UC-13 | Treasurer | Generate the period's membership fees and collect overdue amounts | Must | REQ-011 | 4 |
+| UC-14 | Guardian | Pay charges online | Must | REQ-012 | 4 |
+| UC-15 | Administrator | Settle coaches (coach units report + CSV) | Must / Should | REQ-008, REQ-021 | 2 |
+| UC-16 | Coordinator / parent | Hold a conversation in a thread and mark it as a case | Must | REQ-009, REQ-010 | 3 |
+| UC-17 | Guardian without sign-in | Declare attendance from a personal link | Should | REQ-017 | 3 |
+| UC-18 | Guest | Get to know the club, its sections and activities | Must | REQ-025, REQ-026 | 1–4 |
+| UC-19 | Administrator | Configure what the club publishes | Must | REQ-025 | 1 |
+| UC-20 | Administrator | Generate the municipality report | Must | REQ-015 | 5 |
+| UC-21 | Administrator | Create an order form (e.g. kit) and send the link to the Messenger group | Must | REQ-032 | 4 |
+| UC-22 | Guardian | Order kit for a child (in the app or from a personal link) and pay | Must | REQ-032 | 4 |
+| UC-23 | Coach + treasurer | Check their group's payments (fees and kit), accept cash, hand over kit, settle cash from the coach | Must | REQ-033, REQ-034 | 4 |
 
-### 2.2 Kompletne przepływy
+### 2.2 Complete flows
 
-Każdy przepływ: warunki wstępne → ścieżka główna (z ekranami) → odgałęzienia i błędy → wynik. Wszystkie odgałęzienia są przewidziane w mockupach przez przełącznik stanu lub dane testowe.
+Each flow: preconditions → main path (with screens) → branches and errors → outcome. All branches are covered in the mockups via the state switcher or test data.
 
-#### F-01 Rodzina na start (UC-01, UC-02)
-- **Warunki:** administrator zalogowany; klub ma ustawienia.
-- **Ścieżka:** B-01 Pulpit → B-04 Sekcje → „Dodaj sekcję” (B-05: nazwa, koordynator) → B-09 Osoby → „Dodaj osobę” (Kasia, e-mail) → zapisz → B-10 Karta osoby → zakładka „Opieka” → „Dodaj podopiecznego” (Jaś, data urodzenia; Ola) → zaznacz „główny płatnik”, zgody → zakładka „Konto” → „Załóż konto” → komunikat „Wysłano e-mail z ustawieniem hasła”.
-- **Odgałęzienia:** e-mail zajęty → błąd przy polu (409); dla Jasia (9 lat) przycisk „Załóż konto” nieaktywny z wyjaśnieniem „poniżej progu wieku konta (13)”; drugi „główny płatnik” → 409 „Podopieczny ma już głównego płatnika”; nieaktualna wersja karty → okno konfliktu „Ktoś zmienił ten rekord” (odśwież / nadpisz niedostępne); brak uprawnień → strona „Brak uprawnień”.
-- **Wynik:** Kasia loguje się (M-01) i na M-02 widzi profile dzieci.
+#### F-01 Family onboarding (UC-01, UC-02)
+- **Preconditions:** administrator signed in; the club has its settings.
+- **Path:** B-01 Dashboard → B-04 Sections → "Add section" (B-05: name, coordinator) → B-09 People → "Add person" (Kasia, email) → save → B-10 Person record → "Guardianship" tab → "Add ward" (Jaś, date of birth; Ola) → check "primary payer", consents → "Account" tab → "Create account" → message "Password setup email sent".
+- **Branches:** email already taken → field error (409); for Jaś (age 9) the "Create account" button is disabled with the explanation "below the account age threshold (13)"; a second "primary payer" → 409 "This ward already has a primary payer"; stale record version → conflict dialog "Someone changed this record" (refresh / overwrite not available); missing permissions → "Access denied" page.
+- **Outcome:** Kasia signs in (M-01) and sees the children's profiles on M-02.
 
-#### F-02 Dziś i deklaracja obecności (UC-03, UC-04)
-- **Warunki:** Kasia z kontem; terminy wygenerowane.
-- **Ścieżka:** M-01 Logowanie → M-02 Dziś: kafel Kalendarz („Wt 17:00 Jaś — Trening Żaki, Boisko piłkarskie”, „Czw 16:00 Jaś — Zajęcia, Basen”) → „Będzie” przy terminie Jasia → przycisk zmienia się na „Będzie ✓”, ogłoszenie dla czytnika ekranu. Kafel Obecność: „Ola zgłosiła się na mecz w sobotę — potwierdzasz?” → M-04 Termin → „Potwierdź” → status „Potwierdzone”.
-- **Odgałęzienia:** termin już się zaczął → „Deklaracje zamknięte” (409), przyciski nieaktywne; brak decyzji opiekuna w 24 h → wartość domyślna polityki, kafel znika; brak zajęć dziś → stan pusty z najbliższym terminem; błąd sieci → komunikat i „Spróbuj ponownie” (deklaracja nie jest tracona).
-- **Wynik:** trener na M-05 widzi deklaracje.
+#### F-02 Today and attendance declaration (UC-03, UC-04)
+- **Preconditions:** Kasia has an account; sessions have been generated.
+- **Path:** M-01 Sign in → M-02 Today: Calendar tile ("Tue 17:00 Jaś — Żaki training, Boisko piłkarskie", "Thu 16:00 Jaś — Class, Basen") → "Attending" next to Jaś's session → the button changes to "Attending ✓", with a screen reader announcement. Attendance tile: "Ola signed up for Saturday's match — do you confirm?" → M-04 Session → "Confirm" → status "Confirmed".
+- **Branches:** the session has already started → "Declarations closed" (409), buttons disabled; no guardian decision within 24 h → the policy default applies, the tile disappears; no sessions today → empty state with the next session; network error → message and "Try again" (the declaration is not lost).
+- **Outcome:** the coach sees the declarations on M-05.
 
-#### F-03 Trening: obecność, zastępstwo, rozliczenie (UC-05, UC-06, UC-15)
-- **Warunki:** Wojtek trenerem Żaków; Piotr trenerem Trampkarzy.
-- **Ścieżka A (zastępstwo):** Wojtek → M-02 → termin piątkowy → M-04 → „Zgłoś nieobecność” (powód) → termin trafia do „Do obsadzenia”. Koordynator → B-01 widżet „Terminy do obsadzenia” → B-15 (perspektywa „Do obsadzenia”) → „Wskaż zastępcę” → wybór Piotra (lista pokazuje kolizje trenera) → zapis → powiadomienie u Piotra.
-- **Ścieżka B (obecność):** Piotr → M-02 → termin → M-05 Lista obecności: zadeklarowani 11/2/3, przełączniki obecny/nieobecny/spóźniony → „Zamknij termin” (potwierdzenie) → termin `done`.
-- **Ścieżka C (rozliczenie):** skarbnik → B-16 Raport jednostek → miesiąc → Wojtek: oddane 1, Piotr: przejęte 1 → „Eksport CSV”.
-- **Odgałęzienia:** dwie osoby odhaczają naraz → drugi zapis 409, okno konfliktu, lista odświeżona bez utraty zaznaczeń; trener spoza grupy → 403; termin nierozliczony 24 h po końcu → B-15 „Nierozliczone” i widżet.
+#### F-03 Training: attendance, substitution, settlement (UC-05, UC-06, UC-15)
+- **Preconditions:** Wojtek is the Żaki coach; Piotr is the Trampkarze coach.
+- **Path A (substitution):** Wojtek → M-02 → Friday session → M-04 → "Report absence" (reason) → the session goes to "Needing a coach". Coordinator → B-01 widget "Sessions needing a coach" → B-15 ("Needing a coach" perspective) → "Assign substitute" → picks Piotr (the list shows the coach's collisions) → save → notification for Piotr.
+- **Path B (attendance):** Piotr → M-02 → session → M-05 Attendance list: declared 11/2/3, present/absent/late toggles → "Close session" (confirmation) → session `done`.
+- **Path C (settlement):** administrator → B-16 Coach units report → month → Wojtek: handed over 1, Piotr: taken over 1 → "Export CSV" (the treasurer has no access to classes — DD-33).
+- **Branches:** two people tick at the same time → the second save gets 409, conflict dialog, list refreshed without losing selections; coach from outside the group → 403; session unsettled 24 h after it ends → B-15 "Unsettled" and the widget.
 
-#### F-04 Nowa aktywność cykliczna (UC-07)
-- **Ścieżka:** B-13 Aktywności → „Nowa aktywność” → B-14 kreator: sekcja/grupa, typ (dla `class_group` niedostępne mecz/sparing/turniej), nazwa, miejsce, trener, dni tygodnia, godziny, okres → podgląd pierwszych terminów i kolizji → „Utwórz” → lista terminów w B-15.
-- **Odgałęzienia:** kolizja na miejscu (np. wtorek 17:00 Boisko piłkarskie z Żakami) → lista kolizji, przycisk „Utwórz” zablokowany do zmiany godzin/miejsca; godzina końca ≤ początku → błąd pola; okres bez żadnego terminu → „Reguła nie daje żadnego terminu”.
+#### F-04 New recurring activity (UC-07)
+- **Path:** B-13 Activities → "New activity" → B-14 wizard: section/group, type (`match`/`sparring` unavailable for `class_group`; `tournament` is allowed for any group), name, place, coach, weekdays, times, period → preview of the first sessions and collisions → "Create" → session list in B-15.
+- **Branches:** collision at the place (e.g. Tuesday 17:00 Boisko piłkarskie with Żaki) → list of collisions, "Create" button blocked until the times/place are changed; end time ≤ start time → field error; period without any session → "The rule produces no sessions".
 
-#### F-05 Odwołanie i komunikat (UC-08, UC-16)
-- **Ścieżka:** trener → M-05 → „Odwołaj termin” → powód → potwierdzenie → adresaci dostają powiadomienie i e-mail → M-07 wątek terminu → „Skopiuj tekst na grupę” → tekst ze skrótem i linkiem w schowku.
-- **Sprawa:** rodzic pisze w wątku grupy (M-07) → koordynator w B-19 → „Oznacz jako sprawę” (ostrzeżenie: nieodwracalne) → wątek z etykietą „Sprawa”, przycisk „Usuń” wiadomości znika; próba przez API → 409.
+#### F-05 Cancellation and announcement (UC-08, UC-16)
+- **Path:** coach → M-05 → "Cancel session" → reason → confirmation → recipients get a notification and an email → M-07 session thread → "Copy text for group chat" → text with a summary and link in the clipboard.
+- **Case:** a parent writes in the group thread (M-07) → coordinator in B-19 → "Mark as case" (warning: irreversible) → thread labeled "Case", the message "Delete" button disappears; an attempt via the API → 409.
 
-#### F-06 Deklaracja z linku bez logowania (UC-17)
-- **Ścieżka:** rodzic klika link z Messengera → M-13 „Termin: Trening Żaki, wt 17:00 — aby zadeklarować, podaj e-mail” → „Wyślij mi link” → zawsze „Jeśli adres jest w klubie, wysłaliśmy link” → e-mail → M-14 z listą swoich dzieci w tej grupie → „Będzie”.
-- **Odgałęzienia:** link wygasły (410) → „Link wygasł, poproś o nowy”; po rozpoczęciu terminu → „Deklaracje zamknięte”.
+#### F-06 Declaration from a link without sign-in (UC-17)
+- **Path:** a parent clicks a link from Messenger → M-13 "Session: Żaki training, Tue 17:00 — to declare, enter your email" → "Send me a link" → always "If the address is registered with the club, we have sent a link" → email → M-14 with a list of their children in this group → "Attending".
+- **Branches:** expired link (410) → "Link expired, request a new one"; after the session starts → "Declarations closed".
 
-#### F-07 Składki: naliczenie, zaległości, płatność (UC-13, UC-14)
-- **Ścieżka skarbnika:** B-20 Cenniki (Żaki 150 zł, Basen 120 zł, Trampkarze 160 zł; zniżka rodzeństwo −30%) → B-21 Należności → „Nalicz okres 2026-12” → podsumowanie „utworzono 12, pominięto 0, bez płatnika 1” (w pilocie: ok. 140) → perspektywa „Zaległości” → B-22 należność → „Zaksięguj wpłatę” (gotówka 100 zł) → status „częściowo opłacona”.
-- **Ścieżka opiekuna:** M-02 kafel Płatności „349 zł do 10.11” → M-08 lista należności (Ola 160, Jaś Żaki 105 — zniżka, Jaś Basen 84 — zniżka) → zaznacz → „Zapłać 349 zł” → strona Stripe (mock) → powrót M-09 „Płatność przyjęta” → statusy „Opłacona”.
-- **Odgałęzienia:** płatność anulowana → „Płatność przerwana — należności nadal otwarte”; webhook spóźniony → „Płatność w toku, odśwież za chwilę”; nadpłata przy księgowaniu → błąd pola „Kwota przekracza pozostałe 50 zł”; należność bez płatnika → nie da się zapłacić online, widoczna w widżecie administratora.
+#### F-07 Membership fees: generation, overdue, payment (UC-13, UC-14)
+- **Treasurer path:** B-20 Fees (Żaki PLN 150, Basen PLN 120, Trampkarze PLN 160; sibling discount −30%) → B-21 Charges → "Generate period 2026-12" → summary "created 12, skipped 0, without payer 1" (in the pilot: approx. 140) → "Overdue" perspective → B-22 charge → "Record payment" (cash PLN 100) → status "partially paid".
+- **Guardian path:** M-02 Payments tile "349 zł due 10.11" → M-08 list of charges (Ola 160, Jaś Żaki 105 — discount, Jaś Basen 84 — discount) → select → "Pay 349 zł" → Stripe page (mock) → return to M-09 "Payment received" → statuses "Paid".
+- **Branches:** payment canceled → "Payment interrupted — charges are still open"; webhook delayed → "Payment in progress, refresh in a moment"; overpayment when recording → field error "Amount exceeds the remaining 50 zł"; charge without a payer → cannot be paid online, visible in the administrator's widget.
 
-#### F-08 Trener rezerwuje boisko na turniej (UC-09) — J-006
-- **Ścieżka:** Wojtek → M-11 Obiekty → „Boisko piłkarskie” → sobota → oś dnia ze strefami i zajętością → zaznacza 9:00–12:00 → „Rezerwuj” → okno: „Dla grupy” (Żaki lub Trampkarze) / „Cel ogólny”, typ „Turniej”, zaproszone drużyny → „Rezerwuj” → slot „Turniej o Puchar Gwiazdy” na osi; zgłoszenie zewnętrzne czekające na ten czas oznaczone „przebite” (e-mail do zgłaszającego).
-- **Wariant:** instruktorka zumby rezerwuje „Salkę szkoleniową” na „Szkolenie instruktorów” (cel ogólny).
-- **Odgałęzienia:** slot zajęty → 409 z listą kolizji (personel widzi nazwy); poza godzinami otwarcia lub w zamknięciu → „Obiekt zamknięty w tym czasie”; grupa spoza własnych → 403; `tournament` dla grupy zajęciowej → niedostępne w polu typu.
+#### F-08 Coach books the pitch for a tournament (UC-09) — J-006
+- **Path:** Wojtek → M-11 Facilities → "Boisko piłkarskie" → Saturday → day timeline with zones and occupancy → selects 9:00–12:00 → "Book" → dialog: "For a group" (Żaki or Trampkarze) / "General purpose", type "Tournament", invited teams → "Book" → slot "Turniej o Puchar Gwiazdy" on the timeline; an external request pending for that time gets the status `superseded` (email to the requester).
+- **Variant:** the zumba instructor books the "Salka szkoleniowa" for "Instructor training" (general purpose).
+- **Branches:** slot taken → 409 with a list of collisions (staff see names); outside opening hours or during a closure → "Facility closed at this time"; a group that is not one's own → 403; a tournament can be booked for any group (e.g. a chess tournament for the Szachy class group).
 
-#### F-09 Zgłoszenie z zewnątrz i decyzja administratora (UC-10, UC-11) — J-007
-- **Ścieżka najemcy:** P-01 strona klubu → „Obiekty” → P-03 → Orlik — Boisko piłkarskie → P-04 kalendarz miesiąca → slot „do rezerwacji” → „Zgłoś rezerwację” → formularz (organizacja, kontakt, e-mail, telefon, kategoria, jednostki, cel, regulamin ✓) → „Wyślij” → „Sprawdź skrzynkę i potwierdź zgłoszenie” → link → P-05 „Zgłoszenie czeka na akceptację administratora (do 48 h)”. Slot publicznie: „zgłoszone — oczekuje”.
-- **Ścieżka administratora:** powiadomienie → B-01 widżet „Zgłoszenia do akceptacji” → B-25 kolejka → szczegóły (kolizje: brak; rejestr zakazów: brak; wygasa za 47 h) → „Akceptuj” (przypisz instytucję lub utwórz nową) → wynajem `requested` + należność na konto gminy → e-mail do najemcy z kwotą i kontem. P-04 pokazuje „zarezerwowane”.
-- **Odgałęzienia:** drugie zgłoszenie na ten sam slot → „Ten termin jest już zgłoszony — wybierz inny”; brak akceptacji regulaminu → błąd pola; zgłoszenia wyłączone w konfiguracji → brak przycisku; „Odrzuć” wymaga powodu → e-mail; 48 h bez decyzji → „wygasło”; rezerwacja klubu → „przebite”; link po 1 h → „Link wygasł”.
+#### F-09 External request and administrator decision (UC-10, UC-11) — J-007
+- **Renter path:** P-01 club page → "Facilities" → P-03 → Orlik — Boisko piłkarskie → P-04 month calendar → "bookable" slot → "Request a booking" → form (organization, contact, email, phone, category, units, purpose, rules ✓) → "Send" → "Check your inbox and confirm the request" → link → P-05 "The request is awaiting administrator approval (up to 48 h)". Slot shown publicly as: "requested — pending".
+- **Administrator path:** notification → B-01 widget "Requests awaiting approval" → B-25 queue → details (collisions: none; ban register: none; expires in 47 h) → "Approve" (assign an institution or create a new one) → rental `requested` + charge to the municipality's account → email to the renter with the amount and account number. P-04 shows "booked".
+- **Branches:** a second request for the same slot → "This slot has already been requested — choose another"; rules not accepted → field error; requests disabled in the configuration → no button; "Reject" requires a reason → email; 48 h without a decision → `expired`; club booking → `superseded`; link opened after 1 h → "Link expired".
 
-#### F-10 Animator na obiekcie (UC-12)
-- **Ścieżka:** M-12 Dziś na obiekcie → „Otwórz obiekt” → dziennik: stan przed, godzina → lista dzisiejszych grup i wynajmów (obecność pełnoletniego opiekuna ✓) → „Zgłoś incydent” (rodzaj, opis, działanie, zdjęcie) → „Zamknij obiekt” (stan po).
-- **Wynajem po telefonie:** B-23 kalendarz obiektu → slot „do rezerwacji” → „Nowy wynajem” → najemca (wyszukiwarka instytucji), kategoria, jednostki → wyliczona kwota i terminy → „Zapisz”.
-- **Odgałęzienia:** najemca z aktywnym zakazem → 409 „Najemca ma zakaz wstępu do 31.12”; `no_show` po czasie → status i należność pozostaje.
+#### F-10 Attendant at the facility (UC-12)
+- **Path:** M-12 Today at the facility → "Open facility" → log: condition before, time → list of today's groups and rentals (adult supervisor present ✓) → "Report incident" (type, description, action taken, photo) → "Close facility" (condition after).
+- **Rental by phone:** B-23 facility calendar → "bookable" slot → "New rental" → renter (institution search), category, units → calculated amount and dates → "Save".
+- **Branches:** renter with an active ban → 409 "The renter is banned from entry until 31.12"; `no_show` after the time → status, and the charge remains.
 
-#### F-11 Gość poznaje klub; administrator konfiguruje publikację (UC-18, UC-19) — J-008
-- **Ścieżka gościa:** P-01 → kafel „Basen” → P-02: opis, grupy (wiek, dni, godziny, miejsce), warunki, składka, prowadząca (za zgodą), materiały, kontakt.
-- **Ścieżka administratora:** B-03 Publikacja → wyłącza „Ceny” → zapis → P-02 bez bloku cen (API go nie zwraca). B-05 sekcja → zakładka „Strona publiczna” → opis, warunki, kontakt, materiały, „Sekcja publiczna” ✓.
-- **Odgałęzienia:** strona wyłączona → P-01 „Klub nie publikuje strony”; sekcja niepubliczna → 404; prowadzący bez zgody → „Prowadzący sekcji”.
+#### F-11 Guest explores the club; administrator configures publication (UC-18, UC-19) — J-008
+- **Guest path:** P-01 → "Basen" tile → P-02: description, groups (age, days, times, place), terms, membership fee, instructor (with consent), materials, contact.
+- **Administrator path:** B-03 Publication → turns off "Prices" → save → P-02 without the prices block (the API does not return it). B-05 section → "Public page" tab → description, terms, contact, materials, "Public section" ✓.
+- **Branches:** page disabled → P-01 "The club does not publish a page"; non-public section → 404; instructor without consent → "Section instructors".
 
-#### F-12 Raport dla gminy (UC-20)
-- **Ścieżka:** B-28 → obiekt, okres → godziny w strefach (w tym czas klubu: terminy + rezerwacje wewnętrzne), wynajmy (liczba, wartość), wpłaty na konto gminy, incydenty, konserwacja → „Eksport CSV”.
+#### F-12 Municipality report (UC-20)
+- **Path:** B-28 → facility, period → hours by zone (including club time: sessions + internal bookings), rentals (count, value), payments to the municipality's account, incidents, maintenance → "Export CSV".
 
-#### F-13 Zamówienie strojów i rozliczenie (UC-21, UC-22, UC-23)
-- **Ścieżka administratora:** B-30 Zbiórki zamówień → „Nowy formularz” (B-31) → „Wczytaj szablon” (koszulka, spodenki, getry, komplet 120 zł, dres 180/200 zł, ortalion, czapka, bidon) → grupy Akademii, zamówienia do 20.11, płatność do 04.12, imię i numer do nadruku → „Zapisz i otwórz zbieranie” → tekst z linkiem w schowku → wklejenie na grupę w Messengerze.
-- **Ścieżka opiekuna:** link → M-17 (zalogowana: dzieci z grup zbiórki; bez konta: e-mail → osobisty link → M-19) → komplet z rozmiarami, dres, nadruk „JAŚ 8” → suma na żywo → „Złóż zamówienie” → kopia e-mailem, należność w M-08 → „Zapłać online”, przelew z kodem płatnika albo gotówka u trenera.
-- **Ścieżka trenera (telefon):** M-02 kafel „Zamówienia w moich grupach” → M-18: dzieci grupy, pozycje i status płatności → „Przyjmij gotówkę” (KP, e-mail do rodzica) → „Gotówka u Ciebie: 385 zł” → „Przypomnij opiekunom”; po dostawie „Wydaj strój”.
-- **Ścieżka skarbnika:** B-33 Gotówka do rozliczenia → „Przyjmij rozliczenie” (RG/2026/11/001); B-32 → „Zamknij zamówienia” → Zestawienie dla dostawcy (sztuki per produkt i rozmiar, nadruki, CSV) → „Zamówione u dostawcy” → „Dostarczone” (e-mail „do odbioru u trenera”) → „Zakończ zbiórkę”.
-- **Odgałęzienia:** komplet bez rozmiaru getrów → błąd przy polu; numer zajęty w grupie → błąd z imieniem dziecka, które go ma; zmiana poniżej wpłaconej kwoty lub anulowanie opłaconego → 409; po terminie formularz zamknięty; wydanie przed dostawą → 409; wydanie nieopłaconego → ostrzeżenie i potwierdzenie; uczestniczka 14 lat → brak zamówień.
+#### F-13 Kit orders and settlement (UC-21, UC-22, UC-23) — J-009
+- **Administrator path:** B-30 Order campaigns → "New order form" (B-31) → "Load template" (shirt, shorts, socks, set PLN 120, tracksuit PLN 180/200, rain jacket, cap, water bottle) → Academy groups, orders until 20.11, payment until 04.12, name and number for printing → "Save and open collection" → text with the link in the clipboard → pasted into the Messenger group.
+- **Guardian path:** link → M-17 (signed in: children from the campaign's groups; no account: email → personal link → M-19) → set with sizes, tracksuit, print "JAŚ 8" → live total → "Place order" → copy by email, charge in M-08 → "Pay online", bank transfer with the payer code, or cash to the coach.
+- **Coach path (phone):** M-02 "My groups' payments" tile → M-18: the group's children with fees and kit to pay → "Accept cash" (cash receipt (KP), email to the parent) → "Cash with you" → "Remind guardians"; after delivery "Hand over kit".
+- **Treasurer path (Beata or Aneta):** B-33 Cash to settle → "Accept handover" (RG/2026/11/001); B-32 → "Close orders" → Supplier summary (quantities per product and size, prints, CSV) → "Ordered from supplier" → "Delivered" (email "ready for pickup from the coach") → "Complete campaign".
+- **Branches:** set without a sock size → field error; number taken in the group → error with the name of the child who has it; a change below the amount paid or canceling a paid order → 409; after the deadline the form is closed; handover before delivery → 409; handing over an unpaid order → warning and confirmation; 14-year-old participant → no orders.
+
+#### F-14 Group payments for the coach and cash handover (UC-23) — J-010
+- **Administrator path:** B-20 → "Coaches and payments": fees and orders with cash (default) / fees view-only / orders only.
+- **Coach path (phone):** M-02 tile "My groups' payments: 5 people have charges, 3 of them overdue; cash with you 300 zł" → M-18 → "Orlik młodszy" chip, "To pay" filter → Bartek: October fee (overdue), November fee and kit → "Accept cash": fee 10/2026 and kit selected, PLN 235 → one cash receipt (KP), email to his mother → "Cash with you: 535 zł"; Adam: "Send reminder" → email to his father with the list of overdue items.
+- **Treasurer path:** B-01 dashboard with finances only → B-33 → Wojtek Malinowski PLN 535 (3 payments) → "Accept handover" → RG/2026/11/001.
+- **Branches:** child without a payer → visible, no cash acceptance ("a matter for the treasurer"); "view only" setting → no "Accept cash" for fees; the coach does not see fees of other sections or discount reasons; amount larger than the selected charges → 422.
 
 ---
 
-## 3. Mapa ekranów i nawigacji
+## 3. Screen and navigation map
 
 ```mermaid
 flowchart LR
-  subgraph PUB[Publiczne /p — bez logowania]
-    P01[P-01 Strona klubu] --> P02[P-02 Sekcja]
-    P01 --> P03[P-03 Obiekty]
-    P03 --> P04[P-04 Kalendarz obiektu + zgłoszenie]
-    P04 -.e-mail.-> P05[P-05 Potwierdzenie zgłoszenia]
+  subgraph PUB[Public /p — no sign-in]
+    P01[P-01 Club page] --> P02[P-02 Section]
+    P01 --> P03[P-03 Facilities]
+    P03 --> P04[P-04 Facility calendar + request]
+    P04 -.email.-> P05[P-05 Request confirmation]
   end
-  subgraph MEM[Członkowski /club — telefon]
-    M01[M-01 Logowanie] --> M02[M-02 Dziś]
-    M02 --> M03[M-03 Kalendarz] --> M04[M-04 Termin]
-    M04 --> M05[M-05 Lista obecności]
-    M02 --> M06[M-06 Wiadomości] --> M07[M-07 Wątek]
-    M02 --> M08[M-08 Płatności] -.Stripe.-> M09[M-09 Wynik płatności]
-    M02 --> M10[M-10 Profil i podopieczni]
-    M02 --> M11[M-11 Obiekty i rezerwacja]
-    M02 --> M12[M-12 Dziś na obiekcie]
-    M13[M-13 Prośba o link] -.e-mail.-> M14[M-14 Deklaracja z linku]
-    M08 --> M16[M-16 Zamówienia] --> M17[M-17 Zamówienie] -.e-mail.-> M19[M-19 Zamówienie z linku]
-    M10 --> M15[M-15 Przyjmij gotówkę]
-    M10 --> M18[M-18 Zamówienia moich grup]
+  subgraph MEM[Member /club — phone]
+    M01[M-01 Sign in] --> M02[M-02 Today]
+    M02 --> M03[M-03 Calendar] --> M04[M-04 Session]
+    M04 --> M05[M-05 Attendance list]
+    M02 --> M06[M-06 Messages] --> M07[M-07 Thread]
+    M02 --> M08[M-08 Payments] -.Stripe.-> M09[M-09 Payment result]
+    M02 --> M10[M-10 Profile and wards]
+    M02 --> M11[M-11 Facilities and booking]
+    M02 --> M12[M-12 Today at the facility]
+    M13[M-13 Link request] -.email.-> M14[M-14 Declaration from link]
+    M08 --> M16[M-16 Orders] --> M17[M-17 Order] -.email.-> M19[M-19 Order from link]
+    M10 --> M15[M-15 Accept cash]
+    M10 --> M18[M-18 My groups' payments]
   end
-  subgraph BCK[Panel /backend — komputer]
-    B01[B-01 Pulpit] --> KLUB[Klub: B-02 Ustawienia, B-03 Publikacja, B-04/B-05 Sekcje, B-06 Miejsca, B-07 Instytucje i umowy]
-    B01 --> LUDZIE[Ludzie: B-09 Osoby, B-10 Karta osoby]
-    B01 --> ZAJ[Zajęcia: B-11/B-12 Grupy, B-13/B-14 Aktywności, B-15 Terminy, B-16 Raport jednostek, B-17 Polityki]
-    B01 --> KOM[Komunikacja: B-18 Wątki i sprawy, B-19 Wątek]
-    B01 --> FIN[Finanse: B-20 Cenniki i zniżki, B-21 Należności, B-22 Należność, B-29 Wyciągi bankowe, B-30/B-31/B-32 Zbiórki zamówień, B-33 Gotówka do rozliczenia]
-    B01 --> OBJ[Obiekt: B-23 Kalendarz, B-24 Wynajmy, B-25 Zgłoszenia, B-26 Strefy/zamknięcia/cennik, B-27 Dziennik/incydenty/zakazy, B-28 Raport dla gminy]
+  subgraph BCK[Panel /backend — desktop]
+    B01[B-01 Dashboard] --> KLUB[Club: B-02 Settings, B-03 Publication, B-04/B-05 Sections, B-06 Places, B-07 Institutions and contracts]
+    B01 --> LUDZIE[People: B-09 People, B-10 Person record]
+    B01 --> ZAJ[Classes: B-11/B-12 Groups, B-13/B-14 Activities, B-15 Sessions, B-16 Coach units report, B-17 Policies]
+    B01 --> KOM[Communication: B-18 Threads and cases, B-19 Thread]
+    B01 --> FIN[Finance: B-20 Fees and discounts, B-21 Charges, B-22 Charge, B-29 Bank statements, B-30/B-31/B-32 Order campaigns, B-33 Cash to settle]
+    B01 --> OBJ[Facility: B-23 Calendar, B-24 Rentals, B-25 Requests, B-26 Zones/closures/rates, B-27 Log/incidents/bans, B-28 Municipality report]
   end
   M14 -.-> M04
-  P05 -.akceptacja.-> B25
+  P05 -.approval.-> B25
   M07 -.link.-> M13
 ```
 
-### 3.1 Nawigacja
+### 3.1 Navigation
 
-| Powłoka | Struktura | Kto widzi |
+| Shell | Structure | Who sees it |
 |---|---|---|
-| **Członkowska `/club`** | dolny pasek: **Dziś · Kalendarz · Wiadomości · Płatności · Więcej** (Więcej: Profil, Obiekty, Dziś na obiekcie, Zamówienia, Zamówienia w moich grupach, Przyjmij gotówkę, Wyloguj); w nagłówku przełącznik dziecka (opiekun) i kontekstu roli („jako opiekun / jako trener”) — tylko gdy osoba ma więcej niż jedną rolę | pozycje filtrowane funkcjami ACL: Płatności — `payments.view_own` (tylko osoby pełnoletnie: opiekun, dorosły uczestnik; niepełnoletni uczestnik nie ma tej pozycji); Obiekty — `facilities.view`; Dziś na obiekcie — `facilities.log.write` |
-| **Panel `/backend`** | menu boczne w grupach: **Pulpit · Klub** (Sekcje, Miejsca, Instytucje, Umowy, Ustawienia, Publikacja) **· Ludzie** (Osoby) **· Zajęcia** (Grupy, Aktywności, Terminy, Raport jednostek, Polityki deklaracji) **· Komunikacja** (Wątki, Sprawy) **· Finanse** (Cenniki i zniżki, Należności, Wyciągi bankowe, Zbiórki zamówień, Gotówka do rozliczenia) **· Obiekt** (Kalendarz, Wynajmy, Zgłoszenia, Strefy i cennik, Dziennik i incydenty, Raport dla gminy) | grupy i pozycje według `requireFeatures` stron; koordynator nie widzi Finansów; animator widzi tylko Obiekt |
-| **Publiczna `/p/[klub]`** | nagłówek: **Klub · Sekcje · Obiekty**; stopka: kontakt, regulamin, polityka prywatności (`/privacy` modułu `content`) | wszyscy; bloki według konfiguracji publikacji |
+| **Member `/club`** | bottom bar: **Today · Calendar · Messages · Payments · More** (More: Profile, Facilities, Today at the facility, Orders, My groups' payments, Accept cash, Sign out); in the header a child switcher (guardian) and a role context switcher ("as guardian / as coach") — only when the person has more than one role | items filtered by ACL features: Payments — `payments.view_own` (adults only: guardian, adult participant; a minor participant does not have this item); Facilities — `facilities.view`; Today at the facility — `facilities.log.write` |
+| **Panel `/backend`** | side menu in groups: **Dashboard · Club** (Sections, Places, Institutions, Contracts, Settings, Publication) **· People** (People) **· Classes** (Groups, Activities, Sessions, Coach units report, Declaration policies) **· Communication** (Threads, Cases) **· Finance** (Fees and discounts, Charges, Bank statements, Order campaigns, Cash to settle) **· Facility** (Calendar, Rentals, Requests, Zones and rates, Log and incidents, Municipality report) | groups and items according to the pages' `requireFeatures`; the coordinator does not see Finance; the attendant sees only Facility |
+| **Public `/p/[klub]`** | header: **Club · Sections · Facilities**; footer: contact, rules, privacy policy (`/privacy` of the `content` module) | everyone; blocks according to the publication settings |
 
-### 3.2 Indeks tras
+### 3.2 Route index
 
-| ID | Trasa | Nazwa | Role (funkcja) | Faza |
+| ID | Route | Name | Roles (feature) | Phase |
 |---|---|---|---|---|
-| M-01 | `/login` (moduł `auth`) | Logowanie | wszyscy z kontem | 1 |
-| M-02 | `/club` | Dziś | `people.self` | 1–5 |
-| M-03 | `/club/calendar` | Kalendarz | `people.self` | 2 |
-| M-04 | `/club/occurrences/[id]` | Termin | uczestnik, opiekun, trener | 2 |
-| M-05 | `/club/occurrences/[id]/attendance` | Lista obecności | `activities.coach` | 2 |
-| M-06 | `/club/messages` | Wiadomości | `communication.view` | 3 |
-| M-07 | `/club/messages/[threadId]` | Wątek | uczestnik wątku | 3 |
-| M-08 | `/club/payments` | Płatności | `payments.view_own` (tylko pełnoletni) | 4 |
-| M-09 | `/club/payments/return` | Wynik płatności | `payments.pay_online` | 4 |
-| M-10 | `/club/profile`, `/club/wards/[personId]` | Profil i podopieczni | `people.self` | 1 |
-| M-11 | `/club/places`, `/club/places/[placeId]` | Obiekty i rezerwacja | `facilities.view` + `facilities.bookings.create` | 5 (turniej z poziomu grupy — 2) |
-| M-12 | `/club/facility` | Dziś na obiekcie | `facilities.log.write` | 5 |
-| M-13 | `/club/link` | Prośba o link | bez logowania | 3 |
-| M-14 | `/club/d/[token]` | Deklaracja z linku | token | 3 |
-| M-15 | `/club/cash` | Przyjmij gotówkę | `payments.cash.record` | 4 |
-| M-16 | `/club/orders` | Zamówienia | `payments.orders.place` | 4 |
-| M-17 | `/club/orders/[campaignId]` | Zamówienie (formularz i podsumowanie) | `payments.orders.place`; bez sesji — wejście z logowaniem lub prośbą o link | 4 |
-| M-18 | `/club/coach/orders` | Zamówienia moich grup | `payments.orders.collect` | 4 |
-| M-19 | `/club/o/[token]` | Zamówienie z linku | token | 4 |
-| B-01 | `/backend` | Pulpit | personel | 1–5 |
-| B-02 | `/backend/club/settings` | Ustawienia klubu | `club_core.manage` | 1 |
-| B-03 | `/backend/club/publication` | Publikacja | `club_core.publication.manage` | 1 |
-| B-04 / B-05 | `/backend/club/sections`, `…/[id]/edit` | Sekcje | `club_core.view` / `club_core.manage` | 1 |
-| B-06 | `/backend/club/places` | Miejsca | `club_core.manage` | 1 |
-| B-07 | `/backend/club/institutions`, `/backend/club/contracts` | Instytucje i umowy | `club_core.manage`, `club_core.contracts.manage` | 1–2 |
-| B-09 / B-10 | `/backend/people/persons`, `…/[id]` | Osoby, karta osoby | `people.view` / `people.manage` | 1 |
-| B-11 / B-12 | `/backend/groups/groups`, `…/[id]` | Grupy | `groups.view` / `groups.manage` | 2 |
-| B-13 / B-14 | `/backend/activities/activities`, `…/create` | Aktywności, kreator | `activities.manage` | 2 |
-| B-15 | `/backend/activities/occurrences` | Terminy | `activities.view` | 2 |
-| B-16 | `/backend/activities/reports/coach-units` | Raport jednostek | `activities.reports.view` | 2 |
-| B-17 | `/backend/activities/policies` | Polityki deklaracji | `activities.manage` | 2 |
-| B-18 / B-19 | `/backend/communication/threads`, `…/[id]` | Wątki i sprawy | `communication.view` | 3 |
-| B-20 | `/backend/payments/fees` | Cenniki i zniżki | `payments.manage` | 4 |
-| B-21 / B-22 | `/backend/payments/charges`, `…/[id]` | Należności | `payments.view` / `payments.manage` | 4 |
-| B-29 | `/backend/payments/bank` | Wyciągi bankowe | `payments.bank.import` | 4 |
-| B-30 | `/backend/payments/orders` | Zbiórki zamówień | `payments.orders.manage` | 4 |
-| B-31 | `/backend/payments/orders/create`, `…/[id]/edit` | Kreator formularza zamówień | `payments.orders.manage` | 4 |
-| B-32 | `/backend/payments/orders/[id]` | Zbiórka: zamówienia, zestawienie, etapy | `payments.orders.manage` | 4 |
-| B-33 | `/backend/payments/cash-custody` | Gotówka do rozliczenia | `payments.manage` | 4 |
-| B-23 | `/backend/facilities/calendar` | Kalendarz obiektu | `facilities.view` | 5 |
-| B-24 | `/backend/facilities/rentals` | Wynajmy | `facilities.rentals.manage` | 5 |
-| B-25 | `/backend/facilities/requests` | Zgłoszenia do akceptacji | `facilities.rentals.approve` | 5 |
-| B-26 | `/backend/facilities/zones` (+ `/closures`, `/rates`) | Strefy, zamknięcia, cennik | `facilities.manage` | 5 |
-| B-27 | `/backend/facilities/logs` (+ `/incidents`, `/bans`) | Dziennik, incydenty, zakazy | `facilities.log.write` / `facilities.incidents.manage` | 5 |
-| B-28 | `/backend/facilities/reports/owner` | Raport dla gminy | `facilities.reports.view` | 5 |
-| P-01 | `/p/[clubSlug]` | Strona klubu | publiczna | 1 |
-| P-02 | `/p/[clubSlug]/sections/[sectionSlug]` | Strona sekcji | publiczna | 1–4 |
-| P-03 | `/p/[clubSlug]/places` | Obiekty klubu | publiczna | 5 |
-| P-04 | `/p/[clubSlug]/places/[placeSlug]` | Kalendarz obiektu + zgłoszenie | publiczna | 5 |
-| P-05 | `/p/[clubSlug]/requests/verify/[token]` | Potwierdzenie zgłoszenia | token | 5 |
+| M-01 | `/login` (`auth` module) | Sign in | everyone with an account | 1 |
+| M-02 | `/club` | Today | `people.self` | 1–5 |
+| M-03 | `/club/calendar` | Calendar | `people.self` | 2 |
+| M-04 | `/club/occurrences/[id]` | Session | participant, guardian, coach | 2 |
+| M-05 | `/club/occurrences/[id]/attendance` | Attendance list | `activities.coach` | 2 |
+| M-06 | `/club/messages` | Messages | `communication.view` | 3 |
+| M-07 | `/club/messages/[threadId]` | Thread | thread participant | 3 |
+| M-08 | `/club/payments` | Payments | `payments.view_own` (adults only) | 4 |
+| M-09 | `/club/payments/return` | Payment result | `payments.view_own` (reads `my-charges` only) | 4 |
+| M-10 | `/club/profile` (wards as a tab; a ward's details open at `/club/wards/[personId]`) | Profile and wards | `people.self` | 1 |
+| M-11 | `/club/places`, `/club/places/[placeId]` | Facilities and booking | `facilities.view` (the "Book" button additionally requires `facilities.bookings.create`) | 5 (tournament from the group level — 2) |
+| M-12 | `/club/facility` | Today at the facility | `facilities.log.write` | 5 |
+| M-13 | `/club/link` | Link request | no sign-in | 3 |
+| M-14 | `/club/d/[token]` | Declaration from link | token | 3 |
+| M-15 | `/club/cash` | Accept cash | `payments.cash.record` | 4 |
+| M-16 | `/club/orders` | Orders | `payments.orders.place` | 4 |
+| M-17 | `/club/orders/[campaignId]` | Order (form and summary) | `payments.orders.place`; without a session — entry via sign-in or link request | 4 |
+| M-18 | `/club/coach/payments` | My groups' payments | `payments.groups.view` (+ `payments.groups.collect`) | 4 |
+| M-19 | `/club/o/[token]` | Order from link | token | 4 |
+| B-01 | `/backend` | Dashboard | staff | 1–5 |
+| B-02 | `/backend/club/settings` | Club settings | `club_core.manage` | 1 |
+| B-03 | `/backend/club/publication` | Publication | `club_core.publication.manage` | 1 |
+| B-04 / B-05 | `/backend/club/sections`, `…/[id]/edit` | Sections | `club_core.view` / `club_core.manage` | 1 |
+| B-06 | `/backend/club/places` | Places | `club_core.manage` | 1 |
+| B-07 | `/backend/club/institutions`, `/backend/club/contracts` | Institutions and contracts | `club_core.manage`, `club_core.contracts.manage` | 1–2 |
+| B-09 / B-10 | `/backend/people/persons`, `…/[id]` | People, person record | `people.view` / `people.manage` ("Create account": `people.accounts.manage`) | 1 |
+| B-11 / B-12 | `/backend/groups/groups` (tabs: Groups, External teams, Seasons), `…/[id]` | Groups | `groups.view` / `groups.manage` | 2 |
+| B-13 / B-14 | `/backend/activities/activities`, `…/create` | Activities, wizard | `activities.manage` | 2 |
+| B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
+| B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` | 2 |
+| B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
+| B-18 / B-19 | `/backend/communication/threads` ("cases only" perspective = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
+| B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
+| B-21 / B-22 | `/backend/payments/charges` (perspectives incl. Overdue), `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |
+| B-29 | `/backend/payments/bank` | Bank statements | `payments.bank.import` | 4 |
+| B-30 | `/backend/payments/orders` | Order campaigns | `payments.orders.manage` | 4 |
+| B-31 | `/backend/payments/orders/create`, `…/[id]/edit` | Order form wizard | `payments.orders.manage` | 4 |
+| B-32 | `/backend/payments/orders/[id]` | Campaign: orders, summary, stages | `payments.orders.manage` | 4 |
+| B-33 | `/backend/payments/cash-custody` | Cash to settle | `payments.cash.settle` (treasurer, administrator) | 4 |
+| B-23 | `/backend/facilities/calendar` | Facility calendar | `facilities.view` | 5 |
+| B-24 | `/backend/facilities/rentals` | Rentals | `facilities.rentals.manage` | 5 |
+| B-25 | `/backend/facilities/requests` | Requests awaiting approval | `facilities.rentals.approve` | 5 |
+| B-26 | `/backend/facilities/zones` (+ `/closures`, `/rates`) | Zones, closures, rates | `facilities.manage` | 5 |
+| B-27 | `/backend/facilities/logs` (+ `/incidents`, `/bans`; `/maintenance` — REQ-022 Could, deferred, no screen in this concept) | Log, incidents, bans | `facilities.log.write` / `facilities.incidents.manage` | 5 |
+| B-28 | `/backend/facilities/reports/owner` | Municipality report | `facilities.reports.view` | 5 |
+| P-01 | `/p/[clubSlug]` | Club page | public | 1–2 (+ blocks 4–5) |
+| P-02 | `/p/[clubSlug]/sections/[sectionSlug]` | Section page | public | 1–2 (+ blocks 4–5) |
+| P-03 | `/p/[clubSlug]/places` | Club facilities | public | 5 |
+| P-04 | `/p/[clubSlug]/places/[placeSlug]` | Facility calendar + request | public | 5 |
+| P-05 | `/p/[clubSlug]/requests/verify/[token]` | Request confirmation | token | 5 |
+
+Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/backend/communication/cases` is the "cases only" perspective of B-18; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. `/backend/facilities/maintenance` (REQ-022, Could) has no screen here — deferred.
 
 ---
 
-## 4. Specyfikacja ekranów
+## 4. Screen specification
 
-Wspólne zasady (dotyczą każdego ekranu, nie są powtarzane):
+Common rules (they apply to every screen and are not repeated):
 
-- **Komponenty:** panel — `Page`, `PageBody`, `DataTable` (filtry, wyszukiwanie, perspektywy, eksport, `RowActions`), `CrudForm` (grupy pól, `updatedAt` → 409), `StatusBadge`, `EmptyState`, `LoadingMessage`, `ErrorMessage`, `useConfirmDialog`, okna z Ctrl/Cmd+Enter i Escape; odwołania do innych rekordów zawsze jako selektor z trasą źródła opcji, nigdy UUID. Strony członkowskie i publiczne — te same prymitywy design systemu w układzie mobilnym.
-- **Stany:** **loading** — szkielet (skeleton) w miejscu treści, akcje nieaktywne; **empty** — wyjaśnienie + następna akcja; **error** — komunikat bez szczegółów technicznych + „Spróbuj ponownie”, dane formularza zachowane; **success** — toast lub zmiana statusu w miejscu; **conflict (409)** — wspólne okno „Rekord zmienił się w międzyczasie”; **403** — „Brak uprawnień”.
-- **Walidacje:** po stronie klienta dla wygody, po stronie serwera (Zod w trasie) jako źródło prawdy; błąd serwera trafia do pola przez wspólny adapter błędów.
-- **API:** wszystkie wywołania przez `apiCall`/`apiCallOrThrow`; zakres klubu z sesji.
+- **Components:** panel — `Page`, `PageBody`, `DataTable` (filters, search, perspectives, export, `RowActions`), `CrudForm` (field groups, `updatedAt` → 409), `StatusBadge`, `EmptyState`, `LoadingMessage`, `ErrorMessage`, `useConfirmDialog`, dialogs with Ctrl/Cmd+Enter and Escape; references to other records always as a selector with the route of the options source, never a UUID. Member and public pages — the same design system primitives in a mobile layout.
+- **States:** **loading** — a skeleton in place of the content, actions disabled; **empty** — explanation + next action; **error** — message without technical details + "Try again", form data preserved; **success** — toast or in-place status change; **conflict (409)** — shared dialog "The record has changed in the meantime"; **403** — "Access denied".
+- **Validation:** client-side for convenience, server-side (Zod in the route) as the source of truth; a server error is mapped to the field by the shared error adapter.
+- **API:** all calls via `apiCall`/`apiCallOrThrow`; club scope taken from the session.
 
-### Interfejs członkowski (telefon)
+### Member interface (phone)
 
-#### M-01 Logowanie — `/login`
-- **Cel:** wejście do aplikacji jednym kontem dla wszystkich ról (Q-001).
-- **Funkcje:** e-mail + hasło, „Nie pamiętam hasła” (`/reset`), zapamiętanie urządzenia.
-- **Komponenty:** zainstalowana strona `auth`; po zalogowaniu przekierowanie do `/club` (personel bez roli członka → `/backend`).
-- **Stany:** loading — przycisk z wskaźnikiem; error — „Nieprawidłowy e-mail lub hasło” (bez rozróżnienia); success — przekierowanie.
-- **Walidacje:** e-mail wymagany i poprawny; hasło wymagane.
-- **API:** logowanie modułu `auth` (zainstalowane); `GET /api/people/me` po zalogowaniu.
+#### M-01 Sign in — `/login`
+- **Goal:** enter the app with one account for all roles (Q-001).
+- **Features:** email + password, "Forgot password" (`/reset`), remember this device.
+- **Components:** the installed `auth` page; after sign-in, redirect to `/club` (staff without a member role → `/backend`).
+- **States:** loading — button with a spinner; error — "Incorrect email or password" (no distinction); success — redirect.
+- **Validation:** email required and valid; password required.
+- **API:** `auth` module sign-in (installed); `GET /api/people/me` after sign-in.
 
-#### M-02 Dziś — `/club`
-- **Cel:** w 5 sekund wiedzieć, co dziś i jutro dzieje się u mnie i moich dzieci, i zareagować.
-- **Funkcje:** kafel **Kalendarz** (terminy dziś/jutro wszystkich podopiecznych i własne, z sekcją i miejscem; „Będzie / Nie będzie” w miejscu); kafel **Obecność** (decyzje `pending_guardian` do podjęcia; dla trenera — „Moje terminy dziś” z wejściem w listę); kafel **Wiadomości** (nieprzeczytane); kafel **Płatności** (suma otwartych należności, najbliższy termin, „Zapłać”) — tylko dla osób pełnoletnich; uczestnik niepełnoletni go nie widzi; przełącznik dziecka i kontekstu roli.
-- **Komponenty:** nagłówek z powitaniem i przełącznikami; siatka 4 kafli (1 kolumna < 640 px); przyciski segmentowe deklaracji; `StatusBadge` (odwołany, deklaracje zamknięte, czeka na potwierdzenie); dolny pasek nawigacji.
-- **Stany:** loading — szkielet kafli; empty — „Dziś nie ma zajęć. Najbliższy termin: czw 16:00 Basen” + link do kalendarza; kafle faz 3–4 nie są renderowane, dopóki moduł nie jest włączony; error — per kafel („Nie udało się wczytać płatności” + ponów), reszta działa; success — przy deklaracji „Zapisano: Jaś będzie”.
-- **Walidacje:** deklaracja tylko do `start_at`; podopieczny z polityką `guardian_only` — przyciski tylko u opiekuna.
+#### M-02 Today — `/club`
+- **Goal:** within 5 seconds, know what is happening today and tomorrow for me and my children, and respond.
+- **Features:** **Calendar** tile (today's/tomorrow's sessions of all wards and one's own, with section and place; "Attending / Not attending" in place); **Attendance** tile (`pending_guardian` decisions to make; for the coach — "My sessions today" with entry into the list); **Messages** tile (unread); **Payments** tile (total of open charges, nearest due date, "Pay") — adults only; a minor participant does not see it; child and role context switcher.
+- **Components:** header with a greeting and switchers; grid of 4 tiles (1 column < 640 px); segmented declaration buttons; `StatusBadge` (canceled, declarations closed, awaiting confirmation); bottom navigation bar.
+- **States:** loading — tile skeletons; empty — "No sessions today. Next session: Thu 16:00 Basen" + link to the calendar; phase 3–4 tiles are not rendered until the module is enabled; error — per tile ("Couldn't load payments" + retry), the rest keeps working; success — on declaration "Saved: Jaś attending".
+- **Validation:** declaration only until `start_at`; a ward with the `guardian_only` policy — buttons only for the guardian.
 - **API:** `GET /api/people/me`; `GET /api/activities/calendar?as=self&from&to`; `POST /api/activities/attendance/declare`; `GET /api/communication/threads?unread=1` (f3); `GET /api/payments/my-charges?status=open` (f4).
 
-#### M-03 Kalendarz — `/club/calendar`
-- **Cel:** jeden kalendarz wszystkich dzieci ze wszystkich sekcji (REQ-006).
-- **Funkcje:** widok tygodnia (domyślnie) / listy miesiąca; filtr osoby (wszyscy / Jaś / Ola / ja); legenda sekcji; status deklaracji przy każdym terminie; przejście do M-04.
-- **Komponenty:** przełącznik tydzień/miesiąc, lista dni z kartami terminów (godzina, aktywność, grupa, sekcja, miejsce, osoba, status), rodzina komponentów harmonogramu (V-8).
-- **Stany:** loading — szkielet dni; empty — „Brak terminów w tym tygodniu” + „Następny tydzień”; error — komunikat + ponów; success — n/d.
-- **Walidacje:** zakres ≤ 62 dni (400 z serwera → przycięcie zakresu w UI).
+#### M-03 Calendar — `/club/calendar`
+- **Goal:** one calendar for all children from all sections (REQ-006).
+- **Features:** week view (default) / month list; person filter (everyone / Jaś / Ola / me); section legend; declaration status on each session; navigation to M-04.
+- **Components:** week/month switcher, list of days with session cards (time, activity, group, section, place, person, status), schedule component family (V-8).
+- **States:** loading — day skeletons; empty — "No sessions this week" + "Next week"; error — message + retry; success — n/a.
+- **Validation:** range ≤ 62 days (400 from the server → range trimmed in the UI).
 - **API:** `GET /api/activities/calendar?as=guardian|self|coach&from&to&personId`.
 
-#### M-04 Termin — `/club/occurrences/[id]`
-- **Cel:** szczegóły jednego terminu i decyzje dotyczące obecności.
-- **Funkcje:** data, godziny, miejsce (z adresem i mapą — Could), trener (z oznaczeniem zastępstwa), status; dla każdego mojego podopiecznego „Będzie / Nie będzie”; decyzja opiekuna przy `pending_guardian` (Potwierdź / Odrzuć); dla meczu — przeciwnik, wyjazd; dla trenera — przyciski „Lista obecności”, „Zgłoś nieobecność”, „Odwołaj”, „Napisz do grupy”; dyżur rodzica — „Zgłoś się na dyżur” (Could).
-- **Komponenty:** nagłówek terminu, `StatusBadge`, lista osób z przyciskami segmentowymi, okna z powodem (nieobecność, odwołanie) z `useConfirmDialog`.
-- **Stany:** loading — szkielet; empty — n/d (404 → „Termin nie istnieje lub nie masz do niego dostępu”); error — ponów; success — toasty „Zapisano deklarację”, „Zgłoszono nieobecność — koordynator dostał powiadomienie”, „Termin odwołany — wysłano powiadomienia”.
-- **Walidacje:** deklaracja przed `start_at` (inaczej 409 `declaration_closed`); powód odwołania wymagany (3–200 znaków); powód nieobecności opcjonalny.
+#### M-04 Session — `/club/occurrences/[id]`
+- **Goal:** details of a single session and attendance decisions.
+- **Features:** date, times, place (with address and map — Could), coach (with a substitution marker), status; for each of my wards "Attending / Not attending"; guardian decision on `pending_guardian` (Confirm / Reject); for a match — opponent, away trip; for the coach — buttons "Attendance list", "Report absence", "Cancel", "Message the group". (Volunteer duty sign-up is not in 1.0 — see section 6.)
+- **Components:** session header, `StatusBadge`, list of people with segmented buttons, reason dialogs (absence, cancellation) with `useConfirmDialog`.
+- **States:** loading — skeleton; empty — n/a (404 → "The session does not exist or you do not have access to it"); error — retry; success — toasts "Declaration saved", "Absence reported — the coordinator has been notified", "Session canceled — notifications sent".
+- **Validation:** declaration before `start_at` (otherwise 409 `declaration_closed`); cancellation reason required (3–200 characters); absence reason optional.
 - **API:** `GET /api/activities/occurrences/{id}`; `POST /api/activities/attendance/declare`; `POST /api/activities/attendance/{id}/guardian-decision`; `POST /api/activities/occurrences/{id}/absence`; `POST /api/activities/occurrences/{id}/cancel`.
 
-#### M-05 Lista obecności — `/club/occurrences/[id]/attendance`
-- **Cel:** odhaczyć obecność w 30 sekund i zamknąć termin (REQ-007, REQ-008).
-- **Funkcje:** podsumowanie deklaracji (tak / nie / brak); lista członków grupy w dniu terminu ∪ osoby z deklaracją; dla każdego: obecny / nieobecny / spóźniony; „Wszyscy zadeklarowani obecni” (szybkie wypełnienie); „Zamknij termin”.
-- **Komponenty:** lista z przełącznikami (duże pola dotyku), licznik, pasek akcji na dole, `useConfirmDialog` przy zamknięciu, okno konfliktu.
-- **Stany:** loading — szkielet listy; empty — „Grupa nie ma członków w dniu terminu” (koordynator: link do składu); error — zapis nieudany, zaznaczenia zachowane, ponów; success — „Termin zamknięty — 14 obecnych”, przejście do M-02.
-- **Walidacje:** termin nie może być odwołany; zamknięcie przed końcem terminu wymaga potwierdzenia; wersja terminu (409 przy równoczesnej edycji).
+#### M-05 Attendance list — `/club/occurrences/[id]/attendance`
+- **Goal:** tick off attendance in 30 seconds and close the session (REQ-007, REQ-008).
+- **Features:** declaration summary (yes / no / none); list of group members on the session date ∪ people with a declaration; for each: present / absent / late; "All declared present" (quick fill); "Close session".
+- **Components:** list with toggles (large touch targets), counter, bottom action bar, `useConfirmDialog` on closing, conflict dialog.
+- **States:** loading — list skeleton; empty — "The group has no members on the session date" (coordinator: link to the roster); error — save failed, selections preserved, retry; success — "Session closed — 14 present", navigation to M-02.
+- **Validation:** the session must not be canceled; closing before the session ends requires confirmation; session version (409 on concurrent editing).
 - **API:** `GET /api/activities/occurrences/{id}/attendance`; `PUT /api/activities/occurrences/{id}/attendance` (`entries`, `complete`).
 
-#### M-06 Wiadomości — `/club/messages`
-- **Cel:** jedno miejsce na komunikaty klubu zamiast grup na Messengerze (REQ-009).
-- **Funkcje:** lista wątków (zakres: klub / sekcja / grupa / termin / bezpośredni), nieprzeczytane, etykieta „Sprawa”; filtr po dziecku; trener/koordynator: „Nowy komunikat” (wybór zakresu ze swoich).
-- **Komponenty:** lista wątków z ikoną zakresu, licznik nieprzeczytanych, przycisk pływający „Nowy”, okno nowego komunikatu (`CrudForm`).
-- **Stany:** loading — szkielet; empty — „Brak wiadomości. Tu pojawią się komunikaty trenerów i klubu”; error — ponów; success — „Wysłano do 18 osób (e-mail + w aplikacji)”.
-- **Walidacje:** zakres wymagany i w uprawnieniach autora (403); temat 3–120 znaków; treść 1–5000 znaków.
+#### M-06 Messages — `/club/messages`
+- **Goal:** one place for club announcements instead of Messenger groups (REQ-009).
+- **Features:** thread list (scope: club / section / group / session / direct), unread, "Case" label; filter by child; coach/coordinator: "New announcement" (scope chosen from their own).
+- **Components:** thread list with a scope icon, unread counter, floating "New" button, new announcement dialog (`CrudForm`).
+- **States:** loading — skeleton; empty — "No messages. Announcements from coaches and the club will appear here"; error — retry; success — "Sent to 18 people (email + in-app)".
+- **Validation:** scope required and within the author's permissions (403); subject 3–120 characters; body 1–5000 characters.
 - **API:** `GET /api/communication/threads`; `POST /api/communication/threads`.
 
-#### M-07 Wątek — `/club/messages/[threadId]`
-- **Cel:** przeczytać i odpowiedzieć; trener — udostępnić tekst na grupę.
-- **Funkcje:** wiadomości z autorem i rolą; odpowiedź; „Skopiuj tekst na grupę” (skrót + link); status doręczenia e-mail przy adresatach (autor); etykieta „Sprawa — wiadomości nie można usuwać”.
-- **Komponenty:** rodzina komponentów wiadomości, pole odpowiedzi, przycisk kopiowania ze schowkiem i potwierdzeniem.
-- **Stany:** loading; empty — n/d; error — wysłanie nieudane, treść zachowana; success — „Skopiowano tekst — wklej go na grupę”.
-- **Walidacje:** treść odpowiedzi 1–5000 znaków; tylko uczestnicy wątku (403).
+#### M-07 Thread — `/club/messages/[threadId]`
+- **Goal:** read and reply; coach — share the text with the group chat.
+- **Features:** messages with author and role; reply; "Copy text for group chat" (summary + link); email delivery status per recipient (for the author); label "Case — messages cannot be deleted".
+- **Components:** message component family, reply field, copy button with clipboard and confirmation.
+- **States:** loading; empty — n/a; error — sending failed, content preserved; success — "Text copied — paste it into the group chat".
+- **Validation:** reply body 1–5000 characters; thread participants only (403).
 - **API:** `GET /api/communication/threads/{id}`; `POST /api/communication/threads/{id}/replies`; `GET /api/communication/share-text?threadId|occurrenceId`.
 
-#### M-08 Płatności — `/club/payments`
-- **Cel:** zobaczyć, ile i za co płacę, i zapłacić w dwóch dotknięciach (REQ-012). Ekran istnieje tylko dla osób pełnoletnich (opiekun, dorosły uczestnik); uczestnik poniżej 18 lat dostaje 403, a pozycja nie pojawia się w nawigacji (REQ-002).
-- **Funkcje:** lista otwartych należności płatnika (osoba, opis, okres, kwota, zniżka z nazwą reguły, termin); zaznaczenie i „Zapłać X zł” (Stripe); historia opłaconych; informacja o płatności przelewem (numer konta klubu).
-- **Komponenty:** `DataTable` w układzie mobilnym (karty), pola wyboru, suma, przycisk główny, `StatusBadge` (otwarta, częściowo opłacona, opłacona, po terminie).
-- **Stany:** loading; empty — „Wszystko opłacone” + historia wpłat; error — ponów; success — przejście do Stripe.
-- **Walidacje:** co najmniej jedna należność; tylko `open`; należność z `payer_missing` niewybieralna z wyjaśnieniem.
+#### M-08 Payments — `/club/payments`
+- **Goal:** see how much I pay and for what, and pay in two taps (REQ-012). The screen exists only for adults (guardian, adult participant); a participant under 18 gets 403, and the item does not appear in the navigation (REQ-002).
+- **Features:** list of the payer's open charges (person, description, period, amount, discount with the rule name, due date); select and "Pay X zł" (Stripe); history of paid charges; bank transfer information (the club's account number).
+- **Components:** `DataTable` in a mobile layout (cards), checkboxes, total, primary button, `StatusBadge` (open, partially paid, paid; "overdue" is a derived marker on an `open` charge past its due date, not a status).
+- **States:** loading; empty — "All paid" + payment history; error — retry; success — redirect to Stripe.
+- **Validation:** at least one charge; only `open`; a charge with `payer_missing` cannot be selected, with an explanation.
 - **API:** `GET /api/payments/my-charges`; `POST /api/payments/checkout` → `{ redirectUrl }`.
 
-#### M-09 Wynik płatności — `/club/payments/return`
-- **Cel:** potwierdzić wynik płatności po powrocie ze Stripe.
-- **Funkcje:** „Płatność przyjęta” z listą należności; „Płatność w toku” (webhook jeszcze nie dotarł — automatyczne odświeżenie co kilka sekund przez 30 s); „Płatność przerwana” z powrotem do M-08.
-- **Komponenty:** komunikat stanu (`Alert`), lista, przycisk powrotu.
-- **Stany:** loading — „Sprawdzamy płatność…”; error — „Nie udało się sprawdzić statusu”; success — opłacone.
-- **Walidacje:** brak.
-- **API:** `GET /api/payments/my-charges` (status należności po webhooku `payment_gateways.payment.captured`).
+#### M-09 Payment result — `/club/payments/return`
+- **Goal:** confirm the payment result after returning from Stripe.
+- **Features:** "Payment received" with the list of charges; "Payment in progress" (the webhook has not arrived yet — automatic refresh every few seconds for 30 s); "Payment interrupted" with a way back to M-08.
+- **Components:** status message (`Alert`), list, back button.
+- **States:** loading — "Checking your payment…"; error — "Couldn't check the status"; success — paid.
+- **Validation:** none.
+- **API:** `GET /api/payments/my-charges` (charge status after the `payment_gateways.payment.captured` webhook).
 
-#### M-10 Profil i podopieczni — `/club/profile`, `/club/wards/[personId]`
-- **Cel:** dane kontaktowe, zgody za dzieci, zgoda na publikację nazwiska (trener).
-- **Funkcje:** moje dane (telefon, e-mail kontaktowy); lista podopiecznych z grupami i sekcjami; zgody (regulamin, wizerunek, wyjazdy) z datą; trener: „Zgadzam się na publikację imienia i nazwiska na stronie klubu”; zmiana hasła (link do `auth`).
-- **Komponenty:** `CrudForm`, przełączniki zgód z datą i autorem.
-- **Stany:** loading; empty — „Nie masz podopiecznych” (dla osoby bez dzieci sekcja ukryta); error; success — „Zapisano zgody”; conflict — 409.
-- **Walidacje:** telefon w formacie PL/E.164; e-mail; zgody zmienia tylko opiekun (podopieczny widzi tylko do odczytu).
-- **API:** `GET /api/people/me`; `PUT /api/people/persons/{id}`; `PUT /api/people/guardianships/{id}`.
+#### M-10 Profile and wards — `/club/profile`, `/club/wards/[personId]`
+- **Goal:** contact details, consents on behalf of children, consent to publishing one's name (coach).
+- **Features:** my details (phone, contact email); **interface language** (select: English / Polish — REQ-035; saved as the person's `preferredLocale`, the interface re-renders immediately); list of wards with groups and sections; consents (rules, image, trips) with date; coach: "I consent to my first and last name being published on the club page"; password change (link to `auth`).
+- **Components:** `CrudForm`, consent toggles with date and author.
+- **States:** loading; empty — "You have no wards" (for a person without children the section is hidden); error; success — "Consents saved"; conflict — 409.
+- **Validation:** phone in PL/E.164 format; email; consents can be changed only by the guardian (the ward sees them read-only).
+- **API:** `GET /api/people/me`; `PUT /api/people/me` (`preferredLocale`, `publishNameConsent`); `PUT /api/people/persons/{id}`; `PUT /api/people/guardianships/{id}`.
 
-#### M-11 Obiekty i rezerwacja — `/club/places`, `/club/places/[placeId]`
-- **Cel:** personel każdej sekcji widzi zajętość obiektów i rezerwuje od razu (REQ-023, REQ-027).
-- **Funkcje:** lista obiektów klubu (Orlik — boiska, salka, basen) z dzisiejszą zajętością; oś dnia 8–22 ze strefami i wpisami (zajęcia, rezerwacje wewnętrzne, wynajmy, zgłoszenia oczekujące, zamknięcia); wybór dnia; zaznaczenie wolnego przedziału → **Rezerwuj**: „Dla grupy” (wydarzenie: turniej/inne, zaproszone drużyny) albo „Cel ogólny” (opis); anulowanie własnej rezerwacji.
-- **Komponenty:** lista kart obiektów, selektor dnia, oś czasu z blokami (legenda tekstowa), okno rezerwacji (`CrudForm`), lista kolizji w błędzie.
-- **Stany:** loading — szkielet osi; empty — „Obiekt nie ma reguł stref — skontaktuj się z administratorem”; error — ponów; success — blok pojawia się na osi + „Zarezerwowano: sob 9:00–12:00 Boisko piłkarskie”; conflict — 409 z listą kolizji (z nazwami, bo to personel).
-- **Walidacje:** koniec > początek; w godzinach otwarcia; nie w zamknięciu; bez kolizji; grupa z własnego zakresu; `tournament` tylko dla `team`; cel wymagany dla rezerwacji ogólnej (3–120 znaków).
+#### M-11 Facilities and booking — `/club/places`, `/club/places/[placeId]`
+- **Goal:** staff of every section see facility occupancy and book right away (REQ-023, REQ-027).
+- **Features:** list of club facilities (Orlik — pitches, small hall, pool) with today's occupancy; day timeline 8–22 with zones and entries (sessions, internal bookings, rentals, pending requests, closures); day picker; selecting a free range → **Book**: "For a group" (event: tournament/other, invited teams) or "General purpose" (description); canceling one's own booking.
+- **Components:** list of facility cards, day picker, timeline with blocks (text legend), booking dialog (`CrudForm`), list of collisions in the error.
+- **States:** loading — timeline skeleton; empty — "The facility has no zone rules — contact the administrator"; error — retry; success — the block appears on the timeline + "Booked: Sat 9:00–12:00 Boisko piłkarskie"; conflict — 409 with a list of collisions (with names, since this is staff).
+- **Validation:** end > start; within opening hours; not during a closure; no collisions; group within one's own scope; `tournament` is allowed for any group (the group's kind does not restrict it); purpose required for a general booking (3–120 characters).
 - **API:** `GET /api/facilities/calendar?placeId&from&to`; `POST /api/facilities/internal-bookings`; `DELETE /api/facilities/internal-bookings/{id}`; `POST /api/activities/events`.
 
-#### M-12 Dziś na obiekcie — `/club/facility`
-- **Cel:** animator prowadzi dzień na obiekcie z telefonu (REQ-013, REQ-016).
-- **Funkcje:** „Otwórz obiekt” (stan przed, godzina); lista dzisiejszych zajęć i wynajmów z polami: liczba osób, pełnoletni opiekun obecny; „Nie stawił się” (`no_show`); „Zgłoś incydent” (rodzaj, opis, działanie, zdjęcie, osoby); „Zamknij obiekt” (stan po, uwagi).
-- **Komponenty:** lista kart dnia, okna `CrudForm`, wgrywanie zdjęcia (`attachments`).
-- **Stany:** loading; empty — „Dziś na obiekcie nic nie zaplanowano”; error; success — „Obiekt otwarty 15:58”, „Incydent zgłoszony”.
-- **Walidacje:** stan przed wymagany przy otwarciu; stan po przy zamknięciu; opis incydentu 10–2000 znaków; `no_show` dopiero po `starts_at`.
+#### M-12 Today at the facility — `/club/facility`
+- **Goal:** the attendant runs the day at the facility from a phone (REQ-013, REQ-016).
+- **Features:** "Open facility" (condition before, time); list of today's sessions and rentals with fields: number of people, adult supervisor present; "No-show" (`no_show`); "Report incident" (type, description, action taken, photo, people involved); "Close facility" (condition after, notes).
+- **Components:** list of day cards, `CrudForm` dialogs, photo upload (`attachments`).
+- **States:** loading; empty — "Nothing is scheduled at the facility today"; error; success — "Facility opened 15:58", "Incident reported".
+- **Validation:** condition before required on opening; condition after on closing; incident description 10–2000 characters; `no_show` only after `starts_at`.
 - **API:** `GET /api/facilities/today`; `POST/PUT /api/facilities/logs`; `POST /api/facilities/incidents`; `POST /api/facilities/rentals/{id}/no-show`.
 
-#### M-13 Prośba o link — `/club/link`
-- **Cel:** rodzic z linku z Messengera dostaje osobisty link bez zakładania konta (REQ-017).
-- **Funkcje:** podstawowe informacje o terminie (bez danych osób); pole e-mail; „Wyślij mi link”.
-- **Komponenty:** strona publiczna z formularzem design systemu.
-- **Stany:** loading — przycisk z wskaźnikiem; error — „Spróbuj ponownie za chwilę” (429); success — zawsze „Jeśli adres jest zapisany w klubie, wysłaliśmy link”.
-- **Walidacje:** e-mail poprawny; limit żądań.
+#### M-13 Link request — `/club/link`
+- **Goal:** a parent coming from a Messenger link gets a personal link without creating an account (REQ-017).
+- **Features:** basic session information (no personal data); email field; "Send me a link".
+- **Components:** public page with a design system form.
+- **States:** loading — button with a spinner; error — "Try again in a moment" (429); success — always "If the address is registered with the club, we have sent a link".
+- **Validation:** valid email; rate limit.
 - **API:** `POST /api/activities/declaration-links`.
 
-#### M-14 Deklaracja z linku — `/club/d/[token]`
-- **Cel:** zadeklarować obecność dzieci bez logowania.
-- **Funkcje:** termin; lista moich dzieci w tej grupie z „Będzie / Nie będzie”; link „Zaloguj się, aby zobaczyć cały kalendarz”.
-- **Komponenty:** strona publiczna, przyciski segmentowe.
-- **Stany:** loading; error — 410 „Link wygasł — poproś o nowy” (link do M-13), 404; success — „Zapisano”.
-- **Walidacje:** tylko osoby z tokenu (403); przed `start_at`.
+#### M-14 Declaration from link — `/club/d/[token]`
+- **Goal:** declare children's attendance without signing in.
+- **Features:** session; list of my children in this group with "Attending / Not attending"; link "Sign in to see the full calendar".
+- **Components:** public page, segmented buttons.
+- **States:** loading; error — 410 "Link expired — request a new one" (link to M-13), 404; success — "Saved".
+- **Validation:** only people from the token (403); before `start_at`.
 - **API:** `GET /api/activities/declaration-links/{token}`; `POST /api/activities/declaration-links/{token}`.
 
-### Panel (komputer)
+### Panel (desktop)
 
-#### B-01 Pulpit — `/backend`
-- **Cel:** jedno spojrzenie na to, co wymaga działania dziś.
-- **Funkcje:** widżety zależne od uprawnień: **Terminy do obsadzenia** (14 dni), **Nierozliczone terminy**, **Zaległości** (suma, liczba rodzin), **Należności bez płatnika**, **Zgłoszenia do akceptacji** (z czasem do wygaśnięcia), **Dziś na obiekcie**, **Sekcje bez koordynatora**; każdy wiersz prowadzi do listy z perspektywą.
-- **Komponenty:** `dashboards` (widżety modułów), karty KPI, listy.
-- **Stany:** loading — szkielet widżetów; empty per widżet („Wszystkie terminy mają trenera”); error per widżet; success — n/d.
-- **Walidacje:** brak.
+#### B-01 Dashboard — `/backend`
+- **Goal:** one glance at what needs action today.
+- **Features:** permission-dependent widgets: **Sessions needing a coach** (14 days), **Unsettled sessions**, **Overdue** (total, number of families), **Charges without a payer**, **Requests awaiting approval** (with time to expiry), **Today at the facility**, **Sections without a coordinator**; each row leads to a list with a perspective.
+- **Components:** `dashboards` (module widgets), KPI cards, lists.
+- **States:** loading — widget skeletons; empty per widget ("All sessions have a coach"); error per widget; success — n/a.
+- **Validation:** none.
 - **API:** `GET /api/activities/occurrences?unassigned=1`, `?unsettled=1`; `GET /api/payments/overdue`; `GET /api/payments/charges?payerMissing=1`; `GET /api/facilities/rentals?status=pending_approval`; `GET /api/facilities/today`; `GET /api/club_core/sections`.
 
-#### B-02 Ustawienia klubu — `/backend/club/settings`
-- **Cel:** dane klubu i parametry działania.
-- **Funkcje:** nazwa skrócona, **logo klubu** (wgraj, podmień, usuń; podgląd w nagłówku), strefa czasowa, waluta, próg wieku konta (13–18), publiczny slug, telefon kontaktowy.
-- **Komponenty:** `CrudForm` (`pageContext: 'settings'`).
-- **Stany:** loading, error, success („Zapisano”), conflict.
-- **Walidacje:** slug `^[a-z0-9-]{3,40}$`, unikalny globalnie (409); próg 13–18; telefon; logo PNG/JPG/WebP do 2 MB (SVG odrzucany, 422), zalecany kwadrat ≥ 256 px.
+#### B-02 Club settings — `/backend/club/settings`
+- **Goal:** club details and operating parameters.
+- **Features:** short name, **club logo** (upload, replace, remove; preview in the header), time zone, currency, account age threshold (13–18), public slug, contact phone.
+- **Components:** `CrudForm` (`pageContext: 'settings'`).
+- **States:** loading, error, success ("Saved"), conflict.
+- **Validation:** slug `^[a-z0-9-]{3,40}$`, globally unique (409); threshold 13–18; phone; logo PNG/JPG/WebP up to 2 MB (SVG rejected, 422), square ≥ 256 px recommended.
 - **API:** `GET/PUT /api/club_core/settings`.
 
-#### B-03 Publikacja — `/backend/club/publication`
-- **Cel:** zdecydować, co klub pokazuje publicznie (REQ-025, Q-024).
-- **Funkcje:** włącz stronę klubu; bloki: opis i harmonogram, warunki, ceny, prowadzący, materiały, kontakt, kalendarz obiektów, zgłoszenia online — każdy z opisem skutku; podgląd strony publicznej.
-- **Komponenty:** `CrudForm` z przełącznikami, link „Podgląd”.
-- **Stany:** loading, error, success, conflict.
-- **Walidacje:** „Zgłoszenia online” wymagają „Kalendarza obiektów”; strona wymaga publicznego slugu klubu.
+#### B-03 Publication — `/backend/club/publication`
+- **Goal:** decide what the club shows publicly (REQ-025, Q-024).
+- **Features:** enable the club page; blocks: description and schedule, terms, prices, instructors, materials, contact, facility calendar, online requests — each with a description of its effect; public page preview.
+- **Components:** `CrudForm` with toggles, "Preview" link.
+- **States:** loading, error, success, conflict.
+- **Validation:** "Online requests" require "Facility calendar"; the page requires a public club slug.
 - **API:** `GET/PUT /api/club_core/settings` (`publication`).
 
-#### B-04 Sekcje — `/backend/club/sections`
-- **Cel:** lista sekcji z koordynatorami (byt pierwszej klasy, D-011).
-- **Funkcje:** kolumny: nazwa, koordynatorzy, liczba grup, publiczna, aktywna; ostrzeżenie „bez koordynatora”; dodaj; dezaktywuj.
-- **Komponenty:** `DataTable`, `StatusBadge`, `RowActions`.
-- **Stany:** loading; empty — „Klub nie ma jeszcze sekcji” + „Dodaj sekcję”; error; success; dezaktywacja sekcji z grupami → 409 z listą grup.
-- **Walidacje:** n/d (formularz w B-05).
+#### B-04 Sections — `/backend/club/sections`
+- **Goal:** list of sections with coordinators (a first-class entity, D-011).
+- **Features:** columns: name, coordinators, number of groups, public, active; "without coordinator" warning; add; deactivate.
+- **Components:** `DataTable`, `StatusBadge`, `RowActions`.
+- **States:** loading; empty — "The club has no sections yet" + "Add section"; error; success; deactivating a section with groups → 409 with the list of groups.
+- **Validation:** n/a (form in B-05).
 - **API:** `GET /api/club_core/sections`.
 
-#### B-05 Sekcja — `/backend/club/sections/[id]/edit`
-- **Cel:** dane sekcji, koordynatorzy i treści strony publicznej.
-- **Funkcje:** zakładki **Dane** (nazwa, opis wewnętrzny, **logo sekcji** — wgraj lub usuń; bez własnego logo sekcja używa logo klubu, co widać w podglądzie), **Koordynatorzy** (przypisz osobę, okres), **Strona publiczna** (publiczna ✓, slug, opis, warunki, kontakt do publikacji, materiały z flagą „publiczny”).
-- **Komponenty:** `CrudForm` z `CollapsibleSection`/zakładkami, selektor osób, wgrywanie plików.
-- **Stany:** loading, error, success, conflict.
-- **Walidacje:** nazwa 2–80 znaków, unikalna; publiczna wymaga slugu; logo jak w B-02; e-mail i telefon kontaktowy w formacie; materiały PDF/JPG/PNG ≤ 10 MB.
-- **API:** `GET/PUT /api/club_core/sections/{id}`; `POST/DELETE /api/people/role-assignments`; załączniki `attachments`.
+#### B-05 Section — `/backend/club/sections/[id]/edit`
+- **Goal:** section details, coordinators and public page content.
+- **Features:** tabs **Details** (name, internal description, **section logo** — upload or remove; without its own logo the section uses the club logo, which is visible in the preview), **Coordinators** (assign a person, period), **Public page** (public ✓, slug, description, terms, contact for publication, materials with a "public" flag).
+- **Components:** `CrudForm` with `CollapsibleSection`/tabs, person selector, file upload.
+- **States:** loading, error, success, conflict.
+- **Validation:** name 2–80 characters, unique; public requires a slug; logo as in B-02; contact email and phone in a valid format; materials PDF/JPG/PNG ≤ 10 MB.
+- **API:** `GET/PUT /api/club_core/sections/{id}`; `POST/DELETE /api/people/role-assignments`; attachments via `attachments`.
 
-#### B-06 Miejsca — `/backend/club/places`
-- **Cel:** hierarchia obiektów (kompleks → boisko, salka, basen).
-- **Funkcje:** lista z rodzicem, rodzajem, właścicielem, `capacity_groups`, „harmonogram publiczny”, „przyjmuje zgłoszenia”; formularz z regulaminem i kontaktami.
-- **Komponenty:** `DataTable` (kolumna rodzica, wcięcia), `CrudForm`.
-- **Stany:** loading, empty („Dodaj pierwszy obiekt”), error, success, conflict.
-- **Walidacje:** brak cyklu (409); terminy tylko na liściach (422 przy wyborze kompleksu z dziećmi); slug unikalny; `capacity_groups` ≥ 1.
+#### B-06 Places — `/backend/club/places`
+- **Goal:** facility hierarchy (complex → pitch, small hall, pool).
+- **Features:** list with parent, kind, owner, `capacity_groups`, "public schedule", "accepts requests"; form with rules and contacts.
+- **Components:** `DataTable` (parent column, indentation), `CrudForm`.
+- **States:** loading, empty ("Add the first facility"), error, success, conflict.
+- **Validation:** no cycles (409); sessions only on leaves (422 when choosing a complex with children); unique slug; `capacity_groups` ≥ 1.
 - **API:** `/api/club_core/places`.
 
-#### B-07 Instytucje i umowy — `/backend/club/institutions`, `/backend/club/contracts`
-- **Cel:** strony umów i płatnicy instytucjonalni; stawki trenerów.
-- **Funkcje:** instytucje (typ, kontakt, konto bankowe); umowy (strona, rodzaj, okres, warunki per rodzaj: trener — podstawa, stawka za jednostkę, mecz, wyjazd; administracyjna — dni na wpłatę, automatyczne wygaszanie).
-- **Komponenty:** `DataTable`, `CrudForm` z polami zależnymi od rodzaju.
-- **Stany:** standardowe.
-- **Walidacje:** nakładające się aktywne umowy tego samego rodzaju dla strony → 409; kwoty ≥ 0; konto bankowe — format NRB (26 cyfr).
+#### B-07 Institutions and contracts — `/backend/club/institutions`, `/backend/club/contracts`
+- **Goal:** contract parties and institutional payers; coach rates.
+- **Features:** institutions (type, contact, bank account); contracts (party, kind, period, terms per kind: coach — base, rate per unit, match, away trip; management agreement — days to pay, automatic expiry).
+- **Components:** `DataTable`, `CrudForm` with fields that depend on the kind.
+- **States:** standard.
+- **Validation:** overlapping active contracts of the same kind for a party → 409; amounts ≥ 0; bank account — NRB format (26 digits).
 - **API:** `/api/club_core/institutions`, `/api/club_core/contracts`.
 
-#### B-09 Osoby — `/backend/people/persons`
-- **Cel:** jedna kartoteka osób klubu.
-- **Funkcje:** wyszukiwanie po nazwisku; filtry: sekcja, grupa, rola, z kontem / bez, wiek; kolumny: osoba, wiek, role, grupy, konto, opiekunowie; dodaj.
-- **Komponenty:** `DataTable` z perspektywami.
-- **Stany:** loading, empty („Dodaj pierwszą osobę lub rodzinę”), error.
-- **Walidacje:** n/d.
+#### B-09 People — `/backend/people/persons`
+- **Goal:** one register of the club's people.
+- **Features:** search by last name; filters: section, group, role, with / without account, age; columns: person, age, roles, groups, account, guardians; add.
+- **Components:** `DataTable` with perspectives.
+- **States:** loading, empty ("Add the first person or family"), error.
+- **Validation:** n/a.
 - **API:** `GET /api/people/persons`.
 
-#### B-10 Karta osoby — `/backend/people/persons/[id]`
-- **Cel:** wszystko o osobie w jednym miejscu.
-- **Funkcje:** zakładki **Dane** (PESEL tylko z `people.pesel.view`), **Opieka i zgody**, **Role** (z zakresem sekcji/miejsca), **Konto** (załóż / stan / zablokowane poniżej progu), **Grupy** (historia członkostw), **Należności**.
-- **Komponenty:** `Page` z sekcjami, `CrudForm`, `DataTable` w zakładkach, okna dodawania.
-- **Stany:** loading, error, success, conflict, 403.
-- **Walidacje:** imię i nazwisko wymagane; PESEL — suma kontrolna, zgodność z datą urodzenia, unikalność (409); jeden aktywny główny płatnik; konto tylko ≥ próg wieku (422); koordynator wymaga sekcji, animator — miejsca.
+#### B-10 Person record — `/backend/people/persons/[id]`
+- **Goal:** everything about a person in one place.
+- **Features:** tabs **Details** (PESEL only with `people.pesel.view`), **Guardianship and consents**, **Roles** (with section/place scope), **Account** (create — requires `people.accounts.manage` / status / blocked below the threshold), **Groups** (membership history), **Charges**.
+- **Components:** `Page` with sections, `CrudForm`, `DataTable` in tabs, add dialogs.
+- **States:** loading, error, success, conflict, 403.
+- **Validation:** first and last name required; PESEL — checksum, consistency with the date of birth, uniqueness (409); one active primary payer; account only ≥ age threshold (422); a coordinator requires a section, an attendant — a place.
 - **API:** `GET/PUT /api/people/persons/{id}`; `/api/people/guardianships`; `/api/people/role-assignments`; `POST /api/people/persons/{id}/account`; `GET /api/groups/memberships?personId`; `GET /api/payments/charges?personId`.
 
-#### B-11 Grupy — `/backend/groups/groups`
-- **Cel:** grupy obu rodzajów na równych prawach (D-003).
-- **Funkcje:** filtry: sekcja, rodzaj (drużyna / grupa zajęciowa), sezon, publiczna; kolumny: nazwa, sekcja, rodzaj, kategoria/poziom, trenerzy, liczba uczestników.
-- **Komponenty:** `DataTable`.
-- **Stany:** standardowe; empty — „Dodaj pierwszą grupę w sekcji”.
-- **API:** `GET /api/groups/groups`.
+#### B-11 Groups — `/backend/groups/groups`
+- **Goal:** groups of both kinds on equal terms (D-003).
+- **Features:** tabs **Groups** / **External teams** (opponent dictionary: name, contact) / **Seasons** (name, from–to); groups: filters: section, kind (team / class group), season, public; columns: name, section, kind, category/level, coaches, number of participants.
+- **Components:** `DataTable` per tab, `CrudForm` dialogs for external teams and seasons.
+- **States:** standard; empty — "Add the first group in the section".
+- **API:** `GET /api/groups/groups`; `/api/groups/external-teams`; `/api/groups/seasons`.
 
-#### B-12 Grupa — `/backend/groups/groups/[id]`
-- **Cel:** dane grupy, skład z historią, treści publiczne.
-- **Funkcje:** zakładki **Dane** (rodzaj; dla drużyny: kategoria PZPN, liga, sezon), **Skład** (dodaj uczestnika/trenera, okres), **Strona publiczna** (publiczna, opis, warunki, wiek od–do, poziom).
-- **Komponenty:** `CrudForm`, `DataTable` składu, selektor osób.
-- **Stany:** standardowe.
-- **Walidacje:** pola drużyny dla grupy zajęciowej → 422; nakładające się członkostwo → 409; wiek od ≤ wiek do.
+#### B-12 Group — `/backend/groups/groups/[id]`
+- **Goal:** group details, roster with history, public content.
+- **Features:** tabs **Details** (kind; for a team: PZPN (Polish Football Association) category, league, season), **Roster** (add participant/coach, period), **Public page** (public, description, terms, age from–to, level).
+- **Components:** `CrudForm`, roster `DataTable`, person selector.
+- **States:** standard.
+- **Validation:** team fields for a class group → 422; overlapping membership → 409; age from ≤ age to.
 - **API:** `/api/groups/groups/{id}`; `/api/groups/memberships`.
 
-#### B-13 Aktywności — `/backend/activities/activities`
-- **Cel:** lista serii i wydarzeń.
-- **Funkcje:** filtry: sekcja, grupa, typ, aktywne; kolumny: nazwa, grupa, typ, reguła (np. „wt 17:00–18:30, co tydzień do 30.06”), miejsce, trener.
-- **Komponenty:** `DataTable`.
-- **Stany:** standardowe.
+#### B-13 Activities — `/backend/activities/activities`
+- **Goal:** list of series and events.
+- **Features:** filters: section, group, type, active; columns: name, group, type, rule (e.g. "Tue 17:00–18:30, weekly until 30.06"), place, coach.
+- **Components:** `DataTable`.
+- **States:** standard.
 - **API:** `GET /api/activities/activities`.
 
-#### B-14 Kreator aktywności — `/backend/activities/activities/create`
-- **Cel:** utworzyć serię bez kolizji (REQ-005).
-- **Funkcje:** grupa, typ, nazwa, miejsce, trener domyślny, dni tygodnia, godziny, okres; przeciwnik (mecz); **podgląd** pierwszych 8 terminów i **kolizji** przed zapisem; „Utwórz”.
-- **Komponenty:** `CrudForm` z grupą „Powtarzanie”, `DataTable` podglądu, `Alert` kolizji.
-- **Stany:** loading podglądu; empty — „Reguła nie daje żadnego terminu”; error; success — przejście do terminów; conflict — lista kolizji, „Utwórz” zablokowane.
-- **Walidacje:** wymagane: grupa, typ, nazwa, miejsce, dni, godziny, data od; koniec > początek; data do ≥ data od; typy meczowe tylko dla drużyny; miejsce — liść hierarchii.
+#### B-14 Activity wizard — `/backend/activities/activities/create`
+- **Goal:** create a series without collisions (REQ-005).
+- **Features:** group, type, name, place, default coach, weekdays, times, period; opponent (match); **preview** of the first 8 sessions and **collisions** before saving; "Create".
+- **Components:** `CrudForm` with a "Recurrence" group, preview `DataTable`, collisions `Alert`.
+- **States:** preview loading; empty — "The rule produces no sessions"; error; success — navigation to sessions; conflict — list of collisions, "Create" blocked.
+- **Validation:** required: group, type, name, place, days, times, start date; end > start; end date ≥ start date; match types only for a team; place — a leaf of the hierarchy.
 - **API:** `POST /api/activities/activities/preview`; `POST /api/activities/activities`.
 
-#### B-15 Terminy — `/backend/activities/occurrences`
-- **Cel:** operacyjna lista terminów sekcji.
-- **Funkcje:** perspektywy **Wszystkie / Do obsadzenia / Nierozliczone / Odwołane**; filtry; akcje wiersza: **Wskaż zastępcę**, Odwołaj, Edytuj (odłącza termin od serii), Otwórz listę obecności.
-- **Komponenty:** `DataTable` z perspektywami, okno wyboru trenera (pokazuje kolizje trenera), `StatusBadge`.
-- **Stany:** standardowe; empty perspektywy — „Wszystkie terminy w najbliższych 14 dniach mają trenera”.
-- **Walidacje:** zastępca bez kolizji w tym czasie (409); powód odwołania wymagany.
-- **API:** `GET /api/activities/occurrences`; `POST …/{id}/coach`; `POST …/{id}/cancel`; `PATCH …/{id}`.
+#### B-15 Sessions — `/backend/activities/occurrences`
+- **Goal:** operational list of the section's sessions.
+- **Features:** perspectives **All / Needing a coach / Unsettled / Canceled / Calendar** (the coordinator's section calendar — week grid from the schedule family, V-8); filters; row actions: **Assign substitute**, Cancel, Edit (detaches the session from the series), Open attendance list.
+- **Components:** `DataTable` with perspectives, coach picker dialog (shows the coach's collisions), `StatusBadge`.
+- **States:** standard; empty perspective — "All sessions in the next 14 days have a coach".
+- **Validation:** substitute without collisions at that time (409); cancellation reason required.
+- **API:** `GET /api/activities/occurrences`; `GET /api/activities/calendar?as=coordinator` (Calendar perspective); `POST …/{id}/coach`; `POST …/{id}/cancel`; `PATCH …/{id}`.
 
-#### B-16 Raport jednostek — `/backend/activities/reports/coach-units`
-- **Cel:** rozliczenie trenerów bez sporów (REQ-008, REQ-021).
-- **Funkcje:** miesiąc, sekcja; kolumny: planowe, oddane, przejęte, bilans, mecze, wyjazdy, kwota (tylko administrator); rozwinięcie wiersza → lista terminów; link do nierozliczonych; eksport CSV.
-- **Komponenty:** `DataTable` z rozwinięciem i eksportem.
-- **Stany:** loading; empty — „Brak zamkniętych terminów w tym miesiącu”; error.
-- **Walidacje:** miesiąc `YYYY-MM`.
+#### B-16 Coach units report — `/backend/activities/reports/coach-units`
+- **Goal:** coach settlement without disputes (REQ-008, REQ-021).
+- **Features:** month, section; columns: planned, handed over, taken over, balance, matches, away trips, amount (administrator only); expanding a row → list of sessions; link to unsettled ones; CSV export.
+- **Components:** `DataTable` with row expansion and export.
+- **States:** loading; empty — "No closed sessions this month"; error.
+- **Validation:** month `YYYY-MM`.
 - **API:** `GET /api/activities/reports/coach-units?month&sectionId&format=csv`.
 
-#### B-17 Polityki deklaracji — `/backend/activities/policies`
-- **Cel:** jak deklarują nastolatki (D-006).
-- **Funkcje:** zakres (klub / grupa / typ aktywności), tryb (`immediate` / `guardian_confirm` / `guardian_only`), limit godzin, wartość po limicie.
-- **Komponenty:** `DataTable`, `CrudForm`.
-- **Stany:** standardowe.
-- **Walidacje:** unikalny zakres (409); limit 1–168 h.
+#### B-17 Declaration policies — `/backend/activities/policies`
+- **Goal:** how teenagers declare (D-006).
+- **Features:** scope (club / group / activity type), mode (`immediate` / `guardian_confirm` / `guardian_only`), hour limit, value after the limit.
+- **Components:** `DataTable`, `CrudForm`.
+- **States:** standard.
+- **Validation:** unique scope (409); limit 1–168 h.
 - **API:** `/api/activities/attendance-policies`.
 
-#### B-18 Wątki i sprawy — `/backend/communication/threads`, `/backend/communication/cases`
-- **Cel:** przegląd komunikacji w zakresie koordynatora; rejestr spraw.
-- **Funkcje:** filtry zakresu, sekcji, „tylko sprawy”; nowy komunikat do sekcji.
-- **Komponenty:** `DataTable`, rodzina komponentów wiadomości.
-- **Stany:** standardowe.
+#### B-18 Threads and cases — `/backend/communication/threads`, `/backend/communication/cases`
+- **Goal:** overview of communication within the coordinator's scope; case register.
+- **Features:** scope and section filters, "cases only" perspective (`/backend/communication/cases`); new announcement to a section; "Mark as case" only with `communication.cases.manage`.
+- **Components:** `DataTable`, message component family.
+- **States:** standard.
 - **API:** `GET/POST /api/communication/threads`.
 
-#### B-19 Wątek — `/backend/communication/threads/[id]`
-- **Cel:** odpowiedź i oznaczenie sprawy (REQ-010).
-- **Funkcje:** wiadomości z doręczeniem e-mail; odpowiedź; **Oznacz jako sprawę** (ostrzeżenie o nieodwracalności).
-- **Komponenty:** wiadomości, `useConfirmDialog`.
-- **Stany:** standardowe; po oznaczeniu — `Alert` „Sprawa — wiadomości nieusuwalne”.
-- **Walidacje:** oznaczenie tylko z `communication.cases.manage` w zakresie sekcji; ponowne → 409.
+#### B-19 Thread — `/backend/communication/threads/[id]`
+- **Goal:** reply and mark as a case (REQ-010).
+- **Features:** messages with email delivery; reply; **Mark as case** (irreversibility warning).
+- **Components:** messages, `useConfirmDialog`.
+- **States:** standard; after marking — `Alert` "Case — messages cannot be deleted".
+- **Validation:** marking only with `communication.cases.manage` within the section scope; repeated marking → 409.
 - **API:** `GET /api/communication/threads/{id}`; `POST …/replies`; `POST …/case`.
 
-#### B-20 Cenniki i zniżki — `/backend/payments/fees`, `/backend/payments/discounts`
-- **Cel:** stawki składek i reguły zniżek.
-- **Funkcje:** cennik: nazwa, grupa **albo** aktywność, okres (miesięczny / jednorazowy / za termin), kwota, dzień płatności, ważność; zniżki: rodzeństwo (%) / własna.
-- **Komponenty:** `DataTable`, `CrudForm`.
-- **Stany:** standardowe.
-- **Walidacje:** dokładnie jedno z grupa/aktywność (422); kwota > 0; procent 1–100; dzień płatności 1–28.
-- **API:** `/api/payments/fees`, `/api/payments/discount-rules`.
+#### B-20 Fees and discounts — `/backend/payments/fees`, `/backend/payments/discounts`
+- **Goal:** membership fee rates and discount rules.
+- **Features:** fee schedule: name, group **or** activity, period (monthly / one-off / per session), amount, payment day, validity; discounts: sibling (%) / custom; the **"Coaches and payments"** setting: fees and orders with cash (default) / fees view-only, cash only for orders / orders only.
+- **Components:** `DataTable`, `CrudForm`.
+- **States:** standard.
+- **Validation:** exactly one of group/activity (422); amount > 0; percentage 1–100; payment day 1–28.
+- **API:** `/api/payments/fees`, `/api/payments/discount-rules`; `GET/PUT /api/payments/settings` (`coachFeeAccess`).
 
-#### B-21 Należności — `/backend/payments/charges`
-- **Cel:** kto ile winien; naliczanie okresu; zaległości.
-- **Funkcje:** perspektywy **Wszystkie / Zaległości / Bez płatnika / Gmina (wynajmy) / Wpłaty gotówką**; „Nalicz okres” (z podsumowaniem i postępem); **„Przyjmij gotówkę”** (okno jak M-15); **„Importuj wyciąg”** (B-29); eksport.
-- **Komponenty:** `DataTable`, okno naliczania (`ProgressJob`), `StatusBadge`.
-- **Stany:** loading; empty — „Brak należności — nalicz okres”; error; success — „Utworzono 142, pominięto 0, bez płatnika 2”; conflict — „Naliczanie w toku” (409).
-- **Walidacje:** okres `YYYY-MM`, nie wcześniejszy niż 12 miesięcy wstecz.
-- **API:** `GET /api/payments/charges`, `/overdue`; `POST /api/payments/charges/generate`.
+#### B-21 Charges — `/backend/payments/charges`
+- **Goal:** who owes how much; generating a period; overdue charges.
+- **Features:** perspectives **All / Overdue / Without payer / Municipality (rentals) / Cash payments**; "Generate period" (with summary and progress); **"Accept cash"** (dialog like M-15); **"Import statement"** (B-29); export.
+- **Components:** `DataTable`, generation dialog (`ProgressJob`), `StatusBadge`.
+- **States:** loading; empty — "No charges — generate a period"; error; success — "Created 142, skipped 0, without payer 2"; conflict — "Generation in progress" (409).
+- **Validation:** period `YYYY-MM`, no earlier than 12 months back.
+- **API:** `GET /api/payments/charges` (the "Overdue" perspective = `?view=overdue`; the spec's `/backend/payments/overdue` surface is this perspective), `GET /api/payments/overdue`; `POST /api/payments/charges/generate`.
 
-#### B-22 Należność — `/backend/payments/charges/[id]`
-- **Cel:** szczegóły i księgowanie wpłat.
-- **Funkcje:** dłużnik, płatnik, kwota, zniżka, wpłaty; **Zaksięguj wpłatę** (gotówka / przelew, kwota, data, tytuł); Anuluj (bez wpłat).
-- **Komponenty:** sekcje szczegółów, `CrudForm` w oknie.
-- **Stany:** standardowe; success — status zmienia się na „częściowo opłacona” / „opłacona”.
-- **Walidacje:** kwota > 0 i ≤ pozostałej (422 nadpłata); data ≤ dziś; anulowanie należności z wpłatami → 409.
+#### B-22 Charge — `/backend/payments/charges/[id]`
+- **Goal:** details and recording payments.
+- **Features:** debtor, payer, amount, discount, payments; **Record payment** (cash / bank transfer, amount, date, reference); Cancel (no payments).
+- **Components:** detail sections, `CrudForm` in a dialog.
+- **States:** standard; success — status changes to "partially paid" / "paid".
+- **Validation:** amount > 0 and ≤ the remaining amount (422 overpayment); date ≤ today; canceling a charge with payments → 409.
 - **API:** `GET /api/payments/charges/{id}`; `POST …/{id}/payments`; `POST …/{id}/cancel`.
 
-#### B-29 Wyciągi bankowe — `/backend/payments/bank`
-- **Cel:** rozliczyć wpłaty z rachunku klubu bez ręcznego przepisywania (REQ-030).
-- **Funkcje:** import pliku wyciągu (CSV z kolumnami data, kwota, nadawca, tytuł albo MT940); przełącznik „Księguj automatycznie pewne dopasowania”; perspektywy **Do potwierdzenia / Niedopasowane / Zaksięgowane / Pominięte / Wszystkie**; przy przelewie: płatnik z kodem, rozdział kwoty na należności (od najstarszej), powód dopasowania; akcje **Potwierdź**, **Zmień / Przypisz** (wybór płatnika z kodem i saldem), **Pomiń** (darowizna, dotacja, zwrot, inne), **Cofnij**; historia importów z liczbami; skrót „Przyjmij gotówkę”.
-- **Reguły:** kod płatnika (`GW-XXXX`) w tytule + kwota pokrywająca całe należności → zaksięgowane automatycznie; nadpłata, niedopłata albo dopasowanie po nazwisku (całe słowo) i kwocie → do potwierdzenia; reszta → niedopasowane; obciążenia i duplikaty → pominięte.
-- **Komponenty:** wgrywanie pliku, `DataTable` z perspektywami, `StatusBadge`, okna `CrudForm`, `ProgressJob` dla dużych plików.
-- **Stany:** loading; empty — „Zaimportuj wyciąg bankowy”; error — „Nie rozpoznano kolumn: wymagane data, kwota, nadawca, tytuł” przy polu pliku; success — podsumowanie importu (automatycznie / do potwierdzenia / niedopasowane / pominięte); conflict — pozycja zmieniona w międzyczasie (409).
-- **Walidacje:** format pliku; wymagane kolumny; płatnik przy przypisaniu musi mieć otwarte należności; powód przy pominięciu.
-- **API:** `POST /api/payments/bank-imports`; `GET /api/payments/bank-transactions?status=`; `POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo`.
+#### B-29 Bank statements — `/backend/payments/bank`
+- **Goal:** reconcile payments into the club's account without manual retyping (REQ-030).
+- **Features:** statement file import (CSV with date, amount, sender, reference columns, or MT940); "Automatically record confident matches" toggle; perspectives **To confirm / Unmatched / Recorded / Skipped / All**; for each transfer: payer with code, allocation of the amount to charges (oldest first), match reason; actions **Confirm**, **Change / Assign** (choose a payer with code and balance), **Skip** (donation, grant, refund, other), **Undo**; import history with counts; "Accept cash" shortcut.
+- **Rules:** payer code (`GW-XXXX`) in the reference + amount covering all charges → recorded automatically; overpayment, underpayment, or a match by last name (whole word) and amount → to confirm; the rest → unmatched; debits and duplicates → skipped.
+- **Components:** file upload, `DataTable` with perspectives, `StatusBadge`, `CrudForm` dialogs, `ProgressJob` for large files.
+- **States:** loading; empty — "Import a bank statement"; error — "Columns not recognized: date, amount, sender, reference are required" at the file field; success — import summary (automatic / to confirm / unmatched / skipped); conflict — item changed in the meantime (409).
+- **Validation:** file format; required columns; when assigning, the payer must have open charges; a reason when skipping.
+- **API:** `POST /api/payments/bank-imports`; `GET /api/payments/bank-transactions?status=`; `POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo`; `GET/PUT /api/payments/settings` (`autoBookBankMatches` — the "Automatically record confident matches" toggle).
 
-#### B-30 Zbiórki zamówień — `/backend/payments/orders`
-- **Cel:** zebrać zamówienia (np. stroje) bez Formularza Google i arkusza (REQ-032).
-- **Funkcje:** lista zbiórek z sekcją, liczbą grup, terminem, etapem, zamówieniami / dziećmi w grupach, wartością, wpłatami i liczbą wydanych; „Nowy formularz”.
-- **Komponenty:** `DataTable`, `StatusBadge`.
-- **Stany:** loading; empty — „Utwórz formularz zamówień — np. stroje dla Akademii”; error.
+#### B-30 Order campaigns — `/backend/payments/orders`
+- **Goal:** collect orders (e.g. kit) without a Google Form and a spreadsheet (REQ-032).
+- **Features:** list of campaigns with section, number of groups, deadline, stage, orders / children in groups, value, payments and number handed over; "New order form".
+- **Components:** `DataTable`, `StatusBadge`.
+- **States:** loading; empty — "Create an order form — e.g. kit for the Academy"; error.
 - **API:** `GET /api/payments/order-campaigns`.
 
-#### B-31 Kreator formularza zamówień — `/backend/payments/orders/create`, `/[id]/edit`
-- **Cel:** w kilka minut zbudować formularz jak dotychczasowy Formularz Google.
-- **Funkcje:** nazwa, opis dla rodziców (trafia do tekstu na Messengera), sekcja i grupy („Zaznacz wszystkie”), termin zamówień i termin płatności, dostawca (tylko dla klubu); personalizacja: imię i numer do nadruku, pytanie o uwagi; produkty: nazwa, rozmiary dziecięce i dorosłe, cena i osobna cena rozmiarów dorosłych, „wymagana odpowiedź” (rozmiar albo „nie zamawiam”); komplet z wybranych produktów w cenie kompletu; start od kopii poprzedniej zbiórki (w makiecie: szablon strojów Akademii); „Zapisz szkic” albo „Zapisz i otwórz zbieranie” → okno z tekstem do wklejenia na grupę.
-- **Reguły:** formularz edytowalny w szkicu i podczas zbierania; złożone zamówienia zachowują ceny; produktu użytego w zamówieniach nie da się usunąć ani zmienić jego rodzaju.
-- **Komponenty:** `CrudForm` z grupami pól i powtarzalną grupą produktów, wybór grup jako chipy.
-- **Stany:** błędy per pole; 409 — zbiórka zamknięta; success → B-32.
-- **Walidacje:** nazwa ≥ 3 znaki; co najmniej jedna grupa; termin zamówień ≥ dziś; termin płatności ≥ termin zamówień; każdy produkt z nazwą i ceną > 0; komplet z co najmniej dwóch produktów; najwyżej jeden komplet.
+#### B-31 Order form wizard — `/backend/payments/orders/create`, `/[id]/edit`
+- **Goal:** build a form like the previous Google Form in a few minutes.
+- **Features:** name, description for parents (goes into the text for Messenger), section and groups ("Select all"), order deadline and payment deadline, supplier (club only); personalization: name and number for printing, a notes question; products: name, children's and adult sizes, price and a separate price for adult sizes, "answer required" (size or "not ordering"); a set of selected products at a set price; start from a copy of a previous campaign (in the mockup: the Academy kit template); "Save draft" or "Save and open collection" → dialog with text to paste into the group chat.
+- **Rules:** the form is editable in draft and during collection; placed orders keep their prices; a product used in orders cannot be deleted or have its kind changed.
+- **Components:** `CrudForm` with field groups and a repeatable product group, group selection as chips.
+- **States:** per-field errors; 409 — campaign closed; success → B-32.
+- **Validation:** name ≥ 3 characters; at least one group; order deadline ≥ today; payment deadline ≥ order deadline; each product with a name and a price > 0; a set of at least two products; at most one set.
 - **API:** `POST /api/payments/order-campaigns`; `GET/PUT /api/payments/order-campaigns/{id}`.
 
-#### B-32 Zbiórka zamówień — `/backend/payments/orders/[id]`
-- **Cel:** prowadzić zbiórkę od zbierania do wydania i wiedzieć, kto zapłacił.
-- **Funkcje:** etapy (szkic → zbieranie → zamknięta → zamówiona u dostawcy → dostarczona → zakończona) z jedną akcją „dalej”; KPI: zamówienia / dzieci w grupach, wpłacono z wartości, wydano; perspektywy **Zamówienia** (dziecko i grupa, zamawiający i kanał, pozycje, nadruk, kwota, płatność z przyjmującym gotówkę, wydanie; akcje Gotówka, Wydaj, Należność), **Zestawienie dla dostawcy** (sztuki per produkt i rozmiar z liczbą w kompletach, lista nadruków, CSV), **Bez zamówienia** (dzieci i opiekunowie, „Przypomnij wszystkim”); „Tekst na Messengera”, „Edytuj formularz”.
-- **Komponenty:** `DataTable` z perspektywami, `StatusBadge`, okna potwierdzeń (`useConfirmDialog`).
-- **Stany:** loading; empty — „Wyślij rodzicom tekst z linkiem”; error; conflict — przejście spoza kolejności (409).
-- **Walidacje:** zamknięcie z liczbą dzieci bez zamówienia; zakończenie z niewydanymi strojami — ostrzeżenie.
+#### B-32 Order campaign — `/backend/payments/orders/[id]`
+- **Goal:** run the campaign from collection to handover and know who has paid.
+- **Features:** stages (draft → open (collecting) → closed → ordered from supplier → delivered → completed) with a single "next" action; KPIs: orders / children in groups, paid out of total value, handed over; perspectives **Orders** (child and group, orderer and channel, lines, print, amount, payment with the cash collector, handover; actions Cash, Hand over, Charge), **Supplier summary** (quantities per product and size with the number in sets, list of prints, CSV), **No order** (children and guardians, "Remind everyone"); "Text for Messenger", "Edit form".
+- **Components:** `DataTable` with perspectives, `StatusBadge`, confirmation dialogs (`useConfirmDialog`).
+- **States:** loading; empty — "Send parents the text with the link"; error; conflict — out-of-order transition (409).
+- **Validation:** closing shows the number of children without an order; completing with kit not handed over — warning.
 - **API:** `GET /api/payments/order-campaigns/{id}`; `GET /api/payments/orders?campaignId=`; `GET …/{id}/summary?format=csv`; `POST …/{id}/open|close|mark-ordered|mark-delivered|complete`; `POST …/{id}/remind`; `GET …/{id}/share-text`; `POST /api/payments/cash`; `POST /api/payments/orders/{id}/hand-over`.
 
-#### B-33 Gotówka do rozliczenia — `/backend/payments/cash-custody`
-- **Cel:** wiedzieć, u kogo jest gotówka klubu, i potwierdzić jej odbiór (REQ-033).
-- **Funkcje:** osoby z nierozliczoną gotówką (trenerzy, inne osoby z prawem przyjmowania): wpłaty z numerami KP, najstarsza, suma; „Przyjmij rozliczenie” — wybór wpłat, numer `RG/RRRR/MM/NNN`; historia rozliczeń. Gotówka przyjęta przez skarbnika jest rozliczona od razu.
-- **Komponenty:** `DataTable`, okno `CrudForm`.
-- **Stany:** loading; empty — „Cała przyjęta gotówka jest u skarbnika”; conflict — wpłata już rozliczona (409).
+#### B-33 Cash to settle — `/backend/payments/cash-custody`
+- **Goal:** the treasurer knows who holds the club's cash and confirms receiving it based on the coach's entries (REQ-033, REQ-034).
+- **Features:** people with unsettled cash (coaches, other people authorized to accept cash): payments with KP numbers, oldest, total; "Accept handover" — select payments, number `RG/YYYY/MM/NNN`; handover history. Cash accepted by the treasurer is settled immediately.
+- **Components:** `DataTable`, `CrudForm` dialog.
+- **States:** loading; empty — "All accepted cash is with the treasurer"; conflict — payment already settled (409).
 - **API:** `GET /api/payments/cash-custody`; `GET/POST /api/payments/cash-handovers`.
 
-#### B-23 Kalendarz obiektu — `/backend/facilities/calendar`
-- **Cel:** pełny obraz obiektu dla animatora i administratora.
-- **Funkcje:** wybór miejsca, tydzień/dzień; strefy, zajęcia, rezerwacje wewnętrzne, wynajmy (z najemcą), zgłoszenia, zamknięcia; „Nowy wynajem” ze slotu; filtr „do przeniesienia”; **„Ustaw dostępność do rezerwacji”** (REQ-029) — okno hurtowego ustawiania godzin, w których osoby z zewnątrz mogą zgłaszać rezerwacje: jeden lub kilka obiektów, dni tygodnia jako chipy ze skrótami (pn–pt, weekend, codziennie, wyczyść) i jedne godziny (np. 16:00–22:00) albo siatka „różne godziny dla poszczególnych dni”, okres obowiązywania, „zastąp dotychczasową dostępność” (domyślnie) lub „dopisz”; nad kalendarzem tabela tygodniowej dostępności z przyciskiem „Usuń” przy dniu.
-- **Komponenty:** rodzina harmonogramu, okno `CrudForm`.
-- **Stany:** loading; empty — „Brak reguł stref — dodaj strefy”; error; conflict.
-- **Walidacje:** jak wynajem (B-24); dostępność: co najmniej jeden obiekt i dzień, „do” > „od”, okno ≥ 90 min, w godzinach otwarcia z regulaminu (pn–pt 8:00–22:00, sob–nd 9:00–20:30), „obowiązuje do” ≥ „od”; błąd pokazany przy dniu; po zapisie ostrzeżenie o zajęciach klubu w tych godzinach (zostają zajęte) i o zgłoszeniach czekających poza nową dostępnością.
+#### B-23 Facility calendar — `/backend/facilities/calendar`
+- **Goal:** the full picture of the facility for the attendant and the administrator.
+- **Features:** place selection, week/day; zones, sessions, internal bookings, rentals (with renter), requests, closures; "New rental" from a slot; "to be moved" filter; **"Set booking availability"** (REQ-029) — a dialog for bulk-setting the hours in which outsiders can request bookings: one or more facilities, weekdays as chips with shortcuts (Mon–Fri, weekend, every day, clear) and a single time range (e.g. 16:00–22:00) or a "different hours for individual days" grid, validity period, "replace existing availability" (default) or "add"; above the calendar, a weekly availability table with a "Remove" button for each day.
+- **Components:** schedule family, `CrudForm` dialog.
+- **States:** loading; empty — "No zone rules — add zones"; error; conflict.
+- **Validation:** as for a rental (B-24); availability: at least one facility and one day, "to" > "from", window ≥ 90 min, within the opening hours from the rules (Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30), "valid until" ≥ "from"; error shown at the day; after saving, a warning about club sessions in those hours (they stay occupied) and about pending requests outside the new availability.
 - **API:** `GET /api/facilities/calendar`; `POST /api/facilities/rentals`, `/quote`; `POST /api/facilities/zone-rules/bulk`.
 
-#### B-24 Wynajmy — `/backend/facilities/rentals`
-- **Cel:** wszystkie wynajmy zewnętrzne i ich statusy.
-- **Funkcje:** filtry statusu; nowy wynajem (po telefonie): najemca (instytucja/osoba), kategoria, start, jednostki × 90 min, kontakt, regulamin zaakceptowany (sposób) → wyliczona kwota, termin wpłaty i bezpłatnego odwołania; akcje: potwierdź, odwołaj, przesuń, `no_show`.
-- **Komponenty:** `DataTable`, `CrudForm`, `StatusBadge`.
-- **Stany:** standardowe; conflict — kod błędu z opisem.
-- **Walidacje:** jednostki 1–4; tylko strefa `reservable_paid` (409 `zone_not_reservable`); kolizja (409 `rental_conflict`); zamknięcie (409 `place_closed`); zakaz (409 `entry_ban_active`).
+#### B-24 Rentals — `/backend/facilities/rentals`
+- **Goal:** all external rentals and their statuses.
+- **Features:** status filters; new rental (by phone): renter (institution/person), category, start, units × 90 min, contact, rules accepted (how) → calculated amount, payment due date and free cancellation deadline; actions: confirm, cancel, move, `no_show`.
+- **Components:** `DataTable`, `CrudForm`, `StatusBadge`.
+- **States:** standard; conflict — error code with a description.
+- **Validation:** units 1–4; only the `reservable_paid` zone (409 `zone_not_reservable`); collision (409 `rental_conflict`); closure (409 `place_closed`); ban (409 `entry_ban_active`).
 - **API:** `/api/facilities/rentals`, `/quote`, `/{id}/confirm|cancel|move|no-show`.
 
-#### B-25 Zgłoszenia do akceptacji — `/backend/facilities/requests`
-- **Cel:** decyzja o zgłoszeniach z publicznego kalendarza (REQ-024).
-- **Funkcje:** kolejka `pending_approval`: obiekt, termin, zgłaszający, kategoria, cel, kwota orientacyjna, **czas do wygaśnięcia**, kolizje, zgodność z rejestrem zakazów; **Akceptuj** (przypisz istniejącą instytucję/osobę lub utwórz nową, opcjonalna korekta kwoty z notatką) / **Odrzuć** (powód).
-- **Komponenty:** `DataTable`, okno decyzji, `StatusBadge`, `Alert` ostrzeżeń.
-- **Stany:** loading; empty — „Brak zgłoszeń do akceptacji”; error; success — „Zaakceptowano — wysłano e-mail z danymi do wpłaty”; conflict — zgłoszenie już rozstrzygnięte lub wygasłe (409).
-- **Walidacje:** powód odrzucenia 5–500 znaków; korekta kwoty wymaga notatki.
+#### B-25 Requests awaiting approval — `/backend/facilities/requests`
+- **Goal:** decide on requests from the public calendar (REQ-024).
+- **Features:** `pending_approval` queue: facility, slot, requester, category, purpose, indicative amount, **time to expiry**, collisions, ban register check; **Approve** (assign an existing institution/person or create a new one, optional amount adjustment with a note) / **Reject** (reason).
+- **Components:** `DataTable`, decision dialog, `StatusBadge`, warnings `Alert`.
+- **States:** loading; empty — "No requests awaiting approval"; error; success — "Approved — email with payment details sent"; conflict — request already decided or expired (409).
+- **Validation:** rejection reason 5–500 characters; an amount adjustment requires a note.
 - **API:** `GET /api/facilities/rentals?status=pending_approval`; `POST /api/facilities/rentals/{id}/approve`; `POST /api/facilities/rentals/{id}/reject`.
 
-#### B-26 Strefy, zamknięcia, cennik — `/backend/facilities/zones`, `/closures`, `/rates`
-- **Cel:** reguły obiektu z regulaminu.
-- **Funkcje:** strefy tygodniowe (dni, godziny, strefa, priorytet, ważność) z podglądem tygodnia; zamknięcia (od–do, powód: śnieg, konserwacja, impreza gminna, szkoła); cennik 3 kategorii, sezon zimowy, oświetlenie.
-- **Komponenty:** `DataTable`, `CrudForm`, podgląd tygodnia.
-- **Stany:** standardowe; zapis zamknięcia pokazuje „Oznaczono do przeniesienia: 3 terminy, 1 wynajem”.
-- **Walidacje:** nakładanie stref o równym priorytecie → 409; od < do; ceny ≥ 0; sezon `MM-DD`.
+#### B-26 Zones, closures, rates — `/backend/facilities/zones`, `/closures`, `/rates`
+- **Goal:** facility rules taken from the regulations.
+- **Features:** weekly zones (days, times, zone, priority, validity) with a week preview; closures (from–to, reason: snow, maintenance, municipal event, school); rates for 3 categories, winter season, lighting.
+- **Components:** `DataTable`, `CrudForm`, week preview.
+- **States:** standard; saving a closure shows "Marked to be moved: 3 sessions, 1 rental".
+- **Validation:** overlapping zones with equal priority → 409; from < to; prices ≥ 0; season `MM-DD`.
 - **API:** `/api/facilities/zone-rules`, `/closures`, `/rental-rates`.
 
-#### B-27 Dziennik, incydenty, zakazy — `/backend/facilities/logs`, `/incidents`, `/bans`
-- **Cel:** ewidencja i dowody (§6 regulaminu).
-- **Funkcje:** dziennik dzienny; incydenty (bez usuwania) z powiązaniem ze sprawą; zakazy (podmiot, okres, powód, incydent, wydający, odwołanie).
-- **Komponenty:** `DataTable`, `CrudForm`, załączniki.
-- **Stany:** standardowe.
-- **Walidacje:** edycja dziennika po następnym dniu tylko administrator (403); zakaz: od ≤ do lub stały.
+#### B-27 Log, incidents, bans — `/backend/facilities/logs`, `/incidents`, `/bans`
+- **Goal:** records and evidence (§6 of the regulations).
+- **Features:** daily log; incidents (no deletion) linked to a case; bans (subject, period, reason, incident, issued by, revocation).
+- **Components:** `DataTable`, `CrudForm`, attachments.
+- **States:** standard.
+- **Validation:** editing the log after the following day — administrator only (403); ban: from ≤ to, or permanent.
 - **API:** `/api/facilities/logs`, `/incidents`, `/entry-bans`.
 
-#### B-28 Raport dla gminy — `/backend/facilities/reports/owner`
-- **Cel:** rozliczenie umowy administracyjnej (REQ-015).
-- **Funkcje:** obiekt, okres (miesiąc/kwartał); godziny w strefach (w tym czas klubu), wynajmy (liczba, wartość), wpłaty na konto gminy, incydenty, konserwacja; eksport CSV.
-- **Komponenty:** karty KPI, `DataTable`.
-- **Stany:** loading; empty — „Brak danych w okresie”; error.
-- **Walidacje:** od ≤ do, okres ≤ 1 rok.
+#### B-28 Municipality report — `/backend/facilities/reports/owner`
+- **Goal:** settlement of the management agreement (REQ-015).
+- **Features:** facility, period (month/quarter); hours by zone (including club time), rentals (count, value), payments to the municipality's account, incidents, maintenance; CSV export.
+- **Components:** KPI cards, `DataTable`.
+- **States:** loading; empty — "No data for this period"; error.
+- **Validation:** from ≤ to, period ≤ 1 year.
 - **API:** `GET /api/facilities/reports/owner?placeId&from&to&format=csv`.
 
-#### M-15 Przyjmij gotówkę — `/club/cash`
-- **Cel:** przyjąć gotówkę od rodzica, np. przed treningiem, w trzech krokach (REQ-031).
-- **Funkcje:** wybór płatnika (z dziećmi i sumą do zapłaty), zaznaczenie należności, kwota (podpowiadana; mniejsza = wpłata częściowa od najstarszej), data, „wyślij potwierdzenie e-mail”; po zapisie numer potwierdzenia KP; lista „przyjęte dziś przeze mnie” z sumą do przekazania skarbnikowi. Ten sam formularz jest oknem „Przyjmij gotówkę” w panelu (B-21, B-22, B-29, pulpit).
-- **Komponenty:** formularz design systemu w układzie mobilnym, lista.
-- **Stany:** loading; empty — „Wybierz płatnika, aby zobaczyć jego należności”; error — 422 przy kwocie; success — „Przyjęto 100 zł gotówką od … — potwierdzenie KP/2026/11/007”.
-- **Walidacje:** płatnik i co najmniej jedna należność wymagane; kwota > 0 i ≤ suma wybranych należności; data ≤ dziś.
+#### M-15 Accept cash — `/club/cash`
+- **Goal:** accept cash from a parent, e.g. before training, in three steps (REQ-031).
+- **Features:** payer selection (with children and total due), selecting charges, amount (suggested; a lower amount = partial payment, oldest first), date, "send email confirmation"; after saving, the cash receipt (KP) number; list "accepted by me today" with the total to hand over to the treasurer. The same form is the "Accept cash" dialog in the panel (B-21, B-22, B-29, dashboard).
+- **Components:** design system form in a mobile layout, list.
+- **States:** loading; empty — "Select a payer to see their charges"; error — 422 on the amount; success — "Accepted 100 zł in cash from … — receipt KP/2026/11/007".
+- **Validation:** payer and at least one charge required; amount > 0 and ≤ the total of the selected charges; date ≤ today.
 - **API:** `GET /api/payments/charges?payer=&status=open`; `POST /api/payments/cash`.
 
-#### M-16 Zamówienia — `/club/orders`
-- **Cel:** jedno miejsce na zamówienia klubowe opiekuna (REQ-032).
-- **Funkcje:** zbiórki z dziećmi opiekuna: etap, termin zamówień i płatności, per dziecko „nie zamówiono” albo status płatności i odbioru. Wejścia: kafel „Zamówienie” w M-02 (do terminu), karta nad listą w M-08, „Więcej”.
-- **Stany:** loading; empty — „Gdy klub otworzy zamówienie strojów, znajdziesz je tutaj”.
+#### M-16 Orders — `/club/orders`
+- **Goal:** one place for the guardian's club orders (REQ-032).
+- **Features:** campaigns involving the guardian's children: stage, order and payment deadlines, per child "not ordered" or payment and pickup status. Entry points: "Order" tile on M-02 (until the deadline), a card above the list on M-08, "More".
+- **States:** loading; empty — "When the club opens a kit order, you will find it here".
 - **API:** `GET /api/payments/order-campaigns?for=me`.
 
-#### M-17 Zamówienie — `/club/orders/[campaignId]`
-- **Cel:** zamówić strój dla dziecka w mniej niż 2 minuty.
-- **Funkcje:** opis i terminy; przełącznik dziecka (tylko dzieci z grup zbiórki); komplet z ceną i oszczędnością; produkty jako listy rozmiarów z cenami („nie zamawiam” przy wymaganych); imię (domyślnie imię dziecka) i numer do nadruku z listą zajętych numerów w grupie; e-mail i telefon (z profilu); uwagi; suma na żywo; „Złóż zamówienie” / „Zapisz zmiany”. Po złożeniu: podsumowanie z pozycjami, statusem płatności, „Zapłać online”, instrukcją przelewu z kodem płatnika i informacją o gotówce u trenera; „Zmień zamówienie” i „Anuluj” do terminu; po dostawie „Do odbioru u trenera”, po wydaniu „Odebrane”. Bez sesji (link z Messengera): opis zbiórki, „Zaloguj się” albo e-mail do wysłania osobistego linku — odpowiedź zawsze ta sama.
-- **Komponenty:** formularz design systemu w układzie mobilnym, chipy dzieci, karta podsumowania.
-- **Stany:** loading; empty — brak dzieci w grupach zbiórki; error; 409 — zamówienia zamknięte; success — „Zamówienie złożone: 150 zł. Kopia poszła na …”.
-- **Walidacje:** odpowiedź przy produktach wymaganych; komplet wymaga rozmiarów elementów; co najmniej jedna pozycja; numer 1–99, wolny w grupie; imię do 12 znaków; e-mail i telefon poprawne; zmiana nie poniżej wpłaconej kwoty; anulowanie tylko bez wpłat.
+#### M-17 Order — `/club/orders/[campaignId]`
+- **Goal:** order kit for a child in under 2 minutes.
+- **Features:** description and deadlines; child switcher (only children from the campaign's groups); set with price and savings; products as size lists with prices ("not ordering" for required ones); name (defaults to the child's first name) and number for printing, with a list of numbers already taken in the group; email and phone (from the profile); notes; live total; "Place order" / "Save changes". After placing: summary with lines, payment status, "Pay online", bank transfer instructions with the payer code, and information about paying cash to the coach; "Change order" and "Cancel" until the deadline; after delivery "Ready for pickup from the coach", after handover "Picked up". Without a session (link from Messenger): campaign description, "Sign in" or an email address to send a personal link to — the response is always the same.
+- **Components:** design system form in a mobile layout, child chips, summary card.
+- **States:** loading; empty — no children in the campaign's groups; error; 409 — orders closed; success — "Order placed: 150 zł. A copy was sent to …".
+- **Validation:** an answer for required products; a set requires sizes for its items; at least one line; number 1–99, free in the group; name up to 12 characters; valid email and phone; a change cannot go below the amount paid; cancellation only without payments.
 - **API:** `GET /api/payments/order-campaigns/{id}/form`; `POST /api/payments/orders`; `PUT /api/payments/orders/{id}`; `POST /api/payments/orders/{id}/cancel`; `POST /api/payments/public/order-campaigns/{id}/link-request`.
 
-#### M-18 Zamówienia moich grup — `/club/coach/orders`
-- **Cel:** trener na treningu przyjmuje gotówkę za stroje i je wydaje (REQ-033).
-- **Funkcje:** „Gotówka u Ciebie” z listą KP i sumą do przekazania skarbnikowi; zbiórki obejmujące grupy trenera; chipy grup z liczbą zamówień (koordynator widzi też pozostałe grupy sekcji); per dziecko: pozycje, nadruk, kwota, zamawiający z telefonem, status płatności; „Przyjmij gotówkę” (kwota, data, e-mail z potwierdzeniem; częściowa dozwolona), „Wydaj strój” po dostawie (nieopłacony — z ostrzeżeniem), „Przypomnij opiekunom”, „Tekst z linkiem na grupę”.
-- **Stany:** loading; empty — „Brak zamówień w Twoich grupach”; 403 — dziecko spoza zakresu; 409 — wydanie przed dostawą; 422 — kwota większa niż należność.
-- **API:** `GET /api/payments/orders?scope=coach`; `POST /api/payments/cash`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/order-campaigns/{id}/remind`.
+#### M-18 My groups' payments — `/club/coach/payments`
+- **Goal:** the coach at the pitch knows who has something to pay, accepts cash for fees and kit, and hands over kit (REQ-033).
+- **Features:** "Cash with you" with the list of KPs and the total to hand over to the treasurer; group chips with the number of people with amounts due (the coordinator also sees the other groups of the section); filter **Everyone / To pay**; group total and number of people overdue; per child: group fees (current period and overdue) and kit orders — amount due, due date, status, without the discount reason; "Accept cash" (select several charges, amount, date, email to each payer; partial payments oldest first), "Send reminder" (overdue), "Hand over kit" after delivery (unpaid — with a warning); below the list, the group's campaigns with "Remind guardians" and "Text with link for the group chat".
+- **Rules:** only charges linked to the group — fees from that group's fee schedule and orders from campaigns that cover the group; fee scope according to the club setting; child without a payer — visible, no cash.
+- **States:** loading; empty — "All paid"; 403 — child or charge out of scope; 409 — handover before delivery; 422 — amount larger than the selected charges.
+- **API:** `GET /api/payments/group-charges?groupId=&due=`; `POST /api/payments/cash`; `POST /api/payments/group-charges/remind`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/order-campaigns/{id}/remind`.
 
-#### M-19 Zamówienie z linku — `/club/o/[token]`
-- **Cel:** opiekun bez konta zamawia tak samo jak w aplikacji.
-- **Funkcje:** jak M-17 dla dzieci właściciela linku; bez płatności online (przelew z kodem lub gotówka u trenera); informacja, że link jest osobisty.
-- **Stany:** 410 — link wygasł lub zbiórka zakończona (z „Zaloguj się”).
+#### M-19 Order from link — `/club/o/[token]`
+- **Goal:** a guardian without an account orders the same way as in the app.
+- **Features:** like M-17 for the link owner's children; no online payment (bank transfer with the code or cash to the coach); a notice that the link is personal.
+- **States:** 410 — link expired or campaign completed (with "Sign in").
 - **API:** `GET /api/payments/order-links/{token}`; `POST /api/payments/order-links/{token}/orders`.
 
-### Strony publiczne
+### Public pages
 
-#### P-01 Strona klubu — `/p/[clubSlug]`
-- **Cel:** wizytówka klubu wielosekcyjnego (REQ-025).
-- **Funkcje:** nazwa, logo klubu, opis; kafle sekcji z logo sekcji (albo klubu, gdy sekcja nie ma własnego), nazwą, krótkim opisem i liczbą grup publicznych; „Obiekty i rezerwacje” (gdy blok włączony); kontakt.
-- **Komponenty:** nagłówek strony publicznej, karty, stopka z regulaminem i polityką prywatności.
-- **Stany:** loading; empty — „Klub nie opublikował jeszcze sekcji”; error — „Strona chwilowo niedostępna”; 404 — „Klub nie publikuje strony”.
-- **Walidacje:** n/d.
+#### P-01 Club page — `/p/[clubSlug]`
+- **Goal:** the business card of a multi-section club (REQ-025).
+- **Features:** name, club logo, description; section tiles with the section logo (or the club logo when the section has none of its own), name, short description and number of public groups; "Facilities and bookings" (when the block is enabled); contact.
+- **Components:** public page header, cards, footer with the rules and privacy policy.
+- **States:** loading; empty — "The club has not published any sections yet"; error — "Page temporarily unavailable"; 404 — "The club does not publish a page".
+- **Validation:** n/a.
 - **API:** `GET /api/club_core/public/{clubSlug}`.
 
-#### P-02 Strona sekcji — `/p/[clubSlug]/sections/[sectionSlug]`
-- **Cel:** wszystko, czego potrzebuje rodzic szukający zajęć.
-- **Funkcje:** logo sekcji (albo klubu) w nagłówku strony; opis sekcji; karty grup publicznych: wiek/poziom, dni i godziny, miejsce, najbliższe terminy (z odwołaniami), warunki, składka i zniżka, prowadzący (za zgodą); materiały; kontakt do koordynatora — **tylko bloki włączone w B-03**.
-- **Komponenty:** sekcje strony, karty grup, lista plików.
-- **Stany:** loading; empty — „Sekcja nie ma obecnie zajęć otwartych dla nowych osób”; error; 404.
-- **Walidacje:** n/d.
+#### P-02 Section page — `/p/[clubSlug]/sections/[sectionSlug]`
+- **Goal:** everything a parent looking for activities needs.
+- **Features:** section logo (or club logo) in the page header; section description; public group cards: age/level, days and times, place, upcoming sessions (with cancellations), terms, membership fee and discount, instructor (with consent); materials; coordinator contact — **only blocks enabled in B-03**.
+- **Components:** page sections, group cards, file list.
+- **States:** loading; empty — "The section currently has no classes open to newcomers"; error; 404.
+- **Validation:** n/a.
 - **API:** `GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}`.
 
-#### P-03 Obiekty — `/p/[clubSlug]/places`
-- **Cel:** lista obiektów klubu z publicznym kalendarzem.
-- **Funkcje:** karty obiektów (zdjęcie, adres, nawierzchnia, „przyjmuje zgłoszenia online”).
-- **Komponenty:** karty.
-- **Stany:** loading; empty — „Klub nie udostępnia kalendarzy obiektów”; error; 404.
+#### P-03 Facilities — `/p/[clubSlug]/places`
+- **Goal:** list of the club's facilities with a public calendar.
+- **Features:** facility cards (photo, address, surface, "accepts online requests").
+- **Components:** cards.
+- **States:** loading; empty — "The club does not share facility calendars"; error; 404.
 - **API:** `GET /api/facilities/public/{clubSlug}/places`.
 
-#### P-04 Kalendarz obiektu i zgłoszenie — `/p/[clubSlug]/places/[placeSlug]`
-- **Cel:** zobaczyć wolne terminy i zgłosić rezerwację (REQ-014, REQ-024).
-- **Funkcje:** miesiąc z listą dni: strefy, „zajęte przez klub”, „zarezerwowane”, „zgłoszone — oczekuje”, „zamknięte”; godziny otwarcia, cennik, regulamin, telefon; przy slocie „do rezerwacji” — **Zgłoś rezerwację** (okno formularza z komunikatem „Zgłoszenie jest ważne dopiero po akceptacji administratora”).
-- **Komponenty:** lista dni / siatka miesiąca, legenda tekstowa, okno formularza.
-- **Stany:** loading; empty — „W tym miesiącu obiekt nie ma opublikowanego harmonogramu”; error; success — „Sprawdź skrzynkę i potwierdź zgłoszenie linkiem (ważny 1 h)”; conflict — „Ten termin jest już zgłoszony lub zajęty”.
-- **Walidacje:** organizacja/osoba 2–120 znaków; imię i nazwisko kontaktu; telefon; e-mail; kategoria; jednostki 1–4 (w granicach strefy); cel ≤ 300 znaków; regulamin ✓ (wymagany); pole-pułapka puste; limit żądań.
+#### P-04 Facility calendar and request — `/p/[clubSlug]/places/[placeSlug]`
+- **Goal:** see free slots and request a booking (REQ-014, REQ-024).
+- **Features:** a month with a list of days: zones, "taken by the club", "booked", "requested — pending", "closed"; opening hours, rates, rules, phone; for a "bookable" slot — **Request a booking** (form dialog with the message "The request is valid only after administrator approval").
+- **Components:** list of days / month grid, text legend, form dialog.
+- **States:** loading; empty — "The facility has no published schedule this month"; error; success — "Check your inbox and confirm the request with the link (valid for 1 h)"; conflict — "This slot has already been requested or is taken".
+- **Validation:** organization/person 2–120 characters; contact's first and last name; phone; email; category; units 1–4 (within the zone); purpose ≤ 300 characters; rules ✓ (required); honeypot field empty; rate limit.
 - **API:** `GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule?month`; `POST …/requests`.
 
-#### P-05 Potwierdzenie zgłoszenia — `/p/[clubSlug]/requests/verify/[token]`
-- **Cel:** zamienić zgłoszenie w oczekujące na akceptację.
-- **Funkcje:** wynik potwierdzenia, podsumowanie zgłoszenia, termin decyzji (48 h), co dalej.
-- **Komponenty:** `Alert`, podsumowanie.
-- **Stany:** loading — „Potwierdzamy zgłoszenie…”; success — „Zgłoszenie czeka na akceptację administratora do …”; error — 410 „Link wygasł — złóż zgłoszenie ponownie”, 409 „Termin został w międzyczasie zajęty”.
-- **Walidacje:** n/d.
+#### P-05 Request confirmation — `/p/[clubSlug]/requests/verify/[token]`
+- **Goal:** turn the request into one awaiting approval.
+- **Features:** confirmation result, request summary, decision deadline (48 h), next steps.
+- **Components:** `Alert`, summary.
+- **States:** loading — "Confirming your request…"; success — "The request is awaiting administrator approval until …"; error — 410 "Link expired — submit the request again", 409 "The slot was taken in the meantime".
+- **Validation:** n/a.
 - **API:** `POST /api/facilities/public/requests/verify/{token}`.
 
 ---
 
-## 5. Klikalne mockupy
+## 5. Clickable mockups
 
-Plik [`mockups/index.html`](mockups/index.html) otwiera się bezpośrednio w przeglądarce. Pasek nad aplikacją pozwala:
+The file [`mockups/index.html`](mockups/index.html) opens directly in a browser. The bar above the app lets you:
 
-- **Osoba** — zalogować się jako: Kasia (opiekun), Ola (uczestniczka 14), Wojtek (trener + koordynator akademii), Anna (instruktorka basenu), Aneta (administrator / skarbnik + koordynator basenu), Tomek (animator) lub Gość (strona publiczna, także jako najemca składający zgłoszenie).
-- **Stan ekranu** — wymusić *Normalny*, *Ładowanie*, *Pusty*, *Błąd* na dowolnym ekranie (punkt 4: stany).
-- **Ścieżki** — panel z przewodnikami F-01…F-13: kroki z linkami do ekranów.
-- **Ekrany** — indeks wszystkich ekranów M/B/P.
-- **Motyw** — jasny / ciemny (tokeny odwzorowują `src/app/globals.css` Open Mercato).
+- **Persona** — sign in as: Kasia (guardian), Ola (participant, 14), Wojtek (coach + academy coordinator), Anna (Basen instructor), Aneta (administrator with treasurer rights + Basen coordinator), Beata (treasurer — finance only), Tomek (facility attendant) or Guest (public page, also as a renter submitting a request).
+- **Screen state** — force *Normal*, *Loading*, *Empty*, *Error* on any screen (section 4: states).
+- **Flows** — a panel with walkthroughs F-01…F-14: steps with links to screens.
+- **Screens** — an index of all M/B/P screens.
+- **Theme** — light / dark (the tokens mirror Open Mercato's `src/app/globals.css`).
+- **Language** — English / Polish (REQ-035). Interface texts come from `mockups/i18n/<code>.json`; club content (sections, groups, people, descriptions) stays in the club's language. A new language = a new catalog file with the same keys as `en.json`; `node build.mjs` refuses to build when keys differ. The default is the browser language.
 
-Dane są w pamięci przeglądarki — akcje zmieniają stan (deklaracja, zamknięcie terminu, zastępca, rezerwacja, zgłoszenie → akceptacja, płatność, księgowanie, publikacja), a „Resetuj dane” przywraca stan początkowy. Mockupy nie wywołują prawdziwego API; nazwy endpointów są pokazane w stopce każdego ekranu.
+Data is kept in browser memory — actions change the state (declaration, closing a session, substitute, booking, request → approval, payment, recording a payment, publication), and "Reset data" restores the initial state. The mockups do not call a real API; endpoint names are shown in the footer of each screen.
 
-**Ograniczenia:** mockup odwzorowuje układ i zachowanie, nie wygląd 1:1 komponentów Open Mercato (`DataTable`, `CrudForm` są stylizowane podobnie); kalendarze są uproszczone; logowanie jest symulowane wyborem osoby.
+**Limitations:** the mockup reproduces layout and behavior, not a 1:1 look of the Open Mercato components (`DataTable` and `CrudForm` are styled similarly); calendars are simplified; sign-in is simulated by choosing a persona.
 
-## 6. Uwagi do specyfikacji
+## 6. Notes on the specification
 
-Koncepcja nie wprowadza nowych wymagań. Doprecyzowuje dla UX:
+The concept introduces no new requirements. For UX, it clarifies:
 
-1. Przekierowanie po zalogowaniu: osoba z rolą członkowską → `/club`, wyłącznie personel → `/backend`.
-2. „Kontakt do publikacji” sekcji to osobne pola, nie dane z kartoteki (zgodne z DD-29).
-3. Ekran wyniku płatności (M-09) odczytuje status przez `GET /api/payments/my-charges` — bez nowego endpointu.
-4. Widżet „Sekcje bez koordynatora” na pulpicie administratora (spec: ostrzeżenie na liście sekcji i widżecie).
-5. Uczestnik niepełnoletni z kontem nie widzi płatności — ani kafla w M-02, ani M-08 (decyzja z 2026-10-20, wpisana do specyfikacji: REQ-002, rola `vereino_payer`).
-6. Logo klubu i logo sekcji (REQ-028): sekcja bez własnego logo pokazuje logo klubu; logo klubu w nagłówkach panelu, interfejsu członkowskiego i strony publicznej.
-7. Hurtowe ustawianie dostępności do rezerwacji z zewnątrz w kalendarzu obiektu (REQ-029) — opis w B-23.
-8. Rozliczanie należności: import wyciągu bankowego z automatycznym dopasowaniem (B-29, REQ-030) i przyjmowanie gotówki w panelu i na telefonie (M-15, REQ-031); rodzic widzi swój kod płatnika do tytułu przelewu w M-08.
-9. Zbiórki zamówień (np. stroje) zamiast Formularza Google: kreator w panelu (B-30…B-32), zamówienie opiekuna w aplikacji lub z osobistego linku (M-16, M-17, M-19), trener w aplikacji przyjmuje gotówkę i wydaje stroje (M-18), skarbnik rozlicza gotówkę od trenerów (B-33) — REQ-032, REQ-033.
+1. Redirect after sign-in: a person with a member role → `/club`, staff only → `/backend` (added to the specification on 2026-10-20 — login-to-primary-task rule).
+2. The section's "Contact for publication" consists of separate fields, not data from the person register (consistent with DD-29).
+3. The payment result screen (M-09) reads the status via `GET /api/payments/my-charges` — no new endpoint.
+4. "Sections without a coordinator" widget on the administrator's dashboard (spec: a warning on the section list and a widget).
+5. A minor participant with an account does not see payments — neither the tile on M-02 nor M-08 (decision of 2026-10-20, added to the specification: REQ-002, role `vereino_payer`).
+6. Club logo and section logo (REQ-028): a section without its own logo shows the club logo; the club logo appears in the headers of the panel, the member interface and the public page.
+7. Bulk-setting availability for external bookings in the facility calendar (REQ-029) — described in B-23.
+8. Settling charges: bank statement import with automatic matching (B-29, REQ-030) and accepting cash in the panel and on the phone (M-15, REQ-031); the parent sees their payer code for the transfer reference in M-08.
+9. Order campaigns (e.g. kit) instead of Google Forms: a wizard in the panel (B-30…B-32), the guardian orders in the app or from a personal link (M-16, M-17, M-19), the coach accepts cash and hands over kit in the app (M-18), the treasurer settles cash from coaches (B-33) — REQ-032, REQ-033.
+10. "My groups' payments" for the coach (M-18) instead of orders only: group fees and kit, cash for several charges at once, the club setting "Coaches and payments" (B-20); a separate treasurer role (persona Beata) with the right to accept cash from coaches (B-33) — REQ-033, REQ-034.
+11. Multilingual interface (REQ-035): the mockup switches between English and Polish; dates, amounts and plurals follow the language, club content does not; one content language per club (Q-038).
+12. Deferred — no screens in this concept or in the mockup (decisions of 2026-10-20): volunteer duty sign-up for sessions (planned for 1.1; the spec lists it in Non-goals) and a guardian contact list for coaches (GDPR minimisation — coaches reach guardians through announcements and direct threads, REQ-009).

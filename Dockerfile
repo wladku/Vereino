@@ -1,7 +1,7 @@
 FROM node:24-alpine AS builder
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    PATH=/app/node_modules/.bin:$PATH
+    PATH=/app/packages/app/node_modules/.bin:/app/node_modules/.bin:$PATH
 ARG OPEN_MERCATO_DOCKER_REGISTRY_HOST=host.docker.internal
 ARG NEXT_PUBLIC_DOCUMENTS_COLLAB_URL
 ENV NEXT_PUBLIC_DOCUMENTS_COLLAB_URL=${NEXT_PUBLIC_DOCUMENTS_COLLAB_URL}
@@ -12,6 +12,13 @@ RUN apk add --no-cache python3 make g++ ca-certificates openssl
 RUN corepack enable
 
 COPY package.json yarn.lock .yarnrc.yml ./
+# Workspace manifests first, so dependency installation stays cached until they change
+COPY packages/app/package.json packages/app/package.json
+COPY packages/core/package.json packages/core/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/ui/package.json packages/ui/package.json
+# Root postinstall links framework sources for the agent guides; it must exist before yarn install
+COPY scripts/link-framework-sources.mjs scripts/link-framework-sources.mjs
 RUN if grep -Eq 'http://(localhost|127\\.0\\.0\\.1):' .yarnrc.yml; then \
       sed \
         -e "s#http://localhost:#http://${OPEN_MERCATO_DOCKER_REGISTRY_HOST}:#g" \
@@ -32,7 +39,7 @@ FROM node:24-alpine AS dev
 
 ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1 \
-    PATH=/app/node_modules/.bin:$PATH
+    PATH=/app/packages/app/node_modules/.bin:/app/node_modules/.bin:$PATH
 ARG OPEN_MERCATO_DOCKER_REGISTRY_HOST=host.docker.internal
 
 WORKDIR /app
@@ -41,6 +48,13 @@ RUN apk add --no-cache python3 make g++ ca-certificates openssl
 RUN corepack enable
 
 COPY package.json yarn.lock .yarnrc.yml ./
+# Workspace manifests first, so dependency installation stays cached until they change
+COPY packages/app/package.json packages/app/package.json
+COPY packages/core/package.json packages/core/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/ui/package.json packages/ui/package.json
+# Root postinstall links framework sources for the agent guides; it must exist before yarn install
+COPY scripts/link-framework-sources.mjs scripts/link-framework-sources.mjs
 RUN if grep -Eq 'http://(localhost|127\\.0\\.0\\.1):' .yarnrc.yml; then \
       sed \
         -e "s#http://localhost:#http://${OPEN_MERCATO_DOCKER_REGISTRY_HOST}:#g" \
@@ -76,7 +90,7 @@ ARG INSTALL_CHROMIUM=0
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PATH=/app/node_modules/.bin:$PATH \
+    PATH=/app/packages/app/node_modules/.bin:/app/node_modules/.bin:$PATH \
     PORT=${CONTAINER_PORT} \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
@@ -90,6 +104,13 @@ RUN if [ "$INSTALL_CHROMIUM" = "1" ]; then \
 RUN corepack enable
 
 COPY package.json yarn.lock .yarnrc.yml ./
+# Workspace manifests first, so dependency installation stays cached until they change
+COPY packages/app/package.json packages/app/package.json
+COPY packages/core/package.json packages/core/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/ui/package.json packages/ui/package.json
+# Root postinstall links framework sources for the agent guides; it must exist before yarn install
+COPY scripts/link-framework-sources.mjs scripts/link-framework-sources.mjs
 RUN if grep -Eq 'http://(localhost|127\\.0\\.0\\.1):' .yarnrc.yml; then \
       sed \
         -e "s#http://localhost:#http://${OPEN_MERCATO_DOCKER_REGISTRY_HOST}:#g" \
@@ -100,17 +121,20 @@ RUN if grep -Eq 'http://(localhost|127\\.0\\.0\\.1):' .yarnrc.yml; then \
       fi; \
       mv .yarnrc.yml.container .yarnrc.yml; \
     fi
-RUN yarn workspaces focus --all --production
+RUN yarn workspaces focus @vereino/app --production
 
-COPY --from=builder /app/.mercato/next ./.mercato/next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/types ./types
-COPY --from=builder /app/.mercato ./.mercato
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
-COPY --from=builder /app/components.json ./components.json
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/packages/app/.mercato ./packages/app/.mercato
+COPY --from=builder /app/packages/app/public ./packages/app/public
+COPY --from=builder /app/packages/app/src ./packages/app/src
+COPY --from=builder /app/packages/app/types ./packages/app/types
+COPY --from=builder /app/packages/app/next.config.ts ./packages/app/next.config.ts
+COPY --from=builder /app/packages/app/postcss.config.mjs ./packages/app/postcss.config.mjs
+COPY --from=builder /app/packages/app/components.json ./packages/app/components.json
+COPY --from=builder /app/packages/app/tsconfig.json ./packages/app/tsconfig.json
+COPY --from=builder /app/packages/app/scripts ./packages/app/scripts
+COPY --from=builder /app/packages/core/src ./packages/core/src
+COPY --from=builder /app/packages/db/src ./packages/db/src
+COPY --from=builder /app/packages/ui/src ./packages/ui/src
 COPY --from=builder /app/scripts ./scripts
 COPY docker/scripts/init-or-migrate.sh /app/docker/scripts/init-or-migrate.sh
 # Used by the optional `mcp` service (compose profile `agents`).

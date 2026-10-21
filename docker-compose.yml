@@ -41,7 +41,7 @@ services:
       - "${OPENCODE_PORT:-4096}:4096"
     volumes:
       # Host-provisioned MCP API key (see scripts/dev-mcp.mjs).
-      - ${OM_MCP_SHARED_DIR:-./.mercato/mcp-shared}:/run/mcp-shared:ro
+      - ${OM_MCP_SHARED_DIR:-./packages/app/.mercato/mcp-shared}:/run/mcp-shared:ro
       - ./docker/opencode/entrypoint.sh:/home/opencode/entrypoint.sh:ro
       - ./docker/opencode/AGENTS.md:/home/opencode/AGENTS.md:ro
       # File-defined agents + native skills, written by `yarn generate`.
@@ -53,7 +53,7 @@ services:
       - ./docker/opencode/certs:/run/om-certs:ro
       # File plane: shared writable sandbox (only used when
       # OM_OPENCODE_FILES_ENABLED=true).
-      - ${OM_OPENCODE_WORKSPACE_ROOT:-./.mercato/opencode-work}:/home/opencode/work:rw
+      - ${OM_OPENCODE_WORKSPACE_ROOT:-./packages/app/.mercato/opencode-work}:/home/opencode/work:rw
     extra_hosts:
       - "host.docker.internal:${OM_HOST_GATEWAY:-host-gateway}"
     networks:

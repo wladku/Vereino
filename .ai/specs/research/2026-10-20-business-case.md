@@ -1,42 +1,42 @@
 ---
-typ: business-case
-data: 2026-10-20
-autor: Władek Kuć
-status: założenia zespołu (żadna odpowiedź nie jest jeszcze potwierdzona rozmową z odbiorcą)
+type: business-case
+date: 2026-10-20
+author: Władek Kuć
+status: team assumptions (no answer has yet been confirmed by a conversation with a target user)
 ---
 
 # Business case: Vereino
 
-## 1. Co chcemy zbudować i dla kogo?
-Otwartoźródłowy system do zarządzania małym klubem wielosekcyjnym, w którym główną sekcją jest akademia piłkarska (orientacyjnie do ~200 zawodników; obok niej basen, zajęcia dodatkowe), zbudowany na Open Mercato. [DOKUMENT: decyzja Władka 2026-10-20, D-011] Użytkownicy: koordynator sekcji, skarbnik/administrator klubu, trenerzy (często na zleceniu), opiekunowie prawni dzieci, uczestnicy 13+, animator obiektu. Płacący klient: zarząd klubu (stowarzyszenie), docelowo także gmina jako właściciel obiektu. [ZAŁOŻENIE]
+## 1. What do we want to build and for whom?
+An open-source system for managing a small multi-section club whose main section is a football academy (indicatively up to ~200 players; alongside it a swimming pool and extra classes), built on Open Mercato. [DOCUMENT: Władek's decision 2026-10-20, D-011] Users: section coordinator, treasurer/club administrator, coaches (often on contract), legal guardians of children, participants 13+, facility attendant. Paying customer: the club board (association), eventually also the municipality as the facility owner. [ASSUMPTION]
 
-Pilot: KS Gwiazda Ściejowice — dokładnie taki klub: akademia piłkarska, basen, zajęcia dodatkowe; administruje Orlikiem 2024 w imieniu Gminy Liszki. [DOKUMENT: regulamin Orlika, notatka orlik-ustalenia]
+Pilot: KS Gwiazda Ściejowice — exactly this kind of club: football academy, swimming pool, extra classes; it administers the Orlik 2024 (municipal sports pitch complex) on behalf of Gmina Liszki. [DOCUMENT: Orlik regulations, orlik-ustalenia note]
 
-## 2. W czym produkt ma pomóc i dlaczego ktoś miałby z niego skorzystać?
-Dziś (w Gwieździe): grafik i obecność przez grupy na Messengerze, składki śledzone ręcznie, zastępstwa trenerów ustalane telefonicznie, rezerwacje orlika przez telefon do klubu, brak rejestru trudnych spraw. [DOKUMENT: transkrypcja spotkania 26.09.2026 — to wiedza Władka jako wiceprezesa, nie rozmowa z użytkownikiem]
+## 2. What should the product help with and why would anyone use it?
+Today (at Gwiazda): schedule and attendance via Messenger groups, membership fees tracked manually, coach substitutions arranged by phone, Orlik bookings by phoning the club, no record of difficult cases. [DOCUMENT: transcript of the meeting on 26.09.2026 — this is Władek's knowledge as vice-president, not a conversation with a user]
 
-Produkt ma: (a) dać rodzicowi jeden kalendarz wszystkich dzieci i „będę/nie będę” w dwa kliknięcia, (b) dać trenerowi listę obecności i zastępstwo z telefonu, (c) dać skarbnikowi naliczanie składek i płatność online, (d) dać koordynatorowi grafik bez kolizji na obiekcie i publiczny harmonogram orlika z rezerwacjami, (e) dać zarządowi rejestr spraw jako zabezpieczenie prawne. [ZAŁOŻENIE: które z tych bólów są największe — do sprawdzenia w rozmowach]
+The product should: (a) give the parent one calendar for all their children and "attending/not attending" in two clicks, (b) give the coach an attendance list and substitutions from the phone, (c) give the treasurer fee generation and online payment, (d) give the coordinator a facility schedule without clashes and a public Orlik schedule with bookings, (e) give the board a case record as legal protection. [ASSUMPTION: which of these pains are the biggest — to verify in interviews]
 
-Dlaczego nie ProTrainUp (125–245 zł/mies.): [BENCHMARK] PTU jest rozbudowany pod duże kluby i trenerów (rysunki, medycyna, skauting); nie ma zarządzania obiektem gminy ani sekcji niesportowych; to SaaS z danymi u dostawcy. Vereino ma być proste, darmowe (open source), obsługiwać klub jako całość (wiele sekcji, jeden rodzic z dziećmi w różnych sekcjach) i mieć obiekt gminny jako funkcję centralną. [ZAŁOŻENIE: że „darmowe + proste + orlik” wystarczy, by mała akademia wybrała nas zamiast PTU]
+Why not ProTrainUp (PLN 125–245/month): [BENCHMARK] PTU is built out for large clubs and coaches (diagrams, medical, scouting); it has no municipal facility management and no non-sports sections; it is SaaS with data held by the vendor. Vereino is meant to be simple, free (open source), serve the club as a whole (many sections, one parent with children in different sections) and have the municipal facility as a central feature. [ASSUMPTION: that "free + simple + Orlik" is enough for a small academy to choose us over PTU]
 
-## 3. Co już wiemy, skąd, i czego musimy się dowiedzieć?
-Wiemy:
-- Strukturę bytów klubu i role — ze spotkania założycieli [DOKUMENT].
-- Reguły orlika: strefy godzin, 90-min jednostka, opłata na konto gminy, 24 h na odwołanie, animator, sankcje — z regulaminu [DOKUMENT].
-- Cennik i zakres PTU — ze strony, sprawdzone 30.09.2026 [BENCHMARK].
-- Model rozliczania trenerów w Gwieździe: podstawa + jednostki treningowe — od Władka [DOKUMENT/wiedza zarządu].
+## 3. What do we already know, from where, and what do we need to find out?
+We know:
+- The club's entity structure and roles — from the founders' meeting [DOCUMENT].
+- Orlik rules: hour zones, 90-min unit, fee paid to the municipality's account, 24 h to cancel, attendant, sanctions — from the regulations [DOCUMENT].
+- PTU pricing and scope — from the website, checked 30.09.2026 [BENCHMARK].
+- The coach settlement model at Gwiazda: base pay + training units — from Władek [DOCUMENT/board knowledge].
 
-Nie wiemy (metoda):
-- Czy trenerzy wolą jedno narzędzie klubowe, czy PTU Coach dla siebie + coś klubowego → rozmowa z 3 trenerami (Mom Test).
-- Jak skarbnik dziś ściąga składki i ile czasu to kosztuje → rozmowa ze skarbnikiem Gwiazdy + 1–2 innych klubów.
-- Czy rodzice wejdą do aplikacji zamiast Messengera, przy jakim bodźcu → rozmowa z 5 rodzicami; test magic-linku.
-- Ile akademii 100–200 zawodników gra na obiektach gminnych i administruje nimi → dane PZPN/gminy lub 5 rozmów z koordynatorami innych klubów.
-- Kto w innych klubach podejmuje decyzję o narzędziu i czy „open source” jest dla nich argumentem czy ryzykiem → rozmowy z prezesami 3 klubów.
-- Hosting: kto utrzyma instancję dla klubu, który nie ma informatyka → decyzja zespołu + rozmowy.
+We don't know (method):
+- Whether coaches prefer one club tool, or PTU Coach for themselves + something for the club → conversations with 3 coaches (Mom Test).
+- How the treasurer collects fees today and how much time it costs → conversation with Gwiazda's treasurer + 1–2 other clubs.
+- Whether parents will move into the app instead of Messenger, and with what incentive → conversations with 5 parents; magic link test.
+- How many academies with 100–200 players play on municipal facilities and administer them → PZPN/municipality data or 5 conversations with coordinators of other clubs.
+- Who decides on the tool in other clubs and whether "open source" is an argument or a risk for them → conversations with the presidents of 3 clubs.
+- Hosting: who will maintain the instance for a club without an IT person → team decision + conversations.
 
-## 4. Co obejmuje pierwsza wersja, a co odkładamy?
-Zakres 1.0: patrz `2026-10-20-moscow.md` i decyzje D-001…D-012. W skrócie: osoby i role, grupy, aktywności/terminy, kalendarze, obecność, komunikaty z push, składki z płatnością online, obiekt (orlik) z publicznym harmonogramem i rezerwacjami.
+## 4. What does the first release cover, and what do we postpone?
+1.0 scope: see `2026-10-20-moscow.md` and decisions D-001…D-012. In short: people and roles, groups, activities/sessions, calendars, attendance, announcements with push, membership fees with online payment, facility (Orlik) with a public schedule and bookings.
 
-Wizja (poza 1.0, do sprawdzenia): wiele klubów na jednej instancji dla gminy; projekty i dofinansowania; sklep; rezerwacja online dla najemców; historia rozwoju zawodnika.
+Vision (beyond 1.0, to verify): many clubs on one instance for a municipality; projects and grants; shop; online booking for renters; player development history.
 
-Świadomie nie budujemy: rysunków treningowych, bazy ćwiczeń, modułu medycznego, skautingu, statystyk indywidualnych, integracji z Messengerem/WhatsApp (brak API dla grup).
+We deliberately do not build: training diagrams, an exercise library, a medical module, scouting, individual statistics, Messenger/WhatsApp integration (no API for groups).
