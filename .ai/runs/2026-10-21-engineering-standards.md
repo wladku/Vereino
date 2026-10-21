@@ -3,8 +3,8 @@
 - **Date:** 2026-10-21
 - **Agent / tool:** Claude Code (coordinator) with three research subagents (platform conventions, ecosystem practices, domain concerns); second session (Claude Code, Opus 5.5) wrote and verified the spec with two review subagents
 - **Trigger:** product owner — "research and create a specification of the best possible tech stack, engineering standards, coding standards and design patterns for the project described in `.ai/specs/2026-10-20-vereino-club-management.md`"
-- **Spec / issue / branch:** new spec `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (`Draft`); branch `docs/engineering-standards`
-- **Status:** completed — spec written and verified; status `Draft` until the product owner answers ENG-Q-01/ENG-Q-02 and approves it
+- **Spec / issue / branch:** new spec `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (`Ready for implementation`); branch `docs/engineering-standards`
+- **Status:** completed — spec written, verified and approved by the product owner on 2026-10-21
 
 ## Goal
 
@@ -29,7 +29,8 @@ One English spec (SPEC-000 template, every section kept) that fixes the stack, t
 6. Verification, in parallel: (a) a local script over the spec — table cell counts, id definitions and uniqueness, undefined references, file paths named in the spec, template section order; (b) background subagent: fresh-context architectural review in the `om-spec-writing` format; (c) background subagent: fact check against research, run log, club spec and repository. Subagents only read; the coordinator applied every change.
 7. Applied the findings (Changelog row "Review fixes" in the spec). Main ones: split the hand-over's E1 into E1 *Gate and CI* and E2 *Repository hygiene and release* (E1 closed 8 of 14 goals and release-please can only be proven after a merge), so the hand-over's E2–E4 became E3–E5; moved the club spec convention amendment into E1 so club routes are never built against `{ items, totalCount }`; P6 security exception; break-glass rule; local-patch table; error factory outside `lib/`; token pages never cached; restore cut-over and reconciliation; ADR-023 for the commercial enterprise package.
 8. Recorded lesson `enterprise-package-is-commercial`; committed `3e7ca67`.
-9. Product owner answered the three questions that blocked E1 (asked as multiple choice, 2026-10-21): ENG-Q-01 "Wszystkie" (approve all listed tools, apps and actions); ENG-Q-02 "Ty, konto osobiste" (the product owner configures settings from a step list that E1 delivers as `docs/ops/github-settings.md`; repository stays on the personal account); ENG-Q-08 "Jedna specyfikacja" (keep one spec with five phases). Recorded in the spec's *Open Questions*, *Final Compliance Report*, E1 and Changelog; spec checks and `node scripts/check-lessons.mjs` re-run green.
+9. Product owner answered the three questions that blocked E1 (asked as multiple choice, 2026-10-21): ENG-Q-01 "Wszystkie" (approve all listed tools, apps and actions); ENG-Q-02 "Ty, konto osobiste" (the product owner configures settings from a step list that E1 delivers as `docs/ops/github-settings.md`; repository stays on the personal account); ENG-Q-08 "Jedna specyfikacja" (keep one spec with five phases). Recorded in the spec's *Open Questions*, *Final Compliance Report*, E1 and Changelog; spec checks and `node scripts/check-lessons.mjs` re-run green; committed `ff436bf`.
+10. Product owner: "Zatwierdzam specyfikację standardów — ustaw status Ready for implementation." Set `Status: Ready for implementation`, verdict `Ready for implementation`, approval row pass. Because the template allows readiness only without blocking questions, the six remaining questions (ENG-Q-03 … ENG-Q-07, ENG-Q-10) were reclassified as phase gates for E4/E5 — they change no design and are already required by those phases' *Depends on* — and the reason is stated in the spec's *Open Questions* and Changelog. Spec checks re-run green.
 
 ## Hand-over: what the next session does
 
@@ -65,13 +66,13 @@ Done in the second session — see steps 4–8 and the decisions below.
 
 ## Open problems
 
-- The spec stays `Draft` until the product owner approves it. E1 has no open blocking question; ENG-Q-03, ENG-Q-04, ENG-Q-05, ENG-Q-10 (E4) and ENG-Q-06, ENG-Q-07 (E5) are still open.
+- Phase gates still open: ENG-Q-03, ENG-Q-04, ENG-Q-05, ENG-Q-10 (before E4) and ENG-Q-06, ENG-Q-07 (before E5).
 - Research C claims marked unverified (its Appendix B, e.g. Polish digital-consent age 16, UODO DPIA list, bank file encodings) must be confirmed before the pilot (ENG-Q-06).
 - Decisions D1–D5 from `2026-10-20-spec-consistency-fixes.md` still await the product owner.
 
 ## Next steps
 
-1. Product owner approves the spec (`Ready for implementation`); the E4/E5 questions can be answered later, before those phases.
+1. Done: spec approved (`Ready for implementation`). The E4/E5 phase gates are answered before those phases.
 2. Implement phase E1 with `om-implement-spec`, including club spec amendment A.
 
 ## Lessons recorded
