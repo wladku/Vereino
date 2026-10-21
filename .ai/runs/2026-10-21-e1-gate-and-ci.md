@@ -31,6 +31,8 @@ One gate, `yarn verify`, used identically by developers, agents and GitHub Actio
 - Integration tests get their own `packages/app/.ai/qa/tests/tsconfig.json` (the app tsconfig skips `.ai`; TS 6 defaults `types` to `[]`) and a new gate step `typecheck:qa`; the platform `playwright.config.ts` stays out.
 - The platform runner rejects `--grep`; focused runs use `--filter`. Spec S2.2/S13.2 and the club spec amended.
 - CI pins the runner's PostgreSQL image to `pgvector/pgvector:pg17-trixie` (runner default is pg16).
+- Root `resolutions` gains `handlebars: 4.7.10` (P4 security exception): `eslint-plugin-boundaries` 7.2.0 (latest) and `@boundaries/elements` 3.1.1 pin `handlebars` 4.7.9, which has two critical advisories (GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f; patched in 4.7.10, published 2026-10-05) found by the `dependency-review` job. Remove the entry when the plugin ships a fixed pin; phase E2 moves this reason into `CONTRIBUTING.md` → *Pinned and overridden dependencies*.
+- CI retries `yarn install --immutable` once: the npm registry answered a hardened-mode metadata request with 409 in one job of a run where the same install passed elsewhere.
 - `.github/CODEOWNERS` lists only `@wladku` until the second maintainer's handle is known; "Require review from Code Owners" stays off until then (`docs/ops/github-settings.md`).
 
 ## Files changed
