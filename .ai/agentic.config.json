@@ -63,5 +63,9 @@
     "specs": ".ai/specs",
     "scripts": ".ai/scripts",
     "qa": ".ai/qa"
+  },
+  "discovery": {
+    "enabled": true,
+    "roles": { "domainExpert": false, "designer": false }
   }
 }

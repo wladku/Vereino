@@ -150,6 +150,10 @@ Read `.agents/skills/<id>/SKILL.md` AND any `.ai/skills/<id>/SKILL.md` override.
 | `spec-pr` | Local phases / whole-spec / PR / issue / review | `om-implement-spec` (OMH-006) / `om-auto-implement-spec` / `om-auto-create-pr` / `om-auto-fix-issue` / `om-auto-review-pr` |
 | — | No PR/spec workflow | Do not load delivery skills |
 
+<!-- discovery:routing-start -->
+Product discovery, brief or backlog: read `.ai/specs/product-brief.md`, `.ai/specs/research/`, `.ai/specs/backlog.md`, and the Definition of Ready and protected product decisions in `SDLC.md`; brief decisions are a protected contract, synthetic personas are hypotheses.
+<!-- discovery:routing-end -->
+
 ### Token-Efficient Assembly Policy
 
 - Load matched guides once, then only needed references/facts.
