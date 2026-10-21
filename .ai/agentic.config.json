@@ -2,13 +2,16 @@
   "version": 1,
   "baseBranch": "auto",
   "tracker": "github",
+  "browser": {
+    "provider": "agent-browser"
+  },
   "validation": {
     "commands": [
       "yarn verify"
     ]
   },
   "labels": {
-    "enabled": false,
+    "enabled": true,
     "pipeline": [
       "review",
       "changes-requested",
@@ -48,6 +51,11 @@
     ]
   },
   "qaGate": false,
+  "engine": {
+    "loopStepThreshold": 20,
+    "executorTier": "standard",
+    "stepReview": "final"
+  },
   "reviewChecklist": ".ai/review-checklist.md",
   "paths": {
     "runs": ".ai/runs",
