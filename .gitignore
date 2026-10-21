@@ -108,6 +108,8 @@ package-lock.json
 .agents/skills/om-integration-builder/
 .agents/skills/om-module-scaffold/
 .agents/skills/om-system-extension/
+# `yarn install-skills` moves replaced skill versions here; the pinned versions in .agents/skills win.
+.agents/skills-quarantine/
 
 # on-demand installed framework context and local LLM evaluation evidence
 .ai/framework-context/
@@ -124,6 +126,9 @@ package-lock.json
 .ai/qa/test-env-boot.log
 .ai/qa/artifacts_*/
 .ai/qa/ephemeral*
+# the same runtime state inside the app workspace (platform runner and Playwright output)
+packages/app/.ai/qa/ephemeral*
+packages/app/.ai/qa/test-results/
 # entrypoint scripts om-prepare-test-env compiles are bound to the machine that
 # generated them (ports, process tools, shell) — keep them local, never commit
 .ai/scripts/test-env-*

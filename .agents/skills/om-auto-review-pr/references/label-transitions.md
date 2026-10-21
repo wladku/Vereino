@@ -16,7 +16,7 @@ The helper:
 
 - adds `newLabel`
 - removes every other pipeline label from the list above
-- preserves category labels (`bug`, `feature`, `refactor`, `security`, `dependencies`, `documentation`), meta labels (`needs-qa`, `skip-qa`, `qa-approved`, `qa-self-verified`, `in-progress`, `ci-monitoring`), priority labels (`priority-low`, `priority-medium`, `priority-high`, `priority-extreme`), and risk labels (`risk-low`, `risk-medium`, `risk-high`)
+- preserves category labels (`bug`, `feature`, `refactor`, `security`, `dependencies`, `documentation`), meta labels (`needs-qa`, `skip-qa`, `qa-approved`, `qa-self-verified`, `in-progress`), priority labels (`priority-low`, `priority-medium`, `priority-high`, `priority-extreme`), and risk labels (`risk-low`, `risk-medium`, `risk-high`)
 
 Every label change is reflected in the **single consolidated `🏷️ label rationale` comment** (template below) — updated in place, never a new comment per change.
 
@@ -29,7 +29,7 @@ Every label change is reflected in the **single consolidated `🏷️ label rati
 ## Risk label (always ensure exactly one, when labels are enabled)
 
 - If the PR carries no risk label, infer one from the diff and the linked issue, apply it through the guard, and record the choice and reason in the label-rationale comment. Inference rule: auth/session/data scoping/money, migrations or schema, encryption, event reliability, shared contract surfaces, or broad cross-cutting edits → `risk-high`; ordinary single-area change with tests → `risk-medium`; docs, dependency bumps, test-only, typo, or isolated cleanup → `risk-low`.
-- If the PR already has a risk label, keep it unless the review reveals the scope is clearly mis-rated (e.g. a "docs" PR that actually changes a migration) — then adjust it and explain why in the comment. A `risk-high` rating is not advisory: it requires `needs-qa` when the change is user-facing, rules out the self-QA exception (`SDLC.md`), and requires integration-level evidence for the touched area, which `om-code-review`'s risk-high evidence gate blocks without.
+- If the PR already has a risk label, keep it unless the review reveals the scope is clearly mis-rated (e.g. a "docs" PR that actually changes a migration) — then adjust it and explain why in the comment. A `risk-high` rating reinforces the case for `needs-qa` and deeper review even when the PR would otherwise look routine.
 - Risk is mutually exclusive: when changing it, remove the other two risk labels.
 
 ## The consolidated label-rationale comment
@@ -47,4 +47,4 @@ Exactly **one** marker-idempotent comment from this skill per PR describes the w
 
 Suggested per-line reasons: `review` — "this PR is ready for code review"; `changes-requested` — "review found actionable issues: {short list}"; `merge-queue` (no QA required) — "the required review gates passed and QA is not required (or `qa-approved` is already present)"; `blocked` — "progress depends on an external blocker: {which}"; `do-not-merge` — "this PR must not merge yet: {why}". Write them as full sentences with the concrete reason — never bare labels.
 
-Label emoji map (decoration only — parsers key on the backticked label text): 🔍 `review` · ❌ `changes-requested` / `qa-failed` · 🧪 `qa` / `needs-qa` · 🚀 `merge-queue` · ⛔ `blocked` / `do-not-merge` · 🐛 `bug` · ✨ `feature` · ♻️ `refactor` · 🔒 `security` · 📦 `dependencies` · 📚 `documentation` · ⏭️ `skip-qa` · ✅ `qa-approved` · 📸 `qa-self-verified` · 🔥 `priority-extreme` · 🔺 `priority-high` · 🔹 `priority-medium` · 🔽 `priority-low` · ⚠️ `risk-high` · 🟡 `risk-medium` · 🟢 `risk-low` · 🤖 `in-progress` · ⏱️ `ci-monitoring`.
+Label emoji map (decoration only — parsers key on the backticked label text): 🔍 `review` · ❌ `changes-requested` / `qa-failed` · 🧪 `qa` / `needs-qa` · 🚀 `merge-queue` · ⛔ `blocked` / `do-not-merge` · 🐛 `bug` · ✨ `feature` · ♻️ `refactor` · 🔒 `security` · 📦 `dependencies` · 📚 `documentation` · ⏭️ `skip-qa` · ✅ `qa-approved` · 📸 `qa-self-verified` · 🔥 `priority-extreme` · 🔺 `priority-high` · 🔹 `priority-medium` · 🔽 `priority-low` · ⚠️ `risk-high` · 🟡 `risk-medium` · 🟢 `risk-low` · 🤖 `in-progress`.

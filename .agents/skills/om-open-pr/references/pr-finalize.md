@@ -47,24 +47,13 @@ Consolidated label-rationale comment — exactly **one** marker-idempotent comme
 - 🟡 `risk-medium` — {why this risk}.
 ```
 
-Label emoji map (decoration only — parsers key on the backticked label text): 🔍 `review` · ❌ `changes-requested` / `qa-failed` · 🧪 `qa` / `needs-qa` · 🚀 `merge-queue` · ⛔ `blocked` / `do-not-merge` · 🐛 `bug` · ✨ `feature` · ♻️ `refactor` · 🔒 `security` · 📦 `dependencies` · 📚 `documentation` · ⏭️ `skip-qa` · ✅ `qa-approved` · 📸 `qa-self-verified` · 🔥 `priority-extreme` · 🔺 `priority-high` · 🔹 `priority-medium` · 🔽 `priority-low` · ⚠️ `risk-high` · 🟡 `risk-medium` · 🟢 `risk-low` · 🤖 `in-progress` · ⏱️ `ci-monitoring`.
+Label emoji map (decoration only — parsers key on the backticked label text): 🔍 `review` · ❌ `changes-requested` / `qa-failed` · 🧪 `qa` / `needs-qa` · 🚀 `merge-queue` · ⛔ `blocked` / `do-not-merge` · 🐛 `bug` · ✨ `feature` · ♻️ `refactor` · 🔒 `security` · 📦 `dependencies` · 📚 `documentation` · ⏭️ `skip-qa` · ✅ `qa-approved` · 📸 `qa-self-verified` · 🔥 `priority-extreme` · 🔺 `priority-high` · 🔹 `priority-medium` · 🔽 `priority-low` · ⚠️ `risk-high` · 🟡 `risk-medium` · 🟢 `risk-low` · 🤖 `in-progress`.
 
 ## Summary comment
 
-### `om-open-pr` specifics — caller-provided summary
+### om-open-pr specifics — caller-provided summary
 
-The caller owns the summary. When it supplies one (`--summary-file` or the
-PREVIOUS STEP block), retain its marker and machine fields, and publish a
-40–100 word outcome/handoff comment: what this run changed, actual state,
-verification result or evidence link, next action, and a link to the PR body.
-Preserve all actionable findings and material limits even if that needs more
-space. Move repeated scope, test inventories and enduring risks into the body;
-do not repeat label rationale. If no summary exists, skip it; do not invent one.
-
-Find the caller's marker and update it via **update-comment**; create via
-**comment-pr** only when absent. Use a body file to preserve formatting. Do not
-publish a caller's review-complete summary before its review has happened, claim
-unreached completion or include secrets.
+Unlike the authoring skills, this skill does not compose the run summary itself — the caller owns it. When the caller provided one (`--summary-file <path>`, or a complete summary in the PREVIOUS STEP block), post it via the tracker operation **comment-pr** with a body file so multi-line formatting is preserved, keeping the caller's structure with the heading shape `` ## 🤖 `<caller skill>` — run summary ``. When no summary material exists, skip silently — the caller posts its own. Never post secrets or credential values, and never claim a completion the caller did not reach.
 
 ## Marker emission
 
