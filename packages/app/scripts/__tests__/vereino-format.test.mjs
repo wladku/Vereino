@@ -34,6 +34,7 @@ test('vereinoFormatGlobs lists module, package, test and tooling paths', () => {
   assert.ok(globs.includes('packages/app/src/modules/alpha/**'))
   assert.ok(globs.includes('packages/app/.ai/qa/tests/**'))
   assert.ok(globs.includes('scripts/verify.mjs'))
+  assert.ok(globs.includes('scripts/setup.mjs'))
 })
 
 test('listVereinoFiles keeps owned code files and skips platform, dependency and non-code files', () => {
