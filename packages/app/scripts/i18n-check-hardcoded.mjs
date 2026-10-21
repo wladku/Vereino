@@ -166,8 +166,17 @@ export function scanHardcodedI18n(root = process.cwd()) {
   return { advisory: true, filesScanned: files.length, findings, allowlisted, errors }
 }
 
-function runCli() {
+// Vereino local patch (engineering standards S2.4): `--strict` fails on findings in Vereino-owned
+// modules (packages/app/vereino-modules.json); scaffold findings stay advisory.
+async function strictFindings(findings) {
+  const { readVereinoModuleIds } = await import('./vereino-paths.mjs')
+  const prefixes = readVereinoModuleIds().map((id) => `src/modules/${id}/`)
+  return findings.filter((finding) => prefixes.some((prefix) => finding.file.startsWith(prefix)))
+}
+
+async function runCli() {
   const json = process.argv.slice(2).includes('--json')
+  const strict = process.argv.slice(2).includes('--strict')
   const result = scanHardcodedI18n()
   if (json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
   if (result.findings.length > 0) {
@@ -181,7 +190,11 @@ function runCli() {
     process.stdout.write(`[i18n:check-hardcoded] ${result.filesScanned} files passed.\n`)
   }
   for (const error of result.errors) process.stderr.write(`[i18n:check-hardcoded] ${error}\n`)
-  process.exitCode = result.errors.length > 0 ? 1 : 0
+  const blocking = strict ? await strictFindings(result.findings) : []
+  if (blocking.length > 0) {
+    process.stderr.write(`[i18n:check-hardcoded] --strict: ${blocking.length} findings in Vereino modules must be translated or allowlisted with a reason.\n`)
+  }
+  process.exitCode = result.errors.length > 0 || blocking.length > 0 ? 1 : 0
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) runCli()
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await runCli()

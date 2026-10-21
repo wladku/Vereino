@@ -4,12 +4,7 @@
   "tracker": "github",
   "validation": {
     "commands": [
-      "yarn generate",
-      "yarn typecheck",
-      "yarn lint",
-      "yarn ds:check",
-      "yarn test",
-      "yarn build"
+      "yarn verify"
     ]
   },
   "labels": {

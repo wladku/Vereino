@@ -35,7 +35,10 @@ Route first; never probe unmatched context.
 - Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI) MUST read `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`; tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
 - Repository language is English: docs, specs, research, code, comments and commit messages. UI text lives only in i18n catalogs; every Vereino module ships `i18n/en.json` and `i18n/pl.json`, and a new language is added by adding catalog files.
-- Git: after each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a Conventional Commits message (`docs:`, `feat(<module>):`, `fix:`, `chore:`); one task = one commit, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
+- Git: work on a branch `<type>/<kebab-slug>` (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `build`, `perf`), never commit to `main`; `main` changes only through a pull request that is squash-merged after the required checks pass. After each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a signed-off Conventional Commits message (`git commit -s`; `type(scope): subject`, scopes per the engineering standards S1.3); one task = one pull request, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
+- Engineering standards: `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (S1–S19) is the engineering reference. Register every new Vereino module id in `packages/app/vereino-modules.json`; declare business error codes in the module's `lib/error-codes.ts` and throw them from `api/errors.ts` (S6.7); list responses use `{ items, total, page, pageSize, totalPages }` (S6.4).
+- Unit-test coverage (MUST, no exceptions): every new or changed function in Vereino pure logic (`packages/app/src/modules/<id>/lib/**`), in the shared packages (`packages/core|db|ui/src/**`) and in Vereino tooling scripts (`scripts/verify.mjs`, `eslint.vereino.mjs`, `packages/app/scripts/vereino-*.mjs`, `packages/app/scripts/check-vereino-contracts.mjs`) ships with unit tests that keep line, branch and function coverage at 100 %. `yarn test` and `yarn test:scripts` enforce the threshold and fail below it; never lower a threshold, exclude a file or add a coverage-ignore comment to pass (the only allowed ignore is the CLI entry-point guard). Routes, commands, subscribers and pages are covered by integration tests (`yarn test:integration:vereino`), not by mocked unit tests (S13.1).
+- Browser checks: to exercise a running app as an agent, start it with `yarn test:integration:vereino:start` (Testcontainers PostgreSQL) and drive it with agent-browser — `node packages/app/.ai/qa/agent-browser/login-smoke.mjs` is the reference scenario and the CI job `browser-smoke` runs it on every pull request.
 
 ## Ask First
 
@@ -77,7 +80,7 @@ Rules (MUST):
 
 ## Validation
 
-Broad: `yarn generate && yarn typecheck && yarn typecheck:packages && yarn lint && yarn ds:check && yarn test && yarn build`; integration: `yarn test:integration:ephemeral`; lessons: `yarn lessons:check`. Never migrate to validate.
+Gate: `yarn verify` — the only gate command, identical locally and in CI; every step blocks; `yarn verify --list` shows the steps, `yarn verify --from <step>` resumes after a fix. Integration: `yarn test:integration:vereino` (Testcontainers PostgreSQL 17, production build, Playwright; focused: `--filter <TEST-ID>`). Do not use the platform runner `yarn test:integration:ephemeral`: it waits for the `customers` module, which this app does not enable. Formatting: `yarn format`. Never migrate to validate.
 
 ## Three-Axis Context Assembler
 

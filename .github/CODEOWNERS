@@ -1,0 +1,19 @@
+# Paths that need a maintainer's approval (engineering standards S1.5).
+# Add the second maintainer's GitHub handle to every line, then enable "Require review from Code Owners"
+# in the main ruleset (docs/ops/github-settings.md); a sole owner cannot approve their own pull request.
+
+/packages/app/src/modules/payments/     @wladku
+/packages/app/src/modules/people/       @wladku
+/packages/app/src/modules/**/migrations/ @wladku
+/packages/app/src/modules/**/acl.ts     @wladku
+/packages/app/src/modules/**/encryption.ts @wladku
+/packages/app/src/modules/**/setup.ts   @wladku
+/.github/                               @wladku
+/Dockerfile                             @wladku
+/docker/                                @wladku
+/railway.toml                           @wladku
+/railway.worker.toml                    @wladku
+/scripts/railway-*.sh                   @wladku
+/SECURITY.md                            @wladku
+/docs/compliance/                       @wladku
+/.ai/specs/2026-10-21-engineering-standards-and-patterns.md @wladku
