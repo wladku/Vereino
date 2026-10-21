@@ -32,9 +32,9 @@
   interface Thread { id: string; scope: 'club' | 'section' | 'group' | 'occurrence' | 'direct'; scopeId: string; scopeLabel: Txt; subject: Txt; isCase: boolean; messages: Msg[]; readBy: string[] }
   interface Fee { id: string; name: string; group: string; amount: number; dueDay: number; period: string }
   interface Charge { id: string; source: 'fee' | 'rental' | 'order'; sourceId: string; person?: string; payerPerson?: string; payerInstitution?: string; payerMissing?: boolean; description: Txt; period?: string; amount: number; discount: number; discountName?: Txt; due: string; payee: 'club' | 'owner_institution'; status: 'open' | 'partially_paid' | 'paid' | 'cancelled' | 'forfeited'; payments: Pay[]; updatedAt: number }
-  // method: 'cash' | 'transfer' | 'online' | 'owner_transfer' (label: t(`pay.method.${method}`));
+  // method: 'cash' | 'transfer' | 'online' (label: t(`pay.method.${method}`)); the payee (club / owner institution) comes from the charge.
   // settled: 'club_cash' (taken directly by the club cash desk) or the cash handover (RG) number.
-  interface Pay { amount: number; method: 'cash' | 'transfer' | 'online' | 'owner_transfer'; date: string; ref?: string; by?: string; receipt?: string; bankTx?: string; settled?: string }
+  interface Pay { amount: number; method: 'cash' | 'transfer' | 'online'; date: string; ref?: string; by?: string; receipt?: string; bankTx?: string; settled?: string }
   interface BankTx { id: string; importId: string; date: string; amount: number; sender: string; title: string; hash: string; status: 'booked' | 'suggested' | 'unmatched' | 'ignored'; payer?: string; alloc: { chargeId: string; amount: number }[]; reason: Txt; auto?: boolean }
   interface BankImport { id: string; file: string; at: string; by: string; total: number; booked: number; suggested: number; unmatched: number; skipped: number }
   // Order campaigns (e.g. kit) — REQ-032, REQ-033.
@@ -428,7 +428,7 @@
     // Rentals: charges payable to the municipality.
     for (const r of db.rentals) if (['requested', 'confirmed', 'done'].includes(r.status)) {
       const ch = rentalCharge(db, r)
-      if (r.status !== 'requested') { ch.status = 'paid'; ch.payments = [{ amount: ch.amount, method: 'owner_transfer', date: addDays(r.date, -3) }] }
+      if (r.status !== 'requested') { ch.status = 'paid'; ch.payments = [{ amount: ch.amount, method: 'transfer', date: addDays(r.date, -3) }] }
     }
     seedKit(db)
     return db
@@ -564,7 +564,7 @@
     { id: 'anna', person: 'p-anna', label: 'Anna Kowalczyk', roleKey: 'persona.role.swimInstructor', features: ['people.self', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'anna@gwiazda.example' },
     { id: 'aneta', person: 'p-aneta', label: 'Aneta Wiśniewska', roleKey: 'persona.role.admin', features: ['*'], home: '/backend', email: 'aneta@gwiazda.example' },
     { id: 'beata', person: 'p-beata', label: 'Beata Zając', roleKey: 'persona.role.treasurer', features: ['people.self', 'backend', 'payments.view', 'payments.manage', 'payments.bank.import', 'payments.cash.record', 'payments.cash.settle', 'payments.orders.manage'], home: '/backend', email: 'skarbnik@gwiazda.example' },
-    { id: 'tomek', person: 'p-tomek', label: 'Tomek Lis', roleKey: 'persona.role.attendant', features: ['people.self', 'facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage', 'facilities.bookings.create', 'backend'], home: '/club/facility', email: 'tomek@gwiazda.example' },
+    { id: 'tomek', person: 'p-tomek', label: 'Tomek Lis', roleKey: 'persona.role.attendant', features: ['people.self', 'facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage', 'backend'], home: '/club/facility', email: 'tomek@gwiazda.example' },
     { id: 'guest', label: '', roleKey: 'persona.role.guest', features: [], home: '/p/gwiazda' },
   ]
 
@@ -793,16 +793,16 @@
   const FLOWS: { id: string; title: string; steps: [PersonaId, string, string][] }[] = [
     { id: 'F-01', title: 'flow.F01.title', steps: [['aneta', '/backend/club/sections', 'flow.F01.s1'], ['aneta', '/backend/people/persons', 'flow.F01.s2'], ['aneta', '/backend/people/persons/p-kasia?tab=guardians', 'flow.F01.s3'], ['aneta', '/backend/people/persons/p-jas?tab=account', 'flow.F01.s4'], ['aneta', '/backend/people/persons/p-kuba?tab=account', 'flow.F01.s5'], ['kasia', '/club', 'flow.F01.s6']] },
     { id: 'F-02', title: 'flow.F02.title', steps: [['kasia', '/login', 'flow.F02.s1'], ['kasia', '/club', 'flow.F02.s2'], ['ola', '/club/occurrences/a-mecz-2026-11-15', 'flow.F02.s3'], ['kasia', '/club/occurrences/a-mecz-2026-11-15', 'flow.F02.s4'], ['kasia', '/club/calendar', 'flow.F02.s5']] },
-    { id: 'F-03', title: 'flow.F03.title', steps: [['wojtek', '/club/occurrences/a-orlm-2026-11-17', 'flow.F03.s1'], ['wojtek', '/backend', 'flow.F03.s2'], ['wojtek', '/backend/activities/occurrences?view=unassigned', 'flow.F03.s3'], ['wojtek', '/club/occurrences/a-orlm-2026-11-10/attendance', 'flow.F03.s4'], ['aneta', '/backend/activities/units', 'flow.F03.s5']] },
-    { id: 'F-04', title: 'flow.F04.title', steps: [['wojtek', '/backend/activities/activities', 'flow.F04.s1'], ['wojtek', '/backend/activities/create', 'flow.F04.s2']] },
+    { id: 'F-03', title: 'flow.F03.title', steps: [['wojtek', '/club/occurrences/a-orlm-2026-11-17', 'flow.F03.s1'], ['wojtek', '/backend', 'flow.F03.s2'], ['wojtek', '/backend/activities/occurrences?view=unassigned', 'flow.F03.s3'], ['wojtek', '/club/occurrences/a-orlm-2026-11-10/attendance', 'flow.F03.s4'], ['aneta', '/backend/activities/reports/coach-units', 'flow.F03.s5']] },
+    { id: 'F-04', title: 'flow.F04.title', steps: [['wojtek', '/backend/activities/activities', 'flow.F04.s1'], ['wojtek', '/backend/activities/activities/create', 'flow.F04.s2']] },
     { id: 'F-05', title: 'flow.F05.title', steps: [['wojtek', '/club/occurrences/a-orlm-2026-11-19', 'flow.F05.s1'], ['wojtek', '/club/messages', 'flow.F05.s2'], ['aneta', '/backend/communication/threads/t-uwagi', 'flow.F05.s3']] },
     { id: 'F-06', title: 'flow.F06.title', steps: [['guest', '/club/link?occ=a-orlm-2026-11-12', 'flow.F06.s1'], ['guest', '/club/d/tok-expired', 'flow.F06.s2']] },
     { id: 'F-07', title: 'flow.F07.title', steps: [['aneta', '/backend/payments/fees', 'flow.F07.s1'], ['aneta', '/backend/payments/charges', 'flow.F07.s2'], ['aneta', '/backend/payments/charges?view=overdue', 'flow.F07.s3'], ['kasia', '/club/payments', 'flow.F07.s4']] },
     { id: 'F-08', title: 'flow.F08.title', steps: [['wojtek', '/club/places', 'flow.F08.s1'], ['wojtek', '/club/places/pl-boisko?date=2026-11-14', 'flow.F08.s2'], ['anna', '/club/places/pl-salka?date=2026-11-13', 'flow.F08.s3']] },
     { id: 'F-09', title: 'flow.F09.title', steps: [['guest', '/p/gwiazda', 'flow.F09.s1'], ['guest', '/p/gwiazda/places', 'flow.F09.s2'], ['guest', '/p/gwiazda/places/orlik-boisko', 'flow.F09.s3'], ['guest', '/mail', 'flow.F09.s4'], ['aneta', '/backend/facilities/requests', 'flow.F09.s5']] },
     { id: 'F-10', title: 'flow.F10.title', steps: [['tomek', '/club/facility', 'flow.F10.s1'], ['tomek', '/backend/facilities/calendar', 'flow.F10.s2']] },
-    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/gwiazda/sections/basen', 'flow.F11.s1'], ['aneta', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/gwiazda/sections/basen', 'flow.F11.s3'], ['aneta', '/backend/club/sections/s-zumba?tab=public', 'flow.F11.s4'], ['aneta', '/backend/club/sections', 'flow.F11.s5']] },
-    { id: 'F-12', title: 'flow.F12.title', steps: [['aneta', '/backend/facilities/report', 'flow.F12.s1']] },
+    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/gwiazda/sections/basen', 'flow.F11.s1'], ['aneta', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/gwiazda/sections/basen', 'flow.F11.s3'], ['aneta', '/backend/club/sections/s-zumba/edit?tab=public', 'flow.F11.s4'], ['aneta', '/backend/club/sections', 'flow.F11.s5']] },
+    { id: 'F-12', title: 'flow.F12.title', steps: [['aneta', '/backend/facilities/reports/owner', 'flow.F12.s1']] },
     { id: 'F-13', title: 'flow.F13.title', steps: [['aneta', '/backend/payments/orders', 'flow.F13.s1'], ['aneta', '/backend/payments/orders/create', 'flow.F13.s2'], ['kasia', '/club/orders/oc-akad', 'flow.F13.s3'], ['guest', '/club/orders/oc-akad', 'flow.F13.s4'], ['guest', '/club/o/kit-robert', 'flow.F13.s5'], ['wojtek', '/club/coach/payments', 'flow.F13.s6'], ['beata', '/backend/payments/cash-custody', 'flow.F13.s7'], ['aneta', '/backend/payments/orders/oc-akad?view=supplier', 'flow.F13.s8'], ['wojtek', '/club/coach/payments', 'flow.F13.s9']] },
     { id: 'F-14', title: 'flow.F14.title', steps: [['aneta', '/backend/payments/fees', 'flow.F14.s1'], ['wojtek', '/club', 'flow.F14.s2'], ['wojtek', '/club/coach/payments?group=g-orlm&due=1', 'flow.F14.s3'], ['anna', '/club/coach/payments', 'flow.F14.s4'], ['beata', '/backend/payments/cash-custody', 'flow.F14.s5'], ['beata', '/backend', 'flow.F14.s6']] },
   ]
@@ -1003,7 +1003,8 @@
     const guardOf = db.guardianships.filter((g) => g.ward === pid)
     const consentLabel: Record<string, string> = { regulations: t('m.screenProfile.consentRegulations'), image: t('m.screenProfile.consentImage'), trips: t('m.screenProfile.consentTrips') }
     return `<form class="form" data-form="profile" novalidate><div class="form-group"><h3>${t('m.screenProfile.myDetails')}</h3><div class="fields">
-        ${fld('phone', t('common.phone'), inp('phone', 'tel', p.phone || ''), { hint: t('m.screenProfile.phoneHint') })}${fld('email', t('m.screenProfile.contactEmail'), inp('email', 'email', p.email || ''), { req: true })}</div>
+        ${fld('phone', t('common.phone'), inp('phone', 'tel', p.phone || ''), { hint: t('m.screenProfile.phoneHint') })}${fld('email', t('m.screenProfile.contactEmail'), inp('email', 'email', p.email || ''), { req: true })}
+        ${fld('lang', t('m.screenProfile.language'), sel('lang', LANGS.map((c) => [c, langName(c)] as [string, string]), lang, 'data-change="lang" id="profile-lang"'), { hint: t('m.screenProfile.languageHint') })}</div>
         ${isCoachPersona() ? `<div style="margin-top:10px">${chk('publish', t('m.screenProfile.publishConsent'), !!p.publishConsent)}</div>` : ''}
         <div class="form-actions" style="margin-top:10px"><button class="btn primary" type="submit">${t('common.save')}</button></div></div></form>
       ${wards.length ? `<div class="section-title">${t('m.screenProfile.wardsAndConsents')}</div>${wards.map((g) => { const w = personById(db, g.ward); const grs = db.groups.filter((x) => x.members.includes(w.id)); return `<div class="card"><div class="row between"><span class="item-title">${esc(w.first)} ${esc(w.last)}</span><span class="small muted">${t('m.screenProfile.age', { n: ageOn(w.birth) })}${w.account ? ` · ${t('m.screenProfile.hasAccount')}` : ''}</span></div>
@@ -1059,14 +1060,16 @@
     const place = db.places.find((x) => x.id === p.id) || db.places.find((x) => x.id === (q.get('place') || 'pl-boisko')) as Place
     const date = q.get('date') || TODAY
     const day = occupancy(place.id, date)
+    // The page opens with facilities.view; booking a free hour (M-11 / B-23) requires facilities.bookings.create.
+    const canBook = can('facilities.bookings.create')
     const hrefFor = (d: string): string => backend ? `/backend/facilities/calendar?place=${place.id}&date=${d}` : `/club/places/${place.id}?date=${d}`
     const placeSel = backend ? `<div class="chips" style="margin-bottom:8px" role="group" aria-label="${esc(t('common.place'))}">${db.places.filter((x) => !db.places.some((c) => c.parent === x.id)).map((x) => `<a class="chip ${x.id === place.id ? 'on' : ''}" href="#/backend/facilities/calendar?place=${x.id}&date=${date}">${esc(x.name)}</a>`).join('')}</div>` : ''
     return `${backend ? pageHead(t('m.screenPlace.title'), t('m.screenPlace.subtitle'), can('facilities.manage') ? btn(t('m.screenPlace.setAvailability'), 'availability', { place: place.id }, 'primary') : '') : ''}${placeSel}
       ${backend && can('facilities.manage') ? availabilityCard(place) : ''}
       <div class="row between"><div><div class="item-title">${esc(place.name)}</div><div class="small muted">${esc(dLong(date))} · ${t('m.screenPlace.capacity', { n: place.capacity })}</div></div></div>
       ${dateChips(hrefFor, date)}
-      <p class="small muted">${backend ? t('m.screenPlace.clickHintBackend') : t('m.screenPlace.clickHintMember')}</p>
-      ${timeline(place.id, date, { clickable: true, showNames: true })}
+      ${canBook ? `<p class="small muted">${backend ? t('m.screenPlace.clickHintBackend') : t('m.screenPlace.clickHintMember')}</p>` : ''}
+      ${timeline(place.id, date, { clickable: canBook, showNames: true })}
       ${day.length ? `<div class="section-title">${t('m.screenPlace.dayEntries')}</div><ul class="list small">${day.map((o) => `<li>${fromMin(o.from)}–${fromMin(o.to)} · ${esc(o.label)}${o.own ? ` ${btn(t('common.cancel'), 'cancel-booking', { id: o.ref }, 'sm')}` : ''}</li>`).join('')}</ul>` : ''}`
   }
 
@@ -1218,7 +1221,7 @@
     if (can('payments.orders.manage')) widgets.push(kitDashboardWidget(w))
     if (can('facilities.rentals.approve')) widgets.push(w(t('b.screenDashboard.requestsTitle'), pend.length ? `<ul class="list small">${pend.map((r) => `<li>${esc(r.renter)} — ${dShort(r.date)} ${r.start} · ${esc(t('b.screenDashboard.expires', { at: r.holdUntil }))}</li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.noRequests'))}</p>`, '/backend/facilities/requests', pend.length))
     if (can('facilities.view')) { const today = occupancy('pl-boisko', TODAY).concat(occupancy('pl-multi', TODAY)); widgets.push(w(t('b.screenDashboard.todayTitle'), `<ul class="list small">${today.map((o) => `<li>${fromMin(o.from)}–${fromMin(o.to)} ${esc(o.label)}</li>`).join('') || `<li class="muted">${esc(t('b.screenDashboard.nothingScheduled'))}</li>`}</ul>`, '/backend/facilities/calendar')) }
-    if (isAdmin()) widgets.push(w(t('b.screenDashboard.noCoordTitle'), noCoord.length ? `<ul class="list small">${noCoord.map((s) => `<li><a href="#/backend/club/sections/${s.id}?tab=coord">${esc(s.name)}</a></li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.noCoordNone'))}</p>`, '/backend/club/sections', noCoord.length))
+    if (isAdmin()) widgets.push(w(t('b.screenDashboard.noCoordTitle'), noCoord.length ? `<ul class="list small">${noCoord.map((s) => `<li><a href="#/backend/club/sections/${s.id}/edit?tab=coord">${esc(s.name)}</a></li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.noCoordNone'))}</p>`, '/backend/club/sections', noCoord.length))
     return `${pageHead(t('b.screenDashboard.greeting', { name: personById(db, pid).first }), t('b.screenDashboard.subtitle', { date: dLong(TODAY) }))}<div class="grid2">${widgets.join('')}</div>`
   }
 
@@ -1255,7 +1258,7 @@
     return `${pageHead(t('b.screenSections.title'), t('b.screenSections.subtitle'), isAdmin() ? btn(esc(t('b.screenSections.add')), 'new-section', {}, 'primary') : '')}
       ${table({ cols: [
         { label: t('b.screenSections.logo'), cell: (s: Section) => `<span class="row" style="gap:6px">${logoBox(sectionLogo(s), t('b.screenSections.logoAlt', { name: s.name }), 28)}${s.logo ? '' : `<span class="small muted">${esc(t('b.screenSections.clubLogo'))}</span>`}</span>` },
-        { label: t('common.section'), cell: (s: Section) => `<a class="row-link" href="#/backend/club/sections/${s.id}">${esc(s.name)}</a>` },
+        { label: t('common.section'), cell: (s: Section) => `<a class="row-link" href="#/backend/club/sections/${s.id}/edit">${esc(s.name)}</a>` },
         { label: t('b.screenSections.coordinators'), cell: (s: Section) => { const c = db.roles.filter((r) => r.role === 'coordinator' && r.section === s.id).map((r) => esc(pName(r.person))); return c.length ? c.join(', ') : badge(t('b.screenSections.noCoordinator'), 'warning') } },
         { label: t('common.groups'), num: true, cell: (s: Section) => String(db.groups.filter((g) => g.section === s.id).length) },
         { label: t('b.screenSections.public'), cell: (s: Section) => yesNoBadge(s.isPublic) },
@@ -1269,7 +1272,7 @@
     if (!s) return empty(t('b.screenSection.notFound'), '404')
     const tab = q.get('tab') || 'data'
     const canEdit = isAdmin() || (can('club_core.sections.public_content') && coordSections(me()).includes(s.id))
-    const tabs = `<div class="tabs">${[['data', t('b.screenSection.tabDetails')], ['coord', t('b.screenSection.tabCoordinators')], ['public', t('b.screenSection.tabPublic')]].map(([k, l]) => `<a class="${tab === k ? 'active' : ''}" href="#/backend/club/sections/${s.id}?tab=${k}">${esc(l)}</a>`).join('')}</div>`
+    const tabs = `<div class="tabs">${[['data', t('b.screenSection.tabDetails')], ['coord', t('b.screenSection.tabCoordinators')], ['public', t('b.screenSection.tabPublic')]].map(([k, l]) => `<a class="${tab === k ? 'active' : ''}" href="#/backend/club/sections/${s.id}/edit?tab=${k}">${esc(l)}</a>`).join('')}</div>`
     let body = ''
     if (tab === 'data') body = `<form class="form" data-form="section" data-id="${s.id}" novalidate><div class="form-group"><div class="fields">${fld('name', t('common.name'), inp('name', 'text', s.name, isAdmin() ? '' : 'disabled'), { req: true })}${fld('short', t('b.screenSection.shortDescription'), inp('short', 'text', s.short))}</div>${fld('description', t('b.screenSection.internalDescription'), area('description', s.description))}</div>
       <div class="form-group"><h3>${esc(t('b.screenSection.logoHeading'))}</h3><div class="row" style="gap:16px;align-items:flex-start">${logoBox(sectionLogo(s), t('b.screenSections.logoAlt', { name: s.name }), 72)}<div class="stack" style="flex:1;min-width:200px">
@@ -1390,7 +1393,7 @@
   function screenActivities(): string {
     const secs = coordSections(me())
     const rows = db.activities.filter((a) => isAdmin() || secs.includes(group(a.group).section))
-    return `${pageHead(t('b.screenActivities.title'), t('b.screenActivities.sub'), can('activities.manage') ? link(t('b.screenActivities.newActivity'), '/backend/activities/create', 'btn primary') : '')}
+    return `${pageHead(t('b.screenActivities.title'), t('b.screenActivities.sub'), can('activities.manage') ? link(t('b.screenActivities.newActivity'), '/backend/activities/activities/create', 'btn primary') : '')}
       ${table({ cols: [
         { label: t('common.name'), cell: (a: Activity) => `<b>${esc(a.name)}</b>` },
         { label: t('common.group'), cell: (a: Activity) => esc(group(a.group).name) },
@@ -1466,7 +1469,7 @@
       const given = tr.filter((o) => o.defaultCoach === c && o.coach !== c).length
       const taken = tr.filter((o) => o.coach === c && o.defaultCoach !== c).length
       const balance = tr.filter((o) => o.coach === c).length
-      const matches = done.filter((o) => ['match', 'sparring', 'tournament'].includes(o.type) && o.coach === c).length
+      const matches = done.filter((o) => ['match', 'sparring'].includes(o.type) && o.coach === c).length
       const k = db.contracts.find((x) => x.party === c && x.kind === 'coach')
       return { coach: c, planned, given, taken, balance, matches, amount: k ? k.base + balance * k.unit + matches * k.match : null, occs: done.filter((o) => o.coach === c || o.defaultCoach === c) }
     }).filter((r) => isAdmin() || can('activities.reports.view') || r.coach === me())
@@ -1718,7 +1721,7 @@
       <div class="grid3"><div class="card"><div class="sub">${t('b.screenCharge.toPay')}</div><div class="kpi">${zl(c.amount - c.discount)}</div>${c.discount ? `<div class="small muted">${t('b.screenCharge.discountLine', { name: esc(txt(c.discountName)), discount: zl(c.discount), amount: zl(c.amount) })}</div>` : ''}</div>
       <div class="card"><div class="sub">${t('b.screenCharge.remaining')}</div><div class="kpi">${zl(Math.max(0, remaining(c)))}</div>${statusBadge(c.status)}</div>
       <div class="card"><div class="sub">${t('b.screenCharge.payerPayee')}</div><div class="item-title">${c.payerMissing ? badge(t('b.screenCharge.noPayer'), 'warning') : esc(c.payerPerson ? pName(c.payerPerson) : c.payerInstitution)}</div><div class="small muted">${c.payee === 'club' ? t('b.screenCharge.toClubAccount') : t('b.screenCharge.toOwnerAccount', { owner: esc(ownerName()) })}</div></div></div>
-      <div class="section-title">${t('b.screenCharge.payments')}</div>${table({ cols: [{ label: t('common.date'), cell: (x: any) => esc(x.date) }, { label: t('b.screenCharge.colMethod'), cell: (x: any) => esc(t(`pay.method.${x.method}`)) }, { label: t('b.screenCharge.colReference'), cell: (x: any) => esc(x.receipt || x.ref || '—') }, { label: t('b.screenCharge.colTakenBy'), cell: (x: any) => x.by ? esc(pName(x.by)) : x.bankTx ? t('b.screenCharge.bankStatement') : '—' }, { label: t('common.amount'), num: true, cell: (x: any) => zl(x.amount) }], rows: c.payments, empty: [t('b.screenCharge.emptyTitle'), t('b.screenCharge.emptyText')] })}`
+      <div class="section-title">${t('b.screenCharge.payments')}</div>${table({ cols: [{ label: t('common.date'), cell: (x: any) => esc(x.date) }, { label: t('b.screenCharge.colMethod'), cell: (x: any) => `${esc(t(`pay.method.${x.method}`))}${x.method === 'transfer' && c.payee === 'owner_institution' ? ` <span class="small muted">(${t('b.screenCharge.toOwnerAccount', { owner: esc(ownerName()) })})</span>` : ''}` }, { label: t('b.screenCharge.colReference'), cell: (x: any) => esc(x.receipt || x.ref || '—') }, { label: t('b.screenCharge.colTakenBy'), cell: (x: any) => x.by ? esc(pName(x.by)) : x.bankTx ? t('b.screenCharge.bankStatement') : '—' }, { label: t('common.amount'), num: true, cell: (x: any) => zl(x.amount) }], rows: c.payments, empty: [t('b.screenCharge.emptyTitle'), t('b.screenCharge.emptyText')] })}`
   }
 
   function screenRentals(q: URLSearchParams): string {
@@ -2288,7 +2291,7 @@
     R('/club/messages/:id', 'M-07', 'route.M-07', 'member', ['GET /api/communication/threads/{id}', 'POST /api/communication/threads/{id}/replies', 'GET /api/communication/share-text'], (p) => screenThread(p), { back: '/club/messages' }),
     R('/club/payments', 'M-08', 'route.M-08', 'member', ['GET /api/payments/my-charges', 'POST /api/payments/checkout'], () => screenPayments(), { empty: ['route.M-08.emptyTitle', 'route.M-08.emptyText'] }),
     R('/club/payments/return', 'M-09', 'route.M-09', 'member', ['GET /api/payments/my-charges'], (_p, q) => screenPayReturn(q), { back: '/club/payments' }),
-    R('/club/profile', 'M-10', 'route.M-10', 'member', ['GET /api/people/me', 'PUT /api/people/persons/{id}', 'PUT /api/people/guardianships/{id}'], () => screenProfile()),
+    R('/club/profile', 'M-10', 'route.M-10', 'member', ['GET /api/people/me', 'PUT /api/people/me', 'PUT /api/people/persons/{id}', 'PUT /api/people/guardianships/{id}'], () => screenProfile()),
     R('/club/places', 'M-11', 'route.M-11', 'member', ['GET /api/facilities/calendar'], () => screenPlaces(), { empty: ['route.M-11.emptyTitle', 'route.M-11.emptyText'] }),
     R('/club/places/:id', 'M-11', 'route.M-11.place', 'member', ['GET /api/facilities/calendar?placeId&from&to', 'POST /api/facilities/internal-bookings', 'DELETE /api/facilities/internal-bookings/{id}', 'POST /api/activities/events'], (p, q) => screenPlace(p, q), { empty: ['route.M-11.place.emptyTitle', 'route.M-11.place.emptyText'], back: '/club/places' }),
     R('/club/facility', 'M-12', 'route.M-12', 'member', ['GET /api/facilities/today', 'POST/PUT /api/facilities/logs', 'POST /api/facilities/incidents', 'POST /api/facilities/rentals/{id}/no-show'], () => screenFacilityToday(), { empty: ['route.M-12.emptyTitle', 'route.M-12.emptyText'] }),
@@ -2300,11 +2303,11 @@
     R('/club/o/:token', 'M-19', 'route.M-19', 'member', ['GET /api/payments/order-links/{token}', 'POST /api/payments/order-links/{token}/orders'], (p, q) => screenKitToken(p, q), { persona: false }),
     R('/club/d/:token', 'M-14', 'route.M-14', 'member', ['GET /api/activities/declaration-links/{token}', 'POST /api/activities/declaration-links/{token}'], (p) => screenTokenDeclare(p), { persona: false }),
     R('/stripe', '—', 'route.stripe', 'bare', ['POST /api/payments/checkout → redirectUrl', 'webhook → payment_gateways.payment.captured'], (_p, q) => screenStripe(q)),
-    R('/backend', 'B-01', 'route.B-01', 'backend', ['GET /api/activities/occurrences?unassigned=1', 'GET /api/activities/occurrences?unsettled=1', 'GET /api/payments/overdue', 'GET /api/facilities/rentals?status=pending_approval', 'GET /api/facilities/today'], () => screenDashboard()),
+    R('/backend', 'B-01', 'route.B-01', 'backend', ['GET /api/activities/occurrences?unassigned=1', 'GET /api/activities/occurrences?unsettled=1', 'GET /api/payments/overdue', 'GET /api/payments/charges?payerMissing=1', 'GET /api/club_core/sections', 'GET /api/facilities/rentals?status=pending_approval', 'GET /api/facilities/today'], () => screenDashboard()),
     R('/backend/club/settings', 'B-02', 'route.B-02', 'backend', ['GET/PUT /api/club_core/settings'], () => screenSettings()),
     R('/backend/club/publication', 'B-03', 'route.B-03', 'backend', ['GET/PUT /api/club_core/settings (publication)'], () => screenPublication()),
     R('/backend/club/sections', 'B-04', 'route.B-04', 'backend', ['GET /api/club_core/sections'], () => screenSections(), { empty: ['route.B-04.emptyTitle', 'route.B-04.emptyText'] }),
-    R('/backend/club/sections/:id', 'B-05', 'route.B-05', 'backend', ['GET/PUT /api/club_core/sections/{id}', 'POST/DELETE /api/people/role-assignments'], (p, q) => screenSection(p, q)),
+    R('/backend/club/sections/:id/edit', 'B-05', 'route.B-05', 'backend', ['GET/PUT /api/club_core/sections/{id}', 'POST/DELETE /api/people/role-assignments'], (p, q) => screenSection(p, q)),
     R('/backend/club/places', 'B-06', 'route.B-06', 'backend', ['/api/club_core/places'], () => screenPlacesAdmin()),
     R('/backend/club/institutions', 'B-07', 'route.B-07', 'backend', ['/api/club_core/institutions', '/api/club_core/contracts'], (_p, q) => screenInstitutions(q)),
     R('/backend/people/persons', 'B-09', 'route.B-09', 'backend', ['GET /api/people/persons'], (_p, q) => screenPersons(q), { empty: ['route.B-09.emptyTitle', 'route.B-09.emptyText'] }),
@@ -2312,40 +2315,40 @@
     R('/backend/groups/groups', 'B-11', 'route.B-11', 'backend', ['GET /api/groups/groups'], (_p, q) => screenGroups(q)),
     R('/backend/groups/groups/:id', 'B-12', 'route.B-12', 'backend', ['/api/groups/groups/{id}', '/api/groups/memberships'], (p, q) => screenGroup(p, q)),
     R('/backend/activities/activities', 'B-13', 'route.B-13', 'backend', ['GET /api/activities/activities'], () => screenActivities()),
-    R('/backend/activities/create', 'B-14', 'route.B-14', 'backend', ['POST /api/activities/activities/preview', 'POST /api/activities/activities'], () => screenActivityCreate()),
+    R('/backend/activities/activities/create', 'B-14', 'route.B-14', 'backend', ['POST /api/activities/activities/preview', 'POST /api/activities/activities'], () => screenActivityCreate()),
     R('/backend/activities/occurrences', 'B-15', 'route.B-15', 'backend', ['GET /api/activities/occurrences', 'POST /api/activities/occurrences/{id}/coach', 'POST /api/activities/occurrences/{id}/cancel'], (_p, q) => screenOccurrences(q)),
-    R('/backend/activities/units', 'B-16', 'route.B-16', 'backend', ['GET /api/activities/reports/coach-units?month&format=csv'], (_p, q) => screenUnits(q), { empty: ['route.B-16.emptyTitle', ''] }),
+    R('/backend/activities/reports/coach-units', 'B-16', 'route.B-16', 'backend', ['GET /api/activities/reports/coach-units?month&format=csv'], (_p, q) => screenUnits(q), { empty: ['route.B-16.emptyTitle', ''] }),
     R('/backend/activities/policies', 'B-17', 'route.B-17', 'backend', ['/api/activities/attendance-policies'], () => screenPolicies()),
     R('/backend/communication/threads', 'B-18', 'route.B-18', 'backend', ['GET/POST /api/communication/threads'], (_p, q) => screenThreadsAdmin(q)),
     R('/backend/communication/threads/:id', 'B-19', 'route.B-19', 'backend', ['GET /api/communication/threads/{id}', 'POST …/replies', 'POST …/case'], (p) => screenThreadAdmin(p)),
-    R('/backend/payments/fees', 'B-20', 'route.B-20', 'backend', ['/api/payments/fees', '/api/payments/discount-rules'], () => screenFees()),
+    R('/backend/payments/fees', 'B-20', 'route.B-20', 'backend', ['/api/payments/fees', '/api/payments/discount-rules', 'GET/PUT /api/payments/settings'], () => screenFees()),
     R('/backend/payments/charges', 'B-21', 'route.B-21', 'backend', ['GET /api/payments/charges', 'GET /api/payments/overdue', 'POST /api/payments/charges/generate'], (_p, q) => screenCharges(q)),
-    R('/backend/payments/bank', 'B-29', 'route.B-29', 'backend', ['api.bankImportsFile', 'GET /api/payments/bank-transactions?status=', 'POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo', 'POST /api/payments/cash'], (_p, q) => screenBank(q)),
+    R('/backend/payments/bank', 'B-29', 'route.B-29', 'backend', ['api.bankImportsFile', 'GET /api/payments/bank-transactions?status=', 'POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo', 'POST /api/payments/cash', 'GET/PUT /api/payments/settings'], (_p, q) => screenBank(q)),
     R('/backend/payments/orders', 'B-30', 'route.B-30', 'backend', ['GET /api/payments/order-campaigns'], () => screenKitCampaigns(), { empty: ['route.B-30.emptyTitle', 'route.B-30.emptyText'] }),
     R('/backend/payments/orders/create', 'B-31', 'route.B-31', 'backend', ['POST /api/payments/order-campaigns'], (p) => screenKitBuilder(p)),
     R('/backend/payments/orders/:id/edit', 'B-31', 'route.B-31.edit', 'backend', ['GET/PUT /api/payments/order-campaigns/{id}'], (p) => screenKitBuilder(p)),
     R('/backend/payments/orders/:id', 'B-32', 'route.B-32', 'backend', ['GET /api/payments/order-campaigns/{id}', 'GET /api/payments/orders?campaignId', 'GET /api/payments/order-campaigns/{id}/summary?format=csv', 'POST /api/payments/order-campaigns/{id}/open|close|mark-ordered|mark-delivered|complete', 'GET /api/payments/order-campaigns/{id}/share-text', 'POST /api/payments/orders/{id}/hand-over'], (p, q) => screenKitCampaignAdmin(p, q)),
     R('/backend/payments/cash-custody', 'B-33', 'route.B-33', 'backend', ['GET /api/payments/cash-custody', 'POST /api/payments/cash-handovers', 'GET /api/payments/cash-handovers'], () => screenCashCustody(), { empty: ['route.B-33.emptyTitle', 'route.B-33.emptyText'] }),
     R('/backend/payments/charges/:id', 'B-22', 'route.B-22', 'backend', ['GET /api/payments/charges/{id}', 'POST /api/payments/charges/{id}/payments', 'POST /api/payments/charges/{id}/cancel'], (p) => screenCharge(p)),
-    R('/backend/facilities/calendar', 'B-23', 'route.B-23', 'backend', ['GET /api/facilities/calendar', 'POST /api/facilities/rentals', 'POST /api/facilities/rentals/quote'], (p, q) => screenPlace({ id: q.get('place') || 'pl-boisko' }, q, true)),
+    R('/backend/facilities/calendar', 'B-23', 'route.B-23', 'backend', ['GET /api/facilities/calendar', 'POST /api/facilities/rentals', 'POST /api/facilities/rentals/quote', 'POST /api/facilities/zone-rules/bulk'], (p, q) => screenPlace({ id: q.get('place') || 'pl-boisko' }, q, true)),
     R('/backend/facilities/rentals', 'B-24', 'route.B-24', 'backend', ['/api/facilities/rentals', 'POST …/{id}/confirm|cancel|move|no-show'], (_p, q) => screenRentals(q)),
     R('/backend/facilities/requests', 'B-25', 'route.B-25', 'backend', ['GET /api/facilities/rentals?status=pending_approval', 'POST /api/facilities/rentals/{id}/approve', 'POST /api/facilities/rentals/{id}/reject'], () => screenRequests(), { empty: ['route.B-25.emptyTitle', ''] }),
     R('/backend/facilities/zones', 'B-26', 'route.B-26', 'backend', ['/api/facilities/zone-rules', '/api/facilities/closures', '/api/facilities/rental-rates'], (_p, q) => screenZones(q)),
     R('/backend/facilities/logs', 'B-27', 'route.B-27', 'backend', ['/api/facilities/logs', '/api/facilities/incidents', '/api/facilities/entry-bans'], (_p, q) => screenLogs(q)),
-    R('/backend/facilities/report', 'B-28', 'route.B-28', 'backend', ['GET /api/facilities/reports/owner?placeId&from&to&format=csv'], (_p, q) => screenOwnerReport(q)),
+    R('/backend/facilities/reports/owner', 'B-28', 'route.B-28', 'backend', ['GET /api/facilities/reports/owner?placeId&from&to&format=csv'], (_p, q) => screenOwnerReport(q)),
     R('/p/gwiazda', 'P-01', 'route.P-01', 'public', ['GET /api/club_core/public/{clubSlug}'], () => screenClubPage(), { persona: false, empty: ['route.P-01.emptyTitle', ''] }),
     R('/p/gwiazda/sections/:slug', 'P-02', 'route.P-02', 'public', ['GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}'], (p) => screenSectionPage(p), { persona: false, empty: ['route.P-02.emptyTitle', ''] }),
     R('/p/gwiazda/places', 'P-03', 'route.P-03', 'public', ['GET /api/facilities/public/{clubSlug}/places'], () => screenPublicPlaces(), { persona: false }),
     R('/p/gwiazda/places/:slug', 'P-04', 'route.P-04', 'public', ['GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule', 'POST …/places/{placeSlug}/requests'], (p, q) => screenPublicPlace(p, q), { persona: false, empty: ['route.P-04.emptyTitle', ''] }),
-    R('/p/gwiazda/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
+    R('/p/gwiazda/requests/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
   ]
   // ACL features required by the pages (requireFeatures in page.meta.ts).
   const ROUTE_FEATURES: Record<string, string> = {
     'M-08': 'payments.view_own', 'M-09': 'payments.view_own', 'M-11': 'facilities.view', 'M-12': 'facilities.log.write',
     'B-02': 'club_core.manage', 'B-03': 'club_core.publication.manage', 'B-04': 'club_core.view', 'B-05': 'club_core.view', 'B-06': 'club_core.manage', 'B-07': 'club_core.manage',
     'B-09': 'people.view', 'B-10': 'people.view', 'B-11': 'groups.view', 'B-12': 'groups.view', 'B-13': 'activities.manage', 'B-14': 'activities.manage', 'B-15': 'activities.view',
-    'B-16': 'activities.reports.view', 'B-17': 'activities.manage', 'B-18': 'communication.cases.manage', 'B-19': 'communication.cases.manage',
-    'B-20': 'payments.manage', 'B-21': 'payments.view', 'B-22': 'payments.view', 'B-29': 'payments.manage', 'M-15': 'payments.cash.record', 'M-16': 'payments.orders.place', 'M-17': 'payments.orders.place', 'M-18': 'payments.groups.view', 'B-30': 'payments.orders.manage', 'B-31': 'payments.orders.manage', 'B-32': 'payments.orders.manage', 'B-33': 'payments.cash.settle', 'B-23': 'facilities.view', 'B-24': 'facilities.rentals.manage', 'B-25': 'facilities.rentals.approve',
+    'B-16': 'activities.reports.view', 'B-17': 'activities.manage', 'B-18': 'communication.view', 'B-19': 'communication.view',
+    'B-20': 'payments.manage', 'B-21': 'payments.view', 'B-22': 'payments.view', 'B-29': 'payments.bank.import', 'M-15': 'payments.cash.record', 'M-16': 'payments.orders.place', 'M-17': 'payments.orders.place', 'M-18': 'payments.groups.view', 'B-30': 'payments.orders.manage', 'B-31': 'payments.orders.manage', 'B-32': 'payments.orders.manage', 'B-33': 'payments.cash.settle', 'B-23': 'facilities.view', 'B-24': 'facilities.rentals.manage', 'B-25': 'facilities.rentals.approve',
     'B-26': 'facilities.manage', 'B-27': 'facilities.log.write', 'B-28': 'facilities.reports.view',
   }
   for (const r of ROUTES) if (ROUTE_FEATURES[r.id]) r.feature = ROUTE_FEATURES[r.id]
@@ -2388,10 +2391,10 @@
       ['', [['shell.backendShell.dashboard', '/backend', 'backend']]],
       ['shell.backendShell.groupClub', [['shell.backendShell.sections', '/backend/club/sections', 'club_core.view'], ['shell.backendShell.places', '/backend/club/places', 'club_core.manage'], ['shell.backendShell.institutions', '/backend/club/institutions', 'club_core.manage'], ['shell.backendShell.settings', '/backend/club/settings', 'club_core.manage'], ['shell.backendShell.publication', '/backend/club/publication', 'club_core.publication.manage']]],
       ['shell.backendShell.groupPeople', [['shell.backendShell.persons', '/backend/people/persons', 'people.view']]],
-      ['shell.backendShell.groupClasses', [['shell.backendShell.groups', '/backend/groups/groups', 'groups.view'], ['shell.backendShell.activities', '/backend/activities/activities', 'activities.manage'], ['shell.backendShell.occurrences', '/backend/activities/occurrences', 'activities.view', db.occurrences.filter((o) => o.status === 'planned' && !o.coach && o.date >= TODAY).length], ['shell.backendShell.units', '/backend/activities/units', 'activities.reports.view'], ['shell.backendShell.policies', '/backend/activities/policies', 'activities.manage']]],
-      ['shell.backendShell.groupCommunication', [['shell.backendShell.threads', '/backend/communication/threads', 'communication.cases.manage']]],
+      ['shell.backendShell.groupClasses', [['shell.backendShell.groups', '/backend/groups/groups', 'groups.view'], ['shell.backendShell.activities', '/backend/activities/activities', 'activities.manage'], ['shell.backendShell.occurrences', '/backend/activities/occurrences', 'activities.view', db.occurrences.filter((o) => o.status === 'planned' && !o.coach && o.date >= TODAY).length], ['shell.backendShell.units', '/backend/activities/reports/coach-units', 'activities.reports.view'], ['shell.backendShell.policies', '/backend/activities/policies', 'activities.manage']]],
+      ['shell.backendShell.groupCommunication', [['shell.backendShell.threads', '/backend/communication/threads', 'communication.view']]],
       ['shell.backendShell.groupFinance', [['shell.backendShell.fees', '/backend/payments/fees', 'payments.manage'], ['shell.backendShell.charges', '/backend/payments/charges', 'payments.view'], ['shell.backendShell.bank', '/backend/payments/bank', 'payments.manage', db.bankTx.filter((bt) => bt.status === 'suggested' || bt.status === 'unmatched').length], ['shell.backendShell.orders', '/backend/payments/orders', 'payments.orders.manage', db.kitCampaigns.filter((c) => ['open', 'closed', 'ordered', 'delivered'].includes(c.status)).length], ['shell.backendShell.cashCustody', '/backend/payments/cash-custody', 'payments.cash.settle', custodians().length]]],
-      ['shell.backendShell.groupFacility', [['shell.backendShell.calendar', '/backend/facilities/calendar', 'facilities.view'], ['shell.backendShell.rentals', '/backend/facilities/rentals', 'facilities.rentals.manage'], ['shell.backendShell.requests', '/backend/facilities/requests', 'facilities.rentals.approve', db.rentals.filter((r) => r.status === 'pending_approval').length], ['shell.backendShell.zones', '/backend/facilities/zones', 'facilities.manage'], ['shell.backendShell.logs', '/backend/facilities/logs', 'facilities.log.write'], ['shell.backendShell.report', '/backend/facilities/report', 'facilities.reports.view']]],
+      ['shell.backendShell.groupFacility', [['shell.backendShell.calendar', '/backend/facilities/calendar', 'facilities.view'], ['shell.backendShell.rentals', '/backend/facilities/rentals', 'facilities.rentals.manage'], ['shell.backendShell.requests', '/backend/facilities/requests', 'facilities.rentals.approve', db.rentals.filter((r) => r.status === 'pending_approval').length], ['shell.backendShell.zones', '/backend/facilities/zones', 'facilities.manage'], ['shell.backendShell.logs', '/backend/facilities/logs', 'facilities.log.write'], ['shell.backendShell.report', '/backend/facilities/reports/owner', 'facilities.reports.view']]],
     ]
     const nav = groups.map(([g, items]) => { const vis = items.filter(([, , f]) => can(f)); return vis.length ? `<div class="nav-group">${g ? `<span>${esc(t(g))}</span>` : ''}${vis.map(([l, h, , n]) => `<a href="#${h}" class="${path === h || (h !== '/backend' && path.startsWith(h)) ? 'active' : ''}">${esc(t(l))}${n ? `<span class="count">${n}</span>` : ''}</a>`).join('')}</div>` : '' }).join('')
     return `<div class="backend"><aside class="sidebar"><div class="club">${logoBox(db.settings.logo, t('shell.backendShell.clubLogo'), 28)}<span>${esc(db.settings.name)}</span></div><nav aria-label="${esc(t('shell.backendShell.menuLabel'))}">${nav}</nav></aside>
@@ -2420,7 +2423,7 @@
     const [path, q] = currentPath()
     if (path === '/mail') { drawer = 'mail'; history.replaceState(null, '', `#${persona().home}`); render(); return }
     // P-05: opening the link from the e-mail confirms the request (POST …/verify/{token}).
-    const vm = path.match(/^\/p\/gwiazda\/verify\/(.+)$/)
+    const vm = path.match(/^\/p\/gwiazda\/requests\/verify\/(.+)$/)
     if (vm) {
       const r = db.rentals.find((x) => x.token === vm[1])
       if (r && r.status === 'pending_verification') {
@@ -2765,7 +2768,7 @@
       openModal({ title: t('action.reject.title', { renter: r.renter }), danger: true, submitLabel: t('action.reject.submit'), body: fld('reason', t('action.reject.reason'), area('reason', '', 'maxlength="500"'), { req: true, hint: t('action.reject.reasonHint') }),
         onSubmit: (fd) => { const v = String(fd.get('reason') || '').trim(); if (v.length < 5) return { reason: t('action.reject.errReason') }; r.status = 'rejected'; r.reason = v; mail(r.email, lt('action.reject.mailSubject'), lt('action.reject.mailBody', { reason: v })); toast(t('action.reject.toast')); render() } })
     },
-    'rental-confirm': (el) => { const r = db.rentals.find((x) => x.id === el.dataset.id) as Rental; const c = db.charges.find((x) => x.id === r.chargeId); if (c) { c.payments.push({ amount: remaining(c), method: 'owner_transfer', date: TODAY }); c.status = 'paid' } r.status = 'confirmed'; toast(t('action.rentalConfirm.toast')); render() },
+    'rental-confirm': (el) => { const r = db.rentals.find((x) => x.id === el.dataset.id) as Rental; const c = db.charges.find((x) => x.id === r.chargeId); if (c) { c.payments.push({ amount: remaining(c), method: 'transfer', date: TODAY }); c.status = 'paid' } r.status = 'confirmed'; toast(t('action.rentalConfirm.toast')); render() },
     'rental-cancel': (el) => {
       const r = db.rentals.find((x) => x.id === el.dataset.id) as Rental
       const deadline = addDays(r.date, -1)
@@ -2896,7 +2899,7 @@
         const token = uid('vt')
         const r: Rental = { id: uid('r'), place: placeId, renter: org, category: rate.category, contact: String(fd.get('contact')), email: em, phone: ph, date, start: fromMin(s), end: fromMin(e), units: u, amount: rate.price * u, status: 'pending_verification', via: 'online', purpose: String(fd.get('purpose') || ''), token, holdUntil: '' }
         db.rentals.push(r)
-        mail(em, lt('ui.publicRequestModal.mailSubject'), lt('ui.publicRequestModal.mailBody', { place: place.name, date: ld(date), start: r.start, end: r.end }), `/p/gwiazda/verify/${token}`, lt('ui.publicRequestModal.mailLink'))
+        mail(em, lt('ui.publicRequestModal.mailSubject'), lt('ui.publicRequestModal.mailBody', { place: place.name, date: ld(date), start: r.start, end: r.end }), `/p/gwiazda/requests/verify/${token}`, lt('ui.publicRequestModal.mailLink'))
         openModal({ title: t('ui.publicRequestModal.checkInboxTitle'), submitLabel: t('common.close'), body: `<div class="alert success"><strong>${t('ui.publicRequestModal.sentTo', { email: esc(em) })}</strong>${esc(t('ui.publicRequestModal.confirmWithin'))}</div><p class="small">${esc(t('ui.publicRequestModal.inMockup'))} <a href="#" data-action="drawer" data-which="mail">${esc(t('ui.publicRequestModal.openMailbox'))}</a>.</p>`, onSubmit: () => undefined })
         render()
         return { __keep: '' }
@@ -3016,6 +3019,7 @@
       if (ph && !phoneOk(ph)) errs.phone = t('form.profile.phoneFormat')
       if (Object.keys(errs).length) return errs
       const p = personById(db, me()); p.email = e; p.phone = ph; p.publishConsent = !!fd.get('publish')
+      const l = String(fd.get('lang') || ''); if (l && CATALOGS[l]) setLang(l) // PUT /api/people/me { preferredLocale }
       toast(t('form.profile.saved')); render()
     },
     'link-request': (fd, form) => {
@@ -3162,8 +3166,8 @@
     if (k === 'coach-fees') { db.settings.coachFees = el.value as 'none' | 'view' | 'collect'; toast(t('ui.onChange.coachFeesSaved')) }
     if (k === 'grp-cash-sum') { const form = el.closest('form') as HTMLFormElement; const ids = new FormData(form).getAll('charges').map(String); const sum = db.charges.filter((c) => ids.includes(c.id)).reduce((a, c) => a + remaining(c), 0); (document.getElementById('grp-cash-amount') as HTMLInputElement).value = String(sum / 100) }
     if (k === 'kit-section') kitDraftEdit((d) => { d.groups = [] })
-    if (k === 'units-month') go(`/backend/activities/units?month=${el.value}`)
-    if (k === 'report-place') go(`/backend/facilities/report?place=${el.value}`)
+    if (k === 'units-month') go(`/backend/activities/reports/coach-units?month=${el.value}`)
+    if (k === 'report-place') go(`/backend/facilities/reports/owner?place=${el.value}`)
   })
   document.addEventListener('input', (ev) => {
     const el = ev.target as HTMLInputElement

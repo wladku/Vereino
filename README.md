@@ -9,18 +9,20 @@
 
 ## About
 
-Vereino (from German *Verein* — association, club) is being built for small, typically suburban multi-section clubs: a football academy of up to ~200 players as the main section, alongside a swimming pool and extra classes (zumba, pilates, gym). Today such clubs are run through Messenger groups, Excel and phone calls — often on a facility owned by the municipality.
+Vereino (from German *Verein* — association, club) is being built for small, typically suburban multi-section clubs: a football academy of up to ~200 players as the main section, alongside other sections on an equal footing (in the pilot: swimming pool, zumba, chess, cheerleading). Today such clubs are run through Messenger groups, Excel and phone calls — often on a facility owned by the municipality.
 
-**What the first release should do**
+**What the first release should do** (the Must requirements REQ-001…REQ-035 of the specification)
 
-- people with multiple roles (guardian, coach, coordinator, facility attendant), a guardian account with child profiles, an own login from age 13;
+- people with multiple roles (guardian, coach, coordinator, treasurer, facility attendant), a guardian account with child profiles, an own login from age 13; a minor participant never sees payments;
 - sections with coordinators, groups (teams and class groups on an equal footing), recurring activities → sessions, a calendar filtered by role — a single one for a parent whose children are in different sections;
 - attendance declarations and actual attendance, coach substitutions with automatic settlement of coach units;
-- announcements to a group/session/section with push and e-mail, a record of difficult cases;
-- membership fees, sibling discounts, charges, online payment;
-- a sports facility administered on behalf of the municipality (e.g. an Orlik, a municipal sports pitch complex): hour zones, a public schedule without sign-in, bookings, an attendant log, an owner report.
+- announcements to a group/session/section with in-app notifications and e-mail (plus a text with a link to paste into the group chat), a record of difficult cases;
+- membership fees, sibling discounts, charges, online payment (Stripe), bank statement import with automatic matching, cash payments with numbered receipts, order campaigns (e.g. kits) instead of Google Forms, the coach's view of their groups' payments with cash handover to the treasurer, a treasurer role limited to finances;
+- a sports facility administered on behalf of the municipality (e.g. an Orlik, a municipal sports pitch complex): hour zones, a public schedule without sign-in, bookings entered by staff, internal bookings by coaches of any section without approval, online booking requests from outsiders with administrator approval, bulk-set booking availability, an attendant log (Should), an owner report;
+- a public club page with section pages (schedule, terms, prices, instructors, materials, contact — each block switchable), club and section logos;
+- a multilingual interface — complete English and Polish catalogs in 1.0, another language = another catalog.
 
-**What we deliberately do not build:** training diagrams, a medical module, scouting, individual statistics, Messenger/WhatsApp integration.
+**What we deliberately do not build in 1.0:** training diagrams, a medical module, scouting, individual statistics, Messenger/WhatsApp integration (replaced by the share-to-group text), push notifications (they return with a native app — in 1.0 the channels are in-app and e-mail), online payment for facility renters (requests are online, payment goes to the owner's account), a page editor (CMS), translation of club-entered content, volunteer duty sign-up for sessions (planned for 1.1), a guardians' contact list for coaches, several clubs on one instance (the architecture does not prevent it).
 
 Pilot: KS Gwiazda Ściejowice. Authors: Władek Kuć (product), Kacper Kuć (technology).
 
@@ -73,7 +75,7 @@ Rules that keep Open Mercato working:
 ```
 packages/               the four workspaces above
 .ai/specs/              specifications (YYYY-MM-DD-slug.md); implemented/ and archive/ for the lifecycle
-.ai/specs/research/     discovery: business case, stakeholders, benchmark, MoSCoW, decisions D-001…D-012
+.ai/specs/research/     discovery: business case, stakeholders, benchmark, MoSCoW, decisions D-001…D-013
 .ai/runs/               logs of autonomous AI runs
 .ai/lessons.md, .ai/lessons/   durable lessons for agents
 .ai/guides/             Open Mercato framework guides and generated module facts

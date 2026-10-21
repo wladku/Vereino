@@ -13,8 +13,9 @@ Source tags used in the files: [INTERVIEW] conversation with a person outside th
 | `2026-10-20-protopersonas.md` | three protopersonas | ASSUMPTION |
 | `2026-10-20-journey-current-state-parent.md` | journey map as an assumption map (child's attendance) | gaps = questions |
 | `2026-09-30-benchmark-protrainup.md` | ProTrainUp benchmark | [BENCHMARK], checked 2026-09-30 |
-| `2026-10-20-moscow.md` | 1.0 scope using MoSCoW with the "what if not" test | proposal |
-| `decisions/` | decision records D-001…D-012 | confirmed / proposal |
+| `2026-10-20-moscow.md` | 1.0 scope using MoSCoW with the "what if not" test; addendum of 2026-10-20 (scope added after discovery, D-013) | proposal + confirmed addendum |
+| `decisions/` | decision records D-001…D-012 | confirmed (D-008 and D-012 partly open) |
+| `decisions/D-013-scope-added-after-discovery.md` | requirements added to 1.0 after discovery (REQ-023…REQ-035 of the spec) with their sources; kit orders Could → Must | confirmed 2026-10-20 |
 | `interviews/*-script-*.md` | Mom Test interview scripts (coach, treasurer, parent) | to be conducted |
 | `interviews/2026-09-26-meeting-wk-kk.md` | founders' meeting note (not an interview) | [DOCUMENT] |
 | `2026-10-20-domain-model-draft.md` | domain model draft v0.3 (modules, entities, roles, flows) — INPUT to `om-spec-writing`, not a spec in SPEC-000 format | draft |

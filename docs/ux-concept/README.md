@@ -12,7 +12,7 @@ Screen ID convention: **M-** member interface `/club` (phone), **B-** `/backend`
 
 ## 1. System users and their needs
 
-The subject is a **small multi-section club** (association), with a football academy as its main section and equal-standing non-football sections (swimming, zumba, pilates). One person has one record and one account, and roles add up (D-005) — e.g. Wojtek is the Żaki coach and the academy coordinator.
+The subject is a **small multi-section club** (association), with a football academy as its main section and equal-standing non-football sections (pilot: Basen, Zumba, Szachy, Cheerleader). One person has one record and one account, and roles add up (D-005) — e.g. Wojtek is the Żaki coach and the academy coordinator.
 
 | User | Who they are (pilot: KS Gwiazda) | Key needs | Key tasks in the system | Device / channel | Pain today |
 |---|---|---|---|---|---|
@@ -51,7 +51,7 @@ The subject is a **small multi-section club** (association), with a football aca
 | UC-12 | Attendant | Enter a rental after a phone call, keep the log, report an incident | Must / Should | REQ-013, REQ-016 | 5 |
 | UC-13 | Treasurer | Generate the period's membership fees and collect overdue amounts | Must | REQ-011 | 4 |
 | UC-14 | Guardian | Pay charges online | Must | REQ-012 | 4 |
-| UC-15 | Treasurer | Settle coaches (coach units report + CSV) | Must / Should | REQ-008, REQ-021 | 2 |
+| UC-15 | Administrator | Settle coaches (coach units report + CSV) | Must / Should | REQ-008, REQ-021 | 2 |
 | UC-16 | Coordinator / parent | Hold a conversation in a thread and mark it as a case | Must | REQ-009, REQ-010 | 3 |
 | UC-17 | Guardian without sign-in | Declare attendance from a personal link | Should | REQ-017 | 3 |
 | UC-18 | Guest | Get to know the club, its sections and activities | Must | REQ-025, REQ-026 | 1–4 |
@@ -81,11 +81,11 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 - **Preconditions:** Wojtek is the Żaki coach; Piotr is the Trampkarze coach.
 - **Path A (substitution):** Wojtek → M-02 → Friday session → M-04 → "Report absence" (reason) → the session goes to "Needing a coach". Coordinator → B-01 widget "Sessions needing a coach" → B-15 ("Needing a coach" perspective) → "Assign substitute" → picks Piotr (the list shows the coach's collisions) → save → notification for Piotr.
 - **Path B (attendance):** Piotr → M-02 → session → M-05 Attendance list: declared 11/2/3, present/absent/late toggles → "Close session" (confirmation) → session `done`.
-- **Path C (settlement):** treasurer → B-16 Coach units report → month → Wojtek: given away 1, Piotr: taken over 1 → "Export CSV".
+- **Path C (settlement):** administrator → B-16 Coach units report → month → Wojtek: handed over 1, Piotr: taken over 1 → "Export CSV" (the treasurer has no access to classes — DD-33).
 - **Branches:** two people tick at the same time → the second save gets 409, conflict dialog, list refreshed without losing selections; coach from outside the group → 403; session unsettled 24 h after it ends → B-15 "Unsettled" and the widget.
 
 #### F-04 New recurring activity (UC-07)
-- **Path:** B-13 Activities → "New activity" → B-14 wizard: section/group, type (match/friendly/tournament unavailable for `class_group`), name, place, coach, weekdays, times, period → preview of the first sessions and collisions → "Create" → session list in B-15.
+- **Path:** B-13 Activities → "New activity" → B-14 wizard: section/group, type (`match`/`sparring` unavailable for `class_group`; `tournament` is allowed for any group), name, place, coach, weekdays, times, period → preview of the first sessions and collisions → "Create" → session list in B-15.
 - **Branches:** collision at the place (e.g. Tuesday 17:00 Boisko piłkarskie with Żaki) → list of collisions, "Create" button blocked until the times/place are changed; end time ≤ start time → field error; period without any session → "The rule produces no sessions".
 
 #### F-05 Cancellation and announcement (UC-08, UC-16)
@@ -102,14 +102,14 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 - **Branches:** payment canceled → "Payment interrupted — charges are still open"; webhook delayed → "Payment in progress, refresh in a moment"; overpayment when recording → field error "Amount exceeds the remaining 50 zł"; charge without a payer → cannot be paid online, visible in the administrator's widget.
 
 #### F-08 Coach books the pitch for a tournament (UC-09) — J-006
-- **Path:** Wojtek → M-11 Facilities → "Boisko piłkarskie" → Saturday → day timeline with zones and occupancy → selects 9:00–12:00 → "Book" → dialog: "For a group" (Żaki or Trampkarze) / "General purpose", type "Tournament", invited teams → "Book" → slot "Turniej o Puchar Gwiazdy" on the timeline; an external request pending for that time is marked "overridden" (email to the requester).
+- **Path:** Wojtek → M-11 Facilities → "Boisko piłkarskie" → Saturday → day timeline with zones and occupancy → selects 9:00–12:00 → "Book" → dialog: "For a group" (Żaki or Trampkarze) / "General purpose", type "Tournament", invited teams → "Book" → slot "Turniej o Puchar Gwiazdy" on the timeline; an external request pending for that time gets the status `superseded` (email to the requester).
 - **Variant:** the zumba instructor books the "Salka szkoleniowa" for "Instructor training" (general purpose).
-- **Branches:** slot taken → 409 with a list of collisions (staff see names); outside opening hours or during a closure → "Facility closed at this time"; a group that is not one's own → 403; `tournament` for a class group → unavailable in the type field.
+- **Branches:** slot taken → 409 with a list of collisions (staff see names); outside opening hours or during a closure → "Facility closed at this time"; a group that is not one's own → 403; a tournament can be booked for any group (e.g. a chess tournament for the Szachy class group).
 
 #### F-09 External request and administrator decision (UC-10, UC-11) — J-007
 - **Renter path:** P-01 club page → "Facilities" → P-03 → Orlik — Boisko piłkarskie → P-04 month calendar → "bookable" slot → "Request a booking" → form (organization, contact, email, phone, category, units, purpose, rules ✓) → "Send" → "Check your inbox and confirm the request" → link → P-05 "The request is awaiting administrator approval (up to 48 h)". Slot shown publicly as: "requested — pending".
 - **Administrator path:** notification → B-01 widget "Requests awaiting approval" → B-25 queue → details (collisions: none; ban register: none; expires in 47 h) → "Approve" (assign an institution or create a new one) → rental `requested` + charge to the municipality's account → email to the renter with the amount and account number. P-04 shows "booked".
-- **Branches:** a second request for the same slot → "This slot has already been requested — choose another"; rules not accepted → field error; requests disabled in the configuration → no button; "Reject" requires a reason → email; 48 h without a decision → "expired"; club booking → "overridden"; link opened after 1 h → "Link expired".
+- **Branches:** a second request for the same slot → "This slot has already been requested — choose another"; rules not accepted → field error; requests disabled in the configuration → no button; "Reject" requires a reason → email; 48 h without a decision → `expired`; club booking → `superseded`; link opened after 1 h → "Link expired".
 
 #### F-10 Attendant at the facility (UC-12)
 - **Path:** M-12 Today at the facility → "Open facility" → log: condition before, time → list of today's groups and rentals (adult supervisor present ✓) → "Report incident" (type, description, action taken, photo) → "Close facility" (condition after).
@@ -124,14 +124,14 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 #### F-12 Municipality report (UC-20)
 - **Path:** B-28 → facility, period → hours by zone (including club time: sessions + internal bookings), rentals (count, value), payments to the municipality's account, incidents, maintenance → "Export CSV".
 
-#### F-13 Kit orders and settlement (UC-21, UC-22, UC-23)
+#### F-13 Kit orders and settlement (UC-21, UC-22, UC-23) — J-009
 - **Administrator path:** B-30 Order campaigns → "New order form" (B-31) → "Load template" (shirt, shorts, socks, set PLN 120, tracksuit PLN 180/200, rain jacket, cap, water bottle) → Academy groups, orders until 20.11, payment until 04.12, name and number for printing → "Save and open collection" → text with the link in the clipboard → pasted into the Messenger group.
 - **Guardian path:** link → M-17 (signed in: children from the campaign's groups; no account: email → personal link → M-19) → set with sizes, tracksuit, print "JAŚ 8" → live total → "Place order" → copy by email, charge in M-08 → "Pay online", bank transfer with the payer code, or cash to the coach.
 - **Coach path (phone):** M-02 "My groups' payments" tile → M-18: the group's children with fees and kit to pay → "Accept cash" (cash receipt (KP), email to the parent) → "Cash with you" → "Remind guardians"; after delivery "Hand over kit".
 - **Treasurer path (Beata or Aneta):** B-33 Cash to settle → "Accept handover" (RG/2026/11/001); B-32 → "Close orders" → Supplier summary (quantities per product and size, prints, CSV) → "Ordered from supplier" → "Delivered" (email "ready for pickup from the coach") → "Complete campaign".
 - **Branches:** set without a sock size → field error; number taken in the group → error with the name of the child who has it; a change below the amount paid or canceling a paid order → 409; after the deadline the form is closed; handover before delivery → 409; handing over an unpaid order → warning and confirmation; 14-year-old participant → no orders.
 
-#### F-14 Group payments for the coach and cash handover (UC-23)
+#### F-14 Group payments for the coach and cash handover (UC-23) — J-010
 - **Administrator path:** B-20 → "Coaches and payments": fees and orders with cash (default) / fees view-only / orders only.
 - **Coach path (phone):** M-02 tile "My groups' payments: 5 people have charges, 3 of them overdue; cash with you 300 zł" → M-18 → "Orlik młodszy" chip, "To pay" filter → Bartek: October fee (overdue), November fee and kit → "Accept cash": fee 10/2026 and kit selected, PLN 235 → one cash receipt (KP), email to his mother → "Cash with you: 535 zł"; Adam: "Send reminder" → email to his father with the list of overdue items.
 - **Treasurer path:** B-01 dashboard with finances only → B-33 → Wojtek Malinowski PLN 535 (3 payments) → "Accept handover" → RG/2026/11/001.
@@ -196,9 +196,9 @@ flowchart LR
 | M-06 | `/club/messages` | Messages | `communication.view` | 3 |
 | M-07 | `/club/messages/[threadId]` | Thread | thread participant | 3 |
 | M-08 | `/club/payments` | Payments | `payments.view_own` (adults only) | 4 |
-| M-09 | `/club/payments/return` | Payment result | `payments.pay_online` | 4 |
-| M-10 | `/club/profile`, `/club/wards/[personId]` | Profile and wards | `people.self` | 1 |
-| M-11 | `/club/places`, `/club/places/[placeId]` | Facilities and booking | `facilities.view` + `facilities.bookings.create` | 5 (tournament from the group level — 2) |
+| M-09 | `/club/payments/return` | Payment result | `payments.view_own` (reads `my-charges` only) | 4 |
+| M-10 | `/club/profile` (wards as a tab; a ward's details open at `/club/wards/[personId]`) | Profile and wards | `people.self` | 1 |
+| M-11 | `/club/places`, `/club/places/[placeId]` | Facilities and booking | `facilities.view` (the "Book" button additionally requires `facilities.bookings.create`) | 5 (tournament from the group level — 2) |
 | M-12 | `/club/facility` | Today at the facility | `facilities.log.write` | 5 |
 | M-13 | `/club/link` | Link request | no sign-in | 3 |
 | M-14 | `/club/d/[token]` | Declaration from link | token | 3 |
@@ -213,15 +213,15 @@ flowchart LR
 | B-04 / B-05 | `/backend/club/sections`, `…/[id]/edit` | Sections | `club_core.view` / `club_core.manage` | 1 |
 | B-06 | `/backend/club/places` | Places | `club_core.manage` | 1 |
 | B-07 | `/backend/club/institutions`, `/backend/club/contracts` | Institutions and contracts | `club_core.manage`, `club_core.contracts.manage` | 1–2 |
-| B-09 / B-10 | `/backend/people/persons`, `…/[id]` | People, person record | `people.view` / `people.manage` | 1 |
-| B-11 / B-12 | `/backend/groups/groups`, `…/[id]` | Groups | `groups.view` / `groups.manage` | 2 |
+| B-09 / B-10 | `/backend/people/persons`, `…/[id]` | People, person record | `people.view` / `people.manage` ("Create account": `people.accounts.manage`) | 1 |
+| B-11 / B-12 | `/backend/groups/groups` (tabs: Groups, External teams, Seasons), `…/[id]` | Groups | `groups.view` / `groups.manage` | 2 |
 | B-13 / B-14 | `/backend/activities/activities`, `…/create` | Activities, wizard | `activities.manage` | 2 |
-| B-15 | `/backend/activities/occurrences` | Sessions | `activities.view` | 2 |
+| B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
 | B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` | 2 |
 | B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
-| B-18 / B-19 | `/backend/communication/threads`, `…/[id]` | Threads and cases | `communication.view` | 3 |
-| B-20 | `/backend/payments/fees` | Fees and discounts | `payments.manage` | 4 |
-| B-21 / B-22 | `/backend/payments/charges`, `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |
+| B-18 / B-19 | `/backend/communication/threads` ("cases only" perspective = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
+| B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
+| B-21 / B-22 | `/backend/payments/charges` (perspectives incl. Overdue), `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |
 | B-29 | `/backend/payments/bank` | Bank statements | `payments.bank.import` | 4 |
 | B-30 | `/backend/payments/orders` | Order campaigns | `payments.orders.manage` | 4 |
 | B-31 | `/backend/payments/orders/create`, `…/[id]/edit` | Order form wizard | `payments.orders.manage` | 4 |
@@ -231,13 +231,15 @@ flowchart LR
 | B-24 | `/backend/facilities/rentals` | Rentals | `facilities.rentals.manage` | 5 |
 | B-25 | `/backend/facilities/requests` | Requests awaiting approval | `facilities.rentals.approve` | 5 |
 | B-26 | `/backend/facilities/zones` (+ `/closures`, `/rates`) | Zones, closures, rates | `facilities.manage` | 5 |
-| B-27 | `/backend/facilities/logs` (+ `/incidents`, `/bans`) | Log, incidents, bans | `facilities.log.write` / `facilities.incidents.manage` | 5 |
+| B-27 | `/backend/facilities/logs` (+ `/incidents`, `/bans`; `/maintenance` — REQ-022 Could, deferred, no screen in this concept) | Log, incidents, bans | `facilities.log.write` / `facilities.incidents.manage` | 5 |
 | B-28 | `/backend/facilities/reports/owner` | Municipality report | `facilities.reports.view` | 5 |
-| P-01 | `/p/[clubSlug]` | Club page | public | 1 |
-| P-02 | `/p/[clubSlug]/sections/[sectionSlug]` | Section page | public | 1–4 |
+| P-01 | `/p/[clubSlug]` | Club page | public | 1–2 (+ blocks 4–5) |
+| P-02 | `/p/[clubSlug]/sections/[sectionSlug]` | Section page | public | 1–2 (+ blocks 4–5) |
 | P-03 | `/p/[clubSlug]/places` | Club facilities | public | 5 |
 | P-04 | `/p/[clubSlug]/places/[placeSlug]` | Facility calendar + request | public | 5 |
 | P-05 | `/p/[clubSlug]/requests/verify/[token]` | Request confirmation | token | 5 |
+
+Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/backend/communication/cases` is the "cases only" perspective of B-18; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. `/backend/facilities/maintenance` (REQ-022, Could) has no screen here — deferred.
 
 ---
 
@@ -278,7 +280,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-04 Session — `/club/occurrences/[id]`
 - **Goal:** details of a single session and attendance decisions.
-- **Features:** date, times, place (with address and map — Could), coach (with a substitution marker), status; for each of my wards "Attending / Not attending"; guardian decision on `pending_guardian` (Confirm / Reject); for a match — opponent, away trip; for the coach — buttons "Attendance list", "Report absence", "Cancel", "Message the group"; parent duty — "Sign up for duty" (Could).
+- **Features:** date, times, place (with address and map — Could), coach (with a substitution marker), status; for each of my wards "Attending / Not attending"; guardian decision on `pending_guardian` (Confirm / Reject); for a match — opponent, away trip; for the coach — buttons "Attendance list", "Report absence", "Cancel", "Message the group". (Volunteer duty sign-up is not in 1.0 — see section 6.)
 - **Components:** session header, `StatusBadge`, list of people with segmented buttons, reason dialogs (absence, cancellation) with `useConfirmDialog`.
 - **States:** loading — skeleton; empty — n/a (404 → "The session does not exist or you do not have access to it"); error — retry; success — toasts "Declaration saved", "Absence reported — the coordinator has been notified", "Session canceled — notifications sent".
 - **Validation:** declaration before `start_at` (otherwise 409 `declaration_closed`); cancellation reason required (3–200 characters); absence reason optional.
@@ -311,7 +313,7 @@ Common rules (they apply to every screen and are not repeated):
 #### M-08 Payments — `/club/payments`
 - **Goal:** see how much I pay and for what, and pay in two taps (REQ-012). The screen exists only for adults (guardian, adult participant); a participant under 18 gets 403, and the item does not appear in the navigation (REQ-002).
 - **Features:** list of the payer's open charges (person, description, period, amount, discount with the rule name, due date); select and "Pay X zł" (Stripe); history of paid charges; bank transfer information (the club's account number).
-- **Components:** `DataTable` in a mobile layout (cards), checkboxes, total, primary button, `StatusBadge` (open, partially paid, paid, overdue).
+- **Components:** `DataTable` in a mobile layout (cards), checkboxes, total, primary button, `StatusBadge` (open, partially paid, paid; "overdue" is a derived marker on an `open` charge past its due date, not a status).
 - **States:** loading; empty — "All paid" + payment history; error — retry; success — redirect to Stripe.
 - **Validation:** at least one charge; only `open`; a charge with `payer_missing` cannot be selected, with an explanation.
 - **API:** `GET /api/payments/my-charges`; `POST /api/payments/checkout` → `{ redirectUrl }`.
@@ -326,18 +328,18 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-10 Profile and wards — `/club/profile`, `/club/wards/[personId]`
 - **Goal:** contact details, consents on behalf of children, consent to publishing one's name (coach).
-- **Features:** my details (phone, contact email); list of wards with groups and sections; consents (rules, image, trips) with date; coach: "I consent to my first and last name being published on the club page"; password change (link to `auth`).
+- **Features:** my details (phone, contact email); **interface language** (select: English / Polish — REQ-035; saved as the person's `preferredLocale`, the interface re-renders immediately); list of wards with groups and sections; consents (rules, image, trips) with date; coach: "I consent to my first and last name being published on the club page"; password change (link to `auth`).
 - **Components:** `CrudForm`, consent toggles with date and author.
 - **States:** loading; empty — "You have no wards" (for a person without children the section is hidden); error; success — "Consents saved"; conflict — 409.
 - **Validation:** phone in PL/E.164 format; email; consents can be changed only by the guardian (the ward sees them read-only).
-- **API:** `GET /api/people/me`; `PUT /api/people/persons/{id}`; `PUT /api/people/guardianships/{id}`.
+- **API:** `GET /api/people/me`; `PUT /api/people/me` (`preferredLocale`, `publishNameConsent`); `PUT /api/people/persons/{id}`; `PUT /api/people/guardianships/{id}`.
 
 #### M-11 Facilities and booking — `/club/places`, `/club/places/[placeId]`
 - **Goal:** staff of every section see facility occupancy and book right away (REQ-023, REQ-027).
 - **Features:** list of club facilities (Orlik — pitches, small hall, pool) with today's occupancy; day timeline 8–22 with zones and entries (sessions, internal bookings, rentals, pending requests, closures); day picker; selecting a free range → **Book**: "For a group" (event: tournament/other, invited teams) or "General purpose" (description); canceling one's own booking.
 - **Components:** list of facility cards, day picker, timeline with blocks (text legend), booking dialog (`CrudForm`), list of collisions in the error.
 - **States:** loading — timeline skeleton; empty — "The facility has no zone rules — contact the administrator"; error — retry; success — the block appears on the timeline + "Booked: Sat 9:00–12:00 Boisko piłkarskie"; conflict — 409 with a list of collisions (with names, since this is staff).
-- **Validation:** end > start; within opening hours; not during a closure; no collisions; group within one's own scope; `tournament` only for `team`; purpose required for a general booking (3–120 characters).
+- **Validation:** end > start; within opening hours; not during a closure; no collisions; group within one's own scope; `tournament` is allowed for any group (the group's kind does not restrict it); purpose required for a general booking (3–120 characters).
 - **API:** `GET /api/facilities/calendar?placeId&from&to`; `POST /api/facilities/internal-bookings`; `DELETE /api/facilities/internal-bookings/{id}`; `POST /api/activities/events`.
 
 #### M-12 Today at the facility — `/club/facility`
@@ -432,7 +434,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-10 Person record — `/backend/people/persons/[id]`
 - **Goal:** everything about a person in one place.
-- **Features:** tabs **Details** (PESEL only with `people.pesel.view`), **Guardianship and consents**, **Roles** (with section/place scope), **Account** (create / status / blocked below the threshold), **Groups** (membership history), **Charges**.
+- **Features:** tabs **Details** (PESEL only with `people.pesel.view`), **Guardianship and consents**, **Roles** (with section/place scope), **Account** (create — requires `people.accounts.manage` / status / blocked below the threshold), **Groups** (membership history), **Charges**.
 - **Components:** `Page` with sections, `CrudForm`, `DataTable` in tabs, add dialogs.
 - **States:** loading, error, success, conflict, 403.
 - **Validation:** first and last name required; PESEL — checksum, consistency with the date of birth, uniqueness (409); one active primary payer; account only ≥ age threshold (422); a coordinator requires a section, an attendant — a place.
@@ -440,10 +442,10 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-11 Groups — `/backend/groups/groups`
 - **Goal:** groups of both kinds on equal terms (D-003).
-- **Features:** filters: section, kind (team / class group), season, public; columns: name, section, kind, category/level, coaches, number of participants.
-- **Components:** `DataTable`.
+- **Features:** tabs **Groups** / **External teams** (opponent dictionary: name, contact) / **Seasons** (name, from–to); groups: filters: section, kind (team / class group), season, public; columns: name, section, kind, category/level, coaches, number of participants.
+- **Components:** `DataTable` per tab, `CrudForm` dialogs for external teams and seasons.
 - **States:** standard; empty — "Add the first group in the section".
-- **API:** `GET /api/groups/groups`.
+- **API:** `GET /api/groups/groups`; `/api/groups/external-teams`; `/api/groups/seasons`.
 
 #### B-12 Group — `/backend/groups/groups/[id]`
 - **Goal:** group details, roster with history, public content.
@@ -470,15 +472,15 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-15 Sessions — `/backend/activities/occurrences`
 - **Goal:** operational list of the section's sessions.
-- **Features:** perspectives **All / Needing a coach / Unsettled / Canceled**; filters; row actions: **Assign substitute**, Cancel, Edit (detaches the session from the series), Open attendance list.
+- **Features:** perspectives **All / Needing a coach / Unsettled / Canceled / Calendar** (the coordinator's section calendar — week grid from the schedule family, V-8); filters; row actions: **Assign substitute**, Cancel, Edit (detaches the session from the series), Open attendance list.
 - **Components:** `DataTable` with perspectives, coach picker dialog (shows the coach's collisions), `StatusBadge`.
 - **States:** standard; empty perspective — "All sessions in the next 14 days have a coach".
 - **Validation:** substitute without collisions at that time (409); cancellation reason required.
-- **API:** `GET /api/activities/occurrences`; `POST …/{id}/coach`; `POST …/{id}/cancel`; `PATCH …/{id}`.
+- **API:** `GET /api/activities/occurrences`; `GET /api/activities/calendar?as=coordinator` (Calendar perspective); `POST …/{id}/coach`; `POST …/{id}/cancel`; `PATCH …/{id}`.
 
 #### B-16 Coach units report — `/backend/activities/reports/coach-units`
 - **Goal:** coach settlement without disputes (REQ-008, REQ-021).
-- **Features:** month, section; columns: planned, given away, taken over, balance, matches, away trips, amount (administrator only); expanding a row → list of sessions; link to unsettled ones; CSV export.
+- **Features:** month, section; columns: planned, handed over, taken over, balance, matches, away trips, amount (administrator only); expanding a row → list of sessions; link to unsettled ones; CSV export.
 - **Components:** `DataTable` with row expansion and export.
 - **States:** loading; empty — "No closed sessions this month"; error.
 - **Validation:** month `YYYY-MM`.
@@ -494,7 +496,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-18 Threads and cases — `/backend/communication/threads`, `/backend/communication/cases`
 - **Goal:** overview of communication within the coordinator's scope; case register.
-- **Features:** scope and section filters, "cases only"; new announcement to a section.
+- **Features:** scope and section filters, "cases only" perspective (`/backend/communication/cases`); new announcement to a section; "Mark as case" only with `communication.cases.manage`.
 - **Components:** `DataTable`, message component family.
 - **States:** standard.
 - **API:** `GET/POST /api/communication/threads`.
@@ -513,7 +515,7 @@ Common rules (they apply to every screen and are not repeated):
 - **Components:** `DataTable`, `CrudForm`.
 - **States:** standard.
 - **Validation:** exactly one of group/activity (422); amount > 0; percentage 1–100; payment day 1–28.
-- **API:** `/api/payments/fees`, `/api/payments/discount-rules`.
+- **API:** `/api/payments/fees`, `/api/payments/discount-rules`; `GET/PUT /api/payments/settings` (`coachFeeAccess`).
 
 #### B-21 Charges — `/backend/payments/charges`
 - **Goal:** who owes how much; generating a period; overdue charges.
@@ -521,7 +523,7 @@ Common rules (they apply to every screen and are not repeated):
 - **Components:** `DataTable`, generation dialog (`ProgressJob`), `StatusBadge`.
 - **States:** loading; empty — "No charges — generate a period"; error; success — "Created 142, skipped 0, without payer 2"; conflict — "Generation in progress" (409).
 - **Validation:** period `YYYY-MM`, no earlier than 12 months back.
-- **API:** `GET /api/payments/charges`, `/overdue`; `POST /api/payments/charges/generate`.
+- **API:** `GET /api/payments/charges` (the "Overdue" perspective = `?view=overdue`; the spec's `/backend/payments/overdue` surface is this perspective), `GET /api/payments/overdue`; `POST /api/payments/charges/generate`.
 
 #### B-22 Charge — `/backend/payments/charges/[id]`
 - **Goal:** details and recording payments.
@@ -538,7 +540,7 @@ Common rules (they apply to every screen and are not repeated):
 - **Components:** file upload, `DataTable` with perspectives, `StatusBadge`, `CrudForm` dialogs, `ProgressJob` for large files.
 - **States:** loading; empty — "Import a bank statement"; error — "Columns not recognized: date, amount, sender, reference are required" at the file field; success — import summary (automatic / to confirm / unmatched / skipped); conflict — item changed in the meantime (409).
 - **Validation:** file format; required columns; when assigning, the payer must have open charges; a reason when skipping.
-- **API:** `POST /api/payments/bank-imports`; `GET /api/payments/bank-transactions?status=`; `POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo`.
+- **API:** `POST /api/payments/bank-imports`; `GET /api/payments/bank-transactions?status=`; `POST /api/payments/bank-transactions/{id}/confirm|assign|ignore|undo`; `GET/PUT /api/payments/settings` (`autoBookBankMatches` — the "Automatically record confident matches" toggle).
 
 #### B-30 Order campaigns — `/backend/payments/orders`
 - **Goal:** collect orders (e.g. kit) without a Google Form and a spreadsheet (REQ-032).
@@ -558,7 +560,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-32 Order campaign — `/backend/payments/orders/[id]`
 - **Goal:** run the campaign from collection to handover and know who has paid.
-- **Features:** stages (draft → collecting → closed → ordered from supplier → delivered → completed) with a single "next" action; KPIs: orders / children in groups, paid out of total value, handed over; perspectives **Orders** (child and group, orderer and channel, lines, print, amount, payment with the cash collector, handover; actions Cash, Hand over, Charge), **Supplier summary** (quantities per product and size with the number in sets, list of prints, CSV), **No order** (children and guardians, "Remind everyone"); "Text for Messenger", "Edit form".
+- **Features:** stages (draft → open (collecting) → closed → ordered from supplier → delivered → completed) with a single "next" action; KPIs: orders / children in groups, paid out of total value, handed over; perspectives **Orders** (child and group, orderer and channel, lines, print, amount, payment with the cash collector, handover; actions Cash, Hand over, Charge), **Supplier summary** (quantities per product and size with the number in sets, list of prints, CSV), **No order** (children and guardians, "Remind everyone"); "Text for Messenger", "Edit form".
 - **Components:** `DataTable` with perspectives, `StatusBadge`, confirmation dialogs (`useConfirmDialog`).
 - **States:** loading; empty — "Send parents the text with the link"; error; conflict — out-of-order transition (409).
 - **Validation:** closing shows the number of children without an order; completing with kit not handed over — warning.
@@ -566,7 +568,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-33 Cash to settle — `/backend/payments/cash-custody`
 - **Goal:** the treasurer knows who holds the club's cash and confirms receiving it based on the coach's entries (REQ-033, REQ-034).
-- **Features:** people with unsettled cash (coaches, other people authorized to accept cash): payments with KP numbers, oldest, total; "Accept handover" — select payments, number `RG/RRRR/MM/NNN`; handover history. Cash accepted by the treasurer is settled immediately.
+- **Features:** people with unsettled cash (coaches, other people authorized to accept cash): payments with KP numbers, oldest, total; "Accept handover" — select payments, number `RG/YYYY/MM/NNN`; handover history. Cash accepted by the treasurer is settled immediately.
 - **Components:** `DataTable`, `CrudForm` dialog.
 - **States:** loading; empty — "All accepted cash is with the treasurer"; conflict — payment already settled (409).
 - **API:** `GET /api/payments/cash-custody`; `GET/POST /api/payments/cash-handovers`.
@@ -716,7 +718,7 @@ Data is kept in browser memory — actions change the state (declaration, closin
 
 The concept introduces no new requirements. For UX, it clarifies:
 
-1. Redirect after sign-in: a person with a member role → `/club`, staff only → `/backend`.
+1. Redirect after sign-in: a person with a member role → `/club`, staff only → `/backend` (added to the specification on 2026-10-20 — login-to-primary-task rule).
 2. The section's "Contact for publication" consists of separate fields, not data from the person register (consistent with DD-29).
 3. The payment result screen (M-09) reads the status via `GET /api/payments/my-charges` — no new endpoint.
 4. "Sections without a coordinator" widget on the administrator's dashboard (spec: a warning on the section list and a widget).
@@ -727,3 +729,4 @@ The concept introduces no new requirements. For UX, it clarifies:
 9. Order campaigns (e.g. kit) instead of Google Forms: a wizard in the panel (B-30…B-32), the guardian orders in the app or from a personal link (M-16, M-17, M-19), the coach accepts cash and hands over kit in the app (M-18), the treasurer settles cash from coaches (B-33) — REQ-032, REQ-033.
 10. "My groups' payments" for the coach (M-18) instead of orders only: group fees and kit, cash for several charges at once, the club setting "Coaches and payments" (B-20); a separate treasurer role (persona Beata) with the right to accept cash from coaches (B-33) — REQ-033, REQ-034.
 11. Multilingual interface (REQ-035): the mockup switches between English and Polish; dates, amounts and plurals follow the language, club content does not; one content language per club (Q-038).
+12. Deferred — no screens in this concept or in the mockup (decisions of 2026-10-20): volunteer duty sign-up for sessions (planned for 1.1; the spec lists it in Non-goals) and a guardian contact list for coaches (GDPR minimisation — coaches reach guardians through announcements and direct threads, REQ-009).

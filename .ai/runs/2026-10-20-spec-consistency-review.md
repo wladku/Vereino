@@ -63,6 +63,8 @@ Read-only review; no build or test commands. Spot checks with `sed`/`grep` on th
 
 All findings are open; nothing in the spec, UX concept or mockup was changed in this run.
 
+Update 2026-10-21: the blocking and major findings were fixed in the follow-up run `2026-10-20-spec-consistency-fixes.md` (decisions D1–D5 recorded there).
+
 ## Next steps
 
 Fix in this order: blocking themes 1–6 → missing contracts → traceability/phases → naming drift → mockup/UX drift → research provenance (README, moscow.md addendum, D-009/D-010 status). Decisions above first.

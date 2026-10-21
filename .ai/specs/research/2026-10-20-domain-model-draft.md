@@ -102,7 +102,7 @@ Rules:
 - **discount_rule** — club_id, name, kind (sibling / project / custom), percent or amount, conditions (JSON, e.g. "second and subsequent child of the same guardian"), valid_from, valid_to.
 - **charge** — person_id (participant) *or* payer_institution_id (institutional renter), payer_person_id (guardian or the participant themselves), fee_id *or* rental_id, period_label, amount, discount_rule_id, discount_amount, due_date, **payee** (club / owner_institution — Orlik rental fees go to the municipality's account), status (open / paid / partially_paid / cancelled / forfeited — forfeited when not cancelled in time).
 - **payment** — charge_id, amount, method (cash / transfer / online), paid_at, reference, recorded_by_person_id.
-In the MVP payments are recorded manually by the administrator; online gateway later.
+~~In the MVP payments are recorded manually by the administrator; online gateway later.~~ Superseded by D-010 (confirmed 2026-10-20, Q-003): online payment via Stripe is in 1.0; cash and bank transfers are still recorded by the administrator (REQ-012, REQ-030, REQ-031).
 
 
 ### 4.7 `facilities` — sports facility administered by the club (Orlik)
