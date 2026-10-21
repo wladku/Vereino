@@ -35,11 +35,12 @@ The required checks appear in the ruleset picker only after they have run once. 
 - [ ] Install <https://github.com/apps/dco> for `wladku/Vereino` only. It reports the `DCO` check on every pull request (ADR-022).
 - [ ] Every commit then needs `Signed-off-by:`; use `git commit -s`. Set a real name and e-mail first: `git config user.name` / `git config user.email`.
 
-## 4. Code scanning
+## 4. Dependency graph and code scanning
 
-*Settings → Code security → Code scanning → CodeQL analysis → Set up → Default*
+*Settings → Code security* (<https://github.com/wladku/Vereino/settings/security_analysis>)
 
-- [ ] Languages: JavaScript/TypeScript; query suite: Default. High and critical alerts are fixed or triaged with a written reason before merge (S14.3).
+- [ ] **Dependency graph — Enable.** Required by the `dependency-review` job; without it the job fails with "Dependency review is not supported on this repository. Please ensure that Dependency graph is enabled". Re-run the job afterwards.
+- [ ] Code scanning → CodeQL analysis → Set up → **Default**. Languages: JavaScript/TypeScript; query suite: Default. High and critical alerts are fixed or triaged with a written reason before merge (S14.3).
 
 ## 5. Actions
 
