@@ -3,8 +3,8 @@
 - **Date:** 2026-10-21
 - **Agent / tool:** Claude Code (Opus 5.5), a side session started from the pipeline-setup session; skills `om-prepare-issue`, `om-fix`, `om-open-pr`, `om-code-review`
 - **Trigger:** product owner. Brief (Polish): an installer run with `npm run setup` that performs the README "Getting started" steps, plus a README update that keeps the manual steps; re-runs must succeed and skip completed steps. Q1–Q3 defaults confirmed on #5: "I accept the defaults for Q1–Q3 from issue #5: Yarn stays the package manager, npm run setup is an entry point, it ends with yarn dev plus a --no-dev flag, and it starts postgres and redis via docker compose." Review fixes requested with "Fix the major and minor findings from the PR #6 review in the worktree, run yarn verify, and push to PR #6."
-- **Spec / issue / branch:** issue [#5](https://github.com/wladku/Vereino/issues/5), PR [#6](https://github.com/wladku/Vereino/pull/6), branch `feat/issue-5-setup-installer` (from `origin/main`); standards S6.9, S13.6, S18
-- **Status:** completed. The PR is open for human review and the `needs-qa` clean-clone check.
+- **Spec / issue / branch:** issue [#5](https://github.com/wladku/Vereino/issues/5), PR [#6](https://github.com/wladku/Vereino/pull/6) (merged), branch `feat/issue-5-setup-installer` (from `origin/main`); review fixes in a follow-up PR from the same branch; standards S6.9, S13.6, S18
+- **Status:** completed. The review fixes are open for human review and the `needs-qa` clean-clone check.
 
 ## Goal
 
@@ -31,6 +31,7 @@
    - every workspace `node_modules` is checked before the install is skipped;
    - S13.6 and its Changelog row are updated, and `--update-env` / `--no-update-env` are listed in the README;
    - this log.
+7. The product owner merged PR #6 at 12:02 UTC (merge commit `fc28b79`, head `3e233cb`). That was before the review-fix commit `6f5c4a1` was pushed, so the fixes did not reach `main`. Neither the review-fix work nor the later "is the `review` label OK" answer checked the PR state first. The fixes now ship in a new PR against `main` from the same branch. PR #6's description, which had been edited after the merge, was restored to the merged version.
 
 ## Decisions
 
@@ -73,4 +74,5 @@
 
 ## Next steps
 
-- Human review and approval of PR #6 (S1.5), then merge.
+- Human review and approval of the review-fix PR (S1.5), then merge.
+- Before pushing to an existing PR, check that it is still open.
