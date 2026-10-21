@@ -20,6 +20,9 @@ const ENV_FILE = 'packages/app/.env'
 const ENV_EXAMPLE = 'packages/app/.env.example'
 const INSTALL_MARKER = 'node_modules/.vereino-setup-install'
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]']
+const CONNECT_TIMEOUT_MS = 5000
+// Connection errors meaning no server answers at the address; any other error is a server that answered and refused.
+const UNREACHABLE_CODES = ['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EHOSTUNREACH']
 
 export function parseArgs(argv) {
   return {
@@ -62,15 +65,34 @@ export function isLocalDatabaseUrl(url) {
   }
 }
 
+// Reads one KEY=value line from an env file; quotes around the value are dropped.
+export function readEnvValue(source, key) {
+  const match = new RegExp(`^\\s*${key}\\s*=\\s*(.*)$`, 'm').exec(source)
+  return match ? match[1].trim().replace(/^(['"])(.*)\1$/, '$2') : undefined
+}
+
+// The same rule as `getSslConfig` in @open-mercato/shared/lib/db/ssl, which `mercato init` connects with,
+// applied to the URL the installer inspects.
+export function sslConfig(url, lookup) {
+  const required = url.includes('sslmode=require') || url.includes('ssl=true') || lookup('DB_SSL') === 'true'
+  return required ? { rejectUnauthorized: lookup('DB_SSL_REJECT_UNAUTHORIZED') !== 'false' } : undefined
+}
+
 // Classifies the database as 'unreachable', 'empty' (no users yet) or 'initialized'.
 // Mirrors the guard in `mercato init`, which aborts when the users table already has rows.
-export async function inspectDatabase(url, Client) {
-  const client = new Client({ connectionString: url })
+// A server that answers but refuses the connection (credentials, pg_hba.conf) throws instead.
+export async function inspectDatabase(url, { Client, ssl }) {
+  const client = new Client({ connectionString: url, connectionTimeoutMillis: CONNECT_TIMEOUT_MS, ssl })
   try {
     await client.connect()
   } catch (error) {
     // 3D000: the server is up but the database does not exist yet.
-    return error?.code === '3D000' ? 'empty' : 'unreachable'
+    if (error?.code === '3D000') return 'empty'
+    if (UNREACHABLE_CODES.includes(error?.code) || /timeout/i.test(String(error?.message))) return 'unreachable'
+    throw new Error(
+      `PostgreSQL rejected the connection (${String(error?.code ?? 'no code')}: ${String(error?.message)}); ` +
+        `check the credentials in DATABASE_URL in ${ENV_FILE}`,
+    )
   }
   try {
     const table = await client.query("SELECT to_regclass('public.users') IS NOT NULL AS present")
@@ -84,7 +106,14 @@ export async function inspectDatabase(url, Client) {
 
 const done = (detail) => ({ outcome: 'done', detail })
 const skipped = (detail) => ({ outcome: 'skipped', detail })
-const failed = (detail) => ({ outcome: 'failed', detail })
+// `status` is the installer's exit code: a failed child command's own code, otherwise 1.
+const failed = (detail, status = 1) => ({ outcome: 'failed', detail, status })
+
+function yarnStep(io, args) {
+  const command = `yarn ${args.join(' ')}`
+  const status = io.run('yarn', args)
+  return status === 0 ? done(command) : failed(`\`${command}\` failed`, status)
+}
 
 export const STEPS = [
   {
@@ -102,8 +131,12 @@ export const STEPS = [
     async run({ io, requirements }) {
       const expected = requirements.yarnVersion
       if (io.capture('yarn', ['--version']) === expected) return skipped(`Yarn ${expected}`)
-      if (io.run('corepack', ['enable']) !== 0) {
-        return failed('`corepack enable` failed; run it once from an elevated shell (Windows: as Administrator)')
+      const status = io.run('corepack', ['enable'])
+      if (status !== 0) {
+        return failed(
+          '`corepack enable` failed; run it once from an elevated shell (Windows: as Administrator)',
+          status,
+        )
       }
       const found = io.capture('yarn', ['--version'])
       if (found !== expected) {
@@ -115,13 +148,17 @@ export const STEPS = [
   {
     name: 'dependencies',
     async run({ io }) {
-      const hash = hashFiles(dependencyInputs(io), io.readFile)
-      if (io.exists(INSTALL_MARKER) && io.readFile(INSTALL_MARKER) === hash) {
-        return skipped('up to date with yarn.lock')
-      }
-      if (io.run('yarn', ['install']) !== 0) return failed('`yarn install` failed')
-      io.writeFile(INSTALL_MARKER, hash)
-      return done('yarn install')
+      const inputs = dependencyInputs(io)
+      const hash = hashFiles(inputs, io.readFile)
+      // With `nmHoistingLimits: workspaces` every workspace has its own node_modules, which can be deleted alone.
+      const workspaceModules = inputs
+        .filter((file) => file.startsWith('packages/'))
+        .map((file) => file.replace(/package\.json$/, 'node_modules'))
+      const installed = io.exists(INSTALL_MARKER) && workspaceModules.every((dir) => io.exists(dir))
+      if (installed && io.readFile(INSTALL_MARKER) === hash) return skipped('up to date with yarn.lock')
+      const result = yarnStep(io, ['install'])
+      if (result.outcome === 'done') io.writeFile(INSTALL_MARKER, hash)
+      return result
     },
   },
   {
@@ -138,18 +175,26 @@ export const STEPS = [
       const { io, options } = context
       const override = await io.resolveDatabaseOverride(options.databaseFlags)
       if (override.applied) context.childEnv.DATABASE_URL = override.childEnv.DATABASE_URL
-      const url = context.childEnv.DATABASE_URL ?? io.env.DATABASE_URL ?? readEnvDatabaseUrl(io.readFile(ENV_FILE))
+      const envText = io.readFile(ENV_FILE)
+      // Process environment wins over the env file, as it does for the app's own commands.
+      const lookup = (key) => io.env[key] ?? readEnvValue(envText, key)
+      const url = context.childEnv.DATABASE_URL ?? io.env.DATABASE_URL ?? readEnvDatabaseUrl(envText)
       if (!url) return failed(`DATABASE_URL is not set in ${ENV_FILE}`)
-      context.database = await io.inspectDatabase(url)
+      const ssl = sslConfig(url, lookup)
+      context.database = await io.inspectDatabase(url, ssl)
       if (context.database !== 'unreachable') return skipped('PostgreSQL is reachable')
       if (!isLocalDatabaseUrl(url)) {
         return failed(`PostgreSQL in DATABASE_URL is not reachable; start it or fix DATABASE_URL in ${ENV_FILE}`)
       }
       const compose = ['compose', '--env-file', ENV_FILE, 'up', '-d', '--wait', 'postgres', 'redis']
-      if (io.run('docker', compose) !== 0) {
-        return failed('`docker compose up` could not start postgres and redis; is Docker installed and running?')
+      const status = io.run('docker', compose)
+      if (status !== 0) {
+        return failed(
+          '`docker compose up` could not start postgres and redis; is Docker installed and running?',
+          status,
+        )
       }
-      context.database = await io.inspectDatabase(url)
+      context.database = await io.inspectDatabase(url, ssl)
       if (context.database === 'unreachable') {
         return failed(
           `PostgreSQL started but DATABASE_URL in ${ENV_FILE} still cannot connect; check its port and credentials`,
@@ -161,14 +206,14 @@ export const STEPS = [
   {
     name: 'generate',
     async run({ io }) {
-      return io.run('yarn', ['generate']) === 0 ? done('yarn generate') : failed('`yarn generate` failed')
+      return yarnStep(io, ['generate'])
     },
   },
   {
     // Applies only pending migrations, so it is safe on every run.
     name: 'migrate',
     async run({ io }) {
-      return io.run('yarn', ['db:migrate']) === 0 ? done('yarn db:migrate') : failed('`yarn db:migrate` failed')
+      return yarnStep(io, ['db:migrate'])
     },
   },
   {
@@ -177,8 +222,7 @@ export const STEPS = [
       if (!options.reinstall && database === 'initialized') {
         return skipped('database already has users (re-initialize with: yarn setup --reinstall)')
       }
-      const args = options.reinstall ? ['initialize', '--reinstall'] : ['initialize']
-      return io.run('yarn', args) === 0 ? done(`yarn ${args.join(' ')}`) : failed(`\`yarn ${args.join(' ')}\` failed`)
+      return yarnStep(io, options.reinstall ? ['initialize', '--reinstall'] : ['initialize'])
     },
   },
 ]
@@ -212,7 +256,7 @@ export async function setup({ argv, io, requirements, childEnv = {}, log = conso
   const failure = results.find((result) => result.outcome === 'failed')
   if (failure) {
     log(`[setup] failed at ${failure.name}; fix it and run the installer again (completed steps are skipped)`)
-    return 1
+    return failure.status
   }
   if (options.noDev) {
     log('[setup] ready; start the app with: yarn dev')
@@ -253,7 +297,7 @@ export function createIo({ root = ROOT, spawn = spawnSync, env = process.env, re
         logger: { info: (message) => console.log(message) },
       }),
     // pg is a dependency of the app, so it is resolved only after the dependencies step.
-    inspectDatabase: (url) => inspectDatabase(url, requireFromApp('pg').Client),
+    inspectDatabase: (url, ssl) => inspectDatabase(url, { Client: requireFromApp('pg').Client, ssl }),
   }
 }
 

@@ -111,7 +111,7 @@ The installer runs every manual step below. Before each step it checks whether t
 
 - `--no-dev`: stop before starting the app.
 - `--reinstall`: re-initialize a database that already has data.
-- `--classic`, `--verbose`, `--database-name <name>`: passed on as before.
+- `--classic`, `--verbose`, `--database-name <name>`, `--update-env` / `--no-update-env`: passed on as before.
 
 If a step fails, the installer stops and names it. Fix the problem and run the installer again.
 
