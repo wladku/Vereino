@@ -95,9 +95,19 @@ package-lock.json
 .claude/settings.local.json
 .playwright-mcp
 
-# external skills installed by `yarn install-skills` (npx skills add)
-.agents/skills/
-skills-lock.json
+# Agent skills in .agents/skills/ and skills-lock.json are committed so every clone gets the same
+# skills (product owner decision, 2026-10-21). Per-agent links (.claude/skills, …) are created
+# locally by `yarn install-skills` / `npx skills add`.
+# These entries are local links to the repo-local overrides in .ai/skills/<id>, which are committed
+# there; committing the links would duplicate the files.
+.agents/skills/om-backend-ui-design/
+.agents/skills/om-build-workflow/
+.agents/skills/om-create-ai-agent/
+.agents/skills/om-data-model-design/
+.agents/skills/om-implement-spec/
+.agents/skills/om-integration-builder/
+.agents/skills/om-module-scaffold/
+.agents/skills/om-system-extension/
 
 # on-demand installed framework context and local LLM evaluation evidence
 .ai/framework-context/
