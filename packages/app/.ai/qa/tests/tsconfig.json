@@ -1,0 +1,11 @@
+{
+  "$comment": "Type-checks and type-aware lints the Vereino integration tests (engineering standards S13.6); the app tsconfig does not include the .ai folder. playwright.config.ts is platform-owned and stays out.",
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": [],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["playwright.config.ts"]
+}

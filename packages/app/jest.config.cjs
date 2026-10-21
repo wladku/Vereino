@@ -4,7 +4,27 @@
 // and are excluded here.
 // `create-mercato-app` skips `__tests__`/`__integration__` while copying the
 // template, so a freshly scaffolded app owns no test files until you write one.
+
+// Vereino local patch (engineering standards S13.6): 100 % line, branch, function and statement
+// coverage for the pure domain code in lib/ of every Vereino module listed in vereino-modules.json.
+const fs = require('node:fs')
+const path = require('node:path')
+const vereinoLibDirs = require('./vereino-modules.json')
+  .modules.map((id) => `src/modules/${id}/lib`)
+  .filter((dir) => fs.existsSync(path.join(__dirname, dir)))
+const vereinoCoverage =
+  vereinoLibDirs.length > 0
+    ? {
+        collectCoverage: true,
+        collectCoverageFrom: vereinoLibDirs.map((dir) => `<rootDir>/${dir}/**/*.{ts,tsx}`),
+        coverageThreshold: Object.fromEntries(
+          vereinoLibDirs.map((dir) => [`./${dir}/`, { lines: 100, branches: 100, functions: 100, statements: 100 }]),
+        ),
+      }
+    : {}
+
 module.exports = {
+  ...vereinoCoverage,
   testEnvironment: 'node',
   testTimeout: 30000,
   passWithNoTests: true,

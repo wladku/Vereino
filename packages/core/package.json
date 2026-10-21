@@ -10,9 +10,13 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=\"src/**\" --test-coverage-exclude=\"src/**/__tests__/**\" \"src/**/__tests__/*.test.{ts,mjs}\""
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "eslint": "^9.39.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2"
   }
 }

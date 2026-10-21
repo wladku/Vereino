@@ -14,8 +14,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "verbatimModuleSyntax": false,
-    "jsx": "react-jsx"
+    "verbatimModuleSyntax": true,
+    "jsx": "react-jsx",
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "src/**/*.ts",
