@@ -3,32 +3,35 @@
 - Date: 2026-10-23
 - Mode: own; Owner: Władek Kuć (product owner, KS Gwiazda vice-president); Pass: full
 - Evidence basis:
+  - one account from the academy coordinator, a club insider outside the founding team (online call, automatic transcript, cut short);
   - one account from outside the team: a guardian of three sons in another club's academy, which already uses a club app. Phone interview, automatic transcript;
   - one first-hand account of a guardian who is also a co-founder and board member;
   - one real Messenger excerpt from one group channel;
   - the club's internal knowledge from the founders' meeting;
   - the Orlik 2024 regulations;
-  - one competitor benchmark checked on 2026-09-30;
-  - seventeen decision records.
+  - a competitor benchmark of 13 products checked by an agent on 2026-10-23, not yet re-checked by a human, and the earlier ProTrainUp benchmark of 2026-09-30;
+  - eighteen decision records.
   
   The co-founder's account is tagged `[INTERVIEW]` because it is a real guardian's own experience. Note that `research/README.md` reserves that tag for people outside the team.
   
-  Apart from the guardian from another club, nobody outside the team has been interviewed. Every claim about coaches, treasurers and the clubs' own view is a team belief. The most consequential untested belief is that guardians will declare attendance in Vereino instead of the Messenger poll (A01).
-- Coverage: 94 claims — 75 sourced (interview 21, data 0, document 50, product 1, benchmark 3), 0 synthetic, 19 assumed; 6 entries on the collection plan. Most "document" lines are the team's own decisions and the spec, not evidence about users.
+  Apart from the coordinator and the guardian from another club, nobody outside the team has been interviewed. Claims about coaches come from the team or the coordinator; none comes from a coach or the treasurer. Claims about other clubs are team beliefs or vendor pages. The most consequential untested belief is that guardians will declare attendance in Vereino instead of the Messenger poll (A01).
+- Coverage: 110 claims — 88 sourced (interview 30, data 0, document 53, product 1, benchmark 4), 0 synthetic, 22 assumed; 8 entries on the collection plan. Most "document" lines are the team's own decisions and the spec, not evidence about users.
 - Synthetic hypotheses outside Coverage: 0
-- Definition of Ready signed by: not yet signed. Problems and Target group rest on two guardian accounts, one of them from a co-founder. There is no account yet from coaches, the treasurer or a coordinator. Ready for: research (interviews already requested); not for implementation planning, which waits for the interviews (D15).
+- Definition of Ready signed by: not yet signed. Problems and Target group rest on two guardian accounts, one of them from a co-founder, and one coordinator account. There is no account yet from coaches or the treasurer. Ready for: research (interviews already requested); not for implementation planning, which waits for the interviews (D15).
 - Sources:
   - `.ai/specs/research/` (business case, vision board, stakeholders, protopersonas, journey map, MoSCoW, benchmark);
   - `research/interviews/2026-10-23-interview-guardian-founder.md`;
   - `research/interviews/2026-10-23-interview-guardian-multi-club.md`;
+  - `research/interviews/2026-10-23-interview-coordinator.md`;
   - `research/interviews/2026-09-26-meeting-wk-kk.md`;
-  - `research/decisions/D-001…D-017`;
+  - `research/decisions/D-001…D-018`;
+  - `research/2026-10-23-benchmark-competitors.md` (13 products) and `research/2026-10-20-business-case.md` (revised 2026-10-23);
   - `research/2026-10-23-benchmark-sportbm.md` (screens of another club's app);
   - `.ai/specs/2026-10-20-vereino-club-management.md` (Draft).
 
 ## Decision summary
 
-**Current decision (agreed 2026-10-23):** find out, through the interviews already requested, which beliefs behind the 1.0 scope hold before that scope is treated as closed. The scope itself stays as decided (D01–D14, the spec's REQ-001…REQ-035), and implementation planning waits for the interviews (D15). This session did not reopen it.
+**Current decision (agreed 2026-10-23):** find out, through the interviews already requested, which beliefs behind the 1.0 scope hold before that scope is treated as closed. The scope itself stays as decided (D01–D17, the spec's REQ-001…REQ-035), and implementation planning waits for the interviews (D15). Grant settlement got its own discovery track (D18).
 
 **What we know.** By the board's own knowledge, not user accounts, the club runs its schedule and attendance through Messenger groups, tracks fees manually, arranges substitutions and Orlik bookings by phone, and keeps no record of difficult cases (Problems).
 
@@ -45,6 +48,16 @@ He mutes all messenger apps and checks the time the day before. He values the gr
 - The in-app payment commission he pays as a parent (about PLN 2 per basket) annoys him. Separately, a friend of his pays by standing order.
 - The visible "unpaid" status helps him pay.
 
+**The academy coordinator** (a club insider):
+- Substitutions are rare and coaches find substitutes among themselves; he described no dispute, and Władek recalls none in the last year.
+- He calculates coach pay monthly: a fixed base, minus a fixed amount per missed session passed to the substitute, plus a fixed amount per away trip; whether REQ-021 fits is Q14.
+- Coaches take cash for fees and kits and hand it to him monthly with a list on an envelope or paper; he keeps a cash notebook and Excel. The older groups' coaches pay referees from that cash or their own money.
+- The training timetable has no collisions; matches, tournaments and pitch maintenance collide "very often" (this led to D17).
+- The club rents school halls in winter, billed from hour logs (Q15).
+- Grant settlement, about 12 grants this year, takes most of his time (D16 keeps it out of 1.0; D18 opens a separate track).
+
+**The benchmark** (13 products, agent-checked) found no product with both the club side and municipal-facility administration. Vibeclass presents multi-section clubs as a core case, so the multi-section edge is not unique. On 2026-10-23 ProTrainUp's pricing page lists a facilities module, though nothing about external rentals or an owner report; whether it is new since 2026-09-30 is unknown.
+
 **What is chosen.** 1.0 serves a small multi-section club with the football academy as its main section (D11), with KS Gwiazda as the pilot. The scope is in Scope; the exclusions are in Non-goals (N01–N17). The guardian's view across several clubs is later (D14).
 
 **What could change it:**
@@ -52,10 +65,12 @@ He mutes all messenger apps and checks the time the day before. He values the gr
 - A02: whether the treasurer's pain is the one 1.0 addresses.
 - A07: whether notifications reach guardians who mute everything.
 - A03 and A04: whether other small clubs would choose Vereino and administer a facility.
+- A05: whether automatic substitution settlement solves a real problem (the coordinator described no dispute; Władek recalls none in the last year).
+- Q13: whether the team's energy should go to grant settlement for all associations instead (A10).
 
 Two guardians do not show what guardians in general do. Both use the group chat for lifts. The second also keeps urgent changes in WhatsApp and missed an in-app confirmation deadline (A01, A07). He says seeing who is called up would help arrange lifts (A09, Q12).
 
-**Next.** Interviews are requested with two more guardians, with the academy coordinator and with the treasurer/administrator; the first of three guardians is done (Collection plan; owner Władek; dates not set). After them, refresh this brief with `om-discover --refresh`.
+**Next.** Interviews are requested with two more guardians, with the treasurer/administrator, and the second part with the coordinator; the first guardian interview and the first coordinator conversation are done (Collection plan; owner Władek; dates not set). After them, refresh this brief with `om-discover --refresh`.
 
 **The gap.** The planned conversations do not yet reach the revisit points the decisions set:
 - D01 needs 5 conversations with target users.
@@ -75,8 +90,10 @@ A small club runs the club, not Excel and Messenger — the founders' intended d
 - Pilot sections: Akademia piłkarska, Basen, Zumba, Szachy and Cheerleader. The academy has eight birth-year groups. `[DOCUMENT]` spec Q-005
 - User (uses): a guardian of one child in the academy. He learns the training times at the start of the season, and he learns the details of friendlies and tournaments from the group's Messenger channel and poll. `[INTERVIEW]` interviews/2026-10-23-interview-guardian-founder.md
 - User (uses), in another club: a guardian of three sons in a football academy that uses a club app. He handles football and his wife handles their dance classes elsewhere. `[INTERVIEW]` interviews/2026-10-23-interview-guardian-multi-club.md
-- Users (uses), not yet observed: section coordinator, treasurer/administrator, coaches (often on contract), participants aged 13+, facility attendant. `[ASSUMPTION]` research/2026-10-20-stakeholders.md
+- User (uses): the academy coordinator. He coordinates coaches, sessions, matches, places and equipment, manages substitutions, calculates coach pay, collects coaches' cash, and settles grants with the administrator. `[INTERVIEW]` interviews/2026-10-23-interview-coordinator.md
+- Users (uses), not yet observed: coordinators of other sections, treasurer/administrator, coaches (often on contract), participants aged 13+, facility attendant. `[ASSUMPTION]` research/2026-10-20-stakeholders.md
 - Stakeholders: the Gwiazda board decides the rollout. Gmina Liszki owns the Orlik and receives the report. The platform is Open Mercato. `[DOCUMENT]` research/2026-10-20-stakeholders.md
+- Stakeholders found in the coordinator interview: the person who maintains the pitch, the schools that rent halls to the club, the external accountant, league referees, and grant-makers (municipality, ministry). `[INTERVIEW]` interviews/2026-10-23-interview-coordinator.md
 - Decider for scope decisions: Władek Kuć (RACI A for 1.0 scope, segment, name and license); Kacper Kuć for technology and hosting. Rollout, payment model and Orlik rules have no named decider (Q01, Q02, Q04).
 
 ## Problems, with evidence
@@ -98,16 +115,24 @@ A small club runs the club, not Excel and Messenger — the founders' intended d
 - **Fee control (belief).** The guardian believes nobody in the club is in control of fee settlement. This is his belief, not an observation. `[ASSUMPTION]` same note
 - **Treasurer (belief).** The treasurer does not know at any moment who is overdue, sends reminders by hand, and collects coaches' units from memory. `[ASSUMPTION]` research/2026-10-20-protopersonas.md (A02)
 - **Coaches (belief).** Coaches lose declarations in the chat and argue about units after substitutions. `[ASSUMPTION]` research/2026-10-20-protopersonas.md (A05)
+- **Substitutions.** Coaches look for a substitute among themselves and go to the coordinator only if they cannot find one; substitutions are now rare, more frequent around June, and no dispute about them was described. `[INTERVIEW]` interviews/2026-10-23-interview-coordinator.md
+- **Substitutions (owner's recollection).** Asked in the refresh session, Władek recalls no coach dispute about substitution settlement in the last year. `[DOCUMENT]` om-discover refresh session, 2026-10-23
+- **Coach pay.** Coach pay is a fixed monthly base per coach (higher for the older league groups), reduced by a fixed amount per missed session that passes to the substitute, plus a fixed amount per away trip; the coordinator calculates it monthly from each coach's summary. Amounts are not recorded. `[INTERVIEW]` same note
+- **Cash and referees.** Coaches take fees and kit payments in cash, list who paid what on an envelope or a sheet, and hand the cash to the coordinator once a month; he keeps a cash notebook and an Excel settlement. Coaches of the older league groups pay referees at home league matches from the collected cash or their own money, and the referee's declaration is the receipt used for tax and social-insurance payments. `[INTERVIEW]` same note
+- **School halls.** In winter the academy trains in school halls in three nearby villages under signed contracts; for one hall the club logs the hours and the school bills from that log, the other two schools keep their own logs and bill monthly. `[INTERVIEW]` same note
+- **Grant settlement.** The club settled about 12 grants this year, by the coordinator's estimate; each invoice from KSeF is allocated to one or more grants, described, stamped and tabulated monthly, and a double claim could cost a whole grant. The coordinator named this as the work that takes most of his time; how long one settlement takes is not recorded. `[INTERVIEW]` same note
+- **Grant settlement (owner's view).** Władek, as vice-president, calls grant settlement "a nightmare"; he has not described a specific settlement. `[ASSUMPTION]` research/decisions/D-018-grant-settlement-discovery-track.md
 - **Children in several organisations (belief).** Guardians with children in several organisations struggle to keep track of what is on, where and when. D-014 rests on Władek's description of a friend, who was interviewed on 2026-10-23 (A06). `[ASSUMPTION]` D-014 (A06)
 - **Orlik rules.** The Orlik regulations set hour zones, a 90-minute unit, payment to the municipality's account and a 24 h cancellation rule. The regulations are cited from the business case; no copy is in the repository. `[DOCUMENT]` research/2026-10-20-business-case.md
-- **Coordinator (belief).** The coordinator schedules the birth-year groups on one facility with no tool that detects conflicts, and the Orlik has no public schedule. `[ASSUMPTION]` spec Problem Statement
+- **Collisions.** The regular training timetable has no collisions: the coordinator and the administrator set it and publish it as a summer and a winter poster. Collisions happen "very often" between matches, tournaments and pitch maintenance planned by someone else; league matches are known up to two weeks ahead, tournaments sometimes only days ahead. This replaces the team's earlier belief that the coordinator lacks a tool to detect collisions between groups. `[INTERVIEW]` interviews/2026-10-23-interview-coordinator.md
+- **Public schedule (belief).** The Orlik has no public schedule. `[ASSUMPTION]` spec Problem Statement
 
 ## Product and how it stands out
 
 - What it is: an open-source (MIT) club management application on Open Mercato for a small multi-section club; detail in Scope. `[DOCUMENT]` D-011, D-012
 - What makes it different, as hypotheses only:
   - the municipal facility as a core feature;
-  - non-football sections as a full use case;
+  - non-football sections as a full use case (Vibeclass also presents this, so it is not unique);
   - one person and one calendar across sections;
   - no license fee and data kept by the club.
   
@@ -116,11 +141,14 @@ A small club runs the club, not Excel and Messenger — the founders' intended d
 | reference | what it does well | where it falls short for our users | checked on | link |
 |---|---|---|---|---|
 | SportBM (as used by LKS Lotnik 1949) | one calendar with several children's events, per-child call-up status, a venue with address and map pin, the coach's free-text notes, payment status on the dashboard `[BENCHMARK]` (four screenshots from one guardian's account; public page and pricing not yet checked) | the gathering time sits only in free text; who else is called up is not shown; that account had 135 unread notifications; the club's cost is unknown | 2026-10-23 | not yet checked |
-| ProTrainUp | calendar, attendance, announcements, fees with reminders and online payment, multiple roles, mobile apps; Club Pro PLN 125/month, Silver PLN 245/month `[BENCHMARK]` (compiled by Claude from the website, not yet re-checked by a human; the planned one-month trial has not been done) | no facility managed for a municipality, a football/sports model, heavy for a small academy, vendor-held data — gaps are `[ASSUMPTION]` until checked in interviews | 2026-09-30 | https://protrainup.com/pl/pricing |
+| ProTrainUp | calendar, attendance, announcements, fees with reminders and online payment, multiple roles, mobile apps; Club Pro PLN 125/month, Silver PLN 245/month; on 2026-10-23 the pricing page also lists a "facilities and reservations" module from Club Pro and bank statement parsing from Gold `[BENCHMARK]` (agent-checked, not yet re-checked by a human; no demo used) | nothing found on external rentals, a public schedule or an owner report; a football/sports model, heavy for a small academy, vendor-held data — the last three are `[ASSUMPTION]` until checked | 2026-10-23 | https://protrainup.com/pl/pricing |
+| Vibeclass | presents multi-section clubs (several sports under one roof) as a core case; per-section schedules and fees, coach-hour settlement, internal room bookings with collision detection `[BENCHMARK]` (agent-checked) | no evidence found on sibling discount, bank import, kit orders, a public page or external rentals; price for ~200 players not computable from the page | 2026-10-23 | see research/2026-10-23-benchmark-competitors.md |
 
 - Another academy uses a dedicated club app, SportBM according to the screenshots. Per the guardian, it has an account per son, a calendar with list and calendar views, events with a map pin, a coach's description, start and end times, call-ups with a confirmation deadline, fee payment with a commission, and kit orders. This is a guardian's account, not a checked benchmark. `[INTERVIEW]` interviews/2026-10-23-interview-guardian-multi-club.md
 
-Checking SportBM's public page and pricing is on the Collection plan.
+- Across 13 products, the agent found none that combines the club side with municipal-facility administration, and none that describes substitution settlement, a coach-to-treasurer cash handover or a text to paste into a group chat. This is an assessment from vendor pages, not evidence of demand. `[ASSUMPTION]` assessment in research/2026-10-23-benchmark-competitors.md
+
+Checking SportBM's public page and pricing, and ProTrainUp's facilities module in a demo, are on the Collection plan.
 
 ## Goals and success criteria
 
@@ -140,7 +168,7 @@ Checking SportBM's public page and pricing is on the Collection plan.
 - **Now (1.0):** the spec's Must set (`.ai/specs/2026-10-20-vereino-club-management.md`, REQ-001…REQ-035 with Must priority), delivered in its five phases.
   - The 1.0 scope is D01 as extended by D13 and D17: people and roles, sections and groups, activities and calendars, attendance, substitutions, announcements, fees with online payment, facility and bookings, public club page, cash and bank reconciliation, order campaigns, treasurer role, a bilingual interface, and facility maintenance planned in the facility calendar (D17).
   - Phase 1 (club and people) is the smallest coherent outcome.
-- **Later:** a guardian's view across several clubs (D14); push with a native app (D09); online payment for renters; projects and grants; volunteer duty sign-up (1.1).
+- **Later:** a guardian's view across several clubs (D14); push with a native app (D09); online payment for renters; projects and grants, with grant settlement explored on its own track (D16, D18); volunteer duty sign-up (1.1).
 - **Not doing:** see Non-goals.
 
 ## Domain glossary
@@ -169,6 +197,11 @@ Full vocabulary: spec *Domain Vocabulary and Business Rules*.
   2. Guardians accept or decline in the app; an event left unanswered expires and disappears for the parent.
   3. The coach phones parents who did not answer.
   4. Urgent changes and lifts go through WhatsApp.
+- Current state, cash from coaches: `[INTERVIEW]` interviews/2026-10-23-interview-coordinator.md
+  1. A parent pays a coach in cash for a fee or a kit.
+  2. The coach notes who paid what, on an envelope or a sheet; coaches of the older groups also pay referees from it or from their own money.
+  3. Once a month the coach hands the cash, the list and the referees' declarations to the coordinator.
+  4. The coordinator records it in a cash notebook and an Excel settlement; invoices and declarations go to the external accountant through the administrator.
 - Future state: the spec's User Journeys describe the 1.0 flows. Whether the guardian's flow replaces step 2 for friendlies and tournaments (declaration in the app) is A01, and whether regular training has a declaration step at all is Q09; steps 3 and 4 stay in the chat or move to the app depending on A07 and D09.
 
 ## Business rules
@@ -189,13 +222,13 @@ Full vocabulary: spec *Domain Vocabulary and Business Rules*.
 
 | Id | We are not building | Why | Owner | Status | Review by | Required path to change | Source | Supersedes |
 |---|---|---|---|---|---|---|---|---|
-| N01 | Coaching tools: training diagrams, exercise library, medical module, scouting and assessments, individual statistics | a small club would use a fraction; ProTrainUp is strong there | Władek Kuć | active | unknown | superseding row approved by the owner | `[DOCUMENT]` D-011, business case | none |
+| N01 | Coaching tools: training diagrams, exercise library, medical module, scouting and assessments, individual statistics | a small club would use a fraction; ProTrainUp is strong there; kept after the coordinator's wish for training plans, which is an intention tied to a possible certification (D16) | Władek Kuć | active | at the brief refresh after the administrator interview and the second coordinator conversation (D16); change if the club commits to the certification and coaches confirm the need | superseding row approved by the owner | `[DOCUMENT]` D-011, business case, D-016 | none |
 | N02 | Push notifications in 1.0 | no web push for a PWA in the platform; returns with a native app | Władek Kuć | active | with the native app | superseding row approved by the owner | `[DOCUMENT]` D-009, spec Q-002 | none |
 | N03 | Messenger/WhatsApp integration | no official API for groups; a text with a link to paste replaces it | Władek Kuć | active | if a group API appears | superseding row approved by the owner | `[DOCUMENT]` D-009 | none |
 | N04 | Payment gateways other than Stripe, including a custom Przelewy24/PayU adapter | Stripe is available in the platform | Władek Kuć, Kacper Kuć | active | after the treasurer interview | superseding row approved by both owners | `[DOCUMENT]` D-010, spec Q-003 | none |
 | N05 | Online payment for renters and accounts for regular renters | requests without payment are in; payment stays a transfer to the municipality | Władek Kuć | active | phase 5 exit gate | superseding row approved by the owner | `[DOCUMENT]` D-013 | none |
 | N06 | A page editor (CMS) | the public page is built from club data | Władek Kuć | proposal | unknown | superseding row approved by the owner | `[DOCUMENT]` spec Non-goals | none |
-| N07 | Projects and grants; a shop (order campaigns are in) | not needed for the 1.0 thesis | Władek Kuć | active | unknown | superseding row approved by the owner | `[DOCUMENT]` D-001, D-013 | none |
+| N07 | Projects and grants; a shop (order campaigns are in) | not needed for the 1.0 thesis; kept after the coordinator named grant settlement as his biggest time sink, because it rests on one account and the administrator was not interviewed (D16); explored on its own track (D18) | Władek Kuć | active | at the brief refresh after the administrator interview and the second coordinator conversation (D16), and when the D18 evidence is collected | superseding row approved by the owner | `[DOCUMENT]` D-001, D-013, D-016, D-018 | none |
 | N08 | Bookkeeping of coach payouts and payroll export | 1.0 only calculates units and exports CSV | Władek Kuć | active | unknown | superseding row approved by the owner | `[DOCUMENT]` D-007 | none |
 | N09 | Multiple clubs on one instance in 1.0 (the architecture must not block it) | one instance per club; the hosting model is open | Władek Kuć | active | with the hosting decision (Q06) | superseding row approved by the owner | `[DOCUMENT]` spec Non-goals, D-014 | none |
 | N10 | A guardian's view across several clubs in 1.0 | the benefit needs other clubs on Vereino; the problem is unverified | Władek Kuć | active | after the parent interviews | superseding row approved by the owner | `[DOCUMENT]` D-014 | none |
@@ -226,21 +259,24 @@ Full vocabulary: spec *Domain Vocabulary and Business Rules*.
 | D13 | 2026-10-20 | Scope added to 1.0 after discovery (REQ-023…REQ-035); kit orders Could → Must | the pilot club does these by hand today | Władek Kuć | active | phase 4 and phase 5 exit gates | superseding row approved by the owner; candidates to move to Should in order: REQ-029, REQ-028, REQ-030 | `[DOCUMENT]` research/decisions/D-013-scope-added-after-discovery.md | none |
 | D14 | 2026-10-23 | A guardian's view across several clubs is later; 1.0 must not block it (adopts N10) | 1.0 is one club per instance and the benefit needs other clubs on Vereino; placement was Claude's recommendation, accepted by Władek; a calendar subscription link was considered | Władek Kuć | active | after the parent interviews | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-014-cross-club-guardian-view-later.md | none |
 | D15 | 2026-10-23 | Implementation planning of phase 1 waits for the requested interviews | phase 1 ends with guardians signing in, which is untested (A01, A07); planning now with the risk accepted was the alternative | Władek Kuć | active | when the interview notes are in and the brief is refreshed | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-015-phase-1-waits-for-interviews.md | none |
+| D16 | 2026-10-23 | Grants (N07) and training plans (N01) stay out of 1.0 after the coordinator interview; the problem and the intention are recorded | each rests on one account; the administrator was not interviewed; the certification is not decided; Claude's recommendation, accepted by Władek | Władek Kuć | active | at the brief refresh after the administrator interview and the second coordinator conversation | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-016-keep-grants-and-coaching-tools-out.md | none |
 | D17 | 2026-10-23 | Facility maintenance and inspections (REQ-022) move from Could to Must. Planned work occupies the facility calendar like a closure, and recurring tasks run by date and by hours of use | "it affects facility bookings" (Władek); the academy coordinator reports frequent collisions between matches and tournaments and pitch maintenance | Władek Kuć | active | phase 5 exit gate | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-017-maintenance-must.md; `[INTERVIEW]` research/interviews/2026-10-23-interview-coordinator.md | none |
+| D18 | 2026-10-23 | Grant settlement gets a separate discovery track, as a possible separate product that could also run as a Vereino module; the 1.0 scope and D16 stay meanwhile | the coordinator's account and Władek's view; Claude's proposal, accepted by Władek; whether to move the team's energy there is open (Q13) | Władek Kuć | active (track) / open (direction) | when the D18 evidence is collected | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-018-grant-settlement-discovery-track.md | none |
 
 ## Riskiest assumptions
 
 | Id | Assumption | Importance | Evidence today | If false | Smallest test | Owner | By when | Result |
 |---|---|---|---|---|---|---|---|---|
 | A01 | Guardians will declare attendance in Vereino instead of the Messenger poll `[ASSUMPTION]` vision board ("biggest risk") | high | one guardian answers the coach's poll and keeps the chat for lifts; absences go to the chat or privately (interview 2026-10-23, co-founder). In another club's app, the outside guardian missed one confirmation deadline. He says parents often forget and the coach phones them. He thinks everyone installed the app because there is no choice, but he is not sure that all did (interview 2026-10-23, outside guardian) | the primary metric and D09 fail; the guardian's side of 1.0 needs rethinking | parent interviews on how they last declared attendance; the magic link test in one Gwiazda group (D09) needs REQ-017 (a Should) built first, so it cannot run before scope is closed | Władek Kuć | unknown | untested |
-| A02 | The treasurer's biggest pain is not knowing who is overdue, and online payment helps; Stripe commissions are acceptable `[ASSUMPTION]` protopersonas, D-010 | high | none about overdue amounts. A second guardian dislikes the commission that parents pay on in-app payments in his club; a friend of his pays by standing order. This is the parent's side; D10's trigger concerns the club's side. the visible unpaid status prompts him to pay (interviews/2026-10-23-interview-guardian-multi-club.md). One guardian's standing-order overpayment drew no contact from the club (interview 2026-10-23); online payment (D10) would not catch that, while bank import with matching (REQ-030, a D13 candidate for Should) would. There is no treasurer account. | the payments phase targets the wrong problem; D10 and the place of REQ-030 are revisited | interview with the treasurer/administrator, plus the baseline: number of families and overdue amounts at the end of the last month | Władek Kuć | unknown | untested |
-| A03 | A small club chooses Vereino over ProTrainUp because it is free, simple and handles the facility `[ASSUMPTION]` business case | high | benchmark only (2026-09-30) | no clubs beyond Gwiazda; the business goals fail | conversations with coordinators or presidents of other clubs (e.g. Lotnik Ryspinów): what they use, who decides, whether open source is an argument or a risk | Władek Kuć | unknown | untested |
+| A02 | The treasurer's biggest pain is not knowing who is overdue, and online payment helps; Stripe commissions are acceptable `[ASSUMPTION]` protopersonas, D-010 | high | none about overdue amounts. A second guardian dislikes the commission that parents pay on in-app payments in his club; a friend of his pays by standing order. This is the parent's side; D10's trigger concerns the club's side. The visible unpaid status prompts him to pay (interviews/2026-10-23-interview-guardian-multi-club.md). One guardian's standing-order overpayment drew no contact from the club (interview 2026-10-23); online payment (D10) would not catch that, while bank import with matching (REQ-030, a D13 candidate for Should) would. There is no treasurer account. | the payments phase targets the wrong problem; D10 and the place of REQ-030 are revisited | interview with the treasurer/administrator, plus the baseline: number of families and overdue amounts at the end of the last month | Władek Kuć | unknown | untested |
+| A03 | A small club chooses Vereino over ProTrainUp because it is free, simple and handles the facility `[ASSUMPTION]` business case | high | benchmarks only: 13 products checked on 2026-10-23 show the multi-section edge is not unique (Vibeclass) and on 2026-10-23 ProTrainUp's pricing page lists a facilities module; no product found with the municipal-facility side (research/2026-10-23-benchmark-competitors.md) | no clubs beyond Gwiazda; the business goals fail | conversations with coordinators or presidents of other clubs (e.g. Lotnik Ryspinów): what they use, who decides, whether open source is an argument or a risk | Władek Kuć | unknown | untested |
 | A04 | Most academies in the segment administer a municipal facility `[ASSUMPTION]` D-008 | medium | Gwiazda only | the facility module moves from Must to Should (D08) | the same conversations with other clubs | Władek Kuć | unknown | untested |
-| A05 | Coaches will use one club tool, and automatic unit settlement removes disputes `[ASSUMPTION]` protopersonas | medium | none | substitutions and units (D07) lose their point; coaches stay on their own tools | interviews with the academy coordinator and several coaches | Władek Kuć | unknown | untested |
+| A05 | Coaches will use one club tool, and automatic unit settlement removes disputes `[ASSUMPTION]` protopersonas | medium | against the dispute part: the coordinator says substitutions are rare and settled among coaches and described no dispute (interviews/2026-10-23-interview-coordinator.md); Władek recalls none in the last year (refresh session, 2026-10-23). No coach interviewed | substitutions and units (D07) lose their point; coaches stay on their own tools | interviews with several coaches; the coordinator's second conversation | Władek Kuć | unknown | untested |
 | A06 | Guardians with children in several organisations struggle to keep track `[ASSUMPTION]` D-014 | low for 1.0 | Władek's description of one friend. Władek identified the interviewee as that friend; the transcript gives three sons in football, D-014 says two. He splits the organisations with his wife (he handles football, she handles dance) and has not tried combining calendars (interviews/2026-10-23-interview-guardian-multi-club.md) | D14 stays later or is dropped | the remaining parent interviews | Władek Kuć | unknown | untested |
 | A07 | In-app notifications and e-mail reach guardians `[ASSUMPTION]` D-009 | high | one guardian mutes all messenger apps and checks the schedule the day before (interview 2026-10-23, co-founder). In another club, urgent changes go through WhatsApp because in the app "nobody will see it" (interview 2026-10-23, outside guardian). His app account showed 135 unread notifications (research/2026-10-23-benchmark-sportbm.md) | changes go unnoticed; a view the guardian checks themselves (or a calendar link) matters more than notifications | parent interviews: how they last found out about a change, and whether they read club e-mail | Władek Kuć | unknown | untested |
 | A08 | A club without an IT person can get an instance hosted and maintained `[ASSUMPTION]` D-012 | medium | none | rollout beyond Gwiazda stalls | team decision plus the conversations with other clubs | Kacper Kuć | unknown | untested |
 | A09 | Guardians need to see which other children are called up or in their group, to arrange lifts `[ASSUMPTION]` from two guardian accounts | medium | two guardians describe arranging lifts with other families and one wants to see who is called up (both interviews 2026-10-23) | if false, guardians arrange lifts without seeing who is called up and the app need not show other children. If true and the app does not show them, the group chat stays the place where attendance is visible, and A01 gets harder. Showing them raises data-minimisation and consent questions. | ask the remaining guardians how they last arranged a lift, and ask coaches what they are willing to show | Władek Kuć | unknown | untested |
+| A10 | Grant settlement is a frequent, costly and error-prone problem for associations beyond KS Gwiazda `[ASSUMPTION]` D-018 | high for the product direction (Q13), low for 1.0 | the coordinator's account (about 12 grants this year, his biggest time sink, risk of losing a grant) and Władek's view; nothing from other associations | a product for all associations loses its case; D18 chooses between a Vereino module and no product | the D18 track: the last settlement step by step at Gwiazda, two or three other associations, and a benchmark of grant-settlement tools | Władek Kuć | unknown | untested |
 
 ## Kill criteria
 
@@ -269,12 +305,16 @@ None. No synthetic walkthrough has been run.
 | Q09 | Do guardians declare anything for regular training today, other than absences? | no — informs A01 and the primary metric | guardians (Collection plan) | open |
 | Q10 | What answer from the guardian interviews would make the owner revisit D09 or the primary metric? | no — without it the interviews have no agreed outcome | Władek Kuć | open |
 | Q12 | Should guardians see which other children are called up or in their group, given data minimisation and consent? | no — informs the guardian calendar and attendance (REQ-006, REQ-007) | Władek Kuć, after the coach interviews | open |
+| Q13 | Should the team's energy go to a grant-settlement system for all associations rather than to Vereino? | no — informs the product direction; decided after the D18 evidence | Władek Kuć | open |
+| Q14 | Does REQ-021 ("base + units × rate + matches and away trips per contract") match how the club pays coaches (a fixed base, minus a fixed amount per missed session passed to the substitute, plus a fixed amount per away trip)? | no — needed before REQ-021 is specified | Władek Kuć, the coordinator | open |
+| Q15 | Should Vereino record the club's own rentals of other facilities (school halls: hours, bills)? | no — not in the 1.0 scope today | Władek Kuć | open |
+| Q16 | Should cash expenses paid by coaches (referees) be recorded in Vereino, or stay in the cash notebook and with the accountant? | no — informs REQ-031 and REQ-033 | Władek Kuć, the treasurer | open |
 | Q11 | Is phase 1 planned before the interviews, accepting that guardians' sign-in is untested? | closed | Władek Kuć | closed 2026-10-23: no, planning waits for the interviews (D15) |
 
 ## Definition of Ready addendum (own)
 
-- Problems and Target group have two guardian accounts: one from outside the team (another club) and one from a co-founder. There is no account from coaches, the treasurer or a coordinator. Ticket-level readiness for user-facing work is therefore not met.
-- The scope decisions (D01–D14) are confirmed by the product owner. The beliefs behind them are untested: A01, A02, A03 and A07 are high-importance and untested. No assumption has been accepted untested.
+- Problems and Target group have two guardian accounts (one from outside the team, one from a co-founder) and one coordinator account. There is no account from coaches or the treasurer. Ticket-level readiness for user-facing work is therefore not met.
+- The scope decisions (D01–D18; D18: the track only) are confirmed by the product owner. The beliefs behind them are untested: A01, A02, A03 and A07 are high-importance and untested. No assumption has been accepted untested.
 - **Ready for:** research. The interviews are requested.
 - **Not yet ready for:** implementation planning.
   - Phase 1's outcome (the guardian and a 14-year-old sign in and see their profiles) also depends on guardians signing in, which is close to A01 and A07.
@@ -303,7 +343,7 @@ None. No synthetic walkthrough has been run.
 - What decision or work needs it: A05, D07, R04; the coach side of phases 2–3
 - Who can answer it: the academy coordinator, plus several different coaches
 - How: interviews with `research/interviews/2026-10-20-script-coach.md`
-- Owner and by when: Władek Kuć; coordinator invited, coaches not yet; dates unknown
+- Owner and by when: Władek Kuć; the coordinator's first conversation is done (interviews/2026-10-23-interview-coordinator.md); its second part (attendance, urgent changes, call-up visibility, tools, rollout, the counting request) and the coaches are not scheduled
 - Template: `research/templates/interview-note.md`
 
 ### What do other clubs use, who decides, and do they administer a facility?
@@ -319,6 +359,22 @@ None. No synthetic walkthrough has been run.
 - What decision or work needs it: the comparison in Product and how it stands out; A01, A07, A09
 - Who can answer it: the guardian interviewed on 2026-10-23, and SportBM's public page
 - How: four screenshots are in (research/2026-10-23-benchmark-sportbm.md). Still missing: a dated check of the public page and pricing, the call-up screen with its deadline, the payment screen, and what the "messages" tile does
+- Owner and by when: Władek Kuć; unknown
+- Template: `research/templates/benchmark-check.md`
+
+### How does grant settlement work, and is it a problem beyond KS Gwiazda? (D18)
+
+- What decision or work needs it: A10, Q13, the D18 decision (separate product, Vereino module, or none); N07
+- Who can answer it: the administrator and the coordinator at Gwiazda; two or three other associations, not only sports clubs
+- How: the last settlement of one grant step by step (who, how long, what had to be corrected); the same in the other associations; a dated benchmark of grant-settlement tools
+- Owner and by when: Władek Kuć; unknown
+- Template: `research/templates/interview-note.md`, `research/templates/benchmark-check.md`
+
+### Does ProTrainUp's facilities module cover external rentals, a public schedule and an owner report?
+
+- What decision or work needs it: A03, D08's edge over ProTrainUp
+- Who can answer it: ProTrainUp's 14-day demo
+- How: a dated check of the facilities module in the demo
 - Owner and by when: Władek Kuć; unknown
 - Template: `research/templates/benchmark-check.md`
 

@@ -44,6 +44,12 @@ Establish the product context that later skills read: who has which problem, the
 11. **D-017.** The owner moved REQ-022 (facility maintenance and inspections) from Could to Must.
     - `om-spec-writing` gate questions Q-040…Q-042 were answered by the owner: maintenance blocks the calendar; a separate feature `facilities.maintenance.manage`; usage-hour counting in 1.0.
     - The spec and the brief were revised after the owner approved the diff.
+12. **D-018.** The owner accepted a separate discovery track for grant settlement, as a possible separate product. Whether to move the team's energy there stays open (Q13).
+13. **`om-discover --refresh`.**
+    - The owner approved merging `claude/competitor-benchmark-08a1cc` locally (merge commit `978d747`). It also brought in the `main` commits the branch contained, including the PR #6 installer.
+    - The owner's answers: no substitution dispute recalled in the last year; the grant settlement account is left to the administrator.
+    - The brief was refreshed with the coordinator interview, the 13-product benchmark, D16 and D18, A10, and Q13–Q16.
+    - A skeptic subagent returned 3 CRITICAL and 8 WARNING findings, which were fixed. The owner approved the write.
 
 ## Decisions and their reasons
 
@@ -54,7 +60,7 @@ Establish the product context that later skills read: who has which problem, the
 
 ## Files changed
 
-- `.ai/specs/product-brief.md`: new.
+- `.ai/specs/product-brief.md`: new, refreshed on 2026-10-23.
 - `.ai/specs/2026-10-20-vereino-club-management.md`:
   - REQ-022 is Must, with a maintenance vocabulary row and slot occupancy;
   - public calendar, roles and features updated, and the J-006 errors;
@@ -64,7 +70,7 @@ Establish the product context that later skills read: who has which problem, the
   - Q-014 and Q-040…Q-042, DD-36, V-13 and a Changelog row.
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-017`: new.
+- `.ai/specs/research/decisions/D-014…D-018`: new.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
 - `.ai/specs/research/templates/interview-note.md`, `data-request.md`, `benchmark-check.md`: new.
 - `.ai/lessons/no-explicit-pay-rates-in-research.md` and one row in `.ai/lessons.md`.
@@ -75,17 +81,17 @@ Establish the product context that later skills read: who has which problem, the
 - `yarn format:check`: `29 Vereino file(s), 0 unformatted`.
 - `node scripts/check-lessons.mjs`: `Lessons catalog is valid`.
 - `claude mcp list`: `miro: https://mcp.miro.com (HTTP) - ✔ Connected`, after the owner's authentication.
-- Coverage of the brief, recounted by script: `94 claims — 75 sourced (interview 21, data 0, document 50, product 1, benchmark 3), 0 synthetic, 19 assumed`, with 6 collection-plan entries.
+- Coverage of the brief after the refresh, recounted by script: `110 claims — 88 sourced (interview 30, data 0, document 53, product 1, benchmark 4), 0 synthetic, 22 assumed`, with 8 collection-plan entries.
+- `yarn format:check` after the refresh: `31 Vereino file(s), 0 unformatted`.
 
 ## Open problems
 
 - **Lost amount in git history.** The example pay amount removed from the meeting note remains in the history of the public `main`. Rewriting history needs the owner's explicit request.
 - **Pending conversations:** the treasurer interview, the second part of the coordinator interview, two more guardian interviews, and the 4-week declaration count.
-- **Open questions in the brief:** Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10 and Q12 remain open.
-- **Benchmark not merged.** The competitor benchmark and the revised business case live on the side session's branch `claude/competitor-benchmark-08a1cc`. They are not merged here, and the brief does not yet cite them.
-- **Coordinator findings not yet in the brief.** They are in the interview note and partly in D-016/D-017. The brief takes them in at its next refresh, as the owner decided.
+- **Open questions in the brief:** Q01–Q10 and Q12–Q16 remain open.
+- **Maintenance planner in the spec.** The spec does not yet say what a person holding only `facilities.maintenance.manage` sees: calendar view, place scope, renter names. The owner was asked whether to fill this gap or add a role.
 
 ## Next steps
 
-- After the next interviews, run `/om-discover --refresh`. That refresh brings in the coordinator note, the treasurer note and the benchmark branch, and revisits D-007, REQ-021 and REQ-030 against the evidence.
-- Push and open a pull request only on the owner's request. This branch is stacked on `chore/discovery-pipeline-setup`.
+- After the next interviews, run `/om-discover --refresh`. That refresh brings in the treasurer note and the second coordinator conversation, and revisits D-007 (A05), REQ-021 (Q14) and REQ-030 against the evidence.
+- Push and open a pull request only on the owner's request. This branch is cut from `chore/discovery-pipeline-setup` and now also contains the merged benchmark branch.
