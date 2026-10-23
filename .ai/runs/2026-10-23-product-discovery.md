@@ -56,6 +56,11 @@ Establish the product context that later skills read: who has which problem, the
     - maintenance work is limited to those places;
     - the change adds a roles row and a navigation row, scope, API, UI, DD-36, TEST-050 and AC-022.
     - The owner approved the diff.
+15. **Second `om-discover --refresh`.**
+    - No new interviews, data or research files since the first refresh; no spec PRs on the tracker.
+    - The owner's Q-041 and Q-043 answers (the maintenance planner is a permission, not a role) were recorded as D-019, with a D19 row in the brief.
+    - The answers about time and a services company given in the benchmark session were not added; the owner gave no preference.
+    - This was a single-row change, so the agent checked it inline, without an independent skeptic pass.
 
 ## Decisions and their reasons
 
@@ -76,7 +81,7 @@ Establish the product context that later skills read: who has which problem, the
   - Q-014 and Q-040…Q-043, DD-36, V-13, TEST-050, the maintenance planner row and Changelog rows.
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-018`: new.
+- `.ai/specs/research/decisions/D-014…D-019`: new.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
 - `.ai/specs/research/templates/interview-note.md`, `data-request.md`, `benchmark-check.md`: new.
 - `.ai/lessons/no-explicit-pay-rates-in-research.md` and one row in `.ai/lessons.md`.
