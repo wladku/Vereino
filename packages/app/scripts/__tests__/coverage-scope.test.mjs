@@ -13,6 +13,7 @@ const COVERED_GLOBS = [
   { cwd: APP_ROOT, glob: 'scripts/vereino-*.mjs' },
   { cwd: APP_ROOT, glob: 'scripts/check-vereino-contracts.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/verify.mjs' },
+  { cwd: REPO_ROOT, glob: 'scripts/setup.mjs' },
   { cwd: REPO_ROOT, glob: 'eslint.vereino.mjs' },
 ]
 
@@ -29,6 +30,7 @@ test('the coverage globs match the test:scripts script', () => {
     'scripts/vereino-*.mjs',
     'scripts/check-vereino-contracts.mjs',
     '../../scripts/verify.mjs',
+    '../../scripts/setup.mjs',
     '../../eslint.vereino.mjs',
   ])
 })

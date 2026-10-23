@@ -10,7 +10,7 @@
   "scripts": {
     "preinstall": "node -e \"const v = process.versions.node.split('.').map(Number); if (v[0] < 24) { console.error('Node >= 24 required'); process.exit(1); }\"",
     "postinstall": "node ./scripts/link-framework-sources.mjs",
-    "setup": "yarn workspace @vereino/app setup",
+    "setup": "node ./scripts/setup.mjs",
     "setup:classic": "yarn workspace @vereino/app setup:classic",
     "setup:reinstall": "yarn workspace @vereino/app setup:reinstall",
     "setup:reinstall:classic": "yarn workspace @vereino/app setup:reinstall:classic",
