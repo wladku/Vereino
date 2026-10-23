@@ -56,6 +56,21 @@ Establish the product context that later skills read: who has which problem, the
     - maintenance work is limited to those places;
     - the change adds a roles row and a navigation row, scope, API, UI, DD-36, TEST-050 and AC-022.
     - The owner approved the diff.
+15. **Second `om-discover --refresh`.**
+    - No new interviews, data or research files since the first refresh; no spec PRs on the tracker.
+    - The owner's Q-041 and Q-043 answers (the maintenance planner is a permission, not a role) were recorded as D-019, with a D19 row in the brief.
+    - The answers about time and a services company given in the benchmark session were not added; the owner gave no preference.
+    - This was a single-row change, so the agent checked it inline, without an independent skeptic pass.
+16. **`om-backlog`.**
+    - The dry run and the filing run stopped on the Definition of Ready.
+    - The owner approved the research variant: epic #10 (E01 — Discovery) and tasks #11–#18, filed with `documentation`, `priority-medium` and `risk-low` and a label-rationale comment each. `.ai/specs/backlog.md` records the mapping.
+17. **Second coordinator conversation.** Questions were prepared live; the note is `research/interviews/2026-10-23-interview-coordinator-2.md`, with no names and no amount paid to a person.
+    - The owner confirmed that the club website mentioned in the call is a separate project.
+    - The owner accepted collecting the facts before changing scope, recorded as D-020.
+18. **Third `om-discover --refresh`.**
+    - The brief gained the second coordinator conversation, D20 and Q17, plus a collection-plan entry for the website's scope (9 entries).
+    - The Decision summary was compressed from over 1,000 to 763 words.
+    - The skeptic returned 0 CRITICAL and 8 WARNING findings, all fixed. The owner approved the write.
 
 ## Decisions and their reasons
 
@@ -76,7 +91,9 @@ Establish the product context that later skills read: who has which problem, the
   - Q-014 and Q-040…Q-043, DD-36, V-13, TEST-050, the maintenance planner row and Changelog rows.
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-018`: new.
+- `.ai/specs/research/decisions/D-014…D-020`: new.
+- `.ai/specs/research/interviews/2026-10-23-interview-coordinator-2.md`: new.
+- `.ai/specs/backlog.md`: new.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
 - `.ai/specs/research/templates/interview-note.md`, `data-request.md`, `benchmark-check.md`: new.
 - `.ai/lessons/no-explicit-pay-rates-in-research.md` and one row in `.ai/lessons.md`.
