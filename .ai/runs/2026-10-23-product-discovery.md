@@ -50,6 +50,12 @@ Establish the product context that later skills read: who has which problem, the
     - The owner's answers: no substitution dispute recalled in the last year; the grant settlement account is left to the administrator.
     - The brief was refreshed with the coordinator interview, the 13-product benchmark, D16 and D18, A10, and Q13–Q16.
     - A skeptic subagent returned 3 CRITICAL and 8 WARNING findings, which were fixed. The owner approved the write.
+14. **Maintenance planner (Q-043).** The owner kept the feature instead of a role. The spec now covers a person holding only `facilities.maintenance.manage`:
+    - places are assigned per person in `facilities_place_maintainers`;
+    - the facility calendar is redacted like the public one;
+    - maintenance work is limited to those places;
+    - the change adds a roles row and a navigation row, scope, API, UI, DD-36, TEST-050 and AC-022.
+    - The owner approved the diff.
 
 ## Decisions and their reasons
 
@@ -67,7 +73,7 @@ Establish the product context that later skills read: who has which problem, the
   - `MaintenanceTask` fields;
   - a complete command, a guard error, an event and the reminder job;
   - TEST-031 rewritten and TEST-049 added; phase 5, traceability, risk and AC-022 updated;
-  - Q-014 and Q-040…Q-042, DD-36, V-13 and a Changelog row.
+  - Q-014 and Q-040…Q-043, DD-36, V-13, TEST-050, the maintenance planner row and Changelog rows.
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
 - `.ai/specs/research/decisions/D-014…D-018`: new.
@@ -89,7 +95,6 @@ Establish the product context that later skills read: who has which problem, the
 - **Lost amount in git history.** The example pay amount removed from the meeting note remains in the history of the public `main`. Rewriting history needs the owner's explicit request.
 - **Pending conversations:** the treasurer interview, the second part of the coordinator interview, two more guardian interviews, and the 4-week declaration count.
 - **Open questions in the brief:** Q01–Q10 and Q12–Q16 remain open.
-- **Maintenance planner in the spec.** The spec does not yet say what a person holding only `facilities.maintenance.manage` sees: calendar view, place scope, renter names. The owner was asked whether to fill this gap or add a role.
 
 ## Next steps
 
