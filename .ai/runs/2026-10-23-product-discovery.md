@@ -77,6 +77,10 @@ Establish the product context that later skills read: who has which problem, the
     - The skeptic returned 2 CRITICAL (readiness overstated; Q16 without a record) and 13 WARNING findings; all fixed, and the owner answered three follow-ups (the club's Stripe account, signing the Definition of Ready, waiving the legal opinion on the age threshold).
     - Readiness: phases 1–3 and Gwiazda's facility work are ready for planning; work resting only on A02 or A05 is held back, because an accepted risk is not evidence.
 21. **Spec revision for D-022–D-024.** Four gate questions (Q-044…Q-047) were answered by the owner: import matching by PESEL or identifier, consent as the basis for the coaches' contact list, PZPN fixtures only, percent plus fixed surcharge. REQ-036…REQ-039, DD-37…DD-39, TEST-051…TEST-055, AC-036…AC-039 and V-14 were added; the settings, roles, DD-35 approval and the maintenance planner scope were applied. The owner approved the diff; the scripted audit found 0 table mismatches and no id gaps.
+22. **D-025: Gwiazda chose another vendor.** The owner confirmed (first to the benchmark side session, then here) that the Gwiazda board chose a website and system from the person the coordinator had described, that Gwiazda supplies no further material, that Vereino continues in the same segment, and that the pilot club is to be chosen (Kaszubianka Kaszów named as a candidate). Further answers: the pilot must administer a municipal facility (D-008 stays Must); the spec uses an example club "Dev Academy" with Gwiazda's sections; the Gwiazda research tasks stay in the tracker; no date for the pilot choice (Q05 open).
+    - Brief: D25 row, pilot club and stakeholders reworded, business goal generalised, Q01 and Q04 reopened, Q18 added, D21 and D23 partly superseded, DoR addendum and Collection plan annotated. Checked inline (no independent skeptic pass): the change records the owner's statements and reopens questions; it adds no evidence claims.
+    - Spec: every reference to Gwiazda as the pilot replaced by Dev Academy; journey personas renamed to fictional names (the real coordinator's and administrator's first names were in the journeys); evidence citations kept. Scripted audit: 0 table mismatches.
+    - The benchmark side session was told to leave the brief and decision records to this session.
 
 ## Decisions and their reasons
 
@@ -98,7 +102,7 @@ Establish the product context that later skills read: who has which problem, the
   - REQ-036…REQ-039, the club settings of D-022 and the D-024 role scope (2026-10-23, after discovery closed).
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-024`: new; D-015 and D-020 marked superseded.
+- `.ai/specs/research/decisions/D-014…D-025`: new; D-015 and D-020 marked superseded.
 - `.ai/specs/research/interviews/2026-10-23-interview-coordinator-2.md`: new.
 - `.ai/specs/backlog.md`: new.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
