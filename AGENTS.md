@@ -32,7 +32,7 @@ Route first; never probe unmatched context.
 - Editable records expose `updated_at`/`updatedAt`; custom update/delete clients send the version and surface 409s.
 - Run `yarn db:generate`, review scoped SQL/snapshot, and ask before applying it.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
-- Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI) MUST read `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`; tenant/org scope alone is not a contract.
+- Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI/config/script) MUST read root `BACKWARD_COMPATIBILITY.md` (Vereino-owned surfaces, protection tier, breaking-change checklist) and `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md` (Open Mercato surfaces; it wins for `@open-mercato/*`); tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
 - Repository language is English: docs, specs, research, code, comments and commit messages. UI text lives only in i18n catalogs; every Vereino module ships `i18n/en.json` and `i18n/pl.json`, and a new language is added by adding catalog files.
 - Git: work on a branch `<type>/<kebab-slug>` (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `build`, `perf`), never commit to `main`; `main` changes only through a pull request that is squash-merged after the required checks pass. After each completed task (spec section, module phase, fix, docs) stage only the files you changed and commit with a signed-off Conventional Commits message (`git commit -s`; `type(scope): subject`, scopes per the engineering standards S1.3); one task = one pull request, never commit half-done code or a failing typecheck. Push to `origin` only when the user asks. Never commit `.env*`, `node_modules/`, `.mercato/`.
@@ -149,6 +149,10 @@ Read `.agents/skills/<id>/SKILL.md` AND any `.ai/skills/<id>/SKILL.md` override.
 | `spec-pr` | Write/revise spec | MUST invoke `om-spec-writing` (OMH-005) + `.ai/guides/spec-delivery.md` |
 | `spec-pr` | Local phases / whole-spec / PR / issue / review | `om-implement-spec` (OMH-006) / `om-auto-implement-spec` / `om-auto-create-pr` / `om-auto-fix-issue` / `om-auto-review-pr` |
 | — | No PR/spec workflow | Do not load delivery skills |
+
+<!-- discovery:routing-start -->
+Product discovery, brief or backlog: read `.ai/specs/product-brief.md`, `.ai/specs/research/`, `.ai/specs/backlog.md`, and the Definition of Ready and protected product decisions in `SDLC.md`; brief decisions are a protected contract, synthetic personas are hypotheses.
+<!-- discovery:routing-end -->
 
 ### Token-Efficient Assembly Policy
 
