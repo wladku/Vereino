@@ -71,6 +71,12 @@ Establish the product context that later skills read: who has which problem, the
     - The brief gained the second coordinator conversation, D20 and Q17, plus a collection-plan entry for the website's scope (9 entries).
     - The Decision summary was compressed from over 1,000 to 763 words.
     - The skeptic returned 0 CRITICAL and 8 WARNING findings, all fixed. The owner approved the write.
+19. **Discovery closed by decision.** The owner said there will be no further interviews at this stage and answered the open questions in five rounds. Recorded as D-021 (planning without interviews, risks accepted, supersedes D-015), D-022 (club-configurable rules), D-023 (scope changes, supersedes D-020) and D-024 (the spec review's three open points).
+20. **Fourth `om-discover --refresh`.**
+    - The brief gained D21–D24, R10–R16, N13–N15 and N17 superseded, A-rows marked "accepted untested (D21)", Q01–Q04, Q07–Q10 and Q12–Q17 closed, and a rewritten Decision summary (622 words).
+    - The skeptic returned 2 CRITICAL (readiness overstated; Q16 without a record) and 13 WARNING findings; all fixed, and the owner answered three follow-ups (the club's Stripe account, signing the Definition of Ready, waiving the legal opinion on the age threshold).
+    - Readiness: phases 1–3 and Gwiazda's facility work are ready for planning; work resting only on A02 or A05 is held back, because an accepted risk is not evidence.
+21. **Spec revision for D-022–D-024.** Four gate questions (Q-044…Q-047) were answered by the owner: import matching by PESEL or identifier, consent as the basis for the coaches' contact list, PZPN fixtures only, percent plus fixed surcharge. REQ-036…REQ-039, DD-37…DD-39, TEST-051…TEST-055, AC-036…AC-039 and V-14 were added; the settings, roles, DD-35 approval and the maintenance planner scope were applied. The owner approved the diff; the scripted audit found 0 table mismatches and no id gaps.
 
 ## Decisions and their reasons
 
@@ -88,10 +94,11 @@ Establish the product context that later skills read: who has which problem, the
   - `MaintenanceTask` fields;
   - a complete command, a guard error, an event and the reminder job;
   - TEST-031 rewritten and TEST-049 added; phase 5, traceability, risk and AC-022 updated;
-  - Q-014 and Q-040…Q-043, DD-36, V-13, TEST-050, the maintenance planner row and Changelog rows.
+  - Q-014 and Q-040…Q-047, DD-36…DD-39, V-13, V-14, TEST-050…TEST-055, the maintenance planner row and Changelog rows;
+  - REQ-036…REQ-039, the club settings of D-022 and the D-024 role scope (2026-10-23, after discovery closed).
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-020`: new.
+- `.ai/specs/research/decisions/D-014…D-024`: new; D-015 and D-020 marked superseded.
 - `.ai/specs/research/interviews/2026-10-23-interview-coordinator-2.md`: new.
 - `.ai/specs/backlog.md`: new.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.

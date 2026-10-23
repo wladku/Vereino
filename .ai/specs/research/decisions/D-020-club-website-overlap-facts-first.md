@@ -3,7 +3,7 @@ number: D-020
 date: 2026-10-23
 owner: Władek Kuć
 source: om-discover session 2026-10-23, after `interviews/2026-10-23-interview-coordinator-2.md`; Claude's recommendation, accepted by Władek ("Najpierw fakty")
-status: confirmed
+status: superseded by D-023 (2026-10-23)
 ---
 # D-020 The club website overlaps Vereino: collect the facts before changing the 1.0 scope
 

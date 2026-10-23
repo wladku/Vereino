@@ -3,7 +3,7 @@ number: D-015
 date: 2026-10-23
 owner: Władek Kuć
 source: om-discover session 2026-10-23 — Władek's answer to the readiness question
-status: confirmed
+status: superseded by D-021 (2026-10-23)
 ---
 # D-015 Implementation planning of phase 1 waits for the interviews
 
