@@ -8,7 +8,7 @@ tag: [DOCUMENT] — the club board's knowledge of its own club; beliefs about pa
 
 # Founders' meeting — summary
 
-**What was established about the club (internal knowledge):** multi-section club; entities: place (Orlik, pitch, hall, locker room, outdoor pool), participant, legal guardian (not always a parent), coach, team/squad (also zumba, pilates, gym), recurring classes and events (match, friendly, camp), per-role calendar, attendance, announcements, payments and discounts (second child), purchases of kits and merchandise, projects with municipal co-funding, contracts with coaches, Orlik rental, substitutions, a record of difficult cases as evidence. Coordinators per section (Wojtek — academy?, Aneta — pool/administration?). Coaches are paid, among other things, per match (e.g. PLN 100).
+**What was established about the club (internal knowledge):** multi-section club; entities: place (Orlik, pitch, hall, locker room, outdoor pool), participant, legal guardian (not always a parent), coach, team/squad (also zumba, pilates, gym), recurring classes and events (match, friendly, camp), per-role calendar, attendance, announcements, payments and discounts (second child), purchases of kits and merchandise, projects with municipal co-funding, contracts with coaches, Orlik rental, substitutions, a record of difficult cases as evidence. Coordinators per section (Wojtek — academy?, Aneta — pool/administration?). Coaches are paid, among other things, per match.
 
 **Beliefs about users (ASSUMPTIONS):** parents want a simple "are there classes today" screen; too much information = they get nothing out of it; children 13+ can sign in themselves and declare attendance; parents may not want to leave Messenger; complaints and conflicts requiring a record may arise.
 
