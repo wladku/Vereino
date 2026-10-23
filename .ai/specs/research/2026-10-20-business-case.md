@@ -106,6 +106,7 @@ We deliberately do not build: training diagrams, an exercise library, a medical 
 | B. Maintainers host instances for clubs at cost | Władek/Kacper | clubs, a fee covering hosting | yes | turns the maintainers into a service provider with support and GDPR-processor duties |
 | C. A municipality hosts one instance for its clubs | municipality (or its IT unit) | municipality | yes, where the municipality owns the facilities | needs multi-club on one instance (vision, not 1.0) and a public-sector decision |
 | D. Volunteer project, own club only | Gwiazda | Gwiazda | the pilot only | no growth beyond Gwiazda; the "5 academies" goal fails |
+| E. Services around Open Mercato, Vereino as showcase IP (section 7) | maintainers' service business or a partner | clients of the services (any industry on Open Mercato; municipalities, sports centres) | clubs get Vereino as a by-product | depends on Open Mercato's adoption and on running a service business |
 
 Each option changes who is the "paying customer" in section 1 and which goals in the vision board are reachable. Choosing one is a decision for Władek (A) with Kacper consulted on technology and hosting (RACI), recorded as a new D-xxx.
 
@@ -124,6 +125,41 @@ Risks specific to open source:
 - **Payments:** each club needs its own Stripe account; the fee model is undecided (Q-016).
 - **"Free" ≠ "no cost":** if hosting plus admin time exceeds ~3,000–6,000 zł a year, paid tools are cheaper for the club (section 2).
 
+## 7. Revenue model through the K-Framework (assessment)
+
+Source: Tomek and Piotr Karwatka, *Karwatka Brothers Framework — dodatek do The 5* (e-book, 2025), provided by Władek on 2026-10-23 [DOCUMENT: external publication; paraphrased, not quoted]. The authors invest in and build Open Mercato, the platform Vereino runs on — read their claims about it as interested-party claims.
+
+### What the framework says (paraphrase)
+
+A company is built in nine steps: find a trend entering its "tornado" (mass adoption), take an expert position in a narrow niche, sell services first (cash from day one), watch which client needs repeat, turn them into own IP (often open source), sell high-margin expert services around that IP, reinvest, and only later split product and services. Open source is treated as **distribution and marketing, not revenue**; buyers pay for certainty — liability, support, continuity (the Handsontable case). Joining a young ecosystem early beats being the best in a mature one (the Sylius/BitBag case). A "two legs" start — a paying services leg funding a product leg — is presented as the safest route out of a full-time job. The e-book's "Tornado Test" checklist scores a trend on technology, timing, competition, talent gap, business pain and the company's own potential.
+
+### Verified facts that matter here
+
+- [BENCHMARK, checked 2026-10-23] Open Mercato core is MIT-licensed; enterprise modules ship separately under a commercial licence; the README offers implementation support and a partnership programme that certifies software consultancies; the hosted "Cloud" is a beta trial, not production hosting (https://github.com/open-mercato/open-mercato). Open Mercato itself follows the "MIT core + paid enterprise + services/partners" model.
+- [BENCHMARK, `2026-10-23-benchmark-competitors.md`] the small-club market already has at least 13 tools priced around 2–2.50 zł per player per month.
+
+### Applying it to Vereino (assessment)
+
+| Framework step | Vereino today | Assessment |
+|---|---|---|
+| 1. Tornado | Club management for small clubs is not a tornado: many vendors, price competition, an operational (not strategic) problem, small budgets. Answering the e-book's 24-question checklist for this market gives clearly fewer than 12 "yes" (the "stop" band) — only the empty niche "club + municipal facility in one product" and the team's own position score. The tornado candidate is **Open Mercato** (AI-built business apps), not club software. | Do not expect small clubs to fund development. |
+| 2. Expert position | Władek is a domain insider (club vice-president, Orlik administration); Kacper builds on Open Mercato. "Domain expert" archetype. | A narrow, credible niche exists: clubs and municipal sports facilities on Open Mercato. |
+| 3. Services first | No services leg exists for Vereino yet. | The missing leg. Who sells services and to whom is the key open decision. |
+| 4. Observation | Needs come from one club (the pilot), not from many client projects. | Interviews with other clubs and a municipality replace client projects as the radar. |
+| 5. Product / IP | Vereino as MIT open source on Open Mercato. | Fits the framework: OSS as distribution and showcase. |
+| 6. Monetisation | Not defined. | Sell certainty, not code: hosting with SLA, GDPR processing agreement for children's data, support, updates — to municipalities, sports centres and larger clubs; implementation services on Open Mercato to any client, with Vereino as the reference. |
+| 7–9. Reinvest, spin-off | — | Far off; the e-book puts the budget to reach a self-financing product in the millions of złoty, far beyond a side project. |
+
+### What changes in the earlier assessment
+
+1. **Clubs are users and references, not the revenue base.** Hosting for small clubs can cover its own cost at best (ceiling ~250–500 zł/month per club, section 2).
+2. **The ecosystem bet is the real business case.** Vereino is an early vertical on a young platform whose authors run a partner programme for consultancies. Being the first visible sports/municipal-facility team on Open Mercato is the BitBag-on-Sylius pattern. Risk: it only pays off if Open Mercato itself gains adoption.
+3. **Municipalities and sports centres are the paying segment for certainty** (SLA, data protection, continuity), consistent with option C and the facility edge in the benchmark.
+4. **MIT stays reasonable** when revenue comes from services and certainty rather than from the code; the earlier AGPL thought matters only if the plan is to sell hosting and keep competitors from doing the same. Contributions are signed off (DCO, `git commit -s`); whether a contributor licence agreement is needed before outside contributions start is a question for a lawyer, not settled here.
+5. **Two legs for the founders.** If the maintainers need income before Vereino earns anything, the framework's answer is a paying services leg (Open Mercato implementations) that funds Vereino — not waiting for clubs to pay.
+
+Status of this section: **assumption / option**. Nothing here is decided; it reframes options A–E.
+
 ## Decisions this business case is waiting for
 
 | # | Decision | Owner (RACI) | Blocks |
@@ -132,6 +168,7 @@ Risks specific to open source:
 | 2 | Who pays the Stripe fee and whose account it is (Q-016) | unknown — board / treasurer | payments in production |
 | 3 | Why the maintainers invest their time, and for how long | Władek, Kacper | realism of the vision; contributor strategy |
 | 4 | Whether the municipality is a stakeholder to approach before 1.0 | Władek | option C; facility report format |
+| 5 | Who runs the services leg (option E): the maintainers, an existing company, or a partner; and whether to join the Open Mercato partnership programme | Władek, Kacper | section 7; revenue before clubs pay |
 
 ## Changelog
 
@@ -139,3 +176,4 @@ Risks specific to open source:
 |---|---|
 | 2026-10-20 | First version (Władek Kuć). |
 | 2026-10-23 | Revision drafted by Claude: status labels; value/payer/time table for an open-source product; competition from the 13-product benchmark and license cost avoided for ~200 players; open-source pros and cons; new unknowns (instance cost, admin time, Stripe fee, municipality); hosting options A–D; open-source risks; decisions this case waits for. Original sections 1–4 kept. Not yet confirmed by Władek. |
+| 2026-10-23 | Section 7 added by Claude: the revenue model read through the Karwatka Brothers Framework (external e-book provided by Władek), Open Mercato's own MIT + enterprise + partner model verified on its repository, option E in section 5, decision 5. Assessment only; not yet confirmed by Władek. |
