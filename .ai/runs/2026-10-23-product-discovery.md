@@ -81,6 +81,11 @@ Establish the product context that later skills read: who has which problem, the
     - Brief: D25 row, pilot club and stakeholders reworded, business goal generalised, Q01 and Q04 reopened, Q18 added, D21 and D23 partly superseded, DoR addendum and Collection plan annotated. Checked inline (no independent skeptic pass): the change records the owner's statements and reopens questions; it adds no evidence claims.
     - Spec: every reference to Gwiazda as the pilot replaced by Dev Academy; journey personas renamed to fictional names (the real coordinator's and administrator's first names were in the journeys); evidence citations kept. Scripted audit: 0 table mismatches.
     - The benchmark side session was told to leave the brief and decision records to this session.
+23. **Second `om-backlog` (2026-10-24), 1.0 scope of phases 1–3.**
+    - Readiness: met for phases 1–3 per the brief's signed Definition of Ready addendum (D21); phase 4 (A02), the substitution and settlement automation (A05) and phase 5 (R05 a proposal; Q04, Q18 open) were left unfiled and listed in the parked epic.
+    - The owner saw the full dry-run tree with every issue body and said "file this tree". The filing run searched every issue and PR in the tracker: no item of E02–E05 was covered, nothing adopted, ids E02–E05 free.
+    - Filed with `feature`, priority and risk labels and one label-rationale comment each: epics #21 (E02), #22 (E03), #23 (E04), #24 (E05, `priority-low`, `risk-low`), stories #25–#36 (`priority-medium`, `risk-high`); epic checklists written after verifying each story's `Backlog source:`, `Backlog id:` and `Epic:` lines. Bodies and comments were first written with CRLF line endings and normalised to LF in place.
+    - `.ai/specs/backlog.md` records the mapping alongside E01.
 
 ## Decisions and their reasons
 
@@ -104,7 +109,7 @@ Establish the product context that later skills read: who has which problem, the
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
 - `.ai/specs/research/decisions/D-014…D-025`: new; D-015 and D-020 marked superseded.
 - `.ai/specs/research/interviews/2026-10-23-interview-coordinator-2.md`: new.
-- `.ai/specs/backlog.md`: new.
+- `.ai/specs/backlog.md`: new; E02–E05 rows added on 2026-10-24.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
 - `.ai/specs/research/templates/interview-note.md`, `data-request.md`, `benchmark-check.md`: new.
 - `.ai/lessons/no-explicit-pay-rates-in-research.md` and one row in `.ai/lessons.md`.
