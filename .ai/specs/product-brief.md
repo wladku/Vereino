@@ -10,12 +10,12 @@
   - the club's internal knowledge from the founders' meeting;
   - the Orlik 2024 regulations;
   - a competitor benchmark of 13 products checked by an agent on 2026-10-23, not yet re-checked by a human, and the earlier ProTrainUp benchmark of 2026-09-30;
-  - eighteen decision records.
+  - nineteen decision records.
   
   The co-founder's account is tagged `[INTERVIEW]` because it is a real guardian's own experience. Note that `research/README.md` reserves that tag for people outside the team.
   
   Apart from the coordinator and the guardian from another club, nobody outside the team has been interviewed. Claims about coaches come from the team or the coordinator; none comes from a coach or the treasurer. Claims about other clubs are team beliefs or vendor pages. The most consequential untested belief is that guardians will declare attendance in Vereino instead of the Messenger poll (A01).
-- Coverage: 110 claims — 88 sourced (interview 30, data 0, document 53, product 1, benchmark 4), 0 synthetic, 22 assumed; 8 entries on the collection plan. Most "document" lines are the team's own decisions and the spec, not evidence about users.
+- Coverage: 111 claims — 89 sourced (interview 30, data 0, document 54, product 1, benchmark 4), 0 synthetic, 22 assumed; 8 entries on the collection plan. Most "document" lines are the team's own decisions and the spec, not evidence about users.
 - Synthetic hypotheses outside Coverage: 0
 - Definition of Ready signed by: not yet signed. Problems and Target group rest on two guardian accounts, one of them from a co-founder, and one coordinator account. There is no account yet from coaches or the treasurer. Ready for: research (interviews already requested); not for implementation planning, which waits for the interviews (D15).
 - Sources:
@@ -24,7 +24,7 @@
   - `research/interviews/2026-10-23-interview-guardian-multi-club.md`;
   - `research/interviews/2026-10-23-interview-coordinator.md`;
   - `research/interviews/2026-09-26-meeting-wk-kk.md`;
-  - `research/decisions/D-001…D-018`;
+  - `research/decisions/D-001…D-019`;
   - `research/2026-10-23-benchmark-competitors.md` (13 products) and `research/2026-10-20-business-case.md` (revised 2026-10-23);
   - `research/2026-10-23-benchmark-sportbm.md` (screens of another club's app);
   - `.ai/specs/2026-10-20-vereino-club-management.md` (Draft).
@@ -262,6 +262,7 @@ Full vocabulary: spec *Domain Vocabulary and Business Rules*.
 | D16 | 2026-10-23 | Grants (N07) and training plans (N01) stay out of 1.0 after the coordinator interview; the problem and the intention are recorded | each rests on one account; the administrator was not interviewed; the certification is not decided; Claude's recommendation, accepted by Władek | Władek Kuć | active | at the brief refresh after the administrator interview and the second coordinator conversation | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-016-keep-grants-and-coaching-tools-out.md | none |
 | D17 | 2026-10-23 | Facility maintenance and inspections (REQ-022) move from Could to Must. Planned work occupies the facility calendar like a closure, and recurring tasks run by date and by hours of use | "it affects facility bookings" (Władek); the academy coordinator reports frequent collisions between matches and tournaments and pitch maintenance | Władek Kuć | active | phase 5 exit gate | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-017-maintenance-must.md; `[INTERVIEW]` research/interviews/2026-10-23-interview-coordinator.md | none |
 | D18 | 2026-10-23 | Grant settlement gets a separate discovery track, as a possible separate product that could also run as a Vereino module; the 1.0 scope and D16 stay meanwhile | the coordinator's account and Władek's view; Claude's proposal, accepted by Władek; whether to move the team's energy there is open (Q13) | Władek Kuć | active (track) / open (direction) | when the D18 evidence is collected | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-018-grant-settlement-discovery-track.md | none |
+| D19 | 2026-10-23 | Maintenance work is planned by anyone holding the feature `facilities.maintenance.manage`, with no new role; a person holding only this feature works on assigned places and sees their calendar without other people's data | one capability for the person who maintains the pitch, without a new role; per-user features exist in the platform (spec V-13); a new maintainer role was considered and rejected (spec Q-041, Q-043) | Władek Kuć | active | phase 5 exit gate | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-019-maintenance-planner-by-permission.md | none |
 
 ## Riskiest assumptions
 
