@@ -26,7 +26,7 @@ Route first; never probe unmatched context.
 - Lessons: scan `.ai/lessons.md` tags; open/update one matching record + row.
 - Follow **Project memory (`.ai/`)** below for every spec, autonomous run and lesson — it is mandatory, not optional documentation.
 - App code: `packages/app/src/modules/<id>/`; framework context only for named gaps.
-- Derive trusted `tenantId` + `organizationId` and fail closed. Only an installed contract may use system scope (`organizationId: null`).
+- Derive trusted `tenantId` + `organizationId` and fail closed. Only an installed contract may use system scope (`organizationId: null`). One approved exception (D-024, D-026 — `.ai/specs/research/decisions/`): the Vereino sessionless routes (public club pages, declaration, order and request links) may run exactly one read-only, index-backed system-scope lookup of a globally unique public slug or token hash in a single DI service, which immediately narrows every further query to the found tenant and organization — only while V-12 of the club management spec (DD-35) finds no installed contract for it.
 - Use commands/`makeCrudRoute`/`CrudForm`/`DataTable`, DI/events/UMES; effects stay post-commit.
 - Put entities in `packages/app/src/modules/<id>/data/entities.ts`; API routes need per-method `metadata` + `openApi`.
 - Editable records expose `updated_at`/`updatedAt`; custom update/delete clients send the version and surface 409s.
