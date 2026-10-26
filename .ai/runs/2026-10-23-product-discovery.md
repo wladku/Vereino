@@ -71,6 +71,21 @@ Establish the product context that later skills read: who has which problem, the
     - The brief gained the second coordinator conversation, D20 and Q17, plus a collection-plan entry for the website's scope (9 entries).
     - The Decision summary was compressed from over 1,000 to 763 words.
     - The skeptic returned 0 CRITICAL and 8 WARNING findings, all fixed. The owner approved the write.
+19. **Discovery closed by decision.** The owner said there will be no further interviews at this stage and answered the open questions in five rounds. Recorded as D-021 (planning without interviews, risks accepted, supersedes D-015), D-022 (club-configurable rules), D-023 (scope changes, supersedes D-020) and D-024 (the spec review's three open points).
+20. **Fourth `om-discover --refresh`.**
+    - The brief gained D21–D24, R10–R16, N13–N15 and N17 superseded, A-rows marked "accepted untested (D21)", Q01–Q04, Q07–Q10 and Q12–Q17 closed, and a rewritten Decision summary (622 words).
+    - The skeptic returned 2 CRITICAL (readiness overstated; Q16 without a record) and 13 WARNING findings; all fixed, and the owner answered three follow-ups (the club's Stripe account, signing the Definition of Ready, waiving the legal opinion on the age threshold).
+    - Readiness: phases 1–3 and Gwiazda's facility work are ready for planning; work resting only on A02 or A05 is held back, because an accepted risk is not evidence.
+21. **Spec revision for D-022–D-024.** Four gate questions (Q-044…Q-047) were answered by the owner: import matching by PESEL or identifier, consent as the basis for the coaches' contact list, PZPN fixtures only, percent plus fixed surcharge. REQ-036…REQ-039, DD-37…DD-39, TEST-051…TEST-055, AC-036…AC-039 and V-14 were added; the settings, roles, DD-35 approval and the maintenance planner scope were applied. The owner approved the diff; the scripted audit found 0 table mismatches and no id gaps.
+22. **D-025: Gwiazda chose another vendor.** The owner confirmed (first to the benchmark side session, then here) that the Gwiazda board chose a website and system from the person the coordinator had described, that Gwiazda supplies no further material, that Vereino continues in the same segment, and that the pilot club is to be chosen (Kaszubianka Kaszów named as a candidate). Further answers: the pilot must administer a municipal facility (D-008 stays Must); the spec uses an example club "Dev Academy" with Gwiazda's sections; the Gwiazda research tasks stay in the tracker; no date for the pilot choice (Q05 open).
+    - Brief: D25 row, pilot club and stakeholders reworded, business goal generalised, Q01 and Q04 reopened, Q18 added, D21 and D23 partly superseded, DoR addendum and Collection plan annotated. Checked inline (no independent skeptic pass): the change records the owner's statements and reopens questions; it adds no evidence claims.
+    - Spec: every reference to Gwiazda as the pilot replaced by Dev Academy; journey personas renamed to fictional names (the real coordinator's and administrator's first names were in the journeys); evidence citations kept. Scripted audit: 0 table mismatches.
+    - The benchmark side session was told to leave the brief and decision records to this session.
+23. **Second `om-backlog` (2026-10-24), 1.0 scope of phases 1–3.**
+    - Readiness: met for phases 1–3 per the brief's signed Definition of Ready addendum (D21); phase 4 (A02), the substitution and settlement automation (A05) and phase 5 (R05 a proposal; Q04, Q18 open) were left unfiled and listed in the parked epic.
+    - The owner saw the full dry-run tree with every issue body and said "file this tree". The filing run searched every issue and PR in the tracker: no item of E02–E05 was covered, nothing adopted, ids E02–E05 free.
+    - Filed with `feature`, priority and risk labels and one label-rationale comment each: epics #21 (E02), #22 (E03), #23 (E04), #24 (E05, `priority-low`, `risk-low`), stories #25–#36 (`priority-medium`, `risk-high`); epic checklists written after verifying each story's `Backlog source:`, `Backlog id:` and `Epic:` lines. Bodies and comments were first written with CRLF line endings and normalised to LF in place.
+    - `.ai/specs/backlog.md` records the mapping alongside E01.
 
 ## Decisions and their reasons
 
@@ -88,12 +103,13 @@ Establish the product context that later skills read: who has which problem, the
   - `MaintenanceTask` fields;
   - a complete command, a guard error, an event and the reminder job;
   - TEST-031 rewritten and TEST-049 added; phase 5, traceability, risk and AC-022 updated;
-  - Q-014 and Q-040…Q-043, DD-36, V-13, TEST-050, the maintenance planner row and Changelog rows.
+  - Q-014 and Q-040…Q-047, DD-36…DD-39, V-13, V-14, TEST-050…TEST-055, the maintenance planner row and Changelog rows;
+  - REQ-036…REQ-039, the club settings of D-022 and the D-024 role scope (2026-10-23, after discovery closed).
 - `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator.md`: new.
 - `.ai/specs/research/interviews/2026-09-26-meeting-wk-kk.md`: pay example removed.
-- `.ai/specs/research/decisions/D-014…D-020`: new.
+- `.ai/specs/research/decisions/D-014…D-025`: new; D-015 and D-020 marked superseded.
 - `.ai/specs/research/interviews/2026-10-23-interview-coordinator-2.md`: new.
-- `.ai/specs/backlog.md`: new.
+- `.ai/specs/backlog.md`: new; E02–E05 rows added on 2026-10-24.
 - `.ai/specs/research/2026-10-23-benchmark-sportbm.md`: new.
 - `.ai/specs/research/templates/interview-note.md`, `data-request.md`, `benchmark-check.md`: new.
 - `.ai/lessons/no-explicit-pay-rates-in-research.md` and one row in `.ai/lessons.md`.
