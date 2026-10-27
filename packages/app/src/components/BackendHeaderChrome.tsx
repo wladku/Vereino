@@ -81,7 +81,7 @@ function MobileMoreMenu({ items }: { items: MobileMoreItem[] }) {
           <MoreHorizontal className="size-4" />
         </IconButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] p-1">
+      <PopoverContent align="end" className="w-55 p-1">
         <div className="flex flex-col">
           {items.map((item) => (
             <Link

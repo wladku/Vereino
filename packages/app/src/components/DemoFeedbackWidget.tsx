@@ -265,16 +265,13 @@ export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boole
     <button
       type="button"
       onClick={() => { setOpen(true); if (submitState === 'sent') resetForm() }}
-      className="om-demo-feedback-floating fixed bottom-6 right-6 z-sticky flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-black shadow-xl transition-all hover:scale-105 hover:shadow-2xl active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-[subtle-bounce_2s_ease-in-out_infinite]"
-      style={{
-        backgroundImage: 'linear-gradient(135deg, var(--brand-lime, #B4F372) 0%, #EEFB63 50%, var(--brand-violet, #BC9AFF) 100%)',
-      }}
+      className="om-demo-feedback-floating fixed bottom-6 right-6 z-sticky flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full bg-linear-135/srgb from-brand-lime via-brand-yellow to-brand-violet px-5 py-3 text-sm font-semibold text-brand-lime-foreground shadow-xl transition-all hover:scale-105 hover:shadow-2xl active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-[subtle-bounce_2s_ease-in-out_infinite]"
       aria-label={t('demoFeedback.button.ariaLabel', 'Open feedback form')}
     >
       <MessageCircle className="size-4" />
       <span
         key={captionIndex}
-        className="inline-block min-w-[90px] text-center animate-[caption-slide_0.3s_ease-out]"
+        className="inline-block min-w-22.5 text-center animate-[caption-slide_0.3s_ease-out]"
       >
         {currentCaption}
       </span>
@@ -403,17 +400,12 @@ export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boole
 
               <Button
                 type="button"
-                className="mt-1 w-full gap-2 text-black"
+                // Same brand gradient as the floating CTA (135deg, brand tokens). The text uses
+                // `brand-lime-foreground`, dark in both themes: the gradient stays light, so
+                // `text-foreground` would turn white in dark mode and vanish against it.
+                className="mt-1 w-full gap-2 bg-linear-135/srgb from-brand-lime via-brand-yellow to-brand-violet text-brand-lime-foreground"
                 disabled={submitState === 'sending'}
                 onClick={handleSubmit}
-                style={{
-                  // Same brand-gradient as the floating CTA (135deg / 0-50-100,
-                  // brand vars instead of hex literals to satisfy DS rules).
-                  // Pin text to `text-black` — the gradient is a fixed light
-                  // surface in both themes; `text-foreground` would flip white
-                  // in dark mode and vanish against the pale gradient.
-                  backgroundImage: 'linear-gradient(135deg, var(--brand-lime, #B4F372) 0%, #EEFB63 50%, var(--brand-violet, #BC9AFF) 100%)',
-                }}
               >
                 {submitState === 'sending' ? (
                   <Spinner size="sm" />
