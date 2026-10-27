@@ -9,18 +9,23 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "imports": {
+    "#src/*": "./src/*.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=\"src/**\" --test-coverage-exclude=\"src/**/__tests__/**\" \"src/**/__tests__/*.test.{ts,mjs}\""
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^7.1.14",
-    "@mikro-orm/postgresql": "^7.1.14"
+    "@mikro-orm/core": "7.2.5",
+    "@mikro-orm/decorators": "7.2.5",
+    "@mikro-orm/postgresql": "7.2.5"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^7.1.14",
-    "@mikro-orm/postgresql": "^7.1.14",
+    "@mikro-orm/core": "7.2.5",
+    "@mikro-orm/decorators": "7.2.5",
+    "@mikro-orm/postgresql": "7.2.5",
     "eslint": "^9.39.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2"
