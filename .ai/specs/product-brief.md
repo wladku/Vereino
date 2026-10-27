@@ -15,7 +15,7 @@
   The co-founder's account is tagged `[INTERVIEW]` because it is a real guardian's own experience. Note that `research/README.md` reserves that tag for people outside the team.
   
   Apart from the coordinator and the guardian from another club, nobody outside the team has been interviewed. Claims about coaches come from the team or the coordinator; none comes from a coach or the treasurer. Claims about other clubs are team beliefs or vendor pages. The most consequential untested belief is that guardians will declare attendance in Vereino instead of the Messenger poll (A01).
-- Coverage: 137 claims — 116 sourced (interview 41, data 0, document 70, product 1, benchmark 4), 0 synthetic, 21 assumed; 0 active entries on the collection plan (9 deferred, D21). Most "document" lines are the team's own decisions and the spec, not evidence about users.
+- Coverage: 139 claims — 118 sourced (interview 41, data 0, document 72, product 1, benchmark 4), 0 synthetic, 21 assumed; 0 active entries on the collection plan (9 deferred, D21). Most "document" lines are the team's own decisions and the spec, not evidence about users.
 - Synthetic hypotheses outside Coverage: 0
 - Definition of Ready signed by: Władek Kuć, product owner, with the risks of D21 accepted. Problems and Target group rest on two guardian accounts (one from a co-founder) and two coordinator conversations. The treasurer, the coaches as a group and other clubs have no account; the beliefs about them are accepted untested, and an accepted risk does not replace evidence about a problem or its users (om-discover evidence rules). Ready for: implementation planning of phases 1–3 and of Gwiazda's own facility work; held back: the work that rests only on A02 or A05 (see the Definition of Ready addendum). No material is being collected at this stage (D21).
 - Sources:
@@ -25,10 +25,10 @@
   - `research/interviews/2026-10-23-interview-coordinator.md`;
   - `research/interviews/2026-09-26-meeting-wk-kk.md`;
   - `research/interviews/2026-10-23-interview-coordinator-2.md`;
-  - `research/decisions/D-001…D-026`;
+  - `research/decisions/D-001…D-028`;
   - `research/2026-10-23-benchmark-competitors.md` (13 products) and `research/2026-10-20-business-case.md` (revised 2026-10-23);
   - `research/2026-10-23-benchmark-sportbm.md` (screens of another club's app);
-  - `.ai/specs/2026-10-20-vereino-club-management.md` (Draft).
+  - `.ai/specs/2026-10-20-vereino-club-management.md` (phases 1–3; phase 1 ready), `.ai/specs/2026-10-27-vereino-club-payments.md` (phase 4) and `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5) — split by D28.
 
 ## Decision summary
 
@@ -152,7 +152,7 @@ Checking SportBM's public page and pricing, and ProTrainUp's facilities module i
 
 ## Scope
 
-- **Now (1.0):** the spec's Must set (`.ai/specs/2026-10-20-vereino-club-management.md`, REQ-001…REQ-035 with Must priority), delivered in its five phases.
+- **Now (1.0):** the Must set of the club specifications (REQ-001…REQ-039 with Must priority), delivered in five phases: phases 1–3 in `.ai/specs/2026-10-20-vereino-club-management.md`, phase 4 in `.ai/specs/2026-10-27-vereino-club-payments.md`, phase 5 in `.ai/specs/2026-10-27-vereino-facilities.md` (D28). Since D28 the facility module no longer requires payments.
   - The 1.0 scope is D01 as extended by D13, D17 and D23: people and roles, sections and groups, activities and calendars, attendance, substitutions, announcements, fees with online payment, facility and bookings, public club page, cash and bank reconciliation, order campaigns, treasurer role, a bilingual interface, and facility maintenance planned in the facility calendar (D17); D27 adds sign-in with Google and Facebook for account holders as Should.
   - Added by D23: bulk import of people from a spreadsheet and a guardians' contact list for coaches (Must); integration with PZPN / Łączy nas piłka and an hours report for the school halls the club rents (Should).
   - Club settings with defaults (D22): the age for a child's own account (16), who pays the online payment commission (the club), the sibling discount, the coach settlement model, the attendance declaration model, whether guardians see other children called up, and the sales document for order campaigns (none).
@@ -269,6 +269,7 @@ Full vocabulary: spec *Domain Vocabulary and Business Rules*.
 | D25 | 2026-10-23 | KS Gwiazda will not use Vereino (its board chose another vendor's website and system) and supplies no further material; Vereino continues in the same segment; the pilot club is to be chosen and must administer a municipal facility; the spec uses an example club "Dev Academy" with Gwiazda's sections; the Gwiazda research tasks in the tracker stay as they are | the owner's knowledge of the board decision; he knew it from the start and it does not trouble him; the facility module stays Must (D08) | Władek Kuć | active | when the pilot club is chosen | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-025-gwiazda-chose-another-vendor.md | D21 (in part), D23 (in part) |
 | D26 | 2026-10-24 | The second spec review's decision points: the bulk import commits people and guardianships in phase 1 and group memberships in phase 2 through an optional `groups` hook; the DD-35 lookup exception (D24) is written into `AGENTS.md`; the declaration kind is a club setting per activity type, and the group policy decides only who declares | the owner's decisions on the second spec consistency review | Władek Kuć | active | phase 2 exit gate | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-026-spec-review-2-decisions.md | none |
 | D27 | 2026-10-27 | Sign-in with Google (first) and Facebook (later) for people who already hold an invited account, as a 1.0 Should: a Vereino slice on the `arctic` client inside the `foundation` module, linking only from a signed-in session or by the administrator, no account creation and no e-mail matching from a social sign-in; the identity lookup joins the DD-35 system-scope exception | the board asked for sign-in with the accounts people already have; the platform offers OAuth only in the commercial enterprise module, which stays disabled | Władek Kuć | active | phase 2 pilot review (share of account holders who connected a provider) | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-027-social-sign-in.md | none |
+| D28 | 2026-10-27 | The club specification is split in three (phases 1–3 with the shared parts; phase 4 payments; phase 5 facilities), with global ids; the facility module no longer requires payments — the rental charge is optional through `payments.chargeService` | the architectural review of 2026-10-26 found a bundle whose differentiator was blocked by held-back payments work; the owner chose the recommended options | Władek Kuć | active | when phase 5 is planned | superseding row approved by the owner | `[DOCUMENT]` research/decisions/D-028-split-specification-and-optional-rental-charge.md | none |
 
 ## Riskiest assumptions
 
