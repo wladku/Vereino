@@ -142,3 +142,6 @@ docs/ux-concept/mockups/makieta-lks-gwiazda.html
 docs/ux-concept/mockups/logo-klubu*.png
 docs/ux-concept/mockups/logo.js
 docs/ux-concept/vereino-mockupy.zip
+
+# Storybook static build (packages/ui)
+packages/ui/storybook-static/

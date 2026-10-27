@@ -4,11 +4,13 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import { vereinoTypeScriptConfigs } from '../../eslint.vereino.mjs'
 
 const files = ['src/**/*.{ts,tsx}']
+// Storybook config and stories are linted with the same TypeScript and accessibility rules.
+const storybookFiles = ['stories/**/*.{ts,tsx}', '.storybook/**/*.{ts,tsx}']
 
 export default [
-  { ignores: ['node_modules/**'] },
-  ...vereinoTypeScriptConfigs({ tseslint, files, tsconfigRootDir: import.meta.dirname }),
-  { ...jsxA11y.flatConfigs.recommended, files: ['src/**/*.tsx'] },
+  { ignores: ['node_modules/**', 'storybook-static/**'] },
+  ...vereinoTypeScriptConfigs({ tseslint, files: [...files, ...storybookFiles], tsconfigRootDir: import.meta.dirname }),
+  { ...jsxA11y.flatConfigs.recommended, files: ['src/**/*.tsx', 'stories/**/*.tsx', '.storybook/**/*.tsx'] },
   {
     files,
     ignores: ['src/**/__tests__/**'],

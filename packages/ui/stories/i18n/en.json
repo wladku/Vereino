@@ -1,0 +1,14 @@
+{
+  "stories.button.save": "Save",
+  "stories.button.cancel": "Cancel",
+  "stories.button.delete": "Delete",
+  "stories.button.more": "More options",
+  "stories.badge.paid": "paid",
+  "stories.badge.open": "open",
+  "stories.badge.overdue": "overdue",
+  "stories.badge.planned": "planned",
+  "stories.badge.request": "request",
+  "stories.empty.title": "No sessions today",
+  "stories.empty.description": "Next session: Thu 16:00 — Swimming class.",
+  "stories.empty.action": "Open the calendar"
+}
