@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 5 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 6 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -33,6 +33,10 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 ### architecture
 
 - [Treat @open-mercato/enterprise as commercial and keep its modules disabled](lessons/enterprise-package-is-commercial.md) — area:architecture,spec-pr; module:platform; topic:licensing,modules-ts,enterprise-modules,dependencies
+
+### backend-ui
+
+- [Use minmax(0, 1fr) for a grid track that holds a horizontally scrolling child](lessons/collapsed-grid-track-needs-minmax-zero.md) — area:backend-ui,debugging; module:platform; topic:css-grid,responsive,overflow,mockups
 
 ### debugging
 

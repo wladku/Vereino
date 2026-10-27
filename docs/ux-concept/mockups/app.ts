@@ -22,10 +22,10 @@
   interface Guardianship { id: string; guardian: string; ward: string; relation: string; primaryPayer: boolean; consents: { regulations: boolean; image: boolean; trips: boolean } }
   interface RoleAssignment { id: string; person: string; role: 'club_admin' | 'treasurer' | 'coordinator' | 'coach' | 'facility_operator'; section?: string; place?: string }
   interface Section { id: string; name: string; slug: string; short: string; description: string; isPublic: boolean; conditions: string; contactName: string; contactEmail: string; contactPhone: string; materials: string[]; active: boolean; color: string; logo?: string; updatedAt: number }
-  interface Place { id: string; parent?: string; name: string; kind: string; slug?: string; publicSchedule: boolean; acceptsRequests: boolean; capacity: number; address: string; surface?: string }
+  interface Place { id: string; parent?: string; name: string; kind: string; slug?: string; publicSchedule: boolean; acceptsRequests: boolean; capacity: number; address: string; surface?: string; external?: boolean }
   interface Group { id: string; section: string; name: string; kind: 'team' | 'class_group'; category?: string; league?: string; season?: string; ageFrom?: number; ageTo?: number; level?: string; isPublic: boolean; publicDescription: string; conditions: string; members: string[]; coaches: string[] }
-  interface Activity { id: string; group: string; name: string; type: OccType; weekdays: number[]; start: string; end: string; place: string; coach: string | null; from: string; to: string; opponent?: string; oneOff?: boolean; invited?: string[]; info?: string[] }
-  interface Occurrence { id: string; activity: string; group: string; name: string; type: OccType; date: string; start: string; end: string; place: string; coach: string | null; defaultCoach: string | null; status: 'planned' | 'done' | 'cancelled'; cancelReason?: string; opponent?: string; invited?: string[]; detached?: boolean; updatedAt: number }
+  interface Activity { id: string; group: string; name: string; type: OccType; weekdays: number[]; start: string; end: string; place: string; coach: string | null; from: string; to: string; opponent?: string; oneOff?: boolean; invited?: string[]; info?: string[]; gather?: string; confirmBy?: string }
+  interface Occurrence { id: string; activity: string; group: string; name: string; type: OccType; date: string; start: string; end: string; place: string; coach: string | null; defaultCoach: string | null; status: 'planned' | 'done' | 'cancelled'; cancelReason?: string; opponent?: string; invited?: string[]; detached?: boolean; gather?: string; confirmBy?: string; updatedAt: number }
   interface Attendance { declared: 'yes' | 'no' | 'unknown'; status: 'final' | 'pending_guardian' | 'rejected_by_guardian'; actual?: 'present' | 'absent' | 'late' | null; by?: string }
   interface Substitution { occ: string; prev: string | null; next: string | null; kind: string; at: string; by: string; reason?: string }
   interface Msg { id: string; author: string; role: 'coach' | 'guardian' | 'admin'; body: Txt; at: string; delivered: number; failed: number }
@@ -160,7 +160,7 @@
   const OPENING: Record<string, { weekday: [string, string]; weekend: [string, string] }> = { 'pl-boisko': { weekday: ['08:00', '22:00'], weekend: ['09:00', '20:30'] }, 'pl-multi': { weekday: ['08:00', '22:00'], weekend: ['09:00', '20:30'] } }
 
   interface Db {
-    settings: { name: string; short: string; slug: string; tz: string; minAge: number; phone: string; description: string; publication: Record<string, boolean>; logo?: string; autoBook?: boolean; coachFees?: 'none' | 'view' | 'collect'; updatedAt: number }
+    settings: { name: string; short: string; slug: string; tz: string; minAge: number; phone: string; description: string; publication: Record<string, boolean>; logo?: string; autoBook?: boolean; coachFees?: 'none' | 'view' | 'collect'; onlineFee: { mode: 'club_pays' | 'payer_pays'; fixed: number }; updatedAt: number }
     persons: Person[]; guardianships: Guardianship[]; roles: RoleAssignment[]
     sections: Section[]; places: Place[]; institutions: { id: string; name: string; type: string; contact: string; bank?: string }[]
     contracts: { id: string; party: string; kind: string; from: string; base: number; unit: number; match: number; travel: number; note?: string }[]
@@ -189,7 +189,8 @@
         name: 'LKS Gwiazda Ściejowice', short: 'Gwiazda', slug: 'gwiazda', tz: 'Europe/Warsaw', minAge: 13, phone: '600 000 000', logo: LOGO_CLUB,
         description: 'Klub sportowy z Ściejowic: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Liszki.',
         publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true },
-        coachFees: 'collect', updatedAt: 1,
+        // Online payment fee (R13): the club pays it by default; the example operator fee is the ~PLN 2 per payment a parent named in an interview.
+        coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 }, updatedAt: 1,
       },
       persons: [
         P('p-kasia', 'Kasia', 'Nowak', '1986-04-02', { email: 'kasia.nowak@example.pl', phone: '600 100 200', account: true }),
@@ -258,6 +259,7 @@
         { id: 'pl-multi', parent: 'pl-orlik', name: 'Boisko wielofunkcyjne', kind: 'multi_pitch', slug: 'orlik-wielofunkcyjne', publicSchedule: true, acceptsRequests: true, capacity: 2, address: 'ul. Sportowa 1, Ściejowice', surface: 'poliuretan' },
         { id: 'pl-salka', name: 'Salka w budynku klubowym', kind: 'hall', slug: 'salka', publicSchedule: true, acceptsRequests: false, capacity: 1, address: 'Budynek klubowy, Ściejowice' },
         { id: 'pl-basen', name: 'Basen zewnętrzny', kind: 'pool', slug: 'basen', publicSchedule: false, acceptsRequests: false, capacity: 2, address: 'Pływalnia partnerska, Liszki' },
+        { id: 'pl-liszki', name: 'Boisko Wisły Liszki', kind: 'pitch', publicSchedule: false, acceptsRequests: false, capacity: 1, address: 'Boisko sportowe, Liszki', external: true },
       ],
       institutions: [
         { id: 'i-gmina', name: 'Gmina Liszki', type: 'municipality', contact: 'Referat Sportu, 12 000 00 00', bank: 'PL 12 1240 0000 0000 0000 1234 5678' },
@@ -309,7 +311,8 @@
         { id: 'a-cheer', group: 'g-cheer', name: 'Trening cheerleaderek', type: 'training', weekdays: [5], start: '17:00', end: '18:30', place: 'pl-salka', coach: 'p-natalia', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-turniej-szach', group: 'g-szachy', name: 'II Turniej Szachowy z Gwiazdą o Puchar Wójta Gminy Liszki', type: 'tournament', weekdays: [6], start: '10:00', end: '15:00', place: 'pl-salka', coach: 'p-marcin', from: '2026-10-17', to: '2026-10-17', oneOff: true,
           info: ['Turniej dla dzieci i młodzieży z gminy Liszki urodzonych w 2012 r. i młodszych, z maksymalnym rankingiem PZSzach 1600.', 'Start o godz. 10:00, budynek klubowy LKS Gwiazda Ściejowice.', 'Zapisy przez formularz.', 'Wpisowe: 40 zł; dla zawodników Gwiazdy i CIS Czernichów: 10 zł.'] },
-        { id: 'a-mecz', group: 'g-tramp', name: 'Mecz ligowy: Gwiazda — LKS Rzeszotary', type: 'match', weekdays: [7], start: '10:00', end: '11:30', place: 'pl-boisko', coach: 'p-piotr', from: '2026-11-15', to: '2026-11-15', opponent: 'et-rzesz', oneOff: true },
+        { id: 'a-mecz', group: 'g-tramp', name: 'Mecz ligowy: Gwiazda — LKS Rzeszotary', type: 'match', weekdays: [7], start: '10:00', end: '11:30', gather: '09:15', confirmBy: '2026-11-13 12:00', place: 'pl-boisko', coach: 'p-piotr', from: '2026-11-15', to: '2026-11-15', opponent: 'et-rzesz', oneOff: true },
+        { id: 'a-sparing', group: 'g-orlm', name: 'Sparing: Wisła Liszki — Gwiazda', type: 'sparring', weekdays: [6], start: '09:00', end: '10:30', gather: '08:30', confirmBy: '2026-11-10 12:00', place: 'pl-liszki', coach: 'p-wojtek', from: '2026-11-14', to: '2026-11-14', opponent: 'et-liszki', oneOff: true },
       ],
       occurrences: [], attendance: {}, substitutions: [],
       policies: [
@@ -399,6 +402,7 @@
       'p-bartek': { declared: 'yes', status: 'final', by: 'p-ewelina' },
       'p-lena': { declared: 'no', status: 'final', by: 'p-robert' },
     }
+    db.attendance['a-sparing-2026-11-14'] = { 'p-adam': { declared: 'yes', status: 'final', by: 'p-marek' }, 'p-bartek': { declared: 'yes', status: 'final', by: 'p-ewelina' }, 'p-lena': { declared: 'no', status: 'final', by: 'p-robert' } }
     db.attendance['a-mecz-2026-11-15'] = { 'p-ola': { declared: 'yes', status: 'pending_guardian', by: 'p-ola' }, 'p-kuba': { declared: 'yes', status: 'final', by: 'p-iwona' } }
 
     db.threads = [
@@ -442,7 +446,7 @@
       if (!a.weekdays.includes(weekday(d))) continue
       const id = `${a.id}-${d}`
       if (db.occurrences.some((o) => o.id === id)) continue
-      const o: Occurrence = { id, activity: a.id, group: a.group, name: a.name, type: a.type, date: d, start: a.start, end: a.end, place: a.place, coach: a.coach, defaultCoach: a.coach, status: 'planned', opponent: a.opponent, invited: a.invited, updatedAt: 1 }
+      const o: Occurrence = { id, activity: a.id, group: a.group, name: a.name, type: a.type, date: d, start: a.start, end: a.end, place: a.place, coach: a.coach, defaultCoach: a.coach, status: 'planned', opponent: a.opponent, invited: a.invited, gather: a.gather, confirmBy: a.confirmBy, updatedAt: 1 }
       db.occurrences.push(o); created.push(o)
     }
     return created
@@ -553,6 +557,8 @@
 
   const personById = (db: Db, id: string): Person => db.persons.find((p) => p.id === id) as Person
   const placeName = (db: Db, id: string): string => (db.places.find((p) => p.id === id) || { name: '—' }).name
+  // Map link built from the venue's name and address (the spec's place also carries coordinates).
+  const mapUrl = (db: Db, id: string): string => { const p = db.places.find((x) => x.id === id); return p ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name}, ${p.address}`)}` : '#' }
 
   // ═══════════════════════════════════════════════════════════════════
   // Mockup application state
@@ -599,6 +605,9 @@
   const coordSections = (pid: string): string[] => isAdmin() ? db.sections.map((s) => s.id) : db.roles.filter((r) => r.person === pid && r.role === 'coordinator').map((r) => r.section as string)
   const hasMemberRole = (pid: string): boolean => wardsOf(pid).length > 0 || db.groups.some((g) => g.members.includes(pid))
   const isCoachPersona = (): boolean => can('activities.coach')
+  // Confirmation deadline ("YYYY-MM-DD HH:MM") set by the coach for matches, friendlies and tournaments; the session stays visible after it.
+  const confirmPassed = (o: { confirmBy?: string }): boolean => !!o.confirmBy && `${TODAY} ${NOW}` > o.confirmBy
+  const deadlineLabel = (v: string): string => `${dShort(v.slice(0, 10))}, ${v.slice(11)}`
   const started = (o: { date: string; start: string }): boolean => o.date < TODAY || (o.date === TODAY && toMin(o.start) <= toMin(NOW))
   const ended = (o: { date: string; end: string }): boolean => o.date < TODAY || (o.date === TODAY && toMin(o.end) <= toMin(NOW))
   // Activity type label (lower case); a class group's "training" is shown as "class".
@@ -618,6 +627,22 @@
   // ═══════════════════════════════════════════════════════════════════
   // HTML components
   // ═══════════════════════════════════════════════════════════════════
+  // Line icons: lucide paths (ISC licence), the icon set of Open Mercato. Decorative only — the label carries the meaning.
+  const ICONS: Record<string, string> = {
+    house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    'calendar-days': '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/>',
+    'message-square': '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>',
+    wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+    menu: '<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>',
+    inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+    ban: '<circle cx="12" cy="12" r="10"/><path d="M4.929 4.929 19.07 19.071"/>',
+    'file-text': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  }
+  const icon = (name: string): string => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`
   const badge = (text: string, kind: 'neutral' | 'success' | 'warning' | 'error' | 'info' = 'neutral'): string => `<span class="badge ${kind}">${esc(text)}</span>`
   const btn = (label: string, action: string, attrs: Record<string, string> = {}, cls = ''): string =>
     `<button type="button" class="btn ${cls}" data-action="${action}" ${Object.entries(attrs).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ')}>${label}</button>`
@@ -630,8 +655,8 @@
   const area = (name: string, value = '', extra = ''): string => `<textarea name="${name}" ${extra}>${esc(value)}</textarea>`
   const chk = (name: string, label: string, checked = false, extra = ''): string => `<label class="check" data-field="${name}"><input type="checkbox" name="${name}" ${checked ? 'checked' : ''} ${extra}><span>${label}</span></label>`
 
-  function empty(title: string, text: string, action = '', ico = '○'): string {
-    return `<div class="empty"><div class="ico" aria-hidden="true">${ico}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`
+  function empty(title: string, text: string, action = '', ico = 'inbox'): string {
+    return `<div class="empty"><div class="ico">${icon(ico)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`
   }
   function errorView(text = t('ui.errorView.default')): string {
     return `<div class="alert error" role="alert"><strong>${esc(t('ui.errorView.title'))}</strong>${esc(text)}</div><div class="row">${btn(esc(t('ui.errorView.retry')), 'retry', {}, 'primary')}</div>`
@@ -643,6 +668,8 @@
       : `${lines}<div class="skeleton sk-card"></div><div class="skeleton sk-card"></div><div class="skeleton sk-card"></div><span class="sr-only">${esc(t('ui.skeleton.loading'))}</span>`
   }
 
+  // Page size shown in the table footer; the mockup renders every row, so it must not be smaller than the longest list.
+  const PAGE_SIZE = 50
   interface Col { label: string; num?: boolean; cell: (r: any) => string }
   function table(opts: { cols: Col[]; rows: any[]; toolbar?: string; tabs?: [string, string, boolean][]; empty?: [string, string]; footer?: boolean }): string {
     const tabs = opts.tabs ? `<div class="dt-tabs">${opts.tabs.map(([l, h, a]) => `<a href="#${h}" class="${a ? 'active' : ''}">${l}</a>`).join('')}</div>` : ''
@@ -650,7 +677,7 @@
     const body = opts.rows.length
       ? `<div class="dt-scroll"><table><thead><tr>${opts.cols.map((c) => `<th class="${c.num ? 'num' : ''}">${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${opts.rows.map((r) => `<tr>${opts.cols.map((c) => `<td class="${c.num ? 'num' : ''}">${c.cell(r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
       : empty(opts.empty ? opts.empty[0] : t('ui.table.emptyTitle'), opts.empty ? opts.empty[1] : t('ui.table.emptyText'))
-    const foot = opts.footer === false || !opts.rows.length ? '' : `<div class="dt-foot"><span>${esc(t('ui.table.records', { n: opts.rows.length }))}</span><span>${esc(t('ui.table.pagination'))}</span></div>`
+    const foot = opts.footer === false || !opts.rows.length ? '' : `<div class="dt-foot"><span>${esc(t('ui.table.records', { n: opts.rows.length }))}</span><span>${esc(t('ui.table.pagination', { pages: Math.ceil(opts.rows.length / PAGE_SIZE), size: PAGE_SIZE }))}</span></div>`
     return `<div class="dt">${tabs}${toolbar}${body}${foot}</div>`
   }
 
@@ -737,6 +764,7 @@
   function declare(occId: string, personId: string, value: 'yes' | 'no'): void {
     const o = occById(occId) as Occurrence
     if (started(o)) { toast(t('ui.declare.closed'), true); return }
+    if (confirmPassed(o)) { toast(t('ui.declare.deadlinePassed', { at: deadlineLabel(o.confirmBy as string) }), true); return }
     const actor = me()
     const p = personById(db, personId)
     const isWardSelf = actor === personId && ageOn(p.birth) < 18
@@ -767,7 +795,7 @@
     const host = document.getElementById('modal') as HTMLElement
     if (!modal) { host.innerHTML = ''; return }
     host.innerHTML = `<div class="overlay" data-action="overlay"><form class="modal" data-form="modal" role="dialog" aria-modal="true" aria-label="${esc(modal.title)}" style="${modal.wide ? 'width:min(760px,100%)' : ''}" novalidate>
-      <div class="modal-head"><h2>${esc(modal.title)}</h2><button type="button" class="btn sm" data-action="close-modal" aria-label="${esc(t('common.close'))}">✕</button></div>
+      <div class="modal-head"><h2>${esc(modal.title)}</h2><button type="button" class="btn sm" data-action="close-modal" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div>
       <div class="modal-body"><div class="form-general"></div>${modal.body}</div>
       ${modal.noFooter ? '' : `<div class="modal-foot"><span class="hint">${esc(t('ui.renderModal.hint'))}</span><div class="row"><button type="button" class="btn" data-action="close-modal">${esc(t('common.cancel'))}</button><button type="submit" class="btn ${modal.danger ? 'danger' : 'primary'}">${esc(modal.submitLabel || t('common.save'))}</button></div></div>`}
     </form></div>`
@@ -824,11 +852,15 @@
 
   function occCard(x: { o: Occurrence; who: string[]; asCoach: boolean }, withDecl = true): string {
     const o = x.o, g = group(o.group), s = section(g.section)
-    const closed = started(o)
+    const late = !started(o) && confirmPassed(o)
+    const closed = started(o) || late
+    const place = db.places.find((p) => p.id === o.place)
     const decl = withDecl && o.status === 'planned' ? x.who.map((w) => {
       const a = db.attendance[o.id]?.[w]
       const yes = a?.declared === 'yes', no = a?.declared === 'no'
       const canDecl = !(w === me() && ageOn(personById(db, w).birth) < 13)
+      // After the deadline a child without an answer keeps the session, with a plain state instead of the buttons.
+      if (late && canDecl && (!a || a.declared === 'unknown')) return `<div class="who"><span>${esc(personById(db, w).first)} ${badge(t('m.occCard.noAnswer'), 'warning')}</span></div>`
       return `<div class="who"><span>${esc(personById(db, w).first)} ${a?.status === 'pending_guardian' ? badge(t('m.occCard.awaitingGuardian'), 'warning') : ''}</span>${canDecl ? `<div class="seg" role="group" aria-label="${esc(t('m.occCard.declAria', { name: personById(db, w).first }))}">
         <button type="button" class="${yes ? 'on-yes' : ''}" data-action="declare" data-occ="${o.id}" data-person="${w}" data-val="yes" ${closed ? 'disabled' : ''} aria-pressed="${yes}">${esc(t('m.occCard.attending'))}</button>
         <button type="button" class="${no ? 'on-no' : ''}" data-action="declare" data-occ="${o.id}" data-person="${w}" data-val="no" ${closed ? 'disabled' : ''} aria-pressed="${no}">${esc(t('m.occCard.notAttending'))}</button></div>` : ''}</div>`
@@ -836,9 +868,11 @@
     const coachLine = x.asCoach && o.status === 'planned' ? `<div class="row" style="margin-top:6px">${link(esc(t('m.occCard.attendanceList')), `/club/occurrences/${o.id}/attendance`, 'btn sm primary')}${o.coach === null ? badge(t('m.occCard.noCoach'), 'warning') : ''}</div>` : ''
     return `<div class="occ"><div class="time">${o.start}<small>${o.end}</small></div><div>
       <a class="title" href="#/club/occurrences/${o.id}"><span class="dot sec-${s.color}" aria-hidden="true"></span>${esc(o.name)}</a>
-      <div class="meta">${esc(g.name)} · ${esc(s.name)} · ${esc(placeName(db, o.place))}${o.coach && o.coach !== o.defaultCoach ? ` · ${esc(t('m.occCard.substitute', { name: pName(o.coach) }))}` : ''}</div>
+      ${o.gather && o.status === 'planned' ? `<div class="gather">${icon('clock')}${esc(t('m.occCard.gather', { time: o.gather }))}</div>` : ''}
+      <div class="meta">${esc(g.name)} · ${esc(s.name)} · ${esc(placeName(db, o.place))}${place?.external ? ` · <a href="${esc(mapUrl(db, o.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a>` : ''}${o.coach && o.coach !== o.defaultCoach ? ` · ${esc(t('m.occCard.substitute', { name: pName(o.coach) }))}` : ''}</div>
       ${o.status === 'cancelled' ? `<div style="margin-top:4px">${badge(t('m.occCard.cancelled', { reason: o.cancelReason || '' }), 'error')}</div>` : ''}
-      ${closed && o.status === 'planned' && x.who.length ? `<div style="margin-top:4px">${badge(t('m.occCard.declClosed'), 'neutral')}</div>` : ''}
+      ${o.confirmBy && o.status === 'planned' && x.who.length && !started(o) ? `<div class="deadline small">${late ? `${badge(t('m.occCard.deadlinePassed', { at: deadlineLabel(o.confirmBy) }), 'neutral')} <span class="muted">${esc(t('m.occCard.deadlinePassedHint'))}</span>` : `<span class="muted">${esc(t('m.occCard.confirmBy', { at: deadlineLabel(o.confirmBy) }))}</span>`}</div>` : ''}
+      ${started(o) && o.status === 'planned' && x.who.length ? `<div style="margin-top:4px">${badge(t('m.occCard.declClosed'), 'neutral')}</div>` : ''}
       <div class="decl">${decl}</div>${coachLine}</div></div>`
   }
 
@@ -897,7 +931,9 @@
     return `<div class="card"><div class="row between"><span class="badge info">${esc(typeLabel(o.type, g.kind))}</span>${statusBadge(o.status)}</div>
       <h2 style="margin:8px 0 2px;font-size:18px">${esc(o.name)}</h2>
       <p class="muted" style="margin:0">${esc(dLong(o.date))}, ${o.start}–${o.end}</p>
-      <ul class="list small" style="margin-top:8px"><li><b>${t('common.place')}:</b> ${esc(placeName(db, o.place))}</li><li><b>${t('common.group')}:</b> ${esc(g.name)} · ${esc(s.name)}</li><li><b>${g.kind === 'team' ? t('common.coach') : t('m.screenOccurrence.instructor')}:</b> ${o.coach ? esc(pName(o.coach)) : badge(t('m.screenOccurrence.needsCoach'), 'warning')}${o.coach && o.coach !== o.defaultCoach ? ` ${t('m.screenOccurrence.substituteFor', { name: esc(pName(o.defaultCoach)) })}` : ''}</li>
+      <ul class="list small" style="margin-top:8px"><li><b>${t('common.place')}:</b> ${esc(placeName(db, o.place))}, ${esc((db.places.find((x) => x.id === o.place) || { address: '' }).address)} · <a href="${esc(mapUrl(db, o.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a></li>
+      ${o.gather ? `<li><b>${t('m.screenOccurrence.gather')}:</b> ${o.gather}</li>` : ''}
+      ${o.confirmBy ? `<li><b>${t('m.screenOccurrence.confirmBy')}:</b> ${esc(deadlineLabel(o.confirmBy))}${confirmPassed(o) ? ` ${badge(t('m.screenOccurrence.deadlineOver'), 'neutral')}` : ''}</li>` : ''}<li><b>${t('common.group')}:</b> ${esc(g.name)} · ${esc(s.name)}</li><li><b>${g.kind === 'team' ? t('common.coach') : t('m.screenOccurrence.instructor')}:</b> ${o.coach ? esc(pName(o.coach)) : badge(t('m.screenOccurrence.needsCoach'), 'warning')}${o.coach && o.coach !== o.defaultCoach ? ` ${t('m.screenOccurrence.substituteFor', { name: esc(pName(o.defaultCoach)) })}` : ''}</li>
       ${o.opponent ? `<li><b>${t('m.screenOccurrence.opponent')}:</b> ${esc((db.externalTeams.find((et) => et.id === o.opponent) || { name: '' }).name)}</li>` : ''}
       ${o.invited?.length ? `<li><b>${t('m.screenOccurrence.invitedTeams')}:</b> ${o.invited.map((i) => esc((db.externalTeams.find((et) => et.id === i) || { name: i }).name)).join(', ')}</li>` : ''}
       ${o.status === 'cancelled' ? `<li><b>${t('m.screenOccurrence.cancelReason')}:</b> ${esc(o.cancelReason)}</li>` : ''}</ul></div>
@@ -944,7 +980,7 @@
 
   function screenMessages(): string {
     const list = visibleThreads()
-    const items = list.map((th) => `<li><a href="#/club/messages/${th.id}" style="text-decoration:none"><div class="row between"><span class="item-title">${!th.readBy.includes(me()) ? '● ' : ''}${esc(txt(th.subject))}</span>${th.isCase ? badge(t('m.screenMessages.case'), 'warning') : ''}</div>
+    const items = list.map((th) => `<li><a href="#/club/messages/${th.id}" style="text-decoration:none"><div class="row between"><span class="item-title">${esc(txt(th.subject))}${!th.readBy.includes(me()) ? ` ${badge(t('m.screenMessages.unread'), 'info')}` : ''}</span>${th.isCase ? badge(t('m.screenMessages.case'), 'warning') : ''}</div>
       <div class="small muted">${esc(txt(th.scopeLabel))} · ${esc(pName(th.messages[th.messages.length - 1].author))} · ${esc(th.messages[th.messages.length - 1].at)}</div></a></li>`).join('')
     return `${can('communication.post') ? `<div style="margin-bottom:8px">${btn(t('m.screenMessages.newAnnouncement'), 'new-thread', {}, 'primary block')}</div>` : ''}
       ${list.length ? `<ul class="list">${items}</ul>` : empty(t('m.screenMessages.emptyTitle'), t('m.screenMessages.emptyText'))}`
@@ -972,6 +1008,14 @@
     return db.charges.filter((c) => c.source !== 'rental' && c.status !== 'cancelled' && (c.payerPerson === me() || c.person === me()))
   }
   const remaining = (c: Charge): number => c.amount - c.discount - c.payments.reduce((s, p) => s + p.amount, 0)
+  // The payer sees the full amount, fee included, before paying (interview: the commission in another club's app annoyed a parent).
+  const onlineFeeFor = (sum: number): number => db.settings.onlineFee.mode === 'payer_pays' && sum > 0 ? db.settings.onlineFee.fixed : 0
+  function paySummary(sum: number): string {
+    const fee = onlineFeeFor(sum)
+    return `<dl class="pay-sum" id="pay-summary"><dt>${esc(t('m.screenPayments.sumCharges'))}</dt><dd>${zl(sum)}</dd>
+      <dt>${esc(t('m.screenPayments.sumFee'))}</dt><dd>${db.settings.onlineFee.mode === 'club_pays' ? esc(t('m.screenPayments.sumFeeClub', { amount: zl(0) })) : zl(fee)}</dd>
+      <dt class="total">${esc(t('m.screenPayments.sumTotal'))}</dt><dd class="total">${zl(sum + fee)}</dd></dl>`
+  }
 
   function screenPayments(): string {
     const list = myCharges()
@@ -982,9 +1026,10 @@
       <span class="row between"><span class="item-title">${esc(txt(c.description))}</span><b>${zl(remaining(c) > 0 && c.status !== 'paid' ? remaining(c) : c.amount - c.discount)}</b></span>
       <span class="small muted">${c.period ? `${t('m.screenPayments.period', { period: esc(c.period) })} · ` : ''}${t('m.screenPayments.due', { date: dShort(c.due) })}${c.discount ? ` · ${t('m.screenPayments.discount', { name: esc(txt(c.discountName)), amount: zl(c.discount) })}` : ''}</span>
       <span class="row" style="margin-top:4px">${statusBadge(c.status)}${c.due < TODAY && c.status !== 'paid' ? badge(t('m.screenPayments.overdue'), 'error') : ''}${c.payerMissing ? badge(t('m.screenPayments.noPayer'), 'warning') : ''}</span></span></label></li>`
+    const openSum = open.filter((c) => !c.payerMissing).reduce((s, c) => s + remaining(c), 0)
     return `${kitPayHint()}${open.length ? `<form data-form="checkout" novalidate><div class="section-title">${t('m.screenPayments.toPay')}</div><ul class="list">${open.map((c) => row(c, payer)).join('')}</ul>
-      ${payer ? `<div class="form-general"></div><button class="btn primary block" type="submit" id="pay-btn">${t('m.screenPayments.payButton', { amount: zl(open.filter((c) => !c.payerMissing).reduce((s, c) => s + remaining(c), 0)) })}</button><p class="small muted">${t('m.screenPayments.payHint', { code: esc(payerCode(me())) })}</p>` : `<p class="small muted">${t('m.screenPayments.guardianPays')}</p>`}</form>`
-      : empty(t('m.screenPayments.allPaidTitle'), t('m.screenPayments.allPaidText'), '', '✓')}
+      ${payer ? `<div class="form-general"></div>${paySummary(openSum)}<button class="btn primary block" type="submit" id="pay-btn">${t('m.screenPayments.payButton', { amount: zl(openSum + onlineFeeFor(openSum)) })}</button><p class="small muted">${t('m.screenPayments.payHint', { code: esc(payerCode(me())) })}</p>` : `<p class="small muted">${t('m.screenPayments.guardianPays')}</p>`}</form>`
+      : empty(t('m.screenPayments.allPaidTitle'), t('m.screenPayments.allPaidText'), '', 'circle-check')}
       ${paid.length ? `<div class="section-title">${t('m.screenPayments.paid')}</div><ul class="list">${paid.slice(0, 6).map((c) => row(c, false)).join('')}</ul>` : ''}`
   }
 
@@ -1050,7 +1095,7 @@
   }
 
   function screenPlaces(): string {
-    const leaves = db.places.filter((p) => !db.places.some((c) => c.parent === p.id))
+    const leaves = db.places.filter((p) => !p.external && !db.places.some((c) => c.parent === p.id))
     return `<p class="small muted">${t('m.screenPlaces.intro')}</p>
       ${leaves.map((p) => { const today = occupancy(p.id, TODAY); return `<a class="card" href="#/club/places/${p.id}?date=${TODAY}" style="display:block;text-decoration:none"><div class="row between"><span class="item-title">${esc(p.name)}</span>${p.parent ? `<span class="small muted">${esc(placeName(db, p.parent))}</span>` : ''}</div>
         <div class="small muted">${esc(t(`place.kind.${p.kind}`))}${p.surface ? ` · ${esc(p.surface)}` : ''} · ${t('m.screenPlaces.today', { state: today.length ? t('m.screenPlaces.entries', { n: today.length }) : t('m.screenPlaces.free') })}</div></a>` }).join('')}`
@@ -1063,7 +1108,7 @@
     // The page opens with facilities.view; booking a free hour (M-11 / B-23) requires facilities.bookings.create.
     const canBook = can('facilities.bookings.create')
     const hrefFor = (d: string): string => backend ? `/backend/facilities/calendar?place=${place.id}&date=${d}` : `/club/places/${place.id}?date=${d}`
-    const placeSel = backend ? `<div class="chips" style="margin-bottom:8px" role="group" aria-label="${esc(t('common.place'))}">${db.places.filter((x) => !db.places.some((c) => c.parent === x.id)).map((x) => `<a class="chip ${x.id === place.id ? 'on' : ''}" href="#/backend/facilities/calendar?place=${x.id}&date=${date}">${esc(x.name)}</a>`).join('')}</div>` : ''
+    const placeSel = backend ? `<div class="chips" style="margin-bottom:8px" role="group" aria-label="${esc(t('common.place'))}">${db.places.filter((x) => !x.external && !db.places.some((c) => c.parent === x.id)).map((x) => `<a class="chip ${x.id === place.id ? 'on' : ''}" href="#/backend/facilities/calendar?place=${x.id}&date=${date}">${esc(x.name)}</a>`).join('')}</div>` : ''
     return `${backend ? pageHead(t('m.screenPlace.title'), t('m.screenPlace.subtitle'), can('facilities.manage') ? btn(t('m.screenPlace.setAvailability'), 'availability', { place: place.id }, 'primary') : '') : ''}${placeSel}
       ${backend && can('facilities.manage') ? availabilityCard(place) : ''}
       <div class="row between"><div><div class="item-title">${esc(place.name)}</div><div class="small muted">${esc(dLong(date))} · ${t('m.screenPlace.capacity', { n: place.capacity })}</div></div></div>
@@ -1215,8 +1260,8 @@
       const sum = overdue.reduce((s, c) => s + remaining(c), 0)
       const toConfirm = db.bankTx.filter((bt) => bt.status === 'suggested' || bt.status === 'unmatched').length
       widgets.push(w(t('b.screenDashboard.bankTitle'), `<p class="small" style="margin:0 0 8px">${toConfirm ? t('b.screenDashboard.toConfirm', { n: toConfirm }) : esc(t('b.screenDashboard.allSettled'))}</p><div class="row">${link(esc(t('b.screenDashboard.importStatement')), '/backend/payments/bank', 'btn sm')}${btn(esc(t('b.screenDashboard.acceptCash')), 'cash', {}, 'sm')}</div>`, '/backend/payments/bank', toConfirm))
-      widgets.push(w(t('b.screenDashboard.overdueTitle'), `<div class="kpi">${zl(sum)}</div><p class="muted small">${esc(t('b.screenDashboard.overdueCount', { n: overdue.length }))} · ${esc(t('b.screenDashboard.families', { n: new Set(overdue.map((c) => c.payerPerson)).size }))}</p>`, '/backend/payments/charges?view=overdue', overdue.length))
-      widgets.push(w(t('b.screenDashboard.missingTitle'), missing.length ? `<ul class="list small">${missing.map((c) => `<li>${esc(txt(c.description))}</li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.missingNone'))}</p>`, '/backend/payments/charges?view=missing', missing.length))
+      widgets.push(w(t('b.screenDashboard.overdueTitle'), `<div class="kpi">${zl(sum)}</div><p class="muted small">${esc(t('b.screenDashboard.overdueCount', { n: overdue.length }))} · ${esc(t('b.screenDashboard.families', { n: new Set(overdue.filter((c) => !c.payerMissing).map((c) => c.payerPerson)).size }))}${overdue.some((c) => c.payerMissing) ? ` · ${esc(t('b.screenDashboard.withoutPayer', { n: overdue.filter((c) => c.payerMissing).length }))}` : ''}</p>`, '/backend/payments/charges?view=overdue', overdue.length))
+      widgets.push(w(t('b.screenDashboard.missingTitle'), missing.length ? `<ul class="list small">${missing.map((c) => `<li>${esc(txt(c.description))}${c.period ? ` · ${esc(t('m.screenPayments.period', { period: c.period }))}` : ''}</li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.missingNone'))}</p>`, '/backend/payments/charges?view=missing', missing.length))
     }
     if (can('payments.orders.manage')) widgets.push(kitDashboardWidget(w))
     if (can('facilities.rentals.approve')) widgets.push(w(t('b.screenDashboard.requestsTitle'), pend.length ? `<ul class="list small">${pend.map((r) => `<li>${esc(r.renter)} — ${dShort(r.date)} ${r.start} · ${esc(t('b.screenDashboard.expires', { at: r.holdUntil }))}</li>`).join('')}</ul>` : `<p class="muted small">${esc(t('b.screenDashboard.noRequests'))}</p>`, '/backend/facilities/requests', pend.length))
@@ -1287,7 +1332,7 @@
       ${chk('isPublic', esc(t('b.screenSection.visible')), s.isPublic)}<div class="fields" style="margin-top:10px">${fld('slug', t('b.screenSection.slug'), inp('slug', 'text', s.slug), { req: true, hint: t('b.screenSection.slugHint', { slug: db.settings.slug }) })}</div>
       ${fld('description', t('b.screenSection.publicDescription'), area('description', s.description))}${fld('conditions', t('b.screenSection.conditions'), area('conditions', s.conditions))}
       <div class="fields">${fld('contactName', t('b.screenSection.contactName'), inp('contactName', 'text', s.contactName))}${fld('contactEmail', t('b.screenSection.contactEmail'), inp('contactEmail', 'email', s.contactEmail))}${fld('contactPhone', t('b.screenSection.contactPhone'), inp('contactPhone', 'tel', s.contactPhone))}</div>
-      <div class="field" style="margin-top:8px"><span>${esc(t('b.screenSection.materials'))}</span><ul class="list small">${s.materials.map((m) => `<li>📄 ${esc(m)}</li>`).join('') || `<li class="muted">${esc(t('b.screenSection.noFiles'))}</li>`}</ul><small>${esc(t('b.screenSection.materialsHint'))}</small></div></div>
+      <div class="field" style="margin-top:8px"><span>${esc(t('b.screenSection.materials'))}</span><ul class="list small">${s.materials.map((m) => `<li>${icon('file-text')} ${esc(m)}</li>`).join('') || `<li class="muted">${esc(t('b.screenSection.noFiles'))}</li>`}</ul><small>${esc(t('b.screenSection.materialsHint'))}</small></div></div>
       <div class="form-actions">${link(esc(t('b.screenSection.preview')), `/p/gwiazda/sections/${s.slug}`, 'btn')}<button class="btn primary" type="submit" ${canEdit ? '' : 'disabled'}>${esc(t('common.save'))}</button></div></form>`
     return `${pageHead(s.name, t('b.screenSection.subtitle'))}${tabs}${body}`
   }
@@ -1295,7 +1340,7 @@
   function screenPlacesAdmin(): string {
     return `${pageHead(t('b.screenPlacesAdmin.title'), t('b.screenPlacesAdmin.subtitle'), isAdmin() ? btn(esc(t('b.screenPlacesAdmin.add')), 'todo', { what: t('b.screenPlacesAdmin.todoForm') }, 'primary') : '')}
       ${table({ cols: [
-        { label: t('common.place'), cell: (x: Place) => `${x.parent ? '↳ ' : ''}<b>${esc(x.name)}</b>` },
+        { label: t('common.place'), cell: (x: Place) => `${x.parent ? '↳ ' : ''}<b>${esc(x.name)}</b>${x.external ? ` ${badge(t('place.external'))}` : ''}` },
         { label: t('common.kind'), cell: (x: Place) => esc(t(`place.kind.${x.kind}`)) },
         { label: t('b.screenPlacesAdmin.parent'), cell: (x: Place) => esc(x.parent ? placeName(db, x.parent) : '—') },
         { label: t('b.screenPlacesAdmin.capacity'), num: true, cell: (x: Place) => String(x.capacity) },
@@ -1414,7 +1459,7 @@
     const types: [string, string][] = g.kind === 'team'
       ? [['training', t('occType.training')], ['match', t('occType.match')], ['sparring', t('occType.sparring')], ['tournament', t('occType.tournament')], ['camp', t('occType.camp')], ['other', t('b.screenActivityCreate.typeOther')]]
       : [['training', t('occType.classes')], ['tournament', t('b.screenActivityCreate.typeTournamentContest')], ['camp', t('occType.camp')], ['other', t('b.screenActivityCreate.typeOther')]]
-    const leaves = db.places.filter((p) => !db.places.some((c) => c.parent === p.id))
+    const leaves = db.places.filter((p) => !p.external && !db.places.some((c) => c.parent === p.id))
     const coaches = db.persons.filter((p) => db.roles.some((r) => r.person === p.id && r.role === 'coach'))
     const preview = ui.preview ? JSON.parse(ui.preview) as { dates: string[]; conflicts: string[] } : null
     return `${pageHead(t('b.screenActivityCreate.title'), t('b.screenActivityCreate.sub'), link(t('common.cancel'), '/backend/activities/activities', 'btn'))}
@@ -1526,7 +1571,8 @@
       <div class="section-title">${t('b.screenFees.discounts')}</div>
       ${table({ cols: [{ label: t('common.name'), cell: (d: any) => `<b>${esc(d.name)}</b>` }, { label: t('common.kind'), cell: (d: any) => esc(t(`discount.kind.${d.kind}`)) }, { label: t('b.screenFees.colValue'), num: true, cell: (d: any) => `−${d.percent}%` }, { label: t('b.screenFees.colRule'), cell: () => t('b.screenFees.siblingRule') }], rows: db.discounts })}
       <div class="section-title">${t('b.screenFees.coachesAndPayments')}</div>
-      <div class="card"><label class="field" data-field="coachFees"><span>${t('b.screenFees.coachSees')}</span>${sel('coachFees', [['collect', t('b.screenFees.coachFeesCollect')], ['view', t('b.screenFees.coachFeesView')], ['none', t('b.screenFees.coachFeesNone')]], db.settings.coachFees || 'collect', 'data-change="coach-fees"')}<small>${t('b.screenFees.coachFeesHint')}</small></label></div>`
+      <div class="card"><label class="field" data-field="coachFees"><span>${t('b.screenFees.coachSees')}</span>${sel('coachFees', [['collect', t('b.screenFees.coachFeesCollect')], ['view', t('b.screenFees.coachFeesView')], ['none', t('b.screenFees.coachFeesNone')]], db.settings.coachFees || 'collect', 'data-change="coach-fees"')}<small>${t('b.screenFees.coachFeesHint')}</small></label></div>
+      <div class="card"><label class="field" data-field="onlineFee"><span>${t('b.screenFees.onlineFee')}</span>${sel('onlineFee', [['club_pays', t('b.screenFees.onlineFeeClub')], ['payer_pays', t('b.screenFees.onlineFeePayer')]], db.settings.onlineFee.mode, 'data-change="online-fee"')}<small>${t('b.screenFees.onlineFeeHint', { amount: zl(db.settings.onlineFee.fixed) })}</small></label></div>`
   }
 
   function chargesTable(rows: Charge[], toolbar = '', tabs?: [string, string, boolean][]): string {
@@ -1746,7 +1792,7 @@
       ${rows.length ? rows.map((r) => { const conf = conflicts(r.place, r.date, toMin(r.start), toMin(r.end), { ignore: r.id }); return `<div class="card"><div class="row between"><div><div class="item-title">${esc(r.renter)} — ${esc(placeName(db, r.place))}</div><div class="small muted">${esc(dLong(r.date))}, ${r.start}–${r.end} · ${r.units} × 90 min · ${esc((db.rates.find((x) => x.category === r.category) || { label: r.category }).label)}</div></div>${badge(t('b.screenRequests.expires', { at: r.holdUntil }), 'warning')}</div>
         <div class="grid3" style="margin-top:10px"><div><div class="sub">${t('common.contact')}</div>${esc(r.contact)}<br>${esc(r.email)}<br>${esc(r.phone)}</div><div><div class="sub">${t('b.screenRequests.purpose')}</div>${esc(r.purpose || '—')}</div><div><div class="sub">${t('b.screenRequests.estimatedAmount')}</div><b>${zl(r.amount)}</b><div class="small muted">${t('b.screenCharge.toOwnerAccount', { owner: esc(ownerName()) })}</div></div></div>
         <div style="margin-top:10px">${conf.length ? `<div class="alert error"><strong>${t('b.screenRequests.conflict')}</strong>${conf.map((c) => esc(c.label)).join('; ')}</div>` : badge(t('b.screenRequests.noConflict'), 'success')} ${r.banMatch ? badge(t('b.screenRequests.banMatch'), 'error') : badge(t('b.screenRequests.noBan'), 'success')} ${badge(t('b.screenRequests.rulesAccepted'), 'neutral')} ${badge(t('b.screenRequests.emailConfirmed'), 'neutral')}</div>
-        <div class="row" style="margin-top:12px">${btn(t('common.approve'), 'approve', { id: r.id }, 'primary')}${btn(t('common.reject'), 'reject', { id: r.id }, 'danger')}</div></div>` }).join('') : empty(t('b.screenRequests.emptyTitle'), t('b.screenRequests.emptyText'), '', '✓')}`
+        <div class="row" style="margin-top:12px">${btn(t('common.approve'), 'approve', { id: r.id }, 'primary')}${btn(t('common.reject'), 'reject', { id: r.id }, 'danger')}</div></div>` }).join('') : empty(t('b.screenRequests.emptyTitle'), t('b.screenRequests.emptyText'), '', 'circle-check')}`
   }
 
   function screenZones(q: URLSearchParams): string {
@@ -1812,7 +1858,7 @@
   }
 
   function screenClubPage(): string {
-    if (!pub().enabled) return empty(t('p.screenClubPage.notPublished'), t('p.screenClubPage.callClub'), '', '⦸')
+    if (!pub().enabled) return empty(t('p.screenClubPage.notPublished'), t('p.screenClubPage.callClub'), '', 'ban')
     const secs = db.sections.filter((s) => s.isPublic && s.active)
     return `<div class="hero"><div class="row" style="gap:14px;align-items:center;margin-bottom:6px">${logoBox(db.settings.logo, t('p.screenClubPage.clubLogo'), 56)}<h1 style="margin:0">${esc(db.settings.name)}</h1></div><p>${esc(db.settings.description)}</p></div>
       <div class="section-title">${esc(t('p.screenClubPage.sections'))}</div>
@@ -1823,7 +1869,7 @@
 
   function screenSectionPage(p: Record<string, string>): string {
     const s = db.sections.find((x) => x.slug === p.slug)
-    if (!pub().enabled || !s || !s.isPublic) return empty(t('p.screenSectionPage.notFound'), t('p.screenSectionPage.notFoundText'), link(t('p.screenSectionPage.clubPage'), '/p/gwiazda'), '⦸')
+    if (!pub().enabled || !s || !s.isPublic) return empty(t('p.screenSectionPage.notFound'), t('p.screenSectionPage.notFoundText'), link(t('p.screenSectionPage.clubPage'), '/p/gwiazda'), 'ban')
     const P = pub()
     const groups = db.groups.filter((g) => g.section === s.id && g.isPublic)
     const card = (g: Group): string => {
@@ -1845,12 +1891,12 @@
       ${P.conditions && s.conditions ? `<div class="alert info"><strong>${esc(t('p.screenSectionPage.participation'))}</strong>${esc(s.conditions)}</div>` : ''}
       ${P.description_schedule ? eventsList(s.id) : ''}
       <div class="section-title">${esc(t('p.screenSectionPage.classes'))}</div>${groups.length ? `<div class="grid2">${groups.map(card).join('')}</div>` : empty(t('p.screenSectionPage.noClasses'), t('p.screenSectionPage.noClassesText'))}
-      ${P.materials && s.materials.length ? `<div class="section-title">${esc(t('p.screenSectionPage.materials'))}</div><ul class="list">${s.materials.map((m) => `<li>📄 <a href="#" data-action="todo" data-what="${esc(t('p.screenSectionPage.todoDownload'))}">${esc(m)}</a></li>`).join('')}</ul>` : ''}
+      ${P.materials && s.materials.length ? `<div class="section-title">${esc(t('p.screenSectionPage.materials'))}</div><ul class="list">${s.materials.map((m) => `<li>${icon('file-text')} <a href="#" data-action="todo" data-what="${esc(t('p.screenSectionPage.todoDownload'))}">${esc(m)}</a></li>`).join('')}</ul>` : ''}
       ${P.contact ? `<div class="section-title">${esc(t('common.contact'))}</div><div class="card"><b>${esc(s.contactName)}</b><div class="small">${esc(s.contactEmail)} · ${esc(s.contactPhone)}</div></div>` : ''}`
   }
 
   function screenPublicPlaces(): string {
-    if (!pub().enabled || !pub().places_calendar) return empty(t('p.screenPublicPlaces.noCalendars'), t('p.screenPublicPlaces.noCalendarsText'), '', '⦸')
+    if (!pub().enabled || !pub().places_calendar) return empty(t('p.screenPublicPlaces.noCalendars'), t('p.screenPublicPlaces.noCalendarsText'), '', 'ban')
     const list = db.places.filter((p) => p.publicSchedule)
     return `<div class="hero"><h1>${esc(t('p.screenPublicPlaces.title'))}</h1><p>${esc(t(pub().online_requests ? 'p.screenPublicPlaces.introOnline' : 'p.screenPublicPlaces.intro'))}</p></div>
       <div class="grid3">${list.map((p) => `<a class="card" href="#/p/gwiazda/places/${p.slug}" style="text-decoration:none;display:block"><h3>${esc(p.name)}</h3><div class="small muted">${esc(p.address)}${p.surface ? ` · ${esc(p.surface)}` : ''}</div><div style="margin-top:8px">${p.acceptsRequests && pub().online_requests ? badge(t('p.screenPublicPlaces.onlineRequests'), 'success') : badge(t('p.screenPublicPlaces.phoneBooking'), 'neutral')}</div></a>`).join('')}</div>`
@@ -1875,7 +1921,7 @@
 
   function screenPublicPlace(p: Record<string, string>, q: URLSearchParams): string {
     const place = db.places.find((x) => x.slug === p.slug && x.publicSchedule)
-    if (!pub().enabled || !pub().places_calendar || !place) return empty(t('p.screenSectionPage.notFound'), t('p.screenPublicPlace.notFoundText'), link(t('p.screenPublicPlaces.title'), '/p/gwiazda/places'), '⦸')
+    if (!pub().enabled || !pub().places_calendar || !place) return empty(t('p.screenSectionPage.notFound'), t('p.screenPublicPlace.notFoundText'), link(t('p.screenPublicPlaces.title'), '/p/gwiazda/places'), 'ban')
     const start = q.get('from') || TODAY
     const days = Array.from({ length: 10 }, (_, i) => addDays(start, i))
     const canReq = pub().online_requests && place.acceptsRequests
@@ -1900,8 +1946,8 @@
     const ids = (q.get('ids') || '').split(',')
     const list = db.charges.filter((c) => ids.includes(c.id))
     const sum = list.reduce((s, c) => s + remaining(c), 0)
-    return `<div class="stripe"><div class="small" style="color:#697386">${esc(t('p.screenStripe.header'))}</div><h1>${esc(db.settings.name)}</h1><div class="amt">${zl(sum)}</div>
-      <ul style="padding-left:18px;color:#425466">${list.map((c) => `<li>${esc(txt(c.description))}</li>`).join('')}</ul>
+    return `<div class="stripe"><div class="small" style="color:#697386">${esc(t('p.screenStripe.header'))}</div><h1>${esc(db.settings.name)}</h1><div class="amt">${zl(sum + onlineFeeFor(sum))}</div>
+      <ul style="padding-left:18px;color:#425466">${list.map((c) => `<li>${esc(txt(c.description))}</li>`).join('')}${onlineFeeFor(sum) ? `<li>${esc(t('m.screenPayments.sumFee'))}: ${zl(onlineFeeFor(sum))}</li>` : ''}</ul>
       <div class="stack">${btn(t('p.screenStripe.payTestCard'), 'stripe-pay', { ids: ids.join(','), mode: 'paid' }, 'primary block')}${btn(t('p.screenStripe.payDelayed'), 'stripe-pay', { ids: ids.join(','), mode: 'pending' }, 'block')}${btn(t('p.screenStripe.cancel'), 'stripe-pay', { ids: ids.join(','), mode: 'cancelled' }, 'block')}</div></div>`
   }
 
@@ -2036,7 +2082,7 @@
     const head = `<div class="card"><div class="row between"><span class="item-title">${esc(c.name)}</span>${kitBadge(c.status)}</div><p class="small" style="margin:6px 0 0">${esc(c.description)}</p><p class="small muted" style="margin:6px 0 0">${t('kit.kitOrderPage.deadlines', { closes: dShort(c.closes), payDue: dShort(c.payDue) })}</p></div>`
     if (!kids.length) return head + empty(t('kit.kitOrderPage.noKidsTitle'), t('kit.kitOrderPage.noKidsText'))
     const child = kids.includes(q.get('child') || '') ? (q.get('child') as string) : kids[0]
-    const chips = kids.length > 1 ? `<div class="chips" role="group" aria-label="${esc(t('kit.kitOrderPage.childAria'))}" style="margin-top:12px">${kids.map((k) => `<a class="chip ${k === child ? 'on' : ''}" href="#${base}?child=${k}" ${k === child ? 'aria-current="true"' : ''}>${esc(personById(db, k).first)}${kitOrderOf(c, k) ? ' ✓' : ''}</a>`).join('')}</div>` : ''
+    const chips = kids.length > 1 ? `<div class="chips" role="group" aria-label="${esc(t('kit.kitOrderPage.childAria'))}" style="margin-top:12px">${kids.map((k) => `<a class="chip ${k === child ? 'on' : ''}" href="#${base}?child=${k}" ${k === child ? 'aria-current="true"' : ''}>${esc(personById(db, k).first)}${kitOrderOf(c, k) ? ` ${icon('circle-check')}<span class="sr-only">${esc(t('kit.kitOrderPage.childOrdered'))}</span>` : ''}</a>`).join('')}</div>` : ''
     const o = kitOrderOf(c, child)
     const sub = `<div class="section-title">${esc(pName(child))} · ${esc(group(kitGroupOf(c, child)).name)}</div>`
     if (o && q.get('edit') !== '1') return head + chips + sub + kitOrderSummary(c, o, base, !token)
@@ -2138,7 +2184,7 @@
     const campBox = camps.map((k) => { const n = members.filter((m) => !kitOrderOf(k, m)).length; return `<div class="card"><div class="row between"><span class="item-title">${esc(k.name)}</span>${kitBadge(k.status)}</div><div class="small muted">${t('m.screenGroupPayments.campProgress', { date: dShort(k.closes), ordered: members.length - n, total: members.length })}</div><div class="row" style="margin-top:8px">${n ? btn(t('m.screenGroupPayments.remindGuardians', { n }), 'kit-remind', { c: k.id, group: gid }, 'sm') : ''}${btn(t('m.screenGroupPayments.shareText'), 'kit-share', { id: k.id }, 'sm')}</div></div>` }).join('')
     return `${cashBox}${chips}${filter}
       <div class="card" style="margin-top:12px"><div class="row between"><span class="item-title">${esc(group(gid).name)}</span><b>${zl(total)}</b></div><div class="small muted">${t('m.screenGroupPayments.groupToPay')}${late ? ` · ${t('m.screenGroupPayments.lateCount', { n: late })}` : ''} · ${db.settings.coachFees === 'none' ? t('m.screenGroupPayments.modeNone') : db.settings.coachFees === 'view' ? t('m.screenGroupPayments.modeView') : t('m.screenGroupPayments.modeCollect')}</div></div>
-      ${rows ? `<ul class="list">${rows}</ul>` : empty(t('m.screenGroupPayments.allPaidTitle'), t('m.screenGroupPayments.allPaidText'), '', '✓')}
+      ${rows ? `<ul class="list">${rows}</ul>` : empty(t('m.screenGroupPayments.allPaidTitle'), t('m.screenGroupPayments.allPaidText'), '', 'circle-check')}
       ${campBox ? `<div class="section-title">${t('m.screenGroupPayments.campaigns')}</div>${campBox}` : ''}`
   }
 
@@ -2376,10 +2422,10 @@
     const multi = isCoachPersona() && (hasMemberRole(me()) || can('backend'))
     const ctxSel = loggedIn && multi && path === '/club' ? `<label class="small">${esc(t('shell.memberShell.context'))} ${sel('ctx', [['coach', isAdmin() || coordSections(me()).length ? t('shell.memberShell.asCoachCoordinator') : t('shell.memberShell.asCoach')], ['member', t('shell.memberShell.asMember')]], coachCtx ? 'coach' : 'member', 'data-change="ctx"')}</label>` : ''
     const title = path === '/club' && loggedIn ? t('shell.memberShell.greeting', { name: personById(db, me()).first }) : t(route.name)
-    const tab = (href: string, ico: string, label: string, active: boolean): string => `<a href="#${href}" class="${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${ico}</span>${esc(label)}</a>`
+    const tab = (href: string, ico: string, label: string, active: boolean): string => `<a href="#${href}" class="${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''}><span class="ico">${icon(ico)}</span>${esc(label)}</a>`
     // Payments only for adults (payments.view_own); an underage participant has 4 tabs.
-    const fourth = can('payments.view_own') ? tab('/club/payments', '¤', t('shell.memberShell.tabPayments'), path.startsWith('/club/payments') || path.startsWith('/club/orders')) : can('facilities.view') ? tab('/club/places', '⌂', t('shell.memberShell.tabFacilities'), path.startsWith('/club/places')) : ''
-    const tabList = [tab('/club', '◉', t('shell.memberShell.tabToday'), path === '/club'), tab('/club/calendar', '▦', t('shell.memberShell.tabCalendar'), path.startsWith('/club/calendar') || path.startsWith('/club/occurrences')), tab('/club/messages', '✉', t('shell.memberShell.tabMessages'), path.startsWith('/club/messages')), fourth, tab('/club/profile', '≡', t('shell.memberShell.tabMore'), path.startsWith('/club/profile') || path.startsWith('/club/facility') || path.startsWith('/club/coach') || (can('payments.view_own') && path.startsWith('/club/places')))].filter(Boolean)
+    const fourth = can('payments.view_own') ? tab('/club/payments', 'wallet', t('shell.memberShell.tabPayments'), path.startsWith('/club/payments') || path.startsWith('/club/orders')) : can('facilities.view') ? tab('/club/places', 'map-pin', t('shell.memberShell.tabFacilities'), path.startsWith('/club/places')) : ''
+    const tabList = [tab('/club', 'house', t('shell.memberShell.tabToday'), path === '/club'), tab('/club/calendar', 'calendar-days', t('shell.memberShell.tabCalendar'), path.startsWith('/club/calendar') || path.startsWith('/club/occurrences')), tab('/club/messages', 'message-square', t('shell.memberShell.tabMessages'), path.startsWith('/club/messages')), fourth, tab('/club/profile', 'menu', t('shell.memberShell.tabMore'), path.startsWith('/club/profile') || path.startsWith('/club/facility') || path.startsWith('/club/coach') || (can('payments.view_own') && path.startsWith('/club/places')))].filter(Boolean)
     const tabs = loggedIn && route.persona !== false ? `<nav class="tabbar" aria-label="${esc(t('shell.memberShell.navAria'))}" style="grid-template-columns:repeat(${tabList.length},1fr)">${tabList.join('')}</nav>` : ''
     return `<div class="phone"><header class="phone-header"><div class="row">${route.back ? `<a class="back" href="#${route.back}">${esc(t('common.back'))}</a>` : '<span></span>'}<span class="row small muted" style="gap:6px">${logoBox(db.settings.logo, t('shell.memberShell.clubLogo'), 20)}${esc(db.settings.name)}</span></div><div class="row"><h1 class="phone-title">${esc(title)}</h1>${ctxSel}</div></header>
       <div class="phone-body" id="phone-body">${content}${apiFoot(route)}</div>${tabs}</div>`
@@ -2446,7 +2492,7 @@
     else if (route.feature && !guestOk && !can(route.feature)) content = `<div class="alert error" role="alert"><strong>${esc(t('shell.render.deniedTitle'))}</strong>${t('shell.render.deniedFeature', { feature: `<code>${esc(route.feature)}</code>` })}</div>`
     else if (demoState === 'loading' || transientLoading) content = skeleton(shell)
     else if (demoState === 'error') content = errorView()
-    else if (demoState === 'empty') { const e = route.empty || ['shell.render.emptyTitle', 'shell.render.emptyText']; content = empty(t(e[0]), t(e[1]), '', '○') }
+    else if (demoState === 'empty') { const e = route.empty || ['shell.render.emptyTitle', 'shell.render.emptyText']; content = empty(t(e[0]), t(e[1]), '', 'inbox') }
     else content = route.render(params, q)
     stage.className = `stage ${shell === 'member' ? 'member' : ''}`
     const scroll = (document.getElementById('phone-body') as HTMLElement | null)?.scrollTop || 0
@@ -2481,7 +2527,7 @@
     if (drawer === 'flows') { title = t('drawer.renderDrawer.flowsTitle'); body = FLOWS.map((f) => `<div class="flow"><h3>${f.id} ${esc(t(f.title))}</h3><ol>${f.steps.map(([pp, href, l]) => `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${href}">${esc(t(l))}</a> <span class="small muted">— ${esc(personaLabel(PERSONAS.find((x) => x.id === pp) as Persona).split(' ')[0])}</span></li>`).join('')}</ol></div>`).join('') }
     if (drawer === 'screens') { title = t('drawer.renderDrawer.screensTitle'); const groups: [string, string][] = [['M', 'drawer.renderDrawer.groupMember'], ['B', 'drawer.renderDrawer.groupPanel'], ['P', 'drawer.renderDrawer.groupPublic']]; body = groups.map(([k, l]) => `<div class="section-title">${esc(t(l))}</div><ul class="list">${ROUTES.filter((r) => r.id.startsWith(k)).map((r) => { const sample = r.pattern.replace(':id', r.id === 'M-04' || r.id === 'M-05' ? 'a-orlm-2026-11-10' : r.id === 'M-07' ? 't-orlm' : r.id === 'M-11' ? 'pl-boisko' : r.id === 'B-05' ? 's-akad' : r.id === 'B-10' ? 'p-kasia' : r.id === 'B-12' ? 'g-orlm' : r.id === 'B-19' ? 't-uwagi' : r.id === 'M-17' || r.id === 'B-31' || r.id === 'B-32' ? 'oc-akad' : r.id === 'B-22' ? (db.charges[0] || { id: '' }).id : 'x').replace(':token', r.id === 'M-14' ? 'tok-expired' : r.id === 'M-19' ? 'kit-robert' : 'expired').replace(':slug', r.id === 'P-02' ? 'basen' : 'orlik-boisko'); const pp: PersonaId = k === 'P' ? 'guest' : k === 'B' ? 'aneta' : r.id === 'M-12' ? 'tomek' : r.id === 'M-18' ? 'wojtek' : r.id === 'M-19' ? 'guest' : r.id === 'M-15' ? 'aneta' : r.id === 'M-05' || r.id === 'M-11' ? 'wojtek' : 'kasia'; return `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${sample}"><b>${r.id}</b> ${esc(t(r.name))}</a> <code class="small">${esc(r.pattern)}</code></li>` }).join('')}</ul>`).join('') }
     if (drawer === 'mail') { title = t('drawer.renderDrawer.mailTitle', { n: db.mails.length }); body = db.mails.length ? db.mails.map((m) => `<div class="mail"><div class="small muted">${esc(t('drawer.renderDrawer.mailTo', { to: m.to }))}</div><div class="subj">${esc(txt(m.subject))}</div><pre>${esc(txt(m.body))}</pre>${m.link ? `<a class="btn sm primary" href="#" data-action="mail-link" data-href="${m.link}">${esc(m.linkLabel ? txt(m.linkLabel) : t('drawer.renderDrawer.openLink'))}</a>` : ''}</div>`).join('') : empty(t('drawer.renderDrawer.mailEmptyTitle'), t('drawer.renderDrawer.mailEmptyText')) }
-    host.innerHTML = `<aside class="drawer" aria-label="${esc(title)}"><div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="btn sm" data-action="drawer-close" aria-label="${esc(t('common.close'))}">✕</button></div><div class="drawer-body">${body}</div></aside>`
+    host.innerHTML = `<aside class="drawer" aria-label="${esc(title)}"><div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="btn sm" data-action="drawer-close" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div><div class="drawer-body">${body}</div></aside>`
   }
 
   function go(href: string): void { navigated = true; transientLoading = demoState === 'normal'; if (location.hash === `#${href}`) render(); else location.hash = href; setTimeout(() => { transientLoading = false; render() }, 260) }
@@ -2713,7 +2759,11 @@
     'share-text': (el) => {
       const th = db.threads.find((x) => x.id === el.dataset.thread) as Thread
       const occId = th.scope === 'occurrence' ? th.scopeId : (db.occurrences.find((o) => o.group === th.scopeId && o.date >= TODAY && o.status === 'planned') || { id: '' }).id
-      const text = `${txt(th.subject)}\n${txt(th.messages[th.messages.length - 1].body)}\n\n${t('action.shareText.detailsLine', { url: `https://gwiazda.vereino.example/club/link?occ=${occId}` })}`
+      // One source of truth: the session's date, gathering time, place and map link come from the session, not from the message.
+      // Only for a thread about one session: a group thread's "next session" may not be the one the message is about.
+      const so = th.scope === 'occurrence' ? occById(occId) : undefined
+      const whenWhere = so ? `\n${t('action.shareText.whenWhere', { name: so.name, date: dShort(so.date), gather: so.gather ? `${t('m.occCard.gather', { time: so.gather })} · ` : '', start: so.start, place: placeName(db, so.place), map: mapUrl(db, so.place) })}` : ''
+      const text = `${txt(th.subject)}\n${txt(th.messages[th.messages.length - 1].body)}\n${whenWhere}\n${t('action.shareText.detailsLine', { url: `https://gwiazda.vereino.example/club/link?occ=${occId}` })}`
       try { navigator.clipboard.writeText(text).catch(() => undefined) } catch { /* clipboard unavailable */ }
       openModal({ title: t('action.shareText.title'), submitLabel: t('action.shareText.done'), body: `<div class="alert success"><strong>${t('action.shareText.copied')}</strong>${t('action.shareText.copiedText')}</div><textarea readonly rows="6" style="width:100%">${esc(text)}</textarea><p class="small"><a href="#/club/link?occ=${occId}" data-action="close-modal">${t('action.shareText.preview')}</a></p>`, onSubmit: () => undefined })
     },
@@ -3148,7 +3198,7 @@
     if (k === 'bank-file') { const f = (el as HTMLInputElement).files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => { try { const rows = parseCsv(String(reader.result)); if (!rows.length) throw new Error(t('ui.onChange.fileNoRows')); const imp = importStatement(f.name, rows); toast(t('ui.onChange.imported', { n: imp.total, booked: imp.booked, suggested: imp.suggested, unmatched: imp.unmatched, skipped: imp.skipped })); render() } catch (e) { const field = (el as HTMLElement).closest('[data-field]') as HTMLElement; field.classList.add('invalid'); field.querySelector('.field-error')?.remove(); const pe = document.createElement('p'); pe.className = 'field-error'; pe.textContent = t('ui.onChange.fileReadFailed', { error: (e as Error).message }); field.appendChild(pe) } }; reader.readAsText(f, 'utf-8') }
     if (k === 'avail-mode') { document.querySelectorAll('#modal [data-am]').forEach((d) => { (d as HTMLElement).hidden = (d as HTMLElement).dataset.am !== el.value }) }
     if (k === 'slot-mode') { document.querySelectorAll('#modal [data-mode]').forEach((d) => { (d as HTMLElement).hidden = (d as HTMLElement).dataset.mode !== el.value }) }
-    if (k === 'pay-sum') { const form = el.closest('form') as HTMLFormElement; const ids = new FormData(form).getAll('charge').map(String); const sum = db.charges.filter((c) => ids.includes(c.id)).reduce((s, c) => s + remaining(c), 0); (document.getElementById('pay-btn') as HTMLButtonElement).textContent = t('ui.onChange.payAmount', { amount: zl(sum) }) }
+    if (k === 'pay-sum') { const form = el.closest('form') as HTMLFormElement; const ids = new FormData(form).getAll('charge').map(String); const sum = db.charges.filter((c) => ids.includes(c.id)).reduce((s, c) => s + remaining(c), 0); (document.getElementById('pay-summary') as HTMLElement).outerHTML = paySummary(sum); (document.getElementById('pay-btn') as HTMLButtonElement).textContent = t('ui.onChange.payAmount', { amount: zl(sum + onlineFeeFor(sum)) }) }
     if (k === 'logo-upload') {
       const input = el as HTMLInputElement
       const f = input.files ? input.files[0] : undefined
@@ -3164,6 +3214,7 @@
     if (k === 'kit-recalc') { const form = el.closest('form') as HTMLFormElement; const c = kitCampaign(form.dataset.campaign as string) as KitCampaign; const fd = new FormData(form); const res = kitPrice(c, Object.fromEntries(c.products.filter((p) => p.kind === 'item').map((p) => [p.id, String(fd.get(`p-${p.id}`) || '')])), !!fd.get('set')); (document.getElementById('kit-total') as HTMLElement).textContent = zl(res.total) }
     if (k === 'kit-redraw') kitDraftEdit(() => undefined)
     if (k === 'coach-fees') { db.settings.coachFees = el.value as 'none' | 'view' | 'collect'; toast(t('ui.onChange.coachFeesSaved')) }
+    if (k === 'online-fee') { db.settings.onlineFee.mode = el.value as 'club_pays' | 'payer_pays'; toast(t('ui.onChange.onlineFeeSaved')) }
     if (k === 'grp-cash-sum') { const form = el.closest('form') as HTMLFormElement; const ids = new FormData(form).getAll('charges').map(String); const sum = db.charges.filter((c) => ids.includes(c.id)).reduce((a, c) => a + remaining(c), 0); (document.getElementById('grp-cash-amount') as HTMLInputElement).value = String(sum / 100) }
     if (k === 'kit-section') kitDraftEdit((d) => { d.groups = [] })
     if (k === 'units-month') go(`/backend/activities/reports/coach-units?month=${el.value}`)

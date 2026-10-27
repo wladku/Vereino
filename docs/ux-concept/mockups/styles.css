@@ -117,6 +117,10 @@ body {
 a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Inside containers that clip (segmented controls, the phone tab bar) the ring is drawn inwards. */
+.seg button:focus-visible, .tabbar a:focus-visible { outline-offset: -3px; }
+/* Line icons (lucide paths, the icon set of Open Mercato). */
+.i { width: 1em; height: 1em; flex-shrink: 0; vertical-align: -0.125em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ── Mockup chrome ─────────────────────────────── */
@@ -185,7 +189,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .public-body { padding: 24px; }
 .public-foot { padding: 16px 24px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
 .hero h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.02em; }
-.hero p { color: var(--muted-foreground); margin: 0 0 18px; max-width: 64ch; }
+.hero p { color: var(--muted-foreground); margin: 0 0 18px; }
+/* Readable line length for running text: 56ch is about 75 characters of Polish text at this size. */
+.page p, .public-body p, .public-body ul:not(.slotlist) > li, .public-body .alert, .field small, .drawer-body p { max-width: 56ch; }
 
 /* ── Building blocks ───────────────────────────── */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
@@ -300,7 +306,9 @@ textarea { min-height: 76px; resize: vertical; }
 .occ .title { font-weight: 600; text-decoration: none; }
 .occ .meta { color: var(--muted-foreground); font-size: 12px; }
 .occ .decl { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
-.occ .decl .who { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.occ .decl .who { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.occ .gather { margin-top: 2px; font-size: 12.5px; font-weight: 600; display: flex; gap: 4px; align-items: center; }
+.occ .deadline { margin-top: 4px; }
 .day-head { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); margin: 14px 0 2px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 4px; vertical-align: middle; }
 .sec-akad { background: oklch(0.62 0.15 150); }
@@ -330,6 +338,12 @@ textarea { min-height: 76px; resize: vertical; }
 .z-closed { background: var(--zone-closed); }
 .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted-foreground); margin: 8px 0; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border); }
+
+/* Payment summary: charges, online payment fee and the total, shown before paying. */
+.pay-sum { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 12px 0; }
+.pay-sum dt { color: var(--muted-foreground); }
+.pay-sum dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.pay-sum .total { color: var(--foreground); font-weight: 700; border-top: 1px solid var(--border); padding-top: 6px; }
 
 .slotlist { list-style: none; padding: 0; margin: 0; }
 .slotlist li { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 6px; margin-bottom: 4px; border: 1px solid var(--border); }
@@ -380,8 +394,9 @@ textarea { min-height: 76px; resize: vertical; }
 .stripe .btn.primary { background: #635bff; border-color: #635bff; color: #fff; }
 
 @media (max-width: 860px) {
-  .backend { grid-template-columns: 1fr; }
-  .sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; }
+  /* minmax(0, 1fr): the scrolling nav must not widen the track past the viewport (it was clipped by overflow:hidden). */
+  .backend { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { min-width: 0; border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; }
   .sidebar .club { padding-bottom: 8px; }
   .sidebar nav { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
   .nav-group { display: flex; gap: 2px; margin: 0; flex-shrink: 0; }
@@ -394,4 +409,8 @@ textarea { min-height: 76px; resize: vertical; }
   .stage { padding: 0 0 24px; }
   .phone { border-radius: 0; border-left: 0; border-right: 0; height: calc(100vh - 120px); }
   .public-body { padding: 16px; }
+  /* Slot rows: the request button moves under the time and label instead of overflowing the row. */
+  .slotlist li { grid-template-columns: auto minmax(0, 1fr); }
+  .slotlist li > .btn { grid-column: 1 / -1; justify-self: start; }
+  .slotlist li > span:empty { display: none; }
 }
