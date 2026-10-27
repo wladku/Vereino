@@ -295,7 +295,7 @@ Every gap listed in research A §12 is closed by at least one rule.
 
 ### S10 — Money and payments
 
-These rules apply to the club spec's `payments` and `facilities` modules; the entities stay in the club spec (E5 hands the required additions over).
+These rules apply to the `payments` and `facilities` modules, specified since D-028 in `2026-10-27-vereino-club-payments.md` and `2026-10-27-vereino-facilities.md`; the entities stay in those specifications (E5 hands the required additions over).
 
 - **S10.1** Amounts are integer grosz with a currency; discount rates are `numeric`; a derived amount (discount, share) is rounded half-up once, when it is stored, and the charge records the rounding rule used.
 - **S10.2** Splitting one amount over several lines uses largest-remainder allocation and asserts that the parts sum to the whole.
@@ -450,7 +450,7 @@ Trusted `tenantId` and `organizationId` in the app are derived as the platform a
 | Field encryption and lookup hashes | reuse | `TenantDataEncryptionService`, `encryption.ts` | encryption maps, `findWithDecryption` | `AGENTS.md` forbids ad hoc crypto |
 | CRUD API and OpenAPI | reuse | `makeCrudRoute`, `@open-mercato/shared/lib/openapi` | route files | ADR-005 |
 | Admin UI primitives and design-system check | reuse | `@open-mercato/ui`, `scripts/ds-check.mjs` | pages, components | S7.1 |
-| Online payments | reuse | `payment_gateways` + `@open-mercato/gateway-stripe` | gateway adapter, webhook handler | ADR-010; club spec V-5 |
+| Online payments | reuse | `payment_gateways` + `@open-mercato/gateway-stripe` | gateway adapter, webhook handler | ADR-010; payments spec V-5 |
 | E-mail transport | reuse (pending V-4) | `@open-mercato/channel-resend` or environment SMTP | communication channel | ADR-011 |
 | Health check | reuse | existing `/api/healthz` | Railway health check | Verified in E4 |
 | Agent harness, lessons check | reuse | `.ai/harness`, `scripts/check-lessons.mjs` | `yarn lessons:check` in the gate | Already maintained |

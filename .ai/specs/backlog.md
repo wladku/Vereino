@@ -8,6 +8,8 @@ Last filed: 2026-10-24
 
 2026-10-24 — 1.0 scope, phases 1–3: the brief's signed Definition of Ready addendum (D21) makes phases 1–3 ready for planning. E02–E04 were filed, plus the parked epic E05. Not filed yet: phase 4 payments and the treasurer role (A02, held back), substitution and coach-settlement automation of phase 2 (A05, held back), phase 5 facility and bookings (R05 is a proposal; Q04 and Q18 are open). The tracker search found no existing issue covering E02–E05; nothing was adopted. Design authority: the brief; detailed design in `.ai/specs/2026-10-20-vereino-club-management.md` (Draft, approval owed before implementation).
 
+2026-10-27 — D-028 split the design authority: phases 1–3 (E02–E04) stay in `.ai/specs/2026-10-20-vereino-club-management.md`; phase 4 (payments) is now `.ai/specs/2026-10-27-vereino-club-payments.md` and phase 5 (facilities) `.ai/specs/2026-10-27-vereino-facilities.md`. The phase 4 and 5 items parked in E05 (#24) refer to those specifications; phase 5 no longer depends on phase 4.
+
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
 | E01 | [#10](https://github.com/wladku/Vereino/issues/10) | E01 — Discovery | — | — | no |

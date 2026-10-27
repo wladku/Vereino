@@ -88,7 +88,7 @@ Stable IDs per `.ai/review-checklist.md` and `.ai/guides/contracts.md` → *Froz
 - **Breaking:** any change that relies on behaviour outside the upstream contract, edits `node_modules` or `.mercato/generated/**`, or patches a platform-owned file not on the S3.1 local-patch list. **Path:** upgrades only in an upgrade run on `chore/upgrade-open-mercato-<version>` with a run log (P1). **Gap:** `CONTRIBUTING.md` (live local-patch list) does not exist yet.
 
 ### 10. Other surfaces
-- **Webhooks:** none enabled (`@open-mercato/webhooks` installed, not in `src/modules.ts`). Planned Stripe webhook via `payment_gateways` (club spec phase 4, S10.8): event handling must stay idempotent; endpoint URL is protected from first deployment.
+- **Webhooks:** none enabled (`@open-mercato/webhooks` installed, not in `src/modules.ts`). Planned Stripe webhook via `payment_gateways` (payments spec `2026-10-27-vereino-club-payments.md`, phase 4, S10.8): event handling must stay idempotent; endpoint URL is protected from first deployment.
 - **Queues/workers:** none Vereino-owned. Planned persistent subscribers and scheduler targets (§4) keep payload shape and idempotency keys stable.
 - **Public URLs:** none Vereino-owned yet. Planned `/p/[clubSlug]/…`, `/club/…` and e-mailed personal links (`/club/o/[token]`); links already sent by e-mail must keep resolving. **Gap:** token lifetime policy.
 
