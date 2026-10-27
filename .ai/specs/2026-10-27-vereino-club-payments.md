@@ -198,12 +198,12 @@ The route conventions (S6.3–S6.7, versions, 409s, error codes) in `2026-10-20-
 | scheduler `payments:overdue-reminders` (daily) | `payments` | `notifications` (+ email from phase 3) | payer reminder 1 day after `due_date` and every 7 days | last-reminder marker on the charge |
 | `payment_gateways.payment.captured` | `payment_gateways` | `payments` | `online` payments, charge statuses, `payments.payment.recorded` | persistent subscriber; uniqueness (`gateway_transaction_id`, `charge_id`) |
 | `payments.bank_import.completed` | `payments` | `notifications` | administrator notification with the number of items to confirm | — |
-| `payments.order.submitted\|updated\|cancelled` | `payments` | `communication` | email to the orderer with a copy of the order, the amount, the payer code and the deadlines | persistent subscriber, key = order ID + version |
+| `payments.order.submitted\|updated\|cancelled` | `payments` | `payments` subscriber → the foundation `dispatch` (foundation III P-30) | email to the orderer with a copy of the order, the amount, the payer code and the deadlines | persistent subscriber, key = order ID + version |
 | scheduler `payments:close-order-campaigns` (every 15 min) | `payments` | `payments` | `open` after the end of `closes_on` → `closed`; `payments.order_campaign_closed` administrator notification | status condition in the UPDATE |
-| `payments.order_campaign.status_changed` (`delivered`) | `payments` | `communication`, `notifications` | email and `payments.order_ready` notification ("ready for pickup from the coach", with the amount due) to orderers; notification to the group coaches | key = campaign ID + status |
+| `payments.order_campaign.status_changed` (`delivered`) | `payments` | `payments` subscriber → the foundation `dispatch` (foundation III P-30) (e-mail and the in-app `payments.order_ready`) | email and `payments.order_ready` notification ("ready for pickup from the coach", with the amount due) to orderers; notification to the group coaches | key = campaign ID + status |
 | `payments.cash_handover.created` | `payments` | audit | entry with the list of payments and the amount | — |
 | `payment_gateways.payment.failed\|cancelled`, `session.expired` | `payment_gateways` | `payments` | `payments_checkouts.status` | idempotent |
-| `payments.payment.recorded` (`method = cash`, `notify = true`) | `payments` | `communication` | KP confirmation email to the payer (receipt number, charges, amount, collector) | persistent subscriber, key = payment ID |
+| `payments.payment.recorded` (`method = cash`, `notify = true`) | `payments` | `payments` subscriber → the foundation `dispatch` (foundation III P-30) | KP confirmation email to the payer (receipt number, charges, amount, collector) | persistent subscriber, key = payment ID |
 
 ## Security, Privacy, and Compliance
 
@@ -352,3 +352,4 @@ Questions and verifications that belong to payments; all resolutions keep their 
 |---|---|
 | 2026-10-27 | Created from `2026-10-20-vereino-club-management.md` by D-028: phase 4 with its requirements, decisions, vocabulary, journeys, UI, data model, API, events, tests, traceability, risks, acceptance criteria and questions moved unchanged; `payments.chargeService` named as the provider of the optional rental charge (DD-19). Earlier history: the club specification's Changelog |
 | 2026-10-27 | Review of both foundation specs: the order link is stored as its `hashAuthToken` hash (HMAC-SHA-256), the one scheme of foundation P-10 |
+| 2026-10-27 | Foundation III (`.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`): the order, campaign and cash-confirmation e-mails go through the foundation `dispatch` from `payments`' own subscribers instead of `communication` (the review's e-mail-hub cycle, foundation III DD-M02); order-link e-mails carry the raw token only as a delivery secret enqueued by the issuing command (REQ-M03) |
