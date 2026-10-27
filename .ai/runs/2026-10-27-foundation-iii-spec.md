@@ -19,6 +19,8 @@ Design the communication phase (E04) and the foundation underneath it — audien
 5. Fresh-context review (20 findings) re-checked: S12.3–S12.6 exist in the engineering standards; `SendEmailOptions` has no `headers`; `shouldDeliver.ts:42` applies `channelsOverride ?? type.channels`; `createBatch` supports `groupKey`; `communication_channels/lib/error-classification.ts` exists; `isEmailDeliveryDisabled()` covers `OM_TEST_MODE` and `OM_DISABLE_EMAIL_DELIVERY`. All findings applied except the S12 conflict, which reopened the gate (Q14) together with the opt-out mechanism (Q15).
 6. Club spec amended (phase 3 readiness, V-4, DD-16, the `messages`, `communication`, API, events, surface, observability, risk and exit-gate rows, TEST-015's oracle); payments and facilities specs amended (e-mails through `dispatch`, phase 5 depends on foundation III phase A).
 7. Q14 = C and Q15 = B applied: S12.3–S12.6 amended for 1.0 in the engineering standards (DD-M17), every phase 3 template non-opt-out (DD-M08); PR opened.
+8. Second review round on the owner's request ("Przejrzyj tę specyfikację …"): three fresh-context reviewers (contradictions; anti-patterns and platform fit; complexity). Re-checked in the installed source: `SubscriberContext` has no event id (`events/src/types.ts`); the encryption subscriber skips encryption while tenant encryption is off or its service disabled (`shared/lib/encryption/subscriber.ts`); `onTransactionLifetimeComplete` exists (`shared/lib/commands/transaction-lifetime.ts`); `createBatch` asserts every recipient in scope (`notificationService.ts:73`); `RateLimiterService.consume` exists; `replayable` is honoured by the command bus. Two of the findings were the coordinator's own errors in the club spec amendments (the `updatedAt` cancellation key and the claim that phase 3 was approved).
+9. Blockers 1–10 applied on the owner's request ("popraw blokery 1–10 w PR #45; cięcia złożoności zostaw do mojej decyzji"): cancellation key `occurrenceId` + `cancelled_at` via `activities.occurrenceSummary`; foundation I P-02 event scope source; member commands authorize the own person plus a participant check; phase 3 readiness waits for PR #45's approval; secrets refused without active encryption; in-app live-user filter, lease and corrected override wording; publish on `committed`; a shared `rateLimiterService` cap; client `operationId`; `last_public_message_at`.
 
 ## Decisions
 
@@ -35,6 +37,7 @@ Design the communication phase (E04) and the foundation underneath it — audien
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phase 3 readiness and the rows above
 - `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/2026-10-27-vereino-facilities.md` — e-mail rows through `dispatch`
 - `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` — S12.3–S12.6 1.0 amendment
+- `.ai/specs/2026-10-27-vereino-foundation-primitives.md` — P-02 event scope source (second review)
 - `.ai/runs/2026-10-27-foundation-iii-spec.md` — this log
 
 ## Commands and results
@@ -46,6 +49,7 @@ Design the communication phase (E04) and the foundation underneath it — audien
 ## Open problems
 
 - The upstream proposal for `headers` and a returned message id on `sendEmail` is not filed yet.
+- The second review's simplification cuts and its non-blocking findings (sweeper republishing the backlog, error classification of the Resend path, the public page's rate limit in the loader, club name and reply-to for e-mails, `replayable: false`, keyed `email_hash`, `organization_id` in unique keys, the payments overdue reminder row, suppression ownership in S12, conditional `messages` wording) wait for the owner.
 - Q13 (retention) is part of the owner's GDPR decision on the foundation specs.
 - The branch depends on PRs #43 and #44.
 
