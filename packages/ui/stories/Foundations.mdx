@@ -1,0 +1,56 @@
+import { Meta, ColorPalette, ColorItem, Typeset } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Tokens" />
+
+# Tokens
+
+Vereino uses the Open Mercato design tokens unchanged (engineering standards S7.1, S7.2). Storybook imports them from
+`packages/app/src/app/globals.css` and keeps no copy, so this page always shows what the app ships. Switch the theme in
+the toolbar to see the dark values.
+
+Rules that come with the tokens:
+
+- Components use semantic classes (`bg-primary`, `text-muted-foreground`, `border-status-error-border`), never palette
+  classes, arbitrary values or `dark:` overrides — `yarn ds:check` enforces it.
+- A state is never shown by colour alone: every status colour comes with a word or an icon (WCAG 1.4.1).
+- Icons are lucide line icons, the icon set of Open Mercato; they are decorative and the label carries the meaning.
+
+## Surfaces and text
+
+<ColorPalette>
+  <ColorItem title="Background" subtitle="--background / --foreground" colors={{ background: 'var(--background)', foreground: 'var(--foreground)' }} />
+  <ColorItem title="Card" subtitle="--card / --card-foreground" colors={{ card: 'var(--card)', 'card-foreground': 'var(--card-foreground)' }} />
+  <ColorItem title="Muted" subtitle="--muted / --muted-foreground" colors={{ muted: 'var(--muted)', 'muted-foreground': 'var(--muted-foreground)' }} />
+  <ColorItem title="Lines" subtitle="--border / --input / --ring" colors={{ border: 'var(--border)', input: 'var(--input)', ring: 'var(--ring)' }} />
+</ColorPalette>
+
+## Actions
+
+<ColorPalette>
+  <ColorItem title="Primary" subtitle="--primary / --primary-foreground / --primary-hover" colors={{ primary: 'var(--primary)', 'primary-foreground': 'var(--primary-foreground)', 'primary-hover': 'var(--primary-hover)' }} />
+  <ColorItem title="Secondary" subtitle="--secondary / --secondary-foreground" colors={{ secondary: 'var(--secondary)', 'secondary-foreground': 'var(--secondary-foreground)' }} />
+  <ColorItem title="Accent" subtitle="--accent / --accent-foreground" colors={{ accent: 'var(--accent)', 'accent-foreground': 'var(--accent-foreground)' }} />
+  <ColorItem title="Destructive" subtitle="--destructive" colors={{ destructive: 'var(--destructive)' }} />
+</ColorPalette>
+
+## Status
+
+<ColorPalette>
+  <ColorItem title="Success" subtitle="--status-success-*" colors={{ bg: 'var(--status-success-bg)', text: 'var(--status-success-text)', border: 'var(--status-success-border)', icon: 'var(--status-success-icon)' }} />
+  <ColorItem title="Warning" subtitle="--status-warning-*" colors={{ bg: 'var(--status-warning-bg)', text: 'var(--status-warning-text)', border: 'var(--status-warning-border)', icon: 'var(--status-warning-icon)' }} />
+  <ColorItem title="Error" subtitle="--status-error-*" colors={{ bg: 'var(--status-error-bg)', text: 'var(--status-error-text)', border: 'var(--status-error-border)', icon: 'var(--status-error-icon)' }} />
+  <ColorItem title="Info" subtitle="--status-info-*" colors={{ bg: 'var(--status-info-bg)', text: 'var(--status-info-text)', border: 'var(--status-info-border)', icon: 'var(--status-info-icon)' }} />
+  <ColorItem title="Neutral" subtitle="--status-neutral-*" colors={{ bg: 'var(--status-neutral-bg)', text: 'var(--status-neutral-text)', border: 'var(--status-neutral-border)', icon: 'var(--status-neutral-icon)' }} />
+</ColorPalette>
+
+## Type
+
+The app font stack is `--font-geist-sans`. The scale below lists the Tailwind sizes the platform components use.
+
+<Typeset fontFamily="var(--font-geist-sans)" fontSizes={['0.75rem', '0.875rem', '1rem', '1.125rem', '1.25rem', '1.5rem']} sampleText="Trening Orlików młodszych · wtorek 17:00" />
+
+## Radius and focus
+
+- `--radius` is `0.625rem`; `rounded-sm`, `rounded-md`, `rounded-lg` and `rounded-xl` derive from it.
+- Focus uses `--shadow-focus` (`--focus-ring-inner` and `--focus-ring-outer`), applied by the platform components on
+  `:focus-visible`. Check it with the keyboard in each story; a container with `overflow: hidden` must not clip it.

@@ -1,0 +1,14 @@
+{
+  "stories.button.save": "Zapisz",
+  "stories.button.cancel": "Anuluj",
+  "stories.button.delete": "Usuń",
+  "stories.button.more": "Więcej opcji",
+  "stories.badge.paid": "opłacona",
+  "stories.badge.open": "otwarta",
+  "stories.badge.overdue": "po terminie",
+  "stories.badge.planned": "zaplanowany",
+  "stories.badge.request": "zgłoszenie",
+  "stories.empty.title": "Dziś nie ma zajęć",
+  "stories.empty.description": "Najbliższy termin: czw 16:00 — Zajęcia na basenie.",
+  "stories.empty.action": "Zobacz kalendarz"
+}

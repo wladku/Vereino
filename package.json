@@ -19,6 +19,8 @@
     "dev:verbose": "yarn workspace @vereino/app dev:verbose",
     "dev:fix-wsl-watchers": "yarn workspace @vereino/app dev:fix-wsl-watchers",
     "dev:reset": "yarn workspace @vereino/app dev:reset",
+    "storybook": "yarn workspace @vereino/ui storybook",
+    "build-storybook": "yarn workspace @vereino/ui build-storybook",
     "build": "yarn workspace @vereino/app build",
     "mercato": "yarn workspace @vereino/app mercato",
     "start": "yarn workspace @vereino/app start",
