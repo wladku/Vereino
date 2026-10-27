@@ -2,9 +2,9 @@
 
 - **Date:** 2026-10-27
 - **Agent / tool:** Claude Code (Opus 5.5), `om-spec-writing` (interactive) with two read-only subagents (V-4 platform verification; one fresh-context review)
-- **Trigger:** product owner — "Chcę stworzyć specyfikację na podstawie issue #23. Ważne jest jednak to, żeby w trakcie pisania specyfikacji powstał nie tylko sam feature, ale też framework pod spodem …", then "Przyjmij rekomendowane odpowiedzi Q1–Q11 i kontynuuj projekt."
+- **Trigger:** product owner — "Chcę stworzyć specyfikację na podstawie issue #23. Ważne jest jednak to, żeby w trakcie pisania specyfikacji powstał nie tylko sam feature, ale też framework pod spodem …", then "Przyjmij rekomendowane odpowiedzi Q1–Q11 i kontynuuj projekt." and "Przyjmij Q14 = C (poprawka S12 na 1.0 plus propozycja upstream) i Q15 = B (wszystkie szablony fazy 3 bez wypisu), potem otwórz PR."
 - **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`; issue #23 (E04) with #35 and #36 as consumers; branch `docs/foundation-iii-spec`, started from `docs/foundation-review-blockers` (PR #44, itself on PR #43) because foundation I and II as amended exist only there
-- **Status:** in progress — design complete and reviewed; the gate reopened for Q14 (the e-mail standards S12) and Q15 (the opt-out mechanism)
+- **Status:** completed — the spec is Draft, blocked only on the owner's approval on the PR and on enabling the e-mail modules (Ask First)
 
 ## Goal
 
@@ -18,6 +18,7 @@ Design the communication phase (E04) and the foundation underneath it — audien
 4. Full design: REQ-M01…M11, DD-M01…M16, phases A–C, TEST-M01…M10, AC-M01…M11.
 5. Fresh-context review (20 findings) re-checked: S12.3–S12.6 exist in the engineering standards; `SendEmailOptions` has no `headers`; `shouldDeliver.ts:42` applies `channelsOverride ?? type.channels`; `createBatch` supports `groupKey`; `communication_channels/lib/error-classification.ts` exists; `isEmailDeliveryDisabled()` covers `OM_TEST_MODE` and `OM_DISABLE_EMAIL_DELIVERY`. All findings applied except the S12 conflict, which reopened the gate (Q14) together with the opt-out mechanism (Q15).
 6. Club spec amended (phase 3 readiness, V-4, DD-16, the `messages`, `communication`, API, events, surface, observability, risk and exit-gate rows, TEST-015's oracle); payments and facilities specs amended (e-mails through `dispatch`, phase 5 depends on foundation III phase A).
+7. Q14 = C and Q15 = B applied: S12.3–S12.6 amended for 1.0 in the engineering standards (DD-M17), every phase 3 template non-opt-out (DD-M08); PR opened.
 
 ## Decisions
 
@@ -26,12 +27,14 @@ Design the communication phase (E04) and the foundation underneath it — audien
 - Recipients follow the club spec's *Thread* rule; a member's reply goes to staff only (R15).
 - At-least-once delivery stated honestly; the lease is per delivery; jobs carry tenant and organization.
 - Every `communication` command is non-undoable; a case cannot be unmarked.
+- S12 amended for 1.0 because `sendEmail` takes no headers and returns no message id; an upstream proposal restores it (DD-M17).
 
 ## Files changed
 
 - `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md` — new
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phase 3 readiness and the rows above
 - `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/2026-10-27-vereino-facilities.md` — e-mail rows through `dispatch`
+- `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` — S12.3–S12.6 1.0 amendment
 - `.ai/runs/2026-10-27-foundation-iii-spec.md` — this log
 
 ## Commands and results
@@ -42,13 +45,13 @@ Design the communication phase (E04) and the foundation underneath it — audien
 
 ## Open problems
 
-- Q14 (S12 e-mail standards vs `sendEmail`) and Q15 (opt-out mechanism) wait for the owner.
+- The upstream proposal for `headers` and a returned message id on `sendEmail` is not filed yet.
 - Q13 (retention) is part of the owner's GDPR decision on the foundation specs.
 - The branch depends on PRs #43 and #44.
 
 ## Next steps
 
-- Apply the owner's answers to Q14 and Q15; open the PR (merge after #43 and #44).
+- The owner reviews the PR (merge after #43 and #44); file the upstream `sendEmail` proposal; approve enabling the e-mail modules at phase A step 1.
 
 ## Lessons recorded
 
