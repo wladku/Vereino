@@ -6,6 +6,7 @@ import {
   isValidPesel,
   personScope,
   roleScopeProblem,
+  sectionCoordinators,
   type AssignmentRecord,
 } from '../people-rules'
 
@@ -129,5 +130,61 @@ describe('people error codes', () => {
       ['guardianship_self', 422],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
+  })
+})
+
+describe('sectionCoordinators', () => {
+  const today = '2026-10-28'
+  const candidate = (
+    assignmentId: string,
+    sectionId: string | null,
+    validFrom: string,
+    validTo: string | null = null,
+  ) => ({
+    assignmentId,
+    personId: `person-${assignmentId}`,
+    sectionId,
+    firstName: 'Marek',
+    lastName: 'Trener',
+    validFrom,
+    validTo,
+    updatedAt: '2026-10-01T00:00:00.000Z',
+  })
+
+  it('lists the current and future coordinators of the section, active first', () => {
+    const result = sectionCoordinators(
+      { id: 'academy', isActive: true },
+      [
+        candidate('future', 'academy', '2026-11-01'),
+        candidate('current', 'academy', '2026-01-01'),
+        candidate('ended', 'academy', '2025-01-01', '2026-10-27'),
+        candidate('other', 'pool', '2026-01-01'),
+      ],
+      today,
+    )
+    expect(result.coordinators.map((row) => [row.assignmentId, row.active])).toEqual([
+      ['current', true],
+      ['future', false],
+    ])
+    expect(result.coordinators[0]).not.toHaveProperty('sectionId')
+    expect(result.coordinatorMissing).toBe(false)
+  })
+
+  it('orders active coordinators by start date', () => {
+    const result = sectionCoordinators(
+      { id: 'academy', isActive: true },
+      [candidate('b', 'academy', '2026-05-01'), candidate('a', 'academy', '2026-01-01', '2026-10-28')],
+      today,
+    )
+    expect(result.coordinators.map((row) => row.assignmentId)).toEqual(['a', 'b'])
+  })
+
+  it('flags an active section without an active coordinator, never an inactive one', () => {
+    expect(
+      sectionCoordinators({ id: 'pool', isActive: true }, [candidate('future', 'pool', '2026-11-01')], today)
+        .coordinatorMissing,
+    ).toBe(true)
+    expect(sectionCoordinators({ id: 'pool', isActive: true }, [], today).coordinatorMissing).toBe(true)
+    expect(sectionCoordinators({ id: 'chess', isActive: false }, [], today).coordinatorMissing).toBe(false)
   })
 })

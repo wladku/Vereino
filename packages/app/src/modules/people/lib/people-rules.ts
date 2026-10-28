@@ -2,6 +2,7 @@
 // calendar date, PESEL checks, role-assignment scope, the record scope of a person and the payer rule. Time is a
 // parameter (engineering standards S3.5).
 import {
+  endsBefore,
   isActiveAt,
   isAdultOn,
   roleCatalogue,
@@ -95,4 +96,49 @@ export type PayerInput = {
 export function isPayerEligible(input: PayerInput, today: CalendarDate): boolean {
   if (!input.birthDate || !isAdultOn(input.birthDate, today)) return false
   return input.guardianships.some((guardianship) => isActiveAt(guardianship, today))
+}
+
+/** A coordinator assignment of a section with the person's name, as the section list shows it. */
+export type SectionCoordinator = {
+  readonly assignmentId: string
+  readonly personId: string
+  readonly firstName: string | null
+  readonly lastName: string | null
+  readonly validFrom: CalendarDate
+  readonly validTo: CalendarDate | null
+  /** The assignment's lock token (ending it sends it back). */
+  readonly updatedAt: string
+  /** Active on `today` (false for an assignment that starts later). */
+  readonly active: boolean
+}
+
+export type SectionCoordinatorCandidate = Omit<SectionCoordinator, 'active'> & { readonly sectionId: string | null }
+
+/**
+ * The coordinators of one section on `today` (club spec glossary *Section*): the assignments of that section that
+ * have not ended, active ones first, then by start date; `coordinatorMissing` flags an active section without an
+ * active coordinator (a warning, the section still works).
+ */
+export function sectionCoordinators(
+  section: { readonly id: string; readonly isActive: boolean },
+  candidates: readonly SectionCoordinatorCandidate[],
+  today: CalendarDate,
+): { coordinators: SectionCoordinator[]; coordinatorMissing: boolean } {
+  const coordinators = candidates
+    .filter((candidate) => candidate.sectionId === section.id && !endsBefore(candidate, today))
+    .map((candidate) => ({
+      assignmentId: candidate.assignmentId,
+      personId: candidate.personId,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      validFrom: candidate.validFrom,
+      validTo: candidate.validTo,
+      updatedAt: candidate.updatedAt,
+      active: isActiveAt(candidate, today),
+    }))
+    .sort((a, b) => Number(b.active) - Number(a.active) || a.validFrom.localeCompare(b.validFrom))
+  return {
+    coordinators,
+    coordinatorMissing: section.isActive && !coordinators.some((coordinator) => coordinator.active),
+  }
 }

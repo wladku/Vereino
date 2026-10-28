@@ -1,6 +1,6 @@
-// `club_core.settings.update` (foundation spec DD-F16, DD-F18): a partial update of the club's settings by the club
-// administrator. `execute` creates the row on the first update, row-locks it and authorizes through
-// `authorizeScoped` inside one write transaction; undo restores the previous values after `authorizeReplay`
+// `club_core.settings.update` (foundation spec DD-F16, DD-F18; club spec DD-37): a partial update of the club's
+// settings by the club administrator. `execute` creates the row on the first update, row-locks it and authorizes
+// through `authorizeScoped` inside one write transaction; undo restores the previous values after `authorizeReplay`
 // re-checks the current scope.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -15,7 +15,8 @@ import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/mod
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
-import type { ClubSettingsValues } from '../lib/settings'
+import { applyClubSettingsPatch, type ClubSettingKey, type ClubSettingsValues } from '../lib/settings'
+import { resolveStoredSettings, storedSettingsOf } from '../services/settings'
 
 export const CLUB_SETTINGS_RESOURCE_KIND = 'club_core.club_settings'
 
@@ -31,23 +32,57 @@ export const clubSettingsEvents: CrudEventsConfig<ClubSettings> = {
   }),
 }
 
-type SettingsSnapshot = ClubSettingsValues & { id: string; tenantId: string; organizationId: string }
+/** The stored columns before the update, as they were (an undo writes them back unchanged). */
+type SettingsSnapshot = Record<ClubSettingKey, unknown> & { id: string; tenantId: string; organizationId: string }
 
 export type ClubSettingsUpdateResult = {
   settings: ClubSettings
+  /** The effective settings after the update. */
+  values: ClubSettingsValues
   before: SettingsSnapshot
   actingRole: ActingRole
 }
 
 function snapshot(row: ClubSettings): SettingsSnapshot {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    organizationId: row.organizationId,
-    ownAccountMinAge: row.ownAccountMinAge,
-    defaultLocale: row.defaultLocale,
-    timezone: row.timezone,
+  return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId, ...storedSettingsOf(row) }
+}
+
+function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
+  row.ownAccountMinAge = values.ownAccountMinAge
+  row.defaultLocale = values.defaultLocale
+  row.timezone = values.timezone
+  row.shortName = values.shortName
+  row.currency = values.currency
+  row.declarationKinds = { ...values.declarationKinds }
+  row.onlineFeeMode = values.onlineFeeMode
+  row.onlineFeePercent = values.onlineFeePercent.toFixed(2)
+  row.onlineFeeFixed = values.onlineFeeFixed
+  row.coachSettlementModel = values.coachSettlementModel
+  row.showCalledUpChildren = values.showCalledUpChildren
+  row.orderSalesDocument = values.orderSalesDocument
+  row.updatedAt = new Date()
+}
+
+const text = (value: unknown, fallback: string): string => (typeof value === 'string' ? value : fallback)
+const integer = (value: unknown, fallback: number): number => (typeof value === 'number' ? value : fallback)
+
+/** Writes a snapshot's stored columns back; a column the snapshot lacks (an older log entry) keeps its value. */
+function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
+  row.ownAccountMinAge = integer(before.ownAccountMinAge, row.ownAccountMinAge)
+  row.defaultLocale = text(before.defaultLocale, row.defaultLocale)
+  row.timezone = text(before.timezone, row.timezone)
+  if (before.shortName !== undefined) row.shortName = typeof before.shortName === 'string' ? before.shortName : null
+  row.currency = text(before.currency, row.currency)
+  if (before.declarationKinds && typeof before.declarationKinds === 'object') {
+    row.declarationKinds = { ...(before.declarationKinds as Record<string, string>) }
   }
+  row.onlineFeeMode = text(before.onlineFeeMode, row.onlineFeeMode)
+  if (typeof before.onlineFeePercent === 'number') row.onlineFeePercent = before.onlineFeePercent.toFixed(2)
+  row.onlineFeeFixed = integer(before.onlineFeeFixed, row.onlineFeeFixed)
+  row.coachSettlementModel = text(before.coachSettlementModel, row.coachSettlementModel)
+  row.showCalledUpChildren = text(before.showCalledUpChildren, row.showCalledUpChildren)
+  row.orderSalesDocument = text(before.orderSalesDocument, row.orderSalesDocument)
+  row.updatedAt = new Date()
 }
 
 function settingsSpec(
@@ -97,11 +132,10 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
           const row = authorized.entity
           if (!row) throw new Error('[internal] club settings row missing after ensure')
           const before = snapshot(row)
-          const patch = authorized.parsed as Partial<ClubSettingsValues>
-          if (patch.ownAccountMinAge !== undefined) row.ownAccountMinAge = patch.ownAccountMinAge
-          if (patch.defaultLocale !== undefined) row.defaultLocale = patch.defaultLocale
-          if (patch.timezone !== undefined) row.timezone = patch.timezone
-          result = { settings: row, before, actingRole: authorized.actingRole }
+          const current = resolveStoredSettings(row, row.organizationId).values
+          const values = applyClubSettingsPatch(current, authorized.parsed)
+          writeValues(row, values)
+          result = { settings: row, values, before, actingRole: authorized.actingRole }
         },
       ],
       { transaction: true, label: 'club_core.settings.update' },
@@ -142,9 +176,7 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
     if (!before?.id) throw new Error('[internal] missing club settings snapshot for undo')
     const row = await authorizeSettingsReplay(ctx)
     if (row.id !== before.id) throw new Error('[internal] club settings snapshot belongs to another row')
-    row.ownAccountMinAge = before.ownAccountMinAge
-    row.defaultLocale = before.defaultLocale
-    row.timezone = before.timezone
+    restoreSnapshot(row, before)
     await ctx.transactionalEm?.flush()
     await emitCrudUndoSideEffects({
       dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),

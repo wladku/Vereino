@@ -5,10 +5,11 @@ Phase A1 of the foundation spec ([`.ai/specs/2026-10-27-vereino-foundation-primi
 | Surface | Contents |
 |---|---|
 | Entities | `Person` / `people_persons` (names, e-mail and PESEL encrypted; `pesel_hash` lookup hash; `user_id`), `RoleAssignment` / `people_role_assignments` (`club_admin`, `coordinator` + `section_id`, `coach`; validity), `Guardianship` / `people_guardianships` (guardian → ward; validity) |
-| Pure logic | `lib/people-rules.ts` (club-zone date, PESEL check digit, role scope, `personScope`, `isPayerEligible`), `lib/error-codes.ts` |
+| Pure logic | `lib/people-rules.ts` (club-zone date, PESEL check digit, role scope, `personScope`, `isPayerEligible`, `sectionCoordinators`), `lib/error-codes.ts` |
 | Commands | `people.persons.create`, `.update`, `.create_account` (not undoable), `people.role_assignments.create`, `.update`, `.end`, `people.guardianships.create`; job commands `people.persons.sync_roles`, `people.persons.bootstrap_admin` (system_job only, not undoable) |
 | Routes | `GET/POST/PUT /api/people/persons`, `GET /api/people/persons/{id}`, `POST /api/people/persons/{id}/account`, `GET/POST/PUT /api/people/role-assignments`, `GET /api/people/role-assignments/{id}`, `POST /api/people/role-assignments/{id}/end`, `POST /api/people/guardianships` |
 | DI | `people.scopeService`, also registered as the foundation's `vereino.scopeProvider` |
+| Enricher | `people.section-coordinators` on `club_core:section` (`/api/club_core/sections`, #25): `_people: { coordinators, coordinatorMissing }` — the section's current and future coordinator assignments with the person's name, and the "no coordinator" flag for an active section; requires `people.view`, never cached |
 | Events | `people.person.created|updated|deleted|account_created`, `people.role_assignment.created|updated|deleted`, `people.guardianship.created|updated|deleted` (ids only) |
 | Subscriber | `people:sync-auth-roles` (persistent) on the role-assignment, guardianship and account events |
 | Worker / schedule | `people:sync-role-expiry` (queue `people-sync-role-expiry`), registered per organization from `setup.ts` with `registerModuleSchedule`, daily 02:00 in the club zone |
