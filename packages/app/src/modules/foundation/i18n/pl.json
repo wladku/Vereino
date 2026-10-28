@@ -1,0 +1,6 @@
+{
+  "foundation.errors.email_taken": "Ten adres e-mail jest już używany przez inne konto.",
+  "foundation.errors.not_found": "Nie znaleziono rekordu.",
+  "foundation.errors.scope_denied": "Nie masz dostępu do tego rekordu.",
+  "foundation.errors.validity_inverted": "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia."
+}

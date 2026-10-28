@@ -3586,7 +3586,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mikro-orm/core@npm:^7.1.14":
+"@mikro-orm/core@npm:7.2.5, @mikro-orm/core@npm:^7.1.14":
   version: 7.2.5
   resolution: "@mikro-orm/core@npm:7.2.5"
   peerDependencies:
@@ -3598,7 +3598,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mikro-orm/decorators@npm:^7.1.14":
+"@mikro-orm/decorators@npm:7.2.5, @mikro-orm/decorators@npm:^7.1.14":
   version: 7.2.5
   resolution: "@mikro-orm/decorators@npm:7.2.5"
   peerDependencies:
@@ -3622,7 +3622,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mikro-orm/postgresql@npm:^7.1.14":
+"@mikro-orm/postgresql@npm:7.2.5, @mikro-orm/postgresql@npm:^7.1.14":
   version: 7.2.5
   resolution: "@mikro-orm/postgresql@npm:7.2.5"
   dependencies:
@@ -9835,10 +9835,10 @@ __metadata:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
-    "@mikro-orm/core": "npm:^7.1.14"
-    "@mikro-orm/decorators": "npm:^7.1.14"
+    "@mikro-orm/core": "npm:7.2.5"
+    "@mikro-orm/decorators": "npm:7.2.5"
     "@mikro-orm/migrations": "npm:^7.1.14"
-    "@mikro-orm/postgresql": "npm:^7.1.14"
+    "@mikro-orm/postgresql": "npm:7.2.5"
     "@modelcontextprotocol/sdk": "npm:^1.29.0"
     "@napi-rs/canvas": "npm:^1.0.8"
     "@open-mercato/ai-assistant": "npm:0.9.0"
@@ -9979,14 +9979,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@vereino/db@workspace:packages/db"
   dependencies:
-    "@mikro-orm/core": "npm:^7.1.14"
-    "@mikro-orm/postgresql": "npm:^7.1.14"
+    "@mikro-orm/core": "npm:7.2.5"
+    "@mikro-orm/decorators": "npm:7.2.5"
+    "@mikro-orm/postgresql": "npm:7.2.5"
     eslint: "npm:^9.39.4"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.71.2"
   peerDependencies:
-    "@mikro-orm/core": ^7.1.14
-    "@mikro-orm/postgresql": ^7.1.14
+    "@mikro-orm/core": 7.2.5
+    "@mikro-orm/decorators": 7.2.5
+    "@mikro-orm/postgresql": 7.2.5
   languageName: unknown
   linkType: soft
 

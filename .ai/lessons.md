@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 8 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 10 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -34,6 +34,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 - [Treat @open-mercato/enterprise as commercial and keep its modules disabled](lessons/enterprise-package-is-commercial.md) — area:architecture,spec-pr; module:platform; topic:licensing,modules-ts,enterprise-modules,dependencies
 - [Add Open Mercato UI's undeclared dependencies to any workspace that renders its primitives](lessons/open-mercato-ui-undeclared-deps.md) — area:architecture,backend-ui; module:platform; topic:dependencies,open-mercato-ui,workspaces,storybook
+- [Shared packages import their own files through #src/* and take MikroORM decorators from the app](lessons/shared-packages-subpath-imports-and-app-decorators.md) — area:architecture,testing; module:platform; topic:workspaces,typescript,node-test,mikro-orm,dependencies
 
 ### backend-ui
 
@@ -42,6 +43,10 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 ### debugging
 
 - [Enable api_keys with auth and set real secrets before the app boots](lessons/empty-preset-needs-api-keys-and-real-secrets.md) — area:debugging,architecture; module:auth,api_keys; topic:modules-ts,mercato-init,env-secrets,empty-preset
+
+### module-data
+
+- [Scoped CRUD lists disable the full export and never send an empty $in; API-created test tenants need the init steps](lessons/scoped-crud-lists-and-api-created-tenants.md) — area:module-data,testing; module:people,foundation; topic:data-scoping,query-engine,crud-export,integration-tests,tenant-setup
 
 ### spec-pr
 

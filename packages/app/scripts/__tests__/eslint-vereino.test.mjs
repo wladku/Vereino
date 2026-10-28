@@ -4,7 +4,9 @@ import { test } from 'node:test'
 import tseslint from 'typescript-eslint'
 import boundaries from 'eslint-plugin-boundaries'
 import {
+  FOUNDATION_PUBLIC_ENTRY,
   FRAMEWORK_FREE_IMPORT_RESTRICTIONS,
+  ORM_ALLOWED_MODULE_PATHS,
   VEREINO_REACT_RULES,
   VEREINO_TYPESCRIPT_RULES,
   vereinoModuleBoundaryConfigs,
@@ -40,14 +42,33 @@ test('module boundaries and React rules are empty without Vereino modules', () =
 })
 
 test('module boundaries build one policy per module', () => {
-  const [boundaryConfig, libConfig, consoleConfig] = vereinoModuleBoundaryConfigs({ boundaries, moduleIds: ['a', 'b'] })
+  const [boundaryConfig, ormConfig, libConfig, consoleConfig] = vereinoModuleBoundaryConfigs({
+    boundaries,
+    moduleIds: ['a', 'b'],
+  })
   const policies = boundaryConfig.rules['boundaries/dependencies'][1].policies
   assert.equal(policies.length, 2)
   assert.deepEqual(policies[0].disallow.to.element.captured, { moduleId: '!a' })
   assert.deepEqual(policies[0].disallow.dependency, { kind: 'value' })
+  assert.equal(boundaryConfig.settings['boundaries/elements'][0].pattern, FOUNDATION_PUBLIC_ENTRY)
+  assert.equal(boundaryConfig.rules['no-restricted-imports'][1].patterns.length, 2)
   const libPatterns = libConfig.rules['no-restricted-imports'][1].patterns
   assert.equal(libPatterns.length, FRAMEWORK_FREE_IMPORT_RESTRICTIONS['no-restricted-imports'][1].patterns.length + 1)
   assert.deepEqual(consoleConfig.rules, { 'no-console': 'error' })
+})
+
+test('the ORM is allowed only in the persistence paths of each module', () => {
+  const [, ormConfig] = vereinoModuleBoundaryConfigs({ boundaries, moduleIds: ['a'] })
+  assert.deepEqual(ormConfig.files, [
+    'src/modules/a/data/**/*.{ts,tsx}',
+    'src/modules/a/commands/**/*.{ts,tsx}',
+    'src/modules/a/services/**/*.{ts,tsx}',
+    'src/modules/a/migrations/**/*.{ts,tsx}',
+    'src/modules/a/setup.ts',
+    'src/modules/a/di.ts',
+  ])
+  assert.equal(ormConfig.files.length, ORM_ALLOWED_MODULE_PATHS.length)
+  assert.equal(ormConfig.rules['no-restricted-imports'][1].patterns.length, 1)
 })
 
 test('React rules re-enable the scaffold overrides for Vereino modules', () => {
