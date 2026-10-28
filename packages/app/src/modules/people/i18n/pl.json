@@ -1,0 +1,20 @@
+{
+  "people.audit.guardianships.create": "Dodanie opiekuna prawnego",
+  "people.audit.jobs.bootstrap_admin": "Ustanowienie administratora klubu",
+  "people.audit.jobs.sync_roles": "Synchronizacja ról personelu",
+  "people.audit.persons.create": "Dodanie osoby",
+  "people.audit.persons.create_account": "Utworzenie konta dla osoby",
+  "people.audit.persons.update": "Zmiana danych osoby",
+  "people.audit.role_assignments.create": "Nadanie roli w klubie",
+  "people.audit.role_assignments.end": "Zakończenie roli w klubie",
+  "people.audit.role_assignments.update": "Zmiana roli w klubie",
+  "people.errors.account_age_below_threshold": "Ta osoba jest za młoda na własne konto w tym klubie.",
+  "people.errors.account_birth_date_required": "Przed utworzeniem konta podaj datę urodzenia.",
+  "people.errors.account_exists": "Ta osoba ma już konto.",
+  "people.errors.guardianship_self": "Osoba nie może być własnym opiekunem.",
+  "people.errors.pesel_duplicate": "Inna osoba w klubie ma już ten numer PESEL.",
+  "people.errors.pesel_invalid": "Numer PESEL jest nieprawidłowy.",
+  "people.errors.role_scope_required": "Rola koordynatora wymaga wskazania sekcji.",
+  "people.errors.role_scope_unexpected": "Do sekcji przypisuje się tylko rolę koordynatora.",
+  "people.search.person.badge": "Osoba"
+}

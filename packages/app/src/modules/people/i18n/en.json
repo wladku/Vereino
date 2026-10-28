@@ -1,0 +1,20 @@
+{
+  "people.audit.guardianships.create": "Add a guardianship",
+  "people.audit.jobs.bootstrap_admin": "Set up the club administrator",
+  "people.audit.jobs.sync_roles": "Synchronize staff roles",
+  "people.audit.persons.create": "Create person",
+  "people.audit.persons.create_account": "Create an account for a person",
+  "people.audit.persons.update": "Update person",
+  "people.audit.role_assignments.create": "Assign a staff role",
+  "people.audit.role_assignments.end": "End a staff role assignment",
+  "people.audit.role_assignments.update": "Change a staff role assignment",
+  "people.errors.account_age_below_threshold": "This person is too young for an own account at this club.",
+  "people.errors.account_birth_date_required": "Enter the date of birth before creating an account.",
+  "people.errors.account_exists": "This person already has an account.",
+  "people.errors.guardianship_self": "A person cannot be their own guardian.",
+  "people.errors.pesel_duplicate": "Another person in the club already has this PESEL number.",
+  "people.errors.pesel_invalid": "The PESEL number is not valid.",
+  "people.errors.role_scope_required": "A coordinator role needs a section.",
+  "people.errors.role_scope_unexpected": "Only a coordinator role is assigned to a section.",
+  "people.search.person.badge": "Person"
+}

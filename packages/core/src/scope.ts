@@ -118,7 +118,9 @@ export function findActingRole(scope: Scope, kinds: readonly GrantKind[], target
 /**
  * Turns the grants of the allowed kinds into a list filter, so a list and a detail check agree by construction.
  * A club-wide grant adds no condition; a grant whose fields the column map does not name adds nothing; no
- * matching grant yields `{ id: { $in: [] } }`, which matches no row (fail closed).
+ * matching grant yields `{ id: { $exists: false } }` (`id IS NULL`; the primary key is never null), which matches no row (fail
+ * closed). Not `{ id: { $in: [] } }`: the installed query engine compiles an empty `$in` to `in ()`, a PostgreSQL
+ * syntax error.
  */
 export function scopeWhere(scope: Scope, kinds: readonly GrantKind[], columnMap: ScopeColumnMap): WhereFragment {
   const allowed = scope.filter((grant) => kinds.includes(grant.kind))
@@ -135,7 +137,7 @@ export function scopeWhere(scope: Scope, kinds: readonly GrantKind[], columnMap:
   }
   const conditions: WhereFragment[] = [...idsByColumn].map(([column, ids]) => ({ [column]: { $in: [...ids].sort() } }))
   const [first, ...rest] = conditions
-  if (!first) return { id: { $in: [] } }
+  if (!first) return { id: { $exists: false } }
   return rest.length === 0 ? first : { $or: conditions }
 }
 

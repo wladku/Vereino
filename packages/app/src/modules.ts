@@ -27,6 +27,8 @@ export const enabledModules: ModuleEntry[] = [
 enabledModules.push({ id: 'scheduler', from: '@open-mercato/scheduler' })
 // Vereino-owned modules (listed in vereino-modules.json).
 enabledModules.push({ id: 'foundation', from: '@app' })
+enabledModules.push({ id: 'club_core', from: '@app' })
+enabledModules.push({ id: 'people', from: '@app' })
 
 const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)
 const enterpriseSsoEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SSO, false)

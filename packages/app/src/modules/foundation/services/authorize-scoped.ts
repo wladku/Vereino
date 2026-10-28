@@ -95,16 +95,32 @@ function sessionScope(ctx: CommandRuntimeContext): TrustedScope | null {
   return { tenantId, organizationId }
 }
 
+function jobScope(ctx: CommandRuntimeContext): TrustedScope | null {
+  // A job context has no session; a request that carries one can never act as a job.
+  const tenantId = ctx.organizationScope?.tenantId
+  const organizationId = ctx.selectedOrganizationId
+  if (ctx.auth || ctx.systemActor !== true || !tenantId || !organizationId) return null
+  return { tenantId, organizationId }
+}
+
+/**
+ * The trusted tenant and organization `authorizeScoped` derives for a context: the session's
+ * (`auth.tenantId`, `selectedOrganizationId ?? auth.orgId`), or the job registration's for `{ job: true }`; null
+ * when the context has none. A command uses it to narrow its own target lookup to the tenant before the scope
+ * check; it is a derivation, not an authorization.
+ */
+export function trustedScopeOf(ctx: CommandRuntimeContext, source?: ScopeSource): TrustedScope | null {
+  if (source && 'job' in source) return jobScope(ctx)
+  return sessionScope(ctx)
+}
+
 async function deriveScope(
   source: ScopeSource | undefined,
   ctx: CommandRuntimeContext,
 ): Promise<(TrustedScope & { scope: Scope }) | null> {
   if (source && 'job' in source) {
-    // A job context has no session; a request that carries one can never act as a job.
-    const tenantId = ctx.organizationScope?.tenantId
-    const organizationId = ctx.selectedOrganizationId
-    if (ctx.auth || ctx.systemActor !== true || !tenantId || !organizationId) return null
-    return { tenantId, organizationId, scope: [{ kind: 'system_job' }] }
+    const job = jobScope(ctx)
+    return job ? { ...job, scope: [{ kind: 'system_job' }] } : null
   }
   const trusted = sessionScope(ctx)
   if (!trusted || !ctx.auth) return null

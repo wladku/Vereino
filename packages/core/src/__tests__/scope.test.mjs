@@ -91,18 +91,18 @@ test('a grant without ids contains nothing', () => {
 })
 
 test('scopeWhere fails closed without a matching grant', () => {
-  assert.deepEqual(scopeWhere([], ['coordinator'], { sectionId: 'sectionId' }), { id: { $in: [] } })
+  assert.deepEqual(scopeWhere([], ['coordinator'], { sectionId: 'sectionId' }), { id: { $exists: false } })
   assert.deepEqual(scopeWhere([{ kind: 'self_user', ids: ['u1'] }], ['coordinator'], { sectionId: 'sectionId' }), {
-    id: { $in: [] },
+    id: { $exists: false },
   })
   assert.deepEqual(scopeWhere([{ kind: 'coordinator', ids: [SECTION_A] }], ['coordinator'], { personId: 'id' }), {
-    id: { $in: [] },
+    id: { $exists: false },
   })
   assert.deepEqual(scopeWhere([{ kind: 'coordinator', ids: [] }], ['coordinator'], { sectionId: 'sectionId' }), {
-    id: { $in: [] },
+    id: { $exists: false },
   })
   assert.deepEqual(scopeWhere([{ kind: 'coordinator' }], ['coordinator'], { sectionId: 'sectionId' }), {
-    id: { $in: [] },
+    id: { $exists: false },
   })
 })
 
@@ -113,7 +113,7 @@ test('scopeWhere adds no condition for a club-wide grant', () => {
   )
   assert.deepEqual(scopeWhere([{ kind: 'system_job' }], ['system_job'], {}), {})
   assert.deepEqual(scopeWhere([{ kind: 'club_admin' }], ['coordinator'], { sectionId: 'sectionId' }), {
-    id: { $in: [] },
+    id: { $exists: false },
   })
 })
 

@@ -1,4 +1,4 @@
 {
   "$comment": "Vereino-owned module ids under src/modules/ (engineering standards S3.1). Lint, formatting, i18n --strict, coverage thresholds and contracts:check read this list. Add a module id here when its folder is created.",
-  "modules": ["foundation"]
+  "modules": ["foundation", "club_core", "people"]
 }

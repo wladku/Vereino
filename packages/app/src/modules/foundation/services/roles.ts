@@ -40,15 +40,22 @@ function isUnknownRoleError(error: unknown): boolean {
 }
 
 /**
- * Writes the full desired role list through `auth.users.update` when it differs from the user's current roles
- * (set comparison, so a repeat changes nothing). Read and write run under a per-user advisory lock in the
- * caller's transaction. An unknown role name is a catalogue mismatch: reported as
+ * The desired role list, or a function computing it from the user's current role names (`desiredRoles` needs them
+ * to keep the roles outside `vereino_*`); the function runs under the per-user lock, so the read it depends on
+ * cannot race another sync.
+ */
+export type DesiredRoleList = readonly string[] | ((currentRoles: readonly string[]) => readonly string[])
+
+/**
+ * Writes the full desired role list (`desired`, see `DesiredRoleList`) through `auth.users.update` when it differs
+ * from the user's current roles (set comparison, so a repeat changes nothing). Read and write run under a per-user
+ * advisory lock in the caller's transaction. An unknown role name is a catalogue mismatch: reported as
  * `foundation.roles.catalogue_mismatch` and rethrown as an uncoded internal error; any other failure propagates
  * so the subscriber's queue or the next job run retries.
  */
 export async function syncAuthRoles(
   userId: string,
-  roles: readonly string[],
+  desired: DesiredRoleList,
   ctx: RoleSyncContext,
 ): Promise<RoleSyncResult> {
   const { em, scope } = ctx
@@ -64,6 +71,7 @@ export async function syncAuthRoles(
   }
   const links = await findWithDecryption(em, UserRole, { user: userId }, { populate: ['role'] }, decryptionScope)
   const current = links.map((link) => link.role.name)
+  const roles = typeof desired === 'function' ? desired(current) : desired
   if (sameRoleSet(current, roles)) return 'unchanged'
 
   const commandBus = ctx.commandContext.container.resolve<CommandBus>('commandBus')

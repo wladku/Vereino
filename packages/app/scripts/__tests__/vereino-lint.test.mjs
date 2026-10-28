@@ -26,6 +26,30 @@ const files = {
   'src/modules/alpha/commands/own.ts': 'import { double } from "../lib/pure"\nexport const four = double(2)\n',
   'src/modules/alpha/commands/alias.ts':
     'import { helper } from "@/modules/beta/lib/helper"\nexport const value = helper\n',
+  // TEST-F14 (foundation spec REQ-F16): the ORM only in the persistence layers; foundation helpers by their public entry.
+  'src/modules/foundation/index.ts': 'export const helper = (): number => 1\n',
+  'src/modules/foundation/services/internal.ts': 'export const internal = (): number => 2\n',
+  'src/modules/alpha/api/things/route.ts':
+    'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/api/things/typed-route.ts':
+    'import type { EntityManager } from "@mikro-orm/postgresql"\nexport type Em = EntityManager\n',
+  'src/modules/alpha/subscribers/orm.ts':
+    'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/commands/orm.ts':
+    'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/services/orm.ts':
+    'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/data/entities.ts':
+    'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/setup.ts': 'import { LockMode } from "@mikro-orm/core"\nexport const mode = LockMode.NONE\n',
+  'src/modules/alpha/commands/foundation-public.ts':
+    'import { helper } from "../../foundation/index"\nexport const value = helper()\n',
+  'src/modules/alpha/commands/foundation-alias.ts':
+    'import { helper } from "@/modules/foundation"\nexport const value = helper\n',
+  'src/modules/alpha/commands/foundation-internal.ts':
+    'import { internal } from "../../foundation/services/internal"\nexport const value = internal()\n',
+  'src/modules/alpha/commands/foundation-deep-alias.ts':
+    'import { internal } from "@/modules/foundation/services/internal"\nexport const value = internal\n',
 }
 
 let results
@@ -41,7 +65,7 @@ before(async () => {
     overrideConfigFile: true,
     overrideConfig: [
       { files: ['**/*.ts'], languageOptions: { parser: tseslint.parser } },
-      ...vereinoModuleBoundaryConfigs({ boundaries, moduleIds: ['alpha', 'beta'] }),
+      ...vereinoModuleBoundaryConfigs({ boundaries, moduleIds: ['alpha', 'beta', 'foundation'] }),
     ],
   })
   const lintResults = await eslint.lintFiles(['src/**/*.ts'])
@@ -77,6 +101,26 @@ test('ENG-TEST-03 a platform import inside lib/ fails', () => {
 
 test('ENG-TEST-03 the @/modules alias inside a Vereino module fails', () => {
   assert.ok(results['src/modules/alpha/commands/alias.ts'].includes('no-restricted-imports'))
+})
+
+test('TEST-F14 a route handler importing @mikro-orm/* is reported, also as a type import', () => {
+  assert.deepEqual(results['src/modules/alpha/api/things/route.ts'], ['no-restricted-imports'])
+  assert.deepEqual(results['src/modules/alpha/api/things/typed-route.ts'], ['no-restricted-imports'])
+  assert.deepEqual(results['src/modules/alpha/subscribers/orm.ts'], ['no-restricted-imports'])
+})
+
+test('TEST-F14 a command, a services/ file, data/entities.ts and setup.ts may import @mikro-orm/*', () => {
+  assert.deepEqual(results['src/modules/alpha/commands/orm.ts'], [])
+  assert.deepEqual(results['src/modules/alpha/services/orm.ts'], [])
+  assert.deepEqual(results['src/modules/alpha/data/entities.ts'], [])
+  assert.deepEqual(results['src/modules/alpha/setup.ts'], [])
+})
+
+test('TEST-F14 the foundation public entry may be imported by value; its internals may not', () => {
+  assert.deepEqual(results['src/modules/alpha/commands/foundation-public.ts'], [])
+  assert.deepEqual(results['src/modules/alpha/commands/foundation-alias.ts'], [])
+  assert.deepEqual(results['src/modules/alpha/commands/foundation-internal.ts'], ['boundaries/dependencies'])
+  assert.ok(results['src/modules/alpha/commands/foundation-deep-alias.ts'].includes('no-restricted-imports'))
 })
 
 test('vereino-modules.json lists no platform scaffold module', () => {

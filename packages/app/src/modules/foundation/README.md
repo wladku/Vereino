@@ -12,10 +12,12 @@ A **primitive** is a mechanic built once as a shared unit with its own tests (an
 
 ## Public API
 
+Other Vereino modules import every helper below from `@/modules/foundation` (this module's `index.ts`), never from its internal files; the boundaries lint enforces it (REQ-F16).
+
 | Id | Export | File |
 |---|---|---|
 | P-01 | `ScopedEntityBase`, `decorateScopedEntityBase`, `validFromColumn`, `validToColumn`, `consentColumn` | `@vereino/db` |
-| P-02 | `authorizeScoped`, `assertInScope`, `jobCommandContext` | `services/authorize-scoped.ts` |
+| P-02 | `authorizeScoped`, `assertInScope`, `jobCommandContext`, `trustedScopeOf` | `services/authorize-scoped.ts` |
 | P-03 | grant types, `grantContaining`, `scopeWhere`, `unionScopes` (`@vereino/core`); `scopeContract.resolve`, `ScopeProvider`, `SCOPE_PROVIDER_TOKEN` | `services/scope-contract.ts` |
 | P-04 | `roleCatalogue`, `catalogueRoleFeatures` (`@vereino/core`); `seedRoles`, `rolesForAssignments`, `desiredRoles` | `services/roles.ts` |
 | P-05 | `syncAuthRoles` | `services/roles.ts` |
@@ -26,6 +28,7 @@ A **primitive** is a mechanic built once as a shared unit with its own tests (an
 | P-12 | `registerModuleSchedule` (naming rules in `@vereino/core`) | `services/register-module-schedule.ts` |
 | P-16 | `renderLocalized`, `localeForPerson` | `services/localized.ts` |
 | P-17 | `ErrorCodeTable` (`@vereino/core`); `errors(table)` | `services/errors.ts` |
+| helper | `commandContextForRequest`, `errorResponse` (hand-written action and detail routes) | `services/route-context.ts` |
 
 DI tokens (`di.ts`): `vereino.scopeProvider` — registered by the `people` module, not here; `foundationScopeContract`, `foundationAuthorization`, `foundationRoles`, `foundationAccounts`, `foundationEncryptedFields`, `foundationSchedules`, `foundationLocalized`, `foundationErrors` — stateless services.
 
@@ -34,7 +37,8 @@ Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (4
 ## Conventions
 
 - **Commands.** `execute` calls `authorizeScoped(spec, input, ctx, em)` first, inside the write transaction; the result's `actingRole` goes into the command result and `buildLog` writes it to `context.actingRole`; `authorizeReplay` calls it again with `{ mode: 'replay' }` and the handler sets `atomicReplay: true`.
-- **Lists.** `list.buildFilters` adds `scopeWhere(await scopeContract.resolve(ctx), allowedKinds, columnMap)`; detail routes call `assertInScope`. No hand-written scope check elsewhere.
+- **Lists.** `list.buildFilters` returns `{ $and: [scopeWhere(await scopeContract.resolve(ctx), allowedKinds, columnMap), businessFilters] }` and the route sets `export: { enabled: false }` (the platform's full export skips `buildFilters`); without a matching grant `scopeWhere` yields `{ id: { $exists: false } }` (`id IS NULL`), because the query engine turns an empty `$in` into invalid SQL. Detail routes load the row in the trusted organization and call `assertInScope`. No hand-written scope check elsewhere.
+- **Role sync.** `syncAuthRoles(userId, desired, ctx)` accepts the role list or a function of the current roles (`(current) => desiredRoles({ currentRoles: current, … }, today)`), evaluated under the per-user lock.
 - **Subscribers.** A persistent subscriber is the platform shape `metadata { event, persistent: true, id: '<module>:<kebab-name>' }` + `handle`; it is idempotent through the consumer's unique constraint or a set comparison, and a failure is retried by the queue.
 - **Jobs.** A module job is registered from `setup.ts` `seedDefaults` with `registerModuleSchedule(container, { module, name, schedule, scope })` — one schedule per organization, never thrown from setup; it takes its scope from the registration, is idempotent and logs `{ processed, failed, skipped }` (S4.7).
 - **Worker files (DD-G07).** `workers/<name>.ts` exports `metadata = { queue: '<module>-<name>', id: '<module>:<name>', concurrency: 1 }` and a default `handle(job, ctx)` that re-validates the injected `tenantId` / `organizationId` with Zod and dispatches one module command with `jobCommandContext(container, scope)` (scope source `{ job: true }`, acting role `system`).
