@@ -251,6 +251,7 @@ Common rules (they apply to every screen and are not repeated):
 - **States:** **loading** — a skeleton in place of the content, actions disabled; **empty** — explanation + next action; **error** — message without technical details + "Try again", form data preserved; **success** — toast or in-place status change; **conflict (409)** — shared dialog "The record has changed in the meantime"; **403** — "Access denied".
 - **Validation:** client-side for convenience, server-side (Zod in the route) as the source of truth; a server error is mapped to the field by the shared error adapter.
 - **API:** all calls via `apiCall`/`apiCallOrThrow`; club scope taken from the session.
+- **Interaction and accessibility rules:** S7.4 (WCAG 2.2 AA numbers: contrast 4.5:1 and 3:1, targets 24 × 24 px and 44 pt / 48 dp on phones, reflow at 320 px) and S7.9 (proximity, Fitts, Hick, Jakob, Doherty 400 ms, line length 45–75 characters, and the heuristics: consistency, visible status, a disabled action says what is missing, an error says what happened and what to do, only what the task needs) of [the engineering standards](../../.ai/specs/2026-10-21-engineering-standards-and-patterns.md).
 
 ### Member interface (phone)
 
