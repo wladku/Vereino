@@ -26,13 +26,16 @@ Other Vereino modules import every helper below from `@/modules/foundation` (thi
 | P-08 | `grantConsent`, `withdrawConsent` (`@vereino/core`) | — |
 | P-09 | `encryptedField` | `services/encrypted-field.ts` |
 | P-12 | `registerModuleSchedule` (naming rules in `@vereino/core`) | `services/register-module-schedule.ts` |
+| P-24 | `Recurrence` (parse/serialise), `expandOccurrences`, `occurrenceDates`, `zonedInstant`, `seriesEditPlan` (`@vereino/core`); `parseRecurrence` (422 `recurrence_unsupported` / `recurrence_invalid`) | `services/recurrence.ts` |
+| P-25 | `defineTransitions` (`@vereino/core`); `assertTransition` (409 `invalid_transition`); `advanceWhere` waits for its first consumer (#32/#33) | `services/transitions.ts` |
+| P-26 | `Interval`, `intervalsOverlap`, `findOverlaps` (`@vereino/core`); the optional `vereino.occupancyProvider` contract, `occupancyProvider(container)` | `services/occupancy.ts` |
 | P-16 | `renderLocalized`, `localeForPerson` | `services/localized.ts` |
 | P-17 | `ErrorCodeTable` (`@vereino/core`); `errors(table)` | `services/errors.ts` |
 | helper | `commandContextForRequest`, `errorResponse` (hand-written action and detail routes) | `services/route-context.ts` |
 
-DI tokens (`di.ts`): `vereino.scopeProvider` — registered by the `people` module, not here; `foundationScopeContract`, `foundationAuthorization`, `foundationRoles`, `foundationAccounts`, `foundationEncryptedFields`, `foundationSchedules`, `foundationLocalized`, `foundationErrors` — stateless services.
+DI tokens (`di.ts`): `vereino.scopeProvider` — registered by the `people` module, not here; `foundationScopeContract`, `foundationAuthorization`, `foundationRoles`, `foundationAccounts`, `foundationEncryptedFields`, `foundationSchedules`, `foundationLocalized`, `foundationErrors`, `foundationScheduling` — stateless services; `vereino.occupancyProvider` — an optional contract registered by `facilities` (phase 5), never here.
 
-Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (403), `validity_inverted` (422), `email_taken` (409). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
+Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (403), `validity_inverted` (422), `email_taken` (409); foundation II: `recurrence_unsupported` (422), `recurrence_invalid` (422), `invalid_transition` (409). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
 
 ## Conventions
 

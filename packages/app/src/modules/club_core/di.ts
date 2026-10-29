@@ -15,8 +15,9 @@ export const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings' as const
 export const CLUB_CORE_PLACES_SERVICE = 'clubCorePlaces' as const
 
 /**
- * DI token of the directory (#30): `findSections(scope, ids, em?)` and `findInstitutions(scope, ids, em?)` — the live
- * sections and institutions of a club by id, for `groups` (a group's section, an external team's institution).
+ * DI token of the directory (#30, #31): `findSections`, `findInstitutions`, `findPlaces` (scope, ids, em?) — the live
+ * sections, institutions and places of a club by id — and `placeFamily(scope, placeId, em?)`, a place with its
+ * ancestors and descendants, for `groups` and `activities`.
  */
 export const CLUB_CORE_DIRECTORY = 'clubCoreDirectory' as const
 

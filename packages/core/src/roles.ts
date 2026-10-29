@@ -43,6 +43,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).
       'groups.view',
       'groups.manage',
+      // Likewise `activities.manage` does not imply `activities.view`: the coordinator lists sessions with it (#31).
+      'activities.view',
       'activities.manage',
       'activities.coach',
       'activities.events.create',

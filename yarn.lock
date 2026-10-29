@@ -9969,6 +9969,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@vereino/core@workspace:packages/core"
   dependencies:
+    date-fns: "npm:4.4.0"
+    date-fns-tz: "npm:^3.2.0"
     eslint: "npm:^9.39.4"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.71.2"

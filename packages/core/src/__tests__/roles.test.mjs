@@ -36,6 +36,8 @@ test('catalogueRoleFeatures returns copies keyed by auth role', () => {
   assert.ok(features.vereino_coordinator.includes('communication.cases.manage'))
   assert.ok(features.vereino_coordinator.includes('groups.view'))
   assert.ok(features.vereino_coordinator.includes('groups.manage'))
+  assert.ok(features.vereino_coordinator.includes('activities.view'))
+  assert.ok(features.vereino_coordinator.includes('activities.manage'))
   assert.ok(features.vereino_coach.includes('activities.coach'))
   features.vereino_payer.push('mutated')
   assert.equal(roleCatalogue.payer.features.includes('mutated'), false)

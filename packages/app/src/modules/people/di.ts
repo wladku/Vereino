@@ -11,8 +11,9 @@ import { createPeopleScopeService } from './services/scope-service'
 export const PEOPLE_SCOPE_SERVICE = 'people.scopeService' as const
 
 /**
- * `people.personDirectory`: the decrypted names of persons of one organization (`findPersons(scope, ids, em?)`), for
- * the modules that require `people` (the `groups` roster, #30).
+ * `people.personDirectory`: the decrypted names of persons of one organization (`findPersons(scope, ids, em?)`), their
+ * account links (`findUserIds`) and active guardians (`activeGuardians`), for the modules that require `people` (the
+ * `groups` roster, #30; the people a cancelled session concerns, #31).
  */
 export const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory' as const
 
