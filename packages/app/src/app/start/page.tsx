@@ -130,7 +130,7 @@ export default async function StartPage() {
 
         <div className="rounded-lg border bg-card p-4 md:col-span-2">
           <div className="text-sm font-medium mb-3">{t('app.page.activeModules.title', 'Active Modules')}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-50 overflow-y-auto pr-2">
             {modules.map((m) => {
               const counts = routeCountsByModule.get(m.id) ?? { frontend: 0, backend: 0, api: 0 }
               const fe = counts.frontend

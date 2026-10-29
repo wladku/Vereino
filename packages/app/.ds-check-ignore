@@ -2,18 +2,6 @@
   "version": 1,
   "entries": [
     {
-      "file": "src/app/start/page.tsx",
-      "rule": "arbitrary-tailwind",
-      "match": "max-h-[200px]",
-      "reason": "Existing scaffold styling retained as a bounded migration baseline."
-    },
-    {
-      "file": "src/components/BackendHeaderChrome.tsx",
-      "rule": "arbitrary-tailwind",
-      "match": "w-[220px]",
-      "reason": "Existing scaffold styling retained as a bounded migration baseline."
-    },
-    {
       "file": "src/components/DemoFeedbackWidget.tsx",
       "rule": "arbitrary-tailwind",
       "match": "max-w-[calc(100vw-3rem)]",
@@ -28,19 +16,7 @@
     {
       "file": "src/components/DemoFeedbackWidget.tsx",
       "rule": "arbitrary-tailwind",
-      "match": "min-w-[90px]",
-      "reason": "Existing scaffold styling retained as a bounded migration baseline."
-    },
-    {
-      "file": "src/components/DemoFeedbackWidget.tsx",
-      "rule": "arbitrary-tailwind",
       "match": "animate-[caption-slide_0.3s_ease-out]",
-      "reason": "Existing scaffold styling retained as a bounded migration baseline."
-    },
-    {
-      "file": "src/components/DemoFeedbackWidget.tsx",
-      "rule": "inline-style",
-      "match": "style=",
       "reason": "Existing scaffold styling retained as a bounded migration baseline."
     },
     {
