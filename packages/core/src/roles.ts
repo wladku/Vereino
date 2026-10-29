@@ -39,6 +39,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'club_core.view',
       'club_core.sections.public_content',
       'people.view',
+      // The platform does not expand `dependsOn` at check time (`aclDependencies.ts` only reports missing
+      // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).
+      'groups.view',
       'groups.manage',
       'activities.manage',
       'activities.coach',

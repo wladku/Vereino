@@ -1,6 +1,7 @@
 // `people.scopeService` (foundation spec DD-F03, P-03): the single scope provider, registered under the foundation's
 // `vereino.scopeProvider` token. It returns the grants of the person linked to the user — club_admin, coordinator
-// sections, guardian wards, self — computed on today's date in the club zone; no linked person → no grants.
+// sections, coached groups, guardian wards, self — computed on today's date in the club zone; no linked person → no
+// grants. The coached groups come from the optional `groups` contribution (`membership-contribution.ts`, #30).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
@@ -8,12 +9,17 @@ import type { ScopeProvider, ScopeSubject } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { personScope } from '../lib/people-rules'
 import { clubToday } from './club-clock'
+import { membershipContribution, type MembershipContribution } from './membership-contribution'
 
-/** The grants of the person `personId` on `today`, read with `em` (scoped to the subject's organization). */
+/**
+ * The grants of the person `personId` on `today`, read with `em` (scoped to the subject's organization);
+ * `contribution` is the optional `groups` contribution (null without `groups`).
+ */
 export async function loadPersonScope(
   em: EntityManager,
   subject: { personId: string; tenantId: string; organizationId: string },
   today: string,
+  contribution: MembershipContribution | null = null,
 ): Promise<Scope> {
   const where = { tenantId: subject.tenantId, organizationId: subject.organizationId, deletedAt: null }
   const assignments = await em.find(
@@ -26,9 +32,11 @@ export async function loadPersonScope(
     { ...where, guardianPersonId: subject.personId },
     { fields: ['id', 'wardPersonId', 'validFrom', 'validTo'] },
   )
+  const coachedGroupIds = contribution ? await contribution.coachedGroupIds(em, subject, today) : []
   return personScope(
     {
       personId: subject.personId,
+      coachedGroupIds,
       assignments: assignments.map((row) => ({
         role: row.role,
         sectionId: row.sectionId ?? null,
@@ -62,7 +70,7 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       if (!person) return []
       const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
       const today = await clubToday(container, scope)
-      return loadPersonScope(em, { ...scope, personId: person.id }, today)
+      return loadPersonScope(em, { ...scope, personId: person.id }, today, membershipContribution(container))
     },
   }
 }
