@@ -4,7 +4,7 @@ import { foundationErrors } from './api/errors'
 import { createAccount } from './services/accounts'
 import { assertInScope, authorizeScoped, jobCommandContext } from './services/authorize-scoped'
 import { encryptedField } from './services/encrypted-field'
-import { localeForPerson, renderLocalized } from './services/localized'
+import { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 import { OCCUPANCY_PROVIDER_TOKEN } from './services/occupancy'
 import { parseRecurrence } from './services/recurrence'
 import { registerModuleSchedule } from './services/register-module-schedule'
@@ -44,7 +44,7 @@ export function register(container: AppContainer) {
     [FOUNDATION_ACCOUNTS]: asValue({ createAccount }),
     [FOUNDATION_ENCRYPTED_FIELDS]: asValue({ encryptedField }),
     [FOUNDATION_SCHEDULES]: asValue({ registerModuleSchedule }),
-    [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson }),
+    [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
     [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition }),
   })

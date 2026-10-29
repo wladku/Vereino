@@ -1,6 +1,7 @@
 {
   "foundation.errors.email_taken": "This e-mail address is already used by another account.",
   "foundation.errors.invalid_transition": "This change of status is not allowed.",
+  "foundation.errors.locale_unsupported": "This language is not available. Choose one of the languages the app offers.",
   "foundation.errors.not_found": "The record was not found.",
   "foundation.errors.recurrence_invalid": "The recurrence rule is not valid.",
   "foundation.errors.recurrence_unsupported": "The recurrence rule uses a part that is not supported.",

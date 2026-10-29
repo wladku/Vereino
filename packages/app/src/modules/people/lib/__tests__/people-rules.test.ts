@@ -172,6 +172,8 @@ describe('people error codes', () => {
       ['guardianship_primary_payer_conflict', 409],
       ['guardianship_ended', 409],
       ['role_assignment_duplicate', 409],
+      ['person_not_linked', 404],
+      ['payments_minor', 403],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })

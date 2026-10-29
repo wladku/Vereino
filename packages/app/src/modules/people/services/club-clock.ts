@@ -8,14 +8,21 @@ import { calendarDateInZone } from '../lib/people-rules'
 /** DI token of `club_core`'s settings service. */
 const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings'
 
-/** The club settings `people` reads: the account age threshold, the default locale and the time zone. */
-export type PeopleClubSettings = Pick<ClubSettingsSnapshot['values'], 'ownAccountMinAge' | 'defaultLocale' | 'timezone'>
+/**
+ * The club settings `people` reads: the account age threshold, the default locale, the time zone and the club's short
+ * name (club content, shown in the club's language on `/club`).
+ */
+export type PeopleClubSettings = Pick<
+  ClubSettingsSnapshot['values'],
+  'ownAccountMinAge' | 'defaultLocale' | 'timezone' | 'shortName'
+>
 
 /** The default club zone and age threshold when `club_core` is not enabled (club spec DD-37 defaults). */
 const FALLBACK_SETTINGS: PeopleClubSettings = {
   ownAccountMinAge: 16,
   defaultLocale: 'pl',
   timezone: 'Europe/Warsaw',
+  shortName: null,
 }
 
 export type ClubScope = { tenantId: string; organizationId: string }

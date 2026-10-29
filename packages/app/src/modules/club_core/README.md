@@ -14,7 +14,7 @@ Phase A1 of the foundation spec ([`.ai/specs/2026-10-27-vereino-foundation-primi
 | Events | `club_core.settings.updated`, `club_core.section|place|institution.created|updated|deleted` (ids only) |
 | CLI | `yarn mercato club_core check-bookable-place --tenant --org --place` → `{ bookable, status?, code? }` (the leaf rule through `clubCorePlaces`) |
 | ACL | `club_core.view`, `club_core.manage` (implies view); seeded on `vereino_club_admin` (`club_core.*`) and `vereino_coordinator` (`club_core.view`) by the role catalogue that `people` seeds |
-| Error codes | `place_hierarchy_cycle` 422, `place_reference_invalid` 422, `place_not_bookable` 422, `place_has_children` 409, `institution_in_use` 409 |
+| Error codes | `place_hierarchy_cycle` 422, `place_reference_invalid` 422, `place_not_bookable` 422, `place_has_children` 409, `institution_in_use` 409; the foundation's `locale_unsupported` 422 for a `default_locale` the app does not serve (#27) |
 
 ## Scope
 

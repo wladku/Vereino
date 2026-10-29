@@ -9,7 +9,7 @@ import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shar
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole } from '@vereino/core'
-import { authorizeScoped, type AuthorizeScopedSpec } from '@/modules/foundation'
+import { assertSupportedLocale, authorizeScoped, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Person } from '../data/entities'
 import { personCreateSchema, personUpdateSchema } from '../data/validators'
@@ -122,13 +122,14 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         const { parsed, tenantId, organizationId } = authorized
         const pesel = parsed.pesel ?? null
         if (pesel) await assertPeselAvailable(em, { tenantId, organizationId }, pesel, null)
+        const preferredLocale = parsed.preferredLocale ? await assertSupportedLocale(parsed.preferredLocale) : null
         const person = em.create(Person, {
           id,
           tenantId,
           organizationId,
           firstName: parsed.firstName,
           lastName: parsed.lastName,
-          preferredLocale: parsed.preferredLocale ?? null,
+          preferredLocale,
           birthDate: parsed.birthDate ?? null,
           email: parsed.email ?? null,
           phone: parsed.phone ?? null,
@@ -199,7 +200,9 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         const patch = authorized.parsed
         if (patch.firstName !== undefined) person.firstName = patch.firstName
         if (patch.lastName !== undefined) person.lastName = patch.lastName
-        if (patch.preferredLocale !== undefined) person.preferredLocale = patch.preferredLocale
+        if (patch.preferredLocale !== undefined) {
+          person.preferredLocale = patch.preferredLocale ? await assertSupportedLocale(patch.preferredLocale) : null
+        }
         if (patch.birthDate !== undefined) person.birthDate = patch.birthDate
         if (patch.email !== undefined) person.email = patch.email
         if (patch.phone !== undefined) person.phone = patch.phone

@@ -11,7 +11,7 @@ import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole } from '@vereino/core'
-import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
+import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
@@ -133,7 +133,11 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
           if (!row) throw new Error('[internal] club settings row missing after ensure')
           const before = snapshot(row)
           const current = resolveStoredSettings(row, row.organizationId).values
-          const values = applyClubSettingsPatch(current, authorized.parsed)
+          const patch = authorized.parsed
+          // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.
+          const defaultLocale =
+            typeof patch.defaultLocale === 'string' ? await assertSupportedLocale(patch.defaultLocale) : undefined
+          const values = applyClubSettingsPatch(current, defaultLocale ? { ...patch, defaultLocale } : patch)
           writeValues(row, values)
           result = { settings: row, values, before, actingRole: authorized.actingRole }
         },

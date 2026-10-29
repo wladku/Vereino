@@ -69,6 +69,9 @@ export type PersonView = PersonBasicView & {
   notes: string | null
   userId: string | null
   pesel?: string | null
+  /** The person's own consents as a guardian (#27): the instant each was given, null when not given. */
+  shareContactWithCoachesAt: string | null
+  sharePresenceWithGuardiansAt: string | null
 }
 
 export function personBasicView(person: Person): PersonBasicView {
@@ -94,6 +97,8 @@ export function personView(person: Person, options: { withPesel: boolean }): Per
     notes: person.notes ?? null,
     userId: person.userId ?? null,
     ...(options.withPesel ? { pesel: person.pesel ?? null } : {}),
+    shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
+    sharePresenceWithGuardiansAt: iso(person.sharePresenceWithGuardiansAt),
   }
 }
 
@@ -206,6 +211,8 @@ export const personViewSchema = z.object({
   notes: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
   pesel: z.string().nullable().optional(),
+  shareContactWithCoachesAt: z.string().nullable().optional().describe('Full view only'),
+  sharePresenceWithGuardiansAt: z.string().nullable().optional().describe('Full view only'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })

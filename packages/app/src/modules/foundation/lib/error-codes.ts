@@ -9,6 +9,7 @@ export const errorCodes = [
   { code: 'scope_denied', status: 403, messageKey: 'foundation.errors.scope_denied' },
   { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
   { code: 'email_taken', status: 409, messageKey: 'foundation.errors.email_taken' },
+  { code: 'locale_unsupported', status: 422, messageKey: 'foundation.errors.locale_unsupported' },
   // Foundation II (DD-G14): thrown by `services/recurrence.ts` and `services/transitions.ts`.
   { code: 'recurrence_unsupported', status: 422, messageKey: 'foundation.errors.recurrence_unsupported' },
   { code: 'recurrence_invalid', status: 422, messageKey: 'foundation.errors.recurrence_invalid' },
