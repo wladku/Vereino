@@ -1,11 +1,15 @@
-// Pure rules of the `people` module (club spec *Domain Vocabulary*; foundation spec P-03, P-04, P-07): the club-zone
-// calendar date, PESEL checks, role-assignment scope, the record scope of a person and the payer rule. Time is a
-// parameter (engineering standards S3.5).
+// Pure rules of the `people` module (club spec *Domain Vocabulary*; foundation spec P-03, P-04, P-07, P-08): the
+// club-zone calendar date, PESEL checks, role-assignment scope, the record scope of a person, the payer rule,
+// overlapping periods and the guardianship consents. Time is a parameter (engineering standards S3.5).
 import {
   endsBefore,
+  grantConsent,
   isActiveAt,
   isAdultOn,
+  periodsOverlap,
   roleCatalogue,
+  withdrawConsent,
+  type ConsentState,
   type AssignableRole,
   type CalendarDate,
   type RoleAssignmentPeriod,
@@ -141,4 +145,94 @@ export function sectionCoordinators(
     coordinators,
     coordinatorMissing: section.isActive && !coordinators.some((coordinator) => coordinator.active),
   }
+}
+
+/**
+ * The first of `existing` whose period overlaps `candidate`, or null. Overlapping periods count as active at the same
+ * time: a second assignment of the same role and section, or a second primary payer of one ward (club spec
+ * glossary *Legal guardianship*; #26).
+ */
+export function firstOverlapping<T extends Validity>(candidate: Validity, existing: readonly T[]): T | null {
+  return existing.find((period) => periodsOverlap(candidate, period)) ?? null
+}
+
+/** The guardian's relation to the ward (club spec *Data Models* → `people_guardianships.relation`). */
+export const GUARDIAN_RELATIONS = ['parent', 'grandparent', 'legal_guardian', 'other'] as const
+export type GuardianRelation = (typeof GUARDIAN_RELATIONS)[number]
+
+/** The consents of a guardianship (club spec glossary *Consents*). */
+export const CONSENT_KINDS = ['regulations', 'image', 'trips'] as const
+export type ConsentKind = (typeof CONSENT_KINDS)[number]
+
+/** One consent as `people_guardianships.consents` stores it: `{ granted, at, by_person_id }` (the spec's keys). */
+export type StoredConsentEntry = {
+  readonly granted: boolean
+  readonly at: string
+  readonly by_person_id: string | null
+}
+export type StoredConsents = { readonly [kind in ConsentKind]?: StoredConsentEntry }
+
+/** One consent as the API returns it; `at` is the instant of the last grant or withdrawal, null when never set. */
+export type ConsentView = { readonly granted: boolean; readonly at: string | null; readonly byPersonId: string | null }
+export type ConsentsView = { readonly [kind in ConsentKind]: ConsentView }
+
+/** The requested state per consent: true grants, false withdraws, absent leaves it as it is. */
+export type ConsentChanges = { readonly [kind in ConsentKind]?: boolean }
+
+function storedEntry(value: unknown): StoredConsentEntry | null {
+  if (value === null || typeof value !== 'object') return null
+  const { granted, at, by_person_id: byPersonId } = value as Record<string, unknown>
+  if (typeof granted !== 'boolean' || typeof at !== 'string' || Number.isNaN(Date.parse(at))) return null
+  return { granted, at, by_person_id: typeof byPersonId === 'string' ? byPersonId : null }
+}
+
+/** The well-formed consents of a stored `consents` value; anything else is dropped (never granted). */
+export function parseStoredConsents(raw: unknown): StoredConsents {
+  if (raw === null || typeof raw !== 'object') return {}
+  const result: Partial<Record<ConsentKind, StoredConsentEntry>> = {}
+  for (const kind of CONSENT_KINDS) {
+    const entry = storedEntry((raw as Record<string, unknown>)[kind])
+    if (entry) result[kind] = entry
+  }
+  return result
+}
+
+/** Every consent kind with its state; a consent never set is not granted. */
+export function consentsView(stored: StoredConsents): ConsentsView {
+  const view = (kind: ConsentKind): ConsentView => {
+    const entry = stored[kind]
+    return entry
+      ? { granted: entry.granted, at: entry.at, byPersonId: entry.by_person_id }
+      : { granted: false, at: null, byPersonId: null }
+  }
+  return { regulations: view('regulations'), image: view('image'), trips: view('trips') }
+}
+
+function consentState(entry: StoredConsentEntry | undefined): ConsentState {
+  return { grantedAt: entry?.granted ? new Date(entry.at) : null }
+}
+
+/**
+ * Applies the requested consent states with the P-08 transitions at `now`: granting a granted consent keeps its
+ * date, withdrawing a consent that is not granted changes nothing; a change records `now` and the acting person.
+ * Returns the new stored value and the kinds that changed (the audit log keeps the dates of every change).
+ */
+export function applyConsentChanges(
+  current: StoredConsents,
+  changes: ConsentChanges,
+  now: Date,
+  byPersonId: string | null,
+): { consents: StoredConsents; changed: ConsentKind[] } {
+  const next: Partial<Record<ConsentKind, StoredConsentEntry>> = { ...current }
+  const changed: ConsentKind[] = []
+  for (const kind of CONSENT_KINDS) {
+    const desired = changes[kind]
+    if (desired === undefined) continue
+    const state = consentState(current[kind])
+    const transition = desired ? grantConsent(state, now) : withdrawConsent(state, now)
+    if (!transition.changed) continue
+    next[kind] = { granted: desired, at: now.toISOString(), by_person_id: byPersonId }
+    changed.push(kind)
+  }
+  return { consents: next, changed }
 }

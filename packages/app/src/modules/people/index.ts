@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'People',
   version: '0.1.0',
   description:
-    'Persons, staff role assignments and guardianships of the club; record scope, accounts and auth role sync (phase A1: issue #38; #26 and #27 extend it).',
+    'Persons, staff role assignments, guardianships with the primary payer and consents; record scope, accounts and auth role sync (#38, #26; #27 adds the member side).',
   author: 'Vereino',
   license: 'MIT',
 }

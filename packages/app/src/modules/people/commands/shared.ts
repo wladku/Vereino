@@ -1,14 +1,15 @@
 // Shared pieces of the `people` commands: the write transaction, scope targets, tenant-narrowed loads, snapshots and
 // the CRUD side-effect configs. Scope checks stay in `authorizeScoped` (foundation spec REQ-F16).
 import type { EntityManager } from '@mikro-orm/postgresql'
-import { UniqueConstraintViolationException } from '@mikro-orm/core'
+import { LockMode, UniqueConstraintViolationException } from '@mikro-orm/core'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
 import type { CrudEventsConfig, CrudIndexerConfig } from '@open-mercato/shared/lib/crud/types'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import type { ScopeTarget } from '@vereino/core'
+import type { Scope, ScopeTarget } from '@vereino/core'
 import { trustedScopeOf, type TargetLock } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
+import { parseStoredConsents, type GuardianRelation, type StoredConsents } from '../lib/people-rules'
 
 export const PERSON_ENTITY_ID = 'people:person'
 
@@ -96,6 +97,29 @@ export async function personExists(
   return found !== null
 }
 
+/**
+ * Row-locks a person of the organization (`SELECT … FOR UPDATE`) and tells whether it exists. Commands that check a
+ * rule across several rows of one person — no duplicate active role assignment, one primary payer per ward — take
+ * this lock first, so concurrent writes for the same person are serialized and the check cannot race.
+ */
+export async function lockPerson(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  personId: string,
+): Promise<boolean> {
+  const found = await em.findOne(
+    Person,
+    { id: personId, ...scope, deletedAt: null },
+    { fields: ['id'], lockMode: LockMode.PESSIMISTIC_WRITE },
+  )
+  return found !== null
+}
+
+/** The caller's own person (the `self` grant the scope provider returned), recorded as who changed a consent. */
+export function actorPersonId(scope: Scope): string | null {
+  return scope.find((grant) => grant.kind === 'self')?.ids?.[0] ?? null
+}
+
 export function personTarget(person: Pick<Person, 'id' | 'tenantId' | 'organizationId'>): ScopeTarget {
   return { id: person.id, tenantId: person.tenantId, organizationId: person.organizationId, personId: person.id }
 }
@@ -154,7 +178,10 @@ export const guardianshipEvents: CrudEventsConfig<Guardianship> = {
   buildPayload: (ctx) => ({ ...idsOnly(ctx), guardianPersonId: ctx.entity.guardianPersonId }),
 }
 
-/** The person fields an undo restores; the PESEL is deliberately not kept in the audit log. */
+/**
+ * The person fields an undo restores. The PESEL and the notes are deliberately not kept in the audit log (only
+ * whether they are set), so an undo does not restore them.
+ */
 export type PersonSnapshot = {
   id: string
   tenantId: string
@@ -164,8 +191,11 @@ export type PersonSnapshot = {
   preferredLocale: string | null
   birthDate: string | null
   email: string | null
+  /** Absent in snapshots written before #26. */
+  phone?: string | null
   userId: string | null
   hasPesel: boolean
+  hasNotes: boolean
 }
 
 export function personSnapshot(person: Person): PersonSnapshot {
@@ -178,8 +208,10 @@ export function personSnapshot(person: Person): PersonSnapshot {
     preferredLocale: person.preferredLocale ?? null,
     birthDate: person.birthDate ?? null,
     email: person.email ?? null,
+    phone: person.phone ?? null,
     userId: person.userId ?? null,
     hasPesel: Boolean(person.pesel),
+    hasNotes: Boolean(person.notes),
   }
 }
 
@@ -202,6 +234,35 @@ export function roleAssignmentSnapshot(row: RoleAssignment): RoleAssignmentSnaps
     personId: row.personId,
     role: row.role,
     sectionId: row.sectionId ?? null,
+    validFrom: row.validFrom,
+    validTo: row.validTo ?? null,
+  }
+}
+
+/** Everything an undo of a guardianship update, end or consent change restores (consents are not encrypted). */
+export type GuardianshipSnapshot = {
+  id: string
+  tenantId: string
+  organizationId: string
+  guardianPersonId: string
+  wardPersonId: string
+  relation: GuardianRelation
+  isPrimaryPayer: boolean
+  consents: StoredConsents
+  validFrom: string
+  validTo: string | null
+}
+
+export function guardianshipSnapshot(row: Guardianship): GuardianshipSnapshot {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    guardianPersonId: row.guardianPersonId,
+    wardPersonId: row.wardPersonId,
+    relation: row.relation,
+    isPrimaryPayer: row.isPrimaryPayer,
+    consents: parseStoredConsents(row.consents),
     validFrom: row.validFrom,
     validTo: row.validTo ?? null,
   }

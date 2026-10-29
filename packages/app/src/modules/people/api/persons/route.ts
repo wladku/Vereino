@@ -1,4 +1,6 @@
-// `/api/people/persons` — list (record scope through `scopeWhere`), create and update through the `people` commands.
+// `/api/people/persons` — list (record scope through `scopeWhere`; a coordinator lists the club's people club-wide,
+// basic data only), create and update through the `people` commands. The list never carries the e-mail, phone,
+// notes or PESEL.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
@@ -8,7 +10,7 @@ import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Person } from '../../data/entities'
 import { personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
-import { PERSON_COLUMNS, PERSON_READ_KINDS, personListItem } from '../shared'
+import { PEOPLE_READ_OPTIONS, PERSON_COLUMNS, PERSON_READ_KINDS, personListItem } from '../shared'
 
 type PersonListQuery = z.infer<typeof personListQuerySchema>
 
@@ -54,7 +56,9 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       // `last_name` is encrypted: the query engine answers this through `search_tokens`.
       if (query.lastName) business.last_name = { $ilike: `%${escapeLikePattern(query.lastName)}%` }
       if (query.hasAccount) business.user_id = { $exists: query.hasAccount === 'true' }
-      return { $and: [scopeWhere(scope, PERSON_READ_KINDS, PERSON_COLUMNS), business] } as Where
+      return {
+        $and: [scopeWhere(scope, PERSON_READ_KINDS, PERSON_COLUMNS, PEOPLE_READ_OPTIONS), business],
+      } as Where
     },
     transformItem: personListItem,
   },
@@ -100,7 +104,7 @@ export const openApi = buildOpenApi({
   create: {
     schema: personCreateSchema,
     description:
-      'Creates a person (club administrator). Errors: 403 `scope_denied`, 409 `pesel_duplicate`, 422 `pesel_invalid`.',
+      'Creates a person (club administrator); `email`, `phone`, `notes` and `pesel` are stored encrypted. Errors: 403 `scope_denied`, 409 `pesel_duplicate`, 422 `pesel_invalid`.',
   },
   update: {
     schema: personUpdateSchema,

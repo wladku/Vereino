@@ -1,7 +1,13 @@
 import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 import {
+  CONSENT_KINDS,
+  GUARDIAN_RELATIONS,
+  applyConsentChanges,
   calendarDateInZone,
+  consentsView,
+  firstOverlapping,
+  parseStoredConsents,
   isPayerEligible,
   isValidPesel,
   personScope,
@@ -128,6 +134,9 @@ describe('people error codes', () => {
       ['role_scope_required', 422],
       ['role_scope_unexpected', 422],
       ['guardianship_self', 422],
+      ['guardianship_primary_payer_conflict', 409],
+      ['guardianship_ended', 409],
+      ['role_assignment_duplicate', 409],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })
@@ -186,5 +195,78 @@ describe('sectionCoordinators', () => {
     ).toBe(true)
     expect(sectionCoordinators({ id: 'pool', isActive: true }, [], today).coordinatorMissing).toBe(true)
     expect(sectionCoordinators({ id: 'chess', isActive: false }, [], today).coordinatorMissing).toBe(false)
+  })
+})
+
+describe('firstOverlapping', () => {
+  const ended = { id: 'a', validFrom: '2026-01-01', validTo: '2026-06-30' }
+  const open = { id: 'b', validFrom: '2026-09-01', validTo: null }
+  it('finds a period that shares a day with the candidate', () => {
+    expect(firstOverlapping({ validFrom: '2026-06-30', validTo: '2026-07-31' }, [ended, open])).toBe(ended)
+    expect(firstOverlapping({ validFrom: '2027-01-01', validTo: null }, [ended, open])).toBe(open)
+  })
+  it('returns null when every period is outside the candidate', () => {
+    expect(firstOverlapping({ validFrom: '2026-07-01', validTo: '2026-08-31' }, [ended, open])).toBeNull()
+    expect(firstOverlapping({ validFrom: '2026-07-01', validTo: null }, [])).toBeNull()
+  })
+})
+
+describe('guardianship vocabularies', () => {
+  it('lists the relations and the consent kinds of the club spec', () => {
+    expect(GUARDIAN_RELATIONS).toEqual(['parent', 'grandparent', 'legal_guardian', 'other'])
+    expect(CONSENT_KINDS).toEqual(['regulations', 'image', 'trips'])
+  })
+})
+
+describe('parseStoredConsents and consentsView', () => {
+  it('keeps well-formed entries and drops the rest', () => {
+    const at = '2026-10-01T10:00:00.000Z'
+    expect(parseStoredConsents(null)).toEqual({})
+    expect(parseStoredConsents('granted')).toEqual({})
+    expect(
+      parseStoredConsents({
+        regulations: { granted: true, at, by_person_id: 'p1' },
+        image: { granted: false, at, by_person_id: 7 },
+        trips: { granted: 'yes', at },
+        unknown: { granted: true, at },
+      }),
+    ).toEqual({
+      regulations: { granted: true, at, by_person_id: 'p1' },
+      image: { granted: false, at, by_person_id: null },
+    })
+    expect(parseStoredConsents({ regulations: null, image: { granted: true, at: 'not a date' } })).toEqual({})
+  })
+  it('shows every kind, a missing one as never granted', () => {
+    const at = '2026-10-01T10:00:00.000Z'
+    expect(consentsView({ image: { granted: true, at, by_person_id: 'p1' } })).toEqual({
+      regulations: { granted: false, at: null, byPersonId: null },
+      image: { granted: true, at, byPersonId: 'p1' },
+      trips: { granted: false, at: null, byPersonId: null },
+    })
+  })
+})
+
+describe('applyConsentChanges (P-08 transitions)', () => {
+  const first = new Date('2026-10-01T10:00:00.000Z')
+  const later = new Date('2026-10-05T12:00:00.000Z')
+  it('grants, keeps the original grant date and records who changed it', () => {
+    const granted = applyConsentChanges({}, { regulations: true, image: true }, first, 'guardian-1')
+    expect(granted.changed).toEqual(['regulations', 'image'])
+    expect(granted.consents).toEqual({
+      regulations: { granted: true, at: first.toISOString(), by_person_id: 'guardian-1' },
+      image: { granted: true, at: first.toISOString(), by_person_id: 'guardian-1' },
+    })
+    const again = applyConsentChanges(granted.consents, { regulations: true }, later, 'admin-1')
+    expect(again.changed).toEqual([])
+    expect(again.consents).toEqual(granted.consents)
+  })
+  it('withdraws a granted consent and ignores withdrawing one never granted', () => {
+    const start = { image: { granted: true, at: first.toISOString(), by_person_id: 'guardian-1' } }
+    const withdrawn = applyConsentChanges(start, { image: false, trips: false }, later, null)
+    expect(withdrawn.changed).toEqual(['image'])
+    expect(withdrawn.consents).toEqual({ image: { granted: false, at: later.toISOString(), by_person_id: null } })
+    const regranted = applyConsentChanges(withdrawn.consents, { image: true }, later, 'guardian-2')
+    expect(regranted.changed).toEqual(['image'])
+    expect(regranted.consents.image).toEqual({ granted: true, at: later.toISOString(), by_person_id: 'guardian-2' })
   })
 })

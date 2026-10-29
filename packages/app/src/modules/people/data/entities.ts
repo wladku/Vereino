@@ -7,13 +7,15 @@ import {
   validToColumn,
   type ScopedEntityOptionalProps,
 } from '@vereino/db'
+import type { GuardianRelation, StoredConsents } from '../lib/people-rules'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
 /**
- * A person of the club (club spec *Data Models* → `people_persons`). Phase A1 holds the columns issue #38 needs;
- * #26 (E02-S02) adds phone, photo, notes, the consents and the external id. `first_name`, `last_name`, `email` and
- * `pesel` are encrypted (`encryption.ts`); `pesel_hash` is the deterministic lookup hash the platform fills.
+ * A person of the club (club spec *Data Models* → `people_persons`). Phase A1 (#38) holds the columns accounts and
+ * roles need; #26 (E02-S02) adds `phone` and `notes`. The photo, the three `<consent>_at` columns and the external id
+ * are deferred by the product owner. `first_name`, `last_name`, `email`, `phone`, `notes` and `pesel` are encrypted
+ * (`encryption.ts`); `pesel_hash` is the deterministic lookup hash the platform fills.
  */
 @Entity({ tableName: 'people_persons' })
 @Index({ name: 'people_persons_org_last_name_idx', properties: ['organizationId', 'lastName'] })
@@ -30,7 +32,15 @@ decorateScopedEntityBase({ PrimaryKey, Property })
 })
 export class Person extends ScopedEntityBase {
   [OptionalProps]?:
-    ScopedEntityOptionalProps | 'preferredLocale' | 'birthDate' | 'email' | 'pesel' | 'peselHash' | 'userId'
+    | ScopedEntityOptionalProps
+    | 'preferredLocale'
+    | 'birthDate'
+    | 'email'
+    | 'phone'
+    | 'notes'
+    | 'pesel'
+    | 'peselHash'
+    | 'userId'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -48,6 +58,13 @@ export class Person extends ScopedEntityBase {
 
   @Property({ name: 'email', type: 'text', nullable: true })
   email?: string | null
+
+  @Property({ name: 'phone', type: 'text', nullable: true })
+  phone?: string | null
+
+  /** Internal notes of the club about the person (encrypted; never listed). */
+  @Property({ name: 'notes', type: 'text', nullable: true })
+  notes?: string | null
 
   @Property({ name: 'pesel', type: 'text', nullable: true })
   pesel?: string | null
@@ -89,21 +106,40 @@ export class RoleAssignment extends ScopedEntityBase {
 }
 
 /**
- * A legal guardianship guardian → ward for a period (club spec → `people_guardianships`). Phase A1 holds what the
- * payer rule and the guardian grant need; #27 adds `relation`, `is_primary_payer` and the consents.
+ * A legal guardianship guardian → ward for a period (club spec → `people_guardianships`): the relation, the primary
+ * payer flag and the consents (`{ regulations, image, trips }`, each `{ granted, at, by_person_id }`; personal data,
+ * not encrypted, club spec *Data Models*). Ended through `valid_to`, never deleted by the UI. At most one primary
+ * payer per ward at a time: the commands refuse overlapping periods under the ward's row lock, and the partial unique
+ * index backs the open-ended case.
  */
 @Entity({ tableName: 'people_guardianships' })
 @Index({ name: 'people_guardianships_org_ward_idx', properties: ['organizationId', 'wardPersonId'] })
 @Index({ name: 'people_guardianships_org_guardian_idx', properties: ['organizationId', 'guardianPersonId'] })
 @Index({ name: 'people_guardianships_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'people_guardianships_org_ward_primary_payer_unique',
+  expression:
+    'create unique index "people_guardianships_org_ward_primary_payer_unique" on "people_guardianships" ("organization_id", "ward_person_id") where is_primary_payer and deleted_at is null and valid_to is null',
+})
 export class Guardianship extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo'
+  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'relation' | 'isPrimaryPayer' | 'consents'
 
   @Property({ name: 'guardian_person_id', type: 'uuid' })
   guardianPersonId!: string
 
   @Property({ name: 'ward_person_id', type: 'uuid' })
   wardPersonId!: string
+
+  /** `parent` | `grandparent` | `legal_guardian` | `other`. */
+  @Property({ name: 'relation', type: 'text', default: 'parent' })
+  relation: GuardianRelation = 'parent'
+
+  @Property({ name: 'is_primary_payer', type: 'boolean', default: false })
+  isPrimaryPayer: boolean = false
+
+  /** `StoredConsents` (`lib/people-rules.ts`); written only through the P-08 transitions. */
+  @Property({ name: 'consents', type: 'json', defaultRaw: `'{}'::jsonb` })
+  consents: StoredConsents = {}
 
   @Property(validFromColumn())
   validFrom!: string

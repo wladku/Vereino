@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { Validity, endsBefore, isActiveAt, isInvertedPeriod } from '../validity.ts'
+import { Validity, endsBefore, isActiveAt, isInvertedPeriod, periodsOverlap } from '../validity.ts'
 
 test('Validity.parse accepts an open-ended and a closed period', () => {
   assert.deepEqual(Validity.parse({ validFrom: '2026-09-01' }), {
@@ -60,4 +60,18 @@ test('endsBefore is true once the last day has passed', () => {
   assert.equal(endsBefore(closed, '2026-10-01'), true)
   assert.equal(endsBefore({ validFrom: '2026-09-01', validTo: null }, '2099-01-01'), false)
   assert.equal(Validity.endsBefore, endsBefore)
+})
+
+test('periodsOverlap shares at least one day, with open ends', () => {
+  const september = { validFrom: '2026-09-01', validTo: '2026-09-30' }
+  assert.equal(periodsOverlap(september, { validFrom: '2026-09-30', validTo: null }), true)
+  assert.equal(periodsOverlap(september, { validFrom: '2026-10-01', validTo: null }), false)
+  assert.equal(periodsOverlap(september, { validFrom: '2026-08-01', validTo: '2026-09-01' }), true)
+  assert.equal(periodsOverlap(september, { validFrom: '2026-08-01', validTo: '2026-08-31' }), false)
+  assert.equal(
+    periodsOverlap({ validFrom: '2026-01-01', validTo: null }, { validFrom: '2020-01-01', validTo: null }),
+    true,
+  )
+  assert.equal(periodsOverlap({ validFrom: '2026-01-01', validTo: null }, september), true)
+  assert.equal(Validity.periodsOverlap, periodsOverlap)
 })

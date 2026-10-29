@@ -131,6 +131,8 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
           preferredLocale: parsed.preferredLocale ?? null,
           birthDate: parsed.birthDate ?? null,
           email: parsed.email ?? null,
+          phone: parsed.phone ?? null,
+          notes: parsed.notes ?? null,
           pesel,
         })
         em.persist(person)
@@ -200,6 +202,8 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         if (patch.preferredLocale !== undefined) person.preferredLocale = patch.preferredLocale
         if (patch.birthDate !== undefined) person.birthDate = patch.birthDate
         if (patch.email !== undefined) person.email = patch.email
+        if (patch.phone !== undefined) person.phone = patch.phone
+        if (patch.notes !== undefined) person.notes = patch.notes
         if (patch.pesel !== undefined) {
           const pesel = patch.pesel
           if (pesel) {
@@ -247,6 +251,8 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
     person.preferredLocale = before.preferredLocale
     person.birthDate = before.birthDate
     person.email = before.email
+    // Snapshots written before #26 carry no phone.
+    if (before.phone !== undefined) person.phone = before.phone
     person.updatedAt = new Date()
     await ctx.transactionalEm?.flush()
     await emitCrudUndoSideEffects({

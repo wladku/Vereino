@@ -44,4 +44,12 @@ export function endsBefore(validity: Validity, today: CalendarDate): boolean {
   return validity.validTo !== null && validity.validTo < today
 }
 
-export const Validity = { parse, isActiveAt, endsBefore } as const
+/**
+ * True when the two periods share at least one day (both ends inclusive, an empty end is open). Two assignments of
+ * the same role and scope, or two primary payers of one ward, conflict when their periods overlap.
+ */
+export function periodsOverlap(a: Validity, b: Validity): boolean {
+  return (b.validTo === null || a.validFrom <= b.validTo) && (a.validTo === null || b.validFrom <= a.validTo)
+}
+
+export const Validity = { parse, isActiveAt, endsBefore, periodsOverlap } as const
