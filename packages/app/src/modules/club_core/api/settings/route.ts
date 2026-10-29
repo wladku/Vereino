@@ -1,12 +1,19 @@
-// `/api/club_core/settings` — the club's settings with their defaults (foundation spec DD-F16, TEST-F09). The read
-// is organization-wide (club settings are not person-scoped records); the write is the `club_core.settings.update`
-// command, which only the club administrator's scope allows.
+// `/api/club_core/settings` — the club's settings with their defaults (foundation spec DD-F16, TEST-F09; club spec
+// DD-37). The read is organization-wide (club settings are not person-scoped records); the write is the
+// `club_core.settings.update` command, which only the club administrator's scope allows.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
 import type { ClubSettingsUpdateResult } from '../../commands/settings'
 import { clubSettingsUpdateSchema } from '../../data/validators'
+import {
+  CALLED_UP_CHILDREN_VISIBILITY,
+  COACH_SETTLEMENT_MODELS,
+  ONLINE_FEE_MODES,
+  ORDER_SALES_DOCUMENTS,
+  declarationKindsPatchSchema,
+} from '../../lib/settings'
 import type { ClubCoreSettingsService } from '../../services/settings'
 import { CLUB_CORE_SETTINGS_SERVICE } from '../../di'
 
@@ -43,12 +50,7 @@ export async function PUT(request: Request): Promise<Response> {
       input: body ?? {},
       ctx,
     })
-    return Response.json({
-      ownAccountMinAge: result.settings.ownAccountMinAge,
-      defaultLocale: result.settings.defaultLocale,
-      timezone: result.settings.timezone,
-      updatedAt: result.settings.updatedAt.toISOString(),
-    })
+    return Response.json({ ...result.values, updatedAt: result.settings.updatedAt.toISOString() })
   } catch (error: unknown) {
     return errorResponse(error, 'club_core.settings.update')
   }
@@ -58,6 +60,15 @@ const settingsResponseSchema = z.object({
   ownAccountMinAge: z.number().int(),
   defaultLocale: z.string(),
   timezone: z.string(),
+  shortName: z.string().nullable(),
+  currency: z.string(),
+  declarationKinds: declarationKindsPatchSchema.required(),
+  onlineFeeMode: z.enum(ONLINE_FEE_MODES),
+  onlineFeePercent: z.number().describe('Percentage of the paid amount, two decimals'),
+  onlineFeeFixed: z.number().int().describe('Minor units (grosz) of the club currency'),
+  coachSettlementModel: z.enum(COACH_SETTLEMENT_MODELS),
+  showCalledUpChildren: z.enum(CALLED_UP_CHILDREN_VISIBILITY),
+  orderSalesDocument: z.enum(ORDER_SALES_DOCUMENTS),
   defaultsApplied: z.array(z.string()).optional(),
   updatedAt: z.string().nullable(),
 })
@@ -77,7 +88,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator. Send the lock token in the platform optimistic-lock header once the settings exist.',
+        'Partial update by the club administrator; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. Send the lock token in the platform optimistic-lock header once the settings exist.',
       requestBody: { contentType: 'application/json', schema: clubSettingsUpdateSchema },
       responses: [{ status: 200, description: 'Updated settings', schema: settingsResponseSchema }],
       errors: [

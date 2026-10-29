@@ -8,8 +8,11 @@ import { calendarDateInZone } from '../lib/people-rules'
 /** DI token of `club_core`'s settings service. */
 const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings'
 
+/** The club settings `people` reads: the account age threshold, the default locale and the time zone. */
+export type PeopleClubSettings = Pick<ClubSettingsSnapshot['values'], 'ownAccountMinAge' | 'defaultLocale' | 'timezone'>
+
 /** The default club zone and age threshold when `club_core` is not enabled (club spec DD-37 defaults). */
-const FALLBACK_SETTINGS: ClubSettingsSnapshot['values'] = {
+const FALLBACK_SETTINGS: PeopleClubSettings = {
   ownAccountMinAge: 16,
   defaultLocale: 'pl',
   timezone: 'Europe/Warsaw',
@@ -18,10 +21,7 @@ const FALLBACK_SETTINGS: ClubSettingsSnapshot['values'] = {
 export type ClubScope = { tenantId: string; organizationId: string }
 
 /** The club's effective settings (`club_core`), or the defaults when the module is absent. */
-export async function clubSettings(
-  container: AwilixContainer,
-  scope: ClubScope,
-): Promise<ClubSettingsSnapshot['values']> {
+export async function clubSettings(container: AwilixContainer, scope: ClubScope): Promise<PeopleClubSettings> {
   if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return FALLBACK_SETTINGS
   const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
   return (await service.get(scope)).values

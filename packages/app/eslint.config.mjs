@@ -46,8 +46,17 @@ export default [
     ignores: PLATFORM_FILES_IN_VEREINO_PATHS,
     tsconfigRootDir: import.meta.dirname,
   }),
+  // Only the recommended rules: `eslint-config-next` already registers its own copy of the `jsx-a11y` plugin for
+  // every `.tsx` file, and ESLint refuses a second plugin object under the same name (surfaced by the first `.tsx`
+  // file of a Vereino module, issue #25).
   ...(vereinoModuleIds.length > 0
-    ? [{ ...jsxA11y.flatConfigs.recommended, files: vereinoModuleIds.map((id) => `src/modules/${id}/**/*.tsx`) }]
+    ? [
+        {
+          name: 'vereino/jsx-a11y-recommended',
+          files: vereinoModuleIds.map((id) => `src/modules/${id}/**/*.tsx`),
+          rules: jsxA11y.flatConfigs.recommended.rules,
+        },
+      ]
     : []),
   ...vereinoModuleBoundaryConfigs({ boundaries, moduleIds: vereinoModuleIds }),
   ...vereinoReactConfigs({ moduleIds: vereinoModuleIds }),

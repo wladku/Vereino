@@ -5,7 +5,13 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { ClubSettings } from '../data/entities'
-import { resolveClubSettings, type ClubSettingKey, type ClubSettingsValues } from '../lib/settings'
+import {
+  resolveClubSettings,
+  storedNumber,
+  type ClubSettingKey,
+  type ClubSettingsValues,
+  type ResolvedClubSettings,
+} from '../lib/settings'
 
 const logger = createLogger('club_core').child({ component: 'settings' })
 
@@ -23,6 +29,38 @@ export type ClubCoreSettingsService = {
   get(scope: ClubSettingsScope): Promise<ClubSettingsSnapshot>
 }
 
+/** The stored columns of a row, keyed by setting (decimals read as numbers). */
+export function storedSettingsOf(row: ClubSettings): Record<ClubSettingKey, unknown> {
+  return {
+    ownAccountMinAge: row.ownAccountMinAge,
+    defaultLocale: row.defaultLocale,
+    timezone: row.timezone,
+    shortName: row.shortName ?? null,
+    currency: row.currency,
+    declarationKinds: row.declarationKinds,
+    onlineFeeMode: row.onlineFeeMode,
+    onlineFeePercent: storedNumber(row.onlineFeePercent),
+    onlineFeeFixed: row.onlineFeeFixed,
+    coachSettlementModel: row.coachSettlementModel,
+    showCalledUpChildren: row.showCalledUpChildren,
+    orderSalesDocument: row.orderSalesDocument,
+  }
+}
+
+/** Resolves a row (or none) and reports invalid stored values. */
+export function resolveStoredSettings(row: ClubSettings | null, organizationId: string): ResolvedClubSettings {
+  const resolved = resolveClubSettings(row ? storedSettingsOf(row) : null)
+  if (resolved.invalidKeys.length > 0) {
+    const error = new Error(`[internal] invalid stored club settings: ${resolved.invalidKeys.join(', ')}`)
+    logger.warn('Invalid stored club settings replaced by their defaults', {
+      organizationId,
+      keys: resolved.invalidKeys,
+    })
+    getTelemetryRuntime()?.reportError(error, { module: 'club_core', code: 'club_core.settings.invalid' })
+  }
+  return resolved
+}
+
 /** Reads the stored row of the organization; `em` is the caller's (or the request's) EntityManager. */
 export async function readClubSettings(em: EntityManager, scope: ClubSettingsScope): Promise<ClubSettingsSnapshot> {
   const row = await em.findOne(ClubSettings, {
@@ -30,17 +68,7 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
     organizationId: scope.organizationId,
     deletedAt: null,
   })
-  const { values, invalidKeys } = resolveClubSettings(
-    row ? { ownAccountMinAge: row.ownAccountMinAge, defaultLocale: row.defaultLocale, timezone: row.timezone } : null,
-  )
-  if (invalidKeys.length > 0) {
-    const error = new Error(`[internal] invalid stored club settings: ${invalidKeys.join(', ')}`)
-    logger.warn('Invalid stored club settings replaced by their defaults', {
-      organizationId: scope.organizationId,
-      keys: invalidKeys,
-    })
-    getTelemetryRuntime()?.reportError(error, { module: 'club_core', code: 'club_core.settings.invalid' })
-  }
+  const { values, invalidKeys } = resolveStoredSettings(row, scope.organizationId)
   return { values, defaultsApplied: invalidKeys, updatedAt: row?.updatedAt ?? null }
 }
 
