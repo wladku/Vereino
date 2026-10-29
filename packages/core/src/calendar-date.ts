@@ -20,3 +20,18 @@ export function isCalendarDate(value: unknown): value is CalendarDate {
 export function assertCalendarDate(value: unknown, label: string): asserts value is CalendarDate {
   if (!isCalendarDate(value)) throw new RangeError(`[internal] ${label} must be a YYYY-MM-DD calendar date`)
 }
+
+/**
+ * The calendar date (`YYYY-MM-DD`) of the instant `now` in the IANA time zone `timeZone` — the club's "today" (S3.5:
+ * the caller passes the instant). Shared by `people` and `groups`.
+ */
+export function calendarDateInZone(now: Date, timeZone: string): CalendarDate {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now)
+  const byType = Object.fromEntries(parts.map((entry) => [entry.type, entry.value])) as Record<string, string>
+  return `${String(byType.year)}-${String(byType.month)}-${String(byType.day)}`
+}

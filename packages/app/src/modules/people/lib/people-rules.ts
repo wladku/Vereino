@@ -18,17 +18,8 @@ import {
   type Validity,
 } from '@vereino/core'
 
-/** The calendar date (`YYYY-MM-DD`) of `now` in the IANA time zone `timeZone`. */
-export function calendarDateInZone(now: Date, timeZone: string): CalendarDate {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-  const byType = Object.fromEntries(parts.map((entry) => [entry.type, entry.value])) as Record<string, string>
-  return `${byType.year}-${byType.month}-${byType.day}`
-}
+/** The calendar date (`YYYY-MM-DD`) of `now` in the IANA time zone `timeZone` (moved to `@vereino/core`, #30). */
+export { calendarDateInZone } from '@vereino/core'
 
 const PESEL_WEIGHTS = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3] as const
 
@@ -58,13 +49,18 @@ export type PersonScopeInput = {
   readonly assignments: readonly AssignmentRecord[]
   /** Guardianships in which the person is the guardian. */
   readonly guardianships: readonly GuardianshipRecord[]
+  /**
+   * Groups the person leads on `today` through an active `coach` or `assistant` membership (`coached_group_ids`),
+   * as the optional `groups` contribution returns them; absent or empty without `groups`.
+   */
+  readonly coachedGroupIds?: readonly string[]
 }
 
 /**
  * The record scope of a person on `today` (foundation spec *Grant kinds*): `club_admin` for an active club_admin
- * assignment; `coordinator` with the sections of the active coordinator assignments; `guardian` with the wards of
- * the active guardianships; `self` always. A `coach` grant carries group ids, which come from memberships (#30);
- * phase A1 has none, so no coach grant is returned and a coach sees only what `self` allows.
+ * assignment; `coordinator` with the sections of the active coordinator assignments; `coach` with the groups of the
+ * active `coach`/`assistant` memberships (#30 — a `coach` role assignment alone grants only the `auth` role, not a
+ * group); `guardian` with the wards of the active guardianships; `self` always.
  */
 export function personScope(input: PersonScopeInput, today: CalendarDate): Scope {
   const active = input.assignments.filter((assignment) => isActiveAt(assignment, today))
@@ -74,6 +70,8 @@ export function personScope(input: PersonScopeInput, today: CalendarDate): Scope
     active.filter((assignment) => assignment.role === 'coordinator').map((assignment) => assignment.sectionId),
   )
   if (sectionIds.length > 0) grants.push({ kind: 'coordinator', ids: sectionIds })
+  const groupIds = uniqueSorted(input.coachedGroupIds ?? [])
+  if (groupIds.length > 0) grants.push({ kind: 'coach', ids: groupIds })
   const wardIds = uniqueSorted(
     input.guardianships.filter((guardianship) => isActiveAt(guardianship, today)).map((g) => g.wardPersonId),
   )
@@ -90,15 +88,17 @@ export type PayerInput = {
   readonly birthDate: CalendarDate | null
   /** Guardianships in which the person is the guardian. */
   readonly guardianships: readonly Validity[]
+  /** The person has a `participant` membership active on `today` (the optional `groups` contribution, #30). */
+  readonly activeParticipant?: boolean
 }
 
 /**
  * `vereino_payer` eligibility (club spec *Account payer*): an adult — from the 18th birthday — who is an active
- * guardian. Adult participants become payers through their memberships (#30); phase A1 has none. A person without
- * a birth date is never a payer.
+ * guardian or an active participant of a group (their own payer). A person without a birth date is never a payer.
  */
 export function isPayerEligible(input: PayerInput, today: CalendarDate): boolean {
   if (!input.birthDate || !isAdultOn(input.birthDate, today)) return false
+  if (input.activeParticipant === true) return true
   return input.guardianships.some((guardianship) => isActiveAt(guardianship, today))
 }
 

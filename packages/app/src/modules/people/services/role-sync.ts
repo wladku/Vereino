@@ -1,7 +1,9 @@
 // The `auth` role sync of `people` (foundation spec DD-F05, P-04, P-05; club spec TEST-005): a person's desired role
 // set — the roles outside `vereino_*`, the roles of the active assignments, `vereino_member` for an account and
-// `vereino_payer` for an adult guardian — written through the foundation's `syncAuthRoles`. Used by the
-// `people:sync-auth-roles` subscriber and the `people.persons.sync_roles` job command; idempotent by set comparison.
+// `vereino_payer` for an adult guardian or an adult active participant (the optional `groups` contribution, #30) —
+// written through the foundation's `syncAuthRoles`. Used by the `people:sync-auth-roles` subscriber, the
+// `people.roleSync` DI service (the `groups` membership subscriber) and the `people.persons.sync_roles` job command;
+// idempotent by set comparison.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
@@ -11,17 +13,22 @@ import { desiredRoles, jobCommandContext, syncAuthRoles, type RoleSyncResult } f
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { isPayerEligible } from '../lib/people-rules'
 import { clubToday, type ClubScope } from './club-clock'
+import { membershipContribution } from './membership-contribution'
 
 export type PersonRoleSyncOutcome = RoleSyncResult | 'no_account' | 'person_missing'
 
 type PersonForSync = Pick<Person, 'id' | 'userId' | 'birthDate'>
 
-/** The desired `auth` roles of a person with an account, from `currentRoles` (kept outside `vereino_*`). */
+/**
+ * The desired `auth` roles of a person with an account, from `currentRoles` (kept outside `vereino_*`). `container`
+ * resolves the optional `groups` contribution (an adult active participant is a payer).
+ */
 export async function desiredRolesForPerson(
   em: EntityManager,
   person: PersonForSync,
   scope: ClubScope,
   today: CalendarDate,
+  container: AwilixContainer,
 ): Promise<(currentRoles: readonly string[]) => string[]> {
   const where = { tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null }
   const assignments = await em.find(
@@ -34,10 +41,15 @@ export async function desiredRolesForPerson(
     { ...where, guardianPersonId: person.id },
     { fields: ['id', 'validFrom', 'validTo'] },
   )
+  const contribution = membershipContribution(container)
+  const activeParticipant = contribution
+    ? await contribution.isActiveParticipant(em, { ...scope, personId: person.id }, today)
+    : false
   const payerEligible = isPayerEligible(
     {
       birthDate: person.birthDate ?? null,
       guardianships: guardianships.map((row) => ({ validFrom: row.validFrom, validTo: row.validTo ?? null })),
+      activeParticipant,
     },
     today,
   )
@@ -52,7 +64,13 @@ export async function syncPersonRolesInTransaction(
   options: { scope: ClubScope; today: CalendarDate; commandContext: CommandRuntimeContext },
 ): Promise<PersonRoleSyncOutcome> {
   if (!person.userId) return 'no_account'
-  const desired = await desiredRolesForPerson(em, person, options.scope, options.today)
+  const desired = await desiredRolesForPerson(
+    em,
+    person,
+    options.scope,
+    options.today,
+    options.commandContext.container,
+  )
   return syncAuthRoles(person.userId, desired, { commandContext: options.commandContext, em, scope: options.scope })
 }
 

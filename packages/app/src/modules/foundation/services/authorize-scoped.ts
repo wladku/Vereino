@@ -45,6 +45,11 @@ export type AuthorizeScopedSpec<TSchema extends z.ZodType, TEntity extends objec
   resourceKind: string
   /** Grant kinds the command accepts, least-privileged first (DD-F08). */
   allowedKinds: readonly GrantKind[]
+  /**
+   * Per-resource matching options for the scope check (`clubWideKinds`), the same the resource's list passes to
+   * `scopeWhere` — e.g. a club-wide dictionary every coordinator may maintain (#30).
+   */
+  matchOptions?: ScopeMatchOptions
   /** Loads the target with the given lock options (omit for a create); null answers 404. */
   loadTarget?: (parsed: z.output<TSchema>, em: EntityManager, lock: TargetLock) => Promise<TEntity | null>
   /** Describes the target for the scope check; for a create, the record about to be created. */
@@ -186,7 +191,7 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
   if (target.tenantId !== tenantId || target.organizationId !== organizationId) {
     return foundationErrors.throw('scope_denied')
   }
-  const actingRole = await assertInScope(scope, spec.allowedKinds, target)
+  const actingRole = await assertInScope(scope, spec.allowedKinds, target, spec.matchOptions)
 
   if (entity && (spec.lock ?? 'updated_at') === 'updated_at' && options.mode !== 'replay') {
     await enforceCommandOptimisticLockWithGuards(ctx.container, {

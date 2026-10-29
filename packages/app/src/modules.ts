@@ -29,6 +29,8 @@ enabledModules.push({ id: 'scheduler', from: '@open-mercato/scheduler' })
 enabledModules.push({ id: 'foundation', from: '@app' })
 enabledModules.push({ id: 'club_core', from: '@app' })
 enabledModules.push({ id: 'people', from: '@app' })
+// `groups` requires `people` and `club_core` (club spec phase 2 step 2, #30; enabling approved by the product owner).
+enabledModules.push({ id: 'groups', from: '@app' })
 
 const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)
 const enterpriseSsoEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SSO, false)

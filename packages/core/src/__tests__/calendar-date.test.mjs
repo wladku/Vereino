@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { assertCalendarDate, isCalendarDate } from '../calendar-date.ts'
+import { assertCalendarDate, calendarDateInZone, isCalendarDate } from '../calendar-date.ts'
 
 test('isCalendarDate accepts real YYYY-MM-DD dates only', () => {
   assert.equal(isCalendarDate('2026-10-27'), true)
@@ -20,4 +20,10 @@ test('assertCalendarDate throws a RangeError naming the field', () => {
     name: 'RangeError',
     message: '[internal] today must be a YYYY-MM-DD calendar date',
   })
+})
+
+test('calendarDateInZone gives the calendar date of an instant in a time zone', () => {
+  const lateEvening = new Date('2026-10-27T23:30:00Z')
+  assert.equal(calendarDateInZone(lateEvening, 'Europe/Warsaw'), '2026-10-28')
+  assert.equal(calendarDateInZone(lateEvening, 'UTC'), '2026-10-27')
 })

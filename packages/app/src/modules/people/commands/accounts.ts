@@ -80,7 +80,7 @@ const createAccountCommand: CommandHandler<Record<string, unknown>, CreateAccoun
         if (accountAgePolicy({ birthDate: person.birthDate, threshold, today }) === 'below_threshold') {
           await peopleErrors.throw('account_age_below_threshold', { threshold })
         }
-        const desired = await desiredRolesForPerson(em, person, scope, today)
+        const desired = await desiredRolesForPerson(em, person, scope, today, ctx.container)
         return {
           personId: person.id,
           ...scope,

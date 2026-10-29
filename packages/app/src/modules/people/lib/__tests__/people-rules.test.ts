@@ -96,10 +96,32 @@ describe('personScope', () => {
     ])
   })
 
-  it('adds no coach grant in phase A1 (group ids come with memberships)', () => {
+  it('adds no coach grant for a coach assignment without memberships (group ids come from memberships)', () => {
     expect(
       personScope({ personId: 'p1', assignments: [assignment('coach', today)], guardianships: [] }, today),
     ).toEqual([{ kind: 'self', ids: ['p1'] }])
+    expect(personScope({ personId: 'p1', assignments: [], guardianships: [], coachedGroupIds: [] }, today)).toEqual([
+      { kind: 'self', ids: ['p1'] },
+    ])
+  })
+
+  it('adds the coached groups, de-duplicated and sorted, after the coordinator grant', () => {
+    expect(
+      personScope(
+        {
+          personId: 'p1',
+          assignments: [assignment('coordinator', '2026-01-01', null, 'section-a')],
+          guardianships: [ward('w1', '2026-01-01')],
+          coachedGroupIds: ['group-b', 'group-a', 'group-b', ''],
+        },
+        today,
+      ),
+    ).toEqual([
+      { kind: 'coordinator', ids: ['section-a'] },
+      { kind: 'coach', ids: ['group-a', 'group-b'] },
+      { kind: 'guardian', ids: ['w1'] },
+      { kind: 'self', ids: ['p1'] },
+    ])
   })
 })
 
@@ -109,6 +131,19 @@ describe('isPayerEligible', () => {
   it('is true from the 18th birthday of an active guardian', () => {
     expect(isPayerEligible({ birthDate: '2008-10-27', guardianships: activeWard }, '2026-10-27')).toBe(true)
     expect(isPayerEligible({ birthDate: '2008-10-28', guardianships: activeWard }, '2026-10-27')).toBe(false)
+  })
+
+  it('is true for an adult active participant without a guardianship, never for a minor participant', () => {
+    expect(isPayerEligible({ birthDate: '1980-01-01', guardianships: [], activeParticipant: true }, '2026-10-27')).toBe(
+      true,
+    )
+    expect(isPayerEligible({ birthDate: '2008-10-28', guardianships: [], activeParticipant: true }, '2026-10-27')).toBe(
+      false,
+    )
+    expect(isPayerEligible({ birthDate: null, guardianships: [], activeParticipant: true }, '2026-10-27')).toBe(false)
+    expect(
+      isPayerEligible({ birthDate: '1980-01-01', guardianships: [], activeParticipant: false }, '2026-10-27'),
+    ).toBe(false)
   })
 
   it('is false without a birth date, for an adult without an active guardianship', () => {

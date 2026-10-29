@@ -25,8 +25,12 @@ const PLATFORM_BASELINE: { rule: string; owner: string; matches: (node: ScannedN
   },
   {
     rule: 'label-content-name-mismatch',
-    owner: 'AppShell back link',
-    matches: (node) => node.html.includes('data-testid="appshell-'),
+    // The back link (`data-testid="appshell-…"`) and the main-sidebar brand link of `AppShell.tsx` (`aria-label="Go to
+    // dashboard"` while its visible text is the brand name; first scanned on the `groups` pages, #30).
+    owner: 'AppShell back link and brand link',
+    matches: (node) =>
+      node.html.includes('data-testid="appshell-') ||
+      (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')),
   },
 ]
 
