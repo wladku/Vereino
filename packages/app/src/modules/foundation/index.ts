@@ -41,7 +41,7 @@ export {
   type PlainEncryptedFieldDeclaration,
 } from './services/encrypted-field'
 export { errors, type ErrorDetails, type ModuleErrors } from './services/errors'
-export { localeForPerson, renderLocalized } from './services/localized'
+export { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 export { registerModuleSchedule, type ModuleScheduleRegistration } from './services/register-module-schedule'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {

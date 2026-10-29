@@ -1,11 +1,14 @@
-// Operator commands of `people` (`yarn mercato people <command>`). Both dispatch a job command with a session-less
-// job context for one organization, so they run exactly what the scheduler and the worker run.
+// Operator commands of `people` (`yarn mercato people <command>`). The job commands dispatch with a session-less job
+// context for one organization, so they run exactly what the scheduler and the worker run; `check-own-payments` runs
+// the R10 gate the phase 4 payments routes will call.
 import { parseArgs } from 'node:util'
 import type { ModuleCli } from '@open-mercato/shared/modules/registry'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
+import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import { setUpClubPeople } from './services/club-setup'
+import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './services/payments-gate'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
   const options = Object.fromEntries(names.map((name) => [name, { type: 'string' as const }]))
@@ -68,6 +71,35 @@ const bootstrapAdmin: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin]
+/**
+ * `people check-own-payments --tenant <id> --org <id> --user <userId>`: runs the R10 gate (`people.paymentsGate.assert`)
+ * every route of a person's own payments applies in phase 4 and prints `{ allowed, status?, code? }` — for operators
+ * checking why a member does not see payments, and for the integration tests until the payments routes exist.
+ */
+const checkOwnPayments: ModuleCli = {
+  command: 'check-own-payments',
+  async run(argv) {
+    const { tenant, org, user } = readOptions(argv, ['tenant', 'org', 'user'])
+    if (!tenant || !org || !user) {
+      process.stderr.write(
+        'Usage: mercato people check-own-payments --tenant <tenantId> --org <organizationId> --user <userId>\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const gate = container.resolve<PaymentsGate>(PEOPLE_PAYMENTS_GATE)
+    try {
+      await gate.assert({ tenantId: tenant, organizationId: org, userId: user })
+      process.stdout.write(`${JSON.stringify({ allowed: true })}\n`)
+    } catch (error: unknown) {
+      if (!isCrudHttpError(error)) throw error
+      const code = typeof error.body.code === 'string' ? error.body.code : null
+      process.stdout.write(`${JSON.stringify({ allowed: false, status: error.status, code })}\n`)
+    }
+  },
+}
+
+const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments]
 
 export default commands

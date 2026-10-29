@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { SCOPE_PROVIDER_TOKEN } from '@/modules/foundation'
 import type { ClubScope } from './services/club-clock'
+import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
 import { createPersonDirectory } from './services/person-directory'
 import { syncPersonRoles, type PersonRoleSyncOutcome } from './services/role-sync'
 import { createPeopleScopeService } from './services/scope-service'
@@ -22,6 +23,12 @@ export const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory' as const
  */
 export const PEOPLE_ROLE_SYNC = 'people.roleSync' as const
 
+/**
+ * `people.paymentsGate` (#27, R10): `check(subject)` / `assert(subject)` on the caller's own payments — a minor never
+ * sees them, even with a manually granted `payments.view_own`. The phase 4 `payments` routes call `assert`.
+ */
+export { PEOPLE_PAYMENTS_GATE }
+
 export type PeopleRoleSync = {
   syncPerson(scope: ClubScope, personId: string): Promise<PersonRoleSyncOutcome>
 }
@@ -39,5 +46,6 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [PEOPLE_ROLE_SYNC]: asFunction(() => roleSync).scoped(),
+    [PEOPLE_PAYMENTS_GATE]: asFunction(() => createPaymentsGate(container)).scoped(),
   })
 }

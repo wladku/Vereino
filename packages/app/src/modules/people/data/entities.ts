@@ -2,6 +2,7 @@ import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import {
   ScopedEntityBase,
+  consentColumn,
   decorateScopedEntityBase,
   validFromColumn,
   validToColumn,
@@ -13,7 +14,9 @@ decorateScopedEntityBase({ PrimaryKey, Property })
 
 /**
  * A person of the club (club spec *Data Models* → `people_persons`). Phase A1 (#38) holds the columns accounts and
- * roles need; #26 (E02-S02) adds `phone` and `notes`. The photo, the three `<consent>_at` columns and the external id
+ * roles need; #26 (E02-S02) adds `phone` and `notes`; #27 (E02-S03) adds the guardian's two consents
+ * `share_contact_with_coaches_at` (REQ-037, DD-39) and `share_presence_with_guardians_at` (REQ-006), each set when
+ * given and null when never given or withdrawn (P-08). The photo, `publish_name_consent_at` (#29) and the external id
  * are deferred by the product owner. `first_name`, `last_name`, `email`, `phone`, `notes` and `pesel` are encrypted
  * (`encryption.ts`); `pesel_hash` is the deterministic lookup hash the platform fills.
  */
@@ -41,6 +44,8 @@ export class Person extends ScopedEntityBase {
     | 'pesel'
     | 'peselHash'
     | 'userId'
+    | 'shareContactWithCoachesAt'
+    | 'sharePresenceWithGuardiansAt'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -75,6 +80,14 @@ export class Person extends ScopedEntityBase {
   /** The `auth:user` of the person's account (at most one per person). */
   @Property({ name: 'user_id', type: 'uuid', nullable: true })
   userId?: string | null
+
+  /** A guardian's consent to show their phone and e-mail to the coaches of their wards' groups (REQ-037). */
+  @Property(consentColumn('share_contact_with_coaches'))
+  shareContactWithCoachesAt?: Date | null
+
+  /** A guardian's consent to show their wards' names on other guardians' session views (REQ-006). */
+  @Property(consentColumn('share_presence_with_guardians'))
+  sharePresenceWithGuardiansAt?: Date | null
 }
 
 /**

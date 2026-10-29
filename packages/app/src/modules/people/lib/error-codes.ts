@@ -18,6 +18,8 @@ export const errorCodes = [
   },
   { code: 'guardianship_ended', status: 409, messageKey: 'people.errors.guardianship_ended' },
   { code: 'role_assignment_duplicate', status: 409, messageKey: 'people.errors.role_assignment_duplicate' },
+  { code: 'person_not_linked', status: 404, messageKey: 'people.errors.person_not_linked' },
+  { code: 'payments_minor', status: 403, messageKey: 'people.errors.payments_minor' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

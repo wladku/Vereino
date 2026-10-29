@@ -118,6 +118,21 @@ export const guardianshipConsentsSchema = z
   })
   .strict()
 
+/**
+ * `PUT /api/people/me` (`people.persons.update_self`; club spec API table): the member's own interface language
+ * (null = the club default), contact details and the two consents (`true` gives, `false` withdraws, absent keeps).
+ * `publishNameConsent` arrives with the public pages (#29); the lock token travels in the platform header.
+ */
+export const selfUpdateSchema = z
+  .object({
+    preferredLocale: localeSchema.nullable().optional(),
+    phone: phoneSchema.nullable().optional(),
+    email: emailSchema.nullable().optional(),
+    shareContactWithCoaches: z.boolean().optional(),
+    sharePresenceWithGuardians: z.boolean().optional(),
+  })
+  .strict()
+
 export const createAccountSchema = z
   .object({
     id: z.uuid(),
@@ -174,5 +189,6 @@ export const guardianshipListQuerySchema = z.object({
 
 export type PersonCreateInput = z.output<typeof personCreateSchema>
 export type PersonUpdateInput = z.output<typeof personUpdateSchema>
+export type SelfUpdateInput = z.output<typeof selfUpdateSchema>
 export type RoleAssignmentCreateInput = z.output<typeof roleAssignmentCreateSchema>
 export type RoleAssignmentUpdateInput = z.output<typeof roleAssignmentUpdateSchema>
