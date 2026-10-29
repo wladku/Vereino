@@ -11,6 +11,13 @@ export const errorCodes = [
   { code: 'role_scope_required', status: 422, messageKey: 'people.errors.role_scope_required' },
   { code: 'role_scope_unexpected', status: 422, messageKey: 'people.errors.role_scope_unexpected' },
   { code: 'guardianship_self', status: 422, messageKey: 'people.errors.guardianship_self' },
+  {
+    code: 'guardianship_primary_payer_conflict',
+    status: 409,
+    messageKey: 'people.errors.guardianship_primary_payer_conflict',
+  },
+  { code: 'guardianship_ended', status: 409, messageKey: 'people.errors.guardianship_ended' },
+  { code: 'role_assignment_duplicate', status: 409, messageKey: 'people.errors.role_assignment_duplicate' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

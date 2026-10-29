@@ -74,6 +74,14 @@ const ACTING_ROLES: Readonly<Record<GrantKind, ActingRole>> = {
   system_job: 'system',
 }
 
+/**
+ * Per-resource matching options. `clubWideKinds` names kinds that cover every record of the organization for this
+ * resource only, like `club_admin` does everywhere — e.g. the coordinator's read of the club's people records
+ * (basic data; club spec *Users, Permissions, and Scope*). A kind listed here still has to be one of the allowed
+ * kinds of the call.
+ */
+export type ScopeMatchOptions = { readonly clubWideKinds?: readonly GrantKind[] }
+
 /** The `acting_role` recorded for an action allowed by a grant of `kind`. */
 export function actingRoleFor(kind: GrantKind): ActingRole {
   return ACTING_ROLES[kind]
@@ -88,8 +96,12 @@ export function hasKind(scope: Scope, kind: GrantKind): boolean {
   return scope.some((grant) => grant.kind === kind)
 }
 
-function grantMatches(grant: ScopeGrant, target: ScopeTarget): boolean {
-  if (CLUB_WIDE_KINDS.has(grant.kind)) return true
+function isClubWide(kind: GrantKind, options: ScopeMatchOptions): boolean {
+  return CLUB_WIDE_KINDS.has(kind) || (options.clubWideKinds ?? []).includes(kind)
+}
+
+function grantMatches(grant: ScopeGrant, target: ScopeTarget, options: ScopeMatchOptions): boolean {
+  if (isClubWide(grant.kind, options)) return true
   const ids = grant.ids ?? []
   return KIND_TARGET_FIELDS[grant.kind].some((field) => {
     const value = target[field]
@@ -101,30 +113,45 @@ function grantMatches(grant: ScopeGrant, target: ScopeTarget): boolean {
  * Walks `kinds` in the given order (least-privileged first, DD-F08) and returns the first grant of that kind
  * containing the target, or null. The caller checks the target's tenant and organization against the scope's.
  */
-export function grantContaining(scope: Scope, kinds: readonly GrantKind[], target: ScopeTarget): ScopeGrant | null {
+export function grantContaining(
+  scope: Scope,
+  kinds: readonly GrantKind[],
+  target: ScopeTarget,
+  options: ScopeMatchOptions = {},
+): ScopeGrant | null {
   for (const kind of kinds) {
-    const grant = scope.find((candidate) => candidate.kind === kind && grantMatches(candidate, target))
+    const grant = scope.find((candidate) => candidate.kind === kind && grantMatches(candidate, target, options))
     if (grant) return grant
   }
   return null
 }
 
 /** The acting role of the first allowed grant containing the target, or null when none does. */
-export function findActingRole(scope: Scope, kinds: readonly GrantKind[], target: ScopeTarget): ActingRole | null {
-  const grant = grantContaining(scope, kinds, target)
+export function findActingRole(
+  scope: Scope,
+  kinds: readonly GrantKind[],
+  target: ScopeTarget,
+  options: ScopeMatchOptions = {},
+): ActingRole | null {
+  const grant = grantContaining(scope, kinds, target, options)
   return grant ? actingRoleFor(grant.kind) : null
 }
 
 /**
  * Turns the grants of the allowed kinds into a list filter, so a list and a detail check agree by construction.
- * A club-wide grant adds no condition; a grant whose fields the column map does not name adds nothing; no
+ * A club-wide grant (or one of `options.clubWideKinds`) adds no condition; a grant whose fields the column map does not name adds nothing; no
  * matching grant yields `{ id: { $exists: false } }` (`id IS NULL`; the primary key is never null), which matches no row (fail
  * closed). Not `{ id: { $in: [] } }`: the installed query engine compiles an empty `$in` to `in ()`, a PostgreSQL
  * syntax error.
  */
-export function scopeWhere(scope: Scope, kinds: readonly GrantKind[], columnMap: ScopeColumnMap): WhereFragment {
+export function scopeWhere(
+  scope: Scope,
+  kinds: readonly GrantKind[],
+  columnMap: ScopeColumnMap,
+  options: ScopeMatchOptions = {},
+): WhereFragment {
   const allowed = scope.filter((grant) => kinds.includes(grant.kind))
-  if (allowed.some((grant) => CLUB_WIDE_KINDS.has(grant.kind))) return {}
+  if (allowed.some((grant) => isClubWide(grant.kind, options))) return {}
   const idsByColumn = new Map<string, Set<string>>()
   for (const grant of allowed) {
     for (const field of KIND_TARGET_FIELDS[grant.kind]) {

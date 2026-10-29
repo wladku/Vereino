@@ -1,8 +1,11 @@
 // `people.role_assignments.create|update|end` (club spec *Role assignment*, DD-33; foundation spec DD-F05, DD-F18;
 // TEST-005). Only the club administrator assigns staff roles. Every change emits `people.role_assignment.*`, on which
 // the `people:sync-auth-roles` subscriber recomputes the person's `auth` roles; an assignment of a person without
-// an account is stored and its role is granted when the account is created.
+// an account is stored and its role is granted when the account is created. A second assignment of the same role
+// and section whose period overlaps an existing one is refused with 409 `role_assignment_duplicate` (#26); the check
+// runs under the person's row lock, so concurrent saves for one person are serialized.
 import { randomUUID } from 'node:crypto'
+import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shared/lib/commands/helpers'
@@ -14,12 +17,12 @@ import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec } from '@/m
 import { peopleErrors } from '../api/errors'
 import { RoleAssignment } from '../data/entities'
 import { roleAssignmentCreateSchema, roleAssignmentEndSchema, roleAssignmentUpdateSchema } from '../data/validators'
-import { roleScopeProblem } from '../lib/people-rules'
+import { firstOverlapping, roleScopeProblem } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
 import {
   inWriteTransaction,
   loadRoleAssignmentLocked,
-  personExists,
+  lockPerson,
   roleAssignmentEvents,
   roleAssignmentSnapshot,
   roleAssignmentTarget,
@@ -39,6 +42,41 @@ async function assertRoleScope(role: RoleAssignment['role'], sectionId: string |
   const problem = roleScopeProblem(role, sectionId)
   if (problem === 'required') await peopleErrors.throw('role_scope_required')
   if (problem === 'unexpected') await peopleErrors.throw('role_scope_unexpected')
+}
+
+type AssignmentKey = {
+  tenantId: string
+  organizationId: string
+  personId: string
+  role: RoleAssignment['role']
+  sectionId: string | null
+}
+
+/**
+ * 409 `role_assignment_duplicate` when another live assignment of the same person, role and section overlaps the
+ * period (overlapping validity counts as active). The caller holds the person's row lock.
+ */
+async function assertNoDuplicate(
+  em: EntityManager,
+  key: AssignmentKey,
+  period: { validFrom: string; validTo: string | null },
+  exceptId: string | null,
+): Promise<void> {
+  const others = await em.find(
+    RoleAssignment,
+    {
+      tenantId: key.tenantId,
+      organizationId: key.organizationId,
+      personId: key.personId,
+      role: key.role,
+      sectionId: key.sectionId,
+      deletedAt: null,
+      ...(exceptId ? { id: { $ne: exceptId } } : {}),
+    },
+    { fields: ['id', 'validFrom', 'validTo'] },
+  )
+  const periods = others.map((row) => ({ validFrom: row.validFrom, validTo: row.validTo ?? null }))
+  if (firstOverlapping(period, periods)) await peopleErrors.throw('role_assignment_duplicate')
 }
 
 function emitAssignment(ctx: CommandRuntimeContext, row: RoleAssignment, action: 'created' | 'updated' | 'deleted') {
@@ -96,6 +134,11 @@ async function buildAssignmentLog(result: RoleAssignmentCommandResult, labelKey:
 async function restoreAssignment(ctx: CommandRuntimeContext, before: RoleAssignmentSnapshot | null | undefined) {
   if (!before?.id) throw new Error('[internal] missing role assignment snapshot for undo')
   const row = await authorizeAssignmentReplay(ctx, before.id)
+  const em = ctx.transactionalEm as EntityManager
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  await lockPerson(em, scope, row.personId)
+  const key = { ...scope, personId: row.personId, role: before.role, sectionId: before.sectionId }
+  await assertNoDuplicate(em, key, { validFrom: before.validFrom, validTo: before.validTo }, row.id)
   row.role = before.role
   row.sectionId = before.sectionId
   row.validFrom = before.validFrom
@@ -135,11 +178,17 @@ const createRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
         em,
       )
       const { parsed, tenantId, organizationId } = authorized
-      if (!(await personExists(em, { tenantId, organizationId }, parsed.personId))) {
+      if (!(await lockPerson(em, { tenantId, organizationId }, parsed.personId))) {
         const { translate } = await resolveTranslations()
         throw notFound(translate('foundation.errors.not_found', 'Not found'))
       }
       await assertRoleScope(parsed.role, parsed.sectionId)
+      await assertNoDuplicate(
+        em,
+        { tenantId, organizationId, personId: parsed.personId, role: parsed.role, sectionId: parsed.sectionId ?? null },
+        { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null },
+        null,
+      )
       const row = em.create(RoleAssignment, {
         id,
         tenantId,
@@ -190,6 +239,9 @@ const updateRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
       const validTo = patch.validTo !== undefined ? patch.validTo : (row.validTo ?? null)
       if (isInvertedPeriod(validFrom, validTo)) await foundationErrors.throw('validity_inverted')
       await assertRoleScope(role, sectionId)
+      const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      await lockPerson(em, scope, row.personId)
+      await assertNoDuplicate(em, { ...scope, personId: row.personId, role, sectionId }, { validFrom, validTo }, row.id)
       row.role = role
       row.sectionId = sectionId
       row.validFrom = validFrom

@@ -1,8 +1,16 @@
 // Search of `people` (foundation spec P-09, DD-38; TEST-F06): persons are found by name through the platform's hashed
-// `search_tokens`; the PESEL, its hash and the e-mail never reach an external provider.
+// `search_tokens`; the PESEL, its hash, the e-mail, phone and notes never reach an external provider.
 import type { SearchIndexSource, SearchModuleConfig, SearchResultPresenter } from '@open-mercato/shared/modules/search'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
-import { PERSON_ENTITY_ID, personEmail, personFirstName, personLastName, personPesel } from './encryption'
+import {
+  PERSON_ENTITY_ID,
+  personEmail,
+  personFirstName,
+  personLastName,
+  personNotes,
+  personPesel,
+  personPhone,
+} from './encryption'
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -32,7 +40,7 @@ export const searchConfig: SearchModuleConfig = {
       buildSource,
       formatResult: (ctx) => presenter(ctx.record),
       fieldPolicy: {
-        excluded: [personFirstName, personLastName, personEmail, personPesel].flatMap(
+        excluded: [personFirstName, personLastName, personEmail, personPhone, personNotes, personPesel].flatMap(
           (declaration) => declaration.searchPolicy.excluded ?? [],
         ),
       },

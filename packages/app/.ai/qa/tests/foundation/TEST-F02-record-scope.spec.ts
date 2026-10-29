@@ -62,9 +62,17 @@ test('TEST-F02 record scope: unlinked user, coordinator of section A, administra
     const denied = await getAssignment(request, coordinatorToken, assignmentB)
     expect(denied.status).toBe(403)
     expect(denied.body?.code).toBe('scope_denied')
-    // The coordinator holds people.view but no person grant over others (phase A1: memberships come with #30).
-    expect((await getPerson(request, coordinatorToken, otherPersonId)).status).toBe(403)
-    expect((await getPerson(request, coordinatorToken, coordinator.personId)).status).toBe(200)
+    // Since #26 a coordinator reads the club's people records club-wide, basic data only (club spec *Users,
+    // Permissions, and Scope*): another person comes back as `access: 'basic'`, her own record in full.
+    const otherAsCoordinator = await getPerson(request, coordinatorToken, otherPersonId)
+    expect(otherAsCoordinator.status).toBe(200)
+    expect(otherAsCoordinator.body?.access).toBe('basic')
+    for (const field of ['email', 'phone', 'notes', 'pesel', 'userId']) {
+      expect(otherAsCoordinator.body).not.toHaveProperty(field)
+    }
+    const ownAsCoordinator = await getPerson(request, coordinatorToken, coordinator.personId)
+    expect(ownAsCoordinator.status).toBe(200)
+    expect(ownAsCoordinator.body?.access).toBe('full')
 
     // A user without a linked person: the feature passes, the record scope fails closed.
     const email = `unlinked-${uniqueSuffix()}@example.org`

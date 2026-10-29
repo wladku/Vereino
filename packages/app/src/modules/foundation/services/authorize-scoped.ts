@@ -12,7 +12,14 @@ import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { notFound } from '@open-mercato/shared/lib/crud/errors'
 import { enforceCommandOptimisticLockWithGuards } from '@open-mercato/shared/lib/crud/optimistic-lock-command'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
-import { findActingRole, type ActingRole, type GrantKind, type Scope, type ScopeTarget } from '@vereino/core'
+import {
+  findActingRole,
+  type ActingRole,
+  type GrantKind,
+  type Scope,
+  type ScopeMatchOptions,
+  type ScopeTarget,
+} from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { codedIssueErrorCode } from '../lib/validity-schema'
 import { resolveScope } from './scope-contract'
@@ -132,14 +139,16 @@ async function deriveScope(
 
 /**
  * The acting role of the first allowed grant containing the target (least-privileged first); throws 403
- * `scope_denied` when none does. Detail routes use it with `scopeContract.resolve(ctx)`.
+ * `scope_denied` when none does. Detail routes use it with `scopeContract.resolve(ctx)` and the same kinds and
+ * options (`clubWideKinds`) as their list's `scopeWhere`.
  */
 export async function assertInScope(
   scope: Scope,
   kinds: readonly GrantKind[],
   target: ScopeTarget,
+  options?: ScopeMatchOptions,
 ): Promise<ActingRole> {
-  const actingRole = findActingRole(scope, kinds, target)
+  const actingRole = findActingRole(scope, kinds, target, options)
   if (!actingRole) return foundationErrors.throw('scope_denied')
   return actingRole
 }

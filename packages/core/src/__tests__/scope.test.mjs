@@ -155,3 +155,27 @@ test('sanitizeProviderGrants keeps well-formed provider kinds only', () => {
     [{ kind: 'club_admin' }, { kind: 'coordinator', ids: [SECTION_A] }, { kind: 'guardian', ids: ['ward-1'] }],
   )
 })
+
+test('clubWideKinds makes an allowed kind cover every record of the resource', () => {
+  const scope = [
+    { kind: 'coordinator', ids: [SECTION_A] },
+    { kind: 'self', ids: ['person-1'] },
+  ]
+  const other = { id: 'p2', ...ORG, personId: 'person-2' }
+  const options = { clubWideKinds: ['coordinator'] }
+  assert.equal(findActingRole(scope, ['self', 'coordinator'], other), null)
+  assert.equal(findActingRole(scope, ['self', 'coordinator'], other, options), 'coordinator')
+  assert.equal(grantContaining(scope, ['self', 'coordinator'], other, options)?.kind, 'coordinator')
+  // The least-privileged order still decides: the own record is matched by `self` first.
+  assert.equal(findActingRole(scope, ['self', 'coordinator'], { ...other, personId: 'person-1' }, options), 'self')
+  // A club-wide kind outside the allowed kinds grants nothing.
+  assert.equal(findActingRole(scope, ['self'], other, options), null)
+  assert.deepEqual(scopeWhere(scope, ['self', 'coordinator'], { personId: 'id' }, options), {})
+  assert.deepEqual(scopeWhere(scope, ['self'], { personId: 'id' }, options), { id: { $in: ['person-1'] } })
+  assert.deepEqual(
+    scopeWhere([{ kind: 'self', ids: ['person-1'] }], ['self', 'coordinator'], { personId: 'id' }, options),
+    {
+      id: { $in: ['person-1'] },
+    },
+  )
+})
