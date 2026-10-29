@@ -47,6 +47,7 @@ A coordinator plans a weekly series for a group and sees its sessions for 16 wee
 
 - `yarn verify` — 13/13 passed (subagent's final run and the coordinator's rerun).
 - `yarn test:integration:vereino` (whole suite) — 47/47 passed in the subagent's run; coordinator's rerun: 47/47 passed (10.3 min).
+- After merging `main` with #27 (PR #55; conflicts only in additive lists of `foundation`, the people README, the lesson catalog and the spec changelog): `yarn verify` 13/13 and `yarn test:integration:vereino` 59/59 passed (12.9 min).
 - `yarn db:generate` against a throwaway pgvector container; up, down, up as raw SQL there, then a second `db:generate` with no changes. No `yarn db:migrate`.
 
 ## Open problems
