@@ -9,6 +9,7 @@ export const errorCodes = [
   { code: 'scope_denied', status: 403, messageKey: 'foundation.errors.scope_denied' },
   { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
   { code: 'email_taken', status: 409, messageKey: 'foundation.errors.email_taken' },
+  { code: 'locale_unsupported', status: 422, messageKey: 'foundation.errors.locale_unsupported' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

@@ -1,5 +1,6 @@
 {
   "foundation.errors.email_taken": "This e-mail address is already used by another account.",
+  "foundation.errors.locale_unsupported": "This language is not available. Choose one of the languages the app offers.",
   "foundation.errors.not_found": "The record was not found.",
   "foundation.errors.scope_denied": "You do not have access to this record.",
   "foundation.errors.validity_inverted": "The end date cannot be earlier than the start date."

@@ -4,7 +4,7 @@ import { foundationErrors } from './api/errors'
 import { createAccount } from './services/accounts'
 import { assertInScope, authorizeScoped, jobCommandContext } from './services/authorize-scoped'
 import { encryptedField } from './services/encrypted-field'
-import { localeForPerson, renderLocalized } from './services/localized'
+import { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 import { registerModuleSchedule } from './services/register-module-schedule'
 import { desiredRoles, rolesForAssignments, seedRoles, syncAuthRoles } from './services/roles'
 import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
@@ -34,7 +34,7 @@ export function register(container: AppContainer) {
     [FOUNDATION_ACCOUNTS]: asValue({ createAccount }),
     [FOUNDATION_ENCRYPTED_FIELDS]: asValue({ encryptedField }),
     [FOUNDATION_SCHEDULES]: asValue({ registerModuleSchedule }),
-    [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson }),
+    [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
   })
 }
