@@ -164,7 +164,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
             </Select>
           </div>
         ) : null}
-        <nav aria-label={t('activities.club.calendar.range')} className="flex items-center gap-2">
+        <nav aria-label={t('activities.club.calendar.range')} className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             variant="outline"

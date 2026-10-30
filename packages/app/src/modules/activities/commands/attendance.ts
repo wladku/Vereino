@@ -471,7 +471,7 @@ const expireCommand: CommandHandler<Record<string, unknown>, ExpireJobResult> = 
             where: { ...scope, deletedAt: null, pendingUntil: { $lte: now }, timeoutOutcome: outcome },
             from: 'pending_guardian',
             to: timeoutStatus(outcome),
-            set: { updatedAt: now, guardianDecidedAt: now },
+            set: { updatedAt: now, guardianDecidedAt: now, pendingUntil: null, timeoutOutcome: null },
           })
           counts.skipped += due - ids.length
           return ids

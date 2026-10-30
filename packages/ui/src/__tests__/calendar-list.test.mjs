@@ -117,7 +117,7 @@ test('actions render as small buttons with the variant of their tone, disabled w
   const html = render({ days: days(item({ actions })) })
   assert.match(
     html,
-    /<button[^>]*class="[^"]*bg-primary [^"]*min-h-11"[^>]*data-action-id="present">I will come<\/button>/,
+    /<button[^>]*class="[^"]*bg-primary [^"]*min-h-11[^"]*"[^>]*data-action-id="present">I will come<\/button>/,
   )
   assert.match(
     html,

@@ -83,7 +83,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
               type="button"
               variant={actionButtonVariant(action.tone)}
               size="sm"
-              className="min-h-11"
+              className="h-auto min-h-11 max-w-full py-2 text-left whitespace-normal"
               disabled={action.disabled === true || busyItemId === item.id}
               onClick={() => onAction?.(item.id, action.id)}
               data-action-id={action.id}

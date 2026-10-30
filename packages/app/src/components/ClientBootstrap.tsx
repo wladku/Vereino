@@ -97,6 +97,8 @@ export type ClientBootstrapProfile =
   | 'portal'
   | 'checkout'
   | 'message'
+  // Vereino (#32): the member pages under `/club` mount module injection spots (the "Today" tiles).
+  | 'member'
 
 export type ClientRegistryGroup =
   | 'translations'
@@ -121,6 +123,7 @@ export function resolveClientBootstrapProfile(pathname: string | null): ClientBo
   }
   if (path.startsWith(`${BACKEND_PREFIX}/`)) return 'backend'
   if (/^\/[^/]+\/portal(?:\/|$)/.test(path)) return 'portal'
+  if (path === '/club' || path.startsWith('/club/')) return 'member'
   if (path === '/pay' || path.startsWith('/pay/')) return 'checkout'
   if (path === '/messages/view' || path.startsWith('/messages/view/')) return 'message'
   return 'public'
@@ -148,6 +151,7 @@ export function groupsForProfile(profile: ClientBootstrapProfile): ClientRegistr
       // Message composers are embedded across backend modules (customers,
       // sales, catalog, staff, and others), not only under /backend/messages.
       return ['translations', 'injection', 'notifications', 'messages']
+    case 'member':
     case 'portal':
       // Injection tables include the translations table, which is materialized
       // at module evaluation time. Register translations first so a later

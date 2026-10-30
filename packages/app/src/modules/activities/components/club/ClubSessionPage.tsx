@@ -60,9 +60,11 @@ function PersonDeclaration({
     <li className="bg-card flex flex-col gap-3 rounded-lg border p-4" data-testid="club-session-person">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{fullName(person)}</span>
-        <StatusBadge variant={badgeVariant(state.tone)} data-testid="club-session-declaration">
-          {declarationLabel(t, entry.declarationKind, person.declaration)}
-        </StatusBadge>
+        <span data-testid="club-session-declaration">
+          <StatusBadge variant={badgeVariant(state.tone)}>
+            {declarationLabel(t, entry.declarationKind, person.declaration)}
+          </StatusBadge>
+        </span>
       </div>
       {person.guardianOnly ? (
         <p className="text-muted-foreground text-sm">{t('activities.club.session.guardianOnly')}</p>
