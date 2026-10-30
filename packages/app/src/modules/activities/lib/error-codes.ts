@@ -17,6 +17,19 @@ export const errorCodes = [
   { code: 'activity_no_sessions', status: 422, messageKey: 'activities.errors.activity_no_sessions' },
   { code: 'activities_reference_invalid', status: 422, messageKey: 'activities.errors.activities_reference_invalid' },
   { code: 'activity_group_inactive', status: 422, messageKey: 'activities.errors.activity_group_inactive' },
+  // Declarations and policies (#32; club spec glossary *Declaration*, *Declaration policy*; D-026).
+  { code: 'declaration_closed', status: 409, messageKey: 'activities.errors.declaration_closed' },
+  { code: 'declaration_kind_absence_only', status: 422, messageKey: 'activities.errors.declaration_kind_absence_only' },
+  { code: 'declaration_guardian_only', status: 403, messageKey: 'activities.errors.declaration_guardian_only' },
+  { code: 'declaration_not_participant', status: 422, messageKey: 'activities.errors.declaration_not_participant' },
+  { code: 'guardian_decision_not_pending', status: 409, messageKey: 'activities.errors.guardian_decision_not_pending' },
+  { code: 'attendance_policy_duplicate', status: 409, messageKey: 'activities.errors.attendance_policy_duplicate' },
+  {
+    code: 'attendance_policy_scope_invalid',
+    status: 422,
+    messageKey: 'activities.errors.attendance_policy_scope_invalid',
+  },
+  { code: 'calendar_range_invalid', status: 400, messageKey: 'activities.errors.calendar_range_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

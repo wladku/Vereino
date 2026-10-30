@@ -6,6 +6,13 @@ import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
+import {
+  DECLARED_VALUES,
+  MAX_CONFIRM_TIMEOUT_HOURS,
+  MINOR_DECLARATION_MODES,
+  POLICY_SCOPES,
+  TIMEOUT_DEFAULTS,
+} from '../lib/policy'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
@@ -129,3 +136,67 @@ export const occurrenceListQuerySchema = z.object({
 
 /** The daily generator's input: `today` only for an operator run (the job uses the club's today). */
 export const generateOccurrencesSchema = z.object({ today: calendarDateSchema.optional() }).strict()
+
+// --- Declarations, policies and calendars (#32) ---
+
+/** `POST /api/activities/attendance/declare`: one person's declaration for one session. */
+export const attendanceDeclareSchema = z
+  .object({
+    occurrenceId: z.uuid(),
+    personId: z.uuid(),
+    declared: z.enum(DECLARED_VALUES),
+  })
+  .strict()
+
+/** `POST /api/activities/attendance/{id}/guardian-decision`. */
+export const guardianDecisionSchema = z.object({ id: z.uuid(), approve: z.boolean() }).strict()
+
+/** The expiry job's input: `now` only for an operator or test run (the job uses the clock). */
+export const expireConfirmationsSchema = z.object({ now: instantSchema.optional() }).strict()
+
+const policyShape = {
+  scope: z.enum(POLICY_SCOPES),
+  groupId: z.uuid().nullable().optional(),
+  activityType: z.enum(ACTIVITY_TYPES).nullable().optional(),
+  minorDeclarationMode: z.enum(MINOR_DECLARATION_MODES),
+  confirmTimeoutHours: z.number().int().min(1).max(MAX_CONFIRM_TIMEOUT_HOURS).optional(),
+  defaultAfterTimeout: z.enum(TIMEOUT_DEFAULTS).optional(),
+}
+
+export const attendancePolicyCreateSchema = z.object(policyShape).strict()
+
+/** The scope of a policy is fixed; the mode, the limit and the default may change. */
+export const attendancePolicyUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    minorDeclarationMode: z.enum(MINOR_DECLARATION_MODES).optional(),
+    confirmTimeoutHours: z.number().int().min(1).max(MAX_CONFIRM_TIMEOUT_HOURS).optional(),
+    defaultAfterTimeout: z.enum(TIMEOUT_DEFAULTS).optional(),
+  })
+  .strict()
+
+export const attendancePolicyDeleteSchema = z.object({ id: z.uuid() }).strict()
+
+export const attendancePolicyListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['scope', 'createdAt', 'updatedAt']).optional(),
+  scope: z.enum(POLICY_SCOPES).optional(),
+  groupId: z.uuid().optional(),
+})
+
+/** `GET /api/activities/calendar`: the role the caller reads as, the club-zone range and an optional ward. */
+export const CALENDAR_PERSPECTIVES = ['self', 'guardian', 'coach', 'coordinator'] as const
+export type CalendarPerspective = (typeof CALENDAR_PERSPECTIVES)[number]
+
+export const calendarQuerySchema = z.object({
+  from: calendarDateSchema,
+  to: calendarDateSchema,
+  as: z.enum(CALENDAR_PERSPECTIVES),
+  personId: z.uuid().optional(),
+  sectionId: z.uuid().optional(),
+})
+
+export const calendarItemQuerySchema = z.object({
+  as: z.enum(['self', 'guardian']),
+  personId: z.uuid().optional(),
+})

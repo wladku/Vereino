@@ -2,6 +2,15 @@ import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import type {
+  ActualAttendance,
+  Declared,
+  DeclarationSource,
+  DeclarationStatus,
+  MinorDeclarationMode,
+  PolicyScope,
+  TimeoutDefault,
+} from '../lib/policy'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -149,4 +158,127 @@ export class Occurrence extends ScopedEntityBase {
 
   @Property({ name: 'needs_reschedule', type: 'boolean', default: false })
   needsReschedule: boolean = false
+}
+
+/**
+ * The declaration and the actual attendance of one participant for one session (club spec glossary *Declaration*,
+ * *Actual attendance*, *Data Models* → `activities_attendances`; REQ-007; #32): `declared` with who declared it and
+ * when, `declaration_status` (`final`, or `pending_guardian` until the guardian decides or `pending_until` passes and
+ * the policy's `timeout_outcome` applies — the two columns the expiry job needs without re-resolving the policy), the
+ * guardian's decision instant, and — from #33 — the actual attendance with who marked it. One live row per session
+ * and person (partial unique index; the declare command upserts it). `occurrence_id` and `person_id` are scalar ids.
+ */
+@Entity({ tableName: 'activities_attendances' })
+@Index({
+  name: 'activities_attendances_occurrence_person_unique',
+  expression:
+    'create unique index "activities_attendances_occurrence_person_unique" on "activities_attendances" ("occurrence_id", "person_id") where deleted_at is null',
+})
+@Index({ name: 'activities_attendances_org_occurrence_idx', properties: ['organizationId', 'occurrenceId'] })
+@Index({ name: 'activities_attendances_org_person_idx', properties: ['organizationId', 'personId'] })
+@Index({
+  name: 'activities_attendances_org_status_pending_idx',
+  properties: ['organizationId', 'declarationStatus', 'pendingUntil'],
+})
+@Index({ name: 'activities_attendances_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class Attendance extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'declared'
+    | 'declaredByPersonId'
+    | 'declaredAt'
+    | 'declarationStatus'
+    | 'guardianDecidedAt'
+    | 'pendingUntil'
+    | 'timeoutOutcome'
+    | 'actual'
+    | 'markedByPersonId'
+    | 'markedAsRole'
+    | 'source'
+
+  @Property({ name: 'occurrence_id', type: 'uuid' })
+  occurrenceId!: string
+
+  @Property({ name: 'person_id', type: 'uuid' })
+  personId!: string
+
+  /** `yes` / `no` / `unknown`. */
+  @Property({ name: 'declared', type: 'text', default: 'unknown' })
+  declared: Declared = 'unknown'
+
+  @Property({ name: 'declared_by_person_id', type: 'uuid', nullable: true })
+  declaredByPersonId?: string | null
+
+  @Property({ name: 'declared_at', type: Date, nullable: true })
+  declaredAt?: Date | null
+
+  /** `final` / `pending_guardian` / `rejected_by_guardian` (`lib/policy.ts` `declarationTransitions`). */
+  @Property({ name: 'declaration_status', type: 'text', default: 'final' })
+  declarationStatus: DeclarationStatus = 'final'
+
+  @Property({ name: 'guardian_decided_at', type: Date, nullable: true })
+  guardianDecidedAt?: Date | null
+
+  /** The instant a `pending_guardian` declaration expires (declared at + the policy's `confirm_timeout_hours`). */
+  @Property({ name: 'pending_until', type: Date, nullable: true })
+  pendingUntil?: Date | null
+
+  /** The policy's `default_after_timeout` copied at declaration time: `declared` → final, `rejected` → rejected. */
+  @Property({ name: 'timeout_outcome', type: 'text', nullable: true })
+  timeoutOutcome?: TimeoutDefault | null
+
+  /** `present` / `absent` / `late`; null until the coach checks the session off (#33). */
+  @Property({ name: 'actual', type: 'text', nullable: true })
+  actual?: ActualAttendance | null
+
+  @Property({ name: 'marked_by_person_id', type: 'uuid', nullable: true })
+  markedByPersonId?: string | null
+
+  @Property({ name: 'marked_as_role', type: 'text', nullable: true })
+  markedAsRole?: string | null
+
+  /** `app` (a member), `link` (REQ-017), `staff`. */
+  @Property({ name: 'source', type: 'text', default: 'app' })
+  source: DeclarationSource = 'app'
+}
+
+/**
+ * Who declares for a minor with an account, per scope (club spec glossary *Declaration policy*, *Data Models* →
+ * `activities_attendance_policies`; D-006; #32): `club`, `group` (with `group_id`), `away_trip` or `activity_type`
+ * (with `activity_type`); the mode, the confirmation limit and what applies after it. One live row per scope, group
+ * and type (partial unique index over the coalesced keys); the defaults are seeded by `setup.ts`. What is declared is
+ * the club setting `declaration_kinds`, not a policy (D-026).
+ */
+@Entity({ tableName: 'activities_attendance_policies' })
+@Index({
+  name: 'activities_attendance_policies_scope_unique',
+  expression:
+    'create unique index "activities_attendance_policies_scope_unique" on "activities_attendance_policies" ("organization_id", "scope", coalesce("group_id"::text, \'\'), coalesce("activity_type", \'\')) where deleted_at is null',
+})
+@Index({ name: 'activities_attendance_policies_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class AttendancePolicy extends ScopedEntityBase {
+  [OptionalProps]?:
+    ScopedEntityOptionalProps | 'groupId' | 'activityType' | 'confirmTimeoutHours' | 'defaultAfterTimeout'
+
+  /** `club` / `group` / `away_trip` / `activity_type`. */
+  @Property({ name: 'scope', type: 'text' })
+  scope!: PolicyScope
+
+  /** A `groups` group id for the `group` scope (scalar). */
+  @Property({ name: 'group_id', type: 'uuid', nullable: true })
+  groupId?: string | null
+
+  @Property({ name: 'activity_type', type: 'text', nullable: true })
+  activityType?: ActivityType | null
+
+  /** `immediate` / `guardian_confirm` / `guardian_only`. */
+  @Property({ name: 'minor_declaration_mode', type: 'text' })
+  minorDeclarationMode!: MinorDeclarationMode
+
+  @Property({ name: 'confirm_timeout_hours', type: 'integer', default: 24 })
+  confirmTimeoutHours: number = 24
+
+  /** `declared` / `rejected`. */
+  @Property({ name: 'default_after_timeout', type: 'text', default: 'declared' })
+  defaultAfterTimeout: TimeoutDefault = 'declared'
 }

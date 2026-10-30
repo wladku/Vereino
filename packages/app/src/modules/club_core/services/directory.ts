@@ -20,6 +20,10 @@ export type PlaceDirectoryEntry = {
   /** How many club groups can use the place at the same time (club spec glossary *Place*). */
   capacityGroups: number
   isActive: boolean
+  /** The address and map coordinates the member calendar shows (#32; club spec REQ-006, D21). */
+  address: string | null
+  geoLat: number | null
+  geoLng: number | null
 }
 
 /** A place as a selector shows it. */
@@ -89,6 +93,13 @@ export async function findInstitutions(
   return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name }]))
 }
 
+/** A stored decimal coordinate (the driver returns a string) as a number, or null. */
+function coordinate(value: string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export async function findPlaces(
   em: EntityManager,
   scope: ClubDirectoryScope,
@@ -99,7 +110,7 @@ export async function findPlaces(
   const rows = await em.find(
     Place,
     { id: { $in: unique }, ...scope, deletedAt: null },
-    { fields: ['id', 'name', 'parentPlaceId', 'capacityGroups', 'isActive'] },
+    { fields: ['id', 'name', 'parentPlaceId', 'capacityGroups', 'isActive', 'address', 'geoLat', 'geoLng'] },
   )
   return new Map(
     rows.map((row) => [
@@ -110,6 +121,9 @@ export async function findPlaces(
         parentPlaceId: row.parentPlaceId ?? null,
         capacityGroups: row.capacityGroups,
         isActive: row.isActive,
+        address: row.address ?? null,
+        geoLat: coordinate(row.geoLat),
+        geoLng: coordinate(row.geoLng),
       },
     ]),
   )

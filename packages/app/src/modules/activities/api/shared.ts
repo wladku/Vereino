@@ -4,6 +4,8 @@
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import type { GrantKind, ScopeColumnMap } from '@vereino/core'
+import type { Attendance } from '../data/entities'
+import { DECLARATION_KINDS, DECLARATION_SOURCES, DECLARATION_STATUSES, DECLARED_VALUES } from '../lib/policy'
 import { activityLabels, nameMaps } from '../services/read'
 
 /**
@@ -246,4 +248,134 @@ export const occurrenceListItemSchema = z.object({
   needsReschedule: z.boolean(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+})
+
+// --- Declarations, policies and calendars (#32) ---
+
+/** `activities:attendance_policy` (class `AttendancePolicy`). */
+export const ATTENDANCE_POLICY_ENTITY_ID = 'activities:attendance_policy'
+
+function integer(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+export function attendancePolicyListItem(row: Row) {
+  return {
+    id: String(row.id),
+    scope: text(row.scope),
+    groupId: text(row.group_id),
+    activityType: text(row.activity_type),
+    minorDeclarationMode: text(row.minor_declaration_mode),
+    confirmTimeoutHours: integer(row.confirm_timeout_hours),
+    defaultAfterTimeout: text(row.default_after_timeout),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  }
+}
+
+export type AttendancePolicyListItem = ReturnType<typeof attendancePolicyListItem> & { groupName?: string | null }
+
+/** Adds the group name to the `group` policies the scope filter already admitted. */
+export async function attachPolicyNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
+  const items = (payload.items ?? []) as AttendancePolicyListItem[]
+  const scope = trustedScope(ctx)
+  const groupIds = items.flatMap((item) => (item.groupId ? [item.groupId] : []))
+  if (groupIds.length === 0 || !scope) return
+  const names = await nameMaps(ctx.container, scope, { groupIds, sectionIds: [], placeIds: [], personIds: [] })
+  for (const item of items) item.groupName = item.groupId ? (names.groups.get(item.groupId) ?? null) : null
+}
+
+export const attendancePolicyListItemSchema = z.object({
+  id: z.uuid(),
+  scope: z.string().nullable(),
+  groupId: z.string().nullable(),
+  groupName: z.string().nullable().optional(),
+  activityType: z.string().nullable(),
+  minorDeclarationMode: z.string().nullable(),
+  confirmTimeoutHours: z.number().nullable(),
+  defaultAfterTimeout: z.string().nullable(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+})
+
+/** One declaration row as the action routes return it. */
+export function attendanceView(row: Attendance) {
+  return {
+    id: row.id,
+    occurrenceId: row.occurrenceId,
+    personId: row.personId,
+    declared: row.declared,
+    declaredByPersonId: row.declaredByPersonId ?? null,
+    declaredAt: row.declaredAt?.toISOString() ?? null,
+    declarationStatus: row.declarationStatus,
+    guardianDecidedAt: row.guardianDecidedAt?.toISOString() ?? null,
+    pendingUntil: row.pendingUntil?.toISOString() ?? null,
+    source: row.source,
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+export const attendanceViewSchema = z.object({
+  id: z.uuid(),
+  occurrenceId: z.uuid(),
+  personId: z.uuid(),
+  declared: z.enum(DECLARED_VALUES),
+  declaredByPersonId: z.string().nullable(),
+  declaredAt: z.string().nullable(),
+  declarationStatus: z.enum(DECLARATION_STATUSES),
+  guardianDecidedAt: z.string().nullable(),
+  pendingUntil: z.string().nullable().describe('When a `pending_guardian` declaration takes the policy default'),
+  source: z.enum(DECLARATION_SOURCES),
+  updatedAt: z.string(),
+  actingRole: z.string(),
+  created: z.boolean().optional(),
+})
+
+const calendarDeclarationSchema = z.object({
+  attendanceId: z.uuid(),
+  declared: z.enum(DECLARED_VALUES),
+  declarationStatus: z.enum(DECLARATION_STATUSES),
+  declaredAt: z.string().nullable(),
+  pendingUntil: z.string().nullable(),
+  guardianDecidedAt: z.string().nullable(),
+  updatedAt: z.string(),
+})
+
+const calendarPersonSchema = z.object({
+  personId: z.uuid(),
+  firstName: z.string(),
+  lastName: z.string(),
+  declaration: calendarDeclarationSchema.nullable(),
+  canDeclare: z.boolean(),
+  needsGuardianConfirmation: z.boolean(),
+  guardianOnly: z.boolean(),
+})
+
+export const calendarEntrySchema = z.object({
+  occurrence: occurrenceListItemSchema.omit({ createdAt: true }).extend({
+    sectionName: z.string().nullable(),
+    placeAddress: z.string().nullable(),
+    placeGeoLat: z.number().nullable(),
+    placeGeoLng: z.number().nullable(),
+    updatedAt: z.string(),
+  }),
+  declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),
+  declarationsOpen: z.boolean().describe('False once the session started, was cancelled or is done'),
+  persons: z.array(calendarPersonSchema).describe('The caller (as=self) or the concerned wards (as=guardian)'),
+  summary: z
+    .object({
+      kind: z.enum(DECLARATION_KINDS),
+      expected: z.number(),
+      absent: z.number(),
+      confirmed: z.number(),
+      declined: z.number(),
+      unanswered: z.number(),
+    })
+    .optional()
+    .describe('Staff perspectives only'),
+  calledUpChildren: z
+    .array(z.object({ personId: z.uuid(), firstName: z.string(), lastName: z.string() }))
+    .optional()
+    .describe('as=guardian under show_called_up_children = consented: other children whose guardian consented'),
 })
