@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 27 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 28 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -73,3 +73,4 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [One axe baseline entry per rule; a test reported at hours means a suspended host; db:generate for a new module needs a seed snapshot](lessons/axe-baseline-suspended-runs-and-offline-db-generate.md) — area:testing,debugging; module:groups,platform; topic:axe,accessibility-baseline,playwright,host-suspend,db-generate,migrations
 - [Reload after emulateMedia before an axe scan; a react-query refetch after an error keeps status error](lessons/axe-after-color-scheme-and-react-query-error-refetch.md) — area:testing,backend-ui; module:people,platform; topic:axe,dark-mode,playwright,react-query,loading-state
 - [A sessionless integration check needs request.newContext(); rate limits are off under OM_INTEGRATION_TEST](lessons/sessionless-tests-new-request-context.md) — area:testing; module:club_core,platform; topic:playwright,sessionless,public-pages,rate-limits,status-badge
+- [Drive the platform date picker through its grid after networkidle; assert the row, not the flash, after a CrudForm redirect](lessons/platform-date-picker-and-crudform-redirects-in-tests.md) — area:testing; module:platform,people; topic:date-picker,crudform,playwright,journeys
