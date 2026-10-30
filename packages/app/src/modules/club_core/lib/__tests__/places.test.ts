@@ -6,6 +6,7 @@ import {
   parsePlaceContacts,
   placeContactSchema,
   serializePlaceContacts,
+  placeRelatives,
   wouldCreateCycle,
 } from '../places'
 
@@ -92,5 +93,35 @@ describe('decimals', () => {
     expect(decimalOrNull('')).toBeNull()
     expect(decimalOrNull('north')).toBeNull()
     expect(decimalOrNull(null)).toBeNull()
+  })
+})
+
+describe('placeRelatives', () => {
+  const tree = new Map<string, string | null>([
+    ['orlik', null],
+    ['boisko', 'orlik'],
+    ['hala', 'orlik'],
+    ['sektor', 'boisko'],
+  ])
+
+  it('lists the ancestors nearest first and the descendants sorted', () => {
+    expect(placeRelatives('boisko', tree)).toEqual({ ancestorIds: ['orlik'], descendantIds: ['sektor'] })
+    expect(placeRelatives('orlik', tree)).toEqual({ ancestorIds: [], descendantIds: ['boisko', 'hala', 'sektor'] })
+    expect(placeRelatives('sektor', tree)).toEqual({ ancestorIds: ['boisko', 'orlik'], descendantIds: [] })
+    expect(placeRelatives('unknown', tree)).toEqual({ ancestorIds: [], descendantIds: [] })
+  })
+
+  it('walks a corrupt loop once', () => {
+    const loop = new Map<string, string | null>([
+      ['a', 'b'],
+      ['b', 'a'],
+    ])
+    expect(placeRelatives('a', loop)).toEqual({ ancestorIds: ['b'], descendantIds: ['b'] })
+    const tail = new Map<string, string | null>([
+      ['x', 'y'],
+      ['y', 'z'],
+      ['z', 'y'],
+    ])
+    expect(placeRelatives('x', tail)).toEqual({ ancestorIds: ['y', 'z'], descendantIds: [] })
   })
 })

@@ -17,6 +17,10 @@
     "lint": "eslint .",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=\"src/**\" --test-coverage-exclude=\"src/**/__tests__/**\" \"src/**/__tests__/*.test.{ts,mjs}\""
   },
+  "dependencies": {
+    "date-fns": "4.4.0",
+    "date-fns-tz": "^3.2.0"
+  },
   "devDependencies": {
     "eslint": "^9.39.4",
     "typescript": "^6.0.3",

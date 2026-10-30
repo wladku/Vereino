@@ -10,6 +10,10 @@ export const errorCodes = [
   { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
   { code: 'email_taken', status: 409, messageKey: 'foundation.errors.email_taken' },
   { code: 'locale_unsupported', status: 422, messageKey: 'foundation.errors.locale_unsupported' },
+  // Foundation II (DD-G14): thrown by `services/recurrence.ts` and `services/transitions.ts`.
+  { code: 'recurrence_unsupported', status: 422, messageKey: 'foundation.errors.recurrence_unsupported' },
+  { code: 'recurrence_invalid', status: 422, messageKey: 'foundation.errors.recurrence_invalid' },
+  { code: 'invalid_transition', status: 409, messageKey: 'foundation.errors.invalid_transition' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

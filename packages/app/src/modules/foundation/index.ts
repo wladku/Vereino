@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Vereino foundation',
   version: '0.1.0',
   description:
-    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering and error codes.',
+    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions and the occupancy contract.',
   author: 'Vereino',
   license: 'MIT',
 }
@@ -42,6 +42,15 @@ export {
 } from './services/encrypted-field'
 export { errors, type ErrorDetails, type ModuleErrors } from './services/errors'
 export { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
+export {
+  OCCUPANCY_PROVIDER_TOKEN,
+  occupancyProvider,
+  type BlockingInterval,
+  type OccupancyContext,
+  type OccupancyProvider,
+  type OccupancyReason,
+} from './services/occupancy'
+export { parseRecurrence, type ParseRecurrenceInput } from './services/recurrence'
 export { registerModuleSchedule, type ModuleScheduleRegistration } from './services/register-module-schedule'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {
@@ -61,3 +70,4 @@ export {
   type ScopeResolutionContext,
   type ScopeSubject,
 } from './services/scope-contract'
+export { assertTransition } from './services/transitions'

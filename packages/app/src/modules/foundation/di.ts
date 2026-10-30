@@ -5,9 +5,12 @@ import { createAccount } from './services/accounts'
 import { assertInScope, authorizeScoped, jobCommandContext } from './services/authorize-scoped'
 import { encryptedField } from './services/encrypted-field'
 import { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
+import { OCCUPANCY_PROVIDER_TOKEN } from './services/occupancy'
+import { parseRecurrence } from './services/recurrence'
 import { registerModuleSchedule } from './services/register-module-schedule'
 import { desiredRoles, rolesForAssignments, seedRoles, syncAuthRoles } from './services/roles'
 import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
+import { assertTransition } from './services/transitions'
 
 /**
  * DI token of the record-scope provider. The foundation does not register it: the `people` module registers its
@@ -15,6 +18,12 @@ import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
  * `services/scope-contract.ts`. Absent → only the `self_user` grant (fail closed).
  */
 export const VEREINO_SCOPE_PROVIDER = SCOPE_PROVIDER_TOKEN
+
+/**
+ * DI token of the optional occupancy provider (foundation II P-26, DD-G05). The foundation does not register it: the
+ * `facilities` module registers its implementation in phase 5; `activities` resolves it with `hasRegistration`.
+ */
+export const VEREINO_OCCUPANCY_PROVIDER = OCCUPANCY_PROVIDER_TOKEN
 
 /** DI tokens of the foundation's stateless services (singletons; each call takes its context explicitly). */
 export const FOUNDATION_SCOPE_CONTRACT = 'foundationScopeContract' as const
@@ -25,6 +34,7 @@ export const FOUNDATION_ENCRYPTED_FIELDS = 'foundationEncryptedFields' as const
 export const FOUNDATION_SCHEDULES = 'foundationSchedules' as const
 export const FOUNDATION_LOCALIZED = 'foundationLocalized' as const
 export const FOUNDATION_ERRORS = 'foundationErrors' as const
+export const FOUNDATION_SCHEDULING = 'foundationScheduling' as const
 
 export function register(container: AppContainer) {
   container.register({
@@ -36,5 +46,6 @@ export function register(container: AppContainer) {
     [FOUNDATION_SCHEDULES]: asValue({ registerModuleSchedule }),
     [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
+    [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition }),
   })
 }

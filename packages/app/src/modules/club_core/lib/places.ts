@@ -24,6 +24,35 @@ export function wouldCreateCycle(
   return false
 }
 
+/**
+ * The ancestors and descendants of a place (club spec glossary *Session conflict*: a session occupies its place, the
+ * place's ancestors and its descendants). `parentOf` maps each place id to its parent (null for a root); a loop in a
+ * corrupt hierarchy is walked once and never repeated. The place itself is in neither list.
+ */
+export function placeRelatives(
+  placeId: string,
+  parentOf: ReadonlyMap<string, string | null>,
+): { ancestorIds: string[]; descendantIds: string[] } {
+  const ancestorIds: string[] = []
+  for (let current = parentOf.get(placeId) ?? null; current !== null; current = parentOf.get(current) ?? null) {
+    if (current === placeId || ancestorIds.includes(current)) break
+    ancestorIds.push(current)
+  }
+  const childrenOf = new Map<string, string[]>()
+  for (const [id, parent] of parentOf) {
+    if (parent !== null) childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), id])
+  }
+  const descendantIds: string[] = []
+  const pending = [...(childrenOf.get(placeId) ?? [])]
+  for (let next = pending.shift(); next !== undefined; next = pending.shift()) {
+    // Every place has one parent, so a place is reached at most once — except the place itself in a corrupt loop.
+    if (next === placeId) continue
+    descendantIds.push(next)
+    pending.push(...(childrenOf.get(next) ?? []))
+  }
+  return { ancestorIds, descendantIds: descendantIds.sort() }
+}
+
 /** Why a place cannot take a session or a booking. */
 export type BookablePlaceProblem = 'not_found' | 'has_children'
 
