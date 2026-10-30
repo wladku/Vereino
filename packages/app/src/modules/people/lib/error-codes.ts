@@ -20,6 +20,15 @@ export const errorCodes = [
   { code: 'role_assignment_duplicate', status: 409, messageKey: 'people.errors.role_assignment_duplicate' },
   { code: 'person_not_linked', status: 404, messageKey: 'people.errors.person_not_linked' },
   { code: 'payments_minor', status: 403, messageKey: 'people.errors.payments_minor' },
+  { code: 'external_id_duplicate', status: 409, messageKey: 'people.errors.external_id_duplicate' },
+  // Bulk import (#28, club spec REQ-036): a file or mapping the import cannot use, a finished import, a review row
+  // without a decision, a decision the row does not allow, a matched person outside the club.
+  { code: 'import_mapping_invalid', status: 422, messageKey: 'people.errors.import_mapping_invalid' },
+  { code: 'import_already_committed', status: 409, messageKey: 'people.errors.import_already_committed' },
+  { code: 'import_cancelled', status: 409, messageKey: 'people.errors.import_cancelled' },
+  { code: 'import_review_pending', status: 422, messageKey: 'people.errors.import_review_pending' },
+  { code: 'import_decision_invalid', status: 422, messageKey: 'people.errors.import_decision_invalid' },
+  { code: 'import_person_not_found', status: 422, messageKey: 'people.errors.import_person_not_found' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

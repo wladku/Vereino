@@ -5,6 +5,7 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import {
   PERSON_ENTITY_ID,
   personEmail,
+  personExternalId,
   personFirstName,
   personLastName,
   personNotes,
@@ -40,9 +41,15 @@ export const searchConfig: SearchModuleConfig = {
       buildSource,
       formatResult: (ctx) => presenter(ctx.record),
       fieldPolicy: {
-        excluded: [personFirstName, personLastName, personEmail, personPhone, personNotes, personPesel].flatMap(
-          (declaration) => declaration.searchPolicy.excluded ?? [],
-        ),
+        excluded: [
+          personFirstName,
+          personLastName,
+          personEmail,
+          personPhone,
+          personNotes,
+          personPesel,
+          personExternalId,
+        ].flatMap((declaration) => declaration.searchPolicy.excluded ?? []),
       },
     },
   ],

@@ -104,12 +104,12 @@ export const openApi = buildOpenApi({
   create: {
     schema: personCreateSchema,
     description:
-      'Creates a person (club administrator); `email`, `phone`, `notes` and `pesel` are stored encrypted. Errors: 403 `scope_denied`, 409 `pesel_duplicate`, 422 `pesel_invalid`.',
+      'Creates a person (club administrator); `email`, `phone`, `notes`, `pesel` and `externalId` (an import identifier, #28) are stored encrypted. Errors: 403 `scope_denied`, 409 `pesel_duplicate`, 409 `external_id_duplicate`, 422 `pesel_invalid`.',
   },
   update: {
     schema: personUpdateSchema,
     responseSchema: z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string(), actingRole: z.string() }),
     description:
-      'Updates a person; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `pesel_duplicate`.',
+      'Updates a person; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `pesel_duplicate`, 409 `external_id_duplicate`.',
   },
 })

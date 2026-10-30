@@ -32,6 +32,8 @@ const events = [
   { id: 'people.guardianship.created', label: 'Guardianship created', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.updated', label: 'Guardianship updated', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.deleted', label: 'Guardianship deleted', entity: 'guardianship', category: 'crud' },
+  // A bulk import was committed (#28, club spec *Events*): ids only; the audit entry carries the counts and the ids.
+  { id: 'people.import.committed', label: 'People import committed', entity: 'import', category: 'lifecycle' },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'people', events })
