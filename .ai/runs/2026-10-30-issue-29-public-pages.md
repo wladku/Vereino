@@ -55,11 +55,11 @@ A guest opens the club's public page and a section's page without signing in and
 
 ## Open problems
 
-- S8.11: uploaded images are not re-encoded (needs `sharp`, Ask First), and published materials (REQ-025) are user files served to others by design — owner decision whether to accept or add the dependency.
+- S8.11: uploaded images are not re-encoded (needs `sharp`, Ask First), and published materials (REQ-025) are user files served to others by design. Product owner, 2026-10-30: "Accept for now" — served as uploaded, checked by their bytes, with `nosniff`; revisit before adding `sharp`.
 - Deferred to phase 2 step 9: public group fields, `groups.publicCatalog`, `activities.publicSchedule`, the instructors block and `publish_name_consent_at` (DD-29); prices (phase 4) and facility blocks (phase 5).
 - Markdown in the public description (rendered as plain text, no markdown dependency); the section logo next to groups in the `groups` pages; clean-up of logo and material files no longer referenced.
 
 ## Next steps
 
-- Owner review of the PR and of the S8.11 point.
+- Owner review of the PR.
 - Phase 2 step 9 plugs the groups and schedule providers into the DD-28 contract.
