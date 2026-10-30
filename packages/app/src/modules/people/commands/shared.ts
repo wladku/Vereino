@@ -196,6 +196,8 @@ export type PersonSnapshot = {
   userId: string | null
   hasPesel: boolean
   hasNotes: boolean
+  /** Whether an import identifier is set (#28); absent in older snapshots. Not restored by an undo, like the PESEL. */
+  hasExternalId?: boolean
 }
 
 export function personSnapshot(person: Person): PersonSnapshot {
@@ -212,6 +214,7 @@ export function personSnapshot(person: Person): PersonSnapshot {
     userId: person.userId ?? null,
     hasPesel: Boolean(person.pesel),
     hasNotes: Boolean(person.notes),
+    hasExternalId: Boolean(person.externalId),
   }
 }
 

@@ -13,7 +13,7 @@ import { assertSupportedLocale, authorizeScoped, type AuthorizeScopedSpec } from
 import { peopleErrors } from '../api/errors'
 import { Person } from '../data/entities'
 import { personCreateSchema, personUpdateSchema } from '../data/validators'
-import { personPesel } from '../encryption'
+import { personExternalId, personPesel } from '../encryption'
 import { isValidPesel } from '../lib/people-rules'
 import {
   inWriteTransaction,
@@ -51,12 +51,34 @@ async function assertPeselAvailable(
   if (duplicate) await peopleErrors.throw('pesel_duplicate')
 }
 
+/** 409 when another live person of the organization has the same import identifier (by hash, #28). */
+async function assertExternalIdAvailable(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  externalId: string,
+  exceptPersonId: string | null,
+): Promise<void> {
+  const duplicate = await em.findOne(
+    Person,
+    {
+      ...scope,
+      deletedAt: null,
+      externalIdHash: { $in: personExternalId.lookup(externalId) },
+      ...(exceptPersonId ? { id: { $ne: exceptPersonId } } : {}),
+    },
+    { fields: ['id'] },
+  )
+  if (duplicate) await peopleErrors.throw('external_id_duplicate')
+}
+
+/** The unique indexes are the backstop of both checks: a race answers the same 409. */
 async function mapUniqueViolation<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run()
   } catch (error: unknown) {
-    if (isUniqueViolation(error)) return peopleErrors.throw('pesel_duplicate')
-    throw error
+    if (!isUniqueViolation(error)) throw error
+    const external = error instanceof Error && error.message.includes('external_id_hash')
+    return peopleErrors.throw(external ? 'external_id_duplicate' : 'pesel_duplicate')
   }
 }
 
@@ -122,6 +144,8 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         const { parsed, tenantId, organizationId } = authorized
         const pesel = parsed.pesel ?? null
         if (pesel) await assertPeselAvailable(em, { tenantId, organizationId }, pesel, null)
+        const externalId = parsed.externalId ?? null
+        if (externalId) await assertExternalIdAvailable(em, { tenantId, organizationId }, externalId, null)
         const preferredLocale = parsed.preferredLocale ? await assertSupportedLocale(parsed.preferredLocale) : null
         const person = em.create(Person, {
           id,
@@ -135,6 +159,7 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
           phone: parsed.phone ?? null,
           notes: parsed.notes ?? null,
           pesel,
+          externalId,
         })
         em.persist(person)
         return { person, actingRole: authorized.actingRole, before: null }
@@ -220,6 +245,21 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
           } else {
             person.pesel = null
             person.peselHash = null
+          }
+        }
+        if (patch.externalId !== undefined) {
+          const externalId = patch.externalId
+          if (externalId) {
+            await assertExternalIdAvailable(
+              em,
+              { tenantId: authorized.tenantId, organizationId: authorized.organizationId },
+              externalId,
+              person.id,
+            )
+            person.externalId = externalId
+          } else {
+            person.externalId = null
+            person.externalIdHash = null
           }
         }
         person.updatedAt = new Date()

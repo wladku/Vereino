@@ -174,6 +174,13 @@ describe('people error codes', () => {
       ['role_assignment_duplicate', 409],
       ['person_not_linked', 404],
       ['payments_minor', 403],
+      ['external_id_duplicate', 409],
+      ['import_mapping_invalid', 422],
+      ['import_already_committed', 409],
+      ['import_cancelled', 409],
+      ['import_review_pending', 422],
+      ['import_decision_invalid', 422],
+      ['import_person_not_found', 422],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })

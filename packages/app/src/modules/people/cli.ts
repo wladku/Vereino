@@ -100,6 +100,25 @@ const checkOwnPayments: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments]
+/**
+ * `people purge-import-rows --tenant <id> --org <id> [--now <ISO instant>]`: one run of the daily import purge (#28);
+ * `--now` lets operators and the integration tests run it as of another instant.
+ */
+const purgeImportRows: ModuleCli = {
+  command: 'purge-import-rows',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato people purge-import-rows --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    await runJobCommand('people.imports.purge', { tenantId: tenant, organizationId: org }, now ? { now } : {})
+  },
+}
+
+const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments, purgeImportRows]
 
 export default commands

@@ -2,6 +2,8 @@
 // organization ids (`.strict()` rejects them).
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
+import { IMPORT_FIELDS, type ImportField } from '../lib/import-mapping'
+import { IMPORT_CLASSIFICATIONS, IMPORT_DECISIONS } from '../lib/import-rules'
 import { GUARDIAN_RELATIONS, type ConsentKind } from '../lib/people-rules'
 
 const nameSchema = z.string().trim().min(1).max(200)
@@ -10,6 +12,8 @@ const emailSchema = z.email().max(320)
 const peselSchema = z.string().trim().max(32)
 const phoneSchema = z.string().trim().max(50)
 const notesSchema = z.string().max(4000)
+/** An identifier from an import file for a person without a PESEL (#28). */
+const externalIdSchema = z.string().trim().min(1).max(100)
 
 export const ASSIGNABLE_ROLES = ['club_admin', 'coordinator', 'coach'] as const
 
@@ -22,6 +26,7 @@ const personFields = {
   phone: phoneSchema.nullable().optional(),
   notes: notesSchema.nullable().optional(),
   pesel: peselSchema.nullable().optional(),
+  externalId: externalIdSchema.nullable().optional(),
 }
 
 export const personCreateSchema = z.object(personFields).strict()
@@ -37,6 +42,7 @@ export const personUpdateSchema = z
     phone: personFields.phone,
     notes: personFields.notes,
     pesel: personFields.pesel,
+    externalId: personFields.externalId,
   })
   .strict()
 
@@ -192,3 +198,49 @@ export type PersonUpdateInput = z.output<typeof personUpdateSchema>
 export type SelfUpdateInput = z.output<typeof selfUpdateSchema>
 export type RoleAssignmentCreateInput = z.output<typeof roleAssignmentCreateSchema>
 export type RoleAssignmentUpdateInput = z.output<typeof roleAssignmentUpdateSchema>
+
+// --- Bulk import (club spec REQ-036, DD-38; #28) ---------------------------------------------------------------
+
+/** Field → 0-based column of the file's header (`lib/import-mapping.ts`); unknown fields are refused. */
+export const importMappingSchema = z
+  .object(
+    Object.fromEntries(IMPORT_FIELDS.map((field) => [field, z.number().int().min(0).max(1000).optional()])) as Record<
+      ImportField,
+      z.ZodOptional<z.ZodNumber>
+    >,
+  )
+  .strict()
+
+/** `people.imports.create`: the mapping as JSON text next to the multipart `file`. */
+export const importCreateSchema = z.object({ mapping: importMappingSchema }).strict()
+
+/** `people.imports.decide_row`: one decision on a staged row (the row's lock token in the platform header). */
+export const importRowRefSchema = z.object({ importId: z.uuid(), rowId: z.uuid() }).strict()
+
+export const importDecisionSchema = importRowRefSchema
+  .extend({ action: z.enum(IMPORT_DECISIONS), personId: z.uuid().optional() })
+  .strict()
+  .refine((value) => (value.action === 'match') === (value.personId !== undefined), {
+    message: 'personId is required for match and only for match',
+    path: ['personId'],
+  })
+
+/** `people.imports.commit` and `people.imports.cancel`: the import (its lock token in the platform header). */
+export const importActionSchema = z.object({ id: z.uuid() }).strict()
+
+/** `people.imports.purge` (the `people:purge-import-rows` job); `now` only from the CLI and the worker. */
+export const importPurgeJobSchema = z.object({ now: z.iso.datetime().optional() }).strict()
+
+export const importListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['previewed', 'committed', 'cancelled']).optional(),
+})
+
+export const importRowListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  classification: z.enum(IMPORT_CLASSIFICATIONS).optional(),
+  /** Only the rows that still need a decision. */
+  pending: z.enum(['true', 'false']).optional(),
+})

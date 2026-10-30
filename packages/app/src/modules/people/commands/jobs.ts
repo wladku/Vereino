@@ -2,14 +2,19 @@
 // first-administrator bootstrap. Both accept only the `system_job` grant of the organization their context names
 // (`jobCommandContext`), so no HTTP route can reach them; the worker and the module CLI dispatch them.
 import { randomUUID } from 'node:crypto'
+import { LockMode } from '@mikro-orm/core'
+import type { EntityManager } from '@mikro-orm/postgresql'
+import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { isActiveAt, type ActingRole } from '@vereino/core'
 import { authorizeScoped } from '@/modules/foundation'
-import { Person, RoleAssignment } from '../data/entities'
-import { bootstrapAdminSchema, syncRolesJobSchema } from '../data/validators'
+import { Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
+import { bootstrapAdminSchema, importPurgeJobSchema, syncRolesJobSchema } from '../data/validators'
+import { importPurgeCutoff } from '../lib/import-rules'
+import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
 import {
   syncAllPersonRoles,
@@ -180,5 +185,129 @@ const bootstrapAdminCommand: CommandHandler<Record<string, unknown>, BootstrapAd
   },
 }
 
+export type PurgeImportsCounts = { imports: number; rows: number; files: number; failed: number }
+
+export type PurgeImportsJobResult = OrganizationTarget & { now: string; counts: PurgeImportsCounts }
+
+type ImportScope = { tenantId: string; organizationId: string }
+
+/**
+ * Purges one import in its own transaction: deletes its staged rows (a row whose group waits for the `groups`
+ * membership hook keeps only its ids and group label), releases its file from `attachments` and sets `purged_at`.
+ * An import still open after the retention period is treated as abandoned and cancelled first. The file's bytes are
+ * deleted after the transaction commits; a file already gone is fine. Returns null when another run purged it.
+ */
+async function purgeImport(
+  ctx: CommandRuntimeContext,
+  scope: ImportScope,
+  importId: string,
+  now: Date,
+): Promise<{ rows: number; file: boolean } | null> {
+  const outcome = await inWriteTransaction(ctx, 'people.imports.purge.one', async (em: EntityManager) => {
+    const record = await em.findOne(
+      PersonImport,
+      { id: importId, ...scope, purgedAt: null },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    )
+    if (!record) return null
+    if (record.status === 'previewed') {
+      record.status = 'cancelled'
+      record.cancelledAt = now
+    }
+    const rows = await em.nativeDelete(PersonImportRow, { importId, ...scope, membershipStatus: null })
+    await em.nativeUpdate(PersonImportRow, { importId, ...scope, membershipStatus: { $ne: null } }, { raw: null })
+    let cleanup: (() => Promise<void>) | null = null
+    if (record.fileAttachmentId) {
+      try {
+        const released = await attachmentServiceOf(ctx).releaseScoped?.(
+          {
+            attachmentId: record.fileAttachmentId,
+            ...scope,
+            expectedOwner: { entityId: IMPORT_FILE_OWNER_ENTITY, recordId: record.id },
+            expectedAssignment: { type: IMPORT_FILE_OWNER_ENTITY, id: record.id },
+            expectedPartitionCode: IMPORT_PARTITION,
+          },
+          { em, flush: false },
+        )
+        cleanup = released ?? null
+      } catch (error: unknown) {
+        // Already gone: nothing left to delete.
+        if (!isCrudHttpError(error) || error.status !== 404) throw error
+      }
+    }
+    const file = record.fileAttachmentId !== null && record.fileAttachmentId !== undefined
+    record.fileAttachmentId = null
+    record.purgedAt = now
+    record.updatedAt = now
+    await em.flush()
+    return { rows, file, cleanup }
+  })
+  if (!outcome) return null
+  await outcome.cleanup?.()
+  return { rows: outcome.rows, file: outcome.file }
+}
+
+/**
+ * `people.imports.purge` — the daily `people:purge-import-rows` job (club spec *Events, Jobs* row, REQ-036): the staged
+ * rows and the file of every import committed or cancelled 30 days ago (and of a preview left open as long) are
+ * deleted. Idempotent (`purged_at`); one failing import is logged and retried by the next run. Not undoable.
+ */
+const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImportsJobResult> = {
+  id: 'people.imports.purge',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const { target, parsed } = await authorizeJob(ctx, 'people.imports.purge.authorize', importPurgeJobSchema, rawInput)
+    const scope = { tenantId: target.tenantId, organizationId: target.organizationId }
+    const now = typeof parsed.now === 'string' ? new Date(parsed.now) : new Date()
+    const cutoff = importPurgeCutoff(now)
+    const due = await ctx.container
+      .resolve<EntityManager>('em')
+      .fork()
+      .find(
+        PersonImport,
+        {
+          ...scope,
+          deletedAt: null,
+          purgedAt: null,
+          $or: [
+            { status: 'committed', committedAt: { $lte: cutoff } },
+            { status: 'cancelled', cancelledAt: { $lte: cutoff } },
+            { status: 'previewed', createdAt: { $lte: cutoff } },
+          ],
+        },
+        { fields: ['id'], orderBy: { createdAt: 'asc' } },
+      )
+    const counts: PurgeImportsCounts = { imports: 0, rows: 0, files: 0, failed: 0 }
+    logger.info('Import purge started', { ...scope, due: due.length })
+    for (const { id } of due) {
+      try {
+        const purged = await purgeImport(ctx, scope, id, now)
+        if (!purged) continue
+        counts.imports += 1
+        counts.rows += purged.rows
+        if (purged.file) counts.files += 1
+      } catch (error: unknown) {
+        counts.failed += 1
+        logger.warn('Import purge failed for one import; the next run retries it', { ...scope, err: error })
+        getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.import_purge.failed' })
+      }
+    }
+    logger.info('Import purge finished', { ...scope, ...counts })
+    return { ...target, now: now.toISOString(), counts }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.jobs.purge_imports', 'Purge people imports'),
+      resourceKind: 'people.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: { actingRole: result.actingRole, now: result.now, ...result.counts },
+    }
+  },
+}
+
 registerCommand(syncRolesJobCommand)
 registerCommand(bootstrapAdminCommand)
+registerCommand(purgeImportsJobCommand)
