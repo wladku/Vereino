@@ -1,10 +1,12 @@
 'use client'
 // `/club` — "Today" of the member interface (club spec `/club` UI row and wireframe; REQ-002; #27). Phase 1 shows the
-// profile and calendar entry points and — only for a guardian — the wards with their consents. The calendar fills
-// with the sessions of phase 2; the messages and payments tiles arrive with phases 3 and 4 and are not rendered
-// before (no empty placeholders). A minor never gets a payments tile (R10, `paymentsVisible`).
+// profile entry point and — only for a guardian — the wards with their consents. The calendar and attendance tiles
+// of phase 2 are mounted by the `activities` module through the `vereino:club:today:sections` injection spot; the
+// messages and payments tiles arrive with phases 3 and 4 and are not rendered before (no empty placeholders). A minor
+// never gets a payments tile (R10, `paymentsVisible`).
 import * as React from 'react'
 import Link from 'next/link'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClubFrame } from './ClubFrame'
@@ -57,12 +59,6 @@ function Today({ profile }: { profile: MemberProfile }) {
         </h2>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li>
-            <div className={TILE_CLASS} data-testid="club-tile-calendar">
-              <h3 className="font-semibold">{t('people.club.tiles.calendar.title')}</h3>
-              <p className="text-muted-foreground max-w-prose text-sm">{t('people.club.tiles.calendar.empty')}</p>
-            </div>
-          </li>
-          <li>
             <Link href={CLUB_PROFILE_HREF} className={LINK_TILE_CLASS} data-testid="club-tile-profile">
               <span className="font-semibold">{t('people.club.tiles.profile.title')}</span>
               <span className="text-muted-foreground max-w-prose text-sm">
@@ -72,6 +68,7 @@ function Today({ profile }: { profile: MemberProfile }) {
           </li>
         </ul>
       </section>
+      <InjectionSpot spotId="vereino:club:today:sections" context={{ profile }} />
       {profile.wards.length > 0 ? (
         <section aria-labelledby="club-wards" className="flex flex-col gap-3" data-testid="club-wards">
           <h2 id="club-wards" className="text-lg font-semibold">

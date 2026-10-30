@@ -3,9 +3,9 @@
 // in the club's language), the member navigation, and the loading, error and "not linked" states. A signed-in user
 // linked to no person sees only the notice and the way to the admin panel — never anyone's data. Once the profile is
 // loaded, the interface locale follows the member's (DD-34: preferred → club default → request → en) through the
-// platform's own locale route.
+// platform's own locale route. The markup is the shared `MemberShell` of `@vereino/ui` (foundation II P-23); this file
+// feeds it the router's link, the translated labels and the profile.
 import * as React from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
@@ -14,8 +14,10 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberShell, type MemberLinkProps, type MemberNavItem } from '@vereino/ui'
 import {
   BACKEND_HREF,
+  CLUB_CALENDAR_HREF,
   CLUB_HOME_HREF,
   CLUB_PROFILE_HREF,
   hasStaffContext,
@@ -42,18 +44,11 @@ function useMemberLocale(profile: MemberProfile | null) {
   }, [profile, current, locked, router])
 }
 
-function NavLink({ href, label, current }: { href: string; label: string; current: boolean }) {
+/** `next/link` under the shell's link contract (the shell knows no router). */
+function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: MemberLinkProps) {
   return (
-    <Link
-      href={href}
-      aria-current={current ? 'page' : undefined}
-      className={
-        current
-          ? 'text-foreground inline-flex min-h-11 items-center rounded-md px-3 text-sm font-semibold underline underline-offset-4'
-          : 'text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center rounded-md px-3 text-sm'
-      }
-    >
-      {label}
+    <Link href={href} className={className} aria-current={ariaCurrent}>
+      {children}
     </Link>
   )
 }
@@ -97,41 +92,27 @@ export function ClubFrame({ children }: { children: (profile: MemberProfile) => 
     body = children(query.data.profile)
   }
 
+  // The navigation appears once the profile is loaded; a user linked to no person sees none of it.
+  const nav: MemberNavItem[] = profile
+    ? [
+        { href: CLUB_HOME_HREF, label: t('people.club.nav.today'), current: pathname === CLUB_HOME_HREF },
+        { href: CLUB_CALENDAR_HREF, label: t('people.club.nav.calendar'), current: pathname === CLUB_CALENDAR_HREF },
+        { href: CLUB_PROFILE_HREF, label: t('people.club.nav.profile'), current: pathname === CLUB_PROFILE_HREF },
+        ...(hasStaffContext(profile)
+          ? [{ href: BACKEND_HREF, label: t('people.club.nav.backend'), current: false }]
+          : []),
+      ]
+    : []
+
   return (
-    <div className="bg-background text-foreground min-h-svh">
-      <header className="bg-card border-b">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-2">
-          <p className="flex items-center gap-2 text-sm font-semibold" data-testid="club-name">
-            {profile?.club.logoUrl ? (
-              <Image
-                src={profile.club.logoUrl}
-                alt=""
-                width={32}
-                height={32}
-                unoptimized
-                className="bg-muted size-8 rounded object-contain"
-                data-testid="club-logo"
-              />
-            ) : null}
-            <span>{profile?.club.shortName ?? t('people.club.title')}</span>
-          </p>
-          {profile ? (
-            <nav aria-label={t('people.club.nav.label')} className="flex flex-wrap items-center gap-1">
-              <NavLink href={CLUB_HOME_HREF} label={t('people.club.nav.today')} current={pathname === CLUB_HOME_HREF} />
-              <NavLink
-                href={CLUB_PROFILE_HREF}
-                label={t('people.club.nav.profile')}
-                current={pathname === CLUB_PROFILE_HREF}
-              />
-              {hasStaffContext(profile) ? (
-                <NavLink href={BACKEND_HREF} label={t('people.club.nav.backend')} current={false} />
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      </header>
-      <RecordConflictBanner />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{body}</main>
-    </div>
+    <MemberShell
+      brand={{ name: profile?.club.shortName ?? t('people.club.title'), logoUrl: profile?.club.logoUrl }}
+      nav={nav}
+      navLabel={t('people.club.nav.label')}
+      Link={MemberLink}
+      banner={<RecordConflictBanner />}
+    >
+      {body}
+    </MemberShell>
   )
 }
