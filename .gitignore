@@ -74,6 +74,7 @@ packages/app/src/generated/
 # uploads and app data
 packages/app/public/uploads/*
 /storage/
+packages/app/storage/
 /data/
 
 # local package managers

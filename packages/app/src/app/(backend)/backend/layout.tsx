@@ -15,6 +15,33 @@ import { BrowserTelemetry } from '@open-mercato/telemetry/browser'
 import { resolveBrowserTelemetryConfig } from '@open-mercato/telemetry/browser/server'
 import { DemoFeedbackWidget } from '@/components/DemoFeedbackWidget'
 import { BackendHeaderChrome } from '@/components/BackendHeaderChrome'
+import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+
+type ClubLogoSettings = {
+  get(scope: { tenantId: string; organizationId: string }): Promise<{ publicSettings: { logoUrl: string | null } }>
+}
+
+/**
+ * The club logo for the AppShell header (Vereino club spec REQ-028, issue #29): read through the optional
+ * `clubCoreSettings` DI service of the `club_core` module. The platform's organization branding (`Organization.logoUrl`
+ * in the backend chrome) and a brand style still take precedence when an organization configures them.
+ */
+async function resolveClubLogo(
+  auth: Awaited<ReturnType<typeof getAuthFromCookies>>,
+  alt: string,
+): Promise<{ src: string; alt: string; preserveAspectRatio: boolean } | undefined> {
+  if (!auth?.tenantId || !auth.orgId) return undefined
+  try {
+    const container = await createRequestContainer()
+    if (!container.hasRegistration('clubCoreSettings')) return undefined
+    const settings = container.resolve<ClubLogoSettings>('clubCoreSettings')
+    const snapshot = await settings.get({ tenantId: auth.tenantId, organizationId: auth.orgId })
+    const src = snapshot.publicSettings.logoUrl
+    return src ? { src, alt, preserveAspectRatio: true } : undefined
+  } catch {
+    return undefined
+  }
+}
 
 function collectStaticSettingsPathPrefixes(): string[] {
   const prefixes = new Set<string>()
@@ -97,9 +124,10 @@ export default async function BackendLayout({
     unrestricted: auth?.isSuperAdmin === true,
   })
   const baseProductName = translate('appShell.productName', 'Open Mercato')
-  const productName = deployEnv && deployEnv !== 'local'
-    ? `${baseProductName} (${deployEnv.charAt(0).toUpperCase() + deployEnv.slice(1)})`
-    : baseProductName
+  const productName =
+    deployEnv && deployEnv !== 'local'
+      ? `${baseProductName} (${deployEnv.charAt(0).toUpperCase() + deployEnv.slice(1)})`
+      : baseProductName
 
   const injectionContext = {
     path,
@@ -113,17 +141,25 @@ export default async function BackendLayout({
   // ever being requested.
   const browserTelemetryConfig = resolveBrowserTelemetryConfig({ cookieHeader: cookieStore.toString() })
 
+  const clubLogo = await resolveClubLogo(auth, translate('club_core.logo.headerAlt', 'Club logo'))
+
   return (
-    <I18nProvider locale={locale} dict={dict} localeLocked={resolveForcedLocale(process.env) !== null} supportedLocales={supportedLocales}>
+    <I18nProvider
+      locale={locale}
+      dict={dict}
+      localeLocked={resolveForcedLocale(process.env) !== null}
+      supportedLocales={supportedLocales}
+    >
       <AppShell
         productName={productName}
+        logo={clubLogo}
         email={auth?.email}
         canManageUpgradeActions={canManageUpgradeActions}
         groups={[]}
         currentTitle={currentTitle}
         breadcrumb={breadcrumb}
         sidebarCollapsedDefault={initialCollapsed}
-        rightHeaderSlot={(
+        rightHeaderSlot={
           <BackendHeaderChrome
             email={auth?.email}
             userId={auth?.sub ?? null}
@@ -132,7 +168,7 @@ export default async function BackendLayout({
             tenantId={auth?.tenantId ?? null}
             organizationId={auth?.orgId ?? null}
           />
-        )}
+        }
         adminNavApi="/api/auth/admin/nav"
         version={APP_VERSION}
         hideFooter={hideBackendFooter}

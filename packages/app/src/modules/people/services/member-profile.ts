@@ -13,7 +13,7 @@ import { scopeContract } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { memberContexts, memberLocale, selfConsentView, type SelfConsentView } from '../lib/member-rules'
 import { consentsView, parseStoredConsents, type ConsentsView, type GuardianRelation } from '../lib/people-rules'
-import { clubSettings, clubToday, type ClubScope } from './club-clock'
+import { clubLogoUrl, clubSettings, clubToday, type ClubScope } from './club-clock'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './payments-gate'
 
 function iso(value: Date | string | null | undefined): string | null {
@@ -64,7 +64,7 @@ export type MemberProfile = {
   /** The resolved interface locale of the member (DD-34). */
   locale: string
   /** Club content (`shortName`) stays in the club's language; dates show in the club's time zone. */
-  club: { shortName: string | null; defaultLocale: string; timezone: string }
+  club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
   /** R10: false for a minor, a user without `payments.view_own` or without a person. */
   paymentsVisible: boolean
 }
@@ -171,7 +171,12 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     roles,
     contexts: memberContexts(grants),
     locale,
-    club: { shortName: settings.shortName ?? null, defaultLocale: settings.defaultLocale, timezone: settings.timezone },
+    club: {
+      shortName: settings.shortName ?? null,
+      defaultLocale: settings.defaultLocale,
+      timezone: settings.timezone,
+      logoUrl: await clubLogoUrl(ctx.container, scope),
+    },
     paymentsVisible: payments.access === 'allowed',
   }
 }

@@ -1,6 +1,7 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['club_core.manage'],
+  // Coordinators open it for the section's public page, logo and materials (#29); the core fields need club_core.manage.
+  requireFeatures: ['club_core.view'],
   pageTitle: 'Edit section',
   pageTitleKey: 'club_core.sections.edit.title',
   pageGroup: 'Club',

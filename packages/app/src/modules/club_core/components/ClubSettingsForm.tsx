@@ -1,6 +1,7 @@
 'use client'
 // `/backend/club/settings` (club spec UI table, DD-37): the club settings with their defaults, edited in one
-// `CrudForm`; the lock token comes from `initialValues.updatedAt` (null until the first save creates the row).
+// `CrudForm`; the lock token comes from `initialValues.updatedAt` (null until the first save creates the row). Since
+// #29 the club logo panel sits under the form (upload, replace, remove; REQ-028).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -17,12 +18,18 @@ import {
   ONLINE_FEE_MODES,
   type ClubSettingsValues,
 } from '../lib/settings'
+import { nameInitial } from '../lib/files'
 import { enumOptions, errorMessage, numberOrNull, textOrNull } from './client-helpers'
+import { LogoPanel } from './LogoPanel'
 
 const SETTINGS_API = '/api/club_core/settings'
 const LOCALES = ['pl', 'en'] as const
 
-type SettingsResponse = ClubSettingsValues & { updatedAt: string | null }
+type SettingsResponse = ClubSettingsValues & {
+  logoAttachmentId: string | null
+  logoUrl: string | null
+  updatedAt: string | null
+}
 
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
@@ -194,27 +201,44 @@ export function ClubSettingsForm() {
   if (!settings) return <LoadingMessage label={t('club_core.settings.loading')} />
 
   return (
-    <CrudForm<FormValues>
-      key={settings.updatedAt ?? 'defaults'}
-      title={t('club_core.settings.title')}
-      titleHeadingLevel={1}
-      fields={fields}
-      groups={groups}
-      initialValues={toFormValues(settings)}
-      submitLabel={t('club_core.settings.save')}
-      onSubmit={async (values) => {
-        await apiCallOrThrow(
-          SETTINGS_API,
-          {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(toPayload(values)),
-          },
-          { errorMessage: t('club_core.settings.errors.save') },
-        )
-        flash(t('club_core.settings.flash.saved'), 'success')
-        await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
-      }}
-    />
+    <div className="flex flex-col gap-6">
+      <CrudForm<FormValues>
+        key={settings.updatedAt ?? 'defaults'}
+        title={t('club_core.settings.title')}
+        titleHeadingLevel={1}
+        fields={fields}
+        groups={groups}
+        initialValues={toFormValues(settings)}
+        submitLabel={t('club_core.settings.save')}
+        onSubmit={async (values) => {
+          await apiCallOrThrow(
+            SETTINGS_API,
+            {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(toPayload(values)),
+            },
+            { errorMessage: t('club_core.settings.errors.save') },
+          )
+          flash(t('club_core.settings.flash.saved'), 'success')
+          await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
+        }}
+      />
+      <LogoPanel
+        title={t('club_core.logo.club.title')}
+        description={t('club_core.logo.club.description')}
+        imageUrl={settings.logoUrl}
+        initial={nameInitial(settings.shortName)}
+        source={settings.logoAttachmentId ? 'club' : 'initial'}
+        removable={Boolean(settings.logoAttachmentId)}
+        updatedAt={settings.updatedAt}
+        endpoint="/api/club_core/logo"
+        canEdit
+        testId="club-logo"
+        onChanged={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
+        }}
+      />
+    </div>
   )
 }

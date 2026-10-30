@@ -67,3 +67,23 @@ export async function countPlacesOwnedBy(
   )
   return Number(rows[0]?.count ?? 0)
 }
+
+/**
+ * The one system-scope operation of the sessionless public pages (club spec DD-35, AGENTS.md exception D-024/D-026,
+ * engineering standards S8.6): a read-only lookup of the globally unique `public_slug`, backed by the partial unique
+ * index `club_core_club_settings_public_slug_unique`. It returns only the club's settings row id and its tenant and
+ * organization; every further query of the public pages is narrowed to them. Called only by `clubCorePublicSite`.
+ */
+export async function lookupClubByPublicSlug(
+  em: EntityManager,
+  slug: string,
+): Promise<{ settingsId: string; tenantId: string; organizationId: string } | null> {
+  const rows = await em.execute<{ id: string; tenant_id: string; organization_id: string }[]>(
+    `select id, tenant_id, organization_id from club_core_club_settings
+     where public_slug = ? and deleted_at is null
+     limit 1`,
+    [slug],
+  )
+  const row = rows.at(0)
+  return row ? { settingsId: row.id, tenantId: row.tenant_id, organizationId: row.organization_id } : null
+}
