@@ -473,7 +473,7 @@ Contract verifications (performed on 2026-10-27 against the installed 0.9.0 pack
 | ID | What to check | Phase | Result |
 |---|---|---|---|
 | V-F02 | Granting and revoking `auth` roles programmatically | A1 | **Confirmed with a constraint:** `rbacService` has no grant/revoke; `syncUserRoles` is private; the command `auth.users.update` accepts `roles: string[]` (names resolved per tenant) — DD-F05; the club spec's events row that says "via `rbacService`" is corrected in the same PR |
-| V-F05 | `react-dom/server` rendering of the member components under `node --test` with the `@open-mercato/ui` primitives (no jsdom) | A2 | **Open — phase A2 step 1 on `MemberPage`;** fallback: a `jsdom` devDependency in `packages/ui` only, with the coverage thresholds unchanged |
+| V-F05 | `react-dom/server` rendering of the member components under `node --test` with the `@open-mercato/ui` primitives (no jsdom) | A2 | **Confirmed 2026-10-30 (#32):** `MemberShell` and `CalendarList` render with `react-dom/server` under `node --test` at 100 % coverage; `.tsx` loads through a TypeScript `transpileModule` hook (`packages/ui/scripts/register-tsx.mjs`, `--import`), no `jsdom` |
 
 ## Changelog
 
@@ -490,3 +490,4 @@ Contract verifications (performed on 2026-10-27 against the installed 0.9.0 pack
 | 2026-10-28 | Phase A1 implemented with #38: implementation status recorded in phase A1; P-03's empty filter is `id IS NULL` (the installed engine rejects an empty `$in`); AC-F04 notes the invitation-locale and resend deviations; Q18 opened for the club administrator's resend |
 | 2026-10-29 | P-03 gains the additive `ScopeMatchOptions.clubWideKinds` on `grantContaining`, `findActingRole`, `scopeWhere` and `assertInScope` (#26: the coordinator's club-wide basic read of people) |
 | 2026-10-29 | `authorizeScoped` passes the additive `matchOptions` (`clubWideKinds`) to `assertInScope` (#30); `calendarDateInZone` moved to `@vereino/core` `calendar-date.ts` with its second consumer (`groups`) |
+| 2026-10-30 | V-F05 confirmed with #32 (the first `@vereino/ui` member components); the result is in the V table |
