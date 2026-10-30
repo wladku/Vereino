@@ -26,8 +26,9 @@ Other Vereino modules import every helper below from `@/modules/foundation` (thi
 | P-08 | `grantConsent`, `withdrawConsent` (`@vereino/core`) | — |
 | P-09 | `encryptedField` | `services/encrypted-field.ts` |
 | P-12 | `registerModuleSchedule` (naming rules in `@vereino/core`) | `services/register-module-schedule.ts` |
+| P-23 | `CalendarItem`, `groupCalendarItemsByDay`, `calendarWeek`, `isServedCalendarRange` (`@vereino/core`); `MemberShell`, `CalendarList`, `toScheduleItem` (`@vereino/ui`) | — |
 | P-24 | `Recurrence` (parse/serialise), `expandOccurrences`, `occurrenceDates`, `zonedInstant`, `seriesEditPlan` (`@vereino/core`); `parseRecurrence` (422 `recurrence_unsupported` / `recurrence_invalid`) | `services/recurrence.ts` |
-| P-25 | `defineTransitions` (`@vereino/core`); `assertTransition` (409 `invalid_transition`); `advanceWhere` waits for its first consumer (#32/#33) | `services/transitions.ts` |
+| P-25 | `defineTransitions` (`@vereino/core`); `assertTransition` (409 `invalid_transition`); `advanceWhere` (the job-driven conditional UPDATE: moves the rows still in `from`, returns the ids it changed — first consumer `activities.attendance.expire`, #32) | `services/transitions.ts` |
 | P-26 | `Interval`, `intervalsOverlap`, `findOverlaps` (`@vereino/core`); the optional `vereino.occupancyProvider` contract, `occupancyProvider(container)` | `services/occupancy.ts` |
 | P-16 | `renderLocalized`, `localeForPerson`, `assertSupportedLocale` (422 `locale_unsupported`, #27) | `services/localized.ts` |
 | P-17 | `ErrorCodeTable` (`@vereino/core`); `errors(table)` | `services/errors.ts` |
