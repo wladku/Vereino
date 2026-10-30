@@ -345,3 +345,55 @@ export function fieldOfError(error: unknown): string | null {
   }
   return FIELD_OF_CODE.get(code) ?? null
 }
+
+// --- Declaration policies (#32) ---
+
+export const POLICIES_HREF = '/backend/activities/policies'
+export const CLUB_SETTINGS_HREF = '/backend/club/settings'
+
+export const policyEditHref = (id: string) => `${POLICIES_HREF}/${encodeURIComponent(id)}/edit`
+
+/** One row of `GET /api/activities/attendance-policies`. */
+export type PolicyRow = {
+  id: string
+  scope: string | null
+  groupId: string | null
+  groupName?: string | null
+  activityType: string | null
+  minorDeclarationMode: string | null
+  confirmTimeoutHours: number | null
+  defaultAfterTimeout: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/** "Club", "Group: U-12", "Away trip" or "Activity type: Match". */
+export function policyScopeLabel(t: Translate, row: Pick<PolicyRow, 'scope' | 'groupName' | 'activityType'>): string {
+  if (row.scope === 'group') {
+    return t('activities.policies.scope.group.label', { name: row.groupName ?? t('activities.common.empty') })
+  }
+  if (row.scope === 'activity_type') {
+    return t('activities.policies.scope.activity_type.label', { type: typeLabel(t, row.activityType) })
+  }
+  if (row.scope === 'club' || row.scope === 'away_trip') return t(`activities.policies.scope.${row.scope}`)
+  return t('activities.common.empty')
+}
+
+export function declarationModeLabel(t: Translate, mode: string | null | undefined): string {
+  return mode ? t(`activities.policies.mode.${mode}`) : t('activities.common.empty')
+}
+
+export function timeoutDefaultLabel(t: Translate, value: string | null | undefined): string {
+  return value ? t(`activities.policies.afterTimeout.${value}`) : t('activities.common.empty')
+}
+
+const POLICY_FIELD_OF_CODE = new Map<string, string>([
+  ['attendance_policy_duplicate', 'scope'],
+  ['attendance_policy_scope_invalid', 'scope'],
+])
+
+/** The policy form field a coded 409/422 belongs to (an unknown group lands on `groupId` through `fieldOfError`). */
+export function policyFieldOfError(error: unknown): string | null {
+  const code = errorCode(error)
+  return (code ? POLICY_FIELD_OF_CODE.get(code) : undefined) ?? fieldOfError(error)
+}

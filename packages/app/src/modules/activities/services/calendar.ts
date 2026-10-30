@@ -403,8 +403,8 @@ async function staffCalendar(
       ...scope,
       deletedAt: null,
       occurrenceDate: { $gte: window.from, $lte: window.to },
-      ...(sectionId ? { sectionId } : {}),
-      ...(where as object),
+      // The requested section narrows the scope filter, never replaces it.
+      $and: [where as object, ...(sectionId ? [{ sectionId }] : [])],
     },
     { orderBy: { startAt: 'asc', id: 'asc' } },
   )
