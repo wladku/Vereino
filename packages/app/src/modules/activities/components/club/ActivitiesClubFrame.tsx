@@ -5,12 +5,13 @@
 // imports nothing of `people`; the navigation repeats the `/club` entries `people` shows.
 import * as React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberShell, type MemberLinkProps } from '@vereino/ui'
 import {
   BACKEND_HREF,
@@ -21,6 +22,28 @@ import {
   useClubProfile,
   type ClubProfile,
 } from './club-client'
+
+/**
+ * The member's locale (DD-34: preferred → club default → request → en) through the platform's locale route, the same
+ * effect `people`'s member frame runs — a member who opens a session from a notification link sees their language.
+ */
+function useMemberLocale(profile: ClubProfile | null) {
+  const current = useLocale()
+  const locked = useLocaleLocked()
+  const router = useRouter()
+  const requested = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    if (!profile || locked || profile.locale === current || requested.current === profile.locale) return
+    requested.current = profile.locale
+    void apiCall('/api/auth/locale', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ locale: profile.locale }),
+    }).then((call) => {
+      if (call.ok) router.refresh()
+    })
+  }, [profile, current, locked, router])
+}
 
 function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: MemberLinkProps) {
   return (
@@ -35,6 +58,7 @@ export function ActivitiesClubFrame({ children }: { children: (profile: ClubProf
   const pathname = usePathname()
   const query = useClubProfile()
   const profile = query.data?.status === 'ok' ? query.data.profile : null
+  useMemberLocale(profile)
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {

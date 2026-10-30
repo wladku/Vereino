@@ -1,7 +1,7 @@
 // `/api/activities/attendance-policies` — the club's declaration policies (club spec API table, glossary *Declaration
 // policy*; REQ-007; #32): read with `activities.view` by the coordinators and the club administrator (club-wide, like
 // the `groups` dictionaries), written with `activities.manage` through the `activities.attendance_policies.*`
-// commands (a duplicate scope key → 409 `attendance_policy_duplicate`, scope fields that do not fit → 422
+// commands — a coordinator the `group` policies of their sections' groups, the club administrator every policy — (a duplicate scope key → 409 `attendance_policy_duplicate`, scope fields that do not fit → 422
 // `attendance_policy_scope_invalid`).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -10,7 +10,7 @@ import type { Where } from '@open-mercato/shared/lib/query/types'
 import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import type { AttendancePolicyCommandResult } from '../../commands/policies'
-import { POLICY_WRITE_KINDS, POLICY_WRITE_OPTIONS } from '../../commands/policies'
+import { POLICY_READ_KINDS, POLICY_READ_OPTIONS } from '../../commands/policies'
 import { AttendancePolicy } from '../../data/entities'
 import {
   attendancePolicyCreateSchema,
@@ -69,7 +69,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       const business: Where[] = []
       if (query.scope) business.push({ scope: query.scope })
       if (query.groupId) business.push({ group_id: query.groupId })
-      return { $and: [scopeWhere(scope, POLICY_WRITE_KINDS, {}, POLICY_WRITE_OPTIONS), ...business] } as Where
+      return { $and: [scopeWhere(scope, POLICY_READ_KINDS, {}, POLICY_READ_OPTIONS), ...business] } as Where
     },
     transformItem: attendancePolicyListItem,
   },

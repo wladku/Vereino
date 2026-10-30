@@ -10,12 +10,23 @@
 // - the expiry job moves the pending declarations past their limit with `advanceWhere` to the status the policy copied
 //   onto the row, and only the rows it changed get an event — a retry re-emits nothing.
 import type { EntityManager } from '@mikro-orm/postgresql'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import {
+  enforceCommandOptimisticLock,
+  enforceCommandOptimisticLockWithGuards,
+} from '@open-mercato/shared/lib/crud/optimistic-lock-command'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { z } from 'zod'
 import type { ActingRole, GrantKind } from '@vereino/core'
-import { advanceWhere, assertTransition, authorizeScoped, type TargetLock } from '@/modules/foundation'
+import {
+  advanceWhere,
+  assertTransition,
+  authorizeScoped,
+  foundationErrors,
+  type TargetLock,
+} from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Activity, Attendance, AttendancePolicy, Occurrence } from '../data/entities'
 import { attendanceDeclareSchema, expireConfirmationsSchema, guardianDecisionSchema } from '../data/validators'
@@ -73,6 +84,8 @@ export type AttendanceSnapshot = {
   markedByPersonId: string | null
   markedAsRole: string | null
   source: DeclarationSource
+  /** The row's lock token after the write; an undo refuses (409) when the row changed since. */
+  updatedAt: string
 }
 
 /** What the guardians of the participant are told after a minor's own declaration (club spec *Events* row). */
@@ -103,6 +116,7 @@ export function attendanceSnapshot(row: Attendance): AttendanceSnapshot {
     markedByPersonId: row.markedByPersonId ?? null,
     markedAsRole: row.markedAsRole ?? null,
     source: row.source,
+    updatedAt: row.updatedAt.toISOString(),
   }
 }
 
@@ -158,6 +172,41 @@ function loadAttendance(ctx: CommandRuntimeContext, includeDeleted = false) {
   }
 }
 
+/** Acting roles that declare as staff: they also need `activities.coach` (club spec API row: "or `activities.coach`"). */
+const STAFF_ROLES: readonly ActingRole[] = ['coach', 'coordinator', 'club_admin']
+
+/**
+ * A staff declaration needs the `activities.coach` feature on top of the record scope: a `coach` grant comes from an
+ * assistant membership too, which alone does not make a person staff (403 `scope_denied`).
+ */
+async function assertStaffMayDeclare(ctx: CommandRuntimeContext, actingRole: ActingRole, scope: Scope): Promise<void> {
+  if (!STAFF_ROLES.includes(actingRole)) return
+  const userId = ctx.auth?.sub
+  const rbac = ctx.container.resolve<RbacService>('rbacService')
+  if (!userId || !(await rbac.userHasAllFeatures(userId, ['activities.coach'], scope))) {
+    await foundationErrors.throw('scope_denied')
+  }
+}
+
+/**
+ * An undo restores a declaration only while the session takes declarations and only when the row is still what the
+ * command wrote (409 `optimistic_lock_conflict` otherwise — a newer declaration or decision wins).
+ */
+async function assertUndoable(em: EntityManager, row: Attendance, after: AttendanceSnapshot | null | undefined) {
+  const scope: Scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  const occurrence = await em.findOne(Occurrence, { id: row.occurrenceId, ...scope, deletedAt: null })
+  if (!occurrence) throw new Error('[internal] a declaration without its session: ' + row.id)
+  await assertDeclarationsOpen(occurrence, new Date())
+  if (after?.updatedAt) {
+    enforceCommandOptimisticLock({
+      resourceKind: ATTENDANCE_RESOURCE_KIND,
+      resourceId: row.id,
+      current: row.updatedAt,
+      expected: after.updatedAt,
+    })
+  }
+}
+
 /** A declaration's scope target: the person (self, guardian), the group and session (coach), the section (coordinator). */
 function declarationTarget(occurrence: Occurrence, personId: string) {
   return {
@@ -195,11 +244,14 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
       const occurrence = authorized.entity as Occurrence
       const { parsed, actingRole } = authorized
       const scope: Scope = { tenantId: occurrence.tenantId, organizationId: occurrence.organizationId }
-      await assertDeclarationsOpen(occurrence, now)
+      // Participation first: a session of another group answers the same 422 whatever its status, so the route is no
+      // oracle for other groups' sessions.
       const roster = await rosterOn(ctx.container, scope, occurrence.groupId, occurrence.occurrenceDate, em)
       if (!roster.some((member) => member.personId === parsed.personId && member.role === 'participant')) {
         await activitiesErrors.throw('declaration_not_participant')
       }
+      await assertStaffMayDeclare(ctx, actingRole, scope)
+      await assertDeclarationsOpen(occurrence, now)
       const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'type'] })
       if (!activity) throw new Error('[internal] a session without its activity: ' + occurrence.id)
       const settings = await attendanceSettings(ctx.container, scope)
@@ -218,7 +270,7 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
         activityType: activity.type,
         isAway: false,
       })
-      const outcome = declarationOutcome({ actingRole, isMinor, policy, now })
+      const outcome = declarationOutcome({ actingRole, isMinor, policy, now, startsAt: occurrence.startAt })
       if (outcome.kind === 'guardian_only') await activitiesErrors.throw('declaration_guardian_only')
 
       let row = await em.findOne(Attendance, {
@@ -227,6 +279,17 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
         personId: parsed.personId,
         deletedAt: null,
       })
+      // A client that read a declaration sends its lock token: a change made meanwhile (another guardian, the ward)
+      // answers 409 instead of being overwritten silently (club spec *Data Models*: "upsert with version").
+      if (row) {
+        await enforceCommandOptimisticLockWithGuards(ctx.container, {
+          resourceKind: ATTENDANCE_RESOURCE_KIND,
+          resourceId: row.id,
+          current: row.updatedAt,
+          expected: null,
+          request: ctx.request ?? null,
+        })
+      }
       const before = row ? attendanceSnapshot(row) : null
       const created = row === null
       row ??= em.create(Attendance, { ...scope, occurrenceId: occurrence.id, personId: parsed.personId })
@@ -265,15 +328,16 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
     await authorizeDeclarationReplay(ctx, logEntry.resourceId)
   },
   async undo({ ctx, logEntry }) {
-    const row = await authorizeDeclarationReplay(ctx, logEntry.resourceId)
+    const { row, actingRole } = await authorizeDeclarationReplay(ctx, logEntry.resourceId)
     const em = ctx.transactionalEm as EntityManager
+    await assertUndoable(em, row, logEntry.snapshotAfter as AttendanceSnapshot | null | undefined)
     const before = logEntry.snapshotBefore as AttendanceSnapshot | null | undefined
     const now = new Date()
     if (before?.id) restoreAttendance(row, before)
     else row.deletedAt = now
     row.updatedAt = now
     await em.flush()
-    await emitDeclared(row, 'self', null, ctx.auth?.sub ?? null, true)
+    await emitDeclared(row, actingRole, null, ctx.auth?.sub ?? null, true)
   },
 }
 
@@ -284,14 +348,14 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
 async function authorizeDeclarationReplay(
   ctx: CommandRuntimeContext,
   id: string | null | undefined,
-): Promise<Attendance> {
+): Promise<{ row: Attendance; actingRole: ActingRole }> {
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] attendance replay needs the replay transaction and the id')
   const tenantId = trustedTenantId(ctx)
   const row = tenantId ? await em.findOne(Attendance, { id, tenantId }) : null
   if (!row) throw new Error('[internal] attendance row missing for replay: ' + id)
   const load = loadOccurrence(ctx)
-  await authorizeScoped(
+  const { actingRole } = await authorizeScoped(
     {
       input: z.object({ occurrenceId: z.uuid(), personId: z.uuid() }),
       resourceKind: ATTENDANCE_RESOURCE_KIND,
@@ -305,7 +369,7 @@ async function authorizeDeclarationReplay(
     em,
     { mode: 'replay' },
   )
-  return row
+  return { row, actingRole }
 }
 
 async function emitDeclared(
@@ -332,7 +396,12 @@ async function emitDeclared(
   )
 }
 
-async function emitDecided(row: Attendance, byTimeout: boolean, actorUserId: string | null): Promise<void> {
+async function emitDecided(
+  row: Attendance,
+  byTimeout: boolean,
+  actorUserId: string | null,
+  undo = false,
+): Promise<void> {
   await emitAfterCommit(
     'activities.attendance.guardian_decided',
     { tenantId: row.tenantId, organizationId: row.organizationId },
@@ -344,6 +413,7 @@ async function emitDecided(row: Attendance, byTimeout: boolean, actorUserId: str
       declarationStatus: row.declarationStatus,
       byTimeout,
       actorUserId,
+      undo,
     },
   )
 }
@@ -366,7 +436,8 @@ const guardianDecideCommand: CommandHandler<Record<string, unknown>, DecideComma
             const row = entity as Attendance
             return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId, personId: row.personId }
           },
-          lock: 'none',
+          // The guardian decides on the answer they saw: a re-declaration meanwhile moves the lock token (409).
+          lock: 'updated_at',
         },
         rawInput,
         ctx,
@@ -407,13 +478,15 @@ const guardianDecideCommand: CommandHandler<Record<string, unknown>, DecideComma
     await authorizeDeclarationReplay(ctx, logEntry.resourceId)
   },
   async undo({ ctx, logEntry }) {
-    const row = await authorizeDeclarationReplay(ctx, logEntry.resourceId)
+    const { row } = await authorizeDeclarationReplay(ctx, logEntry.resourceId)
+    const em = ctx.transactionalEm as EntityManager
+    await assertUndoable(em, row, logEntry.snapshotAfter as AttendanceSnapshot | null | undefined)
     const before = logEntry.snapshotBefore as AttendanceSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing declaration snapshot for undo')
     restoreAttendance(row, before)
     row.updatedAt = new Date()
-    await (ctx.transactionalEm as EntityManager).flush()
-    await emitDecided(row, false, ctx.auth?.sub ?? null)
+    await em.flush()
+    await emitDecided(row, false, ctx.auth?.sub ?? null, true)
   },
 }
 

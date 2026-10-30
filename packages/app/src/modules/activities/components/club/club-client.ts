@@ -4,7 +4,8 @@
 // share one cache entry), the calendar queries, the declaration and decision writes, and the mapping of calendar
 // entries to the shared `CalendarItem` (foundation II P-23). Authorization stays on the routes and commands.
 import { useQuery } from '@tanstack/react-query'
-import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
+import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import type { CalendarBadgeTone, CalendarItem, CalendarItemAction, CalendarItemBadge } from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -30,6 +31,8 @@ export type ClubProfile = {
   person: { id: string; firstName: string; lastName: string }
   wards: { personId: string; firstName: string; lastName: string }[]
   contexts: string[]
+  /** The member's resolved interface locale (DD-34). */
+  locale: string
   club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
 }
 
@@ -186,22 +189,37 @@ export function useMemberSession(id: string, as: 'self' | 'guardian', personId: 
 
 // --- Writes ---
 
+/**
+ * Declares for one person; `lockToken` is the declaration's `updatedAt` the page showed (null for a first answer), so a
+ * change made meanwhile by the ward or another guardian answers 409 instead of being overwritten.
+ */
 export async function declareAttendance(
   input: { occurrenceId: string; personId: string; declared: DeclaredValue },
   errorMessage: string,
+  lockToken: string | null,
 ): Promise<void> {
-  await apiCallOrThrow(
-    '/api/activities/attendance/declare',
-    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) },
-    { errorMessage },
+  await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow(
+      '/api/activities/attendance/declare',
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) },
+      { errorMessage },
+    ),
   )
 }
 
-export async function decideDeclaration(attendanceId: string, approve: boolean, errorMessage: string): Promise<void> {
-  await apiCallOrThrow(
-    `/api/activities/attendance/${encodeURIComponent(attendanceId)}/guardian-decision`,
-    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ approve }) },
-    { errorMessage },
+/** Decides on the pending declaration the guardian saw (`lockToken` = its `updatedAt`; a re-declaration → 409). */
+export async function decideDeclaration(
+  attendanceId: string,
+  approve: boolean,
+  errorMessage: string,
+  lockToken: string,
+): Promise<void> {
+  await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow(
+      `/api/activities/attendance/${encodeURIComponent(attendanceId)}/guardian-decision`,
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ approve }) },
+      { errorMessage },
+    ),
   )
 }
 

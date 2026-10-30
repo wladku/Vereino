@@ -191,6 +191,8 @@ export function declarationOutcome(input: {
   readonly isMinor: boolean
   readonly policy: PolicyRow
   readonly now: Date
+  /** The session start: the confirmation never waits past it (the default applies when the session begins). */
+  readonly startsAt?: Date
 }): DeclarationOutcome {
   if (input.actingRole !== 'self' || !input.isMinor) return { kind: 'final' }
   switch (input.policy.minorDeclarationMode) {
@@ -198,12 +200,15 @@ export function declarationOutcome(input: {
       return { kind: 'final' }
     case 'guardian_only':
       return { kind: 'guardian_only' }
-    case 'guardian_confirm':
+    case 'guardian_confirm': {
+      const limit = input.now.getTime() + input.policy.confirmTimeoutHours * HOUR_MS
+      const start = input.startsAt?.getTime() ?? limit
       return {
         kind: 'pending_guardian',
-        pendingUntil: new Date(input.now.getTime() + input.policy.confirmTimeoutHours * HOUR_MS),
+        pendingUntil: new Date(Math.min(limit, start)),
         timeoutOutcome: input.policy.defaultAfterTimeout,
       }
+    }
   }
 }
 

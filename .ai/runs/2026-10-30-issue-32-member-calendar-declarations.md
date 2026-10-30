@@ -59,12 +59,32 @@ Phases 1–7 as listed under *Progress*: foundation primitives; attendance data 
 - `yarn verify` — first run failed at `lint` (six `no-confusing-void-expression` in the member pages), fixed with `eslint --fix`; `yarn verify --from lint` passed; after the fixes below the full gate passed again (13/13).
 - `yarn test:integration:vereino --filter "activities/TEST-0"` — 9 passed, 2 failed: TEST-009 (`pendingUntil` still set on a row the job settled — the job did not clear the expiry columns) and TEST-014 (no calendar tile on `/club` — the `/club` route loaded no injection registry). After the fixes: TEST-009 1 passed; TEST-014 failed twice more on its own assertions (the `StatusBadge` drops `data-testid`, wrapped in a span; the week buttons and long action labels overflowed at 320 px, now wrap) and then passed; TEST-006 2 passed and J-001 1 passed as regressions of `/club`.
 
+## Review
+
+`om-auto-review-pr` could not submit a review: the auto-mode classifier refused an approving review of the automation's own PR (self-approval). A fresh-context read-only reviewer ran instead and reported "request changes" with 14 findings; all were applied in one commit, then the gate (13/13) and the integration specs (`activities/TEST-0*` 11 passed, TEST-006 2 passed) ran again:
+
+1. The `ClientBootstrap.tsx` patch is now on the S3.1 local-patch list with a Changelog row in the engineering standards spec, so upgrade runs re-apply it.
+2. `advanceWhere` re-checks the whole `where` in each UPDATE: a ward who re-declares between the job's select and update (a fresh `pending_until`) is no longer settled by the old deadline.
+3. The guardian decision checks the lock token (`lock: 'updated_at'`) and the declare command checks it when the client sends one; the member pages send the `updatedAt` they showed and surface 409 with the conflict bar.
+4. `pending_until` is capped at the session start, so the default applies at kick-off rather than a day later.
+5. The undo of a declaration or a decision asserts the declarations are still open and the row is unchanged since the command (409 otherwise).
+6. Policy writes: a coordinator writes only `group` policies of their sections' groups; `club`, `activity_type` and `away_trip` policies only the club administrator; reading stays club-wide.
+7. A staff declaration (acting role coach, coordinator or club administrator) also needs `activities.coach`.
+8. The club spec's calendar API row describes the shipped shape.
+9. The declare command checks participation before the declaration window, so it is no status oracle for other groups' sessions.
+10. Undo events carry the real acting role; the decision's undo is flagged `undo`.
+11. `ActivitiesClubFrame` applies the member locale like `people`'s frame.
+12. Seeding the default policies skips a key the club soft-deleted.
+13. Declaration and decision buttons name the ward for screen readers.
+14. The coach calendar tests the `scopeWhere` no-grant sentinel instead of any `id` filter.
+
 ## Open problems
 
 - The coordinator's calendar perspective (`ScheduleView` through `toScheduleItem`) on `/backend/activities/occurrences` is not built; `GET /api/activities/calendar?as=coordinator` serves it.
 - `is_away` does not exist yet, so the `away_trip` policy never applies.
 - `activities` member pages do not run `people`'s locale effect; a member who opens `/club/calendar` first sees the request locale until they visit `/club`.
-- Tenants created before this change (none deployed) would need the default policies seeded once.
+- Tenants created before this change (none deployed) would need the default policies and the expiry schedule seeded once (rerun of `seedDefaults`).
+- The policies page shows "Add" to every coordinator; a coordinator choosing a club-wide scope gets 403 from the server (the form surfaces it).
 
 ## Next steps
 
@@ -120,3 +140,4 @@ PR: #61
 ### Phase 7: Documentation
 
 - [x] 7.1 READMEs, spec notes, run log and lessons — the fix commit
+- [x] Post-review fixes (14 findings of the read-only review) — the review-fix commit

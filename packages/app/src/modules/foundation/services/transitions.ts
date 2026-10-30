@@ -39,9 +39,11 @@ export type AdvanceWhereSpec<TEntity extends AdvanceableEntity, TState extends s
 
 /**
  * Selects the ids of the rows matching `where` that are still in `from`, then updates each one with
- * `status = to, …set` where `status = from` still holds, and returns the ids whose row changed. A row another command
- * moved between the select and the update is skipped (0 rows affected), so a concurrent decision wins and a retry of
- * the job changes nothing. The caller — a module command — emits its events for the returned ids after commit.
+ * `status = to, …set` where the whole `where` and `status = from` still hold, and returns the ids whose row changed.
+ * A row another command changed between the select and the update — moved to another status, or re-entered `from`
+ * with values that no longer match `where` (a fresh deadline) — is skipped (0 rows affected), so a concurrent decision
+ * wins and a retry of the job changes nothing. The caller — a module command — emits its events for the returned ids
+ * after commit.
  */
 export async function advanceWhere<TEntity extends AdvanceableEntity, TState extends string>(
   em: EntityManager,
@@ -62,6 +64,7 @@ export async function advanceWhere<TEntity extends AdvanceableEntity, TState ext
     const affected = await em.nativeUpdate(
       Entity,
       {
+        ...(spec.where as object),
         id: candidate.id,
         tenantId: spec.where.tenantId,
         organizationId: spec.where.organizationId,

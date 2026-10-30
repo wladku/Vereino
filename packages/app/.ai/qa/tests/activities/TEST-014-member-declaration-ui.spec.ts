@@ -114,7 +114,7 @@ test('TEST-014 a guardian on a phone: Today → session → report absence in th
     const elder = page.getByTestId('club-session-person').filter({ hasText: family.elder.firstName })
     await elder
       .getByTestId('club-session-decision')
-      .getByRole('button', { name: /^Approve$|^Zatwierdź$/ })
+      .getByRole('button', { name: /^(Approve|Zatwierdź) — / })
       .click()
     await expect(elder.getByTestId('club-session-declaration')).toHaveText(ATTENDING)
     await expect(elder.getByTestId('club-session-decision')).toHaveCount(0)

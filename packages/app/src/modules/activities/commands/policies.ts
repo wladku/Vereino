@@ -31,9 +31,17 @@ import {
 
 export const ATTENDANCE_POLICY_RESOURCE_KIND = 'activities.attendance_policy'
 
-/** Policies are club-wide configuration: the coordinator's grant counts club-wide for them, like the `groups` dictionaries. */
+/**
+ * Who writes policies (club spec *Users, Permissions, and Scope*: a coordinator acts for their sections): a coordinator
+ * the `group` policies of the groups in their sections; the club administrator every policy — the `club`,
+ * `activity_type` and `away_trip` scopes concern the whole club, so their target carries no section and only the
+ * club-wide grant matches it.
+ */
 export const POLICY_WRITE_KINDS: readonly GrantKind[] = ['coordinator', 'club_admin']
-export const POLICY_WRITE_OPTIONS: ScopeMatchOptions = { clubWideKinds: ['coordinator'] }
+
+/** Reading the policies is club-wide for every coordinator (the resolver works on the club's whole set). */
+export const POLICY_READ_KINDS: readonly GrantKind[] = ['coordinator', 'club_admin']
+export const POLICY_READ_OPTIONS: ScopeMatchOptions = { clubWideKinds: ['coordinator'] }
 
 export type AttendancePolicySnapshot = PolicyRow & { id: string; tenantId: string; organizationId: string }
 
@@ -73,21 +81,39 @@ function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
   }
 }
 
-function clubTarget(row: Pick<AttendancePolicy, 'id' | 'tenantId' | 'organizationId'>) {
-  return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId }
+/** A policy as a scope target: a `group` policy carries its group's section, every other scope none. */
+function policyTarget(
+  row: Pick<AttendancePolicy, 'id' | 'tenantId' | 'organizationId'>,
+  group: { id: string; sectionId: string } | null,
+) {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    sectionId: group?.sectionId ?? null,
+    groupId: group?.id ?? null,
+  }
 }
 
 function existingSpec<TSchema extends z.ZodType<{ id: string }>>(
+  ctx: CommandRuntimeContext,
   input: TSchema,
   load: (em: EntityManager, id: string, lock: TargetLock) => Promise<AttendancePolicy | null>,
 ): AuthorizeScopedSpec<TSchema, AttendancePolicy> {
+  const groups = new Map<string, { id: string; sectionId: string } | null>()
   return {
     input,
     resourceKind: ATTENDANCE_POLICY_RESOURCE_KIND,
     allowedKinds: POLICY_WRITE_KINDS,
-    matchOptions: POLICY_WRITE_OPTIONS,
-    loadTarget: (parsed, em, lock) => load(em, parsed.id, lock),
-    resolveTarget: (_parsed, entity) => clubTarget(entity as AttendancePolicy),
+    loadTarget: async (parsed, em, lock) => {
+      const row = await load(em, parsed.id, lock)
+      if (row?.groupId) groups.set(row.id, await lookupGroup(ctx, row.groupId, em))
+      return row
+    },
+    resolveTarget: (_parsed, entity) => {
+      const row = entity as AttendancePolicy
+      return policyTarget(row, groups.get(row.id) ?? null)
+    },
   }
 }
 
@@ -99,7 +125,7 @@ async function authorizePolicyReplay(
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] attendance policy replay needs the replay transaction and the id')
   const { entity } = await authorizeScoped(
-    existingSpec(z.object({ id: z.uuid() }), loader(ctx, includeDeleted)),
+    existingSpec(ctx, z.object({ id: z.uuid() }), loader(ctx, includeDeleted)),
     { id },
     ctx,
     em,
@@ -160,8 +186,11 @@ const createPolicyCommand: CommandHandler<Record<string, unknown>, AttendancePol
           input: attendancePolicyCreateSchema,
           resourceKind: ATTENDANCE_POLICY_RESOURCE_KIND,
           allowedKinds: POLICY_WRITE_KINDS,
-          matchOptions: POLICY_WRITE_OPTIONS,
-          resolveTarget: (_parsed, _entity, scope) => clubTarget({ id, ...scope }),
+          loadTarget: async (parsed, txEm) => ({
+            group: parsed.groupId ? await lookupGroup(ctx, parsed.groupId, txEm) : null,
+          }),
+          lock: 'none',
+          resolveTarget: (_parsed, holder, scope) => policyTarget({ id, ...scope }, holder?.group ?? null),
         },
         rawInput,
         ctx,
@@ -173,7 +202,7 @@ const createPolicyCommand: CommandHandler<Record<string, unknown>, AttendancePol
       const activityType = parsed.activityType ?? null
       const problem = policyShapeProblem(parsed.scope, groupId, activityType)
       if (problem) await activitiesErrors.throw('attendance_policy_scope_invalid', { problem })
-      if (groupId && !(await lookupGroup(ctx, groupId, em))) {
+      if (groupId && !authorized.entity?.group) {
         await activitiesErrors.throw('activities_reference_invalid', { field: 'groupId' })
       }
       await assertScopeKeyFree(em, scope, { scope: parsed.scope, groupId, activityType })
@@ -221,7 +250,7 @@ const updatePolicyCommand: CommandHandler<Record<string, unknown>, AttendancePol
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'activities.attendance_policies.update', async (em) => {
       const authorized = await authorizeScoped(
-        existingSpec(attendancePolicyUpdateSchema, loader(ctx)),
+        existingSpec(ctx, attendancePolicyUpdateSchema, loader(ctx)),
         rawInput,
         ctx,
         em,
@@ -267,7 +296,7 @@ const deletePolicyCommand: CommandHandler<Record<string, unknown>, AttendancePol
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'activities.attendance_policies.delete', async (em) => {
       const authorized = await authorizeScoped(
-        existingSpec(attendancePolicyDeleteSchema, loader(ctx)),
+        existingSpec(ctx, attendancePolicyDeleteSchema, loader(ctx)),
         rawInput,
         ctx,
         em,

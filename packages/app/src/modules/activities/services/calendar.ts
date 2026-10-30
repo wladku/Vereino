@@ -371,6 +371,11 @@ async function calledUpChildren(
   return result
 }
 
+function isNoGrant(where: Record<string, unknown>): boolean {
+  const id = where.id
+  return typeof id === 'object' && id !== null && (id as { $exists?: unknown }).$exists === false
+}
+
 /** The staff calendars: a coach's groups and own sessions, a coordinator's sections — through the record scope. */
 async function staffCalendar(
   ctx: CommandRuntimeContext,
@@ -384,11 +389,13 @@ async function staffCalendar(
   const em = ctx.container.resolve<EntityManager>('em').fork()
   const kinds: readonly GrantKind[] = as === 'coach' ? ['coach'] : ['coordinator', 'club_admin']
   const scoped = scopeWhere(grants, kinds, { sectionId: 'sectionId', groupId: 'groupId', occurrenceId: 'id' })
-  if ('id' in scoped && as === 'coordinator') return []
+  // `scopeWhere` answers `{ id: { $exists: false } }` when no grant matches (a coach's session-id grants give `$in`).
+  const noGrant = isNoGrant(scoped)
+  if (noGrant && as === 'coordinator') return []
   const self = grantIds(grants, 'self')[0]
   const where =
     as === 'coach'
-      ? 'id' in scoped
+      ? noGrant
         ? self
           ? { coachPersonId: self }
           : null

@@ -8,6 +8,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
+import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -70,13 +71,20 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     const action = parseActionId(id)
     if (!action) return
     setBusyItemId(itemId)
+    const shown = query.data?.items
+      .find((entry) => entry.occurrence.id === itemId)
+      ?.persons.find((person) => person.personId === action.personId)?.declaration
     try {
-      await declareAttendance({ occurrenceId: itemId, ...action }, t('activities.club.errors.declare'))
+      await declareAttendance(
+        { occurrenceId: itemId, ...action },
+        t('activities.club.errors.declare'),
+        shown?.updatedAt ?? null,
+      )
       const message = t('activities.club.flash.declared')
       setAnnouncement(message)
       flash(message, 'success')
     } catch (error: unknown) {
-      flash(errorText(error, t('activities.club.errors.declare')), 'error')
+      if (!surfaceRecordConflict(error, t)) flash(errorText(error, t('activities.club.errors.declare')), 'error')
     } finally {
       setBusyItemId(null)
       await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })

@@ -42,7 +42,8 @@ export async function registerExpireSchedule(container: AwilixContainer, scope: 
  */
 export async function seedDefaultPolicies(container: AwilixContainer, scope: ActivitiesScope): Promise<number> {
   const em = container.resolve<EntityManager>('em').fork()
-  const existing = await em.find(AttendancePolicy, { ...scope, deletedAt: null })
+  // A soft-deleted default stays deleted: the club removed it on purpose, and a rerun of setup must not bring it back.
+  const existing = await em.find(AttendancePolicy, { ...scope })
   const present = new Set(
     existing.map((row) =>
       policyKey({ scope: row.scope, groupId: row.groupId ?? null, activityType: row.activityType ?? null }),

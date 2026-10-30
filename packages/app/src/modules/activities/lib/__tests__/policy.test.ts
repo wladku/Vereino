@@ -135,6 +135,20 @@ describe('declaring', () => {
       pendingUntil: new Date('2026-11-06T22:00:00Z'),
       timeoutOutcome: 'declared',
     })
+    // The limit never runs past the session start: 6 hours before kick-off it ends at kick-off.
+    const kickOff = new Date('2026-11-05T16:00:00Z')
+    expect(
+      declarationOutcome({ actingRole: 'self', isMinor: true, policy: confirm, now, startsAt: kickOff }),
+    ).toMatchObject({ kind: 'pending_guardian', pendingUntil: kickOff })
+    expect(
+      declarationOutcome({
+        actingRole: 'self',
+        isMinor: true,
+        policy: confirm,
+        now,
+        startsAt: new Date('2026-11-09T16:00:00Z'),
+      }),
+    ).toMatchObject({ pendingUntil: new Date('2026-11-06T22:00:00Z') })
     expect(
       declarationOutcome({
         actingRole: 'self',

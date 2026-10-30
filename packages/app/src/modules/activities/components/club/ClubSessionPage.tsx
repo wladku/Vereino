@@ -9,6 +9,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
@@ -90,6 +91,7 @@ function PersonDeclaration({
               }}
             >
               {t('activities.club.actions.approve')}
+              <span className="sr-only"> — {person.firstName}</span>
             </Button>
             <Button
               type="button"
@@ -101,6 +103,7 @@ function PersonDeclaration({
               }}
             >
               {t('activities.club.actions.reject')}
+              <span className="sr-only"> — {person.firstName}</span>
             </Button>
           </div>
         </div>
@@ -124,6 +127,7 @@ function PersonDeclaration({
                 }}
               >
                 {t(`activities.club.actions.${choice.key}`)}
+                <span className="sr-only"> — {person.firstName}</span>
               </Button>
             )
           })}
@@ -158,7 +162,8 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
       setAnnouncement(success)
       flash(success, 'success')
     } catch (error: unknown) {
-      flash(errorText(error, failure), 'error')
+      // A change made meanwhile (another guardian, the ward) shows the shared conflict bar; the page then refreshes.
+      if (!surfaceRecordConflict(error, t)) flash(errorText(error, failure), 'error')
     } finally {
       setBusy(false)
       await refresh()
@@ -285,16 +290,18 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
                     declareAttendance(
                       { occurrenceId: occurrence.id, personId: target.personId, declared },
                       t('activities.club.errors.declare'),
+                      target.declaration?.updatedAt ?? null,
                     ),
                   t('activities.club.flash.declared'),
                   t('activities.club.errors.declare'),
                 )
               }
               onDecide={(target, approve) => {
-                const attendanceId = target.declaration?.attendanceId
-                if (!attendanceId) return
+                const shown = target.declaration
+                if (!shown) return
                 void run(
-                  () => decideDeclaration(attendanceId, approve, t('activities.club.errors.decide')),
+                  () =>
+                    decideDeclaration(shown.attendanceId, approve, t('activities.club.errors.decide'), shown.updatedAt),
                   t(approve ? 'activities.club.flash.approved' : 'activities.club.flash.rejected'),
                   t('activities.club.errors.decide'),
                 )
