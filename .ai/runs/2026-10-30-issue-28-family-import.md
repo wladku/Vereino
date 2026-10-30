@@ -25,7 +25,7 @@ The administrator uploads the club's CSV or XLSX, maps the columns once, sees ev
 - Updates: a matched person gets only the values the file has and that differ; PESEL and identifier are set only when the record has none. The first guardian becomes primary payer when the ward has none.
 - Commit: the whole import is one batch in one transaction, re-planned against the club, so it writes everything or nothing; re-importing the same file creates nothing.
 - Undo: `decide_row` and `cancel` undoable while the import is open; `create` not (the bytes are not in the command input; cancel compensates); `commit` not as a whole, but each person and guardianship it writes has its own undoable audit entry.
-- Group column: kept on the row; at commit a row with a group gets `group_name` and `membership_status = 'groups_not_enabled'`; no membership is created. The purge deletes every other row but keeps such a row with only its ids and the group label (`raw` set to null) until the `groups` hook processes it.
+- Group column: kept on the row; at commit a row with a group gets `group_name` and `membership_status = 'groups_not_enabled'`; no membership is created. The purge deletes every other row but keeps such a row with only its ids and the group label (`raw` set to null) until the `groups` hook processes it (product owner, 2026-10-30: "Keep them").
 - A preview left open for 30 days is cancelled and purged by the job.
 
 ## Installed behaviour that differed from the spec
@@ -56,11 +56,11 @@ The administrator uploads the club's CSV or XLSX, maps the columns once, sees ev
 
 ## Open problems
 
-- Owner confirmation: rows with a group outlive the 30-day purge with only ids and the group label until the `groups` hook (DD-38 says the rows are deleted after 30 days).
+- Resolved: the product owner confirmed (2026-10-30, "Keep them") that rows with a group outlive the 30-day purge with only ids and the group label until the `groups` hook, as an exception to DD-38.
 - The import file's protection is the secrecy of its attachment id (platform behaviour of `/api/attachments/file/{id}`).
 - Deferred: the `groups.membershipImporter` hook and memberships (D-026); a progress job for large files; `externalId` on the person pages; re-registering the purge schedule when the club's time zone changes.
 
 ## Next steps
 
-- Owner review of the PR and of the group-row retention.
+- Owner review of the PR.
 - Phase 2: the `groups` hook picks up rows with `membership_status = 'groups_not_enabled'`.
