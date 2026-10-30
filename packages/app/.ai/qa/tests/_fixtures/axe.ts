@@ -51,6 +51,27 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
   expect(overflow, `page wider than 320 px by ${String(overflow)} px`).toBeLessThanOrEqual(0)
 }
 
+// Scans the current page in light and then dark mode (S7.4, S7.8) and returns the blocking violations per scheme. The
+// page is reloaded after each switch: a scheme changed on a rendered page fades its colours, and a scan during the
+// fade reports half-blended colours as contrast violations (lesson `axe-after-color-scheme-and-react-query-error-refetch`).
+export async function scanInColorSchemes(
+  page: Page,
+  testInfo: TestInfo,
+  label: string,
+  ready: () => Promise<void>,
+  options: { platformBaseline?: boolean } = {},
+): Promise<Record<string, BlockingViolation[]>> {
+  const found: Record<string, BlockingViolation[]> = {}
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await page.reload()
+    await ready()
+    const violations = await scanBlockingViolations(page, testInfo, options)
+    if (violations.length > 0) found[`${label} (${colorScheme})`] = violations
+  }
+  return found
+}
+
 // Runs axe on the current page once it has settled, attaches the full report to the test and returns
 // the critical and serious violations, which a Vereino page must not have. With `platformBaseline`,
 // nodes listed in PLATFORM_BASELINE are left out (and attached separately), so only Vereino markup counts.
