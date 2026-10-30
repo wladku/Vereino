@@ -1,8 +1,10 @@
 'use client'
 // `/backend/club/sections` (club spec UI table): sections in the caller's scope with their coordinators (added by
 // the `people` response enricher) and a "no coordinator" warning on an active section without one — a warning, the
-// section still works.
+// section still works. Since #29 each row shows the section's effective logo (its own, else the club's, else the
+// initial of the club name), and a coordinator opens their section's edit page for its public content.
 import * as React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -17,17 +19,58 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { effectiveLogo, nameInitial, staffLogoUrl } from '../lib/files'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
 import { coordinatorName, type SectionRow } from './sections-shared'
-import { useCanManageClub } from './useCanManageClub'
+import { useCanEditSectionContent, useCanManageClub } from './useCanManageClub'
+
+type ClubBranding = { shortName: string | null; logoAttachmentId: string | null }
+
+function SectionLogo({ row, club }: { row: SectionRow; club: ClubBranding | null }) {
+  const logo = effectiveLogo({ sectionLogoId: row.logoAttachmentId, clubLogoId: club?.logoAttachmentId ?? null })
+  const url = staffLogoUrl(logo.attachmentId, 64)
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt=""
+        width={32}
+        height={32}
+        unoptimized
+        className="bg-muted size-8 rounded object-contain"
+        data-logo-source={logo.source}
+      />
+    )
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded text-sm font-semibold"
+      data-logo-source="initial"
+    >
+      {nameInitial(club?.shortName)}
+    </span>
+  )
+}
 
 const LIST_HREF = '/backend/club/sections'
 const PAGE_SIZE = 50
 
-function buildColumns(t: Translate): TableColumns<SectionRow> {
+function buildColumns(t: Translate, club: ClubBranding | null): TableColumns<SectionRow> {
   return [
-    { accessorKey: 'name', header: t('club_core.sections.columns.name'), meta: { priority: 1 } },
+    {
+      accessorKey: 'name',
+      header: t('club_core.sections.columns.name'),
+      meta: { priority: 1 },
+      cell: ({ row }) => (
+        <span className="flex items-center gap-2">
+          <SectionLogo row={row.original} club={club} />
+          <span>{row.original.name}</span>
+        </span>
+      ),
+    },
     {
       id: 'coordinators',
       header: t('club_core.sections.columns.coordinators'),
@@ -67,6 +110,12 @@ function buildColumns(t: Translate): TableColumns<SectionRow> {
 export function SectionsTable() {
   const t = useT()
   const canManage = useCanManageClub()
+  const canEditContent = useCanEditSectionContent()
+  const canOpen = canManage || canEditContent
+  const club = useQuery({
+    queryKey: ['club_core-settings'],
+    queryFn: () => readApiResultOrThrow<ClubBranding>('/api/club_core/settings'),
+  })
   const router = useRouter()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
@@ -86,7 +135,7 @@ export function SectionsTable() {
       }),
   })
 
-  const columns = React.useMemo(() => buildColumns(t), [t])
+  const columns = React.useMemo(() => buildColumns(t, club.data ?? null), [t, club.data])
 
   const remove = async (row: SectionRow) => {
     const confirmed = await confirm({ title: t('club_core.sections.confirm.delete'), variant: 'destructive' })
@@ -144,10 +193,22 @@ export function SectionsTable() {
                   ]}
                 />
               )
-            : undefined
+            : canEditContent
+              ? (row: SectionRow) => (
+                  <RowActions
+                    items={[
+                      {
+                        id: 'edit',
+                        label: t('club_core.sections.actions.publicPage'),
+                        href: `${LIST_HREF}/${row.id}/edit`,
+                      },
+                    ]}
+                  />
+                )
+              : undefined
         }
         onRowClick={
-          canManage
+          canOpen
             ? (row: SectionRow) => {
                 router.push(`${LIST_HREF}/${row.id}/edit`)
               }

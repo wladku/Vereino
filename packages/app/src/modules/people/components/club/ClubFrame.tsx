@@ -5,6 +5,7 @@
 // loaded, the interface locale follows the member's (DD-34: preferred → club default → request → en) through the
 // platform's own locale route.
 import * as React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
@@ -100,8 +101,19 @@ export function ClubFrame({ children }: { children: (profile: MemberProfile) => 
     <div className="bg-background text-foreground min-h-svh">
       <header className="bg-card border-b">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-2">
-          <p className="text-sm font-semibold" data-testid="club-name">
-            {profile?.club.shortName ?? t('people.club.title')}
+          <p className="flex items-center gap-2 text-sm font-semibold" data-testid="club-name">
+            {profile?.club.logoUrl ? (
+              <Image
+                src={profile.club.logoUrl}
+                alt=""
+                width={32}
+                height={32}
+                unoptimized
+                className="bg-muted size-8 rounded object-contain"
+                data-testid="club-logo"
+              />
+            ) : null}
+            <span>{profile?.club.shortName ?? t('people.club.title')}</span>
           </p>
           {profile ? (
             <nav aria-label={t('people.club.nav.label')} className="flex flex-wrap items-center gap-1">

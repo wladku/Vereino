@@ -97,7 +97,12 @@ const memberProfileSchema = z.object({
   roles: z.array(z.object({ role: z.string(), sectionId: z.string().nullable() })),
   contexts: z.array(z.string()).describe('Acting contexts of the role-context switcher (self, guardian, …)'),
   locale: z.string().describe('The resolved interface locale: preferred → club default → request → en'),
-  club: z.object({ shortName: z.string().nullable(), defaultLocale: z.string(), timezone: z.string() }),
+  club: z.object({
+    shortName: z.string().nullable(),
+    defaultLocale: z.string(),
+    timezone: z.string(),
+    logoUrl: z.string().nullable().describe('The club logo (#29); null shows the club name only'),
+  }),
   paymentsVisible: z.boolean().describe('False for a minor (R10) and without payments.view_own'),
 })
 

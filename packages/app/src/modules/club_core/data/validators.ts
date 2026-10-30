@@ -2,10 +2,8 @@
 // organization ids (`.strict()` rejects them); `null` clears a nullable field.
 import { z } from 'zod'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
+import { publicSlugSchema, publicationPatchSchema } from '../lib/publication'
 import { clubSettingsPatchSchema } from '../lib/settings'
-
-/** Body of `PUT /api/club_core/settings`: any subset of the settings; unknown keys (e.g. scope ids) are rejected. */
-export const clubSettingsUpdateSchema = clubSettingsPatchSchema.strict()
 
 /** Institution types (club spec *Data Models* → `club_core_institutions.type`). */
 export const INSTITUTION_TYPES = ['municipality', 'school', 'club', 'company', 'sponsor', 'other'] as const
@@ -21,6 +19,28 @@ const nullableText = (max: number) =>
     .max(max)
     .nullable()
     .transform((value) => (value ? value : null))
+
+/** An optional e-mail address: blank or null clears it. */
+const nullableEmail = z
+  .union([z.email().max(320), z.literal(''), z.null()])
+  .transform((value) => (value ? value : null))
+
+/** A public slug (`lib/publication.ts`); blank or null clears it. */
+const nullableSlug = z.union([z.literal('').transform(() => null), z.null(), publicSlugSchema])
+
+/**
+ * Body of `PUT /api/club_core/settings`: any subset of the settings, the club's public slug, description and phone,
+ * and a partial `publication` (#29; the route also requires `club_core.publication.manage` for it); unknown keys (e.g.
+ * scope ids or the logo, which has its own route) are rejected.
+ */
+export const clubSettingsUpdateSchema = clubSettingsPatchSchema
+  .extend({
+    publicSlug: nullableSlug.optional(),
+    publicDescription: nullableText(4000).optional(),
+    contactPhone: nullableText(50).optional(),
+    publication: publicationPatchSchema.optional(),
+  })
+  .strict()
 
 const listQueryBase = {
   page: z.coerce.number().int().min(1).default(1),
@@ -50,6 +70,49 @@ export const sectionUpdateSchema = z
   .strict()
 
 export const sectionDeleteSchema = z.object({ id: z.uuid() }).strict()
+
+/**
+ * Body of `PUT /api/club_core/sections/{id}/public` (#29): the section's public fields, written by the club
+ * administrator or the section's coordinator (`club_core.sections.public_content`).
+ */
+export const sectionPublicUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    isPublic: z.boolean().optional(),
+    publicSlug: nullableSlug.optional(),
+    publicDescription: nullableText(8000).optional(),
+    publicConditions: nullableText(8000).optional(),
+    publicContactName: nullableText(200).optional(),
+    publicContactEmail: nullableEmail.optional(),
+    publicContactPhone: nullableText(50).optional(),
+  })
+  .strict()
+
+/** The target of a logo command: the club, or one section. */
+export const logoTargetSchema = z.discriminatedUnion('target', [
+  z.object({ target: z.literal('club') }).strict(),
+  z.object({ target: z.literal('section'), sectionId: z.uuid() }).strict(),
+])
+
+/** The fields of a material upload (the file itself travels next to the command input). */
+export const materialCreateSchema = z
+  .object({
+    sectionId: z.uuid(),
+    title: nameSchema,
+    isPublic: z.boolean().default(false),
+  })
+  .strict()
+
+export const materialUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    sectionId: z.uuid(),
+    title: nameSchema.optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict()
+
+export const materialDeleteSchema = z.object({ id: z.uuid(), sectionId: z.uuid() }).strict()
 
 export const sectionListQuerySchema = z.object({
   ...listQueryBase,
@@ -103,10 +166,7 @@ const institutionFields = {
   address: nullableText(500).optional(),
   contactName: nullableText(200).optional(),
   contactPhone: nullableText(50).optional(),
-  contactEmail: z
-    .union([z.email().max(320), z.literal(''), z.null()])
-    .transform((value) => (value ? value : null))
-    .optional(),
+  contactEmail: nullableEmail.optional(),
   bankAccount: nullableText(64).optional(),
   notes: nullableText(4000).optional(),
 }
@@ -132,6 +192,8 @@ export const institutionListQuerySchema = z.object({
 
 export type SectionCreateInput = z.output<typeof sectionCreateSchema>
 export type SectionUpdateInput = z.output<typeof sectionUpdateSchema>
+export type SectionPublicUpdateInput = z.output<typeof sectionPublicUpdateSchema>
+export type LogoTarget = z.output<typeof logoTargetSchema>
 export type PlaceCreateInput = z.output<typeof placeCreateSchema>
 export type PlaceUpdateInput = z.output<typeof placeUpdateSchema>
 export type InstitutionCreateInput = z.output<typeof institutionCreateSchema>

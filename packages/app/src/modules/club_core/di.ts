@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { createClubCoreDirectory } from './services/directory'
 import { createClubCorePlacesService } from './services/places'
+import { createClubCorePublicSite } from './services/public-site'
 import { createClubCoreSettingsService } from './services/settings'
 
 /** DI token of the club settings service (foundation spec DD-F16): `get({ tenantId, organizationId })`. */
@@ -21,6 +22,15 @@ export const CLUB_CORE_PLACES_SERVICE = 'clubCorePlaces' as const
  */
 export const CLUB_CORE_DIRECTORY = 'clubCoreDirectory' as const
 
+/**
+ * DI token of the sessionless public pages (club spec DD-28, DD-35; #29): `clubPage`, `sectionPage`, `clubLogo`,
+ * `sectionLogo`, `material` by public slug. The only Vereino service allowed the system-scope slug lookup (AGENTS.md
+ * exception); it reads the optional block providers of `services/public-blocks.ts` with `hasRegistration`.
+ */
+export const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite' as const
+
+export { PUBLIC_BLOCK_PROVIDER_TOKENS } from './services/public-blocks'
+
 export function register(container: AppContainer) {
   container.register({
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.
@@ -35,6 +45,12 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [CLUB_CORE_DIRECTORY]: asFunction((cradle: { em: EntityManager }) => createClubCoreDirectory(() => cradle.em))
+      .scoped()
+      .proxy(),
+    // The request container is passed in, so the optional block providers are found with `hasRegistration`.
+    [CLUB_CORE_PUBLIC_SITE]: asFunction((cradle: { em: EntityManager }) =>
+      createClubCorePublicSite(() => cradle.em, container),
+    )
       .scoped()
       .proxy(),
   })

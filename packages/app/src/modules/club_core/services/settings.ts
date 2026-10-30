@@ -5,6 +5,8 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { ClubSettings } from '../data/entities'
+import { staffLogoUrl } from '../lib/files'
+import { resolvePublication, type Publication } from '../lib/publication'
 import {
   resolveClubSettings,
   storedNumber,
@@ -17,8 +19,20 @@ const logger = createLogger('club_core').child({ component: 'settings' })
 
 export type ClubSettingsScope = { tenantId: string; organizationId: string }
 
+/** The club's public page settings and logo (#29); kept apart from the DD-37 values. */
+export type ClubPublicSettings = {
+  publicSlug: string | null
+  publicDescription: string | null
+  contactPhone: string | null
+  logoAttachmentId: string | null
+  /** The logo through the platform's authenticated image route (same organization only); null without a logo. */
+  logoUrl: string | null
+  publication: Publication
+}
+
 export type ClubSettingsSnapshot = {
   values: ClubSettingsValues
+  publicSettings: ClubPublicSettings
   /** Settings whose stored value was invalid and was replaced by the default. */
   defaultsApplied: ClubSettingKey[]
   /** The row's lock token, or null while the club has no stored row. */
@@ -47,6 +61,19 @@ export function storedSettingsOf(row: ClubSettings): Record<ClubSettingKey, unkn
   }
 }
 
+/** The public page settings of a row (or none). */
+export function publicSettingsOf(row: ClubSettings | null): ClubPublicSettings {
+  const logoAttachmentId = row?.logoAttachmentId ?? null
+  return {
+    publicSlug: row?.publicSlug ?? null,
+    publicDescription: row?.publicDescription ?? null,
+    contactPhone: row?.contactPhone ?? null,
+    logoAttachmentId,
+    logoUrl: staffLogoUrl(logoAttachmentId),
+    publication: resolvePublication(row?.publication ?? null),
+  }
+}
+
 /** Resolves a row (or none) and reports invalid stored values. */
 export function resolveStoredSettings(row: ClubSettings | null, organizationId: string): ResolvedClubSettings {
   const resolved = resolveClubSettings(row ? storedSettingsOf(row) : null)
@@ -69,7 +96,12 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
     deletedAt: null,
   })
   const { values, invalidKeys } = resolveStoredSettings(row, scope.organizationId)
-  return { values, defaultsApplied: invalidKeys, updatedAt: row?.updatedAt ?? null }
+  return {
+    values,
+    publicSettings: publicSettingsOf(row),
+    defaultsApplied: invalidKeys,
+    updatedAt: row?.updatedAt ?? null,
+  }
 }
 
 export function createClubCoreSettingsService(getEm: () => EntityManager): ClubCoreSettingsService {

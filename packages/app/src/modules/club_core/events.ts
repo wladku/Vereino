@@ -13,6 +13,25 @@ const events = [
   { id: 'club_core.institution.created', label: 'Institution created', entity: 'institution', category: 'crud' },
   { id: 'club_core.institution.updated', label: 'Institution updated', entity: 'institution', category: 'crud' },
   { id: 'club_core.institution.deleted', label: 'Institution deleted', entity: 'institution', category: 'crud' },
+  // #29: files of a section's materials (the public flag changes with `updated`).
+  {
+    id: 'club_core.section_material.created',
+    label: 'Section material created',
+    entity: 'section_material',
+    category: 'crud',
+  },
+  {
+    id: 'club_core.section_material.updated',
+    label: 'Section material updated',
+    entity: 'section_material',
+    category: 'crud',
+  },
+  {
+    id: 'club_core.section_material.deleted',
+    label: 'Section material deleted',
+    entity: 'section_material',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'club_core', events })

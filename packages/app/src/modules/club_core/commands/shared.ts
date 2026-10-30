@@ -2,6 +2,7 @@
 // scope target, tenant-narrowed loads, CRUD side-effect configs and the generic create/update/delete undo steps.
 // Scope checks stay in `authorizeScoped` (foundation spec REQ-F16); club structure is written by the club
 // administrator only.
+import { UniqueConstraintViolationException } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -48,6 +49,12 @@ export async function inWriteTransaction<T>(
   return box.value as T
 }
 
+/** True for a violated unique index (the club's public slug, a section's slug). */
+export function isUniqueViolation(error: unknown): boolean {
+  if (error instanceof UniqueConstraintViolationException) return true
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505'
+}
+
 /** The tenant a command may load targets from; null fails closed later in `authorizeScoped`. */
 export function trustedTenantId(ctx: CommandRuntimeContext): string | null {
   return trustedScopeOf(ctx)?.tenantId ?? null
@@ -73,7 +80,9 @@ export function structureTarget(
 }
 
 /** `club_core.<entity>.created|updated|deleted`; ids only (S4.6). */
-export function structureEvents<TEntity>(entity: 'section' | 'place' | 'institution'): CrudEventsConfig<TEntity> {
+export function structureEvents<TEntity>(
+  entity: 'section' | 'place' | 'institution' | 'section_material',
+): CrudEventsConfig<TEntity> {
   return {
     module: 'club_core',
     entity,

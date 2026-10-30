@@ -50,7 +50,7 @@ export type MemberProfile = {
   roles: { role: string; sectionId: string | null }[]
   contexts: string[]
   locale: string
-  club: { shortName: string | null; defaultLocale: string; timezone: string }
+  club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
   paymentsVisible: boolean
 }
 

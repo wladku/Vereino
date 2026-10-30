@@ -1,7 +1,9 @@
 // `club_core.settings.update` (foundation spec DD-F16, DD-F18; club spec DD-37): a partial update of the club's
 // settings by the club administrator. `execute` creates the row on the first update, row-locks it and authorizes
 // through `authorizeScoped` inside one write transaction; undo restores the previous values after `authorizeReplay`
-// re-checks the current scope.
+// re-checks the current scope. Since #29 it also writes the club's public slug, description, phone and publication
+// (glossary *Publication*): a page switched on needs the slug (422), and a slug another club holds answers 409 from
+// the unique index — no lookup across clubs runs here. The logo has its own commands (`commands/logos.ts`).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -12,11 +14,19 @@ import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole } from '@vereino/core'
 import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
+import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
+import { applyPublicationPatch, clubPublicationProblem, resolvePublication, type Publication } from '../lib/publication'
 import { applyClubSettingsPatch, type ClubSettingKey, type ClubSettingsValues } from '../lib/settings'
-import { resolveStoredSettings, storedSettingsOf } from '../services/settings'
+import {
+  publicSettingsOf,
+  resolveStoredSettings,
+  storedSettingsOf,
+  type ClubPublicSettings,
+} from '../services/settings'
+import { isUniqueViolation } from './shared'
 
 export const CLUB_SETTINGS_RESOURCE_KIND = 'club_core.club_settings'
 
@@ -33,18 +43,54 @@ export const clubSettingsEvents: CrudEventsConfig<ClubSettings> = {
 }
 
 /** The stored columns before the update, as they were (an undo writes them back unchanged). */
-type SettingsSnapshot = Record<ClubSettingKey, unknown> & { id: string; tenantId: string; organizationId: string }
+type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
+  id: string
+  tenantId: string
+  organizationId: string
+  // Public page settings (#29); absent in log entries written before #29.
+  publicSlug?: string | null
+  publicDescription?: string | null
+  contactPhone?: string | null
+  publication?: Publication
+}
 
 export type ClubSettingsUpdateResult = {
   settings: ClubSettings
   /** The effective settings after the update. */
   values: ClubSettingsValues
+  publicSettings: ClubPublicSettings
   before: SettingsSnapshot
   actingRole: ActingRole
 }
 
 function snapshot(row: ClubSettings): SettingsSnapshot {
-  return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId, ...storedSettingsOf(row) }
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    ...storedSettingsOf(row),
+    publicSlug: row.publicSlug ?? null,
+    publicDescription: row.publicDescription ?? null,
+    contactPhone: row.contactPhone ?? null,
+    publication: resolvePublication(row.publication),
+  }
+}
+
+type PublicPatch = {
+  publicSlug?: string | null
+  publicDescription?: string | null
+  contactPhone?: string | null
+  publication?: Parameters<typeof applyPublicationPatch>[1]
+}
+
+/** Writes the public page settings a patch names; returns the problem that refuses the result, if any. */
+function writePublicSettings(row: ClubSettings, patch: PublicPatch): 'publication_slug_required' | null {
+  if (patch.publicSlug !== undefined) row.publicSlug = patch.publicSlug
+  if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
+  if (patch.contactPhone !== undefined) row.contactPhone = patch.contactPhone
+  const publication = applyPublicationPatch(resolvePublication(row.publication), patch.publication)
+  row.publication = publication
+  return clubPublicationProblem({ publication, publicSlug: row.publicSlug ?? null })
 }
 
 function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
@@ -82,6 +128,10 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   row.coachSettlementModel = text(before.coachSettlementModel, row.coachSettlementModel)
   row.showCalledUpChildren = text(before.showCalledUpChildren, row.showCalledUpChildren)
   row.orderSalesDocument = text(before.orderSalesDocument, row.orderSalesDocument)
+  if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
+  if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
+  if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone
+  if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
   row.updatedAt = new Date()
 }
 
@@ -122,28 +172,42 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
   async execute(rawInput, ctx) {
     const em = ctx.container.resolve<EntityManager>('em').fork()
     let result: ClubSettingsUpdateResult | null = null
-    await withAtomicFlush(
-      em,
-      [
-        async () => {
-          const trusted = trustedScopeOf(ctx)
-          if (trusted) await ensureClubSettingsRow(em, trusted)
-          const authorized = await authorizeScoped(settingsSpec(clubSettingsUpdateSchema, ctx), rawInput, ctx, em)
-          const row = authorized.entity
-          if (!row) throw new Error('[internal] club settings row missing after ensure')
-          const before = snapshot(row)
-          const current = resolveStoredSettings(row, row.organizationId).values
-          const patch = authorized.parsed
-          // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.
-          const defaultLocale =
-            typeof patch.defaultLocale === 'string' ? await assertSupportedLocale(patch.defaultLocale) : undefined
-          const values = applyClubSettingsPatch(current, defaultLocale ? { ...patch, defaultLocale } : patch)
-          writeValues(row, values)
-          result = { settings: row, values, before, actingRole: authorized.actingRole }
-        },
-      ],
-      { transaction: true, label: 'club_core.settings.update' },
-    )
+    try {
+      await withAtomicFlush(
+        em,
+        [
+          async () => {
+            const trusted = trustedScopeOf(ctx)
+            if (trusted) await ensureClubSettingsRow(em, trusted)
+            const authorized = await authorizeScoped(settingsSpec(clubSettingsUpdateSchema, ctx), rawInput, ctx, em)
+            const row = authorized.entity
+            if (!row) throw new Error('[internal] club settings row missing after ensure')
+            const before = snapshot(row)
+            const current = resolveStoredSettings(row, row.organizationId).values
+            const patch = authorized.parsed
+            // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.
+            const defaultLocale =
+              typeof patch.defaultLocale === 'string' ? await assertSupportedLocale(patch.defaultLocale) : undefined
+            const values = applyClubSettingsPatch(current, defaultLocale ? { ...patch, defaultLocale } : patch)
+            writeValues(row, values)
+            const problem = writePublicSettings(row, patch)
+            if (problem) await clubCoreErrors.throw(problem)
+            result = {
+              settings: row,
+              values,
+              publicSettings: publicSettingsOf(row),
+              before,
+              actingRole: authorized.actingRole,
+            }
+          },
+        ],
+        { transaction: true, label: 'club_core.settings.update' },
+      )
+    } catch (error: unknown) {
+      // The globally unique slug (DD-23): another club holds it.
+      if (isUniqueViolation(error)) return clubCoreErrors.throw('public_slug_taken')
+      throw error
+    }
     const done = result as ClubSettingsUpdateResult | null
     if (!done) throw new Error('[internal] club settings update produced no result')
     await emitCrudSideEffects({
