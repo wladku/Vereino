@@ -94,6 +94,7 @@ function existing(partial: Partial<ExistingPerson> & { id: string }): ExistingPe
     phone: null,
     hasPesel: false,
     hasExternalId: false,
+    updatedAt: '2026-01-01T00:00:00.000Z',
     guardians: [],
     wards: [],
     ...partial,

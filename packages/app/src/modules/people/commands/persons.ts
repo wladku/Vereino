@@ -215,6 +215,7 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
             allowedKinds: UPDATE_KINDS,
             loadTarget: (parsed, txEm, lock) => loadPersonLocked(txEm, ctx, parsed.id, lock),
             resolveTarget: (_parsed, entity) => personTarget(entity as Person),
+            expectedUpdatedAt: (parsed) => parsed.expectedUpdatedAt,
           },
           rawInput,
           ctx,

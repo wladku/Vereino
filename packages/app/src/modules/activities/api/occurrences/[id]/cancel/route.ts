@@ -54,7 +54,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Cancel a planned session with a reason',
       description:
-        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches. Send the lock token in the platform optimistic-lock header.',
+        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [{ status: 200, description: 'The cancelled session', schema: responseSchema }],
       errors: [

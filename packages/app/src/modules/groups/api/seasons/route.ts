@@ -104,11 +104,11 @@ export const openApi = buildOpenApi({
     schema: seasonUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a season; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `season_name_taken`, 422 `season_dates_inverted`.',
+      'Changes a season; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `season_name_taken`, 422 `season_dates_inverted`.',
   },
   del: {
     schema: seasonDeleteSchema,
     description:
-      'Soft-deletes a season (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `season_in_use`.',
+      'Soft-deletes a season (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `season_in_use`.',
   },
 })

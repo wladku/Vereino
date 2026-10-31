@@ -191,6 +191,8 @@ export type ExistingPerson = {
   phone: string | null
   hasPesel: boolean
   hasExternalId: boolean
+  /** The version the plan was read at (ISO): the commit updates the person against it, so a newer edit is a 409. */
+  updatedAt: string
   /** Active guardians of the person (the person is the ward). */
   guardians: readonly ExistingRelative[]
   /** Active wards of the person (the person is the guardian). */

@@ -3,6 +3,7 @@
   "foundation.errors.email_taken": "Ten adres e-mail jest już używany przez inne konto.",
   "foundation.errors.invalid_transition": "Taka zmiana statusu nie jest dozwolona.",
   "foundation.errors.locale_unsupported": "Ten język nie jest dostępny. Wybierz jeden z języków, które oferuje aplikacja.",
+  "foundation.errors.lock_token_required": "Zapis nie zawierał wersji rekordu, którą wczytano. Odśwież stronę i spróbuj ponownie.",
   "foundation.errors.not_found": "Nie znaleziono rekordu.",
   "foundation.errors.recurrence_invalid": "Reguła powtarzania jest nieprawidłowa.",
   "foundation.errors.recurrence_unsupported": "Reguła powtarzania używa nieobsługiwanej części.",

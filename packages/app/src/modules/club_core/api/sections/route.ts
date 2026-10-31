@@ -119,11 +119,11 @@ export const openApi = buildOpenApi({
     schema: sectionUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a section; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Changes a section; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
   del: {
     schema: sectionDeleteSchema,
     description:
-      'Soft-deletes a section (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Soft-deletes a section (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
 })

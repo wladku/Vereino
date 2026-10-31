@@ -42,7 +42,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: "Change a section's public page content",
       description:
-        '`isPublic`, `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters, unique in the club), `publicDescription`, `publicConditions`, `publicContactName`, `publicContactEmail`, `publicContactPhone`; blank or null clears a field. A public section needs a slug. Send the section lock token in the platform optimistic-lock header.',
+        '`isPublic`, `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters, unique in the club), `publicDescription`, `publicConditions`, `publicContactName`, `publicContactEmail`, `publicContactPhone`; blank or null clears a field. A public section needs a slug. Send the section lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: sectionPublicUpdateSchema.omit({ id: true }) },
       responses: [{ status: 200, description: 'Updated', schema: updateResponseSchema }],
       errors: [

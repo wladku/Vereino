@@ -131,11 +131,11 @@ test('TEST-011 another family and the sibling get 403 declaring for our child; t
       ['the coordinator', family.academyCoordinator.token],
       ['the ward', family.elder.token],
     ] as const) {
-      const refused = await guardianDecide(request, token, attendanceId, true)
+      const refused = await guardianDecide(request, token, attendanceId, true, pending.body?.updatedAt)
       expect(refused.status, `${label}: ${JSON.stringify(refused.body)}`).toBe(403)
       expect(refused.body?.code, label).toBe('scope_denied')
     }
-    const decided = await guardianDecide(request, family.guardian.token, attendanceId, false)
+    const decided = await guardianDecide(request, family.guardian.token, attendanceId, false, pending.body?.updatedAt)
     expect(decided.status, JSON.stringify(decided.body)).toBe(200)
     expect(decided.body).toMatchObject({ declarationStatus: 'rejected_by_guardian', actingRole: 'guardian' })
     // A rejected declaration counts as unanswered for the coach.

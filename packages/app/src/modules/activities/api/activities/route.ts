@@ -157,11 +157,11 @@ export const openApi = buildOpenApi({
       sessions: z.object({ created: z.number(), updated: z.number(), removed: z.number() }),
     }),
     description:
-      'Changes an activity; send the lock token in the platform optimistic-lock header. A change of the rule, dates, times, place, coach or activity re-plans the future sessions; past, detached, cancelled and done sessions stay untouched. Errors: as create, plus 404 and 409 `optimistic_lock_conflict`.',
+      'Changes an activity; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). A change of the rule, dates, times, place, coach or activity re-plans the future sessions; past, detached, cancelled and done sessions stay untouched. Errors: as create, plus 404 and 409 `optimistic_lock_conflict`.',
   },
   del: {
     schema: activityDeleteSchema,
     description:
-      'Soft-deletes an activity and its sessions (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `activity_has_sessions` (a past, cancelled or done session: deactivate it instead).',
+      'Soft-deletes an activity and its sessions (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `activity_has_sessions` (a past, cancelled or done session: deactivate it instead).',
   },
 })
