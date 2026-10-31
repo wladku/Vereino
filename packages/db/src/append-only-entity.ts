@@ -54,5 +54,7 @@ export function decorateAppendOnlyEntityBase(decorators: ColumnDecorators): void
 
 /** Whether an entity instance is an append-only row (the guard's test). */
 export function isAppendOnlyEntity(entity: unknown): entity is AppendOnlyEntityBase {
-  return typeof entity === 'object' && entity !== null && (entity as Record<symbol, unknown>)[APPEND_ONLY_MARKER] === true
+  return (
+    typeof entity === 'object' && entity !== null && (entity as Record<symbol, unknown>)[APPEND_ONLY_MARKER] === true
+  )
 }
