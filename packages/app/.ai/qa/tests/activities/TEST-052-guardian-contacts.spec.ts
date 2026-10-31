@@ -177,8 +177,12 @@ test('TEST-052 the coach opens the contacts on the attendance list on a phone: n
     expect(logged.rows).toHaveLength(1)
 
     const violations: Record<string, unknown> = {}
+    // Each scheme on a fresh load (as the other member-page specs do), with the contacts opened again — another read.
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await page.reload()
+      await section.getByRole('button', { name: /Show guardians' contacts|Pokaż kontakty opiekunów/ }).click()
+      await expect(section.getByTestId('club-contact')).toHaveCount(1)
       const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (found.length > 0) violations[`contacts (${colorScheme})`] = found
     }
