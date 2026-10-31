@@ -1,7 +1,10 @@
 import { asValue } from 'awilix'
+import type { EntityManager } from '@mikro-orm/core'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { foundationErrors } from './api/errors'
 import { createAccount } from './services/accounts'
+import { registerAppendOnlyGuard } from './services/append-only-guard'
+import { auditedRead } from './services/audited-read'
 import { assertInScope, authorizeScoped, jobCommandContext } from './services/authorize-scoped'
 import { encryptedField } from './services/encrypted-field'
 import { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
@@ -35,6 +38,16 @@ export const FOUNDATION_SCHEDULES = 'foundationSchedules' as const
 export const FOUNDATION_LOCALIZED = 'foundationLocalized' as const
 export const FOUNDATION_ERRORS = 'foundationErrors' as const
 export const FOUNDATION_SCHEDULING = 'foundationScheduling' as const
+export const FOUNDATION_AUDITED_READ = 'foundationAuditedRead' as const
+
+/** The request container's `em` when the platform registered it before the module registrars (CLI contexts may not). */
+function containerEm(container: AppContainer): EntityManager | null {
+  try {
+    return container.resolve<EntityManager>('em')
+  } catch {
+    return null
+  }
+}
 
 export function register(container: AppContainer) {
   container.register({
@@ -47,5 +60,8 @@ export function register(container: AppContainer) {
     [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
     [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition, advanceWhere }),
+    [FOUNDATION_AUDITED_READ]: asValue({ auditedRead }),
   })
+  // P-28: every request `em` (fresh event manager per container) refuses updates and deletes of append-only rows.
+  registerAppendOnlyGuard(containerEm(container))
 }

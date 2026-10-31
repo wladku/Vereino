@@ -71,3 +71,5 @@ export {
   type ScopeSubject,
 } from './services/scope-contract'
 export { advanceWhere, assertTransition, type AdvanceWhereSpec, type AdvanceableEntity } from './services/transitions'
+export { auditedRead, type AuditedReadLogRow, type AuditedReadSpec } from './services/audited-read'
+export { registerAppendOnlyGuard } from './services/append-only-guard'

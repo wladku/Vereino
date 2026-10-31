@@ -30,13 +30,15 @@ Other Vereino modules import every helper below from `@/modules/foundation` (thi
 | P-24 | `Recurrence` (parse/serialise), `expandOccurrences`, `occurrenceDates`, `zonedInstant`, `seriesEditPlan` (`@vereino/core`); `parseRecurrence` (422 `recurrence_unsupported` / `recurrence_invalid`) | `services/recurrence.ts` |
 | P-25 | `defineTransitions` (`@vereino/core`); `assertTransition` (409 `invalid_transition`); `advanceWhere` (the job-driven conditional UPDATE: moves the rows still in `from`, returns the ids it changed — first consumer `activities.attendance.expire`, #32) | `services/transitions.ts` |
 | P-26 | `Interval`, `intervalsOverlap`, `findOverlaps` (`@vereino/core`); the optional `vereino.occupancyProvider` contract, `occupancyProvider(container)` | `services/occupancy.ts` |
+| P-27 | `auditedRead(ctx, { log, scope, actingRole, resourceKind, resourceIds, purpose, fields?, extra? }, read)` — commits one row in the module's append-only log before the read, mirrors it to the platform access log (best effort), never reads when the log write fails (#34) | `services/audited-read.ts`, `lib/audited-read.ts` |
+| P-28 | `AppendOnlyEntityBase`, `decorateAppendOnlyEntityBase`, `isAppendOnlyEntity` (`@vereino/db`); the `append_only` guard (409 on an ORM update or delete of an append-only row), registered on every request `em` by `di.ts` (#34) | `services/append-only-guard.ts`, `lib/append-only.ts` |
 | P-16 | `renderLocalized`, `localeForPerson`, `assertSupportedLocale` (422 `locale_unsupported`, #27) | `services/localized.ts` |
 | P-17 | `ErrorCodeTable` (`@vereino/core`); `errors(table)` | `services/errors.ts` |
 | helper | `commandContextForRequest`, `errorResponse` (hand-written action and detail routes) | `services/route-context.ts` |
 
 DI tokens (`di.ts`): `vereino.scopeProvider` — registered by the `people` module, not here; `foundationScopeContract`, `foundationAuthorization`, `foundationRoles`, `foundationAccounts`, `foundationEncryptedFields`, `foundationSchedules`, `foundationLocalized`, `foundationErrors`, `foundationScheduling` — stateless services; `vereino.occupancyProvider` — an optional contract registered by `facilities` (phase 5), never here.
 
-Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (403), `validity_inverted` (422), `email_taken` (409), `locale_unsupported` (422, #27); foundation II: `recurrence_unsupported` (422), `recurrence_invalid` (422), `invalid_transition` (409). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
+Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `append_only` (409, P-28, #34), `scope_denied` (403), `validity_inverted` (422), `email_taken` (409), `locale_unsupported` (422, #27); foundation II: `recurrence_unsupported` (422), `recurrence_invalid` (422), `invalid_transition` (409). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
 
 ## Conventions
 

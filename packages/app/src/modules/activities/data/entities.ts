@@ -1,6 +1,13 @@
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
-import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
+import {
+  AppendOnlyEntityBase,
+  ScopedEntityBase,
+  decorateAppendOnlyEntityBase,
+  decorateScopedEntityBase,
+  type AppendOnlyEntityOptionalProps,
+  type ScopedEntityOptionalProps,
+} from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
 import type {
   ActualAttendance,
@@ -13,6 +20,7 @@ import type {
 } from '../lib/policy'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
+decorateAppendOnlyEntityBase({ PrimaryKey, Property })
 
 /**
  * An activity of one group (club spec glossary *Activity*, *Data Models* → `activities_activities`, D02, REQ-005): a
@@ -281,4 +289,42 @@ export class AttendancePolicy extends ScopedEntityBase {
   /** `declared` / `rejected`. */
   @Property({ name: 'default_after_timeout', type: 'text', default: 'declared' })
   defaultAfterTimeout: TimeoutDefault = 'declared'
+}
+
+/**
+ * One read of guardian contacts by a coach (club spec *Data Models* → `activities_contact_access_log`, REQ-037, DD-39;
+ * foundation II P-27, P-28; #34): who read, in which role, for which session and which guardians, and why — ids only,
+ * never the phone or e-mail read. Append-only: written by `auditedRead` and committed before the contacts are returned;
+ * the `foundation` guard refuses an update or a delete (409 `append_only`).
+ */
+@Entity({ tableName: 'activities_contact_access_log' })
+@Index({
+  name: 'activities_contact_access_log_org_occurrence_created_idx',
+  properties: ['organizationId', 'occurrenceId', 'createdAt'],
+})
+@Index({ name: 'activities_contact_access_log_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ContactAccessLog extends AppendOnlyEntityBase {
+  [OptionalProps]?: AppendOnlyEntityOptionalProps
+
+  @Property({ name: 'actor_user_id', type: 'uuid' })
+  actorUserId!: string
+
+  /** The acting role of the read (`coach`). */
+  @Property({ name: 'acting_role', type: 'text' })
+  actingRole!: string
+
+  @Property({ name: 'occurrence_id', type: 'uuid' })
+  occurrenceId!: string
+
+  /** `people:person`. */
+  @Property({ name: 'resource_kind', type: 'text' })
+  resourceKind!: string
+
+  /** The guardians whose contacts the read returned (may be empty). */
+  @Property({ name: 'resource_ids', type: 'text[]', columnType: 'uuid[]' })
+  resourceIds!: string[]
+
+  /** `coach_contacts`. */
+  @Property({ name: 'purpose', type: 'text' })
+  purpose!: string
 }

@@ -67,6 +67,21 @@ Rules:
 - **Undo.** Reverts only the marks of the last save (the declaration fields stay, whatever the expiry job did meanwhile) and removes the rows it created; refused (409) after a later save, and for a save that closed the session — reopening is an administrator command with a reason.
 - **Series edits.** A session with checked-off attendance is pinned: a series edit no longer moves or removes it. Declarations alone do not pin a future session.
 
+## Guardian contacts for coaches (#34)
+
+| Piece  | What                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Entity | `ContactAccessLog` / `activities_contact_access_log` — append-only (foundation II P-28): actor, acting role, session, `resource_kind` `people:person`, the person ids, `purpose` `coach_contacts`; never the values read |
+| Route  | `GET /api/activities/occurrences/{id}/guardian-contacts` (`activities.coach`; a coach of the group or the session's assigned coach)                                                                                      |
+| Page   | the "Guardians' contacts" section of `/club/occurrences/[id]/attendance`, loaded only on the coach's request                                                                                                             |
+| CLI    | `activities contact-access-log --tenant --org [--occurrence]` (the newest 100 reads), `activities check-append-only --tenant --org` (the guard's self-check, rolled back)                                                |
+
+Rules:
+
+- **Who is shown.** The active guardians (today, club zone) of the session's participants who are still in the group today and who gave `share_contact_with_coaches_at` and have an account; the consent is checked again when the values are read.
+- **Who reads.** A coach of the session's group, or the coach assigned to the session (until 24 hours after it ends) — not the coordinator or the club administrator (403): the consent names the coaches. The page reads only on request, with no cache and no automatic retry, so every view is a logged read.
+- **Audit.** Every read, an empty one too, commits its log row before the values are read (`auditedRead`, P-27) and mirrors one platform access-log row per guardian; a failed log write returns no data.
+
 ## Deferred
 
 Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the public schedule block (step 9), the coordinator's `ScheduleView` calendar perspective on `/backend/activities/occurrences` (`toScheduleItem` ships with #32), personal declaration links (REQ-017), the cancellation e-mail (phase 3), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
