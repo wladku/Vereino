@@ -48,20 +48,30 @@ export async function auditedRead<TLog extends AuditedReadLogRow, T>(
   return runAuditedRead({
     writeLog: async () => {
       const em = ctx.container.resolve<EntityManager>('em').fork()
-      await em.transactional(async (tx) => {
-        const row = tx.create(spec.log, {
-          ...spec.extra,
-          tenantId: spec.scope.tenantId,
-          organizationId: spec.scope.organizationId,
-          actorUserId,
-          actingRole: spec.actingRole,
-          resourceKind: spec.resourceKind,
-          resourceIds,
+      try {
+        await em.transactional(async (tx) => {
+          const row = tx.create(spec.log, {
+            ...spec.extra,
+            tenantId: spec.scope.tenantId,
+            organizationId: spec.scope.organizationId,
+            actorUserId,
+            actingRole: spec.actingRole,
+            resourceKind: spec.resourceKind,
+            resourceIds,
+            purpose: spec.purpose,
+          } as never)
+          await tx.flush()
+          logId = row.id
+        })
+      } catch (error: unknown) {
+        // An uncoded 500: no data leaves without its record (P-27).
+        logger.error('Audited read refused: the log row could not be written', {
+          fingerprint: 'foundation.audit.write_failed',
           purpose: spec.purpose,
-        } as never)
-        await tx.flush()
-        logId = row.id
-      })
+          err: error,
+        })
+        throw error
+      }
     },
     mirror: async () => {
       if (resourceIds.length === 0) return

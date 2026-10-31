@@ -106,7 +106,8 @@ export function GuardianContacts({ occurrenceId }: { occurrenceId: string }) {
       <h2 id="club-contacts" className="text-lg font-semibold">
         {t('activities.club.contacts.title')}
       </h2>
-      {body}
+      {/* The "Show" button gives way to the result, which is announced. */}
+      <div aria-live="polite">{body}</div>
     </section>
   )
 }

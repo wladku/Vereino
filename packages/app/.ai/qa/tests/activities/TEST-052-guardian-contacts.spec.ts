@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
+import { getOccurrence, moveOccurrence } from '../_fixtures/activities'
 import { bothSeries, familyFor, firstSession } from '../_fixtures/attendance'
 import { call, createClub, mercato } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
@@ -8,7 +9,7 @@ import { getMe, putMe } from '../_fixtures/members'
 // Issue #34 (E03-S05), club spec TEST-052 (REQ-037, DD-39) with foundation II TEST-G05 (P-27, P-28): guardian A
 // consented to share their contacts with coaches, guardian B did not. The coach of the children's group reads A's phone
 // and e-mail and nothing of B; a coach of another group and the section's coordinator get 403; after A withdraws the
-// consent in the profile the next read is empty. Every read commits one `activities_contact_access_log` row with the
+// consent in the profile the next read is empty; a coach assigned to the session from another group reads as a coach. Every read commits one `activities_contact_access_log` row with the
 // actor, role, session and person ids — never the values — and the append-only guard refuses to change or delete it.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
@@ -103,7 +104,8 @@ test('TEST-052 the coach sees only the consenting guardian, other coaches and th
       rows?: LogRow[]
     }
     expect(log.rows).toHaveLength(2)
-    const [second, first] = log.rows ?? []
+    const second = log.rows?.at(0)
+    const first = log.rows?.at(1)
     if (!first || !second) throw new Error('[test] two log rows expected')
     for (const row of [first, second]) {
       expect(row).toMatchObject({
@@ -131,6 +133,23 @@ test('TEST-052 the coach sees only the consenting guardian, other coaches and th
       rows?: LogRow[]
     }
     expect(unchanged.rows).toEqual(log.rows)
+
+    // The pool instructor, assigned to this Żaki session by the coordinator, reads its contacts as its coach.
+    const current = await getOccurrence(request, club.adminToken, session.id)
+    const assigned = await moveOccurrence(
+      request,
+      family.academyCoordinator.token,
+      session.id,
+      { coachPersonId: family.instructor.personId },
+      current.body?.updatedAt,
+    )
+    expect(assigned.status, JSON.stringify(assigned.body)).toBe(200)
+    const byAssigned = await readContacts(request, family.instructor.token, session.id)
+    expect(byAssigned.status, JSON.stringify(byAssigned.body)).toBe(200)
+    const assignedLog = mercato(['activities', 'contact-access-log', ...scope, '--occurrence', session.id]) as {
+      rows?: LogRow[]
+    }
+    expect(assignedLog.rows?.[0]).toMatchObject({ actorUserId: family.instructor.userId, actingRole: 'coach' })
   } finally {
     await club.cleanup()
   }

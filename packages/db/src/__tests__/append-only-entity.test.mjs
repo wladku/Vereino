@@ -46,4 +46,7 @@ test('isAppendOnlyEntity tells append-only rows from scoped ones', () => {
   assert.equal(isAppendOnlyEntity(log), true)
   assert.equal(isAppendOnlyEntity(new Row()), false)
   assert.equal(isAppendOnlyEntity(null), false)
+  assert.equal(isAppendOnlyEntity('row'), false)
+  // A second copy of the package marks its rows with the same registry symbol.
+  assert.equal(isAppendOnlyEntity({ [Symbol.for('vereino.appendOnly')]: true }), true)
 })

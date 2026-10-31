@@ -37,11 +37,26 @@ On a session's attendance list the coach of the group sees the phone and e-mail 
 - **Only the session's coaches read.** The route requires `activities.coach` and the `coach` grant of the group or the session's assigned coach (`self` on `coach_person_id`, as the check-off); the coordinator and the club administrator get 403 although they hold `activities.coach` — the consent is given "to the coaches" (REQ-037, DD-39), and data minimisation follows it.
 - **Read on request.** The page loads the contacts only when the coach presses "Show guardians' contacts" and never refetches on its own, so every read in the log is a coach's deliberate action.
 - **Every read is logged, an empty one too.** The row lists the ids that consented at the time of the read; the values are read afterwards with the consent re-checked, so a withdrawal between the two drops the guardian from the answer while the row stays (ids ⊇ shown).
-- **Today's guardianships.** The guardians are the active ones on the club's today, not on the session date: the coach calls today.
+- **Today's guardianships and today's group.** The guardians are the active ones on the club's today, and only children who are participants both on the session date and today count: a past session never reveals the guardians of children who left the group (review finding).
+- **The assigned coach's window.** A coach assigned to the session from another group (the `self` match on `coach_person_id`) reads its contacts only until 24 hours after the session ends; the group's own coaches have no window — they reach the same guardians through any session.
 - **The guard per request `em`.** The platform forks a fresh event manager into every request container and runs the module registrars after registering `em`, so `foundation/di.ts` registers the subscriber there (a `WeakSet` keeps it once per event manager); the CLI container goes through the same path, which the self-check proves.
 - **Operator commands instead of a probe route.** TEST-G05's update and delete refusals are proven by `activities check-append-only` (a rolled-back transaction) and the log is read by `activities contact-access-log` — both useful to an operator for a data-protection request; no test-only HTTP route.
+- **A registry-wide marker.** `isAppendOnlyEntity` reads `Symbol.for('vereino.appendOnly')` on the base prototype instead of `instanceof`, so a second copy of `@vereino/db` in a bundle still matches (review finding).
 - **The pure parts in `lib`.** The guard's rule and the read order are pure (`foundation/lib`), because the services layer cannot load under Jest; the services wire them to the ORM, the error table and the platform log.
 - **The mirror is not asserted end to end.** The platform access log is read per actor (the coach has no `audit_logs.view_self`); the mirror call is covered by the unit test of the order and is best effort by design (V-F08).
+
+## Review
+
+`om-auto-review-pr` cannot submit an approving review of the automation's own PR (self-approval), so a fresh-context read-only reviewer ran: "request changes", nothing blocking, eight findings, all applied:
+
+1. A past session revealed the guardians of children who had left the group, and an assigned coach kept access forever — now only children in the group today, and the assigned coach until 24 hours after the session.
+2. The page cached the contacts (`staleTime: Infinity`, default `gcTime`), so a second view could be unlogged and show a withdrawn consent — now `gcTime: 0`: every view is a request and a log row.
+3. The query retried failed reads, which could write up to three log rows per click — now `retry: false`.
+4. TEST-052 did not cover the account rule or the assigned coach — the account rule is a pure filter in `people/lib/contact-sharing.ts` with a unit test (AC5), and TEST-052 reads as a coach assigned from another group.
+5. A failed log write had no fingerprint — now logged as `foundation.audit.write_failed` and rethrown (uncoded 500).
+6. The result replaced the focused button silently — now announced (`aria-live="polite"`).
+7. `instanceof` would miss a second copy of `@vereino/db` — now a `Symbol.for` marker.
+8. The run log's status and Progress — closed with this run.
 
 ## Progress
 

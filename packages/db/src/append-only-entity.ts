@@ -9,6 +9,12 @@ import type { ColumnDecorators } from '#src/scoped-entity'
 /** Properties a subclass lists in `[OptionalProps]` because the database or the ORM fills them. */
 export type AppendOnlyEntityOptionalProps = 'createdAt'
 
+/**
+ * The marker the guard reads: a registry-wide symbol on the base prototype, so a row is recognised even when this
+ * package is loaded twice (a bundler or `tsx` may load two copies, where `instanceof` would silently fail).
+ */
+export const APPEND_ONLY_MARKER = Symbol.for('vereino.appendOnly')
+
 /** Scope and creation columns of an append-only row. Call `decorateAppendOnlyEntityBase` before discovery. */
 export abstract class AppendOnlyEntityBase {
   declare id: string
@@ -16,6 +22,8 @@ export abstract class AppendOnlyEntityBase {
   declare tenantId: string
   createdAt: Date = new Date()
 }
+
+Object.defineProperty(AppendOnlyEntityBase.prototype, APPEND_ONLY_MARKER, { value: true })
 
 type AppendOnlyColumnName = 'organizationId' | 'tenantId' | 'createdAt'
 
@@ -46,5 +54,5 @@ export function decorateAppendOnlyEntityBase(decorators: ColumnDecorators): void
 
 /** Whether an entity instance is an append-only row (the guard's test). */
 export function isAppendOnlyEntity(entity: unknown): entity is AppendOnlyEntityBase {
-  return entity instanceof AppendOnlyEntityBase
+  return typeof entity === 'object' && entity !== null && (entity as Record<symbol, unknown>)[APPEND_ONLY_MARKER] === true
 }

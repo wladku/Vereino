@@ -78,8 +78,8 @@ Rules:
 
 Rules:
 
-- **Who is shown.** The active guardians (today, club zone) of the session's participants who gave `share_contact_with_coaches_at` and have an account; the consent is checked again when the values are read.
-- **Who reads.** A coach of the session's group or the coach assigned to the session — not the coordinator or the club administrator (403): the consent names the coaches.
+- **Who is shown.** The active guardians (today, club zone) of the session's participants who are still in the group today and who gave `share_contact_with_coaches_at` and have an account; the consent is checked again when the values are read.
+- **Who reads.** A coach of the session's group, or the coach assigned to the session (until 24 hours after it ends) — not the coordinator or the club administrator (403): the consent names the coaches. The page reads only on request, with no cache and no automatic retry, so every view is a logged read.
 - **Audit.** Every read, an empty one too, commits its log row before the values are read (`auditedRead`, P-27) and mirrors one platform access-log row per guardian; a failed log write returns no data.
 
 ## Deferred

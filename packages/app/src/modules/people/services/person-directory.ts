@@ -9,6 +9,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
 import { Guardianship, Person } from '../data/entities'
+import { contactSharingFilter } from '../lib/contact-sharing'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -137,23 +138,13 @@ export async function presenceConsents(
   return new Set(rows.map((row) => row.id))
 }
 
-function contactConsentFilter(scope: ClubScope, ids: readonly string[]) {
-  return {
-    id: { $in: [...new Set(ids)] },
-    ...scope,
-    deletedAt: null,
-    shareContactWithCoachesAt: { $ne: null },
-    userId: { $ne: null },
-  }
-}
-
 export async function contactConsents(
   em: EntityManager,
   scope: ClubScope,
   ids: readonly string[],
 ): Promise<Set<string>> {
   if (ids.length === 0) return new Set()
-  const rows = await em.find(Person, contactConsentFilter(scope, ids), { fields: ['id'] })
+  const rows = await em.find(Person, contactSharingFilter(scope, ids), { fields: ['id'] })
   return new Set(rows.map((row) => row.id))
 }
 
@@ -166,7 +157,7 @@ export async function sharedContacts(
   const rows = await findWithDecryption(
     em,
     Person,
-    contactConsentFilter(scope, ids),
+    contactSharingFilter(scope, ids),
     { fields: ['id', 'firstName', 'lastName', 'phone', 'email'] },
     scope,
   )

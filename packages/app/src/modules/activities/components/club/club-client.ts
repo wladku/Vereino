@@ -286,13 +286,16 @@ class GuardianContactsLoadError extends Error {}
 
 /**
  * The contacts of one session, fetched only once the coach asks for them (`enabled`): every read is recorded, so the
- * page never reads them in the background, and a refetch is never automatic.
+ * page never reads them in the background or retries on its own, and nothing is cached — opening them again is a new,
+ * logged read that reflects a withdrawn consent.
  */
 export function useGuardianContacts(id: string, enabled: boolean) {
   return useQuery({
     queryKey: [GUARDIAN_CONTACTS_QUERY_KEY, id],
     enabled,
     staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async (): Promise<GuardianContactsLoad> => {
