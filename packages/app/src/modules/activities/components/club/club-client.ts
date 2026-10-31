@@ -250,21 +250,22 @@ export function useAttendanceList(id: string) {
 
 /**
  * Saves the changed marks (and optionally closes the session) against the session version the page showed
- * (`lockToken` = the session's `updatedAt`): a save by another coach meanwhile answers 409.
+ * (`lockToken` = the session's `updatedAt`): a save by another coach meanwhile answers 409. Returns the refreshed list.
  */
 export async function saveAttendance(
   id: string,
   input: { entries: { personId: string; actual: ActualValue | null }[]; complete?: boolean },
   errorMessage: string,
   lockToken: string,
-): Promise<void> {
-  await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
-    apiCallOrThrow(
+): Promise<AttendanceList | null> {
+  const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow<AttendanceList>(
       attendanceUrl(id),
       { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) },
       { errorMessage },
     ),
   )
+  return call.result ?? null
 }
 
 /** The summary line of the coach's list per the kind (club spec AC-007). */

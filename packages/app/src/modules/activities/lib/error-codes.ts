@@ -33,6 +33,7 @@ export const errorCodes = [
   // Actual attendance (#33; club spec glossary *Actual attendance*).
   { code: 'attendance_not_started', status: 409, messageKey: 'activities.errors.attendance_not_started' },
   { code: 'attendance_person_not_listed', status: 422, messageKey: 'activities.errors.attendance_person_not_listed' },
+  { code: 'attendance_version_required', status: 400, messageKey: 'activities.errors.attendance_version_required' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

@@ -37,11 +37,32 @@ Before a session the coach sees who is expected and who reported an absence (or,
 - **The session's assigned coach.** A coach re-staffed onto another group's session has no `coach` grant on that group; the target carries the session's `coach_person_id` as `personId`, so the `self` grant matches the assigned coach only, and the row records `coach` as the role.
 - **When the check-off opens.** From `start_at` until the session is closed (409 `attendance_not_started` before). Before the start the list shows the expectations only, as the story describes ("before a session the coach sees…; after it, checks off").
 - **Closing.** `complete: true` moves `planned → done` with the save; the API asks for no extra early-close confirmation, the page confirms with `useConfirmDialog` (the data model's "or a confirmation").
-- **The version.** The session's `updatedAt` is the lock of the whole list; every save moves it. Like every other write route in the app, the platform checks the token when the client sends it (no 400 without it); the page always sends it.
+- **The version.** The session's `updatedAt` is the lock of the whole list; every save moves it, and the save must send it (400 `attendance_version_required`, engineering standards S5.2) — unlike the platform default, which skips the check when the header is missing. The other write routes of the app share that gap (follow-up).
 - **The list.** Participants on the session date ∪ persons with live rows; the summary counts the participants only. A person off the list is 422 `attendance_person_not_listed`. A row created by the check-off has `declared = unknown`, `declaration_status = final`, `source = staff`, so it never changes the declaration counts.
-- **Unchanged rows keep their marker.** Only rows whose `actual` changes are written; the undo restores exactly those and removes the rows the save created, and refuses (409) once the session changed since.
-- **Series pinning.** `isPinnedSession` adds "has checked-off attendance" to the pinned rule the #31 code reserved for this story; it is a pure rule in `lib` (the services layer cannot load under Jest).
+- **Unchanged rows keep their marker.** Only rows whose `actual` changes are written; the undo reverts only `actual` and the marker of those rows (the expiry job may have settled a declaration meanwhile), removes the rows the save created, refuses (409) once the session changed since, and refuses a closing save (reopening is an administrator command with a reason).
+- **Series pinning.** `isPinnedSession` adds "has checked-off attendance" to the pinned rule the #31 code reserved for this story; it is a pure rule in `lib` (the services layer cannot load under Jest). Declarations alone do not pin: a future session where someone reported an absence still follows a series edit (the review suggested pinning on any row; that would leave sessions at their old time once anyone answered — recorded in the spec instead).
 - **No migration.** The actual-attendance columns shipped with #32.
+
+## Commands and results
+
+- `yarn workspace @vereino/app` Jest `src/modules/activities/lib` — 28 passed, 100 % line, branch, function.
+- `yarn test:integration:vereino --filter "TEST-009-coach"` — 2 passed on the first run.
+- `yarn test:integration:vereino --filter "activities/"` — 18 passed (the new `TEST-009-coach-attendance-checkoff` ×2 and `E03-S04-coach-attendance-ui`, the rest as regressions).
+- `yarn verify` — 13/13 passed (head `2ed1807`); `TEST-006` 2 passed, `J-001` 1 passed (`--no-build`).
+- After the review fixes: see *Review*.
+
+## Review
+
+`om-auto-review-pr` cannot submit an approving review of the automation's own PR (refused as self-approval on #61), so a fresh-context read-only reviewer ran: "request changes", nothing blocking, eight findings:
+
+1. The undo of a closing save reopened a `done` session without an administrator or a reason — now refused (409 `occurrence_not_planned`).
+2. The undo restored whole rows, declaration fields included, over a settlement by the expiry job — now it reverts only `actual` and the marker.
+3. The session version was optional — now required (400 `attendance_version_required`).
+4. Pin sessions with any attendance row, declarations included — declined; the narrower reading is recorded in the spec (see *Decisions*).
+5. The undo had no test — `TEST-009 undo` covers the reverted marks with the declaration kept, the refused older undo, the refused closing undo and the missing version.
+6. The save looked the session up by tenant only — now by the trusted organization too (another organization's id is 404 before any row lock).
+7. A mark could not be cleared on the page — a "Clear" control per row.
+8. Rows flickered after a save — the save's answer goes into the query cache.
 
 ## Progress
 

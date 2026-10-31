@@ -4,22 +4,28 @@
 //   administrator checks off `present` / `absent` / `late` (or clears a mark) for the persons on the list — the group's
 //   participants on the session date and anyone with an attendance row — from the session's start until it is closed;
 // - each changed row records who marked it and in which role; a row the coach did not change keeps its marker;
-// - the whole list is saved against the session version (`updatedAt`): every save moves it, so a second coach with a
-//   stale list gets 409 instead of overwriting the first;
-// - `complete` closes the session (`planned → done`); a cancelled or done session answers 409.
+// - the whole list is saved against the session version (`updatedAt`), which the save must send (400
+//   `attendance_version_required`): every save moves it, so a second coach with a stale list gets 409 instead of
+//   overwriting the first;
+// - `complete` closes the session (`planned → done`); a cancelled or done session answers 409;
+// - the undo reverts the marks of the last save only (never the declaration fields, which the expiry job may have
+//   settled meanwhile) and never reopens a closed session — reopening is an administrator command with a reason.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { enforceCommandOptimisticLock } from '@open-mercato/shared/lib/crud/optimistic-lock-command'
+import {
+  enforceCommandOptimisticLock,
+  readOptimisticLockExpected,
+} from '@open-mercato/shared/lib/crud/optimistic-lock-command'
 import { z } from 'zod'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
-import { assertTransition, authorizeScoped, type TargetLock } from '@/modules/foundation'
+import { assertTransition, authorizeScoped, trustedScopeOf, type TargetLock } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Attendance, Occurrence } from '../data/entities'
 import { attendanceMarkSchema } from '../data/validators'
 import { sessionTransitions } from '../lib/activities-rules'
 import { checkOffWindow } from '../lib/policy'
 import { rosterOn } from '../services/directory'
-import { attendanceSnapshot, restoreAttendance, type AttendanceSnapshot } from './attendance'
+import { attendanceSnapshot, type AttendanceSnapshot } from './attendance'
 import { OCCURRENCE_RESOURCE_KIND, occurrenceSnapshot, type OccurrenceSnapshot } from './occurrences'
 import {
   COACH_KINDS,
@@ -28,7 +34,6 @@ import {
   inWriteTransaction,
   scheduleTarget,
   selfPersonId,
-  trustedTenantId,
   type ActivitiesCommandResult,
 } from './shared'
 
@@ -65,12 +70,20 @@ export type CheckOffCommandResult = ActivitiesCommandResult<Occurrence, CheckOff
   completed: boolean
 }
 
+/** The session in the trusted organization (another organization's id is 404 before any row lock). */
 function loadOccurrence(ctx: CommandRuntimeContext) {
   return (em: EntityManager, id: string, lock: TargetLock): Promise<Occurrence | null> => {
-    const tenantId = trustedTenantId(ctx)
-    if (!tenantId) return Promise.resolve(null)
-    return em.findOne(Occurrence, { id, tenantId, deletedAt: null }, lock)
+    const scope = trustedScopeOf(ctx)
+    if (!scope) return Promise.resolve(null)
+    return em.findOne(Occurrence, { id, ...scope, deletedAt: null }, lock)
   }
+}
+
+/** The marks a check-off writes and its undo reverts: nothing of the declaration. */
+function restoreMarks(row: Attendance, before: AttendanceSnapshot): void {
+  row.actual = before.actual
+  row.markedByPersonId = before.markedByPersonId
+  row.markedAsRole = before.markedAsRole
 }
 
 /** The persons on the list: the group's participants on the session date and anyone with a live attendance row. */
@@ -111,6 +124,8 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
   atomicReplay: true,
   async execute(rawInput, ctx) {
     const now = new Date()
+    // The whole list is one write against the session version: a save without it could overwrite a newer list.
+    if (!readOptimisticLockExpected(ctx.request ?? null)) await activitiesErrors.throw('attendance_version_required')
     const result = await inWriteTransaction(ctx, 'activities.attendance.mark', async (em) => {
       const load = loadOccurrence(ctx)
       // The default lock compares the session version the client sent with the locked row (409 when stale).
@@ -238,6 +253,11 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
       current: occurrence.updatedAt,
       expected: after.occurrenceUpdatedAt,
     })
+    // A closed (or cancelled) session stays so: reopening is an administrator command with a reason (club spec
+    // *Data Models* → `Occurrence`), so the undo of a closing save is refused.
+    if (occurrence.status !== 'planned') {
+      await activitiesErrors.throw('occurrence_not_planned', { status: occurrence.status })
+    }
     const scope = { tenantId: occurrence.tenantId, organizationId: occurrence.organizationId }
     const now = new Date()
     const ids = [...before.attendances.map((row) => row.id), ...before.createdIds]
@@ -246,7 +266,7 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
     for (const snapshot of before.attendances) {
       const row = byId.get(snapshot.id)
       if (!row) throw new Error('[internal] a checked-off row is missing for undo: ' + snapshot.id)
-      restoreAttendance(row, snapshot)
+      restoreMarks(row, snapshot)
       row.updatedAt = now
     }
     for (const id of before.createdIds) {
@@ -256,21 +276,16 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
         row.updatedAt = now
       }
     }
-    const reopened = occurrence.status !== before.occurrence.status
-    if (reopened) {
-      await assertTransition(sessionTransitions, occurrence.status, before.occurrence.status)
-      occurrence.status = before.occurrence.status
-    }
     occurrence.updatedAt = now
     await em.flush()
-    const personIds = after.attendances.map((row) => row.personId)
-    await emitMarked(occurrence, personIds, actingRole, false, ctx.auth?.sub ?? null, true)
-    if (reopened) {
-      await emitAfterCommit('activities.occurrence.updated', scope, {
-        id: occurrence.id,
-        activityId: occurrence.activityId,
-      })
-    }
+    await emitMarked(
+      occurrence,
+      after.attendances.map((row) => row.personId),
+      actingRole,
+      false,
+      ctx.auth?.sub ?? null,
+      true,
+    )
   },
 }
 

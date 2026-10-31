@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { cancelOccurrence, getOccurrence, moveOccurrence } from '../_fixtures/activities'
 import {
   addParticipants,
@@ -15,12 +16,14 @@ import {
   type ActualValue,
 } from '../_fixtures/attendance'
 import { createClub } from '../_fixtures/club'
+import { actionLogEntries } from '../_fixtures/people'
 
 // Issue #33 (E03-S04), club spec phase 2 step 5 — the check-off half of TEST-009 and TEST-011 (REQ-007, REQ-008; R11,
 // D-026; AC-007): before the session the coach's list counts the expected and the reported absences of the kind; from
 // the start the coach checks off present, absent or late and closes the session, each row recording who marked it and
-// in which role; a save with a stale session version answers 409; a coach of another group gets 403; a cancelled
-// session refuses the check-off with 409.
+// in which role; a save with a stale session version answers 409 (and one without a version 400); a coach of another
+// group gets 403; a cancelled session refuses the check-off with 409. The undo reverts only the marks of the last save
+// and never reopens a closed session.
 test.describe.configure({ timeout: 300_000 })
 
 test('TEST-009 a training of sixteen with two reported absences: 14 expected, 2 absent; check-off after the start with the marker and role; stale save 409; close → done; another group’s coach 403', async ({
@@ -253,6 +256,117 @@ test('TEST-011 a cancelled session refuses the check-off (409); a match lists co
       actual: 'present',
       markedAsRole: 'coach',
     })
+  } finally {
+    await club.cleanup()
+  }
+})
+
+test('TEST-009 undo: a save without the session version is 400; the undo of the last save reverts only its marks; an older save or a closing save cannot be undone', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'test-009-checkoff-undo')
+  try {
+    const family = await familyFor(request, club)
+    const { training } = await bothSeries(request, club, family)
+    const session = firstSession(training.sessions)
+    const reported = await declare(request, family.guardian.token, {
+      occurrenceId: session.id,
+      personId: family.younger.personId,
+      declared: 'no',
+    })
+    expect(reported.status, JSON.stringify(reported.body)).toBe(201)
+    const started = await startNow(request, club, session.id)
+
+    // No session version: refused before anything is read or written.
+    const unversioned = await saveAttendanceList(
+      request,
+      club.adminToken,
+      session.id,
+      { entries: [{ personId: family.elder.personId, actual: 'present' }] },
+      null,
+    )
+    expect(unversioned.status, JSON.stringify(unversioned.body)).toBe(400)
+    expect(unversioned.body?.code).toBe('attendance_version_required')
+
+    // The administrator marks the child with a declaration (an existing row) and one without (a new row).
+    const first = await saveAttendanceList(
+      request,
+      club.adminToken,
+      session.id,
+      {
+        entries: [
+          { personId: family.younger.personId, actual: 'absent' },
+          { personId: family.elder.personId, actual: 'present' },
+        ],
+      },
+      started,
+    )
+    expect(first.status, JSON.stringify(first.body)).toBe(200)
+    expect(first.body && rowOf(first.body, family.younger.personId).markedAsRole).toBe('club_admin')
+    const marks = async () =>
+      (await actionLogEntries(request, club.adminToken, session.id)).filter(
+        (entry) => entry.commandId === 'activities.attendance.mark',
+      )
+    const firstLog = (await marks()).at(0)
+    expect(firstLog?.undoToken).toBeTruthy()
+    const undone = await undoByToken(request, club.adminToken, String(firstLog?.undoToken))
+    expect(undone.status(), await undone.text()).toBe(200)
+    const reverted = await readAttendanceList(request, club.adminToken, session.id)
+    const list = reverted.body
+    if (!list) throw new Error('[test] empty list after the undo')
+    // The marks are gone; the reported absence (the declaration) is untouched.
+    expect(rowOf(list, family.younger.personId)).toMatchObject({
+      actual: null,
+      markedByPersonId: null,
+      markedAsRole: null,
+      declared: 'no',
+      expectation: 'absent',
+    })
+    expect(rowOf(list, family.elder.personId)).toMatchObject({ actual: null, declared: null })
+    expect(list.summary).toMatchObject({ expected: 2, absent: 1 })
+
+    // Two saves: the older one cannot be undone once the newer moved the session version.
+    const second = await saveAttendanceList(
+      request,
+      club.adminToken,
+      session.id,
+      { entries: [{ personId: family.elder.personId, actual: 'late' }] },
+      list.occurrence?.updatedAt,
+    )
+    expect(second.status, JSON.stringify(second.body)).toBe(200)
+    const third = await saveAttendanceList(
+      request,
+      club.adminToken,
+      session.id,
+      { entries: [{ personId: family.elder.personId, actual: 'present' }] },
+      second.body?.occurrence?.updatedAt,
+    )
+    expect(third.status, JSON.stringify(third.body)).toBe(200)
+    // Newest first: [third, second, first]. The platform keeps the undo token of the latest action only (400); the
+    // command's own version guard (409) backs it up. Either way nothing changes.
+    const secondLog = (await marks()).at(1)
+    const olderUndo = await undoByToken(request, club.adminToken, secondLog?.undoToken ?? 'missing')
+    expect([400, 409], await olderUndo.text()).toContain(olderUndo.status())
+    const afterOlderUndo = await readAttendanceList(request, club.adminToken, session.id)
+    expect(afterOlderUndo.body && rowOf(afterOlderUndo.body, family.elder.personId).actual).toBe('present')
+
+    // A closing save cannot be undone: reopening is an administrator command with a reason.
+    const closing = await saveAttendanceList(
+      request,
+      club.adminToken,
+      session.id,
+      { entries: [], complete: true },
+      third.body?.occurrence?.updatedAt,
+    )
+    expect(closing.status, JSON.stringify(closing.body)).toBe(200)
+    expect(closing.body?.occurrence?.status).toBe('done')
+    const closingLog = (await marks()).at(0)
+    const reopen = await undoByToken(request, club.adminToken, String(closingLog?.undoToken))
+    expect(reopen.status(), await reopen.text()).toBe(409)
+    expect(((await reopen.json()) as { code?: string }).code).toBe('occurrence_not_planned')
+    const still = await readAttendanceList(request, club.adminToken, session.id)
+    expect(still.body?.occurrence?.status).toBe('done')
+    expect(still.body && rowOf(still.body, family.elder.personId).actual).toBe('present')
   } finally {
     await club.cleanup()
   }

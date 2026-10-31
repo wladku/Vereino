@@ -72,11 +72,15 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Check off actual attendance and optionally close the session',
       description:
-        'Saves `present`, `absent` or `late` (or `null` to clear) for persons on the list, from the session’s start until it is closed; `complete: true` also closes the session (`done`). Send the session version (`updatedAt`) in the platform optimistic-lock header. Answers with the refreshed list.',
+        'Saves `present`, `absent` or `late` (or `null` to clear) for persons on the list, from the session’s start until it is closed; `complete: true` also closes the session (`done`). Send the session version (`updatedAt`) in the platform optimistic-lock header (required). Answers with the refreshed list.',
       requestBody: { contentType: 'application/json', schema: attendanceMarkBodySchema },
       responses: [{ status: 200, description: 'The refreshed attendance list', schema: attendanceListSchema }],
       errors: [
-        { status: 400, description: 'Invalid input', schema: errorSchema },
+        {
+          status: 400,
+          description: 'Invalid input, or `attendance_version_required` (no session version sent)',
+          schema: errorSchema,
+        },
         { status: 403, description: 'scope_denied (a coach of another group)', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
         {

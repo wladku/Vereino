@@ -61,7 +61,7 @@ function AttendanceRowItem({
   editable: boolean
   selected: ActualValue | null
   busy: boolean
-  onSelect: (personId: string, actual: ActualValue) => void
+  onSelect: (personId: string, actual: ActualValue | null) => void
 }) {
   const t = useT()
   const name = rowName(row, t('activities.common.empty'))
@@ -80,26 +80,42 @@ function AttendanceRowItem({
       </div>
       {!row.onRoster ? <p className="text-muted-foreground text-sm">{t('activities.club.attendance.guest')}</p> : null}
       {editable ? (
-        <RadioGroup
-          aria-labelledby={`${groupId}-name`}
-          className="flex flex-row flex-wrap gap-2"
-          value={selected ?? ''}
-          disabled={busy}
-          onValueChange={(value) => {
-            onSelect(row.personId, value as ActualValue)
-          }}
-        >
-          {ACTUAL_VALUES.map((value) => (
-            <label
-              key={value}
-              htmlFor={`${groupId}-${value}`}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3"
+        <div className="flex flex-wrap items-center gap-2">
+          <RadioGroup
+            aria-labelledby={`${groupId}-name`}
+            className="flex flex-row flex-wrap gap-2"
+            value={selected ?? ''}
+            disabled={busy}
+            onValueChange={(value) => {
+              onSelect(row.personId, value as ActualValue)
+            }}
+          >
+            {ACTUAL_VALUES.map((value) => (
+              <label
+                key={value}
+                htmlFor={`${groupId}-${value}`}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3"
+              >
+                <Radio id={`${groupId}-${value}`} value={value} data-actual={value} />
+                <span className="text-sm">{t(`activities.club.attendance.actual.${value}`)}</span>
+              </label>
+            ))}
+          </RadioGroup>
+          {selected ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11"
+              disabled={busy}
+              onClick={() => {
+                onSelect(row.personId, null)
+              }}
             >
-              <Radio id={`${groupId}-${value}`} value={value} data-actual={value} />
-              <span className="text-sm">{t(`activities.club.attendance.actual.${value}`)}</span>
-            </label>
-          ))}
-        </RadioGroup>
+              {t('activities.club.attendance.clear')}
+              <span className="sr-only"> — {name}</span>
+            </Button>
+          ) : null}
+        </div>
       ) : row.actual ? (
         <p className="text-sm" data-testid="club-attendance-actual">
           {t(`activities.club.attendance.actual.${row.actual}`)}
@@ -184,13 +200,14 @@ function Attendance({ id }: { id: string }) {
     }
     setBusy(true)
     try {
-      await saveAttendance(
+      const saved = await saveAttendance(
         id,
         { entries: changed, ...(complete ? { complete: true } : {}) },
         t('activities.club.errors.saveAttendance'),
         occurrence.updatedAt,
       )
-      // Saved: the list now carries these marks, so the page shows the server's values again.
+      // Saved: the answer is the refreshed list, so the page shows the server's values at once.
+      if (saved) queryClient.setQueryData([ATTENDANCE_LIST_QUERY_KEY, id], { status: 'ok', list: saved })
       setSelections(new Map())
       const message = t(complete ? 'activities.club.flash.sessionClosed' : 'activities.club.flash.attendanceSaved')
       setAnnouncement(message)
@@ -200,6 +217,7 @@ function Attendance({ id }: { id: string }) {
       if (!surfaceRecordConflict(error, t)) flash(errorText(error, t('activities.club.errors.saveAttendance')), 'error')
     } finally {
       setBusy(false)
+      // After a conflict the list refetches with the newer version; the selections stay.
       await queryClient.invalidateQueries({ queryKey: [ATTENDANCE_LIST_QUERY_KEY, id] })
       await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
     }

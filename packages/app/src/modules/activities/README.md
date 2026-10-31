@@ -63,8 +63,9 @@ Rules:
 - **The list.** The group's participants on the session date and anyone with an attendance row; the summary line counts the participants per the kind (`absence_only`: expected / absent; `confirm`: confirmed / declined / unanswered). A person not on the list is refused (422 `attendance_person_not_listed`).
 - **When.** From the session's start until it is closed (409 `attendance_not_started` before; 409 `occurrence_not_planned` when cancelled or done). Before the start the list shows the expectations only.
 - **Who marked it.** A changed row records `marked_by_person_id` and `marked_as_role` (the session's assigned coach from another group marks as `coach`); an unchanged row keeps its marker. A row created by the check-off has `declared = unknown`, `source = staff`.
-- **Version.** Every save moves the session's `updatedAt`; a save with an older one answers 409, and the page refreshes the list while keeping the coach's selections. The undo restores the rows and the session status only while the session is unchanged since the save.
-- **Series edits.** A session with checked-off attendance is pinned: a series edit no longer moves or removes it.
+- **Version.** Every save sends the session's `updatedAt` (400 `attendance_version_required` without it) and moves it; a save with an older one answers 409, and the page refreshes the list while keeping the coach's selections.
+- **Undo.** Reverts only the marks of the last save (the declaration fields stay, whatever the expiry job did meanwhile) and removes the rows it created; refused (409) after a later save, and for a save that closed the session — reopening is an administrator command with a reason.
+- **Series edits.** A session with checked-off attendance is pinned: a series edit no longer moves or removes it. Declarations alone do not pin a future session.
 
 ## Deferred
 

@@ -1,8 +1,6 @@
 {
   "name": "public",
-  "namespaces": [
-    "public"
-  ],
+  "namespaces": ["public"],
   "tables": [
     {
       "name": "activities_activities",
@@ -385,11 +383,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "group_id",
-            "is_active"
-          ],
+          "columnNames": ["organization_id", "group_id", "is_active"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_org_group_active_idx",
@@ -397,10 +391,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "section_id"
-          ],
+          "columnNames": ["organization_id", "section_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_org_section_idx",
@@ -408,9 +399,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_activities_pkey",
@@ -418,10 +407,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_tenant_org_idx",
@@ -645,9 +631,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_attendance_policies_pkey",
@@ -664,10 +648,7 @@
           "expression": "create unique index \"activities_attendance_policies_scope_unique\" on \"activities_attendance_policies\" (\"organization_id\", \"scope\", coalesce(\"group_id\"::text, ''), coalesce(\"activity_type\", '')) where deleted_at is null"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendance_policies_tenant_org_idx",
@@ -1019,10 +1000,7 @@
           "expression": "create unique index \"activities_attendances_occurrence_person_unique\" on \"activities_attendances\" (\"occurrence_id\", \"person_id\") where deleted_at is null"
         },
         {
-          "columnNames": [
-            "organization_id",
-            "occurrence_id"
-          ],
+          "columnNames": ["organization_id", "occurrence_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_occurrence_idx",
@@ -1030,10 +1008,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "person_id"
-          ],
+          "columnNames": ["organization_id", "person_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_person_idx",
@@ -1041,11 +1016,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "declaration_status",
-            "pending_until"
-          ],
+          "columnNames": ["organization_id", "declaration_status", "pending_until"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_status_pending_idx",
@@ -1053,9 +1024,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_attendances_pkey",
@@ -1063,10 +1032,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_tenant_org_idx",
@@ -1392,10 +1358,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "activity_id"
-          ],
+          "columnNames": ["organization_id", "activity_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_activity_idx",
@@ -1403,11 +1366,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "coach_person_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "coach_person_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_coach_start_idx",
@@ -1415,11 +1374,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "group_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "group_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_group_start_idx",
@@ -1427,11 +1382,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "place_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "place_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_place_start_idx",
@@ -1439,11 +1390,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "status",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "status", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_status_start_idx",
@@ -1451,9 +1398,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_occurrences_pkey",
@@ -1470,10 +1415,7 @@
           "expression": "create unique index \"activities_occurrences_slot_unique\" on \"activities_occurrences\" (\"activity_id\", \"occurrence_date\") where deleted_at is null and is_detached = false"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_tenant_org_idx",
