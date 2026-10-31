@@ -70,4 +70,4 @@ export {
   type ScopeResolutionContext,
   type ScopeSubject,
 } from './services/scope-contract'
-export { assertTransition } from './services/transitions'
+export { advanceWhere, assertTransition, type AdvanceWhereSpec, type AdvanceableEntity } from './services/transitions'

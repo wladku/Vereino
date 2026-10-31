@@ -10,7 +10,7 @@ import { parseRecurrence } from './services/recurrence'
 import { registerModuleSchedule } from './services/register-module-schedule'
 import { desiredRoles, rolesForAssignments, seedRoles, syncAuthRoles } from './services/roles'
 import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
-import { assertTransition } from './services/transitions'
+import { advanceWhere, assertTransition } from './services/transitions'
 
 /**
  * DI token of the record-scope provider. The foundation does not register it: the `people` module registers its
@@ -46,6 +46,6 @@ export function register(container: AppContainer) {
     [FOUNDATION_SCHEDULES]: asValue({ registerModuleSchedule }),
     [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
-    [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition }),
+    [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition, advanceWhere }),
   })
 }

@@ -8,7 +8,18 @@ Reusable Vereino React components.
 - May import `@vereino/core`, React and `@open-mercato/ui`; never `@vereino/app` or `@vereino/db`.
 - Public API only through `src/index.ts`.
 
-Check: `yarn workspace @vereino/ui typecheck`.
+Check: `yarn workspace @vereino/ui typecheck`, `yarn workspace @vereino/ui lint`, `yarn workspace @vereino/ui test`.
+
+## Member components (`src/member/`)
+
+The member layer of the foundation II spec (P-23, DD-G08, DD-G09), Tailwind on the platform's semantic tokens:
+
+- `MemberShell` — the frame of the `/club` pages (brand with an optional logo, the member navigation with `aria-current`, a banner slot, `main`). The router's link component (`Link: React.ComponentType<MemberLinkProps>`) and every label come in through props; the `people` module passes `next/link` and its `t()` results.
+- `CalendarList` — one section per club-zone day over `CalendarDay[]` from `@vereino/core`; each item shows the time range (`formatTimeRange`, 24-hour clock in the club zone), the status badge (`done`, `cancelled`; a planned item has none), the title (struck through when cancelled, muted when done, a link when both `Link` and `href` are given), subtitle, group, place with its address, badges as `StatusBadge`s and actions as `Button`s (`onAction(itemId, actionId)`, disabled while `busyItemId` is the item).
+- `calendar-format.ts` — the pure helpers behind the list (`formatDayHeading`, `formatTimeRange`, `calendarItemTone`, `badgeVariant`, `actionButtonVariant`, `calendarStatusLabel`, `calendarTitleClassName`).
+- `toScheduleItem` — the adapter to the installed schedule family's `ScheduleItem` for the coordinator's `ScheduleView` (`planned` and `done` → `confirmed`, `cancelled` → `cancelled`, `kind: 'event'`, no `color`).
+
+Testing: `yarn workspace @vereino/ui test` runs `node --test` over `src/**/__tests__/*.test.{ts,mjs}` with 100 % line, branch and function thresholds. Node strips types from `.ts` files itself; `scripts/register-tsx.mjs` (loaded through `--import`) transpiles the `.tsx` components with the package's TypeScript so the same run renders them with `react-dom/server` and the coverage report (`--enable-source-maps`) points at the `.tsx` lines. The coverage guard `src/__tests__/coverage-scope.test.mjs` imports every `src/**/*.ts` file, `index.ts` included, so an unexported or untested file fails the threshold. Inside the package, modules import each other through `#src/*` (`.ts`) and `#tsx/*` (`.tsx`) from the `imports` map of `package.json`, which Node, Jest, TypeScript and the bundler all resolve without extension suffixes. `packages/app/src/__tests__/ui/` renders the same components through the app's Jest config, which proves the package resolves from the app.
 
 ## Storybook
 

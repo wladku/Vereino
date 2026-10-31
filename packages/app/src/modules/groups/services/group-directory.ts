@@ -14,11 +14,30 @@ export type RosterEntry = { personId: string; role: MembershipRole }
 
 export type ExternalTeamDirectoryEntry = { id: string; name: string }
 
+/** A membership of one person as the member calendar reads it (#32): the group, the role and the period. */
+export type MembershipPeriod = {
+  personId: string
+  groupId: string
+  role: MembershipRole
+  validFrom: CalendarDate
+  validTo: CalendarDate | null
+}
+
 export type GroupDirectory = {
   /** The live groups of the organization among `ids`, by id. */
   findGroups(scope: GroupsScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, GroupDirectoryEntry>>
   /** The live memberships of a group active on `date` (any role), one entry per person and role. */
   rosterOn(scope: GroupsScope, groupId: string, date: CalendarDate, em?: EntityManager): Promise<RosterEntry[]>
+  /**
+   * The live memberships of `personIds` whose period overlaps the inclusive window of club-zone dates (the member
+   * calendar: a person's groups across every section, #32); the caller checks each session date against the period.
+   */
+  membershipsOf(
+    scope: GroupsScope,
+    personIds: readonly string[],
+    window: { from: CalendarDate; to: CalendarDate },
+    em?: EntityManager,
+  ): Promise<MembershipPeriod[]>
   /** The live external teams of the organization among `ids`, by id. */
   findExternalTeams(
     scope: GroupsScope,
@@ -75,6 +94,34 @@ export async function rosterOn(
   return roster
 }
 
+export async function membershipsOf(
+  em: EntityManager,
+  scope: GroupsScope,
+  personIds: readonly string[],
+  window: { from: CalendarDate; to: CalendarDate },
+): Promise<MembershipPeriod[]> {
+  const unique = [...new Set(personIds)]
+  if (unique.length === 0) return []
+  const rows = await em.find(
+    GroupMembership,
+    {
+      ...scope,
+      personId: { $in: unique },
+      deletedAt: null,
+      validFrom: { $lte: window.to },
+      $or: [{ validTo: null }, { validTo: { $gte: window.from } }],
+    },
+    { fields: ['id', 'personId', 'groupId', 'role', 'validFrom', 'validTo'] },
+  )
+  return rows.map((row) => ({
+    personId: row.personId,
+    groupId: row.groupId,
+    role: row.role,
+    validFrom: row.validFrom,
+    validTo: row.validTo ?? null,
+  }))
+}
+
 export async function findExternalTeams(
   em: EntityManager,
   scope: GroupsScope,
@@ -94,6 +141,7 @@ export function createGroupDirectory(getEm: () => EntityManager): GroupDirectory
   return {
     findGroups: (scope, ids, em) => findGroups(em ?? getEm().fork(), scope, ids),
     rosterOn: (scope, groupId, date, em) => rosterOn(em ?? getEm().fork(), scope, groupId, date),
+    membershipsOf: (scope, personIds, window, em) => membershipsOf(em ?? getEm().fork(), scope, personIds, window),
     findExternalTeams: (scope, ids, em) => findExternalTeams(em ?? getEm().fork(), scope, ids),
   }
 }

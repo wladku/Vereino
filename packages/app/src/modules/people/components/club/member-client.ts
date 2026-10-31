@@ -7,6 +7,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 export const MEMBER_PROFILE_API = '/api/people/me'
 export const MEMBER_PROFILE_QUERY_KEY = ['people-me'] as const
 export const CLUB_HOME_HREF = '/club'
+export const CLUB_CALENDAR_HREF = '/club/calendar'
 export const CLUB_PROFILE_HREF = '/club/profile'
 export const BACKEND_HREF = '/backend'
 

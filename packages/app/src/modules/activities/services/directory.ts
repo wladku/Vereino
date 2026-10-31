@@ -18,6 +18,7 @@ import type {
   ExternalTeamDirectoryEntry,
   GroupDirectory,
   GroupDirectoryEntry,
+  MembershipPeriod,
   RosterEntry,
 } from '../../groups/services/group-directory'
 import type { PersonDirectory, PersonDirectoryEntry } from '../../people/services/person-directory'
@@ -144,10 +145,53 @@ export function activeGuardians(
   return personDirectory(container).activeGuardians(scope, wardIds, today, em)
 }
 
+/** The participant memberships of persons overlapping a window of club-zone dates (the member calendar, #32). */
+export function membershipsOf(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  personIds: readonly string[],
+  window: { from: CalendarDate; to: CalendarDate },
+  em?: EntityManager,
+): Promise<MembershipPeriod[]> {
+  return groupDirectory(container).membershipsOf(scope, personIds, window, em)
+}
+
+/** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
+export function presenceConsents(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Set<string>> {
+  return personDirectory(container).presenceConsents(scope, ids, em)
+}
+
 /** The club's time zone (club spec DD-37: `Europe/Warsaw` by default). */
 export async function clubTimeZone(container: AwilixContainer, scope: ActivitiesScope): Promise<string> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
   return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.timezone
+}
+
+/** The club settings the declarations read (club spec REQ-006, REQ-007; D-022, D-026): the zone, the kinds, the visibility. */
+export type AttendanceSettings = {
+  timeZone: string
+  /** `absence_only` or `confirm` per activity type (`declaration_kinds`). */
+  declarationKinds: Record<string, 'absence_only' | 'confirm'>
+  /** `none` or `consented` (`show_called_up_children`, R15). */
+  showCalledUpChildren: 'none' | 'consented'
+}
+
+export async function attendanceSettings(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+): Promise<AttendanceSettings> {
+  assertRegistered(container, CLUB_CORE_SETTINGS)
+  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  return {
+    timeZone: values.timezone,
+    declarationKinds: values.declarationKinds,
+    showCalledUpChildren: values.showCalledUpChildren,
+  }
 }
 
 /** The club's zone and today's date in it (S3.5: `now` is a parameter). */

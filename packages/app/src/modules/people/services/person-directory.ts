@@ -32,6 +32,11 @@ export type PersonDirectory = {
     today: CalendarDate,
     em?: EntityManager,
   ): Promise<Map<string, string[]>>
+  /**
+   * The persons among `ids` who gave the consent `share_presence_with_guardians_at` (REQ-006): the guardians whose
+   * wards' names other guardians may see on a session (#32). Ids only.
+   */
+  presenceConsents(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Set<string>>
 }
 
 export async function findPersons(
@@ -95,10 +100,26 @@ export async function activeGuardians(
   return byWard
 }
 
+export async function presenceConsents(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Set()
+  const rows = await em.find(
+    Person,
+    { id: { $in: unique }, ...scope, deletedAt: null, sharePresenceWithGuardiansAt: { $ne: null } },
+    { fields: ['id'] },
+  )
+  return new Set(rows.map((row) => row.id))
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
     findUserIds: (scope, ids, em) => findUserIds(em ?? getEm().fork(), scope, ids),
     activeGuardians: (scope, wardIds, today, em) => activeGuardians(em ?? getEm().fork(), scope, wardIds, today),
+    presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
   }
 }
