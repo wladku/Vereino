@@ -13,7 +13,14 @@ import { lockSchedule } from '../data/queries'
 import type { SessionChanges } from '../commands/shared'
 import { lastSessionDay, ruleYieldsSessions } from '../lib/activities-rules'
 import type { ActivitiesScope } from './directory'
-import { assertNoConflicts, findConflicts, futureSessions, plannedSessions, sessionPlan } from './schedule'
+import {
+  assertNoConflicts,
+  checkedOffSessionIds,
+  findConflicts,
+  futureSessions,
+  plannedSessions,
+  sessionPlan,
+} from './schedule'
 
 export type Clock = { today: CalendarDate; timeZone: string }
 
@@ -69,7 +76,8 @@ export async function replanSeries(
     clock.today,
     clock.timeZone,
   )
-  const plan = sessionPlan(await futureSessions(em, scope, activity.id, clock.today), sessions, clock.today)
+  const stored = await futureSessions(em, scope, activity.id, clock.today)
+  const plan = sessionPlan(stored, sessions, clock.today, await checkedOffSessionIds(em, scope, stored))
   const coachPersonId = activity.defaultCoachPersonId ?? null
   await assertNoConflicts(
     await findConflicts(
