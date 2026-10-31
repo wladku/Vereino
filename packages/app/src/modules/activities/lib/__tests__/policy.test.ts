@@ -3,6 +3,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   BUILT_IN_CLUB_POLICY,
+  checkOffWindow,
   DEFAULT_POLICIES,
   declarationChoices,
   declarationOutcome,
@@ -12,6 +13,7 @@ import {
   declarationWindow,
   declaredAllowedForKind,
   effectiveDeclared,
+  expectationOf,
   isMinorOn,
   policyKey,
   policyShapeProblem,
@@ -208,5 +210,41 @@ describe('counting', () => {
   it('offers "Report absence" only under absence_only', () => {
     expect(declarationChoices('absence_only')).toEqual(['no'])
     expect(declarationChoices('confirm')).toEqual(['yes', 'no'])
+  })
+})
+
+describe('expectationOf', () => {
+  const row = (declared: 'yes' | 'no' | 'unknown', status: 'final' | 'pending_guardian' = 'final') => ({
+    personId: 'p',
+    declared,
+    declarationStatus: status,
+  })
+
+  it('under absence_only counts everyone but a final no as expected', () => {
+    expect(expectationOf('absence_only', undefined)).toBe('expected')
+    expect(expectationOf('absence_only', row('no'))).toBe('absent')
+    expect(expectationOf('absence_only', row('no', 'pending_guardian'))).toBe('expected')
+  })
+
+  it('under confirm separates confirmed, declined and unanswered', () => {
+    expect(expectationOf('confirm', row('yes'))).toBe('confirmed')
+    expect(expectationOf('confirm', row('no'))).toBe('declined')
+    expect(expectationOf('confirm', row('unknown'))).toBe('unanswered')
+    expect(expectationOf('confirm', undefined)).toBe('unanswered')
+  })
+})
+
+describe('checkOffWindow', () => {
+  const startAt = new Date('2026-11-12T16:00:00Z')
+
+  it('opens at the start of a planned session', () => {
+    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-12T15:59:59Z'))).toBe('not_started')
+    expect(checkOffWindow({ status: 'planned', startAt }, startAt)).toBe('open')
+    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-13T09:00:00Z'))).toBe('open')
+  })
+
+  it('is closed for a cancelled or done session', () => {
+    expect(checkOffWindow({ status: 'cancelled', startAt }, new Date('2026-11-13T09:00:00Z'))).toBe('not_planned')
+    expect(checkOffWindow({ status: 'done', startAt }, new Date('2026-11-13T09:00:00Z'))).toBe('not_planned')
   })
 })

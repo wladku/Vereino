@@ -2,8 +2,8 @@
 // D-026; foundation II DD-G10): what is declared is the club setting `declaration_kinds` per activity type
 // (`absence_only` or `confirm`), who declares for a minor with an account is the policy (`immediate`,
 // `guardian_confirm`, `guardian_only`) resolved group > away trip > activity type > club, the declaration status table,
-// the closing rule and the per-session summary each kind shows. Time is a parameter (S3.5); nothing here reads the
-// database.
+// the closing rule, the per-session summary each kind shows and the check-off window of actual attendance (#33). Time
+// is a parameter (S3.5); nothing here reads the database.
 import { defineTransitions, isAdultOn, type ActingRole, type CalendarDate } from '@vereino/core'
 import type { ActivityType } from './activities-rules'
 
@@ -259,16 +259,35 @@ export function declarationSummary(
 ): DeclarationSummary {
   const byPerson = new Map(rows.map((row) => [row.personId, row]))
   const summary = { kind, expected: 0, absent: 0, confirmed: 0, declined: 0, unanswered: 0 }
-  for (const personId of new Set(participantIds)) {
-    const declared = effectiveDeclared(byPerson.get(personId))
-    if (kind === 'absence_only') {
-      if (declared === 'no') summary.absent += 1
-      else summary.expected += 1
-    } else if (declared === 'yes') summary.confirmed += 1
-    else if (declared === 'no') summary.declined += 1
-    else summary.unanswered += 1
-  }
+  for (const personId of new Set(participantIds)) summary[expectationOf(kind, byPerson.get(personId))] += 1
   return summary
+}
+
+/** What the list says about one member before the session, per the kind — the bucket `declarationSummary` counts. */
+export type Expectation = 'expected' | 'absent' | 'confirmed' | 'declined' | 'unanswered'
+
+export function expectationOf(kind: DeclarationKind, row: DeclarationRow | undefined): Expectation {
+  const declared = effectiveDeclared(row)
+  if (kind === 'absence_only') return declared === 'no' ? 'absent' : 'expected'
+  if (declared === 'yes') return 'confirmed'
+  return declared === 'no' ? 'declined' : 'unanswered'
+}
+
+// --- Actual attendance (#33) ---
+
+export type CheckOffWindow = 'open' | 'not_started' | 'not_planned'
+
+/**
+ * Actual attendance is checked off from the session's start until it is closed (club spec glossary *Actual
+ * attendance*): a cancelled or done session answers 409 `occurrence_not_planned`, one that has not started 409
+ * `attendance_not_started`. Before the start the coach reads the expectations only.
+ */
+export function checkOffWindow(
+  occurrence: { readonly status: string; readonly startAt: Date },
+  now: Date,
+): CheckOffWindow {
+  if (occurrence.status !== 'planned') return 'not_planned'
+  return occurrence.startAt.getTime() <= now.getTime() ? 'open' : 'not_started'
 }
 
 /** The actions a member surface offers for a declaration of `kind` (club spec `/club` Today: D-026). */

@@ -120,7 +120,7 @@ export function attendanceSnapshot(row: Attendance): AttendanceSnapshot {
   }
 }
 
-function restoreAttendance(row: Attendance, before: AttendanceSnapshot): void {
+export function restoreAttendance(row: Attendance, before: AttendanceSnapshot): void {
   row.declared = before.declared
   row.declaredByPersonId = before.declaredByPersonId
   row.declaredAt = before.declaredAt ? new Date(before.declaredAt) : null

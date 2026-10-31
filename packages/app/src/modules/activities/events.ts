@@ -37,6 +37,10 @@ const events = [
     entity: 'attendance_policy',
     category: 'crud',
   },
+  // #33: the coach's check-off names the session, the persons whose actual attendance changed and the acting role;
+  // closing the session with it also emits `activities.occurrence.completed`.
+  { id: 'activities.attendance.marked', label: 'Attendance checked off', entity: 'attendance', category: 'custom' },
+  { id: 'activities.occurrence.completed', label: 'Session closed', entity: 'occurrence', category: 'custom' },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'activities', events })

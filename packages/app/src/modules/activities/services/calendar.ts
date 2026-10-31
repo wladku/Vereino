@@ -502,3 +502,13 @@ export async function activityOf(
 ): Promise<Activity | null> {
   return em.findOne(Activity, { id: activityId, ...scope })
 }
+
+/** One session as the calendars describe it (names, place details), for the coach's attendance list (#33). */
+export async function describeOccurrence(
+  ctx: CommandRuntimeContext,
+  scope: ActivitiesScope,
+  row: Occurrence,
+): Promise<CalendarOccurrenceView> {
+  const [names, places] = await Promise.all([loadNames(ctx, scope, [row]), placeDetails(ctx, scope, [row.placeId])])
+  return occurrenceView(row, names, places)
+}

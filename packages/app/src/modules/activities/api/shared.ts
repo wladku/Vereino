@@ -5,7 +5,13 @@ import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import type { GrantKind, ScopeColumnMap } from '@vereino/core'
 import type { Attendance } from '../data/entities'
-import { DECLARATION_KINDS, DECLARATION_SOURCES, DECLARATION_STATUSES, DECLARED_VALUES } from '../lib/policy'
+import {
+  ACTUAL_ATTENDANCE,
+  DECLARATION_KINDS,
+  DECLARATION_SOURCES,
+  DECLARATION_STATUSES,
+  DECLARED_VALUES,
+} from '../lib/policy'
 import { activityLabels, nameMaps } from '../services/read'
 
 /**
@@ -378,4 +384,31 @@ export const calendarEntrySchema = z.object({
     .array(z.object({ personId: z.uuid(), firstName: z.string(), lastName: z.string() }))
     .optional()
     .describe('as=guardian under show_called_up_children = consented: other children whose guardian consented'),
+})
+
+/** `GET`, `PUT /api/activities/occurrences/{id}/attendance` (#33): the coach's attendance list. */
+export const attendanceListSchema = z.object({
+  occurrence: calendarEntrySchema.shape.occurrence,
+  declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),
+  summary: calendarEntrySchema.shape.summary.unwrap(),
+  checkOff: z
+    .enum(['open', 'not_started', 'not_planned'])
+    .describe('`open` from the start until the session is closed; `not_planned` when cancelled or done'),
+  actingRole: z.string().describe('The role the caller checks off in'),
+  timeZone: z.string(),
+  rows: z.array(
+    z.object({
+      personId: z.uuid(),
+      firstName: z.string().nullable(),
+      lastName: z.string().nullable(),
+      onRoster: z.boolean().describe('A participant of the group on the session date'),
+      declared: z.enum(DECLARED_VALUES).nullable(),
+      declarationStatus: z.enum(DECLARATION_STATUSES).nullable(),
+      expectation: z.enum(['expected', 'absent', 'confirmed', 'declined', 'unanswered']),
+      actual: z.enum(ACTUAL_ATTENDANCE).nullable(),
+      markedByPersonId: z.string().nullable(),
+      markedByName: z.string().nullable(),
+      markedAsRole: z.string().nullable(),
+    }),
+  ),
 })
