@@ -4,7 +4,8 @@
 // `activities.manage` a planned session is moved or re-staffed ("Move": date, times, place, coach), which detaches it
 // from its series; a move that overbooks a place or a coach is refused with 409 and its conflict list is shown. With
 // `activities.coach` a planned session is cancelled with a required reason; the people it concerns get an in-app
-// notice. A cancelled session shows its reason and no actions. Both writes send the session's lock token.
+// notice. A cancelled session shows its reason and no actions. Both writes send the session's lock token. With
+// `activities.coach` the record links to the session's attendance list on the member side (#33).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -30,6 +31,7 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ConflictList } from './ConflictList'
 import { OccurrenceBadges } from './OccurrencesTable'
+import { attendanceHref } from './club/club-client'
 import {
   OCCURRENCES_HREF,
   activityHref,
@@ -402,6 +404,8 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const planned = occurrence.status === 'planned'
   const canMove = features.manage && planned
   const canCancel = features.coach && planned
+  // The coach's attendance list (#33) lives on the member side; it reads and saves through the same record scope.
+  const canOpenAttendance = features.coach && occurrence.status !== 'cancelled'
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -421,8 +425,15 @@ export function OccurrenceRecord({ id }: { id: string }) {
           </span>
           <OccurrenceBadges row={occurrence} t={t} />
         </div>
-        {canMove || canCancel ? (
+        {canMove || canCancel || canOpenAttendance ? (
           <div className="flex flex-wrap items-center gap-2">
+            {canOpenAttendance ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={attendanceHref(occurrence.id)} data-testid="occurrence-attendance-link">
+                  {t('activities.occurrences.actions.attendance')}
+                </Link>
+              </Button>
+            ) : null}
             {canMove ? (
               <Button
                 type="button"

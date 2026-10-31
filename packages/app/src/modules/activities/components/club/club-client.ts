@@ -1,7 +1,8 @@
 // Client pieces of the `activities` member pages (club spec UI rows `/club`, `/club/calendar`,
-// `/club/occurrences/[id]`; REQ-006, REQ-007; #32): the member profile read from `GET /api/people/me` (an HTTP read —
+// `/club/occurrences/[id]`, `/club/occurrences/[id]/attendance`; REQ-006, REQ-007; #32, #33): the member profile read from `GET /api/people/me` (an HTTP read —
 // `activities` never imports `people`; the query key and shape are the ones `people`'s member pages use, so both
-// share one cache entry), the calendar queries, the declaration and decision writes, and the mapping of calendar
+// share one cache entry), the calendar queries, the declaration and decision writes, the coach's attendance list and
+// its save, and the mapping of calendar
 // entries to the shared `CalendarItem` (foundation II P-23). Authorization stays on the routes and commands.
 import { useQuery } from '@tanstack/react-query'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
@@ -23,6 +24,11 @@ export function sessionHref(id: string, as: 'self' | 'guardian', personId?: stri
   const params = new URLSearchParams({ as })
   if (personId) params.set('personId', personId)
   return `/club/occurrences/${encodeURIComponent(id)}?${params.toString()}`
+}
+
+/** The coach's attendance list of a session (#33). */
+export function attendanceHref(id: string): string {
+  return `/club/occurrences/${encodeURIComponent(id)}/attendance`
 }
 
 // --- The member profile (`GET /api/people/me`) ---
@@ -187,6 +193,93 @@ export function useMemberSession(id: string, as: 'self' | 'guardian', personId: 
   })
 }
 
+// --- The coach's attendance list (`GET`, `PUT /api/activities/occurrences/{id}/attendance`, #33) ---
+
+export type ActualValue = 'present' | 'absent' | 'late'
+export const ACTUAL_VALUES: readonly ActualValue[] = ['present', 'absent', 'late']
+export type Expectation = 'expected' | 'absent' | 'confirmed' | 'declined' | 'unanswered'
+export type CheckOffWindow = 'open' | 'not_started' | 'not_planned'
+
+export type AttendanceRow = {
+  personId: string
+  firstName: string | null
+  lastName: string | null
+  onRoster: boolean
+  declared: DeclaredValue | null
+  declarationStatus: DeclarationStatus | null
+  expectation: Expectation
+  actual: ActualValue | null
+  markedByPersonId: string | null
+  markedByName: string | null
+  markedAsRole: string | null
+}
+
+export type AttendanceList = {
+  occurrence: CalendarOccurrence
+  declarationKind: DeclarationKind
+  summary: CalendarSummary
+  checkOff: CheckOffWindow
+  actingRole: string
+  timeZone: string
+  rows: AttendanceRow[]
+}
+
+export type AttendanceListLoad =
+  | { status: 'ok'; list: AttendanceList }
+  | { status: 'not_found' }
+  | { status: 'forbidden' }
+
+export const ATTENDANCE_LIST_QUERY_KEY = 'activities-attendance-list'
+
+class AttendanceListLoadError extends Error {}
+
+function attendanceUrl(id: string): string {
+  return `/api/activities/occurrences/${encodeURIComponent(id)}/attendance`
+}
+
+export function useAttendanceList(id: string) {
+  return useQuery({
+    queryKey: [ATTENDANCE_LIST_QUERY_KEY, id],
+    queryFn: async (): Promise<AttendanceListLoad> => {
+      const call = await apiCall<AttendanceList>(attendanceUrl(id))
+      if (call.status === 404) return { status: 'not_found' }
+      if (call.status === 403) return { status: 'forbidden' }
+      if (!call.ok || !call.result) throw new AttendanceListLoadError(String(call.status))
+      return { status: 'ok', list: call.result }
+    },
+  })
+}
+
+/**
+ * Saves the changed marks (and optionally closes the session) against the session version the page showed
+ * (`lockToken` = the session's `updatedAt`): a save by another coach meanwhile answers 409.
+ */
+export async function saveAttendance(
+  id: string,
+  input: { entries: { personId: string; actual: ActualValue | null }[]; complete?: boolean },
+  errorMessage: string,
+  lockToken: string,
+): Promise<void> {
+  await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow(
+      attendanceUrl(id),
+      { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) },
+      { errorMessage },
+    ),
+  )
+}
+
+/** The summary line of the coach's list per the kind (club spec AC-007). */
+export function summaryLine(t: Translate, summary: CalendarSummary): string {
+  return summary.kind === 'absence_only'
+    ? t('activities.club.attendance.summaryAbsenceOnly', { expected: summary.expected, absent: summary.absent })
+    : t('activities.club.attendance.summaryConfirm', {
+        confirmed: summary.confirmed,
+        declined: summary.declined,
+        unanswered: summary.unanswered,
+      })
+}
+
 // --- Writes ---
 
 /**
@@ -295,6 +388,7 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
       tone: state.tone,
     }
   })
+  if (as === 'coach' && entry.summary) badges.push({ id: 'summary', label: summaryLine(t, entry.summary), tone: 'neutral' })
   if (occurrence.isDetached) badges.push({ id: 'moved', label: t('activities.occurrences.flags.moved'), tone: 'info' })
   const actions: CalendarItemAction[] = []
   if (entry.declarationsOpen && as !== 'coach') {
@@ -326,7 +420,7 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
     placeAddress: occurrence.placeAddress,
     group: occurrence.sectionName,
     subtitle,
-    href: as === 'coach' ? null : sessionHref(occurrence.id, as),
+    href: as === 'coach' ? attendanceHref(occurrence.id) : sessionHref(occurrence.id, as),
     badges,
     actions,
   }
