@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue 34` → feature route → `om-auto-implement-spec` → `om-auto-create-pr` (plain engine)
 - **Trigger:** the product owner chose "story by story" for epic #22 (E03) and, with PR #62 (#33) still open, to stack #34 on it ("Stack on #62")
 - **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 step 10, the guardian-contacts part (REQ-037, DD-39, Q-045; TEST-052; the API row `GET /api/activities/occurrences/{id}/guardian-contacts`; *Data Models* `ContactAccessLog`) on `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` P-27 `auditedRead` and P-28 `AppendOnlyEntityBase` + the `append_only` guard (DD-G06, DD-G11, J-G03, TEST-G05); issue #34; branch `feat/issue-34-guardian-contacts` from `feat/issue-33-coach-attendance-checkoff` (`e36424a`) in the worktree `C:\Users\wkuc\vereino-issue-34`; the PR targets that branch until #62 merges
-- **Status:** in progress
+- **Status:** complete
 
 Source doc: .ai/specs/2026-10-20-vereino-club-management.md
 
@@ -45,6 +45,14 @@ On a session's attendance list the coach of the group sees the phone and e-mail 
 - **The pure parts in `lib`.** The guard's rule and the read order are pure (`foundation/lib`), because the services layer cannot load under Jest; the services wire them to the ORM, the error table and the platform log.
 - **The mirror is not asserted end to end.** The platform access log is read per actor (the coach has no `audit_logs.view_self`); the mirror call is covered by the unit test of the order and is best effort by design (V-F08).
 
+## Commands and results
+
+- `yarn db:generate` against a throwaway `pgvector/pgvector:pg17-trixie` container (port 55443, explicit `DATABASE_URL`, removed afterwards; the generated `packages/app/.env` deleted): `activities: generated Migration20261031092710_activities.ts`, the other modules "no changes"; up, down, up as raw SQL there. A folder-wide formatter run had reverted the snapshot once; it was regenerated the same way (the duplicate migration discarded). No `yarn db:migrate`.
+- `@vereino/db` tests 100 %; `foundation` and `people` lib Jest 100 % (136 tests in the two libs).
+- `yarn test:integration:vereino --filter "TEST-052"` — the API test passed first; the page test failed once on a dark-mode contrast scan taken without a reload (fixed: each scheme on a fresh load) and once after the machine slept; then 2/2 passed.
+- `yarn verify` 13/13 on `76e2a02`; full integration suite on that build — 81 passed (the guard on every request breaks no module).
+- After the review fixes: `yarn verify` stopped at `format:check` (one file) and then at `lint` — on the generated Playwright HTML report a flaky run had left in `.ai/qa/test-results/html` (git-ignored; deleted); then the gate passed (13/13 on `79f8389`); `activities/` 21 passed, `people/` 25 passed on that build. `E02-S02` person pages was flaky once on the old build (passed on retry and in every other run).
+
 ## Review
 
 `om-auto-review-pr` cannot submit an approving review of the automation's own PR (self-approval), so a fresh-context read-only reviewer ran: "request changes", nothing blocking, eight findings, all applied:
@@ -60,9 +68,9 @@ On a session's attendance list the coach of the group sees the phone and e-mail 
 
 ## Progress
 
-- [ ] 1. P-28 base and guard
-- [ ] 2. P-27 auditedRead
-- [ ] 3. Entity, migration, directory reads, route
-- [ ] 4. Contacts section on the attendance list
-- [ ] 5. Tests and the gate
-- [ ] 6. Documentation
+- [x] 1. P-28 base and guard
+- [x] 2. P-27 auditedRead
+- [x] 3. Entity, migration, directory reads, route
+- [x] 4. Contacts section on the attendance list
+- [x] 5. Tests and the gate
+- [x] 6. Documentation
