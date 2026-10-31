@@ -1,0 +1,75 @@
+# Issue #33 — coach attendance list and session close (E03-S04)
+
+- **Date:** 2026-10-31
+- **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue 33` → feature route → `om-auto-implement-spec` → `om-auto-create-pr` (plain engine)
+- **Trigger:** the product owner chose "story by story" for epic #22 (E03): #33 after #32 merged (PR #61)
+- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 step 5, the check-off half (REQ-007, REQ-008; R11, D-026; AC-007; TEST-009, TEST-011), the API row `GET`, `PUT /api/activities/occurrences/{id}/attendance` and the page `/club/occurrences/[id]/attendance`; issue #33; branch `feat/issue-33-coach-attendance-checkoff` from `main` (`1806847`) in the worktree `C:\Users\wkuc\vereino-issue-33`
+- **Status:** complete
+
+Source doc: .ai/specs/2026-10-20-vereino-club-management.md
+
+## Goal
+
+Before a session the coach sees who is expected and who reported an absence (or, for a `confirm` session, who confirmed, declined and did not answer); after it starts, the coach checks off present, absent or late and closes the session; each row records who marked it and in which role. A stale save answers 409 and the list refreshes without losing the coach's selections; a coach of another group gets 403; a cancelled session refuses check-off with 409.
+
+## Scope
+
+- **In:** the command `activities.attendance.mark` (bulk check-off with the session version, optional close `planned → done`, undo); `GET` and `PUT /api/activities/occurrences/{id}/attendance`; events `activities.attendance.marked` and `activities.occurrence.completed`; the member page `/club/occurrences/[id]/attendance` and the links to it from the coach's calendar and the session pages; integration specs for the five acceptance criteria and the page.
+- **Out (non-goals):** substitutions and coach absence ("Report absence" on the page sketch), the coach units report (A05); reopening a `done` session by an administrator command; the guardian contacts (#34); declaration links (REQ-017).
+
+## Implementation Plan
+
+1. Rules: the check-off vocabulary and the per-row expectation in `lib/policy.ts` (+ unit tests), error codes, validators, events.
+2. The command `activities.attendance.mark` with its undo; the read service for the list.
+3. The route `GET`, `PUT /api/activities/occurrences/{id}/attendance` with OpenAPI.
+4. The page `/club/occurrences/[id]/attendance`, the links from `/club/calendar` (coach perspective), `/club/occurrences/[id]` and `/backend/activities/occurrences/[id]`; en + pl.
+5. Integration specs (API and page), the full gate.
+6. Documentation: the spec note under phase 2 step 5, the API row, Changelog, README, this log.
+
+## Risks
+
+- The list is the union of the roster on the session date and the persons with rows; a check-off for anyone else must be refused, or the route writes rows for arbitrary persons of the club.
+- The session version is the lock for the whole list: every save moves it, so two coaches cannot overwrite each other silently.
+
+## Decisions
+
+- **No new ACL feature.** The check-off runs on `activities.coach` (held by the coach, coordinator and club administrator roles) plus the record scope, like the cancellation; the API row's "or `activities.manage`" is covered because every role with `activities.manage` also holds `activities.coach`.
+- **The session's assigned coach.** A coach re-staffed onto another group's session has no `coach` grant on that group; the target carries the session's `coach_person_id` as `personId`, so the `self` grant matches the assigned coach only, and the row records `coach` as the role.
+- **When the check-off opens.** From `start_at` until the session is closed (409 `attendance_not_started` before). Before the start the list shows the expectations only, as the story describes ("before a session the coach sees…; after it, checks off").
+- **Closing.** `complete: true` moves `planned → done` with the save; the API asks for no extra early-close confirmation, the page confirms with `useConfirmDialog` (the data model's "or a confirmation").
+- **The version.** The session's `updatedAt` is the lock of the whole list; every save moves it, and the save must send it (400 `attendance_version_required`, engineering standards S5.2) — unlike the platform default, which skips the check when the header is missing. The other write routes of the app share that gap (follow-up).
+- **The list.** Participants on the session date ∪ persons with live rows; the summary counts the participants only. A person off the list is 422 `attendance_person_not_listed`. A row created by the check-off has `declared = unknown`, `declaration_status = final`, `source = staff`, so it never changes the declaration counts.
+- **Unchanged rows keep their marker.** Only rows whose `actual` changes are written; the undo reverts only `actual` and the marker of those rows (the expiry job may have settled a declaration meanwhile), removes the rows the save created, refuses (409) once the session changed since, and refuses a closing save (reopening is an administrator command with a reason).
+- **Series pinning.** `isPinnedSession` adds "has checked-off attendance" to the pinned rule the #31 code reserved for this story; it is a pure rule in `lib` (the services layer cannot load under Jest). Declarations alone do not pin: a future session where someone reported an absence still follows a series edit (the review suggested pinning on any row; that would leave sessions at their old time once anyone answered — recorded in the spec instead).
+- **No migration.** The actual-attendance columns shipped with #32.
+
+## Commands and results
+
+- `yarn workspace @vereino/app` Jest `src/modules/activities/lib` — 28 passed, 100 % line, branch, function.
+- `yarn test:integration:vereino --filter "TEST-009-coach"` — 2 passed on the first run.
+- `yarn test:integration:vereino --filter "activities/"` — 18 passed (the new `TEST-009-coach-attendance-checkoff` ×2 and `E03-S04-coach-attendance-ui`, the rest as regressions).
+- `yarn verify` — 13/13 passed (head `2ed1807`); `TEST-006` 2 passed, `J-001` 1 passed (`--no-build`).
+- After the review fixes: `--filter "activities/"` 18 passed, 1 failed — the new undo test expected 409 for an older save's undo, but the platform keeps the undo token of the latest action only (400 "Undo token not available"); the assertion now accepts either refusal and checks nothing changed, then `--filter "TEST-009-coach"` 3 passed. Final `yarn verify` 13/13 on `af32e07`.
+- A formatter run had re-wrapped the generated migration snapshot; it was restored from `main` (no migration in this change).
+
+## Review
+
+`om-auto-review-pr` cannot submit an approving review of the automation's own PR (refused as self-approval on #61), so a fresh-context read-only reviewer ran: "request changes", nothing blocking, eight findings:
+
+1. The undo of a closing save reopened a `done` session without an administrator or a reason — now refused (409 `occurrence_not_planned`).
+2. The undo restored whole rows, declaration fields included, over a settlement by the expiry job — now it reverts only `actual` and the marker.
+3. The session version was optional — now required (400 `attendance_version_required`).
+4. Pin sessions with any attendance row, declarations included — declined; the narrower reading is recorded in the spec (see *Decisions*).
+5. The undo had no test — `TEST-009 undo` covers the reverted marks with the declaration kept, the refused older undo, the refused closing undo and the missing version.
+6. The save looked the session up by tenant only — now by the trusted organization too (another organization's id is 404 before any row lock).
+7. A mark could not be cleared on the page — a "Clear" control per row.
+8. Rows flickered after a save — the save's answer goes into the query cache.
+
+## Progress
+
+- [x] 1. Rules, error codes, validators, events
+- [x] 2. Command and read service
+- [x] 3. Route
+- [x] 4. Page and links
+- [x] 5. Integration specs and the gate
+- [x] 6. Documentation

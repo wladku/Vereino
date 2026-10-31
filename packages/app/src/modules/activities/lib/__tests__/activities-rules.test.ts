@@ -11,6 +11,7 @@ import {
   cancellationRecipients,
   generationWindow,
   horizonEnd,
+  isPinnedSession,
   lastSessionDay,
   localDateTime,
   ruleYieldsSessions,
@@ -222,5 +223,14 @@ describe('activities error codes', () => {
     expect(new Set(codes).size).toBe(codes.length)
     expect(codes).toContain('occurrence_place_conflict')
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`activities.errors.${entry.code}`)
+  })
+})
+
+describe('isPinnedSession', () => {
+  it('pins a session the club acted on: cancelled, done or with checked-off attendance (#33)', () => {
+    expect(isPinnedSession('planned', false)).toBe(false)
+    expect(isPinnedSession('planned', true)).toBe(true)
+    expect(isPinnedSession('done', false)).toBe(true)
+    expect(isPinnedSession('cancelled', false)).toBe(true)
   })
 })

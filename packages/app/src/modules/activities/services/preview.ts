@@ -12,7 +12,14 @@ import type { activityPreviewSchema } from '../data/validators'
 import { horizonEnd } from '../lib/activities-rules'
 import { clubClock, findGroups } from './directory'
 import { findActivity } from './read'
-import { findConflicts, futureSessions, plannedSessions, sessionPlan, type ConflictEntry } from './schedule'
+import {
+  checkedOffSessionIds,
+  findConflicts,
+  futureSessions,
+  plannedSessions,
+  sessionPlan,
+  type ConflictEntry,
+} from './schedule'
 import { assertSeriesShape, storedRule } from './series'
 
 export type SeriesPreview = {
@@ -72,7 +79,7 @@ export async function previewSeries(
     clock.timeZone,
   )
   const stored = edited ? await futureSessions(em, scope, edited.id, clock.today) : []
-  const plan = sessionPlan(stored, sessions, clock.today)
+  const plan = sessionPlan(stored, sessions, clock.today, await checkedOffSessionIds(em, scope, stored))
   const report = await findConflicts(
     ctx.container,
     em,

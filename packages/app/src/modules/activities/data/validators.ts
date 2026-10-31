@@ -7,6 +7,7 @@ import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import {
+  ACTUAL_ATTENDANCE,
   DECLARED_VALUES,
   MAX_CONFIRM_TIMEOUT_HOURS,
   MINOR_DECLARATION_MODES,
@@ -150,6 +151,35 @@ export const attendanceDeclareSchema = z
 
 /** `POST /api/activities/attendance/{id}/guardian-decision`. */
 export const guardianDecisionSchema = z.object({ id: z.uuid(), approve: z.boolean() }).strict()
+
+/** The most rows one check-off saves: a group's roster with room for guests (club spec *Group*). */
+export const MAX_CHECK_OFF_ENTRIES = 300
+
+/**
+ * `PUT /api/activities/occurrences/{id}/attendance` (#33): the actual attendance of listed persons (`null` clears a
+ * mark) and optionally closing the session; one entry per person, and something to do.
+ */
+export const attendanceMarkBodySchema = z
+  .object({
+    entries: z
+      .array(z.object({ personId: z.uuid(), actual: z.enum(ACTUAL_ATTENDANCE).nullable() }).strict())
+      .max(MAX_CHECK_OFF_ENTRIES),
+    complete: z.boolean().optional(),
+  })
+  .strict()
+
+export const attendanceMarkSchema = attendanceMarkBodySchema.extend({ id: z.uuid() }).superRefine((value, ctx) => {
+  const seen = new Set<string>()
+  value.entries.forEach((entry, index) => {
+    if (seen.has(entry.personId)) {
+      ctx.addIssue({ code: 'custom', path: ['entries', index, 'personId'], message: 'duplicate_person' })
+    }
+    seen.add(entry.personId)
+  })
+  if (value.entries.length === 0 && value.complete !== true) {
+    ctx.addIssue({ code: 'custom', path: ['entries'], message: 'nothing_to_save' })
+  }
+})
 
 /** The expiry job's input: `now` only for an operator or test run (the job uses the clock). */
 export const expireConfirmationsSchema = z.object({ now: instantSchema.optional() }).strict()

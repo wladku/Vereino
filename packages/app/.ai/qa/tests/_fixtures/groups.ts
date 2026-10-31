@@ -143,7 +143,7 @@ export async function signedInStaff(
   request: APIRequestContext,
   club: Club,
   input: { firstName: string; lastName: string; role: 'coordinator' | 'coach'; sectionId?: string },
-): Promise<{ personId: string; userId: string; token: string }> {
+): Promise<{ personId: string; userId: string; email: string; token: string }> {
   const staff = await createStaff(request, club, {
     firstName: input.firstName,
     lastName: input.lastName,
@@ -171,5 +171,5 @@ export async function signedInStaff(
     )
     .toContain(input.role === 'coach' ? 'vereino_coach' : 'vereino_coordinator')
   const token = await signInAs(request, club, staff.userId, staff.email)
-  return { personId: staff.personId, userId: staff.userId, token }
+  return { personId: staff.personId, userId: staff.userId, email: staff.email, token }
 }

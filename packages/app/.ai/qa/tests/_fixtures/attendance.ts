@@ -1,12 +1,15 @@
 // Helpers of the member calendar and declaration integration tests of issue #32 (club spec phase 2 steps 4, 5 and 10;
 // TEST-008, TEST-009, TEST-011, TEST-055 presence part): the role calendars, declarations, guardian decisions and
 // policies through the API, the expiry job through the module CLI, and the TEST-008 family — two sections, a guardian
-// of two wards, a second family, a coach, an instructor and the coordinator of each section.
+// of two wards, a second family, a coach, an instructor and the coordinator of each section. Issue #33 adds the
+// coach's attendance list (read, save, close) and a helper that moves a session so it has started.
 import { expect, type APIRequestContext } from '@playwright/test'
 import {
   addDays,
   createActivity,
+  getOccurrence,
   listOccurrences,
+  moveOccurrence,
   nextWeekday,
   type OccurrenceItem,
   type WeekdayCode,
@@ -439,7 +442,7 @@ export type Family = {
   /** The unrelated family: a guardian with an account and a child in Żaki. */
   other: { guardian: Member; child: { personId: string; firstName: string; lastName: string } }
   /** The coach of Żaki (`vereino_coach` role and a `coach` membership). */
-  coach: { personId: string; userId: string; token: string }
+  coach: { personId: string; userId: string; email: string; token: string }
   /** The instructor of the pool group (`vereino_coach` role and a `coach` membership). */
   instructor: { personId: string; userId: string; token: string }
   academyCoordinator: { personId: string; userId: string; token: string }
@@ -605,4 +608,96 @@ export async function bothSeries(
     end: '19:00',
   })
   return { training, poolClass }
+}
+
+// --- The coach's attendance list (#33) ---
+
+export type ActualValue = 'present' | 'absent' | 'late'
+
+export type AttendanceListRow = {
+  personId: string
+  firstName: string | null
+  lastName: string | null
+  onRoster: boolean
+  declared: 'yes' | 'no' | 'unknown' | null
+  declarationStatus: string | null
+  expectation: 'expected' | 'absent' | 'confirmed' | 'declined' | 'unanswered'
+  actual: ActualValue | null
+  markedByPersonId: string | null
+  markedByName: string | null
+  markedAsRole: string | null
+}
+
+export type AttendanceList = CodedBody & {
+  occurrence?: { id: string; status: string; updatedAt: string; startAt: string; coachPersonId: string | null }
+  declarationKind?: 'absence_only' | 'confirm'
+  summary?: CalendarSummary
+  checkOff?: 'open' | 'not_started' | 'not_planned'
+  actingRole?: string
+  timeZone?: string
+  rows?: AttendanceListRow[]
+}
+
+export async function readAttendanceList(request: APIRequestContext, token: string, occurrenceId: string) {
+  return call<AttendanceList>(request, 'GET', `/api/activities/occurrences/${occurrenceId}/attendance`, token)
+}
+
+/** `PUT /api/activities/occurrences/{id}/attendance` with the session version as the lock token. */
+export async function saveAttendanceList(
+  request: APIRequestContext,
+  token: string,
+  occurrenceId: string,
+  data: { entries: { personId: string; actual: ActualValue | null }[]; complete?: boolean },
+  lockToken: string | null | undefined,
+) {
+  return call<AttendanceList>(request, 'PUT', `/api/activities/occurrences/${occurrenceId}/attendance`, token, {
+    data,
+    headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
+  })
+}
+
+export function rowOf(list: AttendanceList, personId: string): AttendanceListRow {
+  const row = list.rows?.find((item) => item.personId === personId)
+  if (!row) throw new Error(`[test] person ${personId} is not on the list: ${JSON.stringify(list.rows)}`)
+  return row
+}
+
+/**
+ * Moves a session (as the club administrator) so it started 30 minutes ago and ends in an hour — the check-off opens at
+ * the start; the session keeps its date, so the roster stays the same. Returns the new session version.
+ */
+export async function startNow(request: APIRequestContext, club: Club, occurrenceId: string): Promise<string> {
+  const current = await getOccurrence(request, club.adminToken, occurrenceId)
+  expect(current.status, `GET /api/activities/occurrences/${occurrenceId}`).toBe(200)
+  const now = Date.now()
+  const moved = await moveOccurrence(
+    request,
+    club.adminToken,
+    occurrenceId,
+    { startAt: new Date(now - 30 * 60_000).toISOString(), endAt: new Date(now + 60 * 60_000).toISOString() },
+    current.body?.updatedAt,
+  )
+  expect(moved.status, `move ${occurrenceId} ${JSON.stringify(moved.body)}`).toBe(200)
+  return String(moved.body?.updatedAt)
+}
+
+/** Adds `count` participants (born 10 years ago) to a group from 30 days ago; returns their person ids. */
+export async function addParticipants(
+  request: APIRequestContext,
+  club: Club,
+  groupId: string,
+  count: number,
+): Promise<string[]> {
+  const since = addDays(calendarDate(), -30)
+  const ids: string[] = []
+  for (let index = 1; index <= count; index += 1) {
+    const personId = await createPerson(request, club.adminToken, {
+      firstName: `Gracz${String(index).padStart(2, '0')}`,
+      lastName: 'Testowy',
+      birthDate: birthDateTurning(10),
+    })
+    await addMembership(request, club.adminToken, { groupId, personId, role: 'participant', validFrom: since })
+    ids.push(personId)
+  }
+  return ids
 }

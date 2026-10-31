@@ -17,9 +17,10 @@ import {
 } from '@vereino/core'
 import { occupancyProvider, type BlockingInterval } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
-import { Activity, Occurrence } from '../data/entities'
+import { Activity, Attendance, Occurrence } from '../data/entities'
 import {
   generationWindow,
+  isPinnedSession,
   lastSessionDay,
   sessionConflicts,
   type CandidateSession,
@@ -80,23 +81,42 @@ export async function futureSessions(
   )
 }
 
+/**
+ * The sessions among `rows` with checked-off actual attendance (#33): the club has acted on them, so a series edit
+ * leaves them where they are (club spec *Data Models*: re-planning touches sessions "without attendance").
+ */
+export async function checkedOffSessionIds(
+  em: EntityManager,
+  scope: ActivitiesScope,
+  rows: readonly Occurrence[],
+): Promise<Set<string>> {
+  if (rows.length === 0) return new Set()
+  const marked = await em.find(
+    Attendance,
+    { ...scope, deletedAt: null, occurrenceId: { $in: rows.map((row) => row.id) }, actual: { $ne: null } },
+    { fields: ['id', 'occurrenceId'] },
+  )
+  return new Set(marked.map((row) => row.occurrenceId))
+}
+
 /** A stored session wrapped for the series-edit plan. */
 export type StoredSession = { id: string; date: CalendarDate; isDetached: boolean; pinned: boolean; row: Occurrence }
 
 /**
- * The series-edit plan over stored sessions (DD-G03): a session is pinned when the club has acted on it (cancelled or
- * done; attendance and substitutions join with #33 and the substitutions story).
+ * The series-edit plan over stored sessions (DD-G03): a session is pinned when the club has acted on it — cancelled,
+ * done, or with checked-off attendance (`checkedOff`, #33); substitutions join with their story.
  */
 export function sessionPlan(
   existing: readonly Occurrence[],
   generated: readonly ExpandedOccurrence[],
   today: CalendarDate,
+  checkedOff: ReadonlySet<string> = new Set(),
 ): SeriesEditPlan<StoredSession> {
   const sessions = existing.map((row) => ({
     id: row.id,
     date: row.occurrenceDate,
     isDetached: row.isDetached,
-    pinned: row.status !== 'planned',
+    pinned: isPinnedSession(row.status, checkedOff.has(row.id)),
     row,
   }))
   return seriesEditPlan(sessions, generated, today)
