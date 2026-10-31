@@ -1,4 +1,5 @@
 {
+  "foundation.errors.append_only": "Ten wpis jest trwałym zapisem i nie można go zmienić ani usunąć.",
   "foundation.errors.email_taken": "Ten adres e-mail jest już używany przez inne konto.",
   "foundation.errors.invalid_transition": "Taka zmiana statusu nie jest dozwolona.",
   "foundation.errors.locale_unsupported": "Ten język nie jest dostępny. Wybierz jeden z języków, które oferuje aplikacja.",

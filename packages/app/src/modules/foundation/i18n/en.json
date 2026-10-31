@@ -1,4 +1,5 @@
 {
+  "foundation.errors.append_only": "This entry is a permanent record and cannot be changed or deleted.",
   "foundation.errors.email_taken": "This e-mail address is already used by another account.",
   "foundation.errors.invalid_transition": "This change of status is not allowed.",
   "foundation.errors.locale_unsupported": "This language is not available. Choose one of the languages the app offers.",

@@ -4,7 +4,8 @@
 // person with what the declarations say and, once the session started, `present` / `absent` / `late`; "Save" and "Close
 // session" (with a confirmation) save the changed marks against the session version. A save by someone else meanwhile
 // shows the shared conflict bar and refreshes the list while the coach's selections stay. A coach of another group sees
-// "not your session" (403), an unknown session "not found".
+// "not your session" (403), an unknown session "not found". A coach also finds there the consenting guardians'
+// contacts (#34).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { GuardianContacts } from './GuardianContacts'
 import {
   ACTUAL_VALUES,
   ATTENDANCE_LIST_QUERY_KEY,
@@ -316,6 +318,9 @@ function Attendance({ id }: { id: string }) {
             {t('activities.club.attendance.close')}
           </Button>
         </div>
+      ) : null}
+      {list.actingRole === 'coach' && occurrence.status !== 'cancelled' ? (
+        <GuardianContacts occurrenceId={occurrence.id} />
       ) : null}
       {ConfirmDialogElement}
     </>
