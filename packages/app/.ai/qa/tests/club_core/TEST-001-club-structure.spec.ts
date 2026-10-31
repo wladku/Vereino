@@ -12,7 +12,7 @@ const STALE = '2000-01-01T00:00:00.000Z'
 
 type Settings = Record<string, unknown> & { updatedAt?: string | null; code?: string }
 
-test('TEST-001 club settings: save, read, clear and stale version', async ({ request }) => {
+test('TEST-001 club settings: save, read, clear, missing and stale version', async ({ request }) => {
   const club = await createClub(request, 'test-001-settings')
   try {
     const read = () => call<Settings>(request, 'GET', '/api/club_core/settings', club.adminToken)
@@ -42,6 +42,14 @@ test('TEST-001 club settings: save, read, clear and stale version', async ({ req
       orderSalesDocument: 'none',
     })
     const token = String(stored.body?.updatedAt)
+
+    // The first save needed no version (the read had none); once saved, a save without it is refused (S5.2).
+    const tokenless = await call<Settings>(request, 'PUT', '/api/club_core/settings', club.adminToken, {
+      data: { currency: 'PLN' },
+    })
+    expect(tokenless.status, JSON.stringify(tokenless.body)).toBe(400)
+    expect(tokenless.body?.code).toBe('lock_token_required')
+    expect((await read()).body?.currency).toBe('EUR')
 
     // Clearing the short name to null with the current version.
     const cleared = await call<Settings>(request, 'PUT', '/api/club_core/settings', club.adminToken, {

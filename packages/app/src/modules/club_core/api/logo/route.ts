@@ -75,7 +75,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Upload or replace the club logo',
       description:
-        'Multipart upload with a `file` field. The format is read from the file itself. Send the settings lock token in the platform optimistic-lock header once the settings exist.',
+        'Multipart upload with a `file` field. The format is read from the file itself. Send the settings lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the upload answers 400 `lock_token_required` unless the settings were never saved.',
       requestBody: { contentType: 'multipart/form-data', schema: uploadSchema },
       responses: [{ status: 200, description: 'The new logo', schema: logoResponseSchema }],
       errors: [

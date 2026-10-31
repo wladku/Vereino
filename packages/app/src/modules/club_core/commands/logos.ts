@@ -22,7 +22,13 @@ import { logoTargetSchema, type LogoTarget } from '../data/validators'
 import { clubSettingsEvents, CLUB_SETTINGS_RESOURCE_KIND } from './settings'
 import { sectionEvents } from './sections'
 import { sectionContentSpec } from './section-public'
-import { emitStructure, inWriteTransaction, structureLog, type StructureCommandResult } from './shared'
+import {
+  emitStructure,
+  inWriteTransaction,
+  structureLog,
+  untouchedSinceCreated,
+  type StructureCommandResult,
+} from './shared'
 
 /** The private partition every Vereino file of `club_core` is stored in. */
 export const CLUB_CORE_PARTITION = 'privateAttachments'
@@ -90,6 +96,7 @@ function clubLogoSpec(ctx: CommandRuntimeContext): AuthorizeScopedSpec<typeof lo
     allowedKinds: ['club_admin'],
     loadTarget: (_parsed, em, lock) =>
       trusted ? em.findOne(ClubSettings, { ...trusted, deletedAt: null }, lock) : Promise.resolve(null),
+    acceptsMissingToken: untouchedSinceCreated,
     resolveTarget: (_parsed, entity, scope) => ({
       id: entity?.id ?? scope.organizationId,
       tenantId: entity?.tenantId ?? scope.tenantId,

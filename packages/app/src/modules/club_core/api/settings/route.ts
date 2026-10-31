@@ -136,7 +136,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone` and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. Send the lock token in the platform optimistic-lock header once the settings exist.',
+        'Partial update by the club administrator; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone` and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
       requestBody: { contentType: 'application/json', schema: clubSettingsUpdateSchema },
       responses: [{ status: 200, description: 'Updated settings', schema: settingsResponseSchema }],
       errors: [

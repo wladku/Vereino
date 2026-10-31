@@ -132,6 +132,6 @@ export const openApi = buildOpenApi({
     schema: membershipUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes the role or the period of a membership; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `membership_overlap`, 422 `validity_inverted`.',
+      'Changes the role or the period of a membership; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `membership_overlap`, 422 `validity_inverted`.',
   },
 })

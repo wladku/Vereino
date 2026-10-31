@@ -10,7 +10,10 @@ import type { z } from 'zod'
 import { parseWithCustomFields } from '@open-mercato/shared/lib/commands/helpers'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { notFound } from '@open-mercato/shared/lib/crud/errors'
-import { enforceCommandOptimisticLockWithGuards } from '@open-mercato/shared/lib/crud/optimistic-lock-command'
+import {
+  enforceCommandOptimisticLockWithGuards,
+  readOptimisticLockExpected,
+} from '@open-mercato/shared/lib/crud/optimistic-lock-command'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import {
   findActingRole,
@@ -54,15 +57,27 @@ export type AuthorizeScopedSpec<TSchema extends z.ZodType, TEntity extends objec
   loadTarget?: (parsed: z.output<TSchema>, em: EntityManager, lock: TargetLock) => Promise<TEntity | null>
   /** Describes the target for the scope check; for a create, the record about to be created. */
   resolveTarget: (parsed: z.output<TSchema>, entity: TEntity | null, scope: TrustedScope) => ScopeTarget
-  /** `updated_at` (default) compares the client's lock token with the loaded row's `updatedAt`. */
+  /**
+   * `updated_at` (default) requires the client's lock token for a loaded target (400 `lock_token_required` when it
+   * is missing or not a timestamp, S5.2) and compares it with the row's `updatedAt` (409 when stale). `none` is for
+   * targets the caller does not edit as a versioned record: a job, a self-service declaration, an append to a parent.
+   */
   lock?: 'updated_at' | 'none'
   /** The lock token when the input carries it as a field; otherwise the platform header is read. */
   expectedUpdatedAt?: (parsed: z.output<TSchema>) => string | Date | null | undefined
+  /**
+   * True for a row-locked target the client could not have read a version of — a singleton the command created
+   * with its defaults and nobody has edited yet — so a missing token is accepted; a sent token is still compared.
+   */
+  acceptsMissingToken?: (entity: TEntity) => boolean
   scopeSource?: ScopeSource
 }
 
 export type AuthorizeScopedOptions = {
-  /** `replay` (undo/redo through `authorizeReplay`) skips the lock-token compare; the scope is checked anew. */
+  /**
+   * `replay` (undo/redo through `authorizeReplay`) skips the lock token; the scope is checked anew. A redo that
+   * replays `execute` (the context carries the audit route's `replayTransactionGuard`) is treated the same way.
+   */
   mode?: 'execute' | 'replay'
 }
 
@@ -159,9 +174,20 @@ export async function assertInScope(
 }
 
 /**
+ * The client's lock token as an ISO instant: the input field when the spec reads one, otherwise the platform header;
+ * null when absent or not a timestamp (the platform would skip such a token as silently as a missing one).
+ */
+function lockTokenOf(explicit: string | Date | null | undefined, request: Request | null): string | null {
+  const raw = explicit ?? readOptimisticLockExpected(request)
+  if (raw == null) return null
+  const ms = raw instanceof Date ? raw.getTime() : Date.parse(raw.trim())
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
+}
+
+/**
  * Parses the input, derives the trusted scope, loads and row-locks the target, checks it against the allowed
- * grants (403 `scope_denied`), asserts the lock token on the locked row (409 `optimistic_lock_conflict`) and
- * returns the acting role. `em` is the command's transactional EntityManager.
+ * grants (403 `scope_denied`), requires the lock token (400 `lock_token_required`), asserts it on the locked row
+ * (409 `optimistic_lock_conflict`) and returns the acting role. `em` is the command's transactional EntityManager.
  */
 export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends object & VersionedEntity>(
   spec: AuthorizeScopedSpec<TSchema, TEntity>,
@@ -193,14 +219,23 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
   }
   const actingRole = await assertInScope(scope, spec.allowedKinds, target, spec.matchOptions)
 
-  if (entity && (spec.lock ?? 'updated_at') === 'updated_at' && options.mode !== 'replay') {
-    await enforceCommandOptimisticLockWithGuards(ctx.container, {
-      resourceKind: spec.resourceKind,
-      resourceId: target.id,
-      current: entity.updatedAt ?? null,
-      expected: spec.expectedUpdatedAt?.(parsed) ?? null,
-      request: ctx.request ?? null,
-    })
+  // A redo replays `execute` from the audit route, which sets `replayTransactionGuard` and sends no lock token: like
+  // an undo it is checked against the current scope, not against a version the client never loaded.
+  const replaying = options.mode === 'replay' || ctx.replayTransactionGuard !== undefined
+  if (entity && (spec.lock ?? 'updated_at') === 'updated_at' && !replaying) {
+    // The platform's check is a no-op without a token, so a client that sends none would overwrite newer data.
+    const expected = lockTokenOf(spec.expectedUpdatedAt?.(parsed), ctx.request ?? null)
+    if (expected) {
+      await enforceCommandOptimisticLockWithGuards(ctx.container, {
+        resourceKind: spec.resourceKind,
+        resourceId: target.id,
+        current: entity.updatedAt ?? null,
+        expected,
+        request: ctx.request ?? null,
+      })
+    } else if (spec.acceptsMissingToken?.(entity) !== true) {
+      return foundationErrors.throw('lock_token_required')
+    }
   }
 
   return { parsed, custom, scope, actingRole, target, entity, tenantId, organizationId }

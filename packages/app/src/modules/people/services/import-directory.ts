@@ -100,6 +100,7 @@ export async function loadImportDirectory(
       phone: person.phone ?? null,
       hasPesel: Boolean(person.pesel),
       hasExternalId: Boolean(person.externalId),
+      updatedAt: person.updatedAt.toISOString(),
       guardians: active
         .filter((link) => link.wardPersonId === person.id && byId.has(link.guardianPersonId))
         .map((link) => toRelative(byId.get(link.guardianPersonId), link.guardianPersonId, link.isPrimaryPayer)),

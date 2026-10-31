@@ -45,7 +45,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Grant or withdraw consents',
       description:
-        'A guardian of the ward or the club administrator; `true` grants, `false` withdraws, an absent key keeps the consent. Send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied` (the ward, a coordinator, a former guardian), 404, 409 `optimistic_lock_conflict`, 409 `guardianship_ended`.',
+        'A guardian of the ward or the club administrator; `true` grants, `false` withdraws, an absent key keeps the consent. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied` (the ward, a coordinator, a former guardian), 404, 409 `optimistic_lock_conflict`, 409 `guardianship_ended`.',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [
         {

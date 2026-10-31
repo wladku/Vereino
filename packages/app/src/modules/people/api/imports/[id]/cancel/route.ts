@@ -38,6 +38,7 @@ export const openApi: OpenApiRouteDoc = {
       summary: 'Cancel the import',
       responses: [{ status: 200, description: 'The cancelled import', schema: importViewSchema }],
       errors: [
+        { status: 400, description: '`lock_token_required` (no import lock token in the header)', schema: errorSchema },
         { status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
         {

@@ -65,7 +65,11 @@ export const openApi: OpenApiRouteDoc = {
         },
       ],
       errors: [
-        { status: 400, description: 'Malformed input', schema: errorSchema },
+        {
+          status: 400,
+          description: 'Malformed input, `lock_token_required` (no row lock token in the header)',
+          schema: errorSchema,
+        },
         { status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
         {

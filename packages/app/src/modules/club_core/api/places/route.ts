@@ -120,11 +120,11 @@ export const openApi = buildOpenApi({
     schema: placeUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a place; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `place_hierarchy_cycle`, 422 `place_reference_invalid`.',
+      'Changes a place; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `place_hierarchy_cycle`, 422 `place_reference_invalid`.',
   },
   del: {
     schema: placeDeleteSchema,
     description:
-      'Soft-deletes a place (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `place_has_children`.',
+      'Soft-deletes a place (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `place_has_children`.',
   },
 })

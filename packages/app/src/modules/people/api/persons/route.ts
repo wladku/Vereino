@@ -110,6 +110,6 @@ export const openApi = buildOpenApi({
     schema: personUpdateSchema,
     responseSchema: z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string(), actingRole: z.string() }),
     description:
-      'Updates a person; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `pesel_duplicate`, 409 `external_id_duplicate`.',
+      'Updates a person; send the lock token in the platform optimistic-lock header or as `expectedUpdatedAt` (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `pesel_duplicate`, 409 `external_id_duplicate`.',
   },
 })

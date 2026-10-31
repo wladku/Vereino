@@ -115,11 +115,11 @@ export const openApi = buildOpenApi({
     schema: institutionUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes an institution; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Changes an institution; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
   del: {
     schema: institutionDeleteSchema,
     description:
-      'Soft-deletes an institution (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `institution_in_use`.',
+      'Soft-deletes an institution (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `institution_in_use`.',
   },
 })

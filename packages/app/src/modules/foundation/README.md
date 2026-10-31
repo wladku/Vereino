@@ -36,7 +36,7 @@ Other Vereino modules import every helper below from `@/modules/foundation` (thi
 
 DI tokens (`di.ts`): `vereino.scopeProvider` — registered by the `people` module, not here; `foundationScopeContract`, `foundationAuthorization`, `foundationRoles`, `foundationAccounts`, `foundationEncryptedFields`, `foundationSchedules`, `foundationLocalized`, `foundationErrors`, `foundationScheduling` — stateless services; `vereino.occupancyProvider` — an optional contract registered by `facilities` (phase 5), never here.
 
-Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (403), `validity_inverted` (422), `email_taken` (409), `locale_unsupported` (422, #27); foundation II: `recurrence_unsupported` (422), `recurrence_invalid` (422), `invalid_transition` (409). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
+Error codes (`lib/error-codes.ts`, thrown by `api/errors.ts`): `scope_denied` (403), `validity_inverted` (422), `email_taken` (409), `locale_unsupported` (422, #27); foundation II: `recurrence_unsupported` (422), `recurrence_invalid` (422), `invalid_transition` (409); `lock_token_required` (400, S5.2: `authorizeScoped` with the default `lock: 'updated_at'` on a loaded target, when the input field and the platform header carry no timestamp). The lock conflict is the platform's reserved `optimistic_lock_conflict` (409), thrown by `enforceCommandOptimisticLockWithGuards`.
 
 ## Conventions
 

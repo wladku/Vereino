@@ -123,7 +123,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Change own language, contact details and consents',
       description:
-        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone`, `email`, and the consents `shareContactWithCoaches` and `sharePresenceWithGuardians` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header.',
+        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone`, `email`, and the consents `shareContactWithCoaches` and `sharePresenceWithGuardians` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: selfUpdateSchema },
       responses: [
         {
@@ -133,7 +133,7 @@ export const openApi: OpenApiRouteDoc = {
         },
       ],
       errors: [
-        { status: 400, description: 'Validation failed', schema: errorSchema },
+        { status: 400, description: 'Validation failed, `lock_token_required`', schema: errorSchema },
         { status: 404, description: 'person_not_linked', schema: errorSchema },
         { status: 409, description: 'optimistic_lock_conflict', schema: errorSchema },
         { status: 422, description: 'locale_unsupported', schema: errorSchema },

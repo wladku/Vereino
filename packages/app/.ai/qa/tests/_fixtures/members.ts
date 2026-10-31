@@ -64,10 +64,17 @@ export async function putMe(
   )
 }
 
-/** `PUT /api/club_core/settings` as the club administrator (partial update). */
+/**
+ * `PUT /api/club_core/settings` as the club administrator (partial update) with the current lock token; the first
+ * save of a club has none (the read answers `updatedAt: null`).
+ */
 export async function updateClubSettings(request: APIRequestContext, token: string, data: Record<string, unknown>) {
-  const result = await call<{ code?: string }>(request, 'PUT', '/api/club_core/settings', token, { data })
-  return result
+  const current = await call<{ updatedAt?: string | null }>(request, 'GET', '/api/club_core/settings', token)
+  const lockToken = current.body?.updatedAt
+  return call<{ code?: string }>(request, 'PUT', '/api/club_core/settings', token, {
+    data,
+    headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
+  })
 }
 
 const capturePath =

@@ -61,7 +61,8 @@ export const openApi: OpenApiRouteDoc = {
   methods: {
     PUT: {
       summary: "Change a material's title or public flag",
-      description: 'Send the material lock token in the platform optimistic-lock header. Undoable.',
+      description:
+        'Send the material lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Undoable.',
       requestBody: {
         contentType: 'application/json',
         schema: materialUpdateSchema.omit({ id: true, sectionId: true }),
@@ -76,7 +77,8 @@ export const openApi: OpenApiRouteDoc = {
     },
     DELETE: {
       summary: 'Delete a material',
-      description: 'Send the material lock token in the platform optimistic-lock header. Undoable.',
+      description:
+        'Send the material lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Undoable.',
       responses: [{ status: 200, description: 'Deleted', schema: z.object({ ok: z.literal(true) }) }],
       errors: [
         { status: 403, description: '`scope_denied`', schema: errorSchema },

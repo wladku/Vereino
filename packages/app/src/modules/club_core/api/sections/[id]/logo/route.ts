@@ -84,7 +84,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: "Upload or replace a section's own logo",
       description:
-        'Multipart upload with a `file` field, by the club administrator or a coordinator of the section. Send the section lock token in the platform optimistic-lock header.',
+        'Multipart upload with a `file` field, by the club administrator or a coordinator of the section. Send the section lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'multipart/form-data', schema: uploadSchema },
       responses: [{ status: 200, description: 'The new logo', schema: responseSchema }],
       errors: [
