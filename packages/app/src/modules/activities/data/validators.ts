@@ -168,20 +168,18 @@ export const attendanceMarkBodySchema = z
   })
   .strict()
 
-export const attendanceMarkSchema = attendanceMarkBodySchema
-  .extend({ id: z.uuid() })
-  .superRefine((value, ctx) => {
-    const seen = new Set<string>()
-    value.entries.forEach((entry, index) => {
-      if (seen.has(entry.personId)) {
-        ctx.addIssue({ code: 'custom', path: ['entries', index, 'personId'], message: 'duplicate_person' })
-      }
-      seen.add(entry.personId)
-    })
-    if (value.entries.length === 0 && value.complete !== true) {
-      ctx.addIssue({ code: 'custom', path: ['entries'], message: 'nothing_to_save' })
+export const attendanceMarkSchema = attendanceMarkBodySchema.extend({ id: z.uuid() }).superRefine((value, ctx) => {
+  const seen = new Set<string>()
+  value.entries.forEach((entry, index) => {
+    if (seen.has(entry.personId)) {
+      ctx.addIssue({ code: 'custom', path: ['entries', index, 'personId'], message: 'duplicate_person' })
     }
+    seen.add(entry.personId)
   })
+  if (value.entries.length === 0 && value.complete !== true) {
+    ctx.addIssue({ code: 'custom', path: ['entries'], message: 'nothing_to_save' })
+  }
+})
 
 /** The expiry job's input: `now` only for an operator or test run (the job uses the clock). */
 export const expireConfirmationsSchema = z.object({ now: instantSchema.optional() }).strict()

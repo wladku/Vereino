@@ -33,7 +33,15 @@ Before a session the coach sees who is expected and who reported an absence (or,
 
 ## Decisions
 
-(recorded as they are made)
+- **No new ACL feature.** The check-off runs on `activities.coach` (held by the coach, coordinator and club administrator roles) plus the record scope, like the cancellation; the API row's "or `activities.manage`" is covered because every role with `activities.manage` also holds `activities.coach`.
+- **The session's assigned coach.** A coach re-staffed onto another group's session has no `coach` grant on that group; the target carries the session's `coach_person_id` as `personId`, so the `self` grant matches the assigned coach only, and the row records `coach` as the role.
+- **When the check-off opens.** From `start_at` until the session is closed (409 `attendance_not_started` before). Before the start the list shows the expectations only, as the story describes ("before a session the coach sees…; after it, checks off").
+- **Closing.** `complete: true` moves `planned → done` with the save; the API asks for no extra early-close confirmation, the page confirms with `useConfirmDialog` (the data model's "or a confirmation").
+- **The version.** The session's `updatedAt` is the lock of the whole list; every save moves it. Like every other write route in the app, the platform checks the token when the client sends it (no 400 without it); the page always sends it.
+- **The list.** Participants on the session date ∪ persons with live rows; the summary counts the participants only. A person off the list is 422 `attendance_person_not_listed`. A row created by the check-off has `declared = unknown`, `declaration_status = final`, `source = staff`, so it never changes the declaration counts.
+- **Unchanged rows keep their marker.** Only rows whose `actual` changes are written; the undo restores exactly those and removes the rows the save created, and refuses (409) once the session changed since.
+- **Series pinning.** `isPinnedSession` adds "has checked-off attendance" to the pinned rule the #31 code reserved for this story; it is a pure rule in `lib` (the services layer cannot load under Jest).
+- **No migration.** The actual-attendance columns shipped with #32.
 
 ## Progress
 

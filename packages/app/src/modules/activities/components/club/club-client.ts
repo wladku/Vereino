@@ -225,9 +225,7 @@ export type AttendanceList = {
 }
 
 export type AttendanceListLoad =
-  | { status: 'ok'; list: AttendanceList }
-  | { status: 'not_found' }
-  | { status: 'forbidden' }
+  { status: 'ok'; list: AttendanceList } | { status: 'not_found' } | { status: 'forbidden' }
 
 export const ATTENDANCE_LIST_QUERY_KEY = 'activities-attendance-list'
 
@@ -388,7 +386,8 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
       tone: state.tone,
     }
   })
-  if (as === 'coach' && entry.summary) badges.push({ id: 'summary', label: summaryLine(t, entry.summary), tone: 'neutral' })
+  if (as === 'coach' && entry.summary)
+    badges.push({ id: 'summary', label: summaryLine(t, entry.summary), tone: 'neutral' })
   if (occurrence.isDetached) badges.push({ id: 'moved', label: t('activities.occurrences.flags.moved'), tone: 'info' })
   const actions: CalendarItemAction[] = []
   if (entry.declarationsOpen && as !== 'coach') {

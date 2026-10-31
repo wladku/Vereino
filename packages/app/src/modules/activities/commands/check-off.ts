@@ -130,7 +130,8 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
       const { parsed } = authorized
       const actingRole = checkOffRole(authorized.actingRole)
       const window = checkOffWindow(occurrence, now)
-      if (window === 'not_planned') await activitiesErrors.throw('occurrence_not_planned', { status: occurrence.status })
+      if (window === 'not_planned')
+        await activitiesErrors.throw('occurrence_not_planned', { status: occurrence.status })
       if (window === 'not_started') await activitiesErrors.throw('attendance_not_started')
       const scope = { tenantId: occurrence.tenantId, organizationId: occurrence.organizationId }
       const rows = await em.find(Attendance, { ...scope, occurrenceId: occurrence.id, deletedAt: null })
