@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { expectOperation, undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
+import { setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
+import { expectOperation, redoByLogId, undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import {
   OPTIMISTIC_LOCK_HEADER,
   actionLogs,
@@ -13,8 +14,8 @@ import {
 } from '../_fixtures/club'
 
 // TEST-F01 (foundation spec): `authorizeScoped` inside `people.persons.update` — cross-organization 403, stale lock
-// token 409, two concurrent writers (second 409), acting role in the log context, undo re-authorized against the
-// current scope, and a job command recorded as `system`.
+// token 409, missing or malformed lock token 400 (S5.2), two concurrent writers (second 409), acting role in the log
+// context, undo and redo re-authorized against the current scope, and a job command recorded as `system`.
 test.describe.configure({ timeout: 300_000 })
 
 type UpdateResult = { ok?: boolean; updatedAt?: string; actingRole?: string; code?: string }
@@ -46,6 +47,17 @@ test('TEST-F01 authorizeScoped: scope, lock, concurrency, acting role, undo and 
     expect(stale.status).toBe(409)
     expect(stale.body?.code).toBe('optimistic_lock_conflict')
 
+    // No lock token, or one that is not a timestamp → 400 lock_token_required (S5.2), and nothing is written.
+    const missing = await call<UpdateResult>(request, 'PUT', '/api/people/persons', club.adminToken, {
+      data: { id: personId, firstName: 'Tokenless' },
+    })
+    expect(missing.status, JSON.stringify(missing.body)).toBe(400)
+    expect(missing.body?.code).toBe('lock_token_required')
+    const malformed = await update('Malformed', 'not-a-date')
+    expect(malformed.status, JSON.stringify(malformed.body)).toBe(400)
+    expect(malformed.body?.code).toBe('lock_token_required')
+    expect((await getPerson(request, club.adminToken, personId)).body?.firstName).toBe('Olga')
+
     // Two concurrent writers with the same token: the second waits for the row lock and gets 409.
     token = String(first.body?.updatedAt)
     const racers = await Promise.all([update('Racer A', token), update('Racer B', token)])
@@ -68,13 +80,25 @@ test('TEST-F01 authorizeScoped: scope, lock, concurrency, acting role, undo and 
     // An allowed undo restores the previous value.
     const undoable = await update('Undo me', token)
     expect(undoable.status).toBe(200)
-    const undoOk = await undoByToken(request, club.adminToken, expectOperation(undoable.response, 'update').undoToken)
+    const undoableOperation = expectOperation(undoable.response, 'update')
+    const undoOk = await undoByToken(request, club.adminToken, undoableOperation.undoToken)
     expect(undoOk.status(), await undoOk.text()).toBe(200)
     const afterUndo = await getPerson(request, club.adminToken, personId)
     expect(afterUndo.body?.firstName).toBe(winner === racers[0] ? 'Racer A' : 'Racer B')
 
+    // A redo replays `execute` without a lock token (the audit route sends none) and is not refused with 400. No
+    // Vereino role grants redo today, so the test gives the administrator's platform role the feature.
+    await setRoleAclFeatures(request, club.superToken, {
+      roleId: club.tenant.roleId,
+      features: ['audit_logs.view_self', 'audit_logs.undo_self', 'audit_logs.redo_self'],
+    })
+    const redone = await redoByLogId(request, club.adminToken, undoableOperation.logId)
+    expect(redone.status(), await redone.text()).toBe(200)
+    const afterRedo = await getPerson(request, club.adminToken, personId)
+    expect(afterRedo.body?.firstName).toBe('Undo me')
+
     // After the administrator loses the club_admin grant, the undo is refused by `authorizeReplay`.
-    const kept = await update('Kept', String(afterUndo.body?.updatedAt))
+    const kept = await update('Kept', String(afterRedo.body?.updatedAt))
     expect(kept.status).toBe(200)
     const operation = expectOperation(kept.response, 'update before losing the grant')
     const assignments = await call<{ items?: { id: string; role: string; updatedAt: string }[] }>(

@@ -204,10 +204,14 @@ test('TEST-009 absence_only training refuses yes and counts a no as absent; a ma
     })
 
     // The ward cannot decide for themself; the guardian approves and the declaration becomes final.
-    const wardDecides = await guardianDecide(request, family.elder.token, attendanceId, true)
+    const wardDecides = await guardianDecide(request, family.elder.token, attendanceId, true, ownYes.body?.updatedAt)
     expect(wardDecides.status, JSON.stringify(wardDecides.body)).toBe(403)
     expect(wardDecides.body?.code).toBe('scope_denied')
-    const approved = await guardianDecide(request, family.guardian.token, attendanceId, true)
+    // A decision without the declaration's version is refused (S5.2).
+    const tokenless = await guardianDecide(request, family.guardian.token, attendanceId, true, null)
+    expect(tokenless.status, JSON.stringify(tokenless.body)).toBe(400)
+    expect(tokenless.body?.code).toBe('lock_token_required')
+    const approved = await guardianDecide(request, family.guardian.token, attendanceId, true, ownYes.body?.updatedAt)
     expect(approved.status, JSON.stringify(approved.body)).toBe(200)
     expect(approved.body).toMatchObject({
       id: attendanceId,
@@ -230,7 +234,13 @@ test('TEST-009 absence_only training refuses yes and counts a no as absent; a ma
       unanswered: 2,
     })
     // A decision on a settled declaration is refused.
-    const decideAgain = await guardianDecide(request, family.guardian.token, attendanceId, false)
+    const decideAgain = await guardianDecide(
+      request,
+      family.guardian.token,
+      attendanceId,
+      false,
+      approved.body?.updatedAt,
+    )
     expect(decideAgain.status, JSON.stringify(decideAgain.body)).toBe(409)
     expect(decideAgain.body?.code).toBe('guardian_decision_not_pending')
 
@@ -276,7 +286,13 @@ test('TEST-009 absence_only training refuses yes and counts a no as absent; a ma
     // A second run changes nothing (the retry re-emits nothing).
     const again = runExpiry(club, hoursAfter(String(ownYes2.body?.declaredAt), 26))
     expect(again).toMatchObject({ processed: 0, failed: 0, changedIds: [] })
-    const expiredDecision = await guardianDecide(request, family.guardian.token, attendance2Id, true)
+    const expiredDecision = await guardianDecide(
+      request,
+      family.guardian.token,
+      attendance2Id,
+      true,
+      personOf(guardianExpired, family.elder.personId).declaration?.updatedAt,
+    )
     expect(expiredDecision.status).toBe(409)
     expect(expiredDecision.body?.code).toBe('guardian_decision_not_pending')
 

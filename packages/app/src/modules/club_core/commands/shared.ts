@@ -50,6 +50,15 @@ export async function inWriteTransaction<T>(
 }
 
 /** True for a violated unique index (the club's public slug, a section's slug). */
+/**
+ * The club settings row still holds only the defaults `ensureClubSettingsRow` wrote: the settings read answered
+ * `updatedAt: null` before it existed, so its first save carries no lock token (`acceptsMissingToken`). Any write
+ * moves `updatedAt`, so a second writer racing the first needs the token again.
+ */
+export function untouchedSinceCreated(row: { createdAt: Date; updatedAt: Date }): boolean {
+  return row.createdAt.getTime() === row.updatedAt.getTime()
+}
+
 export function isUniqueViolation(error: unknown): boolean {
   if (error instanceof UniqueConstraintViolationException) return true
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505'

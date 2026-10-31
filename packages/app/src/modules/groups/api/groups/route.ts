@@ -137,11 +137,11 @@ export const openApi = buildOpenApi({
     schema: groupUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a group; send the lock token in the platform optimistic-lock header. Moving it to another section needs the scope of both sections. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
+      'Changes a group; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Moving it to another section needs the scope of both sections. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
   },
   del: {
     schema: groupDeleteSchema,
     description:
-      'Soft-deletes a group without memberships (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `group_has_memberships` (deactivate it instead).',
+      'Soft-deletes a group without memberships (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `group_has_memberships` (deactivate it instead).',
   },
 })

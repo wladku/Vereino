@@ -26,7 +26,7 @@ import {
   storedSettingsOf,
   type ClubPublicSettings,
 } from '../services/settings'
-import { isUniqueViolation } from './shared'
+import { isUniqueViolation, untouchedSinceCreated } from './shared'
 
 export const CLUB_SETTINGS_RESOURCE_KIND = 'club_core.club_settings'
 
@@ -147,6 +147,7 @@ function settingsSpec(
     allowedKinds: ['club_admin'],
     loadTarget: (_parsed, em, lock) =>
       trusted ? em.findOne(ClubSettings, { ...trusted, deletedAt: null }, lock) : Promise.resolve(null),
+    acceptsMissingToken: untouchedSinceCreated,
     resolveTarget: (_parsed, entity, scope) => ({
       id: entity?.id ?? scope.organizationId,
       tenantId: entity?.tenantId ?? scope.tenantId,

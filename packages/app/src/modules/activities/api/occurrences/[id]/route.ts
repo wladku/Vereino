@@ -131,7 +131,7 @@ export const openApi: OpenApiRouteDoc = {
     PATCH: {
       summary: 'Move or re-staff one session',
       description:
-        'Changes the instants, place or coach of one planned session and detaches it from its series, so a later series change leaves it as it is. Send the lock token in the platform optimistic-lock header.',
+        'Changes the instants, place or coach of one planned session and detaches it from its series, so a later series change leaves it as it is. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: occurrenceUpdateSchema.omit({ id: true }) },
       responses: [{ status: 200, description: 'The moved session', schema: updateResponseSchema }],
       errors: [

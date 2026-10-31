@@ -172,11 +172,13 @@ export async function declare(
   return call<AttendanceResult>(request, 'POST', '/api/activities/attendance/declare', token, { data })
 }
 
+/** The guardian's decision against the declaration's version (`lockToken`, the row's `updatedAt`; S5.2). */
 export async function guardianDecide(
   request: APIRequestContext,
   token: string,
   attendanceId: string,
   approve: boolean,
+  lockToken: string | null | undefined,
 ) {
   return call<AttendanceResult>(
     request,
@@ -185,6 +187,7 @@ export async function guardianDecide(
     token,
     {
       data: { approve },
+      headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
     },
   )
 }

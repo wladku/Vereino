@@ -102,6 +102,10 @@ test('E03-S01 an overlapping membership of the same person and role is refused w
     // the new one and is refused with the same 409.
     let rows = (await roster(request, token, group)).items
     const firstRow = rows.find((row) => row.id === first)
+    // Without the membership's version the end is refused (S5.2).
+    const tokenless = await endMembership(request, token, first, null, '2026-08-31')
+    expect(tokenless.status, JSON.stringify(tokenless.body)).toBe(400)
+    expect(tokenless.body?.code).toBe('lock_token_required')
     const ended = await endMembership(request, token, first, firstRow?.updatedAt, '2026-08-31')
     expect(ended.status, JSON.stringify(ended.body)).toBe(200)
     const stale = await endMembership(request, token, first, firstRow?.updatedAt, '2026-09-30')

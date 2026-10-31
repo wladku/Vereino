@@ -115,11 +115,11 @@ export const openApi = buildOpenApi({
     schema: externalTeamUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes an external team; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `groups_reference_invalid`.',
+      'Changes an external team; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `groups_reference_invalid`.',
   },
   del: {
     schema: externalTeamDeleteSchema,
     description:
-      'Soft-deletes an external team (`?id=`); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Soft-deletes an external team (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
 })

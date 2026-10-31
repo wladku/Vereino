@@ -117,11 +117,11 @@ export const openApi = buildOpenApi({
     schema: attendancePolicyUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes the mode, the confirmation limit or the default after it; the scope is fixed. Send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Changes the mode, the confirmation limit or the default after it; the scope is fixed. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
   del: {
     schema: attendancePolicyDeleteSchema,
     description:
-      'Soft-deletes a policy (`?id=`); the resolver then falls through to the next scope. Send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Soft-deletes a policy (`?id=`); the resolver then falls through to the next scope. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
 })

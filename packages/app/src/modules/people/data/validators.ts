@@ -43,6 +43,8 @@ export const personUpdateSchema = z
     notes: personFields.notes,
     pesel: personFields.pesel,
     externalId: personFields.externalId,
+    /** The lock token in the body (S5.2), for a caller without the platform header: the import commit. */
+    expectedUpdatedAt: z.string().max(64).optional(),
   })
   .strict()
 

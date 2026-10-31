@@ -136,6 +136,6 @@ export const openApi = buildOpenApi({
     schema: guardianshipUpdateSchema,
     responseSchema: z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string(), actingRole: z.string() }),
     description:
-      'Changes the relation, the primary-payer flag, the consents or the period; send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `guardianship_primary_payer_conflict`, 409 `guardianship_ended`, 422 `validity_inverted`.',
+      'Changes the relation, the primary-payer flag, the consents or the period; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `guardianship_primary_payer_conflict`, 409 `guardianship_ended`, 422 `validity_inverted`.',
   },
 })

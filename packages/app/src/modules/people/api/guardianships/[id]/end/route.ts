@@ -39,7 +39,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'End a guardianship',
       description:
-        'Sets the last active day (club administrator); send the lock token in the platform optimistic-lock header. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `validity_inverted`.',
+        'Sets the last active day (club administrator); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `validity_inverted`.',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [{ status: 200, description: 'The ended guardianship', schema: guardianshipViewSchema }],
       errors: [

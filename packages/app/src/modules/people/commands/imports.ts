@@ -39,6 +39,7 @@ import {
   classificationCounts,
   normalizeImportRow,
   planImport,
+  type ExistingDirectory,
   type ImportDecision,
   type NormalizedImportRow,
   type PersonRef,
@@ -391,7 +392,10 @@ type WrittenEntities = {
   guardianships: GuardianshipCommandResult['guardianship'][]
 }
 
-/** The nested command context: the commit's transaction, no request (its lock header is the import's), no events yet. */
+/**
+ * The nested command context: the commit's transaction, no request (its lock header is the import's), no events yet.
+ * A nested `people.persons.update` carries the person's version the plan read as `expectedUpdatedAt` instead.
+ */
 function nestedContext(ctx: CommandRuntimeContext, em: EntityManager): CommandRuntimeContext {
   return {
     ...ctx,
@@ -415,6 +419,7 @@ async function writeRow(
   keys: Map<string, string>,
   written: WrittenEntities,
   today: string,
+  directory: ExistingDirectory,
 ): Promise<ImportRowResult> {
   const result: ImportRowResult = {
     participantPersonId: null,
@@ -428,8 +433,10 @@ async function writeRow(
     if (planned.ref.kind === 'existing') {
       personId = planned.ref.personId
       if (planned.update) {
+        // A person changed since the plan read it answers 409 and rolls the whole commit back (S5.2).
+        const expectedUpdatedAt = directory.persons.get(personId)?.updatedAt
         const { result: updated } = await bus.execute<unknown, PersonCommandResult>('people.persons.update', {
-          input: { id: personId, ...personInput(planned.update) },
+          input: { id: personId, ...personInput(planned.update), expectedUpdatedAt },
           ctx: nested,
         })
         written.persons.set(updated.person.id, updated.person)
@@ -476,7 +483,7 @@ export async function planStoredImport(
   record: PersonImport,
   rows: readonly PersonImportRow[],
   today: string,
-): Promise<RowPlan[]> {
+): Promise<{ plans: RowPlan[]; directory: ExistingDirectory }> {
   const scope = { tenantId: record.tenantId, organizationId: record.organizationId }
   const normalized = rows.map(storedRow)
   const decisions = new Map<number, ImportDecision>()
@@ -490,7 +497,7 @@ export async function planStoredImport(
   const matchIds = rows.flatMap((row) => (row.decisionPersonId ? [row.decisionPersonId] : []))
   const directory = await loadImportDirectory(em, scope, normalized, matchIds, today)
   const options = { header: record.mapping.header, mapping: storedMapping(record) }
-  return planImport(normalized, directory, decisions, options)
+  return { plans: planImport(normalized, directory, decisions, options), directory }
 }
 
 const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitResult> = {
@@ -524,7 +531,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         scope,
       )
       const today = await clubToday(ctx.container, scope)
-      const plans = await planStoredImport(em, record, rows, today)
+      const { plans, directory } = await planStoredImport(em, record, rows, today)
       const pending = plans.filter((plan) => plan.needsDecision).map((plan) => plan.rowNo)
       if (pending.length > 0) return peopleErrors.throw('import_review_pending', { rowNos: pending.slice(0, 50) })
 
@@ -544,7 +551,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
           skipped += 1
           continue
         }
-        const rowResult = await writeRow(plan, bus, nested, keys, written, today)
+        const rowResult = await writeRow(plan, bus, nested, keys, written, today, directory)
         for (const id of rowResult.personIds) if (!written.created.has(id)) matched.add(id)
         row.result = rowResult
         row.committedAt = committedAt

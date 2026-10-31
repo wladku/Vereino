@@ -40,13 +40,18 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Approve or reject a ward declaration that waits for the guardian',
       description:
-        '`approve: true` makes the declaration final, `false` rejects it (the ward then counts as unanswered). Errors: 403 `scope_denied` (not a guardian of the ward), 404, 409 `guardian_decision_not_pending`, 409 `declaration_closed` after the session started.',
+        '`approve: true` makes the declaration final, `false` rejects it (the ward then counts as unanswered). Send the declaration lock token (its `updatedAt`) in the platform optimistic-lock header. Errors: 400 `lock_token_required`, 403 `scope_denied` (not a guardian of the ward), 404, 409 `guardian_decision_not_pending`, 409 `declaration_closed` after the session started, 409 `optimistic_lock_conflict`.',
       requestBody: { contentType: 'application/json', schema: guardianDecisionSchema.omit({ id: true }) },
       responses: [{ status: 200, description: 'The decided declaration', schema: attendanceViewSchema }],
       errors: [
+        { status: 400, description: 'lock_token_required', schema: errorSchema },
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
-        { status: 409, description: 'guardian_decision_not_pending, declaration_closed', schema: errorSchema },
+        {
+          status: 409,
+          description: 'guardian_decision_not_pending, declaration_closed, optimistic_lock_conflict',
+          schema: errorSchema,
+        },
       ],
     },
   },
