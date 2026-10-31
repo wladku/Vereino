@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue 33` → feature route → `om-auto-implement-spec` → `om-auto-create-pr` (plain engine)
 - **Trigger:** the product owner chose "story by story" for epic #22 (E03): #33 after #32 merged (PR #61)
 - **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 step 5, the check-off half (REQ-007, REQ-008; R11, D-026; AC-007; TEST-009, TEST-011), the API row `GET`, `PUT /api/activities/occurrences/{id}/attendance` and the page `/club/occurrences/[id]/attendance`; issue #33; branch `feat/issue-33-coach-attendance-checkoff` from `main` (`1806847`) in the worktree `C:\Users\wkuc\vereino-issue-33`
-- **Status:** in progress
+- **Status:** complete
 
 Source doc: .ai/specs/2026-10-20-vereino-club-management.md
 
@@ -49,7 +49,8 @@ Before a session the coach sees who is expected and who reported an absence (or,
 - `yarn test:integration:vereino --filter "TEST-009-coach"` — 2 passed on the first run.
 - `yarn test:integration:vereino --filter "activities/"` — 18 passed (the new `TEST-009-coach-attendance-checkoff` ×2 and `E03-S04-coach-attendance-ui`, the rest as regressions).
 - `yarn verify` — 13/13 passed (head `2ed1807`); `TEST-006` 2 passed, `J-001` 1 passed (`--no-build`).
-- After the review fixes: see *Review*.
+- After the review fixes: `--filter "activities/"` 18 passed, 1 failed — the new undo test expected 409 for an older save's undo, but the platform keeps the undo token of the latest action only (400 "Undo token not available"); the assertion now accepts either refusal and checks nothing changed, then `--filter "TEST-009-coach"` 3 passed. Final `yarn verify` 13/13 on `af32e07`.
+- A formatter run had re-wrapped the generated migration snapshot; it was restored from `main` (no migration in this change).
 
 ## Review
 
@@ -66,9 +67,9 @@ Before a session the coach sees who is expected and who reported an absence (or,
 
 ## Progress
 
-- [ ] 1. Rules, error codes, validators, events
-- [ ] 2. Command and read service
-- [ ] 3. Route
-- [ ] 4. Page and links
-- [ ] 5. Integration specs and the gate
-- [ ] 6. Documentation
+- [x] 1. Rules, error codes, validators, events
+- [x] 2. Command and read service
+- [x] 3. Route
+- [x] 4. Page and links
+- [x] 5. Integration specs and the gate
+- [x] 6. Documentation
