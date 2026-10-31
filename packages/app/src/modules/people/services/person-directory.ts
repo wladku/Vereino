@@ -1,12 +1,15 @@
 // `people.personDirectory` (club spec *Architecture* → modules that require `people` reach it through DI, never through
 // its entities): the names of persons of one organization, decrypted, for a consumer that has already authorized the
 // rows that carry the person ids (the `groups` roster), and the existence check a consumer runs before it stores a
-// person id. It returns no contact data, notes or PESEL; the account link (`findUserIds`) and the active guardians
-// (`activeGuardians`) serve a consumer that notifies the people a record concerns (a cancelled session, #31).
+// person id. It returns no notes or PESEL; the account link (`findUserIds`) and the active guardians
+// (`activeGuardians`) serve a consumer that notifies the people a record concerns (a cancelled session, #31). Contact
+// data leaves only through `sharedContacts`, for guardians who gave `share_contact_with_coaches_at` and have an
+// account (REQ-037, DD-39, #34), after the consumer has authorized the read and logged it (`auditedRead`).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
 import { Guardianship, Person } from '../data/entities'
+import { contactSharingFilter } from '../lib/contact-sharing'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -37,6 +40,26 @@ export type PersonDirectory = {
    * wards' names other guardians may see on a session (#32). Ids only.
    */
   presenceConsents(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Set<string>>
+  /**
+   * The persons among `ids` who gave the consent `share_contact_with_coaches_at` and have an account (REQ-037, DD-39:
+   * the consent lives in the profile, so a guardian without an account never shares). Ids only — for the audit row
+   * written before the contacts are read (#34).
+   */
+  contactConsents(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Set<string>>
+  /**
+   * The decrypted name, phone and e-mail of the persons among `ids` who still consent and have an account (the consent
+   * is checked again at read time). Call only after authorizing and logging the read (`auditedRead`).
+   */
+  sharedContacts(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, SharedContact>>
+}
+
+/** A guardian's contact details shared with the coaches of their wards' groups (REQ-037). */
+export type SharedContact = {
+  id: string
+  firstName: string
+  lastName: string
+  phone: string | null
+  email: string | null
 }
 
 export async function findPersons(
@@ -115,11 +138,50 @@ export async function presenceConsents(
   return new Set(rows.map((row) => row.id))
 }
 
+export async function contactConsents(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  if (ids.length === 0) return new Set()
+  const rows = await em.find(Person, contactSharingFilter(scope, ids), { fields: ['id'] })
+  return new Set(rows.map((row) => row.id))
+}
+
+export async function sharedContacts(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Map<string, SharedContact>> {
+  if (ids.length === 0) return new Map()
+  const rows = await findWithDecryption(
+    em,
+    Person,
+    contactSharingFilter(scope, ids),
+    { fields: ['id', 'firstName', 'lastName', 'phone', 'email'] },
+    scope,
+  )
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        phone: row.phone ?? null,
+        email: row.email ?? null,
+      },
+    ]),
+  )
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
     findUserIds: (scope, ids, em) => findUserIds(em ?? getEm().fork(), scope, ids),
     activeGuardians: (scope, wardIds, today, em) => activeGuardians(em ?? getEm().fork(), scope, wardIds, today),
     presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
+    contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
+    sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
   }
 }

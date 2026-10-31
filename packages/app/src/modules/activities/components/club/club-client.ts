@@ -268,6 +268,47 @@ export async function saveAttendance(
   return call.result ?? null
 }
 
+// --- The consenting guardians' contacts (`GET /api/activities/occurrences/{id}/guardian-contacts`, #34) ---
+
+export type GuardianContactPerson = { personId: string; firstName: string; lastName: string }
+
+export type GuardianContact = GuardianContactPerson & {
+  phone: string | null
+  email: string | null
+  wards: GuardianContactPerson[]
+}
+
+export type GuardianContactsLoad = { status: 'ok'; items: GuardianContact[] } | { status: 'forbidden' }
+
+export const GUARDIAN_CONTACTS_QUERY_KEY = 'activities-guardian-contacts'
+
+class GuardianContactsLoadError extends Error {}
+
+/**
+ * The contacts of one session, fetched only once the coach asks for them (`enabled`): every read is recorded, so the
+ * page never reads them in the background or retries on its own, and nothing is cached — opening them again is a new,
+ * logged read that reflects a withdrawn consent.
+ */
+export function useGuardianContacts(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [GUARDIAN_CONTACTS_QUERY_KEY, id],
+    enabled,
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async (): Promise<GuardianContactsLoad> => {
+      const call = await apiCall<{ items: GuardianContact[] }>(
+        `/api/activities/occurrences/${encodeURIComponent(id)}/guardian-contacts`,
+      )
+      if (call.status === 403) return { status: 'forbidden' }
+      if (!call.ok || !call.result) throw new GuardianContactsLoadError(String(call.status))
+      return { status: 'ok', items: call.result.items }
+    },
+  })
+}
+
 /** The summary line of the coach's list per the kind (club spec AC-007). */
 export function summaryLine(t: Translate, summary: CalendarSummary): string {
   return summary.kind === 'absence_only'

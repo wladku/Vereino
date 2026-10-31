@@ -11,6 +11,7 @@ describe('foundation error codes', () => {
       { code: 'recurrence_unsupported', status: 422, messageKey: 'foundation.errors.recurrence_unsupported' },
       { code: 'recurrence_invalid', status: 422, messageKey: 'foundation.errors.recurrence_invalid' },
       { code: 'invalid_transition', status: 409, messageKey: 'foundation.errors.invalid_transition' },
+      { code: 'append_only', status: 409, messageKey: 'foundation.errors.append_only' },
       { code: 'lock_token_required', status: 400, messageKey: 'foundation.errors.lock_token_required' },
     ])
   })
