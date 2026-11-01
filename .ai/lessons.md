@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 30 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 31 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -40,6 +40,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [A disabled module's features are never granted; an auth/login interceptor must never throw; pass tenantId to superadmin ACL writes](lessons/future-module-gates-and-auth-login-interceptors.md) — area:architecture,testing; module:people,platform; topic:acl,feature-policy,api-interceptor,auth-login,payments-gate,superadmin
 - [date-fns-tz offsets are wrong around DST: read them through formatInTimeZone and resolve the gap and the ambiguity yourself](lessons/date-fns-tz-dst-offsets-and-wall-time-resolution.md) — area:architecture,testing; module:activities,platform; topic:date-fns-tz,time-zones,dst,recurrence,rfc-5545
 - [Nested commandBus calls flush their side effects at once; pass transactionalEm and bulkImport, emit after the commit](lessons/nested-commands-in-one-transaction.md) — area:architecture; module:people,platform; topic:commands,transactions,events,indexing,optimistic-lock
+- [A cross-module hook that writes through nested commands hands back its after-commit side effects; a purge that keeps rows for later must sweep purged imports](lessons/hook-side-effects-and-purge-of-waiting-rows.md) — area:architecture,module-data; module:people,groups,platform; topic:commands,events,di-hooks,purge,imports
 
 ### backend-ui
 
