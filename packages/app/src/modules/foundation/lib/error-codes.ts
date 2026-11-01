@@ -14,6 +14,8 @@ export const errorCodes = [
   { code: 'recurrence_unsupported', status: 422, messageKey: 'foundation.errors.recurrence_unsupported' },
   { code: 'recurrence_invalid', status: 422, messageKey: 'foundation.errors.recurrence_invalid' },
   { code: 'invalid_transition', status: 409, messageKey: 'foundation.errors.invalid_transition' },
+  // Foundation II P-28 (DD-G11): an update or delete of an append-only row (#34).
+  { code: 'append_only', status: 409, messageKey: 'foundation.errors.append_only' },
   // S5.2: `authorizeScoped` answers it when an update, delete or action on an existing record carries no lock token
   // (the platform's check skips silently without one, so a client without it would overwrite newer data).
   { code: 'lock_token_required', status: 400, messageKey: 'foundation.errors.lock_token_required' },

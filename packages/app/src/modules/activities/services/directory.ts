@@ -21,7 +21,7 @@ import type {
   MembershipPeriod,
   RosterEntry,
 } from '../../groups/services/group-directory'
-import type { PersonDirectory, PersonDirectoryEntry } from '../../people/services/person-directory'
+import type { PersonDirectory, PersonDirectoryEntry, SharedContact } from '../../people/services/person-directory'
 
 /** Tokens of the required modules' services (`club_core/di.ts`, `groups/di.ts`, `people/di.ts`). */
 const CLUB_CORE_DIRECTORY = 'clubCoreDirectory'
@@ -164,6 +164,24 @@ export function presenceConsents(
   em?: EntityManager,
 ): Promise<Set<string>> {
   return personDirectory(container).presenceConsents(scope, ids, em)
+}
+
+/** The persons among `ids` who share their contacts with coaches and have an account (REQ-037, #34). Ids only. */
+export function contactConsents(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  return personDirectory(container).contactConsents(scope, ids)
+}
+
+/** The consenting persons' names, phone and e-mail — only after the read was authorized and logged (#34). */
+export function sharedContacts(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+): Promise<Map<string, SharedContact>> {
+  return personDirectory(container).sharedContacts(scope, ids)
 }
 
 /** The club's time zone (club spec DD-37: `Europe/Warsaw` by default). */
