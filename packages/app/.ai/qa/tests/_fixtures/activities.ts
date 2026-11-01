@@ -1,8 +1,8 @@
 // Helpers of the `activities` integration tests (club spec phase 2 steps 3 and 8; TEST-007, TEST-012, TEST-034; issue
 // #31): activities, previews, sessions, one-off events and cancellations through the API, the daily generator through
 // the module CLI, the in-app notifications of a user, and club-zone (`Europe/Warsaw`) calendar and wall-time helpers.
-import { expect, type APIRequestContext } from '@playwright/test'
-import { OPTIMISTIC_LOCK_HEADER, call, mercato, type Club } from './club'
+import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
 import { create as createStructure } from './club-structure'
 import { createGroup, signedInStaff } from './groups'
 
@@ -316,6 +316,27 @@ export function nextWeekday(date: string, weekday: WeekdayCode): string {
   let day = date
   while (weekdayOf(day) !== weekday) day = addDays(day, 1)
   return day
+}
+
+/** The Monday of the Monday–Sunday week of `date` (the member calendar's week, `calendarWeek` in `@vereino/core`). */
+export function mondayOf(date: string): string {
+  return addDays(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7))
+}
+
+/**
+ * Moves the member calendar (`/club/calendar`) from this week to the week of `date`. The calendar opens on the
+ * Monday–Sunday week of today and keeps its week in component state, so a session "tomorrow" is next week when today
+ * is a Sunday. Call it after every navigation or reload; each step waits for the range label to change.
+ */
+export async function showCalendarWeekOf(page: Page, date: string): Promise<void> {
+  const weeks = Math.round((Date.parse(mondayOf(date)) - Date.parse(mondayOf(calendarDate()))) / (7 * 86_400_000))
+  const range = page.getByTestId('club-calendar-range')
+  for (let step = 0; step < weeks; step += 1) {
+    await expect(range).not.toBeEmpty()
+    const shown = await range.textContent()
+    await page.getByTestId('club-calendar-next').click()
+    await expect(range).not.toHaveText(String(shown))
+  }
 }
 
 /** Every `weekday` in the inclusive range. */
