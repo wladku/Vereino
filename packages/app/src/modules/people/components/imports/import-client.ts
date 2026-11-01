@@ -1,5 +1,6 @@
 // Client-side types and helpers of the bulk import pages (#28): rows as `/api/people/imports/**` returns them, the
-// field and classification labels, and the error code of a failed call. Authorization stays on the routes.
+// field and classification labels, the membership outcome of a row's group (#65) and the error code of a failed call.
+// Authorization stays on the routes.
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import type { ImportPersonField, ImportSlot } from '../../lib/import-mapping'
 import type { Translate } from '../client-helpers'
@@ -13,7 +14,17 @@ export type ImportDecisionAction = 'match' | 'create' | 'skip'
 export type PersonRefRow = { personId: string; name: string | null }
 
 export type ImportSummaryRow = Partial<
-  Record<ImportClassification | 'created' | 'updated' | 'linked' | 'skipped' | 'membershipsPending', number>
+  Record<
+    | ImportClassification
+    | 'created'
+    | 'updated'
+    | 'linked'
+    | 'skipped'
+    | 'membershipsCreated'
+    | 'membershipsExisting'
+    | 'membershipsPending',
+    number
+  >
 >
 
 export type ImportRow = {
@@ -32,6 +43,7 @@ export type ImportRow = {
   purgedAt: string | null
   fileAvailable: boolean
   pendingDecisions: number
+  canCreateMemberships: boolean
   updatedAt: string
 }
 
@@ -50,7 +62,9 @@ export type ImportRowRow = {
   needsDecision: boolean
   groupName: string | null
   membershipStatus: string | null
+  membershipPreview: 'group_found' | 'group_not_found' | 'group_ambiguous' | 'groups_not_enabled' | null
   committedAt: string | null
+  participantPersonId: string | null
   values: { persons: Partial<Record<ImportSlot, ImportPersonValuesRow>>; group: string | null } | null
   updatedAt: string
 }
@@ -85,6 +99,23 @@ export function codeOf(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null
   const code = (error as { code?: unknown }).code
   return typeof code === 'string' ? code : null
+}
+
+/**
+ * The membership state of a row's group (#65): before the commit what the commit would do, after it the stored outcome
+ * (`lib/import-rules.ts`). Done states read as success or neutral, waiting ones as a warning.
+ */
+const MEMBERSHIP_VARIANTS: Partial<Record<string, StatusBadgeVariant>> = {
+  group_found: 'info',
+  membership_created: 'success',
+  membership_existed: 'neutral',
+  participant_missing: 'neutral',
+}
+
+export function membershipState(row: ImportRowRow): { key: string; variant: StatusBadgeVariant } | null {
+  const key = row.membershipStatus ?? row.membershipPreview
+  if (!key) return null
+  return { key, variant: MEMBERSHIP_VARIANTS[key] ?? 'warning' }
 }
 
 /** The translated text of a row problem or review reason (codes declared in `lib/import-rules.ts`). */

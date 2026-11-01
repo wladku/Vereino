@@ -1,12 +1,15 @@
 // Reads behind the `people` import routes (#28): the import history with who ran each import, one import, and its
 // staged rows (decrypted values) paged and filtered by classification. Every read is narrowed to the trusted tenant
-// and organization; the routes check the caller's `club_admin` grant with `assertInScope` first.
+// and organization; the routes check the caller's `club_admin` grant with `assertInScope` first. With the optional
+// `groups.membershipImporter` hook (#65), a preview row shows whether its group name resolves, and a committed import
+// with waiting rows says that a re-run can create their memberships.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findAndCountWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Person, PersonImport, PersonImportRow } from '../data/entities'
-import type { NormalizedImportRow } from '../lib/import-rules'
+import { GROUPS_NOT_ENABLED, type NormalizedImportRow } from '../lib/import-rules'
 import type { ClubScope } from './club-clock'
+import { membershipImporter, type MembershipImporter } from './membership-importer'
 
 export type PersonRefView = { personId: string; name: string | null }
 
@@ -26,8 +29,16 @@ export type ImportView = {
   purgedAt: string | null
   fileAvailable: boolean
   pendingDecisions: number
+  /** A committed import with rows waiting for a membership, and the `groups` hook registered: a re-run can help. */
+  canCreateMemberships: boolean
   updatedAt: string
 }
+
+/**
+ * How a preview row's group would turn into a membership at the commit (#65): `group_found` (exactly one active group
+ * of the club has the name), `group_not_found`, `group_ambiguous`, or `groups_not_enabled` without the hook.
+ */
+export type MembershipPreview = 'group_found' | 'group_not_found' | 'group_ambiguous' | typeof GROUPS_NOT_ENABLED
 
 export type ImportRowView = {
   id: string
@@ -42,7 +53,11 @@ export type ImportRowView = {
   needsDecision: boolean
   groupName: string | null
   membershipStatus: string | null
+  /** Before the commit only: what the commit would do with the row's group; null without a group. */
+  membershipPreview: MembershipPreview | null
   committedAt: string | null
+  /** After the commit: the person the row's participant became (the record page link); null before or without one. */
+  participantPersonId: string | null
   /** The row's values; null once purged. */
   values: Omit<NormalizedImportRow, 'rowNo' | 'error'> | null
   updatedAt: string
@@ -72,7 +87,12 @@ async function pendingCounts(em: EntityManager, scope: ClubScope, importIds: rea
   return counts
 }
 
-function importView(record: PersonImport, names: Map<string, string>, pending: Map<string, number>): ImportView {
+function importView(
+  record: PersonImport,
+  names: Map<string, string>,
+  pending: Map<string, number>,
+  hook: boolean,
+): ImportView {
   return {
     id: record.id,
     status: record.status,
@@ -89,6 +109,7 @@ function importView(record: PersonImport, names: Map<string, string>, pending: M
     purgedAt: iso(record.purgedAt),
     fileAvailable: Boolean(record.fileAttachmentId),
     pendingDecisions: record.status === 'previewed' ? (pending.get(record.id) ?? 0) : 0,
+    canCreateMemberships: hook && record.status === 'committed' && (record.summary.membershipsPending ?? 0) > 0,
     updatedAt: record.updatedAt.toISOString(),
   }
 }
@@ -116,8 +137,9 @@ export async function listImports(
     scope,
     records.map((record) => record.id),
   )
+  const hook = membershipImporter(container) !== null
   return {
-    items: records.map((record) => importView(record, names, pending)),
+    items: records.map((record) => importView(record, names, pending, hook)),
     total,
     page: query.page,
     pageSize: query.pageSize,
@@ -130,7 +152,26 @@ export async function findImport(container: AwilixContainer, scope: ClubScope, i
   const record = await em.findOne(PersonImport, { id, ...scope, deletedAt: null })
   if (!record) return null
   const names = await personNames(em, scope, [record.createdByPersonId, record.committedByPersonId])
-  return importView(record, names, await pendingCounts(em, scope, [record.id]))
+  const hook = membershipImporter(container) !== null
+  return importView(record, names, await pendingCounts(em, scope, [record.id]), hook)
+}
+
+/** What the commit would do with each preview row's group, by group name (#65). */
+async function previewMemberships(
+  em: EntityManager,
+  scope: ClubScope,
+  importer: MembershipImporter | null,
+  names: readonly string[],
+): Promise<Map<string, MembershipPreview>> {
+  const unique = [...new Set(names)]
+  if (!importer) return new Map(unique.map((name) => [name, GROUPS_NOT_ENABLED]))
+  const resolutions = await importer.resolveGroups(em, scope, unique)
+  return new Map(
+    unique.map((name) => {
+      const status = resolutions.get(name)?.status ?? 'group_not_found'
+      return [name, status === 'resolved' ? 'group_found' : status]
+    }),
+  )
 }
 
 export async function listImportRows(
@@ -145,7 +186,11 @@ export async function listImportRows(
   },
 ): Promise<Paged<ImportRowView> | null> {
   const em = container.resolve<EntityManager>('em').fork()
-  const record = await em.findOne(PersonImport, { id: importId, ...scope, deletedAt: null }, { fields: ['id'] })
+  const record = await em.findOne(
+    PersonImport,
+    { id: importId, ...scope, deletedAt: null },
+    { fields: ['id', 'status'] },
+  )
   if (!record) return null
   const where: Record<string, unknown> = { ...scope, importId }
   if (query.classification) where.classification = query.classification
@@ -162,8 +207,21 @@ export async function listImportRows(
     scope,
     rows.flatMap((row) => [row.matchedPersonId, row.decisionPersonId]),
   )
+  const stored = new Map(
+    rows.map((row) => [row.id, row.raw ? (JSON.parse(row.raw) as NormalizedImportRow) : null] as const),
+  )
+  // Before the commit, a row that will be written shows what its group would become.
+  const previewGroup = (row: PersonImportRow): string | null =>
+    record.status === 'previewed' && row.classification !== 'error' ? (stored.get(row.id)?.group ?? null) : null
+  const previews = await previewMemberships(
+    em,
+    scope,
+    membershipImporter(container),
+    rows.flatMap((row) => previewGroup(row) ?? []),
+  )
   const items = rows.map((row): ImportRowView => {
-    const stored = row.raw ? (JSON.parse(row.raw) as NormalizedImportRow) : null
+    const values = stored.get(row.id) ?? null
+    const group = previewGroup(row)
     return {
       id: row.id,
       rowNo: row.rowNo,
@@ -177,8 +235,10 @@ export async function listImportRows(
       needsDecision: row.classification === 'review' && !row.decision && !row.committedAt,
       groupName: row.groupName ?? null,
       membershipStatus: row.membershipStatus ?? null,
+      membershipPreview: group ? (previews.get(group) ?? null) : null,
       committedAt: iso(row.committedAt),
-      values: stored ? { persons: stored.persons, group: stored.group } : null,
+      participantPersonId: row.committedAt ? (row.result?.participantPersonId ?? null) : null,
+      values: values ? { persons: values.persons, group: values.group } : null,
       updatedAt: row.updatedAt.toISOString(),
     }
   })

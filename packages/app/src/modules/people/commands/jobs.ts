@@ -13,7 +13,7 @@ import { isActiveAt, type ActingRole } from '@vereino/core'
 import { authorizeScoped } from '@/modules/foundation'
 import { Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
 import { bootstrapAdminSchema, importPurgeJobSchema, syncRolesJobSchema } from '../data/validators'
-import { importPurgeCutoff } from '../lib/import-rules'
+import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
 import {
@@ -191,9 +191,13 @@ export type PurgeImportsJobResult = OrganizationTarget & { now: string; counts: 
 
 type ImportScope = { tenantId: string; organizationId: string }
 
+/** A row whose membership still waits for the `groups` hook (`membership_status` holds the reason, #65). */
+const WAITING_ROW = { membershipStatus: { $in: [...MEMBERSHIP_WAITING_STATUSES] } }
+
 /**
- * Purges one import in its own transaction: deletes its staged rows (a row whose group waits for the `groups`
- * membership hook keeps only its ids and group label), releases its file from `attachments` and sets `purged_at`.
+ * Purges one import in its own transaction: deletes its staged rows (a row whose membership still waits for the
+ * `groups` hook keeps only its ids and group label; a processed one goes like any other row), releases its file from
+ * `attachments` and sets `purged_at`.
  * An import still open after the retention period is treated as abandoned and cancelled first. The file's bytes are
  * deleted after the transaction commits; a file already gone is fine. Returns null when another run purged it.
  */
@@ -214,8 +218,12 @@ async function purgeImport(
       record.status = 'cancelled'
       record.cancelledAt = now
     }
-    const rows = await em.nativeDelete(PersonImportRow, { importId, ...scope, membershipStatus: null })
-    await em.nativeUpdate(PersonImportRow, { importId, ...scope, membershipStatus: { $ne: null } }, { raw: null })
+    const rows = await em.nativeDelete(PersonImportRow, {
+      importId,
+      ...scope,
+      $or: [{ membershipStatus: null }, { membershipStatus: { $nin: [...MEMBERSHIP_WAITING_STATUSES] } }],
+    })
+    await em.nativeUpdate(PersonImportRow, { importId, ...scope, ...WAITING_ROW }, { raw: null })
     let cleanup: (() => Promise<void>) | null = null
     if (record.fileAttachmentId) {
       try {
@@ -248,9 +256,31 @@ async function purgeImport(
 }
 
 /**
+ * The rows of imports purged earlier that a re-run of the commit has processed since (#65): their 30 days are over, so
+ * they go now; the rows still waiting stay. Returns how many were deleted.
+ */
+async function purgeProcessedRows(ctx: CommandRuntimeContext, scope: ImportScope): Promise<number> {
+  return inWriteTransaction(ctx, 'people.imports.purge.processed', async (em: EntityManager) => {
+    const purged = await em.find(
+      PersonImport,
+      { ...scope, purgedAt: { $ne: null } },
+      { fields: ['id'], orderBy: { createdAt: 'asc' } },
+    )
+    if (purged.length === 0) return 0
+    return em.nativeDelete(PersonImportRow, {
+      ...scope,
+      importId: { $in: purged.map((record) => record.id) },
+      membershipStatus: { $nin: [...MEMBERSHIP_WAITING_STATUSES] },
+    })
+  })
+}
+
+/**
  * `people.imports.purge` — the daily `people:purge-import-rows` job (club spec *Events, Jobs* row, REQ-036): the staged
  * rows and the file of every import committed or cancelled 30 days ago (and of a preview left open as long) are
- * deleted. Idempotent (`purged_at`); one failing import is logged and retried by the next run. Not undoable.
+ * deleted, except the rows whose membership still waits for the `groups` hook; the rows of an import purged earlier
+ * that a re-run has processed since are deleted too. Idempotent (`purged_at`); one failing import is logged and
+ * retried by the next run. Not undoable.
  */
 const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImportsJobResult> = {
   id: 'people.imports.purge',
@@ -291,6 +321,13 @@ const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImpor
         logger.warn('Import purge failed for one import; the next run retries it', { ...scope, err: error })
         getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.import_purge.failed' })
       }
+    }
+    try {
+      counts.rows += await purgeProcessedRows(ctx, scope)
+    } catch (error: unknown) {
+      counts.failed += 1
+      logger.warn('Purging processed rows of purged imports failed; the next run retries it', { ...scope, err: error })
+      getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.import_purge.failed' })
     }
     logger.info('Import purge finished', { ...scope, ...counts })
     return { ...target, now: now.toISOString(), counts }

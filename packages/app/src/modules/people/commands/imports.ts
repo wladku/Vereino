@@ -5,8 +5,15 @@
 // against the club as it is then (so a person created meanwhile is matched, not duplicated) and runs the existing
 // `people.persons.create|update` and `people.guardianships.create` commands inside one transaction, so their
 // validation, encryption and audit entries apply and either the whole import is written or nothing; their events
-// and index updates are emitted after that transaction commits. A committed import cannot be committed again (409),
-// and the same file imported again finds every identified person and creates nothing.
+// and index updates are emitted after that transaction commits. The same file imported again finds every identified
+// person and creates nothing.
+//
+// Group memberships (D-026, #65): when `groups` registers the optional `groups.membershipImporter` hook, the commit
+// resolves each row's group name (exactly one live, active group of the club, trimmed and case-insensitive) and runs
+// `groups.memberships.create` for the row's participant in the same transaction; a name that matches no group or more
+// than one leaves the row waiting with that reason. A committed import with waiting rows can be committed again: the
+// re-run processes only those rows and writes nothing else. Without waiting rows, or without the hook, a committed
+// import answers 409 as before.
 //
 // `create` is not undoable (the bytes are not in the stored input; `cancel` is the compensating action), `commit`
 // is not undoable as a whole (each person and guardianship it wrote has its own undoable entry); `decide_row` and
@@ -36,7 +43,10 @@ import type { ImportFormat, ImportSheet } from '../lib/import-file'
 import { checkMapping, type ImportMapping } from '../lib/import-mapping'
 import {
   GROUPS_NOT_ENABLED,
+  MEMBERSHIP_WAITING_STATUSES,
   classificationCounts,
+  membershipStatusOf,
+  membershipSummary,
   normalizeImportRow,
   planImport,
   type ExistingDirectory,
@@ -47,6 +57,7 @@ import {
 } from '../lib/import-rules'
 import { clubToday } from '../services/club-clock'
 import { loadImportDirectory } from '../services/import-directory'
+import { membershipImporter, type ImportMembershipItem, type MembershipImporter } from '../services/membership-importer'
 import type { GuardianshipCommandResult } from './guardianships'
 import type { PersonCommandResult } from './persons'
 import { actorPersonId, guardianshipEvents, inWriteTransaction, personEvents, personIndexer } from './shared'
@@ -384,13 +395,28 @@ export type ImportCommitResult = ImportCommandResult & {
   updatedPersonIds: string[]
   matchedPersonIds: string[]
   guardianshipIds: string[]
+  /** The participant memberships the `groups` hook created (#65). */
+  membershipIds: string[]
+  /** True when the call re-ran the waiting memberships of an import committed earlier. */
+  membershipRerun: boolean
 }
 
 type WrittenEntities = {
   persons: Map<string, Person>
   created: Set<string>
   guardianships: GuardianshipCommandResult['guardianship'][]
+  membershipIds: string[]
+  /** The side effects the `groups` hook deferred, emitted after the commit. */
+  afterCommit: (() => Promise<void>)[]
 }
+
+const newWritten = (): WrittenEntities => ({
+  persons: new Map(),
+  created: new Set(),
+  guardianships: [],
+  membershipIds: [],
+  afterCommit: [],
+})
 
 /**
  * The nested command context: the commit's transaction, no request (its lock header is the import's), no events yet.
@@ -500,11 +526,125 @@ export async function planStoredImport(
   return { plans: planImport(normalized, directory, decisions, options), directory }
 }
 
+/** A committed row whose group label still needs its participant's membership. */
+type MembershipCandidate = { row: PersonImportRow; participantPersonId: string | null; groupName: string }
+
+/**
+ * Settles the membership part of each candidate row (D-026, #65). Without the `groups` hook the row waits with
+ * `groups_not_enabled` (#28). With it, the group name is resolved (a name matching no active group of the club, or
+ * more than one, leaves the row waiting with that reason; no group is ever created) and the participant's membership,
+ * open-ended from `today` (the commit's day in the club zone), is ensured through the hook inside the commit's
+ * transaction; a membership the participant already has counts as done. The hook's events wait in `written`.
+ */
+async function settleMemberships(
+  em: EntityManager,
+  nested: CommandRuntimeContext,
+  importer: MembershipImporter | null,
+  scope: ClubScope,
+  today: string,
+  candidates: readonly MembershipCandidate[],
+  written: WrittenEntities,
+): Promise<void> {
+  if (!importer) {
+    for (const candidate of candidates) candidate.row.membershipStatus = GROUPS_NOT_ENABLED
+    return
+  }
+  if (candidates.length === 0) return
+  const resolutions = await importer.resolveGroups(em, scope, [
+    ...new Set(candidates.map((candidate) => candidate.groupName)),
+  ])
+  const items: ImportMembershipItem[] = []
+  const itemRows: PersonImportRow[] = []
+  for (const candidate of candidates) {
+    const resolution = resolutions.get(candidate.groupName) ?? { status: 'group_not_found' }
+    if (resolution.status !== 'resolved') {
+      candidate.row.membershipStatus = membershipStatusOf(resolution.status)
+    } else if (!candidate.participantPersonId) {
+      candidate.row.membershipStatus = membershipStatusOf('person_missing')
+    } else {
+      items.push({
+        key: candidate.row.id,
+        personId: candidate.participantPersonId,
+        groupId: resolution.groupId,
+        validFrom: today,
+      })
+      itemRows.push(candidate.row)
+    }
+  }
+  if (items.length === 0) return
+  const run = await importer.ensureParticipantMemberships(nested, scope, items)
+  for (const row of itemRows) {
+    const outcome = run.outcomes.get(row.id) ?? { status: 'group_not_found' }
+    row.membershipStatus = membershipStatusOf(outcome.status)
+    if (outcome.status === 'created' || outcome.status === 'existed') {
+      if (row.result) row.result = { ...row.result, membershipId: outcome.membershipId }
+      if (outcome.status === 'created') written.membershipIds.push(outcome.membershipId)
+    }
+  }
+  written.afterCommit.push(() => run.emitSideEffects())
+}
+
+/**
+ * The re-run of a committed import (#65): only its rows still waiting for a membership are settled again, through the
+ * hook; nothing else is written. Without such rows the import answers 409 `import_already_committed`, as before.
+ */
+async function rerunMemberships(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  record: PersonImport,
+  actingRole: ActingRole,
+  importer: MembershipImporter,
+  written: WrittenEntities,
+): Promise<ImportCommitResult> {
+  const scope = { tenantId: record.tenantId, organizationId: record.organizationId }
+  const rows = await findWithDecryption(
+    em,
+    PersonImportRow,
+    {
+      importId: record.id,
+      ...scope,
+      committedAt: { $ne: null },
+      membershipStatus: { $in: [...MEMBERSHIP_WAITING_STATUSES] },
+    },
+    { orderBy: { rowNo: 'asc' } },
+    scope,
+  )
+  if (rows.length === 0) return peopleErrors.throw('import_already_committed')
+  const today = await clubToday(ctx.container, scope)
+  const candidates = rows.map((row) => ({
+    row,
+    participantPersonId: row.result?.participantPersonId ?? null,
+    groupName: row.groupName ?? '',
+  }))
+  await settleMemberships(em, nestedContext(ctx, em), importer, scope, today, candidates, written)
+  const now = new Date()
+  for (const row of rows) row.updatedAt = now
+  record.summary = {
+    ...record.summary,
+    ...membershipSummary(
+      record.summary,
+      rows.map((row) => row.membershipStatus),
+    ),
+  }
+  record.updatedAt = now
+  await em.flush()
+  return {
+    record,
+    actingRole,
+    createdPersonIds: [],
+    updatedPersonIds: [],
+    matchedPersonIds: [],
+    guardianshipIds: [],
+    membershipIds: written.membershipIds,
+    membershipRerun: true,
+  }
+}
+
 const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitResult> = {
   id: 'people.imports.commit',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    const written: WrittenEntities = { persons: new Map(), created: new Set(), guardianships: [] }
+    const written = newWritten()
     const result = await inWriteTransaction(ctx, 'people.imports.commit', async (em) => {
       const authorized = await authorizeScoped(
         {
@@ -519,6 +659,10 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         em,
       )
       const record = authorized.entity as PersonImport
+      const importer = membershipImporter(ctx.container)
+      if (record.status === 'committed' && importer) {
+        return rerunMemberships(em, ctx, record, authorized.actingRole, importer, written)
+      }
       await assertOpen(record)
       const committedBy = actorPersonId(authorized.scope)
       if (!committedBy) return foundationErrors.throw('scope_denied')
@@ -542,7 +686,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
       const matched = new Set<string>()
       const committedAt = new Date()
       let skipped = 0
-      let membershipsPending = 0
+      const candidates: MembershipCandidate[] = []
       for (const plan of plans) {
         const row = byRowNo.get(plan.rowNo) as PersonImportRow
         row.classification = plan.classification
@@ -556,17 +700,22 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         row.result = rowResult
         row.committedAt = committedAt
         row.groupName = plan.group
-        // No membership is created here: the `groups` hook completes these rows later (D-026).
-        row.membershipStatus = plan.group ? GROUPS_NOT_ENABLED : null
-        if (plan.group) membershipsPending += 1
+        row.membershipStatus = null
+        if (plan.group) {
+          candidates.push({ row, participantPersonId: rowResult.participantPersonId, groupName: plan.group })
+        }
       }
+      await settleMemberships(em, nested, importer, scope, today, candidates, written)
       const summary: ImportSummary = {
         ...classificationCounts(plans),
         created: written.created.size,
         updated: [...written.persons.keys()].filter((id) => !written.created.has(id)).length,
         linked: written.guardianships.length,
         skipped,
-        membershipsPending,
+        ...membershipSummary(
+          {},
+          candidates.map((candidate) => candidate.row.membershipStatus),
+        ),
       }
       record.status = 'committed'
       record.committedAt = committedAt
@@ -581,6 +730,8 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         updatedPersonIds: [...written.persons.keys()].filter((id) => !written.created.has(id)),
         matchedPersonIds: [...matched],
         guardianshipIds: written.guardianships.map((row) => row.id),
+        membershipIds: written.membershipIds,
+        membershipRerun: false,
       }
     })
     // After the commit: the events and index updates the nested commands deferred, then the import's own event.
@@ -604,17 +755,35 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         events: guardianshipEvents,
       })
     }
-    const scope = { tenantId: result.record.tenantId, organizationId: result.record.organizationId }
-    await emitPeopleEvent('people.import.committed', { id: result.record.id, ...scope }, { persistent: true, ...scope })
+    for (const emit of written.afterCommit) await emit()
+    // A re-run of the memberships is not a second commit of the import.
+    if (!result.membershipRerun) {
+      const scope = { tenantId: result.record.tenantId, organizationId: result.record.organizationId }
+      await emitPeopleEvent(
+        'people.import.committed',
+        { id: result.record.id, ...scope },
+        { persistent: true, ...scope },
+      )
+    }
     return result
   },
   buildLog: ({ result }) =>
-    importLog(result, 'people.audit.imports.commit', 'Commit a people import', {
-      createdPersonIds: result.createdPersonIds,
-      updatedPersonIds: result.updatedPersonIds,
-      matchedPersonIds: result.matchedPersonIds,
-      guardianshipIds: result.guardianshipIds,
-    }),
+    result.membershipRerun
+      ? importLog(
+          result,
+          'people.audit.imports.create_memberships',
+          'Create the group memberships of a people import',
+          {
+            membershipIds: result.membershipIds,
+          },
+        )
+      : importLog(result, 'people.audit.imports.commit', 'Commit a people import', {
+          createdPersonIds: result.createdPersonIds,
+          updatedPersonIds: result.updatedPersonIds,
+          matchedPersonIds: result.matchedPersonIds,
+          guardianshipIds: result.guardianshipIds,
+          membershipIds: result.membershipIds,
+        }),
 }
 
 // --- cancel ------------------------------------------------------------------------------------------------------

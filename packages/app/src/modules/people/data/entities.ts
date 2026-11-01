@@ -253,15 +253,20 @@ export type ImportSummary = {
   updated?: number
   linked?: number
   skipped?: number
+  /** Rows whose membership still waits for the `groups` hook (a waiting reason in `membership_status`). */
   membershipsPending?: number
+  /** Participant memberships the `groups` hook created, over the commit and its re-runs (#65). */
+  membershipsCreated?: number
+  /** Rows whose participant already had the membership (#65). */
+  membershipsExisting?: number
 }
 
 /**
  * A staged row of an import (club spec → `people_import_rows`): its classification, the administrator's decision
  * and the problem's column (never the cell value). `raw` holds the row's normalized values as encrypted JSON text
  * (names, PESEL, contacts; the platform decrypts fields to strings, so the column is `text`, not `jsonb`).
- * `group_name` and `membership_status` keep a committed row's group for the `groups` membership hook (D-026): the
- * purge job clears such a row's `raw` but keeps the row until the hook picks it up.
+ * `group_name` and `membership_status` keep a committed row's group for the `groups` membership hook (D-026, #65): the
+ * purge job clears a waiting row's `raw` but keeps the row until the hook has processed it.
  */
 @Entity({ tableName: 'people_import_rows' })
 @Unique({ name: 'people_import_rows_org_import_row_unique', properties: ['organizationId', 'importId', 'rowNo'] })
@@ -325,7 +330,11 @@ export class PersonImportRow extends ScopedEntityBase {
   @Property({ name: 'group_name', type: 'text', nullable: true })
   groupName?: string | null
 
-  /** `groups_not_enabled` while the row's membership waits for the `groups` hook; null otherwise. */
+  /**
+   * The membership part of a committed row with a group (D-026, #65): while it waits, the reason —
+   * `groups_not_enabled`, `group_not_found`, `group_ambiguous`; once done, `membership_created`, `membership_existed`
+   * or `participant_missing` (`lib/import-rules.ts`). Null for a row without a group.
+   */
   @Property({ name: 'membership_status', type: 'text', nullable: true })
   membershipStatus?: string | null
 
@@ -344,4 +353,6 @@ export type ImportRowResult = {
   createdPersonIds: string[]
   updatedPersonIds: string[]
   guardianshipIds: string[]
+  /** The participant membership the `groups` hook created or found for the row (#65). */
+  membershipId?: string | null
 }

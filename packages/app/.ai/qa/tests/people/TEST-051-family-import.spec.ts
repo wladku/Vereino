@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { actionLogs, calendarDate, call, createClub, createPerson, getPerson } from '../_fixtures/club'
+import { create as createStructure } from '../_fixtures/club-structure'
+import { createGroup, roster } from '../_fixtures/groups'
 import {
   PESEL_EXISTING_CHILD,
   PESEL_NEW_CHILD,
@@ -31,7 +33,9 @@ import { actionLogEntries, createGuardianship, guardianships, persons } from '..
 // waits for a decision (undoable); the commit creates the persons and guardianships once, updates the surname and
 // records who ran it; the same file imported again creates nothing; the file sits in the private attachments
 // partition, the staged rows are ciphertext, and both are purged 30 days after the commit. The same sheet as an XLSX
-// built in the test classifies the same way.
+// built in the test classifies the same way. Membership part (phase 2, D-026, #65): with `groups` enabled the row's
+// group "Orliki U8" matches no group of the club, so the row waits with `group_not_found` through the purge; once the
+// group exists, re-running the commit creates the participant's membership exactly once.
 test.describe.configure({ timeout: 300_000 })
 
 const EXPECTED_PREVIEW: [number, string, string | null][] = [
@@ -194,20 +198,26 @@ test('TEST-051 CSV import: preview, review queue with undo, commit once, re-impo
     // Zofia keeps her one guardianship with Maria (matched, not linked again).
     const zofiaGuardians = await guardianships(request, token, `wardPersonId=${family.childId}`)
     expect(zofiaGuardians.items.map((item) => item.guardianPersonId)).toEqual([family.motherId])
-    // The group stays on the row for the `groups` hook (D-026); no membership is created.
-    expect(row(rows, 2)).toMatchObject({ groupName: 'Orliki U8', membershipStatus: 'groups_not_enabled' })
+    // The group stays on the row (D-026). `groups` registers its hook, but no group of the club is called "Orliki U8",
+    // so the row waits with that reason (#65; before the hook the reason was `groups_not_enabled`) and no membership
+    // is created.
+    expect(row(rows, 2)).toMatchObject({ groupName: 'Orliki U8', membershipStatus: 'group_not_found' })
     const memberships = await call<{ items?: unknown[] }>(request, 'GET', '/api/groups/memberships?pageSize=100', token)
     expect(memberships.status).toBe(200)
     expect(memberships.body?.items ?? []).toEqual([])
 
-    // Exactly once: a second commit is refused, and the audit log records who ran it and what it created.
-    const again = await importAction(request, token, preview.id, 'commit', committed.body?.updatedAt ?? null)
-    expect(again.status).toBe(409)
-    expect(again.body?.code).toBe('import_already_committed')
+    // The audit log records who ran it and what it created.
     const audit = await actionLogs(request, token, preview.id)
     const commitEntry = audit.find((entry) => entry.commandId === 'people.imports.commit')
     expect(commitEntry?.context).toMatchObject({ actingRole: 'club_admin' })
     expect((commitEntry?.context?.createdPersonIds as unknown[] | undefined) ?? []).toHaveLength(4)
+
+    // Exactly once: a second commit re-runs only the waiting membership (#65) — still no group, so nothing is written.
+    const again = await importAction(request, token, preview.id, 'commit', committed.body?.updatedAt ?? null)
+    expect(again.status, JSON.stringify(again.body)).toBe(200)
+    expect(again.body?.summary).toMatchObject({ created: 4, membershipsCreated: 0, membershipsPending: 1 })
+    expect(await personCount(request, token)).toBe(before + 4)
+    expect(row(await importRows(request, token, preview.id), 2).membershipStatus).toBe('group_not_found')
 
     // The same file again: everyone is found; the review row is matched to the person the first import created.
     const second = await previewImport(request, token, csvFile())
@@ -239,12 +249,39 @@ test('TEST-051 CSV import: preview, review queue with undo, commit once, re-impo
     const purge = purgeImports(club.tenant, new Date(committedAt + 31 * 86_400_000).toISOString())
     expect(purge.counts).toMatchObject({ imports: 2, files: 2, failed: 0 })
     expect(await rawImportFile(preview.id)).toBeUndefined()
-    expect(await rawImportRows(preview.id)).toEqual([{ row_no: 2, raw: null, membership_status: 'groups_not_enabled' }])
+    expect(await rawImportRows(preview.id)).toEqual([{ row_no: 2, raw: null, membership_status: 'group_not_found' }])
     const purged = (await getImport(request, token, preview.id)).body as ImportView
     expect(purged).toMatchObject({ status: 'committed', fileAvailable: false })
     expect(purged.purgedAt).toBeTruthy()
     // Idempotent.
     expect(purgeImports(club.tenant, new Date(committedAt + 32 * 86_400_000).toISOString()).counts?.imports).toBe(0)
+
+    // Phase 2 re-run (D-026, #65): the club creates "Orliki U8"; re-running the commit of the purged import creates
+    // Ola's participant membership from today, once; the second import's waiting row finds it already there.
+    const academy = await createStructure(request, token, 'sections', { name: 'Akademia piłkarska' })
+    const orliki = await createGroup(request, token, { sectionId: academy, name: 'Orliki U8', kind: 'team' })
+    const rerun = await importAction(request, token, preview.id, 'commit', purged.updatedAt)
+    expect(rerun.status, JSON.stringify(rerun.body)).toBe(200)
+    expect(rerun.body?.summary).toMatchObject({ membershipsCreated: 1, membershipsPending: 0 })
+    expect((await roster(request, token, orliki)).items).toMatchObject([
+      { personId: ola?.id, role: 'participant', validFrom: calendarDate(), validTo: null },
+    ])
+    expect((await importAction(request, token, preview.id, 'commit', rerun.body?.updatedAt ?? null)).body?.code).toBe(
+      'import_already_committed',
+    )
+    const secondPurged = (await getImport(request, token, second.id)).body as ImportView
+    const secondRerun = await importAction(request, token, second.id, 'commit', secondPurged.updatedAt)
+    expect(secondRerun.status, JSON.stringify(secondRerun.body)).toBe(200)
+    expect(secondRerun.body?.summary).toMatchObject({ membershipsCreated: 0, membershipsExisting: 1 })
+    expect((await roster(request, token, orliki)).items).toHaveLength(1)
+    expect(await personCount(request, token)).toBe(before + 4)
+    // The processed rows of the purged imports go with the next purge.
+    expect(purgeImports(club.tenant, new Date(committedAt + 33 * 86_400_000).toISOString()).counts).toMatchObject({
+      imports: 0,
+      rows: 2,
+    })
+    expect(await rawImportRows(preview.id)).toEqual([])
+    expect(await rawImportRows(second.id)).toEqual([])
   } finally {
     await club.cleanup()
   }
