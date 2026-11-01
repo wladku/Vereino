@@ -6,7 +6,9 @@ import {
   MEMBERSHIP_ROLES,
   disallowedTeamFields,
   firstOverlapping,
+  groupNameKey,
   isCoachingRole,
+  matchGroupNames,
   periodStatus,
   rosterOrder,
   seasonDatesInverted,
@@ -106,5 +108,35 @@ describe('groups error codes', () => {
       ['season_in_use', 409],
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`groups.errors.${entry.code}`)
+  })
+})
+
+describe('group names of the bulk import (#65)', () => {
+  it('compares names trimmed, case-insensitive and in one Unicode form', () => {
+    expect(groupNameKey('  Orliki U8 ')).toBe('orliki u8')
+    expect(groupNameKey('ŻAKI')).toBe('żaki')
+    // "Ż" as Z + combining dot above equals the precomposed letter.
+    expect(groupNameKey('Żaki')).toBe(groupNameKey('Żaki'))
+    expect(groupNameKey('Orliki  U8')).not.toBe(groupNameKey('Orliki U8'))
+  })
+
+  it('resolves one group, refuses none and more than one, and never guesses', () => {
+    const groups = [
+      { id: 'g-orliki', name: 'Orliki U8' },
+      { id: 'g-zaki-academy', name: 'Żaki' },
+      { id: 'g-zaki-pool', name: 'żaki ' },
+      { id: 'g-basen', name: 'Basen — początkujący' },
+    ]
+    const matches = matchGroupNames([' orliki u8', 'ŻAKI', 'Orliki', '', '   ', 'Basen — początkujący'], groups)
+    expect(Object.fromEntries(matches)).toEqual({
+      ' orliki u8': { status: 'resolved', groupId: 'g-orliki' },
+      ŻAKI: { status: 'group_ambiguous' },
+      Orliki: { status: 'group_not_found' },
+      '': { status: 'group_not_found' },
+      '   ': { status: 'group_not_found' },
+      'Basen — początkujący': { status: 'resolved', groupId: 'g-basen' },
+    })
+    expect(matchGroupNames(['Orliki U8'], []).get('Orliki U8')).toEqual({ status: 'group_not_found' })
+    expect(matchGroupNames([], groups).size).toBe(0)
   })
 })

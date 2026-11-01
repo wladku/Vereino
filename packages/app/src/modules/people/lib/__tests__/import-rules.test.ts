@@ -3,11 +3,16 @@ import type { ImportMapping } from '../import-mapping'
 import {
   GROUPS_NOT_ENABLED,
   IMPORT_RETENTION_DAYS,
+  MEMBERSHIP_DONE_STATUSES,
+  MEMBERSHIP_WAITING_STATUSES,
   classificationCounts,
   columnName,
   identityKeys,
   importPesel,
   importPurgeCutoff,
+  isMembershipWaiting,
+  membershipStatusOf,
+  membershipSummary,
   normalizeImportRow,
   parseImportDate,
   personPatch,
@@ -571,5 +576,42 @@ describe('classificationCounts and retention', () => {
     expect(IMPORT_RETENTION_DAYS).toBe(30)
     expect(importPurgeCutoff(new Date('2026-10-30T04:00:00.000Z')).toISOString()).toBe('2026-09-30T04:00:00.000Z')
     expect(GROUPS_NOT_ENABLED).toBe('groups_not_enabled')
+  })
+})
+
+describe('membership statuses (#65)', () => {
+  it('names the waiting reasons and the done states', () => {
+    expect(MEMBERSHIP_WAITING_STATUSES).toEqual(['groups_not_enabled', 'group_not_found', 'group_ambiguous'])
+    expect(MEMBERSHIP_DONE_STATUSES).toEqual(['membership_created', 'membership_existed', 'participant_missing'])
+  })
+
+  it('a row waits only with a waiting reason', () => {
+    for (const status of MEMBERSHIP_WAITING_STATUSES) expect(isMembershipWaiting(status)).toBe(true)
+    for (const status of MEMBERSHIP_DONE_STATUSES) expect(isMembershipWaiting(status)).toBe(false)
+    expect(isMembershipWaiting(null)).toBe(false)
+    expect(isMembershipWaiting(undefined)).toBe(false)
+    expect(isMembershipWaiting('something_else')).toBe(false)
+  })
+
+  it('maps every answer of the hook to a row status', () => {
+    expect(membershipStatusOf('created')).toBe('membership_created')
+    expect(membershipStatusOf('existed')).toBe('membership_existed')
+    expect(membershipStatusOf('person_missing')).toBe('participant_missing')
+    expect(membershipStatusOf('group_not_found')).toBe('group_not_found')
+    expect(membershipStatusOf('group_ambiguous')).toBe('group_ambiguous')
+  })
+
+  it('adds this run to the earlier counts and counts the rows still waiting', () => {
+    expect(
+      membershipSummary({}, ['membership_created', 'membership_existed', 'group_not_found', 'participant_missing']),
+    ).toEqual({ membershipsCreated: 1, membershipsExisting: 1, membershipsPending: 1 })
+    expect(
+      membershipSummary({ membershipsCreated: 2, membershipsExisting: 1, membershipsPending: 3 }, [
+        'membership_created',
+        'group_ambiguous',
+        'groups_not_enabled',
+      ]),
+    ).toEqual({ membershipsCreated: 3, membershipsExisting: 1, membershipsPending: 2 })
+    expect(membershipSummary({}, [])).toEqual({ membershipsCreated: 0, membershipsExisting: 0, membershipsPending: 0 })
   })
 })

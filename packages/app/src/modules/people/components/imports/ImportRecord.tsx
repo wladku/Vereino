@@ -2,9 +2,13 @@
 // `/backend/people/imports/[id]` (club spec UI table, REQ-036, DD-38; #28): one import — its status and counts, every
 // staged row with its classification (New / Matched / Review / Error, the problem's column but never its value), the
 // review queue where the administrator matches a row without an identifier to an existing person, creates it or
-// skips it, and the commit (disabled, with the reason, while a row waits for a decision) or the cancellation. Every
-// write sends the record's lock token; a conflict is surfaced with the shared banner.
+// skips it, and the commit (disabled, with the reason, while a row waits for a decision) or the cancellation. Each
+// row's group shows what becomes of it (#65): before the commit whether the name resolves to one group, after it the
+// membership created, already existing or waiting with its reason; a committed import with waiting rows offers
+// "Create memberships", which re-runs the commit for those rows only. Every write sends the record's lock token; a
+// conflict is surfaced with the shared banner.
 import * as React from 'react'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
@@ -27,6 +31,7 @@ import {
   STATUS_VARIANTS,
   codeOf,
   instantLabel,
+  membershipState,
   rowProblem,
   valuesName,
   type ImportDecisionAction,
@@ -38,14 +43,34 @@ import {
 const PAGE_SIZE = 50
 type Filter = 'all' | 'pending' | ImportRowRow['classification']
 type ImportLoad = { status: 'ok'; record: ImportRow } | { status: 'not_found' } | { status: 'denied' }
+/** The record actions; "create memberships" re-runs the commit of a committed import (#65). */
+type RecordAction = 'commit' | 'cancel' | 'createMemberships'
+const ACTION_PATHS: Record<RecordAction, 'commit' | 'cancel'> = {
+  commit: 'commit',
+  cancel: 'cancel',
+  createMemberships: 'commit',
+}
+const ACTION_FLASHES: Record<RecordAction, string> = {
+  commit: 'people.imports.flash.committed',
+  cancel: 'people.imports.flash.cancelled',
+  createMemberships: 'people.imports.flash.membershipsCreated',
+}
 
 function SummaryTiles({ record, t }: { record: ImportRow; t: Translate }) {
   const keys =
     record.status === 'committed'
-      ? (['created', 'updated', 'linked', 'skipped', 'membershipsPending'] as const)
+      ? ([
+          'created',
+          'updated',
+          'linked',
+          'skipped',
+          'membershipsCreated',
+          'membershipsExisting',
+          'membershipsPending',
+        ] as const)
       : (['new', 'matched', 'review', 'error'] as const)
   return (
-    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="people-import-summary">
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-testid="people-import-summary">
       {keys.map((key) => (
         <div
           key={key}
@@ -162,9 +187,22 @@ export function ImportRecord({ id }: { id: string }) {
         meta: { priority: 1 },
         cell: ({ row }) => {
           const participant = row.original.values?.persons.participant
+          const name = valuesName(participant) || t('people.common.empty')
+          // After the commit the name links to the person's record; it also gives a committed table, which has no
+          // decision buttons, something to focus in its scroll region at 375 px (axe `scrollable-region-focusable`).
           return (
             <span className="flex flex-col">
-              <span>{valuesName(participant) || t('people.common.empty')}</span>
+              {row.original.participantPersonId ? (
+                <Link
+                  href={`/backend/people/persons/${row.original.participantPersonId}`}
+                  className="underline underline-offset-2"
+                  data-testid="people-import-row-person"
+                >
+                  {name}
+                </Link>
+              ) : (
+                <span>{name}</span>
+              )}
               {participant?.birthDate ? (
                 <span className="text-muted-foreground text-xs">{participant.birthDate}</span>
               ) : null}
@@ -191,7 +229,17 @@ export function ImportRecord({ id }: { id: string }) {
         cell: ({ row }) => {
           const group = row.original.values?.group ?? row.original.groupName
           if (!group) return t('people.common.empty')
-          return row.original.membershipStatus ? t('people.imports.rows.groupPending', { group }) : group
+          const state = membershipState(row.original)
+          return (
+            <span className="flex flex-col items-start gap-1">
+              <span className="break-words">{group}</span>
+              {state ? (
+                <span data-testid={`people-import-row-${String(row.original.rowNo)}-membership`}>
+                  <StatusBadge variant={state.variant}>{t(`people.imports.membership.${state.key}`)}</StatusBadge>
+                </span>
+              ) : null}
+            </span>
+          )
         },
       },
       {
@@ -275,7 +323,7 @@ export function ImportRecord({ id }: { id: string }) {
   if (load.status === 'denied') return <AccessDeniedMessage label={t('people.imports.errors.denied')} />
   const current = load.record
 
-  const runAction = async (action: 'commit' | 'cancel') => {
+  const runAction = async (action: RecordAction) => {
     const confirmed = await confirm({
       title: t(`people.imports.confirm.${action}.title`),
       text: t(`people.imports.confirm.${action}.text`),
@@ -288,12 +336,12 @@ export function ImportRecord({ id }: { id: string }) {
     try {
       await withScopedApiRequestHeaders(buildOptimisticLockHeader(current.updatedAt), () =>
         apiCallOrThrow(
-          `/api/people/imports/${encodeURIComponent(current.id)}/${action}`,
+          `/api/people/imports/${encodeURIComponent(current.id)}/${ACTION_PATHS[action]}`,
           { method: 'POST' },
           { errorMessage: t(`people.imports.errors.${action}`) },
         ),
       )
-      flash(t(`people.imports.flash.${action === 'commit' ? 'committed' : 'cancelled'}`), 'success')
+      flash(t(ACTION_FLASHES[action]), 'success')
     } catch (error: unknown) {
       if (!surfaceRecordConflict(error, t, { onRefresh: () => void refresh() })) {
         const code = codeOf(error)
@@ -352,6 +400,23 @@ export function ImportRecord({ id }: { id: string }) {
                 {t('people.imports.record.pending', { count: current.pendingDecisions })}
               </p>
             ) : null}
+          </div>
+        ) : null}
+        {current.status === 'committed' && (current.summary.membershipsPending ?? 0) > 0 ? (
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            {current.canCreateMemberships ? (
+              <Button
+                type="button"
+                disabled={busy}
+                data-testid="people-import-create-memberships"
+                onClick={() => void runAction('createMemberships')}
+              >
+                {t('people.imports.actions.createMemberships')}
+              </Button>
+            ) : null}
+            <p className="text-muted-foreground text-sm" data-testid="people-import-memberships-waiting">
+              {t('people.imports.record.membershipsWaiting', { count: current.summary.membershipsPending ?? 0 })}
+            </p>
           </div>
         ) : null}
       </header>

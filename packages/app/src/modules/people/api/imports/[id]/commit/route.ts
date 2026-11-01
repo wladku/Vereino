@@ -1,8 +1,10 @@
 // `POST /api/people/imports/{id}/commit` — `people.imports.commit` (#28, club spec API table): writes the import's
-// persons and guardianships through the `people` commands in one transaction and records who committed it; the rows
-// that carry a group keep it for the `groups` membership hook (`groups_not_enabled`, D-026). Send the import's lock
-// token in the platform optimistic-lock header. A second commit answers 409 `import_already_committed`; a `review`
-// row without a decision 422 `import_review_pending` (with `rowNos`).
+// persons and guardianships through the `people` commands in one transaction and records who committed it. A row with a
+// group gets its participant's membership through the optional `groups.membershipImporter` hook in the same
+// transaction, or waits with its reason (`groups_not_enabled`, `group_not_found`, `group_ambiguous`; D-026, #65). Send
+// the import's lock token in the platform optimistic-lock header. On a committed import with waiting rows and the hook
+// registered, the call re-runs only those rows' memberships and writes nothing else; otherwise a second commit answers
+// 409 `import_already_committed`. A `review` row without a decision answers 422 `import_review_pending` (`rowNos`).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -37,7 +39,7 @@ export const openApi: OpenApiRouteDoc = {
   summary: 'Commit a people import',
   methods: {
     POST: {
-      summary: 'Commit the import',
+      summary: 'Commit the import, or re-run its waiting group memberships',
       responses: [{ status: 200, description: 'The committed import with its summary', schema: importViewSchema }],
       errors: [
         { status: 400, description: '`lock_token_required` (no import lock token in the header)', schema: errorSchema },
@@ -45,7 +47,8 @@ export const openApi: OpenApiRouteDoc = {
         { status: 404, description: 'Not found', schema: errorSchema },
         {
           status: 409,
-          description: '`optimistic_lock_conflict`, `import_already_committed`, `import_cancelled`',
+          description:
+            '`optimistic_lock_conflict`, `import_already_committed` (committed, and no row waits for a membership the hook can take), `import_cancelled`',
           schema: errorSchema,
         },
         { status: 422, description: '`import_review_pending` (`rowNos`)', schema: errorSchema },
