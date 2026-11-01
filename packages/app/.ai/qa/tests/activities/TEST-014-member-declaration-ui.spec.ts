@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
-import { addDays, weekdayOf } from '../_fixtures/activities'
+import { addDays, showCalendarWeekOf, weekdayOf } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { declare, familyFor, oneOff, personOf, readCalendarItem } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
@@ -119,12 +119,15 @@ test('TEST-014 a guardian on a phone: Today → session → report absence in th
     await expect(elder.getByTestId('club-session-declaration')).toHaveText(ATTENDING)
     await expect(elder.getByTestId('club-session-decision')).toHaveCount(0)
 
-    // The calendar: both sections, light and dark, then the error state with "Try again".
+    // The calendar: both sections, light and dark, then the error state with "Try again". It opens on this week, and
+    // the sessions are from tomorrow on, which is next week on a Sunday; a reload returns it to this week.
     await page.goto('/club/calendar')
+    await showCalendarWeekOf(page, tomorrow)
     await expect(page.getByTestId('calendar-item').first()).toBeVisible()
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
       await page.reload()
+      await showCalendarWeekOf(page, tomorrow)
       await expect(page.getByTestId('calendar-item').first()).toBeVisible()
       const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (found.length > 0) violations[`/club/calendar (${colorScheme})`] = found
@@ -135,6 +138,7 @@ test('TEST-014 a guardian on a phone: Today → session → report absence in th
     await expect(page.getByText(/calendar could not be loaded|Nie udało się wczytać kalendarza/)).toBeVisible()
     await page.unroute('**/api/activities/calendar?*')
     await page.getByRole('button', { name: /Try again|Spróbuj ponownie/ }).click()
+    await showCalendarWeekOf(page, tomorrow)
     await expect(page.getByTestId('calendar-item').first()).toBeVisible()
     expect(violations).toEqual({})
   } finally {

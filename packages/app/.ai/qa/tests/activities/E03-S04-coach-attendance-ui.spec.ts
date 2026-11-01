@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
-import { addDays, weekdayOf } from '../_fixtures/activities'
+import { addDays, showCalendarWeekOf, weekdayOf } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import {
   declare,
@@ -89,6 +89,8 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.goto('/club/calendar')
     await page.getByLabel(/^(Show|Pokaż)$/).click()
     await page.getByRole('option', { name: /As coach|Jako trener/ }).click()
+    // `startNow` moves the times only: the session keeps tomorrow's date, which is next week on a Sunday.
+    await showCalendarWeekOf(page, tomorrow)
     const item = page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })
     await expect(item).toBeVisible()
     await item.getByRole('link').first().click()
