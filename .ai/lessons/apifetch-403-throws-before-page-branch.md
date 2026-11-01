@@ -13,4 +13,6 @@ topics: ["api-client", "forbidden", "error-states", "journeys"]
 
 **Rule**: A page that renders its own forbidden state either sends the request with the forbidden redirect disabled or catches `ForbiddenError`; a test of a forbidden case asserts the page's forbidden message, not only the API status, so a dead branch is caught.
 
+In Vereino the read passes `OWN_FORBIDDEN_STATE` from the module's `components/client-helpers.ts` (fixed for the member and backend record pages on 2026-11-01).
+
 **Applies to**: member and backend pages that show a page-specific 403 state, and the integration tests of those pages.

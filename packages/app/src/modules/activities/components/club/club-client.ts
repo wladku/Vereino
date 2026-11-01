@@ -7,6 +7,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import type { CalendarBadgeTone, CalendarItem, CalendarItemAction, CalendarItemBadge } from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -185,6 +186,7 @@ export function useMemberSession(id: string, as: 'self' | 'guardian', personId: 
       if (personId) params.set('personId', personId)
       const call = await apiCall<CalendarEntry & { timeZone: string }>(
         `/api/activities/calendar/${encodeURIComponent(id)}?${params.toString()}`,
+        OWN_FORBIDDEN_STATE,
       )
       if (call.status === 404 || call.status === 403) return { status: 'not_found' }
       if (!call.ok || !call.result) throw new CalendarLoadError(String(call.status))
@@ -239,7 +241,7 @@ export function useAttendanceList(id: string) {
   return useQuery({
     queryKey: [ATTENDANCE_LIST_QUERY_KEY, id],
     queryFn: async (): Promise<AttendanceListLoad> => {
-      const call = await apiCall<AttendanceList>(attendanceUrl(id))
+      const call = await apiCall<AttendanceList>(attendanceUrl(id), OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'forbidden' }
       if (!call.ok || !call.result) throw new AttendanceListLoadError(String(call.status))
@@ -301,6 +303,7 @@ export function useGuardianContacts(id: string, enabled: boolean) {
     queryFn: async (): Promise<GuardianContactsLoad> => {
       const call = await apiCall<{ items: GuardianContact[] }>(
         `/api/activities/occurrences/${encodeURIComponent(id)}/guardian-contacts`,
+        OWN_FORBIDDEN_STATE,
       )
       if (call.status === 403) return { status: 'forbidden' }
       if (!call.ok || !call.result) throw new GuardianContactsLoadError(String(call.status))
