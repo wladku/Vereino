@@ -6,6 +6,13 @@ import { periodStatus, type PeriodStatus } from '../lib/groups-rules'
 
 export type Translate = ReturnType<typeof useT>
 
+/**
+ * The request init for a read whose page renders its own 403 state ("denied", "not your session"): without it the
+ * platform `apiFetch` throws `ForbiddenError` on every 403 before the caller's `status === 403` branch runs (lesson
+ * `apifetch-403-throws-before-page-branch`).
+ */
+export const OWN_FORBIDDEN_STATE: RequestInit = { headers: { 'x-om-forbidden-redirect': '0' } }
+
 /** The column definitions `DataTable` takes for rows of type `T`. */
 export type TableColumns<T extends object> = DataTableProps<T>['columns']
 

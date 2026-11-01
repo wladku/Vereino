@@ -732,15 +732,14 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
         page.goto(attendanceUrl),
       ])
       expect(read.status()).toBe(403)
-      // The page means to show "This is not your session" for a 403 (`useAttendanceList` in
-      // `components/club/club-client.ts`), but the platform's `apiFetch` (`@open-mercato/ui` `backend/utils/api.ts`)
-      // throws `ForbiddenError` on every 403 before that branch runs, so the installed page shows its load error with
-      // "Try again" instead. Either way no list and no child is shown.
+      // The page shows its own forbidden state, not the load error: the read opts out of the platform's 403 throw
+      // (`OWN_FORBIDDEN_STATE`; lesson `apifetch-403-throws-before-page-branch`).
+      await expect(page.getByTestId('club-attendance-missing')).toContainText(
+        /This is not your session|To nie są Twoje zajęcia/,
+      )
       await expect(
-        page
-          .getByTestId('club-attendance-missing')
-          .or(page.getByText(/attendance list could not be loaded|Nie udało się wczytać listy obecności/)),
-      ).toBeVisible()
+        page.getByText(/attendance list could not be loaded|Nie udało się wczytać listy obecności/),
+      ).toHaveCount(0)
       await expect(page.getByText('Jaś Nowak')).toHaveCount(0)
       await expect(page.getByTestId('club-attendance-row')).toHaveCount(0)
       const refused = await readAttendanceList(request, bartekToken, tuesdaySessionId)
