@@ -45,6 +45,61 @@ export type ImportReviewReason = 'identifier_missing'
 /** A group label kept for the `groups` membership hook (D-026): no membership is created by the import itself. */
 export const GROUPS_NOT_ENABLED = 'groups_not_enabled'
 
+/**
+ * `membership_status` of a committed row with a group (D-026, #65). A waiting value is also the reason the row waits:
+ * `groups_not_enabled` (no `groups.membershipImporter` hook), `group_not_found` (no active group of the club has the
+ * name), `group_ambiguous` (more than one has it). A waiting row outlives the purge with its ids and group label and
+ * is picked up by a re-run of the commit. A done value ends the row's membership part: `membership_created`,
+ * `membership_existed` (the participant already had an open participant membership of the group) or
+ * `participant_missing` (the participant was deleted before the hook ran: nothing to attach).
+ */
+export const MEMBERSHIP_WAITING_STATUSES = [GROUPS_NOT_ENABLED, 'group_not_found', 'group_ambiguous'] as const
+export type MembershipWaitingStatus = (typeof MEMBERSHIP_WAITING_STATUSES)[number]
+export const MEMBERSHIP_DONE_STATUSES = ['membership_created', 'membership_existed', 'participant_missing'] as const
+export type MembershipDoneStatus = (typeof MEMBERSHIP_DONE_STATUSES)[number]
+export type MembershipStatus = MembershipWaitingStatus | MembershipDoneStatus
+
+/** Whether a row's membership still waits for the hook (null = the row has no group). */
+export function isMembershipWaiting(status: string | null | undefined): boolean {
+  return (MEMBERSHIP_WAITING_STATUSES as readonly (string | null | undefined)[]).includes(status)
+}
+
+/** What the hook answered for one row: the group's resolution, or the outcome of the membership write. */
+export type MembershipHookAnswer = 'group_not_found' | 'group_ambiguous' | 'created' | 'existed' | 'person_missing'
+
+/** The row's `membership_status` for the hook's answer. */
+export function membershipStatusOf(answer: MembershipHookAnswer): MembershipStatus {
+  switch (answer) {
+    case 'created':
+      return 'membership_created'
+    case 'existed':
+      return 'membership_existed'
+    case 'person_missing':
+      return 'participant_missing'
+    case 'group_not_found':
+    case 'group_ambiguous':
+      return answer
+  }
+}
+
+export type MembershipSummary = { membershipsCreated: number; membershipsExisting: number; membershipsPending: number }
+
+/**
+ * The import's membership counts after a run: the earlier runs' created and existing counts plus this run's, and the
+ * rows still waiting. Every waiting row of the import takes part in each run, so this run's waiting count is the total.
+ */
+export function membershipSummary(
+  previous: Partial<MembershipSummary>,
+  statuses: readonly (string | null | undefined)[],
+): MembershipSummary {
+  const count = (status: MembershipStatus) => statuses.filter((value) => value === status).length
+  return {
+    membershipsCreated: (previous.membershipsCreated ?? 0) + count('membership_created'),
+    membershipsExisting: (previous.membershipsExisting ?? 0) + count('membership_existed'),
+    membershipsPending: statuses.filter(isMembershipWaiting).length,
+  }
+}
+
 const MAX_LENGTH: Record<ImportPersonField | 'group', number> = {
   firstName: 200,
   lastName: 200,

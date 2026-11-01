@@ -54,8 +54,12 @@ const summarySchema = z
     linked: z.number().optional(),
     skipped: z.number().optional(),
     membershipsPending: z.number().optional(),
+    membershipsCreated: z.number().optional(),
+    membershipsExisting: z.number().optional(),
   })
-  .describe('Counts per classification; after the commit also what it created, updated, linked and skipped')
+  .describe(
+    'Counts per classification; after the commit also what it created, updated, linked and skipped, and the group memberships created, already existing and still waiting',
+  )
 
 export const importViewSchema = z.object({
   id: z.uuid(),
@@ -73,6 +77,9 @@ export const importViewSchema = z.object({
   purgedAt: z.string().nullable(),
   fileAvailable: z.boolean(),
   pendingDecisions: z.number(),
+  canCreateMemberships: z
+    .boolean()
+    .describe('Committed, with rows waiting for a membership, and `groups` registers its hook: a commit re-run helps'),
   updatedAt: z.string(),
 })
 
@@ -88,8 +95,21 @@ export const importRowViewSchema = z.object({
   reviewReason: z.string().nullable(),
   needsDecision: z.boolean(),
   groupName: z.string().nullable(),
-  membershipStatus: z.string().nullable().describe('`groups_not_enabled` while the membership waits (D-026)'),
+  membershipStatus: z
+    .string()
+    .nullable()
+    .describe(
+      'After the commit, for a row with a group (D-026): waiting with the reason `groups_not_enabled`, `group_not_found` or `group_ambiguous`; done as `membership_created`, `membership_existed` or `participant_missing`',
+    ),
+  membershipPreview: z
+    .enum(['group_found', 'group_not_found', 'group_ambiguous', 'groups_not_enabled'])
+    .nullable()
+    .describe('Before the commit, for a row with a group: what the commit would do with it'),
   committedAt: z.string().nullable(),
+  participantPersonId: z
+    .uuid()
+    .nullable()
+    .describe('After the commit: the person the row participant became; null before the commit or without one'),
   values: z
     .object({
       persons: z.object({

@@ -77,3 +77,38 @@ export function rosterOrder<T extends Validity>(rows: readonly T[], today: Calen
       b.validFrom.localeCompare(a.validFrom),
   )
 }
+
+/**
+ * The comparison key of a group name in the bulk import's group column (#65, club spec REQ-036, D-026): Unicode NFC,
+ * trimmed, lower case. "Orliki U8", " orliki u8 " and "ORLIKI U8" are one name; inner spaces and punctuation count.
+ */
+export function groupNameKey(name: string): string {
+  return name.normalize('NFC').trim().toLowerCase()
+}
+
+export type NamedGroup = { id: string; name: string }
+
+/** The group a name of the import names: exactly one, none or more than one (never a guess). */
+export type GroupNameMatch =
+  { status: 'resolved'; groupId: string } | { status: 'group_not_found' } | { status: 'group_ambiguous' }
+
+/**
+ * Resolves each name against the club's groups (the caller passes the live, active groups of one club): one group
+ * with the same `groupNameKey` → `resolved`; none, or a blank name → `group_not_found`; several (e.g. a name shared
+ * by groups of two sections) → `group_ambiguous`. A group is never created from a name. Keyed by the names as given.
+ */
+export function matchGroupNames(names: readonly string[], groups: readonly NamedGroup[]): Map<string, GroupNameMatch> {
+  const byKey = new Map<string, string[]>()
+  for (const group of groups) {
+    const key = groupNameKey(group.name)
+    byKey.set(key, [...(byKey.get(key) ?? []), group.id])
+  }
+  const matches = new Map<string, GroupNameMatch>()
+  for (const name of names) {
+    const key = groupNameKey(name)
+    const ids = key.length > 0 ? (byKey.get(key) ?? []) : []
+    if (ids.length === 1) matches.set(name, { status: 'resolved', groupId: ids[0] })
+    else matches.set(name, { status: ids.length === 0 ? 'group_not_found' : 'group_ambiguous' })
+  }
+  return matches
+}

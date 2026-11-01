@@ -148,6 +148,7 @@ export type ImportView = {
   purgedAt: string | null
   fileAvailable: boolean
   pendingDecisions: number
+  canCreateMemberships: boolean
   updatedAt: string
   code?: string
 }
@@ -164,6 +165,7 @@ export type ImportRowView = {
   needsDecision: boolean
   groupName: string | null
   membershipStatus: string | null
+  membershipPreview: string | null
   committedAt: string | null
   values: { persons: Record<string, Record<string, string | null>>; group: string | null } | null
   updatedAt: string
