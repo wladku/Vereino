@@ -38,6 +38,9 @@ export const messageDeleteSchema = z.object({ threadId: z.uuid(), messageId: z.u
 
 export const threadReadSchema = z.object({ threadId: z.uuid() }).strict()
 
+/** `communication.threads.mark_case`: the thread; its version travels in the optimistic-lock header (S5.2). */
+export const threadMarkCaseSchema = z.object({ threadId: z.uuid() }).strict()
+
 /** The cancellation subscriber's command input: the session and the cancellation's event key (S4.6). */
 export const cancellationSchema = z
   .object({

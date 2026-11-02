@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Communication',
   version: '0.1.0',
   description:
-    'Announcements to the club, a section, a group, an activity or a session with an in-app notification and an e-mail, replies, the session-cancellation thread, the share text and the member inbox (foundation III phase B, #35).',
+    'Announcements to the club, a section, a group, an activity or a session with an in-app notification and an e-mail, replies, the session-cancellation thread, the share text, the member inbox (foundation III phase B, #35) and cases (phase C, #36).',
   author: 'Vereino',
   license: 'MIT',
   // Club spec *Architecture*: `communication` reaches `people`, `groups` and `club_core` only through DI and ids;

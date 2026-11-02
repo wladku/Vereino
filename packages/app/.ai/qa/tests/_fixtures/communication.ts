@@ -1,5 +1,6 @@
-// `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10): the thread routes, the delivery
-// status, the share text and the e-mails the running app captured (`OM_TEST_MODE`).
+// `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10; phase C, #36: TEST-M09): the
+// thread routes, the case marking, the delivery status, the share text and the e-mails the running app captured
+// (`OM_TEST_MODE`).
 import { expect, type APIRequestContext } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call } from './club'
 import { capturedTo, type CapturedMessage } from './messaging'
@@ -23,6 +24,8 @@ export type ThreadItem = {
   subject: string
   authorName: string | null
   isCase: boolean
+  caseOpenedAt: string | null
+  caseOpenedByName: string | null
   lastMessageAt: string
   messageCount: number
   unread: boolean
@@ -35,6 +38,7 @@ export type ThreadMessage = {
   actingRole: string
   audience: 'all' | 'staff'
   body: string | null
+  editedAt: string | null
   deleted: boolean
   system: boolean
   recipientCount: number
@@ -45,6 +49,7 @@ export type ThreadDetail = Omit<ThreadItem, 'messageCount'> & {
   updatedAt: string
   staff: boolean
   canSeeDeliveries: boolean
+  canMarkCase: boolean
   messages: ThreadMessage[]
 }
 
@@ -110,6 +115,41 @@ export async function reviseMessage(
     data: { body },
     headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
   })
+}
+
+export async function deleteMessage(
+  request: APIRequestContext,
+  token: string,
+  threadId: string,
+  messageId: string,
+  lockToken: string | null,
+) {
+  return call<PostResult>(request, 'DELETE', `/api/communication/threads/${threadId}/messages/${messageId}`, token, {
+    headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
+  })
+}
+
+export type MarkCaseResult = CodedBody & {
+  ok?: boolean
+  threadId?: string
+  isCase?: boolean
+  caseOpenedAt?: string
+  actingRole?: string
+  updatedAt?: string
+}
+
+/** `POST /api/communication/threads/{id}/case` with the thread version as the lock token (#36). */
+export async function markCase(request: APIRequestContext, token: string, threadId: string, lockToken: string | null) {
+  return call<MarkCaseResult>(request, 'POST', `/api/communication/threads/${threadId}/case`, token, {
+    headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
+  })
+}
+
+/** The thread's current version (`updatedAt`) as `token` reads it. */
+export async function threadVersion(request: APIRequestContext, token: string, threadId: string): Promise<string> {
+  const result = await call<{ updatedAt?: string }>(request, 'GET', `/api/communication/threads/${threadId}`, token)
+  expect(result.status, `GET thread ${JSON.stringify(result.body)}`).toBe(200)
+  return String(result.body?.updatedAt)
 }
 
 export async function deliveries(request: APIRequestContext, token: string, threadId: string, query = '') {

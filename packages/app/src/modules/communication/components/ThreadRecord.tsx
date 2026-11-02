@@ -3,18 +3,26 @@
 // REQ-M05, REQ-M06, REQ-M08; J-M01 steps 4–5): the subject, the scope and the author, the messages with their history,
 // the reply box, "Copy text for group chat" with an `aria-live` confirmation, and — for the author, the section's
 // coordinator and the administrator — the recipients of the first message in `DeliveryStatusList` (P-32) with "not
-// delivered" and the "problems only" filter. Its own 403 and 404 states (`OWN_FORBIDDEN_STATE`).
+// delivered" and the "problems only" filter. Its own 403 and 404 states (`OWN_FORBIDDEN_STATE`). Cases (REQ-M09, #36):
+// "Mark as case" for the section's coordinator and the administrator, behind a confirmation because it cannot be
+// undone, sent with the thread's version (409 conflicts surfaced with a refresh); a case shows a read-only banner
+// with who marked it and when.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
+import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
+import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
+import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { DeliveryStatusList, type DeliveryPage } from '@vereino/ui'
 import {
   OWN_FORBIDDEN_STATE,
+  errorCode,
   errorMessage,
   formatDateTime,
   roleLabel,
@@ -130,6 +138,66 @@ function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
   )
 }
 
+/** The read-only banner of a case: who marked it and when; its messages can no longer be edited or deleted. */
+function CaseBanner({ thread }: { thread: ThreadDetail }) {
+  const t = useT()
+  const locale = useLocale()
+  const opened = thread.caseOpenedAt ? formatDateTime(thread.caseOpenedAt, locale) : ''
+  return (
+    <Alert status="information" data-testid="thread-case-banner">
+      <AlertTitle>{t('communication.cases.banner.title')}</AlertTitle>
+      <AlertDescription>
+        <p>{t('communication.cases.banner.text')}</p>
+        <p data-testid="thread-case-opened">
+          {thread.caseOpenedByName
+            ? t('communication.cases.banner.openedBy', { name: thread.caseOpenedByName, date: opened })
+            : t('communication.cases.banner.opened', { date: opened })}
+        </p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/** "Mark as case": confirmed first (it cannot be undone), then sent with the thread's version. */
+function useMarkCase(thread: ThreadDetail | null, refresh: () => void) {
+  const t = useT()
+  const { confirm, ConfirmDialogElement } = useConfirmDialog()
+  const [marking, setMarking] = React.useState(false)
+  const markCase = React.useCallback(async () => {
+    if (!thread) return
+    const confirmed = await confirm({
+      title: t('communication.cases.confirm.title'),
+      text: t('communication.cases.confirm.text'),
+      confirmText: t('communication.cases.actions.mark'),
+      cancelText: t('communication.cases.confirm.cancel'),
+      variant: 'destructive',
+    })
+    if (!confirmed) return
+    setMarking(true)
+    try {
+      await withScopedApiRequestHeaders(buildOptimisticLockHeader(thread.updatedAt), () =>
+        apiCallOrThrow(
+          `/api/communication/threads/${encodeURIComponent(thread.id)}/case`,
+          { method: 'POST' },
+          { errorMessage: t('communication.cases.errors.mark') },
+        ),
+      )
+      flash(t('communication.cases.flash.marked'), 'success')
+      refresh()
+    } catch (error: unknown) {
+      if (errorCode(error) === 'case_already_open') {
+        flash(errorMessage(error, t('communication.errors.case_already_open')), 'error')
+        refresh()
+      } else if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
+        flash(errorMessage(error, t('communication.cases.errors.mark')), 'error')
+      }
+    } finally {
+      setMarking(false)
+    }
+  }, [thread, confirm, t, refresh])
+  return { markCase, marking, ConfirmDialogElement }
+}
+
 function deliveryLabels(t: Translate) {
   return {
     title: t('communication.deliveries.title'),
@@ -207,8 +275,10 @@ export function ThreadRecord({ id }: { id: string }) {
   const refresh = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['communication-thread', id] })
     void queryClient.invalidateQueries({ queryKey: ['communication-threads'] })
+    void queryClient.invalidateQueries({ queryKey: ['communication-cases'] })
   }, [queryClient, id])
   useMarkRead(thread, refresh)
+  const { markCase, marking, ConfirmDialogElement } = useMarkCase(thread, refresh)
 
   if (!query.data && query.isFetching) return <LoadingMessage label={t('communication.club.loading')} />
   if (!query.data) {
@@ -241,9 +311,25 @@ export function ThreadRecord({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6" data-testid="thread-record">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold break-words" data-testid="thread-subject">
-          {thread.subject}
-        </h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="min-w-0 text-2xl font-semibold break-words" data-testid="thread-subject">
+            {thread.subject}
+          </h1>
+          {thread.canMarkCase ? (
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                disabled={marking}
+                onClick={() => void markCase()}
+                data-testid="thread-mark-case"
+              >
+                {t('communication.cases.actions.mark')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span data-testid="thread-scope">{scopeLabel(t, thread)}</span>
           <span>·</span>
@@ -265,9 +351,15 @@ export function ThreadRecord({ id }: { id: string }) {
           ) : null}
           <span>·</span>
           <span>{formatDateTime(thread.createdAt, locale)}</span>
+          {thread.isCase ? (
+            <span data-testid="thread-case-badge">
+              <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+            </span>
+          ) : null}
           {thread.unread ? <StatusBadge variant="info">{t('communication.threads.unread')}</StatusBadge> : null}
         </p>
       </header>
+      {thread.isCase ? <CaseBanner thread={thread} /> : null}
       {thread.staff ? <ShareTextPanel thread={thread} /> : null}
       <section className="flex flex-col gap-3" aria-labelledby="thread-messages-title">
         <h2 id="thread-messages-title" className="text-lg font-semibold">
@@ -287,6 +379,7 @@ export function ThreadRecord({ id }: { id: string }) {
         />
       </section>
       {thread.canSeeDeliveries ? <Deliveries thread={thread} /> : null}
+      {ConfirmDialogElement}
     </div>
   )
 }

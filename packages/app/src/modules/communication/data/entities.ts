@@ -2,7 +2,7 @@
 // glossary *Thread*): threads with an encrypted subject, append-only thread messages (an edit is a `revision` row, a
 // deletion a `tombstone` row; foundation II P-28), the participants (added, never removed) and the read markers.
 // Section, group, scope, person and dispatch ids are scalar ids of other modules (no cross-module relation). The case
-// columns are part of the table from the start; the case commands arrive with phase C (#36).
+// columns are part of the table from the start; `communication.threads.mark_case` (phase C, #36) sets them once.
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import {

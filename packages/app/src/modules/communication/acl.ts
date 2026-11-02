@@ -1,7 +1,8 @@
 // ACL features of `communication` (club spec *Users, Permissions, and Scope* → full feature list; foundation III adds
 // none). The role catalogue (`@vereino/core` `roleCatalogue`) grants `communication.view` to every member,
 // `communication.post` to coaches and coordinators and `communication.*` to the club administrator;
-// `communication.cases.manage` is used by the cases of phase C (#36) and by the staff edit of someone else's message.
+// `communication.cases.manage` gates marking a thread as a case and the case register (phase C, #36) and the staff
+// edit of someone else's message.
 export const features = [
   { id: 'communication.view', title: 'Read and reply to own threads', module: 'communication' },
   {
