@@ -60,6 +60,28 @@ export async function upsertReadMarker(
   )
 }
 
+/**
+ * Marks a thread as a case (foundation III DD-M11): a conditional update `WHERE is_case = false`, so a thread is
+ * marked once and never unmarked. Returns false when the thread already is a case. `at` is also the thread's new
+ * version (`updated_at`).
+ */
+export async function openCase(
+  em: EntityManager,
+  scope: CommunicationScope,
+  threadId: string,
+  openedByPersonId: string,
+  at: Date,
+): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `update communication_threads
+        set is_case = true, case_opened_at = ?, case_opened_by_person_id = ?, updated_at = ?
+      where id = ? and tenant_id = ? and organization_id = ? and deleted_at is null and is_case = false
+      returning id`,
+    [at, openedByPersonId, at, threadId, scope.tenantId, scope.organizationId],
+  )
+  return rows.length === 1
+}
+
 export type ThreadHeader = {
   id: string
   scopeType: ThreadScopeType
@@ -68,6 +90,8 @@ export type ThreadHeader = {
   groupId: string | null
   authorPersonId: string | null
   isCase: boolean
+  caseOpenedAt: Date | null
+  caseOpenedByPersonId: string | null
   lastMessageAt: Date
   createdAt: Date
   updatedAt: Date
@@ -81,6 +105,8 @@ type ThreadHeaderRow = {
   group_id: string | null
   author_person_id: string | null
   is_case: boolean
+  case_opened_at: Date | string | null
+  case_opened_by_person_id: string | null
   last_message_at: Date | string
   created_at: Date | string
   updated_at: Date | string
@@ -97,6 +123,8 @@ function header(row: ThreadHeaderRow): ThreadHeader {
     groupId: row.group_id,
     authorPersonId: row.author_person_id,
     isCase: row.is_case,
+    caseOpenedAt: row.case_opened_at === null ? null : date(row.case_opened_at),
+    caseOpenedByPersonId: row.case_opened_by_person_id,
     lastMessageAt: date(row.last_message_at),
     createdAt: date(row.created_at),
     updatedAt: date(row.updated_at),
@@ -151,8 +179,8 @@ export async function visibleThreadHeaders(
   }
   bindings.push(limit)
   const rows = await em.execute<ThreadHeaderRow[]>(
-    `select t.id, t.scope_type, t.scope_id, t.section_id, t.group_id, t.author_person_id, t.is_case, t.last_message_at,
-            t.created_at, t.updated_at
+    `select t.id, t.scope_type, t.scope_id, t.section_id, t.group_id, t.author_person_id, t.is_case, t.case_opened_at,
+            t.case_opened_by_person_id, t.last_message_at, t.created_at, t.updated_at
        from communication_threads t
       where t.tenant_id = ? and t.organization_id = ? and t.deleted_at is null and ${conditions.join(' and ')}
       order by t.last_message_at desc, t.id

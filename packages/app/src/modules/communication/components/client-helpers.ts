@@ -14,6 +14,7 @@ export const OWN_FORBIDDEN_STATE: RequestInit = { headers: { 'x-om-forbidden-red
 export const THREADS_HREF = '/backend/communication/threads'
 export const THREAD_CREATE_HREF = `${THREADS_HREF}/create`
 export const threadHref = (id: string) => `${THREADS_HREF}/${encodeURIComponent(id)}`
+export const CASES_HREF = '/backend/communication/cases'
 
 export const CLUB_MESSAGES_HREF = '/club/messages'
 export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURIComponent(id)}`
@@ -28,6 +29,8 @@ export type ThreadListItem = {
   subject: string
   authorName: string | null
   isCase: boolean
+  caseOpenedAt: string | null
+  caseOpenedByName: string | null
   lastMessageAt: string
   createdAt: string
   messageCount: number
@@ -61,6 +64,7 @@ export type ThreadDetail = Omit<ThreadListItem, 'messageCount'> & {
   updatedAt: string
   staff: boolean
   canSeeDeliveries: boolean
+  canMarkCase: boolean
   messages: ThreadMessageItem[]
 }
 
@@ -88,6 +92,12 @@ export function errorStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null
   const status = (error as CodedError).status
   return typeof status === 'number' ? status : null
+}
+
+export function errorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null
+  const code = (error as CodedError).code
+  return typeof code === 'string' ? code : null
 }
 
 export function errorMessage(error: unknown, fallback: string): string {

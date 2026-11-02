@@ -1,7 +1,7 @@
 'use client'
 // `/backend/communication/threads` (foundation III *UI and Interaction Contracts*; REQ-M06): the threads the caller
 // sees — participants, the coordinators of the thread's section, the administrator (DD-M12) — newest activity first,
-// with the scope, the author, the unread marker and the "unread only" filter; "New announcement" for authors. An
+// with the scope, the author, the case and unread markers and the "unread only" filter; "New announcement" for authors. An
 // empty list is a sentence, not an empty table (lesson `empty-datatable-axe-at-375`).
 import * as React from 'react'
 import Link from 'next/link'
@@ -44,6 +44,11 @@ function buildColumns(t: Translate, locale: string): DataTableProps<ThreadListIt
           >
             {row.original.subject}
           </Link>
+          {row.original.isCase ? (
+            <span data-testid="thread-case">
+              <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+            </span>
+          ) : null}
           {row.original.unread ? (
             <span data-testid="thread-unread">
               <StatusBadge variant="info">{t('communication.threads.unread')}</StatusBadge>

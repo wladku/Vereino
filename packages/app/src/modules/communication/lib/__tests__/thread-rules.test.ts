@@ -79,6 +79,8 @@ describe('vocabulary', () => {
       'message_deleted',
       'message_not_editable',
       'share_text_unavailable',
+      'case_immutable',
+      'case_already_open',
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`communication.errors.${entry.code}`)
   })

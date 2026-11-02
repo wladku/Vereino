@@ -3,7 +3,10 @@
 // - `communication.threads.create` — an announcement: a sent e-mail cannot be recalled;
 // - `communication.threads.reply` — a reply: the same;
 // - `communication.messages.revise` / `communication.messages.delete` — they append a revision or a tombstone; the
-//   history is the record (an undo would have to remove an append-only row);
+//   history is the record (an undo would have to remove an append-only row); both refuse a case's message (409
+//   `case_immutable`, REQ-M09);
+// - `communication.threads.mark_case` — marks a thread as a case (REQ-M09, DD-M11): an undo would unmark the case,
+//   and no unmark command exists;
 // - `communication.threads.mark_read` — no business state (not logged);
 // - `communication.threads.record_cancellation` — the session thread of a cancellation, run by the subscriber under
 //   the `system_job` source: the e-mail cannot be recalled.
@@ -24,13 +27,14 @@ import {
 } from '@/modules/foundation'
 import { communicationErrors } from '../api/errors'
 import { Thread, ThreadMessage, ThreadParticipant } from '../data/entities'
-import { insertParticipants, lockOccurrenceThread, upsertReadMarker } from '../data/queries'
+import { insertParticipants, lockOccurrenceThread, openCase, upsertReadMarker } from '../data/queries'
 import {
   audienceSchema,
   cancellationSchema,
   messageDeleteSchema,
   messageReviseSchema,
   threadCreateSchema,
+  threadMarkCaseSchema,
   threadReadSchema,
   threadReplySchema,
 } from '../data/validators'
@@ -46,6 +50,7 @@ import {
   selfPersonId,
   staffParticipants,
 } from '../lib/thread-rules'
+import { CASE_MANAGE_KINDS, messageChangeRefusal } from '../lib/case-rules'
 import { clubFacts, scheduleDirectory } from '../services/directory'
 import { resolveAudienceTarget, sessionLabel, type ResolvedTarget } from '../services/targets'
 import {
@@ -426,10 +431,13 @@ function changeMessageCommand(
         const access = authorized.entity as MessageAccess
         const { thread, message } = access
         const scope = scopeOf(thread)
-        if (message.authorPersonId === null || message.authorPersonId === undefined) {
-          return communicationErrors.throw('message_not_editable')
-        }
-        if (access.deleted) return communicationErrors.throw('message_deleted')
+        // The thread is row-locked, so a marking that commits first is seen here (REQ-M09: a case refuses every change).
+        const refusal = messageChangeRefusal({
+          threadIsCase: thread.isCase,
+          system: message.authorPersonId === null || message.authorPersonId === undefined,
+          deleted: access.deleted,
+        })
+        if (refusal) return communicationErrors.throw(refusal)
         const editorPersonId = selfPersonId(authorized.scope)
         em.persist(
           em.create(ThreadMessage, {
@@ -473,6 +481,71 @@ function changeMessageCommand(
         parent: { resourceKind: THREAD_RESOURCE_KIND, resourceId: result.threadId },
       }),
   }
+}
+
+// --- communication.threads.mark_case ------------------------------------------------------------------------------
+
+export type MarkCaseResult = {
+  threadId: string
+  actingRole: string
+  scope: CommunicationScope
+  caseOpenedAt: string
+  threadUpdatedAt: string
+}
+
+/**
+ * Marks a thread as a case (foundation III REQ-M09, DD-M11; club spec REQ-010): the coordinator of the thread's section
+ * or the administrator, with the thread's version (S5.2). Records who (`case_opened_by_person_id`), when
+ * (`case_opened_at`) and the acting role (R01, the log's `context.actingRole`) with a conditional update, so a second
+ * marking answers 409 `case_already_open`. Not undoable: an undo would unmark the case.
+ */
+const markCaseCommand: CommandHandler<Record<string, unknown>, MarkCaseResult> = {
+  id: 'communication.threads.mark_case',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'communication.threads.mark_case', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: threadMarkCaseSchema,
+          resourceKind: THREAD_RESOURCE_KIND,
+          allowedKinds: CASE_MANAGE_KINDS,
+          loadTarget: (parsed, txEm, lock) => loadThread(txEm, trusted(ctx), parsed.threadId, lock),
+          resolveTarget: (parsed, thread, scope) => (thread ? threadTarget(thread) : { id: parsed.threadId, ...scope }),
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const thread = authorized.entity as Thread
+      const scope = scopeOf(thread)
+      if (thread.isCase) return communicationErrors.throw('case_already_open')
+      const openedByPersonId = selfPersonId(authorized.scope)
+      if (!openedByPersonId) return foundationErrors.throw('scope_denied')
+      const at = new Date()
+      if (!(await openCase(em, scope, thread.id, openedByPersonId, at))) {
+        return communicationErrors.throw('case_already_open')
+      }
+      return {
+        threadId: thread.id,
+        actingRole: authorized.actingRole,
+        scope,
+        caseOpenedAt: at.toISOString(),
+        threadUpdatedAt: at.toISOString(),
+      }
+    })
+    await emitAfterCommit('communication.case.opened', result.scope, { id: result.threadId })
+    return result
+  },
+  buildLog: ({ result }) =>
+    communicationLog({
+      labelKey: 'communication.audit.threads.mark_case',
+      fallback: 'Mark a thread as a case',
+      resourceKind: THREAD_RESOURCE_KIND,
+      resourceId: result.threadId,
+      scope: result.scope,
+      actingRole: result.actingRole,
+      context: { caseOpenedAt: result.caseOpenedAt },
+    }),
 }
 
 // --- communication.threads.mark_read ------------------------------------------------------------------------------
@@ -648,5 +721,6 @@ registerCommand(createThreadCommand)
 registerCommand(replyCommand)
 registerCommand(changeMessageCommand('revision'))
 registerCommand(changeMessageCommand('tombstone'))
+registerCommand(markCaseCommand)
 registerCommand(markReadCommand)
 registerCommand(recordCancellationCommand)

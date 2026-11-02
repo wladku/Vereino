@@ -1,7 +1,8 @@
 // `PATCH`, `DELETE /api/communication/threads/{id}/messages/{messageId}` — `communication.messages.revise` and
 // `communication.messages.delete` (foundation III DD-M10): the message's author, the coordinator of the thread's
 // section or the administrator appends a revision or a tombstone; the history stays. Send the thread's `updatedAt`
-// in the platform optimistic-lock header (400 `lock_token_required` without it, 409 when it is stale). Not undoable.
+// in the platform optimistic-lock header (400 `lock_token_required` without it, 409 when it is stale). A case's
+// messages can no longer change: 409 `case_immutable` for everyone (REQ-M09, #36). Not undoable.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { errorResponse } from '@/modules/foundation'
@@ -70,7 +71,8 @@ const errors = [
   { status: 404, description: 'Not found', schema: errorSchema },
   {
     status: 409,
-    description: '`optimistic_lock_conflict`, `message_deleted`, `message_not_editable` (a system message)',
+    description:
+      '`case_immutable` (the thread is a case), `optimistic_lock_conflict`, `message_deleted`, `message_not_editable` (a system message)',
     schema: errorSchema,
   },
 ]

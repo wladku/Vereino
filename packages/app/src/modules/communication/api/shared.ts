@@ -56,6 +56,8 @@ export const threadListItemSchema = z.object({
   subject: z.string(),
   authorName: z.string().nullable().describe('Null for a session thread the system opened'),
   isCase: z.boolean(),
+  caseOpenedAt: z.string().nullable().describe('When the thread was marked as a case; null when it is not one'),
+  caseOpenedByName: z.string().nullable().describe('Who marked the thread as a case; null when it is not one'),
   lastMessageAt: z.string().describe('The newest message the reader sees'),
   createdAt: z.string(),
   messageCount: z.number().describe('Messages the reader sees'),
@@ -89,6 +91,9 @@ export const threadDetailSchema = threadListItemSchema.omit({ messageCount: true
   updatedAt: z.string().describe('The lock token of edits and deletions'),
   staff: z.boolean(),
   canSeeDeliveries: z.boolean(),
+  canMarkCase: z
+    .boolean()
+    .describe('The reader may mark the thread as a case: not a case yet, its section coordinator or the administrator'),
   messages: z.array(threadMessageSchema),
 })
 

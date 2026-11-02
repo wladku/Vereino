@@ -2,11 +2,13 @@
 // (their person, household and staff grants), the threads they see with unread state, a thread with its messages as
 // the reader may see them, the unread count of the "Messages" tile, and the delivery status of a message for the
 // staff. Visibility = participants ∪ the coordinators of the thread's section ∪ the club administrator; a member
-// sees the messages for everyone and their own household's replies only — never another family's.
+// sees the messages for everyone and their own household's replies only — never another family's. A case (REQ-M09)
+// keeps the same visibility and carries who marked it and when; the case register is the list filtered by `isCase`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { findActingRole, hasKind, type Scope } from '@vereino/core'
 import {
   contactResolver,
@@ -25,6 +27,7 @@ import {
   type ThreadFilters,
   type ThreadHeader,
 } from '../data/queries'
+import { mayMarkCase } from '../lib/case-rules'
 import {
   THREAD_READ_KINDS,
   excerpt,
@@ -49,6 +52,8 @@ import { targetLabels } from './targets'
 export type Viewer = {
   container: AwilixContainer
   scope: CommunicationScope
+  /** The signed-in user (the feature check of "Mark as case"). */
+  userId: string | null
   grants: Scope
   personId: string | null
   household: Set<string>
@@ -72,12 +77,25 @@ export async function viewerOf(ctx: CommandRuntimeContext): Promise<Viewer | nul
   return {
     container: ctx.container,
     scope,
+    userId: ctx.auth?.sub ?? null,
     grants,
     personId,
     household: householdOf(selfIds, wardIds, guardians),
     clubWide: hasKind(grants, 'club_admin'),
     sectionIds: grantIds(grants, 'coordinator'),
   }
+}
+
+const isId = (value: string | null): value is string => value !== null
+
+/** The feature of marking a case (club spec ACL; the route of `communication.threads.mark_case` requires it). */
+const CASE_FEATURE = 'communication.cases.manage'
+
+/** Whether the reader holds a feature in the organization (wildcard-aware, the platform's check). */
+async function hasFeature(viewer: Viewer, feature: string): Promise<boolean> {
+  if (!viewer.userId) return false
+  const rbac = viewer.container.resolve<RbacService>('rbacService')
+  return rbac.userHasAllFeatures(viewer.userId, [feature], viewer.scope)
 }
 
 function emOf(viewer: Viewer): EntityManager {
@@ -113,6 +131,8 @@ export type ThreadListItem = {
   subject: string
   authorName: string | null
   isCase: boolean
+  caseOpenedAt: string | null
+  caseOpenedByName: string | null
   lastMessageAt: string
   createdAt: string
   messageCount: number
@@ -195,7 +215,7 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
     findPersons(
       viewer.container,
       viewer.scope,
-      page.flatMap((summary) => (summary.header.authorPersonId ? [summary.header.authorPersonId] : [])),
+      page.flatMap(({ header }) => [header.authorPersonId, header.caseOpenedByPersonId].filter(isId)),
     ),
   ])
   const items: ThreadListItem[] = page.map(({ header, unread, messageCount, lastAt }) => ({
@@ -206,6 +226,8 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
     subject: subjects.get(header.id) ?? '',
     authorName: header.authorPersonId ? personName(authors.get(header.authorPersonId)) : null,
     isCase: header.isCase,
+    caseOpenedAt: header.caseOpenedAt?.toISOString() ?? null,
+    caseOpenedByName: header.caseOpenedByPersonId ? personName(authors.get(header.caseOpenedByPersonId)) : null,
     lastMessageAt: lastAt.toISOString(),
     createdAt: header.createdAt.toISOString(),
     messageCount,
@@ -245,6 +267,8 @@ export type ThreadDetail = {
   subject: string
   authorName: string | null
   isCase: boolean
+  caseOpenedAt: string | null
+  caseOpenedByName: string | null
   createdAt: string
   updatedAt: string
   lastMessageAt: string
@@ -252,6 +276,8 @@ export type ThreadDetail = {
   staff: boolean
   /** The reader may see the delivery status (the author, the section's coordinator, the administrator). */
   canSeeDeliveries: boolean
+  /** The reader may mark the thread as a case (REQ-M09): not a case yet, a staff grant on it and the feature. */
+  canMarkCase: boolean
   unread: boolean
   messages: ThreadMessageItem[]
 }
@@ -274,6 +300,8 @@ async function visibleHeader(em: EntityManager, viewer: Viewer, threadId: string
     groupId: thread.groupId ?? null,
     authorPersonId: thread.authorPersonId ?? null,
     isCase: thread.isCase,
+    caseOpenedAt: thread.caseOpenedAt ?? null,
+    caseOpenedByPersonId: thread.caseOpenedByPersonId ?? null,
     lastMessageAt: thread.lastMessageAt,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
@@ -322,13 +350,15 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
   const authorIds = [
     ...new Set([
       ...views.flatMap((view) => (view.authorPersonId ? [view.authorPersonId] : [])),
-      ...(header.authorPersonId ? [header.authorPersonId] : []),
+      ...[header.authorPersonId, header.caseOpenedByPersonId].filter(isId),
     ]),
   ]
-  const [names, labels, reads] = await Promise.all([
+  const [names, labels, reads, hasCaseFeature] = await Promise.all([
     findPersons(viewer.container, viewer.scope, authorIds),
     targetLabels(viewer.container, viewer.scope, [header]),
     viewer.personId ? readMarkersOf(em, viewer.scope, viewer.personId, [thread.id]) : new Map<string, Date>(),
+    // Asked only when the marking is otherwise possible: a staff grant on a thread that is not a case yet.
+    !header.isCase && staffRole ? hasFeature(viewer, CASE_FEATURE) : false,
   ])
   const lastVisible = lastVisibleMessageAt(
     rows.map((row) => ({
@@ -347,11 +377,14 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
     subject: thread.subject,
     authorName: header.authorPersonId ? personName(names.get(header.authorPersonId)) : null,
     isCase: thread.isCase,
+    caseOpenedAt: header.caseOpenedAt?.toISOString() ?? null,
+    caseOpenedByName: header.caseOpenedByPersonId ? personName(names.get(header.caseOpenedByPersonId)) : null,
     createdAt: thread.createdAt.toISOString(),
     updatedAt: thread.updatedAt.toISOString(),
     lastMessageAt: thread.lastMessageAt.toISOString(),
     staff,
     canSeeDeliveries,
+    canMarkCase: mayMarkCase({ isCase: header.isCase, staffRole, hasCaseFeature }),
     unread: viewer.personId ? isUnread(lastVisible, reads.get(thread.id) ?? null) : false,
     messages: views.map((view) => {
       const row = byId.get(view.id)
