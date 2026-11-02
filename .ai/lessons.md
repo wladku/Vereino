@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 40 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 41 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -86,3 +86,4 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [Event subscribers get no event id, so a persistent subscriber keys its idempotency on a value the event carries](lessons/subscriber-idempotency-without-event-id.md) — area:module-data,integration; module:communication,activities,platform; topic:events,subscribers,idempotency,dispatch
 - [A non-undoable command leaves no undo token, and only the platform club role can read and undo action logs, so test an undo refusal on an action that role performed](lessons/non-undoable-command-undo-test.md) — area:testing,integration; module:communication,platform,audit_logs; topic:commands,undo,action-log,audit-logs
 - [A one-way flag on a row that authorizeScoped locks is set with a conditional UPDATE ... WHERE flag = false RETURNING, which also sets updated_at](lessons/one-way-flag-conditional-update.md) — area:module-data; module:communication; topic:commands,concurrency,optimistic-lock,sql
+- [In journey tests a UI sign-in resets that user's password and kills their fixture token, and the messaging probe cannot run lock-protected commands](lessons/journey-test-sign-in-tokens-and-probe-limits.md) — area:testing,integration; module:communication,activities,people; topic:journeys,playwright,fixtures,auth,messaging-probe,optimistic-lock
