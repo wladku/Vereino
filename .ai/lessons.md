@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 32 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 34 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -78,3 +78,5 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [A sessionless integration check needs request.newContext(); rate limits are off under OM_INTEGRATION_TEST](lessons/sessionless-tests-new-request-context.md) — area:testing; module:club_core,platform; topic:playwright,sessionless,public-pages,rate-limits,status-badge
 - [Drive the platform date picker through its grid after networkidle; assert the row, not the flash, after a CrudForm redirect](lessons/platform-date-picker-and-crudform-redirects-in-tests.md) — area:testing; module:platform,people; topic:date-picker,crudform,playwright,journeys
 - [The platform apiFetch throws ForbiddenError on every 403, so a page's own 403 branch never runs; test the forbidden state in the UI](lessons/apifetch-403-throws-before-page-branch.md) — area:backend-ui,testing; module:activities,platform; topic:api-client,forbidden,error-states,journeys
+- [Code that platform workers or the CLI load may import only .ts from @vereino/ui, and the notification delivery strategies exist only in the web runtime](lessons/worker-runtime-imports-and-notification-strategies.md) — area:architecture,integration; module:foundation,platform,notifications; topic:workers,cli,tsx,notifications,di,email
+- [OM_TEST_MODE counts as e-mail delivery disabled, its capture does not render components, and an encrypted lookup hash needs its property present at insert](lessons/om-test-mode-capture-and-encrypted-hash.md) — area:integration,testing,module-data; module:foundation,platform; topic:email,test-mode,encryption,capture

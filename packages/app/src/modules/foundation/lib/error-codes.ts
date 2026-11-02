@@ -19,6 +19,11 @@ export const errorCodes = [
   // S5.2: `authorizeScoped` answers it when an update, delete or action on an existing record carries no lock token
   // (the platform's check skips silently without one, so a client without it would overwrite newer data).
   { code: 'lock_token_required', status: 400, messageKey: 'foundation.errors.lock_token_required' },
+  // Foundation III P-29 / P-30 (#71): an audience kind no module provides, an audience over the fan-out cap, and
+  // template params that fail the template's schema.
+  { code: 'audience_kind_unavailable', status: 422, messageKey: 'foundation.errors.audience_kind_unavailable' },
+  { code: 'audience_too_large', status: 422, messageKey: 'foundation.errors.audience_too_large' },
+  { code: 'dispatch_params_invalid', status: 422, messageKey: 'foundation.errors.dispatch_params_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

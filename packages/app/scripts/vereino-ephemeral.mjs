@@ -66,6 +66,10 @@ export function buildAppEnv({
     OM_INIT_EMPLOYEE_PASSWORD: SEEDED_ADMIN.password,
     OM_INTEGRATION_TEST: 'true',
     OM_TEST_MODE: '1',
+    // `OM_TEST_MODE` captures every e-mail instead of sending it (foundation III DD-M15, S12.6 as amended by DD-M17);
+    // the capture lives with this run's state and the tests read it from the same variable.
+    OM_TEST_EMAIL_CAPTURE_PATH: path.join(stateDir, 'email-capture.jsonl'),
+    NOTIFICATIONS_EMAIL_FROM: 'Vereino QA <no-reply@vereino.test>',
     OM_TEST_AUTH_RATE_LIMIT_MODE: 'opt-in',
     OM_ENABLE_ENTERPRISE_MODULES: 'false',
     OM_EVENTS_SINGLE_DELIVERY: 'false',

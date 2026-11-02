@@ -1,7 +1,9 @@
-import { asFunction } from 'awilix'
+import { asFunction, asValue } from 'awilix'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
+import { CONTACT_RESOLVER_TOKEN, audienceProviderToken } from '@vereino/core'
 import { SCOPE_PROVIDER_TOKEN } from '@/modules/foundation'
+import { clubAudienceProvider, createContactResolver, personsAudienceProvider } from './services/audience'
 import type { ClubScope } from './services/club-clock'
 import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
 import { createPersonDirectory } from './services/person-directory'
@@ -30,6 +32,12 @@ export const PEOPLE_ROLE_SYNC = 'people.roleSync' as const
  */
 export { PEOPLE_PAYMENTS_GATE }
 
+/**
+ * Foundation III P-29 (#71): `people` registers the audience providers of the kinds it owns —
+ * `vereino.audience.club` and `vereino.audience.persons` — and the contact resolver `vereino.contactResolver`
+ * (accounts, addresses, languages, birth dates, guardians and the club's name, language and date). The foundation
+ * resolves them with `hasRegistration` (`services/audience.ts`).
+ */
 export type PeopleRoleSync = {
   syncPerson(scope: ClubScope, personId: string): Promise<PersonRoleSyncOutcome>
 }
@@ -48,5 +56,8 @@ export function register(container: AppContainer) {
       .proxy(),
     [PEOPLE_ROLE_SYNC]: asFunction(() => roleSync).scoped(),
     [PEOPLE_PAYMENTS_GATE]: asFunction(() => createPaymentsGate(container)).scoped(),
+    [audienceProviderToken('club')]: asValue(clubAudienceProvider),
+    [audienceProviderToken('persons')]: asValue(personsAudienceProvider),
+    [CONTACT_RESOLVER_TOKEN]: asValue(createContactResolver()),
   })
 }
