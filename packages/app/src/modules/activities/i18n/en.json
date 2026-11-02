@@ -280,7 +280,7 @@
   "activities.occurrences.actions.cancel": "Cancel session",
   "activities.occurrences.actions.move": "Move",
   "activities.occurrences.cancel.confirm": "Cancel session",
-  "activities.occurrences.cancel.help": "Participants, guardians and coaches with an account are notified in the app.",
+  "activities.occurrences.cancel.help": "Participants, guardians and coaches with an account are notified in the app, and everyone with an e-mail address also gets an e-mail.",
   "activities.occurrences.cancel.reason": "Reason",
   "activities.occurrences.cancel.reasonRequired": "Enter the reason for the cancellation.",
   "activities.occurrences.cancel.title": "Cancel this session?",

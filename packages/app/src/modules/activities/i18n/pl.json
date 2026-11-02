@@ -280,7 +280,7 @@
   "activities.occurrences.actions.cancel": "Odwołaj termin",
   "activities.occurrences.actions.move": "Przenieś",
   "activities.occurrences.cancel.confirm": "Odwołaj termin",
-  "activities.occurrences.cancel.help": "Uczestnicy, opiekunowie i trenerzy z kontem dostaną powiadomienie w aplikacji.",
+  "activities.occurrences.cancel.help": "Uczestnicy, opiekunowie i trenerzy z kontem dostaną powiadomienie w aplikacji, a każdy z adresem e-mail dostanie też wiadomość e-mail.",
   "activities.occurrences.cancel.reason": "Powód",
   "activities.occurrences.cancel.reasonRequired": "Podaj powód odwołania.",
   "activities.occurrences.cancel.title": "Odwołać ten termin?",
