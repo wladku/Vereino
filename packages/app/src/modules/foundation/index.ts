@@ -5,13 +5,14 @@ export const metadata: ModuleInfo = {
   title: 'Vereino foundation',
   version: '0.1.0',
   description:
-    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions and the occupancy contract.',
+    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, and the audience, dispatch and e-mail template primitives.',
   author: 'Vereino',
   license: 'MIT',
 }
 
 // Public entry (foundation spec REQ-F16): other Vereino modules import these helpers from `@/modules/foundation`,
-// never the foundation's internal files (the boundaries lint enforces it). The foundation owns no entity.
+// never the foundation's internal files (the boundaries lint enforces it). The foundation owns the dispatch outbox
+// tables (foundation III P-30); no business module reads them directly.
 export { foundationErrors } from './api/errors'
 export {
   calendarDateSchema,
@@ -72,4 +73,34 @@ export {
 } from './services/scope-contract'
 export { advanceWhere, assertTransition, type AdvanceWhereSpec, type AdvanceableEntity } from './services/transitions'
 export { auditedRead, type AuditedReadLogRow, type AuditedReadSpec } from './services/audited-read'
+export {
+  audienceProvider,
+  contactResolver,
+  resolveAudience,
+  type AudienceContext,
+  type AudienceProvider,
+  type AudienceProviderContext,
+  type ClubFacts,
+  type ContactResolver,
+  type ResolvedAudience,
+} from './services/audience'
+export {
+  DISPATCH_QUEUE,
+  createDispatchService,
+  type DeliveryView,
+  type DispatchJob,
+  type DispatchRequest,
+  type DispatchService,
+  type EnqueueResult,
+  type PagedDeliveries,
+} from './services/dispatch'
+export { EMAIL_SENDER_TOKEN, defaultEmailSender, type EmailSender } from './services/email-sender'
+export {
+  clubText,
+  defineEmailTemplate,
+  registerEmailTemplate,
+  resolveEmailTemplate,
+  type EmailRenderContext,
+  type EmailTemplate,
+} from './services/email-templates'
 export { registerAppendOnlyGuard } from './services/append-only-guard'

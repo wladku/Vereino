@@ -25,6 +25,17 @@ export const enabledModules: ModuleEntry[] = [
 // Vereino: the platform scheduler runs the module jobs registered through foundation's
 // `registerModuleSchedule` (foundation spec phase A1; enabling approved by the product owner on 2026-10-27).
 enabledModules.push({ id: 'scheduler', from: '@open-mercato/scheduler' })
+// Vereino: the e-mail transport of foundation III `dispatch` (DD-M15; enabling approved by the product owner on
+// 2026-11-01 for epic #23). `communication_channels` registers the only `sendEmail` transport and requires `progress`;
+// the Resend provider requires `communication_channels` and `integrations`. `messages` stays disabled: the app
+// initializes, builds and starts without it (checked for #71 — `communication_channels` only extends `messages:message`
+// and references its entity in subscribers that never fire without it), so no `messages.*` feature exists to grant.
+enabledModules.push(
+  { id: 'progress', from: '@open-mercato/core' },
+  { id: 'integrations', from: '@open-mercato/core' },
+  { id: 'communication_channels', from: '@open-mercato/core' },
+  { id: 'channel_resend', from: '@open-mercato/channel-resend' },
+)
 // Vereino-owned modules (listed in vereino-modules.json).
 enabledModules.push({ id: 'foundation', from: '@app' })
 enabledModules.push({ id: 'club_core', from: '@app' })

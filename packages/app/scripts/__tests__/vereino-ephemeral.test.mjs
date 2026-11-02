@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
+import path from 'node:path'
 import { test } from 'node:test'
 import {
   DEFAULT_PORT,
@@ -54,6 +55,9 @@ test('buildAppEnv points the app at the database and pins test-only values', () 
   assert.equal(env.JWT_SECRET, 'test-secret')
   assert.equal(env.OM_INIT_ADMIN_PASSWORD, SEEDED_ADMIN.password)
   assert.equal(env.OM_ENABLE_ENTERPRISE_MODULES, 'false')
+  assert.equal(env.OM_TEST_MODE, '1')
+  assert.equal(env.OM_TEST_EMAIL_CAPTURE_PATH, path.join('/tmp/state', 'email-capture.jsonl'))
+  assert.equal(env.NOTIFICATIONS_EMAIL_FROM, 'Vereino QA <no-reply@vereino.test>')
 })
 
 test('buildAppEnv defaults to the process environment and a random secret', () => {

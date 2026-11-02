@@ -7,6 +7,7 @@ import type { CalendarDate } from '@vereino/core'
 import type { MembershipContribution, MembershipSubject } from '../../people/services/membership-contribution'
 import { Group, GroupMembership } from '../data/entities'
 import { COACHING_ROLES, type MembershipRole } from '../lib/groups-rules'
+import { clubGroupMembers } from './audience'
 
 /** The token `people` reads (`GROUPS_MEMBERSHIP_CONTRIBUTION` in `people/services/membership-contribution.ts`). */
 export const GROUPS_MEMBERSHIP_CONTRIBUTION = 'groups.membershipContribution'
@@ -42,4 +43,5 @@ export const membershipContribution: MembershipContribution = {
   async isActiveParticipant(em, subject, today) {
     return (await activeGroupIds(em, subject, ['participant'], today)).length > 0
   },
+  activeMembers: (em, scope, today) => clubGroupMembers(em, scope, today),
 }
