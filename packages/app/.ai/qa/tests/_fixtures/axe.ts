@@ -14,14 +14,20 @@ type ScannedNode = { html: string; target: unknown[] }
 // backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
 // its text. Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
-const PLATFORM_BASELINE: { rule: string; owner: string; matches: (node: ScannedNode) => boolean }[] = [
+const PLATFORM_BASELINE: {
+  rule: string
+  owner: string
+  matches: (node: ScannedNode, page: Page) => boolean | Promise<boolean>
+}[] = [
   // axe shortens long attribute names, so `data-crud-focus-target` appears as `data-crud-focus-targ...`.
   { rule: 'label', owner: 'CrudForm field', matches: (node) => node.html.includes('data-crud-focus-targ') },
   { rule: 'button-name', owner: 'CrudForm select', matches: (node) => node.html.includes('data-crud-focus-targ') },
   {
     rule: 'color-contrast',
     owner: 'AppShell sidebar group heading',
-    matches: (node) => node.target.some((selector) => String(selector).includes('[data-sidebar-group')),
+    // axe reports the shortest unique selector, which names `[data-sidebar-group]` for some headings only and changes
+    // when a module adds a sidebar group (#35), so the heading is matched by its ancestor in the page.
+    matches: (node, page) => insideSidebarGroup(node, page),
   },
   {
     rule: 'label-content-name-mismatch',
@@ -33,6 +39,16 @@ const PLATFORM_BASELINE: { rule: string; owner: string; matches: (node: ScannedN
       (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')),
   },
 ]
+
+// Whether a scanned node sits inside an AppShell sidebar group (`[data-sidebar-group]`) of the current page.
+async function insideSidebarGroup(node: ScannedNode, page: Page): Promise<boolean> {
+  if (node.target.length !== 1) return false
+  return page
+    .locator(`css=${String(node.target[0])}`)
+    .first()
+    .evaluate((element) => element.closest('[data-sidebar-group]') !== null)
+    .catch(() => false)
+}
 
 // Call before navigating: a scan taken during a CSS transition reports the half-faded colours as a
 // contrast violation (seen as a flaky `color-contrast` on the sign-in page).
@@ -91,7 +107,8 @@ export async function scanBlockingViolations(
   for (const violation of results.violations) {
     if (violation.impact !== 'critical' && violation.impact !== 'serious') continue
     const entry = options.platformBaseline ? PLATFORM_BASELINE.find((item) => item.rule === violation.id) : undefined
-    const remaining = entry ? violation.nodes.filter((node) => !entry.matches(node)) : violation.nodes
+    const remaining: typeof violation.nodes = []
+    for (const node of violation.nodes) if (!entry || !(await entry.matches(node, page))) remaining.push(node)
     if (entry && remaining.length < violation.nodes.length) {
       baselined.push({ rule: entry.rule, owner: entry.owner, nodes: violation.nodes.length - remaining.length })
     }

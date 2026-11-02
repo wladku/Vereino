@@ -16,6 +16,8 @@ export type Translate = ReturnType<typeof useT>
 export const CLUB_HOME_HREF = '/club'
 export const CLUB_CALENDAR_HREF = '/club/calendar'
 export const CLUB_PROFILE_HREF = '/club/profile'
+/** The inbox of `communication` (#35), linked by path. */
+export const CLUB_MESSAGES_HREF = '/club/messages'
 export const BACKEND_HREF = '/backend'
 
 /** The perspectives a member page reads the calendar in (`GET /api/activities/calendar?as=`). */

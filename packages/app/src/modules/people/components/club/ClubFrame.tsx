@@ -17,6 +17,7 @@ import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/
 import { MemberShell, type MemberLinkProps, type MemberNavItem } from '@vereino/ui'
 import {
   BACKEND_HREF,
+  CLUB_MESSAGES_HREF,
   CLUB_CALENDAR_HREF,
   CLUB_HOME_HREF,
   CLUB_PROFILE_HREF,
@@ -97,6 +98,8 @@ export function ClubFrame({ children }: { children: (profile: MemberProfile) => 
     ? [
         { href: CLUB_HOME_HREF, label: t('people.club.nav.today'), current: pathname === CLUB_HOME_HREF },
         { href: CLUB_CALENDAR_HREF, label: t('people.club.nav.calendar'), current: pathname === CLUB_CALENDAR_HREF },
+        // The inbox of `communication` (#35); `people` links it by path and imports nothing of it.
+        { href: CLUB_MESSAGES_HREF, label: t('people.club.nav.messages'), current: false },
         { href: CLUB_PROFILE_HREF, label: t('people.club.nav.profile'), current: pathname === CLUB_PROFILE_HREF },
         ...(hasStaffContext(profile)
           ? [{ href: BACKEND_HREF, label: t('people.club.nav.backend'), current: false }]

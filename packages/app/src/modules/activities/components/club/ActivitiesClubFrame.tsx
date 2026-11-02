@@ -17,6 +17,7 @@ import {
   BACKEND_HREF,
   CLUB_CALENDAR_HREF,
   CLUB_HOME_HREF,
+  CLUB_MESSAGES_HREF,
   CLUB_PROFILE_HREF,
   hasStaffContext,
   useClubProfile,
@@ -99,6 +100,7 @@ export function ActivitiesClubFrame({ children }: { children: (profile: ClubProf
           label: t('activities.club.nav.calendar'),
           current: pathname === CLUB_CALENDAR_HREF || pathname.startsWith('/club/occurrences/'),
         },
+        { href: CLUB_MESSAGES_HREF, label: t('activities.club.nav.messages'), current: false },
         { href: CLUB_PROFILE_HREF, label: t('activities.club.nav.profile'), current: pathname === CLUB_PROFILE_HREF },
         ...(hasStaffContext(profile)
           ? [{ href: BACKEND_HREF, label: t('activities.club.nav.backend'), current: false }]
