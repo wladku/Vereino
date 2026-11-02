@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 37 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 39 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -83,3 +83,5 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [The platform's notification type registry is filled only in the web runtime, so a module whose in-app type is delivered by dispatch registers it in di.ts](lessons/notification-type-registry-in-worker-runtime.md) — area:integration,architecture; module:communication,foundation,platform,notifications; topic:workers,notifications,di,dispatch
 - [@vereino/ui admin components cannot use DataTable or CrudForm, so they build on primitives and keep every effect and handler in a tested .ts model](lessons/vereino-ui-admin-components-without-next.md) — area:backend-ui,testing; module:ui,communication; topic:vereino-ui,datatable,crudform,coverage,next-navigation
 - [Event subscribers get no event id, so a persistent subscriber keys its idempotency on a value the event carries](lessons/subscriber-idempotency-without-event-id.md) — area:module-data,integration; module:communication,activities,platform; topic:events,subscribers,idempotency,dispatch
+- [A non-undoable command leaves no undo token, and only the platform club role can read and undo action logs, so test an undo refusal on an action that role performed](lessons/non-undoable-command-undo-test.md) — area:testing,integration; module:communication,platform,audit_logs; topic:commands,undo,action-log,audit-logs
+- [A one-way flag on a row that authorizeScoped locks is set with a conditional UPDATE ... WHERE flag = false RETURNING, which also sets updated_at](lessons/one-way-flag-conditional-update.md) — area:module-data; module:communication; topic:commands,concurrency,optimistic-lock,sql
