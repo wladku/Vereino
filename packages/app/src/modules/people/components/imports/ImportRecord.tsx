@@ -22,7 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorMessage, type TableColumns, type Translate } from '../client-helpers'
+import { OWN_FORBIDDEN_STATE, errorMessage, type TableColumns, type Translate } from '../client-helpers'
 import { MatchPersonDialog } from './MatchPersonDialog'
 import {
   CLASSIFICATIONS,
@@ -104,7 +104,7 @@ export function ImportRecord({ id }: { id: string }) {
   const recordQuery = useQuery({
     queryKey: ['people-import', id],
     queryFn: async (): Promise<ImportLoad> => {
-      const call = await apiCall<ImportRow>(`/api/people/imports/${encodeURIComponent(id)}`)
+      const call = await apiCall<ImportRow>(`/api/people/imports/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'denied' }
       if (!call.ok || !call.result) throw new Error(t('people.imports.errors.loadOne'))
