@@ -26,7 +26,7 @@ Club staff send an announcement to the club, a section, a group, an activity or 
    - the public session page: scoped by the slug's organization, name, date, time and status only, the same 404 for every miss;
    - event payloads carry ids only; subject and bodies encrypted; every command non-undoable;
    - nothing from phase C, A05 or REQ-017; no dependency; no other platform module.
-4. **Coordinator gate:** `yarn verify` and the whole integration suite.
+4. **Coordinator gate:** `yarn verify` and the whole integration suite; fixed the axe baseline matcher after ENG-TEST-25 failed, and reran the affected tests.
 
 ## Decisions
 
@@ -55,14 +55,18 @@ Club staff send an announcement to the club, a section, a group, an activity or 
 - `packages/ui/src/admin/*` (P-32) with tests; `packages/ui/src/index.ts`, README.
 - `packages/app/src/modules.ts`, `packages/app/vereino-modules.json`.
 - QA: `_fixtures/communication.ts`, `communication/TEST-M05…M08`, `TEST-M10`; TEST-012 and TEST-047 extended; probe step `command`.
-- `.ai/lessons.md` and three lessons; this run log.
+- `packages/app/.ai/qa/tests/_fixtures/axe.ts` (the sidebar heading baseline matched in the page).
+- `.ai/lessons.md`, three new lessons and one extended; this run log.
 
 ## Commands and results
 
 - **Throwaway Postgres** (127.0.0.1 only): `yarn db:generate`, then up → down → up as raw SQL: 4 → 0 → 4 tables; a second `db:generate` reported no changes. Never applied to a dev or real database.
 - **`yarn verify`:** subagent's final run 13/13; coordinator's rerun 13/13 (242 s).
 - **`yarn test:integration:vereino --filter <id>`**, subagent's runs, one id each: TEST-M05 1.8 m, TEST-M06 1.6 m (after the registry fix; on TEST-015's fixture, so it is TEST-015's re-run with e-mail), TEST-M07 1.6 m, TEST-M08 1.4 m, TEST-M10 1.2 m, TEST-012 1.5 m, TEST-047 1.3 m, TEST-014 1.2 m; all passed.
-- **`yarn test:integration:vereino`**, whole suite, coordinator's run: GATE_INTEGRATION.
+- **`yarn test:integration:vereino`**, whole suite, coordinator's run: 94 passed, 1 failed (50.8 min).
+  - ENG-TEST-25 failed on both attempts: `color-contrast` on `/backend/club/sections/create`, two AppShell sidebar group headings ("Developers", "Security"). They are platform markup in the axe baseline, but the new `communication` sidebar group changed axe's shortest selector for them, so the baseline's `[data-sidebar-group` text match missed them.
+  - Fix: the baseline matcher now checks in the page whether the node sits inside `[data-sidebar-group]` (`_fixtures/axe.ts`); the lesson `platform-crudform-labels-axe-baseline` is extended.
+  - Reruns after the fix, one id each: ENG-TEST-25 1.3 m, TEST-M05 1.2 m, TEST-M10 1.1 m, all passed.
 - No dependency added. No `db:migrate` against a dev or real database.
 
 ## Open problems
