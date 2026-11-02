@@ -122,7 +122,13 @@ export function PersonRecord({ id }: { id: string }) {
           <GuardianshipsPanel personId={person.id} canManage={features['people.manage']} />
         </TabsContent>
         <TabsContent value="roles" className="pt-4">
-          <RolesPanel personId={person.id} canManage={features['people.roles.manage']} />
+          <RolesPanel
+            personId={person.id}
+            canManage={features['people.roles.manage']}
+            onOpenGuardianship={() => {
+              setTab('guardianship')
+            }}
+          />
         </TabsContent>
         {canSeeAccount ? (
           <TabsContent value="account" className="pt-4">
