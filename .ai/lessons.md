@@ -1,6 +1,6 @@
 # Lessons
 
-This catalog indexes 35 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+This catalog indexes 38 focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
 ## How to use this catalog
 
@@ -81,3 +81,6 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [The platform apiFetch throws ForbiddenError on every 403, so a page's own 403 branch never runs; test the forbidden state in the UI](lessons/apifetch-403-throws-before-page-branch.md) — area:backend-ui,testing; module:activities,platform; topic:api-client,forbidden,error-states,journeys
 - [Code that platform workers or the CLI load may import only .ts from @vereino/ui, and the notification delivery strategies exist only in the web runtime](lessons/worker-runtime-imports-and-notification-strategies.md) — area:architecture,integration; module:foundation,platform,notifications; topic:workers,cli,tsx,notifications,di,email
 - [OM_TEST_MODE counts as e-mail delivery disabled, its capture does not render components, and an encrypted lookup hash needs its property present at insert](lessons/om-test-mode-capture-and-encrypted-hash.md) — area:integration,testing,module-data; module:foundation,platform; topic:email,test-mode,encryption,capture
+- [The platform's notification type registry is filled only in the web runtime, so a module whose in-app type is delivered by dispatch registers it in di.ts](lessons/notification-type-registry-in-worker-runtime.md) — area:integration,architecture; module:communication,foundation,platform,notifications; topic:workers,notifications,di,dispatch
+- [@vereino/ui admin components cannot use DataTable or CrudForm, so they build on primitives and keep every effect and handler in a tested .ts model](lessons/vereino-ui-admin-components-without-next.md) — area:backend-ui,testing; module:ui,communication; topic:vereino-ui,datatable,crudform,coverage,next-navigation
+- [Event subscribers get no event id, so a persistent subscriber keys its idempotency on a value the event carries](lessons/subscriber-idempotency-without-event-id.md) — area:module-data,integration; module:communication,activities,platform; topic:events,subscribers,idempotency,dispatch

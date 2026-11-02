@@ -11,6 +11,16 @@ import {
   uniqueSuffix,
   type Club,
 } from '../_fixtures/club'
+import {
+  addDays,
+  cancelOccurrence,
+  createActivity,
+  juneThirtiethNextYear,
+  listOccurrences,
+  scheduleFor,
+} from '../_fixtures/activities'
+import { awaitEmails } from '../_fixtures/communication'
+import { addMembership } from '../_fixtures/groups'
 import { acceptInvitation, getMe, signInThroughForm, updateClubSettings } from '../_fixtures/members'
 import { createGuardianship } from '../_fixtures/people'
 
@@ -19,9 +29,9 @@ import { createGuardianship } from '../_fixtures/people'
 // from a Polish browser and gets the English interface, B from an English browser gets the Polish one (person →
 // club default → Accept-Language → en); the club's content (its short name) stays as the club wrote it; dates follow
 // the locale; A switches to Polish in the profile; an unknown locale is refused with 422. Not covered here: the
-// public section page with the guest switcher (step 6), the session-cancellation e-mail (phase 3), and the
-// invitation e-mail's locale — `auth.users.create` renders it in the request locale (foundation AC-F04 deviation,
-// TEST-F10). The missing-key fallback is guaranteed by the catalog parity of `yarn verify`.
+// public section page with the guest switcher (step 6) and the invitation e-mail's locale — `auth.users.create` renders it in the request locale (foundation AC-F04 deviation,
+// TEST-F10). The missing-key fallback is guaranteed by the catalog parity of `yarn verify`. The second test is the
+// phase 3 re-run for e-mails (#35): the session-cancellation e-mail reaches A in English and B in Polish.
 test.describe.configure({ timeout: 300_000 })
 test.use({ locale: 'pl-PL' })
 
@@ -53,7 +63,7 @@ async function guardianWithWard(
   expect(account.status, JSON.stringify(account.body)).toBe(201)
   const userId = String(account.body?.userId)
   club.extraUserIds.push(userId)
-  return { personId, userId, email }
+  return { personId, userId, email, wardId }
 }
 
 test('TEST-047 member locale: preferred English in a Polish club, club default over Accept-Language, club content unchanged, switch in the profile', async ({
@@ -132,6 +142,53 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
         .textContent()) ?? ''
     expect(bBirth).toMatch(/2016/)
     expect(bBirth.replace(/^Urodzony\(-a\) /, '')).not.toBe(aBirth.replace(/^Born /, ''))
+  } finally {
+    await club.cleanup()
+  }
+})
+
+test('TEST-047 cancellation e-mail per locale: guardian A (en) gets it in English, guardian B (club default pl) in Polish', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'test-047-mail')
+  try {
+    const settings = await updateClubSettings(request, club.adminToken, { defaultLocale: 'pl', shortName: CLUB_NAME })
+    expect(settings.status, JSON.stringify(settings.body)).toBe(200)
+    const { pitch, zaki } = await scheduleFor(request, club)
+    const a = await guardianWithWard(request, club, { firstName: 'Alice', preferredLocale: 'en' })
+    const b = await guardianWithWard(request, club, { firstName: 'Bogna' })
+    const today = calendarDate()
+    for (const ward of [a.wardId, b.wardId]) {
+      await addMembership(request, club.adminToken, {
+        groupId: zaki,
+        personId: ward,
+        role: 'participant',
+        validFrom: addDays(today, -30),
+      })
+    }
+    const { id: activityId } = await createActivity(request, club.adminToken, {
+      groupId: zaki,
+      name: 'Trening Żaków',
+      type: 'training',
+      placeId: pitch,
+      recurrenceRule: `FREQ=WEEKLY;BYDAY=TU;UNTIL=${juneThirtiethNextYear(today).until}`,
+      startsOn: addDays(today, 1),
+      startTime: '17:00',
+      endTime: '18:30',
+    })
+    const session = (await listOccurrences(request, club.adminToken, `&activityId=${activityId}`)).items.at(0)
+    if (!session) throw new Error('[internal] the series has no session')
+    const cancelled = await cancelOccurrence(request, club.adminToken, session.id, 'Ulewa', session.updatedAt)
+    expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200)
+
+    const [english] = await awaitEmails(a.email, 'Cancelled: Trening Żaków')
+    expect(english?.text).toContain('is cancelled')
+    expect(english?.text).toContain('17:00')
+    const [polish] = await awaitEmails(b.email, 'Odwołane: Trening Żaków')
+    expect(polish?.text).toContain('jest odwołane')
+    // Club content (the activity name, the reason) stays as the club wrote it in both.
+    expect(english?.text).toContain('Ulewa')
+    expect(polish?.text).toContain('Ulewa')
   } finally {
     await club.cleanup()
   }

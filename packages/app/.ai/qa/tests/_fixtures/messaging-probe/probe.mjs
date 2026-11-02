@@ -1,8 +1,9 @@
-// The foundation III probe (TEST-M01…M04; spec *Implementation Phases → Phase A*): a QA-only process that boots the app
-// the way the `mercato` CLI does, adds the probe templates, the probe in-app type and a scripted `foundation.emailSender`
-// to every container it creates, and runs a script of steps against the real services, workers and database. Jobs go
-// to a private local queue (`QUEUE_BASE_DIR`, set by the caller), so the running app's workers never see them and the
-// probe drains them itself with the real `foundation:dispatch-deliver` and `foundation:dispatch-sweep` handlers.
+// The foundation III probe (TEST-M01…M04; TEST-M05 and TEST-M07 of phase B, #35; spec *Implementation Phases*): a
+// QA-only process that boots the app the way the `mercato` CLI does, adds the probe templates, the probe in-app type
+// and a scripted `foundation.emailSender` to every container it creates, and runs a script of steps against the real
+// services, workers and database. Jobs go to a private local queue (`QUEUE_BASE_DIR`, set by the caller), so the
+// running app's workers never see them and the probe drains them itself with the real `foundation:dispatch-deliver`
+// and `foundation:dispatch-sweep` handlers.
 //
 // Usage (cwd = packages/app): node .ai/qa/tests/_fixtures/messaging-probe/probe.mjs '<json>'
 //   input: { tenantId, organizationId, steps: [{ op, ... }] } — the last stdout line is the JSON result.
@@ -388,6 +389,35 @@ async function runStep(step) {
         [resolveRef(step.dispatch), scope.tenantId],
       )
       return { items: found }
+    }
+    case 'command': {
+      // A module command run as a member of the club (`authorUserId`) or as a job (`system_job`), `times` copies at
+      // once (TEST-M07: a cancellation event delivered concurrently). Dispatches it publishes land on the private queue.
+      const runOnce = async () => {
+        const container = await newContainer()
+        const ctx = step.authorUserId
+          ? {
+              container,
+              auth: { sub: step.authorUserId, tenantId: scope.tenantId, orgId: scope.organizationId },
+              organizationScope: {
+                selectedId: scope.organizationId,
+                filterIds: [scope.organizationId],
+                allowedIds: [scope.organizationId],
+                tenantId: scope.tenantId,
+              },
+              selectedOrganizationId: scope.organizationId,
+              organizationIds: [scope.organizationId],
+            }
+          : container.resolve('foundationAuthorization').jobCommandContext(container, scope)
+        try {
+          const { result } = await container.resolve('commandBus').execute(step.id, { input: step.input, ctx })
+          return { result: result ?? null }
+        } catch (error) {
+          return { error: codedError(error) }
+        }
+      }
+      const results = await Promise.all(Array.from({ length: step.times ?? 1 }, runOnce))
+      return { results }
     }
     case 'override': {
       await rows(
