@@ -238,6 +238,12 @@ export function createDevRuntimeSupervisor(options = {}) {
       return store.getDiagnosticLines(cursor)
     },
 
+    // Recovery commands (banner actions) stream their output here.
+    appendDiagnosticLine(line, meta) {
+      if (!enabled) return
+      store.appendDiagnosticLine(line, meta)
+    },
+
     start() {
       if (!enabled || syncTimer) return
       sink.clear()
