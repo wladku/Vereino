@@ -33,6 +33,7 @@ import { ConflictList } from './ConflictList'
 import { OccurrenceBadges } from './OccurrencesTable'
 import { attendanceHref } from './club/club-client'
 import {
+  OWN_FORBIDDEN_STATE,
   OCCURRENCES_HREF,
   activityHref,
   dateLabel,
@@ -375,7 +376,10 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const query = useQuery({
     queryKey: ['activities-occurrence', id],
     queryFn: async (): Promise<OccurrenceLoad> => {
-      const call = await apiCall<OccurrenceDetail>(`/api/activities/occurrences/${encodeURIComponent(id)}`)
+      const call = await apiCall<OccurrenceDetail>(
+        `/api/activities/occurrences/${encodeURIComponent(id)}`,
+        OWN_FORBIDDEN_STATE,
+      )
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'denied' }
       if (!call.ok || !call.result) throw new Error(t('activities.occurrences.errors.loadOne'))

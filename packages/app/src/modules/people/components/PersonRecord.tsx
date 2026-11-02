@@ -14,7 +14,7 @@ import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { PersonDetailsForm } from './PersonForm'
 import { RolesPanel } from './RolesPanel'
-import { PERSONS_HREF, personName, type PersonDetail, type Translate } from './client-helpers'
+import { OWN_FORBIDDEN_STATE, PERSONS_HREF, personName, type PersonDetail, type Translate } from './client-helpers'
 import { useGrantedFeatures } from './useGrantedFeatures'
 
 type PersonLoad = { status: 'ok'; person: PersonDetail } | { status: 'not_found' } | { status: 'denied' }
@@ -61,7 +61,7 @@ export function PersonRecord({ id }: { id: string }) {
   const query = useQuery({
     queryKey: ['people-person', id],
     queryFn: async (): Promise<PersonLoad> => {
-      const call = await apiCall<PersonDetail>(`/api/people/persons/${encodeURIComponent(id)}`)
+      const call = await apiCall<PersonDetail>(`/api/people/persons/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'denied' }
       if (!call.ok || !call.result) throw new Error(t('people.persons.errors.loadOne'))

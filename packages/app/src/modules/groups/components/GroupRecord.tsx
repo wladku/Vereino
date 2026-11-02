@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { GroupDetailsForm } from './GroupForm'
 import { RosterPanel } from './RosterPanel'
-import { GROUPS_HREF, kindLabel, type GroupDetail, type Translate } from './client-helpers'
+import { GROUPS_HREF, OWN_FORBIDDEN_STATE, kindLabel, type GroupDetail, type Translate } from './client-helpers'
 import { useCanManageGroups } from './useCanManageGroups'
 
 type GroupLoad = { status: 'ok'; group: GroupDetail } | { status: 'not_found' } | { status: 'denied' }
@@ -48,7 +48,7 @@ export function GroupRecord({ id }: { id: string }) {
   const query = useQuery({
     queryKey: ['groups-group', id],
     queryFn: async (): Promise<GroupLoad> => {
-      const call = await apiCall<GroupDetail>(`/api/groups/groups/${encodeURIComponent(id)}`)
+      const call = await apiCall<GroupDetail>(`/api/groups/groups/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'denied' }
       if (!call.ok || !call.result) throw new Error(t('groups.groups.errors.loadOne'))

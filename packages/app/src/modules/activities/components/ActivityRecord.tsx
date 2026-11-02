@@ -22,6 +22,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ActivityDetailsForm } from './ActivityForm'
 import { ActivitySessions } from './OccurrencesTable'
 import {
+  OWN_FORBIDDEN_STATE,
   ACTIVITIES_HREF,
   errorCode,
   errorMessage,
@@ -76,7 +77,10 @@ export function ActivityRecord({ id }: { id: string }) {
   const query = useQuery({
     queryKey: ['activities-activity', id],
     queryFn: async (): Promise<ActivityLoad> => {
-      const call = await apiCall<ActivityDetail>(`/api/activities/activities/${encodeURIComponent(id)}`)
+      const call = await apiCall<ActivityDetail>(
+        `/api/activities/activities/${encodeURIComponent(id)}`,
+        OWN_FORBIDDEN_STATE,
+      )
       if (call.status === 404) return { status: 'not_found' }
       if (call.status === 403) return { status: 'denied' }
       if (!call.ok || !call.result) throw new Error(t('activities.activities.errors.loadOne'))
