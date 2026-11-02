@@ -63,10 +63,23 @@ export type PublicFileRef = {
   mimeType?: string
 }
 
+/** The trusted scope of a club found by its public slug and the header of its public pages. */
+export type PublicClubFrame = {
+  tenantId: string
+  organizationId: string
+  club: { name: string; slug: string; logo: PublicLogo }
+}
+
 export type ClubCorePublicSite = {
   clubPage(clubSlug: string): Promise<PublicSiteResult<PublicClubPage>>
   sectionPage(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicSectionPage>>
   clubLogo(clubSlug: string): Promise<PublicSiteResult<PublicFileRef>>
+  /**
+   * The club behind a public slug — its trusted tenant and organization and the header of its public pages — for a
+   * sessionless page another module serves under `/p/[clubSlug]` (the DD-17 session page of `activities`, foundation
+   * III DD-M14). The same lookup and the same `not_found` / `disabled` answers as the club page.
+   */
+  clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
 }
@@ -296,6 +309,22 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
           club: { name, slug: club.slug, logo: clubLogo },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
           blocks: { ...extra, ...own },
+        },
+      }
+    },
+
+    async clubFrame(clubSlug) {
+      const db = em()
+      const found = await findClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const club = found.value
+      const name = await clubName(db, club)
+      return {
+        status: 'ok',
+        value: {
+          tenantId: club.tenantId,
+          organizationId: club.organizationId,
+          club: { name, slug: club.slug, logo: clubLogoOf(club, name) },
         },
       }
     },

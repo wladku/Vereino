@@ -26,6 +26,7 @@ import {
   signInAs,
 } from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
+import { awaitEmails, emailsTo } from '../_fixtures/communication'
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 
@@ -33,7 +34,8 @@ import { createGuardianship } from '../_fixtures/people'
 // ancestors and its descendants the planned sessions in use at one instant never exceed the place's `capacity_groups`;
 // a coach leads one session at a time; touching sessions do not conflict; every save (create, move) over a conflict is
 // refused with 409 and the conflicting sessions. A cancelled session notifies, in the app, the participants with an
-// account, the guardians of minors and the coaches — never the user who cancelled.
+// account, the guardians of minors and the coaches — never the user who cancelled; since phase 3 (#35) they also get the
+// cancellation e-mail of `communication` once each.
 test.describe.configure({ timeout: 300_000 })
 
 /** The ids of the stored sessions a 409 lists. */
@@ -304,6 +306,13 @@ test('TEST-012 cancellation: the guardian of a minor, a 14-year-old, an adult pa
       const notice = (await readNotifications(request, token, query)).at(0)
       expect(notice).toMatchObject({ type: 'activities.occurrence_cancelled', sourceEntityId: session.id })
       expect(notice?.bodyVariables?.reason).toBe(reason)
+    }
+    // Phase 3 (foundation III REQ-M07, the club spec's TEST-012 re-run with e-mail): the same people get the
+    // cancellation e-mail of `communication` once each, through the foundation's dispatch.
+    for (const person of [guardian, teen, adult, coach]) {
+      const [mail] = await awaitEmails(person.email, 'Trening Żaków')
+      expect(mail?.text).toContain(reason)
+      expect(emailsTo(person.email, 'Trening Żaków')).toHaveLength(1)
     }
     // The coordinator who cancelled, and the administrator outside the group, have none.
     expect(await readNotifications(request, coordinator, query)).toEqual([])

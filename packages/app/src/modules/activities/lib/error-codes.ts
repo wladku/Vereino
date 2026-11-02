@@ -34,6 +34,9 @@ export const errorCodes = [
   { code: 'attendance_not_started', status: 409, messageKey: 'activities.errors.attendance_not_started' },
   { code: 'attendance_person_not_listed', status: 422, messageKey: 'activities.errors.attendance_person_not_listed' },
   { code: 'attendance_version_required', status: 400, messageKey: 'activities.errors.attendance_version_required' },
+  // The public session page (foundation III DD-M14, #35): an unknown session, one of another club, or a club without a
+  // published page all answer the same 404 without detail.
+  { code: 'public_session_not_found', status: 404, messageKey: 'activities.errors.public_session_not_found' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

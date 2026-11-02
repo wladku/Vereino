@@ -38,6 +38,16 @@ export type GroupDirectory = {
     window: { from: CalendarDate; to: CalendarDate },
     em?: EntityManager,
   ): Promise<MembershipPeriod[]>
+  /**
+   * The live active groups of the organization, by name: all of them (`filter` null), or those in `sectionIds` or
+   * among `groupIds` — the targets an author may address (foundation III `AudiencePicker`, #35). The caller derives
+   * the filter from the author's grants.
+   */
+  listGroups(
+    scope: GroupsScope,
+    filter: { sectionIds?: readonly string[]; groupIds?: readonly string[] } | null,
+    em?: EntityManager,
+  ): Promise<GroupDirectoryEntry[]>
   /** The live external teams of the organization among `ids`, by id. */
   findExternalTeams(
     scope: GroupsScope,
@@ -122,6 +132,29 @@ export async function membershipsOf(
   }))
 }
 
+export async function listGroups(
+  em: EntityManager,
+  scope: GroupsScope,
+  filter: { sectionIds?: readonly string[]; groupIds?: readonly string[] } | null,
+): Promise<GroupDirectoryEntry[]> {
+  const or: Array<Record<string, unknown>> = []
+  if (filter?.sectionIds && filter.sectionIds.length > 0) or.push({ sectionId: { $in: [...filter.sectionIds] } })
+  if (filter?.groupIds && filter.groupIds.length > 0) or.push({ id: { $in: [...filter.groupIds] } })
+  if (filter && or.length === 0) return []
+  const rows = await em.find(
+    Group,
+    { ...scope, deletedAt: null, isActive: true, ...(or.length > 0 ? { $or: or } : {}) },
+    { fields: ['id', 'sectionId', 'name', 'kind', 'isActive'], orderBy: { name: 'asc' }, limit: 500 },
+  )
+  return rows.map((row) => ({
+    id: row.id,
+    sectionId: row.sectionId,
+    name: row.name,
+    kind: row.kind,
+    isActive: row.isActive,
+  }))
+}
+
 export async function findExternalTeams(
   em: EntityManager,
   scope: GroupsScope,
@@ -142,6 +175,7 @@ export function createGroupDirectory(getEm: () => EntityManager): GroupDirectory
     findGroups: (scope, ids, em) => findGroups(em ?? getEm().fork(), scope, ids),
     rosterOn: (scope, groupId, date, em) => rosterOn(em ?? getEm().fork(), scope, groupId, date),
     membershipsOf: (scope, personIds, window, em) => membershipsOf(em ?? getEm().fork(), scope, personIds, window),
+    listGroups: (scope, filter, em) => listGroups(em ?? getEm().fork(), scope, filter),
     findExternalTeams: (scope, ids, em) => findExternalTeams(em ?? getEm().fork(), scope, ids),
   }
 }

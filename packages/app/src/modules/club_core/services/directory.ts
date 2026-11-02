@@ -45,6 +45,15 @@ export type ClubCoreDirectory = {
     ids: readonly string[],
     em?: EntityManager,
   ): Promise<Map<string, SectionDirectoryEntry>>
+  /**
+   * The live active sections of the organization, by name: all of them (`sectionIds` null) or those among
+   * `sectionIds` — the section targets an author may address (foundation III `AudiencePicker`, #35).
+   */
+  listSections(
+    scope: ClubDirectoryScope,
+    sectionIds: readonly string[] | null,
+    em?: EntityManager,
+  ): Promise<SectionDirectoryEntry[]>
   /** The live institutions of the organization among `ids`, by id (names only; contacts stay encrypted here). */
   findInstitutions(
     scope: ClubDirectoryScope,
@@ -76,6 +85,20 @@ export async function findSections(
     { fields: ['id', 'name', 'isActive'] },
   )
   return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name, isActive: row.isActive }]))
+}
+
+export async function listSections(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  sectionIds: readonly string[] | null,
+): Promise<SectionDirectoryEntry[]> {
+  if (sectionIds && sectionIds.length === 0) return []
+  const rows = await em.find(
+    Section,
+    { ...scope, deletedAt: null, isActive: true, ...(sectionIds ? { id: { $in: [...sectionIds] } } : {}) },
+    { fields: ['id', 'name', 'isActive'], orderBy: { name: 'asc' }, limit: 500 },
+  )
+  return rows.map((row) => ({ id: row.id, name: row.name, isActive: row.isActive }))
 }
 
 export async function findInstitutions(
@@ -161,6 +184,7 @@ export async function placeOptions(em: EntityManager, scope: ClubDirectoryScope)
 export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDirectory {
   return {
     findSections: (scope, ids, em) => findSections(em ?? getEm().fork(), scope, ids),
+    listSections: (scope, sectionIds, em) => listSections(em ?? getEm().fork(), scope, sectionIds),
     findInstitutions: (scope, ids, em) => findInstitutions(em ?? getEm().fork(), scope, ids),
     findPlaces: (scope, ids, em) => findPlaces(em ?? getEm().fork(), scope, ids),
     placeFamily: (scope, placeId, em) => placeFamily(em ?? getEm().fork(), scope, placeId),
