@@ -54,7 +54,7 @@ import {
   type ScheduleConflict,
   type Translate,
 } from './client-helpers'
-import { dateField, timeField } from './form-fields'
+import { dateField, timeField } from '@vereino/ui'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
 
 type OccurrenceLoad = { status: 'ok'; occurrence: OccurrenceDetail } | { status: 'not_found' } | { status: 'denied' }

@@ -544,10 +544,16 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     // CrudForm labels are not bound to their inputs; its field containers carry `data-crud-field-id`.
     await page.locator('[data-crud-field-id="firstName"] input').fill('Kasia')
     await page.locator('[data-crud-field-id="lastName"] input').fill(marker)
-    await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
-      .first()
-      .click()
+    // The date of birth is a native, typed date input bounded to today: a future date blocks the submit with the
+    // browser's own message, a real past date is saved.
+    const birthDateInput = page.locator('[data-crud-field-id="birthDate"] input[type="date"]')
+    await birthDateInput.fill(birthDateTurning(-1))
+    const create = page.getByRole('button', { name: /^Create$|^Utwórz$/ }).first()
+    await create.click()
+    await expect(page).toHaveURL(/\/backend\/people\/persons\/create$/)
+    expect(await birthDateInput.evaluate((input: HTMLInputElement) => input.validationMessage)).not.toBe('')
+    await birthDateInput.fill(birthDateTurning(38))
+    await create.click()
     await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}$/)
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`Kasia ${marker}`) })).toBeVisible()
     for (const name of [/^Details$|^Dane$/, /Guardianship|Opieka/, /^Roles$|^Role$/, /^Account$|^Konto$/]) {
