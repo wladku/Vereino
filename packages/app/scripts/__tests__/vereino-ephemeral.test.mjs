@@ -4,8 +4,12 @@ import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
+import net from 'node:net'
 import {
   DEFAULT_PORT,
+  PORT_RANGE_SIZE,
+  findFreePort,
+  isPortFree,
   DEFAULT_POSTGRES_IMAGE,
   POSTGRES_INIT_SQL,
   SEEDED_ADMIN,
@@ -21,7 +25,7 @@ import {
 } from '../vereino-ephemeral.mjs'
 
 test('parseArgs reads the mode and options', () => {
-  assert.deepEqual(parseArgs(['test']), { mode: 'test', filter: null, build: true, port: DEFAULT_PORT })
+  assert.deepEqual(parseArgs(['test']), { mode: 'test', filter: null, build: true, port: null })
   assert.deepEqual(parseArgs(['start', '--no-build', '--port', '6001', '--filter', 'ENG-TEST']), {
     mode: 'start',
     filter: 'ENG-TEST',
@@ -284,6 +288,7 @@ function fakeDeps(overrides = {}) {
     waitForReadyImpl: async ({ baseUrl }) => calls.push(['ready', baseUrl]),
     stopImpl: (stopped) => calls.push(['app-stop', stopped.pid]),
     waitForSignalImpl: async () => calls.push(['signal']),
+    findFreePortImpl: async () => (calls.push(['port']), DEFAULT_PORT),
     image: 'pg:test',
     stateDir: fs.mkdtempSync(`${process.env.TEMP ?? '/tmp'}/vereino-ephemeral-test-`),
     ...overrides,
@@ -298,6 +303,7 @@ test('runEphemeral test mode builds, starts, runs Playwright and cleans up', asy
   assert.equal(code, 0)
   assert.deepEqual(deps.calls, [
     ['db', 'pg:test'],
+    ['port'],
     ['yarn', 'initialize', 'http://127.0.0.1:5001'],
     ['yarn', 'build', 'http://127.0.0.1:5001'],
     ['app'],
@@ -344,7 +350,7 @@ test('runEphemeral stops the app and the database when the browser install fails
 test('runEphemeral stops the database when a setup step fails', async () => {
   const deps = fakeDeps({ runYarnImpl: () => 1 })
   await assert.rejects(runEphemeral({ argv: ['test'], deps, log: () => undefined }), /yarn initialize failed/)
-  assert.deepEqual(deps.calls, [['db', 'pg:test'], ['db-stop']])
+  assert.deepEqual(deps.calls, [['db', 'pg:test'], ['port'], ['db-stop']])
 })
 
 test('runEphemeral uses the default image, state directory and console', async () => {
@@ -363,4 +369,51 @@ test('runEphemeral uses the default image, state directory and console', async (
     lines[0],
     `[ephemeral] starting PostgreSQL (${process.env.VEREINO_IT_POSTGRES_IMAGE ?? DEFAULT_POSTGRES_IMAGE})`,
   )
+})
+
+test('findFreePort starts at a random port of the range and wraps around past busy ones', async () => {
+  const probed = []
+  const busy = new Set([DEFAULT_PORT + PORT_RANGE_SIZE - 1, DEFAULT_PORT])
+  const port = await findFreePort({
+    random: () => (PORT_RANGE_SIZE - 1) / PORT_RANGE_SIZE,
+    isFree: async (candidate) => (probed.push(candidate), !busy.has(candidate)),
+  })
+  assert.equal(port, DEFAULT_PORT + 1)
+  assert.deepEqual(probed, [DEFAULT_PORT + PORT_RANGE_SIZE - 1, DEFAULT_PORT, DEFAULT_PORT + 1])
+})
+
+test('findFreePort fails when every port of the range is taken', async () => {
+  await assert.rejects(
+    findFreePort({ random: () => 0, isFree: async () => false }),
+    /no free port between 5001 and 5999/,
+  )
+})
+
+test('isPortFree tells a listening port from a free one', async () => {
+  const server = net.createServer()
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  assert.equal(await isPortFree(port), false)
+  await new Promise((resolve) => server.close(resolve))
+  assert.equal(await isPortFree(port), true)
+})
+
+test('runEphemeral keeps an explicit --port and does not search for one', async () => {
+  const deps = fakeDeps()
+  await runEphemeral({ argv: ['start', '--port', '6001'], deps, log: () => undefined })
+  assert.equal(
+    deps.calls.some(([kind]) => kind === 'port'),
+    false,
+  )
+  assert.equal(deps.calls.find(([kind]) => kind === 'yarn')[2], 'http://127.0.0.1:6001')
+})
+
+test('runEphemeral start mode without --port stays on the default port', async () => {
+  const deps = fakeDeps()
+  await runEphemeral({ argv: ['start', '--no-build'], deps, log: () => undefined })
+  assert.equal(
+    deps.calls.some(([kind]) => kind === 'port'),
+    false,
+  )
+  assert.equal(deps.calls.find(([kind]) => kind === 'yarn')[2], 'http://127.0.0.1:5001')
 })

@@ -127,8 +127,12 @@ export function checkLessonsCatalog(rootDir) {
     records.set(fileName, metadata)
   }
 
+  // Rows stay in file-name order within each area section, so parallel branches that each add a lesson insert at
+  // different lines instead of all appending to the same spot (a merge conflict on every parallel PR).
   const indexed = new Set()
+  let previousInSection = null
   for (const line of indexSource.split('\n')) {
+    if (line.startsWith('#')) previousInSection = null
     if (!line.startsWith('- [')) continue
     const match = line.match(INDEX_ROW_PATTERN)
     if (!match) {
@@ -138,6 +142,10 @@ export function checkLessonsCatalog(rootDir) {
     const [, title, fileName, areaText, moduleText, topicText] = match
     if (indexed.has(fileName)) errors.push(`.ai/lessons.md: duplicate link to lessons/${fileName}`)
     indexed.add(fileName)
+    if (previousInSection && previousInSection.localeCompare(fileName) > 0) {
+      errors.push(`.ai/lessons.md: lessons/${fileName} must come before lessons/${previousInSection} (rows sorted by file name)`)
+    }
+    previousInSection = fileName
     const metadata = records.get(fileName)
     if (!metadata) {
       errors.push(`.ai/lessons.md: lessons/${fileName} does not exist`)
@@ -158,10 +166,6 @@ export function checkLessonsCatalog(rootDir) {
 
   for (const fileName of records.keys()) {
     if (!indexed.has(fileName)) errors.push(`.ai/lessons/${fileName}: record is missing from the catalog`)
-  }
-  const declaredCount = indexSource.match(/catalog indexes (\d+) focused lessons/)
-  if (!declaredCount || Number(declaredCount[1]) !== records.size) {
-    errors.push(`.ai/lessons.md: declared lesson count must equal ${records.size}`)
   }
 
   return errors
