@@ -4,9 +4,12 @@
 // a Testcontainers PostgreSQL, `yarn initialize`, a production build and `yarn start`.
 // Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--no-build] [--port <n>]
 //        node scripts/vereino-ephemeral.mjs start [--no-build] [--port <n>]   (runs until Ctrl+C)
+// Without --port, `test` takes a free port from 5001–5999, so several worktrees can run their tests at once;
+// `start` stays on 5001.
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
+import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +17,8 @@ import { APP_ROOT } from './vereino-paths.mjs'
 
 export const DEFAULT_POSTGRES_IMAGE = 'pgvector/pgvector:pg17-trixie'
 export const DEFAULT_PORT = 5001
+/** Ports tried when no --port is given: DEFAULT_PORT and the next PORT_RANGE_SIZE - 1. */
+export const PORT_RANGE_SIZE = 999
 // Accounts seeded by `yarn initialize` for tests; the passwords are pinned below (test-only).
 export const SEEDED_ADMIN = { email: 'admin@acme.com', password: 'secret' }
 export const POSTGRES_INIT_SQL = [
@@ -29,7 +34,7 @@ const PLAYWRIGHT_CONFIG = '.ai/qa/tests/playwright.config.ts'
 export function parseArgs(argv) {
   const [mode, ...rest] = argv
   if (mode !== 'test' && mode !== 'start') throw new Error('usage: vereino-ephemeral.mjs <test|start> [options]')
-  const options = { mode, filter: null, build: true, port: DEFAULT_PORT }
+  const options = { mode, filter: null, build: true, port: null }
   for (let index = 0; index < rest.length; index += 1) {
     const argument = rest[index]
     if (argument === '--no-build') options.build = false
@@ -38,6 +43,30 @@ export function parseArgs(argv) {
     else throw new Error(`unknown or incomplete option: ${argument}`)
   }
   return options
+}
+
+/** Whether nothing listens on `port` of 127.0.0.1 (the app binds there). */
+export function isPortFree(port, { createServer = net.createServer } = {}) {
+  return new Promise((resolve) => {
+    const server = createServer()
+    server.once('error', () => resolve(false))
+    server.listen(port, '127.0.0.1', () => server.close(() => resolve(true)))
+  })
+}
+
+/**
+ * A free port in DEFAULT_PORT … DEFAULT_PORT + PORT_RANGE_SIZE - 1. The search starts at a random port of the range
+ * and wraps around, so runs started at the same moment in different worktrees rarely pick the same one.
+ */
+export async function findFreePort({ isFree = isPortFree, random = Math.random } = {}) {
+  const offset = Math.floor(random() * PORT_RANGE_SIZE)
+  for (let step = 0; step < PORT_RANGE_SIZE; step += 1) {
+    const port = DEFAULT_PORT + ((offset + step) % PORT_RANGE_SIZE)
+    if (await isFree(port)) return port
+  }
+  throw new Error(
+    `[internal] no free port between ${String(DEFAULT_PORT)} and ${String(DEFAULT_PORT + PORT_RANGE_SIZE - 1)}`,
+  )
 }
 
 // Environment of the ephemeral app: test-only values, never real secrets.
@@ -185,6 +214,7 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
     waitForReadyImpl = waitForReady,
     stopImpl = stopProcessTree,
     waitForSignalImpl = waitForSignal,
+    findFreePortImpl = findFreePort,
     image = process.env.VEREINO_IT_POSTGRES_IMAGE,
     stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-ephemeral-')),
   } = deps
@@ -192,7 +222,9 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
   const database = await startDatabaseImpl({ image })
   let app = null
   try {
-    const env = buildAppEnv({ databaseUrl: database.databaseUrl, port: options.port, stateDir })
+    // `start` keeps DEFAULT_PORT, which CI and the docs rely on (BACKWARD_COMPATIBILITY.md); `test` takes a free port.
+    const port = options.port ?? (options.mode === 'start' ? DEFAULT_PORT : await findFreePortImpl())
+    const env = buildAppEnv({ databaseUrl: database.databaseUrl, port, stateDir })
     for (const step of options.build ? ['initialize', 'build'] : ['initialize']) {
       log(`[ephemeral] yarn ${step}`)
       if (runYarnImpl([step], { env }) !== 0) throw new Error(`[internal] yarn ${step} failed`)
