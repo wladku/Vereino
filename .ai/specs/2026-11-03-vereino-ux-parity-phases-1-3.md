@@ -1,7 +1,7 @@
 # Vereino — UX parity for phases 1–3: people, sections and places lists
 
 **Date**: 2026-11-03
-**Status**: Draft — Q-U10 confirmed by the product owner (2026-11-03); the other autonomous defaults stand unless overridden on the PR; `Ready for implementation` after the owner approves the spec PR
+**Status**: Draft — the spec PR #131 was merged on 2026-11-03 with Q-U10 confirmed by the product owner; the other autonomous defaults stand unless a later PR overrides them; `Ready for implementation` once the owner gives the go for implementation
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -60,7 +60,7 @@ Who has it: the club administrator; a section coordinator (club-wide basic peopl
 - Sorting the people list by name: names are encrypted without a sortable index (`people/encryption.ts:11-18`), and the list keeps its `createdAt` default.
 - Widening any read scope: coordinators keep the club-wide **basic** read; a coach still reads only themselves in the panel.
 - Public use of place photos and regulations, and the place fields "public schedule" and "accepts requests". Both are phase 5 (`.ai/specs/2026-10-27-vereino-facilities.md`, E08-S04 #124).
-- The person record's Groups tab (E06-S02 #84) and the dashboard widget (E06-S06 #88). They reuse REQ-U02's enricher, but they are their own stories.
+- The person record's Groups tab (E06-S02 #84) and the dashboard widget (E06-S06 #88): their own stories, built on the existing memberships API and the existing coordinators enricher.
 - Treasurer and facility-operator roles in the role filter (phases 4 and 5).
 
 ## Proposed Solution
@@ -70,7 +70,7 @@ Who has it: the club administrator; a section coordinator (club-wide basic peopl
 | Parameter | Values / meaning | Owner of the predicate |
 |---|---|---|
 | `search` | first or last name | `people` |
-| `sectionId` | section | `groups`, through the contract |
+| `sectionId` | section | `groups` (memberships, through the contract) plus `people` (role assignments scoped to the section) |
 | `groupId` | group | `groups`, through the contract |
 | `role` | `club_admin`, `coordinator`, `coach`, `guardian` or `participant` | `people` (assignments, guardianships) plus `groups` (memberships) |
 | `hasAccount` | with or without an account | `people` |
@@ -156,7 +156,7 @@ The rest of the section changes:
 | Active group count | app-own | `groups` | Response enricher `groups.section-groups` on `club_core:section` | — |
 | Place owner name | extend | `club_core` | List hook joining `club_core_institutions` (same module) | Same module; no seam needed |
 | Place files | reuse | `attachments` | `createScoped` / `readScoped` in `privateAttachments`, `persistLink` | Same as section materials |
-| Tables and forms | reuse | Open Mercato UI | `DataTable` filters (`activities/components/ActivitiesTable.tsx:142-217`), perspectives (`example/components/TodosTable.tsx:298`), `CrudForm` | Canonical primitives |
+| Tables and forms | reuse | Open Mercato UI | `DataTable` filters (`activities/components/ActivitiesTable.tsx:142-217`), `CrudForm`; the perspective tabs are an app-owned tablist above `DataTable` (DD-U03) | Canonical primitives |
 
 ## Architecture and Data Flow
 
@@ -209,11 +209,11 @@ Place files        -> POST/DELETE /api/club_core/places/{id}/files -> readChecke
 
 ## UI and Interaction Contracts
 
-The closest installed references: `activities/components/ActivitiesTable.tsx` (DataTable `filters`, `filterValues`, `onFiltersApply`, `onFiltersClear`, `FilterDef` with `loadOptions`); `example/components/TodosTable.tsx:298` (perspectives); `people/components/PersonRecord.tsx` (tabs); `club_core/components/SectionMaterialsPanel.tsx` (file list with upload and remove). `.ai/guides/backend-ui.md` applies; implementation invokes `om-backend-ui-design`.
+The closest installed references: `activities/components/ActivitiesTable.tsx` (DataTable `filters`, `filterValues`, `onFiltersApply`, `onFiltersClear`, `FilterDef` with `loadOptions`); `people/components/PersonRecord.tsx` (tabs; also the model for the app-owned perspective tablist of DD-U03); `club_core/components/SectionMaterialsPanel.tsx` (file list with upload and remove). `DataTable`'s own `perspective` prop (`example/components/TodosTable.tsx:298`) is not used: it stores saved per-user views, a non-goal. `.ai/guides/backend-ui.md` applies; implementation invokes `om-backend-ui-design`.
 
 | Surface / route | Purpose and primary actions | Data source / mutations | Closest installed reference | Canonical shell / components | Required states | Requirement IDs |
 |---|---|---|---|---|---|---|
-| `/backend/people/persons` | Filter, switch perspective, search, open a record, "Add person" | `GET /api/people/persons` | `ActivitiesTable.tsx`, `TodosTable.tsx` | `Page`, `PageBody`, `DataTable` (filters, perspectives), `StatusBadge`, `EmptyState` | loading, empty ("Add the first person or family" + Add person), filtered-empty ("No people match" + Clear filters), error + retry, 400 filter message, 403 | REQ-U01 |
+| `/backend/people/persons` | Filter, switch perspective, search, open a record, "Add person" | `GET /api/people/persons` | `ActivitiesTable.tsx` (filters), `PersonRecord.tsx` (tablist) | `Page`, `PageBody`, `DataTable` (filters), an app-owned perspective tablist (DD-U03), `StatusBadge`, `EmptyState` | loading, empty ("Add the first person or family" + Add person), filtered-empty ("No people match" + Clear filters), error + retry, 400 filter message, 403 | REQ-U01 |
 | `/backend/club/sections` | Columns Groups and Public; row action Deactivate; Add section | `GET /api/club_core/sections`, `PUT /api/club_core/sections` | `SectionsTable.tsx` | `DataTable`, `RowActions`, `useConfirmDialog`, `StatusBadge`, `EmptyState` | loading, empty ("The club has no sections yet" + Add section), error, 409 groups dialog, success flash | REQ-U02 |
 | `/backend/club/sections/[id]/edit` | Tabs Details / Coordinators / Public page; short description; name rules; coordinator end date | `GET/PUT /api/club_core/sections`, role assignments | `PersonRecord.tsx` tabs, `SectionForm.tsx` | `CrudForm`, platform tabs | loading, error, 409 conflict, 409 name taken on the field, 422 length | REQ-U02 |
 | `/backend/club/places` | Filters kind, parent, active; columns Owner and hierarchy | `GET /api/club_core/places` | `ActivitiesTable.tsx` | `DataTable`, `StatusBadge` | loading, empty ("Add the first facility"), filtered-empty, error | REQ-U03 |
@@ -271,7 +271,9 @@ The closest installed references: `activities/components/ActivitiesTable.tsx` (D
 │ [S]   Szachy    ⚠ no coordinator    0  no      inactive Edit · Activate   │
 └────────────────────────────────────────────────────────────────────┘
 Section page: [Details] [Coordinators] [Public page]   (?tab=details|coordinators|public)
-Details: Name* · Short description (≤160, "shown on the club page") · Internal description · Logo
+Details: Name* · Internal description · Logo
+Public page: Public ✓ · Slug · Short description (≤160, "shown on the club page tile") · Public description · Terms · Contact · Materials
+(the short description sits on the Public page tab because the public-content command saves it, which the section's coordinator may run — Q-U10)
 ```
 
 - **Behavior:**
@@ -306,7 +308,7 @@ Place form, new group "Regulations and photos": regulations text · regulations 
 | Field | Type / nullability | Scope / index | Sensitive / encrypted | Lifecycle and validation |
 |---|---|---|---|---|
 | `short_description` | `varchar(160)`, nullable | — | no | plain text, trimmed; empty → null |
-| `name` | unchanged column | new partial unique index `club_core_sections_org_name_unique` on `(organization_id, lower(name)) WHERE deleted_at IS NULL` | no | 2–80 when set or changed (DD-U07) |
+| `name` | unchanged column | new partial unique index `club_core_sections_org_name_unique` on `(organization_id, lower(name)) WHERE deleted_at IS NULL` | no | 2–80 on create and when the submitted name differs from the stored one (DD-U07) |
 
 ### `club_core_places` (changed)
 
@@ -336,6 +338,7 @@ No changes to `people_persons`, `people_role_assignments`, `people_guardianships
 | DI (new) | `groups.personFilter` — `matchPersonIds(em, { tenantId, organizationId, on, sectionId?, groupId?, membershipRoles? }) → Promise<string[]>`; interface and token declared in `people/services/person-filter.ts` | called by `people` only | as typed | person ids with an active matching membership on `on` | throws → 503 `people_filter_failed` | REQ-U01 |
 | `GET` (unchanged route) | `/api/club_core/sections` | auth + `club_core.view` | — | items gain `_groups: { activeGroupCount }` and `shortDescription` | — | REQ-U02 |
 | Command (changed) | the public-content command behind `sectionPublicUpdateSchema` (`club_core/data/validators.ts:78`) | `club_core.sections.public_content` for own sections, or `club_core.manage` | `shortDescription` ≤ 160 | unchanged | 422; 409 optimistic lock | REQ-U02 |
+| `POST` (unchanged) | `/api/people/role-assignments` | unchanged | `validTo` — already accepted by `roleAssignmentCreateSchema` through `validityShape` (`people/data/validators.ts:51-59`); the Coordinators tab's assign dialog exposes it | unchanged | unchanged | REQ-U02 |
 | Command (changed) | `club_core.sections.update`, `club_core.sections.delete` and their `undo` | `club_core.manage` | `isActive: false` or delete | unchanged; `SectionSnapshot` gains `shortDescription` | 409 `section_has_active_groups` (`details: { groups: [{ id, name }], total }`); 409 `section_name_taken` when an undo or restore would duplicate a name; 409 optimistic lock as today | REQ-U02 |
 | Command (changed) | `club_core.sections.create`, `.update` | `club_core.manage` | `name` 2–80 on create and rename (section-only schema, checked in the command against the stored value) | unchanged | 422 `section_name_length` (field `name`); 409 `section_name_taken` (field `name`) | REQ-U02 |
 | DI (new) | `groups.sectionUsage` — `activeGroupsOf(em, { tenantId, organizationId, sectionId, limit }) → Promise<{ groups: { id, name }[], total }>`; interface and token declared in `club_core/services/section-usage.ts` | called by `club_core` only, inside the command's transaction | as typed | — | absent → no guard (without `groups` no group can reference a section) | REQ-U02 |
@@ -374,7 +377,7 @@ No new events, jobs or notifications. Existing `club_core.section.updated` event
 
 | Test ID | Level | Setup / fixture | Actions | Assertions | Requirement IDs |
 |---|---|---|---|---|---|
-| TEST-U01 | integration | One club; two sections with groups; a guardian with two wards; a coach by assignment and one by membership; one person without an account | `GET /api/people/persons` with each perspective and each filter, and with combinations | expected ids per case; `_people` and `_groups` fields; a person listed once | REQ-U01 |
+| TEST-U01 | integration | One club; two sections with groups; a guardian with two wards; a coach by assignment and one by membership; one person without an account | `GET /api/people/persons` with each perspective and each filter, and with combinations | expected ids per case; the `roles`, `hasWards` and `guardians` fields on every row, and `_groups` when `groups` is registered; a person listed once | REQ-U01 |
 | TEST-U02 | security | A coordinator; a second tenant with the same section name | Filters with the other tenant's ids; read rows | empty results; no e-mail, phone or PESEL in any row; no cross-tenant id | REQ-U01 |
 | TEST-U03 | integration | the `groups.personFilter` token hidden from the container | `sectionId` filter; list without group params | 400 `people_filter_unavailable`; the plain list still works (the `_groups` enricher is not asserted, because it is auto-discovered with the module) | REQ-U01 |
 | TEST-U04 | UI | People list in the browser at 375 px and desktop, light and dark | Choose Children, filter by section, reload, use back | URL holds the state; rows match; filtered-empty and empty states; axe clean | REQ-U01 |
@@ -382,8 +385,8 @@ No new events, jobs or notifications. Existing `club_core.section.updated` event
 | TEST-U06 | integration | Two sections; one legacy section with a 120-character name inserted directly | Rename to an existing name in other case; set a 1-character name; save the legacy section with its name unchanged; undo a rename into a name taken meanwhile | 409 `section_name_taken` on `name`; 422 `section_name_length`; the legacy save succeeds; the undo answers 409 | REQ-U02 |
 | TEST-U07 | UI | Sections list and section page; the section's coordinator | Deactivate through the dialog; open `?tab=coordinators`; assign a coordinator with an "until" date; as the coordinator set a short description and see it on `/p/{slug}` | dialog lists groups; tab active; the assignment shows its end date; public tile shows the text | REQ-U02 |
 | TEST-U08 | integration | Places of three kinds under a complex with an owner | Filters; list fields; upload photo, PDF, SVG-as-PNG, 11th photo, two parallel uploads at 9 photos; second regulations PDF | filtered ids; `ownerName`; 201s; 422 codes; never more than 10 photos; the second PDF replaces the first | REQ-U03 |
-| TEST-U10 | unit | `people/lib/person-list-filters.ts`, `club_core/lib/place-hierarchy.ts`, `club_core/lib/section-usage.ts` | age range → birth-date bounds (club time zone, leap days), `view` → filter mapping, parent-first ordering with orphaned children, truncation to 20 groups with `total`, the stored-versus-submitted name rule | 100 % line, branch and function coverage (`AGENTS.md`, S13.6) | REQ-U01, REQ-U02, REQ-U03 |
 | TEST-U09 | UI | Places list and form | Filter by kind; see the indented child and the External badge; upload and remove a photo | rows ordered parent first; badge text; file list updates; 409 conflict dialog on a stale save | REQ-U03 |
+| TEST-U10 | unit | `people/lib/person-list-filters.ts`, `club_core/lib/place-hierarchy.ts`, `club_core/lib/section-usage.ts` | age range → birth-date bounds (club time zone, leap days), `view` → filter mapping, parent-first ordering with orphaned children, truncation to 20 groups with `total`, the stored-versus-submitted name rule | 100 % line, branch and function coverage (`AGENTS.md`, S13.6) | REQ-U01, REQ-U02, REQ-U03 |
 
 The tests live in `packages/app/.ai/qa/tests/` (integration) as in phase 1, run by `yarn test:integration:vereino`. TEST-U03 hides the `groups.personFilter` token from the container the way the messaging probe does (`packages/app/.ai/qa/tests/_fixtures/messaging-probe/probe.mjs:79-80`, `hiddenTokens` around `hasRegistration`).
 
@@ -433,7 +436,7 @@ Validation for each phase: `yarn verify` (including `typecheck:packages`, the st
     - the registration of `groups.sectionUsage` and the enricher `groups.section-groups`;
     - the `FOR SHARE` read of the section row in group create and activation (DD-U08).
 - **Independent slices / estimated commits:**
-  - (a) the migration and the name rules: 1 commit;
+  - (a) migrations A and B and the name rules: 1 commit;
   - (b) the guard and the contract: 1 commit;
   - (c) the UI: 1 commit.
 - **Requirements closed:** REQ-U02
@@ -474,13 +477,14 @@ Validation for each phase: `yarn verify` (including `typecheck:packages`, the st
 
 | Surface | Requirement | Reference capability and file | Phase | Test | Classification |
 |---|---|---|---|---|---|
-| Response enricher `groups.person-groups` on `people:person` (and the route's enricher opt-in) | REQ-U01 | the existing Vereino enricher `people/data/enrichers.ts` (`people.section-coordinators`) with the opt-in at `club_core/api/sections/route.ts:47` | Phase 1 | TEST-U01 | emitted-example |
-| DI service `groups.personFilter` | REQ-U01 | `groups.membershipContribution`: declared in `people/services/membership-contribution.ts:11`, registered at `groups/di.ts:33` | Phase 1 | TEST-U01, TEST-U03 | emitted-example |
-| Response enricher `groups.section-groups` on `club_core:section` | REQ-U02 | `people/data/enrichers.ts` | Phase 2 | TEST-U05 | emitted-example |
-| DI service `groups.sectionUsage` | REQ-U02 | the same pattern (`people/services/membership-contribution.ts:11`, `groups/di.ts:33`) | Phase 2 | TEST-U05 | emitted-example |
-| API routes `club_core/api/places/[id]/files` | REQ-U03 | `club_core/api/sections/[id]/materials/route.ts` | Phase 3 | TEST-U08 | emitted-example |
+| `GET /api/people/persons` query extension (`search`, filters, `view`) | REQ-U01 | `search.encrypted-column-list-filter`, `src/modules/example/api/todos/route.ts`; adapted today at `people/api/persons/route.ts:56-57` | Phase 1 | TEST-U01, TEST-U02 | emitted-example |
+| Response enricher `groups.person-groups` on `people:person` (and the route's enricher opt-in) | REQ-U01 | `umes.response-enricher`, `src/modules/example/data/enrichers.ts`; adapted in Vereino as `people/data/enrichers.ts` (`people.section-coordinators`) with the opt-in at `club_core/api/sections/route.ts:47` | Phase 1 | TEST-U01 | emitted-example |
+| DI service `groups.personFilter` | REQ-U01 | `module.di-registration`, `src/modules/example/di.ts`; adapted in Vereino as `groups.membershipContribution` (declared in `people/services/membership-contribution.ts:11`, registered at `groups/di.ts:33`) | Phase 1 | TEST-U01, TEST-U03 | emitted-example |
+| Response enricher `groups.section-groups` on `club_core:section` | REQ-U02 | `umes.response-enricher`, `src/modules/example/data/enrichers.ts`; adapted as `people/data/enrichers.ts` | Phase 2 | TEST-U05 | emitted-example |
+| DI service `groups.sectionUsage` | REQ-U02 | `module.di-registration`, `src/modules/example/di.ts`; the same Vereino pattern as `groups.personFilter` | Phase 2 | TEST-U05 | emitted-example |
+| API routes `club_core/api/places/[id]/files` | REQ-U03 | `api.crud-query-engine-custom-fields`, `src/modules/example/api/todos/route.ts` (the guarded route family); adapted in Vereino as `club_core/api/sections/[id]/materials/route.ts` | Phase 3 | TEST-U08 | emitted-example |
 
-These rows cite the Vereino modules that already ship the same mechanism, which is the reference this addendum adapts. The `example` module's inventory is not needed for an extension of an existing Vereino surface.
+Each row names the reference capability from `src/modules/example/references/surface-inventory.json` with its exact file (`.ai/guides/spec-delivery.md`) and the Vereino module that already adapted it; the implementation starts from the Vereino adaptation.
 
 ## Rollout, Migration, and Rollback
 
@@ -530,7 +534,7 @@ Rollback follows S14.6: it redeploys the previous release and never runs `down()
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI and Interaction Contracts |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Implementation Phases 1–3 |
 
-Verdict: `Blocked — awaiting the product owner's approval of the spec PR` (every check passes; Q-U10 confirmed on 2026-11-03).
+Verdict: `Blocked — awaiting the product owner's go for implementation` (every check passes; the spec PR #131 merged on 2026-11-03 with Q-U10 confirmed).
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -541,7 +545,7 @@ Verdict: `Blocked — awaiting the product owner's approval of the spec PR` (eve
 | Q-U03 | Age filter: fixed bands or a range? | A numeric range `ageFrom`–`ageTo` plus the **Children** perspective (< 18) | Fits any club threshold (R10 is configurable) | — |
 | Q-U04 | Deactivating a section with active groups: block or cascade? | Block with 409 and the list (DD-U04); delete is guarded the same way | README B-04; the most reversible option | — |
 | Q-U05 | Does name uniqueness include inactive sections? | Yes, all live (not soft-deleted) sections | A reactivated section must not collide | — |
-| Q-U06 | Existing names over 80 characters? | Kept; the 2–80 rule applies when a name is set or changed (DD-U07) | No data loss; no failing saves | — |
+| Q-U06 | Existing names over 80 characters? | Kept; the 2–80 rule applies on create and when the submitted name differs from the stored one (DD-U07) | No data loss; no failing saves | — |
 | Q-U07 | Are place photos and regulations public now? | No; stored privately, published in phase 5 (E08-S04) | Smallest scope; the facilities spec owns publication | — |
 | Q-U08 | Photo limits? | PNG, JPEG or WebP ≤ 5 MB, at most 10 per place; one regulations PDF ≤ 10 MB | Matches the logo and material checks already in `club_core/api/uploads.ts`, with a larger photo size | — |
 | Q-U09 | Does the role filter "coach" include coach and assistant memberships? | Yes (union with assignments) | The mockup's Staff view and README "who are our coaches" | — |
@@ -561,3 +565,4 @@ Verdict: `Blocked — awaiting the product owner's approval of the spec PR` (eve
 | 2026-11-03 | Initial draft (autonomous, `om-auto-write-spec` on #82), covering E06-S01 #83, E06-S03 #85, E06-S04 #86 |
 | 2026-11-03 | Revised after an independent architectural review. Changes:<br>– the section guard now locks the section row, and `groups` reads it `FOR SHARE` (DD-U08);<br>– both undos are guarded;<br>– the name rule is classified as a breaking narrowing, with a section-only schema (DD-U07);<br>– the index gets its own concurrent migration with an in-migration duplicate check (DD-U05);<br>– rollback follows S14.6;<br>– the persons route opts in to enrichers, and its own columns come from the list hook;<br>– the perspectives are app-owned tabs (DD-U03);<br>– unit tests are added (TEST-U10), and error codes and the list shape are made consistent;<br>– the short description moves to the public-content command (Q-U10). |
 | 2026-11-03 | Q-U10 confirmed by the product owner: the section's coordinator and the administrator edit the short description. |
+| 2026-11-03 | Consistency pass after the merge of PR #131:<br>– the short description moves to the Public page tab, matching Q-U10;<br>– TEST-U01 names the top-level `roles`, `hasWards` and `guardians` fields;<br>– the name rule reads "on create and rename" everywhere (DD-U07);<br>– the perspectives are an app-owned tablist in every section (DD-U03), and `TodosTable`'s `perspective` prop is named as not used;<br>– the section filter names both owners of its predicate;<br>– the non-goals no longer claim that #84 and #88 reuse this spec's enricher;<br>– the extension-surface table cites the `example` capability ids and files per `spec-delivery.md`, with a new row for the persons query extension;<br>– the coordinator "until" date is traced to the existing `validTo` of the role-assignment API;<br>– status and verdict reflect the merged PR. |
