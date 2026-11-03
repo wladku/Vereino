@@ -1,16 +1,22 @@
 'use client'
 // `/backend/people/persons/create` and the "Details" tab of `/backend/people/persons/[id]` (club spec UI table, J-001
 // step 2): the person's own fields in a `CrudForm`. The PESEL field is shown — and sent — only to a user with
-// `people.pesel.view`; the e-mail, phone, notes and PESEL are stored encrypted.
+// `people.pesel.view`; the e-mail, phone, notes and PESEL are stored encrypted. The date of birth is a native date
+// input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
+import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { PERSONS_HREF, textOrNull, type PersonDetail, type Translate } from './client-helpers'
+import { birthDateBounds, birthDateProblem, type BirthDateProblem } from '@vereino/core'
+import { dateField } from '@vereino/ui'
+import { PERSONS_HREF, localToday, textOrNull, type PersonDetail, type Translate } from './client-helpers'
 
 const ENTITY_ID = 'people:person'
+// What the date input stores for a partly typed date; `birthDateProblem` reports it as malformed.
+const INCOMPLETE_BIRTH_DATE = 'incomplete'
 const LOCALES = ['pl', 'en'] as const
 
 type PersonFormValues = {
@@ -45,7 +51,11 @@ function usePersonFields(t: Translate, withPesel: boolean) {
         maxLength: 200,
         layout: 'half',
       },
-      { id: 'birthDate', label: t('people.persons.fields.birthDate'), type: 'date', layout: 'half' },
+      dateField('birthDate', t('people.persons.fields.birthDate'), {
+        layout: 'half',
+        incompleteValue: INCOMPLETE_BIRTH_DATE,
+        ...birthDateBounds(localToday()),
+      }),
       {
         id: 'preferredLocale',
         label: t('people.persons.fields.preferredLocale'),
@@ -94,12 +104,24 @@ function usePersonFields(t: Translate, withPesel: boolean) {
   return { fields, groups }
 }
 
+const BIRTH_DATE_MESSAGES: Record<BirthDateProblem, string> = {
+  malformed: 'people.persons.errors.birthDateInvalid',
+  future: 'people.persons.errors.birthDateFuture',
+  too_old: 'people.persons.errors.birthDateTooOld',
+}
+
 /** The request body; the PESEL only when the user may see it (otherwise it is left as it is). */
-function payload(values: Partial<PersonFormValues>, withPesel: boolean) {
+function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Translate) {
+  const birthDate = textOrNull(values.birthDate)
+  const problem = birthDate ? birthDateProblem(birthDate, localToday()) : null
+  if (problem) {
+    const message = t(BIRTH_DATE_MESSAGES[problem])
+    throw createCrudFormError(message, { birthDate: message })
+  }
   return {
     firstName: typeof values.firstName === 'string' ? values.firstName.trim() : '',
     lastName: typeof values.lastName === 'string' ? values.lastName.trim() : '',
-    birthDate: textOrNull(values.birthDate),
+    birthDate,
     preferredLocale: textOrNull(values.preferredLocale),
     email: textOrNull(values.email),
     phone: textOrNull(values.phone),
@@ -133,7 +155,7 @@ export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
       }}
       submitLabel={t('people.common.create')}
       onSubmit={async (values) => {
-        const created = await createCrud<{ id?: string }>('people/persons', payload(values, withPesel))
+        const created = await createCrud<{ id?: string }>('people/persons', payload(values, withPesel, t))
         flash(t('people.persons.flash.created'), 'success')
         router.push(created.result?.id ? `${PERSONS_HREF}/${created.result.id}` : PERSONS_HREF)
       }}
@@ -173,7 +195,7 @@ export function PersonDetailsForm({
       }}
       submitLabel={t('people.common.save')}
       onSubmit={async (values) => {
-        await updateCrud('people/persons', { id: person.id, ...payload(values, withPesel) })
+        await updateCrud('people/persons', { id: person.id, ...payload(values, withPesel, t) })
         flash(t('people.persons.flash.saved'), 'success')
         await onSaved()
       }}

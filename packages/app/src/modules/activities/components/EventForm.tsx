@@ -29,7 +29,7 @@ import {
   tolerant,
   type ScheduleConflict,
 } from './client-helpers'
-import { dateField, timeField } from './form-fields'
+import { dateField, timeField } from '@vereino/ui'
 
 type EventValues = Record<string, unknown> & {
   groupId?: string

@@ -71,36 +71,6 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
   await page.getByRole('option', { name: option }).click()
 }
 
-/**
- * Sets a `CrudForm` date field through the platform date picker (a button with a calendar popover, no text input):
- * the month-and-year grid to the year and month, the day, then "Apply". The form moves the focus once it has loaded,
- * which closes a popover opened earlier, so the page settles first and the opening is retried until the grid shows.
- */
-async function pickDate(page: Page, field: string, isoDate: string): Promise<void> {
-  const [year, month] = isoDate.split('-').map(Number)
-  const trigger = page.locator(`[data-crud-field-id="${field}"] button[data-slot="date-picker-trigger"]`)
-  const monthAndYear = page.getByRole('button', { name: /open month and year navigation/ })
-  const grid = page.getByRole('dialog', { name: 'Select month and year' })
-  await page.waitForLoadState('networkidle')
-  await expect(async () => {
-    if (!(await monthAndYear.isVisible())) await trigger.click()
-    await monthAndYear.click({ timeout: 2_000 })
-    await expect(grid).toBeVisible({ timeout: 1_000 })
-  }).toPass({ timeout: 20_000 })
-  const shownYear = grid.getByRole('button', { name: /back to day selection/ })
-  for (let shown = Number(await shownYear.textContent()); shown !== year; shown += shown > year ? -1 : 1) {
-    await grid.getByRole('button', { name: shown > year ? /previous year/ : /next year/ }).click()
-    await expect(shownYear).toHaveText(String(shown > year ? shown - 1 : shown + 1))
-  }
-  await grid
-    .locator('button[aria-pressed]')
-    .nth(month - 1)
-    .click()
-  await page.locator(`[data-day="${isoDate}"]:not([data-outside]) button`).click()
-  await page.getByRole('button', { name: 'Apply', exact: true }).click()
-  await expect(trigger).not.toHaveText(/Pick a date/)
-}
-
 /** Picks a person in a `LookupSelect` (searched by last name) inside `scope`. */
 async function lookupPerson(scope: Locator, lastName: string, fullName: string): Promise<void> {
   await scope.getByPlaceholder(/Search by last name|Szukaj po nazwisku/).fill(lastName)
@@ -115,7 +85,8 @@ async function createPersonThroughForm(
   await page.goto('/backend/people/persons/create')
   await crudInput(page, 'firstName').fill(person.firstName)
   await crudInput(page, 'lastName').fill(person.lastName)
-  await pickDate(page, 'birthDate', person.birthDate)
+  // The date of birth is a native date input (typed, not picked), so it takes the ISO value directly.
+  await crudInput(page, 'birthDate').fill(person.birthDate)
   await page
     .getByRole('button', { name: /^Create$|^Utwórz$/ })
     .first()

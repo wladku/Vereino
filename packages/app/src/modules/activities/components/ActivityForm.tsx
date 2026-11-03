@@ -35,7 +35,7 @@ import {
   type ScheduleConflict,
   type Translate,
 } from './client-helpers'
-import { dateField, timeField } from './form-fields'
+import { dateField, timeField } from '@vereino/ui'
 
 const ENTITY_ID = 'activities:activity'
 
