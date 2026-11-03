@@ -29,7 +29,16 @@ const ROLES = ['club_admin', 'coordinator', 'coach'] as const
 
 type SectionItem = { id: string; name: string | null }
 
-export function RolesPanel({ personId, canManage }: { personId: string; canManage: boolean }) {
+export function RolesPanel({
+  personId,
+  canManage,
+  onOpenGuardianship,
+}: {
+  personId: string
+  canManage: boolean
+  /** Opens the record's "Guardianship and consents" tab: a parent is a guardianship there, not a staff role. */
+  onOpenGuardianship?: () => void
+}) {
   const t = useT()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
@@ -169,6 +178,14 @@ export function RolesPanel({ personId, canManage }: { personId: string; canManag
           })}
         </ul>
       ) : null}
+      <p className="text-muted-foreground text-sm">
+        {t('people.roles.guardianHint')}{' '}
+        {onOpenGuardianship ? (
+          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={onOpenGuardianship}>
+            {t('people.roles.guardianHint.open')}
+          </Button>
+        ) : null}
+      </p>
       {canManage ? (
         <form
           className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end"

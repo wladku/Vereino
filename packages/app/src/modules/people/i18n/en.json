@@ -367,6 +367,8 @@
   "people.roles.fields.validFrom": "From",
   "people.roles.flash.assigned": "The role has been assigned.",
   "people.roles.flash.ended": "The role assignment has been ended.",
+  "people.roles.guardianHint": "A parent or guardian is not a staff role: add the guardianship of their child in the “Guardianship and consents” tab.",
+  "people.roles.guardianHint.open": "Open Guardianship and consents",
   "people.roles.role.club_admin": "Club administrator",
   "people.roles.role.coach": "Coach",
   "people.roles.role.coordinator": "Section coordinator",

@@ -367,6 +367,8 @@
   "people.roles.fields.validFrom": "Od",
   "people.roles.flash.assigned": "Rola została przypisana.",
   "people.roles.flash.ended": "Rola została zakończona.",
+  "people.roles.guardianHint": "Rodzic lub opiekun to nie rola w klubie: dodaj opiekę nad dzieckiem w zakładce „Opieka i zgody”.",
+  "people.roles.guardianHint.open": "Przejdź do Opieki i zgód",
   "people.roles.role.club_admin": "Administrator klubu",
   "people.roles.role.coach": "Trener",
   "people.roles.role.coordinator": "Koordynator sekcji",
