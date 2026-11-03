@@ -3,7 +3,9 @@
 // primary-payer flag and the consents, changes them and ends the guardianship through `valid_to` (never deleted).
 // At most one primary payer per ward at a time: overlapping periods are refused with 409
 // `guardianship_primary_payer_conflict` under the ward's row lock, and the partial unique index backs the open-ended
-// case. A guardian of the ward (or the administrator) changes the consents through `set_consents`; the ward cannot.
+// case. The same guardian and ward are linked once at a time (409 `guardianship_duplicate`) and links never chain: a
+// person with a live guardian is not a guardian, a live guardian is not a ward (422, `assertLinkAllowed`). A guardian
+// of the ward (or the administrator) changes the consents through `set_consents`; the ward cannot.
 // Consents follow the P-08 transitions and record who changed them and when. The `people.guardianship.*` events let
 // the role sync grant `vereino_payer` to an adult guardian with an account.
 import { randomUUID } from 'node:crypto'
@@ -41,7 +43,6 @@ import {
   isUniqueViolation,
   loadGuardianshipLocked,
   lockPerson,
-  personExists,
   type GuardianshipSnapshot,
 } from './shared'
 
@@ -84,6 +85,60 @@ async function assertPrimaryPayerFree(
   )
   const periods = others.map((row) => ({ validFrom: row.validFrom, validTo: row.validTo ?? null }))
   if (firstOverlapping(period, periods)) await peopleErrors.throw('guardianship_primary_payer_conflict')
+}
+
+/**
+ * The link rules of a guardianship over its period (#26 follow-up, owner's decision 2026-11-03): the same guardian and
+ * ward once at a time (409 `guardianship_duplicate`), and no chains — a person with a live guardian is not a guardian
+ * (422 `guardianship_guardian_is_ward`) and a live guardian is not a ward (422 `guardianship_ward_is_guardian`). Ended
+ * periods do not count. The caller holds both persons' row locks (`lockPair`).
+ */
+async function assertLinkAllowed(
+  em: EntityManager,
+  scope: ClubScope,
+  link: { guardianPersonId: string; wardPersonId: string },
+  period: Period,
+  exceptId: string | null,
+): Promise<void> {
+  const rows = await em.find(
+    Guardianship,
+    {
+      ...scope,
+      deletedAt: null,
+      ...(exceptId ? { id: { $ne: exceptId } } : {}),
+      $or: [
+        { guardianPersonId: link.guardianPersonId, wardPersonId: link.wardPersonId },
+        { wardPersonId: link.guardianPersonId },
+        { guardianPersonId: link.wardPersonId },
+      ],
+    },
+    { fields: ['id', 'guardianPersonId', 'wardPersonId', 'validFrom', 'validTo'] },
+  )
+  type Link = { guardianPersonId: string; wardPersonId: string }
+  const overlapping = (match: (row: Link) => boolean) =>
+    firstOverlapping(
+      period,
+      rows.filter(match).map((row) => ({ validFrom: row.validFrom, validTo: row.validTo ?? null })),
+    ) !== null
+  if (overlapping((row) => row.guardianPersonId === link.guardianPersonId && row.wardPersonId === link.wardPersonId)) {
+    await peopleErrors.throw('guardianship_duplicate')
+  }
+  if (overlapping((row) => row.wardPersonId === link.guardianPersonId)) {
+    await peopleErrors.throw('guardianship_guardian_is_ward')
+  }
+  if (overlapping((row) => row.guardianPersonId === link.wardPersonId)) {
+    await peopleErrors.throw('guardianship_ward_is_guardian')
+  }
+}
+
+/**
+ * Locks the guardian's and the ward's rows in a fixed order, so concurrent links of the same people serialize
+ * without deadlocking; `false` when either person does not exist in the club.
+ */
+async function lockPair(em: EntityManager, scope: ClubScope, personIds: readonly [string, string]): Promise<boolean> {
+  let found = true
+  for (const personId of [...personIds].sort()) found = (await lockPerson(em, scope, personId)) && found
+  return found
 }
 
 /** The partial unique index is the backstop of the payer rule: its violation answers the same 409. */
@@ -188,7 +243,8 @@ function restoreGuardianship(allowedKinds: readonly GrantKind[], restores: 'all'
     if (restores === 'all') {
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const period = { validFrom: before.validFrom, validTo: before.validTo }
-      await lockPerson(em, scope, row.wardPersonId)
+      await lockPair(em, scope, [row.guardianPersonId, row.wardPersonId])
+      await assertLinkAllowed(em, scope, row, period, row.id)
       if (before.isPrimaryPayer) await assertPrimaryPayerFree(em, scope, row.wardPersonId, period, row.id)
       row.relation = before.relation
       row.isPrimaryPayer = before.isPrimaryPayer
@@ -233,13 +289,13 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         const { parsed, tenantId, organizationId } = authorized
         if (parsed.guardianPersonId === parsed.wardPersonId) await peopleErrors.throw('guardianship_self')
         const scope = { tenantId, organizationId }
-        // The ward's row lock serializes the primary-payer check of concurrent writes for the same ward.
-        const wardExists = await lockPerson(em, scope, parsed.wardPersonId)
-        if (!wardExists || !(await personExists(em, scope, parsed.guardianPersonId))) {
+        // Both row locks serialize the link and primary-payer checks of concurrent writes for the same people.
+        if (!(await lockPair(em, scope, [parsed.guardianPersonId, parsed.wardPersonId]))) {
           const { translate } = await resolveTranslations()
           throw notFound(translate('foundation.errors.not_found', 'Not found'))
         }
         const period = { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null }
+        await assertLinkAllowed(em, scope, parsed, period, null)
         if (parsed.isPrimaryPayer) await assertPrimaryPayerFree(em, scope, parsed.wardPersonId, period, null)
         const consents = await changeConsents({}, parsed.consents, {
           ctx,
@@ -303,7 +359,8 @@ const updateGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         }
         if (isInvertedPeriod(period.validFrom, period.validTo)) await foundationErrors.throw('validity_inverted')
         const isPrimaryPayer = patch.isPrimaryPayer ?? row.isPrimaryPayer
-        await lockPerson(em, scope, row.wardPersonId)
+        await lockPair(em, scope, [row.guardianPersonId, row.wardPersonId])
+        await assertLinkAllowed(em, scope, row, period, row.id)
         if (isPrimaryPayer) await assertPrimaryPayerFree(em, scope, row.wardPersonId, period, row.id)
         const consents = await changeConsents(before.consents, patch.consents, {
           ctx,

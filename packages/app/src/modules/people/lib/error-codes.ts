@@ -17,6 +17,17 @@ export const errorCodes = [
     messageKey: 'people.errors.guardianship_primary_payer_conflict',
   },
   { code: 'guardianship_ended', status: 409, messageKey: 'people.errors.guardianship_ended' },
+  { code: 'guardianship_duplicate', status: 409, messageKey: 'people.errors.guardianship_duplicate' },
+  {
+    code: 'guardianship_guardian_is_ward',
+    status: 422,
+    messageKey: 'people.errors.guardianship_guardian_is_ward',
+  },
+  {
+    code: 'guardianship_ward_is_guardian',
+    status: 422,
+    messageKey: 'people.errors.guardianship_ward_is_guardian',
+  },
   { code: 'role_assignment_duplicate', status: 409, messageKey: 'people.errors.role_assignment_duplicate' },
   { code: 'person_not_linked', status: 404, messageKey: 'people.errors.person_not_linked' },
   { code: 'payments_minor', status: 403, messageKey: 'people.errors.payments_minor' },
