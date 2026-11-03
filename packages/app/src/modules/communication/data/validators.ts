@@ -55,6 +55,12 @@ export const threadListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
   scopeType: z.enum(['club', 'section', 'group', 'activity', 'occurrence', 'direct']).optional(),
   scopeId: z.uuid().optional(),
+  sectionId: z
+    .uuid()
+    .optional()
+    .describe(
+      'The threads of a section, its groups, activities and sessions; a section outside the caller’s grants lists nothing',
+    ),
   unread: z.enum(['0', '1']).optional(),
   isCase: z.enum(['0', '1']).optional(),
   as: z.enum(['member', 'staff']).optional(),

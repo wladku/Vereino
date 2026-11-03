@@ -12,7 +12,13 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import type { ActingRole, AudienceReason, AudienceSpec, Recipient, RecipientChannel } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { Delivery, Dispatch } from '../data/entities'
-import { lockDispatchKey, markPublished, queuedDeliveriesOf, type DispatchScope } from '../data/queries'
+import {
+  deliveryCountsOf,
+  lockDispatchKey,
+  markPublished,
+  queuedDeliveriesOf,
+  type DispatchScope,
+} from '../data/queries'
 import { chunk, planDeliveries, type DeliveryStatus, type FailureCode, type SkipReason } from '../lib/dispatch-rules'
 import { isOptOutAvailable } from '../lib/email-templates'
 import { contactResolver, resolveAudience, type AudienceContext } from './audience'
@@ -280,6 +286,26 @@ export type DispatchService = {
     page: { page?: number; pageSize?: number; problemsOnly?: boolean },
     ctx: Omit<AudienceContext, 'container'>,
   ): Promise<PagedDeliveries>
+  /** The delivery counts of several dispatches by status, keyed by dispatch id (a dispatch without rows is absent). */
+  countsOf(
+    dispatchIds: readonly string[],
+    ctx: Omit<AudienceContext, 'container'>,
+  ): Promise<Map<string, DeliveryCounts>>
+}
+
+/** How many deliveries of one dispatch (one per recipient and channel) are in each status (`DeliveryStatusList`). */
+export type DeliveryCounts = { queued: number; sent: number; failed: number; skipped: number }
+
+/** The delivery counts of several dispatches by status, for a staff view of many messages at once (DD-M09). */
+export async function deliveryCounts(
+  dispatchIds: readonly string[],
+  ctx: AudienceContext,
+): Promise<Map<string, DeliveryCounts>> {
+  const em = ctx.em ?? ctx.container.resolve<EntityManager>('em').fork()
+  const rows = await deliveryCountsOf(em, { tenantId: ctx.tenantId, organizationId: ctx.organizationId }, [
+    ...new Set(dispatchIds),
+  ])
+  return new Map(rows.map(({ dispatchId, ...counts }) => [dispatchId, counts]))
 }
 
 export function createDispatchService(container: AwilixContainer): DispatchService {
@@ -287,5 +313,6 @@ export function createDispatchService(container: AwilixContainer): DispatchServi
     enqueue: (em, request, ctx) => enqueueDispatch(em, request, { ...ctx, container }),
     publish: (dispatchId, scope) => publishDispatch(container, dispatchId, scope),
     deliveriesOf: (dispatchId, page, ctx) => deliveriesOf(dispatchId, page, { ...ctx, container }),
+    countsOf: (dispatchIds, ctx) => deliveryCounts(dispatchIds, { ...ctx, container }),
   }
 }

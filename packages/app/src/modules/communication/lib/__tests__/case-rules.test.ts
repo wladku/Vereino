@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { CASE_MANAGE_KINDS, mayMarkCase, messageChangeRefusal } from '../case-rules'
+import { CASE_MANAGE_KINDS, mayDeleteMessage, mayMarkCase, messageChangeRefusal } from '../case-rules'
 import { errorCodes } from '../error-codes'
 
 describe('marking a case (DD-M11)', () => {
@@ -37,5 +37,25 @@ describe('changing a message (REQ-M09, AC-010)', () => {
     for (const code of ['case_immutable', 'case_already_open', 'message_not_editable', 'message_deleted']) {
       expect(declared.get(code)).toBe(409)
     }
+  })
+})
+
+describe('offering "Delete message" (B-19, DD-M10)', () => {
+  const open = { threadIsCase: false, system: false, deleted: false }
+
+  it('offers it to the author and to staff on a thread that is not a case', () => {
+    expect(mayDeleteMessage({ ...open, own: true, staffRole: null })).toBe(true)
+    expect(mayDeleteMessage({ ...open, own: false, staffRole: 'coordinator' })).toBe(true)
+    expect(mayDeleteMessage({ ...open, own: false, staffRole: 'club_admin' })).toBe(true)
+  })
+
+  it('never offers it to anyone else', () => {
+    expect(mayDeleteMessage({ ...open, own: false, staffRole: null })).toBe(false)
+  })
+
+  it('never offers it on a case, a system message or a deleted message', () => {
+    expect(mayDeleteMessage({ ...open, threadIsCase: true, own: true, staffRole: 'club_admin' })).toBe(false)
+    expect(mayDeleteMessage({ ...open, system: true, own: false, staffRole: 'club_admin' })).toBe(false)
+    expect(mayDeleteMessage({ ...open, deleted: true, own: true, staffRole: null })).toBe(false)
   })
 })

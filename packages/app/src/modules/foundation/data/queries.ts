@@ -205,6 +205,39 @@ export async function queuedDeliveriesOf(
   }
 }
 
+/** The deliveries of each dispatch counted by status, read live from the delivery rows (one row per dispatch found). */
+export async function deliveryCountsOf(
+  em: EntityManager,
+  scope: DispatchScope,
+  dispatchIds: readonly string[],
+): Promise<Array<{ dispatchId: string; queued: number; sent: number; failed: number; skipped: number }>> {
+  if (dispatchIds.length === 0) return []
+  const rows = await em.execute<
+    Array<{
+      dispatch_id: string
+      queued: number | string
+      sent: number | string
+      failed: number | string
+      skipped: number | string
+    }>
+  >(
+    `select dispatch_id, count(*) filter (where status = 'queued') as queued,
+       count(*) filter (where status = 'sent') as sent, count(*) filter (where status = 'failed') as failed,
+       count(*) filter (where status = 'skipped') as skipped
+     from foundation_deliveries
+     where tenant_id = ? and organization_id = ? and dispatch_id in (${dispatchIds.map(() => '?').join(', ')})
+     group by dispatch_id`,
+    [scope.tenantId, scope.organizationId, ...dispatchIds],
+  )
+  return rows.map((row) => ({
+    dispatchId: row.dispatch_id,
+    queued: Number(row.queued),
+    sent: Number(row.sent),
+    failed: Number(row.failed),
+    skipped: Number(row.skipped),
+  }))
+}
+
 export async function markPublished(em: EntityManager, scope: DispatchScope, dispatchId: string): Promise<void> {
   await em.execute(
     `update foundation_dispatches set published_at = now(), updated_at = now()

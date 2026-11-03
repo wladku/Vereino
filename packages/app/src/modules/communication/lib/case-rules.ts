@@ -37,3 +37,20 @@ export function messageChangeRefusal(input: {
   if (input.deleted) return 'message_deleted'
   return null
 }
+
+/**
+ * Whether a reader is offered "Delete message" on a message (B-19; DD-M10): the change would not be refused (the
+ * thread is not a case, the message is no system message and not deleted yet) and the reader may delete it — its
+ * author, or a staff grant on the thread (the section's coordinator, the administrator; `staffRole`). The command
+ * checks the same again (`communication.messages.delete`).
+ */
+export function mayDeleteMessage(input: {
+  threadIsCase: boolean
+  system: boolean
+  deleted: boolean
+  own: boolean
+  staffRole: string | null
+}): boolean {
+  if (messageChangeRefusal(input) !== null) return false
+  return input.own || input.staffRole !== null
+}
