@@ -15,7 +15,7 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: { phone: string } | null
   }
-  sections: { name: string; slug: string; logo: PublicLogo }[]
+  sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
   blocks: Record<string, unknown>
 }
 

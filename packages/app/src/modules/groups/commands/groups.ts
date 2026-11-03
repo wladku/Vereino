@@ -16,7 +16,7 @@ import { groupsErrors } from '../api/errors'
 import { Group, GroupMembership, Season } from '../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupUpdateSchema } from '../data/validators'
 import { disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
-import { findSections } from '../services/directory'
+import { lockSectionForShare } from '../services/directory'
 import {
   GROUP_WRITE_KINDS,
   emitGroupsSideEffects,
@@ -124,7 +124,9 @@ type GroupShape = {
 /**
  * The rules of a group's fields, checked on the merged values of a write: no team field on a class group (422), a live
  * section of the club (422 `groups_reference_invalid`) that is active for an active group (422
- * `group_section_inactive`), and a live season of the club, row-locked (422 `groups_reference_invalid`).
+ * `group_section_inactive`), and a live season of the club, row-locked (422 `groups_reference_invalid`). The section
+ * is read `FOR SHARE`, so a concurrent deactivation of the section (which holds its row `FOR UPDATE` while it counts
+ * the active groups) either waits for this write or is seen by it (UX parity spec DD-U08).
  */
 async function assertGroupShape(
   ctx: CommandRuntimeContext,
@@ -136,7 +138,7 @@ async function assertGroupShape(
   const fields = disallowedTeamFields(shape.kind, { league: shape.league, seasonId: shape.seasonId })
   if (fields.length > 0) await groupsErrors.throw('group_team_fields_on_class_group', { fields })
   if (changed.section || changed.activated) {
-    const section = (await findSections(ctx.container, scope, [shape.sectionId], em)).get(shape.sectionId)
+    const section = await lockSectionForShare(ctx.container, scope, shape.sectionId, em)
     if (!section) await groupsErrors.throw('groups_reference_invalid', { field: 'sectionId' })
     if (shape.isActive && section?.isActive === false) await groupsErrors.throw('group_section_inactive')
   }

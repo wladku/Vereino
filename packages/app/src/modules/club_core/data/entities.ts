@@ -135,7 +135,9 @@ export class ClubSettings extends ScopedEntityBase {
  * A section of the club (club spec glossary *Section*): the unit of the coordinator's scope. Coordinators are
  * `people` role assignments (`coordinator` + `section_id`), never stored here. The logo and the public fields are
  * phase 1 steps 6–7 (#29): the contact fields are business contact details written for publication, never read from
- * the people records; the slug is unique among the club's live sections.
+ * the people records; the slug is unique among the club's live sections. The name is unique case-insensitively among
+ * the club's live sections and the short description feeds the public tile (UX parity spec DD-U05, REQ-U02); the
+ * name index is built concurrently by its own migration.
  */
 @Entity({ tableName: 'club_core_sections' })
 @Index({ name: 'club_core_sections_org_active_idx', properties: ['organizationId', 'isActive'] })
@@ -144,6 +146,11 @@ export class ClubSettings extends ScopedEntityBase {
   name: 'club_core_sections_org_public_slug_unique',
   expression:
     'create unique index "club_core_sections_org_public_slug_unique" on "club_core_sections" ("organization_id", "public_slug") where deleted_at is null and public_slug is not null',
+})
+@Index({
+  name: 'club_core_sections_org_name_unique',
+  expression:
+    'create unique index "club_core_sections_org_name_unique" on "club_core_sections" ("organization_id", lower("name")) where deleted_at is null',
 })
 export class Section extends ScopedEntityBase {
   [OptionalProps]?:
@@ -158,6 +165,7 @@ export class Section extends ScopedEntityBase {
     | 'publicContactName'
     | 'publicContactEmail'
     | 'publicContactPhone'
+    | 'shortDescription'
 
   @Property({ name: 'name', type: 'text' })
   name!: string
@@ -197,6 +205,10 @@ export class Section extends ScopedEntityBase {
 
   @Property({ name: 'public_contact_phone', type: 'text', nullable: true })
   publicContactPhone?: string | null
+
+  /** Plain text of at most 160 characters shown on the section's tile of the public club page (P-01). */
+  @Property({ name: 'short_description', type: 'varchar', length: 160, nullable: true })
+  shortDescription?: string | null
 }
 
 /**

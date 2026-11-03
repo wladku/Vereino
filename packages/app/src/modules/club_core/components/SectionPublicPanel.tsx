@@ -3,7 +3,8 @@
 // switch, the slug, the description, the conditions and the contact written for publication. Edited by the club
 // administrator or the section's coordinator through `PUT /api/club_core/sections/{id}/public`; the form sends the
 // section's lock token (`initialValues.updatedAt`). The contact is business contact data for publication, never read
-// from the people records. A link opens the public page when the section is public.
+// from the people records. A link opens the public page when the section is public. The short description (at most
+// 160 characters) is the section's tile text on the public club page (UX parity spec REQ-U02, Q-U10).
 import * as React from 'react'
 import Link from 'next/link'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -16,6 +17,7 @@ import type { SectionRow } from './sections-shared'
 type PublicFormValues = {
   isPublic: boolean
   publicSlug: string
+  shortDescription: string
   publicDescription: string
   publicConditions: string
   publicContactName: string
@@ -50,6 +52,13 @@ export function SectionPublicPanel({
         description: t('club_core.sections.public.fields.publicSlug.help'),
       },
       {
+        id: 'shortDescription',
+        label: t('club_core.sections.public.fields.shortDescription'),
+        type: 'textarea',
+        maxLength: 160,
+        description: t('club_core.sections.public.fields.shortDescription.help'),
+      },
+      {
         id: 'publicDescription',
         label: t('club_core.sections.public.fields.publicDescription'),
         type: 'textarea',
@@ -73,7 +82,7 @@ export function SectionPublicPanel({
         id: 'public',
         title: t('club_core.sections.public.groups.page'),
         column: 1,
-        fields: ['isPublic', 'publicSlug', 'publicDescription', 'publicConditions'],
+        fields: ['isPublic', 'publicSlug', 'shortDescription', 'publicDescription', 'publicConditions'],
       },
       {
         id: 'contact',
@@ -100,6 +109,7 @@ export function SectionPublicPanel({
         initialValues={{
           isPublic: section.isPublic,
           publicSlug: section.publicSlug ?? '',
+          shortDescription: section.shortDescription ?? '',
           publicDescription: section.publicDescription ?? '',
           publicConditions: section.publicConditions ?? '',
           publicContactName: section.publicContactName ?? '',
@@ -117,6 +127,7 @@ export function SectionPublicPanel({
               body: JSON.stringify({
                 isPublic: values.isPublic,
                 publicSlug: textOrNull(values.publicSlug),
+                shortDescription: textOrNull(values.shortDescription),
                 publicDescription: textOrNull(values.publicDescription),
                 publicConditions: textOrNull(values.publicConditions),
                 publicContactName: textOrNull(values.publicContactName),
