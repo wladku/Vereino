@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 
 describe('foundation error codes', () => {
-  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code and the foundation III codes with their statuses and message keys', () => {
+  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code, the foundation III codes and the unlinked-account code of #76 with their statuses and message keys', () => {
     expect(errorCodes).toEqual([
       { code: 'scope_denied', status: 403, messageKey: 'foundation.errors.scope_denied' },
       { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
@@ -16,6 +16,7 @@ describe('foundation error codes', () => {
       { code: 'audience_kind_unavailable', status: 422, messageKey: 'foundation.errors.audience_kind_unavailable' },
       { code: 'audience_too_large', status: 422, messageKey: 'foundation.errors.audience_too_large' },
       { code: 'dispatch_params_invalid', status: 422, messageKey: 'foundation.errors.dispatch_params_invalid' },
+      { code: 'scope_unlinked', status: 403, messageKey: 'foundation.errors.scope_unlinked' },
     ])
   })
 
