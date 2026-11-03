@@ -184,6 +184,8 @@ flowchart LR
 | **Panel `/backend`** | side menu in groups: **Dashboard · Club** (Sections, Places, Institutions, Contracts, Settings, Publication) **· People** (People) **· Classes** (Groups, Activities, Sessions, Coach units report, Declaration policies) **· Communication** (Threads, Cases) **· Finance** (Fees and discounts, Charges, Bank statements, Order campaigns, Cash to settle) **· Facility** (Calendar, Rentals, Requests, Zones and rates, Log and incidents, Municipality report) | groups and items according to the pages' `requireFeatures`; the coordinator does not see Finance; the attendant sees only Facility |
 | **Public `/p/[klub]`** | header: **Club · Sections · Facilities**; footer: contact, rules, privacy policy (`/privacy` of the `content` module) | everyone; blocks according to the publication settings |
 
+**Phone first (D29, 2026-11-03).** Every role except the club administrator — guardians, participants, coaches and instructors, coordinators, the treasurer and the attendant — does its work on the member pages under `/club` at phone width. The panel serves the administrator and adds a desk layout for coordinators; it never replaces a role's phone path. Screens in this concept that give a non-administrator task only a B- screen (for example the coach's cancellation, announcement and one-off event) are gaps to close, tracked in issues #97, #102, #139 and #140.
+
 ### 3.2 Route index
 
 | ID | Route | Name | Roles (feature) | Phase |
