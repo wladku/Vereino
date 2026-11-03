@@ -3,10 +3,12 @@
 // Messages · [fourth tab] · More, where More opens Profile, the admin panel for staff and Sign out. Framework-free:
 // the router's link component, the navigation (`memberNav`) and every string come in through props. More is a native
 // disclosure (`<details>`), so the shell holds no state; sign-out posts to the installed `auth` logout route, which
-// ends the session and redirects to `/login`. Every bar target is at least 48 × 48 px.
+// ends the session and redirects to `/login`; a page restored from the back-forward cache reloads, so Back after
+// sign-out never shows the previous member's page. Every bar target is at least 48 × 48 px.
 import * as React from 'react'
 import { CalendarDays, House, LogOut, MapPin, Menu, MessageSquare, Wallet } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import { reloadOnBackForwardRestore } from '#src/member/member-context'
 import { SIGN_OUT_ACTION, type MemberNav, type MemberTabIcon } from '#src/member/member-nav'
 
 export type MemberLinkProps = {
@@ -162,6 +164,7 @@ export function MemberShell({
   banner,
   children,
 }: MemberShellProps) {
+  React.useEffect(reloadOnBackForwardRestore, [])
   return (
     <div className="bg-background text-foreground min-h-svh">
       <header className="bg-card border-b">

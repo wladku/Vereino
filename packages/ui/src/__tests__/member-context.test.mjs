@@ -13,6 +13,7 @@ import {
   memberContextStore,
   memberRoles,
   memberSwitchers,
+  reloadOnBackForwardRestore,
   resolveMemberContext,
   showsWardSwitcher,
   storedSelectionOf,
@@ -50,11 +51,12 @@ function memoryStorage(initial = {}) {
   }
 }
 
-test('offers the role context to a member who also coaches, and the ward switcher to a guardian of two wards', () => {
+test('offers the role context to a member who also coaches, and the ward switcher to a guardian', () => {
   assert.deepEqual(memberRoles(profile()), ['member'])
   assert.deepEqual(memberRoles(profile({ contexts: ['self', 'guardian', 'coach'] })), ['member', 'coach'])
   assert.equal(showsWardSwitcher(profile(), DEFAULT_MEMBER_CONTEXT), true)
-  assert.equal(showsWardSwitcher(profile({ wards: [ola] }), DEFAULT_MEMBER_CONTEXT), false)
+  assert.equal(showsWardSwitcher(profile({ wards: [ola] }), DEFAULT_MEMBER_CONTEXT), true)
+  assert.equal(showsWardSwitcher(profile({ wards: [] }), DEFAULT_MEMBER_CONTEXT), false)
   assert.equal(showsWardSwitcher(profile(), { role: 'coach', ward: 'all' }), false)
 })
 
@@ -66,6 +68,10 @@ test('keeps a stored choice only while it fits the profile', () => {
   assert.deepEqual(resolveMemberContext(profile(), { role: 'coach', ward: 'w-ola' }), { role: 'member', ward: 'w-ola' })
   assert.deepEqual(resolveMemberContext(profile(), { role: 'member', ward: 'self' }), { role: 'member', ward: 'self' })
   assert.deepEqual(resolveMemberContext(profile(), { role: 'member', ward: 'w-gone' }), DEFAULT_MEMBER_CONTEXT)
+  // With one ward that ward is "all": an id left from a profile with two wards falls back to it.
+  const one = profile({ wards: [ola] })
+  assert.deepEqual(resolveMemberContext(one, { role: 'member', ward: 'w-ola' }), DEFAULT_MEMBER_CONTEXT)
+  assert.deepEqual(resolveMemberContext(one, { role: 'member', ward: 'self' }), { role: 'member', ward: 'self' })
 })
 
 test('turns the context into the calendar query', () => {
@@ -76,10 +82,8 @@ test('turns the context into the calendar query', () => {
   })
   assert.deepEqual(scope(profile({ wards: [] }), DEFAULT_MEMBER_CONTEXT), { as: 'self', personId: null })
   assert.deepEqual(scope(profile(), DEFAULT_MEMBER_CONTEXT), { as: 'guardian', personId: null })
-  assert.deepEqual(scope(profile({ wards: [ola] }), { role: 'member', ward: 'w-ola' }), {
-    as: 'guardian',
-    personId: null,
-  })
+  assert.deepEqual(scope(profile({ wards: [ola] }), DEFAULT_MEMBER_CONTEXT), { as: 'guardian', personId: null })
+  assert.deepEqual(scope(profile({ wards: [ola] }), { role: 'member', ward: 'self' }), { as: 'self', personId: null })
   assert.deepEqual(scope(profile(), { role: 'member', ward: 'self' }), { as: 'self', personId: null })
   assert.deepEqual(scope(profile(), { role: 'member', ward: 'w-ola' }), { as: 'guardian', personId: 'w-ola' })
 })
@@ -87,7 +91,20 @@ test('turns the context into the calendar query', () => {
 test('builds the switchers and reports each change as a whole selection', () => {
   const changes = []
   const onChange = (next) => changes.push(next)
-  assert.deepEqual(memberSwitchers(profile({ wards: [ola] }), DEFAULT_MEMBER_CONTEXT, onChange, labels), [])
+  assert.deepEqual(memberSwitchers(profile({ wards: [] }), DEFAULT_MEMBER_CONTEXT, onChange, labels), [])
+  const oneWard = memberSwitchers(profile({ wards: [ola] }), DEFAULT_MEMBER_CONTEXT, onChange, labels)
+  assert.deepEqual(
+    oneWard.map(({ id, options }) => ({ id, options })),
+    [
+      {
+        id: 'ward',
+        options: [
+          { value: 'all', label: 'Ola Nowak' },
+          { value: 'self', label: 'Me' },
+        ],
+      },
+    ],
+  )
 
   const both = memberSwitchers(profile({ contexts: ['guardian', 'coach'] }), DEFAULT_MEMBER_CONTEXT, onChange, labels)
   assert.deepEqual(
@@ -205,4 +222,31 @@ test('the hook renders the default context on the server and writes through the 
     return React.createElement('span', null, selection.ward)
   }
   assert.equal(renderToStaticMarkup(React.createElement(Defaulted)), '<span>all</span>')
+})
+
+test('a page restored from the back-forward cache reloads, and the cleanup stops listening', () => {
+  const listeners = new Map()
+  let reloads = 0
+  globalThis.window = {
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    removeEventListener: (type, listener) => {
+      if (listeners.get(type) === listener) listeners.delete(type)
+    },
+    location: {
+      reload: () => {
+        reloads += 1
+      },
+    },
+  }
+  try {
+    const cleanup = reloadOnBackForwardRestore()
+    listeners.get('pageshow')({ persisted: false })
+    assert.equal(reloads, 0)
+    listeners.get('pageshow')({ persisted: true })
+    assert.equal(reloads, 1)
+    cleanup()
+    assert.equal(listeners.has('pageshow'), false)
+  } finally {
+    delete globalThis.window
+  }
 })

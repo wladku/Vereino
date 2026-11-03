@@ -29,9 +29,12 @@ export function memberRoles(profile: MemberContextProfile): MemberRoleContext[] 
   return profile.contexts.includes('coach') ? ['member', 'coach'] : ['member']
 }
 
-/** The ward switcher is offered to a guardian of more than one ward, while acting as a member. */
+/**
+ * The ward switcher is offered to a guardian, while acting as a member: everyone or one ward for more than one ward,
+ * and always "Me", so a guardian who also trains keeps their own sessions (the calendar's former "My sessions").
+ */
 export function showsWardSwitcher(profile: MemberContextProfile, selection: MemberContextSelection): boolean {
-  return selection.role === 'member' && profile.wards.length > 1
+  return selection.role === 'member' && profile.wards.length > 0
 }
 
 /** A stored choice that still fits the profile; anything else (a ward no longer theirs, a lost role) is the default. */
@@ -40,7 +43,11 @@ export function resolveMemberContext(profile: MemberContextProfile, stored: unkn
   const { role, ward } = stored as Record<string, unknown>
   const roles = memberRoles(profile)
   const resolvedRole = roles.find((entry) => entry === role) ?? DEFAULT_MEMBER_CONTEXT.role
-  const wardFits = ward === 'all' || ward === 'self' || profile.wards.some((entry) => entry.personId === ward)
+  // One ward is chosen as "all" (the switcher names it), so a ward id fits only while there are several.
+  const wardFits =
+    ward === 'all' ||
+    ward === 'self' ||
+    (profile.wards.length > 1 && profile.wards.some((entry) => entry.personId === ward))
   return { role: resolvedRole, ward: wardFits ? (ward as MemberWardChoice) : DEFAULT_MEMBER_CONTEXT.ward }
 }
 
@@ -53,10 +60,13 @@ export function memberCalendarScope(
 ): MemberCalendarScope {
   if (selection.role === 'coach') return { as: 'coach', personId: null }
   if (profile.wards.length === 0) return { as: 'self', personId: null }
-  // With one ward there is no switcher, so a choice left from an earlier profile does not narrow anything.
-  if (!showsWardSwitcher(profile, selection) || selection.ward === 'all') return { as: 'guardian', personId: null }
+  if (selection.ward === 'all') return { as: 'guardian', personId: null }
   if (selection.ward === 'self') return { as: 'self', personId: null }
   return { as: 'guardian', personId: selection.ward }
+}
+
+function wardName(ward: { firstName: string; lastName: string }): string {
+  return `${ward.firstName} ${ward.lastName}`.trim()
 }
 
 /** The header switchers the profile calls for: the role context, then — acting as a member — the ward. */
@@ -88,8 +98,13 @@ export function memberSwitchers(
       label: labels.ward,
       value: selection.ward,
       options: [
-        { value: 'all', label: labels.allWards },
-        ...profile.wards.map((ward) => ({ value: ward.personId, label: `${ward.firstName} ${ward.lastName}`.trim() })),
+        // One ward: "all" is that ward, named, and there is no separate entry for it.
+        ...(profile.wards.length > 1
+          ? [
+              { value: 'all', label: labels.allWards },
+              ...profile.wards.map((ward) => ({ value: ward.personId, label: wardName(ward) })),
+            ]
+          : profile.wards.map((ward) => ({ value: 'all', label: wardName(ward) }))),
         { value: 'self', label: labels.me },
       ],
       onChange: (value) => {
@@ -191,4 +206,19 @@ export function useMemberContext(
     [store, personId],
   )
   return [selection, setSelection]
+}
+
+/**
+ * Reloads a member page the browser restores from its back-forward cache (`pageshow` with `persisted`), so after
+ * sign-out the back button asks the server again — which sends a signed-out user to `/login` — instead of showing the
+ * previous person's page from memory on a shared phone. Returns the cleanup; a `useEffect` callback as it stands.
+ */
+export function reloadOnBackForwardRestore(): () => void {
+  const onPageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) window.location.reload()
+  }
+  window.addEventListener('pageshow', onPageShow)
+  return () => {
+    window.removeEventListener('pageshow', onPageShow)
+  }
 }

@@ -27,7 +27,7 @@ Every `/club` page gets a bottom bar (Today · Calendar · Messages · [fourth t
 ## Decisions
 
 - **Role context:** "member" (guardian or own) and "coach", offered only to a person with the `coach` context. README 3.1 asks for a role switcher only for a person with more than one role, and the `self` context is always present, so it cannot tell a pure guardian from a guardian who also trains.
-- **Ward switcher:** offered to a guardian of more than one ward (per the issue), with Everyone, each ward, and Me. Me replaces the calendar's old "My sessions" perspective for such guardians. A guardian with one ward no longer has an "own sessions" view on the calendar; this is a minor narrowing, recorded below.
+- **Ward switcher:** offered to every guardian acting as a member. With more than one ward: Everyone and each ward. Always: Me, which replaces the calendar's old "My sessions" perspective. With one ward, the switcher names that ward and offers Me. This changed after the review, because the first version (more than one ward only) dropped the own-sessions view for a guardian of one ward.
 - **Where the choice lives:** session storage, keyed by person id and cleared on sign-out. The choice must survive moving between frames that belong to different modules, but must never carry over to another person on a shared phone. It stays a view filter only (DD-07); the routes still authorize.
 - **Sign-out:** a native form POST to the installed `auth` route, the same pattern as Open Mercato's `UserMenu`. The route revokes the session, clears the cookies and redirects to `/login`; nothing new was built.
 - **Icons:** `lucide-react` (already an app dependency and a `@vereino/ui` devDependency) is now also a `@vereino/ui` peerDependency. No new package; the lockfile gains one peer line.
@@ -46,8 +46,14 @@ Every `/club` page gets a bottom bar (Today · Calendar · Messages · [fourth t
   - E03-S04 failed: `getByLabel(/^(Show|Pokaż)$/)` not found. J-002 used the same step. Both chose the coach perspective through the calendar's old select, which now lives in the header, so both now use the role-context switcher. After the change: E03-S04 1 passed, J-002 1 passed.
   - TEST-047 failed: `getByRole('link', { name: 'Profile' })` not found, because Profile is now behind More. The test opens More first; after the change, 2 passed.
 
+7. Review (a fresh subagent on the PR diff): nothing blocking. Two findings fixed:
+   - the one-ward guardian's lost "Me" view;
+   - back-forward-cache restores after sign-out: `MemberShell` reloads a page restored with `pageshow.persisted`.
+   Left open: a not-linked or failed-load page has no sign-out; More does not close on Escape or a tap outside; the logout route's 307 repeats the POST against `/login`.
+
 ## Open problems
 
-- A guardian of exactly one ward has no "own sessions" view on the calendar any more (previously a perspective select). Follow-up if a guardian who also trains needs it.
+- A signed-in user linked to no person, or whose profile failed to load, sees no bar and so no Sign out in `/club` (the admin panel's own menu still offers it).
+- The installed logout route redirects with 307, so the browser repeats the POST against `/login` (it renders; a reload of `/login` asks to resubmit).
 - The fourth tab (Payments in E07, Facilities in E08) is a parameter of `memberNav` (`extraTab`); the modules that grant it wire it in.
 - The More panel is a native disclosure: Escape and a tap outside do not close it.

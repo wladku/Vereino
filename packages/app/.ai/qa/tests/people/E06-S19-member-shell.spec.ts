@@ -176,8 +176,8 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     await signInBrowser(page, request, club, family.coach.userId, family.coach.email)
     await page.goto('/club')
     await expect(page.getByTestId('club-switcher-context')).toBeVisible()
-    // One ward: no ward switcher. Acting as a member, Today shows the ward's session.
-    await expect(page.getByTestId('club-switcher-ward')).toHaveCount(0)
+    // One ward: the switcher names that ward and offers "Me". Acting as a member, Today shows the ward's session.
+    await expect(page.locator('#club-switcher-ward')).toContainText(family.other.child.firstName)
     const coachTile = page.getByTestId('club-tile-calendar')
     await expect(coachTile.getByTestId('club-today-session').filter({ hasText: 'Trening dodatkowy' })).toHaveText(
       new RegExp(family.other.child.firstName),
