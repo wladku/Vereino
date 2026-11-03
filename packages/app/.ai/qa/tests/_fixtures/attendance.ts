@@ -666,22 +666,45 @@ export function rowOf(list: AttendanceList, personId: string): AttendanceListRow
 }
 
 /**
- * Moves a session (as the club administrator) so it started 30 minutes ago and ends in an hour — the check-off opens at
- * the start; the session keeps its date, so the roster stays the same. Returns the new session version.
+ * Windows `startNow` tries, as minutes from now: the session started 30 minutes ago and ends in an hour; when that
+ * collides with another session on the place or of the coach (409, for example the fixture's own Tuesday 17:00
+ * training when the test runs on a Tuesday afternoon), a window that started and ended earlier today. The check-off
+ * opens at the start and has no end, so every window opens it.
+ */
+export const START_NOW_WINDOWS: ReadonlyArray<{ startMinutes: number; endMinutes: number }> = [
+  { startMinutes: -30, endMinutes: 60 },
+  { startMinutes: -180, endMinutes: -120 },
+  { startMinutes: -360, endMinutes: -300 },
+  { startMinutes: -540, endMinutes: -480 },
+]
+
+/**
+ * Moves a session (as the club administrator) so it has started — the check-off opens at the start; the session keeps
+ * its date, so the roster stays the same. Returns the new session version.
  */
 export async function startNow(request: APIRequestContext, club: Club, occurrenceId: string): Promise<string> {
   const current = await getOccurrence(request, club.adminToken, occurrenceId)
   expect(current.status, `GET /api/activities/occurrences/${occurrenceId}`).toBe(200)
   const now = Date.now()
-  const moved = await moveOccurrence(
-    request,
-    club.adminToken,
-    occurrenceId,
-    { startAt: new Date(now - 30 * 60_000).toISOString(), endAt: new Date(now + 60 * 60_000).toISOString() },
-    current.body?.updatedAt,
-  )
-  expect(moved.status, `move ${occurrenceId} ${JSON.stringify(moved.body)}`).toBe(200)
-  return String(moved.body?.updatedAt)
+  const refused: string[] = []
+  for (const window of START_NOW_WINDOWS) {
+    const moved = await moveOccurrence(
+      request,
+      club.adminToken,
+      occurrenceId,
+      {
+        startAt: new Date(now + window.startMinutes * 60_000).toISOString(),
+        endAt: new Date(now + window.endMinutes * 60_000).toISOString(),
+      },
+      current.body?.updatedAt,
+    )
+    if (moved.status === 200) return String(moved.body?.updatedAt)
+    refused.push(
+      `${String(window.startMinutes)}..${String(window.endMinutes)}: ${String(moved.status)} ${JSON.stringify(moved.body)}`,
+    )
+    if (moved.status !== 409 || !Array.isArray((moved.body as { conflicts?: unknown } | null)?.conflicts)) break
+  }
+  throw new Error(`[test] could not start session ${occurrenceId} in any window: ${refused.join('; ')}`)
 }
 
 /** Adds `count` participants (born 10 years ago) to a group from 30 days ago; returns their person ids. */
