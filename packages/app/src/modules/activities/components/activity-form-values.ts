@@ -1,9 +1,11 @@
 // The values of the activity form and the request body built from them (`POST|PUT /api/activities/activities`, `POST
 // …/preview`). The recurrence fields (one-off or weekly; weekdays, every n weeks, end, exception dates) become the
 // stored rule text through `Recurrence.toText` of `@vereino/core`, and an existing rule is read back with
-// `Recurrence.parse`. A one-off activity sends `recurrenceRule: null` and no end date.
+// `Recurrence.parse`. A one-off activity sends `recurrenceRule: null` and no end date. Only a match or a sparring
+// sends an opponent (#93), and "No coach" sends `coachPersonId: null`.
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
-import { localToday, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
+import { takesOpponent } from '../lib/activities-rules'
+import { NO_COACH, localToday, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
 
 export type RepeatMode = 'once' | 'weekly'
 export type EndMode = 'none' | 'until' | 'count'
@@ -14,6 +16,9 @@ export type ActivityFormValues = Record<string, unknown> & {
   type?: string
   placeId?: string
   coachPersonId?: string
+  opponentExternalTeamId?: string
+  /** Derived from the type: the opponent field is shown (a match or a sparring). Never sent. */
+  takesOpponent?: boolean
   description?: string
   isActive?: boolean
   repeat?: RepeatMode
@@ -37,6 +42,7 @@ export type ActivityBody = {
   type: string
   placeId: string
   coachPersonId: string | null
+  opponentExternalTeamId: string | null
   recurrenceRule: string | null
   startsOn: string
   endsOn: string | null
@@ -62,6 +68,8 @@ export function activityToFormValues(activity: ActivityDetail | null): ActivityF
     type: activity?.type ?? 'training',
     placeId: activity?.placeId ?? '',
     coachPersonId: activity?.coachPersonId ?? '',
+    opponentExternalTeamId: activity?.opponentExternalTeamId ?? '',
+    takesOpponent: takesOpponent(activity?.type),
     description: activity?.description ?? '',
     isActive: activity?.isActive ?? true,
     repeat: activity && !activity.recurrenceRule ? 'once' : 'weekly',
@@ -145,7 +153,8 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
       name: str(values.name).trim(),
       type: str(values.type),
       placeId: str(values.placeId),
-      coachPersonId: textOrNull(values.coachPersonId),
+      coachPersonId: values.coachPersonId === NO_COACH ? null : textOrNull(values.coachPersonId),
+      opponentExternalTeamId: takesOpponent(values.type) ? textOrNull(values.opponentExternalTeamId) : null,
       recurrenceRule: rule,
       startsOn: str(values.startsOn),
       endsOn: weekly ? textOrNull(values.endsOn) : null,

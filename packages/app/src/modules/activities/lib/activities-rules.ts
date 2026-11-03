@@ -32,6 +32,21 @@ export function typeAllowedForGroup(type: ActivityType, kind: GroupKindLike): bo
   return kind === 'team' || !TEAM_ONLY_TYPES.includes(type)
 }
 
+/** The types the activity wizard offers for a group of `kind` (README B-14): no `match` or `sparring` for a class group. */
+export function typesForGroupKind(kind: GroupKindLike): ActivityType[] {
+  return ACTIVITY_TYPES.filter((type) => typeAllowedForGroup(type, kind))
+}
+
+/** A `match` or `sparring` is played against an opponent (an external team, club spec *Activity*). */
+export function takesOpponent(type: string | null | undefined): boolean {
+  return TEAM_ONLY_TYPES.some((teamType) => teamType === type)
+}
+
+/** The i18n key of a type's label: a class group's `training` reads "Classes" (club spec glossary *Activity*). */
+export function typeLabelKey(type: ActivityType, kind?: GroupKindLike | null): string {
+  return type === 'training' && kind === 'class_group' ? 'activities.types.classes' : `activities.types.${type}`
+}
+
 export const OCCURRENCE_STATUSES = ['planned', 'done', 'cancelled'] as const
 export type OccurrenceStatus = (typeof OCCURRENCE_STATUSES)[number]
 

@@ -8,9 +8,9 @@ import { GROUPS_MEMBERSHIP_CONTRIBUTION, membershipContribution } from './servic
 import { GROUPS_MEMBERSHIP_IMPORTER, membershipImporter } from './services/membership-importer'
 
 /**
- * `groups.directory` (#31): `findGroups(scope, ids, em?)`, `rosterOn(scope, groupId, date, em?)` and
- * `findExternalTeams(scope, ids, em?)` — the groups, rosters and external teams of a club, for the modules that
- * require `groups` (`activities`).
+ * `groups.directory` (#31): `findGroups(scope, ids, em?)`, `rosterOn(scope, groupId, date, em?)`,
+ * `leaderIdsOn(scope, date, em?)` (#93) and `findExternalTeams(scope, ids, em?)` — the groups, rosters, group leaders
+ * and external teams of a club, for the modules that require `groups` (`activities`).
  */
 export const GROUPS_DIRECTORY = 'groups.directory' as const
 

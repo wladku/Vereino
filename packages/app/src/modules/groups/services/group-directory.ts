@@ -5,7 +5,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CalendarDate } from '@vereino/core'
 import { ExternalTeam, Group, GroupMembership } from '../data/entities'
-import type { GroupKind, MembershipRole } from '../lib/groups-rules'
+import { COACHING_ROLES, type GroupKind, type MembershipRole } from '../lib/groups-rules'
 import type { GroupsScope } from './directory'
 
 export type GroupDirectoryEntry = { id: string; sectionId: string; name: string; kind: GroupKind; isActive: boolean }
@@ -48,6 +48,11 @@ export type GroupDirectory = {
     filter: { sectionIds?: readonly string[]; groupIds?: readonly string[] } | null,
     em?: EntityManager,
   ): Promise<GroupDirectoryEntry[]>
+  /**
+   * The persons who lead any group on `date` — a live `coach` or `assistant` membership active that day (the coach
+   * picker of the activity wizard, #93). Ids only.
+   */
+  leaderIdsOn(scope: GroupsScope, date: CalendarDate, em?: EntityManager): Promise<string[]>
   /** The live external teams of the organization among `ids`, by id. */
   findExternalTeams(
     scope: GroupsScope,
@@ -155,6 +160,21 @@ export async function listGroups(
   }))
 }
 
+export async function leaderIdsOn(em: EntityManager, scope: GroupsScope, date: CalendarDate): Promise<string[]> {
+  const rows = await em.find(
+    GroupMembership,
+    {
+      ...scope,
+      deletedAt: null,
+      role: { $in: [...COACHING_ROLES] },
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'personId'] },
+  )
+  return [...new Set(rows.map((row) => row.personId))]
+}
+
 export async function findExternalTeams(
   em: EntityManager,
   scope: GroupsScope,
@@ -176,6 +196,7 @@ export function createGroupDirectory(getEm: () => EntityManager): GroupDirectory
     rosterOn: (scope, groupId, date, em) => rosterOn(em ?? getEm().fork(), scope, groupId, date),
     membershipsOf: (scope, personIds, window, em) => membershipsOf(em ?? getEm().fork(), scope, personIds, window),
     listGroups: (scope, filter, em) => listGroups(em ?? getEm().fork(), scope, filter),
+    leaderIdsOn: (scope, date, em) => leaderIdsOn(em ?? getEm().fork(), scope, date),
     findExternalTeams: (scope, ids, em) => findExternalTeams(em ?? getEm().fork(), scope, ids),
   }
 }

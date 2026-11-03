@@ -83,6 +83,8 @@ export type CalendarEntry = {
     placeGeoLng: number | null
     coachPersonId: string | null
     coachName: string | null
+    opponentName?: string | null
+    invitedTeamNames?: string[]
     status: string
     updatedAt: string
   }
@@ -449,7 +451,7 @@ export type Family = {
   /** The instructor of the pool group (`vereino_coach` role and a `coach` membership). */
   instructor: { personId: string; userId: string; token: string }
   academyCoordinator: { personId: string; userId: string; email: string; token: string }
-  poolCoordinator: { personId: string; userId: string; token: string }
+  poolCoordinator: { personId: string; userId: string; email: string; token: string }
 }
 
 /**
