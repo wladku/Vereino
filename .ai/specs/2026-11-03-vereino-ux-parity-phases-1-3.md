@@ -1,7 +1,7 @@
 # Vereino — UX parity for phases 1–3: people, sections and places lists
 
 **Date**: 2026-11-03
-**Status**: Draft — autonomous defaults posted for the product owner's override (see *Resolved assumptions*); `Ready for implementation` after the owner approves the spec PR
+**Status**: Draft — Q-U10 confirmed by the product owner (2026-11-03); the other autonomous defaults stand unless overridden on the PR; `Ready for implementation` after the owner approves the spec PR
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -530,7 +530,7 @@ Rollback follows S14.6: it redeploys the previous release and never runs `down()
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI and Interaction Contracts |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Implementation Phases 1–3 |
 
-Verdict: `Blocked — awaiting the product owner's approval of the spec PR and of the autonomous defaults below`.
+Verdict: `Blocked — awaiting the product owner's approval of the spec PR` (every check passes; Q-U10 confirmed on 2026-11-03).
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -545,7 +545,7 @@ Verdict: `Blocked — awaiting the product owner's approval of the spec PR and o
 | Q-U07 | Are place photos and regulations public now? | No; stored privately, published in phase 5 (E08-S04) | Smallest scope; the facilities spec owns publication | — |
 | Q-U08 | Photo limits? | PNG, JPEG or WebP ≤ 5 MB, at most 10 per place; one regulations PDF ≤ 10 MB | Matches the logo and material checks already in `club_core/api/uploads.ts`, with a larger photo size | — |
 | Q-U09 | Does the role filter "coach" include coach and assistant memberships? | Yes (union with assignments) | The mockup's Staff view and README "who are our coaches" | — |
-| Q-U10 | Who edits the short description: the administrator only (base update) or also the section's coordinator (public-content command)? | The public-content command (`sectionPublicUpdateSchema`), so the section's coordinator and the administrator | It is public tile text like the public description the coordinator already edits; in the mockup the coordinator can edit it (`canEdit` in `screenSection`) | ⚠ NEEDS HUMAN CONFIRMATION — widens who edits a field |
+| Q-U10 | Who edits the short description: the administrator only (base update) or also the section's coordinator (public-content command)? | The public-content command (`sectionPublicUpdateSchema`), so the section's coordinator and the administrator | It is public tile text like the public description the coordinator already edits; in the mockup the coordinator can edit it (`canEdit` in `screenSection`) | confirmed by the product owner, 2026-11-03 |
 | Q-U11 | Is "Children" under 18, or under the club's account threshold (R10)? | Under 18 (minors) | The perspective answers "who is a minor"; R10 decides only who may hold an account | — |
 
 ## Open Questions
@@ -560,3 +560,4 @@ Verdict: `Blocked — awaiting the product owner's approval of the spec PR and o
 |---|---|
 | 2026-11-03 | Initial draft (autonomous, `om-auto-write-spec` on #82), covering E06-S01 #83, E06-S03 #85, E06-S04 #86 |
 | 2026-11-03 | Revised after an independent architectural review. Changes:<br>– the section guard now locks the section row, and `groups` reads it `FOR SHARE` (DD-U08);<br>– both undos are guarded;<br>– the name rule is classified as a breaking narrowing, with a section-only schema (DD-U07);<br>– the index gets its own concurrent migration with an in-migration duplicate check (DD-U05);<br>– rollback follows S14.6;<br>– the persons route opts in to enrichers, and its own columns come from the list hook;<br>– the perspectives are app-owned tabs (DD-U03);<br>– unit tests are added (TEST-U10), and error codes and the list shape are made consistent;<br>– the short description moves to the public-content command (Q-U10). |
+| 2026-11-03 | Q-U10 confirmed by the product owner: the section's coordinator and the administrator edit the short description. |
