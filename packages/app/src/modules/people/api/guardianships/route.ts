@@ -130,12 +130,12 @@ export const openApi = buildOpenApi({
   create: {
     schema: guardianshipCreateSchema,
     description:
-      'Links a guardian and a ward for a period with the relation, the primary-payer flag and the consents (club administrator). Errors: 403 `scope_denied`, 404 unknown person, 409 `guardianship_primary_payer_conflict`, 422 `guardianship_self`, `validity_inverted`.',
+      'Links a guardian and a ward for a period with the relation, the primary-payer flag and the consents (club administrator). Errors: 403 `scope_denied`, 404 unknown person, 409 `guardianship_primary_payer_conflict`, 409 `guardianship_duplicate`, 422 `guardianship_self`, `guardianship_guardian_is_ward`, `guardianship_ward_is_guardian`, `validity_inverted`.',
   },
   update: {
     schema: guardianshipUpdateSchema,
     responseSchema: z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string(), actingRole: z.string() }),
     description:
-      'Changes the relation, the primary-payer flag, the consents or the period; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `guardianship_primary_payer_conflict`, 409 `guardianship_ended`, 422 `validity_inverted`.',
+      'Changes the relation, the primary-payer flag, the consents or the period; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 409 `optimistic_lock_conflict`, 409 `guardianship_primary_payer_conflict`, 409 `guardianship_ended`, 409 `guardianship_duplicate`, 422 `guardianship_guardian_is_ward`, `guardianship_ward_is_guardian`, `validity_inverted`.',
   },
 })

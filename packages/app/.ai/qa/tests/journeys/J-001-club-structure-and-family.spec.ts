@@ -398,7 +398,8 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       // On Kasia's record, in the "Guardianship and consents" tab: the two children, primary payer, consents.
       await page.goto(`/backend/people/persons/${family.kasia.id}`)
       await page.getByRole('tab', { name: /Guardianship|Opieka/ }).click()
-      const link = page.getByRole('form', { name: /Link a person|Powiąż osobę/ })
+      await page.getByRole('button', { name: /^Add a ward$|^Dodaj podopiecznego$/ }).click()
+      const link = page.getByRole('form', { name: /New ward of this person|Nowy podopieczny tej osoby/ })
       for (const [ward, consents] of [
         [family.jas, [/Club regulations|Regulamin klubu/, /Image|Wizerunek/]],
         [family.ola, [/Club regulations|Regulamin klubu/]],

@@ -87,16 +87,6 @@ export async function loadGuardianshipLocked(
   return em.findOne(Guardianship, { id, tenantId, deletedAt: null }, lock)
 }
 
-/** A person of the given organization exists (not deleted). */
-export async function personExists(
-  em: EntityManager,
-  scope: { tenantId: string; organizationId: string },
-  personId: string,
-): Promise<boolean> {
-  const found = await em.findOne(Person, { id: personId, ...scope, deletedAt: null }, { fields: ['id'] })
-  return found !== null
-}
-
 /**
  * Row-locks a person of the organization (`SELECT … FOR UPDATE`) and tells whether it exists. Commands that check a
  * rule across several rows of one person — no duplicate active role assignment, one primary payer per ward — take

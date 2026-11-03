@@ -1,8 +1,10 @@
 'use client'
 // The "Guardianship and consents" tab of the person record (club spec UI table, J-001 step 2): the person's wards and
 // guardians with the relation, the primary payer, the period and — only when the API returns them (the club
-// administrator, a guardian of the ward) — the consents. The club administrator links a guardian and a ward, edits
-// the relation, payer flag, end day and consents, and ends a guardianship (never deletes it).
+// administrator, a guardian of the ward) — the consents. The club administrator adds a guardian or a ward of the
+// person ("Add a guardian" / "Add a ward"; links never chain, so a person with a live guardian gets no "Add a ward"
+// and a live guardian no "Add a guardian", with the reason shown), edits the relation, payer flag, end day and
+// consents, and ends a guardianship (never deletes it).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -300,18 +302,26 @@ function GuardianshipItem({
   )
 }
 
+type AddRole = 'guardian' | 'ward'
+
+/** Adds a guardian (`role` `guardian`) or a ward (`ward`) of the person; people already linked are not offered. */
 function AddGuardianship({
   personId,
+  role,
+  linkedIds,
   busy,
   onAdd,
+  onClose,
   t,
 }: {
   personId: string
+  role: AddRole
+  linkedIds: ReadonlySet<string>
   busy: boolean
   onAdd: (body: Record<string, unknown>) => Promise<boolean>
+  onClose: () => void
   t: Translate
 }) {
-  const [direction, setDirection] = React.useState<'guardian' | 'ward'>('guardian')
   const [otherId, setOtherId] = React.useState<string | null>(null)
   const [relation, setRelation] = React.useState<string>('parent')
   const [isPrimaryPayer, setIsPrimaryPayer] = React.useState(false)
@@ -324,17 +334,17 @@ function AddGuardianship({
       if (query.trim()) params.set('lastName', query.trim())
       const data = await readApiResultOrThrow<{ items?: PersonListRow[] }>(`/api/people/persons?${params.toString()}`)
       return (data.items ?? [])
-        .filter((person) => person.id !== personId)
+        .filter((person) => person.id !== personId && !linkedIds.has(person.id))
         .map((person) => ({ id: person.id, title: personName(person), subtitle: person.birthDate }))
     },
-    [personId],
+    [personId, linkedIds],
   )
 
   const submit = async () => {
     if (!otherId) return
     const added = await onAdd({
-      guardianPersonId: direction === 'guardian' ? personId : otherId,
-      wardPersonId: direction === 'guardian' ? otherId : personId,
+      guardianPersonId: role === 'ward' ? personId : otherId,
+      wardPersonId: role === 'ward' ? otherId : personId,
       relation,
       isPrimaryPayer,
       consents,
@@ -350,34 +360,22 @@ function AddGuardianship({
   return (
     <form
       className="flex flex-col gap-3 border-t pt-4"
-      aria-label={t('people.guardianships.add.title')}
+      aria-label={t(
+        role === 'guardian' ? 'people.guardianships.add.guardianTitle' : 'people.guardianships.add.wardTitle',
+      )}
       onSubmit={(event) => {
         event.preventDefault()
         void submit()
       }}
     >
-      <h3 className="text-sm font-semibold">{t('people.guardianships.add.title')}</h3>
+      <h3 className="text-sm font-semibold">
+        {t(role === 'guardian' ? 'people.guardianships.add.guardianTitle' : 'people.guardianships.add.wardTitle')}
+      </h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <Label htmlFor="people-guardianship-direction">{t('people.guardianships.add.direction')}</Label>
-          <Select
-            value={direction}
-            onValueChange={(value) => {
-              setDirection(value === 'ward' ? 'ward' : 'guardian')
-            }}
-            disabled={busy}
-          >
-            <SelectTrigger id="people-guardianship-direction">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="guardian">{t('people.guardianships.add.direction.guardian')}</SelectItem>
-              <SelectItem value="ward">{t('people.guardianships.add.direction.ward')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label>{t('people.guardianships.fields.person')}</Label>
+          <Label>
+            {t(role === 'guardian' ? 'people.guardianships.fields.guardian' : 'people.guardianships.fields.ward')}
+          </Label>
           <LookupSelect
             value={otherId}
             onChange={setOtherId}
@@ -434,11 +432,19 @@ function AddGuardianship({
         disabled={busy}
         t={t}
       />
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy || !otherId || !validFrom}>
           {t('people.guardianships.actions.add')}
         </Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+          {t('people.common.cancel')}
+        </Button>
       </div>
+      {!otherId ? (
+        <p className="text-muted-foreground text-xs">
+          {t(role === 'guardian' ? 'people.guardianships.add.pickGuardian' : 'people.guardianships.add.pickWard')}
+        </p>
+      ) : null}
     </form>
   )
 }
@@ -448,6 +454,7 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
+  const [adding, setAdding] = React.useState<AddRole | null>(null)
 
   const query = useQuery({
     queryKey: ['people-guardianships', personId],
@@ -550,6 +557,15 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
   const rows = query.data?.rows ?? []
   const wards = rows.filter((row) => row.guardianPersonId === personId)
   const guardians = rows.filter((row) => row.wardPersonId === personId)
+  // Links never chain (`guardianship_guardian_is_ward`, `guardianship_ward_is_guardian`): a person with a live
+  // guardian gets no "Add a ward", a live guardian no "Add a guardian". Ended links do not count.
+  const today = localToday()
+  const live = (row: GuardianshipRow) => periodStatus(row.validFrom, row.validTo, today) !== 'ended'
+  const hasGuardian = guardians.some(live)
+  const isGuardian = wards.some(live)
+  const linkedIds = new Set(
+    rows.filter(live).map((row) => (row.guardianPersonId === personId ? row.wardPersonId : row.guardianPersonId)),
+  )
   const renderList = (title: string, list: GuardianshipRow[], counterpartOf: (row: GuardianshipRow) => string) =>
     list.length > 0 ? (
       <div className="flex flex-col gap-1">
@@ -583,7 +599,56 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
       ) : null}
       {renderList(t('people.guardianships.wards'), wards, (row) => row.wardPersonId)}
       {renderList(t('people.guardianships.guardians'), guardians, (row) => row.guardianPersonId)}
-      {canManage ? <AddGuardianship personId={personId} busy={busy} onAdd={add} t={t} /> : null}
+      {canManage && adding ? (
+        <AddGuardianship
+          key={adding}
+          personId={personId}
+          role={adding}
+          linkedIds={linkedIds}
+          busy={busy}
+          onAdd={add}
+          onClose={() => {
+            setAdding(null)
+          }}
+          t={t}
+        />
+      ) : null}
+      {canManage && !adding && query.isSuccess ? (
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <div className="flex flex-wrap gap-2">
+            {!isGuardian ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setAdding('guardian')
+                }}
+              >
+                {t('people.guardianships.add.guardian')}
+              </Button>
+            ) : null}
+            {!hasGuardian ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setAdding('ward')
+                }}
+              >
+                {t('people.guardianships.add.ward')}
+              </Button>
+            ) : null}
+          </div>
+          {hasGuardian ? (
+            <p className="text-muted-foreground text-xs">{t('people.guardianships.add.hasGuardianHint')}</p>
+          ) : null}
+          {isGuardian ? (
+            <p className="text-muted-foreground text-xs">{t('people.guardianships.add.isGuardianHint')}</p>
+          ) : null}
+        </div>
+      ) : null}
       {ConfirmDialogElement}
     </section>
   )

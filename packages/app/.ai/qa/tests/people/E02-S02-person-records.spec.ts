@@ -272,6 +272,56 @@ test('E02-S02 one primary payer per ward: a second active one gets 409 and the f
   }
 })
 
+test('E02-S02 guardianship links: the same pair once at a time (409), no chains either way (422), a new link after the old one ended', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'e02-s02-links')
+  try {
+    const token = club.adminToken
+    const child = await createPerson(request, token, {
+      firstName: 'Miłosz',
+      lastName: 'Łańcuch',
+      birthDate: '2015-04-01',
+    })
+    const sibling = await createPerson(request, token, { firstName: 'Kacper', lastName: 'Łańcuch' })
+    const parent = await createPerson(request, token, { firstName: 'Władek', lastName: 'Łańcuch' })
+    const grandparent = await createPerson(request, token, { firstName: 'Jan', lastName: 'Łańcuch' })
+    const post = (data: Record<string, unknown>) =>
+      call<{ code?: string }>(request, 'POST', '/api/people/guardianships', token, { data })
+    const link = await createGuardianship(request, token, {
+      guardianPersonId: parent,
+      wardPersonId: child,
+      validFrom: '2020-01-01',
+    })
+
+    // The same guardian and ward again while the first link is live → 409.
+    const twice = await post({ guardianPersonId: parent, wardPersonId: child, validFrom: calendarDate() })
+    expect(twice.status).toBe(409)
+    expect(twice.body?.code).toBe('guardianship_duplicate')
+
+    // No chains: the child (who has a guardian) is not a guardian; the parent (a guardian) is not a ward.
+    const childAsGuardian = await post({ guardianPersonId: child, wardPersonId: sibling, validFrom: calendarDate() })
+    expect(childAsGuardian.status).toBe(422)
+    expect(childAsGuardian.body?.code).toBe('guardianship_guardian_is_ward')
+    const parentAsWard = await post({ guardianPersonId: grandparent, wardPersonId: parent, validFrom: calendarDate() })
+    expect(parentAsWard.status).toBe(422)
+    expect(parentAsWard.body?.code).toBe('guardianship_ward_is_guardian')
+    expect((await guardianships(request, token, `wardPersonId=${child}`)).items.map((item) => item.id)).toEqual([link])
+
+    // Once the link has ended, the same pair can be linked again for a later period.
+    const row = await getGuardianship(request, token, link)
+    expect((await endGuardianship(request, token, link, row.body?.updatedAt, '2021-12-31')).status).toBe(200)
+    await createGuardianship(request, token, { guardianPersonId: parent, wardPersonId: child, validFrom: '2022-01-01' })
+    // Reopening the ended link would overlap the new one → 409.
+    const ended = await getGuardianship(request, token, link)
+    const reopened = await updateGuardianship(request, token, { id: link, validTo: null }, ended.body?.updatedAt)
+    expect(reopened.status).toBe(409)
+    expect(reopened.body?.code).toBe('guardianship_duplicate')
+  } finally {
+    await club.cleanup()
+  }
+})
+
 test('E02-S02 guardianship: relation, consents granted and withdrawn with their dates, edit and its undo, the ward and a former guardian cannot change consents', async ({
   request,
 }) => {
