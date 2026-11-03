@@ -4,8 +4,9 @@
 // groups), and the names a list shows next to its rows (sections, seasons, persons).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { scopeWhere, type GrantKind, type Scope, type ScopeColumnMap } from '@vereino/core'
-import { Group, Season } from '../data/entities'
+import { ageOn, scopeWhere, type CalendarDate, type GrantKind, type Scope, type ScopeColumnMap } from '@vereino/core'
+import { Group, GroupMembership, Season } from '../data/entities'
+import { summarizeRosters, type GroupRosterSummary } from '../lib/group-list'
 import { findPersons, findSections, type GroupsScope } from './directory'
 
 export async function findGroup(container: AwilixContainer, scope: GroupsScope, id: string): Promise<Group | null> {
@@ -65,4 +66,55 @@ export async function personNames(
   return new Map(
     [...persons.values()].map((person) => [person.id, { firstName: person.firstName, lastName: person.lastName }]),
   )
+}
+
+/**
+ * Roster persons by id (`people`): the name and the age in completed years on the club day `today` (null without a
+ * birth date), for the roster rows a list already authorized (B-12, E06-S08 #90). The birth date itself is not exposed.
+ */
+export async function rosterPersons(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  ids: readonly string[],
+  today: CalendarDate,
+): Promise<Map<string, { firstName: string; lastName: string; age: number | null }>> {
+  const persons = await findPersons(container, scope, ids)
+  return new Map(
+    [...persons.values()].map((person) => [
+      person.id,
+      {
+        firstName: person.firstName,
+        lastName: person.lastName,
+        age: person.birthDate ? ageOn(person.birthDate.slice(0, 10), today) : null,
+      },
+    ]),
+  )
+}
+
+/**
+ * The roster summary of each listed group on the club day `today` (E06-S08 #90): its coaching persons and its number
+ * of distinct active participants, from one read of the active memberships of those groups. The caller has already
+ * authorized the groups.
+ */
+export async function rosterSummaries(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  groupIds: readonly string[],
+  today: CalendarDate,
+): Promise<Map<string, GroupRosterSummary>> {
+  const unique = [...new Set(groupIds)]
+  if (unique.length === 0) return new Map()
+  const em = container.resolve<EntityManager>('em').fork()
+  const rows = await em.find(
+    GroupMembership,
+    {
+      ...scope,
+      groupId: { $in: unique },
+      deletedAt: null,
+      validFrom: { $lte: today },
+      $or: [{ validTo: null }, { validTo: { $gte: today } }],
+    },
+    { fields: ['groupId', 'personId', 'role'], orderBy: { validFrom: 'asc', id: 'asc' } },
+  )
+  return summarizeRosters(unique, rows)
 }
