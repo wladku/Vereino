@@ -21,6 +21,39 @@ export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURI
 
 export type ThreadScopeType = 'club' | 'section' | 'group' | 'activity' | 'occurrence' | 'direct'
 
+/** The scope types of the thread list's filter, in the composer's order (B-18). */
+export const THREAD_SCOPE_TYPES: readonly ThreadScopeType[] = [
+  'club',
+  'section',
+  'group',
+  'activity',
+  'occurrence',
+  'direct',
+]
+
+/** A scope type as the filter names it: the composer's kind, "Direct message" for `direct`. */
+export function scopeTypeLabel(t: Translate, scopeType: ThreadScopeType): string {
+  return scopeType === 'direct' ? t('communication.scope.direct') : t(`communication.audience.kinds.${scopeType}`)
+}
+
+/** The thread list's filters (`GET /api/communication/threads`); empty strings are "any". */
+export type ThreadListFilters = { scopeType: ThreadScopeType | ''; sectionId: string; unreadOnly: boolean }
+
+export const NO_THREAD_FILTERS: ThreadListFilters = { scopeType: '', sectionId: '', unreadOnly: false }
+
+/** The list query of a page with the applied filters. */
+export function threadListQuery(page: number, pageSize: number, filters: ThreadListFilters): string {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (filters.scopeType) params.set('scopeType', filters.scopeType)
+  if (filters.sectionId) params.set('sectionId', filters.sectionId)
+  if (filters.unreadOnly) params.set('unread', '1')
+  return params.toString()
+}
+
+export function hasThreadFilters(filters: ThreadListFilters): boolean {
+  return filters.scopeType !== '' || filters.sectionId !== '' || filters.unreadOnly
+}
+
 export type ThreadListItem = {
   id: string
   scopeType: ThreadScopeType
@@ -34,6 +67,7 @@ export type ThreadListItem = {
   lastMessageAt: string
   createdAt: string
   messageCount: number
+  lastMessage: { authorName: string | null; system: boolean; createdAt: string } | null
   unread: boolean
 }
 
@@ -58,9 +92,14 @@ export type ThreadMessageItem = {
   system: boolean
   recipientCount: number
   hasDeliveries: boolean
+  canDelete: boolean
+  deliveryCounts: DeliveryCounts | null
 }
 
-export type ThreadDetail = Omit<ThreadListItem, 'messageCount'> & {
+/** Deliveries of one message (one per recipient and channel) by status. */
+export type DeliveryCounts = { queued: number; sent: number; failed: number; skipped: number }
+
+export type ThreadDetail = Omit<ThreadListItem, 'messageCount' | 'lastMessage'> & {
   updatedAt: string
   staff: boolean
   canSeeDeliveries: boolean
@@ -78,6 +117,14 @@ const ROLES = ['club_admin', 'coordinator', 'coach', 'guardian', 'self', 'system
 
 export function roleLabel(t: Translate, role: string): string {
   return ROLES.includes(role) ? t(`communication.roles.${role}`) : role
+}
+
+/** "{author}, {time}" of a list's last message ("Club" for a system message), or "" without one. */
+export function lastMessageLabel(t: Translate, thread: Pick<ThreadListItem, 'lastMessage'>, locale: string): string {
+  const last = thread.lastMessage
+  if (!last) return ''
+  const author = last.system ? t('communication.threads.lastMessageSystem') : (last.authorName ?? '')
+  return t('communication.threads.lastMessage', { author, time: formatDateTime(last.createdAt, locale) })
 }
 
 export function formatDateTime(iso: string, locale: string): string {

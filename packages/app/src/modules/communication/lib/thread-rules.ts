@@ -297,6 +297,39 @@ export function lastVisibleMessageAt(
   return latest
 }
 
+/**
+ * The newest message the viewer sees, their own included (the thread list's "Last message", B-18), or null. Only an
+ * original message counts — an edit or a deletion is not a new message —; of two at the same instant the later id.
+ * Its author is someone the viewer may see (R15), so the list never names another family.
+ */
+export function lastVisibleMessage<T extends MessageStamp & { id: string; kind: MessageKind }>(
+  stamps: readonly T[],
+  viewer: { staff: boolean; household: ReadonlySet<string> },
+): T | null {
+  let latest: T | null = null
+  for (const stamp of stamps) {
+    if (stamp.kind !== 'message' || !isVisibleTo(stamp, viewer)) continue
+    const newer =
+      !latest ||
+      stamp.createdAt.getTime() > latest.createdAt.getTime() ||
+      (stamp.createdAt.getTime() === latest.createdAt.getTime() && stamp.id > latest.id)
+    if (newer) latest = stamp
+  }
+  return latest
+}
+
+/**
+ * Whether the reader may narrow the thread list to a section (B-18; DD-M12): the club administrator any section, a
+ * coordinator their own sections. For any other section the list is empty — never another section's threads, also
+ * not the ones the reader takes part in.
+ */
+export function maySeeSection(
+  reader: { clubWide: boolean; sectionIds: readonly string[] },
+  sectionId: string,
+): boolean {
+  return reader.clubWide || reader.sectionIds.includes(sectionId)
+}
+
 /** Unread (DD-M13): a visible message newer than the viewer's read marker. */
 export function isUnread(lastVisibleAt: Date | null, lastReadAt: Date | null): boolean {
   if (!lastVisibleAt) return false

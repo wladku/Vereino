@@ -140,7 +140,11 @@ export type ThreadVisibility = {
   participantOnly: boolean
 }
 
-export type ThreadFilters = { scopeType?: ThreadScopeType; scopeId?: string; isCase?: boolean }
+/**
+ * `sectionId` matches the thread's `section_id` snapshot: the section's own threads and those of its groups, activities
+ * and sessions (club and direct threads carry none). The caller decides first whether the reader may see the section.
+ */
+export type ThreadFilters = { scopeType?: ThreadScopeType; scopeId?: string; sectionId?: string; isCase?: boolean }
 
 /** The visible threads, newest activity first, at most `limit` (a club has a few hundred). */
 export async function visibleThreadHeaders(
@@ -172,6 +176,10 @@ export async function visibleThreadHeaders(
   if (filters.scopeId) {
     conditions.push('t.scope_id = ?')
     bindings.push(filters.scopeId)
+  }
+  if (filters.sectionId) {
+    conditions.push('t.section_id = ?')
+    bindings.push(filters.sectionId)
   }
   if (filters.isCase !== undefined) {
     conditions.push('t.is_case = ?')

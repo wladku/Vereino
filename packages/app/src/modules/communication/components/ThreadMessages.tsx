@@ -2,14 +2,22 @@
 // The messages of a thread and the reply box, shared by the admin thread page and the member thread page (foundation
 // III DD-M10, DD-M12; R01, R15): each message with its author and the role they wrote in, "edited" / "deleted", a
 // system message for a cancellation, and the "staff and family only" marker on a member's reply. Club text is shown
-// as written (line breaks kept, never as markup).
+// as written (line breaks kept, never as markup). The admin page adds its own part under each message (`renderFooter`:
+// the delivery status and "Delete message", B-19).
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDateTime, roleLabel, type ThreadMessageItem } from './client-helpers'
 
-export function MessageList({ messages }: { messages: ThreadMessageItem[] }) {
+export function MessageList({
+  messages,
+  renderFooter,
+}: {
+  messages: ThreadMessageItem[]
+  /** What the page shows under a message (nothing by default). */
+  renderFooter?: (message: ThreadMessageItem) => React.ReactNode
+}) {
   const t = useT()
   const locale = useLocale()
   return (
@@ -17,7 +25,7 @@ export function MessageList({ messages }: { messages: ThreadMessageItem[] }) {
       {messages.map((message) => (
         <li
           key={message.id}
-          className="bg-card flex flex-col gap-2 rounded-lg border p-3"
+          className="bg-card flex min-w-0 flex-col gap-2 rounded-lg border p-3"
           data-testid="thread-message"
           data-message-id={message.id}
           data-audience={message.audience}
@@ -50,6 +58,7 @@ export function MessageList({ messages }: { messages: ThreadMessageItem[] }) {
               {message.body}
             </p>
           )}
+          {renderFooter ? renderFooter(message) : null}
         </li>
       ))}
     </ol>

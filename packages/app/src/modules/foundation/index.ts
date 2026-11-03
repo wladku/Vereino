@@ -87,6 +87,7 @@ export {
 export {
   DISPATCH_QUEUE,
   createDispatchService,
+  type DeliveryCounts,
   type DeliveryView,
   type DispatchJob,
   type DispatchRequest,

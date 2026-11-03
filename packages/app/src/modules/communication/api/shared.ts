@@ -61,6 +61,14 @@ export const threadListItemSchema = z.object({
   lastMessageAt: z.string().describe('The newest message the reader sees'),
   createdAt: z.string(),
   messageCount: z.number().describe('Messages the reader sees'),
+  lastMessage: z
+    .object({
+      authorName: z.string().nullable().describe('Null for a system message'),
+      system: z.boolean(),
+      createdAt: z.string(),
+    })
+    .nullable()
+    .describe('The newest message the reader sees, their own included; never another family’s author (R15)'),
   unread: z.boolean(),
 })
 
@@ -85,9 +93,16 @@ export const threadMessageSchema = z.object({
   system: z.boolean(),
   recipientCount: z.number(),
   hasDeliveries: z.boolean(),
+  canDelete: z
+    .boolean()
+    .describe('The reader may delete it: its author, the section coordinator or the administrator, while not a case'),
+  deliveryCounts: z
+    .object({ queued: z.number(), sent: z.number(), failed: z.number(), skipped: z.number() })
+    .nullable()
+    .describe('Deliveries (one per recipient and channel) by status, for a reader who sees the delivery status'),
 })
 
-export const threadDetailSchema = threadListItemSchema.omit({ messageCount: true }).extend({
+export const threadDetailSchema = threadListItemSchema.omit({ messageCount: true, lastMessage: true }).extend({
   updatedAt: z.string().describe('The lock token of edits and deletions'),
   staff: z.boolean(),
   canSeeDeliveries: z.boolean(),

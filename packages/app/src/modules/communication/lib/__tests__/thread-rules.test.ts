@@ -21,8 +21,10 @@ import {
   isThreadStaff,
   isUnread,
   isVisibleTo,
+  lastVisibleMessage,
   lastVisibleMessageAt,
   latestMessages,
+  maySeeSection,
   memberThreadPath,
   pageWindow,
   pagedEnvelope,
@@ -349,6 +351,55 @@ describe('unread state (DD-M13)', () => {
     expect(isUnread(at('2026-11-02T10:00:00Z'), null)).toBe(true)
     expect(isUnread(at('2026-11-02T10:00:00Z'), at('2026-11-02T10:00:00Z'))).toBe(false)
     expect(isUnread(at('2026-11-02T10:00:01Z'), at('2026-11-02T10:00:00Z'))).toBe(true)
+  })
+})
+
+describe('the thread list (B-18)', () => {
+  const stamp = (
+    id: string,
+    kind: MessageRow['kind'],
+    authorPersonId: string | null,
+    audience: 'all' | 'staff',
+    iso: string,
+  ) => ({
+    id,
+    kind,
+    authorPersonId,
+    audience,
+    createdAt: at(iso),
+  })
+  const stamps = [
+    stamp('m1', 'message', 'coach', 'all', '2026-11-02T09:00:00Z'),
+    stamp('m2', 'message', 'other-family', 'staff', '2026-11-02T11:00:00Z'),
+    stamp('m3', 'message', 'me', 'all', '2026-11-02T10:00:00Z'),
+    stamp('r1', 'revision', 'coach', 'all', '2026-11-02T12:00:00Z'),
+    stamp('t1', 'tombstone', 'coach', 'all', '2026-11-02T13:00:00Z'),
+  ]
+
+  it('takes the newest visible original message, the reader’s own included', () => {
+    const member = { staff: false, household: new Set(['me']) }
+    expect(lastVisibleMessage(stamps, member)?.id).toBe('m3')
+    expect(lastVisibleMessage(stamps, { ...member, staff: true })?.id).toBe('m2')
+    expect(lastVisibleMessage(stamps.slice(3), member)).toBeNull()
+    expect(lastVisibleMessage([], member)).toBeNull()
+  })
+
+  it('takes the later id of two messages at the same instant', () => {
+    const staff = { staff: true, household: new Set<string>() }
+    const tied = [
+      stamp('b', 'message', 'coach', 'all', '2026-11-02T09:00:00Z'),
+      stamp('a', 'message', 'coach', 'all', '2026-11-02T09:00:00Z'),
+      stamp('c', 'message', 'coach', 'all', '2026-11-02T09:00:00Z'),
+    ]
+    expect(lastVisibleMessage(tied, staff)?.id).toBe('c')
+    expect(lastVisibleMessage([tied[1], tied[0]], staff)?.id).toBe('b')
+  })
+
+  it('lets the administrator filter by any section and a coordinator by their own only', () => {
+    expect(maySeeSection({ clubWide: true, sectionIds: [] }, 's-1')).toBe(true)
+    expect(maySeeSection({ clubWide: false, sectionIds: ['s-1'] }, 's-1')).toBe(true)
+    expect(maySeeSection({ clubWide: false, sectionIds: ['s-1'] }, 's-2')).toBe(false)
+    expect(maySeeSection({ clubWide: false, sectionIds: [] }, 's-1')).toBe(false)
   })
 })
 

@@ -4,6 +4,9 @@
 // staff. Visibility = participants ∪ the coordinators of the thread's section ∪ the club administrator; a member
 // sees the messages for everyone and their own household's replies only — never another family's. A case (REQ-M09)
 // keeps the same visibility and carries who marked it and when; the case register is the list filtered by `isCase`.
+// The staff list filters by section (B-18, #103: a section the reader oversees, its groups', activities' and sessions'
+// threads through the `section_id` snapshot) and names the last message; the thread page says which message the
+// reader may delete and how many deliveries of each message are in each status.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -15,6 +18,7 @@ import {
   foundationErrors,
   scopeContract,
   trustedScopeOf,
+  type DeliveryCounts,
   type DispatchService,
   type PagedDeliveries,
 } from '@/modules/foundation'
@@ -22,12 +26,13 @@ import { Thread, ThreadMessage } from '../data/entities'
 import {
   messageStamps,
   participationsOf,
+  type MessageStampRow,
   readMarkersOf,
   visibleThreadHeaders,
   type ThreadFilters,
   type ThreadHeader,
 } from '../data/queries'
-import { mayMarkCase } from '../lib/case-rules'
+import { mayDeleteMessage, mayMarkCase } from '../lib/case-rules'
 import {
   THREAD_READ_KINDS,
   excerpt,
@@ -36,8 +41,10 @@ import {
   isThreadStaff,
   isUnread,
   isVisibleTo,
+  lastVisibleMessage,
   lastVisibleMessageAt,
   latestMessages,
+  maySeeSection,
   pageWindow,
   pagedEnvelope,
   selfPersonId,
@@ -136,6 +143,8 @@ export type ThreadListItem = {
   lastMessageAt: string
   createdAt: string
   messageCount: number
+  /** The newest message the reader sees, their own included: its author (null for a system message) and time. */
+  lastMessage: { authorName: string | null; system: boolean; createdAt: string } | null
   unread: boolean
 }
 
@@ -148,7 +157,13 @@ export type ThreadListQuery = {
   participantOnly: boolean
 }
 
-type Summary = { header: ThreadHeader; unread: boolean; messageCount: number; lastAt: Date }
+type Summary = {
+  header: ThreadHeader
+  unread: boolean
+  messageCount: number
+  lastAt: Date
+  last: MessageStampRow | null
+}
 
 async function summaries(em: EntityManager, viewer: Viewer, headers: readonly ThreadHeader[]): Promise<Summary[]> {
   const ids = headers.map((header) => header.id)
@@ -175,6 +190,7 @@ async function summaries(em: EntityManager, viewer: Viewer, headers: readonly Th
       unread: viewer.personId ? isUnread(lastVisible, reads.get(header.id) ?? null) : false,
       messageCount,
       lastAt: lastVisible && lastVisible > header.createdAt ? lastVisible : header.createdAt,
+      last: lastVisibleMessage(threadStamps, reader),
     }
   })
 }
@@ -200,6 +216,10 @@ async function subjectsOf(em: EntityManager, viewer: Viewer, ids: readonly strin
 export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
   const em = emOf(viewer)
   const window = pageWindow(query.page, query.pageSize)
+  // A section outside the reader's grants lists nothing, so a forged id never shows another section's threads.
+  if (query.filters.sectionId && !maySeeSection(viewer, query.filters.sectionId)) {
+    return pagedEnvelope<ThreadListItem>([], 0, window)
+  }
   const headers = await visibleThreadHeaders(em, viewer.scope, visibility(viewer, query.participantOnly), query.filters)
   const all = (await summaries(em, viewer, headers)).sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
   const matching = query.unreadOnly ? all.filter((summary) => summary.unread) : all
@@ -215,10 +235,12 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
     findPersons(
       viewer.container,
       viewer.scope,
-      page.flatMap(({ header }) => [header.authorPersonId, header.caseOpenedByPersonId].filter(isId)),
+      page.flatMap(({ header, last }) =>
+        [header.authorPersonId, header.caseOpenedByPersonId, last?.authorPersonId ?? null].filter(isId),
+      ),
     ),
   ])
-  const items: ThreadListItem[] = page.map(({ header, unread, messageCount, lastAt }) => ({
+  const items: ThreadListItem[] = page.map(({ header, unread, messageCount, lastAt, last }) => ({
     id: header.id,
     scopeType: header.scopeType,
     scopeId: header.scopeId,
@@ -231,6 +253,13 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
     lastMessageAt: lastAt.toISOString(),
     createdAt: header.createdAt.toISOString(),
     messageCount,
+    lastMessage: last
+      ? {
+          authorName: last.authorPersonId ? personName(authors.get(last.authorPersonId)) : null,
+          system: last.authorPersonId === null,
+          createdAt: last.createdAt.toISOString(),
+        }
+      : null,
     unread,
   }))
   return pagedEnvelope(items, matching.length, window)
@@ -257,6 +286,10 @@ export type ThreadMessageItem = {
   system: boolean
   recipientCount: number
   hasDeliveries: boolean
+  /** The reader may delete the message now (B-19): its author or staff, not a case, not a system or deleted one. */
+  canDelete: boolean
+  /** The message's deliveries by status for a reader who sees the delivery status; null otherwise or without any. */
+  deliveryCounts: DeliveryCounts | null
 }
 
 export type ThreadDetail = {
@@ -353,12 +386,24 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
       ...[header.authorPersonId, header.caseOpenedByPersonId].filter(isId),
     ]),
   ]
-  const [names, labels, reads, hasCaseFeature] = await Promise.all([
+  const canSeeDeliveries = staffRole !== null || (viewer.personId !== null && viewer.personId === header.authorPersonId)
+  const dispatchIds = canSeeDeliveries
+    ? views.flatMap((view) => {
+        const dispatchId = byId.get(view.id)?.dispatchId
+        return dispatchId ? [dispatchId] : []
+      })
+    : []
+  const [names, labels, reads, hasCaseFeature, counts] = await Promise.all([
     findPersons(viewer.container, viewer.scope, authorIds),
     targetLabels(viewer.container, viewer.scope, [header]),
     viewer.personId ? readMarkersOf(em, viewer.scope, viewer.personId, [thread.id]) : new Map<string, Date>(),
     // Asked only when the marking is otherwise possible: a staff grant on a thread that is not a case yet.
     !header.isCase && staffRole ? hasFeature(viewer, CASE_FEATURE) : false,
+    dispatchIds.length > 0
+      ? viewer.container
+          .resolve<DispatchService>('foundationDispatch')
+          .countsOf(dispatchIds, { ...viewer.scope, scope: viewer.grants })
+      : new Map<string, DeliveryCounts>(),
   ])
   const lastVisible = lastVisibleMessageAt(
     rows.map((row) => ({
@@ -368,7 +413,6 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
     })),
     reader,
   )
-  const canSeeDeliveries = staffRole !== null || (viewer.personId !== null && viewer.personId === header.authorPersonId)
   return {
     id: thread.id,
     scopeType: header.scopeType,
@@ -388,10 +432,11 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
     unread: viewer.personId ? isUnread(lastVisible, reads.get(thread.id) ?? null) : false,
     messages: views.map((view) => {
       const row = byId.get(view.id)
+      const own = viewer.personId !== null && view.authorPersonId === viewer.personId
       return {
         id: view.id,
         authorName: view.authorPersonId ? personName(names.get(view.authorPersonId)) : null,
-        own: viewer.personId !== null && view.authorPersonId === viewer.personId,
+        own,
         actingRole: view.actingRole,
         audience: view.audience,
         body: view.body,
@@ -401,6 +446,14 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
         system: view.system,
         recipientCount: row?.recipientCount ?? 0,
         hasDeliveries: canSeeDeliveries && Boolean(row?.dispatchId),
+        canDelete: mayDeleteMessage({
+          threadIsCase: header.isCase,
+          system: view.system,
+          deleted: view.deleted,
+          own,
+          staffRole,
+        }),
+        deliveryCounts: canSeeDeliveries && row?.dispatchId ? (counts.get(row.dispatchId) ?? null) : null,
       }
     }),
   }

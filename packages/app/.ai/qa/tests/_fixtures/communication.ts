@@ -1,6 +1,6 @@
-// `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10; phase C, #36: TEST-M09): the
-// thread routes, the case marking, the delivery status, the share text and the e-mails the running app captured
-// (`OM_TEST_MODE`).
+// `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10; phase C, #36: TEST-M09; the thread
+// list filters and per-message delivery counts of #103, E06-S21): the thread routes, the case marking, the delivery
+// status, the share text and the e-mails the running app captured (`OM_TEST_MODE`).
 import { expect, type APIRequestContext } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call } from './club'
 import { capturedTo, type CapturedMessage } from './messaging'
@@ -28,8 +28,11 @@ export type ThreadItem = {
   caseOpenedByName: string | null
   lastMessageAt: string
   messageCount: number
+  lastMessage: { authorName: string | null; system: boolean; createdAt: string } | null
   unread: boolean
 }
+
+export type DeliveryCounts = { queued: number; sent: number; failed: number; skipped: number }
 
 export type ThreadMessage = {
   id: string
@@ -43,9 +46,11 @@ export type ThreadMessage = {
   system: boolean
   recipientCount: number
   hasDeliveries: boolean
+  canDelete: boolean
+  deliveryCounts: DeliveryCounts | null
 }
 
-export type ThreadDetail = Omit<ThreadItem, 'messageCount'> & {
+export type ThreadDetail = Omit<ThreadItem, 'messageCount' | 'lastMessage'> & {
   updatedAt: string
   staff: boolean
   canSeeDeliveries: boolean

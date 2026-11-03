@@ -1,12 +1,15 @@
 'use client'
-// `/backend/communication/threads/[id]` (foundation III *UI and Interaction Contracts*, the thread detail mock-up;
-// REQ-M05, REQ-M06, REQ-M08; J-M01 steps 4–5): the subject, the scope and the author, the messages with their history,
-// the reply box, "Copy text for group chat" with an `aria-live` confirmation, and — for the author, the section's
-// coordinator and the administrator — the recipients of the first message in `DeliveryStatusList` (P-32) with "not
-// delivered" and the "problems only" filter. Its own 403 and 404 states (`OWN_FORBIDDEN_STATE`). Cases (REQ-M09, #36):
-// "Mark as case" for the section's coordinator and the administrator, behind a confirmation because it cannot be
-// undone, sent with the thread's version (409 conflicts surfaced with a refresh); a case shows a read-only banner
-// with who marked it and when.
+// `/backend/communication/threads/[id]` (B-19; foundation III *UI and Interaction Contracts*, the thread detail
+// mock-up; REQ-M05, REQ-M06, REQ-M08; J-M01 steps 4–5): the subject, the scope and the author, the messages with their
+// history, the reply box, "Copy text for group chat" with an `aria-live` confirmation, and — for the author, the
+// section's coordinator and the administrator — under every message its delivery counts by status and, on request,
+// its recipients in `DeliveryStatusList` (P-32) with "not delivered" and the "problems only" filter (the first
+// message's list open, #103). Its own 403 and 404 states (`OWN_FORBIDDEN_STATE`). Cases (REQ-M09, #36): "Mark as case"
+// for the section's coordinator and the administrator, behind a confirmation because it cannot be undone, sent with
+// the thread's version (409 conflicts surfaced with a refresh); a case shows a read-only banner with who marked it and
+// when. "Delete message" (DD-M10, #103) on each message the reader may delete — its author, the section's coordinator,
+// the administrator — while the thread is not a case, behind a confirmation and with the thread's version; the message
+// then reads "deleted" and the history keeps it.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
@@ -27,7 +30,9 @@ import {
   formatDateTime,
   roleLabel,
   scopeLabel,
+  type DeliveryCounts,
   type ThreadDetail,
+  type ThreadMessageItem,
   type Translate,
 } from './client-helpers'
 import { MessageList, ReplyBox } from './ThreadMessages'
@@ -236,33 +241,149 @@ function deliveryLabels(t: Translate) {
   }
 }
 
-function Deliveries({ thread }: { thread: ThreadDetail }) {
+const NO_DELIVERIES: DeliveryCounts = { queued: 0, sent: 0, failed: 0, skipped: 0 }
+
+/** The delivery counts of one message by status: always the sent ones, the others when there are any. */
+function DeliveryCountsLine({ counts }: { counts: DeliveryCounts }) {
+  const t = useT()
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 text-sm"
+      data-testid="thread-message-deliveries"
+      data-sent={counts.sent}
+      data-failed={counts.failed}
+      data-skipped={counts.skipped}
+      data-queued={counts.queued}
+    >
+      <span className="sr-only">{t('communication.deliveries.summary.label')}:</span>
+      <StatusBadge variant="success">
+        {t('communication.deliveries.summary.sent', { count: String(counts.sent) })}
+      </StatusBadge>
+      {counts.failed > 0 ? (
+        <StatusBadge variant="error">
+          {t('communication.deliveries.summary.failed', { count: String(counts.failed) })}
+        </StatusBadge>
+      ) : null}
+      {counts.skipped > 0 ? (
+        <StatusBadge variant="neutral" appearance="stroke">
+          {t('communication.deliveries.summary.skipped', { count: String(counts.skipped) })}
+        </StatusBadge>
+      ) : null}
+      {counts.queued > 0 ? (
+        <StatusBadge variant="neutral">
+          {t('communication.deliveries.summary.queued', { count: String(counts.queued) })}
+        </StatusBadge>
+      ) : null}
+    </div>
+  )
+}
+
+/** One message's delivery counts and, behind a toggle, its recipients (`DeliveryStatusList` for that message). */
+function MessageDeliveries({
+  thread,
+  message,
+  initiallyOpen,
+}: {
+  thread: ThreadDetail
+  message: ThreadMessageItem
+  initiallyOpen: boolean
+}) {
   const t = useT()
   const locale = useLocale()
+  const listId = React.useId()
+  const [open, setOpen] = React.useState(initiallyOpen)
   const labels = React.useMemo(() => deliveryLabels(t), [t])
-  const first = thread.messages.find((message) => message.hasDeliveries)
   const load = React.useCallback(
     async (page: number, filter: { problemsOnly: boolean; pageSize?: number }): Promise<DeliveryPage> => {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(filter.pageSize ?? 50) })
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(filter.pageSize ?? 50),
+        messageId: message.id,
+      })
       if (filter.problemsOnly) params.set('problems', '1')
-      if (first) params.set('messageId', first.id)
       const call = await apiCallOrThrow<DeliveryPage>(
         `/api/communication/threads/${encodeURIComponent(thread.id)}/deliveries?${params.toString()}`,
       )
       return call.result as DeliveryPage
     },
-    [thread.id, first],
+    [thread.id, message.id],
   )
   const formatTime = React.useCallback((iso: string) => formatDateTime(iso, locale), [locale])
-  if (!first) return null
   return (
-    <section className="flex flex-col gap-3" aria-labelledby="thread-deliveries-title">
-      <h2 id="thread-deliveries-title" className="text-lg font-semibold">
-        {t('communication.deliveries.title')}
-      </h2>
-      <DeliveryStatusList load={load} labels={labels} formatTime={formatTime} refreshKey={thread.lastMessageAt} />
-    </section>
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DeliveryCountsLine counts={message.deliveryCounts ?? NO_DELIVERIES} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => {
+            setOpen((value) => !value)
+          }}
+          data-testid="thread-message-deliveries-toggle"
+        >
+          {open ? t('communication.deliveries.hide') : t('communication.deliveries.show')}
+        </Button>
+      </div>
+      <div id={listId} hidden={!open} className="min-w-0">
+        {open ? (
+          <DeliveryStatusList load={load} labels={labels} formatTime={formatTime} refreshKey={thread.lastMessageAt} />
+        ) : null}
+      </div>
+    </div>
   )
+}
+
+/**
+ * "Delete message": confirmed first, then sent with the thread's version (S5.2). A refusal on the way — 409
+ * `case_immutable` (the thread was marked as a case meanwhile), an already deleted or a system message — refreshes the
+ * page with the reason; a stale version is surfaced as a conflict with a refresh.
+ */
+function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afterDelete: () => void) {
+  const t = useT()
+  const { confirm, ConfirmDialogElement } = useConfirmDialog()
+  const [deleting, setDeleting] = React.useState<string | null>(null)
+  const deleteMessage = React.useCallback(
+    async (message: ThreadMessageItem) => {
+      if (!thread) return
+      const confirmed = await confirm({
+        title: t('communication.message.delete.confirm.title'),
+        text: t('communication.message.delete.confirm.text'),
+        confirmText: t('communication.message.actions.delete'),
+        cancelText: t('communication.message.delete.confirm.cancel'),
+        variant: 'destructive',
+      })
+      if (!confirmed) return
+      setDeleting(message.id)
+      try {
+        await withScopedApiRequestHeaders(buildOptimisticLockHeader(thread.updatedAt), () =>
+          apiCallOrThrow(
+            `/api/communication/threads/${encodeURIComponent(thread.id)}/messages/${encodeURIComponent(message.id)}`,
+            { method: 'DELETE' },
+            { errorMessage: t('communication.message.delete.errors.delete') },
+          ),
+        )
+        flash(t('communication.message.delete.flash'), 'success')
+        refresh()
+        afterDelete()
+      } catch (error: unknown) {
+        const code = errorCode(error)
+        if (code === 'case_immutable' || code === 'message_deleted' || code === 'message_not_editable') {
+          flash(errorMessage(error, t(`communication.errors.${code}`)), 'error')
+          refresh()
+        } else if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
+          flash(errorMessage(error, t('communication.message.delete.errors.delete')), 'error')
+        }
+      } finally {
+        setDeleting(null)
+      }
+    },
+    [thread, confirm, t, refresh, afterDelete],
+  )
+  return { deleteMessage, deleting, ConfirmDialogElement }
 }
 
 export function ThreadRecord({ id }: { id: string }) {
@@ -279,6 +400,12 @@ export function ThreadRecord({ id }: { id: string }) {
   }, [queryClient, id])
   useMarkRead(thread, refresh)
   const { markCase, marking, ConfirmDialogElement } = useMarkCase(thread, refresh)
+  const messagesTitleRef = React.useRef<HTMLHeadingElement>(null)
+  // The deleted message loses its button, so the focus moves to the messages' heading instead of the page start.
+  const focusMessages = React.useCallback(() => {
+    messagesTitleRef.current?.focus()
+  }, [])
+  const deletion = useDeleteMessage(thread, refresh, focusMessages)
 
   if (!query.data && query.isFetching) return <LoadingMessage label={t('communication.club.loading')} />
   if (!query.data) {
@@ -308,6 +435,33 @@ export function ThreadRecord({ id }: { id: string }) {
     )
   }
   const first = thread.messages.at(0)
+  const firstWithDeliveries = thread.messages.find((message) => message.hasDeliveries)
+  const footer = (message: ThreadMessageItem) => {
+    const deletable = message.canDelete && !thread.isCase
+    if (!message.hasDeliveries && !deletable) return null
+    return (
+      <div className="flex min-w-0 flex-col gap-2 border-t pt-2" data-testid="thread-message-footer">
+        {message.hasDeliveries ? (
+          <MessageDeliveries thread={thread} message={message} initiallyOpen={message.id === firstWithDeliveries?.id} />
+        ) : null}
+        {deletable ? (
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11"
+              disabled={deletion.deleting !== null}
+              onClick={() => void deletion.deleteMessage(message)}
+              data-testid="thread-message-delete"
+            >
+              {t('communication.message.actions.delete')}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col gap-6" data-testid="thread-record">
       <header className="flex flex-col gap-2">
@@ -362,10 +516,15 @@ export function ThreadRecord({ id }: { id: string }) {
       {thread.isCase ? <CaseBanner thread={thread} /> : null}
       {thread.staff ? <ShareTextPanel thread={thread} /> : null}
       <section className="flex flex-col gap-3" aria-labelledby="thread-messages-title">
-        <h2 id="thread-messages-title" className="text-lg font-semibold">
+        <h2
+          id="thread-messages-title"
+          ref={messagesTitleRef}
+          tabIndex={-1}
+          className="text-lg font-semibold outline-none"
+        >
           {t('communication.threads.record.messagesTitle')}
         </h2>
-        <MessageList messages={thread.messages} />
+        <MessageList messages={thread.messages} renderFooter={footer} />
         <ReplyBox
           pending={pending}
           hint={thread.staff ? null : t('communication.reply.memberHint')}
@@ -378,8 +537,8 @@ export function ThreadRecord({ id }: { id: string }) {
           }}
         />
       </section>
-      {thread.canSeeDeliveries ? <Deliveries thread={thread} /> : null}
       {ConfirmDialogElement}
+      {deletion.ConfirmDialogElement}
     </div>
   )
 }
