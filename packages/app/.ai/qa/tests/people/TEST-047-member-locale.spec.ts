@@ -117,7 +117,9 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
     expect(aBirth).toMatch(/2016/)
 
     // A switches to Polish in the profile: the interface follows.
-    await page.getByRole('link', { name: 'Profile', exact: true }).click()
+    // Profile sits behind More in the bottom bar (E06-S19 #101).
+    await page.getByTestId('club-bottom-bar').getByText('More', { exact: true }).click()
+    await page.getByTestId('club-more').getByRole('link', { name: 'Profile', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Profile' })).toBeVisible()
     await page.getByLabel('Interface language').click()
     await page.getByRole('option', { name: 'Polski', exact: true }).click()

@@ -13,12 +13,8 @@ import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
 export type Translate = ReturnType<typeof useT>
 
-export const CLUB_HOME_HREF = '/club'
-export const CLUB_CALENDAR_HREF = '/club/calendar'
-export const CLUB_PROFILE_HREF = '/club/profile'
-/** The inbox of `communication` (#35), linked by path. */
-export const CLUB_MESSAGES_HREF = '/club/messages'
-export const BACKEND_HREF = '/backend'
+/** The member paths come from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
+export { BACKEND_HREF, CLUB_CALENDAR_HREF } from '@vereino/ui'
 
 /** The perspectives a member page reads the calendar in (`GET /api/activities/calendar?as=`). */
 export type MemberPerspective = 'self' | 'guardian' | 'coach'
@@ -62,22 +58,6 @@ export function useClubProfile() {
       return { status: 'ok', profile: call.result }
     },
   })
-}
-
-/** Contexts that work in the admin panel: the "Admin panel" link is shown for them (the panel authorizes itself). */
-const STAFF_CONTEXTS = ['club_admin', 'coordinator', 'coach']
-
-export function hasStaffContext(profile: ClubProfile): boolean {
-  return profile.contexts.some((context) => STAFF_CONTEXTS.includes(context))
-}
-
-/** The perspectives the member offers, the guardian's first (one calendar of every ward, D21). */
-export function perspectivesOf(profile: ClubProfile): MemberPerspective[] {
-  const perspectives: MemberPerspective[] = []
-  if (profile.wards.length > 0) perspectives.push('guardian')
-  perspectives.push('self')
-  if (profile.contexts.includes('coach')) perspectives.push('coach')
-  return perspectives
 }
 
 // --- Calendar entries (`GET /api/activities/calendar`) ---
