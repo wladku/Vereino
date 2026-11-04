@@ -96,7 +96,7 @@ function ActivityTypeSelect({ id, value, disabled, values, setValue, setFormValu
       }}
       disabled={disabled}
     >
-      <SelectTrigger id={id} data-testid="activities-type-select">
+      <SelectTrigger id={id} aria-label={t('activities.fields.type')} data-testid="activities-type-select">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
