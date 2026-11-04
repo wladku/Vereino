@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
+import { calendarRangeRetry } from '../../lib/member-calendar'
 import type { CalendarBadgeTone, CalendarItem, CalendarItemAction, CalendarItemBadge } from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -152,6 +153,9 @@ export type CalendarEntry = {
 
 export type CalendarResponse = { items: CalendarEntry[]; timeZone: string; from: string; to: string }
 
+/** A calendar read as the page shows it: `trimmed` when the API refused the range and the trimmed one was read. */
+export type CalendarLoad = CalendarResponse & { trimmed: boolean }
+
 export type CalendarQuery = { as: MemberPerspective; from: string; to: string; personId?: string | null }
 
 class CalendarLoadError extends Error {}
@@ -164,15 +168,25 @@ export function calendarUrl(query: CalendarQuery): string {
   return `/api/activities/calendar?${params.toString()}`
 }
 
+/**
+ * Reads the range; a range the API refuses as longer than 62 days (400 `calendar_range_invalid`, README M-03) is read
+ * again trimmed to 62 days from its start instead of failing (E06-S18).
+ */
+export async function readMemberCalendar(query: CalendarQuery): Promise<CalendarLoad> {
+  const call = await apiCall<CalendarResponse & { code?: string }>(calendarUrl(query))
+  if (call.ok && call.result) return { ...call.result, trimmed: false }
+  const retry = calendarRangeRetry({ from: query.from, to: query.to }, call.status, call.result?.code)
+  if (!retry) throw new CalendarLoadError(String(call.status))
+  const again = await apiCall<CalendarResponse>(calendarUrl({ ...query, ...retry }))
+  if (!again.ok || !again.result) throw new CalendarLoadError(String(again.status))
+  return { ...again.result, trimmed: true }
+}
+
 export function useMemberCalendar(query: CalendarQuery | null) {
   return useQuery({
     queryKey: [CALENDAR_QUERY_KEY, query?.as, query?.from, query?.to, query?.personId ?? null],
     enabled: query !== null,
-    queryFn: async (): Promise<CalendarResponse> => {
-      const call = await apiCall<CalendarResponse>(calendarUrl(query as CalendarQuery))
-      if (!call.ok || !call.result) throw new CalendarLoadError(String(call.status))
-      return call.result
-    },
+    queryFn: () => readMemberCalendar(query as CalendarQuery),
   })
 }
 
@@ -420,7 +434,10 @@ export function parseActionId(id: string): { personId: string; declared: Declare
   return { personId, declared }
 }
 
-/** One calendar entry as the shared list shows it (title, place, persons, statuses, declaration actions). */
+/**
+ * One calendar entry as the shared list shows it (title, section marker, place, coach, persons, statuses, declaration
+ * actions). The coach is staff, so naming them shows no other family's data (R15).
+ */
 export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: Translate): CalendarItem {
   const { occurrence } = entry
   const many = entry.persons.length > 1
@@ -454,8 +471,7 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
     }
   }
   const title = [occurrence.activityName, occurrence.groupName].filter(Boolean).join(' · ')
-  const subtitle =
-    as === 'guardian' ? entry.persons.map((person) => person.firstName).join(', ') : (occurrence.sectionName ?? null)
+  const subtitle = as === 'guardian' ? entry.persons.map((person) => person.firstName).join(', ') : null
   return {
     id: occurrence.id,
     title: title || t('activities.club.session.untitled'),
@@ -464,7 +480,8 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
     status: occurrence.status,
     place: occurrence.placeName,
     placeAddress: occurrence.placeAddress,
-    group: occurrence.sectionName,
+    section: occurrence.sectionName ? { id: occurrence.sectionId, label: occurrence.sectionName } : null,
+    coach: occurrence.coachName,
     subtitle,
     href: as === 'coach' ? attendanceHref(occurrence.id) : sessionHref(occurrence.id, as),
     badges,

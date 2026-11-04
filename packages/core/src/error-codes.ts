@@ -24,3 +24,14 @@ export function findErrorCode<T extends ErrorCodeTable>(table: T, code: ErrorCod
   if (!entry) throw new Error(`[internal] error code ${code} is not declared in this table`)
   return entry
 }
+
+/**
+ * The machine `code` of a coded error — a response body (`{ error, code }`) or an error object a client helper threw
+ * with the body's fields — or null when there is none. Pages use it to tell one coded refusal from another (for
+ * example 403 `scope_unlinked` from `scope_denied`, #76).
+ */
+export function errorCodeOf(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null
+  const code = (value as { code?: unknown }).code
+  return typeof code === 'string' ? code : null
+}
