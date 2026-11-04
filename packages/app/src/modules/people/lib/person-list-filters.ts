@@ -197,8 +197,9 @@ export function isPersonListFiltered(state: PersonListUrlState): boolean {
 export function withoutLastFilter(state: PersonListUrlState): PersonListUrlState {
   const last = [...PERSON_LIST_FILTER_KEYS].reverse().find((key) => state.filters[key] !== undefined)
   if (last === undefined) return { ...state, view: 'all', page: 1 }
-  const filters = { ...state.filters }
-  delete filters[last]
+  const filters = Object.fromEntries(
+    Object.entries(state.filters).filter(([key]) => key !== last),
+  ) as PersonListUrlState['filters']
   return { ...state, filters, page: 1 }
 }
 
