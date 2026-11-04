@@ -22,6 +22,8 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 8. en and pl strings; module README; spec status and Changelog.
 9. Integration test `club_core/E06-S04-places-filters-hierarchy.spec.ts` covers the API filters and names, the 400 on an unknown kind, and in the UI the hierarchy, the badge, the overlay kind filter in the URL with a reload, the filtered-empty and empty states, axe in light and dark mode, and 375 px.
 
+10. Opened PR #163 (`Refs #86`; labels `review`, `feature`, `needs-qa`, `priority-medium`, `risk-medium`, with a rationale comment), and released the issue lock with a hand-off comment on #86 (issuecomment-6642228215). The full `om-auto-review-pr` and `om-auto-qa-pr` loop was not run in this session. The PR is left in the `review` state for the review sweep; the integration test captured the axe scans and the 375 px check.
+
 ## Decisions
 
 - **Slice (a) only, `Refs #86`:** the regulations and photos need an unapproved migration. The PR does not close the issue; slice (b) stays on #86.
