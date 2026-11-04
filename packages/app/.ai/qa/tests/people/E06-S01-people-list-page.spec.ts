@@ -42,6 +42,9 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
     await createGuardianship(request, token, { guardianPersonId: kasia, wardPersonId: jan, validFrom: calendarDate() })
 
     page.setDefaultTimeout(30_000)
+    // A person's row is matched by its name cell: a ward's row also names its guardian in the Guardians column.
+    const rowOf = (name: string) =>
+      page.getByRole('row').filter({ has: page.locator('td:first-child', { hasText: new RegExp(`^${name}$`) }) })
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 1280, height: 720 })
@@ -50,12 +53,12 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
     await page.goto('/backend/people/persons')
     const tabs = page.getByRole('tablist', { name: /People views|Widoki osób/ })
     await expect(tabs.getByRole('tab', { name: /^All$|^Wszyscy$/ })).toHaveAttribute('aria-selected', 'true')
-    const janRow = page.getByRole('row').filter({ hasText: 'Kowalski Jan' })
+    const janRow = rowOf('Kowalski Jan')
     await expect(janRow).toBeVisible()
     await expect(janRow).toContainText('Basen — początkujący')
     await expect(janRow).toContainText('Kowalska Kasia')
     await expect(janRow.getByRole('cell').nth(1)).toHaveText('9')
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalska Kasia' }).first()).toContainText(/Guardian|Opiekun/)
+    await expect(rowOf('Kowalska Kasia')).toContainText(/Guardian|Opiekun/)
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 1280, height: 720 })
@@ -66,27 +69,27 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
     await page.keyboard.press('ArrowRight')
     await expect(tabs.getByRole('tab', { name: /^Children$|^Dzieci$/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page).toHaveURL(/view=children/)
-    await expect(page.getByRole('row').filter({ hasText: 'Lis Ola' })).toBeVisible()
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalska Kasia' })).toHaveCount(0)
+    await expect(rowOf('Lis Ola')).toBeVisible()
+    await expect(rowOf('Kowalska Kasia')).toHaveCount(0)
 
     await page.goto(`/backend/people/persons?view=children&sectionId=${basen}`)
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalski Jan' })).toBeVisible()
-    await expect(page.getByRole('row').filter({ hasText: 'Lis Ola' })).toHaveCount(0)
+    await expect(rowOf('Kowalski Jan')).toBeVisible()
+    await expect(rowOf('Lis Ola')).toHaveCount(0)
     await page.reload()
     await expect(tabs.getByRole('tab', { name: /^Children$|^Dzieci$/ })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalski Jan' })).toBeVisible()
-    await expect(page.getByRole('row').filter({ hasText: 'Lis Ola' })).toHaveCount(0)
+    await expect(rowOf('Kowalski Jan')).toBeVisible()
+    await expect(rowOf('Lis Ola')).toHaveCount(0)
     await page.goBack()
     await expect(page).toHaveURL(/view=children/)
     await expect(page).not.toHaveURL(/sectionId=/)
-    await expect(page.getByRole('row').filter({ hasText: 'Lis Ola' })).toBeVisible()
+    await expect(rowOf('Lis Ola')).toBeVisible()
 
     // A search that matches nobody: the filtered-empty state clears every filter.
     await page.goto('/backend/people/persons?view=children&search=Zzyzx')
     await expect(page.getByText(/No people match|Żadna osoba nie pasuje/)).toBeVisible()
     await page.getByRole('button', { name: /Clear filters|Wyczyść filtry/ }).click()
     await expect(page).toHaveURL(/\/backend\/people\/persons$/)
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalska Kasia' })).toBeVisible()
+    await expect(rowOf('Kowalska Kasia')).toBeVisible()
 
     // The first- and last-name search (the search tokens are written after the commit).
     await expect
@@ -109,13 +112,13 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
 
     // Reflow at 320 px, then the list at 375 px in dark mode.
     await page.goto('/backend/people/persons?view=children')
-    await expect(page.getByRole('row').filter({ hasText: 'Kowalski Jan' })).toBeVisible()
+    await expect(rowOf('Kowalski Jan')).toBeVisible()
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/backend/people/persons?view=staff')
     await expect(tabs.getByRole('tab', { name: /^Staff$|^Kadra$/ })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('row').filter({ hasText: 'Admin Ada' })).toBeVisible()
+    await expect(rowOf('Admin Ada')).toBeVisible()
     await expectNoPageOverflow(page)
     await testInfo.attach('people-list-375-dark', {
       body: await page.screenshot({ fullPage: true }),
