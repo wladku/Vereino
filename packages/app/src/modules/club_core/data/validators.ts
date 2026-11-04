@@ -42,6 +42,10 @@ const nullableSlug = z.union([z.literal('').transform(() => null), z.null(), pub
  */
 export const clubSettingsUpdateSchema = clubSettingsPatchSchema
   .extend({
+    // Well-formed only here; an unknown zone or a threshold outside 13–18 is a 422 business error of the command
+    // (`clubSettingsRuleProblem`, #87).
+    timezone: z.string().trim().min(1).max(100).optional(),
+    ownAccountMinAge: z.number().int().optional(),
     publicSlug: nullableSlug.optional(),
     publicDescription: nullableText(4000).optional(),
     contactPhone: nullableText(50).optional(),

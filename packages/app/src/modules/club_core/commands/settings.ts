@@ -19,14 +19,19 @@ import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
 import { applyPublicationPatch, clubPublicationProblem, resolvePublication, type Publication } from '../lib/publication'
-import { applyClubSettingsPatch, type ClubSettingKey, type ClubSettingsValues } from '../lib/settings'
+import {
+  applyClubSettingsPatch,
+  clubSettingsRuleProblem,
+  type ClubSettingKey,
+  type ClubSettingsValues,
+} from '../lib/settings'
 import {
   publicSettingsOf,
   resolveStoredSettings,
   storedSettingsOf,
   type ClubPublicSettings,
 } from '../services/settings'
-import { isUniqueViolation, untouchedSinceCreated } from './shared'
+import { isUniqueViolation, throwFieldError, untouchedSinceCreated } from './shared'
 
 export const CLUB_SETTINGS_RESOURCE_KIND = 'club_core.club_settings'
 
@@ -186,6 +191,9 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
             const before = snapshot(row)
             const current = resolveStoredSettings(row, row.organizationId).values
             const patch = authorized.parsed
+            // An unknown zone or a threshold outside 13–18 → 422 with a field error (#87).
+            const rule = clubSettingsRuleProblem(patch)
+            if (rule) await throwFieldError(rule.code, rule.field)
             // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.
             const defaultLocale =
               typeof patch.defaultLocale === 'string' ? await assertSupportedLocale(patch.defaultLocale) : undefined
