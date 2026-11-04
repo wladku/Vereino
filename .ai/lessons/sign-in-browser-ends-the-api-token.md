@@ -1,0 +1,16 @@
+---
+title: "signInBrowser sets a new password: fetch a fresh API token for that user afterwards"
+modules: ["platform", "people"]
+areas: ["testing"]
+topics: ["playwright", "sign-in-browser", "auth-token", "integration-tests"]
+---
+
+# signInBrowser sets a new password: fetch a fresh API token for that user afterwards
+
+**Context**: The first run of E06-S02 (#84, 2026-11-04) signed the club administrator in to the browser with `signInBrowser` and then created an account through the API with the token `createClub` returned. The call answered 401 `Unauthorized`.
+
+**Problem**: `signInBrowser` (`packages/app/.ai/qa/tests/_fixtures/club-structure.ts`) resets the user's password through `PUT /api/auth/users` before the browser login, and the reset ends that user's existing sessions, so a token obtained earlier stops working. The failure surfaces only at the next API call, far from the sign-in.
+
+**Rule**: After `signInBrowser` for a user whose API token the test keeps using, fetch a new one from the returned password — `token = await getAuthToken(request, email, password)` — and store it back (`club.adminToken = token`) so later fixtures and the cleanup use it too (TEST-006 does the same).
+
+**Applies to**: every integration test under `packages/app/.ai/qa/tests/` that mixes `signInBrowser` with API calls for the same user.

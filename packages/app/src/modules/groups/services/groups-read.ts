@@ -1,7 +1,7 @@
 // Reads behind the `groups` routes: one group of the trusted tenant and organization (the detail route checks it with
 // `assertInScope`), the groups whose rosters a caller may list (`scopeWhere` on the groups, foundation spec P-03 — a
 // coordinator's grant names sections, which memberships do not carry, so the roster list narrows to the visible
-// groups), and the names a list shows next to its rows (sections, seasons, persons).
+// groups), and the names a list shows next to its rows (sections, seasons, persons, groups).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { scopeWhere, type GrantKind, type Scope, type ScopeColumnMap } from '@vereino/core'
@@ -40,6 +40,39 @@ export async function sectionNames(
 ): Promise<Map<string, string>> {
   const sections = await findSections(container, scope, ids)
   return new Map([...sections.values()].map((section) => [section.id, section.name]))
+}
+
+/** A group as a roster row names it: the group's name and kind and its section (#84, the person record's Groups tab). */
+export type GroupSummary = { name: string; kind: string; sectionId: string; sectionName: string | null }
+
+/**
+ * Group summaries by id, for the membership rows a list already authorized (the rows' groups are the readable ones, so
+ * no further scope check is needed); a deleted group is left out.
+ */
+export async function groupSummaries(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  ids: readonly string[],
+): Promise<Map<string, GroupSummary>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const em = container.resolve<EntityManager>('em').fork()
+  const rows = await em.find(
+    Group,
+    { id: { $in: unique }, ...scope, deletedAt: null },
+    { fields: ['id', 'name', 'kind', 'sectionId'] },
+  )
+  const sections = await sectionNames(
+    container,
+    scope,
+    rows.map((row) => row.sectionId),
+  )
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      { name: row.name, kind: row.kind, sectionId: row.sectionId, sectionName: sections.get(row.sectionId) ?? null },
+    ]),
+  )
 }
 
 /** Season names by id. */

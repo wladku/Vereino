@@ -1,11 +1,12 @@
 // `GET /api/people/persons/{id}` — one person, guarded by `assertInScope` with the list's grant kinds and options. A
 // coordinator reading through the club-wide grant gets the basic data only (`access: 'basic'`); the person, a guardian
-// and the club administrator get the full record; the PESEL is returned only to a user with `people.pesel.view` (club
+// and the club administrator get the full record with the account's login e-mail (#84); the PESEL is returned only to a user with `people.pesel.view` (club
 // spec *Data Models*, TEST-004; foundation TEST-F06).
 import { z } from 'zod'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
+  accountEmail,
   assertInScope,
   commandContextForRequest,
   errorResponse,
@@ -45,8 +46,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     )
     if (isBasicRead(actingRole)) return Response.json(personBasicView(person))
     const rbac = ctx.container.resolve<RbacService>('rbacService')
-    const withPesel = await rbac.userHasAllFeatures(ctx.auth.sub, ['people.pesel.view'], scope)
-    return Response.json(personView(person, { withPesel }))
+    const [withPesel, email] = await Promise.all([
+      rbac.userHasAllFeatures(ctx.auth.sub, ['people.pesel.view'], scope),
+      person.userId ? accountEmail(ctx.container, scope, person.userId) : Promise.resolve(null),
+    ])
+    return Response.json(personView(person, { withPesel, accountEmail: email }))
   } catch (error: unknown) {
     return errorResponse(error, 'people.persons.detail')
   }
@@ -59,7 +63,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read one person',
       description:
-        "Returns the person when it is in the caller's record scope: a coordinator gets the basic data only (`access: 'basic'`, no e-mail, phone, notes or PESEL); `pesel` only with `people.pesel.view`.",
+        "Returns the person when it is in the caller's record scope: a coordinator gets the basic data only (`access: 'basic'`, no e-mail, phone, notes or PESEL); `pesel` only with `people.pesel.view`. The full view carries `accountEmail`, the login e-mail of the person's account.",
       responses: [{ status: 200, description: 'The person', schema: personViewSchema }],
       errors: [
         { status: 403, description: 'scope_denied', schema: errorSchema },

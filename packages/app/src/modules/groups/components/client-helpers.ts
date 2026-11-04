@@ -43,6 +43,7 @@ export type MembershipRow = {
   groupId: string | null
   personId: string | null
   person?: { firstName: string; lastName: string } | null
+  group?: { name: string; kind: string; sectionId: string; sectionName: string | null } | null
   role: string | null
   validFrom: string | null
   validTo: string | null
