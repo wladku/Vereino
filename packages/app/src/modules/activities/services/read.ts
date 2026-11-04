@@ -4,7 +4,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Activity, Occurrence } from '../data/entities'
-import { findGroups, findPersons, findPlaces, findSections, type ActivitiesScope } from './directory'
+import { findExternalTeams, findGroups, findPersons, findPlaces, findSections, type ActivitiesScope } from './directory'
 
 export async function findActivity(
   container: AwilixContainer,
@@ -40,6 +40,45 @@ export async function activityLabels(
   )
   return new Map(
     rows.map((row) => [row.id, { name: row.name, type: row.type, recurring: Boolean(row.recurrenceRule) }]),
+  )
+}
+
+/** The opponent of a match or sparring and the invited teams of a tournament, by name (README M-04, B-15; #93). */
+export type ActivityTeams = { opponentName: string | null; invitedTeamNames: string[] }
+
+/** The external teams of the activities among `ids`, by activity id; a team removed since keeps no name and is left out. */
+export async function activityTeams(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+): Promise<Map<string, ActivityTeams>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const em = container.resolve<EntityManager>('em').fork()
+  const rows = await em.find(
+    Activity,
+    { id: { $in: unique }, ...scope },
+    { fields: ['id', 'opponentExternalTeamId', 'invitedExternalTeamIds'] },
+  )
+  const teams = await findExternalTeams(
+    container,
+    scope,
+    rows.flatMap((row) => [
+      ...(row.opponentExternalTeamId ? [row.opponentExternalTeamId] : []),
+      ...row.invitedExternalTeamIds,
+    ]),
+  )
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        opponentName: row.opponentExternalTeamId ? (teams.get(row.opponentExternalTeamId)?.name ?? null) : null,
+        invitedTeamNames: row.invitedExternalTeamIds.flatMap((id) => {
+          const name = teams.get(id)?.name
+          return name ? [name] : []
+        }),
+      },
+    ]),
   )
 }
 

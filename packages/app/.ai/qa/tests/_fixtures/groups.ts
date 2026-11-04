@@ -15,6 +15,8 @@ export type GroupItem = {
   seasonName?: string | null
   isActive: boolean
   updatedAt: string | null
+  coaches?: { personId: string; firstName: string; lastName: string }[]
+  participantCount?: number
   actingRole?: string
   code?: string
 }
@@ -23,7 +25,7 @@ export type MembershipItem = {
   id: string
   groupId: string | null
   personId: string | null
-  person?: { firstName: string; lastName: string } | null
+  person?: { firstName: string; lastName: string; age?: number | null } | null
   role: string | null
   validFrom: string | null
   validTo: string | null

@@ -1,5 +1,6 @@
 'use client'
-// The tabs of the groups list (club spec UI table: "tabs External teams and Seasons" of `/backend/groups/groups`): each
+// The tabs of the groups list (club spec UI table: "tabs External teams and Seasons" of `/backend/groups/groups`; README
+// B-11 order Groups / External teams / Seasons, E06-S08 #90): each
 // tab is its own page, so a tab change navigates and the URL stays shareable. The page content is the active tab's
 // panel, so the selected tab's `aria-controls` points at it.
 import type * as React from 'react'
@@ -10,8 +11,8 @@ import { EXTERNAL_TEAMS_HREF, GROUPS_HREF, SEASONS_HREF } from './client-helpers
 
 const TABS = [
   { value: 'groups', href: GROUPS_HREF, labelKey: 'groups.nav.tabs.groups' },
-  { value: 'seasons', href: SEASONS_HREF, labelKey: 'groups.nav.tabs.seasons' },
   { value: 'external-teams', href: EXTERNAL_TEAMS_HREF, labelKey: 'groups.nav.tabs.externalTeams' },
+  { value: 'seasons', href: SEASONS_HREF, labelKey: 'groups.nav.tabs.seasons' },
 ] as const
 
 export type GroupsTab = (typeof TABS)[number]['value']

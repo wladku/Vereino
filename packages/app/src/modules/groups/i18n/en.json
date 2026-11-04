@@ -159,5 +159,20 @@
   "groups.externalTeams.flash.deleted": "External team deleted",
   "groups.externalTeams.errors.load": "Could not load the external teams.",
   "groups.externalTeams.errors.delete": "Could not delete the external team.",
-  "groups.externalTeams.errors.notFound": "This external team does not exist or was deleted."
+  "groups.externalTeams.errors.notFound": "This external team does not exist or was deleted.",
+  "groups.common.retry": "Try again",
+  "groups.groups.emptyHint": "Add the first group in the section.",
+  "groups.groups.emptyFiltered": "No groups match these filters.",
+  "groups.groups.columns.coaches": "Coaches",
+  "groups.groups.columns.participants": "Participants",
+  "groups.groups.filters.section": "Section",
+  "groups.groups.filters.kind": "Kind",
+  "groups.groups.filters.season": "Season",
+  "groups.groups.filters.status": "Status",
+  "groups.groups.filters.clear": "Clear filters",
+  "groups.groups.perspectives.label": "Group kind",
+  "groups.groups.perspectives.all": "All",
+  "groups.groups.perspectives.team": "Teams",
+  "groups.groups.perspectives.class_group": "Class groups",
+  "groups.memberships.age": "Age {age}"
 }

@@ -3,7 +3,9 @@
 // J-002, UI row `/backend/activities/activities`): an activity of one group — a weekly series or a one-off — with its
 // default place, coach and wall times. The "Preview" group lists the sessions and their conflicts before saving; a save
 // that overbooks a place or a coach is refused with 409 and its conflict list is shown above the form. The group of an
-// existing activity is fixed (the update body has no `groupId`).
+// existing activity is fixed (the update body has no `groupId`). The types follow the group's kind (README B-14, #93): a
+// class group gets no match or sparring and reads its training as "Classes"; a match or a sparring takes an opponent;
+// the coach picker lists only persons with an active coach or assistant role, plus "No coach".
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -11,7 +13,14 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { ACTIVITY_TYPES } from '../lib/activities-rules'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import {
+  ACTIVITY_TYPES,
+  takesOpponent,
+  typeLabelKey,
+  typesForGroupKind,
+  type GroupKindLike,
+} from '../lib/activities-rules'
 import { ConflictList } from './ConflictList'
 import { PreviewPanel } from './PreviewPanel'
 import { RecurrenceEditor } from './RecurrenceEditor'
@@ -24,10 +33,11 @@ import {
 import {
   ACTIVITIES_HREF,
   activityHref,
+  coachOptions,
   errorMessage,
+  externalTeamOptions,
   fieldOfError,
-  groupOptions,
-  personOptions,
+  groupKindOptions,
   placeOptions,
   scheduleConflictsOf,
   tolerant,
@@ -41,26 +51,117 @@ const ENTITY_ID = 'activities:activity'
 
 type FieldsOptions = { editing: boolean; coachSeed: CrudFieldOption[]; activityId?: string }
 
+type GroupKinds = Record<string, GroupKindLike>
+
+/** The kinds only when they changed, so a reloaded group list does not rebuild the fields. */
+function mergeKinds(previous: GroupKinds, next: GroupKinds): GroupKinds {
+  const keys = Object.keys(next)
+  const same = keys.length === Object.keys(previous).length && keys.every((key) => previous[key] === next[key])
+  return same ? previous : next
+}
+
+type TypeSelectProps = {
+  id: string
+  value: unknown
+  disabled?: boolean
+  values?: Record<string, unknown>
+  setValue: (value: unknown) => void
+  setFormValue?: (id: string, value: unknown) => void
+  kinds: GroupKinds
+  t: Translate
+}
+
+/**
+ * The type of the activity, offered per the group's kind (B-14). A type the newly chosen group does not take falls back
+ * to `training`; until a group is chosen every type is listed (the server still answers 422 for a forged pair).
+ */
+function ActivityTypeSelect({ id, value, disabled, values, setValue, setFormValue, kinds, t }: TypeSelectProps) {
+  const groupId = typeof values?.groupId === 'string' ? values.groupId : ''
+  const kind = groupId ? (kinds[groupId] ?? null) : null
+  const types = React.useMemo(() => (kind ? typesForGroupKind(kind) : [...ACTIVITY_TYPES]), [kind])
+  const current = typeof value === 'string' ? value : ''
+  const opponentShown = values?.takesOpponent === true
+  React.useEffect(() => {
+    if (current && !types.some((type) => type === current)) setValue('training')
+  }, [current, types, setValue])
+  // The opponent field is shown through `visibleWhen` on this derived value (a match or a sparring).
+  React.useEffect(() => {
+    if (opponentShown !== takesOpponent(current)) setFormValue?.('takesOpponent', takesOpponent(current))
+  }, [current, opponentShown, setFormValue])
+  return (
+    <Select
+      value={current}
+      onValueChange={(next) => {
+        setValue(next)
+      }}
+      disabled={disabled}
+    >
+      <SelectTrigger id={id} aria-label={t('activities.fields.type')} data-testid="activities-type-select">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {types.map((type) => (
+          <SelectItem key={type} value={type}>
+            {t(typeLabelKey(type, kind))}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 function useActivityFields(t: Translate, { editing, coachSeed, activityId }: FieldsOptions) {
+  const [kinds, setKinds] = React.useState<GroupKinds>({})
+  const groupField = React.useMemo<CrudField>(
+    () => ({
+      id: 'groupId',
+      label: t('activities.fields.group'),
+      type: 'select',
+      loadOptions: async () => {
+        const loaded = await groupKindOptions(!editing)
+        setKinds((previous) => mergeKinds(previous, loaded.kinds))
+        return loaded.options
+      },
+      required: true,
+      disabled: editing,
+      description: editing ? t('activities.fields.group.fixed') : undefined,
+    }),
+    [t, editing],
+  )
+  const typeField = React.useMemo<CrudField>(
+    () => ({
+      id: 'type',
+      label: t('activities.fields.type'),
+      type: 'custom',
+      description: t('activities.fields.type.help'),
+      required: true,
+      component: ({ id, value, disabled, values, setValue, setFormValue }) => (
+        <ActivityTypeSelect
+          id={id}
+          value={value}
+          disabled={disabled}
+          values={values}
+          setValue={setValue}
+          setFormValue={setFormValue}
+          kinds={kinds}
+          t={t}
+        />
+      ),
+    }),
+    [t, kinds],
+  )
   const fields = React.useMemo<CrudField[]>(
     () => [
-      {
-        id: 'groupId',
-        label: t('activities.fields.group'),
-        type: 'select',
-        loadOptions: () => groupOptions(!editing),
-        required: true,
-        disabled: editing,
-        description: editing ? t('activities.fields.group.fixed') : undefined,
-      },
+      groupField,
       { id: 'name', label: t('activities.fields.name'), type: 'text', required: true, maxLength: 200 },
+      typeField,
       {
-        id: 'type',
-        label: t('activities.fields.type'),
+        id: 'opponentExternalTeamId',
+        label: t('activities.fields.opponent'),
         type: 'select',
-        options: ACTIVITY_TYPES.map((type) => ({ value: type, label: t(`activities.types.${type}`) })),
-        description: t('activities.fields.type.help'),
-        required: true,
+        loadOptions: tolerant(externalTeamOptions),
+        description: t('activities.fields.opponent.help'),
+        visibleWhen: { field: 'takesOpponent', equals: true },
       },
       {
         id: 'placeId',
@@ -75,7 +176,8 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
         label: t('activities.fields.coach'),
         type: 'combobox',
         placeholder: t('activities.fields.coach.placeholder'),
-        loadOptions: (query?: string) => personOptions(query),
+        description: t('activities.fields.coach.help'),
+        loadOptions: (query?: string) => coachOptions(t, query),
         seedOptions: coachSeed,
         allowCustomValues: false,
       },
@@ -90,7 +192,7 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
       timeField('startTime', t('activities.fields.startTime'), { required: true, layout: 'half' }),
       timeField('endTime', t('activities.fields.endTime'), { required: true, layout: 'half' }),
     ],
-    [t, editing, coachSeed],
+    [t, coachSeed, groupField, typeField],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -98,7 +200,16 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
         id: 'basics',
         title: t('activities.form.groups.basics'),
         column: 1,
-        fields: ['groupId', 'name', 'type', 'placeId', 'coachPersonId', 'description', 'isActive'],
+        fields: [
+          'groupId',
+          'name',
+          'type',
+          'opponentExternalTeamId',
+          'placeId',
+          'coachPersonId',
+          'description',
+          'isActive',
+        ],
       },
       {
         id: 'dates',
@@ -134,7 +245,9 @@ function saveError(error: unknown, t: Translate, onConflicts: (conflicts: Schedu
     onConflicts(conflicts)
     return createCrudFormError(errorMessage(error, t('activities.conflicts.title')))
   }
-  const field = fieldOfError(error)
+  // The wizard has no invited teams: an unknown external team is the opponent.
+  const coded = fieldOfError(error)
+  const field = coded === 'invitedExternalTeamIds' ? 'opponentExternalTeamId' : coded
   if (field) {
     const message = errorMessage(error, t('activities.form.errors.invalid'))
     return createCrudFormError(message, { [field]: message })

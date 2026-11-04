@@ -15,8 +15,9 @@ export const PEOPLE_SCOPE_SERVICE = 'people.scopeService' as const
 
 /**
  * `people.personDirectory`: the decrypted names of persons of one organization (`findPersons(scope, ids, em?)`), their
- * account links (`findUserIds`) and active guardians (`activeGuardians`), for the modules that require `people` (the
- * `groups` roster, #30; the people a cancelled session concerns, #31).
+ * account links (`findUserIds`), active guardians (`activeGuardians`) and the holders of an active role
+ * (`roleHolderIdsOn`, #93), for the modules that require `people` (the `groups` roster, #30; the people a cancelled
+ * session concerns, #31; the coach picker, #93).
  */
 export const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory' as const
 
