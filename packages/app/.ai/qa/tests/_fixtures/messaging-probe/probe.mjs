@@ -334,7 +334,14 @@ async function runStep(step) {
       // the listed ids only.
       const { compileAppSourceFile } = await import('@open-mercato/shared/lib/bootstrap/dynamicLoader')
       const source = path.join(process.cwd(), 'src', step.source)
-      const outFile = path.join(queueBaseDir, 'routes', `${step.source.replace(/[\\/.]/g, '_')}.mjs`)
+      // Under the app root, so the bundle's package imports resolve from the app's `node_modules`.
+      const outFile = path.join(
+        process.cwd(),
+        'node_modules',
+        '.cache',
+        'vereino-probe',
+        `${step.source.replace(/[\\/.]/g, '_')}.mjs`,
+      )
       const compiled = await compileAppSourceFile(source, { appRoot: process.cwd(), outFile })
       const route = await import(pathToFileURL(compiled).href)
       const response = await route.GET(

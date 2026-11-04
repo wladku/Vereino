@@ -15,7 +15,7 @@ import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
-import { Tabs, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
@@ -303,54 +303,57 @@ export function PersonsTable() {
             </TabsTrigger>
           ))}
         </TabsList>
+        {/* The selected tab controls this panel (its `aria-controls`); the table shows the selected view. */}
+        <TabsContent value={state.view}>
+          <DataTable<PersonListItemRow>
+            title={t('people.persons.title')}
+            titleHeadingLevel={1}
+            entityId="people:person"
+            extensionTableId="people.persons"
+            actions={
+              canManage ? (
+                <Button asChild>
+                  <Link href={`${PERSONS_HREF}/create`}>{t('people.persons.actions.create')}</Link>
+                </Button>
+              ) : null
+            }
+            columns={columns}
+            data={data?.items ?? []}
+            isLoading={isLoading}
+            error={error ? errorMessage(error, t('people.persons.errors.load')) : null}
+            emptyState={emptyState}
+            searchValue={search}
+            searchPlaceholder={t('people.persons.search')}
+            onSearchChange={(value: string) => {
+              setSearch(value)
+              navigate({ ...state, search: value, page: 1 }, 'replace')
+            }}
+            filters={filterDefs}
+            filterValues={filterValuesOf(state)}
+            onFiltersApply={(values: FilterValues) => {
+              navigate({ ...state, filters: filtersFrom(values), page: 1 }, 'push')
+            }}
+            onFiltersClear={() => {
+              navigate({ ...state, filters: {}, page: 1 }, 'push')
+            }}
+            rowActions={(row: PersonListItemRow) => (
+              <RowActions items={[{ id: 'open', label: t('people.common.open'), href: `${PERSONS_HREF}/${row.id}` }]} />
+            )}
+            onRowClick={(row: PersonListItemRow) => {
+              router.push(`${PERSONS_HREF}/${row.id}`)
+            }}
+            pagination={{
+              page: state.page,
+              pageSize: PAGE_SIZE,
+              total: data?.total ?? 0,
+              totalPages: data?.totalPages ?? 0,
+              onPageChange: (page: number) => {
+                navigate({ ...state, page }, 'push')
+              },
+            }}
+          />
+        </TabsContent>
       </Tabs>
-      <DataTable<PersonListItemRow>
-        title={t('people.persons.title')}
-        titleHeadingLevel={1}
-        entityId="people:person"
-        extensionTableId="people.persons"
-        actions={
-          canManage ? (
-            <Button asChild>
-              <Link href={`${PERSONS_HREF}/create`}>{t('people.persons.actions.create')}</Link>
-            </Button>
-          ) : null
-        }
-        columns={columns}
-        data={data?.items ?? []}
-        isLoading={isLoading}
-        error={error ? errorMessage(error, t('people.persons.errors.load')) : null}
-        emptyState={emptyState}
-        searchValue={search}
-        searchPlaceholder={t('people.persons.search')}
-        onSearchChange={(value: string) => {
-          setSearch(value)
-          navigate({ ...state, search: value, page: 1 }, 'replace')
-        }}
-        filters={filterDefs}
-        filterValues={filterValuesOf(state)}
-        onFiltersApply={(values: FilterValues) => {
-          navigate({ ...state, filters: filtersFrom(values), page: 1 }, 'push')
-        }}
-        onFiltersClear={() => {
-          navigate({ ...state, filters: {}, page: 1 }, 'push')
-        }}
-        rowActions={(row: PersonListItemRow) => (
-          <RowActions items={[{ id: 'open', label: t('people.common.open'), href: `${PERSONS_HREF}/${row.id}` }]} />
-        )}
-        onRowClick={(row: PersonListItemRow) => {
-          router.push(`${PERSONS_HREF}/${row.id}`)
-        }}
-        pagination={{
-          page: state.page,
-          pageSize: PAGE_SIZE,
-          total: data?.total ?? 0,
-          totalPages: data?.totalPages ?? 0,
-          onPageChange: (page: number) => {
-            navigate({ ...state, page }, 'push')
-          },
-        }}
-      />
     </div>
   )
 }
