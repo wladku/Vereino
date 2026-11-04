@@ -190,6 +190,23 @@ export function isPersonListFiltered(state: PersonListUrlState): boolean {
   return state.view !== 'all' || state.search.trim().length > 0 || Object.keys(state.filters).length > 0
 }
 
+/**
+ * The page state without its most specific narrowing ("Remove last filter"): the last set filter in
+ * `PERSON_LIST_FILTER_KEYS` order, else the perspective; the search stays. Back to page 1.
+ */
+export function withoutLastFilter(state: PersonListUrlState): PersonListUrlState {
+  const last = [...PERSON_LIST_FILTER_KEYS].reverse().find((key) => state.filters[key] !== undefined)
+  if (last === undefined) return { ...state, view: 'all', page: 1 }
+  const filters = { ...state.filters }
+  delete filters[last]
+  return { ...state, filters, page: 1 }
+}
+
+/** Whether "Remove last filter" has something to remove (a filter or a perspective). */
+export function canRemoveLastFilter(state: PersonListUrlState): boolean {
+  return state.view !== 'all' || Object.keys(state.filters).length > 0
+}
+
 /** A person's name as the list shows it: "Last First". */
 export function listDisplayName(person: { firstName: string | null; lastName: string | null }): string {
   return [person.lastName, person.firstName].filter((part): part is string => Boolean(part)).join(' ')

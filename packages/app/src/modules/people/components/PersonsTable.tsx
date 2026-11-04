@@ -22,12 +22,14 @@ import {
   PERSON_FILTER_ROLES,
   PERSON_LIST_FILTER_KEYS,
   PERSON_LIST_VIEWS,
+  canRemoveLastFilter,
   isPersonListFiltered,
   listDisplayName,
   personListApiParams,
   personListUrlParams,
   personRoleBadges,
   readPersonListUrl,
+  withoutLastFilter,
   type PersonListUrlState,
   type PersonListView,
 } from '../lib/person-list-filters'
@@ -269,14 +271,18 @@ export function PersonsTable() {
     navigate({ view: 'all', search: '', page: 1, filters: {} }, 'push')
   }
 
-  const emptyState = filtered ? (
-    <div className="flex flex-col items-start gap-2">
-      <p className="text-muted-foreground text-sm">{t('people.persons.emptyFiltered')}</p>
-      <Button type="button" variant="outline" size="sm" onClick={clearAll}>
-        {t('people.persons.filters.clear')}
-      </Button>
-    </div>
-  ) : (
+  // A narrowed list that matches nobody gets the platform's filter-aware empty state ("Clear all filters", "Remove
+  // last filter"); the plain empty list offers "Add person".
+  const filterAwareEmptyState = {
+    active: filtered,
+    entityNamePlural: t('people.persons.entityPlural'),
+    canRemoveLast: canRemoveLastFilter(state),
+    onClearAll: clearAll,
+    onRemoveLast: () => {
+      navigate(withoutLastFilter(state), 'push')
+    },
+  }
+  const emptyState = (
     <div className="flex flex-col items-start gap-2">
       <p className="text-muted-foreground text-sm">{t('people.persons.emptyFirst')}</p>
       {canManage ? (
@@ -322,6 +328,7 @@ export function PersonsTable() {
             isLoading={isLoading}
             error={error ? errorMessage(error, t('people.persons.errors.load')) : null}
             emptyState={emptyState}
+            filterAwareEmptyState={filterAwareEmptyState}
             searchValue={search}
             searchPlaceholder={t('people.persons.search')}
             onSearchChange={(value: string) => {

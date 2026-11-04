@@ -6,6 +6,7 @@ import {
   PERSON_LIST_FILTER_KEYS,
   PERSON_LIST_VIEWS,
   birthDateRange,
+  canRemoveLastFilter,
   intersectIdSets,
   isPersonListFiltered,
   listDisplayName,
@@ -15,6 +16,7 @@ import {
   personRoleBadges,
   planNeedsMemberships,
   readPersonListUrl,
+  withoutLastFilter,
   yearsBefore,
   type PersonListUrlState,
 } from '../person-list-filters'
@@ -236,6 +238,28 @@ describe('URL state', () => {
     expect(isPersonListFiltered({ ...plain, search: 'x' })).toBe(true)
     expect(isPersonListFiltered({ ...plain, search: '  ' })).toBe(false)
     expect(isPersonListFiltered({ ...plain, filters: { role: 'coach' } })).toBe(true)
+  })
+})
+
+describe('withoutLastFilter and canRemoveLastFilter', () => {
+  const base: PersonListUrlState = { view: 'children', search: 'Jan', page: 3, filters: {} }
+
+  it('removes the last set filter first, keeping the perspective and the search', () => {
+    expect(withoutLastFilter({ ...base, filters: { sectionId: 's', ageTo: '17' } })).toEqual({
+      ...base,
+      page: 1,
+      filters: { sectionId: 's' },
+    })
+  })
+
+  it('then resets the perspective', () => {
+    expect(withoutLastFilter(base)).toEqual({ ...base, view: 'all', page: 1 })
+  })
+
+  it('tells whether there is anything to remove', () => {
+    expect(canRemoveLastFilter(base)).toBe(true)
+    expect(canRemoveLastFilter({ ...base, view: 'all' })).toBe(false)
+    expect(canRemoveLastFilter({ ...base, view: 'all', filters: { role: 'coach' } })).toBe(true)
   })
 })
 

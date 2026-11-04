@@ -86,8 +86,10 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
 
     // A search that matches nobody: the filtered-empty state clears every filter.
     await page.goto('/backend/people/persons?view=children&search=Zzyzx')
-    await expect(page.getByText(/No people match|Żadna osoba nie pasuje/)).toBeVisible()
-    await page.getByRole('button', { name: /Clear filters|Wyczyść filtry/ }).click()
+    // The platform's filter-aware empty state (`DataTable` `filterAwareEmptyState`); its primary action clears both.
+    const filteredEmpty = page.getByTestId('filtered-empty-results')
+    await expect(filteredEmpty).toBeVisible()
+    await filteredEmpty.getByRole('button').first().click()
     await expect(page).toHaveURL(/\/backend\/people\/persons$/)
     await expect(rowOf('Kowalska Kasia')).toBeVisible()
 
