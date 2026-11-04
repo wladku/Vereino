@@ -250,7 +250,7 @@ test('E02-S05 the publication page and the coordinator’s section page: save, r
     await expectRoles(request, club, marek.userId, ['vereino_coordinator', 'vereino_member'])
     await page.context().clearCookies()
     await signInBrowser(page, request, club, marek.userId, marek.email)
-    await page.goto(`/backend/club/sections/${pool}/edit`)
+    await page.goto(`/backend/club/sections/${pool}/edit?tab=public`)
     await expect(page.getByTestId('section-edit-name')).toHaveText('Basen')
     await expect(page.getByTestId('section-public-panel')).toBeVisible()
     await expect(page.getByTestId('section-materials-panel')).toBeVisible()

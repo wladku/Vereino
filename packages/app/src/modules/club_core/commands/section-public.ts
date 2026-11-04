@@ -1,6 +1,6 @@
 // `club_core.sections.update_public` (club spec UI table "Public page" group, DD-29, glossary *Section*; #29): the
-// section's public fields — the public switch, the slug, description, conditions and the contact written for
-// publication. The club administrator changes any section, a coordinator only the sections they coordinate (403
+// section's public fields — the public switch, the slug, description, conditions, the contact written for
+// publication and the short description of the club page tile (UX parity spec REQ-U02, Q-U10). The club administrator changes any section, a coordinator only the sections they coordinate (403
 // `scope_denied` otherwise). A public section needs a slug (422); a slug another live section of the club holds
 // answers 409 from the partial unique index. Undoable: the undo writes the previous public fields back.
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -39,6 +39,8 @@ export type SectionPublicSnapshot = {
   publicContactName: string | null
   publicContactEmail: string | null
   publicContactPhone: string | null
+  /** Absent in log entries written before the short description existed. */
+  shortDescription?: string | null
 }
 
 export type SectionPublicResult = StructureCommandResult<Section, SectionPublicSnapshot>
@@ -55,6 +57,7 @@ export function sectionPublicSnapshot(row: Section): SectionPublicSnapshot {
     publicContactName: row.publicContactName ?? null,
     publicContactEmail: row.publicContactEmail ?? null,
     publicContactPhone: row.publicContactPhone ?? null,
+    shortDescription: row.shortDescription ?? null,
   }
 }
 
@@ -66,6 +69,8 @@ function restorePublic(row: Section, before: SectionPublicSnapshot): void {
   row.publicContactName = before.publicContactName
   row.publicContactEmail = before.publicContactEmail
   row.publicContactPhone = before.publicContactPhone
+  // A log entry written before the short description existed carries no value: keep the current one.
+  if (before.shortDescription !== undefined) row.shortDescription = before.shortDescription
   row.updatedAt = new Date()
 }
 
@@ -133,6 +138,7 @@ const updateSectionPublicCommand: CommandHandler<Record<string, unknown>, Sectio
         if (patch.publicContactName !== undefined) row.publicContactName = patch.publicContactName
         if (patch.publicContactEmail !== undefined) row.publicContactEmail = patch.publicContactEmail
         if (patch.publicContactPhone !== undefined) row.publicContactPhone = patch.publicContactPhone
+        if (patch.shortDescription !== undefined) row.shortDescription = patch.shortDescription
         const problem = sectionPublicationProblem({ isPublic: row.isPublic, publicSlug: row.publicSlug ?? null })
         if (problem) await clubCoreErrors.throw(problem)
         row.updatedAt = new Date()

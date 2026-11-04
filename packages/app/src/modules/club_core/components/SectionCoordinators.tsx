@@ -1,7 +1,8 @@
 'use client'
 // The coordinators panel of the section edit page (club spec UI table, J-001 step 1). Coordinators are `people` role
 // assignments (`coordinator` + `section_id`): the panel reads them from the section's `people` enrichment and writes
-// them through the existing `/api/people/role-assignments` routes — `club_core` imports nothing of `people`.
+// them through the existing `/api/people/role-assignments` routes — `club_core` imports nothing of `people`. An
+// assignment may carry an end date ("until", the route's `validTo`; UX parity spec REQ-U02).
 import * as React from 'react'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -36,6 +37,7 @@ export function SectionCoordinators({ section, onChanged }: { section: SectionRo
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [personId, setPersonId] = React.useState<string | null>(null)
   const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validTo, setValidTo] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const enrichment = section._people
 
@@ -59,12 +61,19 @@ export function SectionCoordinators({ section, onChanged }: { section: SectionRo
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ personId, role: 'coordinator', sectionId: section.id, validFrom }),
+          body: JSON.stringify({
+            personId,
+            role: 'coordinator',
+            sectionId: section.id,
+            validFrom,
+            ...(validTo ? { validTo } : {}),
+          }),
         },
         { errorMessage: t('club_core.coordinators.errors.assign') },
       )
       flash(t('club_core.coordinators.flash.assigned'), 'success')
       setPersonId(null)
+      setValidTo('')
       await onChanged()
     } catch (error: unknown) {
       flash(errorMessage(error, t('club_core.coordinators.errors.assign')), 'error')
@@ -176,6 +185,20 @@ export function SectionCoordinators({ section, onChanged }: { section: SectionRo
                   setValidFrom(event.target.value)
                 }}
                 disabled={busy}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="club-core-coordinator-to">{t('club_core.coordinators.fields.validTo')}</Label>
+              <Input
+                id="club-core-coordinator-to"
+                type="date"
+                value={validTo}
+                min={validFrom || undefined}
+                onChange={(event) => {
+                  setValidTo(event.target.value)
+                }}
+                disabled={busy}
+                data-testid="section-coordinator-valid-to"
               />
             </div>
             <Button

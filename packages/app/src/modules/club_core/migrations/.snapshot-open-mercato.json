@@ -1664,6 +1664,23 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "short_description": {
+          "name": "short_description",
+          "type": "varchar(160)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 160,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
         "tenant_id": {
           "name": "tenant_id",
           "type": "uuid",
@@ -1710,6 +1727,15 @@
           "keyName": "club_core_sections_org_active_idx",
           "primary": false,
           "unique": false
+        },
+        {
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "keyName": "club_core_sections_org_name_unique",
+          "primary": false,
+          "unique": false,
+          "expression": "create unique index \"club_core_sections_org_name_unique\" on \"club_core_sections\" (\"organization_id\", lower(\"name\")) where deleted_at is null"
         },
         {
           "columnNames": [],

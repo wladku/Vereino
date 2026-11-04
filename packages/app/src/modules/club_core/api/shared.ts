@@ -46,6 +46,7 @@ export function sectionListItem(row: Row) {
     publicContactName: text(row.public_contact_name),
     publicContactEmail: text(row.public_contact_email),
     publicContactPhone: text(row.public_contact_phone),
+    shortDescription: text(row.short_description),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -117,12 +118,17 @@ export const sectionListItemSchema = z.object({
   publicContactName: z.string().nullable(),
   publicContactEmail: z.string().nullable(),
   publicContactPhone: z.string().nullable(),
+  shortDescription: z.string().nullable().describe('Shown on the section tile of the public club page (≤ 160)'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   _people: z
     .object({ coordinators: z.array(coordinatorSchema), coordinatorMissing: z.boolean() })
     .optional()
     .describe('Added by the `people` response enricher: current and future coordinators of the section.'),
+  _groups: z
+    .object({ activeGroupCount: z.number().int() })
+    .optional()
+    .describe('Added by the `groups` response enricher: the number of active groups of the section.'),
 })
 
 export const placeListItemSchema = z.object({

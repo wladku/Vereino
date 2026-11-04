@@ -11,6 +11,13 @@ export type InstitutionType = (typeof INSTITUTION_TYPES)[number]
 
 const nameSchema = z.string().trim().min(1).max(200)
 
+/**
+ * A section's name (UX parity spec DD-U07): section-only, so the shared `nameSchema` of places, institutions and
+ * materials keeps its 1–200 range. It accepts the stored range (1–200) because the edit form resends the name on every
+ * save; the commands apply the 2–80 rule on create and rename (`lib/section-usage.ts` `sectionNameProblem`).
+ */
+const sectionNameSchema = z.string().trim().min(1).max(200)
+
 /** Optional text: blank or null clears the field. */
 const nullableText = (max: number) =>
   z
@@ -53,7 +60,7 @@ const listQueryBase = {
 // --- Sections ---
 
 const sectionFields = {
-  name: nameSchema,
+  name: sectionNameSchema,
   description: nullableText(4000).optional(),
   isActive: z.boolean().optional(),
 }
@@ -63,7 +70,7 @@ export const sectionCreateSchema = z.object(sectionFields).strict()
 export const sectionUpdateSchema = z
   .object({
     id: z.uuid(),
-    name: nameSchema.optional(),
+    name: sectionNameSchema.optional(),
     description: sectionFields.description,
     isActive: z.boolean().optional(),
   })
@@ -85,6 +92,7 @@ export const sectionPublicUpdateSchema = z
     publicContactName: nullableText(200).optional(),
     publicContactEmail: nullableEmail.optional(),
     publicContactPhone: nullableText(50).optional(),
+    shortDescription: nullableText(160).optional(),
   })
   .strict()
 

@@ -37,7 +37,14 @@ const clubPageSchema = z.object({
     logo: publicLogoSchema,
     contact: z.object({ phone: z.string() }).nullable().describe('Only with the `contact` block'),
   }),
-  sections: z.array(z.object({ name: z.string(), slug: z.string(), logo: publicLogoSchema })),
+  sections: z.array(
+    z.object({
+      name: z.string(),
+      slug: z.string(),
+      logo: publicLogoSchema,
+      shortDescription: z.string().nullable().describe('The tile text of the section (≤ 160 characters)'),
+    }),
+  ),
   blocks: z.record(z.string(), z.unknown()).describe('Blocks of optional providers of other modules (DD-28)'),
 })
 

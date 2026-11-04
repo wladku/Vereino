@@ -28,6 +28,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 ### ai-workflow
 
+- [db:generate needs `length` for a bounded varchar, and a concurrent index gets its own non-transactional migration; TabsTrigger drops data-testid](lessons/db-generate-varchar-length-and-concurrent-index-migrations.md) — area:module-data,testing; module:club_core,platform; topic:db-generate,migrations,create-index-concurrently,tabs,playwright,sign-in-browser
 - [A claim belongs to the run that made it: a fork or a second session of the same account must not re-enter it](lessons/claim-belongs-to-the-run-not-the-account.md) — area:ai-workflow; module:platform; topic:claim-protocol,parallel-agents,forks,worktrees,orchestration
 - [yarn mercato copies .env.example to .env; pass DATABASE_URL explicitly and remove .env and storage/ after a run](lessons/mercato-cli-writes-env-and-storage.md) — area:ai-workflow; module:platform; topic:mercato-cli,db-generate,env,uploads,worktrees
 - [Book online payments from the provider state, not from payment_gateways events alone](lessons/payment-gateway-events-miss-late-captures.md) — area:integration,framework-context; module:payments,platform; topic:payment-gateways,stripe,events,idempotency,refunds
