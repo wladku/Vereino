@@ -1,8 +1,9 @@
 // `GET /api/communication/threads` — the threads the reader sees (foundation III DD-M12; `as=member` the inbox of
 // their own threads), with unread state, newest activity first, in the S6.4 envelope; filters `scopeType`, `scopeId`,
-// `sectionId` (the section's threads with its groups', activities' and sessions'; #103), `unread=1`, `isCase=1`. `POST /api/communication/threads` — `communication.threads.create`: an announcement to the
+// `sectionId` (the section's threads with its groups', activities' and sessions'; #103), `wardId` (the threads about one of
+// the caller's wards; #102), `unread=1`, `isCase=1`. `POST /api/communication/threads` — `communication.threads.create`: an announcement to the
 // club, a section, a group, an activity or a session the author's grants cover (REQ-M06); 201
-// `{ threadId, messageId, dispatchId }`; recipients get an in-app notification and an e-mail after the commit.
+// `{ threadId, messageId, dispatchId, recipientCount }`; recipients get an in-app notification and an e-mail after the commit.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { errorResponse } from '@/modules/foundation'
@@ -30,6 +31,7 @@ export async function GET(request: Request): Promise<Response> {
         sectionId: query.sectionId,
         ...(query.isCase === '1' ? { isCase: true } : {}),
       },
+      wardId: query.wardId,
       unreadOnly: query.unread === '1',
       participantOnly: query.as === 'member',
     })
@@ -56,6 +58,7 @@ export async function POST(request: Request): Promise<Response> {
         dispatchId: result.dispatchId,
         actingRole: result.actingRole,
         updatedAt: result.threadUpdatedAt,
+        recipientCount: result.recipientCount ?? 0,
       },
       { status: 201 },
     )
@@ -71,7 +74,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the threads the caller sees',
       description:
-        'Participants, the coordinators of the thread section and the club administrator see a thread (DD-M12). `as=member` lists the caller’s own threads only (the member inbox). `sectionId` narrows the list to a section the caller oversees (the club administrator: any) with the threads of its groups, activities and sessions; another section lists nothing. Each item carries the caller’s unread state, the number of messages they see and the last of them.',
+        'Participants, the coordinators of the thread section and the club administrator see a thread (DD-M12). `as=member` lists the caller’s own threads only (the member inbox). `sectionId` narrows the list to a section the caller oversees (the club administrator: any) with the threads of its groups, activities and sessions; another section lists nothing. `wardId` narrows to the threads about one of the caller’s wards (its groups’, those groups’ sections’ own threads and the direct threads it takes part in); another person lists nothing. Each item carries the caller’s unread state, the number of messages they see and the last of them.',
       query: threadListQuerySchema,
       responses: [{ status: 200, description: 'A page of threads', schema: threadListSchema }],
       errors: [{ status: 401, description: 'Not signed in', schema: errorSchema }],
@@ -92,6 +95,9 @@ export const openApi: OpenApiRouteDoc = {
             dispatchId: z.string().nullable(),
             actingRole: z.string(),
             updatedAt: z.string(),
+            recipientCount: z
+              .number()
+              .describe('The recipients the message reaches in the app or by e-mail (unreachable ones not counted)'),
           }),
         },
       ],

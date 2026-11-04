@@ -24,6 +24,8 @@ const STAFF_CONTEXTS = ['club_admin', 'coordinator', 'coach']
 
 export type MessagesProfile = {
   person: { id: string; firstName: string; lastName: string }
+  /** The active wards of a guardian (the inbox's ward filter, M-06); empty for anyone else. */
+  wards: Array<{ personId: string; firstName: string; lastName: string }>
   contexts: string[]
   locale: string
   club: { shortName: string | null; logoUrl: string | null }

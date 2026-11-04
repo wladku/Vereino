@@ -48,7 +48,7 @@ export const FOUNDATION_AUDITED_READ = 'foundationAuditedRead' as const
  * Foundation III (#71). `foundationAudience`: `resolveAudience(spec, ctx, { exclude })` over the optional providers
  * `vereino.audience.<kind>` and the contact resolver `vereino.contactResolver` (registered by `people`, `groups` and
  * `activities`, never here). `foundationDispatch`: `enqueue(em, request, ctx)`, `publish(dispatchId, scope)`,
- * `deliveriesOf(dispatchId, page, ctx)`, `countsOf(dispatchIds, ctx)`. `foundationEmailTemplates`: `defineEmailTemplate`, `registerEmailTemplate`
+ * `deliveriesOf(dispatchId, page, ctx)`, `countsOf(dispatchIds, ctx, { channel? })`. `foundationEmailTemplates`: `defineEmailTemplate`, `registerEmailTemplate`
  * (a template lives under `vereino.emailTemplate.<id>`), `resolveEmailTemplate`, `clubText`. `foundation.emailSender`: the seam
  * every e-mail goes through — the platform's `sendEmail` by default; tests and a staging allowlist replace it.
  */

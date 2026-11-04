@@ -88,7 +88,8 @@ export async function postReply(t: Translate, threadId: string, body: string): P
   }
 }
 
-function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
+/** "Copy text for group chat" (DD-M14): the text with the link to the clipboard, shown, and confirmed live. */
+export function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
   const t = useT()
   const [text, setText] = React.useState<string | null>(null)
   const [status, setStatus] = React.useState<'idle' | 'copied' | 'manual' | 'error'>('idle')
@@ -144,7 +145,7 @@ function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
 }
 
 /** The read-only banner of a case: who marked it and when; its messages can no longer be edited or deleted. */
-function CaseBanner({ thread }: { thread: ThreadDetail }) {
+export function CaseBanner({ thread }: { thread: ThreadDetail }) {
   const t = useT()
   const locale = useLocale()
   const opened = thread.caseOpenedAt ? formatDateTime(thread.caseOpenedAt, locale) : ''
