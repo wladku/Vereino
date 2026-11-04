@@ -584,7 +584,7 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     // List and search by last name.
     await page.goto('/backend/people/persons')
     await expect(page.getByRole('heading', { level: 1, name: /People|Osoby/ })).toBeVisible()
-    await page.getByPlaceholder(/Search by last name|Szukaj po nazwisku/).fill(marker)
+    await page.getByPlaceholder(/Search by first or last name|Szukaj po imieniu lub nazwisku/).fill(marker)
     await expect(page.getByRole('link', { name: new RegExp(marker) })).toBeVisible()
     const listOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(listOverflow).toBeLessThanOrEqual(0)

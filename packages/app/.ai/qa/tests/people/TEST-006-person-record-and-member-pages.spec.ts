@@ -79,7 +79,7 @@ test('TEST-006 the administrator: people list, person record with guardianship a
     // The list and the record render in light and dark mode; the axe scan runs in light mode as for the other
     // admin pages of #26 (ENG-TEST-25 pattern), the member pages below are scanned in both.
     await page.goto('/backend/people/persons')
-    const listReady = () => expect(page.getByRole('link', { name: /Lena Rekordowa/ })).toBeVisible()
+    const listReady = () => expect(page.getByRole('link', { name: /Rekordowa Lena/ })).toBeVisible()
     await listReady()
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
     await page.reload()
