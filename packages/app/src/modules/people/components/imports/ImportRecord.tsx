@@ -22,6 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { OWN_FORBIDDEN_STATE, errorMessage, type TableColumns, type Translate } from '../client-helpers'
 import { MatchPersonDialog } from './MatchPersonDialog'
 import {
@@ -42,7 +43,8 @@ import {
 
 const PAGE_SIZE = 50
 type Filter = 'all' | 'pending' | ImportRowRow['classification']
-type ImportLoad = { status: 'ok'; record: ImportRow } | { status: 'not_found' } | { status: 'denied' }
+type ImportLoad =
+  { status: 'ok'; record: ImportRow } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
 /** The record actions; "create memberships" re-runs the commit of a committed import (#65). */
 type RecordAction = 'commit' | 'cancel' | 'createMemberships'
 const ACTION_PATHS: Record<RecordAction, 'commit' | 'cancel'> = {
@@ -106,7 +108,10 @@ export function ImportRecord({ id }: { id: string }) {
     queryFn: async (): Promise<ImportLoad> => {
       const call = await apiCall<ImportRow>(`/api/people/imports/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
-      if (call.status === 403) return { status: 'denied' }
+      // 403 `scope_unlinked`: the account is not linked to a person of this club (#76).
+      if (call.status === 403) {
+        return errorCodeOf(call.result) === 'scope_unlinked' ? { status: 'unlinked' } : { status: 'denied' }
+      }
       if (!call.ok || !call.result) throw new Error(t('people.imports.errors.loadOne'))
       return { status: 'ok', record: call.result }
     },
@@ -320,6 +325,7 @@ export function ImportRecord({ id }: { id: string }) {
       />
     )
   }
+  if (load.status === 'unlinked') return <AccessDeniedMessage label={t('foundation.errors.scope_unlinked')} />
   if (load.status === 'denied') return <AccessDeniedMessage label={t('people.imports.errors.denied')} />
   const current = load.record
 

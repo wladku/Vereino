@@ -3,12 +3,15 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   CALENDAR_RANGE_MAX_DAYS,
+  calendarMonth,
   calendarRangeDays,
+  calendarSections,
   calendarTodayAndTomorrow,
   calendarWeek,
   groupCalendarItemsByDay,
   isServedCalendarRange,
   isValidCalendarItem,
+  trimCalendarRange,
   validCalendarItems,
 } from '../calendar.ts'
 
@@ -81,4 +84,54 @@ test('calendarWeek is the Monday–Sunday week of the day, moved by whole weeks'
 
 test('the Today tiles cover today and tomorrow', () => {
   assert.deepEqual(calendarTodayAndTomorrow('2026-12-31'), { from: '2026-12-31', to: '2027-01-01' })
+})
+
+test('calendarMonth is the calendar month of the day, moved by whole months across year ends and leap years', () => {
+  assert.deepEqual(calendarMonth('2026-11-05'), { from: '2026-11-01', to: '2026-11-30' })
+  assert.deepEqual(calendarMonth('2026-11-30', 1), { from: '2026-12-01', to: '2026-12-31' })
+  assert.deepEqual(calendarMonth('2026-12-15', 1), { from: '2027-01-01', to: '2027-01-31' })
+  assert.deepEqual(calendarMonth('2027-01-31', -2), { from: '2026-11-01', to: '2026-11-30' })
+  assert.deepEqual(calendarMonth('2028-01-31', 1), { from: '2028-02-01', to: '2028-02-29' })
+  assert.deepEqual(calendarMonth('2027-03-01', -1), { from: '2027-02-01', to: '2027-02-28' })
+  // A month is always a served range.
+  for (let offset = 0; offset < 12; offset += 1)
+    assert.equal(isServedCalendarRange(calendarMonth('2026-01-10', offset)), true)
+})
+
+test('trimCalendarRange keeps a served range, cuts a longer one to 62 days from its start and swaps an inverted one', () => {
+  assert.deepEqual(trimCalendarRange({ from: '2026-11-02', to: '2026-11-08' }), {
+    from: '2026-11-02',
+    to: '2026-11-08',
+  })
+  assert.deepEqual(trimCalendarRange({ from: '2026-11-02', to: '2027-01-02' }), {
+    from: '2026-11-02',
+    to: '2027-01-02',
+  })
+  const trimmed = trimCalendarRange({ from: '2026-11-02', to: '2027-02-28' })
+  assert.deepEqual(trimmed, { from: '2026-11-02', to: '2027-01-02' })
+  assert.equal(isServedCalendarRange(trimmed), true)
+  assert.deepEqual(trimCalendarRange({ from: '2026-11-08', to: '2026-11-02' }), {
+    from: '2026-11-02',
+    to: '2026-11-08',
+  })
+  assert.deepEqual(trimCalendarRange({ from: '2026-11-02', to: '2026-11-30' }, 7), {
+    from: '2026-11-02',
+    to: '2026-11-08',
+  })
+})
+
+test('calendarSections lists each section once, by label then id; items without a section add none', () => {
+  const academy = { id: 's-academy', label: 'Akademia piłkarska' }
+  const pool = { id: 's-pool', label: 'Basen' }
+  const poolTwin = { id: 's-pool-2', label: 'Basen' }
+  const items = [
+    item('a', '2026-11-03T16:00:00Z', '2026-11-03T17:30:00Z', { section: pool }),
+    item('b', '2026-11-04T16:00:00Z', '2026-11-04T17:30:00Z', { section: academy }),
+    item('c', '2026-11-05T16:00:00Z', '2026-11-05T17:30:00Z', { section: pool }),
+    item('d', '2026-11-06T16:00:00Z', '2026-11-06T17:30:00Z', { section: poolTwin }),
+    item('e', '2026-11-07T16:00:00Z', '2026-11-07T17:30:00Z', { section: null }),
+    item('f', '2026-11-07T16:00:00Z', '2026-11-07T17:30:00Z'),
+  ]
+  assert.deepEqual(calendarSections(items), [academy, pool, poolTwin])
+  assert.deepEqual(calendarSections([]), [])
 })

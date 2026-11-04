@@ -9,6 +9,9 @@ import {
   calendarTitleClassName,
   formatDayHeading,
   formatTimeRange,
+  SECTION_MARKER_COLORS,
+  sectionMarkerColors,
+  sectionMarkerSlot,
 } from '../member/calendar-format.ts'
 
 test('the day heading shows weekday, day and month of the club-zone date in the reader locale', () => {
@@ -59,4 +62,43 @@ test('the title is struck through when cancelled and muted when done', () => {
   assert.equal(calendarTitleClassName(calendarItemTone('planned')), 'font-semibold')
   assert.equal(calendarTitleClassName(calendarItemTone('done')), 'font-semibold text-muted-foreground')
   assert.equal(calendarTitleClassName(calendarItemTone('cancelled')), 'font-semibold line-through')
+})
+
+test('a section prefers a stable palette slot derived from its id', () => {
+  assert.equal(SECTION_MARKER_COLORS.length, 9)
+  assert.equal(SECTION_MARKER_COLORS.includes('gray'), false)
+  const slot = sectionMarkerSlot('6f1c2d3e-0000-4000-8000-000000000001')
+  assert.equal(sectionMarkerSlot('6f1c2d3e-0000-4000-8000-000000000001'), slot)
+  assert.ok(Number.isInteger(slot) && slot >= 0 && slot < SECTION_MARKER_COLORS.length)
+  assert.equal(sectionMarkerSlot(''), 0x811c9dc5 % SECTION_MARKER_COLORS.length)
+})
+
+/** Ids whose preferred slots are the given ones (found by search, so the test does not hard-code hash values). */
+function idsWithSlot(slot, count) {
+  const ids = []
+  for (let index = 0; ids.length < count; index += 1)
+    if (sectionMarkerSlot(`section-${index}`) === slot) ids.push(`section-${index}`)
+  return ids
+}
+
+test('sections on screen keep their preferred colour, and a clash moves the later id to the next free colour', () => {
+  const [first, second] = idsWithSlot(SECTION_MARKER_COLORS.length - 1, 2)
+  const alone = sectionMarkerColors([second])
+  assert.equal(alone.get(second), SECTION_MARKER_COLORS.at(-1))
+  const together = sectionMarkerColors([second, first, second])
+  assert.equal(together.size, 2)
+  const [earlier, later] = [first, second].sort((a, b) => a.localeCompare(b))
+  assert.equal(together.get(earlier), SECTION_MARKER_COLORS.at(-1))
+  // The palette wraps around: the next free slot after the last one is the first.
+  assert.equal(together.get(later), SECTION_MARKER_COLORS[0])
+  assert.deepEqual([...sectionMarkerColors([]).entries()], [])
+})
+
+test('every section gets a distinct colour up to the palette size, and the colours repeat beyond it', () => {
+  const ids = Array.from({ length: SECTION_MARKER_COLORS.length }, (_, index) => `s-${index}`)
+  const colors = sectionMarkerColors(ids)
+  assert.equal(new Set(colors.values()).size, SECTION_MARKER_COLORS.length)
+  const extra = sectionMarkerColors([...ids, 's-extra'])
+  assert.equal(extra.size, SECTION_MARKER_COLORS.length + 1)
+  assert.equal(extra.get('s-extra'), SECTION_MARKER_COLORS[sectionMarkerSlot('s-extra')])
 })
