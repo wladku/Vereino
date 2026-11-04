@@ -29,7 +29,17 @@ export type RoleDefinition = {
 export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
   club_admin: {
     authRole: 'vereino_club_admin',
-    features: ['club_core.*', 'people.*', 'groups.*', 'activities.*', 'communication.*', 'payments.*', 'facilities.*'],
+    features: [
+      'club_core.*',
+      'people.*',
+      'groups.*',
+      'activities.*',
+      'communication.*',
+      'payments.*',
+      'facilities.*',
+      // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
+      'dashboards.view',
+    ],
     implies: ['member'],
     requiresScope: null,
   },
