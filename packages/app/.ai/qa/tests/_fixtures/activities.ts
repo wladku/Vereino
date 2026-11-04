@@ -45,6 +45,8 @@ export type OccurrenceItem = {
   isDetached: boolean
   needsReschedule: boolean
   updatedAt: string | null
+  opponentName?: string | null
+  invitedTeamNames?: string[]
   actingRole?: string
   code?: string
 }

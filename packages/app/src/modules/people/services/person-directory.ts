@@ -8,7 +8,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
-import { Guardianship, Person } from '../data/entities'
+import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { contactSharingFilter } from '../lib/contact-sharing'
 import type { ClubScope } from './club-clock'
 
@@ -51,6 +51,13 @@ export type PersonDirectory = {
    * is checked again at read time). Call only after authorizing and logging the read (`auditedRead`).
    */
   sharedContacts(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, SharedContact>>
+  /** The persons holding a live `role` assignment active on `date` (the coach picker of the activity wizard, #93). */
+  roleHolderIdsOn(
+    scope: ClubScope,
+    role: RoleAssignment['role'],
+    date: CalendarDate,
+    em?: EntityManager,
+  ): Promise<string[]>
 }
 
 /** A guardian's contact details shared with the coaches of their wards' groups (REQ-037). */
@@ -175,6 +182,26 @@ export async function sharedContacts(
   )
 }
 
+export async function roleHolderIdsOn(
+  em: EntityManager,
+  scope: ClubScope,
+  role: RoleAssignment['role'],
+  date: CalendarDate,
+): Promise<string[]> {
+  const rows = await em.find(
+    RoleAssignment,
+    {
+      ...scope,
+      deletedAt: null,
+      role,
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'personId'] },
+  )
+  return [...new Set(rows.map((row) => row.personId))]
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
@@ -183,5 +210,6 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
     contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
     sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
+    roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
   }
 }

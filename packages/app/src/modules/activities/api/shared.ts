@@ -364,6 +364,8 @@ export const calendarEntrySchema = z.object({
     placeAddress: z.string().nullable(),
     placeGeoLat: z.number().nullable(),
     placeGeoLng: z.number().nullable(),
+    opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
+    invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
     updatedAt: z.string(),
   }),
   declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),

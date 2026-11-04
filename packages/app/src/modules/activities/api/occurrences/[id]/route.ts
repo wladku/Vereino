@@ -14,7 +14,7 @@ import {
 } from '@/modules/foundation'
 import type { OccurrenceCommandResult } from '../../../commands/occurrences'
 import { occurrenceUpdateSchema } from '../../../data/validators'
-import { activityLabels, findOccurrence, nameMaps } from '../../../services/read'
+import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
 import {
   SCHEDULE_READ_KINDS,
   conflictErrorSchema,
@@ -33,6 +33,8 @@ const paramsSchema = z.object({ id: z.uuid() })
 const detailSchema = occurrenceListItemSchema.extend({
   sectionName: z.string().nullable(),
   activityRecurring: z.boolean().describe('The session belongs to a weekly series (not a one-off activity).'),
+  opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
+  invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
   actingRole: z.string(),
 })
 
@@ -52,7 +54,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       groupId: row.groupId,
       occurrenceId: row.id,
     })
-    const [names, activities] = await Promise.all([
+    const [names, activities, teams] = await Promise.all([
       nameMaps(ctx.container, scope, {
         groupIds: [row.groupId],
         sectionIds: [row.sectionId],
@@ -60,8 +62,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         personIds: row.coachPersonId ? [row.coachPersonId] : [],
       }),
       activityLabels(ctx.container, scope, [row.activityId]),
+      activityTeams(ctx.container, scope, [row.activityId]),
     ])
     const activity = activities.get(row.activityId)
+    const activityTeam = teams.get(row.activityId)
     return Response.json({
       id: row.id,
       activityId: row.activityId,
@@ -85,6 +89,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       needsReschedule: row.needsReschedule,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
+      opponentName: activityTeam?.opponentName ?? null,
+      invitedTeamNames: activityTeam?.invitedTeamNames ?? [],
       actingRole,
     })
   } catch (error: unknown) {
