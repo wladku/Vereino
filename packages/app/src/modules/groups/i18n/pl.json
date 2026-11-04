@@ -168,5 +168,9 @@
   "groups.groups.perspectives.all": "Wszystkie",
   "groups.groups.perspectives.team": "Drużyny",
   "groups.groups.perspectives.class_group": "Grupy zajęciowe",
-  "groups.memberships.age": "Wiek {age}"
+  "groups.memberships.age": "Wiek {age}",
+  "groups.club.wardGroups.title": "Grupy",
+  "groups.club.wardGroups.loading": "Wczytywanie grup…",
+  "groups.club.wardGroups.error": "Nie udało się wczytać grup. Odśwież stronę.",
+  "groups.club.wardGroups.empty": "Jeszcze w żadnej grupie"
 }

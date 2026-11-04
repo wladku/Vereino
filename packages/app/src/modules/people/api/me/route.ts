@@ -1,7 +1,8 @@
 // `GET /api/people/me` and `PUT /api/people/me` — `people.persons.update_self` (club spec API table; REQ-001, REQ-002,
 // REQ-006, REQ-035, REQ-037; #27). The member's own profile: the person linked to the session's user in the session's
 // organization, the active wards with their guardianship consents, the active staff roles, the acting contexts, the
-// resolved interface locale (DD-34) and whether the payments tile may be shown (R10). 404 `person_not_linked` when the
+// resolved interface locale (DD-34) and whether the payments tile may be shown (R10); E06-S22 (#104) adds the wards'
+// age, the consent authors' names and the member's own active guardians with their consents. 404 `person_not_linked` when the
 // account is linked to no person (the UI says "Account not linked to a person — contact the club"). The scope comes
 // only from the session: no id in the path or the body names the person.
 import { z } from 'zod'
@@ -13,7 +14,7 @@ import type { UpdateSelfResult } from '../../commands/self'
 import { selfUpdateSchema } from '../../data/validators'
 import { GUARDIAN_RELATIONS } from '../../lib/people-rules'
 import { loadMemberProfile } from '../../services/member-profile'
-import { consentsViewSchema, errorSchema } from '../shared'
+import { errorSchema } from '../shared'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['people.self'] },
@@ -62,6 +63,19 @@ export async function PUT(request: Request): Promise<Response> {
 
 const selfConsentSchema = z.object({ granted: z.boolean(), at: z.string().nullable() })
 
+const memberConsentSchema = z.object({
+  granted: z.boolean(),
+  at: z.string().nullable(),
+  byPersonId: z.string().nullable(),
+  byName: z.string().nullable().describe('The name of the last author; null when never set or not resolvable'),
+})
+
+const memberConsentsSchema = z.object({
+  regulations: memberConsentSchema,
+  image: memberConsentSchema,
+  trips: memberConsentSchema,
+})
+
 const memberPersonSchema = z.object({
   id: z.uuid(),
   firstName: z.string(),
@@ -82,6 +96,7 @@ const memberProfileSchema = z.object({
       firstName: z.string(),
       lastName: z.string(),
       birthDate: z.string().nullable(),
+      age: z.number().int().nullable().describe('Completed years on the club day'),
       hasAccount: z.boolean(),
       guardianship: z.object({
         id: z.uuid(),
@@ -89,11 +104,22 @@ const memberProfileSchema = z.object({
         isPrimaryPayer: z.boolean(),
         validFrom: z.string(),
         validTo: z.string().nullable(),
-        consents: consentsViewSchema,
+        consents: memberConsentsSchema,
         updatedAt: z.string().nullable().describe('Lock token of POST /api/people/guardianships/{id}/consents'),
       }),
     }),
   ),
+  guardians: z
+    .array(
+      z.object({
+        guardianshipId: z.uuid(),
+        firstName: z.string(),
+        lastName: z.string(),
+        relation: z.enum(GUARDIAN_RELATIONS),
+        consents: memberConsentsSchema,
+      }),
+    )
+    .describe("The member's own active guardians and the consents they gave (read-only for the member)"),
   roles: z.array(z.object({ role: z.string(), sectionId: z.string().nullable() })),
   contexts: z.array(z.string()).describe('Acting contexts of the role-context switcher (self, guardian, …)'),
   locale: z.string().describe('The resolved interface locale: preferred → club default → request → en'),
@@ -113,7 +139,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read own profile, wards and consents',
       description:
-        'The person linked to the signed-in user in the session organization, the active wards with their consents, the active staff roles, the acting contexts and the resolved locale. 404 `person_not_linked` when the account is linked to no person.',
+        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, the active staff roles, the acting contexts and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
       responses: [{ status: 200, description: 'The member profile', schema: memberProfileSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },
@@ -123,7 +149,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Change own language, contact details and consents',
       description:
-        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone`, `email`, and the consents `shareContactWithCoaches` and `sharePresenceWithGuardians` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone` (a changed number must be Polish or E.164, else 422 `phone_invalid`), `email`, and the consents `shareContactWithCoaches` and `sharePresenceWithGuardians` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: selfUpdateSchema },
       responses: [
         {
@@ -136,7 +162,11 @@ export const openApi: OpenApiRouteDoc = {
         { status: 400, description: 'Validation failed, `lock_token_required`', schema: errorSchema },
         { status: 404, description: 'person_not_linked', schema: errorSchema },
         { status: 409, description: 'optimistic_lock_conflict', schema: errorSchema },
-        { status: 422, description: 'locale_unsupported', schema: errorSchema },
+        {
+          status: 422,
+          description: '`locale_unsupported`; `phone_invalid` (not a Polish number or E.164, with `fieldErrors.phone`)',
+          schema: errorSchema,
+        },
       ],
     },
   },

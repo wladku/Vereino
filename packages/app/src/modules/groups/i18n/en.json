@@ -168,5 +168,9 @@
   "groups.groups.perspectives.all": "All",
   "groups.groups.perspectives.team": "Teams",
   "groups.groups.perspectives.class_group": "Class groups",
-  "groups.memberships.age": "Age {age}"
+  "groups.memberships.age": "Age {age}",
+  "groups.club.wardGroups.title": "Groups",
+  "groups.club.wardGroups.loading": "Loading groups…",
+  "groups.club.wardGroups.error": "The groups could not be loaded. Reload the page.",
+  "groups.club.wardGroups.empty": "Not in any group yet"
 }

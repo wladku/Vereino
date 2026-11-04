@@ -4,11 +4,13 @@ import {
   MEMBER_HOME,
   SELF_CONSENT_KINDS,
   applySelfConsent,
+  consentAuthorIds,
   memberContexts,
   memberLanding,
   memberLocale,
   ownPaymentsAccess,
   selfConsentView,
+  withConsentAuthors,
   withNotice,
 } from '../member-rules'
 
@@ -136,5 +138,37 @@ describe('withNotice', () => {
     expect(withNotice('/backend', 'Not linked — contact the club')).toBe(
       '/backend?flash=Not+linked+%E2%80%94+contact+the+club&type=info',
     )
+  })
+})
+
+describe('consentAuthorIds', () => {
+  const view = (regulations: string | null, image: string | null, trips: string | null) => ({
+    regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: regulations },
+    image: { granted: false, at: null, byPersonId: image },
+    trips: { granted: true, at: '2026-10-02T08:00:00.000Z', byPersonId: trips },
+  })
+
+  it('lists each author once, in first-seen order, and skips consents never set', () => {
+    expect(consentAuthorIds([view('kasia', null, 'admin'), view('admin', 'tomek', null)])).toEqual([
+      'kasia',
+      'admin',
+      'tomek',
+    ])
+    expect(consentAuthorIds([])).toEqual([])
+  })
+})
+
+describe('withConsentAuthors', () => {
+  it('adds the name of each known author; an unknown author or a consent never set has none', () => {
+    const view = {
+      regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'kasia' },
+      image: { granted: false, at: '2026-10-03T08:00:00.000Z', byPersonId: 'gone' },
+      trips: { granted: false, at: null, byPersonId: null },
+    }
+    expect(withConsentAuthors(view, new Map([['kasia', 'Kasia Nowak']]))).toEqual({
+      regulations: { ...view.regulations, byName: 'Kasia Nowak' },
+      image: { ...view.image, byName: null },
+      trips: { ...view.trips, byName: null },
+    })
   })
 })

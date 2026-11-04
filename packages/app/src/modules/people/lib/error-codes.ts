@@ -8,6 +8,8 @@ export const errorCodes = [
   { code: 'account_exists', status: 409, messageKey: 'people.errors.account_exists' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
+  // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.
+  { code: 'phone_invalid', status: 422, messageKey: 'people.errors.phone_invalid' },
   { code: 'role_scope_required', status: 422, messageKey: 'people.errors.role_scope_required' },
   { code: 'role_scope_unexpected', status: 422, messageKey: 'people.errors.role_scope_unexpected' },
   { code: 'guardianship_self', status: 422, messageKey: 'people.errors.guardianship_self' },
