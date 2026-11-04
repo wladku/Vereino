@@ -1,7 +1,7 @@
 // `/api/groups/memberships` — group rosters with their history (club spec API table, glossary *Membership*; #30
 // criteria 1–2): the list holds the memberships of the groups the caller may read (the coach's groups, the groups of
 // the coordinator's sections, every group for the club administrator — `scopeWhere` on the groups) with the person's
-// name; create and update run the `groups` commands (overlap → 409). A membership is ended through
+// name and age; create and update run the `groups` commands (overlap → 409). A membership is ended through
 // `POST /api/groups/memberships/{id}/end`, never deleted.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -11,7 +11,8 @@ import { scopeContract, trustedScopeOf } from '@/modules/foundation'
 import type { MembershipCommandResult } from '../../commands/memberships'
 import { GroupMembership } from '../../data/entities'
 import { membershipCreateSchema, membershipListQuerySchema, membershipUpdateSchema } from '../../data/validators'
-import { personNames, readableGroupIds } from '../../services/groups-read'
+import { clubToday } from '../../services/club-clock'
+import { readableGroupIds, rosterPersons } from '../../services/groups-read'
 import {
   GROUP_ENTITY_COLUMNS,
   GROUP_READ_KINDS,
@@ -29,15 +30,16 @@ const rawBodySchema = z.object({}).loose()
 /** Matches no row (`id IS NULL`; the primary key is never null), like `scopeWhere`'s fail-closed fragment. */
 const NO_ROWS: Where = { id: { $exists: false } } as Where
 
-/** Adds the person's name to the roster rows the scope filter already admitted. */
+/** Adds the person's name and age on the club day (E06-S08 #90) to the roster rows the scope filter already admitted. */
 async function attachPersons(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as MembershipListItem[]
   const tenantId = ctx.auth?.tenantId
   const organizationId = ctx.selectedOrganizationId ?? ctx.auth?.orgId
   if (items.length === 0 || !tenantId || !organizationId) return
+  const scope = { tenantId, organizationId }
   const personIds = items.map((item) => item.personId).filter((id): id is string => Boolean(id))
-  const names = await personNames(ctx.container, { tenantId, organizationId }, personIds)
-  for (const item of items) item.person = item.personId ? (names.get(item.personId) ?? null) : null
+  const persons = await rosterPersons(ctx.container, scope, personIds, await clubToday(ctx.container, scope))
+  for (const item of items) item.person = item.personId ? (persons.get(item.personId) ?? null) : null
 }
 
 export const { metadata, GET, POST, PUT } = makeCrudRoute({

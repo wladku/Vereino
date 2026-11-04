@@ -17,7 +17,10 @@ import {
   ruleYieldsSessions,
   sessionConflicts,
   sessionTransitions,
+  takesOpponent,
   typeAllowedForGroup,
+  typeLabelKey,
+  typesForGroupKind,
   wallTimeInZone,
 } from '../activities-rules'
 
@@ -38,6 +41,26 @@ describe('activity types', () => {
     expect(typeAllowedForGroup('sparring', 'class_group')).toBe(false)
     expect(typeAllowedForGroup('match', 'class_group')).toBe(false)
     expect(typeAllowedForGroup('tournament', 'class_group')).toBe(true)
+  })
+
+  it('offers the types that fit the group kind (B-14)', () => {
+    expect(typesForGroupKind('team')).toEqual(['training', 'match', 'sparring', 'tournament', 'camp', 'other'])
+    expect(typesForGroupKind('class_group')).toEqual(['training', 'tournament', 'camp', 'other'])
+  })
+
+  it('asks for an opponent for a match and a sparring only', () => {
+    expect(takesOpponent('match')).toBe(true)
+    expect(takesOpponent('sparring')).toBe(true)
+    expect(takesOpponent('tournament')).toBe(false)
+    expect(takesOpponent(null)).toBe(false)
+    expect(takesOpponent(undefined)).toBe(false)
+  })
+
+  it('labels a class group training as classes', () => {
+    expect(typeLabelKey('training', 'class_group')).toBe('activities.types.classes')
+    expect(typeLabelKey('training', 'team')).toBe('activities.types.training')
+    expect(typeLabelKey('training')).toBe('activities.types.training')
+    expect(typeLabelKey('camp', 'class_group')).toBe('activities.types.camp')
   })
 })
 

@@ -44,7 +44,7 @@ import {
   rosterOn,
   type ActivitiesScope,
 } from './directory'
-import { activityLabels, nameMaps } from './read'
+import { activityLabels, activityTeams, nameMaps } from './read'
 
 export type CalendarDeclarationView = {
   attendanceId: string
@@ -89,6 +89,10 @@ export type CalendarOccurrenceView = {
   placeGeoLng: number | null
   coachPersonId: string | null
   coachName: string | null
+  /** The opponent of a match or sparring (README M-04, #93). */
+  opponentName: string | null
+  /** The invited external teams of a tournament or another event (#93). */
+  invitedTeamNames: string[]
   status: OccurrenceStatus
   cancelReason: string | null
   isDetached: boolean
@@ -154,23 +158,24 @@ async function assertStaffFeature(ctx: CommandRuntimeContext, scope: ActivitiesS
   if (!(await rbac.userHasAllFeatures(userId, [feature], scope))) return foundationErrors.throw('scope_denied')
 }
 
-type Names = Awaited<ReturnType<typeof nameMaps>> & { activities: Awaited<ReturnType<typeof activityLabels>> }
+type Names = Awaited<ReturnType<typeof nameMaps>> & {
+  activities: Awaited<ReturnType<typeof activityLabels>>
+  teams: Awaited<ReturnType<typeof activityTeams>>
+}
 
 async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, rows: Occurrence[]): Promise<Names> {
-  const [names, activities] = await Promise.all([
+  const activityIds = rows.map((row) => row.activityId)
+  const [names, activities, teams] = await Promise.all([
     nameMaps(ctx.container, scope, {
       groupIds: rows.map((row) => row.groupId),
       sectionIds: rows.map((row) => row.sectionId),
       placeIds: rows.map((row) => row.placeId),
       personIds: rows.flatMap((row) => (row.coachPersonId ? [row.coachPersonId] : [])),
     }),
-    activityLabels(
-      ctx.container,
-      scope,
-      rows.map((row) => row.activityId),
-    ),
+    activityLabels(ctx.container, scope, activityIds),
+    activityTeams(ctx.container, scope, activityIds),
   ])
-  return { ...names, activities }
+  return { ...names, activities, teams }
 }
 
 function placeDetails(ctx: CommandRuntimeContext, scope: ActivitiesScope, placeIds: string[]) {
@@ -183,6 +188,7 @@ function occurrenceView(
   places: Awaited<ReturnType<typeof placeDetails>>,
 ): CalendarOccurrenceView {
   const activity = names.activities.get(row.activityId)
+  const teams = names.teams.get(row.activityId)
   const place = places.get(row.placeId)
   return {
     id: row.id,
@@ -203,6 +209,8 @@ function occurrenceView(
     placeGeoLng: place?.geoLng ?? null,
     coachPersonId: row.coachPersonId ?? null,
     coachName: row.coachPersonId ? (names.persons.get(row.coachPersonId) ?? null) : null,
+    opponentName: teams?.opponentName ?? null,
+    invitedTeamNames: teams?.invitedTeamNames ?? [],
     status: row.status,
     cancelReason: row.cancelReason ?? null,
     isDetached: row.isDetached,

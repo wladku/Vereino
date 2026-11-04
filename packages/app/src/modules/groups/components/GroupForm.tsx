@@ -6,37 +6,25 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { createCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
+import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { GROUP_KINDS } from '../lib/groups-rules'
-import { GROUPS_HREF, textOrNull, type GroupDetail, type SeasonRow, type Translate } from './client-helpers'
+import {
+  GROUPS_HREF,
+  seasonOptions,
+  sectionOptions,
+  textOrNull,
+  type GroupDetail,
+  type Translate,
+} from './client-helpers'
 
 const ENTITY_ID = 'groups:group'
 const NONE = ''
 
 type GroupFormValues = Record<string, unknown> & { updatedAt?: string | null }
 
-type SectionOption = { id: string; name: string | null }
-
-async function sectionOptions(): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<SectionOption>('club_core/sections', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-  })
-  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
-}
-
-async function seasonOptions(t: Translate): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<SeasonRow>('groups/seasons', {
-    pageSize: 100,
-    sortField: 'startsOn',
-    sortDir: 'desc',
-  })
-  return [
-    { value: NONE, label: t('groups.groups.fields.season.none') },
-    ...data.items.map((item) => ({ value: item.id, label: item.name ?? item.id })),
-  ]
+async function seasonOptionsWithNone(t: Translate): Promise<CrudFieldOption[]> {
+  return [{ value: NONE, label: t('groups.groups.fields.season.none') }, ...(await seasonOptions())]
 }
 
 function useGroupFields(t: Translate) {
@@ -71,7 +59,7 @@ function useGroupFields(t: Translate) {
         id: 'seasonId',
         label: t('groups.groups.fields.season'),
         type: 'select',
-        loadOptions: () => seasonOptions(t),
+        loadOptions: () => seasonOptionsWithNone(t),
         visibleWhen: { field: 'kind', equals: 'team' },
       },
     ],
