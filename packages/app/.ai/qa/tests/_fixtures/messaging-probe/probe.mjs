@@ -10,6 +10,7 @@
 // It prints ids, statuses, codes and subjects only; never an address, a body or a secret.
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { asValue } from 'awilix'
@@ -326,6 +327,27 @@ async function runStep(step) {
         },
       )
       return { ok: true }
+    }
+    case 'routeGet': {
+      // A GET on an app route handler in this process, so `hideProviders` applies to its request container
+      // (UX parity spec TEST-U03: the people list without `groups.personFilter`). Prints the status, the error code and
+      // the listed ids only.
+      const { compileAppSourceFile } = await import('@open-mercato/shared/lib/bootstrap/dynamicLoader')
+      const source = path.join(process.cwd(), 'src', step.source)
+      const outFile = path.join(queueBaseDir, 'routes', `${step.source.replace(/[\\/.]/g, '_')}.mjs`)
+      const compiled = await compileAppSourceFile(source, { appRoot: process.cwd(), outFile })
+      const route = await import(pathToFileURL(compiled).href)
+      const response = await route.GET(
+        new Request(`http://localhost${step.url}`, { headers: { authorization: `Bearer ${step.token}` } }),
+      )
+      const body = await response.json().catch(() => null)
+      const items = Array.isArray(body?.items) ? body.items : null
+      return {
+        status: response.status,
+        code: body?.code ?? null,
+        ids: items ? items.map((item) => item.id) : null,
+        withGroups: items ? items.filter((item) => item._groups !== undefined).length : null,
+      }
     }
     case 'publish': {
       const container = await newContainer()

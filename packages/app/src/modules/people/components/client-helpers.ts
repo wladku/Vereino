@@ -29,6 +29,16 @@ export type PersonListRow = {
   updatedAt: string | null
 }
 
+/** A row of `GET /api/people/persons` with the list's columns (UX parity spec REQ-U01). */
+export type PersonListItemRow = PersonListRow & {
+  age?: number | null
+  roles?: string[]
+  hasWards?: boolean
+  guardians?: Array<{ id: string; displayName: string }>
+  /** Added by the `groups` enricher when that module is enabled. */
+  _groups?: { groups: Array<{ id: string; name: string; role: string }> }
+}
+
 /** `GET /api/people/persons/{id}`: `access: 'basic'` (a coordinator) carries no contact details, notes or PESEL. */
 export type PersonDetail = PersonListRow & {
   access: 'basic' | 'full'
