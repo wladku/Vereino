@@ -1,7 +1,7 @@
 # Vereino — municipal facility administration (phase 5)
 
 **Date**: 2026-10-27
-**Status**: Draft — phase 5; V-7, V-10 and V-13 resolved on 2026-11-03 against the installed 0.9.0 packages (#120): opening hours on `club_core_places.opening_hours` (DD-41), the per-email request limit through the DI `rateLimiterService`, the maintenance grant through a derived technical role (DD-36); V-9 not needed since DD-20 was amended; the pilot club (Q18), its facility rules (Q04) and the facilities findings of the 2026-10-26 architectural review are open
+**Status**: Draft — phase 5; V-7, V-10 and V-13 resolved on 2026-11-03 against the installed 0.9.0 packages (#120): opening hours on `club_core_places.opening_hours` (DD-41), the per-email request limit through the DI `rateLimiterService`, the maintenance grant through a derived technical role (DD-36); V-9 not needed since DD-20 was amended; the pilot club (Q18) and its facility rules (Q04) stay open but no longer block building — phase 5 is built on the example club with the default rules (product owner, 2026-11-04, D30); the facilities findings of the 2026-10-26 architectural review are open and still block `Ready for implementation`
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -383,7 +383,7 @@ As in `2026-10-20-vereino-club-management.md` (*Rollout, Migration, and Rollback
 | Owner decisions | pass | DD-19 decided by D-028; DD-41 (opening hours) is an autonomous default of 2026-11-03 the product owner may override; the derived `vereino_maintenance_planner` role (DD-36) was chosen by the product owner on 2026-11-03 |
 | User approval for implementation | fail | none — status Draft |
 
-Verdict: `Blocked — the pilot club and its facility rules (brief Q18, Q04; R05 is a proposal), and the Critical/High findings of the architectural review of 2026-10-26 that concern facilities (occupancy race, request-link emails)`
+Verdict: `Blocked — the Critical/High findings of the architectural review of 2026-10-26 that concern facilities (occupancy race, request-link emails)`
 
 
 ## Open Questions
@@ -426,3 +426,4 @@ Questions and verifications that belong to the facility module; all resolutions 
 | 2026-10-27 | Foundation III (`.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`): request and rental e-mails go through the foundation `dispatch` from `facilities`' own command and subscribers instead of `communication`, so phase 5 depends on foundation III phase A, not on the club spec's phase 3 (the review's e-mail-hub cycle, foundation III DD-M02); the request confirmation link is a delivery secret enqueued by the submitting command (REQ-M03) |
 | 2026-11-03 | Phase 5 step 1 done as a documentation spike (#120, E08-T01) against the installed `@open-mercato/*` 0.9.0 packages: V-7 negative → DD-41 (opening hours on `club_core_places.opening_hours`, an autonomous default the product owner may override; DD-21, the vocabulary, step 2 and the deliverables follow); V-10 resolved with its fallback → the per-e-mail limit on the public request route goes through the DI `rateLimiterService` keyed by the e-mail alone and fails closed, the verify route gets a per-IP limit, and TEST-024/TEST-036 record that the 429 is not integration-tested; V-13 negative (a `user_acls` row replaces the role grants) → `facilities.maintenance.manage` is granted through the derived technical role `vereino_maintenance_planner` of the `people` role sync (DD-36, the CRUD row, step 9, the deliverables). Status, phase readiness, compliance and verdict updated; Q18, Q04 and the review findings still block phase 5 |
 | 2026-11-03 | The product owner chose the derived role `vereino_maintenance_planner` over granting the feature to every member (DD-36, Q-043, Owner decisions row) |
+| 2026-11-04 | Q18 and Q04 no longer block building (D30): phase 5 is built on the example club with the default rules; the architectural-review findings remain the blocker |

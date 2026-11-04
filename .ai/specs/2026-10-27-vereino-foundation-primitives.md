@@ -1,7 +1,7 @@
 # Vereino foundation — reusable backend and frontend primitives, with staff accounts and roles (#38) as the first consumer
 
 **Date**: 2026-10-27
-**Status**: Ready for implementation — phase A1 (approved by the product owner on 2026-10-27: PRs #40 and #44 merged, `scheduler` enabling, exact MikroORM pins and migration generation approved for the #38 run); phases A2, B and C stay Ready-pending their own dependencies
+**Status**: Ready for implementation — phase A1 (approved by the product owner on 2026-10-27: PRs #40 and #44 merged, `scheduler` enabling, exact MikroORM pins and migration generation approved for the #38 run); phases A2 and B stay Ready-pending their own dependencies; phase C (token links, REQ-017) is to be built now with its migrations approved (product owner, 2026-11-04, D30)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -494,3 +494,4 @@ Contract verifications (performed on 2026-10-27 against the installed 0.9.0 pack
 | 2026-10-30 | V-F05 confirmed with #32 (the first `@vereino/ui` member components); the result is in the V table |
 | 2026-10-31 | P-02: `authorizeScoped` requires the lock token for a loaded target with the default lock (400 `lock_token_required`, engineering standards S5.2); redo through the audit route and a spec's `acceptsMissingToken` (a singleton's first save) are exempt. Found in the review of PR #62 (#33) |
 | 2026-11-03 | P-02: a session scope with no grant beyond `self_user` (no linked person of this club) is refused with the new 403 `scope_unlinked` instead of `scope_denied` — by `authorizeScoped` before the target is loaded (unless the command allows `self_user`) and by `assertInScope`; a linked user outside the target's grants, a marker scope and a job scope keep `scope_denied` (#76) |
+| 2026-11-04 | Phase C go-ahead with its token-link migrations approved (D30), consumer #105 |
