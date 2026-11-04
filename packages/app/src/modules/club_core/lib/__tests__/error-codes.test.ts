@@ -2,13 +2,16 @@ import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 
 describe('club_core error codes', () => {
-  it('declares the place, institution, publication, upload and public page codes with their statuses and message keys', () => {
+  it('declares the place, institution, section, publication, upload and public page codes with their statuses and message keys', () => {
     expect(errorCodes).toEqual([
       { code: 'place_hierarchy_cycle', status: 422, messageKey: 'club_core.errors.place_hierarchy_cycle' },
       { code: 'place_reference_invalid', status: 422, messageKey: 'club_core.errors.place_reference_invalid' },
       { code: 'place_not_bookable', status: 422, messageKey: 'club_core.errors.place_not_bookable' },
       { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
       { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
+      { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },
+      { code: 'section_name_length', status: 422, messageKey: 'club_core.errors.section_name_length' },
+      { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
       { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
       { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
       {

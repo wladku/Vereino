@@ -2,6 +2,7 @@
 // `club_core` reach its records through DI, never through its entities). `groups` checks that a group's section and
 // an external team's institution exist and shows their names next to records it has already authorized (#30);
 // `activities` reads places — their names, capacity and the place tree its conflict check projects (#31).
+import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { Institution, Place, Section } from '../data/entities'
 import { loadPlaceParents } from '../data/queries'
@@ -46,6 +47,16 @@ export type ClubCoreDirectory = {
     em?: EntityManager,
   ): Promise<Map<string, SectionDirectoryEntry>>
   /**
+   * A live section of the organization read `FOR SHARE` in the caller's transaction (`em` is required), or null. A
+   * group write that needs an active section takes this lock, so it serializes with a section deactivation or delete,
+   * which holds the row `FOR UPDATE` while it checks the section's groups (UX parity spec DD-U08).
+   */
+  lockSectionForShare(
+    scope: ClubDirectoryScope,
+    sectionId: string,
+    em: EntityManager,
+  ): Promise<SectionDirectoryEntry | null>
+  /**
    * The live active sections of the organization, by name: all of them (`sectionIds` null) or those among
    * `sectionIds` — the section targets an author may address (foundation III `AudiencePicker`, #35).
    */
@@ -85,6 +96,19 @@ export async function findSections(
     { fields: ['id', 'name', 'isActive'] },
   )
   return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name, isActive: row.isActive }]))
+}
+
+export async function lockSectionForShare(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  sectionId: string,
+): Promise<SectionDirectoryEntry | null> {
+  const row = await em.findOne(
+    Section,
+    { id: sectionId, ...scope, deletedAt: null },
+    { fields: ['id', 'name', 'isActive'], lockMode: LockMode.PESSIMISTIC_READ },
+  )
+  return row ? { id: row.id, name: row.name, isActive: row.isActive } : null
 }
 
 export async function listSections(
@@ -184,6 +208,7 @@ export async function placeOptions(em: EntityManager, scope: ClubDirectoryScope)
 export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDirectory {
   return {
     findSections: (scope, ids, em) => findSections(em ?? getEm().fork(), scope, ids),
+    lockSectionForShare: (scope, sectionId, em) => lockSectionForShare(em, scope, sectionId),
     listSections: (scope, sectionIds, em) => listSections(em ?? getEm().fork(), scope, sectionIds),
     findInstitutions: (scope, ids, em) => findInstitutions(em ?? getEm().fork(), scope, ids),
     findPlaces: (scope, ids, em) => findPlaces(em ?? getEm().fork(), scope, ids),

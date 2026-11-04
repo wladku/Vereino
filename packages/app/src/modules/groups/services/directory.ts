@@ -43,6 +43,16 @@ export function findSections(
   return clubCoreDirectory(container).findSections(scope, ids, em)
 }
 
+/** The group's section read `FOR SHARE` in the caller's transaction (UX parity spec DD-U08), or null. */
+export function lockSectionForShare(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  sectionId: string,
+  em: EntityManager,
+): Promise<SectionDirectoryEntry | null> {
+  return clubCoreDirectory(container).lockSectionForShare(scope, sectionId, em)
+}
+
 export function findInstitutions(
   container: AwilixContainer,
   scope: GroupsScope,

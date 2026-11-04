@@ -93,7 +93,17 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
                   data-testid={`public-section-${section.slug}`}
                 >
                   <LogoMark logo={section.logo} />
-                  <span>{section.name}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span>{section.name}</span>
+                    {section.shortDescription ? (
+                      <span
+                        className="text-muted-foreground text-sm font-normal"
+                        data-testid={`public-section-${section.slug}-short`}
+                      >
+                        {section.shortDescription}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             ))}

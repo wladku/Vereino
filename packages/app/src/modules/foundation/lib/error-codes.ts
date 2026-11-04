@@ -24,6 +24,9 @@ export const errorCodes = [
   { code: 'audience_kind_unavailable', status: 422, messageKey: 'foundation.errors.audience_kind_unavailable' },
   { code: 'audience_too_large', status: 422, messageKey: 'foundation.errors.audience_too_large' },
   { code: 'dispatch_params_invalid', status: 422, messageKey: 'foundation.errors.dispatch_params_invalid' },
+  // #76: `authorizeScoped` and `assertInScope` answer it instead of `scope_denied` when the session scope holds no
+  // grant beyond `self_user` — the account is not linked to a person of this club (`lib/scope-denial.ts`).
+  { code: 'scope_unlinked', status: 403, messageKey: 'foundation.errors.scope_unlinked' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

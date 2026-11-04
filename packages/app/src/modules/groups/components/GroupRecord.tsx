@@ -10,12 +10,14 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { GroupDetailsForm } from './GroupForm'
 import { RosterPanel } from './RosterPanel'
 import { GROUPS_HREF, OWN_FORBIDDEN_STATE, kindLabel, type GroupDetail, type Translate } from './client-helpers'
 import { useCanManageGroups } from './useCanManageGroups'
 
-type GroupLoad = { status: 'ok'; group: GroupDetail } | { status: 'not_found' } | { status: 'denied' }
+type GroupLoad =
+  { status: 'ok'; group: GroupDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
 
 function ReadOnlyDetails({ group, t }: { group: GroupDetail; t: Translate }) {
   const rows: Array<[string, string | null | undefined]> = [
@@ -50,7 +52,10 @@ export function GroupRecord({ id }: { id: string }) {
     queryFn: async (): Promise<GroupLoad> => {
       const call = await apiCall<GroupDetail>(`/api/groups/groups/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
-      if (call.status === 403) return { status: 'denied' }
+      // 403 `scope_unlinked`: the account is not linked to a person of this club (#76).
+      if (call.status === 403) {
+        return errorCodeOf(call.result) === 'scope_unlinked' ? { status: 'unlinked' } : { status: 'denied' }
+      }
       if (!call.ok || !call.result) throw new Error(t('groups.groups.errors.loadOne'))
       return { status: 'ok', group: call.result }
     },
@@ -71,6 +76,7 @@ export function GroupRecord({ id }: { id: string }) {
       />
     )
   }
+  if (load.status === 'unlinked') return <AccessDeniedMessage label={t('foundation.errors.scope_unlinked')} />
   if (load.status === 'denied') return <AccessDeniedMessage label={t('groups.groups.errors.denied')} />
 
   const group = load.group

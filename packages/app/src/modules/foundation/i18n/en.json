@@ -18,5 +18,6 @@
   "foundation.errors.recurrence_invalid": "The recurrence rule is not valid.",
   "foundation.errors.recurrence_unsupported": "The recurrence rule uses a part that is not supported.",
   "foundation.errors.scope_denied": "You do not have access to this record.",
+  "foundation.errors.scope_unlinked": "Your account is not linked to a person of this club, so it has no access to club records. A club administrator must link it. In a new club, the first administrator is set up with: yarn mercato people bootstrap-admin",
   "foundation.errors.validity_inverted": "The end date cannot be earlier than the start date."
 }
