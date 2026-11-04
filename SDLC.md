@@ -109,7 +109,7 @@ The QA gate is off (`qaGate: false`): `needs-qa` is advisory and does not block 
 
 ## The claim protocol
 
-Before mutating an issue or PR, an agent claims it with all three signals: it assigns itself, adds the `in-progress` label, and posts a `🤖`-prefixed claim comment saying what it is doing. Any agent that finds an existing claim backs off instead of colliding. A PR carrying `in-progress` is also skipped by the merge tooling.
+Before mutating an issue or PR, an agent claims it with all three signals: it assigns itself, adds the `in-progress` label, and posts a `🤖`-prefixed claim comment saying what it is doing. Any agent that finds an existing claim backs off instead of colliding. A PR carrying `in-progress` is also skipped by the merge tooling. A claim belongs to the **run** that made it, not to the GitHub account: agents, forks of a session and orchestrated runs all act as the same user, so a run that did not post the claim backs off (or asks) even when the claim carries its own login. The claim comment names the run's worktree, branch and start time (`.ai/skills/om-auto-fix-issue/SKILL.md` §5).
 
 The claim is released when the work finishes — on success and on failure alike. A stale `in-progress` with no recent activity may be cleared by the maintainer.
 
