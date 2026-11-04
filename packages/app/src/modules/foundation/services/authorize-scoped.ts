@@ -24,6 +24,7 @@ import {
   type ScopeTarget,
 } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
+import { refusesUnlinked, scopeDenialCode, type ScopeDenialCode } from '../lib/scope-denial'
 import { codedIssueErrorCode } from '../lib/validity-schema'
 import { resolveScope } from './scope-contract'
 
@@ -157,10 +158,23 @@ async function deriveScope(
   return { ...trusted, scope: await resolveScope(ctx) }
 }
 
+async function matchOrRefuse(
+  scope: Scope,
+  kinds: readonly GrantKind[],
+  target: ScopeTarget,
+  options: ScopeMatchOptions | undefined,
+  denial: ScopeDenialCode,
+): Promise<ActingRole> {
+  const actingRole = findActingRole(scope, kinds, target, options)
+  if (!actingRole) return foundationErrors.throw(denial)
+  return actingRole
+}
+
 /**
  * The acting role of the first allowed grant containing the target (least-privileged first); throws 403
- * `scope_denied` when none does. Detail routes use it with `scopeContract.resolve(ctx)` and the same kinds and
- * options (`clubWideKinds`) as their list's `scopeWhere`.
+ * `scope_unlinked` when the scope holds no grant beyond `self_user` (the account is not linked to a person of this
+ * club, #76) and 403 `scope_denied` otherwise. Detail routes use it with `scopeContract.resolve(ctx)` and the same
+ * kinds and options (`clubWideKinds`) as their list's `scopeWhere`.
  */
 export async function assertInScope(
   scope: Scope,
@@ -168,9 +182,7 @@ export async function assertInScope(
   target: ScopeTarget,
   options?: ScopeMatchOptions,
 ): Promise<ActingRole> {
-  const actingRole = findActingRole(scope, kinds, target, options)
-  if (!actingRole) return foundationErrors.throw('scope_denied')
-  return actingRole
+  return matchOrRefuse(scope, kinds, target, options, scopeDenialCode(scope))
 }
 
 /**
@@ -185,9 +197,11 @@ function lockTokenOf(explicit: string | Date | null | undefined, request: Reques
 }
 
 /**
- * Parses the input, derives the trusted scope, loads and row-locks the target, checks it against the allowed
- * grants (403 `scope_denied`), requires the lock token (400 `lock_token_required`), asserts it on the locked row
- * (409 `optimistic_lock_conflict`) and returns the acting role. `em` is the command's transactional EntityManager.
+ * Parses the input, derives the trusted scope, refuses an account with no linked person of this club before any
+ * lookup (403 `scope_unlinked`, session scope only, #76), loads and row-locks the target, checks it against the
+ * allowed grants (403 `scope_denied`, or `scope_unlinked` for an unlinked account of a command that allows
+ * `self_user`), requires the lock token (400 `lock_token_required`), asserts it on the locked row (409
+ * `optimistic_lock_conflict`) and returns the acting role. `em` is the command's transactional EntityManager.
  */
 export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends object & VersionedEntity>(
   spec: AuthorizeScopedSpec<TSchema, TEntity>,
@@ -203,6 +217,11 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
   const derived = await deriveScope(spec.scopeSource, ctx)
   if (!derived) return foundationErrors.throw('scope_denied')
   const { tenantId, organizationId, scope } = derived
+  // Only the session scope says whether a person is linked: a marker scope is `self_user` by construction and a job
+  // scope is `system_job`, so their denials stay `scope_denied`. Refusing before `loadTarget` gives an unlinked
+  // account the same answer for a record that exists and one that does not, and locks no row for it.
+  const sessionSource = spec.scopeSource === undefined
+  if (sessionSource && refusesUnlinked(scope, spec.allowedKinds)) return foundationErrors.throw('scope_unlinked')
 
   let entity: TEntity | null = null
   if (spec.loadTarget) {
@@ -217,7 +236,8 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
   if (target.tenantId !== tenantId || target.organizationId !== organizationId) {
     return foundationErrors.throw('scope_denied')
   }
-  const actingRole = await assertInScope(scope, spec.allowedKinds, target, spec.matchOptions)
+  const denial = sessionSource ? scopeDenialCode(scope) : 'scope_denied'
+  const actingRole = await matchOrRefuse(scope, spec.allowedKinds, target, spec.matchOptions, denial)
 
   // A redo replays `execute` from the audit route, which sets `replayTransactionGuard` and sends no lock token: like
   // an undo it is checked against the current scope, not against a version the client never loaded.
