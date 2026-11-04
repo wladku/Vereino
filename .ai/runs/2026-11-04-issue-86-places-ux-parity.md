@@ -1,10 +1,10 @@
-# Issue #86: places filters, owner, hierarchy, regulations and photos — stopped on Ask First
+# Issue #86: places filters, owner and hierarchy (phase 3 slice (a)); regulations and photos wait for the migration approval
 
 - **Date:** 2026-11-04
 - **Agent / tool:** Claude Code (Opus 5.5) under cezar (task b2915263), `om-auto-fix-issue` with the repo-local override applied; no subagents
-- **Trigger:** `/om-auto-fix-issue 86` (E06-S04, epic #82)
-- **Branch:** `feat/issue-86-places-ux-parity`, from `main` at e21adbc (run log only)
-- **Status:** stopped before claiming. A migration still needs the owner's approval.
+- **Trigger:** `/om-auto-fix-issue 86` (E06-S04, epic #82); resumed after the user told the run to continue autonomously
+- **Branch:** `feat/issue-86-places-ux-parity`, from `main` at e21adbc
+- **Status:** slice (a) completed, PR open for review (`Refs #86`, not `Closes`). Slice (b) is blocked on the migration approval.
 
 ## Goal
 
@@ -12,28 +12,44 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 
 ## Steps
 
-1. Read the issue: it is open and unassigned, carries the `feature` label and has no open PR that references it. Classified it as a feature, so it takes the feature route.
-2. Resolved the covering spec from the issue comment (spec PR #131, merged): `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 3. The spec is `In progress` and has an implementation breakdown.
-3. Ask First check: phase 3 needs a new `club_core` migration (`club_core_places.regulations_text` and the table `club_core_place_files`). The spec's status line records the owner's approval only for the two phase 2 migrations (DD-U05), and it says that "any other migration, module or dependency stays Ask First". No approval is recorded on #86, on epic #82 or on PR #131.
-4. Stopped without claiming, as the run rules require. Posted a comment on #86 that names the migration and asks for approval (https://github.com/wladku/Vereino/issues/86#issuecomment-6640300737).
+1. Read the issue: it is open and unassigned, carries the `feature` label and has no open PR that references it. Classified it as a feature, so it takes the feature route. FR triage: the list API already accepted the filters, but the page exposed none, and the list had no owner or hierarchy, so the feature is real and unbuilt.
+2. Resolved the covering spec from the issue comment (spec PR #131, merged): `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 3, which is `In progress` and has an implementation breakdown.
+3. Ask First check: phase 3 needs a new `club_core` migration (`club_core_places.regulations_text` and the table `club_core_place_files`). The spec's status line records the owner's approval only for the two phase 2 migrations (DD-U05): "any other migration, module or dependency stays Ask First". No approval is recorded on #86, #82 or #131. Stopped without claiming and asked on #86 (issuecomment-6640300737). Committed the run log.
+4. The user said to continue autonomously without questions. A general go-ahead is not a recorded migration approval, so the run took the spec's own independent slice (a), which needs no migration. Claimed #86 (assignee, `in-progress`, 🤖 comment issuecomment-6640361208).
+5. Pure logic `club_core/lib/place-hierarchy.ts`: the URL state (`parsePlaceListState`, `placeListQuery`, `hasPlaceFilters`) and `orderParentFirst`, which orders a page parent first, puts children by name under their parent, marks orphans and breaks corrupt loops. Unit tests at 100 %.
+6. Server: an `afterList` hook on `/api/club_core/places` adds `ownerName` (through `findInstitutions`) and `parentName`. The OpenAPI item schema is extended (additive, optional fields).
+7. UI: `PlacesTable` keeps the kind, parent and active filters in the URL (the `GroupsTable` pattern of #90). The name cell shows `↳` with an indent per depth, the parent's name for a child whose parent is not on the page, and the External badge. The page adds the Owner column, the empty and filtered-empty states, and retry. `PlaceForm`: the `isExternal` checkbox is relabelled, with a help text.
+8. en and pl strings; module README; spec status and Changelog.
+9. Integration test `club_core/E06-S04-places-filters-hierarchy.spec.ts` covers the API filters and names, the 400 on an unknown kind, and in the UI the hierarchy, the badge, the overlay kind filter in the URL with a reload, the filtered-empty and empty states, axe in light and dark mode, and 375 px.
 
 ## Decisions
 
-- **The run did not ship slice (a) alone** (filters, owner and hierarchy, with no migration). The issue's acceptance criteria include regulations and photos, and one task ships as one PR that closes the issue. The comment offers this split as an option for the owner to approve.
+- **Slice (a) only, `Refs #86`:** the regulations and photos need an unapproved migration. The PR does not close the issue; slice (b) stays on #86.
+- **External = outside the club.** The UX parity spec, the issue and the mockup (`place.external` on "Boisko Wisły Liszki") all read `is_external` this way. The form had labelled it "Outdoor place", and the club spec's J-001 narrative calls the outdoor pool `is_external`. No behaviour reads the flag, so the form label now matches the spec, and the PR asks the owner to confirm.
+- **`parentName` from the server** instead of the second client request the table used to make; additive.
+- **Parent filter options** are the places with sub-places, taken from `/api/club_core/options/places`, which already exists.
+- **The Parent column was dropped**, because the hierarchy now sits in the name cell (spec wireframe: Place, Kind, Owner, Capacity, plus Status).
 
 ## Files changed
 
-- `.ai/runs/2026-11-04-issue-86-places-ux-parity.md` (this log)
+- `packages/app/src/modules/club_core/lib/place-hierarchy.ts`, `lib/__tests__/place-hierarchy.test.ts` (new)
+- `packages/app/src/modules/club_core/api/places/route.ts`, `api/shared.ts`
+- `packages/app/src/modules/club_core/components/PlacesTable.tsx`, `PlaceForm.tsx`, `places-shared.ts`
+- `packages/app/src/modules/club_core/i18n/en.json`, `i18n/pl.json`, `README.md`
+- `packages/app/.ai/qa/tests/club_core/E06-S04-places-filters-hierarchy.spec.ts` (new)
+- `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md` (status and Changelog)
+- this log
 
 ## Commands and results
 
-- `gh issue view 86`, `gh pr view 131`, `gh issue view 82`: no migration approval for phase 3.
-- `yarn verify`: not run, because no code changed.
+- `npx jest src/modules/club_core/lib/__tests__/place-hierarchy.test.ts --coverage`: 11 passed. The first runs reached 95.12 % and then 97.56 % branches (the name and id tie-break comparator branches); after two more cases, `place-hierarchy.ts` is at 100 % lines, branches and functions.
+- `yarn verify` and `yarn test:integration:vereino --filter E06-S04`: see below.
 
 ## Open problems
 
-- Phase 3 migration approval (Ask First, `AGENTS.md`).
+- Slice (b), regulations and photos: waits for the owner's approval of the phase 3 migration on #86.
+- The meaning of `is_external` needs the owner's confirmation (see Decisions).
 
 ## Next steps
 
-- After the owner approves on #86, re-run `om-auto-fix-issue 86`. If the owner approves only slice (a), ship the list part and leave the files to a follow-up.
+- After the approval on #86, re-run `om-auto-fix-issue 86` for slice (b): the migration, the `places/[id]/files` routes and the form group.
