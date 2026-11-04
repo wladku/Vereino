@@ -19,6 +19,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { ActivityDetailsForm } from './ActivityForm'
 import { ActivitySessions } from './OccurrencesTable'
 import {
@@ -33,7 +34,8 @@ import {
 } from './client-helpers'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
 
-type ActivityLoad = { status: 'ok'; activity: ActivityDetail } | { status: 'not_found' } | { status: 'denied' }
+type ActivityLoad =
+  { status: 'ok'; activity: ActivityDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
 
 function ReadOnlyDetails({ activity, t }: { activity: ActivityDetail; t: Translate }) {
   const rows: Array<[string, string | null | undefined]> = [
@@ -82,7 +84,10 @@ export function ActivityRecord({ id }: { id: string }) {
         OWN_FORBIDDEN_STATE,
       )
       if (call.status === 404) return { status: 'not_found' }
-      if (call.status === 403) return { status: 'denied' }
+      // 403 `scope_unlinked`: the account is not linked to a person of this club (#76).
+      if (call.status === 403) {
+        return errorCodeOf(call.result) === 'scope_unlinked' ? { status: 'unlinked' } : { status: 'denied' }
+      }
       if (!call.ok || !call.result) throw new Error(t('activities.activities.errors.loadOne'))
       return { status: 'ok', activity: call.result }
     },
@@ -103,6 +108,7 @@ export function ActivityRecord({ id }: { id: string }) {
       />
     )
   }
+  if (load.status === 'unlinked') return <AccessDeniedMessage label={t('foundation.errors.scope_unlinked')} />
   if (load.status === 'denied') return <AccessDeniedMessage label={t('activities.activities.errors.denied')} />
 
   const activity = load.activity

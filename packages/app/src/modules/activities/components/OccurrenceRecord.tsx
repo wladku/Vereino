@@ -29,6 +29,7 @@ import {
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { ConflictList } from './ConflictList'
 import { OccurrenceBadges } from './OccurrencesTable'
 import { attendanceHref } from './club/club-client'
@@ -57,7 +58,11 @@ import {
 import { dateField, timeField } from '@vereino/ui'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
 
-type OccurrenceLoad = { status: 'ok'; occurrence: OccurrenceDetail } | { status: 'not_found' } | { status: 'denied' }
+type OccurrenceLoad =
+  | { status: 'ok'; occurrence: OccurrenceDetail }
+  | { status: 'not_found' }
+  | { status: 'denied' }
+  | { status: 'unlinked' }
 
 type MoveValues = Record<string, unknown> & {
   date?: string
@@ -381,7 +386,10 @@ export function OccurrenceRecord({ id }: { id: string }) {
         OWN_FORBIDDEN_STATE,
       )
       if (call.status === 404) return { status: 'not_found' }
-      if (call.status === 403) return { status: 'denied' }
+      // 403 `scope_unlinked`: the account is not linked to a person of this club (#76).
+      if (call.status === 403) {
+        return errorCodeOf(call.result) === 'scope_unlinked' ? { status: 'unlinked' } : { status: 'denied' }
+      }
       if (!call.ok || !call.result) throw new Error(t('activities.occurrences.errors.loadOne'))
       return { status: 'ok', occurrence: call.result }
     },
@@ -402,6 +410,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
       />
     )
   }
+  if (load.status === 'unlinked') return <AccessDeniedMessage label={t('foundation.errors.scope_unlinked')} />
   if (load.status === 'denied') return <AccessDeniedMessage label={t('activities.occurrences.errors.denied')} />
 
   const occurrence = load.occurrence

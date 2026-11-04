@@ -18,8 +18,8 @@ import {
 } from '../_fixtures/club'
 
 // TEST-F02 (foundation spec, security): the record scope of `people` — an unlinked user sees empty lists and gets 403
-// on details (`scopeWhere` fails closed); a coordinator of section A sees A only, in lists and details alike; an
-// administrator acting on her own ward is recorded as `guardian` (least-privileged first).
+// `scope_unlinked` on details (`scopeWhere` fails closed); a coordinator of section A sees A only, in lists and details
+// alike; an administrator acting on her own ward is recorded as `guardian` (least-privileged first).
 test.describe.configure({ timeout: 300_000 })
 
 type ListBody = { items?: { id: string; sectionId?: string | null; personId?: string }[]; total?: number }
@@ -91,8 +91,13 @@ test('TEST-F02 record scope: unlinked user, coordinator of section A, administra
     const assignments = await call<ListBody>(request, 'GET', '/api/people/role-assignments', unlinkedToken)
     expect(assignments.status).toBe(200)
     expect(assignments.body?.items ?? []).toEqual([])
-    expect((await getPerson(request, unlinkedToken, otherPersonId)).status).toBe(403)
-    expect((await getAssignment(request, unlinkedToken, assignmentA)).status).toBe(403)
+    // Since #76 the refusal names the missing link (403 `scope_unlinked`) instead of `scope_denied`.
+    const unlinkedPerson = await getPerson(request, unlinkedToken, otherPersonId)
+    expect(unlinkedPerson.status).toBe(403)
+    expect(unlinkedPerson.body?.code).toBe('scope_unlinked')
+    const unlinkedAssignment = await getAssignment(request, unlinkedToken, assignmentA)
+    expect(unlinkedAssignment.status).toBe(403)
+    expect(unlinkedAssignment.body?.code).toBe('scope_unlinked')
 
     // The administrator is also the guardian of a ward: editing the ward is recorded as `guardian`.
     const wardId = await createPerson(request, club.adminToken, {

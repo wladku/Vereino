@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { CalendarList } from '../member/calendar-list.tsx'
-import { formatDayHeading } from '../member/calendar-format.ts'
+import { formatDayHeading, sectionMarkerColors } from '../member/calendar-format.ts'
 
 const h = React.createElement
 const labels = { empty: 'No classes in this period', done: 'Done', cancelled: 'Cancelled' }
@@ -37,6 +37,13 @@ test('renders the empty state when there are no days', () => {
   assert.equal(
     render({ days: [] }),
     '<p class="text-muted-foreground text-sm" data-testid="calendar-empty">No classes in this period</p>',
+  )
+})
+
+test('renders the empty action under the empty message when one is given', () => {
+  assert.equal(
+    render({ days: [], emptyAction: h('button', { type: 'button' }, 'Next week') }),
+    '<div class="flex flex-col items-start gap-3"><p class="text-muted-foreground text-sm" data-testid="calendar-empty">No classes in this period</p><button type="button">Next week</button></div>',
   )
 })
 
@@ -156,4 +163,69 @@ test('clicking an action calls onAction with the item and action ids, and does n
   assert.deepEqual(calls, [['occ-1', 'absent']])
   const [silent] = buttons({ onAction: undefined })
   assert.doesNotThrow(() => silent.props.onClick())
+})
+
+const academy = { id: 'section-academy', label: 'Akademia piłkarska' }
+const pool = { id: 'section-pool', label: 'Basen' }
+
+test('the legend lists each section present once, with the colour its cards carry and its name', () => {
+  const html = render({
+    days: [
+      { date: '2026-11-03', items: [item({ section: pool }), item({ id: 'occ-2', section: academy })] },
+      { date: '2026-11-05', items: [item({ id: 'occ-3', section: pool }), item({ id: 'occ-4' })] },
+    ],
+    labels: { ...labels, sections: 'Sections' },
+  })
+  const colors = sectionMarkerColors([academy.id, pool.id])
+  assert.match(
+    html,
+    /^<div class="flex flex-col gap-6"><ul aria-label="Sections" class="flex flex-wrap gap-x-4 gap-y-2" data-testid="calendar-legend">/,
+  )
+  const legend = [
+    ...html.matchAll(
+      /data-testid="calendar-legend-section" data-section-id="([^"]+)">.*?data-color="([a-z-]+)".*?<\/span><\/span>([^<]+)<\/span><\/li>/g,
+    ),
+  ]
+  assert.deepEqual(
+    legend.map((match) => [match[1], match[2], match[3]]),
+    [
+      [academy.id, colors.get(academy.id), academy.label],
+      [pool.id, colors.get(pool.id), pool.label],
+    ],
+  )
+  const markers = [
+    ...html.matchAll(
+      /data-testid="calendar-item-section" data-section-id="([^"]+)">.*?data-color="([a-z-]+)".*?<\/span><\/span>([^<]+)<\/p>/g,
+    ),
+  ]
+  assert.deepEqual(
+    markers.map((match) => [match[1], match[2], match[3]]),
+    [
+      [pool.id, colors.get(pool.id), pool.label],
+      [academy.id, colors.get(academy.id), academy.label],
+      [pool.id, colors.get(pool.id), pool.label],
+    ],
+  )
+  // The dot is decorative: the name next to it carries the meaning.
+  assert.match(html, /<span data-slot="chart-legend-dot"[^>]*aria-hidden="true"/)
+})
+
+test('no legend renders without its label or without sections, but the cards keep their markers', () => {
+  const withoutLabel = render({ days: days(item({ section: pool })) })
+  assert.doesNotMatch(withoutLabel, /calendar-legend/)
+  assert.match(withoutLabel, /data-testid="calendar-item-section"/)
+  const withoutSections = render({ days: days(item()), labels: { ...labels, sections: 'Sections' } })
+  assert.doesNotMatch(withoutSections, /calendar-legend|calendar-item-section/)
+})
+
+test('the coach line carries the coach label when one is given, the name alone otherwise', () => {
+  assert.match(
+    render({ days: days(item({ coach: 'Marek Trener' })), labels: { ...labels, coach: 'Coach' } }),
+    /<p class="text-muted-foreground text-sm" data-testid="calendar-item-coach">Coach: Marek Trener<\/p>/,
+  )
+  assert.match(
+    render({ days: days(item({ coach: 'Marek Trener' })) }),
+    /<p class="text-muted-foreground text-sm" data-testid="calendar-item-coach">Marek Trener<\/p>/,
+  )
+  assert.doesNotMatch(render({ days: days(item({ coach: null })) }), /calendar-item-coach/)
 })

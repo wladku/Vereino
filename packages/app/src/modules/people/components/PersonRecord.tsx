@@ -10,6 +10,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { PersonDetailsForm } from './PersonForm'
@@ -17,7 +18,8 @@ import { RolesPanel } from './RolesPanel'
 import { OWN_FORBIDDEN_STATE, PERSONS_HREF, personName, type PersonDetail, type Translate } from './client-helpers'
 import { useGrantedFeatures } from './useGrantedFeatures'
 
-type PersonLoad = { status: 'ok'; person: PersonDetail } | { status: 'not_found' } | { status: 'denied' }
+type PersonLoad =
+  { status: 'ok'; person: PersonDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
 
 function ReadOnlyDetails({ person, t }: { person: PersonDetail; t: Translate }) {
   const rows: Array<[string, string | null | undefined]> = [
@@ -63,7 +65,10 @@ export function PersonRecord({ id }: { id: string }) {
     queryFn: async (): Promise<PersonLoad> => {
       const call = await apiCall<PersonDetail>(`/api/people/persons/${encodeURIComponent(id)}`, OWN_FORBIDDEN_STATE)
       if (call.status === 404) return { status: 'not_found' }
-      if (call.status === 403) return { status: 'denied' }
+      // 403 `scope_unlinked`: the account is not linked to a person of this club (#76).
+      if (call.status === 403) {
+        return errorCodeOf(call.result) === 'scope_unlinked' ? { status: 'unlinked' } : { status: 'denied' }
+      }
       if (!call.ok || !call.result) throw new Error(t('people.persons.errors.loadOne'))
       return { status: 'ok', person: call.result }
     },
@@ -84,6 +89,7 @@ export function PersonRecord({ id }: { id: string }) {
       />
     )
   }
+  if (load.status === 'unlinked') return <AccessDeniedMessage label={t('foundation.errors.scope_unlinked')} />
   if (load.status === 'denied') return <AccessDeniedMessage label={t('people.persons.errors.denied')} />
 
   const person = load.person

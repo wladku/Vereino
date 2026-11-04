@@ -18,5 +18,6 @@
   "foundation.errors.recurrence_invalid": "Reguła powtarzania jest nieprawidłowa.",
   "foundation.errors.recurrence_unsupported": "Reguła powtarzania używa nieobsługiwanej części.",
   "foundation.errors.scope_denied": "Nie masz dostępu do tego rekordu.",
+  "foundation.errors.scope_unlinked": "Twoje konto nie jest powiązane z osobą w tym klubie, więc nie ma dostępu do danych klubu. Musi je powiązać administrator klubu. W nowym klubie pierwszego administratora tworzy się poleceniem: yarn mercato people bootstrap-admin",
   "foundation.errors.validity_inverted": "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia."
 }
