@@ -5,7 +5,7 @@
 - **Trigger:** `om-auto-fix-issue 83` (E06-S01).
 - **Spec:** `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 1 (REQ-U01); status line updated (phases 1 and 2 implemented), AC-U01 and AC-U02 ticked, V-U01 resolved, Changelog row added.
 - **Branch:** `feat/issue-83-people-list-filters`
-- **Status:** see *Commands and results*; PR opened at the end of the run.
+- **Status:** completed, PR open for review.
 
 ## Approvals on record
 
@@ -41,7 +41,9 @@
   - run 3: TEST-U01, TEST-U02, TEST-U03 passed (3 passed, 8.2 min); TEST-U04 failed on the test itself — `getByRole('row').filter({ hasText: 'Kowalska Kasia' })` also matched Jan's row, which names Kasia in its Guardians column. Rows are now matched by their name cell.
   - run 4 (`--filter E06-S01-people-list-page`): failed at the filtered-empty step — `DataTable` rendered its own "No results found" for the search, never the app's "No people match". The page now passes the platform's `filterAwareEmptyState` (+ `withoutLastFilter`, `canRemoveLastFilter`, unit-tested, 29 tests, 100 %).
   - run 5 (`--filter E06-S01-people-list-page`): TEST-U04 1 passed (1.7 min) — tabs with arrow keys, URL restore on reload, back button, columns, filter-aware empty state, search, axe clean (light, platform baseline), no overflow at 320 px, 375 px dark mode. The route has not changed since run 3, where TEST-U01…U03 passed.
-- `yarn verify`: see below.
+- Merged `origin/main` (26bda24) into the branch: one conflict in `.ai/lessons.md` (the catalog is now grouped by area) — took main's catalog and added this run's row under module-data.
+- `yarn verify` (merged tree): first run failed at `test` — `people-rules.test.ts` pins the people error-code table and lacked the four new codes; added; `yarn verify --from test` passed; final full run **13/13 passed**.
+- Regressions (tests touching the people list): E02-S02 needed the new search placeholder → **6 passed**; TEST-006 expected the name link as "Lena Rekordowa" → now "Rekordowa Lena" (Last First); its next run failed strict mode because the ward's Guardians column links her too → `.first()`; rerun **2 passed**.
 
 ## Open problems
 
