@@ -17,6 +17,12 @@ export type CalendarItemBadge = {
   readonly tone: CalendarBadgeTone
 }
 
+/** The section an item belongs to: the legend lists the sections present and each card carries its marker. */
+export type CalendarItemSection = {
+  readonly id: string
+  readonly label: string
+}
+
 /** An action a calendar surface offers on the item; the module decides what the id means. */
 export type CalendarItemAction = {
   readonly id: string
@@ -35,7 +41,11 @@ export type CalendarItem = {
   readonly place?: string | null
   readonly placeAddress?: string | null
   readonly group?: string | null
-  /** A second line under the title — the wards the item concerns, the coach, … */
+  /** The section, shown as a marker with its name (never by colour alone) and listed in the legend. */
+  readonly section?: CalendarItemSection | null
+  /** The coach's name. */
+  readonly coach?: string | null
+  /** A second line under the title — the wards the item concerns, … */
   readonly subtitle?: string | null
   readonly href?: string | null
   readonly badges?: readonly CalendarItemBadge[]
@@ -105,6 +115,32 @@ export function isServedCalendarRange(window: DateWindow): boolean {
 export function calendarWeek(today: CalendarDate, offsetWeeks = 0): DateWindow {
   const from = addCalendarDays(mondayOf(today), offsetWeeks * 7)
   return { from, to: addCalendarDays(from, 6) }
+}
+
+/** The calendar month of `date`, moved by `offsetMonths` whole months (the member calendar's month list). */
+export function calendarMonth(date: CalendarDate, offsetMonths = 0): DateWindow {
+  const year = Number(date.slice(0, 4))
+  const month = Number(date.slice(5, 7)) - 1 + offsetMonths
+  const first = new Date(Date.UTC(year, month, 1))
+  const last = new Date(Date.UTC(year, month + 1, 0))
+  return { from: first.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) }
+}
+
+/**
+ * The range a calendar read serves for a requested one: ordered (an inverted range is swapped) and cut to `maxDays`
+ * from its start — what a surface asks for after a 400 `calendar_range_invalid` instead of failing.
+ */
+export function trimCalendarRange(window: DateWindow, maxDays = CALENDAR_RANGE_MAX_DAYS): DateWindow {
+  const ordered = window.to < window.from ? { from: window.to, to: window.from } : window
+  const last = addCalendarDays(ordered.from, maxDays - 1)
+  return { from: ordered.from, to: ordered.to > last ? last : ordered.to }
+}
+
+/** The distinct sections of the items, by label then id — the entries of a section legend. */
+export function calendarSections(items: readonly CalendarItem[]): CalendarItemSection[] {
+  const byId = new Map<string, CalendarItemSection>()
+  for (const item of items) if (item.section && !byId.has(item.section.id)) byId.set(item.section.id, item.section)
+  return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id))
 }
 
 /** Today and tomorrow in the club zone — the window of the "Today" tiles. */
