@@ -41,3 +41,8 @@ A coordinator filters the groups list (B-11) by section, kind, season and status
 ## Open problems
 
 - None known.
+
+## CI follow-up (2026-11-04, coordinator session)
+
+- PR #149's CI `integration` failed on TEST-030: its exact roster assertion (`toEqual({ firstName, lastName })`) did not expect the new additive `age` field. Updated it to `{ firstName, lastName, age: 8 }` (the fixture's child turns 8 on the club day). `typecheck:qa` passed; TEST-030 2 passed (2.6 min), E06-S08 1 passed (3.0 min).
+- CI `gate` failed at `lessons:check` because of an order bug on `main` itself, fixed by #156; merge `main` after #156 lands.
