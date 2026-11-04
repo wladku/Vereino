@@ -116,18 +116,26 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
 
     // The kind filter from the overlay: only pitches, and the URL keeps it through a reload.
     await page.getByRole('button', { name: /^(Filters|Filtry)/ }).click()
-    const overlay = page.getByRole('dialog')
-    await overlay.getByRole('combobox').first().click()
+    // The overlay is an inline panel (not a dialog); each filter is a block with its label and a select.
+    await page
+      .locator('div.space-y-2')
+      .filter({ has: page.getByText(/^(Kind|Rodzaj)$/) })
+      .filter({ has: page.getByRole('combobox') })
+      .last()
+      .getByRole('combobox')
+      .first()
+      .click()
     await page.getByRole('option', { name: /^(Pitch|Boisko)$/ }).click()
-    await overlay
+    await page
       .getByRole('button', { name: /^(Apply|Zastosuj)$/ })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/club\/places\?kind=pitch$/)
     // The pitch under Orlik is on the page without its parent: the cell names the parent after the arrow.
+    // A branch whose parent is elsewhere sorts by its own name ("piłkarskie" before "Wisły" in Polish order).
     await expect(cells).toHaveText([
-      /^Boisko Wisły Liszki\s*(External|Zewnętrzny)$/,
       /^↳\s*Orlik ›\s*Boisko piłkarskie$/,
+      /^Boisko Wisły Liszki\s*(External|Zewnętrzny)$/,
     ])
     await page.reload()
     await expect(cells).toHaveCount(2)

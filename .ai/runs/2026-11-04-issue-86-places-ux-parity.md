@@ -43,7 +43,13 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 ## Commands and results
 
 - `npx jest src/modules/club_core/lib/__tests__/place-hierarchy.test.ts --coverage`: 11 passed. The first runs reached 95.12 % and then 97.56 % branches (the name and id tie-break comparator branches); after two more cases, `place-hierarchy.ts` is at 100 % lines, branches and functions.
-- `yarn verify` and `yarn test:integration:vereino --filter E06-S04`: see below.
+- `yarn verify`, first run: failed at `lint` with 3 errors. They were `'@mikro-orm/postgresql' import is restricted … (foundation spec REQ-F16)` in `api/places/route.ts`, and `Invalid type "number" of template literal expression` in `PlacesTable.tsx` and in the unit test. Fixed: the name reads moved to `services/directory.ts` (`placeListNames`), and the numbers are wrapped in `String(...)`.
+- `yarn verify --from lint`: failed at `format:check` (two new test files). Fixed by running `yarn format`.
+- `yarn verify`: failed at `ds:check` (`PlacesTable.tsx:71:13 [inline-style] Use shared components and design tokens instead of inline style props.`). Fixed: the indent per depth now uses static Tailwind classes (`ps-5` … `ps-20`).
+- `yarn verify`: failed at `lessons:check` (`.ai/lessons.md` rows out of order). The cause was already on `main` and was fixed there by #156. Committed the slice, merged `origin/main`, and the next run passed.
+- `yarn verify` (after the merge): all 13 steps passed.
+- `yarn test:integration:vereino --filter E06-S04`, run 1: failed with `TimeoutError: locator.click … getByRole('dialog').getByRole('combobox')`, because the filter overlay is an inline panel, not a dialog. Run 2 hit `SyntaxError … Unexpected token (134:0)`, because a scripted edit had truncated the file; the tail was restored from the commit. Run 3 failed on the expected row order: an orphan branch sorts by its own name, so "Boisko piłkarskie" comes before "Boisko Wisły Liszki". The expectation was corrected. Run 4: **1 passed (2.1 min)**.
+- `yarn test:integration:vereino --filter ENG-TEST-25` (the existing `club_core` accessibility test over the changed places pages): **1 passed (2.0 min)**.
 
 ## Open problems
 
