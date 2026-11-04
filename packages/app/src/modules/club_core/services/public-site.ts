@@ -41,7 +41,8 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: { phone: string } | null
   }
-  sections: { name: string; slug: string; logo: PublicLogo }[]
+  /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
+  sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
   /** Blocks of optional providers (the places calendar, phase 5); absent while none contributes. */
   blocks: Record<string, unknown>
 }
@@ -261,6 +262,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             name: section.name,
             slug: section.publicSlug as string,
             logo: sectionLogoOf(club, section, clubLogo),
+            shortDescription: section.shortDescription ?? null,
           })),
           blocks,
         },

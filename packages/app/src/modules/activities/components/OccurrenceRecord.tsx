@@ -104,6 +104,14 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
     [t('activities.occurrences.fields.time'), timeRangeOfInstants(occurrence.startAt, occurrence.endAt)],
     [t('activities.fields.place'), occurrence.placeName],
     [t('activities.fields.coach'), occurrence.coachName],
+    ...(occurrence.opponentName
+      ? ([[t('activities.fields.opponent'), occurrence.opponentName]] as Array<[string, React.ReactNode]>)
+      : []),
+    ...(occurrence.invitedTeamNames.length > 0
+      ? ([[t('activities.events.fields.invitedTeams'), occurrence.invitedTeamNames.join(', ')]] as Array<
+          [string, React.ReactNode]
+        >)
+      : []),
     [
       t('activities.occurrences.fields.slot'),
       occurrence.activityRecurring ? dateLabel(t, occurrence.occurrenceDate) : t('activities.occurrences.oneOff'),

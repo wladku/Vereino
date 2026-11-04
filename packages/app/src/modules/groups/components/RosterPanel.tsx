@@ -1,10 +1,12 @@
 'use client'
 // The roster of a group (club spec UI table: "membership with history"; glossary *Membership*): every membership —
-// active, upcoming and ended — with the person, the role ("instructor" for a class group's coach) and the period. With
+// active, upcoming and ended — with the person (a link to the person record for `people.view`, README B-12), their
+// age, the role ("instructor" for a class group's coach) and the period (E06-S08 #90). With
 // `groups.manage` a coordinator of the group's section or the club administrator adds a person (person picker, role,
 // first day) and ends a membership (its last day becomes today; the row stays as history). An overlapping membership of
 // the same person and role is refused by the server (409) and shown as an error.
 import * as React from 'react'
+import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -29,11 +31,13 @@ import {
   errorMessage,
   localToday,
   periodLabel,
+  personHref,
   personName,
   roleLabel,
   rowStatus,
   type MembershipRow,
 } from './client-helpers'
+import { useHasFeature } from './useCanManageGroups'
 
 type PersonOption = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
@@ -48,6 +52,7 @@ export function RosterPanel({
 }) {
   const t = useT()
   const queryClient = useQueryClient()
+  const canViewPeople = useHasFeature('people.view')
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
   const [personId, setPersonId] = React.useState<string | null>(null)
@@ -150,10 +155,19 @@ export function RosterPanel({
               <li key={row.id} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex min-w-0 flex-col">
                   <span className="font-medium break-words">
-                    {personName(row.person) || t('groups.memberships.unknownPerson')}
+                    {canViewPeople && row.personId && row.person ? (
+                      <Link className="underline-offset-4 hover:underline" href={personHref(row.personId)}>
+                        {personName(row.person)}
+                      </Link>
+                    ) : (
+                      personName(row.person) || t('groups.memberships.unknownPerson')
+                    )}
                   </span>
                   <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                     <span>{roleLabel(t, row.role, groupKind)}</span>
+                    {typeof row.person?.age === 'number' ? (
+                      <span data-testid="roster-age">{t('groups.memberships.age', { age: row.person.age })}</span>
+                    ) : null}
                     <span>{periodLabel(t, row.validFrom, row.validTo)}</span>
                     <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
                       {t(`groups.common.status.${status}`)}

@@ -6,11 +6,12 @@ import { groupAudienceProvider, sectionAudienceProvider } from './services/audie
 import { createGroupDirectory } from './services/group-directory'
 import { GROUPS_MEMBERSHIP_CONTRIBUTION, membershipContribution } from './services/membership-contribution'
 import { GROUPS_MEMBERSHIP_IMPORTER, membershipImporter } from './services/membership-importer'
+import { GROUPS_SECTION_USAGE, sectionUsage } from './services/section-usage'
 
 /**
- * `groups.directory` (#31): `findGroups(scope, ids, em?)`, `rosterOn(scope, groupId, date, em?)` and
- * `findExternalTeams(scope, ids, em?)` — the groups, rosters and external teams of a club, for the modules that
- * require `groups` (`activities`).
+ * `groups.directory` (#31): `findGroups(scope, ids, em?)`, `rosterOn(scope, groupId, date, em?)`,
+ * `leaderIdsOn(scope, date, em?)` (#93) and `findExternalTeams(scope, ids, em?)` — the groups, rosters, group leaders
+ * and external teams of a club, for the modules that require `groups` (`activities`).
  */
 export const GROUPS_DIRECTORY = 'groups.directory' as const
 
@@ -28,11 +29,16 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  * `vereino.audience.section` and `vereino.audience.group` (foundation III P-29, #71): the audience providers of the kinds
  * `groups` owns — participants and coaches of the groups, active on the club's date. The foundation resolves them with
  * `hasRegistration`. Stateless values: every call takes the caller's context.
+ *
+ * `groups.sectionUsage` (UX parity spec REQ-U02, DD-U04): the active groups of a section, which `club_core` reads with
+ * `hasRegistration` before it deactivates or deletes a section (`club_core/services/section-usage.ts`). Stateless: it
+ * reads with the caller's EntityManager inside the command's transaction.
  */
 export function register(container: AppContainer) {
   container.register({
     [GROUPS_MEMBERSHIP_CONTRIBUTION]: asValue(membershipContribution),
     [GROUPS_MEMBERSHIP_IMPORTER]: asValue(membershipImporter),
+    [GROUPS_SECTION_USAGE]: asValue(sectionUsage),
     [audienceProviderToken('section')]: asValue(sectionAudienceProvider),
     [audienceProviderToken('group')]: asValue(groupAudienceProvider),
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.

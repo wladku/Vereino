@@ -202,7 +202,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         ['Akademia piłkarska', 'Lis', 'Marek Lis'],
         ['Basen', 'Wrona', 'Ewa Wrona'],
       ] as const) {
-        await page.goto(`/backend/club/sections/${String(sectionIds.get(section))}/edit`)
+        await page.goto(`/backend/club/sections/${String(sectionIds.get(section))}/edit?tab=coordinators`)
         const panel = page.getByRole('region', { name: /^Coordinators$|^Koordynatorzy$/ })
         await expect(panel.getByText(NO_COORDINATOR)).toBeVisible()
         await lookupPerson(panel, lastName, fullName)
@@ -360,7 +360,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       })
 
       // For the exit gate: the swimming pool's public page with a description, terms and a contact (#29 panel).
-      await page.goto(`/backend/club/sections/${String(sectionIds.get('Basen'))}/edit`)
+      await page.goto(`/backend/club/sections/${String(sectionIds.get('Basen'))}/edit?tab=public`)
       const publicPanel = page.getByTestId('section-public-panel')
       await checkCrudBox(publicPanel, 'isPublic')
       await crudInput(publicPanel, 'publicSlug').fill('basen')

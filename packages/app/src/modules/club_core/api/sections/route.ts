@@ -1,6 +1,7 @@
 // `/api/club_core/sections` — the club's sections (club spec API table, TEST-001, TEST-032): the list is filtered by
 // the record scope (the club administrator sees every section, a coordinator the sections they coordinate) and is
-// open to response enrichers (`people` adds the coordinators); create, update and delete run the `club_core` commands.
+// open to response enrichers (`people` adds the coordinators, `groups` the active group count); create, update and
+// delete run the `club_core` commands (UX parity spec REQ-U02: name rules and the deactivation guard).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
@@ -61,6 +62,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'public_contact_name',
       'public_contact_email',
       'public_contact_phone',
+      'short_description',
       'tenant_id',
       'organization_id',
       'created_at',
@@ -113,17 +115,18 @@ export const openApi = buildOpenApi({
   listResponseSchema: createPagedListResponseSchema(sectionListItemSchema),
   create: {
     schema: sectionCreateSchema,
-    description: 'Creates a section (club administrator). Errors: 400 invalid input, 403 `scope_denied`.',
+    description:
+      'Creates a section (club administrator). Errors: 400 invalid input, 403 `scope_denied`, 422 `section_name_length` (2–80 characters), 409 `section_name_taken` (case-insensitive, among the live sections).',
   },
   update: {
     schema: sectionUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a section; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Changes a section; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). A new or changed name is 2–80 characters (422 `section_name_length`) and unique (409 `section_name_taken`); an unchanged stored name saves as it is. Deactivating a section with active groups answers 409 `section_has_active_groups` with `details: { groups: [{ id, name }], total }`. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
   del: {
     schema: sectionDeleteSchema,
     description:
-      'Soft-deletes a section (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Soft-deletes a section (`?id=`); send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). A section with active groups answers 409 `section_has_active_groups` with `details: { groups: [{ id, name }], total }`. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
   },
 })

@@ -153,5 +153,20 @@
   "groups.externalTeams.flash.deleted": "Drużyna zewnętrzna usunięta",
   "groups.externalTeams.errors.load": "Nie udało się wczytać drużyn zewnętrznych.",
   "groups.externalTeams.errors.delete": "Nie udało się usunąć drużyny zewnętrznej.",
-  "groups.externalTeams.errors.notFound": "Ta drużyna zewnętrzna nie istnieje lub została usunięta."
+  "groups.externalTeams.errors.notFound": "Ta drużyna zewnętrzna nie istnieje lub została usunięta.",
+  "groups.common.retry": "Spróbuj ponownie",
+  "groups.groups.emptyHint": "Dodaj pierwszą grupę w sekcji.",
+  "groups.groups.emptyFiltered": "Żadna grupa nie pasuje do tych filtrów.",
+  "groups.groups.columns.coaches": "Trenerzy",
+  "groups.groups.columns.participants": "Uczestnicy",
+  "groups.groups.filters.section": "Sekcja",
+  "groups.groups.filters.kind": "Rodzaj",
+  "groups.groups.filters.season": "Sezon",
+  "groups.groups.filters.status": "Status",
+  "groups.groups.filters.clear": "Wyczyść filtry",
+  "groups.groups.perspectives.label": "Rodzaj grupy",
+  "groups.groups.perspectives.all": "Wszystkie",
+  "groups.groups.perspectives.team": "Drużyny",
+  "groups.groups.perspectives.class_group": "Grupy zajęciowe",
+  "groups.memberships.age": "Wiek {age}"
 }

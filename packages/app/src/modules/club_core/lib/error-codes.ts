@@ -1,6 +1,5 @@
 // Error codes owned by `club_core` (engineering standards S6.7; club spec *API, Command, and Error Contracts* and
-// glossary *Place*, *Logo*, *Publication*). Thrown through `api/errors.ts`. The 409 rules of sections with groups
-// arrive with `groups` (phase 2).
+// glossary *Place*, *Logo*, *Publication*; UX parity spec REQ-U02). Thrown through `api/errors.ts`.
 import type { ErrorCodeTable } from '@vereino/core'
 
 export const errorCodes = [
@@ -9,6 +8,11 @@ export const errorCodes = [
   { code: 'place_not_bookable', status: 422, messageKey: 'club_core.errors.place_not_bookable' },
   { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
   { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
+  // Sections (UX parity spec DD-U04, DD-U05, DD-U07): no deactivation or delete under active groups; names 2–80 on
+  // create and rename, unique case-insensitively among the club's live sections.
+  { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },
+  { code: 'section_name_length', status: 422, messageKey: 'club_core.errors.section_name_length' },
+  { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
   // Publication (#29): the club's slug is globally unique, a section's slug unique in the club.
   { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },

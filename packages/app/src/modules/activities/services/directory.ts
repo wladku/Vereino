@@ -156,6 +156,23 @@ export function membershipsOf(
   return groupDirectory(container).membershipsOf(scope, personIds, window, em)
 }
 
+/**
+ * The persons who may coach on `date` (README B-14, #93): an active `coach` role assignment (`people`) or an active
+ * `coach` / `assistant` membership of any group (`groups`). Ids only, unique.
+ */
+export async function coachCandidateIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<string[]> {
+  const [assigned, leaders] = await Promise.all([
+    personDirectory(container).roleHolderIdsOn(scope, 'coach', date, em),
+    groupDirectory(container).leaderIdsOn(scope, date, em),
+  ])
+  return [...new Set([...assigned, ...leaders])]
+}
+
 /** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
 export function presenceConsents(
   container: AwilixContainer,

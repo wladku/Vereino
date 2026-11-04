@@ -8,6 +8,7 @@ import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
+import type { GroupKindLike } from '../lib/activities-rules'
 
 export type Translate = ReturnType<typeof useT>
 
@@ -83,6 +84,8 @@ export type OccurrenceRow = {
 /** `GET /api/activities/occurrences/{id}`. */
 export type OccurrenceDetail = OccurrenceRow & {
   sectionName: string | null
+  opponentName: string | null
+  invitedTeamNames: string[]
   activityRecurring: boolean
   actingRole: string
 }
@@ -123,7 +126,7 @@ export type PreviewResult = {
   providerFailed: boolean
 }
 
-type GroupOptionRow = { id: string; name: string | null; isActive?: boolean }
+type GroupOptionRow = { id: string; name: string | null; kind?: string | null; isActive?: boolean }
 type NamedRow = { id: string; name: string | null }
 type PlaceOptionRow = { id: string; name: string; parentName: string | null; isLeaf: boolean }
 type ExternalTeamOptionRow = { id: string; name: string | null; clubName: string | null }
@@ -253,6 +256,23 @@ export async function groupOptions(activeOnly: boolean): Promise<CrudFieldOption
   return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
 }
 
+/** The group options with each group's kind (`team` / `class_group`), which decides the activity types (#93). */
+export async function groupKindOptions(
+  activeOnly: boolean,
+): Promise<{ options: CrudFieldOption[]; kinds: Record<string, GroupKindLike> }> {
+  const data = await fetchCrudList<GroupOptionRow>('groups/groups', {
+    pageSize: 100,
+    sortField: 'name',
+    sortDir: 'asc',
+    ...(activeOnly ? { isActive: 'true' } : {}),
+  })
+  const kinds: Record<string, GroupKindLike> = {}
+  for (const item of data.items) {
+    if (item.kind === 'team' || item.kind === 'class_group') kinds[item.id] = item.kind
+  }
+  return { options: data.items.map((item) => ({ value: item.id, label: item.name ?? item.id })), kinds }
+}
+
 export async function sectionOptions(): Promise<CrudFieldOption[]> {
   const data = await fetchCrudList<NamedRow>('club_core/sections', { pageSize: 100, sortField: 'name', sortDir: 'asc' })
   return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
@@ -285,6 +305,26 @@ export async function personOptions(query?: string): Promise<CrudFieldOption[]> 
   if (query?.trim()) params.set('lastName', query.trim())
   const data = await readApiResultOrThrow<{ items?: PersonOptionRow[] }>(`/api/people/persons?${params.toString()}`)
   return (data.items ?? []).map((person) => ({ value: person.id, label: personName(person) || person.id }))
+}
+
+/** The option value the coach picker uses for "No coach"; the request body sends `null` for it. */
+export const NO_COACH = 'none'
+
+type CoachOptionRow = { id: string; name: string }
+
+/**
+ * The coach picker of the activity wizard (README B-14, #93): "No coach" first, then the persons with an active coach
+ * or assistant role (`GET /api/activities/options/coaches`), narrowed by what the planner types.
+ */
+export async function coachOptions(t: Translate, query?: string): Promise<CrudFieldOption[]> {
+  const params = new URLSearchParams()
+  if (query?.trim()) params.set('search', query.trim())
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
+  const data = await readApiResultOrThrow<{ items?: CoachOptionRow[] }>(`/api/activities/options/coaches${suffix}`)
+  return [
+    { value: NO_COACH, label: t('activities.fields.coach.none') },
+    ...(data.items ?? []).map((person) => ({ value: person.id, label: person.name })),
+  ]
 }
 
 /** An option loader that answers an empty list when the source is not readable (the field then shows no options). */

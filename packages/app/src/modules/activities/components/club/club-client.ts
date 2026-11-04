@@ -106,6 +106,8 @@ export type CalendarOccurrence = {
   placeGeoLng: number | null
   coachPersonId: string | null
   coachName: string | null
+  opponentName: string | null
+  invitedTeamNames: string[]
   status: 'planned' | 'done' | 'cancelled'
   cancelReason: string | null
   isDetached: boolean

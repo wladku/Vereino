@@ -231,6 +231,24 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     ],
     [t('activities.club.session.coach'), occurrence.coachName],
   ]
+  if (occurrence.opponentName) {
+    rows.push([
+      t('activities.club.session.opponent'),
+      <span key="opponent" data-testid="club-session-opponent">
+        {occurrence.opponentName}
+      </span>,
+    ])
+  }
+  if (occurrence.invitedTeamNames.length > 0) {
+    rows.push([
+      t('activities.club.session.invitedTeams'),
+      <ul key="teams" className="flex flex-col gap-1" data-testid="club-session-invited-teams">
+        {occurrence.invitedTeamNames.map((name, index) => (
+          <li key={`${String(index)}:${name}`}>{name}</li>
+        ))}
+      </ul>,
+    ])
+  }
 
   return (
     <>
