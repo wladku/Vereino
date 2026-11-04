@@ -1,6 +1,7 @@
 // `/api/groups/groups` — groups of both kinds (club spec API table, REQ-004, TEST-030): the list is filtered by the
-// record scope (`scopeWhere`: the coach's groups, the coordinator's sections, the club administrator's club) and adds
-// the section and season names; create, update and delete run the `groups` commands (a coordinator of another section
+// record scope (`scopeWhere`: the coach's groups, the coordinator's sections, the club administrator's club) and by
+// section, kind, season and status, and adds the section and season names, the coaches and the number of active
+// participants (E06-S08 #90); create, update and delete run the `groups` commands (a coordinator of another section
 // → 403, team fields on a class group → 422, a group with memberships → 409 on delete).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -12,13 +13,14 @@ import { scopeContract } from '@/modules/foundation'
 import type { GroupCommandResult } from '../../commands/groups'
 import { Group } from '../../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupListQuerySchema, groupUpdateSchema } from '../../data/validators'
-import { sectionNames, seasonNames } from '../../services/groups-read'
+import { clubToday } from '../../services/club-clock'
+import { personNames, rosterSummaries, sectionNames, seasonNames } from '../../services/groups-read'
 import {
   GROUP_ENTITY_ID,
   GROUP_LIST_COLUMNS,
   GROUP_READ_KINDS,
   groupListItem,
-  groupListItemSchema,
+  groupListRowSchema,
   updateResponseSchema,
   type GroupListItem,
 } from '../shared'
@@ -27,7 +29,10 @@ type GroupListQuery = z.infer<typeof groupListQuerySchema>
 
 const rawBodySchema = z.object({}).loose()
 
-/** Adds the section and season names to the rows the scope filter already admitted. */
+/**
+ * Adds the section and season names, the coaches and the number of active participants (E06-S08 #90, on the club
+ * day) to the rows the scope filter already admitted.
+ */
 async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as GroupListItem[]
   const tenantId = ctx.auth?.tenantId
@@ -36,13 +41,29 @@ async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promis
   const scope = { tenantId, organizationId }
   const sectionIds = items.map((item) => item.sectionId).filter((id): id is string => Boolean(id))
   const seasonIds = items.map((item) => item.seasonId).filter((id): id is string => Boolean(id))
-  const [sections, seasons] = await Promise.all([
+  const [sections, seasons, rosters] = await Promise.all([
     sectionNames(ctx.container, scope, sectionIds),
     seasonNames(ctx.container, scope, seasonIds),
+    clubToday(ctx.container, scope).then((today) =>
+      rosterSummaries(
+        ctx.container,
+        scope,
+        items.map((item) => item.id),
+        today,
+      ),
+    ),
   ])
+  const coachIds = [...rosters.values()].flatMap((roster) => roster.coachIds)
+  const coaches = await personNames(ctx.container, scope, coachIds)
   for (const item of items) {
     item.sectionName = item.sectionId ? (sections.get(item.sectionId) ?? null) : null
     item.seasonName = item.seasonId ? (seasons.get(item.seasonId) ?? null) : null
+    const roster = rosters.get(item.id)
+    item.participantCount = roster?.participantCount ?? 0
+    item.coaches = (roster?.coachIds ?? []).flatMap((personId) => {
+      const name = coaches.get(personId)
+      return name ? [{ personId, ...name }] : []
+    })
   }
 }
 
@@ -127,7 +148,7 @@ export const openApi = buildOpenApi({
   resourceName: 'Group',
   pluralName: 'Groups',
   querySchema: groupListQuerySchema,
-  listResponseSchema: createPagedListResponseSchema(groupListItemSchema),
+  listResponseSchema: createPagedListResponseSchema(groupListRowSchema),
   create: {
     schema: groupCreateSchema,
     description:

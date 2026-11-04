@@ -73,6 +73,8 @@ export function groupListItem(row: Row) {
 export type GroupListItem = ReturnType<typeof groupListItem> & {
   sectionName?: string | null
   seasonName?: string | null
+  coaches?: { personId: string; firstName: string; lastName: string }[]
+  participantCount?: number
 }
 
 export function membershipListItem(row: Row) {
@@ -89,7 +91,7 @@ export function membershipListItem(row: Row) {
 }
 
 export type MembershipListItem = ReturnType<typeof membershipListItem> & {
-  person?: { firstName: string; lastName: string } | null
+  person?: { firstName: string; lastName: string; age: number | null } | null
 }
 
 /** A membership entity as the action routes return it. */
@@ -154,6 +156,19 @@ export const groupListItemSchema = z.object({
   updatedAt: z.string().nullable(),
 })
 
+/** A list row also carries the group's roster summary on the club day (E06-S08 #90). */
+export const groupListRowSchema = groupListItemSchema.extend({
+  coaches: z
+    .array(z.object({ personId: z.uuid(), firstName: z.string(), lastName: z.string() }))
+    .optional()
+    .describe('The persons with an active `coach` or `assistant` membership, coaches first.'),
+  participantCount: z
+    .number()
+    .int()
+    .optional()
+    .describe('The number of distinct persons with an active `participant` membership; ended ones do not count.'),
+})
+
 export const groupDetailSchema = groupListItemSchema.extend({
   actingRole: z.string().describe('The role the caller reads the group as: `coach`, `coordinator` or `club_admin`.'),
 })
@@ -163,10 +178,14 @@ export const membershipListItemSchema = z.object({
   groupId: z.string().nullable(),
   personId: z.string().nullable(),
   person: z
-    .object({ firstName: z.string(), lastName: z.string() })
+    .object({
+      firstName: z.string(),
+      lastName: z.string(),
+      age: z.number().int().nullable().describe('Completed years on the club day; null without a birth date.'),
+    })
     .nullable()
     .optional()
-    .describe('The name of the `people` person.'),
+    .describe('The name and age of the `people` person.'),
   role: z.string().nullable(),
   validFrom: z.string().nullable(),
   validTo: z.string().nullable(),

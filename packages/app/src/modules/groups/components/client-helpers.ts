@@ -1,6 +1,8 @@
 // Small client-side helpers shared by the `groups` backend pages: row types as the API returns them, links, names,
 // periods and text normalization. Authorization stays on the routes and commands.
+import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
+import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { periodStatus, type PeriodStatus } from '../lib/groups-rules'
 
@@ -35,6 +37,12 @@ export type GroupRow = {
   updatedAt: string | null
 }
 
+/** A row of `GET /api/groups/groups`: the group with its coaches and active participants (E06-S08 #90). */
+export type GroupListRow = GroupRow & {
+  coaches?: { personId: string; firstName: string; lastName: string }[]
+  participantCount?: number
+}
+
 /** `GET /api/groups/groups/{id}`: the group with the role the caller reads it as. */
 export type GroupDetail = GroupRow & { actingRole: string }
 
@@ -42,7 +50,7 @@ export type MembershipRow = {
   id: string
   groupId: string | null
   personId: string | null
-  person?: { firstName: string; lastName: string } | null
+  person?: { firstName: string; lastName: string; age?: number | null } | null
   role: string | null
   validFrom: string | null
   validTo: string | null
@@ -68,6 +76,42 @@ export type ExternalTeamRow = {
   notes: string | null
   createdAt: string | null
   updatedAt: string | null
+}
+
+/** The person record (B-10) a roster name links to. */
+export function personHref(personId: string): string {
+  return `/backend/people/persons/${personId}`
+}
+
+/** The club's sections (`club_core`), by name: the group form's section field and the list's section filter. */
+export async function sectionOptions(): Promise<CrudFieldOption[]> {
+  const data = await fetchCrudList<{ id: string; name: string | null }>('club_core/sections', {
+    pageSize: 100,
+    sortField: 'name',
+    sortDir: 'asc',
+  })
+  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+}
+
+/** The seasons, the latest first: the group form's season field and the list's season filter. */
+export async function seasonOptions(): Promise<CrudFieldOption[]> {
+  const data = await fetchCrudList<SeasonRow>('groups/seasons', {
+    pageSize: 100,
+    sortField: 'startsOn',
+    sortDir: 'desc',
+  })
+  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+}
+
+/** An option loader that offers nothing instead of failing (a coach may not read the club's sections). */
+export function tolerant(load: () => Promise<CrudFieldOption[]>): () => Promise<CrudFieldOption[]> {
+  return async () => {
+    try {
+      return await load()
+    } catch {
+      return []
+    }
+  }
 }
 
 /** A trimmed text field value, or null when blank (explicit clearing, S6.3). */
