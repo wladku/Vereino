@@ -16,7 +16,7 @@ The subject is a **small multi-section club** (association), with a football aca
 
 | User | Who they are (pilot: KS Gwiazda) | Key needs | Key tasks in the system | Device / channel | Pain today |
 |---|---|---|---|---|---|
-| **Legal guardian** ("Kasia") | parent of two children in different sections (Jaś — Żaki and Basen, Ola — Trampkarze) | know today whether there are sessions; one calendar for all children; "attending / not attending" with one tap; pay without looking up the account number; learn about cancellations in time | Today, calendar, declaration, confirming a teenager's declaration, online payment, consents, message to the coach | phone; email; link from Messenger | 3–4 Messenger groups, missed cancellations, paying "whenever she remembers" |
+| **Legal guardian** ("Kasia") | parent of two children in different sections (Jaś — Żaki and Basen, Ola — Trampkarze) | know today whether there are sessions; one calendar for all children; one tap to report an absence from a training or to confirm a match; pay without looking up the account number; learn about cancellations in time | Today, calendar, declaration, confirming a teenager's declaration, online payment, consents, message to the coach | phone; email; link from Messenger | 3–4 Messenger groups, missed cancellations, paying "whenever she remembers" |
 | **Participant from the club's age threshold** ("Ola", 14) | player with her own account and a limited view; the threshold is a club setting, default 16 — the example club Dev Academy sets 13 so that Ola, 14, has an account (R10, D-022) | check the schedule without asking a parent; sign up for a match | Today, calendar, declaration (per policy), group messages — no payments (the guardian pays) | phone | knows the schedule from her parent |
 | **Adult participant** | zumba or pilates participant | schedule, cancellations, membership fee | same as a guardian, but for herself | phone | announcements in the group chat |
 | **Coach / instructor** ("Wojtek", "Piotr", "Anna") | runs 1–3 groups, often on a contract; paid "base + units" | know who will come; attendance in 30 s; substitution without arguing about money; one announcement to the group; book the pitch for a tournament without phoning | attendance list, closing a session, reporting an absence, cancellation, announcement + text for the group chat, facility calendar and booking, tournament, view of own units | phone | polls get lost in the chat; substitutions and bookings by phone |
@@ -73,7 +73,7 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 
 #### F-02 Today and attendance declaration (UC-03, UC-04)
 - **Preconditions:** Kasia has an account; sessions have been generated.
-- **Path:** M-01 Sign in → M-02 Today: Calendar tile ("Tue 17:00 Jaś — Żaki training, Boisko piłkarskie", "Thu 16:00 Jaś — Class, Basen") → "Attending" next to Jaś's session → the button changes to "Attending ✓", with a screen reader announcement. Attendance tile: "Ola signed up for Saturday's match — do you confirm?" → M-04 Session → "Confirm" → status "Confirmed".
+- **Path:** M-01 Sign in → M-02 Today: Calendar tile ("Tue 17:00 Jaś — Żaki training, Boisko piłkarskie", "Thu 16:00 Jaś — Class, Basen") → Jaś's Tuesday training needs no answer: a training is absence-only (REQ-007, D-026), so silence means he is expected; when he cannot come, Kasia taps "Report absence" → the card shows "absence reported" with "Undo", with a screen reader announcement. Attendance tile: "Ola signed up for Saturday's match — do you confirm?" → M-04 Session → "Confirm" → status "Confirmed" (a match is a confirm kind, so it shows "Attending / Not attending").
 - **Branches:** the session has already started → "Declarations closed" (409), buttons disabled; no guardian decision within 24 h → the policy default applies, the tile disappears; no sessions today → empty state with the next session; network error → message and "Try again" (the declaration is not lost).
 - **Outcome:** the coach sees the declarations on M-05.
 
@@ -93,7 +93,7 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 - **Case:** a parent writes in the group thread (M-07) → coordinator in B-19 → "Mark as case" (warning: irreversible) → thread labeled "Case", the message "Delete" button disappears; an attempt via the API → 409.
 
 #### F-06 Declaration from a link without sign-in (UC-17)
-- **Path:** a parent clicks a link from Messenger → M-13 "Session: Żaki training, Tue 17:00 — to declare, enter your email" → "Send me a link" → always "If the address is registered with the club, we have sent a link" → email → M-14 with a list of their children in this group → "Attending".
+- **Path:** a parent clicks a link from Messenger → M-13 "Session: Żaki training, Tue 17:00 — to declare, enter your email" → "Send me a link" → always "If the address is registered with the club, we have sent a link" → email → M-14 with a list of their children in this group → the control follows the session's kind: for a training "Report absence" (and "Undo"), for a match "Attending / Not attending".
 - **Branches:** expired link (410) → "Link expired, request a new one"; after the session starts → "Declarations closed".
 
 #### F-07 Membership fees: generation, overdue, payment (UC-13, UC-14)
@@ -267,15 +267,15 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-02 Today — `/club`
 - **Goal:** within 5 seconds, know what is happening today and tomorrow for me and my children, and respond.
-- **Features:** **Calendar** tile (today's/tomorrow's sessions of all wards and one's own, with section and place; "Attending / Not attending" in place); **Attendance** tile (`pending_guardian` decisions to make; for the coach — "My sessions today" with entry into the list); **Messages** tile (unread); **Payments** tile (total of open charges, nearest due date, "Pay") — adults only; a minor participant does not see it; child and role context switcher.
-- **Components:** header with a greeting and switchers; grid of 4 tiles (1 column < 640 px); segmented declaration buttons; `StatusBadge` (canceled, declarations closed, awaiting confirmation); bottom navigation bar.
-- **States:** loading — tile skeletons; empty — "No sessions today. Next session: Thu 16:00 Basen" + link to the calendar; phase 3–4 tiles are not rendered until the module is enabled; error — per tile ("Couldn't load payments" + retry), the rest keeps working; success — on declaration "Saved: Jaś attending".
-- **Validation:** declaration only until `start_at`; a ward with the `guardian_only` policy — buttons only for the guardian.
+- **Features:** **Calendar** tile (today's/tomorrow's sessions of all wards and one's own, with section and place; in place, the declaration control of the session's kind — "Report absence" and its "Undo" for an `absence_only` kind (training by default), "Attending / Not attending" for a `confirm` kind (match, sparring, tournament, camp, other by default; REQ-007, D-026)); **Attendance** tile (`pending_guardian` decisions to make; for the coach — "My sessions today" with entry into the list); **Messages** tile (unread); **Payments** tile (total of open charges, nearest due date, "Pay") — adults only; a minor participant does not see it; child and role context switcher.
+- **Components:** header with a greeting and switchers; grid of 4 tiles (1 column < 640 px); declaration controls per kind ("Report absence" / "Undo" button, or segmented "Attending / Not attending" buttons); `StatusBadge` (canceled, declarations closed, awaiting confirmation); bottom navigation bar.
+- **States:** loading — tile skeletons; empty — "No sessions today. Next session: Thu 16:00 Basen" + link to the calendar; phase 3–4 tiles are not rendered until the module is enabled; error — per tile ("Couldn't load payments" + retry), the rest keeps working; success — "Absence reported: Jaś will not come" / "Absence withdrawn: Jaś is expected" on an `absence_only` session, "Saved: Ola attending" on a `confirm` session.
+- **Validation:** declaration only until `start_at`; an `absence_only` session never offers "Attending" (the API answers 422 `declaration_kind_absence_only` to `yes`); "Undo" sends `unknown`; a ward with the `guardian_only` policy — buttons only for the guardian.
 - **API:** `GET /api/people/me`; `GET /api/activities/calendar?as=self&from&to`; `POST /api/activities/attendance/declare`; `GET /api/communication/threads?unread=1` (f3); `GET /api/payments/my-charges?status=open` (f4).
 
 #### M-03 Calendar — `/club/calendar`
 - **Goal:** one calendar for all children from all sections (REQ-006).
-- **Features:** week view (default) / month list; person filter (everyone / Jaś / Ola / me); section legend; declaration status on each session; navigation to M-04.
+- **Features:** week view (default) / month list; person filter (everyone / Jaś / Ola / me); section legend; declaration status and the control of the session's kind on each session ("Report absence" on trainings, "Attending / Not attending" on matches and the other confirm kinds); navigation to M-04.
 - **Components:** week/month switcher, list of days with session cards (time, activity, group, section, place, person, status), schedule component family (V-8).
 - **States:** loading — day skeletons; empty — "No sessions this week" + "Next week"; error — message + retry; success — n/a.
 - **Validation:** range ≤ 62 days (400 from the server → range trimmed in the UI).
@@ -283,15 +283,15 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-04 Session — `/club/occurrences/[id]`
 - **Goal:** details of a single session and attendance decisions.
-- **Features:** date, times, place (with address and map — Could), coach (with a substitution marker), status; for each of my wards "Attending / Not attending"; guardian decision on `pending_guardian` (Confirm / Reject); for a match — opponent, away trip; for the coach — buttons "Attendance list", "Report absence", "Cancel", "Message the group". (Volunteer duty sign-up is not in 1.0 — see section 6.)
-- **Components:** session header, `StatusBadge`, list of people with segmented buttons, reason dialogs (absence, cancellation) with `useConfirmDialog`.
-- **States:** loading — skeleton; empty — n/a (404 → "The session does not exist or you do not have access to it"); error — retry; success — toasts "Declaration saved", "Absence reported — the coordinator has been notified", "Session canceled — notifications sent".
-- **Validation:** declaration before `start_at` (otherwise 409 `declaration_closed`); cancellation reason required (3–200 characters); absence reason optional.
+- **Features:** date, times, place (with address and map — Could), coach (with a substitution marker), status; for each of my wards the control of the session's kind — "Report absence" / "Undo" (`absence_only`, e.g. Jaś's training) or "Attending / Not attending" (`confirm`, e.g. Ola's match); guardian decision on `pending_guardian` (Confirm / Reject); for a match — opponent, away trip; for the coach — buttons "Attendance list", "Report absence", "Cancel", "Message the group". (Volunteer duty sign-up is not in 1.0 — see section 6.)
+- **Components:** session header, `StatusBadge`, list of people with the declaration control of the kind, reason dialogs (absence, cancellation) with `useConfirmDialog`.
+- **States:** loading — skeleton; empty — n/a (404 → "The session does not exist or you do not have access to it"); error — retry; success — toasts "Declaration saved", "Absence reported: Jaś will not come" (a ward's absence), "Absence reported — the coordinator has been notified" (the coach's absence), "Session canceled — notifications sent".
+- **Validation:** declaration before `start_at` (otherwise 409 `declaration_closed`); `yes` on an `absence_only` session → 422 `declaration_kind_absence_only` (the UI never offers it); cancellation reason required (3–200 characters); absence reason optional.
 - **API:** `GET /api/activities/occurrences/{id}`; `POST /api/activities/attendance/declare`; `POST /api/activities/attendance/{id}/guardian-decision`; `POST /api/activities/occurrences/{id}/absence`; `POST /api/activities/occurrences/{id}/cancel`.
 
 #### M-05 Attendance list — `/club/occurrences/[id]/attendance`
 - **Goal:** tick off attendance in 30 seconds and close the session (REQ-007, REQ-008).
-- **Features:** declaration summary (yes / no / none); list of group members on the session date ∪ people with a declaration; for each: present / absent / late; "All declared present" (quick fill); "Close session".
+- **Features:** declaration summary by kind (AC-007) — `absence_only`: expected / absences reported; `confirm`: attending / not attending / no answer; list of group members on the session date ∪ people with a declaration; for each: present / absent / late; "All declared present" (quick fill; on an `absence_only` session — everyone without a reported absence); "Close session".
 - **Components:** list with toggles (large touch targets), counter, bottom action bar, `useConfirmDialog` on closing, conflict dialog.
 - **States:** loading — list skeleton; empty — "The group has no members on the session date" (coordinator: link to the roster); error — save failed, selections preserved, retry; success — "Session closed — 14 present", navigation to M-02.
 - **Validation:** the session must not be canceled; closing before the session ends requires confirmation; session version (409 on concurrent editing).
@@ -363,10 +363,10 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-14 Declaration from link — `/club/d/[token]`
 - **Goal:** declare children's attendance without signing in.
-- **Features:** session; list of my children in this group with "Attending / Not attending"; link "Sign in to see the full calendar".
-- **Components:** public page, segmented buttons.
+- **Features:** session; list of my children in this group with the control of the session's kind — "Report absence" / "Undo" for a training (with the hint that the children are expected), "Attending / Not attending" for a match or another confirm kind; link "Sign in to see the full calendar".
+- **Components:** public page, declaration controls per kind.
 - **States:** loading; error — 410 "Link expired — request a new one" (link to M-13), 404; success — "Saved".
-- **Validation:** only people from the token (403); before `start_at`.
+- **Validation:** only people from the token (403); before `start_at`; `yes` on an `absence_only` session → 422.
 - **API:** `GET /api/activities/declaration-links/{token}`; `POST /api/activities/declaration-links/{token}`.
 
 ### Panel (desktop)
@@ -732,4 +732,5 @@ The concept introduces no new requirements. For UX, it clarifies:
 9. Order campaigns (e.g. kit) instead of Google Forms: a wizard in the panel (B-30…B-32), the guardian orders in the app or from a personal link (M-16, M-17, M-19), the coach accepts cash and hands over kit in the app (M-18), the treasurer settles cash from coaches (B-33) — REQ-032, REQ-033.
 10. "My groups' payments" for the coach (M-18) instead of orders only: group fees and kit, cash for several charges at once, the club setting "Coaches and payments" (B-20); a separate treasurer role (persona Beata) with the right to accept cash from coaches (B-33) — REQ-033, REQ-034.
 11. Multilingual interface (REQ-035): the mockup switches between English and Polish; dates, amounts and plurals follow the language, club content does not; one content language per club (Q-038).
-12. Deferred — no screens in this concept or in the mockup (decisions of 2026-10-20): volunteer duty sign-up for sessions (planned for 1.1; the spec lists it in Non-goals) and a guardian contact list for coaches (GDPR minimisation — coaches reach guardians through announcements and direct threads, REQ-009).
+12. Declaration kinds follow D-022 and D-026 (issue #137): what a guardian declares is the club setting `declaration_kinds` per activity type, not the group policy (the policy decides only who declares). With the defaults, a training (including a class group's class) is `absence_only` — the guardian only reports an absence and can undo it, silence counts as expected — and a match, sparring, tournament, camp or other event is `confirm` — "Attending / Not attending". M-02, M-03, M-04, M-05, M-14, F-02, F-06 and the mockup follow this; the concept's earlier "Attending / Not attending" on every session predates D-022.
+13. Deferred — no screens in this concept or in the mockup (decisions of 2026-10-20): volunteer duty sign-up for sessions (planned for 1.1; the spec lists it in Non-goals) and a guardian contact list for coaches (GDPR minimisation — coaches reach guardians through announcements and direct threads, REQ-009).
