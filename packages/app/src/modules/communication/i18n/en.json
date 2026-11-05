@@ -197,6 +197,7 @@
   "communication.threads.title": "Threads",
   "communication.threads.unread": "Unread",
   "communication.tile.description": "Announcements and replies from the club.",
+  "communication.tile.error": "The number of unread messages could not be loaded.",
   "communication.tile.open": "Open the messages",
   "communication.tile.title": "Messages",
   "communication.tile.unread": "{count} unread"

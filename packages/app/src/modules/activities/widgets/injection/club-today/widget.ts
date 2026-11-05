@@ -3,7 +3,8 @@ import ClubTodayTilesWidget, { type ClubTodayContext } from './widget.client'
 
 /**
  * The "Calendar" and "Attendance" tiles of `/club` (club spec `/club` — Today: tiles show today and tomorrow for all
- * wards; the attendance tile names the declarations waiting for the guardian; #32), on the spot
+ * wards, each with the declaration buttons of its kind; the attendance tile names the declarations waiting for the
+ * guardian; #32, E06-S16 #98), on the spot
  * `vereino:club:today:sections` of `people`'s Today page.
  */
 const widget: InjectionWidgetModule<ClubTodayContext, Record<string, unknown>> = {
