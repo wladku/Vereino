@@ -39,6 +39,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'payments.*',
       'facilities.*',
       'dictionaries.*',
+      // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
+      'dashboards.view',
     ],
     implies: ['member'],
     requiresScope: null,
