@@ -362,6 +362,8 @@ Questions and verifications that belong to payments; all resolutions keep their 
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-club-payments/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-club-payments/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Created from `2026-10-20-vereino-club-management.md` by D-028: phase 4 with its requirements, decisions, vocabulary, journeys, UI, data model, API, events, tests, traceability, risks, acceptance criteria and questions moved unchanged; `payments.chargeService` named as the provider of the optional rental charge (DD-19). Earlier history: the club specification's Changelog |

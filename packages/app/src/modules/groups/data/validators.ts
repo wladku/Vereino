@@ -25,6 +25,7 @@ export const groupCreateSchema = z
     sectionId: z.uuid(),
     name: nameSchema,
     kind: z.enum(GROUP_KINDS),
+    ageCategoryEntryId: z.uuid().nullable().optional(),
     league: optionalText(200),
     seasonId: z.uuid().nullable().optional(),
     description: optionalText(4000),
@@ -38,6 +39,7 @@ export const groupUpdateSchema = z
     sectionId: z.uuid().optional(),
     name: nameSchema.optional(),
     kind: z.enum(GROUP_KINDS).optional(),
+    ageCategoryEntryId: z.uuid().nullable().optional(),
     league: optionalText(200),
     seasonId: z.uuid().nullable().optional(),
     description: optionalText(4000),
@@ -54,6 +56,7 @@ export const groupListQuerySchema = z.object({
   sectionId: z.uuid().optional(),
   kind: z.enum(GROUP_KINDS).optional(),
   seasonId: z.uuid().optional(),
+  ageCategoryEntryId: z.uuid().optional(),
   isActive: booleanQuery,
 })
 

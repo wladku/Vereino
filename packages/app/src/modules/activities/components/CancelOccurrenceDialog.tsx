@@ -20,8 +20,9 @@ import {
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { CANCEL_REASON_MAX_LENGTH, isCancelReasonValid } from '../lib/occurrence-list'
-import { errorCode, errorMessage } from './client-helpers'
+import { errorMessage } from './client-helpers'
 
 export type CancellableOccurrence = { id: string; updatedAt: string | null }
 
@@ -72,7 +73,7 @@ export function CancelOccurrenceDialog({
     } catch (error: unknown) {
       if (surfaceRecordConflict(error, t, { onRefresh: () => void onDone() })) {
         onOpenChange(false)
-      } else if (errorCode(error) === 'invalid_transition') {
+      } else if (errorCodeOf(error) === 'invalid_transition') {
         flash(errorMessage(error, t('activities.occurrences.errors.cancel')), 'error')
         onOpenChange(false)
         await onDone()

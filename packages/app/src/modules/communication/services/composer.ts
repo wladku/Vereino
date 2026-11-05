@@ -2,7 +2,13 @@
 // author's grants allow, the live recipient counts of an audience (counts only — never a name), and the share text of
 // a session or a thread. Each read checks the author's scope over the target the same way the post command does.
 import type { AudienceCounts, AudienceKind, GrantKind } from '@vereino/core'
-import { assertInScope, foundationErrors, resolveAudience } from '@/modules/foundation'
+import {
+  assertInScope,
+  foundationErrors,
+  isUnlinkedScope,
+  resolveAudience,
+  scopeDenialCode,
+} from '@/modules/foundation'
 import { communicationErrors } from '../api/errors'
 import type { AudienceInput } from '../data/validators'
 import {
@@ -17,8 +23,13 @@ import { shareTextService } from './directory'
 import { listAudienceTargets, resolveAudienceTarget, type AudienceTargetOption } from './targets'
 import { threadSubject, type Viewer } from './threads'
 
-/** Asserts the author may post to the audience (403 `scope_denied` otherwise) and returns its target. */
+/**
+ * Asserts the author may post to the audience (403 `scope_denied` otherwise) and returns its target. An account not
+ * linked to a person of this club gets 403 `scope_unlinked` before the target is looked up, so an unknown target and
+ * an existing one answer alike (#155).
+ */
 async function authorizeAudience(viewer: Viewer, audience: AudienceInput) {
+  if (isUnlinkedScope(viewer.grants)) return foundationErrors.throw('scope_unlinked')
   const target = await resolveAudienceTarget(viewer.container, viewer.scope, audience)
   const persons = audience.kind === 'persons'
   await assertInScope(
@@ -33,7 +44,7 @@ async function authorizeAudience(viewer: Viewer, audience: AudienceInput) {
 /** The recipient counts of an audience as the post command would resolve it (the author excluded). */
 export async function previewAudience(viewer: Viewer, audience: AudienceInput): Promise<AudienceCounts> {
   await authorizeAudience(viewer, audience)
-  if (!viewer.personId) return foundationErrors.throw('scope_denied')
+  if (!viewer.personId) return foundationErrors.throw(scopeDenialCode(viewer.grants))
   const resolved = await resolveAudience(
     { kind: audience.kind, ids: audience.ids ?? [] },
     { container: viewer.container, ...viewer.scope, scope: viewer.grants },

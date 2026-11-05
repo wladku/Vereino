@@ -17,7 +17,7 @@ import {
   type GrantKind,
   type Scope,
 } from '@vereino/core'
-import { foundationErrors, scopeContract } from '@/modules/foundation'
+import { foundationErrors, scopeContract, scopeDenialCode } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Activity, Attendance, AttendancePolicy, Occurrence } from '../data/entities'
 import type { CalendarPerspective } from '../data/validators'
@@ -139,7 +139,8 @@ function grantIds(scope: Scope, kind: GrantKind): string[] {
 async function memberPersons(scope: Scope, as: 'self' | 'guardian', personId?: string): Promise<string[]> {
   if (as === 'self') {
     const self = grantIds(scope, 'self')[0]
-    if (!self) return foundationErrors.throw('scope_denied')
+    // No `self` grant: the account is not linked to a person of this club (#76, #155).
+    if (!self) return foundationErrors.throw(scopeDenialCode(scope))
     if (personId && personId !== self) return foundationErrors.throw('scope_denied')
     return [self]
   }
