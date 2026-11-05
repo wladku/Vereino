@@ -12,8 +12,9 @@ type ScannedNode = { html: string; target: unknown[] }
 // Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: `CrudForm`
 // renders each field's <label> without `htmlFor` and its controls without an accessible name, and the
 // backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
-// its text, and its breadcrumb puts an aria-label on the role-less current-page span. Each entry is matched
-// by rule and node, so the same rule on Vereino markup still fails.
+// its text, and its breadcrumb puts an aria-label on the role-less current-page span; the schedule family
+// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text.
+// Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
 const PLATFORM_BASELINE: {
   rule: string
@@ -34,10 +35,13 @@ const PLATFORM_BASELINE: {
     rule: 'label-content-name-mismatch',
     // The back link (`data-testid="appshell-…"`) and the main-sidebar brand link of `AppShell.tsx` (`aria-label="Go to
     // dashboard"` while its visible text is the brand name; first scanned on the `groups` pages, #30).
-    owner: 'AppShell back link and brand link',
+    // Since #94 also the date-range trigger of the schedule family's `ScheduleToolbar` (`aria-label="Date range"` while
+    // its visible text is the range).
+    owner: 'AppShell back link and brand link; ScheduleToolbar date-range trigger',
     matches: (node) =>
       node.html.includes('data-testid="appshell-') ||
-      (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')),
+      (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')) ||
+      node.html.includes('data-slot="date-range-picker-tr'),
   },
   {
     rule: 'aria-prohibited-attr',
@@ -46,6 +50,11 @@ const PLATFORM_BASELINE: {
     owner: 'AppShell breadcrumb current page',
     matches: (node) => node.html.includes('data-slot="breadcrumb-page"'),
   },
+  // The week grid of the schedule family's `ScheduleView` is react-big-calendar, whose all-day row nests
+  // `role="rowgroup"` inside `role="row"` (`.rbc-allday-cell`, `.rbc-row-content`; first scanned on the coordinator
+  // calendar of `/backend/activities/occurrences`, #94).
+  { rule: 'aria-required-children', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
+  { rule: 'aria-required-parent', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
 ]
 
 // Whether a scanned node sits inside an AppShell sidebar group (`[data-sidebar-group]`) of the current page.
