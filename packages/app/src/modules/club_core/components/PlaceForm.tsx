@@ -146,7 +146,12 @@ function usePlaceFields(t: Translate, placeId?: string) {
         loadOptions: () => institutionOptions(t),
       },
       { id: 'managedByClub', label: t('club_core.places.fields.managedByClub'), type: 'checkbox' },
-      { id: 'isExternal', label: t('club_core.places.fields.isExternal'), type: 'checkbox' },
+      {
+        id: 'isExternal',
+        label: t('club_core.places.fields.isExternal'),
+        type: 'checkbox',
+        description: t('club_core.places.fields.isExternal.help'),
+      },
       {
         id: 'rentedByClub',
         label: t('club_core.places.fields.rentedByClub'),
