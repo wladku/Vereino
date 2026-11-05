@@ -129,7 +129,12 @@ test('TEST-030 a team and a class group go through the same membership cycle; te
       await addMembership(request, token, { groupId, personId: coach, role: 'coach', validFrom: '2026-01-01' })
       let rows = (await roster(request, token, groupId)).items
       expect(rows.map((row) => row.role).sort()).toEqual(['coach', 'participant'])
-      expect(rows.find((row) => row.personId === child)?.person).toEqual({ firstName: 'Jan', lastName: 'Kowalski' })
+      // The roster person carries the age in completed years on the club day (E06-S08, #90); Jan turns 8 today.
+      expect(rows.find((row) => row.personId === child)?.person).toEqual({
+        firstName: 'Jan',
+        lastName: 'Kowalski',
+        age: 8,
+      })
 
       // Ending a membership sets its last day; the row stays in the roster as history.
       const current = rows.find((row) => row.id === participant)
