@@ -27,7 +27,10 @@ export type PaymentsGateDecision = { access: OwnPaymentsAccess; personId: string
 export type PaymentsGate = {
   /** The decision without throwing (the landing's payments tile). */
   check(subject: PaymentsSubject): Promise<PaymentsGateDecision>
-  /** 403 `payments_minor` for a minor (also with the feature), 403 `scope_denied` without a person or the feature. */
+  /**
+   * 403 `payments_minor` for a minor (also with the feature), 403 `scope_unlinked` without a linked person, 403
+   * `scope_denied` without the feature.
+   */
   assert(subject: PaymentsSubject): Promise<{ personId: string }>
 }
 
@@ -54,7 +57,9 @@ export function createPaymentsGate(container: AwilixContainer): PaymentsGate {
     async assert(subject) {
       const decision = await check(subject)
       if (decision.access === 'minor') return peopleErrors.throw('payments_minor')
-      if (decision.access !== 'allowed' || !decision.personId) return foundationErrors.throw('scope_denied')
+      // No person of this club linked to the user: the account's own 403 (#76, #155), not a missing grant.
+      if (!decision.personId) return foundationErrors.throw('scope_unlinked')
+      if (decision.access !== 'allowed') return foundationErrors.throw('scope_denied')
       return { personId: decision.personId }
     },
   }

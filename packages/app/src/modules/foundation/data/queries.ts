@@ -1,5 +1,6 @@
 // Raw SQL of the foundation (S5.8: raw SQL lives in a module's data/queries.ts).
 import type { EntityManager } from '@mikro-orm/postgresql'
+import type { RecipientChannel } from '@vereino/core'
 
 /**
  * Serializes role syncs of one user (foundation DD-F05): a transaction-scoped advisory lock keyed by the user id,
@@ -205,11 +206,15 @@ export async function queuedDeliveriesOf(
   }
 }
 
-/** The deliveries of each dispatch counted by status, read live from the delivery rows (one row per dispatch found). */
+/**
+ * The deliveries of each dispatch counted by status, read live from the delivery rows (one row per dispatch found);
+ * `channel` counts one channel only (the e-mail summary under an author's message, E06-S20).
+ */
 export async function deliveryCountsOf(
   em: EntityManager,
   scope: DispatchScope,
   dispatchIds: readonly string[],
+  channel?: RecipientChannel,
 ): Promise<Array<{ dispatchId: string; queued: number; sent: number; failed: number; skipped: number }>> {
   if (dispatchIds.length === 0) return []
   const rows = await em.execute<
@@ -225,9 +230,9 @@ export async function deliveryCountsOf(
        count(*) filter (where status = 'sent') as sent, count(*) filter (where status = 'failed') as failed,
        count(*) filter (where status = 'skipped') as skipped
      from foundation_deliveries
-     where tenant_id = ? and organization_id = ? and dispatch_id in (${dispatchIds.map(() => '?').join(', ')})
+     where tenant_id = ? and organization_id = ? and dispatch_id in (${dispatchIds.map(() => '?').join(', ')})${channel ? ' and channel = ?' : ''}
      group by dispatch_id`,
-    [scope.tenantId, scope.organizationId, ...dispatchIds],
+    [scope.tenantId, scope.organizationId, ...dispatchIds, ...(channel ? [channel] : [])],
   )
   return rows.map((row) => ({
     dispatchId: row.dispatch_id,

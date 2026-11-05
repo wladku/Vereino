@@ -23,7 +23,10 @@ export async function importRouteContext(request: Request): Promise<ImportRouteC
   return { ctx, scope }
 }
 
-/** 403 `scope_denied` unless the caller administers the club (the imports are club-wide). */
+/**
+ * 403 `scope_denied` unless the caller administers the club (the imports are club-wide); `scope_unlinked` for an
+ * account not linked to a person of this club.
+ */
 export async function assertImportReader({ ctx, scope }: ImportRouteContext): Promise<void> {
   await assertInScope(await scopeContract.resolve(ctx), ['club_admin'], { id: scope.organizationId, ...scope })
 }

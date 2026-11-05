@@ -1,0 +1,1 @@
+| 2026-11-05 | E06-S16 (#98): `/club` Today *Behavior* — declarations in place per ward with the closed / awaiting-guardian / cancelled badges, a toast naming the ward, a per-tile "Try again" (the messages tile included) and the "next session" empty state; no API change |

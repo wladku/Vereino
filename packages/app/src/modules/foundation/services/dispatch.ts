@@ -286,10 +286,14 @@ export type DispatchService = {
     page: { page?: number; pageSize?: number; problemsOnly?: boolean },
     ctx: Omit<AudienceContext, 'container'>,
   ): Promise<PagedDeliveries>
-  /** The delivery counts of several dispatches by status, keyed by dispatch id (a dispatch without rows is absent). */
+  /**
+   * The delivery counts of several dispatches by status, keyed by dispatch id (a dispatch without rows is absent);
+   * `options.channel` counts one channel only.
+   */
   countsOf(
     dispatchIds: readonly string[],
     ctx: Omit<AudienceContext, 'container'>,
+    options?: { channel?: RecipientChannel },
   ): Promise<Map<string, DeliveryCounts>>
 }
 
@@ -300,11 +304,15 @@ export type DeliveryCounts = { queued: number; sent: number; failed: number; ski
 export async function deliveryCounts(
   dispatchIds: readonly string[],
   ctx: AudienceContext,
+  options: { channel?: RecipientChannel } = {},
 ): Promise<Map<string, DeliveryCounts>> {
   const em = ctx.em ?? ctx.container.resolve<EntityManager>('em').fork()
-  const rows = await deliveryCountsOf(em, { tenantId: ctx.tenantId, organizationId: ctx.organizationId }, [
-    ...new Set(dispatchIds),
-  ])
+  const rows = await deliveryCountsOf(
+    em,
+    { tenantId: ctx.tenantId, organizationId: ctx.organizationId },
+    [...new Set(dispatchIds)],
+    options.channel,
+  )
   return new Map(rows.map(({ dispatchId, ...counts }) => [dispatchId, counts]))
 }
 
@@ -313,6 +321,6 @@ export function createDispatchService(container: AwilixContainer): DispatchServi
     enqueue: (em, request, ctx) => enqueueDispatch(em, request, { ...ctx, container }),
     publish: (dispatchId, scope) => publishDispatch(container, dispatchId, scope),
     deliveriesOf: (dispatchId, page, ctx) => deliveriesOf(dispatchId, page, { ...ctx, container }),
-    countsOf: (dispatchIds, ctx) => deliveryCounts(dispatchIds, { ...ctx, container }),
+    countsOf: (dispatchIds, ctx, options) => deliveryCounts(dispatchIds, { ...ctx, container }, options),
   }
 }

@@ -76,6 +76,7 @@ export type CalendarEntry = {
     occurrenceDate: string
     startAt: string
     endAt: string
+    gatheringAt?: string | null
     placeId: string
     placeName: string | null
     placeAddress: string | null

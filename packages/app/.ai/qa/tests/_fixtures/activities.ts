@@ -23,6 +23,8 @@ export type ActivityItem = {
   startTime: string | null
   endTime: string | null
   generatedUntil: string | null
+  /** The default gathering time in minutes before the start (club spec DD-43). */
+  gatheringMinutesBefore?: number | null
   isActive: boolean
   updatedAt: string | null
   actingRole?: string
@@ -38,6 +40,9 @@ export type OccurrenceItem = {
   occurrenceDate: string | null
   startAt: string | null
   endAt: string | null
+  /** The gathering instant before the start (club spec DD-43), with the session's offset. */
+  gatheringAt?: string | null
+  gatheringMinutesBefore?: number | null
   placeId: string | null
   coachPersonId: string | null
   status: string | null

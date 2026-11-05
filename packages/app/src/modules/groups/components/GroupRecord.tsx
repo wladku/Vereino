@@ -27,7 +27,11 @@ function ReadOnlyDetails({ group, t }: { group: GroupDetail; t: Translate }) {
     [t('groups.groups.fields.description'), group.description],
   ]
   if (group.kind === 'team') {
-    rows.push([t('groups.groups.fields.league'), group.league], [t('groups.groups.fields.season'), group.seasonName])
+    rows.push(
+      [t('groups.groups.fields.ageCategory'), group.ageCategoryName],
+      [t('groups.groups.fields.league'), group.league],
+      [t('groups.groups.fields.season'), group.seasonName],
+    )
   }
   return (
     <section className="bg-card flex flex-col gap-3 rounded-lg border p-4" aria-label={t('groups.groups.tabs.details')}>

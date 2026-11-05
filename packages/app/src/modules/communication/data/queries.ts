@@ -1,6 +1,7 @@
 // Raw SQL of `communication` (S5.8: raw SQL lives in a module's data/queries.ts). Every query is narrowed to the
 // trusted tenant and organization; ids are bound, never interpolated.
 import type { EntityManager } from '@mikro-orm/postgresql'
+import type { WardThreads } from '../lib/member-inbox'
 import type { MessageAudience, MessageKind, ThreadScopeType } from '../lib/thread-rules'
 
 export type CommunicationScope = { tenantId: string; organizationId: string }
@@ -144,7 +145,18 @@ export type ThreadVisibility = {
  * `sectionId` matches the thread's `section_id` snapshot: the section's own threads and those of its groups, activities
  * and sessions (club and direct threads carry none). The caller decides first whether the reader may see the section.
  */
-export type ThreadFilters = { scopeType?: ThreadScopeType; scopeId?: string; sectionId?: string; isCase?: boolean }
+export type ThreadFilters = {
+  scopeType?: ThreadScopeType
+  scopeId?: string
+  sectionId?: string
+  isCase?: boolean
+  /**
+   * A ward's threads (E06-S20): its groups' (with their activities' and sessions', through `group_id`), its groups'
+   * sections' own threads, and the direct threads it takes part in (a club-wide thread is about no ward, even one
+   * it reaches). The caller checks first that the reader is its guardian.
+   */
+  ward?: WardThreads
+}
 
 /** The visible threads, newest activity first, at most `limit` (a club has a few hundred). */
 export async function visibleThreadHeaders(
@@ -184,6 +196,21 @@ export async function visibleThreadHeaders(
   if (filters.isCase !== undefined) {
     conditions.push('t.is_case = ?')
     bindings.push(filters.isCase)
+  }
+  if (filters.ward) {
+    const about = [
+      "(t.scope_type = 'direct' and exists (select 1 from communication_thread_participants w where w.thread_id = t.id and w.organization_id = t.organization_id and w.person_id = ?))",
+    ]
+    bindings.push(filters.ward.personId)
+    if (filters.ward.groupIds.length > 0) {
+      about.push(`t.group_id in (${placeholders(filters.ward.groupIds)})`)
+      bindings.push(...filters.ward.groupIds)
+    }
+    if (filters.ward.sectionIds.length > 0) {
+      about.push(`(t.scope_type = 'section' and t.section_id in (${placeholders(filters.ward.sectionIds)}))`)
+      bindings.push(...filters.ward.sectionIds)
+    }
+    conditions.push(`(${about.join(' or ')})`)
   }
   bindings.push(limit)
   const rows = await em.execute<ThreadHeaderRow[]>(

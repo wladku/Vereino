@@ -379,6 +379,8 @@ Contract verifications (2026-10-27):
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-foundation-scheduling-primitives/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-foundation-scheduling-primitives/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Skeleton written by `om-spec-writing` (interactive) for #22: TLDR, the Open Questions gate (Q1–Q8 blocking, Q9–Q10 non-blocking), the functionality kinds G1–G13 extracted from phase 2 and later, the candidate inventory (P-11, P-12, P-22…P-28) and the installed-package checks for V-6 and V-8 |
