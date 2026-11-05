@@ -1,8 +1,13 @@
 // P-07 createAccount (V-2): the platform owns users and invitations, so an account is created only through the
 // command `auth.users.create` with `sendInviteEmail: true`. The calling `people` command applies
-// `accountAgePolicy` first, throws its own codes and stores the returned `userId` on the person.
+// `accountAgePolicy` first, throws its own codes and stores the returned `userId` on the person. `accountEmail` reads
+// the login e-mail of such an account for the person record's "Account" tab (#84).
+import type { EntityManager } from '@mikro-orm/postgresql'
+import type { AwilixContainer } from 'awilix'
+import { User } from '@open-mercato/core/modules/auth/data/entities'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { foundationErrors } from '../api/errors'
 
 export type CreateAccountInput = {
@@ -60,4 +65,24 @@ export async function createAccount(
     if (isDuplicateEmailError(error)) return foundationErrors.throw('email_taken')
     throw error
   }
+}
+
+/**
+ * The login e-mail of the platform user `userId`, or null when the user is gone or belongs to another tenant or
+ * organization than `scope` (fail closed: an id stored on a record never reads a user outside its club).
+ */
+export async function accountEmail(
+  container: AwilixContainer,
+  scope: { tenantId: string; organizationId: string },
+  userId: string,
+): Promise<string | null> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const user = await findOneWithDecryption(
+    em,
+    User,
+    { id: userId, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
+    {},
+    scope,
+  )
+  return user?.email ?? null
 }

@@ -36,7 +36,19 @@ export type PersonDetail = PersonListRow & {
   phone?: string | null
   notes?: string | null
   userId?: string | null
+  /** The login e-mail of the person's account (full view, #84). */
+  accountEmail?: string | null
   pesel?: string | null
+}
+
+/** The tabs of the person record and their `?tab=` values (README B-10; #84). */
+export const PERSON_RECORD_TABS = ['details', 'guardianship', 'roles', 'account', 'groups'] as const
+export type PersonRecordTab = (typeof PERSON_RECORD_TABS)[number]
+
+/** The person record opened on `tab`. */
+export function personRecordHref(id: string, tab?: PersonRecordTab): string {
+  const href = `${PERSONS_HREF}/${encodeURIComponent(id)}`
+  return tab ? `${href}?tab=${tab}` : href
 }
 
 export type ConsentKind = 'regulations' | 'image' | 'trips'
