@@ -51,6 +51,16 @@ export type PersonDirectory = {
    * is checked again at read time). Call only after authorizing and logging the read (`auditedRead`).
    */
   sharedContacts(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, SharedContact>>
+  /**
+   * The primary payer of each ward among `wardIds` whose guardianship with `is_primary_payer` is active on `date`, by
+   * ward id (the payments period generator, #108). A ward has at most one (partial unique index).
+   */
+  primaryPayers(
+    scope: ClubScope,
+    wardIds: readonly string[],
+    date: CalendarDate,
+    em?: EntityManager,
+  ): Promise<Map<string, string>>
   /** The persons holding a live `role` assignment active on `date` (the coach picker of the activity wizard, #93). */
   roleHolderIdsOn(
     scope: ClubScope,
@@ -130,6 +140,29 @@ export async function activeGuardians(
   return byWard
 }
 
+export async function primaryPayers(
+  em: EntityManager,
+  scope: ClubScope,
+  wardIds: readonly string[],
+  date: CalendarDate,
+): Promise<Map<string, string>> {
+  const unique = [...new Set(wardIds)]
+  if (unique.length === 0) return new Map()
+  const rows = await em.find(
+    Guardianship,
+    {
+      ...scope,
+      wardPersonId: { $in: unique },
+      isPrimaryPayer: true,
+      deletedAt: null,
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'wardPersonId', 'guardianPersonId'] },
+  )
+  return new Map(rows.map((row) => [row.wardPersonId, row.guardianPersonId]))
+}
+
 export async function presenceConsents(
   em: EntityManager,
   scope: ClubScope,
@@ -207,6 +240,7 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
     findUserIds: (scope, ids, em) => findUserIds(em ?? getEm().fork(), scope, ids),
     activeGuardians: (scope, wardIds, today, em) => activeGuardians(em ?? getEm().fork(), scope, wardIds, today),
+    primaryPayers: (scope, wardIds, date, em) => primaryPayers(em ?? getEm().fork(), scope, wardIds, date),
     presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
     contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
     sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
