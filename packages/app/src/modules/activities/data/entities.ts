@@ -7,6 +7,7 @@ import {
   decorateScopedEntityBase,
   type AppendOnlyEntityOptionalProps,
   type ScopedEntityOptionalProps,
+  tokenLinkColumns,
 } from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
 import type {
@@ -327,4 +328,40 @@ export class ContactAccessLog extends AppendOnlyEntityBase {
   /** `coach_contacts`. */
   @Property({ name: 'purpose', type: 'text' })
   purpose!: string
+}
+
+const declarationTokenColumns = tokenLinkColumns({ use: 'until_expiry' })
+
+/**
+ * A personal declaration link (club spec REQ-017, *Data Models* → `activities_declaration_tokens`; foundation P-10,
+ * DD-35): the hash of the raw token (the raw token exists only in the e-mail), the person it was sent to — a guardian
+ * of participants of the session or a participant — and the session. Usable until `expires_at` (the end of the session
+ * at the latest) any number of times (`used_count`, `last_used_at`); never edited. What the link may declare is not
+ * stored: each redemption recomputes the person's current grants. `guardian_person_id` and `occurrence_id` are scalar
+ * ids.
+ */
+@Entity({ tableName: 'activities_declaration_tokens' })
+@Index({ name: 'activities_declaration_tokens_org_occurrence_idx', properties: ['organizationId', 'occurrenceId'] })
+@Index({ name: 'activities_declaration_tokens_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class DeclarationToken extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'usedCount' | 'lastUsedAt'
+
+  @Property(declarationTokenColumns.tokenHash)
+  tokenHash!: string
+
+  @Property(declarationTokenColumns.expiresAt)
+  expiresAt!: Date
+
+  @Property(declarationTokenColumns.usedCount)
+  usedCount: number = 0
+
+  @Property(declarationTokenColumns.lastUsedAt)
+  lastUsedAt?: Date | null
+
+  /** The person the link was sent to (`people_persons`): a guardian of participants, or a participant. */
+  @Property({ name: 'guardian_person_id', type: 'uuid' })
+  guardianPersonId!: string
+
+  @Property({ name: 'occurrence_id', type: 'uuid' })
+  occurrenceId!: string
 }

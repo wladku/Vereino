@@ -208,7 +208,7 @@ async function assertUndoable(em: EntityManager, row: Attendance, after: Attenda
 }
 
 /** A declaration's scope target: the person (self, guardian), the group and session (coach), the section (coordinator). */
-function declarationTarget(occurrence: Occurrence, personId: string) {
+export function declarationTarget(occurrence: Occurrence, personId: string) {
   return {
     id: occurrence.id,
     tenantId: occurrence.tenantId,
@@ -218,6 +218,101 @@ function declarationTarget(occurrence: Occurrence, personId: string) {
     occurrenceId: occurrence.id,
     personId,
   }
+}
+
+export type DeclarationWrite = {
+  occurrence: Occurrence
+  personId: string
+  declared: Declared
+  /** From `authorizeScoped`: the grant the declaration is made under. */
+  actingRole: ActingRole
+  /** The person declaring (the `self` grant of the scope); recorded on the row. */
+  declaredByPersonId: string | null
+  source: DeclarationSource
+  now: Date
+}
+
+/**
+ * The declaration rules after the scope check, shared by the signed-in declaration and the declaration from a personal
+ * link (REQ-017): the person must be a participant of the session (422), staff need `activities.coach`, the session must
+ * take declarations (409), the session's kind decides what may be declared (422), a minor declaring for themself
+ * follows the policy (403 / pending), and the row is upserted with its lock token checked. Runs in the command's
+ * transaction.
+ */
+export async function writeDeclaration(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  write: DeclarationWrite,
+): Promise<DeclareCommandResult> {
+  const { occurrence, actingRole, now } = write
+  const parsed = { personId: write.personId, declared: write.declared }
+  const scope: Scope = { tenantId: occurrence.tenantId, organizationId: occurrence.organizationId }
+  // Participation first: a session of another group answers the same 422 whatever its status, so the route is no
+  // oracle for other groups' sessions.
+  const roster = await rosterOn(ctx.container, scope, occurrence.groupId, occurrence.occurrenceDate, em)
+  if (!roster.some((member) => member.personId === parsed.personId && member.role === 'participant')) {
+    await activitiesErrors.throw('declaration_not_participant')
+  }
+  await assertStaffMayDeclare(ctx, actingRole, scope)
+  await assertDeclarationsOpen(occurrence, now)
+  const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'type'] })
+  if (!activity) throw new Error('[internal] a session without its activity: ' + occurrence.id)
+  const settings = await attendanceSettings(ctx.container, scope)
+  const kind = settings.declarationKinds[activity.type] ?? 'confirm'
+  if (!declaredAllowedForKind(kind, parsed.declared)) {
+    await activitiesErrors.throw('declaration_kind_absence_only', { kind })
+  }
+  let isMinor = false
+  if (actingRole === 'self') {
+    const person = (await findPersons(ctx.container, scope, [parsed.personId], em)).get(parsed.personId)
+    isMinor = isMinorOn(person?.birthDate ?? null, occurrence.occurrenceDate)
+  }
+  const policies = policyRows(await em.find(AttendancePolicy, { ...scope, deletedAt: null }))
+  const policy = resolvePolicy(policies, {
+    groupId: occurrence.groupId,
+    activityType: activity.type,
+    isAway: false,
+  })
+  const outcome = declarationOutcome({ actingRole, isMinor, policy, now, startsAt: occurrence.startAt })
+  if (outcome.kind === 'guardian_only') await activitiesErrors.throw('declaration_guardian_only')
+
+  let row = await em.findOne(Attendance, {
+    ...scope,
+    occurrenceId: occurrence.id,
+    personId: parsed.personId,
+    deletedAt: null,
+  })
+  // A client that read a declaration sends its lock token: a change made meanwhile (another guardian, the ward)
+  // answers 409 instead of being overwritten silently (club spec *Data Models*: "upsert with version").
+  if (row) {
+    await enforceCommandOptimisticLockWithGuards(ctx.container, {
+      resourceKind: ATTENDANCE_RESOURCE_KIND,
+      resourceId: row.id,
+      current: row.updatedAt,
+      expected: null,
+      request: ctx.request ?? null,
+    })
+  }
+  const before = row ? attendanceSnapshot(row) : null
+  const created = row === null
+  row ??= em.create(Attendance, { ...scope, occurrenceId: occurrence.id, personId: parsed.personId })
+  row.declared = parsed.declared
+  row.declaredByPersonId = write.declaredByPersonId
+  row.declaredAt = now
+  row.declarationStatus = outcome.kind === 'pending_guardian' ? 'pending_guardian' : 'final'
+  row.pendingUntil = outcome.kind === 'pending_guardian' ? outcome.pendingUntil : null
+  row.timeoutOutcome = outcome.kind === 'pending_guardian' ? outcome.timeoutOutcome : null
+  row.guardianDecidedAt = null
+  row.source = write.source
+  row.updatedAt = now
+  em.persist(row)
+  const guardianNotice: GuardianNotice =
+    actingRole === 'self' && isMinor
+      ? outcome.kind === 'pending_guardian'
+        ? 'guardian_confirmation_needed'
+        : 'ward_declared'
+      : null
+  return { entity: row, actingRole, before, created, guardianNotice }
 }
 
 const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResult> = {
@@ -241,75 +336,15 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
         ctx,
         em,
       )
-      const occurrence = authorized.entity as Occurrence
-      const { parsed, actingRole } = authorized
-      const scope: Scope = { tenantId: occurrence.tenantId, organizationId: occurrence.organizationId }
-      // Participation first: a session of another group answers the same 422 whatever its status, so the route is no
-      // oracle for other groups' sessions.
-      const roster = await rosterOn(ctx.container, scope, occurrence.groupId, occurrence.occurrenceDate, em)
-      if (!roster.some((member) => member.personId === parsed.personId && member.role === 'participant')) {
-        await activitiesErrors.throw('declaration_not_participant')
-      }
-      await assertStaffMayDeclare(ctx, actingRole, scope)
-      await assertDeclarationsOpen(occurrence, now)
-      const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'type'] })
-      if (!activity) throw new Error('[internal] a session without its activity: ' + occurrence.id)
-      const settings = await attendanceSettings(ctx.container, scope)
-      const kind = settings.declarationKinds[activity.type] ?? 'confirm'
-      if (!declaredAllowedForKind(kind, parsed.declared)) {
-        await activitiesErrors.throw('declaration_kind_absence_only', { kind })
-      }
-      let isMinor = false
-      if (actingRole === 'self') {
-        const person = (await findPersons(ctx.container, scope, [parsed.personId], em)).get(parsed.personId)
-        isMinor = isMinorOn(person?.birthDate ?? null, occurrence.occurrenceDate)
-      }
-      const policies = policyRows(await em.find(AttendancePolicy, { ...scope, deletedAt: null }))
-      const policy = resolvePolicy(policies, {
-        groupId: occurrence.groupId,
-        activityType: activity.type,
-        isAway: false,
+      return writeDeclaration(ctx, em, {
+        occurrence: authorized.entity as Occurrence,
+        personId: authorized.parsed.personId,
+        declared: authorized.parsed.declared,
+        actingRole: authorized.actingRole,
+        declaredByPersonId: selfPersonId(authorized.scope),
+        source: declarationSource(authorized.actingRole),
+        now,
       })
-      const outcome = declarationOutcome({ actingRole, isMinor, policy, now, startsAt: occurrence.startAt })
-      if (outcome.kind === 'guardian_only') await activitiesErrors.throw('declaration_guardian_only')
-
-      let row = await em.findOne(Attendance, {
-        ...scope,
-        occurrenceId: occurrence.id,
-        personId: parsed.personId,
-        deletedAt: null,
-      })
-      // A client that read a declaration sends its lock token: a change made meanwhile (another guardian, the ward)
-      // answers 409 instead of being overwritten silently (club spec *Data Models*: "upsert with version").
-      if (row) {
-        await enforceCommandOptimisticLockWithGuards(ctx.container, {
-          resourceKind: ATTENDANCE_RESOURCE_KIND,
-          resourceId: row.id,
-          current: row.updatedAt,
-          expected: null,
-          request: ctx.request ?? null,
-        })
-      }
-      const before = row ? attendanceSnapshot(row) : null
-      const created = row === null
-      row ??= em.create(Attendance, { ...scope, occurrenceId: occurrence.id, personId: parsed.personId })
-      row.declared = parsed.declared
-      row.declaredByPersonId = selfPersonId(authorized.scope)
-      row.declaredAt = now
-      row.declarationStatus = outcome.kind === 'pending_guardian' ? 'pending_guardian' : 'final'
-      row.pendingUntil = outcome.kind === 'pending_guardian' ? outcome.pendingUntil : null
-      row.timeoutOutcome = outcome.kind === 'pending_guardian' ? outcome.timeoutOutcome : null
-      row.guardianDecidedAt = null
-      row.source = declarationSource(actingRole)
-      row.updatedAt = now
-      em.persist(row)
-      const guardianNotice: GuardianNotice =
-        actingRole === 'self' && isMinor
-          ? outcome.kind === 'pending_guardian'
-            ? 'guardian_confirmation_needed'
-            : 'ward_declared'
-          : null
-      return { entity: row, actingRole, before, created, guardianNotice }
     })
     await emitDeclared(result.entity, result.actingRole, result.guardianNotice, ctx.auth?.sub ?? null)
     return result
@@ -372,7 +407,7 @@ async function authorizeDeclarationReplay(
   return { row, actingRole }
 }
 
-async function emitDeclared(
+export async function emitDeclared(
   row: Attendance,
   actingRole: ActingRole,
   guardianNotice: GuardianNotice,

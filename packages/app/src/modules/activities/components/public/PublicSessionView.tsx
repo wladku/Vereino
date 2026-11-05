@@ -2,8 +2,8 @@
 // `/p/[clubSlug]/s/[occurrenceId]` — the public session page (club spec DD-17, J-003 step 2; foundation III DD-M14,
 // REQ-M08, J-M02 step 2): the page a share text from the group chat opens without a sign-in. It shows the club's name,
 // the activity name, the date, the time and the status of the session, and the way to sign in; never a name, the
-// roster or a count. The "send me a link" form arrives with REQ-017 (Q12). States: loading, error with retry, 404
-// without any detail.
+// roster or a count. A planned session also offers "Send me a link" (`/club/link`, REQ-017, M-13) for a guardian
+// without an account. States: loading, error with retry, 404 without any detail.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -14,6 +14,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
   club: { name: string; slug: string }
@@ -125,6 +126,21 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
           </StatusBadge>
         </p>
       </section>
+      {session.status === 'planned' ? (
+        <section className="bg-card flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="public-session-link">
+          <h2 id="public-session-link" className="font-semibold">
+            {t('activities.publicSession.link.title')}
+          </h2>
+          <p className="text-muted-foreground max-w-prose text-sm">{t('activities.publicSession.link.message')}</p>
+          <div>
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href={linkRequestPath(club.slug, occurrenceId)} data-testid="public-session-request-link">
+                {t('activities.publicSession.link.action')}
+              </Link>
+            </Button>
+          </div>
+        </section>
+      ) : null}
       <section className="bg-card flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="public-session-signin">
         <h2 id="public-session-signin" className="font-semibold">
           {t('activities.publicSession.signIn.title')}

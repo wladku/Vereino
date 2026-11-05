@@ -78,7 +78,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 ### testing
 
-- [Action log command ids and context are encrypted at rest, so tests read entries through the audit API or match on unencrypted columns](lessons/action-log-columns-encrypted-at-rest.md) — area:testing,integration; module:platform,communication; topic:audit-logs,action-log,encryption,integration-tests
+- [Action log command ids and context are encrypted at rest, so tests read entries through the audit API or match on unencrypted columns](lessons/action-log-columns-encrypted-at-rest.md) — area:testing,integration; module:platform,communication,activities; topic:audit-logs,action-log,encryption,integration-tests
 - [The platform apiFetch throws ForbiddenError on every 403, so a page's own 403 branch never runs; test the forbidden state in the UI](lessons/apifetch-403-throws-before-page-branch.md) — area:backend-ui,testing; module:activities,platform; topic:api-client,forbidden,error-states,journeys
 - [Reload after emulateMedia before an axe scan; a react-query refetch after an error keeps status error](lessons/axe-after-color-scheme-and-react-query-error-refetch.md) — area:testing,backend-ui; module:people,platform; topic:axe,dark-mode,playwright,react-query,loading-state
 - [One axe baseline entry per rule; a test reported at hours means a suspended host; db:generate for a new module needs a seed snapshot](lessons/axe-baseline-suspended-runs-and-offline-db-generate.md) — area:testing,debugging; module:groups,platform; topic:axe,accessibility-baseline,playwright,host-suspend,db-generate,migrations

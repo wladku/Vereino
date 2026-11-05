@@ -32,6 +32,7 @@ export {
   type AuthorizedCommand,
   type ScopeSource,
   type TargetLock,
+  type TokenScopeSubject,
   type TrustedScope,
 } from './services/authorize-scoped'
 export {
@@ -66,7 +67,9 @@ export {
 export {
   SCOPE_PROVIDER_TOKEN,
   resolveScope,
+  resolveScopeForPerson,
   scopeContract,
+  type PersonScopeSubject,
   type ScopeProvider,
   type ScopeResolutionContext,
   type ScopeSubject,

@@ -15,13 +15,22 @@ export type ScopeSubject = {
   organizationId: string
 }
 
+/** The person whose grants a token link carries (P-10), in the tenant and organization of the link. */
+export type PersonScopeSubject = {
+  personId: string
+  tenantId: string
+  organizationId: string
+}
+
 /**
  * Contract of the scope provider: the grants of the person linked to the user (an empty list when no person is
- * linked). Only the kinds `club_admin`, `coordinator`, `coach`, `guardian` and `self` are accepted; any other
- * or malformed grant is dropped.
+ * linked), and the grants of a person by id for a token link's subject (an empty list for an unknown person). Only
+ * the kinds `club_admin`, `coordinator`, `coach`, `guardian` and `self` are accepted; any other or malformed grant
+ * is dropped.
  */
 export type ScopeProvider = {
   grantsForUser(subject: ScopeSubject): Promise<Scope>
+  grantsForPerson(subject: PersonScopeSubject): Promise<Scope>
 }
 
 export type ScopeResolutionContext = Pick<CommandRuntimeContext, 'container' | 'auth' | 'selectedOrganizationId'>
@@ -48,5 +57,26 @@ export async function resolveScope(ctx: ScopeResolutionContext): Promise<Scope> 
   return unionScopes(sanitizeProviderGrants(grants), selfUser)
 }
 
+/**
+ * The current grants of a token link's subject (P-10; foundation spec REQ-F07): the person's grants on today's date,
+ * without `self_user` (a link carries no session). No provider yields no grants; a provider that throws fails closed
+ * like `resolveScope`.
+ */
+export async function resolveScopeForPerson(
+  ctx: Pick<CommandRuntimeContext, 'container'>,
+  subject: PersonScopeSubject,
+): Promise<Scope> {
+  if (!ctx.container.hasRegistration(SCOPE_PROVIDER_TOKEN)) return []
+  const provider = ctx.container.resolve<ScopeProvider>(SCOPE_PROVIDER_TOKEN)
+  let grants: unknown
+  try {
+    grants = await provider.grantsForPerson(subject)
+  } catch (error: unknown) {
+    getTelemetryRuntime()?.reportError(error, { module: 'foundation', code: 'foundation.scope.provider_failed' })
+    throw new Error('[internal] the scope provider failed', { cause: error })
+  }
+  return sanitizeProviderGrants(grants)
+}
+
 /** The scope contract consumed by commands (`authorizeScoped`), list routes (`scopeWhere`) and detail guards. */
-export const scopeContract = { resolve: resolveScope } as const
+export const scopeContract = { resolve: resolveScope, resolveForPerson: resolveScopeForPerson } as const
