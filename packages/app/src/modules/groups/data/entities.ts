@@ -39,16 +39,17 @@ export class Season extends ScopedEntityBase {
 
 /**
  * A group of one section (club spec glossary *Group*, DD-03a, REQ-004): `team` or `class_group`, equal in every rule;
- * only a `team` carries the team fields `league` and `season_id` (`age_category_entry_id` waits for the `dictionaries`
- * module; the public fields arrive with the public page story #29). `section_id` is a `club_core` section id (scalar,
- * no cross-module relation).
+ * only a `team` carries the team fields `age_category_entry_id`, `league` and `season_id` (the public fields arrive with
+ * the public page story #29). `section_id` is a `club_core` section id and `age_category_entry_id` a `dictionaries`
+ * entry id of the club's age category dictionary (scalars, no cross-module relation).
  */
 @Entity({ tableName: 'groups_groups' })
 @Index({ name: 'groups_groups_org_section_active_idx', properties: ['organizationId', 'sectionId', 'isActive'] })
 @Index({ name: 'groups_groups_org_season_idx', properties: ['organizationId', 'seasonId'] })
 @Index({ name: 'groups_groups_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Group extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'league' | 'seasonId' | 'description' | 'isActive'
+  [OptionalProps]?:
+    ScopedEntityOptionalProps | 'ageCategoryEntryId' | 'league' | 'seasonId' | 'description' | 'isActive'
 
   @Property({ name: 'section_id', type: 'uuid' })
   sectionId!: string
@@ -58,6 +59,10 @@ export class Group extends ScopedEntityBase {
 
   @Property({ name: 'kind', type: 'text' })
   kind!: GroupKind
+
+  /** Team only: an entry of the club's PZPN age category dictionary (`dictionaries`, REQ-019, #92). */
+  @Property({ name: 'age_category_entry_id', type: 'uuid', nullable: true })
+  ageCategoryEntryId?: string | null
 
   /** Team only. */
   @Property({ name: 'league', type: 'text', nullable: true })

@@ -57,7 +57,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 403,
           description:
-            'Without `communication.cases.manage`; `scope_denied` — not the coordinator of the thread section or the administrator',
+            'Without `communication.cases.manage`; `scope_denied` — not the coordinator of the thread section or the administrator; `scope_unlinked` — the account is not linked to a person of this club',
           schema: errorSchema,
         },
         { status: 404, description: 'Not found', schema: errorSchema },

@@ -35,6 +35,11 @@ test('catalogueRoleFeatures returns copies keyed by auth role', () => {
   assert.ok(features.vereino_club_admin.includes('people.*'))
   assert.ok(features.vereino_club_admin.includes('dashboards.view'))
   assert.ok(!features.vereino_coordinator.includes('dashboards.view'))
+  assert.ok(features.vereino_club_admin.includes('dictionaries.*'))
+  assert.equal(
+    features.vereino_coordinator.some((feature) => feature.startsWith('dictionaries.')),
+    false,
+  )
   assert.ok(features.vereino_coordinator.includes('communication.cases.manage'))
   assert.ok(features.vereino_coordinator.includes('groups.view'))
   assert.ok(features.vereino_coordinator.includes('groups.manage'))

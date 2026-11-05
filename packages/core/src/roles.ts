@@ -29,6 +29,7 @@ export type RoleDefinition = {
 export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
   club_admin: {
     authRole: 'vereino_club_admin',
+    // `dictionaries.*`: the club administrator edits the club dictionaries, e.g. the PZPN age categories (#92).
     features: [
       'club_core.*',
       'people.*',
@@ -37,6 +38,7 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'communication.*',
       'payments.*',
       'facilities.*',
+      'dictionaries.*',
       // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
       'dashboards.view',
     ],

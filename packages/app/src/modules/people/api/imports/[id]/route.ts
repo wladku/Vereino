@@ -41,7 +41,12 @@ export const openApi: OpenApiRouteDoc = {
       summary: 'Read one import',
       responses: [{ status: 200, description: 'The import', schema: importViewSchema }],
       errors: [
-        { status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            '`scope_denied` or a missing feature; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
     },

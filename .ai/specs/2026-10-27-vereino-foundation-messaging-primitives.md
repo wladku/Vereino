@@ -474,6 +474,8 @@ Contract verifications (2026-10-27, `@open-mercato/*` 0.9.0, read-only):
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Skeleton written by `om-spec-writing` (interactive) for #23: TLDR, the Open Questions gate (Q1–Q8 blocking, Q9–Q11 with defaults), the functionality kinds M1–M10 extracted from phases 3–5, the candidate inventory (P-29…P-32) and the installed-package checks V-M01…V-M05 (club spec V-4) |

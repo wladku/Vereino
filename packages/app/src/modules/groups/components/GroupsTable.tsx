@@ -1,8 +1,8 @@
 'use client'
 // `/backend/groups/groups` (club spec UI table, REQ-004; README B-11, E06-S08 #90): the groups of both kinds in the
 // caller's record scope — a coach's groups, a coordinator's sections, the whole club for the administrator — with
-// section, season, coaches, active participants and status. The perspectives All / Teams / Class groups and the
-// section, kind, season and status filters live in the URL (`?kind=…&sectionId=…`), so a filtered list is shareable
+// section, age category (#92), season, coaches, active participants and status. The perspectives All / Teams / Class
+// groups and the section, kind, season, age category and status filters live in the URL (`?kind=…&sectionId=…`), so a filtered list is shareable
 // and survives a reload and the back button; the server applies them inside the record scope. The add action and the
 // delete row action for `groups.manage` (a group with memberships answers 409: deactivate it).
 import * as React from 'react'
@@ -38,6 +38,7 @@ import { GROUP_KINDS } from '../lib/groups-rules'
 import { GroupsNav } from './GroupsNav'
 import {
   GROUPS_HREF,
+  ageCategoryOptions,
   errorMessage,
   kindLabel,
   personName,
@@ -79,6 +80,13 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       enableSorting: false,
       meta: { priority: 5 },
       cell: ({ row }) => kindLabel(t, row.original.kind),
+    },
+    {
+      accessorKey: 'ageCategoryName',
+      header: t('groups.groups.columns.ageCategory'),
+      enableSorting: false,
+      meta: { priority: 8 },
+      cell: ({ row }) => row.original.ageCategoryName ?? dash,
     },
     {
       id: 'coaches',
@@ -128,6 +136,7 @@ function filterValuesOf(state: GroupListState): FilterValues {
   if (state.sectionId) values.sectionId = state.sectionId
   if (state.kind) values.kind = state.kind
   if (state.seasonId) values.seasonId = state.seasonId
+  if (state.ageCategoryEntryId) values.ageCategoryEntryId = state.ageCategoryEntryId
   if (state.isActive) values.isActive = state.isActive
   return values
 }
@@ -135,7 +144,7 @@ function filterValuesOf(state: GroupListState): FilterValues {
 /** The list state of applied filter values, keeping the search; invalid values are dropped as in a URL. */
 function stateOf(values: FilterValues, search: string | undefined): GroupListState {
   const query = new URLSearchParams()
-  for (const key of ['sectionId', 'kind', 'seasonId', 'isActive'] as const) {
+  for (const key of ['sectionId', 'kind', 'seasonId', 'ageCategoryEntryId', 'isActive'] as const) {
     const value: unknown = values[key]
     if (typeof value === 'string' && value) query.set(key, value)
   }
@@ -202,6 +211,12 @@ function GroupsList() {
         label: t('groups.groups.filters.season'),
         type: 'select',
         loadOptions: tolerant(seasonOptions),
+      },
+      {
+        id: 'ageCategoryEntryId',
+        label: t('groups.groups.filters.ageCategory'),
+        type: 'select',
+        loadOptions: tolerant(ageCategoryOptions),
       },
       {
         id: 'isActive',

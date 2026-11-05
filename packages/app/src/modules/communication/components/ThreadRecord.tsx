@@ -22,10 +22,10 @@ import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { DeliveryStatusList, type DeliveryPage } from '@vereino/ui'
 import {
   OWN_FORBIDDEN_STATE,
-  errorCode,
   errorMessage,
   formatDateTime,
   roleLabel,
@@ -190,7 +190,7 @@ function useMarkCase(thread: ThreadDetail | null, refresh: () => void) {
       flash(t('communication.cases.flash.marked'), 'success')
       refresh()
     } catch (error: unknown) {
-      if (errorCode(error) === 'case_already_open') {
+      if (errorCodeOf(error) === 'case_already_open') {
         flash(errorMessage(error, t('communication.errors.case_already_open')), 'error')
         refresh()
       } else if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
@@ -370,7 +370,7 @@ function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afte
         refresh()
         afterDelete()
       } catch (error: unknown) {
-        const code = errorCode(error)
+        const code = errorCodeOf(error)
         if (code === 'case_immutable' || code === 'message_deleted' || code === 'message_not_editable') {
           flash(errorMessage(error, t(`communication.errors.${code}`)), 'error')
           refresh()

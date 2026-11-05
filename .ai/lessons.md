@@ -20,7 +20,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 - Copy `.ai/lessons/_template.md` to one focused `.ai/lessons/<kebab-case-slug>.md`; update an existing record instead of duplicating it.
 - Preserve the front matter keys `title`, `modules`, `areas`, and `topics`. Use `platform` only when no module or package owns the lesson, and put the primary area first.
-- Add or update exactly one catalog row under its primary area below, in file-name order within the section (`lessons:check` enforces it, so parallel branches rarely touch the same line). Keep the title stable when code or specs cite it.
+- Add or update exactly one catalog row under its primary area below, in file-name order within the section (`lessons:check` enforces it, so parallel branches rarely touch the same line). `.gitattributes` merges this file with `merge=union`, so a local `git merge` keeps rows both sides added; GitHub's merge button ignores that, so merge `main` locally when it reports a conflict here. Keep the title stable when code or specs cite it.
 - Put hard boundaries in `AGENTS.md`; lessons explain recurring evidence and the durable rule.
 - Run `node scripts/check-lessons.mjs` before committing.
 
@@ -64,15 +64,18 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 ### module-data
 
 - [The upload service adds the owner as an assignment; releaseScoped needs it to be the only one](lessons/attachment-owner-assignment-and-release.md) — area:module-data; module:people,platform; topic:attachments,uploads,purge,retention
+- [A makeCrudRoute list query schema stays a plain z.object: no .refine, cross-field checks go in buildFilters](lessons/crud-list-schema-no-refine.md) — area:module-data; module:people,platform; topic:zod,openapi,make-crud-route,validation
 - [Hide a per-caller column outside the CRUD projection; a club-wide read of a section-scoped kind uses clubWideKinds](lessons/hidden-columns-and-club-wide-reads-in-scoped-lists.md) — area:module-data,architecture; module:people,foundation; topic:data-scoping,crud-factory,after-list,consents,acting-role
 - [Declare a uuid[] column with columnType; serialize capacity checks with a per-organization advisory lock](lessons/mikro-orm-uuid-array-column-and-advisory-schedule-lock.md) — area:module-data; module:activities,platform; topic:mikro-orm,migrations,postgres-arrays,advisory-lock,concurrency,conflicts
 - [Serve a public file through attachmentService.readScoped with the slug-derived scope and its exact owner, assignment and partition](lessons/public-attachments-through-read-scoped.md) — area:module-data; module:club_core,platform; topic:attachments,public-pages,sessionless,uploads,content-type
 - [A list entityId must match the ORM class name; ACL dependsOn is diagnostics only, so grant *.view explicitly](lessons/query-engine-entity-ids-and-acl-depends-on.md) — area:module-data,architecture; module:groups,platform; topic:query-engine,crud-factory,entity-id,acl,role-features
 - [A required lock token must spare the audit redo and a singleton's first save](lessons/required-lock-token-redo-and-first-save.md) — area:module-data,debugging; module:foundation,club_core,platform; topic:optimistic-locking,commands,undo-redo,authorize-scoped
 - [Scoped CRUD lists disable the full export and never send an empty $in; API-created test tenants need the init steps](lessons/scoped-crud-lists-and-api-created-tenants.md) — area:module-data,testing; module:people,foundation; topic:data-scoping,query-engine,crud-export,integration-tests,tenant-setup
+- [Refuse an unlinked account before any target lookup; a hand-written no-person refusal throws scopeDenialCode](lessons/unlinked-account-refusal-before-target-lookup.md) — area:module-data,debugging; module:foundation,communication,activities,people; topic:data-scoping,error-codes,authorize-scoped,forbidden
 
 ### spec-pr
 
+- [Parallel PRs must not append to one shared table: each spec change is its own file, and merge=union helps only local merges](lessons/append-only-rows-conflict-one-file-per-entry.md) — area:spec-pr,ai-workflow; module:platform; topic:merge-conflicts,parallel-agents,spec-changelog,gitattributes,merge-union
 - [Keep explicit pay rates out of research notes in this public repository](lessons/no-explicit-pay-rates-in-research.md) — area:spec-pr; module:platform; topic:discovery,research-notes,privacy,public-repository
 - [Retarget a stacked pull request to main before merging it](lessons/retarget-stacked-pr-before-merge.md) — area:spec-pr; module:platform; topic:pull-requests,stacked-branches,github,merge
 
@@ -82,6 +85,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [The platform apiFetch throws ForbiddenError on every 403, so a page's own 403 branch never runs; test the forbidden state in the UI](lessons/apifetch-403-throws-before-page-branch.md) — area:backend-ui,testing; module:activities,platform; topic:api-client,forbidden,error-states,journeys
 - [Reload after emulateMedia before an axe scan; a react-query refetch after an error keeps status error](lessons/axe-after-color-scheme-and-react-query-error-refetch.md) — area:testing,backend-ui; module:people,platform; topic:axe,dark-mode,playwright,react-query,loading-state
 - [One axe baseline entry per rule; a test reported at hours means a suspended host; db:generate for a new module needs a seed snapshot](lessons/axe-baseline-suspended-runs-and-offline-db-generate.md) — area:testing,debugging; module:groups,platform; topic:axe,accessibility-baseline,playwright,host-suspend,db-generate,migrations
+- [Integration test clubs never run a module's seedDefaults; a CrudForm select clicked before its options load opens nothing](lessons/integration-clubs-skip-seed-defaults-and-crudform-select-race.md) — area:testing,module-data; module:groups,platform; topic:seed-defaults,cli,playwright,crudform,select
 - [Integration fixtures: a new password ends old tokens, CrudForm inputs need data-crud-field-id, undo takes the actor's latest action only](lessons/integration-fixture-pitfalls-tokens-crudform-undo.md) — area:testing; module:people,platform; topic:integration-tests,playwright,auth-tokens,crud-form,undo
 - [Integration tests that move sessions to now must survive any weekday and hour, including the fixture's own series](lessons/integration-tests-must-not-depend-on-the-clock.md) — area:testing; module:activities; topic:integration-tests,time,fixtures,conflicts,flaky
 - [In journey tests a UI sign-in resets that user's password and kills their fixture token, and the messaging probe cannot run lock-protected commands](lessons/journey-test-sign-in-tokens-and-probe-limits.md) — area:testing,integration; module:communication,activities,people; topic:journeys,playwright,fixtures,auth,messaging-probe,optimistic-lock
