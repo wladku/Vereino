@@ -4,7 +4,10 @@
 // person (the member or each ward), the declaration status with the buttons the club's model offers; a guardian's
 // decision on a ward's pending declaration ("Approve" / "Reject"); the called-up children the club setting and the
 // consents allow; "declarations closed" once the session started; "only your guardian declares" under
-// `guardian_only`. A session outside the caller's (or the wards') calendar is "not found".
+// `guardian_only`. A session outside the caller's (or the wards') calendar is "not found". A person who coaches also
+// reads it as the coach (E06-S15 #97): the coach of its group or its assigned coach gets "Running the session"
+// (attendance list, cancellation); a coach of another group sees "This is not your session" and none of its data; a
+// coach who is also a guardian gets the declarations and the coach block together on a ward's session.
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -17,7 +20,9 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { badgeVariant, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { CoachSessionBlock } from './CoachSessionBlock'
 import {
   CALENDAR_QUERY_KEY,
   CLUB_CALENDAR_HREF,
@@ -35,9 +40,16 @@ import {
   type CalendarPerson,
   type ClubProfile,
   type DeclaredValue,
+  type SessionLoad,
 } from './club-client'
 
 type Perspective = 'self' | 'guardian'
+
+function readState(enabled: boolean, query: { data?: SessionLoad; isError: boolean }): SessionReadState {
+  if (!enabled) return 'off'
+  if (query.data) return query.data.status
+  return query.isError ? 'error' : 'loading'
+}
 
 function PersonDeclaration({
   entry,
@@ -142,11 +154,15 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   const locale = useLocale()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const requested = searchParams.get('as')
-  const as: Perspective =
-    requested === 'guardian' || (requested !== 'self' && profile.wards.length > 0) ? 'guardian' : 'self'
+  const perspectives = sessionPerspectives(searchParams.get('as'), {
+    hasWards: profile.wards.length > 0,
+    coaches: profile.contexts.includes('coach'),
+  })
+  const as: Perspective = perspectives.member
   const personId = searchParams.get('personId')
   const query = useMemberSession(id, as, personId)
+  const coachQuery = useMemberSession(id, 'coach', null, perspectives.coach)
+  const view = sessionPageView(readState(true, query), readState(perspectives.coach, coachQuery))
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
 
@@ -176,30 +192,44 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     </Link>
   )
 
-  if (!query.data && query.isFetching) return <LoadingMessage label={t('activities.club.session.loading')} />
-  if (!query.data) {
+  if (view.kind === 'loading') return <LoadingMessage label={t('activities.club.session.loading')} />
+  if (view.kind === 'error') {
     return (
       <ErrorMessage
         label={t('activities.club.errors.session')}
         action={
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => {
+              void query.refetch()
+              if (perspectives.coach) void coachQuery.refetch()
+            }}
+          >
             {t('activities.club.actions.retry')}
           </Button>
         }
       />
     )
   }
-  if (query.data.status === 'not_found') {
+  if (view.kind === 'not_found' || view.kind === 'not_yours') {
     return (
       <>
         {back}
         <Alert status="warning" data-testid="club-session-missing">
-          <p className="max-w-prose">{t('activities.club.session.notFound')}</p>
+          <p className="max-w-prose">
+            {t(view.kind === 'not_yours' ? 'activities.club.session.notYours' : 'activities.club.session.notFound')}
+          </p>
         </Alert>
       </>
     )
   }
-  const { entry } = query.data
+  const memberEntry = query.data?.status === 'ok' ? query.data.entry : null
+  const coachEntry = coachQuery.data?.status === 'ok' ? coachQuery.data.entry : null
+  // Both reads describe the same session; the member's carries the declarations, the coach's the summary.
+  const entry = memberEntry ?? coachEntry
+  if (!entry) return null
   const { occurrence } = entry
   const startsAt = new Date(occurrence.startAt)
   const map = mapHref(occurrence.placeGeoLat, occurrence.placeGeoLng)
@@ -285,52 +315,71 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
           ))}
         </dl>
       </section>
+      {coachEntry ? (
+        <CoachSessionBlock
+          entry={coachEntry}
+          onCancelled={async (message) => {
+            if (message) {
+              setAnnouncement(message)
+              flash(message, 'success')
+            }
+            await refresh()
+          }}
+        />
+      ) : null}
       {!entry.declarationsOpen && occurrence.status === 'planned' ? (
         <Alert status="information" data-testid="club-session-closed">
           <p className="max-w-prose">{t('activities.club.session.closed')}</p>
         </Alert>
       ) : null}
-      <section aria-labelledby="club-session-declarations" className="flex flex-col gap-3">
-        <h2 id="club-session-declarations" className="text-lg font-semibold">
-          {t('activities.club.session.declarations')}
-        </h2>
-        <ul className="flex flex-col gap-3">
-          {entry.persons.map((person) => (
-            <PersonDeclaration
-              key={person.personId}
-              entry={entry}
-              person={person}
-              as={as}
-              busy={busy}
-              onDeclare={(target, declared) =>
-                void run(
-                  () =>
-                    declareAttendance(
-                      { occurrenceId: occurrence.id, personId: target.personId, declared },
-                      t('activities.club.errors.declare'),
-                      target.declaration?.updatedAt ?? null,
-                    ),
-                  t('activities.club.flash.declared'),
-                  t('activities.club.errors.declare'),
-                )
-              }
-              onDecide={(target, approve) => {
-                const shown = target.declaration
-                if (!shown) return
-                void run(
-                  () =>
-                    decideDeclaration(shown.attendanceId, approve, t('activities.club.errors.decide'), shown.updatedAt),
-                  t(approve ? 'activities.club.flash.approved' : 'activities.club.flash.rejected'),
-                  t('activities.club.errors.decide'),
-                )
-              }}
-            />
-          ))}
-        </ul>
-        <p className="sr-only" aria-live="polite" data-testid="club-session-announcement">
-          {announcement}
-        </p>
-      </section>
+      {memberEntry ? (
+        <section aria-labelledby="club-session-declarations" className="flex flex-col gap-3">
+          <h2 id="club-session-declarations" className="text-lg font-semibold">
+            {t('activities.club.session.declarations')}
+          </h2>
+          <ul className="flex flex-col gap-3">
+            {entry.persons.map((person) => (
+              <PersonDeclaration
+                key={person.personId}
+                entry={entry}
+                person={person}
+                as={as}
+                busy={busy}
+                onDeclare={(target, declared) =>
+                  void run(
+                    () =>
+                      declareAttendance(
+                        { occurrenceId: occurrence.id, personId: target.personId, declared },
+                        t('activities.club.errors.declare'),
+                        target.declaration?.updatedAt ?? null,
+                      ),
+                    t('activities.club.flash.declared'),
+                    t('activities.club.errors.declare'),
+                  )
+                }
+                onDecide={(target, approve) => {
+                  const shown = target.declaration
+                  if (!shown) return
+                  void run(
+                    () =>
+                      decideDeclaration(
+                        shown.attendanceId,
+                        approve,
+                        t('activities.club.errors.decide'),
+                        shown.updatedAt,
+                      ),
+                    t(approve ? 'activities.club.flash.approved' : 'activities.club.flash.rejected'),
+                    t('activities.club.errors.decide'),
+                  )
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <p className="sr-only" aria-live="polite" data-testid="club-session-announcement">
+        {announcement}
+      </p>
       {entry.calledUpChildren ? (
         <section aria-labelledby="club-session-called-up" className="flex flex-col gap-2">
           <h2 id="club-session-called-up" className="text-lg font-semibold">

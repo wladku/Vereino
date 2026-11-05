@@ -82,7 +82,7 @@ test('More is a disclosure with Profile and Sign out posting to the auth logout 
 })
 
 test('marks More and Profile current on the profile and offers the admin panel to staff', () => {
-  const html = render({ nav: memberNav({ pathname: '/club/profile', contexts: ['self', 'coach'], labels }) })
+  const html = render({ nav: memberNav({ pathname: '/club/profile', contexts: ['self', 'coordinator'], labels }) })
   assert.match(html, /<summary class="[^"]*text-primary font-semibold" aria-current="page">/)
   assert.match(html, /<a href="\/club\/profile" class="[^"]*font-semibold" aria-current="page">Profile<\/a>/)
   assert.match(html, /<a href="\/backend" class="hover:bg-accent[^"]*">Admin panel<\/a>/)

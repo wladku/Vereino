@@ -6,9 +6,47 @@ import type { AwilixContainer } from 'awilix'
 import { buildBatchNotificationFromType } from '@open-mercato/core/modules/notifications/lib/notificationBuilder'
 import { resolveNotificationService } from '@open-mercato/core/modules/notifications/lib/notificationService'
 import { Activity, Occurrence } from '../data/entities'
-import { cancellationPersonIds, cancellationRecipients, wallTimeInZone } from '../lib/activities-rules'
+import {
+  cancellationNotifiedCount,
+  cancellationPersonIds,
+  cancellationRecipients,
+  wallTimeInZone,
+} from '../lib/activities-rules'
 import notificationTypes from '../notifications'
 import { activeGuardians, clubTimeZone, findPersons, findUserIds, rosterOn, type ActivitiesScope } from './directory'
+
+/** The people a session's cancellation concerns, as on its date: the roster, the coach, the minors' guardians. */
+async function cancellationAudience(container: AwilixContainer, scope: ActivitiesScope, occurrence: Occurrence) {
+  const roster = await rosterOn(container, scope, occurrence.groupId, occurrence.occurrenceDate)
+  const participantIds = roster.filter((member) => member.role === 'participant').map((member) => member.personId)
+  const [persons, guardiansByWard] = await Promise.all([
+    findPersons(container, scope, participantIds),
+    activeGuardians(container, scope, participantIds, occurrence.occurrenceDate),
+  ])
+  return {
+    roster,
+    coachPersonId: occurrence.coachPersonId ?? null,
+    birthDates: new Map([...persons.values()].map((person) => [person.id, person.birthDate])),
+    guardiansByWard,
+    onDate: occurrence.occurrenceDate,
+  }
+}
+
+/**
+ * How many people the cancellation of a session tells, without the person who cancelled — the number the member
+ * page's toast names (E06-S15 #97). 0 when the session is not cancelled.
+ */
+export async function countCancellationNotified(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  occurrenceId: string,
+  actorPersonId: string | null,
+): Promise<number> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const occurrence = await em.findOne(Occurrence, { id: occurrenceId, ...scope, deletedAt: null })
+  if (!occurrence || occurrence.status !== 'cancelled') return 0
+  return cancellationNotifiedCount(await cancellationAudience(container, scope, occurrence), actorPersonId)
+}
 
 /** Sends the notice for a cancelled session; returns the notified users (none when the session is not cancelled). */
 export async function notifyOccurrenceCancelled(
@@ -20,19 +58,7 @@ export async function notifyOccurrenceCancelled(
   const occurrence = await em.findOne(Occurrence, { id: event.occurrenceId, ...scope, deletedAt: null })
   if (!occurrence || occurrence.status !== 'cancelled') return []
   const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'name'] })
-  const roster = await rosterOn(container, scope, occurrence.groupId, occurrence.occurrenceDate)
-  const participantIds = roster.filter((member) => member.role === 'participant').map((member) => member.personId)
-  const [persons, guardiansByWard] = await Promise.all([
-    findPersons(container, scope, participantIds),
-    activeGuardians(container, scope, participantIds, occurrence.occurrenceDate),
-  ])
-  const audience = {
-    roster,
-    coachPersonId: occurrence.coachPersonId ?? null,
-    birthDates: new Map([...persons.values()].map((person) => [person.id, person.birthDate])),
-    guardiansByWard,
-    onDate: occurrence.occurrenceDate,
-  }
+  const audience = await cancellationAudience(container, scope, occurrence)
   const userIds = await findUserIds(container, scope, cancellationPersonIds(audience))
   const recipientUserIds = cancellationRecipients({
     ...audience,

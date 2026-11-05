@@ -1,12 +1,15 @@
 // `POST /api/activities/occurrences/{id}/cancel` — `activities.occurrences.cancel` (club spec API table, glossary
 // *Session cancellation*, REQ-005, REQ-009, TEST-012): a planned session becomes `cancelled` with a reason, by a coach of
 // its group, the coordinator of its section or the club administrator; the people it concerns get an in-app notice
-// after commit. Send the lock token in the platform optimistic-lock header.
+// after commit. Send the lock token in the platform optimistic-lock header. The answer names how many people the
+// cancellation tells (`notified`, without the canceller; E06-S15 #97), for the member page's toast.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { commandContextForRequest, errorResponse } from '@/modules/foundation'
+import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
+import { selfPersonId } from '../../../../commands/shared'
 import type { OccurrenceCommandResult } from '../../../../commands/occurrences'
+import { countCancellationNotified } from '../../../../services/cancellation-notice'
 import { errorSchema } from '../../../shared'
 
 export const metadata = {
@@ -22,6 +25,7 @@ const responseSchema = z.object({
   status: z.literal('cancelled'),
   updatedAt: z.string(),
   actingRole: z.string(),
+  notified: z.number().int().min(0),
 })
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -35,12 +39,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       input: { ...(typeof body === 'object' && body !== null ? body : {}), id },
       ctx,
     })
+    const scope = trustedScopeOf(ctx)
+    const notified = scope
+      ? await countCancellationNotified(ctx.container, scope, id, selfPersonId(await scopeContract.resolve(ctx)))
+      : 0
     return Response.json({
       ok: true,
       id: result.entity.id,
       status: result.entity.status,
       updatedAt: result.entity.updatedAt.toISOString(),
       actingRole: result.actingRole,
+      notified,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.occurrences.cancel')
@@ -54,7 +63,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Cancel a planned session with a reason',
       description:
-        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches; `notified` counts the people the cancellation tells (in the app or by e-mail), without the canceller. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [{ status: 200, description: 'The cancelled session', schema: responseSchema }],
       errors: [

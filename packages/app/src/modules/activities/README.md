@@ -107,3 +107,12 @@ E06-S11 (README B-14, B-15, M-04; club spec REQ-005, REQ-020, REQ-027):
 - **Opponent.** A `match` or `sparring` (`takesOpponent`) shows the "Opponent" select (external teams); other types send `opponentExternalTeamId: null`.
 - **Coach picker.** `GET /api/activities/options/coaches` (`activities.manage`) lists the persons with an active `coach` role assignment (`people.personDirectory.roleHolderIdsOn`) or an active `coach`/`assistant` membership of any group (`groups.directory.leaderIdsOn`) on the club's today; `search` keeps the persons whose first or last name starts with every word, case and diacritics ignored (`lib/coach-options.ts`). The picker puts "No coach" first; it sends `coachPersonId: null`.
 - **Session details.** `GET /api/activities/occurrences/{id}` and every calendar entry (`GET /api/activities/calendar`, `…/{id}`) carry `opponentName` and `invitedTeamNames` (`services/read.ts` `activityTeams`); B-15 and M-04 show them when present.
+
+## The coach runs a session from the phone (#97)
+
+E06-S15 (README M-02, M-04, F-05; club spec REQ-007, REQ-009, TEST-014):
+
+- **Today.** A person with the `coach` context gets the tile "My sessions today and tomorrow" (`as=coach`) next to the member tiles, so a coach who is also a guardian sees both; acting as a coach (the header switcher) leaves only the coach tile. Each session opens `/club/occurrences/[id]?as=coach` and carries an "Attendance list" button and a "Needs a coach" marker (`needsCoach`: planned, no coach assigned).
+- **Session page.** `GET /api/activities/calendar/{id}?as=coach` reads the session under the scope of `as=coach` in the calendar (a coach of its group or its assigned coach, `activities.coach`) with the declaration summary and no persons; any other session of the club answers 403 `scope_denied`. The page reads it next to the member perspective (`lib/member-session.ts`), so a coach who is also a guardian gets the declarations and the "Running the session" block together, and a coach of another group sees "This is not your session" with none of the session's data.
+- **Cancellation.** "Cancel session" asks for a reason of 3–200 characters (`cancelReasonProblem`; the API keeps 1–500) and warns that participants, guardians and the coach are told. `POST /api/activities/occurrences/{id}/cancel` now also answers `notified` (`cancellationNotifiedCount`: the persons the cancellation concerns, without the canceller), which the toast names.
+- **Not here.** "Message the group" arrives with the phone composer of E06-S20 (#102); "Report absence" with E06-S13 (#95).

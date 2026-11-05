@@ -20,7 +20,10 @@ export { BACKEND_HREF, CLUB_CALENDAR_HREF } from '@vereino/ui'
 /** The perspectives a member page reads the calendar in (`GET /api/activities/calendar?as=`). */
 export type MemberPerspective = 'self' | 'guardian' | 'coach'
 
-export function sessionHref(id: string, as: 'self' | 'guardian', personId?: string | null): string {
+/** The perspectives of the session page `/club/occurrences/[id]` (the coach's: E06-S15 #97). */
+export type SessionPerspective = 'self' | 'guardian' | 'coach'
+
+export function sessionHref(id: string, as: SessionPerspective, personId?: string | null): string {
   const params = new URLSearchParams({ as })
   if (personId) params.set('personId', personId)
   return `/club/occurrences/${encodeURIComponent(id)}?${params.toString()}`
@@ -172,13 +175,19 @@ export function useMemberCalendar(query: CalendarQuery | null) {
   })
 }
 
-export type SessionLoad = { status: 'ok'; entry: CalendarEntry & { timeZone: string } } | { status: 'not_found' }
+export type SessionLoad =
+  { status: 'ok'; entry: CalendarEntry & { timeZone: string } } | { status: 'not_found' } | { status: 'forbidden' }
 
 export const SESSION_QUERY_KEY = 'activities-member-session'
 
-export function useMemberSession(id: string, as: 'self' | 'guardian', personId: string | null) {
+/**
+ * One session in a perspective. A member's 403 (a person not theirs) reads as "not found"; the coach's 403 is a
+ * session of the club outside their groups — "This is not your session" (E06-S15 #97). `enabled` false skips the read.
+ */
+export function useMemberSession(id: string, as: SessionPerspective, personId: string | null, enabled = true) {
   return useQuery({
     queryKey: [SESSION_QUERY_KEY, id, as, personId],
+    enabled,
     queryFn: async (): Promise<SessionLoad> => {
       const params = new URLSearchParams({ as })
       if (personId) params.set('personId', personId)
@@ -186,6 +195,7 @@ export function useMemberSession(id: string, as: 'self' | 'guardian', personId: 
         `/api/activities/calendar/${encodeURIComponent(id)}?${params.toString()}`,
         OWN_FORBIDDEN_STATE,
       )
+      if (call.status === 403 && as === 'coach') return { status: 'forbidden' }
       if (call.status === 404 || call.status === 403) return { status: 'not_found' }
       if (!call.ok || !call.result) throw new CalendarLoadError(String(call.status))
       return { status: 'ok', entry: call.result }
@@ -355,6 +365,26 @@ export async function decideDeclaration(
       { errorMessage },
     ),
   )
+}
+
+/**
+ * Cancels a session from the member page (E06-S15 #97) against the version the page showed (`lockToken` = the
+ * session's `updatedAt`; a change meanwhile answers 409). Returns how many people the cancellation tells.
+ */
+export async function cancelSession(
+  id: string,
+  reason: string,
+  errorMessage: string,
+  lockToken: string,
+): Promise<number> {
+  const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow<{ notified?: number }>(
+      `/api/activities/occurrences/${encodeURIComponent(id)}/cancel`,
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reason }) },
+      { errorMessage },
+    ),
+  )
+  return call.result?.notified ?? 0
 }
 
 export function errorText(error: unknown, fallback: string): string {
