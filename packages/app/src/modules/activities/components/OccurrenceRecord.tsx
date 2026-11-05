@@ -12,24 +12,13 @@ import { useQuery } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
-import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
-import { Label } from '@open-mercato/ui/primitives/label'
-import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
 import { ConflictList } from './ConflictList'
 import { OccurrenceBadges } from './OccurrencesTable'
 import { attendanceHref } from './club/club-client'
@@ -281,127 +270,6 @@ function MoveForm({
   )
 }
 
-function CancelDialog({
-  occurrence,
-  open,
-  onOpenChange,
-  onDone,
-}: {
-  occurrence: OccurrenceDetail
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onDone: () => Promise<void>
-}) {
-  const t = useT()
-  const reasonId = React.useId()
-  const [reason, setReason] = React.useState('')
-  const [pending, setPending] = React.useState(false)
-  const [problem, setProblem] = React.useState<string | null>(null)
-  const trimmed = reason.trim()
-
-  const submit = async () => {
-    if (!trimmed) {
-      setProblem(t('activities.occurrences.cancel.reasonRequired'))
-      return
-    }
-    setPending(true)
-    setProblem(null)
-    try {
-      await withScopedApiRequestHeaders(buildOptimisticLockHeader(occurrence.updatedAt), () =>
-        apiCallOrThrow(
-          `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}/cancel`,
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ reason: trimmed }),
-          },
-          { errorMessage: t('activities.occurrences.errors.cancel') },
-        ),
-      )
-      flash(t('activities.occurrences.flash.cancelled'), 'success')
-      setReason('')
-      onOpenChange(false)
-      await onDone()
-    } catch (error: unknown) {
-      if (surfaceRecordConflict(error, t, { onRefresh: () => void onDone() })) {
-        onOpenChange(false)
-      } else if (errorCode(error) === 'invalid_transition') {
-        flash(errorMessage(error, t('activities.occurrences.errors.cancel')), 'error')
-        onOpenChange(false)
-        await onDone()
-      } else {
-        setProblem(errorMessage(error, t('activities.occurrences.errors.cancel')))
-      }
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        closeAriaLabel={t('activities.common.close')}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault()
-            void submit()
-          }
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>{t('activities.occurrences.cancel.title')}</DialogTitle>
-          <DialogDescription>{t('activities.occurrences.cancel.help')}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={reasonId}>{t('activities.occurrences.cancel.reason')}</Label>
-          <Textarea
-            id={reasonId}
-            data-testid="occurrence-cancel-reason"
-            required
-            aria-required
-            aria-invalid={problem && !trimmed ? true : undefined}
-            maxLength={500}
-            rows={3}
-            value={reason}
-            disabled={pending}
-            onChange={(event) => {
-              setReason(event.target.value)
-            }}
-          />
-          {problem ? (
-            <p className="text-destructive text-sm" role="alert">
-              {problem}
-            </p>
-          ) : null}
-        </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={pending}
-            onClick={() => {
-              onOpenChange(false)
-            }}
-          >
-            {t('activities.common.back')}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive-solid"
-            data-testid="occurrence-cancel-confirm"
-            disabled={pending || !trimmed}
-            onClick={() => {
-              void submit()
-            }}
-          >
-            {t('activities.occurrences.cancel.confirm')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export function OccurrenceRecord({ id }: { id: string }) {
   const t = useT()
   const features = useActivitiesFeatures()
@@ -539,7 +407,12 @@ export function OccurrenceRecord({ id }: { id: string }) {
         />
       ) : null}
       {canCancel ? (
-        <CancelDialog occurrence={occurrence} open={cancelling} onOpenChange={setCancelling} onDone={refetch} />
+        <CancelOccurrenceDialog
+          occurrence={occurrence}
+          open={cancelling}
+          onOpenChange={setCancelling}
+          onDone={refetch}
+        />
       ) : null}
     </div>
   )
