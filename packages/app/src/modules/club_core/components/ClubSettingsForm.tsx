@@ -1,7 +1,8 @@
 'use client'
 // `/backend/club/settings` (club spec UI table, DD-37): the club settings with their defaults, edited in one
 // `CrudForm`; the lock token comes from `initialValues.updatedAt` (null until the first save creates the row). Since
-// #29 the club logo panel sits under the form (upload, replace, remove; REQ-028).
+// #29 the club logo panel sits under the form (upload, replace, remove; REQ-028). Since #87 the club name (the platform
+// organization's) is edited here and the time zone is picked from the runtime's IANA zones.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -16,6 +17,8 @@ import {
   COACH_SETTLEMENT_MODELS,
   DECLARATION_KINDS,
   ONLINE_FEE_MODES,
+  OWN_ACCOUNT_MIN_AGE_RANGE,
+  timeZoneOptions,
   type ClubSettingsValues,
 } from '../lib/settings'
 import { nameInitial } from '../lib/files'
@@ -26,6 +29,7 @@ const SETTINGS_API = '/api/club_core/settings'
 const LOCALES = ['pl', 'en'] as const
 
 type SettingsResponse = ClubSettingsValues & {
+  clubName: string | null
   logoAttachmentId: string | null
   logoUrl: string | null
   updatedAt: string | null
@@ -35,8 +39,14 @@ type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
 const kindField = (type: string) => `declarationKind_${type}`
 
+/** The IANA zones this browser knows; empty where `Intl.supportedValuesOf` is missing (the stored zone stays listed). */
+function supportedTimeZones(): string[] {
+  return typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+}
+
 function toFormValues(settings: SettingsResponse): FormValues {
   const values: FormValues = {
+    clubName: settings.clubName ?? '',
     shortName: settings.shortName ?? '',
     defaultLocale: settings.defaultLocale,
     timezone: settings.timezone,
@@ -58,7 +68,9 @@ function toFormValues(settings: SettingsResponse): FormValues {
 function toPayload(values: Record<string, unknown>) {
   const declarationKinds = Object.fromEntries(ACTIVITY_TYPES.map((type) => [type, values[kindField(type)]]))
   const fixed = numberOrNull(values.onlineFeeFixed)
+  const clubName = textOrNull(values.clubName)
   return {
+    ...(clubName ? { clubName } : {}),
     shortName: textOrNull(values.shortName),
     defaultLocale: values.defaultLocale,
     timezone: textOrNull(values.timezone) ?? undefined,
@@ -82,9 +94,19 @@ export function ClubSettingsForm() {
     queryFn: () => readApiResultOrThrow<SettingsResponse>(SETTINGS_API),
   })
 
+  const currentTimeZone = settings?.timezone ?? null
   const fields = React.useMemo<CrudField[]>(() => {
     const kindOptions = enumOptions(DECLARATION_KINDS, 'club_core.settings.declarationKind', t)
+    const zones = timeZoneOptions(supportedTimeZones(), currentTimeZone).map((zone) => ({ value: zone, label: zone }))
     return [
+      {
+        id: 'clubName',
+        label: t('club_core.settings.fields.clubName'),
+        type: 'text',
+        maxLength: 200,
+        description: t('club_core.settings.fields.clubName.description'),
+        required: true,
+      },
       { id: 'shortName', label: t('club_core.settings.fields.shortName'), type: 'text', maxLength: 100 },
       {
         id: 'defaultLocale',
@@ -96,7 +118,8 @@ export function ClubSettingsForm() {
       {
         id: 'timezone',
         label: t('club_core.settings.fields.timezone'),
-        type: 'text',
+        type: 'select',
+        options: zones,
         description: t('club_core.settings.fields.timezone.description'),
         required: true,
       },
@@ -112,7 +135,7 @@ export function ClubSettingsForm() {
         id: 'ownAccountMinAge',
         label: t('club_core.settings.fields.ownAccountMinAge'),
         type: 'number',
-        description: t('club_core.settings.fields.ownAccountMinAge.description'),
+        description: t('club_core.settings.fields.ownAccountMinAge.description', OWN_ACCOUNT_MIN_AGE_RANGE),
         required: true,
       },
       ...ACTIVITY_TYPES.map<CrudField>((type) => ({
@@ -164,7 +187,7 @@ export function ClubSettingsForm() {
         required: true,
       },
     ]
-  }, [t])
+  }, [t, currentTimeZone])
 
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -172,7 +195,7 @@ export function ClubSettingsForm() {
         id: 'club',
         title: t('club_core.settings.groups.club'),
         column: 1,
-        fields: ['shortName', 'defaultLocale', 'timezone', 'currency', 'ownAccountMinAge'],
+        fields: ['clubName', 'shortName', 'defaultLocale', 'timezone', 'currency', 'ownAccountMinAge'],
       },
       {
         id: 'declarations',

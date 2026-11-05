@@ -13,6 +13,15 @@ import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
 import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
+import { clubCoreErrors } from '../api/errors'
+import type { ClubCoreErrorCode } from '../lib/error-codes'
+
+/** Throws a coded error that also carries a field error on `field`, so `CrudForm` shows it next to the field. */
+export async function throwFieldError(code: ClubCoreErrorCode, field: string): Promise<never> {
+  const error = await clubCoreErrors.create(code, { field })
+  error.body = { ...error.body, fieldErrors: { [field]: String(error.body.error ?? code) } }
+  throw error
+}
 
 /** Club structure (sections, places, institutions) is changed by the club administrator only. */
 export const STRUCTURE_WRITE_KINDS: readonly GrantKind[] = ['club_admin']

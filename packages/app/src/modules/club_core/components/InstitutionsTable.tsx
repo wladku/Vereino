@@ -1,10 +1,12 @@
 'use client'
-// `/backend/club/institutions` (club spec UI table): institutions the club works with.
+// `/backend/club/institutions` (club spec UI table): institutions the club works with. Since #87 (README B-07) the list
+// shows the bank account in its printed NRB form and filters by type.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
+import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
@@ -15,6 +17,8 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { INSTITUTION_TYPES } from '../data/validators'
+import { formatBankAccount } from '../lib/institutions'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
 import type { InstitutionRow } from './places-shared'
 
@@ -45,7 +49,25 @@ function buildColumns(t: Translate): TableColumns<InstitutionRow> {
       meta: { priority: 4 },
       cell: ({ row }) => row.original.contactPhone ?? dash,
     },
+    {
+      accessorKey: 'bankAccount',
+      header: t('club_core.institutions.columns.bankAccount'),
+      enableSorting: false,
+      meta: { priority: 5 },
+      cell: ({ row }) =>
+        row.original.bankAccount ? (
+          <span className="font-mono whitespace-nowrap">{formatBankAccount(row.original.bankAccount)}</span>
+        ) : (
+          dash
+        ),
+    },
   ]
+}
+
+/** The list query parameters of the applied filters (`GET /api/club_core/institutions?type=`). */
+function filterParams(values: FilterValues): Record<string, string> {
+  const type: unknown = values.type
+  return typeof type === 'string' && type ? { type } : {}
 }
 
 export function InstitutionsTable() {
@@ -56,9 +78,10 @@ export function InstitutionsTable() {
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
+  const [filters, setFilters] = React.useState<FilterValues>({})
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['club_core-institutions', search, page, scopeVersion],
+    queryKey: ['club_core-institutions', search, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<InstitutionRow>('club_core/institutions', {
         page,
@@ -66,10 +89,22 @@ export function InstitutionsTable() {
         sortField: 'name',
         sortDir: 'asc',
         ...(search ? { search } : {}),
+        ...filterParams(filters),
       }),
   })
 
   const columns = React.useMemo(() => buildColumns(t), [t])
+  const filterDefs = React.useMemo<FilterDef[]>(
+    () => [
+      {
+        id: 'type',
+        label: t('club_core.institutions.filters.type'),
+        type: 'select',
+        options: INSTITUTION_TYPES.map((type) => ({ value: type, label: t(`club_core.institutions.type.${type}`) })),
+      },
+    ],
+    [t],
+  )
 
   const remove = async (row: InstitutionRow) => {
     const confirmed = await confirm({ title: t('club_core.institutions.confirm.delete'), variant: 'destructive' })
@@ -108,6 +143,16 @@ export function InstitutionsTable() {
         searchPlaceholder={t('club_core.institutions.search')}
         onSearchChange={(value: string) => {
           setSearch(value)
+          setPage(1)
+        }}
+        filters={filterDefs}
+        filterValues={filters}
+        onFiltersApply={(values: FilterValues) => {
+          setFilters(values)
+          setPage(1)
+        }}
+        onFiltersClear={() => {
+          setFilters({})
           setPage(1)
         }}
         rowActions={(row: InstitutionRow) => (
