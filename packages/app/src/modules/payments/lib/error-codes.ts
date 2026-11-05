@@ -7,6 +7,7 @@ import type { ErrorCodeTable } from '@vereino/core'
 export const errorCodes = [
   { code: 'fee_target_invalid', status: 422, messageKey: 'payments.errors.fee_target_invalid' },
   { code: 'fee_target_unknown', status: 422, messageKey: 'payments.errors.fee_target_unknown' },
+  { code: 'fee_period_locked', status: 422, messageKey: 'payments.errors.fee_period_locked' },
   { code: 'discount_value_invalid', status: 422, messageKey: 'payments.errors.discount_value_invalid' },
   { code: 'discount_conditions_invalid', status: 422, messageKey: 'payments.errors.discount_conditions_invalid' },
   { code: 'period_out_of_range', status: 422, messageKey: 'payments.errors.period_out_of_range' },

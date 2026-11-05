@@ -110,6 +110,8 @@ export function siblingDiscounted(
     const byPayer = new Map<string, Set<string>>()
     for (const candidate of candidates) {
       if (!candidate.payerPersonId || !rule.conditions.feePeriods.includes(candidate.period)) continue
+      // Only wards are siblings: an adult paying their own fee is not ranked among the children they pay for.
+      if (candidate.personId === candidate.payerPersonId) continue
       const persons = byPayer.get(candidate.payerPersonId) ?? new Set<string>()
       persons.add(candidate.personId)
       byPayer.set(candidate.payerPersonId, persons)

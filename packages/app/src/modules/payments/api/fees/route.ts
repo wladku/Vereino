@@ -122,7 +122,7 @@ export const openApi = buildOpenApi({
     schema: feeUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a fee schedule; charges already issued keep their amounts. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `fee_target_invalid`, 422 `fee_target_unknown`, 422 `validity_inverted`.',
+      'Changes a fee schedule; charges already issued keep their amounts, and the `period` cannot change once the fee has charges. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `fee_target_invalid`, 422 `fee_target_unknown`, 422 `fee_period_locked`, 422 `validity_inverted`.',
   },
   del: {
     schema: feeDeleteSchema,

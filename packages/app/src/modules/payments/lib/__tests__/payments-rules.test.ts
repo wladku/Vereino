@@ -41,6 +41,7 @@ describe('payments vocabularies', () => {
     expect(Object.fromEntries(errorCodes.map((entry) => [entry.code, entry.status]))).toEqual({
       fee_target_invalid: 422,
       fee_target_unknown: 422,
+      fee_period_locked: 422,
       discount_value_invalid: 422,
       discount_conditions_invalid: 422,
       period_out_of_range: 422,

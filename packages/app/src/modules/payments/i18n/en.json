@@ -9,6 +9,7 @@
   "payments.audit.charges.generate": "Generate the charges of a period",
   "payments.errors.fee_target_invalid": "Choose exactly one: a group or an activity",
   "payments.errors.fee_target_unknown": "The chosen group or activity does not exist in this club.",
+  "payments.errors.fee_period_locked": "This fee already has charges, so its billing period cannot change. End it and create a new fee.",
   "payments.errors.discount_value_invalid": "Enter either a percentage from 1 to 100 or an amount above zero. A sibling discount is always a percentage.",
   "payments.errors.discount_conditions_invalid": "Choose at least one fee kind, and for a custom discount at least one person.",
   "payments.errors.period_out_of_range": "Choose a month from 12 months back to 12 months ahead.",

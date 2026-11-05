@@ -9,6 +9,7 @@
   "payments.audit.charges.generate": "Wygenerowanie należności za okres",
   "payments.errors.fee_target_invalid": "Wybierz dokładnie jedno: grupę albo zajęcia",
   "payments.errors.fee_target_unknown": "Wybrana grupa lub zajęcia nie istnieją w tym klubie.",
+  "payments.errors.fee_period_locked": "Ta opłata ma już naliczenia, więc nie można zmienić jej okresu rozliczenia. Zakończ ją i utwórz nową opłatę.",
   "payments.errors.discount_value_invalid": "Podaj procent od 1 do 100 albo kwotę większą od zera. Zniżka dla rodzeństwa jest zawsze procentowa.",
   "payments.errors.discount_conditions_invalid": "Wybierz co najmniej jeden rodzaj opłat, a dla zniżki indywidualnej co najmniej jedną osobę.",
   "payments.errors.period_out_of_range": "Wybierz miesiąc od 12 miesięcy wstecz do 12 miesięcy naprzód.",

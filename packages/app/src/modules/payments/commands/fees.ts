@@ -2,7 +2,7 @@
 // #108): a fee schedule with exactly one target — a group or an activity (422 `fee_target_invalid` "Choose exactly
 // one: a group or an activity"), which must be a live record of the club (422 `fee_target_unknown`); the amount, the
 // period, the payment day 1–28 and the validity. Written by the club administrator. Charges already issued keep
-// their amounts.
+// their amounts, and a fee's period cannot change once it has charges (422 `fee_period_locked`).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { isInvertedPeriod } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
-import { Fee } from '../data/entities'
+import { Charge, Fee } from '../data/entities'
 import { feeCreateSchema, feeDeleteSchema, feeUpdateSchema } from '../data/validators'
 import { feeTargetInvalid, type FeePeriod } from '../lib/payments-rules'
 import { findActivities, findGroups, type PaymentsScope } from '../services/directory'
@@ -207,6 +207,17 @@ const updateFeeCommand: CommandHandler<Record<string, unknown>, FeeCommandResult
         await assertTarget(ctx, em, { tenantId: row.tenantId, organizationId: row.organizationId }, target)
       } else if (feeTargetInvalid(target)) {
         await paymentsErrors.throw('fee_target_invalid')
+      }
+      // A fee's charges are keyed by fee and period label, so its period is fixed once it has billed anyone.
+      if (patch.period !== undefined && patch.period !== row.period) {
+        const charged = await em.count(Charge, {
+          tenantId: row.tenantId,
+          organizationId: row.organizationId,
+          sourceType: 'fee',
+          sourceId: row.id,
+          deletedAt: null,
+        })
+        if (charged > 0) await paymentsErrors.throw('fee_period_locked')
       }
       row.name = patch.name ?? row.name
       row.amount = patch.amount ?? row.amount

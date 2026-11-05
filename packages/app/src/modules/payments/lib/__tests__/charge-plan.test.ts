@@ -122,6 +122,21 @@ describe('siblingDiscounted', () => {
     expect([...(result.get('rule-youngest') ?? [])].sort()).toEqual(['kuba', 'nobirth', 'ola'])
   })
 
+  it('never ranks a paying adult among the wards they pay for', () => {
+    const withParent = [
+      { feeId: 'fee-zumba', personId: 'anna', payerPersonId: 'anna', period: 'monthly' as const },
+      ...candidates,
+    ]
+    const dates = new Map([...birthDates, ['anna', '1986-01-01']])
+    expect([...(siblingDiscounted([sibling30], withParent, dates).get('rule-sibling') ?? [])]).toEqual(['kuba', 'solo'])
+    const youngest: PlanRule = {
+      ...sibling30,
+      id: 'rule-youngest',
+      conditions: { feePeriods: ['monthly'], fullRate: 'youngest' },
+    }
+    expect([...(siblingDiscounted([youngest], withParent, dates).get('rule-youngest') ?? [])]).not.toContain('anna')
+  })
+
   it('ignores custom rules', () => {
     const custom: PlanRule = { ...sibling30, id: 'custom', kind: 'custom', conditions: { feePeriods: ['monthly'] } }
     expect(siblingDiscounted([custom], candidates, birthDates).size).toBe(0)

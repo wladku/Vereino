@@ -75,16 +75,37 @@ export function findActivities(
   return scheduleDirectory(container).findActivities(scope, ids, em)
 }
 
-/** The live sessions of the given groups that start inside the window (at most 500, by start). */
-export function listOccurrences(
+/** The page size of `activities.scheduleDirectory.listOccurrences`: it returns at most this many sessions, by start. */
+export const SCHEDULE_PAGE = 500
+
+/**
+ * Every live session of the given groups that starts inside the window. Read per group and paged past the schedule
+ * directory's cap, so a per-session fee is never billed for fewer sessions than were held.
+ */
+export async function listOccurrences(
   container: AwilixContainer,
   scope: PaymentsScope,
   groupIds: readonly string[],
   window: { from: Date; to: Date },
   em?: EntityManager,
 ): Promise<ScheduleOccurrenceEntry[]> {
-  if (groupIds.length === 0) return Promise.resolve([])
-  return scheduleDirectory(container).listOccurrences(scope, { groupIds }, window, em)
+  const directory = scheduleDirectory(container)
+  const sessions = new Map<string, ScheduleOccurrenceEntry>()
+  for (const groupId of new Set(groupIds)) {
+    let from = window.from
+    for (;;) {
+      const page = await directory.listOccurrences(scope, { groupIds: [groupId] }, { from, to: window.to }, em)
+      for (const session of page) sessions.set(session.id, session)
+      if (page.length < SCHEDULE_PAGE) break
+      const last = page[page.length - 1].startAt
+      // A full page of sessions starting at one instant cannot be paged by start; refuse rather than undercount.
+      if (last.getTime() === from.getTime()) {
+        throw new Error('[internal] payments cannot page the sessions of group ' + groupId)
+      }
+      from = last
+    }
+  }
+  return [...sessions.values()]
 }
 
 export function findPersons(
