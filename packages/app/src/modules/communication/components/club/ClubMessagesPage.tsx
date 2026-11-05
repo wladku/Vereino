@@ -1,7 +1,8 @@
 'use client'
 // `/club/messages` — the member inbox (foundation III REQ-M10, *UI and Interaction Contracts*; club spec UI row
 // `/club/messages`): the member's own threads (`as=member`), newest activity first, each with its scope, the time of
-// the newest message they may see and an unread marker. States: loading, error with retry, empty. Phone-first.
+// the newest message they may see and an unread marker. States: loading, error with retry, empty. Phone-first. "Write
+// to the coach" opens `/club/messages/new` when the household has a group with staff today (REQ-M12, DD-M18).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -10,8 +11,9 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { clubThreadHref, formatDateTime, scopeLabel, type ThreadList } from '../client-helpers'
+import { CLUB_MESSAGE_NEW_HREF, clubThreadHref, formatDateTime, scopeLabel, type ThreadList } from '../client-helpers'
 import { MessagesClubFrame } from './MessagesClubFrame'
+import { hasStaff, useDirectOptions } from './useDirectOptions'
 
 class InboxLoadError extends Error {}
 
@@ -26,6 +28,20 @@ function useInbox() {
       return call.result
     },
   })
+}
+
+/** "Write to the coach", offered only when a household member takes part in a group with staff today. */
+function WriteAction() {
+  const t = useT()
+  const options = useDirectOptions()
+  if (!options.data?.some(hasStaff)) return null
+  return (
+    <Button asChild className="min-h-11 self-start">
+      <Link href={CLUB_MESSAGE_NEW_HREF} data-testid="club-messages-write">
+        {t('communication.direct.action')}
+      </Link>
+    </Button>
+  )
 }
 
 function Inbox() {
@@ -82,7 +98,10 @@ function Inbox() {
   }
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t('communication.club.title')}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold">{t('communication.club.title')}</h1>
+        <WriteAction />
+      </div>
       {body}
     </>
   )

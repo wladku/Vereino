@@ -77,6 +77,7 @@ export {
   audienceProvider,
   contactResolver,
   resolveAudience,
+  resolveMembers,
   type AudienceContext,
   type AudienceProvider,
   type AudienceProviderContext,

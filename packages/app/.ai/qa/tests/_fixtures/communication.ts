@@ -1,6 +1,7 @@
 // `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10; phase C, #36: TEST-M09; the thread
 // list filters and per-message delivery counts of #103, E06-S21): the thread routes, the case marking, the delivery
-// status, the share text and the e-mails the running app captured (`OM_TEST_MODE`).
+// status, the share text and the e-mails the running app captured (`OM_TEST_MODE`); phase D, #138: a member's direct
+// thread to the staff (TEST-M12, TEST-M13).
 import { expect, type APIRequestContext } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call } from './club'
 import { capturedTo, type CapturedMessage } from './messaging'
@@ -75,6 +76,33 @@ export async function postThread(
   data: { audience: { kind: string; ids?: string[] }; subject: string; body: string },
 ) {
   return call<PostResult>(request, 'POST', '/api/communication/threads', token, { data })
+}
+
+export type DirectOption = {
+  personId: string
+  personName: string
+  groupId: string
+  groupName: string
+  sectionId: string
+  sectionName: string
+  coachNames: string[]
+  coordinatorNames: string[]
+}
+
+/** `GET /api/communication/direct`: the household's groups today with the staff a member may address (DD-M18). */
+export async function directOptions(request: APIRequestContext, token: string): Promise<DirectOption[]> {
+  const result = await call<{ items?: DirectOption[] } & CodedBody>(request, 'GET', '/api/communication/direct', token)
+  expect(result.status, `GET direct ${JSON.stringify(result.body)}`).toBe(200)
+  return result.body?.items ?? []
+}
+
+/** `POST /api/communication/direct`: a member's direct thread (`communication.threads.start_direct`). */
+export async function postDirect(
+  request: APIRequestContext,
+  token: string,
+  data: { personId: string; groupId: string; to: 'coaches' | 'coordinator'; subject: string; body: string },
+) {
+  return call<PostResult>(request, 'POST', '/api/communication/direct', token, { data })
 }
 
 export async function postReply(request: APIRequestContext, token: string, threadId: string, body: string) {

@@ -13,4 +13,6 @@ topics: ["commands", "undo", "action-log", "audit-logs"]
 
 **Rule**: Test "not undoable" as the log entry's `undoToken === null` plus a 400 from the undo endpoint, and check that the record is unchanged afterwards. Run that check on an action the club administrator (platform role) performed; cover the coordinator's action through its response (acting role) and the refusal of a second action instead.
 
+**Recurrence (2026-11-05, #138)**: TEST-M12 read a guardian's `communication.threads.start_direct` entry with the club administrator's token and got an empty list: `GET /api/audit_logs/audit-logs/actions` without `audit_logs.view_tenant` returns the caller's own entries only, and members hold no `audit_logs.*` feature. Assert a member's acting role from the command's response instead.
+
 **Applies to**: every non-undoable Vereino command whose spec says the action log cannot reverse it.

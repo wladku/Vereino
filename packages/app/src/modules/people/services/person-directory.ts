@@ -58,6 +58,16 @@ export type PersonDirectory = {
     date: CalendarDate,
     em?: EntityManager,
   ): Promise<string[]>
+  /**
+   * The persons holding a live `coordinator` assignment of `sectionId` active on `date` (the addressed staff of a
+   * member's direct thread to a section's coordinators; foundation III DD-M18, #138).
+   */
+  sectionCoordinatorIdsOn(
+    scope: ClubScope,
+    sectionId: string,
+    date: CalendarDate,
+    em?: EntityManager,
+  ): Promise<string[]>
 }
 
 /** A guardian's contact details shared with the coaches of their wards' groups (REQ-037). */
@@ -202,6 +212,27 @@ export async function roleHolderIdsOn(
   return [...new Set(rows.map((row) => row.personId))]
 }
 
+export async function sectionCoordinatorIdsOn(
+  em: EntityManager,
+  scope: ClubScope,
+  sectionId: string,
+  date: CalendarDate,
+): Promise<string[]> {
+  const rows = await em.find(
+    RoleAssignment,
+    {
+      ...scope,
+      deletedAt: null,
+      role: 'coordinator',
+      sectionId,
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'personId'] },
+  )
+  return [...new Set(rows.map((row) => row.personId))]
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
@@ -211,5 +242,7 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
     sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
+    sectionCoordinatorIdsOn: (scope, sectionId, date, em) =>
+      sectionCoordinatorIdsOn(em ?? getEm().fork(), scope, sectionId, date),
   }
 }

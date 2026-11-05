@@ -18,6 +18,21 @@ export const CASES_HREF = '/backend/communication/cases'
 
 export const CLUB_MESSAGES_HREF = '/club/messages'
 export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURIComponent(id)}`
+/** The member page of a direct thread to the staff (REQ-M12, DD-M18). */
+export const CLUB_MESSAGE_NEW_HREF = `${CLUB_MESSAGES_HREF}/new`
+export const DIRECT_OPTIONS_QUERY_KEY = ['communication-direct-options'] as const
+
+/** One option of `GET /api/communication/direct`: a household member, a group they take part in today, its staff. */
+export type DirectOption = {
+  personId: string
+  personName: string
+  groupId: string
+  groupName: string
+  sectionId: string
+  sectionName: string
+  coachNames: string[]
+  coordinatorNames: string[]
+}
 
 export type ThreadScopeType = 'club' | 'section' | 'group' | 'activity' | 'occurrence' | 'direct'
 

@@ -1,6 +1,7 @@
 // The `communication` commands (foundation III REQ-M06, REQ-M07, REQ-M10; DD-M06, DD-M10…DD-M13; club spec REQ-009,
 // R01, R15). Every one is non-undoable (DD-M11):
 // - `communication.threads.create` — an announcement: a sent e-mail cannot be recalled;
+// - `communication.threads.start_direct` — a member's direct thread to the staff (REQ-M12, DD-M18): the same;
 // - `communication.threads.reply` — a reply: the same;
 // - `communication.messages.revise` / `communication.messages.delete` — they append a revision or a tombstone; the
 //   history is the record (an undo would have to remove an append-only row); both refuse a case's message (409
@@ -22,15 +23,24 @@ import {
   type TargetLock,
   foundationErrors,
   resolveAudience,
+  resolveMembers,
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
 import { communicationErrors } from '../api/errors'
 import { Thread, ThreadMessage, ThreadParticipant } from '../data/entities'
-import { insertParticipants, lockOccurrenceThread, openCase, upsertReadMarker } from '../data/queries'
+import {
+  countDirectThreadsSince,
+  insertParticipants,
+  lockDirectThreadAuthor,
+  lockOccurrenceThread,
+  openCase,
+  upsertReadMarker,
+} from '../data/queries'
 import {
   audienceSchema,
   cancellationSchema,
+  directThreadSchema,
   messageDeleteSchema,
   messageReviseSchema,
   threadCreateSchema,
@@ -51,7 +61,15 @@ import {
   staffParticipants,
 } from '../lib/thread-rules'
 import { CASE_MANAGE_KINDS, messageChangeRefusal } from '../lib/case-rules'
-import { clubFacts, scheduleDirectory } from '../services/directory'
+import {
+  addressedStaffIds,
+  coachIdsOf,
+  directLimitReached,
+  directMembers,
+  directParticipantRows,
+  directWindowStart,
+} from '../lib/direct-rules'
+import { clubFacts, groupDirectory, personDirectory, scheduleDirectory } from '../services/directory'
 import { resolveAudienceTarget, sessionLabel, type ResolvedTarget } from '../services/targets'
 import {
   communicationLog,
@@ -223,6 +241,143 @@ const createThreadCommand: CommandHandler<Record<string, unknown>, ThreadCommand
     communicationLog({
       labelKey: 'communication.audit.threads.create',
       fallback: 'Post an announcement',
+      resourceKind: THREAD_RESOURCE_KIND,
+      resourceId: result.threadId,
+      scope: result.scope,
+      actingRole: result.actingRole,
+      context: { messageId: result.messageId, dispatchId: result.dispatchId },
+    }),
+}
+
+// --- communication.threads.start_direct ---------------------------------------------------------------------------
+
+/** A member writes as themself (`self`) or for a ward (`guardian`), never through a staff grant (DD-M18). */
+const DIRECT_KINDS: readonly GrantKind[] = ['self', 'guardian']
+
+/**
+ * A member's direct thread (foundation III REQ-M12, DD-M18; #138): a guardian or a participant with an account writes
+ * about a household member (`personId`: themself or a ward, matched by their `self` / `guardian` grant) to the
+ * coaches of a group that member takes part in today, or to the coordinators of its section. The subject must hold a
+ * live `participant` membership of the group active today (club time), else 403 `scope_denied`; no staff → 422
+ * `direct_no_recipients`; the 21st direct thread of the member in 24 hours → 429 `direct_thread_limit` (counted under
+ * an advisory lock on the organization and the author). The audience is the subject and the staff, expanded by
+ * `resolveMembers` (a minor adds their active guardians). Not undoable for the reason of `threads.create`: a sent
+ * e-mail cannot be recalled.
+ */
+const startDirectCommand: CommandHandler<Record<string, unknown>, ThreadCommandResult> = {
+  id: 'communication.threads.start_direct',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const threadId = randomUUID()
+    const messageId = randomUUID()
+    const result = await inWriteTransaction(ctx, 'communication.threads.start_direct', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: directThreadSchema,
+          resourceKind: THREAD_RESOURCE_KIND,
+          allowedKinds: DIRECT_KINDS,
+          lock: 'none',
+          resolveTarget: (parsed, _entity, scope) => ({ id: threadId, ...scope, personId: parsed.personId }),
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const { parsed, actingRole, tenantId, organizationId } = authorized
+      const scope = { tenantId, organizationId }
+      const authorPersonId = selfPersonId(authorized.scope)
+      if (!authorPersonId) return foundationErrors.throw('scope_denied')
+      const audienceCtx = { container: ctx.container, ...scope, scope: authorized.scope, em }
+      const { today } = await contactResolver(ctx.container).club(audienceCtx)
+      const groups = groupDirectory(ctx.container)
+      const group = (await groups.findGroups(scope, [parsed.groupId], em)).get(parsed.groupId)
+      const memberships = await groups.membershipsOf(scope, [parsed.personId], { from: today, to: today }, em)
+      const takesPart = memberships.some(
+        (membership) => membership.groupId === parsed.groupId && membership.role === 'participant',
+      )
+      if (!group || !takesPart) return foundationErrors.throw('scope_denied')
+      const candidates =
+        parsed.to === 'coaches'
+          ? coachIdsOf(await groups.rosterOn(scope, group.id, today, em))
+          : await personDirectory(ctx.container).sectionCoordinatorIdsOn(scope, group.sectionId, today, em)
+      const staffIds = addressedStaffIds(candidates, authorPersonId)
+      if (staffIds.length === 0) return communicationErrors.throw('direct_no_recipients')
+      await lockDirectThreadAuthor(em, organizationId, authorPersonId)
+      const now = new Date()
+      if (directLimitReached(await countDirectThreadsSince(em, scope, authorPersonId, directWindowStart(now)))) {
+        return communicationErrors.throw('direct_thread_limit')
+      }
+      const members = directMembers(parsed.personId, staffIds)
+      const resolved = await resolveMembers(members, audienceCtx, { exclude: [authorPersonId] })
+      const thread = em.create(Thread, {
+        id: threadId,
+        ...scope,
+        scopeType: 'direct',
+        scopeId: null,
+        sectionId: group.sectionId,
+        groupId: parsed.to === 'coaches' ? group.id : null,
+        subject: parsed.subject,
+        authorPersonId,
+        lastMessageAt: now,
+      })
+      em.persist(thread)
+      await em.flush()
+      const { dispatchId } = await dispatchService(ctx).enqueue(
+        em,
+        {
+          template: 'communication.announcement',
+          params: { threadId, subject: parsed.subject, body: parsed.body },
+          recipients: resolved.recipients,
+          audience: { kind: 'persons', ids: members.map((member) => member.personId) },
+          source: { module: 'communication', type: 'communication:thread_message', id: messageId },
+          idempotencyKey: `communication:thread:${messageId}`,
+          actor: { userId: ctx.auth?.sub ?? null, actingRole },
+        },
+        { ...scope, scope: authorized.scope, em },
+      )
+      em.persist(
+        em.create(ThreadMessage, {
+          id: messageId,
+          ...scope,
+          threadId,
+          kind: 'message',
+          authorPersonId,
+          actingRole,
+          audience: 'all',
+          body: parsed.body,
+          dispatchId,
+          recipientCount: resolved.counts.recipients,
+        }),
+      )
+      await em.flush()
+      await insertParticipants(
+        em,
+        scope,
+        threadId,
+        directParticipantRows(resolved.recipients, authorPersonId, staffIds),
+      )
+      await upsertReadMarker(em, scope, threadId, authorPersonId, now)
+      return {
+        threadId,
+        messageId,
+        dispatchId,
+        actingRole,
+        scope,
+        threadUpdatedAt: thread.updatedAt.toISOString(),
+      }
+    })
+    await publishAfterCommit(ctx, result.dispatchId, result.scope)
+    await emitAfterCommit('communication.thread.created', result.scope, { id: result.threadId })
+    await emitAfterCommit('communication.message.posted', result.scope, {
+      id: result.messageId,
+      threadId: result.threadId,
+    })
+    return result
+  },
+  buildLog: ({ result }) =>
+    communicationLog({
+      labelKey: 'communication.audit.threads.start_direct',
+      fallback: 'Write to the coach',
       resourceKind: THREAD_RESOURCE_KIND,
       resourceId: result.threadId,
       scope: result.scope,
@@ -718,6 +873,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
 }
 
 registerCommand(createThreadCommand)
+registerCommand(startDirectCommand)
 registerCommand(replyCommand)
 registerCommand(changeMessageCommand('revision'))
 registerCommand(changeMessageCommand('tombstone'))

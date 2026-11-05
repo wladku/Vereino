@@ -83,6 +83,8 @@ describe('vocabulary', () => {
       'share_text_unavailable',
       'case_immutable',
       'case_already_open',
+      'direct_no_recipients',
+      'direct_thread_limit',
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`communication.errors.${entry.code}`)
   })
