@@ -64,6 +64,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 ### module-data
 
 - [The upload service adds the owner as an assignment; releaseScoped needs it to be the only one](lessons/attachment-owner-assignment-and-release.md) — area:module-data; module:people,platform; topic:attachments,uploads,purge,retention
+- [A makeCrudRoute list query schema stays a plain z.object: no .refine, cross-field checks go in buildFilters](lessons/crud-list-schema-no-refine.md) — area:module-data; module:people,platform; topic:zod,openapi,make-crud-route,validation
 - [Hide a per-caller column outside the CRUD projection; a club-wide read of a section-scoped kind uses clubWideKinds](lessons/hidden-columns-and-club-wide-reads-in-scoped-lists.md) — area:module-data,architecture; module:people,foundation; topic:data-scoping,crud-factory,after-list,consents,acting-role
 - [Declare a uuid[] column with columnType; serialize capacity checks with a per-organization advisory lock](lessons/mikro-orm-uuid-array-column-and-advisory-schedule-lock.md) — area:module-data; module:activities,platform; topic:mikro-orm,migrations,postgres-arrays,advisory-lock,concurrency,conflicts
 - [Serve a public file through attachmentService.readScoped with the slug-derived scope and its exact owner, assignment and partition](lessons/public-attachments-through-read-scoped.md) — area:module-data; module:club_core,platform; topic:attachments,public-pages,sessionless,uploads,content-type
