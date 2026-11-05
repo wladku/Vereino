@@ -576,7 +576,7 @@
   "b.screenSettings.phone": "Contact phone",
   "b.screenSettings.timeZone": "Time zone",
   "b.screenSettings.minAge": "Own-account age threshold",
-  "b.screenSettings.minAgeHint": "13–18 years (D-004; pending legal confirmation Q-007)",
+  "b.screenSettings.minAgeHint": "13–18 years; default 16 (D-022)",
   "b.screenSettings.description": "Club description (public page)",
   "b.screenSettings.logoHeading": "Club logo",
   "b.screenSettings.replaceLogo": "Replace logo",

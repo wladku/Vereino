@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  clubPagePreview,
   DEFAULT_PUBLICATION,
   PUBLICATION_BLOCKS,
   applyPublicationPatch,
@@ -112,5 +113,25 @@ describe('public slugs', () => {
     expect(sectionPublicationProblem({ isPublic: true, publicSlug: null })).toBe('section_public_slug_required')
     expect(sectionPublicationProblem({ isPublic: true, publicSlug: 'basen' })).toBeNull()
     expect(sectionPublicationProblem({ isPublic: false, publicSlug: null })).toBeNull()
+  })
+})
+
+describe('club page preview (#87)', () => {
+  it('shows the address always and disables Preview with a reason', () => {
+    expect(clubPagePreview({ enabled: true, publicSlug: 'dev-academy' })).toEqual({
+      path: '/p/dev-academy',
+      href: '/p/dev-academy',
+      disabledReason: null,
+    })
+    expect(clubPagePreview({ enabled: false, publicSlug: 'dev-academy' })).toEqual({
+      path: '/p/dev-academy',
+      href: null,
+      disabledReason: 'page_off',
+    })
+    expect(clubPagePreview({ enabled: true, publicSlug: null })).toEqual({
+      path: null,
+      href: null,
+      disabledReason: 'slug_missing',
+    })
   })
 })

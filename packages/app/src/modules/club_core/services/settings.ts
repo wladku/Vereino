@@ -4,6 +4,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
+import { Organization } from '@open-mercato/core/modules/directory/data/entities'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { ClubSettings } from '../data/entities'
 import { staffLogoUrl } from '../lib/files'
 import { resolvePublication, type Publication } from '../lib/publication'
@@ -41,6 +43,8 @@ export type ClubSettingsSnapshot = {
 
 export type ClubCoreSettingsService = {
   get(scope: ClubSettingsScope): Promise<ClubSettingsSnapshot>
+  /** The name of the club's platform organization (`clubName` on B-02, #87), or null when it cannot be read. */
+  organizationName(scope: ClubSettingsScope): Promise<string | null>
 }
 
 /** The stored columns of a row, keyed by setting (decimals read as numbers). */
@@ -107,5 +111,15 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
 export function createClubCoreSettingsService(getEm: () => EntityManager): ClubCoreSettingsService {
   return {
     get: (scope) => readClubSettings(getEm().fork(), scope),
+    async organizationName(scope) {
+      const organization = await findOneWithDecryption(
+        getEm().fork(),
+        Organization,
+        { id: scope.organizationId, tenant: scope.tenantId, deletedAt: null },
+        undefined,
+        scope,
+      )
+      return organization?.name ?? null
+    },
   }
 }
