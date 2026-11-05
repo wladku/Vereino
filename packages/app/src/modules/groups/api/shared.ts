@@ -62,6 +62,7 @@ export function groupListItem(row: Row) {
     sectionId: text(row.section_id),
     name: text(row.name),
     kind: text(row.kind),
+    ageCategoryEntryId: text(row.age_category_entry_id),
     league: text(row.league),
     seasonId: text(row.season_id),
     description: text(row.description),
@@ -73,6 +74,7 @@ export function groupListItem(row: Row) {
 
 export type GroupListItem = ReturnType<typeof groupListItem> & {
   sectionName?: string | null
+  ageCategoryName?: string | null
   seasonName?: string | null
   coaches?: { personId: string; firstName: string; lastName: string }[]
   participantCount?: number
@@ -149,6 +151,15 @@ export const groupListItemSchema = z.object({
   sectionName: z.string().nullable().optional().describe('The name of the `club_core` section.'),
   name: z.string().nullable(),
   kind: z.string().nullable(),
+  ageCategoryEntryId: z
+    .string()
+    .nullable()
+    .describe('Team only: an entry of the club’s age category dictionary (`dictionaries`).'),
+  ageCategoryName: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('The label of the age category entry; null when the entry was removed from the dictionary.'),
   league: z.string().nullable(),
   seasonId: z.string().nullable(),
   seasonName: z.string().nullable().optional(),

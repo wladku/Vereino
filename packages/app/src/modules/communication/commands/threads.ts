@@ -23,6 +23,7 @@ import {
   foundationErrors,
   resolveAudience,
   scopeContract,
+  scopeDenialCode,
   trustedScopeOf,
 } from '@/modules/foundation'
 import { communicationErrors } from '../api/errors'
@@ -147,7 +148,7 @@ const createThreadCommand: CommandHandler<Record<string, unknown>, ThreadCommand
       const scope = { tenantId, organizationId }
       const target = (authorized.entity as { target: ResolvedTarget }).target
       const authorPersonId = selfPersonId(authorized.scope)
-      if (!authorPersonId) return foundationErrors.throw('scope_denied')
+      if (!authorPersonId) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const audience: AudienceSpec = { kind: parsed.audience.kind, ids: parsed.audience.ids ?? [] }
       const resolved = await resolveAudience(
         audience,
@@ -285,7 +286,7 @@ const replyCommand: CommandHandler<Record<string, unknown>, ThreadCommandResult>
       const { thread } = access
       const scope = scopeOf(thread)
       const authorPersonId = access.selfPersonId
-      if (!authorPersonId) return foundationErrors.throw('scope_denied')
+      if (!authorPersonId) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const staffRole = findActingRole(authorized.scope, THREAD_READ_KINDS, threadTarget(thread))
       const staff = isThreadStaff({
         viewerPersonId: authorPersonId,
@@ -520,7 +521,7 @@ const markCaseCommand: CommandHandler<Record<string, unknown>, MarkCaseResult> =
       const scope = scopeOf(thread)
       if (thread.isCase) return communicationErrors.throw('case_already_open')
       const openedByPersonId = selfPersonId(authorized.scope)
-      if (!openedByPersonId) return foundationErrors.throw('scope_denied')
+      if (!openedByPersonId) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const at = new Date()
       if (!(await openCase(em, scope, thread.id, openedByPersonId, at))) {
         return communicationErrors.throw('case_already_open')
@@ -572,7 +573,7 @@ const markReadCommand: CommandHandler<Record<string, unknown>, MarkReadResult> =
         em,
       )
       const access = authorized.entity as ThreadAccess
-      if (!access.selfPersonId) return foundationErrors.throw('scope_denied')
+      if (!access.selfPersonId) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const at = new Date()
       await upsertReadMarker(em, scopeOf(access.thread), access.thread.id, access.selfPersonId, at)
       return { threadId: access.thread.id, lastReadAt: at.toISOString() }

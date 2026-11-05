@@ -474,6 +474,8 @@ Contract verifications (2026-10-27, `@open-mercato/*` 0.9.0, read-only):
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Skeleton written by `om-spec-writing` (interactive) for #23: TLDR, the Open Questions gate (Q1–Q8 blocking, Q9–Q11 with defaults), the functionality kinds M1–M10 extracted from phases 3–5, the candidate inventory (P-29…P-32) and the installed-package checks V-M01…V-M05 (club spec V-4) |
@@ -482,4 +484,3 @@ Contract verifications (2026-10-27, `@open-mercato/*` 0.9.0, read-only):
 | 2026-10-27 | Gate Q14–Q15 answered by the product owner: Q14 = C — S12.3–S12.6 amended for 1.0 in the engineering standards (DD-M17) with an upstream proposal for `headers` and a returned message id on `sendEmail`; Q15 = B — every phase 3 template non-opt-out, `dispatch` refuses a `preferences` template until its opt-out exists (DD-M08, TEST-M04, AC-M04); status and verdict updated |
 | 2026-11-02 | Status corrected from `Draft` to `Ready for implementation` for phase A: the spec was approved when PR #45 merged (2026-10-27), and the owner approved the start of E04 on 2026-11-01 once epic E03 (#22) closed; phase A is issue #71, with enabling `communication_channels`, `progress`, `integrations`, `channel_resend` and `messages` (DD-M15) in its scope. Phases B (#35) and C (#36) follow phase A |
 | 2026-11-03 | API row for `GET /api/communication/threads` gains the `sectionId` filter and the `lastMessage`, `canDelete` and `deliveryCounts` fields (E06-S21, #103) |
-| 2026-11-04 | Gathering time (#136, club spec DD-43): the share text names the session's gathering time when it has one (`activities.shareText.*WithGathering`), the `communication.session_cancelled` e-mail takes an optional `gatheringAt` parameter and names it in the same way, and the public session page shows it; a session without one renders as before |

@@ -52,7 +52,12 @@ export const openApi: OpenApiRouteDoc = {
       responses: [{ status: 201, description: 'The reply', schema: commandResponseSchema }],
       errors: [
         { status: 400, description: 'Validation failed', schema: errorSchema },
-        { status: 403, description: '`scope_denied` — not a participant of the thread', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            '`scope_denied` — not a participant of the thread; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
     },

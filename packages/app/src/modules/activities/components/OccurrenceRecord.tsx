@@ -27,7 +27,6 @@ import {
   OCCURRENCES_HREF,
   activityHref,
   dateLabel,
-  errorCode,
   errorMessage,
   fieldOfError,
   instantDate,
@@ -258,7 +257,7 @@ function MoveForm({
               throw createCrudFormError(message, { [field]: message })
             }
             // Cancelled or done meanwhile: show the session as it is now (the form reports the message).
-            if (errorCode(error) === 'occurrence_not_planned') void onDone()
+            if (errorCodeOf(error) === 'occurrence_not_planned') void onDone()
             throw error
           }
           setConflicts(null)

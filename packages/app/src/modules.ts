@@ -36,6 +36,9 @@ enabledModules.push(
   { id: 'communication_channels', from: '@open-mercato/core' },
   { id: 'channel_resend', from: '@open-mercato/channel-resend' },
 )
+// Vereino: the club-editable dictionaries, first the PZPN age categories of `team` groups (club spec REQ-019, phase 2
+// step 1; enabling approved by the product owner on 2026-11-04, D-030, for #92). `groups` requires it.
+enabledModules.push({ id: 'dictionaries', from: '@open-mercato/core' })
 // Vereino-owned modules (listed in vereino-modules.json).
 enabledModules.push({ id: 'foundation', from: '@app' })
 enabledModules.push({ id: 'club_core', from: '@app' })

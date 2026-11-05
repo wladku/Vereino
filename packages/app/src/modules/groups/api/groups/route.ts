@@ -1,7 +1,7 @@
 // `/api/groups/groups` — groups of both kinds (club spec API table, REQ-004, TEST-030): the list is filtered by the
 // record scope (`scopeWhere`: the coach's groups, the coordinator's sections, the club administrator's club) and by
-// section, kind, season and status, and adds the section and season names, the coaches and the number of active
-// participants (E06-S08 #90); create, update and delete run the `groups` commands (a coordinator of another section
+// section, kind, season, age category (#92) and status, and adds the section, season and age category names, the
+// coaches and the number of active participants (E06-S08 #90); create, update and delete run the `groups` commands (a coordinator of another section
 // → 403, team fields on a class group → 422, a group with memberships → 409 on delete).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -14,6 +14,7 @@ import type { GroupCommandResult } from '../../commands/groups'
 import { Group } from '../../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupListQuerySchema, groupUpdateSchema } from '../../data/validators'
 import { clubToday } from '../../services/club-clock'
+import { ageCategoryNames } from '../../services/age-categories'
 import { personNames, rosterSummaries, sectionNames, seasonNames } from '../../services/groups-read'
 import {
   GROUP_ENTITY_ID,
@@ -30,7 +31,7 @@ type GroupListQuery = z.infer<typeof groupListQuerySchema>
 const rawBodySchema = z.object({}).loose()
 
 /**
- * Adds the section and season names, the coaches and the number of active participants (E06-S08 #90, on the club
+ * Adds the section, season and age category names, the coaches and the number of active participants (E06-S08 #90, on the club
  * day) to the rows the scope filter already admitted.
  */
 async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
@@ -41,9 +42,11 @@ async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promis
   const scope = { tenantId, organizationId }
   const sectionIds = items.map((item) => item.sectionId).filter((id): id is string => Boolean(id))
   const seasonIds = items.map((item) => item.seasonId).filter((id): id is string => Boolean(id))
-  const [sections, seasons, rosters] = await Promise.all([
+  const categoryIds = items.map((item) => item.ageCategoryEntryId).filter((id): id is string => Boolean(id))
+  const [sections, seasons, categories, rosters] = await Promise.all([
     sectionNames(ctx.container, scope, sectionIds),
     seasonNames(ctx.container, scope, seasonIds),
+    ageCategoryNames(ctx.container, scope, categoryIds),
     clubToday(ctx.container, scope).then((today) =>
       rosterSummaries(
         ctx.container,
@@ -58,6 +61,7 @@ async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promis
   for (const item of items) {
     item.sectionName = item.sectionId ? (sections.get(item.sectionId) ?? null) : null
     item.seasonName = item.seasonId ? (seasons.get(item.seasonId) ?? null) : null
+    item.ageCategoryName = item.ageCategoryEntryId ? (categories.get(item.ageCategoryEntryId) ?? null) : null
     const roster = rosters.get(item.id)
     item.participantCount = roster?.participantCount ?? 0
     item.coaches = (roster?.coachIds ?? []).flatMap((personId) => {
@@ -89,6 +93,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'section_id',
       'name',
       'kind',
+      'age_category_entry_id',
       'league',
       'season_id',
       'description',
@@ -109,6 +114,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (query.sectionId) business.section_id = query.sectionId
       if (query.kind) business.kind = query.kind
       if (query.seasonId) business.season_id = query.seasonId
+      if (query.ageCategoryEntryId) business.age_category_entry_id = query.ageCategoryEntryId
       if (query.isActive) business.is_active = query.isActive === 'true'
       return { $and: [scopeWhere(scope, GROUP_READ_KINDS, GROUP_LIST_COLUMNS), business] } as Where
     },
@@ -152,7 +158,7 @@ export const openApi = buildOpenApi({
   create: {
     schema: groupCreateSchema,
     description:
-      'Creates a `team` or `class_group` group in a section (a coordinator in their sections, the club administrator anywhere). Errors: 400 invalid input, 403 `scope_denied`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
+      'Creates a `team` or `class_group` group in a section (a coordinator in their sections, the club administrator anywhere). Only a team carries `ageCategoryEntryId` (an entry of `GET /api/groups/options/age-categories`), `league` and `seasonId`. Errors: 400 invalid input, 403 `scope_denied`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
   },
   update: {
     schema: groupUpdateSchema,

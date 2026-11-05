@@ -17,6 +17,7 @@ import {
   contactResolver,
   foundationErrors,
   scopeContract,
+  scopeDenialCode,
   trustedScopeOf,
   type DeliveryCounts,
   type DispatchService,
@@ -315,7 +316,10 @@ export type ThreadDetail = {
   messages: ThreadMessageItem[]
 }
 
-/** A thread the reader may open, or 404 (unknown) / 403 `scope_denied` (not theirs). */
+/**
+ * A thread the reader may open, or 404 (unknown) / 403 `scope_denied` (not theirs; `scope_unlinked` when the account
+ * is not linked to a person of this club, #155).
+ */
 async function visibleHeader(em: EntityManager, viewer: Viewer, threadId: string) {
   const thread = await findOneWithDecryption(
     em,
@@ -344,7 +348,7 @@ async function visibleHeader(em: EntityManager, viewer: Viewer, threadId: string
     : new Map<string, string[]>()
   const reasons = participations.get(thread.id) ?? null
   const staffRole = staffRoleOn(viewer, header)
-  if (!reasons && !staffRole) return foundationErrors.throw('scope_denied')
+  if (!reasons && !staffRole) return foundationErrors.throw(scopeDenialCode(viewer.grants))
   const staff = isThreadStaff({
     viewerPersonId: viewer.personId,
     authorPersonId: header.authorPersonId,
@@ -473,7 +477,7 @@ export async function threadDeliveries(
   if (!found) return null
   const { header, staffRole } = found
   if (!staffRole && !(viewer.personId && viewer.personId === header.authorPersonId)) {
-    return foundationErrors.throw('scope_denied')
+    return foundationErrors.throw(scopeDenialCode(viewer.grants))
   }
   const message = await em.findOne(
     ThreadMessage,
