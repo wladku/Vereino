@@ -243,6 +243,8 @@ Verdict: `Blocked — activation is an app decision this scaffold cannot make on
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-08-06-reference-module-activation/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-08-06-reference-module-activation/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-08-06 | Shipped with the scaffold as the covering specification for reference-module activation |

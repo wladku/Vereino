@@ -50,6 +50,7 @@
     "harness:release": "node ./scripts/run-agent-harness-release.mjs",
     "harness:validate-knowledge-change": "node ./scripts/validate-knowledge-change.mjs",
     "lessons:check": "node ./scripts/check-lessons.mjs",
+    "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",
     "typecheck:packages": "yarn workspaces foreach -Apt --include '@vereino/core' --include '@vereino/db' --include '@vereino/ui' run typecheck",
     "verify": "node ./scripts/verify.mjs",
     "format": "yarn workspace @vereino/app format",

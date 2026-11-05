@@ -321,6 +321,8 @@ Contract verifications:
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-social-sign-in/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-social-sign-in/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Split out of `2026-10-27-vereino-foundation-primitives.md` (its phases C–D, P-20, DD-F09…F11, DD-F13, J-F02, TEST-F12/F13/F15, AC-F15, Q8–Q11, Q13, V-F01/F03/F04) after the scope-cohesion review; renumbered REQ-S, DD-S, J-S, TEST-S, AC-S, Q-S, V-S; linking narrowed to a signed-in session (DD-S02); the DD-35 extension approved as D27 (DD-S03) |

@@ -560,6 +560,8 @@ Verdict: `Blocked — awaiting the product owner's go for implementation` (every
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-11-03-vereino-ux-parity-phases-1-3/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-11-03-vereino-ux-parity-phases-1-3/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-11-03 | Initial draft (autonomous, `om-auto-write-spec` on #82), covering E06-S01 #83, E06-S03 #85, E06-S04 #86 |
