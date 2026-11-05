@@ -8,7 +8,7 @@ import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { clubText, defineEmailTemplate } from '@/modules/foundation'
-import { preheaderOf, sessionWhenLabel } from '../lib/email-format'
+import { clockLabel, preheaderOf, sessionWhenLabel } from '../lib/email-format'
 import { memberThreadPath } from '../lib/thread-rules'
 
 const h = React.createElement
@@ -73,6 +73,8 @@ const cancellationParams = z
     activityName: z.string().max(200),
     startAt: z.iso.datetime(),
     endAt: z.iso.datetime(),
+    /** The session's gathering time (club spec DD-43); absent or null when it has none. */
+    gatheringAt: z.iso.datetime().nullable().optional(),
     timeZone: z.string().min(1).max(64),
     reason: z.string().max(500),
   })
@@ -82,10 +84,17 @@ type CancellationParams = z.output<typeof cancellationParams>
 
 function cancellationLines(t: TranslateWithFallbackFn, params: CancellationParams, locale: string) {
   const when = sessionWhenLabel(new Date(params.startAt), new Date(params.endAt), locale, params.timeZone)
-  const values = { activity: params.activityName, date: when.date, time: when.time }
+  const gathering = params.gatheringAt ? clockLabel(new Date(params.gatheringAt), locale, params.timeZone) : null
+  const values = { activity: params.activityName, date: when.date, time: when.time, gathering: gathering ?? '' }
   return {
     subject: t('communication.email.sessionCancelled.subject', 'Cancelled: {activity}, {date}', values),
-    lead: t('communication.email.sessionCancelled.lead', '{activity} on {date}, {time} is cancelled.', values),
+    lead: gathering
+      ? t(
+          'communication.email.sessionCancelled.leadWithGathering',
+          '{activity} on {date}, {time} (gathering {gathering}) is cancelled.',
+          values,
+        )
+      : t('communication.email.sessionCancelled.lead', '{activity} on {date}, {time} is cancelled.', values),
     reasonLabel: t('communication.email.sessionCancelled.reason', 'Reason:'),
   }
 }

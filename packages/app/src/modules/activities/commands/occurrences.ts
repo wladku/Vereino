@@ -16,6 +16,7 @@ import { Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
 import { occurrenceCancelSchema, occurrenceUpdateSchema } from '../data/validators'
 import { sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
+import { gatheringOffset } from '../lib/gathering'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
   COACH_KINDS,
@@ -45,6 +46,7 @@ export type OccurrenceSnapshot = {
   cancelReason: string | null
   isDetached: boolean
   needsReschedule: boolean
+  gatheringMinutesBefore?: number | null
 }
 
 export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot>
@@ -64,6 +66,7 @@ export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
     cancelReason: row.cancelReason ?? null,
     isDetached: row.isDetached,
     needsReschedule: row.needsReschedule,
+    gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
   }
 }
 
@@ -76,6 +79,8 @@ function restoreOccurrence(row: Occurrence, before: OccurrenceSnapshot): void {
   row.cancelReason = before.cancelReason
   row.isDetached = before.isDetached
   row.needsReschedule = before.needsReschedule
+  // A snapshot written before DD-43 has no gathering field: no gathering time.
+  row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
 }
 
 function loadOccurrence(ctx: CommandRuntimeContext) {
@@ -159,11 +164,20 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       const startAt = patch.startAt ? new Date(patch.startAt) : row.startAt
       const endAt = patch.endAt ? new Date(patch.endAt) : row.endAt
       if (endAt.getTime() <= startAt.getTime()) await activitiesErrors.throw('activity_times_inverted')
+      // DD-43: a moved session keeps its offset; a submitted gathering instant sets the offset from the new start.
+      let gatheringMinutesBefore = row.gatheringMinutesBefore ?? null
+      if (patch.gatheringAt === null) gatheringMinutesBefore = null
+      else if (patch.gatheringAt !== undefined) {
+        const offset = gatheringOffset(startAt, new Date(patch.gatheringAt))
+        if (!offset.ok) return activitiesErrors.throw(offset.code)
+        gatheringMinutesBefore = offset.minutes
+      }
       const before = occurrenceSnapshot(row)
       row.startAt = startAt
       row.endAt = endAt
       if (patch.placeId !== undefined) row.placeId = patch.placeId
       if (patch.coachPersonId !== undefined) row.coachPersonId = patch.coachPersonId
+      row.gatheringMinutesBefore = gatheringMinutesBefore
       row.isDetached = true
       row.needsReschedule = false
       row.updatedAt = new Date()

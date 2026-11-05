@@ -653,6 +653,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
             activityName: occurrence.activityName ?? '',
             startAt: occurrence.startAt.toISOString(),
             endAt: occurrence.endAt.toISOString(),
+            gatheringAt: occurrence.gatheringAt?.toISOString() ?? null,
             timeZone,
             reason,
           },
