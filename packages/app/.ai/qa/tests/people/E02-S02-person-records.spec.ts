@@ -604,14 +604,14 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     expect(await birthDateInput.evaluate((input: HTMLInputElement) => input.validationMessage)).not.toBe('')
     await birthDateInput.fill(birthDateTurning(38))
     await create.click()
-    await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}$/)
+    await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}\?tab=guardianship$/)
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`Kasia ${marker}`) })).toBeVisible()
     for (const name of [/^Details$|^Dane$/, /Guardianship|Opieka/, /^Roles$|^Role$/, /^Account$|^Konto$/]) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
     const recordOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(recordOverflow).toBeLessThanOrEqual(0)
-    const kasiaId = page.url().split('/').pop() as string
+    const kasiaId = new URL(page.url()).pathname.split('/').pop() as string
 
     // The guardianship tab lists the link made through the API with its consents (the administrator sees them).
     await createGuardianship(request, club.adminToken, {

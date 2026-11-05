@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Vereino foundation',
   version: '0.1.0',
   description:
-    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, and the audience, dispatch and e-mail template primitives.',
+    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, and the token-link service.',
   author: 'Vereino',
   license: 'MIT',
 }
@@ -21,7 +21,7 @@ export {
   validityShape,
   type CodedIssueParams,
 } from './lib/validity-schema'
-export { createAccount, type CreateAccountInput, type CreateAccountResult } from './services/accounts'
+export { accountEmail, createAccount, type CreateAccountInput, type CreateAccountResult } from './services/accounts'
 export {
   assertInScope,
   authorizeScoped,
@@ -105,3 +105,15 @@ export {
   type EmailTemplate,
 } from './services/email-templates'
 export { registerAppendOnlyGuard } from './services/append-only-guard'
+export {
+  createTokenLinkService,
+  type IssueOptions,
+  type IssuedTokenLink,
+  type LookupOptions,
+  type TokenLinkEntity,
+  type TokenLinkScope,
+  type TokenLinkService,
+  type TokenLinkServiceOptions,
+  type TokenLinkSubject,
+  type TokenLinkView,
+} from './services/token-link'

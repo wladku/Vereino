@@ -165,11 +165,12 @@ async function addToRoster(page: Page, person: { lastName: string; fullName: str
   ).toBeVisible()
 }
 
-/** Opens the member calendar as a coach on the week of `date` (`/club/calendar`, "Show" → "As coach"). */
+/** Opens the member calendar as a coach on the week of `date` (`/club/calendar`, the header's "Acting as" → "Coach"). */
 async function openCoachCalendar(page: Page, date: string): Promise<void> {
   await page.goto('/club/calendar')
-  await page.getByLabel(/^(Show|Pokaż)$/).click()
-  await page.getByRole('option', { name: /As coach|Jako trener/ }).click()
+  // The acting context is the header's role-context switcher (E06-S19 #101).
+  await page.locator('#club-switcher-context').click()
+  await page.getByRole('option', { name: /^(Coach|Trener)$/ }).click()
   await showCalendarWeekOf(page, date)
 }
 

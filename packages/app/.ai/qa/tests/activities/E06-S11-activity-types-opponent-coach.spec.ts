@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
   addDays,
   createActivity,
@@ -38,6 +38,27 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
     await expect(choice).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 30_000 })
   await choice.click()
+}
+
+/**
+ * Types into a CrudForm combobox and picks an option. The list is rendered again when the debounced search answers,
+ * which can detach the option under the click, so the pick is retried until the input holds the chosen label.
+ */
+async function pickComboboxOption(
+  page: Page,
+  input: Locator,
+  search: string,
+  option: RegExp,
+  label: string,
+): Promise<void> {
+  const choice = page.getByRole('option', { name: option })
+  await expect(async () => {
+    if ((await input.inputValue()) !== label) {
+      if (!(await choice.isVisible())) await input.fill(search)
+      await choice.click({ timeout: 2_000 })
+    }
+    await expect(input).toHaveValue(label, { timeout: 2_000 })
+  }).toPass({ timeout: 30_000 })
 }
 
 /** The labels of the type select's options for the group chosen in the wizard; the list is closed again. */
@@ -186,9 +207,7 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     await expect(page.getByRole('option')).toHaveCount(0)
     await coach.fill('No')
     await expect(page.getByRole('option', { name: /^No coach$/ })).toBeVisible()
-    await coach.fill('Trener')
-    await page.getByRole('option', { name: 'Marek Trener' }).click()
-    await expect(coach).toHaveValue('Marek Trener')
+    await pickComboboxOption(page, coach, 'Trener', /^Marek Trener$/, 'Marek Trener')
 
     const matchDay = addDays(today, 12)
     await page.getByTestId('activities-repeat-once').click()
@@ -228,9 +247,7 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     await page.getByRole('option', { name: /^Other$/ }).click()
     await expect(page.locator('[data-crud-field-id="opponentExternalTeamId"]')).toHaveCount(0)
     const coachOnRecord = page.locator('[data-crud-field-id="coachPersonId"] input[role="combobox"]')
-    await coachOnRecord.fill('No')
-    await page.getByRole('option', { name: /^No coach$/ }).click()
-    await expect(coachOnRecord).toHaveValue('No coach')
+    await pickComboboxOption(page, coachOnRecord, 'No', /^No coach$/, 'No coach')
     await page
       .getByRole('button', { name: /^Save$|^Zapisz$/ })
       .first()
