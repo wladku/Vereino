@@ -66,6 +66,7 @@ Not touched: `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`,
 ## Open problems
 
 - The Critical finding (link-token emails vs ids-only event payloads) and the High findings are unfixed; each now belongs to one of the three specifications.
+- Update 2026-11-05 (#167): the facilities findings are resolved in `2026-10-27-vereino-facilities.md` (*Architectural Review Resolution*; run log `.ai/runs/2026-11-05-facilities-review-findings.md`).
 - The foundation primitives spec still describes "seven modules over five phases" in its TLDR; it is accurate and was left as is.
 
 ## Next steps
