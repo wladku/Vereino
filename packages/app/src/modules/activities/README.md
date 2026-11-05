@@ -66,6 +66,7 @@ Rules:
 - **Version.** Every save sends the session's `updatedAt` (400 `attendance_version_required` without it) and moves it; a save with an older one answers 409, and the page refreshes the list while keeping the coach's selections.
 - **Undo.** Reverts only the marks of the last save (the declaration fields stay, whatever the expiry job did meanwhile) and removes the rows it created; refused (409) after a later save, and for a save that closed the session — reopening is an administrator command with a reason.
 - **Series edits.** A session with checked-off attendance is pinned: a series edit no longer moves or removes it. Declarations alone do not pin a future session.
+- **The page (#99, E06-S17).** "All declared present" marks every person with a final "yes" and no mark as present (`lib/attendance-sheet.ts`). Closing sends every unmarked person as `absent`, so the actual attendance is always complete (R11); the confirmation says how many, whether the session is still running and to whom the unit is credited. Ctrl/Cmd+Enter starts the close. A closed save shows "Session closed — {n} present" (present and late) and returns to `/club`. An empty list links a coordinator or the club administrator to the group roster. On a phone the actions stay in a sticky bar above the bottom navigation.
 
 ## Guardian contacts for coaches (#34)
 
