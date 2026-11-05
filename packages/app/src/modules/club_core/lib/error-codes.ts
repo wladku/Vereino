@@ -8,6 +8,15 @@ export const errorCodes = [
   { code: 'place_not_bookable', status: 422, messageKey: 'club_core.errors.place_not_bookable' },
   { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
   { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
+  // Club settings and institutions (#87): a known IANA zone, the 13–18 threshold, a club name, an NRB bank account.
+  { code: 'timezone_unknown', status: 422, messageKey: 'club_core.errors.timezone_unknown' },
+  {
+    code: 'account_age_threshold_out_of_range',
+    status: 422,
+    messageKey: 'club_core.errors.account_age_threshold_out_of_range',
+  },
+  { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
+  { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
   // Sections (UX parity spec DD-U04, DD-U05, DD-U07): no deactivation or delete under active groups; names 2–80 on
   // create and rename, unique case-insensitively among the club's live sections.
   { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },

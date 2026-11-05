@@ -3,7 +3,8 @@
 // club's public slug, description and phone, and one switch per block with a description of its effect — everything
 // off by default. Saved through `PUT /api/club_core/settings` (`publication` needs `club_core.publication.manage`)
 // with the settings lock token. Blocks of modules that do not exist yet are stored and take effect when the module
-// arrives (prices, instructors, places calendar, online requests).
+// arrives (prices, instructors, places calendar, online requests). Since #87 the public address is always shown, and
+// "Preview" is disabled with its reason while the page is off or has no slug.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,7 +13,7 @@ import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { PUBLICATION_BLOCKS, type Publication } from '../lib/publication'
+import { PUBLICATION_BLOCKS, clubPagePreview, type Publication } from '../lib/publication'
 import { errorMessage, textOrNull } from './client-helpers'
 
 const SETTINGS_API = '/api/club_core/settings'
@@ -102,8 +103,8 @@ export function PublicationForm() {
     updatedAt: settings.updatedAt,
   }
   for (const block of PUBLICATION_BLOCKS) initialValues[blockField(block)] = settings.publication.blocks[block]
-  const publicHref =
-    settings.publication.enabled && settings.publicSlug ? `/p/${encodeURIComponent(settings.publicSlug)}` : null
+  const preview = clubPagePreview({ enabled: settings.publication.enabled, publicSlug: settings.publicSlug })
+  const reasonId = 'publication-preview-reason'
 
   return (
     <div className="flex flex-col gap-3">
@@ -137,18 +138,43 @@ export function PublicationForm() {
           await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
         }}
       />
-      {publicHref ? (
-        <p className="text-sm">
-          <Link
-            className="underline underline-offset-4"
-            href={publicHref}
-            target="_blank"
-            data-testid="publication-public-link"
-          >
-            {t('club_core.publication.preview')}
-          </Link>
+      <div className="flex flex-col gap-1 text-sm" data-testid="publication-address">
+        <p>
+          <span className="text-muted-foreground">{t('club_core.publication.address')}</span>{' '}
+          {preview.path ? (
+            <code className="font-mono">{preview.path}</code>
+          ) : (
+            <span className="text-muted-foreground">{t('club_core.publication.address.missing')}</span>
+          )}
         </p>
-      ) : null}
+        <p className="flex flex-wrap items-center gap-2">
+          {preview.href ? (
+            <Link
+              className="underline underline-offset-4"
+              href={preview.href}
+              target="_blank"
+              data-testid="publication-public-link"
+            >
+              {t('club_core.publication.preview')}
+            </Link>
+          ) : (
+            <>
+              <span
+                role="link"
+                aria-disabled="true"
+                aria-describedby={reasonId}
+                className="text-muted-foreground cursor-not-allowed"
+                data-testid="publication-preview-disabled"
+              >
+                {t('club_core.publication.preview')}
+              </span>
+              <span id={reasonId} className="text-muted-foreground">
+                {t(`club_core.publication.preview.disabled.${preview.disabledReason ?? 'page_off'}`)}
+              </span>
+            </>
+          )}
+        </p>
+      </div>
     </div>
   )
 }

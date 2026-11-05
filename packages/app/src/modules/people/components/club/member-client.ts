@@ -6,12 +6,8 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 
 export const MEMBER_PROFILE_API = '/api/people/me'
 export const MEMBER_PROFILE_QUERY_KEY = ['people-me'] as const
-export const CLUB_HOME_HREF = '/club'
-export const CLUB_CALENDAR_HREF = '/club/calendar'
-export const CLUB_PROFILE_HREF = '/club/profile'
-/** The inbox of `communication` (#35), linked by path. */
-export const CLUB_MESSAGES_HREF = '/club/messages'
-export const BACKEND_HREF = '/backend'
+/** The member paths come from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
+export { BACKEND_HREF, CLUB_HOME_HREF, CLUB_PROFILE_HREF } from '@vereino/ui'
 /** The platform's change-password page of the `auth` module (README M-10). */
 export const CHANGE_PASSWORD_HREF = '/backend/profile/change-password'
 
@@ -74,13 +70,6 @@ export type MemberProfile = {
 }
 
 export type MemberProfileLoad = { status: 'ok'; profile: MemberProfile } | { status: 'not_linked' }
-
-/** Contexts that work in the admin panel: the "Admin panel" link is shown for them (the panel authorizes itself). */
-const STAFF_CONTEXTS = ['club_admin', 'coordinator', 'coach']
-
-export function hasStaffContext(profile: MemberProfile): boolean {
-  return profile.contexts.some((context) => STAFF_CONTEXTS.includes(context))
-}
 
 class MemberProfileLoadError extends Error {}
 

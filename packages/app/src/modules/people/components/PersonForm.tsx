@@ -1,7 +1,8 @@
 'use client'
 // `/backend/people/persons/create` and the "Details" tab of `/backend/people/persons/[id]` (club spec UI table, J-001
 // step 2): the person's own fields in a `CrudForm`. The PESEL field is shown — and sent — only to a user with
-// `people.pesel.view`; the e-mail, phone, notes and PESEL are stored encrypted. The date of birth is a native date
+// `people.pesel.view`; the e-mail, phone, notes and PESEL are stored encrypted. A created person opens on the
+// guardianship tab, where flow F-01 continues (#84). The date of birth is a native date
 // input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
@@ -12,7 +13,14 @@ import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { birthDateBounds, birthDateProblem, type BirthDateProblem } from '@vereino/core'
 import { dateField } from '@vereino/ui'
-import { PERSONS_HREF, localToday, textOrNull, type PersonDetail, type Translate } from './client-helpers'
+import {
+  PERSONS_HREF,
+  localToday,
+  personRecordHref,
+  textOrNull,
+  type PersonDetail,
+  type Translate,
+} from './client-helpers'
 
 const ENTITY_ID = 'people:person'
 // What the date input stores for a partly typed date; `birthDateProblem` reports it as malformed.
@@ -157,7 +165,7 @@ export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
       onSubmit={async (values) => {
         const created = await createCrud<{ id?: string }>('people/persons', payload(values, withPesel, t))
         flash(t('people.persons.flash.created'), 'success')
-        router.push(created.result?.id ? `${PERSONS_HREF}/${created.result.id}` : PERSONS_HREF)
+        router.push(created.result?.id ? personRecordHref(created.result.id, 'guardianship') : PERSONS_HREF)
       }}
     />
   )

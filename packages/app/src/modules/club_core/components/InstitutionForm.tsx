@@ -8,6 +8,7 @@ import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { INSTITUTION_TYPES } from '../data/validators'
+import { formatBankAccount } from '../lib/institutions'
 import { enumOptions, errorMessage, textOrNull, type Translate } from './client-helpers'
 import type { InstitutionRow } from './places-shared'
 
@@ -33,7 +34,13 @@ function useInstitutionFields(t: Translate) {
       { id: 'contactName', label: t('club_core.institutions.fields.contactName'), type: 'text', maxLength: 200 },
       { id: 'contactPhone', label: t('club_core.institutions.fields.contactPhone'), type: 'text', maxLength: 50 },
       { id: 'contactEmail', label: t('club_core.institutions.fields.contactEmail'), type: 'text', maxLength: 320 },
-      { id: 'bankAccount', label: t('club_core.institutions.fields.bankAccount'), type: 'text', maxLength: 64 },
+      {
+        id: 'bankAccount',
+        label: t('club_core.institutions.fields.bankAccount'),
+        type: 'text',
+        maxLength: 64,
+        description: t('club_core.institutions.fields.bankAccount.help'),
+      },
       { id: 'notes', label: t('club_core.institutions.fields.notes'), type: 'textarea' },
     ],
     [t],
@@ -66,6 +73,8 @@ function toFormValues(row: InstitutionRow | null): InstitutionFormValues {
     updatedAt: row?.updatedAt ?? null,
   }
   for (const field of TEXT_FIELDS) values[field] = row?.[field] ?? ''
+  // Shown in its printed NRB form; a value saved before #87 that is not an NRB stays as it was.
+  if (row?.bankAccount) values.bankAccount = formatBankAccount(row.bankAccount)
   return values
 }
 

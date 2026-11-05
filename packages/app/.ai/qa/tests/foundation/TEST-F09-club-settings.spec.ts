@@ -40,9 +40,15 @@ test('TEST-F09 club settings: defaults, validation, stored values and invalid st
     })
 
     const invalid = await call<Settings>(request, 'PUT', '/api/club_core/settings', club.adminToken, {
-      data: { ownAccountMinAge: 0 },
+      data: { ownAccountMinAge: 'sixteen' },
     })
     expect(invalid.status).toBe(400)
+    // A well-formed threshold outside 13–18 is a business rule (#87): 422 with its code.
+    const outOfRange = await call(request, 'PUT', '/api/club_core/settings', club.adminToken, {
+      data: { ownAccountMinAge: 0 },
+    })
+    expect(outOfRange.status).toBe(422)
+    expect(outOfRange.body).toMatchObject({ code: 'account_age_threshold_out_of_range' })
     const unknownKey = await call<Settings>(request, 'PUT', '/api/club_core/settings', club.adminToken, {
       data: { organizationId: club.tenant.organizationId },
     })
