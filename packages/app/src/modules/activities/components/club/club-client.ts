@@ -99,6 +99,8 @@ export type CalendarOccurrence = {
   occurrenceDate: string
   startAt: string
   endAt: string
+  /** The gathering instant before the start (club spec DD-43), or null. */
+  gatheringAt: string | null
   placeId: string
   placeName: string | null
   placeAddress: string | null
@@ -459,6 +461,7 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
     title: title || t('activities.club.session.untitled'),
     startsAt: new Date(occurrence.startAt),
     endsAt: new Date(occurrence.endAt),
+    gatheringAt: occurrence.gatheringAt ? new Date(occurrence.gatheringAt) : null,
     status: occurrence.status,
     place: occurrence.placeName,
     placeAddress: occurrence.placeAddress,

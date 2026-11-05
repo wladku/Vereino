@@ -121,6 +121,7 @@
   "communication.email.reply.subject": "Nowa odpowiedź: {subject}",
   "communication.email.replyHint": "Odpowiedz w aplikacji.",
   "communication.email.sessionCancelled.lead": "{activity} w dniu {date}, {time} jest odwołane.",
+  "communication.email.sessionCancelled.leadWithGathering": "{activity} w dniu {date}, {time} (zbiórka {gathering}) jest odwołane.",
   "communication.email.sessionCancelled.reason": "Powód:",
   "communication.email.sessionCancelled.subject": "Odwołane: {activity}, {date}",
   "communication.errors.case_already_open": "Ten wątek jest już sprawą.",

@@ -98,7 +98,7 @@ test('TEST-M08 share text and the public session page: session and thread texts,
     const api = await publicGet(request, `/api/activities/public/${slug}/sessions/${session.id}`)
     expect(api.status).toBe(200)
     expect(Object.keys(api.body?.session as object).sort()).toEqual(
-      ['activityName', 'endAt', 'occurrenceDate', 'startAt', 'status', 'timeZone'].sort(),
+      ['activityName', 'endAt', 'gatheringAt', 'occurrenceDate', 'startAt', 'status', 'timeZone'].sort(),
     )
     expect(api.body?.session).toMatchObject({ activityName: 'Trening Żaków', status: 'cancelled' })
     expect(api.bytes.toString('utf8')).not.toContain('Zuzanna')
