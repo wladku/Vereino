@@ -64,12 +64,18 @@ test('checkSpec requires the section and the pointer, and rejects rows dated aft
   const spec = { stem: STEM, relativePath: `.ai/specs/${STEM}.md` }
   assert.deepEqual(checkSpec(spec, '# Demo\n'), [`.ai/specs/${STEM}.md: missing the "## Changelog" section`])
   assert.deepEqual(checkSpec(spec, specSource({ rows: [`| ${CUTOVER_DATE} | last row |`] })), [])
-  assert.match(checkSpec(spec, specSource({ pointer: 'nothing here' }))[0], /must point to `\.ai\/specs\/changelog\/2026-10-20-demo\/`/)
+  assert.match(
+    checkSpec(spec, specSource({ pointer: 'nothing here' }))[0],
+    /must point to `\.ai\/specs\/changelog\/2026-10-20-demo\/`/,
+  )
   assert.deepEqual(checkSpec(spec, specSource({ rows: ['| 2026-11-06 | too late |'] }), '2026-11-05'), [
-    `.ai/specs/${STEM}.md: Changelog row dated 2026-11-06 belongs in .ai/specs/changelog/${STEM}/2026-11-06-<slug>.md`
-    + ' (one file per change; the table is frozen after 2026-11-05)',
+    `.ai/specs/${STEM}.md: Changelog row dated 2026-11-06 belongs in .ai/specs/changelog/${STEM}/2026-11-06-<slug>.md` +
+      ' (one file per change; the table is frozen after 2026-11-05)',
   ])
-  assert.deepEqual(checkSpec(spec, specSource({ rows: ['| 2026-11-06 | ok with a later cutover |'] }), '2026-12-31'), [])
+  assert.deepEqual(
+    checkSpec(spec, specSource({ rows: ['| 2026-11-06 | ok with a later cutover |'] }), '2026-12-31'),
+    [],
+  )
 })
 
 test('checkEntry accepts one dated row whose date matches the file name', () => {
@@ -78,10 +84,16 @@ test('checkEntry accepts one dated row whose date matches the file name', () => 
   assert.deepEqual(checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-06 | No newline |'), [])
   assert.match(checkEntry(at('notes.md'), 'notes.md', '')[0], /file name must be/)
   assert.match(checkEntry(at('2026-02-30-a.md'), '2026-02-30-a.md', '')[0], /not a calendar date/)
-  assert.match(checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-06 | a |\n| 2026-11-06 | b |\n')[0], /exactly one line/)
+  assert.match(
+    checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-06 | a |\n| 2026-11-06 | b |\n')[0],
+    /exactly one line/,
+  )
   assert.match(checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', 'just prose\n')[0], /exactly one line/)
   assert.match(checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-06 |  |\n')[0], /exactly one line/)
-  assert.match(checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-07 | a |\n')[0], /differs from the file name date 2026-11-06/)
+  assert.match(
+    checkEntry(at('2026-11-06-a.md'), '2026-11-06-a.md', '| 2026-11-07 | a |\n')[0],
+    /differs from the file name date 2026-11-06/,
+  )
 })
 
 test('checkSpecChangelogs passes a repository without a changelog folder', () => {
@@ -100,8 +112,8 @@ test('checkSpecChangelogs validates every folder and entry under .ai/specs/chang
     '.ai/specs/changelog/2026-01-01-missing/2026-11-06-x.md': '| 2026-11-06 | x |\n',
   })
   assert.deepEqual(checkSpecChangelogs(root).sort(), [
-    `.ai/specs/${STEM}.md: Changelog row dated 2026-11-06 belongs in .ai/specs/changelog/${STEM}/2026-11-06-<slug>.md`
-    + ` (one file per change; the table is frozen after ${CUTOVER_DATE})`,
+    `.ai/specs/${STEM}.md: Changelog row dated 2026-11-06 belongs in .ai/specs/changelog/${STEM}/2026-11-06-<slug>.md` +
+      ` (one file per change; the table is frozen after ${CUTOVER_DATE})`,
     '.ai/specs/changelog/2026-01-01-missing/: no spec named 2026-01-01-missing.md in .ai/specs, .ai/specs/implemented, .ai/specs/archive',
     `.ai/specs/changelog/${STEM}/2026-11-06-bad.md: must hold exactly one line "| YYYY-MM-DD | change |"`,
     `.ai/specs/changelog/${STEM}/nested: entries are files, not folders`,
