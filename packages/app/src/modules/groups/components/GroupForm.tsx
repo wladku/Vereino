@@ -1,7 +1,7 @@
 'use client'
 // `/backend/groups/groups/create` and the "Details" tab of `/backend/groups/groups/[id]` (club spec UI table, DD-03a):
-// a group of one section, `team` or `class group`. The team fields (league, season) show only for a team, and the
-// form clears them when the kind is a class group; the server refuses team fields on a class group with 422 anyway.
+// a group of one section, `team` or `class group`. The team fields (age category, league, season) show only for a
+// team, and the form clears them when the kind is a class group; the server refuses team fields on a class group with 422 anyway.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -11,6 +11,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { GROUP_KINDS } from '../lib/groups-rules'
 import {
   GROUPS_HREF,
+  ageCategoryOptions,
   seasonOptions,
   sectionOptions,
   textOrNull,
@@ -22,6 +23,10 @@ const ENTITY_ID = 'groups:group'
 const NONE = ''
 
 type GroupFormValues = Record<string, unknown> & { updatedAt?: string | null }
+
+async function ageCategoryOptionsWithNone(t: Translate): Promise<CrudFieldOption[]> {
+  return [{ value: NONE, label: t('groups.groups.fields.ageCategory.none') }, ...(await ageCategoryOptions())]
+}
 
 async function seasonOptionsWithNone(t: Translate): Promise<CrudFieldOption[]> {
   return [{ value: NONE, label: t('groups.groups.fields.season.none') }, ...(await seasonOptions())]
@@ -48,6 +53,14 @@ function useGroupFields(t: Translate) {
       },
       { id: 'isActive', label: t('groups.groups.fields.isActive'), type: 'checkbox' },
       { id: 'description', label: t('groups.groups.fields.description'), type: 'textarea', maxLength: 4000 },
+      {
+        id: 'ageCategoryEntryId',
+        label: t('groups.groups.fields.ageCategory'),
+        type: 'select',
+        loadOptions: () => ageCategoryOptionsWithNone(t),
+        description: t('groups.groups.fields.ageCategory.help'),
+        visibleWhen: { field: 'kind', equals: 'team' },
+      },
       {
         id: 'league',
         label: t('groups.groups.fields.league'),
@@ -78,7 +91,7 @@ function useGroupFields(t: Translate) {
         title: t('groups.groups.groups.team'),
         description: t('groups.groups.groups.team.help'),
         column: 2,
-        fields: ['league', 'seasonId'],
+        fields: ['ageCategoryEntryId', 'league', 'seasonId'],
       },
     ],
     [t],
@@ -93,6 +106,7 @@ function toFormValues(group: GroupDetail | null): GroupFormValues {
     sectionId: group?.sectionId ?? '',
     isActive: group?.isActive ?? true,
     description: group?.description ?? '',
+    ageCategoryEntryId: group?.ageCategoryEntryId ?? NONE,
     league: group?.league ?? '',
     seasonId: group?.seasonId ?? NONE,
     updatedAt: group?.updatedAt ?? null,
@@ -108,6 +122,7 @@ function toPayload(values: GroupFormValues) {
     sectionId: values.sectionId,
     isActive: values.isActive === true,
     description: textOrNull(values.description),
+    ageCategoryEntryId: isTeam ? textOrNull(values.ageCategoryEntryId) : null,
     league: isTeam ? textOrNull(values.league) : null,
     seasonId: isTeam ? textOrNull(values.seasonId) : null,
   }

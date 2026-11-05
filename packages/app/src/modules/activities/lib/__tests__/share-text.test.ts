@@ -27,6 +27,12 @@ describe('share text paths (DD-M14, DD-17)', () => {
     expect(shareTextKey('planned')).toBe('activities.shareText.planned')
     expect(shareTextKey('done')).toBe('activities.shareText.planned')
   })
+
+  it('names the gathering time when the session has one (DD-43)', () => {
+    expect(shareTextKey('planned', true)).toBe('activities.shareText.plannedWithGathering')
+    expect(shareTextKey('cancelled', true)).toBe('activities.shareText.cancelledWithGathering')
+    expect(shareTextKey('cancelled', false)).toBe('activities.shareText.cancelled')
+  })
 })
 
 describe('session date and time in the club zone', () => {
@@ -36,7 +42,14 @@ describe('session date and time in the club zone', () => {
       'en-GB',
       'Europe/Warsaw',
     )
-    expect(when).toEqual({ date: 'Tue 3 Nov', startTime: '17:00', endTime: '18:30' })
+    expect(when).toEqual({ date: 'Tue 3 Nov', startTime: '17:00', endTime: '18:30', gatheringTime: null })
+  })
+
+  it('formats the gathering time in the zone when the session has one (DD-43)', () => {
+    const session = { startAt: new Date('2026-11-03T16:00:00Z'), endAt: new Date('2026-11-03T17:30:00Z') }
+    const gathering = new Date('2026-11-03T15:15:00Z')
+    expect(sessionWhen({ ...session, gatheringAt: gathering }, 'en-GB', 'Europe/Warsaw').gatheringTime).toBe('16:15')
+    expect(sessionWhen({ ...session, gatheringAt: null }, 'en-GB', 'Europe/Warsaw').gatheringTime).toBeNull()
   })
 })
 
@@ -57,8 +70,24 @@ describe('public session view (DD-17)', () => {
       occurrenceDate: '2026-11-03',
       startAt: '2026-11-03T16:00:00.000Z',
       endAt: '2026-11-03T17:30:00.000Z',
+      gatheringAt: null,
       timeZone: 'Europe/Warsaw',
       status: 'cancelled',
     })
+  })
+
+  it('carries the gathering time when the session has one (DD-43)', () => {
+    const view = publicSessionView(
+      {
+        occurrenceDate: '2026-11-03',
+        startAt: new Date('2026-11-03T16:00:00Z'),
+        endAt: new Date('2026-11-03T17:30:00Z'),
+        gatheringAt: new Date('2026-11-03T15:15:00Z'),
+        status: 'planned',
+      },
+      'Rocznik 2015 — match',
+      'Europe/Warsaw',
+    )
+    expect(view.gatheringAt).toBe('2026-11-03T15:15:00.000Z')
   })
 })

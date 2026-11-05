@@ -281,13 +281,14 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       expect(publicPath).toBe(`/p/${slug}/s/${session.id}`)
       for (const name of ['Hania', 'Kuba', 'Zosia', 'Anna', 'Marek', REASON]) expect(text).not.toContain(name)
 
-      // The public API behind the page, signed out: exactly the name, the date, the time and the status.
+      // The public API behind the page, signed out: exactly the name, the date, the time, the gathering
+      // time (club spec DD-43, #136; none on this session) and the status.
       const api = await publicGet(request, `/api/activities/public/${slug}/sessions/${session.id}`)
       expect(api.status).toBe(200)
       expect(Object.keys(api.body?.session as object).sort()).toEqual(
-        ['activityName', 'endAt', 'occurrenceDate', 'startAt', 'status', 'timeZone'].sort(),
+        ['activityName', 'endAt', 'gatheringAt', 'occurrenceDate', 'startAt', 'status', 'timeZone'].sort(),
       )
-      expect(api.body?.session).toMatchObject({ activityName: TRAINING, status: 'cancelled' })
+      expect(api.body?.session).toMatchObject({ activityName: TRAINING, status: 'cancelled', gatheringAt: null })
       for (const name of ['Hania', 'Kowalsk', 'Nowak', 'Wiśniew', 'Marek', 'Trener', 'Krystyna', REASON]) {
         expect(api.bytes.toString('utf8'), name).not.toContain(name)
       }

@@ -1,0 +1,1 @@
+| 2026-11-05 | S2.1: `yarn verify` gains the `spec-changelogs:check` step (`scripts/check-spec-changelogs.mjs`, 100 % unit coverage). Spec changelogs move to one file per entry in `.ai/specs/changelog/<spec>/`; every spec's table is frozen after 2026-11-05 and points there. `.ai/lessons.md` merges with `merge=union` (local merges only; GitHub ignores merge drivers) |

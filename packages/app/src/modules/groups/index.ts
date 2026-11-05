@@ -8,6 +8,7 @@ export const metadata: ModuleInfo = {
     'Groups of both kinds (team and class group) with memberships over time, seasons and external teams; the coach scope of coach and assistant memberships (#30).',
   author: 'Vereino',
   license: 'MIT',
-  // Club spec *Architecture*: `groups` → `people` → `club_core`; both are reached only through DI and ids.
-  requires: ['people', 'club_core'],
+  // Club spec *Architecture*: `groups` → `people` → `club_core`; both are reached only through DI and ids. The age
+  // categories of teams are a `dictionaries` dictionary, referenced by entry id (REQ-019, #92).
+  requires: ['people', 'club_core', 'dictionaries'],
 }

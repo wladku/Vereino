@@ -14,6 +14,7 @@ import {
 } from '@/modules/foundation'
 import type { OccurrenceCommandResult } from '../../../commands/occurrences'
 import { occurrenceUpdateSchema } from '../../../data/validators'
+import { gatheringIso } from '../../../lib/gathering'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
 import {
   SCHEDULE_READ_KINDS,
@@ -79,6 +80,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       occurrenceDate: row.occurrenceDate,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
+      gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+      gatheringAt: gatheringIso(row.startAt, row.gatheringMinutesBefore),
       placeId: row.placeId,
       placeName: names.places.get(row.placeId) ?? null,
       coachPersonId: row.coachPersonId ?? null,
@@ -151,7 +154,8 @@ export const openApi: OpenApiRouteDoc = {
         },
         {
           status: 422,
-          description: '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`',
+          description:
+            '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`, `occurrence_gathering_after_start`, `occurrence_gathering_too_early`',
           schema: errorSchema,
         },
       ],
