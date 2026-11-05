@@ -18,7 +18,7 @@ test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: CLUB_ZONE })
 
 const ABSENT = /^(Absent|Nieobecny)$/
-const PENDING = /Awaiting guardian confirmation|Oczekuje na potwierdzenie opiekuna/
+const PENDING = /Awaiting guardian confirmation|Czeka na potwierdzenie opiekuna/
 const REPORT_ABSENCE = /^(Report absence|Zgłoś nieobecność)/
 const WITHDRAW_ABSENCE = /^(Withdraw the absence|Wycofaj zgłoszenie nieobecności)/
 const ATTENDING = /^(Attending|Będzie)/
