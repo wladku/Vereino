@@ -29,7 +29,17 @@ export type RoleDefinition = {
 export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
   club_admin: {
     authRole: 'vereino_club_admin',
-    features: ['club_core.*', 'people.*', 'groups.*', 'activities.*', 'communication.*', 'payments.*', 'facilities.*'],
+    // `dictionaries.*`: the club administrator edits the club dictionaries, e.g. the PZPN age categories (#92).
+    features: [
+      'club_core.*',
+      'people.*',
+      'groups.*',
+      'activities.*',
+      'communication.*',
+      'payments.*',
+      'facilities.*',
+      'dictionaries.*',
+    ],
     implies: ['member'],
     requiresScope: null,
   },

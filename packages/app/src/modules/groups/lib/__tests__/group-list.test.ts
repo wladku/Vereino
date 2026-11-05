@@ -11,16 +11,18 @@ import {
 
 const SECTION = '7f0c2d4e-1b2a-4c3d-8e9f-0a1b2c3d4e5f'
 const SEASON = '0d9c8b7a-6f5e-4d3c-9b2a-1f0e9d8c7b6a'
+const CATEGORY = '5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d'
 
 describe('parseGroupListState', () => {
   it('reads every filter of a groups URL', () => {
     const query = new URLSearchParams(
-      `kind=class_group&sectionId=${SECTION}&seasonId=${SEASON}&isActive=false&search=%20Basen%20`,
+      `kind=class_group&sectionId=${SECTION}&seasonId=${SEASON}&ageCategoryEntryId=${CATEGORY}&isActive=false&search=%20Basen%20`,
     )
     expect(parseGroupListState(query)).toEqual({
       kind: 'class_group',
       sectionId: SECTION,
       seasonId: SEASON,
+      ageCategoryEntryId: CATEGORY,
       isActive: 'false',
       search: 'Basen',
     })
@@ -43,6 +45,9 @@ describe('groupListQuery', () => {
       `kind=team&sectionId=${SECTION}&isActive=true&search=Orliki`,
     )
     expect(groupListQuery({ seasonId: SEASON })).toBe(`seasonId=${SEASON}`)
+    expect(groupListQuery({ isActive: 'true', ageCategoryEntryId: CATEGORY, kind: 'team' })).toBe(
+      `kind=team&ageCategoryEntryId=${CATEGORY}&isActive=true`,
+    )
     expect(groupListQuery({})).toBe('')
   })
 
@@ -77,6 +82,7 @@ describe('hasGroupFilters', () => {
     expect(hasGroupFilters({ kind: 'team' })).toBe(true)
     expect(hasGroupFilters({ search: 'Basen' })).toBe(true)
     expect(hasGroupFilters({ isActive: 'false' })).toBe(true)
+    expect(hasGroupFilters({ ageCategoryEntryId: CATEGORY })).toBe(true)
   })
 })
 

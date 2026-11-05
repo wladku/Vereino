@@ -18,9 +18,9 @@ import {
 
 // TEST-030 (club spec phase 2 step 2; issue #30 criterion 1, membership part): a `team` group with a season in the
 // academy and a `class_group` in a non-football section; both kinds go through the same membership cycle (add, read
-// the roster, end, keep the history, add again); team fields on a class group → 422. Not covered here, by decision of
-// the product owner: the PZPN age category (needs the `dictionaries` module) and the `training` activity, attendance,
-// substitution and `match` → 422 for a class group (they arrive with `activities`, #31 / #33).
+// the roster, end, keep the history, add again); team fields on a class group → 422. The PZPN age category (the
+// `dictionaries` module) is covered by `E06-S10-team-age-category.spec.ts` (#92); the `training` activity, attendance,
+// substitution and `match` → 422 for a class group arrive with `activities` (#31 / #33).
 test.describe.configure({ timeout: 300_000 })
 
 test('TEST-030 a team and a class group go through the same membership cycle; team fields on a class group are refused with 422', async ({
