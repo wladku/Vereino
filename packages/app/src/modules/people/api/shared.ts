@@ -68,6 +68,8 @@ export type PersonView = PersonBasicView & {
   phone: string | null
   notes: string | null
   userId: string | null
+  /** The login e-mail of the person's account (#84); null without an account. */
+  accountEmail: string | null
   pesel?: string | null
   externalId?: string | null
   /** The person's own consents as a guardian (#27): the instant each was given, null when not given. */
@@ -89,7 +91,7 @@ export function personBasicView(person: Person): PersonBasicView {
   }
 }
 
-export function personView(person: Person, options: { withPesel: boolean }): PersonView {
+export function personView(person: Person, options: { withPesel: boolean; accountEmail?: string | null }): PersonView {
   return {
     ...personBasicView(person),
     access: 'full',
@@ -97,6 +99,7 @@ export function personView(person: Person, options: { withPesel: boolean }): Per
     phone: person.phone ?? null,
     notes: person.notes ?? null,
     userId: person.userId ?? null,
+    accountEmail: options.accountEmail ?? null,
     // The import identifier (#28) is an identifier like the PESEL: returned only with `people.pesel.view`.
     ...(options.withPesel ? { pesel: person.pesel ?? null, externalId: person.externalId ?? null } : {}),
     shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
@@ -212,6 +215,7 @@ export const personViewSchema = z.object({
   phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
+  accountEmail: z.string().nullable().optional().describe("Full view only: the login e-mail of the person's account"),
   pesel: z.string().nullable().optional(),
   externalId: z.string().nullable().optional(),
   shareContactWithCoachesAt: z.string().nullable().optional().describe('Full view only'),
