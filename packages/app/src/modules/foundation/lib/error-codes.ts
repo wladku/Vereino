@@ -1,8 +1,7 @@
 // Error codes owned by the foundation (foundation spec *API, Command, and Error Contracts*; S6.7). Thrown through
 // `api/errors.ts`. The optimistic-lock conflict (409 `optimistic_lock_conflict`) is the platform's reserved code:
 // `enforceCommandOptimisticLockWithGuards` throws it, so it is not redeclared here (`contracts:check` rejects a
-// redeclaration). The token-link codes arrive with phase C; `account_age_below_threshold` and `account_exists`
-// belong to `people`.
+// redeclaration). `account_age_below_threshold` and `account_exists` belong to `people`.
 import type { ErrorCodeTable } from '@vereino/core'
 
 export const errorCodes = [
@@ -27,6 +26,9 @@ export const errorCodes = [
   // #76: `authorizeScoped` and `assertInScope` answer it instead of `scope_denied` when the session scope holds no
   // grant beyond `self_user` — the account is not linked to a person of this club (`lib/scope-denial.ts`).
   { code: 'scope_unlinked', status: 403, messageKey: 'foundation.errors.scope_unlinked' },
+  // Phase C P-10 (#157): `TokenLinkService.peek` and `redeem` refuse an expired link and a spent single-use link.
+  { code: 'token_link_expired', status: 410, messageKey: 'foundation.errors.token_link_expired' },
+  { code: 'token_link_used', status: 410, messageKey: 'foundation.errors.token_link_used' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

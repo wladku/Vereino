@@ -75,6 +75,12 @@ export function placeListItem(row: Row) {
   }
 }
 
+/** A place list row with the names the list hook adds (UX parity spec, REQ-U03). */
+export type PlaceListItem = ReturnType<typeof placeListItem> & {
+  ownerName?: string | null
+  parentName?: string | null
+}
+
 export function institutionListItem(row: Row) {
   return {
     id: String(row.id),
@@ -150,6 +156,10 @@ export const placeListItemSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+  /** The owner institution's name; null without an owner (UX parity spec, REQ-U03). */
+  ownerName: z.string().nullable().optional(),
+  /** The parent place's name; null for a top-level place. */
+  parentName: z.string().nullable().optional(),
 })
 
 export const institutionListItemSchema = z.object({

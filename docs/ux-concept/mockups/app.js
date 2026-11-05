@@ -13,6 +13,8 @@
                                                            
                                       
                                                                                     
+  // What a guardian declares (REQ-007, D-026): a club setting per activity type; a group policy decides only who declares.
+                                            
                                                                             
   // Deferred UI text: stored system-generated text (charge descriptions, mails, thread labels, bank match reasons)
   // keeps the catalog key + params and is translated at render time with txt(), so switching the language re-translates it.
@@ -161,7 +163,7 @@
   const OPENING                                                                           = { 'pl-boisko': { weekday: ['08:00', '22:00'], weekend: ['09:00', '20:30'] }, 'pl-multi': { weekday: ['08:00', '22:00'], weekend: ['09:00', '20:30'] } }
 
                 
-                                                                                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                                                                                                                             
                                                                              
                                                                                                                                     
                                                                                                                                                     
@@ -191,7 +193,9 @@
         description: 'Klub sportowy z Ściejowic: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Liszki.',
         publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true },
         // Online payment fee (R13): the club pays it by default; the example operator fee is the ~PLN 2 per payment a parent named in an interview.
-        coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 }, updatedAt: 1,
+        coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 },
+        // Defaults of D-022/D-026: a training only takes absences, matches and the other kinds take confirmations.
+        declarationKinds: { training: 'absence_only', match: 'confirm', sparring: 'confirm', tournament: 'confirm', camp: 'confirm', other: 'confirm' }, updatedAt: 1,
       },
       persons: [
         P('p-kasia', 'Kasia', 'Nowak', '1986-04-02', { email: 'kasia.nowak@example.pl', phone: '600 100 200', account: true }),
@@ -396,13 +400,11 @@
     db.substitutions.push({ occ: 'a-orlm-2026-11-12', prev: 'p-wojtek', next: null, kind: 'absence_reported', at: '2026-11-09 21:40', by: 'p-wojtek', reason: 'Wyjazd służbowy' })
     for (const o of db.occurrences) if (o.status === 'done') {
       const g = db.groups.find((x) => x.id === o.group)         
-      db.attendance[o.id] = Object.fromEntries(g.members.map((m, i) => [m, { declared: 'yes', status: 'final', actual: i === 1 ? 'absent' : 'present' }              ]))
+      const silent = db.settings.declarationKinds[o.type] === 'absence_only' // silence = expected, no "yes" is stored
+      db.attendance[o.id] = Object.fromEntries(g.members.map((m, i) => [m, { declared: silent ? 'unknown' : 'yes', status: 'final', actual: i === 1 ? 'absent' : 'present' }              ]))
     }
-    db.attendance['a-orlm-2026-11-10'] = {
-      'p-adam': { declared: 'yes', status: 'final', by: 'p-marek' },
-      'p-bartek': { declared: 'yes', status: 'final', by: 'p-ewelina' },
-      'p-lena': { declared: 'no', status: 'final', by: 'p-robert' },
-    }
+    // Today's training is absence-only: only Lena's absence is reported, the rest of the group is expected.
+    db.attendance['a-orlm-2026-11-10'] = { 'p-lena': { declared: 'no', status: 'final', by: 'p-robert' } }
     db.attendance['a-sparing-2026-11-14'] = { 'p-adam': { declared: 'yes', status: 'final', by: 'p-marek' }, 'p-bartek': { declared: 'yes', status: 'final', by: 'p-ewelina' }, 'p-lena': { declared: 'no', status: 'final', by: 'p-robert' } }
     db.attendance['a-mecz-2026-11-15'] = { 'p-ola': { declared: 'yes', status: 'pending_guardian', by: 'p-ola' }, 'p-kuba': { declared: 'yes', status: 'final', by: 'p-iwona' } }
 
@@ -698,7 +700,10 @@
     return map[s] ? badge(t(`ui.statusBadge.${s}`), map[s]) : badge(s, 'neutral')
   }
 
-  function declBadge(a             )         {
+  const declKind = (o            )           => db.settings.declarationKinds[o.type]
+
+  function declBadge(a                        , kind           = 'confirm')         {
+    if (kind === 'absence_only') return a?.declared === 'no' ? badge(t('ui.declBadge.absent'), 'error') : badge(t('ui.declBadge.expected'), 'neutral')
     if (!a || a.declared === 'unknown') return badge(t('ui.declBadge.none'), 'neutral')
     if (a.status === 'pending_guardian') return badge(t('ui.declBadge.pendingGuardian'), 'warning')
     if (a.status === 'rejected_by_guardian') return badge(t('ui.declBadge.rejectedByGuardian'), 'error')
@@ -762,19 +767,20 @@
     return blocking
   }
 
-  function declare(occId        , personId        , value              )       {
+  function declare(occId        , personId        , value                        )       {
     const o = occById(occId)              
     if (started(o)) { toast(t('ui.declare.closed'), true); return }
+    if (declKind(o) === 'absence_only' && value === 'yes') { toast(t('ui.declare.absenceOnly'), true); return }
     if (confirmPassed(o)) { toast(t('ui.declare.deadlinePassed', { at: deadlineLabel(o.confirmBy          ) }), true); return }
     const actor = me()
     const p = personById(db, personId)
     const isWardSelf = actor === personId && ageOn(p.birth) < 18
-    const needsConfirm = isWardSelf && ['match', 'tournament', 'camp'].includes(o.type)
+    const needsConfirm = isWardSelf && value !== 'unknown' && ['match', 'tournament', 'camp'].includes(o.type)
     db.attendance[occId] ||= {}
     db.attendance[occId][personId] = { declared: value, status: needsConfirm ? 'pending_guardian' : 'final', by: actor }
-    if (needsConfirm) {
-      toast(t('ui.declare.savedPending'))
-    } else toast(t(value === 'yes' ? 'ui.declare.savedYes' : 'ui.declare.savedNo', { name: p.first }))
+    if (needsConfirm) toast(t('ui.declare.savedPending'))
+    else if (declKind(o) === 'absence_only') toast(t(value === 'no' ? 'ui.declare.savedAbsence' : 'ui.declare.absenceWithdrawn', { name: p.first }))
+    else toast(t(value === 'yes' ? 'ui.declare.savedYes' : 'ui.declare.savedNo', { name: p.first }))
     render()
   }
 
@@ -851,20 +857,36 @@
     }).filter((x) => x.who.length || x.asCoach).sort((a, b) => (a.o.date + a.o.start).localeCompare(b.o.date + b.o.start))
   }
 
+  // Declaration controls follow the kind (REQ-007, D-026): `absence_only` → "Report absence" and its undo (`unknown`);
+  // `confirm` → the segmented "Attending / Not attending". Shared by M-02, M-03, M-04 and M-14.
+  function declControls(kind          , a                        , c                                                                                                  )         {
+    const data = `data-action="${c.action}" ${c.occ ? `data-occ="${c.occ}"` : ''} ${c.token ? `data-token="${c.token}"` : ''} data-person="${c.person}"`
+    const dis = c.closed ? 'disabled' : ''
+    if (kind === 'absence_only') {
+      return a?.declared === 'no'
+        ? `<div class="row">${badge(t('m.occCard.absenceReported'), 'error')}<button type="button" class="btn sm" ${data} data-val="unknown" ${dis} aria-label="${esc(t('m.occCard.undoAbsenceAria', { name: c.name }))}">${esc(t('m.occCard.undoAbsence'))}</button></div>`
+        : `<button type="button" class="btn sm" ${data} data-val="no" ${dis} aria-label="${esc(t('m.occCard.reportAbsenceAria', { name: c.name }))}">${esc(t('m.occCard.reportAbsence'))}</button>`
+    }
+    const yes = a?.declared === 'yes', no = a?.declared === 'no'
+    return `<div class="seg" role="group" aria-label="${esc(t('m.occCard.declAria', { name: c.name }))}">
+        <button type="button" class="${yes ? 'on-yes' : ''}" ${data} data-val="yes" ${dis} aria-pressed="${yes}">${esc(t('m.occCard.attending'))}</button>
+        <button type="button" class="${no ? 'on-no' : ''}" ${data} data-val="no" ${dis} aria-pressed="${no}">${esc(t('m.occCard.notAttending'))}</button></div>`
+  }
+
   function occCard(x                                                    , withDecl = true)         {
     const o = x.o, g = group(o.group), s = section(g.section)
     const late = !started(o) && confirmPassed(o)
     const closed = started(o) || late
     const place = db.places.find((p) => p.id === o.place)
+    const kind = declKind(o)
     const decl = withDecl && o.status === 'planned' ? x.who.map((w) => {
       const a = db.attendance[o.id]?.[w]
-      const yes = a?.declared === 'yes', no = a?.declared === 'no'
+      const first = personById(db, w).first
       const canDecl = !(w === me() && ageOn(personById(db, w).birth) < 13)
       // After the deadline a child without an answer keeps the session, with a plain state instead of the buttons.
-      if (late && canDecl && (!a || a.declared === 'unknown')) return `<div class="who"><span>${esc(personById(db, w).first)} ${badge(t('m.occCard.noAnswer'), 'warning')}</span></div>`
-      return `<div class="who"><span>${esc(personById(db, w).first)} ${a?.status === 'pending_guardian' ? badge(t('m.occCard.awaitingGuardian'), 'warning') : ''}</span>${canDecl ? `<div class="seg" role="group" aria-label="${esc(t('m.occCard.declAria', { name: personById(db, w).first }))}">
-        <button type="button" class="${yes ? 'on-yes' : ''}" data-action="declare" data-occ="${o.id}" data-person="${w}" data-val="yes" ${closed ? 'disabled' : ''} aria-pressed="${yes}">${esc(t('m.occCard.attending'))}</button>
-        <button type="button" class="${no ? 'on-no' : ''}" data-action="declare" data-occ="${o.id}" data-person="${w}" data-val="no" ${closed ? 'disabled' : ''} aria-pressed="${no}">${esc(t('m.occCard.notAttending'))}</button></div>` : ''}</div>`
+      if (kind === 'confirm' && late && canDecl && (!a || a.declared === 'unknown')) return `<div class="who"><span>${esc(first)} ${badge(t('m.occCard.noAnswer'), 'warning')}</span></div>`
+      const head = `<span>${esc(first)} ${a?.status === 'pending_guardian' ? badge(t('m.occCard.awaitingGuardian'), 'warning') : ''}</span>`
+      return `<div class="who">${head}${canDecl ? declControls(kind, a, { action: 'declare', occ: o.id, person: w, name: first, closed }) : ''}</div>`
     }).join('') : ''
     const coachLine = x.asCoach && o.status === 'planned' ? `<div class="row" style="margin-top:6px">${link(esc(t('m.occCard.attendanceList')), `/club/occurrences/${o.id}/attendance`, 'btn sm primary')}${o.coach === null ? badge(t('m.occCard.noCoach'), 'warning') : ''}</div>` : ''
     return `<div class="occ"><div class="time">${o.start}<small>${o.end}</small></div><div>
@@ -957,19 +979,24 @@
     if (!(o.coach === me() || g.coaches.includes(me()) || coordSections(me()).includes(g.section))) return `<div class="alert error" role="alert"><strong>${t('m.screenAttendance.deniedTitle')}</strong>${t('m.screenAttendance.deniedText')}</div>`
     const att = db.attendance[o.id] || {}
     const ids = [...new Set([...g.members, ...Object.keys(att)])]
+    const kind = declKind(o)
     const counts = { yes: 0, no: 0, unknown: 0 }
     for (const m of ids) { const a = att[m]; if (!a || a.declared === 'unknown') counts.unknown++; else if (a.declared === 'yes') counts.yes++; else counts.no++ }
+    // AC-007: `absence_only` shows expected and reported absences, `confirm` shows confirmed, declined and unanswered.
+    const summary = kind === 'absence_only'
+      ? `${badge(t('m.screenAttendance.countExpected', { n: counts.yes + counts.unknown }), 'success')}${badge(t('m.screenAttendance.countAbsent', { n: counts.no }), 'error')}`
+      : `${badge(t('m.screenAttendance.countYes', { n: counts.yes }), 'success')}${badge(t('m.screenAttendance.countNo', { n: counts.no }), 'error')}${badge(t('m.screenAttendance.countUnknown', { n: counts.unknown }), 'neutral')}`
     if (o.status === 'cancelled') return `<div class="alert error"><strong>${t('m.screenAttendance.cancelledTitle')}</strong>${t('m.screenAttendance.cancelledText')}</div>`
     const rows = ids.map((m) => {
       const a = att[m]; const v = a?.actual || ''
       const opt = (val        , l        )         => `<button type="button" class="${v === val ? 'on' : ''}" data-action="mark" data-occ="${o.id}" data-person="${m}" data-val="${val}" aria-pressed="${v === val}" ${o.status === 'done' ? 'disabled' : ''}>${l}</button>`
-      return `<li><div class="row between"><div><div class="item-title">${esc(pName(m))}</div><div class="small">${declBadge(a)}</div></div><div class="seg" role="group" aria-label="${esc(t('m.screenAttendance.rowLabel', { name: pName(m) }))}">${opt('present', t('m.screenAttendance.present'))}${opt('absent', t('m.screenAttendance.absent'))}${opt('late', t('m.screenAttendance.late'))}</div></div></li>`
+      return `<li><div class="row between"><div><div class="item-title">${esc(pName(m))}</div><div class="small">${declBadge(a, kind)}</div></div><div class="seg" role="group" aria-label="${esc(t('m.screenAttendance.rowLabel', { name: pName(m) }))}">${opt('present', t('m.screenAttendance.present'))}${opt('absent', t('m.screenAttendance.absent'))}${opt('late', t('m.screenAttendance.late'))}</div></div></li>`
     }).join('')
     return `<div class="card"><div class="item-title">${esc(o.name)}</div><div class="small muted">${dShort(o.date)} ${o.start}–${o.end} · ${esc(placeName(db, o.place))} · ${o.coach ? esc(pName(o.coach)) : t('m.screenAttendance.noCoach')}</div>
-      <div class="row" style="margin-top:8px">${badge(t('m.screenAttendance.countYes', { n: counts.yes }), 'success')}${badge(t('m.screenAttendance.countNo', { n: counts.no }), 'error')}${badge(t('m.screenAttendance.countUnknown', { n: counts.unknown }), 'neutral')}</div></div>
+      <div class="row" style="margin-top:8px">${summary}</div></div>
       ${o.status === 'done' ? `<div class="alert success" style="margin-top:12px"><strong>${t('m.screenAttendance.closedTitle')}</strong>${t('m.screenAttendance.closedText')}</div>` : ''}
       ${ids.length ? `<ul class="list">${rows}</ul>` : empty(t('m.screenAttendance.noMembersTitle'), t('m.screenAttendance.noMembersText'))}
-      ${o.status === 'planned' && ids.length ? `<div class="stack" style="margin-top:12px">${btn(t('m.screenAttendance.markDeclared'), 'mark-declared', { occ: o.id })}${btn(t('m.screenAttendance.closeSession'), 'complete-occ', { occ: o.id }, 'primary block')}</div>` : ''}`
+      ${o.status === 'planned' && ids.length ? `<div class="stack" style="margin-top:12px">${btn(t(kind === 'absence_only' ? 'm.screenAttendance.markExpected' : 'm.screenAttendance.markDeclared'), 'mark-declared', { occ: o.id })}${btn(t('m.screenAttendance.closeSession'), 'complete-occ', { occ: o.id }, 'primary block')}</div>` : ''}`
   }
 
   function visibleThreads()           {
@@ -1227,7 +1254,8 @@
     const kids = wardsOf(tok.guardian).filter((w) => g.members.includes(w))
     return `<div class="card"><div class="item-title">${esc(o.name)}</div><div class="small muted">${esc(dLong(o.date))}, ${o.start}–${o.end} · ${esc(placeName(db, o.place))}</div></div>
       <div class="section-title">${esc(t('m.screenTokenDeclare.yourKids'))}</div>
-      ${kids.map((w) => { const a = db.attendance[o.id]?.[w]; return `<div class="row between card"><span class="item-title">${esc(personById(db, w).first)}</span><div class="seg"><button type="button" class="${a?.declared === 'yes' ? 'on-yes' : ''}" data-action="token-declare" data-token="${p.token}" data-person="${w}" data-val="yes">${esc(t('m.screenTokenDeclare.attending'))}</button><button type="button" class="${a?.declared === 'no' ? 'on-no' : ''}" data-action="token-declare" data-token="${p.token}" data-person="${w}" data-val="no">${esc(t('m.screenTokenDeclare.notAttending'))}</button></div></div>` }).join('')}
+      ${declKind(o) === 'absence_only' ? `<p class="small muted">${esc(t('m.screenTokenDeclare.absenceOnlyHint'))}</p>` : ''}
+      ${kids.map((w) => { const a = db.attendance[o.id]?.[w]; const first = personById(db, w).first; return `<div class="row between card"><span class="item-title">${esc(first)}</span>${declControls(declKind(o), a, { action: 'token-declare', token: p.token, person: w, name: first })}</div>` }).join('')}
       <p class="small muted">${t('m.screenTokenDeclare.signInForCalendar', { link: link(esc(t('m.screenLink.signIn')), '/login', '') })}</p>`
   }
 
@@ -2688,7 +2716,7 @@
     todo: (el, ev) => { ev.preventDefault(); toast(t('action.todo.toast', { what: el.dataset.what || t('action.todo.defaultWhat') })) },
     logout: () => { setPersona('guest'); go('/login') },
     'fill-login': (el, ev) => { ev.preventDefault(); const f = document.querySelector('[data-form="login"]')                   ; (f.elements.namedItem('email')                    ).value = el.dataset.email          ; (f.elements.namedItem('password')                    ).value = 'demo1234'; (f.elements.namedItem('password')                    ).focus() },
-    declare: (el) => declare(el.dataset.occ          , el.dataset.person          , el.dataset.val                ),
+    declare: (el) => declare(el.dataset.occ          , el.dataset.person          , el.dataset.val                          ),
     'guardian-decide': (el) => {
       const a = db.attendance[el.dataset.occ          ][el.dataset.person          ]
       a.status = el.dataset.val === 'yes' ? 'final' : 'rejected_by_guardian'
@@ -2721,10 +2749,14 @@
     },
     'mark-declared': (el) => {
       const occ = el.dataset.occ          
-      const g = group((occById(occ)              ).group)
+      const o = occById(occ)              , g = group(o.group)
+      const absenceOnly = declKind(o) === 'absence_only' // everyone without a reported absence is expected
       db.attendance[occ] ||= {}
-      for (const m of g.members) { const a = db.attendance[occ][m]; if (a?.declared === 'yes' && !a.actual) a.actual = 'present' }
-      toast(t('action.markDeclared.toast')); render()
+      for (const m of g.members) {
+        const a = db.attendance[occ][m]
+        if (absenceOnly ? a?.declared !== 'no' && !a?.actual : a?.declared === 'yes' && !a.actual) db.attendance[occ][m] = { ...(a || { declared: 'unknown', status: 'final' }), actual: 'present' }
+      }
+      toast(t(absenceOnly ? 'action.markExpected.toast' : 'action.markDeclared.toast')); render()
     },
     'complete-occ': (el) => {
       const o = occById(el.dataset.occ          )              
@@ -2794,7 +2826,13 @@
     incident: () => openModal({ title: t('action.incident.title'), submitLabel: t('action.incident.submit'), body: `<div class="fields">${fld('kind', t('common.kind'), sel('kind', [['', t('common.choose')], ...(['rules_violation', 'damage', 'injury', 'other']         ).map((k) => [k, t(`incident.kind.${k}`)]                    )]), { req: true })}${fld('action', t('action.incident.actionTaken'), sel('action', (['warning', 'removal', 'booking_cancelled', 'police_called']         ).map((k) => [k, t(`incident.action.${k}`)]                    )))}</div>${fld('description', t('common.description'), area('description'), { req: true, hint: t('action.incident.descriptionHint') })}${fld('photo', t('action.incident.photo'), inp('photo', 'file', '', 'accept="image/*"'))}`,
       onSubmit: (fd) => { const errs         = {}; required(fd, ['kind'], errs); if (String(fd.get('description') || '').trim().length < 10) errs.description = t('action.incident.errDescription'); if (Object.keys(errs).length) return errs; db.incidents.unshift({ id: uid('in'), date: TODAY, place: 'pl-boisko', kind: String(fd.get('kind')), description: String(fd.get('description')), action: String(fd.get('action')), by: me() }); toast(t('action.incident.toast')); render() } }),
     'no-show': (el) => { const r = db.rentals.find((x) => x.id === el.dataset.id)          ; if (!started(r)) { toast(t('action.noShow.tooEarly'), true); return } r.status = 'no_show'; toast(t('action.noShow.toast')); render() },
-    'token-declare': (el) => { const tok = db.tokens[el.dataset.token          ]; db.attendance[tok.occ] ||= {}; db.attendance[tok.occ][el.dataset.person          ] = { declared: el.dataset.val         , status: 'final', by: tok.guardian }; toast(t('action.tokenDeclare.toast')); render() },
+    'token-declare': (el) => {
+      const tok = db.tokens[el.dataset.token          ], val = el.dataset.val                          
+      const absenceOnly = declKind(occById(tok.occ)              ) === 'absence_only'
+      if (absenceOnly && val === 'yes') { toast(t('ui.declare.absenceOnly'), true); return } // 422 declaration_kind_absence_only
+      db.attendance[tok.occ] ||= {}; db.attendance[tok.occ][el.dataset.person          ] = { declared: val, status: 'final', by: tok.guardian }
+      toast(t(absenceOnly ? (val === 'no' ? 'action.tokenDeclare.absenceToast' : 'action.tokenDeclare.withdrawnToast') : 'action.tokenDeclare.toast')); render()
+    },
     'public-request': (el) => publicRequestModal(el.dataset.place          , el.dataset.date          , Number(el.dataset.from), Number(el.dataset.to)),
     approve: (el) => {
       const r = db.rentals.find((x) => x.id === el.dataset.id)          
