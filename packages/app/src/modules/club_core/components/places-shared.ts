@@ -20,6 +20,9 @@ export type PlaceRow = {
   isActive: boolean
   createdAt: string | null
   updatedAt: string | null
+  /** Added by the list hook (UX parity spec, REQ-U03); absent on other reads. */
+  ownerName?: string | null
+  parentName?: string | null
 }
 
 export type InstitutionRow = {
