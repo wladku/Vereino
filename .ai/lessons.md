@@ -33,6 +33,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [yarn mercato copies .env.example to .env; pass DATABASE_URL explicitly and remove .env and storage/ after a run](lessons/mercato-cli-writes-env-and-storage.md) — area:ai-workflow; module:platform; topic:mercato-cli,db-generate,env,uploads,worktrees
 - [Book online payments from the provider state, not from payment_gateways events alone](lessons/payment-gateway-events-miss-late-captures.md) — area:integration,framework-context; module:payments,platform; topic:payment-gateways,stripe,events,idempotency,refunds
 - [Run Prettier --write on the changed files only, never on a whole module folder](lessons/prettier-write-changed-files-only.md) — area:ai-workflow; module:platform; topic:prettier,formatting,subagents,diff-noise
+- [A stopped integration run can leave its next build running; wait for a quiet build directory before the next run](lessons/stopped-integration-run-leaves-its-build-running.md) — area:testing,debugging; module:platform; topic:integration-tests,next-build,background-tasks,host-suspend,worktrees
 - [Subagents never stage changes; commit only explicit paths](lessons/subagents-never-stage-changes.md) — area:ai-workflow; module:platform; topic:subagents,git-staging,commits
 
 ### architecture

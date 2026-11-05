@@ -107,3 +107,12 @@ E06-S11 (README B-14, B-15, M-04; club spec REQ-005, REQ-020, REQ-027):
 - **Opponent.** A `match` or `sparring` (`takesOpponent`) shows the "Opponent" select (external teams); other types send `opponentExternalTeamId: null`.
 - **Coach picker.** `GET /api/activities/options/coaches` (`activities.manage`) lists the persons with an active `coach` role assignment (`people.personDirectory.roleHolderIdsOn`) or an active `coach`/`assistant` membership of any group (`groups.directory.leaderIdsOn`) on the club's today; `search` keeps the persons whose first or last name starts with every word, case and diacritics ignored (`lib/coach-options.ts`). The picker puts "No coach" first; it sends `coachPersonId: null`.
 - **Session details.** `GET /api/activities/occurrences/{id}` and every calendar entry (`GET /api/activities/calendar`, `…/{id}`) carry `opponentName` and `invitedTeamNames` (`services/read.ts` `activityTeams`); B-15 and M-04 show them when present.
+
+## Gathering time (#136)
+
+Club spec DD-43 (README B-14, B-15, M-02, M-03, M-04; messaging spec DD-M14):
+
+- **Storage.** `gathering_minutes_before` on `activities_activities` (the series default, 1–720, null = none) and on `activities_occurrences` (the session's own). The planner (`services/series.ts`), the daily generator and the one-off event copy the activity's value; a series change re-plans it on the movable sessions only.
+- **Reads.** The instant `gatheringAt = start_at − minutes` (`lib/gathering.ts`) on the session detail and list, every calendar entry, the attendance list, the public session page and `activities.scheduleDirectory`, so a moved session keeps its offset.
+- **Writes.** Activity and event writes take `gatheringMinutesBefore`; `PATCH /api/activities/occurrences/{id}` takes `gatheringAt` (null removes it) and detaches the session like a move; at or after the start answers 422 `occurrence_gathering_after_start`, more than 12 hours before it 422 `occurrence_gathering_too_early`. The B-15 move form sends `gatheringAt` only when the field changed.
+- **Display.** "Gathering {time}" before the time range on `/club` Today, the calendar list (`CalendarItem.gatheringAt`), the session page, the attendance list header and the public session page; nothing without one. The share text (`activities.shareText.*WithGathering`) and `communication.session_cancelled` (optional `gatheringAt` parameter) name it. The in-app cancellation notice and the one-off event form (B-14 events) do not carry it yet.
