@@ -120,7 +120,8 @@ test('TEST-001 institutions: encrypted contact and bank account, clear, stale ve
       name: 'Gmina Testowo',
       type: 'municipality',
       contactName: 'Anna Urzędniczka',
-      bankAccount: 'PL61109010140000071219812874',
+      // An NRB is stored as its 26 digits (#87).
+      bankAccount: '61109010140000071219812874',
       notes: 'Umowa użyczenia Orlika',
     })
     const raw = await withClient(async (client) => {
@@ -131,7 +132,7 @@ test('TEST-001 institutions: encrypted contact and bank account, clear, stale ve
       return result.rows[0]
     })
     expect(raw.bank_account).toBeTruthy()
-    expect(raw.bank_account).not.toContain('PL611090')
+    expect(raw.bank_account).not.toContain('611090')
     expect(raw.contact_name).not.toContain('Anna')
 
     const cleared = await update(

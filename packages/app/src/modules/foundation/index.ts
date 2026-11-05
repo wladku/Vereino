@@ -21,7 +21,7 @@ export {
   validityShape,
   type CodedIssueParams,
 } from './lib/validity-schema'
-export { createAccount, type CreateAccountInput, type CreateAccountResult } from './services/accounts'
+export { accountEmail, createAccount, type CreateAccountInput, type CreateAccountResult } from './services/accounts'
 export {
   assertInScope,
   authorizeScoped,

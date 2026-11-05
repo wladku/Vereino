@@ -604,7 +604,7 @@
   "b.screenSettings.phone": "Telefon kontaktowy",
   "b.screenSettings.timeZone": "Strefa czasowa",
   "b.screenSettings.minAge": "Próg wieku własnego konta",
-  "b.screenSettings.minAgeHint": "13–18 lat (D-004; do potwierdzenia prawnego Q-007)",
+  "b.screenSettings.minAgeHint": "13–18 lat; domyślnie 16 (D-022)",
   "b.screenSettings.description": "Opis klubu (strona publiczna)",
   "b.screenSettings.logoHeading": "Logo klubu",
   "b.screenSettings.replaceLogo": "Podmień logo",
