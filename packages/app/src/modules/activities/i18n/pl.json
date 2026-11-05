@@ -136,6 +136,7 @@
   "activities.club.flash.rejected": "Deklaracja została odrzucona.",
   "activities.club.flash.savedAttending": "Zapisano: {name} będzie",
   "activities.club.flash.savedNotAttending": "Zapisano: {name} nie będzie",
+  "activities.club.flash.savedPendingGuardian": "Zapisano: odpowiedź ({name}) czeka na potwierdzenie opiekuna",
   "activities.club.flash.savedWithdrawn": "Zapisano: {name} — nieobecność wycofana",
   "activities.club.flash.sessionClosed": "Zajęcia zamknięte.",
   "activities.club.kind.absence_only": "Zgłasza się tylko nieobecność",

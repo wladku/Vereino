@@ -95,6 +95,14 @@ describe('session times', () => {
     expect(weekdayAndTime(start, 'en', 'UTC')).toEqual({ day: 'Thu', time: '15:00' })
   })
 
+  it('adds the day and month for a session more than a week away', () => {
+    const far = weekdayAndTime(start, 'en', 'Europe/Warsaw', true)
+    expect(far.day).toContain('Thu')
+    expect(far.day).toContain('Nov')
+    expect(far.day).toContain('5')
+    expect(far.time).toBe('16:00')
+  })
+
   it('gives the weekday, date and time of a pending decision', () => {
     const moment = sessionMoment(start, 'en', 'Europe/Warsaw')
     expect(moment).toContain('Thu')

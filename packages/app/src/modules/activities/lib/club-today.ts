@@ -62,10 +62,22 @@ export function declarationButtons(
   return entry.declarationsOpen && person.canDeclare ? 'enabled' : 'disabled'
 }
 
-/** "Thu" and "16:00": the weekday and time of a session start in the club zone, 24-hour clock whatever the locale. */
-export function weekdayAndTime(at: Date, locale: string, timeZone: string): { day: string; time: string } {
+/**
+ * "Thu" and "16:00": the weekday and time of a session start in the club zone, 24-hour clock whatever the locale;
+ * `withDate` adds the day and month ("Thu, Nov 12") for a session more than a week away, where a weekday alone is
+ * ambiguous.
+ */
+export function weekdayAndTime(
+  at: Date,
+  locale: string,
+  timeZone: string,
+  withDate = false,
+): { day: string; time: string } {
+  const day: Intl.DateTimeFormatOptions = withDate
+    ? { weekday: 'short', day: 'numeric', month: 'short', timeZone }
+    : { weekday: 'short', timeZone }
   return {
-    day: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone }).format(at),
+    day: new Intl.DateTimeFormat(locale, day).format(at),
     time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(
       at,
     ),

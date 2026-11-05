@@ -136,6 +136,7 @@
   "activities.club.flash.rejected": "The declaration has been rejected.",
   "activities.club.flash.savedAttending": "Saved: {name} attending",
   "activities.club.flash.savedNotAttending": "Saved: {name} not attending",
+  "activities.club.flash.savedPendingGuardian": "Saved: {name}'s answer is waiting for your guardian's confirmation",
   "activities.club.flash.savedWithdrawn": "Saved: {name}'s absence withdrawn",
   "activities.club.flash.sessionClosed": "Session closed.",
   "activities.club.kind.absence_only": "Report absences only",

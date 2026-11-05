@@ -23,6 +23,8 @@ export default function ClubMessagesTileWidget() {
   const t = useT()
   const query = useQuery({
     queryKey: UNREAD_COUNT_QUERY_KEY,
+    // One retry: a failed count shows its error and "Try again" within seconds, not after the default three.
+    retry: 1,
     queryFn: async () => {
       const call = await apiCall<{ count: number }>('/api/communication/threads/unread-count')
       if (!call.ok || typeof call.result?.count !== 'number') throw new UnreadCountLoadError(String(call.status))

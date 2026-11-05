@@ -60,6 +60,8 @@ export type ClubTodayContext = {
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
 const LINK_CLASS = 'hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
 const PENDING_WINDOW_DAYS = 13
+/** Beyond this many days a weekday alone is ambiguous, so the next session also names its date. */
+const WEEK_AHEAD_DAYS = 6
 
 function entryLine(entry: CalendarEntry, guardian: boolean): string {
   const names = guardian ? entry.persons.map((person) => person.firstName).join(', ') : ''
@@ -98,6 +100,9 @@ function PersonDeclaration({
       {person.guardianOnly ? (
         <p className="text-muted-foreground text-sm">{t('activities.club.session.guardianOnly')}</p>
       ) : null}
+      {as === 'self' && person.needsGuardianConfirmation && buttons === 'enabled' ? (
+        <p className="text-muted-foreground text-sm">{t('activities.club.session.needsGuardian')}</p>
+      ) : null}
       {buttons !== 'hidden' ? (
         <ButtonGroup aria-label={t('activities.club.today.declareFor', { name: person.firstName })}>
           {declarationChoices(entry.declarationKind, person.declaration).map((choice) => {
@@ -109,11 +114,12 @@ function PersonDeclaration({
                 type="button"
                 variant={current ? 'default' : 'outline'}
                 className="min-h-11"
-                disabled={buttons === 'disabled' || busy || current}
+                disabled={buttons === 'disabled' || busy}
                 aria-pressed={current}
                 data-declared={choice.declared}
                 onClick={() => {
-                  onDeclare(person, choice.declared)
+                  // The chosen answer stays readable at full contrast; tapping it again sends nothing.
+                  if (!current) onDeclare(person, choice.declared)
                 }}
               >
                 {t(`activities.club.actions.${choice.key}`)}
@@ -172,7 +178,12 @@ export default function ClubTodayTilesWidget({
         t('activities.club.errors.declare'),
         target.declaration?.updatedAt ?? null,
       )
-      const success = t(savedDeclarationKey(declared), { name: target.firstName })
+      const success = t(
+        scope.as === 'self' && target.needsGuardianConfirmation
+          ? 'activities.club.flash.savedPendingGuardian'
+          : savedDeclarationKey(declared),
+        { name: target.firstName },
+      )
       setAnnouncement(success)
       flash(success, 'success')
     } catch (error: unknown) {
@@ -198,7 +209,14 @@ export default function ClubTodayTilesWidget({
       </div>
     )
   } else if (soon.length === 0) {
-    const nextAt = next ? weekdayAndTime(new Date(next.occurrence.startAt), locale, timeZone) : null
+    const nextAt = next
+      ? weekdayAndTime(
+          new Date(next.occurrence.startAt),
+          locale,
+          timeZone,
+          next.occurrence.occurrenceDate > addCalendarDays(today, WEEK_AHEAD_DAYS),
+        )
+      : null
     calendarBody = (
       <p className="text-muted-foreground text-sm" data-testid="club-today-empty">
         {next && nextAt
