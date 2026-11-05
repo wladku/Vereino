@@ -53,7 +53,8 @@ import {
   type MessageRow,
   type ThreadScopeType,
 } from '../lib/thread-rules'
-import { activeGuardians, findPersons, personName, type CommunicationScope } from './directory'
+import { wardThreadsOf, type WardThreads } from '../lib/member-inbox'
+import { activeGuardians, findPersons, groupDirectory, personName, type CommunicationScope } from './directory'
 import { targetLabels } from './targets'
 
 /** The reader: the trusted organization, their grants, their person and household. */
@@ -152,7 +153,9 @@ export type ThreadListItem = {
 export type ThreadListQuery = {
   page?: number
   pageSize?: number
-  filters: ThreadFilters
+  filters: Omit<ThreadFilters, 'ward'>
+  /** The threads about one of the reader's wards (E06-S20); any other person lists nothing. */
+  wardId?: string
   unreadOnly: boolean
   /** `member`: the inbox — the reader's own threads only, whatever their staff grants allow. */
   participantOnly: boolean
@@ -213,6 +216,17 @@ async function subjectsOf(em: EntityManager, viewer: Viewer, ids: readonly strin
   return new Map(rows.map((row) => [row.id, row.subject]))
 }
 
+/** Every period of membership, so a thread of a group the ward has left still concerns it. */
+const ANY_PERIOD = { from: '0001-01-01', to: '9999-12-31' }
+
+/** The groups and sections that make a thread one about the ward (`groups.directory`, never its entities). */
+async function wardThreads(viewer: Viewer, wardId: string): Promise<WardThreads> {
+  const directory = groupDirectory(viewer.container)
+  const memberships = await directory.membershipsOf(viewer.scope, [wardId], ANY_PERIOD)
+  const groups = await directory.findGroups(viewer.scope, [...new Set(memberships.map((row) => row.groupId))])
+  return wardThreadsOf(wardId, memberships, groups)
+}
+
 /** The threads the reader sees, newest activity first, in the S6.4 envelope. */
 export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
   const em = emOf(viewer)
@@ -221,7 +235,14 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
   if (query.filters.sectionId && !maySeeSection(viewer, query.filters.sectionId)) {
     return pagedEnvelope<ThreadListItem>([], 0, window)
   }
-  const headers = await visibleThreadHeaders(em, viewer.scope, visibility(viewer, query.participantOnly), query.filters)
+  // Likewise a person who is not the reader's ward: a forged id never narrows to someone else's child.
+  if (query.wardId && !grantIds(viewer.grants, 'guardian').includes(query.wardId)) {
+    return pagedEnvelope<ThreadListItem>([], 0, window)
+  }
+  const filters: ThreadFilters = query.wardId
+    ? { ...query.filters, ward: await wardThreads(viewer, query.wardId) }
+    : query.filters
+  const headers = await visibleThreadHeaders(em, viewer.scope, visibility(viewer, query.participantOnly), filters)
   const all = (await summaries(em, viewer, headers)).sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
   const matching = query.unreadOnly ? all.filter((summary) => summary.unread) : all
   const page = matching.slice(window.offset, window.offset + window.pageSize)
@@ -291,6 +312,8 @@ export type ThreadMessageItem = {
   canDelete: boolean
   /** The message's deliveries by status for a reader who sees the delivery status; null otherwise or without any. */
   deliveryCounts: DeliveryCounts | null
+  /** The e-mail deliveries of the reader's own message by status (M-07, E06-S20); null for others' or without any. */
+  emailCounts: DeliveryCounts | null
 }
 
 export type ThreadDetail = {
@@ -397,16 +420,21 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
         return dispatchId ? [dispatchId] : []
       })
     : []
-  const [names, labels, reads, hasCaseFeature, counts] = await Promise.all([
+  const ownDispatchIds = views.flatMap((view) => {
+    const dispatchId = byId.get(view.id)?.dispatchId
+    return dispatchId && viewer.personId !== null && view.authorPersonId === viewer.personId ? [dispatchId] : []
+  })
+  const dispatch = viewer.container.resolve<DispatchService>('foundationDispatch')
+  const dispatchCtx = { ...viewer.scope, scope: viewer.grants }
+  const [names, labels, reads, hasCaseFeature, counts, emailCounts] = await Promise.all([
     findPersons(viewer.container, viewer.scope, authorIds),
     targetLabels(viewer.container, viewer.scope, [header]),
     viewer.personId ? readMarkersOf(em, viewer.scope, viewer.personId, [thread.id]) : new Map<string, Date>(),
     // Asked only when the marking is otherwise possible: a staff grant on a thread that is not a case yet.
     !header.isCase && staffRole ? hasFeature(viewer, CASE_FEATURE) : false,
-    dispatchIds.length > 0
-      ? viewer.container
-          .resolve<DispatchService>('foundationDispatch')
-          .countsOf(dispatchIds, { ...viewer.scope, scope: viewer.grants })
+    dispatchIds.length > 0 ? dispatch.countsOf(dispatchIds, dispatchCtx) : new Map<string, DeliveryCounts>(),
+    ownDispatchIds.length > 0
+      ? dispatch.countsOf(ownDispatchIds, dispatchCtx, { channel: 'email' })
       : new Map<string, DeliveryCounts>(),
   ])
   const lastVisible = lastVisibleMessageAt(
@@ -458,6 +486,7 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
           staffRole,
         }),
         deliveryCounts: canSeeDeliveries && row?.dispatchId ? (counts.get(row.dispatchId) ?? null) : null,
+        emailCounts: own && row?.dispatchId ? (emailCounts.get(row.dispatchId) ?? null) : null,
       }
     }),
   }
