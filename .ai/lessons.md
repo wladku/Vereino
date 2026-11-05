@@ -68,6 +68,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [A list entityId must match the ORM class name; ACL dependsOn is diagnostics only, so grant *.view explicitly](lessons/query-engine-entity-ids-and-acl-depends-on.md) — area:module-data,architecture; module:groups,platform; topic:query-engine,crud-factory,entity-id,acl,role-features
 - [A required lock token must spare the audit redo and a singleton's first save](lessons/required-lock-token-redo-and-first-save.md) — area:module-data,debugging; module:foundation,club_core,platform; topic:optimistic-locking,commands,undo-redo,authorize-scoped
 - [Scoped CRUD lists disable the full export and never send an empty $in; API-created test tenants need the init steps](lessons/scoped-crud-lists-and-api-created-tenants.md) — area:module-data,testing; module:people,foundation; topic:data-scoping,query-engine,crud-export,integration-tests,tenant-setup
+- [Refuse an unlinked account before any target lookup; a hand-written no-person refusal throws scopeDenialCode](lessons/unlinked-account-refusal-before-target-lookup.md) — area:module-data,debugging; module:foundation,communication,activities,people; topic:data-scoping,error-codes,authorize-scoped,forbidden
 
 ### spec-pr
 

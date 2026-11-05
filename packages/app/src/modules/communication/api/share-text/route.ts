@@ -37,7 +37,11 @@ export const openApi: OpenApiRouteDoc = {
       ],
       errors: [
         { status: 400, description: 'Name either a session or a thread', schema: errorSchema },
-        { status: 403, description: '`scope_denied`', schema: errorSchema },
+        {
+          status: 403,
+          description: '`scope_denied`; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: '`share_text_unavailable`', schema: errorSchema },
       ],
     },

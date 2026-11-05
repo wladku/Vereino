@@ -101,7 +101,14 @@ export const openApi: OpenApiRouteDoc = {
       description: 'Newest first, with who uploaded and who committed each import and what it created.',
       query: importListQuerySchema,
       responses: [{ status: 200, description: 'Paged imports', schema: pagedSchema(importViewSchema) }],
-      errors: [{ status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema }],
+      errors: [
+        {
+          status: 403,
+          description:
+            '`scope_denied` or a missing feature; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
+      ],
     },
     POST: {
       summary: 'Upload a file of families and preview it',
@@ -110,7 +117,12 @@ export const openApi: OpenApiRouteDoc = {
       requestBody: { contentType: 'multipart/form-data', schema: uploadSchema },
       responses: [{ status: 201, description: 'The previewed import', schema: importViewSchema }],
       errors: [
-        { status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            '`scope_denied` or a missing feature; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 413, description: 'Request larger than the attachment limit', schema: errorSchema },
         {
           status: 422,
