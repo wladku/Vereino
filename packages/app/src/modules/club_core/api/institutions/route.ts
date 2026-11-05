@@ -1,6 +1,6 @@
 // `/api/club_core/institutions` — institutions the club works with (club spec API table, TEST-001): the list is the
 // club administrator's, with contact, bank account and notes decrypted by the query engine; create, update and
-// delete run the `club_core` commands (an institution that owns a place → 409 on delete).
+// delete run the `club_core` commands (an institution that owns a place → 409 on delete); `?type=` filters the list.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
@@ -109,13 +109,14 @@ export const openApi = buildOpenApi({
   listResponseSchema: createPagedListResponseSchema(institutionListItemSchema),
   create: {
     schema: institutionCreateSchema,
-    description: 'Creates an institution (club administrator). Errors: 400 invalid input, 403 `scope_denied`.',
+    description:
+      'Creates an institution (club administrator). `bankAccount` is an NRB (26 digits; spaces and a `PL` prefix are accepted, the 26 digits are stored). Errors: 400 invalid input, 403 `scope_denied`, 422 `bank_account_invalid`.',
   },
   update: {
     schema: institutionUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes an institution; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`.',
+      'Changes an institution; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). A changed `bankAccount` must be an NRB. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `bank_account_invalid`.',
   },
   del: {
     schema: institutionDeleteSchema,

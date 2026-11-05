@@ -1,6 +1,8 @@
 // `club_core.institutions.create|update|delete` (club spec *Data Models* → `club_core_institutions`, TEST-001). The
 // club administrator manages institutions; contact, bank account and notes are encrypted at rest (`encryption.ts`).
 // Delete is a soft delete, refused while a live place names the institution as its owner (409 `institution_in_use`).
+// A bank account is an NRB stored as its 26 digits; anything else answers 422 `bank_account_invalid` (#87), except an
+// unchanged value saved before that rule, which the edit form resends.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -10,6 +12,7 @@ import { clubCoreErrors } from '../api/errors'
 import { Institution } from '../data/entities'
 import { countPlacesOwnedBy, lockPlaceHierarchy } from '../data/queries'
 import { institutionCreateSchema, institutionDeleteSchema, institutionUpdateSchema } from '../data/validators'
+import { normalizeBankAccount } from '../lib/institutions'
 import {
   STRUCTURE_WRITE_KINDS,
   authorizeReplay,
@@ -18,6 +21,7 @@ import {
   existingSpec,
   inWriteTransaction,
   structureEvents,
+  throwFieldError,
   structureLog,
   structureTarget,
   trustedTenantId,
@@ -82,6 +86,12 @@ function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
   }
 }
 
+/** The stored form of a bank account (26 digits, or null to clear it); 422 `bank_account_invalid` otherwise. */
+async function bankAccountOrThrow(value: string | null): Promise<string | null> {
+  if (value === null) return null
+  return normalizeBankAccount(value) ?? throwFieldError('bank_account_invalid', 'bankAccount')
+}
+
 const createInstitutionCommand: CommandHandler<Record<string, unknown>, InstitutionCommandResult> = {
   id: 'club_core.institutions.create',
   isUndoable: true,
@@ -101,6 +111,7 @@ const createInstitutionCommand: CommandHandler<Record<string, unknown>, Institut
         em,
       )
       const { parsed, tenantId, organizationId } = authorized
+      const bankAccount = await bankAccountOrThrow(parsed.bankAccount ?? null)
       const row = em.create(Institution, {
         id,
         tenantId,
@@ -111,7 +122,7 @@ const createInstitutionCommand: CommandHandler<Record<string, unknown>, Institut
         contactName: parsed.contactName ?? null,
         contactPhone: parsed.contactPhone ?? null,
         contactEmail: parsed.contactEmail ?? null,
-        bankAccount: parsed.bankAccount ?? null,
+        bankAccount,
         notes: parsed.notes ?? null,
       })
       em.persist(row)
@@ -158,7 +169,9 @@ const updateInstitutionCommand: CommandHandler<Record<string, unknown>, Institut
       if (patch.contactName !== undefined) row.contactName = patch.contactName
       if (patch.contactPhone !== undefined) row.contactPhone = patch.contactPhone
       if (patch.contactEmail !== undefined) row.contactEmail = patch.contactEmail
-      if (patch.bankAccount !== undefined) row.bankAccount = patch.bankAccount
+      if (patch.bankAccount !== undefined && patch.bankAccount !== row.bankAccount) {
+        row.bankAccount = await bankAccountOrThrow(patch.bankAccount)
+      }
       if (patch.notes !== undefined) row.notes = patch.notes
       row.updatedAt = new Date()
       return { entity: row, actingRole: authorized.actingRole, before }

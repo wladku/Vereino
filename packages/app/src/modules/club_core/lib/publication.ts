@@ -120,3 +120,20 @@ export function sectionPublicationProblem(input: {
 }): 'section_public_slug_required' | null {
   return input.isPublic && !input.publicSlug ? 'section_public_slug_required' : null
 }
+
+export type ClubPagePreview = {
+  /** `/p/{slug}`, or null while the club has no slug. */
+  path: string | null
+  /** The link "Preview" opens, or null when it is disabled. */
+  href: string | null
+  /** Why "Preview" is disabled: no slug yet, or the page is switched off (#87). */
+  disabledReason: 'slug_missing' | 'page_off' | null
+}
+
+/** The club page's public address and the state of its "Preview" link (README B-03, #87). */
+export function clubPagePreview(input: { enabled: boolean; publicSlug: string | null }): ClubPagePreview {
+  const path = input.publicSlug ? `/p/${encodeURIComponent(input.publicSlug)}` : null
+  if (!path) return { path, href: null, disabledReason: 'slug_missing' }
+  if (!input.enabled) return { path, href: null, disabledReason: 'page_off' }
+  return { path, href: path, disabledReason: null }
+}
