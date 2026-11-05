@@ -39,9 +39,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       input: { ...(typeof body === 'object' && body !== null ? body : {}), id },
       ctx,
     })
+    // The session is already cancelled: a failed count answers 0 instead of turning the success into an error.
     const scope = trustedScopeOf(ctx)
     const notified = scope
-      ? await countCancellationNotified(ctx.container, scope, id, selfPersonId(await scopeContract.resolve(ctx)))
+      ? await countCancellationNotified(ctx.container, scope, id, selfPersonId(await scopeContract.resolve(ctx))).catch(
+          () => 0,
+        )
       : 0
     return Response.json({
       ok: true,

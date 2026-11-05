@@ -34,6 +34,12 @@ A coach opens `/club` and sees their sessions, opens the attendance list, and ca
    - E06-S19 follows the coach tile and the missing admin panel link;
    - `@vereino/ui` tests updated for the staff contexts.
 7. Docs: the club spec's *UI architecture* and Changelog, and the module README.
+8. Opened PR #176 (labels `review`, `feature`, `needs-qa`, `priority-high`, `risk-high`). The lock moved from the issue to the PR.
+9. Review by a fresh subagent on the PR diff. Nothing blocking. Fixed:
+   - the cancel route's count can no longer turn a committed cancellation into an error (it falls back to 0);
+   - the cancel dialog starts empty when opened again;
+   - the coach tile has a retry button and the "Open the calendar" link.
+   Left as documented: `notified` counts people with neither an account nor an e-mail address. Counting only the people reached would need an e-mail field on `people`'s person-directory contract, beyond this story.
 
 ## Decisions
 
@@ -66,6 +72,7 @@ A coach opens `/club` and sees their sessions, opens the attendance list, and ca
 - `yarn verify`: all 13 steps passed on the first full run (build 178 s).
 - `yarn test:integration:vereino --filter E06-S15`: 1 passed (1.7 min) on the first run.
 - `yarn test:integration:vereino --filter E06-S19`: 1 passed (1.3 min).
+- After the review fixes: `yarn verify` passed all 13 steps again, and `--filter E06-S15` passed again (1 passed, 1.7 min). That log also shows one `EPERM … queue.lock` polling error of the local file queue (a Windows file lock); the test passed.
 - Both runs log the platform's `QueryIndexScopeError` for `directory:organization` and `auth:role` while the fixture deletes the club. It comes from the installed indexer, not from this change (also seen in #87's run).
 
 ## Open problems / next steps

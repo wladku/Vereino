@@ -59,15 +59,14 @@ function CancelSessionDialog({
         t('activities.occurrences.errors.cancel'),
         occurrence.updatedAt,
       )
-      setReason('')
-      onOpenChange(false)
+      close(false)
       await onDone(t('activities.club.cancel.done', { count: notified }))
     } catch (error: unknown) {
       if (surfaceRecordConflict(error, t, { onRefresh: () => void onDone('') })) {
-        onOpenChange(false)
+        close(false)
       } else if (errorCode(error) === 'invalid_transition') {
         flash(errorText(error, t('activities.occurrences.errors.cancel')), 'error')
-        onOpenChange(false)
+        close(false)
         await onDone('')
       } else {
         setProblem(errorText(error, t('activities.occurrences.errors.cancel')))
@@ -77,8 +76,17 @@ function CancelSessionDialog({
     }
   }
 
+  const close = (next: boolean) => {
+    // A dialog opened again starts empty, without the previous attempt's message.
+    if (!next) {
+      setReason('')
+      setProblem(null)
+    }
+    onOpenChange(next)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent closeAriaLabel={t('activities.common.close')}>
         <DialogHeader>
           <DialogTitle>{t('activities.occurrences.cancel.title')}</DialogTitle>
@@ -120,7 +128,7 @@ function CancelSessionDialog({
             className="min-h-11"
             disabled={pending}
             onClick={() => {
-              onOpenChange(false)
+              close(false)
             }}
           >
             {t('activities.common.back')}

@@ -69,20 +69,30 @@ function CoachTile({
   entries,
   loading,
   failed,
+  onRetry,
   today,
   timeZone,
 }: {
   entries: CalendarEntry[]
   loading: boolean
   failed: boolean
+  onRetry: () => void
   today: string
   timeZone: string
 }) {
   const t = useT()
   let body: React.ReactNode
   if (loading) body = <p className="text-muted-foreground text-sm">{t('activities.club.today.loading')}</p>
-  else if (failed) body = <p className="text-muted-foreground text-sm">{t('activities.club.errors.calendar')}</p>
-  else if (entries.length === 0)
+  else if (failed) {
+    body = (
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-muted-foreground text-sm">{t('activities.club.errors.calendar')}</p>
+        <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onRetry}>
+          {t('activities.club.actions.retry')}
+        </Button>
+      </div>
+    )
+  } else if (entries.length === 0)
     body = <p className="text-muted-foreground text-sm">{t('activities.club.today.coachEmpty')}</p>
   else {
     body = (
@@ -121,6 +131,9 @@ function CoachTile({
     <div className={TILE_CLASS} data-testid="club-tile-coach">
       <h3 className="font-semibold">{t('activities.club.today.coachSessions')}</h3>
       {body}
+      <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+        {t('activities.club.today.openCalendar')}
+      </Link>
     </div>
   )
 }
@@ -205,6 +218,7 @@ export default function ClubTodayTilesWidget({
               entries={coachQuery.data?.items ?? []}
               loading={!coachQuery.data && coachQuery.isFetching}
               failed={!coachQuery.data && !coachQuery.isFetching}
+              onRetry={() => void coachQuery.refetch()}
               today={today}
               timeZone={timeZone}
             />
