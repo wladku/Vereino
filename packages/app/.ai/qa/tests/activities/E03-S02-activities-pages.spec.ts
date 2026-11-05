@@ -124,11 +124,12 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     await expect(conflicts.getByRole('link', { name: 'Trening Żaków' }).first()).toBeVisible()
     await expect(page).toHaveURL(/\/backend\/activities\/activities\/create$/)
 
-    // Cancelling a session through its page: a reason is required, then the session shows as cancelled.
+    // Cancelling a session through its page: a reason of at least 3 characters is required, then the session shows as cancelled.
     await page.goto(`/backend/activities/occurrences/${session.id}`)
     await page.getByTestId('occurrence-cancel-button').click()
     const confirm = page.getByTestId('occurrence-cancel-confirm')
-    await expect(confirm).toBeDisabled()
+    await confirm.click()
+    await expect(page.getByTestId('occurrence-cancel-problem')).toBeVisible()
     await page.getByTestId('occurrence-cancel-reason').fill('Boisko zamknięte')
     await confirm.click()
     const cancelled = page.getByTestId('occurrence-cancelled')

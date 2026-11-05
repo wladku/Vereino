@@ -147,6 +147,29 @@ function coordinate(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/**
+ * The owner institutions' and parent places' names of one page of the places list (UX parity spec, REQ-U03), read in
+ * the caller's scope; a deleted owner or parent is absent from its map.
+ */
+export async function placeListNames(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  ownerIds: readonly string[],
+  parentIds: readonly string[],
+): Promise<{ owners: Map<string, string>; parents: Map<string, string> }> {
+  const uniqueParents = [...new Set(parentIds)]
+  const [owners, parents] = await Promise.all([
+    findInstitutions(em, scope, ownerIds),
+    uniqueParents.length > 0
+      ? em.find(Place, { id: { $in: uniqueParents }, ...scope, deletedAt: null }, { fields: ['id', 'name'] })
+      : Promise.resolve([]),
+  ])
+  return {
+    owners: new Map([...owners.values()].map((owner) => [owner.id, owner.name])),
+    parents: new Map(parents.map((parent) => [parent.id, parent.name])),
+  }
+}
+
 export async function findPlaces(
   em: EntityManager,
   scope: ClubDirectoryScope,
