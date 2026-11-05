@@ -13,6 +13,42 @@ export function isTimeZone(value: string): boolean {
   }
 }
 
+/**
+ * The time zones a club picks from (#87): the runtime's IANA zones, sorted, with `current` added when the runtime does
+ * not list it (an alias such as `UTC`), so the stored value always stays selectable.
+ */
+export function timeZoneOptions(supported: readonly string[], current: string | null): string[] {
+  const zones = new Set(supported)
+  if (current) zones.add(current)
+  return [...zones].sort((a, b) => a.localeCompare(b))
+}
+
+/** The account age threshold a club may set (README B-02; #87 Q1). */
+export const OWN_ACCOUNT_MIN_AGE_RANGE = { min: 13, max: 18 } as const
+
+export type ClubSettingsRuleProblem = {
+  code: 'timezone_unknown' | 'account_age_threshold_out_of_range'
+  field: 'timezone' | 'ownAccountMinAge'
+}
+
+/**
+ * The first business rule a well-formed settings update breaks (#87): an unknown IANA zone, or a threshold outside
+ * `OWN_ACCOUNT_MIN_AGE_RANGE`. Keys the update does not name are not checked.
+ */
+export function clubSettingsRuleProblem(patch: {
+  timezone?: string
+  ownAccountMinAge?: number
+}): ClubSettingsRuleProblem | null {
+  if (patch.timezone !== undefined && !isTimeZone(patch.timezone)) {
+    return { code: 'timezone_unknown', field: 'timezone' }
+  }
+  const age = patch.ownAccountMinAge
+  if (age !== undefined && (age < OWN_ACCOUNT_MIN_AGE_RANGE.min || age > OWN_ACCOUNT_MIN_AGE_RANGE.max)) {
+    return { code: 'account_age_threshold_out_of_range', field: 'ownAccountMinAge' }
+  }
+  return null
+}
+
 const BCP47_LANGUAGE_PATTERN = /^[a-z]{2,3}(-[A-Z]{2})?$/
 const CURRENCY_PATTERN = /^[A-Z]{3}$/
 
@@ -80,8 +116,8 @@ export function mergeDeclarationKinds(
 
 /** One schema per setting, so a single invalid stored value does not discard the others. */
 export const clubSettingFieldSchemas = {
-  /** Minimum age in completed years for an own account (D-022; 1–18). */
-  ownAccountMinAge: z.number().int().min(1).max(18),
+  /** Minimum age in completed years for an own account (D-022; 13–18, #87 Q1). */
+  ownAccountMinAge: z.number().int().min(OWN_ACCOUNT_MIN_AGE_RANGE.min).max(OWN_ACCOUNT_MIN_AGE_RANGE.max),
   /** BCP 47 language tag of the club's default locale. */
   defaultLocale: z.string().regex(BCP47_LANGUAGE_PATTERN),
   /** IANA time zone the club's calendar dates are computed in. */

@@ -1,11 +1,16 @@
 'use client'
-// `/backend/people/persons/[id]` (club spec UI table): the person record with the tabs "Details", "Guardianship and
-// consents", "Roles" and "Account" (groups and charges arrive with phases 2 and 4). A coordinator reads the basic
-// data only (`access: 'basic'`); the PESEL field is there only with `people.pesel.view`; editing needs
-// `people.manage`, roles `people.roles.manage`, the account tab `people.accounts.manage`.
+// `/backend/people/persons/[id]` (club spec UI table; README B-10): the person record with the tabs "Details",
+// "Guardianship and consents", "Roles", "Account" and "Groups" (charges arrive with phase 4), addressable by
+// `?tab=details|guardianship|roles|account|groups` (#84). A coordinator reads the basic data only (`access: 'basic'`);
+// the PESEL field is there only with `people.pesel.view`; editing needs `people.manage`, roles `people.roles.manage`.
+// The account tab shows the account status to every reader and "Create account" only with `people.accounts.manage`.
+// The "Groups" tab is the injection spot `vereino:people:person-record:groups`, filled by the `groups` module (so
+// `people` never imports `groups`); it is shown only when a widget the user may see is registered there.
 import * as React from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
+import { InjectionSpot, useInjectionWidgets } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
@@ -15,8 +20,24 @@ import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { PersonDetailsForm } from './PersonForm'
 import { RolesPanel } from './RolesPanel'
-import { OWN_FORBIDDEN_STATE, PERSONS_HREF, personName, type PersonDetail, type Translate } from './client-helpers'
+import {
+  OWN_FORBIDDEN_STATE,
+  PERSONS_HREF,
+  PERSON_RECORD_TABS,
+  personName,
+  type PersonDetail,
+  type PersonRecordTab,
+  type Translate,
+} from './client-helpers'
 import { useGrantedFeatures } from './useGrantedFeatures'
+
+/** The injection spot of the "Groups" tab (`groups/widgets/injection-table.ts`). */
+const GROUPS_SPOT_ID = 'vereino:people:person-record:groups'
+
+/** The tab of `?tab=` when it is shown, else Details (always shown). */
+function tabFrom(value: string | null, allowed: readonly PersonRecordTab[]): PersonRecordTab {
+  return allowed.find((tab) => tab === value) ?? 'details'
+}
 
 type PersonLoad =
   { status: 'ok'; person: PersonDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
@@ -59,7 +80,11 @@ function ReadOnlyDetails({ person, t }: { person: PersonDetail; t: Translate }) 
 export function PersonRecord({ id }: { id: string }) {
   const t = useT()
   const features = useGrantedFeatures()
-  const [tab, setTab] = React.useState('details')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const groupsSpot = useInjectionWidgets(GROUPS_SPOT_ID)
+  const hasGroupsTab = groupsSpot.widgets.length > 0
   const query = useQuery({
     queryKey: ['people-person', id],
     queryFn: async (): Promise<PersonLoad> => {
@@ -94,7 +119,14 @@ export function PersonRecord({ id }: { id: string }) {
 
   const person = load.person
   const canEdit = features['people.manage'] && person.access === 'full'
-  const canSeeAccount = features['people.accounts.manage'] && person.access === 'full'
+  const canCreateAccount = features['people.accounts.manage'] && person.access === 'full'
+  const allowedTabs = PERSON_RECORD_TABS.filter((value) => value !== 'groups' || hasGroupsTab)
+  const tab = tabFrom(searchParams.get('tab'), allowedTabs)
+  const selectTab = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', value)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -108,13 +140,14 @@ export function PersonRecord({ id }: { id: string }) {
           {person.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
         </StatusBadge>
       </header>
-      <Tabs value={tab} onValueChange={setTab} variant="underline">
+      <Tabs value={tab} onValueChange={selectTab} variant="underline">
         <div className="overflow-x-auto">
           <TabsList aria-label={t('people.persons.tabs.label')}>
             <TabsTrigger value="details">{t('people.persons.tabs.details')}</TabsTrigger>
             <TabsTrigger value="guardianship">{t('people.persons.tabs.guardianship')}</TabsTrigger>
             <TabsTrigger value="roles">{t('people.persons.tabs.roles')}</TabsTrigger>
-            {canSeeAccount ? <TabsTrigger value="account">{t('people.persons.tabs.account')}</TabsTrigger> : null}
+            <TabsTrigger value="account">{t('people.persons.tabs.account')}</TabsTrigger>
+            {hasGroupsTab ? <TabsTrigger value="groups">{t('people.persons.tabs.groups')}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="details" className="pt-4">
@@ -132,13 +165,16 @@ export function PersonRecord({ id }: { id: string }) {
             personId={person.id}
             canManage={features['people.roles.manage']}
             onOpenGuardianship={() => {
-              setTab('guardianship')
+              selectTab('guardianship')
             }}
           />
         </TabsContent>
-        {canSeeAccount ? (
-          <TabsContent value="account" className="pt-4">
-            <AccountPanel person={person} onChanged={refetch} />
+        <TabsContent value="account" className="pt-4">
+          <AccountPanel person={person} canCreate={canCreateAccount} onChanged={refetch} />
+        </TabsContent>
+        {hasGroupsTab ? (
+          <TabsContent value="groups" className="pt-4">
+            <InjectionSpot spotId={GROUPS_SPOT_ID} context={{ personId: person.id }} />
           </TabsContent>
         ) : null}
       </Tabs>

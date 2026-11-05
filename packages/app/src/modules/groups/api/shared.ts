@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import type { GrantKind, ScopeColumnMap, ScopeMatchOptions } from '@vereino/core'
 import type { GroupMembership } from '../data/entities'
+import type { GroupSummary } from '../services/groups-read'
 
 /**
  * Who reads a group and its roster (club spec *Users, Permissions, and Scope*): a coach or an assistant of the group
@@ -102,6 +103,7 @@ export function membershipListItem(row: Row) {
 
 export type MembershipListItem = ReturnType<typeof membershipListItem> & {
   person?: { firstName: string; lastName: string; age: number | null } | null
+  group?: GroupSummary | null
 }
 
 /** A membership entity as the action routes return it. */
@@ -202,6 +204,11 @@ export const membershipListItemSchema = z.object({
     .nullable()
     .optional()
     .describe('The name and age of the `people` person.'),
+  group: z
+    .object({ name: z.string(), kind: z.string(), sectionId: z.string(), sectionName: z.string().nullable() })
+    .nullable()
+    .optional()
+    .describe("The group's name and kind and its section's name."),
   role: z.string().nullable(),
   validFrom: z.string().nullable(),
   validTo: z.string().nullable(),

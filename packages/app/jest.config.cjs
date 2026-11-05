@@ -36,6 +36,10 @@ module.exports = {
     '^@/\\.mercato/(.*)$': '<rootDir>/.mercato/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^#generated/(.*)$': '<rootDir>/.mercato/generated/$1',
+    // One React for every workspace, as Next.js bundles it: `@vereino/ui` and its dependencies (e.g. `lucide-react`)
+    // otherwise resolve `packages/ui/node_modules/react`, and its hooks would run against a renderer-less copy.
+    '^react$': '<rootDir>/node_modules/react',
+    '^react/(.*)$': '<rootDir>/node_modules/react/$1',
   },
   // `@open-mercato/shared/lib/commands` pulls in ESM-only MikroORM, whose
   // `import.meta.resolve` cannot be parsed as CommonJS. The local transformer

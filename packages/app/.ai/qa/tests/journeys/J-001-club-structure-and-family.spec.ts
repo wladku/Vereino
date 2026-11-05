@@ -91,9 +91,11 @@ async function createPersonThroughForm(
     .getByRole('button', { name: /^Create$|^Utwórz$/ })
     .first()
     .click()
-  await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}$/)
+  // A created person opens on the guardianship tab, where F-01 continues (#84).
+  await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}\?tab=guardianship$/)
   await expect(page.getByRole('heading', { level: 1, name: `${person.firstName} ${person.lastName}` })).toBeVisible()
-  return page.url().split('/').pop() as string
+  await expect(page.getByRole('tab', { name: /Guardianship|Opieka/ })).toHaveAttribute('aria-selected', 'true')
+  return new URL(page.url()).pathname.split('/').pop() as string
 }
 
 async function openAccountTab(page: Page, personId: string): Promise<void> {
@@ -450,7 +452,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await expect(
           page.getByText(/account has been created and the invitation sent|Konto zostało utworzone/).first(),
         ).toBeVisible()
-        await expect(page.getByText(/This person has an account|Ta osoba ma konto/)).toBeVisible()
+        await expect(page.getByText(/^Account active$|^Konto aktywne$/)).toBeVisible()
         const userId = (await getPerson(request, club.adminToken, personId)).body?.userId
         expect(typeof userId).toBe('string')
         club.extraUserIds.push(String(userId))
