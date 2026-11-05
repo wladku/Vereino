@@ -209,6 +209,7 @@
   "communication.threads.title": "Wątki",
   "communication.threads.unread": "Nieprzeczytane",
   "communication.tile.description": "Ogłoszenia i odpowiedzi z klubu.",
+  "communication.tile.error": "Nie udało się wczytać liczby nieprzeczytanych wiadomości.",
   "communication.tile.open": "Otwórz wiadomości",
   "communication.tile.title": "Wiadomości",
   "communication.tile.unread": "Nieprzeczytane: {count}"
