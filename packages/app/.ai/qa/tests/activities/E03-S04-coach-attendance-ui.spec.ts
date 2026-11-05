@@ -87,8 +87,9 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     // The session starts; the coach finds it in the coach calendar and opens the list from there.
     await startNow(request, club, sessionId)
     await page.goto('/club/calendar')
-    await page.getByLabel(/^(Show|Pokaż)$/).click()
-    await page.getByRole('option', { name: /As coach|Jako trener/ }).click()
+    // The acting context is the header's role-context switcher (E06-S19 #101).
+    await page.locator('#club-switcher-context').click()
+    await page.getByRole('option', { name: /^(Coach|Trener)$/ }).click()
     // `startNow` moves the times only: the session keeps tomorrow's date, which is next week on a Sunday.
     await showCalendarWeekOf(page, tomorrow)
     const item = page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })

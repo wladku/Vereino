@@ -1,6 +1,7 @@
 // Client pieces shared by the `communication` pages: the response shapes of `/api/communication/*`, their links, the
 // scope and role labels, and the reading of coded API errors. Authorization stays on the routes and commands.
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
+import { CLUB_MESSAGES_HREF } from '@vereino/ui'
 
 export type Translate = ReturnType<typeof useT>
 
@@ -16,7 +17,8 @@ export const THREAD_CREATE_HREF = `${THREADS_HREF}/create`
 export const threadHref = (id: string) => `${THREADS_HREF}/${encodeURIComponent(id)}`
 export const CASES_HREF = '/backend/communication/cases'
 
-export const CLUB_MESSAGES_HREF = '/club/messages'
+/** The member inbox path, from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
+export { CLUB_MESSAGES_HREF }
 export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURIComponent(id)}`
 /** The member page of a direct thread to the staff (REQ-M12, DD-M18). */
 export const CLUB_MESSAGE_NEW_HREF = `${CLUB_MESSAGES_HREF}/new`

@@ -13,17 +13,20 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberShell, type MemberLinkProps } from '@vereino/ui'
-import { CLUB_MESSAGES_HREF } from '../client-helpers'
-
-const CLUB_HOME_HREF = '/club'
-const CLUB_CALENDAR_HREF = '/club/calendar'
-const CLUB_PROFILE_HREF = '/club/profile'
-const BACKEND_HREF = '/backend'
-const STAFF_CONTEXTS = ['club_admin', 'coordinator', 'coach']
+import {
+  BACKEND_HREF,
+  MemberShell,
+  memberContextStore,
+  memberNav,
+  memberShellLabels,
+  memberSwitchers,
+  useMemberContext,
+  type MemberLinkProps,
+} from '@vereino/ui'
 
 export type MessagesProfile = {
   person: { id: string; firstName: string; lastName: string }
+  wards: { personId: string; firstName: string; lastName: string }[]
   contexts: string[]
   locale: string
   club: { shortName: string | null; logoUrl: string | null }
@@ -113,27 +116,20 @@ export function MessagesClubFrame({ children }: { children: (profile: MessagesPr
     body = children(query.data.profile)
   }
 
-  const nav = profile
-    ? [
-        { href: CLUB_HOME_HREF, label: t('communication.club.nav.today'), current: pathname === CLUB_HOME_HREF },
-        { href: CLUB_CALENDAR_HREF, label: t('communication.club.nav.calendar'), current: false },
-        {
-          href: CLUB_MESSAGES_HREF,
-          label: t('communication.club.nav.messages'),
-          current: pathname === CLUB_MESSAGES_HREF || pathname.startsWith(`${CLUB_MESSAGES_HREF}/`),
-        },
-        { href: CLUB_PROFILE_HREF, label: t('communication.club.nav.profile'), current: false },
-        ...(profile.contexts.some((context) => STAFF_CONTEXTS.includes(context))
-          ? [{ href: BACKEND_HREF, label: t('communication.club.nav.backend'), current: false }]
-          : []),
-      ]
-    : []
+  // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.
+  const labels = memberShellLabels(t, 'communication.club.nav')
+  const [context, setContext] = useMemberContext(profile)
+  const nav = profile ? memberNav({ pathname, contexts: profile.contexts, labels }) : null
+  const switchers = profile ? memberSwitchers(profile, context, setContext, labels) : []
 
   return (
     <MemberShell
       brand={{ name: profile?.club.shortName ?? t('communication.club.title'), logoUrl: profile?.club.logoUrl ?? null }}
       nav={nav}
-      navLabel={t('communication.club.nav.label')}
+      navLabel={labels.nav}
+      signOutLabel={labels.signOut}
+      onSignOut={memberContextStore.clear}
+      switchers={switchers}
       Link={MemberLink}
       banner={<RecordConflictBanner />}
     >
