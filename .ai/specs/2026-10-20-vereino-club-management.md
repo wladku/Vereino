@@ -932,6 +932,8 @@ Contract verifications (not questions for the user; performed as the first step 
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-20-vereino-club-management/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-20-vereino-club-management/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-20 | Skeleton: TLDR, problem, reuse map from module-facts, gate questions Q-001…Q-004 |

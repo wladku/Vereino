@@ -20,7 +20,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 - Copy `.ai/lessons/_template.md` to one focused `.ai/lessons/<kebab-case-slug>.md`; update an existing record instead of duplicating it.
 - Preserve the front matter keys `title`, `modules`, `areas`, and `topics`. Use `platform` only when no module or package owns the lesson, and put the primary area first.
-- Add or update exactly one catalog row under its primary area below, in file-name order within the section (`lessons:check` enforces it, so parallel branches rarely touch the same line). Keep the title stable when code or specs cite it.
+- Add or update exactly one catalog row under its primary area below, in file-name order within the section (`lessons:check` enforces it, so parallel branches rarely touch the same line). `.gitattributes` merges this file with `merge=union`, so a local `git merge` keeps rows both sides added; GitHub's merge button ignores that, so merge `main` locally when it reports a conflict here. Keep the title stable when code or specs cite it.
 - Put hard boundaries in `AGENTS.md`; lessons explain recurring evidence and the durable rule.
 - Run `node scripts/check-lessons.mjs` before committing.
 
@@ -74,6 +74,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 ### spec-pr
 
+- [Parallel PRs must not append to one shared table: each spec change is its own file, and merge=union helps only local merges](lessons/append-only-rows-conflict-one-file-per-entry.md) — area:spec-pr,ai-workflow; module:platform; topic:merge-conflicts,parallel-agents,spec-changelog,gitattributes,merge-union
 - [Keep explicit pay rates out of research notes in this public repository](lessons/no-explicit-pay-rates-in-research.md) — area:spec-pr; module:platform; topic:discovery,research-notes,privacy,public-repository
 - [Retarget a stacked pull request to main before merging it](lessons/retarget-stacked-pr-before-merge.md) — area:spec-pr; module:platform; topic:pull-requests,stacked-branches,github,merge
 
