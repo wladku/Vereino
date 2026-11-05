@@ -39,7 +39,11 @@ export const openApi: OpenApiRouteDoc = {
       ],
       errors: [
         { status: 400, description: 'Validation failed', schema: errorSchema },
-        { status: 403, description: '`scope_denied`', schema: errorSchema },
+        {
+          status: 403,
+          description: '`scope_denied`; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 422, description: '`audience_kind_unavailable`, `audience_too_large`', schema: errorSchema },
       ],
     },
