@@ -10,7 +10,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { addCalendarDays, calendarDateInZone } from '@vereino/core'
-import { formatTimeRange } from '@vereino/ui'
+import { formatClockTime, formatTimeRange } from '@vereino/ui'
 import {
   CLUB_CALENDAR_HREF,
   sessionHref,
@@ -81,6 +81,14 @@ export default function ClubTodayTilesWidget({
                 {entry.occurrence.occurrenceDate === today
                   ? t('activities.club.today.today')
                   : t('activities.club.today.tomorrow')}{' '}
+                {entry.occurrence.gatheringAt ? (
+                  <span data-testid="club-today-gathering">
+                    {t('activities.gathering.at', {
+                      time: formatClockTime(new Date(entry.occurrence.gatheringAt), locale, timeZone),
+                    })}
+                    {' · '}
+                  </span>
+                ) : null}
                 {formatTimeRange(
                   new Date(entry.occurrence.startAt),
                   new Date(entry.occurrence.endAt),

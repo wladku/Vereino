@@ -68,6 +68,8 @@ type MoveValues = Record<string, unknown> & {
   date?: string
   startTime?: string
   endTime?: string
+  /** The gathering wall time on the session's date (DD-43); empty = none. */
+  gatheringTime?: string
   placeId?: string
   coachPersonId?: string
   updatedAt?: string | null
@@ -101,6 +103,10 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
     [t('activities.fields.group'), occurrence.groupName],
     [t('activities.fields.section'), occurrence.sectionName],
     [t('activities.occurrences.fields.date'), dateLabel(t, instantDate(occurrence.startAt))],
+    // DD-43: the gathering time comes before the start; a session without one shows no row.
+    ...(occurrence.gatheringAt
+      ? ([[t('activities.gathering.label'), instantTime(occurrence.gatheringAt)]] as Array<[string, React.ReactNode]>)
+      : []),
     [t('activities.occurrences.fields.time'), timeRangeOfInstants(occurrence.startAt, occurrence.endAt)],
     [t('activities.fields.place'), occurrence.placeName],
     [t('activities.fields.coach'), occurrence.coachName],
@@ -157,6 +163,10 @@ function MoveForm({
       dateField('date', t('activities.occurrences.fields.date'), { required: true }),
       timeField('startTime', t('activities.fields.startTime'), { required: true, layout: 'half' }),
       timeField('endTime', t('activities.fields.endTime'), { required: true, layout: 'half' }),
+      timeField('gatheringTime', t('activities.gathering.label'), {
+        layout: 'half',
+        description: t('activities.occurrences.fields.gathering.help'),
+      }),
       {
         id: 'placeId',
         label: t('activities.fields.place'),
@@ -182,6 +192,7 @@ function MoveForm({
       date: instantDate(occurrence.startAt),
       startTime: instantTime(occurrence.startAt),
       endTime: instantTime(occurrence.endAt),
+      gatheringTime: instantTime(occurrence.gatheringAt),
       placeId: occurrence.placeId ?? '',
       coachPersonId: occurrence.coachPersonId ?? '',
       updatedAt: occurrence.updatedAt,
@@ -221,6 +232,15 @@ function MoveForm({
               ...(endAt ? {} : { endTime: message }),
             })
           }
+          // DD-43: an untouched gathering time is not sent, so a moved session keeps its offset; a changed one is set on
+          // the session's (new) date, and a cleared one removes it.
+          const gatheringTime = typeof values.gatheringTime === 'string' ? values.gatheringTime : ''
+          const gatheringChanged = gatheringTime !== initialValues.gatheringTime
+          const gatheringAt = gatheringTime ? toInstant(date, gatheringTime) : null
+          if (gatheringChanged && gatheringTime && !gatheringAt) {
+            const message = t('activities.form.errors.invalid')
+            throw createCrudFormError(message, { gatheringTime: message })
+          }
           try {
             await apiCallOrThrow(
               `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}`,
@@ -232,6 +252,7 @@ function MoveForm({
                   endAt,
                   placeId: values.placeId,
                   coachPersonId: textOrNull(values.coachPersonId),
+                  ...(gatheringChanged ? { gatheringAt } : {}),
                 }),
               },
               { errorMessage: t('activities.occurrences.errors.move') },
