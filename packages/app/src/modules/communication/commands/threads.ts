@@ -78,6 +78,8 @@ export type ThreadCommandResult = {
   scope: CommunicationScope
   threadUpdatedAt: string
   created?: boolean
+  /** The reachable recipients of the message (the "Sent to {n} people" toast, E06-S20). */
+  recipientCount?: number
 }
 
 function scopeOf(thread: { tenantId: string; organizationId: string }): CommunicationScope {
@@ -210,6 +212,7 @@ const createThreadCommand: CommandHandler<Record<string, unknown>, ThreadCommand
         actingRole,
         scope,
         threadUpdatedAt: thread.updatedAt.toISOString(),
+        recipientCount: resolved.counts.recipients,
       }
     })
     await publishAfterCommit(ctx, result.dispatchId, result.scope)
@@ -654,6 +657,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
             activityName: occurrence.activityName ?? '',
             startAt: occurrence.startAt.toISOString(),
             endAt: occurrence.endAt.toISOString(),
+            gatheringAt: occurrence.gatheringAt?.toISOString() ?? null,
             timeZone,
             reason,
           },

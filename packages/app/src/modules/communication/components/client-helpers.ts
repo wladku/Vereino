@@ -21,6 +21,13 @@ export const CASES_HREF = '/backend/communication/cases'
 export { CLUB_MESSAGES_HREF }
 export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURIComponent(id)}`
 
+/** The member inbox query (`as=member`), narrowed to one ward's threads when a guardian picks one (M-06). */
+export function inboxQuery(wardId: string | null): string {
+  const params = new URLSearchParams({ as: 'member', pageSize: '100' })
+  if (wardId) params.set('wardId', wardId)
+  return params.toString()
+}
+
 export type ThreadScopeType = 'club' | 'section' | 'group' | 'activity' | 'occurrence' | 'direct'
 
 /** The scope types of the thread list's filter, in the composer's order (B-18). */
@@ -96,6 +103,8 @@ export type ThreadMessageItem = {
   hasDeliveries: boolean
   canDelete: boolean
   deliveryCounts: DeliveryCounts | null
+  /** The e-mail deliveries of the reader's own message (M-07); null for another author's. */
+  emailCounts: DeliveryCounts | null
 }
 
 /** Deliveries of one message (one per recipient and channel) by status. */

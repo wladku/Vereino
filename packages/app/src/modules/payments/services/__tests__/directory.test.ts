@@ -16,6 +16,7 @@ function session(groupId: string, index: number, startAt: Date): ScheduleOccurre
     occurrenceDate: startAt.toISOString().slice(0, 10),
     startAt,
     endAt: startAt,
+    gatheringAt: null,
     status: 'planned',
     cancelReason: null,
     updatedAt: startAt,

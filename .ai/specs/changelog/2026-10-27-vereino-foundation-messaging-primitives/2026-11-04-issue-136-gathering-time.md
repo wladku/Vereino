@@ -1,0 +1,1 @@
+| 2026-11-04 | Gathering time (#136, club spec DD-43): the share text names the session's gathering time when it has one (`activities.shareText.*WithGathering`), the `communication.session_cancelled` e-mail takes an optional `gatheringAt` parameter and names it in the same way, and the public session page shows it; a session without one renders as before |

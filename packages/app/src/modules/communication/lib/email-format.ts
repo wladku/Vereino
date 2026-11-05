@@ -16,6 +16,11 @@ export function sessionWhenLabel(
   return { date, time: `${clock.format(startAt)}–${clock.format(endAt)}` }
 }
 
+/** A wall-clock time ("16:30") in `timeZone`, for `locale` — the gathering time of a session (club spec DD-43). */
+export function clockLabel(at: Date, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(at)
+}
+
 /** The preheader of a message e-mail: the first words of the club text. */
 export function preheaderOf(body: string): string {
   return excerpt(body, 120)

@@ -1,5 +1,6 @@
 // `communication` test helpers (foundation III phase B, #35; TEST-M05…M08, TEST-M10; phase C, #36: TEST-M09; the thread
-// list filters and per-message delivery counts of #103, E06-S21): the thread routes, the case marking, the delivery
+// list filters and per-message delivery counts of #103, E06-S21; the ward filter, recipient count and e-mail counts of
+// #102, E06-S20): the thread routes, the case marking, the delivery
 // status, the share text and the e-mails the running app captured (`OM_TEST_MODE`).
 import { expect, type APIRequestContext } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call } from './club'
@@ -14,6 +15,8 @@ export type PostResult = CodedBody & {
   dispatchId?: string | null
   actingRole?: string
   updatedAt?: string
+  /** `POST /api/communication/threads`: the recipients it reaches (#102). */
+  recipientCount?: number
 }
 
 export type ThreadItem = {
@@ -48,6 +51,8 @@ export type ThreadMessage = {
   hasDeliveries: boolean
   canDelete: boolean
   deliveryCounts: DeliveryCounts | null
+  /** The e-mail deliveries of the reader's own message (#102); null for another author's. */
+  emailCounts: DeliveryCounts | null
 }
 
 export type ThreadDetail = Omit<ThreadItem, 'messageCount' | 'lastMessage'> & {

@@ -17,6 +17,17 @@ export const errorCodes = [
   { code: 'activity_no_sessions', status: 422, messageKey: 'activities.errors.activity_no_sessions' },
   { code: 'activities_reference_invalid', status: 422, messageKey: 'activities.errors.activities_reference_invalid' },
   { code: 'activity_group_inactive', status: 422, messageKey: 'activities.errors.activity_group_inactive' },
+  // The gathering time of a session (DD-43, #136).
+  {
+    code: 'occurrence_gathering_after_start',
+    status: 422,
+    messageKey: 'activities.errors.occurrence_gathering_after_start',
+  },
+  {
+    code: 'occurrence_gathering_too_early',
+    status: 422,
+    messageKey: 'activities.errors.occurrence_gathering_too_early',
+  },
   // Declarations and policies (#32; club spec glossary *Declaration*, *Declaration policy*; D-026).
   { code: 'declaration_closed', status: 409, messageKey: 'activities.errors.declaration_closed' },
   { code: 'declaration_kind_absence_only', status: 422, messageKey: 'activities.errors.declaration_kind_absence_only' },

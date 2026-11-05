@@ -22,6 +22,7 @@ import { activitiesErrors } from '../api/errors'
 import { Activity, Attendance, AttendancePolicy, Occurrence } from '../data/entities'
 import type { CalendarPerspective } from '../data/validators'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import { gatheringIso } from '../lib/gathering'
 import {
   declarationOutcome,
   declarationSummary,
@@ -82,6 +83,8 @@ export type CalendarOccurrenceView = {
   occurrenceDate: CalendarDate
   startAt: string
   endAt: string
+  /** The gathering instant before the start (DD-43), or null when the session has none. */
+  gatheringAt: string | null
   placeId: string
   placeName: string | null
   placeAddress: string | null
@@ -203,6 +206,7 @@ function occurrenceView(
     occurrenceDate: row.occurrenceDate,
     startAt: iso(row.startAt),
     endAt: iso(row.endAt),
+    gatheringAt: gatheringIso(row.startAt, row.gatheringMinutesBefore),
     placeId: row.placeId,
     placeName: place?.name ?? null,
     placeAddress: place?.address ?? null,

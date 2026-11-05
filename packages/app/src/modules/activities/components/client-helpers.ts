@@ -49,6 +49,8 @@ export type ActivityRow = {
   startTime: string | null
   endTime: string | null
   generatedUntil: string | null
+  /** The default gathering time of the sessions in minutes before the start (DD-43). */
+  gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
   createdAt: string | null
@@ -69,6 +71,9 @@ export type OccurrenceRow = {
   occurrenceDate: string | null
   startAt: string | null
   endAt: string | null
+  /** The session's gathering instant (DD-43), or null. */
+  gatheringAt: string | null
+  gatheringMinutesBefore: number | null
   placeId: string | null
   placeName?: string | null
   coachPersonId: string | null
@@ -366,6 +371,8 @@ const FIELD_OF_CODE = new Map<string, string>([
   ['event_type_not_allowed', 'type'],
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
+  ['occurrence_gathering_after_start', 'gatheringTime'],
+  ['occurrence_gathering_too_early', 'gatheringTime'],
 ])
 
 /** The `field` an `activities_reference_invalid` names, as a form field id. */
