@@ -152,12 +152,6 @@ export function errorStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
-export function errorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object') return null
-  const code = (error as CodedError).code
-  return typeof code === 'string' ? code : null
-}
-
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }

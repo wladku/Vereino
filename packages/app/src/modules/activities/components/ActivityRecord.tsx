@@ -25,7 +25,6 @@ import { ActivitySessions } from './OccurrencesTable'
 import {
   OWN_FORBIDDEN_STATE,
   ACTIVITIES_HREF,
-  errorCode,
   errorMessage,
   scheduleSummary,
   typeLabel,
@@ -130,7 +129,7 @@ export function ActivityRecord({ id }: { id: string }) {
       flash(t('activities.activities.flash.deleted'), 'success')
       router.push(ACTIVITIES_HREF)
     } catch (error: unknown) {
-      if (errorCode(error) === 'activity_has_sessions') {
+      if (errorCodeOf(error) === 'activity_has_sessions') {
         setHasSessions(true)
         flash(errorMessage(error, t('activities.activities.errors.delete')), 'error')
       } else if (!surfaceRecordConflict(error, t, { onRefresh: () => void refetch() })) {

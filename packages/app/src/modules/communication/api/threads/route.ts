@@ -105,7 +105,8 @@ export const openApi: OpenApiRouteDoc = {
         { status: 400, description: 'Validation failed', schema: errorSchema },
         {
           status: 403,
-          description: '`scope_denied` — the audience is outside the author’s grants',
+          description:
+            '`scope_denied` — the audience is outside the author’s grants; `scope_unlinked` — the account is not linked to a person of this club',
           schema: errorSchema,
         },
         {

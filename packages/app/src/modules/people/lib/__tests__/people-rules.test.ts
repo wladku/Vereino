@@ -184,6 +184,10 @@ describe('people error codes', () => {
       ['import_review_pending', 422],
       ['import_decision_invalid', 422],
       ['import_person_not_found', 422],
+      ['people_filter_age_range', 400],
+      ['people_filter_unavailable', 400],
+      ['people_filter_too_broad', 422],
+      ['people_filter_failed', 503],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })
