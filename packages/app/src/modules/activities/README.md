@@ -98,7 +98,7 @@ The club is found through `clubCorePublicSite.clubFrame` (the one DD-35 lookup),
 
 ## Deferred
 
-Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the public schedule block (step 9), the coordinator's `ScheduleView` calendar perspective on `/backend/activities/occurrences` (`toScheduleItem` ships with #32), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
+Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the public schedule block (step 9), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
 
 ## Types per group kind, opponent and coach picker (#93)
 
@@ -108,3 +108,11 @@ E06-S11 (README B-14, B-15, M-04; club spec REQ-005, REQ-020, REQ-027):
 - **Opponent.** A `match` or `sparring` (`takesOpponent`) shows the "Opponent" select (external teams); other types send `opponentExternalTeamId: null`.
 - **Coach picker.** `GET /api/activities/options/coaches` (`activities.manage`) lists the persons with an active `coach` role assignment (`people.personDirectory.roleHolderIdsOn`) or an active `coach`/`assistant` membership of any group (`groups.directory.leaderIdsOn`) on the club's today; `search` keeps the persons whose first or last name starts with every word, case and diacritics ignored (`lib/coach-options.ts`). The picker puts "No coach" first; it sends `coachPersonId: null`.
 - **Session details.** `GET /api/activities/occurrences/{id}` and every calendar entry (`GET /api/activities/calendar`, `…/{id}`) carry `opponentName` and `invitedTeamNames` (`services/read.ts` `activityTeams`); B-15 and M-04 show them when present.
+
+## Sessions list window, perspectives and row actions (#94)
+
+E06-S12 (README B-15; club spec REQ-006; foundation II REQ-G06, DD-G08, DD-G09):
+
+- **Window.** `/backend/activities/occurrences` opens with the date filter at 7 days back through 14 days ahead of the browser's today (`defaultSessionWindow`, `lib/occurrence-list.ts`); clearing the filters lists every session again.
+- **Perspectives.** All, Canceled (`status=cancelled`, a Reason column) and Calendar in the URL (`?perspective=`). Calendar is the installed `ScheduleView` (week by default) over `GET /api/activities/calendar?as=coordinator` through `toScheduleItem`, with a section select above it; the grid's range is read by its browser-zone dates, trimmed to 62 days (`scheduleRangeWindow`). A session opens its record. Slot clicks do nothing yet.
+- **Row actions.** With `activities.coach`, a planned session that has not started offers "Cancel session" and a started, not cancelled one "Attendance list" (`/club/occurrences/{id}/attendance`) — `sessionRowActions`. The cancel dialog (`components/CancelOccurrenceDialog.tsx`, shared with the session record) requires a reason of at least 3 characters (`isCancelReasonValid`); the API still accepts 1–500.
