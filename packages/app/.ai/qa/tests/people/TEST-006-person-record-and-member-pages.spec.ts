@@ -121,7 +121,7 @@ test('TEST-006 the administrator: people list, person record with guardianship a
     await address.press('Tab')
     await expect(createButton).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByText(/This person has an account|Ta osoba ma konto/)).toBeVisible()
+    await expect(page.getByText(/^Account active$|^Konto aktywne$/)).toBeVisible()
     const created = (await getPerson(request, club.adminToken, parentId)).body as { userId?: string }
     if (created.userId) club.extraUserIds.push(created.userId)
     await expectNoPageOverflow(page)

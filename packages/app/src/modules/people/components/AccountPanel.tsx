@@ -1,5 +1,7 @@
 'use client'
-// The "Account" tab of the person record (club spec UI table, J-001 step 3): "Create account" through the existing
+// The "Account" tab of the person record (club spec UI table, J-001 step 3; README B-10): every reader of the record
+// sees the account status — "Account active" with the login e-mail when the full view carries it (#84) — and only a
+// user with `people.accounts.manage` (`canCreate`) gets "Create account" through the existing
 // `POST /api/people/persons/{id}/account`. Below the club's `own_account_min_age` the button is disabled with the
 // "below the account age threshold" explanation (the server refuses it with 422 anyway); a person without a date of
 // birth cannot get an account either.
@@ -16,12 +18,21 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { accountAgePolicy } from '@vereino/core'
 import { errorMessage, localToday, textOrNull, type PersonDetail } from './client-helpers'
 
-export function AccountPanel({ person, onChanged }: { person: PersonDetail; onChanged: () => Promise<void> }) {
+export function AccountPanel({
+  person,
+  canCreate,
+  onChanged,
+}: {
+  person: PersonDetail
+  canCreate: boolean
+  onChanged: () => Promise<void>
+}) {
   const t = useT()
   const [email, setEmail] = React.useState(person.email ?? '')
   const [busy, setBusy] = React.useState(false)
   const settings = useQuery({
     queryKey: ['club_core-settings'],
+    enabled: canCreate && !person.hasAccount,
     queryFn: () => readApiResultOrThrow<{ ownAccountMinAge?: number }>('/api/club_core/settings'),
   })
   const threshold = settings.data?.ownAccountMinAge ?? null
@@ -59,9 +70,16 @@ export function AccountPanel({ person, onChanged }: { person: PersonDetail; onCh
     <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-label={t('people.account.title')}>
       <SectionHeader title={t('people.account.title')} />
       {person.hasAccount ? (
-        <div>
-          <StatusBadge variant="success">{t('people.account.exists')}</StatusBadge>
+        <div className="flex flex-col gap-2">
+          <div>
+            <StatusBadge variant="success">{t('people.account.active')}</StatusBadge>
+          </div>
+          {person.accountEmail ? (
+            <p className="text-sm break-words">{t('people.account.login', { email: person.accountEmail })}</p>
+          ) : null}
         </div>
+      ) : !canCreate ? (
+        <p className="text-sm">{t('people.account.none')}</p>
       ) : (
         <>
           <p className="text-sm">{t('people.account.none')}</p>
