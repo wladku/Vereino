@@ -35,7 +35,7 @@ The public pages run without a session. `clubCorePublicSite` makes exactly one r
 
 ## Deferred
 
-Deleting or deactivating a section that has groups (409, `groups`, phase 2); deleting a place with sessions or bookings (`activities`, `facilities`); the groups, schedule, instructor, price and facility blocks (their providers arrive with phases 2, 4 and 5); `publish_name_consent_at`; markdown rendering of the public description; a clean-up of logo and material files no longer referenced (they are kept so an undo finds them); the section logo next to groups in the `groups` pages; `opening_hours` (V-7), regulations, `is_public_schedule`, `accepts_online_requests`; coach contracts (A05); `search.ts` (no club_core entity is listed for search, and a global-search index of sections would bypass the coordinator's record scope).
+Deleting or deactivating a section that has groups (409, `groups`, phase 2); deleting a place with sessions or bookings (`activities`, `facilities`); the price and facility blocks (their providers arrive with phases 4 and 5; the groups, schedule and instructor blocks shipped with #91 from `groups` and `activities`, and the club page's provider context names the public sections, `PublicClubBlockContext`); markdown rendering of the public description; a clean-up of logo and material files no longer referenced (they are kept so an undo finds them); the section logo next to groups in the `groups` pages; `opening_hours` (V-7), regulations, `is_public_schedule`, `accepts_online_requests`; coach contracts (A05); `search.ts` (no club_core entity is listed for search, and a global-search index of sections would bypass the coordinator's record scope).
 
 ## Section deactivation guard and names (#85)
 

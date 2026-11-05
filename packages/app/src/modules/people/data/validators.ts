@@ -128,8 +128,8 @@ export const guardianshipConsentsSchema = z
 
 /**
  * `PUT /api/people/me` (`people.persons.update_self`; club spec API table): the member's own interface language
- * (null = the club default), contact details and the two consents (`true` gives, `false` withdraws, absent keeps).
- * `publishNameConsent` arrives with the public pages (#29); the lock token travels in the platform header.
+ * (null = the club default), contact details and the three consents (`true` gives, `false` withdraws, absent keeps):
+ * the guardian's two and the instructor's `publishNameConsent` (#91); the lock token travels in the platform header.
  */
 export const selfUpdateSchema = z
   .object({
@@ -138,6 +138,7 @@ export const selfUpdateSchema = z
     email: emailSchema.nullable().optional(),
     shareContactWithCoaches: z.boolean().optional(),
     sharePresenceWithGuardians: z.boolean().optional(),
+    publishNameConsent: z.boolean().optional(),
   })
   .strict()
 

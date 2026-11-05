@@ -14,6 +14,9 @@ export type GroupItem = {
   seasonId: string | null
   seasonName?: string | null
   isActive: boolean
+  isPublic?: boolean
+  ageFrom?: number | null
+  ageTo?: number | null
   updatedAt: string | null
   coaches?: { personId: string; firstName: string; lastName: string }[]
   participantCount?: number

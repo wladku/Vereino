@@ -1,13 +1,15 @@
 'use client'
 // `/p/[clubSlug]/sections/[sectionSlug]` — the public section page (club spec UI table and mock-up, J-008, DD-28,
 // DD-29, REQ-025; #29): the section's name and effective logo and the blocks the club publishes — description,
-// conditions, materials (file links with name and format) and contact. Blocks of later modules (classes with their
-// schedule, prices) arrive with their providers; until then the classes area says that no classes are published.
+// conditions, materials (file links with name and format) and contact, and the classes: a card per public group with
+// its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Prices arrive with
+// `payments`; without public groups the classes area says that no classes are published.
 // Headings: h1 section, h2 blocks. States: loading, error with retry, 404 and "the club does not publish a page".
 import * as React from 'react'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { PublicClasses } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { formatFileSize, formatLabel, usePublicSection, type PublicSectionPage } from './public-client'
 
@@ -43,7 +45,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
         </div>
       </section>
       <Block id="classes" title={t('club_core.public.classes.title')}>
-        <p className="text-muted-foreground max-w-prose">{t('club_core.public.classes.empty')}</p>
+        <PublicClasses groups={blocks.groups} schedule={blocks.schedule} />
       </Block>
       {blocks.conditions ? (
         <Block id="conditions" title={t('club_core.public.conditions.title')}>

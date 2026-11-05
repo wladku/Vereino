@@ -25,6 +25,28 @@ export function isCoachingRole(role: MembershipRole): boolean {
   return COACHING_ROLES.includes(role)
 }
 
+/** The age bounds a group may publish, in completed years (#91). */
+export const GROUP_AGE_MIN = 0
+export const GROUP_AGE_MAX = 99
+
+/** True when both age bounds are set and the youngest age is above the oldest (club spec: from ≤ to → else 422). */
+export function ageRangeInverted(ageFrom: number | null, ageTo: number | null): boolean {
+  return ageFrom !== null && ageTo !== null && ageFrom > ageTo
+}
+
+/**
+ * An age bound as typed in a form (#91): blank → null (open), a whole number of years in range → the number, anything
+ * else → `invalid`.
+ */
+export function parseAgeInput(value: unknown): number | null | 'invalid' {
+  if (value === null || value === undefined) return null
+  const textValue = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : null
+  if (textValue === null) return 'invalid'
+  if (textValue === '') return null
+  // One or two digits: exactly the range GROUP_AGE_MIN…GROUP_AGE_MAX.
+  return /^\d{1,2}$/.test(textValue) ? Number(textValue) : 'invalid'
+}
+
 /** The fields only a `team` may carry (`age_category_entry_id` joins them with the `dictionaries` module). */
 export const TEAM_FIELDS = ['league', 'seasonId'] as const
 export type TeamField = (typeof TEAM_FIELDS)[number]

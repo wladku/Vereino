@@ -40,6 +40,10 @@ type Row = Record<string, unknown>
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null)
 const bool = (value: unknown): boolean => value === true || value === 't' || value === 'true'
+const int = (value: unknown): number | null => {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
+  return Number.isInteger(parsed) ? parsed : null
+}
 
 function iso(value: unknown): string | null {
   let date: Date | null = null
@@ -65,6 +69,12 @@ export function groupListItem(row: Row) {
     seasonId: text(row.season_id),
     description: text(row.description),
     isActive: bool(row.is_active),
+    isPublic: bool(row.is_public),
+    publicDescription: text(row.public_description),
+    publicConditions: text(row.public_conditions),
+    ageFrom: int(row.age_from),
+    ageTo: int(row.age_to),
+    levelLabel: text(row.level_label),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -152,6 +162,12 @@ export const groupListItemSchema = z.object({
   seasonName: z.string().nullable().optional(),
   description: z.string().nullable(),
   isActive: z.boolean(),
+  isPublic: z.boolean().describe("Shown on the section's public page (#91, DD-29)."),
+  publicDescription: z.string().nullable(),
+  publicConditions: z.string().nullable(),
+  ageFrom: z.number().int().nullable(),
+  ageTo: z.number().int().nullable(),
+  levelLabel: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })

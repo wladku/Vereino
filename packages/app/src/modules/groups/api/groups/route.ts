@@ -93,6 +93,12 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'season_id',
       'description',
       'is_active',
+      'is_public',
+      'public_description',
+      'public_conditions',
+      'age_from',
+      'age_to',
+      'level_label',
       'tenant_id',
       'organization_id',
       'created_at',
@@ -152,13 +158,13 @@ export const openApi = buildOpenApi({
   create: {
     schema: groupCreateSchema,
     description:
-      'Creates a `team` or `class_group` group in a section (a coordinator in their sections, the club administrator anywhere). Errors: 400 invalid input, 403 `scope_denied`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
+      'Creates a `team` or `class_group` group in a section (a coordinator in their sections, the club administrator anywhere), optionally with its public fields (`isPublic`, `publicDescription`, `publicConditions`, `ageFrom`, `ageTo`, `levelLabel`). Errors: 400 invalid input, 403 `scope_denied`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`, `group_age_range_inverted` (field `ageTo`).',
   },
   update: {
     schema: groupUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a group; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Moving it to another section needs the scope of both sections. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`.',
+      'Changes a group; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Moving it to another section needs the scope of both sections. The age range is checked on the merged values. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`, `group_age_range_inverted` (field `ageTo`).',
   },
   del: {
     schema: groupDeleteSchema,

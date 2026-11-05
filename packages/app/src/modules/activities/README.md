@@ -97,7 +97,7 @@ The club is found through `clubCorePublicSite.clubFrame` (the one DD-35 lookup),
 
 ## Deferred
 
-Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the public schedule block (step 9), the coordinator's `ScheduleView` calendar perspective on `/backend/activities/occurrences` (`toScheduleItem` ships with #32), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
+Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the coordinator's `ScheduleView` calendar perspective on `/backend/activities/occurrences` (`toScheduleItem` ships with #32), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
 
 ## Types per group kind, opponent and coach picker (#93)
 
@@ -107,3 +107,7 @@ E06-S11 (README B-14, B-15, M-04; club spec REQ-005, REQ-020, REQ-027):
 - **Opponent.** A `match` or `sparring` (`takesOpponent`) shows the "Opponent" select (external teams); other types send `opponentExternalTeamId: null`.
 - **Coach picker.** `GET /api/activities/options/coaches` (`activities.manage`) lists the persons with an active `coach` role assignment (`people.personDirectory.roleHolderIdsOn`) or an active `coach`/`assistant` membership of any group (`groups.directory.leaderIdsOn`) on the club's today; `search` keeps the persons whose first or last name starts with every word, case and diacritics ignored (`lib/coach-options.ts`). The picker puts "No coach" first; it sends `coachPersonId: null`.
 - **Session details.** `GET /api/activities/occurrences/{id}` and every calendar entry (`GET /api/activities/calendar`, `…/{id}`) carry `opponentName` and `invitedTeamNames` (`services/read.ts` `activityTeams`); B-15 and M-04 show them when present.
+
+## Public schedule (#91)
+
+`activities.publicSchedule` (club spec phase 2 step 9, DD-28, DD-29, REQ-025; `services/public-schedule.ts`, pure rules in `lib/public-schedule.ts`) is the optional block provider `club_core` reads with `hasRegistration` for a club that publishes `description_schedule`. On a section page (key `schedule`) it returns, for each public group `groups.directory.publicGroups` names in the section, the weekdays, times and place of every active series that has not ended and the next three sessions of those series, a cancelled one flagged (`cancelled: true`; the page strikes it through). On the club page it returns the upcoming one-off activities (no RRULE) of public groups in the public sections `club_core` passes (`PublicClubBlockContext.sections`), at most ten, with date, times, place, section and type. Every query carries the tenant and organization of the slug lookup; no roster, participant or coach enters the block.
