@@ -1,6 +1,8 @@
 // `/api/club_core/places` — the place hierarchy (club spec API table, glossary *Place*, TEST-001): the list is the
-// club administrator's (places carry no section scope), with the encrypted contacts decrypted by the query engine;
-// create, update and delete run the `club_core` commands (cycle → 422, children on delete → 409).
+// club administrator's (places carry no section scope), with the encrypted contacts decrypted by the query engine,
+// filtered by kind, parent and active state, and with the names of the owner institution and the parent place added
+// (UX parity spec, REQ-U03, E06-S04 #86); create, update and delete run the `club_core` commands (cycle → 422,
+// children on delete → 409).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
@@ -9,6 +11,7 @@ import type { Where } from '@open-mercato/shared/lib/query/types'
 import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Place } from '../../data/entities'
+import { placeListNames } from '../../services/directory'
 import { placeCreateSchema, placeDeleteSchema, placeListQuerySchema, placeUpdateSchema } from '../../data/validators'
 import {
   PLACE_LIST_ENTITY_ID,
@@ -17,6 +20,7 @@ import {
   placeListItem,
   placeListItemSchema,
   updateResponseSchema,
+  type PlaceListItem,
 } from '../shared'
 
 type PlaceListQuery = z.infer<typeof placeListQuerySchema>
@@ -24,6 +28,29 @@ type PlaceListQuery = z.infer<typeof placeListQuerySchema>
 const rawBodySchema = z.object({}).loose()
 
 type CommandResult = { entity: Place }
+
+/**
+ * Adds the owner institution's name and the parent place's name to the rows the scope filter already admitted (one
+ * read each per page; a deleted owner or parent reads as null).
+ */
+async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
+  const items = (payload.items ?? []) as PlaceListItem[]
+  const tenantId = ctx.auth?.tenantId
+  const organizationId = ctx.selectedOrganizationId ?? ctx.auth?.orgId
+  if (items.length === 0 || !tenantId || !organizationId) return
+  const scope = { tenantId, organizationId }
+  const em = ctx.container.resolve<Parameters<typeof placeListNames>[0]>('em').fork()
+  const { owners, parents } = await placeListNames(
+    em,
+    scope,
+    items.flatMap((item) => (item.ownerInstitutionId ? [item.ownerInstitutionId] : [])),
+    items.flatMap((item) => (item.parentPlaceId ? [item.parentPlaceId] : [])),
+  )
+  for (const item of items) {
+    item.ownerName = item.ownerInstitutionId ? (owners.get(item.ownerInstitutionId) ?? null) : null
+    item.parentName = item.parentPlaceId ? (parents.get(item.parentPlaceId) ?? null) : null
+  }
+}
 
 export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
   metadata: {
@@ -78,6 +105,9 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       return { $and: [scopeWhere(scope, STRUCTURE_READ_KINDS, STRUCTURE_COLUMNS), business] } as Where
     },
     transformItem: placeListItem,
+  },
+  hooks: {
+    afterList: attachNames,
   },
   actions: {
     create: {

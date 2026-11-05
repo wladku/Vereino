@@ -3,3 +3,4 @@
 export * from '#src/columns'
 export * from '#src/scoped-entity'
 export * from '#src/append-only-entity'
+export * from '#src/token-link-columns'
