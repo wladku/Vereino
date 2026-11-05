@@ -17,6 +17,7 @@ import { parseRecurrence } from './services/recurrence'
 import { registerModuleSchedule } from './services/register-module-schedule'
 import { desiredRoles, rolesForAssignments, seedRoles, syncAuthRoles } from './services/roles'
 import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
+import { createTokenLinkService } from './services/token-link'
 import { advanceWhere, assertTransition } from './services/transitions'
 
 /**
@@ -43,6 +44,8 @@ export const FOUNDATION_LOCALIZED = 'foundationLocalized' as const
 export const FOUNDATION_ERRORS = 'foundationErrors' as const
 export const FOUNDATION_SCHEDULING = 'foundationScheduling' as const
 export const FOUNDATION_AUDITED_READ = 'foundationAuditedRead' as const
+/** Phase C P-10 (#157): `createTokenLinkService(entity, { use, ttlMs })` — a consumer builds one per token table. */
+export const FOUNDATION_TOKEN_LINKS = 'foundationTokenLinks' as const
 
 /**
  * Foundation III (#71). `foundationAudience`: `resolveAudience(spec, ctx, { exclude })` over the optional providers
@@ -78,6 +81,7 @@ export function register(container: AppContainer) {
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
     [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition, advanceWhere }),
     [FOUNDATION_AUDITED_READ]: asValue({ auditedRead }),
+    [FOUNDATION_TOKEN_LINKS]: asValue({ createTokenLinkService }),
     [FOUNDATION_AUDIENCE]: asValue({ resolveAudience }),
     [FOUNDATION_DISPATCH]: asFunction(() => createDispatchService(container)).scoped(),
     [FOUNDATION_EMAIL_TEMPLATES]: asValue({
