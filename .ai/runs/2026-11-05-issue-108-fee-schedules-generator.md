@@ -1,10 +1,10 @@
 # Issue #108 — fee schedules, discount rules and the period generator
 
 - **Date:** 2026-11-05
-- **Agent / tool:** Claude Code (claude-opus-5-5), `om-auto-fix-issue` with the repo-local override, cezar task
+- **Agent / tool:** Claude Code (claude-opus-5-5), `om-auto-fix-issue` with the repo-local override, cezar task; finished by a coordinator session after the cezar run lost the API
 - **Trigger:** cezar task "108"; resumed on the owner's instruction "continue autonomously, make reasonable assumptions, do not ask"
 - **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-club-payments.md` phase 4 step 2; issue #108 (epic #106); branch `feat/issue-108-fee-schedules-generator`
-- **Status:** in progress
+- **Status:** completed, PR open for review.
 
 ## Goal
 
@@ -48,6 +48,14 @@ Build the `payments` module slice from E07-S01: fee schedules (B-20), discount r
     - the data-model rows: whole-percent `percent`; the charge's `generation_id` and cancel fields; the unique index on live fee charges; the new `payments_charge_generations`;
     - the compliance row and verdict: the generation undo is answered, the reverse command is still open;
     - a changelog row.
+14. The cezar run stopped during `yarn verify` on an API outage (`ENOTFOUND`, 13:23). Nothing was pushed; the work was committed locally by cezar's autosave.
+15. **Coordinator continuation:** took the branch into its own worktree, signed the autosave commit, merged `main` (no conflicts), ran `yarn generate` and `yarn verify`.
+16. **Review (a fresh reviewer subagent, read-only), and fixes:**
+    - the sibling ranking counted a paying adult who trains in their own group as one of the siblings (the parent took the full rate and both children got the discount) → only wards are ranked;
+    - per-session fees read sessions in one call capped at 500 by `activities` → read per group and paged past the cap, so no session is dropped;
+    - changing a billed fee's `period` broke its idempotency key → `payments.fees.update` answers 422 `fee_period_locked` once the fee has charges;
+    - TEST-018 now has the mother training in zumba and asserts the period lock; unit tests for both fixes.
+17. **Enabling `payments` grants `payments.view_own`:** the `vereino_payer` role's feature now applies, so an adult payer gets `paymentsVisible: true` and the R10 gate allows them (a minor is still refused). E02-S03 asserted the old refusal and J-001 skipped the check "before phase 4"; both now assert the new state. `/club` still renders no payments tile.
 
 ## Decisions
 
@@ -64,7 +72,7 @@ Build the `payments` module slice from E07-S01: fee schedules (B-20), discount r
   - the active primary-payer guardian;
   - otherwise an adult pays for themselves;
   - otherwise the charge is `payer_missing`. An unknown birth date is treated as a minor.
-- **Sibling ranking:** per payer over all sections; existing charges of the period take part, but they never change. The full-rate child is `oldest` or `youngest`, unknown birth dates rank last, and ties go by id. Several rules → the largest discount, with ties broken by rule name, then id.
+- **Sibling ranking:** per payer over all sections, wards only (a paying adult's own charge is not ranked); existing charges of the period take part, but they never change. The full-rate child is `oldest` or `youngest`, unknown birth dates rank last, and ties go by id. Several rules → the largest discount, with ties broken by rule name, then id.
 - **Percent column:** `percent` is a whole number 1–100 (`int`) rather than `numeric`, per the issue's validation (recorded in the spec).
 - **Scope and roles:** every write is `club_admin` only, because the treasurer role is held back (D-030). Fee, discount and settings routes need `payments.manage`, and the charge list needs `payments.view`.
 - **Deferred:**
@@ -80,14 +88,36 @@ Build the `payments` module slice from E07-S01: fee schedules (B-20), discount r
 - `packages/app/.ai/qa/tests/_fixtures/payments.ts`, `packages/app/.ai/qa/tests/payments/*.spec.ts`: the tests.
 - `.ai/specs/2026-10-27-vereino-club-payments.md`: step note, data model, compliance, changelog.
 - `.ai/runs/2026-11-05-issue-108-fee-schedules-generator.md`: this log.
+- `.ai/lessons/directory-list-cap-is-not-a-count.md`, `.ai/lessons.md`: the lesson.
 
 ## Commands and results
 
 - `yarn generate`, `yarn typecheck`: green.
 - `npx jest src/modules/payments --coverage`: 40 tests passed; `charge-plan.ts`, `payments-rules.ts` and `error-codes.ts` at 100 % statements, branches, functions and lines. The first run showed one uncovered branch (`?? null` in the sibling ranking), so I added a case for two children without birth dates.
 - `DATABASE_URL=postgres://…@127.0.0.1:1/none yarn db:generate`: `payments: generated Migration20261105123548_payments.ts`, every other module "no changes". No `db:migrate` against any database.
-- Integration and gate results: see below.
+- Coordinator, after the review fixes:
+  - `yarn verify`: 13/13.
+  - `yarn test:integration:vereino --filter tests/payments/`: TEST-018, TEST-048, E07-S01 3 passed (2.0 min).
+  - Whole suite: 127 passed, 1 failed (54.3 min). E02-S03 asserted the payer gate's "no payments module yet" refusal (`scope_denied`).
+  - After updating E02-S03 and J-001 (step 17): E02-S03 7 passed (2.7 min), J-001 1 passed (1.6 min).
+
+## Lessons
+
+- New: `directory-list-cap-is-not-a-count`.
 
 ## Open problems
 
+Review findings left as they are (non-blocking):
+
+- A cancelled charge is billed again on the next run. Today only the undo cancels charges, so this is correct; once E07-S02 adds manual cancellation (and the monthly job exists), a waived charge must stay skipped.
+- A sibling who joins later is ranked against existing charges that never change, so in rare orders neither child is discounted (recorded decision above).
+- `amount × sessions` of a per-session fee can exceed the `int` column for extreme values; the run then fails with a 500.
+- The group and activity pickers on B-20 load at most 100 records.
+- `personIds` of a custom rule are not checked against the club (harmless: participants are club-scoped).
+- The undo's `payments.charge.cancelled` event is emitted inside the replay transaction, like `undoCreate`.
+
 ## Next steps
+
+- E07-S02: payment recording, charge cancellation (keep cancelled charges skipped), the charge list's perspectives.
+- The scheduled `payments:generate-charges` job.
+- The reverse command (spec compliance report).
