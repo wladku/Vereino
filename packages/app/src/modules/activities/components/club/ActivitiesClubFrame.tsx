@@ -2,7 +2,7 @@
 // The frame of the `activities` member pages (`/club/calendar`, `/club/occurrences/[id]`; club spec DD-05, *UI
 // architecture*; #32): the shared `MemberShell` of `@vereino/ui` with the member navigation, and the loading, error and
 // "not linked" states of the member profile. The profile is read over HTTP (`GET /api/people/me`), so `activities`
-// imports nothing of `people`; the navigation repeats the `/club` entries `people` shows.
+// imports nothing of `people`; the navigation is the shared `memberNav` of `@vereino/ui` (E06-S19 #101).
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -12,17 +12,16 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberShell, type MemberLinkProps } from '@vereino/ui'
 import {
-  BACKEND_HREF,
-  CLUB_CALENDAR_HREF,
-  CLUB_HOME_HREF,
-  CLUB_MESSAGES_HREF,
-  CLUB_PROFILE_HREF,
-  hasStaffContext,
-  useClubProfile,
-  type ClubProfile,
-} from './club-client'
+  MemberShell,
+  memberContextStore,
+  memberNav,
+  memberShellLabels,
+  memberSwitchers,
+  useMemberContext,
+  type MemberLinkProps,
+} from '@vereino/ui'
+import { BACKEND_HREF, useClubProfile, type ClubProfile } from './club-client'
 
 /**
  * The member's locale (DD-34: preferred → club default → request → en) through the platform's locale route, the same
@@ -92,27 +91,20 @@ export function ActivitiesClubFrame({ children }: { children: (profile: ClubProf
     body = children(query.data.profile)
   }
 
-  const nav = profile
-    ? [
-        { href: CLUB_HOME_HREF, label: t('activities.club.nav.today'), current: pathname === CLUB_HOME_HREF },
-        {
-          href: CLUB_CALENDAR_HREF,
-          label: t('activities.club.nav.calendar'),
-          current: pathname === CLUB_CALENDAR_HREF || pathname.startsWith('/club/occurrences/'),
-        },
-        { href: CLUB_MESSAGES_HREF, label: t('activities.club.nav.messages'), current: false },
-        { href: CLUB_PROFILE_HREF, label: t('activities.club.nav.profile'), current: pathname === CLUB_PROFILE_HREF },
-        ...(hasStaffContext(profile)
-          ? [{ href: BACKEND_HREF, label: t('activities.club.nav.backend'), current: false }]
-          : []),
-      ]
-    : []
+  // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.
+  const labels = memberShellLabels(t, 'activities.club.nav')
+  const [context, setContext] = useMemberContext(profile)
+  const nav = profile ? memberNav({ pathname, contexts: profile.contexts, labels }) : null
+  const switchers = profile ? memberSwitchers(profile, context, setContext, labels) : []
 
   return (
     <MemberShell
       brand={{ name: profile?.club.shortName ?? t('activities.club.title'), logoUrl: profile?.club.logoUrl ?? null }}
       nav={nav}
-      navLabel={t('activities.club.nav.label')}
+      navLabel={labels.nav}
+      signOutLabel={labels.signOut}
+      onSignOut={memberContextStore.clear}
+      switchers={switchers}
       Link={MemberLink}
       banner={<RecordConflictBanner />}
     >

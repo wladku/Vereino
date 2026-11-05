@@ -4,7 +4,8 @@
 // ward across every section (optionally one ward), a participant their own sessions, a coach their groups — with the
 // section legend and each card's section marker (a colour and the section's name), place, address, coach and times in
 // the club's time zone, each ward's declaration and the declaration buttons the club's model offers ("Report absence"
-// for an `absence_only` activity type, "Attending / Not attending" for `confirm`). A Week/Month switch (owner, Q1 of
+// for an `absence_only` activity type, "Attending / Not attending" for `confirm`). Whose sessions it shows follows the
+// header's acting context and ward switcher (E06-S19 #101). A Week/Month switch (owner, Q1 of
 // #100): the week is the default, the month is a list of the days that have sessions — no grid, so it reads at 375 px.
 // The toolbar moves by whole weeks or months, and an empty week or month offers the next one. A link may open a range
 // (`?from=&to=`); a range the API refuses as longer than 62 days is read again trimmed, with a notice. The declaration
@@ -18,9 +19,7 @@ import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { Label } from '@open-mercato/ui/primitives/label'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   CALENDAR_RANGE_MAX_DAYS,
@@ -29,7 +28,7 @@ import {
   type CalendarDate,
   type DateWindow,
 } from '@vereino/core'
-import { CalendarList, type MemberLinkProps } from '@vereino/ui'
+import { CalendarList, memberCalendarScope, useMemberContext, type MemberLinkProps } from '@vereino/ui'
 import {
   CALENDAR_VIEWS,
   calendarViewWindow,
@@ -45,16 +44,11 @@ import {
   SESSION_QUERY_KEY,
   declareAttendance,
   errorText,
-  fullName,
   parseActionId,
-  perspectivesOf,
   toCalendarItem,
   useMemberCalendar,
   type ClubProfile,
-  type MemberPerspective,
 } from './club-client'
-
-const ALL_WARDS = 'all'
 
 /** The toolbar and empty-state labels of each view. */
 const VIEW_LABELS = {
@@ -101,9 +95,8 @@ function Calendar({ profile }: { profile: ClubProfile }) {
   const locale = useLocale()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const perspectives = perspectivesOf(profile)
-  const [as, setAs] = React.useState<MemberPerspective>(perspectives[0] ?? 'self')
-  const [ward, setWard] = React.useState<string>(ALL_WARDS)
+  const [selection] = useMemberContext(profile)
+  const { as, personId } = memberCalendarScope(profile, selection)
   const [view, setView] = React.useState<CalendarView>('week')
   // A date in the shown week or month; null follows today.
   const [anchor, setAnchor] = React.useState<CalendarDate | null>(null)
@@ -121,7 +114,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     as,
     from: shown.from,
     to: shown.to,
-    personId: as === 'guardian' && ward !== ALL_WARDS ? ward : null,
+    personId,
   })
   const items = React.useMemo(
     () => (query.data?.items ?? []).map((entry) => toCalendarItem(entry, as, t)),
@@ -226,47 +219,6 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     <>
       <h1 className="text-2xl font-semibold">{t('activities.club.calendar.title')}</h1>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" data-testid="club-calendar-toolbar">
-        {perspectives.length > 1 ? (
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="club-calendar-as">{t('activities.club.calendar.as')}</Label>
-            <Select
-              value={as}
-              onValueChange={(value) => {
-                setAs(value as MemberPerspective)
-                setWard(ALL_WARDS)
-              }}
-            >
-              <SelectTrigger id="club-calendar-as" className="min-h-11 sm:w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {perspectives.map((perspective) => (
-                  <SelectItem key={perspective} value={perspective}>
-                    {t(`activities.club.perspective.${perspective}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null}
-        {as === 'guardian' && profile.wards.length > 1 ? (
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="club-calendar-ward">{t('activities.club.calendar.ward')}</Label>
-            <Select value={ward} onValueChange={setWard}>
-              <SelectTrigger id="club-calendar-ward" className="min-h-11 sm:w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_WARDS}>{t('activities.club.calendar.allWards')}</SelectItem>
-                {profile.wards.map((entry) => (
-                  <SelectItem key={entry.personId} value={entry.personId}>
-                    {fullName(entry)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null}
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium" id="club-calendar-view-label">
             {t('activities.club.calendar.view')}

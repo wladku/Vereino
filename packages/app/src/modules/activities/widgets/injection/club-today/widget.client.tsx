@@ -3,16 +3,18 @@
 // #32): the sessions of today and tomorrow for every ward (or the member's own), each a link to its session page, and —
 // for a guardian — the wards' declarations waiting for a decision in the next two weeks. The calendar tile is always
 // rendered (with "No classes today or tomorrow" and the way to the calendar); the attendance tile only when something
-// waits (no empty placeholders).
+// waits (no empty placeholders). The header's acting context (E06-S19 #101) narrows both: one ward, the member's own
+// sessions, or — acting as a coach — "My sessions today" with the way into each attendance list.
 import * as React from 'react'
 import Link from 'next/link'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { addCalendarDays, calendarDateInZone } from '@vereino/core'
-import { formatClockTime, formatTimeRange } from '@vereino/ui'
+import { formatClockTime, formatTimeRange, memberCalendarScope, useMemberContext } from '@vereino/ui'
 import {
   CLUB_CALENDAR_HREF,
+  attendanceHref,
   sessionHref,
   useMemberCalendar,
   type CalendarEntry,
@@ -21,7 +23,9 @@ import {
 /** The slice of `people`'s member profile the Today page passes as the spot context. */
 export type ClubTodayContext = {
   profile?: {
+    person?: { id: string }
     wards?: { personId: string; firstName: string; lastName: string }[]
+    contexts?: string[]
     club?: { timezone?: string }
   }
 }
@@ -41,11 +45,22 @@ export default function ClubTodayTilesWidget({
   const t = useT()
   const locale = useLocale()
   const timeZone = context.profile?.club?.timezone ?? 'Europe/Warsaw'
-  const guardian = (context.profile?.wards?.length ?? 0) > 0
-  const as = guardian ? 'guardian' : 'self'
+  const person = context.profile?.person
+  const profile = person
+    ? { person, wards: context.profile?.wards ?? [], contexts: context.profile?.contexts ?? [] }
+    : null
+  const [selection] = useMemberContext(profile)
+  const scope = profile ? memberCalendarScope(profile, selection) : { as: 'self' as const, personId: null }
+  const guardian = scope.as === 'guardian'
+  const coach = scope.as === 'coach'
   const today = calendarDateInZone(new Date(), timeZone)
   const tomorrow = addCalendarDays(today, 1)
-  const query = useMemberCalendar({ as, from: today, to: addCalendarDays(today, PENDING_WINDOW_DAYS) })
+  const query = useMemberCalendar({
+    as: scope.as,
+    from: today,
+    to: addCalendarDays(today, PENDING_WINDOW_DAYS),
+    personId: scope.personId,
+  })
   const entries = query.data?.items ?? []
   const soon = entries.filter(
     (entry) => entry.occurrence.occurrenceDate === today || entry.occurrence.occurrenceDate === tomorrow,
@@ -73,7 +88,11 @@ export default function ClubTodayTilesWidget({
         {soon.map((entry) => (
           <li key={entry.occurrence.id}>
             <Link
-              href={sessionHref(entry.occurrence.id, as)}
+              href={
+                scope.as === 'coach'
+                  ? attendanceHref(entry.occurrence.id)
+                  : sessionHref(entry.occurrence.id, scope.as, scope.personId)
+              }
               className="hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col rounded-md px-2 py-1 outline-none"
               data-testid="club-today-session"
             >
@@ -121,7 +140,9 @@ export default function ClubTodayTilesWidget({
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <li>
           <div className={TILE_CLASS} data-testid="club-tile-calendar">
-            <h3 className="font-semibold">{t('activities.club.today.calendar')}</h3>
+            <h3 className="font-semibold">
+              {coach ? t('activities.club.today.coachSessions') : t('activities.club.today.calendar')}
+            </h3>
             {calendarBody}
             <Link
               href={CLUB_CALENDAR_HREF}

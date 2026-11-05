@@ -3,6 +3,7 @@ import {
   CLUB_SETTINGS_DEFAULTS,
   DEFAULT_DECLARATION_KINDS,
   applyClubSettingsPatch,
+  clubSettingsRuleProblem,
   clubSettingsPatchSchema,
   clubSettingsSchema,
   hasAtMostTwoDecimals,
@@ -11,6 +12,7 @@ import {
   mergeDeclarationKinds,
   resolveClubSettings,
   storedNumber,
+  timeZoneOptions,
 } from '../settings'
 
 describe('club settings', () => {
@@ -108,6 +110,10 @@ describe('club settings', () => {
   it('validates a partial update field by field', () => {
     expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 14 }).success).toBe(true)
     expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 0 }).success).toBe(false)
+    expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 12 }).success).toBe(false)
+    expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 13 }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 18 }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ ownAccountMinAge: 19 }).success).toBe(false)
     expect(clubSettingsPatchSchema.safeParse({ defaultLocale: 'Polish' }).success).toBe(false)
     expect(clubSettingsPatchSchema.safeParse({ defaultLocale: 'pt-BR' }).success).toBe(true)
     expect(clubSettingsPatchSchema.safeParse({ shortName: null }).success).toBe(true)
@@ -141,5 +147,36 @@ describe('club settings', () => {
     expect(storedNumber('  ')).toBe('  ')
     expect(storedNumber(2)).toBe(2)
     expect(storedNumber(null)).toBeNull()
+  })
+
+  it('names the first business rule an update breaks (#87)', () => {
+    expect(clubSettingsRuleProblem({})).toBeNull()
+    expect(clubSettingsRuleProblem({ timezone: 'Europe/Warsaw', ownAccountMinAge: 13 })).toBeNull()
+    expect(clubSettingsRuleProblem({ ownAccountMinAge: 18 })).toBeNull()
+    expect(clubSettingsRuleProblem({ timezone: 'Mars/Olympus' })).toEqual({
+      code: 'timezone_unknown',
+      field: 'timezone',
+    })
+    expect(clubSettingsRuleProblem({ timezone: 'Mars/Olympus', ownAccountMinAge: 1 })).toEqual({
+      code: 'timezone_unknown',
+      field: 'timezone',
+    })
+    expect(clubSettingsRuleProblem({ ownAccountMinAge: 12 })).toEqual({
+      code: 'account_age_threshold_out_of_range',
+      field: 'ownAccountMinAge',
+    })
+    expect(clubSettingsRuleProblem({ ownAccountMinAge: 19 })).toEqual({
+      code: 'account_age_threshold_out_of_range',
+      field: 'ownAccountMinAge',
+    })
+  })
+
+  it('lists the time zones sorted, keeping the stored one selectable', () => {
+    expect(timeZoneOptions(['Europe/Warsaw', 'America/New_York'], 'Europe/Warsaw')).toEqual([
+      'America/New_York',
+      'Europe/Warsaw',
+    ])
+    expect(timeZoneOptions(['Europe/Warsaw'], 'UTC')).toEqual(['Europe/Warsaw', 'UTC'])
+    expect(timeZoneOptions(['Europe/Warsaw'], null)).toEqual(['Europe/Warsaw'])
   })
 })
