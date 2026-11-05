@@ -22,10 +22,10 @@ import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { DeliveryStatusList, type DeliveryPage } from '@vereino/ui'
 import {
   OWN_FORBIDDEN_STATE,
-  errorCode,
   errorMessage,
   formatDateTime,
   roleLabel,
@@ -88,7 +88,8 @@ export async function postReply(t: Translate, threadId: string, body: string): P
   }
 }
 
-function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
+/** "Copy text for group chat" (DD-M14): the text with the link to the clipboard, shown, and confirmed live. */
+export function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
   const t = useT()
   const [text, setText] = React.useState<string | null>(null)
   const [status, setStatus] = React.useState<'idle' | 'copied' | 'manual' | 'error'>('idle')
@@ -144,7 +145,7 @@ function ShareTextPanel({ thread }: { thread: ThreadDetail }) {
 }
 
 /** The read-only banner of a case: who marked it and when; its messages can no longer be edited or deleted. */
-function CaseBanner({ thread }: { thread: ThreadDetail }) {
+export function CaseBanner({ thread }: { thread: ThreadDetail }) {
   const t = useT()
   const locale = useLocale()
   const opened = thread.caseOpenedAt ? formatDateTime(thread.caseOpenedAt, locale) : ''
@@ -190,7 +191,7 @@ function useMarkCase(thread: ThreadDetail | null, refresh: () => void) {
       flash(t('communication.cases.flash.marked'), 'success')
       refresh()
     } catch (error: unknown) {
-      if (errorCode(error) === 'case_already_open') {
+      if (errorCodeOf(error) === 'case_already_open') {
         flash(errorMessage(error, t('communication.errors.case_already_open')), 'error')
         refresh()
       } else if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
@@ -370,7 +371,7 @@ function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afte
         refresh()
         afterDelete()
       } catch (error: unknown) {
-        const code = errorCode(error)
+        const code = errorCodeOf(error)
         if (code === 'case_immutable' || code === 'message_deleted' || code === 'message_not_editable') {
           flash(errorMessage(error, t(`communication.errors.${code}`)), 'error')
           refresh()

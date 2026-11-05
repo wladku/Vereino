@@ -19,7 +19,7 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { badgeVariant, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CoachSessionBlock } from './CoachSessionBlock'
@@ -235,6 +235,17 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   const map = mapHref(occurrence.placeGeoLat, occurrence.placeGeoLng)
   const rows: Array<[string, React.ReactNode]> = [
     [t('activities.club.session.date'), formatDayHeading(occurrence.occurrenceDate, locale)],
+    // DD-43: the gathering time comes first, and a session without one shows no row.
+    ...(occurrence.gatheringAt
+      ? ([
+          [
+            t('activities.gathering.label'),
+            <span key="gathering" className="font-semibold" data-testid="club-session-gathering">
+              {formatClockTime(new Date(occurrence.gatheringAt), locale, entry.timeZone)}
+            </span>,
+          ],
+        ] satisfies Array<[string, React.ReactNode]>)
+      : []),
     [t('activities.club.session.time'), formatTimeRange(startsAt, new Date(occurrence.endAt), locale, entry.timeZone)],
     [t('activities.club.session.group'), [occurrence.groupName, occurrence.sectionName].filter(Boolean).join(' · ')],
     [

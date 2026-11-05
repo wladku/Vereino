@@ -2,7 +2,16 @@
 // seasons and external teams created through the API, and staff signed in with a coordinator or coach role — every
 // record is created through the API like every other fixture.
 import { expect, type APIRequestContext } from '@playwright/test'
-import { OPTIMISTIC_LOCK_HEADER, assignRole, birthDateTurning, call, createStaff, signInAs, type Club } from './club'
+import {
+  OPTIMISTIC_LOCK_HEADER,
+  assignRole,
+  birthDateTurning,
+  call,
+  createStaff,
+  mercato,
+  signInAs,
+  type Club,
+} from './club'
 
 export type GroupItem = {
   id: string
@@ -10,6 +19,8 @@ export type GroupItem = {
   sectionName?: string | null
   name: string | null
   kind: string | null
+  ageCategoryEntryId?: string | null
+  ageCategoryName?: string | null
   league: string | null
   seasonId: string | null
   seasonName?: string | null
@@ -128,6 +139,31 @@ export async function endMembership(
     token,
     { data: validTo ? { validTo } : {}, headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {} },
   )
+}
+
+/** Runs `yarn mercato groups seed-age-categories` for the club: its PZPN age category dictionary (#92). */
+export function seedAgeCategories(club: Club): { created: boolean } {
+  const result = mercato([
+    'groups',
+    'seed-age-categories',
+    '--tenant',
+    club.tenant.tenantId,
+    '--org',
+    club.tenant.organizationId,
+  ]) as { created: boolean } | null
+  if (!result) throw new Error('[internal] groups seed-age-categories printed no result')
+  return result
+}
+
+export type AgeCategoryOption = { id: string; value: string; label: string }
+
+/** `GET /api/groups/options/age-categories` as the token's user. */
+export async function ageCategoryOptions(
+  request: APIRequestContext,
+  token: string,
+): Promise<{ status: number; items: AgeCategoryOption[] }> {
+  const result = await call<List<AgeCategoryOption>>(request, 'GET', '/api/groups/options/age-categories', token)
+  return { status: result.status, items: result.body?.items ?? [] }
 }
 
 export async function createSeason(

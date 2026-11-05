@@ -38,7 +38,11 @@ export const openApi: OpenApiRouteDoc = {
         },
       ],
       errors: [
-        { status: 403, description: '`scope_denied`', schema: errorSchema },
+        {
+          status: 403,
+          description: '`scope_denied`; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
     },

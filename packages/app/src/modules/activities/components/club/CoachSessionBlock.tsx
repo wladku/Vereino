@@ -22,7 +22,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib/activities-rules'
-import { errorCode } from '../client-helpers'
+import { errorCodeOf } from '@vereino/core'
 import { attendanceHref, cancelSession, errorText, summaryLine, type CalendarEntry } from './club-client'
 
 function CancelSessionDialog({
@@ -64,7 +64,7 @@ function CancelSessionDialog({
     } catch (error: unknown) {
       if (surfaceRecordConflict(error, t, { onRefresh: () => void onDone('') })) {
         close(false)
-      } else if (errorCode(error) === 'invalid_transition') {
+      } else if (errorCodeOf(error) === 'invalid_transition') {
         flash(errorText(error, t('activities.occurrences.errors.cancel')), 'error')
         close(false)
         await onDone('')

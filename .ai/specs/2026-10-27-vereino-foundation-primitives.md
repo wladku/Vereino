@@ -479,6 +479,8 @@ Contract verifications (performed on 2026-10-27 against the installed 0.9.0 pack
 
 ## Changelog
 
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-27-vereino-foundation-primitives/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-27-vereino-foundation-primitives/*.md` lists them in date order.
+
 | Date | Change |
 |---|---|
 | 2026-10-27 | Skeleton written by `om-spec-writing` (interactive): TLDR, the Open Questions gate (Q1–Q5 blocking, Q6–Q7 non-blocking), the functionality kinds extracted from the backlog (F1–F16) and the candidate primitive inventory (P-01…P-19). Nothing below the gate was designed yet |
@@ -497,3 +499,4 @@ Contract verifications (performed on 2026-10-27 against the installed 0.9.0 pack
 | 2026-11-03 | P-02: a session scope with no grant beyond `self_user` (no linked person of this club) is refused with the new 403 `scope_unlinked` instead of `scope_denied` — by `authorizeScoped` before the target is loaded (unless the command allows `self_user`) and by `assertInScope`; a linked user outside the target's grants, a marker scope and a job scope keep `scope_denied` (#76) |
 | 2026-11-04 | Phase C go-ahead with its token-link migrations approved (D30), consumer #105 |
 | 2026-11-05 | Phase C step 1 implemented with #157: P-10 signature made concrete — `ttlMs` instead of `ttl`, each method takes the caller's `em`, `issue` takes the consumer's subject and target columns plus the trusted scope and an optional own `expiresAt` within the time to live, `peek` and `redeem` take an optional route `scope` (a link of another organization or tenant answers `null`), and the hash column name moved to `tokenLinkColumns`; the error codes `token_link_expired` and `token_link_used` (410) added |
+| 2026-11-05 | P-02: `scopeDenialCode` and `isUnlinkedScope` are exported from the foundation entry; the business modules' hand-written "no linked person" refusals (calendar `as=self`, thread read and deliveries, composer preview and share text, thread and import commands, the R10 payments gate) answer `scope_unlinked` for an unlinked session scope, and the composer refuses it before resolving the target (#155) |

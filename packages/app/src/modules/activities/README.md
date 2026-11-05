@@ -116,6 +116,15 @@ E06-S12 (README B-15; club spec REQ-006; foundation II REQ-G06, DD-G08, DD-G09):
 - **Perspectives.** All, Canceled (`status=cancelled`, a Reason column) and Calendar in the URL (`?perspective=`). Calendar is the installed `ScheduleView` (week by default) over `GET /api/activities/calendar?as=coordinator` through `toScheduleItem`, with a section select above it; the grid's range is read by its browser-zone dates, trimmed to 62 days (`scheduleRangeWindow`). A session opens its record. Slot clicks do nothing yet.
 - **Row actions.** With `activities.coach`, a planned session that has not started offers "Cancel session" and a started, not cancelled one "Attendance list" (`/club/occurrences/{id}/attendance`) — `sessionRowActions`. The cancel dialog (`components/CancelOccurrenceDialog.tsx`, shared with the session record) requires a reason of at least 3 characters (`isCancelReasonValid`); the API still accepts 1–500.
 
+## Gathering time (#136)
+
+Club spec DD-43 (README B-14, B-15, M-02, M-03, M-04; messaging spec DD-M14):
+
+- **Storage.** `gathering_minutes_before` on `activities_activities` (the series default, 1–720, null = none) and on `activities_occurrences` (the session's own). The planner (`services/series.ts`), the daily generator and the one-off event copy the activity's value; a series change re-plans it on the movable sessions only.
+- **Reads.** The instant `gatheringAt = start_at − minutes` (`lib/gathering.ts`) on the session detail and list, every calendar entry, the attendance list, the public session page and `activities.scheduleDirectory`, so a moved session keeps its offset.
+- **Writes.** Activity and event writes take `gatheringMinutesBefore`; `PATCH /api/activities/occurrences/{id}` takes `gatheringAt` (null removes it) and detaches the session like a move; at or after the start answers 422 `occurrence_gathering_after_start`, more than 12 hours before it 422 `occurrence_gathering_too_early`. The B-15 move form sends `gatheringAt` only when the field changed.
+- **Display.** "Gathering {time}" before the time range on `/club` Today, the calendar list (`CalendarItem.gatheringAt`), the session page, the attendance list header and the public session page; nothing without one. The share text (`activities.shareText.*WithGathering`) and `communication.session_cancelled` (optional `gatheringAt` parameter) name it. The in-app cancellation notice and the one-off event form (B-14 events) do not carry it yet.
+
 ## The coach runs a session from the phone (#97)
 
 E06-S15 (README M-02, M-04, F-05; club spec REQ-007, REQ-009, TEST-014):

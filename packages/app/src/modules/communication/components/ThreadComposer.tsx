@@ -4,7 +4,8 @@
 // (`GET /api/communication/audience/targets`) and shows the live recipient counts
 // (`POST /api/communication/audience/preview`); the subject and the message are club text, shown in a preview as the
 // recipients will read them. Posting answers 403 for an audience outside the author's grants and 422 for an audience
-// kind the deployment cannot reach; after posting, the thread opens.
+// kind the deployment cannot reach; after posting, the thread opens. The member inbox (M-06, E06-S20) embeds the same
+// composer in its "New announcement" dialog with its own kinds and its own landing.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -62,7 +63,19 @@ function isCompleteAudience(value: AudiencePickerValue | undefined): value is Au
   return Boolean(value?.kind) && (value?.kind === 'club' || (value?.ids.length ?? 0) > 0)
 }
 
-export function ThreadComposer() {
+/** What the author posted: the new thread and how many people it reaches. */
+export type PostedThread = { threadId: string | null; recipientCount: number }
+
+export type ThreadComposerProps = {
+  /** Inside a dialog (the member inbox): no page title and no back link; the dialog closes it. */
+  embedded?: boolean
+  /** Narrows the kinds the author's grants allow (the member composer offers sections, groups and sessions). */
+  selectKinds?: (allowed: AudienceKind[]) => AudienceKind[]
+  /** Replaces the backend landing (a flash and the backend thread page). */
+  onPosted?: (posted: PostedThread) => void
+}
+
+export function ThreadComposer({ embedded = false, selectKinds, onPosted }: ThreadComposerProps = {}) {
   const t = useT()
   const router = useRouter()
   const kindsQuery = useQuery({
@@ -72,10 +85,13 @@ export function ThreadComposer() {
       return call.result?.kinds ?? []
     },
   })
-  const kinds = React.useMemo(
-    () => (kindsQuery.data ?? []).map((kind) => ({ kind, label: t(`communication.audience.kinds.${kind}`) })),
-    [kindsQuery.data, t],
-  )
+  const kinds = React.useMemo(() => {
+    const allowed = kindsQuery.data ?? []
+    return (selectKinds ? selectKinds(allowed) : allowed).map((kind) => ({
+      kind,
+      label: t(`communication.audience.kinds.${kind}`),
+    }))
+  }, [kindsQuery.data, selectKinds, t])
   const labels = React.useMemo(() => pickerLabels(t), [t])
   const formatCounts = React.useCallback(
     (counts: AudienceCounts) =>
@@ -162,10 +178,14 @@ export function ThreadComposer() {
 
   return (
     <CrudForm<ComposerValues>
-      title={t('communication.threads.create.title')}
-      titleHeadingLevel={1}
-      backHref={THREADS_HREF}
-      cancelHref={THREADS_HREF}
+      {...(embedded
+        ? { embedded: true }
+        : {
+            title: t('communication.threads.create.title'),
+            titleHeadingLevel: 1 as const,
+            backHref: THREADS_HREF,
+            cancelHref: THREADS_HREF,
+          })}
       fields={fields}
       groups={groups}
       initialValues={initialValues}
@@ -177,7 +197,7 @@ export function ThreadComposer() {
           throw createCrudFormError(message, { audience: message })
         }
         try {
-          const call = await apiCallOrThrow<{ threadId?: string }>(
+          const call = await apiCallOrThrow<{ threadId?: string; recipientCount?: number }>(
             '/api/communication/threads',
             {
               method: 'POST',
@@ -190,6 +210,10 @@ export function ThreadComposer() {
             },
             { errorMessage: t('communication.threads.create.errors.create') },
           )
+          if (onPosted) {
+            onPosted({ threadId: call.result?.threadId ?? null, recipientCount: call.result?.recipientCount ?? 0 })
+            return
+          }
           flash(t('communication.threads.create.flash'), 'success')
           router.push(call.result?.threadId ? threadHref(call.result.threadId) : THREADS_HREF)
         } catch (error: unknown) {

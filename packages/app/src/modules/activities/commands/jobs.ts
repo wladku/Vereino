@@ -99,6 +99,7 @@ async function extendSeries(
           endAt: session.endAt,
           placeId: activity.defaultPlaceId,
           coachPersonId,
+          gatheringMinutesBefore: activity.gatheringMinutesBefore ?? null,
           needsReschedule: conflicting.has(session.date),
         }),
       )

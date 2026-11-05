@@ -12,6 +12,7 @@ import {
   DECLARATION_STATUSES,
   DECLARED_VALUES,
 } from '../lib/policy'
+import { gatheringIso } from '../lib/gathering'
 import { activityLabels, nameMaps } from '../services/read'
 
 /**
@@ -82,6 +83,7 @@ export function activityListItem(row: Row) {
     startTime: wallTime(row.default_start_time),
     endTime: wallTime(row.default_end_time),
     generatedUntil: calendarDate(row.generated_until),
+    gatheringMinutesBefore: integer(row.gathering_minutes_before),
     description: text(row.description),
     isActive: bool(row.is_active),
     createdAt: iso(row.created_at),
@@ -96,6 +98,12 @@ export type ActivityListItem = ReturnType<typeof activityListItem> & {
   coachName?: string | null
 }
 
+/** The gathering instant of a list row (DD-43), or null. */
+function occurrenceGathering(startAt: unknown, minutes: unknown): string | null {
+  const start = iso(startAt)
+  return start ? gatheringIso(new Date(start), integer(minutes)) : null
+}
+
 export function occurrenceListItem(row: Row) {
   return {
     id: String(row.id),
@@ -105,6 +113,8 @@ export function occurrenceListItem(row: Row) {
     occurrenceDate: calendarDate(row.occurrence_date),
     startAt: iso(row.start_at),
     endAt: iso(row.end_at),
+    gatheringMinutesBefore: integer(row.gathering_minutes_before),
+    gatheringAt: occurrenceGathering(row.start_at, row.gathering_minutes_before),
     placeId: text(row.place_id),
     coachPersonId: text(row.coach_person_id),
     status: text(row.status),
@@ -227,6 +237,11 @@ export const activityListItemSchema = z.object({
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
   generatedUntil: z.string().nullable(),
+  gatheringMinutesBefore: z
+    .number()
+    .int()
+    .nullable()
+    .describe('The default gathering time in minutes before the start.'),
   description: z.string().nullable(),
   isActive: z.boolean(),
   createdAt: z.string().nullable(),
@@ -244,6 +259,8 @@ export const occurrenceListItemSchema = z.object({
   occurrenceDate: z.string().nullable(),
   startAt: z.string().nullable(),
   endAt: z.string().nullable(),
+  gatheringMinutesBefore: z.number().int().nullable(),
+  gatheringAt: z.string().nullable().describe('The gathering instant (start minus the offset), or null.'),
   placeId: z.string().nullable(),
   placeName: z.string().nullable().optional(),
   coachPersonId: z.string().nullable(),
@@ -359,7 +376,7 @@ const calendarPersonSchema = z.object({
 })
 
 export const calendarEntrySchema = z.object({
-  occurrence: occurrenceListItemSchema.omit({ createdAt: true }).extend({
+  occurrence: occurrenceListItemSchema.omit({ createdAt: true, gatheringMinutesBefore: true }).extend({
     sectionName: z.string().nullable(),
     placeAddress: z.string().nullable(),
     placeGeoLat: z.number().nullable(),
