@@ -17,7 +17,7 @@ The subject is a **small multi-section club** (association), with a football aca
 | User | Who they are (pilot: KS Gwiazda) | Key needs | Key tasks in the system | Device / channel | Pain today |
 |---|---|---|---|---|---|
 | **Legal guardian** ("Kasia") | parent of two children in different sections (Jaś — Żaki and Basen, Ola — Trampkarze) | know today whether there are sessions; one calendar for all children; one tap to report an absence from a training or to confirm a match; pay without looking up the account number; learn about cancellations in time | Today, calendar, declaration, confirming a teenager's declaration, online payment, consents, message to the coach | phone; email; link from Messenger | 3–4 Messenger groups, missed cancellations, paying "whenever she remembers" |
-| **Participant 13+** ("Ola", 14) | player with her own account and a limited view | check the schedule without asking a parent; sign up for a match | Today, calendar, declaration (per policy), group messages — no payments (the guardian pays) | phone | knows the schedule from her parent |
+| **Participant from the club's age threshold** ("Ola", 14) | player with her own account and a limited view; the threshold is a club setting, default 16 — the example club Dev Academy sets 13 so that Ola, 14, has an account (R10, D-022) | check the schedule without asking a parent; sign up for a match | Today, calendar, declaration (per policy), group messages — no payments (the guardian pays) | phone | knows the schedule from her parent |
 | **Adult participant** | zumba or pilates participant | schedule, cancellations, membership fee | same as a guardian, but for herself | phone | announcements in the group chat |
 | **Coach / instructor** ("Wojtek", "Piotr", "Anna") | runs 1–3 groups, often on a contract; paid "base + units" | know who will come; attendance in 30 s; substitution without arguing about money; one announcement to the group; book the pitch for a tournament without phoning | attendance list, closing a session, reporting an absence, cancellation, announcement + text for the group chat, facility calendar and booking, tournament, view of own units | phone | polls get lost in the chat; substitutions and bookings by phone |
 | **Section coordinator** ("Wojtek" — academy, "Aneta" — Basen) | responsible for the groups, schedule and coaches of one or more sections | a schedule without collisions; see sessions without a coach; quickly assign a substitute coach; one announcement to the whole section; a register of difficult cases; run the section page | groups and rosters, activity wizard, sessions "needing a coach" and "unsettled", substitutions, section coach units report, cases, section public content | desktop + phone | schedule in their head and in Excel; substitutions by phone |
@@ -66,9 +66,9 @@ The subject is a **small multi-section club** (association), with a football aca
 Each flow: preconditions → main path (with screens) → branches and errors → outcome. All branches are covered in the mockups via the state switcher or test data.
 
 #### F-01 Family onboarding (UC-01, UC-02)
-- **Preconditions:** administrator signed in; the club has its settings.
+- **Preconditions:** administrator signed in; the club has its settings (Dev Academy lowers the default account age threshold of 16 to 13 so that Ola, 14, can have an account; R10, D-022).
 - **Path:** B-01 Dashboard → B-04 Sections → "Add section" (B-05: name, coordinator) → B-09 People → "Add person" (Kasia, email) → save → B-10 Person record → "Guardianship" tab → "Add ward" (Jaś, date of birth; Ola) → check "primary payer", consents → "Account" tab → "Create account" → message "Password setup email sent".
-- **Branches:** email already taken → field error (409); for Jaś (age 9) the "Create account" button is disabled with the explanation "below the account age threshold (13)"; a second "primary payer" → 409 "This ward already has a primary payer"; stale record version → conflict dialog "Someone changed this record" (refresh / overwrite not available); missing permissions → "Access denied" page.
+- **Branches:** email already taken → field error (409); for Jaś (age 9) the "Create account" button is disabled with the explanation "below the account age threshold (13)" (Dev Academy's setting; under the default of 16, Ola would get the same message); a second "primary payer" → 409 "This ward already has a primary payer"; stale record version → conflict dialog "Someone changed this record" (refresh / overwrite not available); missing permissions → "Access denied" page.
 - **Outcome:** Kasia signs in (M-01) and sees the children's profiles on M-02.
 
 #### F-02 Today and attendance declaration (UC-03, UC-04)
@@ -381,7 +381,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-02 Club settings — `/backend/club/settings`
 - **Goal:** club details and operating parameters.
-- **Features:** short name, **club logo** (upload, replace, remove; preview in the header), time zone, currency, account age threshold (13–18), public slug, contact phone.
+- **Features:** short name, **club logo** (upload, replace, remove; preview in the header), time zone, currency, account age threshold (default 16, R10; range 13–18, decided in E06-S05 #87), public slug, contact phone.
 - **Components:** `CrudForm` (`pageContext: 'settings'`).
 - **States:** loading, error, success ("Saved"), conflict.
 - **Validation:** slug `^[a-z0-9-]{3,40}$`, globally unique (409); threshold 13–18; phone; logo PNG/JPG/WebP up to 2 MB (SVG rejected, 422), square ≥ 256 px recommended.
