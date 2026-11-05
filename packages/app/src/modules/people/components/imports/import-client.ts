@@ -95,12 +95,6 @@ export function instantLabel(value: string | null): string {
   return value ? new Date(value).toLocaleString() : ''
 }
 
-export function codeOf(error: unknown): string | null {
-  if (!error || typeof error !== 'object') return null
-  const code = (error as { code?: unknown }).code
-  return typeof code === 'string' ? code : null
-}
-
 /**
  * The membership state of a row's group (#65): before the commit what the commit would do, after it the stored outcome
  * (`lib/import-rules.ts`). Done states read as success or neutral, waiting ones as a warning.

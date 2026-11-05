@@ -5,6 +5,8 @@ import { calendarDateSchema, refineValidity, validityShape } from '@/modules/fou
 import { IMPORT_FIELDS, type ImportField } from '../lib/import-mapping'
 import { IMPORT_CLASSIFICATIONS, IMPORT_DECISIONS } from '../lib/import-rules'
 import { GUARDIAN_RELATIONS, type ConsentKind } from '../lib/people-rules'
+import { PERSON_FILTER_ROLES, PERSON_LIST_VIEWS } from '../lib/person-list-filters'
+import { MAX_AGE_YEARS } from '@vereino/core'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const localeSchema = z.string().regex(/^[a-z]{2,3}(-[A-Z]{2})?$/)
@@ -171,6 +173,16 @@ export const personListQuerySchema = z.object({
   ids: z.string().optional(),
   lastName: z.string().trim().min(1).max(200).optional(),
   hasAccount: z.enum(['true', 'false']).optional(),
+  // UX parity spec REQ-U01 (B-09): the perspective, a first- or last-name search, and the filters. `ageFrom` ≤ `ageTo`
+  // is checked by the route (400 `people_filter_age_range`): the CRUD OpenAPI factory extends this schema, which zod
+  // refuses for a refined object.
+  view: z.enum(PERSON_LIST_VIEWS).optional(),
+  search: z.string().trim().min(2).max(80).optional(),
+  sectionId: z.uuid().optional(),
+  groupId: z.uuid().optional(),
+  role: z.enum(PERSON_FILTER_ROLES).optional(),
+  ageFrom: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
+  ageTo: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
 })
 
 export const roleAssignmentListQuerySchema = z.object({

@@ -26,6 +26,7 @@ import {
 
 export type MessagesProfile = {
   person: { id: string; firstName: string; lastName: string }
+  /** The active wards of a guardian (the inbox's ward filter, M-06); empty for anyone else. */
   wards: { personId: string; firstName: string; lastName: string }[]
   contexts: string[]
   locale: string

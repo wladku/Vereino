@@ -29,6 +29,11 @@ export function formatDayHeading(date: CalendarDate, locale: string): string {
   )
 }
 
+/** `HH:mm` in the club zone, 24-hour clock whatever the locale — a gathering time (club spec DD-43). */
+export function formatClockTime(at: Date, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(at)
+}
+
 /** `HH:mm–HH:mm` (en dash) in the club zone, 24-hour clock whatever the locale. */
 export function formatTimeRange(startsAt: Date, endsAt: Date, locale: string, timeZone: string): string {
   const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })

@@ -5,6 +5,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { Activity, Occurrence } from '../data/entities'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import { gatheringAt } from '../lib/gathering'
 import type { ActivitiesScope } from './directory'
 
 export const ACTIVITIES_SCHEDULE_DIRECTORY = 'activities.scheduleDirectory' as const
@@ -27,6 +28,8 @@ export type ScheduleOccurrenceEntry = {
   occurrenceDate: string
   startAt: Date
   endAt: Date
+  /** The gathering instant before the start (club spec DD-43), or null. */
+  gatheringAt: Date | null
   status: OccurrenceStatus
   cancelReason: string | null
   updatedAt: Date
@@ -107,6 +110,7 @@ async function occurrenceEntries(
     occurrenceDate: row.occurrenceDate,
     startAt: row.startAt,
     endAt: row.endAt,
+    gatheringAt: gatheringAt(row.startAt, row.gatheringMinutesBefore),
     status: row.status,
     cancelReason: row.cancelReason ?? null,
     updatedAt: row.updatedAt,

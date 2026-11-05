@@ -2,6 +2,7 @@
 // periods and text normalization. Authorization stays on the routes and commands.
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { periodStatus, type PeriodStatus } from '../lib/groups-rules'
@@ -28,6 +29,8 @@ export type GroupRow = {
   sectionName?: string | null
   name: string | null
   kind: string | null
+  ageCategoryEntryId: string | null
+  ageCategoryName?: string | null
   league: string | null
   seasonId: string | null
   seasonName?: string | null
@@ -109,6 +112,17 @@ export async function seasonOptions(): Promise<CrudFieldOption[]> {
     sortDir: 'desc',
   })
   return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+}
+
+/**
+ * The club's age categories (`GET /api/groups/options/age-categories`, the `dictionaries` dictionary the club
+ * administrator edits), in the dictionary's order: the group form's age category field and the list's filter.
+ */
+export async function ageCategoryOptions(): Promise<CrudFieldOption[]> {
+  const data = await readApiResultOrThrow<{ items?: { id: string; label: string }[] }>(
+    '/api/groups/options/age-categories',
+  )
+  return (data.items ?? []).map((item) => ({ value: item.id, label: item.label }))
 }
 
 /** An option loader that offers nothing instead of failing (a coach may not read the club's sections). */

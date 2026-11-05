@@ -48,6 +48,7 @@ const pageSchema = z.object({
     occurrenceDate: z.string(),
     startAt: z.string(),
     endAt: z.string(),
+    gatheringAt: z.string().nullable().describe('The gathering time before the start (club spec DD-43), or null.'),
     timeZone: z.string(),
     status: z.enum(OCCURRENCE_STATUSES),
   }),
@@ -60,7 +61,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read the public page of one session',
       description:
-        'Sessionless (DD-17). Only the activity name, the date, the time and the status of the session; no names, no roster. Rate-limited per client IP.',
+        'Sessionless (DD-17). Only the activity name, the date, the time, the gathering time and the status of the session; no names, no roster. Rate-limited per client IP.',
       responses: [{ status: 200, description: 'The session page', schema: pageSchema }],
       errors: [
         {

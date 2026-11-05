@@ -14,6 +14,7 @@ import {
   calendarItemTone,
   calendarStatusLabel,
   calendarTitleClassName,
+  formatClockTime,
   formatDayHeading,
   formatTimeRange,
   sectionMarkerColors,
@@ -28,6 +29,8 @@ export type CalendarListLabels = {
   sections?: string
   /** The word before the coach's name ("Coach"); without it the name stands alone. */
   coach?: string
+  /** The word before the gathering time ("Gathering"); without it the time stands alone. */
+  gathering?: string
 }
 
 export type CalendarListProps = {
@@ -61,9 +64,22 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
       data-item-id={item.id}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <time dateTime={item.startsAt.toISOString()} className={tone.muted ? 'text-muted-foreground' : undefined}>
-          {formatTimeRange(item.startsAt, item.endsAt, locale, timeZone)}
-        </time>
+        <span className="flex flex-wrap items-center gap-x-3">
+          {item.gatheringAt ? (
+            <time
+              dateTime={item.gatheringAt.toISOString()}
+              className={tone.muted ? 'text-muted-foreground font-semibold' : 'font-semibold'}
+              data-testid="calendar-item-gathering"
+            >
+              {labels.gathering
+                ? `${labels.gathering} ${formatClockTime(item.gatheringAt, locale, timeZone)}`
+                : formatClockTime(item.gatheringAt, locale, timeZone)}
+            </time>
+          ) : null}
+          <time dateTime={item.startsAt.toISOString()} className={tone.muted ? 'text-muted-foreground' : undefined}>
+            {formatTimeRange(item.startsAt, item.endsAt, locale, timeZone)}
+          </time>
+        </span>
         {statusLabel !== null ? <StatusBadge variant={tone.badge}>{statusLabel}</StatusBadge> : null}
       </div>
       {item.section ? (

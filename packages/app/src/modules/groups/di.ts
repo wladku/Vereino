@@ -6,6 +6,7 @@ import { groupAudienceProvider, sectionAudienceProvider } from './services/audie
 import { createGroupDirectory } from './services/group-directory'
 import { GROUPS_MEMBERSHIP_CONTRIBUTION, membershipContribution } from './services/membership-contribution'
 import { GROUPS_MEMBERSHIP_IMPORTER, membershipImporter } from './services/membership-importer'
+import { GROUPS_PERSON_FILTER, personFilter } from './services/person-filter'
 import { GROUPS_PUBLIC_CATALOG, createPublicCatalog } from './services/public-catalog'
 import { GROUPS_SECTION_USAGE, sectionUsage } from './services/section-usage'
 
@@ -36,6 +37,11 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  * `hasRegistration` before it deactivates or deletes a section (`club_core/services/section-usage.ts`). Stateless: it
  * reads with the caller's EntityManager inside the command's transaction.
  *
+ * `groups.personFilter` (UX parity spec REQ-U01, DD-U01): the ids of the people with an active membership matching a
+ * section, a group or membership roles, which the `people` list reads with `hasRegistration`
+ * (`people/services/person-filter.ts`) and intersects into its own filter. Stateless: it reads with the caller's
+ * EntityManager.
+ *
  * `groups.publicCatalog` (club spec DD-28, DD-29; #91): the public groups block of a section's public page, which
  * `club_core` reads with `hasRegistration` (`club_core/services/public-blocks.ts`).
  */
@@ -44,6 +50,7 @@ export function register(container: AppContainer) {
     [GROUPS_MEMBERSHIP_CONTRIBUTION]: asValue(membershipContribution),
     [GROUPS_MEMBERSHIP_IMPORTER]: asValue(membershipImporter),
     [GROUPS_SECTION_USAGE]: asValue(sectionUsage),
+    [GROUPS_PERSON_FILTER]: asValue(personFilter),
     [GROUPS_PUBLIC_CATALOG]: asFunction(() => createPublicCatalog(container)).scoped(),
     [audienceProviderToken('section')]: asValue(sectionAudienceProvider),
     [audienceProviderToken('group')]: asValue(groupAudienceProvider),

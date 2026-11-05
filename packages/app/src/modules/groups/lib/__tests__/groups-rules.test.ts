@@ -1,11 +1,13 @@
 import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 import {
+  AGE_CATEGORY_DICTIONARY_KEY,
   COACHING_ROLES,
   GROUP_AGE_MAX,
   GROUP_AGE_MIN,
   GROUP_KINDS,
   MEMBERSHIP_ROLES,
+  PZPN_AGE_CATEGORIES,
   ageRangeInverted,
   disallowedTeamFields,
   parseAgeInput,
@@ -31,7 +33,13 @@ describe('group kinds and membership roles', () => {
 
 describe('disallowedTeamFields', () => {
   it('allows the team fields on a team', () => {
-    expect(disallowedTeamFields('team', { league: 'Liga okręgowa', seasonId: 'season-1' })).toEqual([])
+    expect(
+      disallowedTeamFields('team', {
+        ageCategoryEntryId: 'entry-orlik',
+        league: 'Liga okręgowa',
+        seasonId: 'season-1',
+      }),
+    ).toEqual([])
   })
 
   it('names every team field set on a class group, ignoring unset and blank values', () => {
@@ -39,9 +47,27 @@ describe('disallowedTeamFields', () => {
       'league',
       'seasonId',
     ])
+    expect(disallowedTeamFields('class_group', { ageCategoryEntryId: 'entry-orlik' })).toEqual(['ageCategoryEntryId'])
     expect(disallowedTeamFields('class_group', { league: '  ', seasonId: 'season-1' })).toEqual(['seasonId'])
     expect(disallowedTeamFields('class_group', { league: null, seasonId: undefined })).toEqual([])
     expect(disallowedTeamFields('class_group', {})).toEqual([])
+  })
+})
+
+describe('PZPN age categories', () => {
+  it('seeds the PZPN categories youngest first under a dictionary key the dictionaries module accepts', () => {
+    expect(AGE_CATEGORY_DICTIONARY_KEY).toMatch(/^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)*$/)
+    expect(PZPN_AGE_CATEGORIES.map((category) => category.value)).toEqual([
+      'skrzat',
+      'zak',
+      'orlik',
+      'mlodzik',
+      'trampkarz',
+      'junior_mlodszy',
+      'junior_starszy',
+      'senior',
+    ])
+    expect(PZPN_AGE_CATEGORIES.find((category) => category.value === 'orlik')?.label).toBe('Orlik (U10–U11)')
   })
 })
 

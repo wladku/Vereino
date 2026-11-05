@@ -47,8 +47,8 @@ export function parseAgeInput(value: unknown): number | null | 'invalid' {
   return /^\d{1,2}$/.test(textValue) ? Number(textValue) : 'invalid'
 }
 
-/** The fields only a `team` may carry (`age_category_entry_id` joins them with the `dictionaries` module). */
-export const TEAM_FIELDS = ['league', 'seasonId'] as const
+/** The fields only a `team` may carry: the PZPN age category (a `dictionaries` entry), the league and the season. */
+export const TEAM_FIELDS = ['ageCategoryEntryId', 'league', 'seasonId'] as const
 export type TeamField = (typeof TEAM_FIELDS)[number]
 
 export type TeamFieldValues = { readonly [field in TeamField]?: string | null }
@@ -64,6 +64,26 @@ export function disallowedTeamFields(kind: GroupKind, values: TeamFieldValues): 
     return typeof value === 'string' && value.trim().length > 0
   })
 }
+
+/** The key of the club dictionary (`dictionaries` module) that holds the age categories of `team` groups. */
+export const AGE_CATEGORY_DICTIONARY_KEY = 'groups.age_categories'
+
+export type AgeCategorySeed = { readonly value: string; readonly label: string }
+
+/**
+ * The PZPN (Polish Football Association) age categories the club's age category dictionary starts with (club spec
+ * REQ-019, #92), youngest first. Labels are the PZPN names with their age groups; the club administrator edits them.
+ */
+export const PZPN_AGE_CATEGORIES: readonly AgeCategorySeed[] = [
+  { value: 'skrzat', label: 'Skrzat (U6–U7)' },
+  { value: 'zak', label: 'Żak (U8–U9)' },
+  { value: 'orlik', label: 'Orlik (U10–U11)' },
+  { value: 'mlodzik', label: 'Młodzik (U12–U13)' },
+  { value: 'trampkarz', label: 'Trampkarz (U14–U15)' },
+  { value: 'junior_mlodszy', label: 'Junior młodszy (U16–U17)' },
+  { value: 'junior_starszy', label: 'Junior starszy (U18–U19)' },
+  { value: 'senior', label: 'Senior' },
+]
 
 /** A season's last day may equal its first day, never precede it. */
 export function seasonDatesInverted(startsOn: CalendarDate, endsOn: CalendarDate): boolean {

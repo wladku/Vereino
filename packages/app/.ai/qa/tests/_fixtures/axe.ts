@@ -12,8 +12,9 @@ type ScannedNode = { html: string; target: unknown[] }
 // Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: `CrudForm`
 // renders each field's <label> without `htmlFor` and its controls without an accessible name, and the
 // backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
-// its text; the schedule family (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range
-// trigger differently from its text. Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
+// its text, and its breadcrumb puts an aria-label on the role-less current-page span; the schedule family
+// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text.
+// Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
 const PLATFORM_BASELINE: {
   rule: string
@@ -41,6 +42,13 @@ const PLATFORM_BASELINE: {
       node.html.includes('data-testid="appshell-') ||
       (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')) ||
       node.html.includes('data-slot="date-range-picker-tr'),
+  },
+  {
+    rule: 'aria-prohibited-attr',
+    // The AppShell breadcrumb's current page is a `<span aria-current="page" aria-label=…>` with no role; first scanned
+    // on the dashboard `/backend` (#88).
+    owner: 'AppShell breadcrumb current page',
+    matches: (node) => node.html.includes('data-slot="breadcrumb-page"'),
   },
   // The week grid of the schedule family's `ScheduleView` is react-big-calendar, whose all-day row nests
   // `role="rowgroup"` inside `role="row"` (`.rbc-allday-cell`, `.rbc-row-content`; first scanned on the coordinator

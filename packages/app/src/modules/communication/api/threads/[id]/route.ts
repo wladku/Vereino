@@ -1,6 +1,7 @@
 // `GET /api/communication/threads/{id}` — a thread with its messages as the reader may see them (foundation III
 // DD-M10, DD-M12; R15): the latest revision of each message with "edited" / "deleted"; a member sees the messages for
-// everyone and their household's replies only. 404 for an unknown thread, 403 `scope_denied` for one not theirs.
+// everyone and their household's replies only. 404 for an unknown thread, 403 `scope_denied` for one not theirs
+// (`scope_unlinked` when the account is not linked to a person of this club, #155).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { errorResponse } from '@/modules/foundation'
@@ -34,7 +35,11 @@ export const openApi: OpenApiRouteDoc = {
       summary: 'Read a thread with its messages',
       responses: [{ status: 200, description: 'The thread', schema: threadDetailSchema }],
       errors: [
-        { status: 403, description: '`scope_denied`', schema: errorSchema },
+        {
+          status: 403,
+          description: '`scope_denied`; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
     },
