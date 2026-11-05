@@ -11,6 +11,7 @@ export const errorCodes = [
   },
   { code: 'groups_reference_invalid', status: 422, messageKey: 'groups.errors.groups_reference_invalid' },
   { code: 'group_section_inactive', status: 422, messageKey: 'groups.errors.group_section_inactive' },
+  { code: 'group_age_range_inverted', status: 422, messageKey: 'groups.errors.group_age_range_inverted' },
   { code: 'group_has_memberships', status: 409, messageKey: 'groups.errors.group_has_memberships' },
   { code: 'membership_overlap', status: 409, messageKey: 'groups.errors.membership_overlap' },
   { code: 'season_dates_inverted', status: 422, messageKey: 'groups.errors.season_dates_inverted' },

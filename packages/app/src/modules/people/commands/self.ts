@@ -1,7 +1,7 @@
 // `people.persons.update_self` (club spec API table → `PUT /api/people/me`; DD-34, DD-39, REQ-006, REQ-037; #27): a
-// member changes their own interface language, contact details and the two consents of the guardian's profile —
-// `share_contact_with_coaches_at` and `share_presence_with_guardians_at` — given with the instant (P-08) and
-// withdrawable at any time. The target is the person linked to the session's user, authorized with the `self` grant
+// member changes their own interface language, contact details and the consents of their profile — the guardian's
+// `share_contact_with_coaches_at` and `share_presence_with_guardians_at` and the instructor's `publish_name_consent_at`
+// (DD-29, #91) — given with the instant (P-08) and withdrawable at any time. The target is the person linked to the session's user, authorized with the `self` grant
 // only; the audit log keeps the consent dates before and after. Undoable like `people.persons.update`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -38,6 +38,8 @@ export type SelfProfileSnapshot = {
   phone: string | null
   shareContactWithCoachesAt: string | null
   sharePresenceWithGuardiansAt: string | null
+  /** Absent in snapshots written before #91; an undo then leaves the consent as it is. */
+  publishNameConsentAt?: string | null
 }
 
 export type UpdateSelfResult = {
@@ -66,6 +68,7 @@ export function selfProfileSnapshot(person: Person): SelfProfileSnapshot {
     phone: person.phone ?? null,
     shareContactWithCoachesAt: isoOrNull(person.shareContactWithCoachesAt),
     sharePresenceWithGuardiansAt: isoOrNull(person.sharePresenceWithGuardiansAt),
+    publishNameConsentAt: isoOrNull(person.publishNameConsentAt),
   }
 }
 
@@ -150,6 +153,9 @@ const updateSelfCommand: CommandHandler<Record<string, unknown>, UpdateSelfResul
       )
       if (presence.changed) consentsChanged.push('sharePresenceWithGuardians')
       person.sharePresenceWithGuardiansAt = presence.at
+      const publishName = applySelfConsent(person.publishNameConsentAt ?? null, patch.publishNameConsent, now)
+      if (publishName.changed) consentsChanged.push('publishNameConsent')
+      person.publishNameConsentAt = publishName.at
       person.updatedAt = now
       return { person, actingRole: authorized.actingRole, before, consentsChanged }
     })
@@ -181,6 +187,7 @@ const updateSelfCommand: CommandHandler<Record<string, unknown>, UpdateSelfResul
     person.phone = before.phone
     person.shareContactWithCoachesAt = dateOrNull(before.shareContactWithCoachesAt)
     person.sharePresenceWithGuardiansAt = dateOrNull(before.sharePresenceWithGuardiansAt)
+    if (before.publishNameConsentAt !== undefined) person.publishNameConsentAt = dateOrNull(before.publishNameConsentAt)
     person.updatedAt = new Date()
     await ctx.transactionalEm?.flush()
     await emitPersonUpdated(ctx, person, true)

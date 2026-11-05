@@ -16,8 +16,8 @@ decorateScopedEntityBase({ PrimaryKey, Property })
  * A person of the club (club spec *Data Models* → `people_persons`). Phase A1 (#38) holds the columns accounts and
  * roles need; #26 (E02-S02) adds `phone` and `notes`; #27 (E02-S03) adds the guardian's two consents
  * `share_contact_with_coaches_at` (REQ-037, DD-39) and `share_presence_with_guardians_at` (REQ-006), each set when
- * given and null when never given or withdrawn (P-08); #28 adds the import's `external_id` with its lookup hash. The
- * photo and `publish_name_consent_at` (#29) are deferred by the product owner. `first_name`, `last_name`, `email`, `phone`, `notes` and `pesel` are encrypted
+ * given and null when never given or withdrawn (P-08); #28 adds the import's `external_id` with its lookup hash. #91
+ * (E06-S09) adds the instructor's `publish_name_consent_at` (DD-29). The photo is deferred by the product owner. `first_name`, `last_name`, `email`, `phone`, `notes` and `pesel` are encrypted
  * (`encryption.ts`); `pesel_hash` is the deterministic lookup hash the platform fills.
  */
 @Entity({ tableName: 'people_persons' })
@@ -51,6 +51,7 @@ export class Person extends ScopedEntityBase {
     | 'userId'
     | 'shareContactWithCoachesAt'
     | 'sharePresenceWithGuardiansAt'
+    | 'publishNameConsentAt'
     | 'externalId'
     | 'externalIdHash'
 
@@ -95,6 +96,13 @@ export class Person extends ScopedEntityBase {
   /** A guardian's consent to show their wards' names on other guardians' session views (REQ-006). */
   @Property(consentColumn('share_presence_with_guardians'))
   sharePresenceWithGuardiansAt?: Date | null
+
+  /**
+   * An instructor's consent to show their name ("First L.") on the club's public pages (club spec DD-29, REQ-025; #91);
+   * withdrawal = null.
+   */
+  @Property(consentColumn('publish_name_consent'))
+  publishNameConsentAt?: Date | null
 
   /** An identifier from an import file for a person without a PESEL (REQ-036, #28); encrypted. */
   @Property({ name: 'external_id', type: 'text', nullable: true })

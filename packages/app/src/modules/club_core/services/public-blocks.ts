@@ -28,6 +28,14 @@ export type PublicBlockContext = {
 
 export type PublicSectionBlockContext = PublicBlockContext & { sectionId: string; sectionSlug: string }
 
+/**
+ * The club page's context also names the club's public sections (active, `is_public`, with a slug; #91), so a provider
+ * lists records of those sections only — `club_core` alone decides what a public section is.
+ */
+export type PublicClubBlockContext = PublicBlockContext & {
+  sections: readonly { id: string; name: string; slug: string }[]
+}
+
 export type PublicBlockProvider = {
   /** The publication block that gates the provider: not called while the club does not publish it. */
   readonly block: PublicationBlock
@@ -36,5 +44,5 @@ export type PublicBlockProvider = {
   /** The provider's block on a section page; null leaves it out. Personal data only as DD-29 allows. */
   sectionBlock?(ctx: PublicSectionBlockContext): Promise<unknown>
   /** The provider's block on the club page; null leaves it out. */
-  clubBlock?(ctx: PublicBlockContext): Promise<unknown>
+  clubBlock?(ctx: PublicClubBlockContext): Promise<unknown>
 }

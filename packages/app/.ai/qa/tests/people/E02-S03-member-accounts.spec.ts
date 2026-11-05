@@ -230,6 +230,7 @@ test('E02-S03 the two consents in the profile: given with the date, withdrawable
     expect(initial.body?.person.consents).toEqual({
       shareContactWithCoaches: { granted: false, at: null },
       sharePresenceWithGuardians: { granted: false, at: null },
+      publishNameConsent: { granted: false, at: null },
     })
 
     // Given: stored with its date.
