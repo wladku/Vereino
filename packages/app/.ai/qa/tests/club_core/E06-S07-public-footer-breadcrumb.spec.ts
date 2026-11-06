@@ -133,6 +133,10 @@ test('E06-S07 public footer with the published phone, section breadcrumb and til
     await expect(breadcrumb).toContainText('Sections')
     await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText('Basen')
     await expect(page.getByTestId('public-footer-phone')).toContainText(PHONE)
+    await expect(page.getByTestId('public-footer').getByRole('link', { name: PHONE })).toHaveAttribute(
+      'href',
+      'tel:+48221000000',
+    )
     await expectNoPageOverflow(page)
     const sectionViolations = await scanBlockingViolations(page, testInfo, {})
     expect({ club: clubViolations, section: sectionViolations }).toEqual({ club: [], section: [] })
@@ -147,6 +151,10 @@ test('E06-S07 public footer with the published phone, section breadcrumb and til
     await page.goto(`/p/${slug}/s/${occurrenceId}`)
     await expect(page.getByTestId('public-session')).toBeVisible()
     await expect(page.getByTestId('public-footer-phone')).toContainText(PHONE)
+    await expect(page.getByTestId('public-footer').getByRole('link', { name: PHONE })).toHaveAttribute(
+      'href',
+      'tel:+48221000000',
+    )
 
     // Polish: the plural form of the tile and the footer label.
     await setGuestLocale(page, 'pl')

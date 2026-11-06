@@ -63,7 +63,7 @@ function Footer({ club }: { club: PublicSessionPage['club'] }) {
             {t('activities.publicSession.footer.phone')}{' '}
             <a
               className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-              href={`tel:${club.contact.phone.replace(/[^d+]/g, '')}`}
+              href={`tel:${club.contact.phone.replace(/[^\d+]/g, '')}`}
             >
               {club.contact.phone}
             </a>

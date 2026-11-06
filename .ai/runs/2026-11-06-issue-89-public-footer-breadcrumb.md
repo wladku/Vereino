@@ -61,3 +61,12 @@
 ## Open problems / next steps
 
 - #195: choose the source of the rules and privacy-policy links (enable `content`, or club-owned links with a migration).
+
+## Review (independent subagent)
+
+- Verdict: request changes. One major finding: the session-page footer link was `tel:${phone.replace(/[^d+]/g, '')}`. Shell escaping in the edit script had dropped the backslash, so the link became `tel:+`. Fixed by writing `/[^\d+]/g` with the Edit tool. Importing `phoneHref` from `club_core` was rejected by the `boundaries/dependencies` lint rule (no value imports across modules). The test now checks the `tel:` href in the footer on the section page and on the session page.
+- Nit fixed: the breadcrumb separators were separate `aria-hidden` list items, so screen readers announced 5 items. They are now `aria-hidden` spans inside items 2 and 3. A CSS `before:content-['›']` version failed `ds:check` (`arbitrary-tailwind`).
+- Not changed:
+  - the duplicated footer in `activities`, because module boundaries forbid importing `club_core` components;
+  - the repeated `groupCounts[slug]` read (nit).
+- Re-verification on the final code: `yarn verify` **14/14 passed**, and `yarn test:integration:vereino --filter E06-S07` **1 passed**.

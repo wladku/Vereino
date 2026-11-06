@@ -41,18 +41,18 @@ function Breadcrumb({ page }: { page: PublicSectionPage }) {
             {club.name}
           </Link>
         </li>
-        <li aria-hidden="true" className="text-muted-foreground">
-          ›
-        </li>
-        <li>
+        <li className="flex items-center gap-x-2">
+          <span aria-hidden="true" className="text-muted-foreground">
+            ›
+          </span>
           <Link href={`${clubHref(club.slug)}#sections`} className={link} data-testid="public-breadcrumb-sections">
             {t('club_core.public.sections.title')}
           </Link>
         </li>
-        <li aria-hidden="true" className="text-muted-foreground">
-          ›
-        </li>
-        <li>
+        <li className="flex items-center gap-x-2">
+          <span aria-hidden="true" className="text-muted-foreground">
+            ›
+          </span>
           <span aria-current="page" className="text-foreground font-medium">
             {section.name}
           </span>
