@@ -218,6 +218,7 @@
   "activities.declarationLink.cancelled": "The session is cancelled — declarations closed",
   "activities.declarationLink.closed": "Declarations closed",
   "activities.declarationLink.empty": "Nobody you can declare for takes part in this session.",
+  "activities.declarationLink.errors.changed": "The declaration changed meanwhile (another guardian or the participant). The page now shows the current answer — choose again if needed.",
   "activities.declarationLink.errors.closed": "Declarations are closed for this session.",
   "activities.declarationLink.errors.forbidden": "This link cannot declare for this person.",
   "activities.declarationLink.errors.load": "The page could not be loaded.",

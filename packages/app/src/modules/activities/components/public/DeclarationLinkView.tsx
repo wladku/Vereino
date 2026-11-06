@@ -5,11 +5,13 @@
 // the session's kind — "Report absence" and its undo for an `absence_only` session (a training), "Attending / Not
 // attending" for a `confirm` one — and "Sign in to see the full calendar". A started, cancelled or done session shows
 // "Declarations closed". States: loading, 410 "Link expired — request a new one", 404 "Invalid link", error with
-// retry, saving per person, "Saved", 409 (closed meanwhile).
+// retry, saving per person, "Saved", 409 (closed meanwhile, or changed meanwhile by another guardian or the ward — the
+// page sends each person's lock token and refreshes after either 409).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
+import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
@@ -23,7 +25,7 @@ import {
   type TokenPageState,
 } from '@vereino/ui'
 
-type LinkPerson = { id: string; firstName: string; declared: DeclaredValue }
+type LinkPerson = { id: string; firstName: string; declared: DeclaredValue; updatedAt: string | null }
 
 type LinkPage = {
   club: { name: string }
@@ -44,6 +46,8 @@ type LinkLoad = { status: 'ok'; page: LinkPage } | { status: 'expired' } | { sta
 
 const SIGN_IN_HREF = '/login'
 const REQUEST_LINK_HREF = '/club/link'
+/** The platform's optimistic-lock 409 code: the declaration changed since the page was read. */
+const LOCK_CONFLICT_CODE = 'optimistic_lock_conflict'
 
 function RouterLink(props: MemberLinkProps) {
   return (
@@ -71,9 +75,12 @@ function useDeclarationLink(token: string) {
   })
 }
 
-type PersonState = { declared: DeclaredValue; busy: boolean; error: string | null; saved: boolean }
-
-const IDLE: PersonState = { declared: 'unknown', busy: false, error: null, saved: false }
+/** What the page changed for a person since it was read: the saved declaration and its lock token override the page's. */
+type PersonState = {
+  saved?: { declared: DeclaredValue; updatedAt: string }
+  busy: boolean
+  error: string | null
+}
 
 export function DeclarationLinkView({ token }: { token: string }) {
   const t = useT()
@@ -95,26 +102,44 @@ export function DeclarationLinkView({ token }: { token: string }) {
 
   const declare = async (person: LinkPerson, declared: DeclaredValue) => {
     const personId = person.id
-    setPeople((current) => ({
-      ...current,
-      [personId]: { declared: current[personId]?.declared ?? person.declared, busy: true, error: null, saved: false },
-    }))
-    let next: Partial<PersonState> = { busy: false }
+    const lockToken = people[personId]?.saved?.updatedAt ?? person.updatedAt
+    setPeople((current) => ({ ...current, [personId]: { saved: current[personId]?.saved, busy: true, error: null } }))
+    let next: PersonState = { busy: false, error: null }
+    let reload = false
     try {
-      const call = await apiCall<{ declared: DeclaredValue; code?: string }>(linkUrl(token), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personId, declared }),
-      })
-      if (call.ok && call.result) next = { busy: false, declared: call.result.declared, saved: true }
-      else if (call.status === 410) setExpired(true)
-      else if (call.status === 409) next = { busy: false, error: t('activities.declarationLink.errors.closed') }
-      else if (call.status === 403) next = { busy: false, error: t('activities.declarationLink.errors.forbidden') }
-      else next = { busy: false, error: t('activities.declarationLink.errors.save') }
+      const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+        apiCall<{ declared: DeclaredValue; updatedAt: string; code?: string }>(linkUrl(token), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ personId, declared }),
+        }),
+      )
+      if (call.ok && call.result) {
+        next = { busy: false, error: null, saved: { declared: call.result.declared, updatedAt: call.result.updatedAt } }
+      } else if (call.status === 410) {
+        setExpired(true)
+        next = { busy: false, error: null, saved: people[personId]?.saved }
+      } else if (call.status === 409) {
+        // Either way the page is stale: read it again, so the controls show the current declaration or the closed state.
+        reload = true
+        const changed = call.result?.code === LOCK_CONFLICT_CODE
+        next = {
+          busy: false,
+          error: t(changed ? 'activities.declarationLink.errors.changed' : 'activities.declarationLink.errors.closed'),
+        }
+      } else {
+        const error =
+          call.status === 403
+            ? t('activities.declarationLink.errors.forbidden')
+            : t('activities.declarationLink.errors.save')
+        next = { busy: false, error, saved: people[personId]?.saved }
+      }
     } catch {
-      next = { busy: false, error: t('activities.declarationLink.errors.save') }
+      next = { busy: false, error: t('activities.declarationLink.errors.save'), saved: people[personId]?.saved }
     }
-    setPeople((current) => ({ ...current, [personId]: { ...(current[personId] ?? IDLE), ...next } }))
+    // After a 409 the refreshed page carries the current declaration and its lock token; only the message stays.
+    if (reload) await query.refetch()
+    setPeople((current) => ({ ...current, [personId]: next }))
   }
 
   const state: TokenPageState = expired ? 'expired' : load ? load.status : query.isError ? 'error' : 'loading'
@@ -195,14 +220,14 @@ export function DeclarationLinkView({ token }: { token: string }) {
                         id={`declaration-${person.id}`}
                         name={person.firstName}
                         kind={page.session.kind}
-                        declared={current?.declared ?? person.declared}
+                        declared={current?.saved?.declared ?? person.declared}
                         labels={labels}
                         busy={current?.busy === true}
                         disabled={page.session.window !== 'open'}
                         error={current?.error ?? null}
                         onDeclare={(value) => void declare(person, value)}
                       />
-                      {current?.saved ? (
+                      {current?.saved && !current.busy && !current.error ? (
                         <p className="mt-2 text-sm" role="status" data-testid="declaration-link-saved">
                           {t('activities.declarationLink.saved')}
                         </p>

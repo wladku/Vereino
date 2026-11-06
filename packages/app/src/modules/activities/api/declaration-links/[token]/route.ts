@@ -100,6 +100,7 @@ const pageSchema = z.object({
       firstName: z.string(),
       declared: z.enum(DECLARED_VALUES),
       declarationStatus: z.enum(DECLARATION_STATUSES).nullable(),
+      updatedAt: z.string().nullable(),
     }),
   ),
   expiresAt: z.string(),
@@ -129,7 +130,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Declare for one person from a personal link',
       description:
-        'Sessionless (REQ-017). Declares `yes`, `no` or `unknown` for one person of the link for the link session, recorded with `source = link` and the link holder as the declaring person. The holder current grants decide: another family person answers 403 `scope_denied`. The declaration rules of `POST /api/activities/attendance/declare` apply: 409 `declaration_closed` after the start, 409 `occurrence_not_planned`, 422 `declaration_kind_absence_only`, 422 `declaration_not_participant`.',
+        'Sessionless (REQ-017). Declares `yes`, `no` or `unknown` for one person of the link for the link session, recorded with `source = link` and the link holder as the declaring person. The holder current grants decide: another family person answers 403 `scope_denied`. Send the declaration lock token of the person (its `updatedAt` from `GET`) in the platform optimistic-lock header: a change made meanwhile answers 409 `optimistic_lock_conflict`. The declaration rules of `POST /api/activities/attendance/declare` apply: 409 `declaration_closed` after the start, 409 `occurrence_not_planned`, 422 `declaration_kind_absence_only`, 422 `declaration_not_participant`.',
       requestBody: { contentType: 'application/json', schema: declarationLinkDeclareSchema },
       responses: [
         {
@@ -142,7 +143,11 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: 'Validation failed', schema: errorSchema },
         { status: 403, description: 'scope_denied, declaration_guardian_only', schema: errorSchema },
-        { status: 409, description: 'declaration_closed, occurrence_not_planned', schema: errorSchema },
+        {
+          status: 409,
+          description: 'declaration_closed, occurrence_not_planned, optimistic_lock_conflict',
+          schema: errorSchema,
+        },
         { status: 422, description: 'declaration_kind_absence_only, declaration_not_participant', schema: errorSchema },
         ...linkErrors,
       ],

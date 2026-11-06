@@ -234,6 +234,9 @@ export type DeclarationLinkPerson = {
   firstName: string
   declared: Declared
   declarationStatus: DeclarationStatus | null
+  /** The declaration's lock token (null before a first answer): the page sends it back, so a change made meanwhile
+   * (another guardian, the ward) answers 409 instead of being overwritten. */
+  updatedAt: string | null
 }
 
 export type DeclarationLinkPage = {
@@ -313,6 +316,7 @@ export async function readDeclarationLink(
       firstName: persons.get(id)?.firstName ?? '',
       declared: declarations.get(id)?.declared ?? 'unknown',
       declarationStatus: declarations.get(id)?.declarationStatus ?? null,
+      updatedAt: declarations.get(id)?.updatedAt.toISOString() ?? null,
     })),
     expiresAt: view.link.expiresAt.toISOString(),
   }

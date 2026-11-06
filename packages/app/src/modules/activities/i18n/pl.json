@@ -218,6 +218,7 @@
   "activities.declarationLink.cancelled": "Zajęcia odwołane — zgłoszenia zamknięte",
   "activities.declarationLink.closed": "Zgłoszenia zamknięte",
   "activities.declarationLink.empty": "W tych zajęciach nie uczestniczy nikt, za kogo możesz zgłosić obecność.",
+  "activities.declarationLink.errors.changed": "Zgłoszenie zmieniło się w międzyczasie (inny opiekun lub uczestnik). Strona pokazuje teraz aktualną odpowiedź — w razie potrzeby wybierz ponownie.",
   "activities.declarationLink.errors.closed": "Zgłoszenia na te zajęcia są zamknięte.",
   "activities.declarationLink.errors.forbidden": "Tym linkiem nie można zgłosić tej osoby.",
   "activities.declarationLink.errors.load": "Nie udało się wczytać strony.",

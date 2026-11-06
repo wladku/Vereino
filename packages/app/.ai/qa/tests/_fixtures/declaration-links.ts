@@ -6,13 +6,18 @@ import type { CapturedMessage } from './messaging'
 
 export type PublicResult = { status: number; body: Record<string, unknown> | null; text: string }
 
-/** A sessionless call: a fresh request context without cookies or a token. */
-export async function publicCall(method: 'GET' | 'POST', path: string, data?: unknown): Promise<PublicResult> {
+/** A sessionless call: a fresh request context without cookies or a token; `headers` e.g. the optimistic-lock token. */
+export async function publicCall(
+  method: 'GET' | 'POST',
+  path: string,
+  data?: unknown,
+  headers?: Record<string, string>,
+): Promise<PublicResult> {
   const guest = await playwrightRequest.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:3000' })
   let response: APIResponse
   let text: string
   try {
-    response = await guest.fetch(path, { method, ...(data === undefined ? {} : { data }) })
+    response = await guest.fetch(path, { method, headers, ...(data === undefined ? {} : { data }) })
     text = await response.text()
   } finally {
     await guest.dispose()
@@ -30,6 +35,11 @@ export async function publicCall(method: 'GET' | 'POST', path: string, data?: un
 export function requestLink(email: string, clubSlug: string, occurrenceId: string): Promise<PublicResult> {
   return publicCall('POST', '/api/activities/declaration-links', { email, clubSlug, occurrencePublicRef: occurrenceId })
 }
+
+/** The platform's optimistic-lock header: the declaration's `updatedAt` the client read. */
+export const lockHeader = (updatedAt: string): Record<string, string> => ({
+  'x-om-ext-optimistic-lock-expected-updated-at': updatedAt,
+})
 
 export const linkApi = (token: string): string => `/api/activities/declaration-links/${encodeURIComponent(token)}`
 

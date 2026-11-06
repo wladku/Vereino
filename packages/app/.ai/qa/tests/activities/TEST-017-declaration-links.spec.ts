@@ -8,6 +8,7 @@ import {
   expireLinks,
   linkApi,
   linkFacts,
+  lockHeader,
   publicCall,
   requestLink,
   startSession,
@@ -170,7 +171,28 @@ test('TEST-017 personal declaration links: neutral request, declaration for own 
     })
     const changed = await publicCall('POST', linkApi(matchToken), { personId: zosia, declared: 'no' })
     expect(changed.status, changed.text).toBe(200)
-    expect((await publicCall('POST', linkApi(matchToken), { personId: zosia, declared: 'yes' })).status).toBe(200)
+    // The page reads the declaration's lock token and sends it back: a change made meanwhile (another guardian, the
+    // ward) answers 409 `optimistic_lock_conflict` instead of being overwritten; the current token saves.
+    const reread = await publicCall('GET', linkApi(matchToken))
+    const zosiaRow = (reread.body?.persons as Array<{ id: string; declared: string; updatedAt: string | null }>).find(
+      (person) => person.id === zosia,
+    )
+    expect(zosiaRow).toMatchObject({ declared: 'no', updatedAt: changed.body?.updatedAt })
+    const stale = await publicCall(
+      'POST',
+      linkApi(matchToken),
+      { personId: zosia, declared: 'yes' },
+      lockHeader(String(declared.body?.updatedAt)),
+    )
+    expect(stale.status, stale.text).toBe(409)
+    expect(stale.body?.code).toBe('optimistic_lock_conflict')
+    const current = await publicCall(
+      'POST',
+      linkApi(matchToken),
+      { personId: zosia, declared: 'yes' },
+      lockHeader(String(zosiaRow?.updatedAt)),
+    )
+    expect(current.status, current.text).toBe(200)
 
     // Another family's child and the child of an ended guardianship: 403, nothing written.
     for (const personId of [otherChild, formerWard]) {
