@@ -8,6 +8,9 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 
 export type PublicLogo = { url: string | null; source: 'section' | 'club' | 'initial'; initial: string }
 
+/** The club phone of the page footer; null while the club does not publish the `contact` block (E06-S07, #89). */
+export type PublicClubContact = { phone: string } | null
+
 /** A session or event as a guest sees it: a club-zone date and `HH:mm` times. */
 export type PublicSession = {
   date: string
@@ -25,10 +28,15 @@ export type PublicClubPage = {
     slug: string
     description: string | null
     logo: PublicLogo
-    contact: { phone: string } | null
+    contact: PublicClubContact
   }
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
-  blocks: { schedule?: { events: PublicEvent[] }; [key: string]: unknown }
+  blocks: {
+    schedule?: { events: PublicEvent[] }
+    /** The number of public groups per public section slug (`groups.publicCatalog`, #89). */
+    groups?: { counts: Record<string, number> }
+    [key: string]: unknown
+  }
 }
 
 /** A public group card (`groups.publicCatalog`); `conditions` and `instructors` only with their blocks. */
@@ -62,7 +70,7 @@ export type PublicMaterial = {
 }
 
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: {
     description?: { text: string }

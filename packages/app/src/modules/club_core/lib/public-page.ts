@@ -106,3 +106,17 @@ export function providerMayContribute(
     isBlockPublished(publication, provider.block) && !(CLUB_CORE_BLOCK_KEYS as readonly string[]).includes(provider.key)
   )
 }
+
+/** The CLDR plural forms the public page catalogs carry for counted text (en: one, other; pl: one, few, many). */
+export type PluralForm = 'one' | 'few' | 'many' | 'other'
+
+/** The catalog form of a count in a locale, e.g. "2 grupy" (`few`) vs "5 grup" (`many`); `zero`/`two` fall to `other`. */
+export function pluralForm(locale: string, count: number): PluralForm {
+  const form = new Intl.PluralRules(locale).select(count)
+  return form === 'one' || form === 'few' || form === 'many' ? form : 'other'
+}
+
+/** The `tel:` link of a published phone: the digits and `+` only, so "+48 600 100 200" dials. */
+export function phoneHref(phone: string): string {
+  return `tel:${phone.replace(/[^\d+]/g, '')}`
+}
