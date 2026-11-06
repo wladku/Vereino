@@ -118,7 +118,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     await page.getByTestId('club-session-cancel').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(
-      /Participants, guardians and the coach will be notified|Uczestnicy, opiekunowie i trener dostaną powiadomienie/,
+      /Participants, guardians and the coaches will be notified|Uczestnicy, opiekunowie i trenerzy dostaną powiadomienie/,
     )
     await dialog.getByTestId('club-session-cancel-reason').fill('ab')
     await dialog.getByTestId('club-session-cancel-confirm').click()
@@ -138,10 +138,11 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     expect(cancelled.status()).toBe(200)
     const body = (await cancelled.json()) as { status?: string; notified?: number }
     expect(body.status).toBe('cancelled')
-    // Żaki's three participants and the two families' guardians; Marek, who cancelled, is not counted.
-    expect(body.notified).toBe(5)
+    // Żaki's three participants, the two families' guardians and — a coach cancelled (#139) — Krystyna, the academy's
+    // coordinator; Marek, who cancelled, is not counted.
+    expect(body.notified).toBe(6)
     await expect(
-      page.getByText(/Session canceled — people notified: 5|Zajęcia odwołane — powiadomione osoby: 5/).first(),
+      page.getByText(/Session canceled — people notified: 6|Zajęcia odwołane — powiadomione osoby: 6/).first(),
     ).toBeVisible()
     await expect(page.getByTestId('club-session-cancelled')).toContainText('Pitch closed')
     await expect(page.getByTestId('club-session-cancel')).toHaveCount(0)

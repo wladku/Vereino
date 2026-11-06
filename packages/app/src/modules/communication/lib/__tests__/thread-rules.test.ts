@@ -6,6 +6,7 @@ import {
   COMPOSER_KINDS,
   MESSAGE_AUDIENCES,
   MESSAGE_KINDS,
+  ORIGINAL_MESSAGE_KINDS,
   STAFF_PARTICIPANT_REASONS,
   THREAD_READ_KINDS,
   THREAD_SCOPE_TYPES,
@@ -13,11 +14,14 @@ import {
   allowedAudienceKinds,
   audienceKindOf,
   audienceTarget,
+  cancelledByOf,
   contactChannels,
   emailOnlyRecipients,
   excerpt,
   grantIds,
   householdOf,
+  isOriginalMessage,
+  isSystemMessage,
   isThreadStaff,
   isUnread,
   isVisibleTo,
@@ -36,6 +40,7 @@ import {
   shareLine,
   staffParticipants,
   threadScopeTypeOf,
+  withExtraRecipients,
   type MessageRow,
 } from '../thread-rules'
 
@@ -69,7 +74,8 @@ function contact(personId: string, overrides: Partial<AudienceContact> = {}): Au
 describe('vocabulary', () => {
   it('declares the scopes, message kinds, audiences and staff reasons of the spec', () => {
     expect(THREAD_SCOPE_TYPES).toEqual(['club', 'section', 'group', 'activity', 'occurrence', 'direct'])
-    expect(MESSAGE_KINDS).toEqual(['message', 'revision', 'tombstone'])
+    expect(MESSAGE_KINDS).toEqual(['message', 'revision', 'tombstone', 'cancellation'])
+    expect(ORIGINAL_MESSAGE_KINDS).toEqual(['message', 'cancellation'])
     expect(MESSAGE_AUDIENCES).toEqual(['all', 'staff'])
     expect(STAFF_PARTICIPANT_REASONS).toEqual(['author', 'coach', 'staff'])
     expect(COMPOSER_KINDS).toEqual(['club', 'section', 'group', 'activity', 'occurrence'])
@@ -170,6 +176,21 @@ describe('recipients', () => {
       recipients[4],
     ])
     expect(emailOnlyRecipients([recipient('d', { userId: 'u-actor' })], null)).toHaveLength(1)
+  })
+
+  it('adds the coordinators a coach cancellation tells, never a person twice (#139)', () => {
+    const base = [recipient('a'), recipient('b')]
+    const extra = [recipient('b', { reasons: ['coach'] }), recipient('c', { reasons: ['coach'] })]
+    expect(withExtraRecipients(base, extra)).toEqual([base[0], base[1], extra[1]])
+    expect(withExtraRecipients(base, [])).toEqual(base)
+  })
+
+  it('names the canceller of a cancellation notice only with a known role (#139)', () => {
+    const piotr = { firstName: 'Piotr', lastName: 'Nowak' }
+    expect(cancelledByOf(piotr, 'coach')).toEqual({ name: 'Piotr Nowak', role: 'coach' })
+    expect(cancelledByOf({ firstName: 'Ola', lastName: '' }, 'club_admin')).toEqual({ name: 'Ola', role: 'club_admin' })
+    expect(cancelledByOf(piotr, 'system')).toBeNull()
+    expect(cancelledByOf(piotr, null)).toBeNull()
   })
 
   it('derives the channels of a contact', () => {
@@ -322,6 +343,25 @@ describe('append-only history (DD-M10)', () => {
     ])
   })
 
+  it('shows a cancellation notice as a system message that names the canceller (#139)', () => {
+    const views = latestMessages([
+      row({
+        id: 'c1',
+        kind: 'cancellation',
+        authorPersonId: 'piotr',
+        createdAt: at('2026-11-02T10:00:00Z'),
+        body: 'Pitch closed',
+      }),
+    ])
+    expect(views).toEqual([
+      expect.objectContaining({ id: 'c1', authorPersonId: 'piotr', actingRole: 'coach', system: true }),
+    ])
+    expect(isOriginalMessage({ kind: 'cancellation' })).toBe(true)
+    expect(isOriginalMessage({ kind: 'revision' })).toBe(false)
+    expect(isSystemMessage({ kind: 'message', authorPersonId: null })).toBe(true)
+    expect(isSystemMessage({ kind: 'message', authorPersonId: 'a' })).toBe(false)
+  })
+
   it('orders rows of the same instant by id', () => {
     const same = at('2026-11-02T10:00:00Z')
     const views = latestMessages([
@@ -384,6 +424,12 @@ describe('the thread list (B-18)', () => {
     expect(lastVisibleMessage(stamps, { ...member, staff: true })?.id).toBe('m2')
     expect(lastVisibleMessage(stamps.slice(3), member)).toBeNull()
     expect(lastVisibleMessage([], member)).toBeNull()
+  })
+
+  it('counts a cancellation notice as an original message (#139)', () => {
+    const member = { staff: false, household: new Set(['me']) }
+    const notice = stamp('c1', 'cancellation', 'coach', 'all', '2026-11-02T14:00:00Z')
+    expect(lastVisibleMessage([...stamps, notice], member)?.id).toBe('c1')
   })
 
   it('takes the later id of two messages at the same instant', () => {

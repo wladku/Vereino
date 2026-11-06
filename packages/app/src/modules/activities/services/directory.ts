@@ -10,6 +10,7 @@ import type {
   ClubCoreDirectory,
   PlaceDirectoryEntry,
   PlaceFamily,
+  PlaceOption,
   SectionDirectoryEntry,
 } from '../../club_core/services/directory'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
@@ -107,6 +108,26 @@ export function findSections(
   return clubCoreDirectory(container).findSections(scope, ids, em)
 }
 
+/** The live active places of the club with their parent's name and whether they are a leaf (the event form, #140). */
+export function placeOptions(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  em?: EntityManager,
+): Promise<PlaceOption[]> {
+  return clubCoreDirectory(container).placeOptions(scope, em)
+}
+
+/** The live active groups among `groupIds`, by name (the coach's own groups of the event form, #140). */
+export function listGroupsAmong(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  groupIds: readonly string[],
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  if (groupIds.length === 0) return Promise.resolve([])
+  return groupDirectory(container).listGroups(scope, { groupIds }, em)
+}
+
 export function placeFamily(
   container: AwilixContainer,
   scope: ActivitiesScope,
@@ -153,6 +174,17 @@ export function activeGuardians(
   em?: EntityManager,
 ): Promise<Map<string, string[]>> {
   return personDirectory(container).activeGuardians(scope, wardIds, today, em)
+}
+
+/** The live coordinators of a section on `date` (the coordinators told of a coach's cancellation, #139). Ids only. */
+export function sectionCoordinatorIdsOn(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionId: string,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<string[]> {
+  return personDirectory(container).sectionCoordinatorIdsOn(scope, sectionId, date, em)
 }
 
 /** The participant memberships of persons overlapping a window of club-zone dates (the member calendar, #32). */

@@ -3,7 +3,8 @@
 // `activities.occurrence_cancelled` — the participants with an account, the guardians (with an account) of every
 // participant not known to be an adult, and the coaches (the session's coach and the group's coaches and assistants on
 // the session date) — never the user who cancelled. Persistent and idempotent: the notification's group key is the
-// session id, so a retried delivery refreshes the same notification instead of adding one.
+// session id, so a retried delivery refreshes the same notification instead of adding one. A coach's cancellation also
+// tells the section's coordinators, and the notice names who cancelled and in which role (#139).
 import { z } from 'zod'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { notifyOccurrenceCancelled } from '../services/cancellation-notice'
@@ -19,6 +20,8 @@ const payloadSchema = z.object({
   tenantId: z.uuid(),
   organizationId: z.uuid(),
   actorUserId: z.uuid().nullable().optional(),
+  actorPersonId: z.uuid().nullable().optional(),
+  actingRole: z.string().min(1).max(40).nullable().optional(),
 })
 
 type SubscriberContext = { tenantId?: string | null; organizationId?: string | null }
@@ -34,5 +37,6 @@ export default async function handle(payload: unknown, ctx: SubscriberContext): 
   await notifyOccurrenceCancelled(await createRequestContainer(), scope, {
     occurrenceId: parsed.data.id,
     actorUserId: parsed.data.actorUserId ?? null,
+    actor: { personId: parsed.data.actorPersonId ?? null, actingRole: parsed.data.actingRole ?? null },
   })
 }
