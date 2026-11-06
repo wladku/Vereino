@@ -9,7 +9,7 @@
 // #100): the week is the default, the month is a list of the days that have sessions — no grid, so it reads at 375 px.
 // The toolbar moves by whole weeks or months, and an empty week or month offers the next one. A link may open a range
 // (`?from=&to=`); a range the API refuses as longer than 62 days is read again trimmed, with a notice. The declaration
-// result is announced through an `aria-live` region.
+// result is announced through an `aria-live` region. Acting as a coach, the heading carries "New event" (#140).
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -44,6 +44,7 @@ import {
   SESSION_QUERY_KEY,
   declareAttendance,
   errorText,
+  newEventHref,
   parseActionId,
   toCalendarItem,
   useMemberCalendar,
@@ -217,7 +218,16 @@ function Calendar({ profile }: { profile: ClubProfile }) {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t('activities.club.calendar.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t('activities.club.calendar.title')}</h1>
+        {as === 'coach' ? (
+          <Button asChild className="min-h-11">
+            <Link href={newEventHref()} data-testid="club-calendar-new-event">
+              {t('activities.club.event.new')}
+            </Link>
+          </Button>
+        ) : null}
+      </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" data-testid="club-calendar-toolbar">
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium" id="club-calendar-view-label">
