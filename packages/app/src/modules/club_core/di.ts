@@ -11,7 +11,8 @@ export const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings' as const
 
 /**
  * DI token of the places service (club spec glossary *Place*): `assertBookableLeaf(scope, placeId, em?)`, called by
- * the session and booking commands of phases 2 and 5.
+ * the session and booking commands of phases 2 and 5, and `openingHours(scope, placeIds, em?)`, the inherited opening
+ * hours `facilities` checks zone rules and bookings against (facilities spec DD-41).
  */
 export const CLUB_CORE_PLACES_SERVICE = 'clubCorePlaces' as const
 
