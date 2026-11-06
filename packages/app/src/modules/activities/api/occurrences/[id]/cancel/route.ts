@@ -2,7 +2,8 @@
 // *Session cancellation*, REQ-005, REQ-009, TEST-012): a planned session becomes `cancelled` with a reason, by a coach of
 // its group, the coordinator of its section or the club administrator; the people it concerns get an in-app notice
 // after commit. Send the lock token in the platform optimistic-lock header. The answer names how many people the
-// cancellation tells (`notified`, without the canceller; E06-S15 #97), for the member page's toast.
+// cancellation tells (`notified`, without the canceller; E06-S15 #97), for the member page's toast. A coach's
+// cancellation also tells the section's coordinators (#139).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -42,9 +43,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     // The session is already cancelled: a failed count answers 0 instead of turning the success into an error.
     const scope = trustedScopeOf(ctx)
     const notified = scope
-      ? await countCancellationNotified(ctx.container, scope, id, selfPersonId(await scopeContract.resolve(ctx))).catch(
-          () => 0,
-        )
+      ? await countCancellationNotified(ctx.container, scope, id, {
+          personId: selfPersonId(await scopeContract.resolve(ctx)),
+          actingRole: result.actingRole,
+        }).catch(() => 0)
       : 0
     return Response.json({
       ok: true,
@@ -66,7 +68,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Cancel a planned session with a reason',
       description:
-        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches; `notified` counts the people the cancellation tells (in the app or by e-mail), without the canceller. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        'Marks the session cancelled and notifies, in the app, the participants with an account, the guardians of minor participants and the coaches — and, when a coach cancels, the coordinators of the section of the session (never the canceller); `notified` counts the people the cancellation tells (in the app or by e-mail), without the canceller. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [{ status: 200, description: 'The cancelled session', schema: responseSchema }],
       errors: [

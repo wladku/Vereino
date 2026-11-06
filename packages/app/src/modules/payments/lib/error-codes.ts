@@ -1,5 +1,6 @@
 // Error codes owned by `payments` (engineering standards S6.7; payments spec *API, Command, and Error Contracts* →
-// `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108). Thrown through
+// `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108; the charge payments,
+// cancellation and reversal of issue #109). Thrown through
 // `api/errors.ts`. An inverted validity answers the foundation's `validity_inverted`; a stale lock token the
 // platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
@@ -13,6 +14,13 @@ export const errorCodes = [
   { code: 'period_out_of_range', status: 422, messageKey: 'payments.errors.period_out_of_range' },
   { code: 'generation_in_progress', status: 409, messageKey: 'payments.errors.generation_in_progress' },
   { code: 'generation_already_undone', status: 409, messageKey: 'payments.errors.generation_already_undone' },
+  { code: 'charge_not_payable', status: 409, messageKey: 'payments.errors.charge_not_payable' },
+  { code: 'payment_exceeds_remaining', status: 422, messageKey: 'payments.errors.payment_exceeds_remaining' },
+  { code: 'payment_date_in_future', status: 422, messageKey: 'payments.errors.payment_date_in_future' },
+  { code: 'charge_has_payments', status: 409, messageKey: 'payments.errors.charge_has_payments' },
+  { code: 'charge_not_cancellable', status: 409, messageKey: 'payments.errors.charge_not_cancellable' },
+  { code: 'payment_not_reversible', status: 409, messageKey: 'payments.errors.payment_not_reversible' },
+  { code: 'payment_already_reversed', status: 409, messageKey: 'payments.errors.payment_already_reversed' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

@@ -29,6 +29,17 @@ export function sessionHref(id: string, as: SessionPerspective, personId?: strin
   return `/club/occurrences/${encodeURIComponent(id)}?${params.toString()}`
 }
 
+/**
+ * The coach's "New event" form (#140); a caller may propose the date, the place or the group (the facility calendar's
+ * "Book for group" of phase 5 opens it with a slot).
+ */
+export function newEventHref(proposed: { date?: string; placeId?: string; groupId?: string } = {}): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(proposed)) if (value) params.set(key, value)
+  const query = params.toString()
+  return query ? `/club/events/new?${query}` : '/club/events/new'
+}
+
 /** The coach's attendance list of a session (#33). */
 export function attendanceHref(id: string): string {
   return `/club/occurrences/${encodeURIComponent(id)}/attendance`

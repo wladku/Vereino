@@ -109,6 +109,8 @@ export async function paymentsLog<
   labelKey: string
   fallback: string
   after: unknown
+  /** Extra log context next to the acting role, e.g. a cancellation's reason (#109). */
+  context?: Record<string, unknown>
 }) {
   const { translate } = await resolveTranslations()
   return {
@@ -119,7 +121,7 @@ export async function paymentsLog<
     organizationId: args.result.entity.organizationId,
     snapshotBefore: args.result.before,
     snapshotAfter: args.after,
-    context: { actingRole: args.result.actingRole },
+    context: { ...args.context, actingRole: args.result.actingRole },
   }
 }
 

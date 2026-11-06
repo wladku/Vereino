@@ -15,6 +15,7 @@ import type {
   DiscountKind,
   FeePeriod,
 } from '../lib/payments-rules'
+import type { PaymentMethod } from '../lib/charge-ledger'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -180,6 +181,53 @@ export class Charge extends ScopedEntityBase {
 
   @Property({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason?: string | null
+}
+
+/**
+ * A payment of a charge (payments spec *Data Models* → `payments_payments`; REQ-012, TEST-020; issue #109): an
+ * immutable credit in grosz with its method, the day the money arrived and the title or receipt. A correction is a
+ * reversing entry — a negative payment of the same charge that names the original in `reverses_payment_id` (one per
+ * payment, partial unique index); nothing is edited or deleted. `recorded_by_*` is who received it (B-22).
+ */
+@Entity({ tableName: 'payments_payments' })
+@Index({ name: 'payments_payments_org_charge_idx', properties: ['organizationId', 'chargeId'] })
+@Index({ name: 'payments_payments_org_method_idx', properties: ['organizationId', 'method'] })
+@Index({ name: 'payments_payments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'payments_payments_reverses_unique',
+  expression:
+    'create unique index "payments_payments_reverses_unique" on "payments_payments" ("reverses_payment_id") where reverses_payment_id is not null and deleted_at is null',
+})
+export class Payment extends ScopedEntityBase {
+  [OptionalProps]?:
+    ScopedEntityOptionalProps | 'reference' | 'recordedByPersonId' | 'recordedByUserId' | 'reversesPaymentId'
+
+  @Property({ name: 'charge_id', type: 'uuid' })
+  chargeId!: string
+
+  /** Grosz; negative for a reversing entry. */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  @Property({ name: 'method', type: 'text' })
+  method!: PaymentMethod
+
+  /** The day the money arrived, in the club's calendar. */
+  @Property({ name: 'paid_on', type: 'date' })
+  paidOn!: string
+
+  /** The transfer title or the receipt; for a reversing entry, its reason. Encrypted at rest. */
+  @Property({ name: 'reference', type: 'text', nullable: true })
+  reference?: string | null
+
+  @Property({ name: 'recorded_by_person_id', type: 'uuid', nullable: true })
+  recordedByPersonId?: string | null
+
+  @Property({ name: 'recorded_by_user_id', type: 'uuid', nullable: true })
+  recordedByUserId?: string | null
+
+  @Property({ name: 'reverses_payment_id', type: 'uuid', nullable: true })
+  reversesPaymentId?: string | null
 }
 
 /**

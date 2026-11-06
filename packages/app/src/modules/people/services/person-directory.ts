@@ -7,8 +7,10 @@
 // account (REQ-037, DD-39, #34), after the consumer has authorized the read and logged it (`auditedRead`).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { findEntityIdsBySearchTokens, type SearchTokenDatabase } from '@open-mercato/shared/lib/search/tokenLookup'
 import type { CalendarDate } from '@vereino/core'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
+import { PERSON_ENTITY_ID } from '../encryption'
 import { contactSharingFilter } from '../lib/contact-sharing'
 import { publicPersonName } from '../lib/member-rules'
 import type { ClubScope } from './club-clock'
@@ -85,6 +87,13 @@ export type PersonDirectory = {
     date: CalendarDate,
     em?: EntityManager,
   ): Promise<string[]>
+  /**
+   * The ids of the persons whose first or last name matches every word of `term` (prefixes of three characters or
+   * more), through the platform's hashed `search_tokens` — the names are encrypted. Null when the index was not
+   * consulted (no word long enough). For a consumer that filters its own records by a person's name (the payments
+   * charge list, #109); ids only.
+   */
+  searchPersonIds(scope: ClubScope, term: string, em?: EntityManager): Promise<Set<string> | null>
 }
 
 /** A guardian's contact details shared with the coaches of their wards' groups (REQ-037). */
@@ -295,6 +304,17 @@ export async function sectionCoordinatorIdsOn(
   return [...new Set(rows.map((row) => row.personId))]
 }
 
+export async function searchPersonIds(em: EntityManager, scope: ClubScope, term: string): Promise<Set<string> | null> {
+  const result = await findEntityIdsBySearchTokens({
+    db: em.getKysely<SearchTokenDatabase>(),
+    entityType: PERSON_ENTITY_ID,
+    query: term,
+    fields: ['first_name', 'last_name'],
+    scope,
+  })
+  return result.matched ? new Set(result.ids) : null
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
@@ -308,5 +328,6 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
     sectionCoordinatorIdsOn: (scope, sectionId, date, em) =>
       sectionCoordinatorIdsOn(em ?? getEm().fork(), scope, sectionId, date),
+    searchPersonIds: (scope, term, em) => searchPersonIds(em ?? getEm().fork(), scope, term),
   }
 }
