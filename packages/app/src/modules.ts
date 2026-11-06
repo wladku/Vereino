@@ -51,6 +51,9 @@ enabledModules.push({ id: 'activities', from: '@app' })
 // `communication` requires `people`, `groups` and `club_core` and reads `activities` optionally (foundation III phase B,
 // #35; enabling approved by the product owner on 2026-11-01 for epic #23).
 enabledModules.push({ id: 'communication', from: '@app' })
+// `payments` requires `people`, `groups`, `activities` and `club_core` (payments spec phase 4 step 2, #108; phase 4
+// approved by the product owner in D-030, 2026-11-04, without the treasurer role).
+enabledModules.push({ id: 'payments', from: '@app' })
 
 const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)
 const enterpriseSsoEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SSO, false)
