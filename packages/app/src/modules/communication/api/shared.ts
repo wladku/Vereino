@@ -63,7 +63,10 @@ export const threadListItemSchema = z.object({
   messageCount: z.number().describe('Messages the reader sees'),
   lastMessage: z
     .object({
-      authorName: z.string().nullable().describe('Null for a system message'),
+      authorName: z
+        .string()
+        .nullable()
+        .describe('Null for a system message; the person who cancelled for a cancellation notice (#139)'),
       system: z.boolean(),
       createdAt: z.string(),
     })
@@ -82,9 +85,16 @@ export const threadListSchema = z.object({
 
 export const threadMessageSchema = z.object({
   id: z.uuid(),
-  authorName: z.string().nullable(),
+  authorName: z
+    .string()
+    .nullable()
+    .describe('Null for an anonymous system message; the person who cancelled for a cancellation notice (#139)'),
   own: z.boolean(),
-  actingRole: z.string().describe('The role the message was written in (R01); `system` for a system message'),
+  actingRole: z
+    .string()
+    .describe(
+      'The role the message was written in (R01); `system` for a system message, the role of the canceller for a cancellation notice (#139)',
+    ),
   audience: z.enum(['all', 'staff']).describe('`staff`: a member reply, shown to the staff and the household only'),
   body: z.string().nullable().describe('The latest revision; null when deleted'),
   createdAt: z.string(),

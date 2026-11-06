@@ -238,11 +238,16 @@ export type CancellationAudience = {
   readonly onDate: CalendarDate
   /** The user who cancelled; they are not notified of their own action. */
   readonly actorUserId: string | null
+  /** The section's coordinators told of a coach's cancellation (`@vereino/core` `cancellationCoordinatorIds`, #139). */
+  readonly coordinatorIds?: readonly string[]
 }
 
-/** The persons whose accounts may receive the notice: participants, guardians of minors, the coaches. */
+/**
+ * The persons whose accounts may receive the notice: participants, guardians of minors, the coaches, and the section's
+ * coordinators of a coach's cancellation.
+ */
 export function cancellationPersonIds(audience: Omit<CancellationAudience, 'userIds' | 'actorUserId'>): string[] {
-  const persons = new Set<string>()
+  const persons = new Set<string>(audience.coordinatorIds ?? [])
   for (const member of audience.roster) {
     persons.add(member.personId)
     if (member.role !== 'participant') continue

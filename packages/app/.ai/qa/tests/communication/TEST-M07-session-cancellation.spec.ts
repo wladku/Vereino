@@ -101,7 +101,13 @@ test('TEST-M07 session cancellation: one session thread, a system message, one e
       {
         op: 'command',
         id: 'communication.threads.record_cancellation',
-        input: { occurrenceId: session.id, eventKey, actorUserId: club.adminUserId },
+        input: {
+          occurrenceId: session.id,
+          eventKey,
+          actorUserId: club.adminUserId,
+          actorPersonId: club.adminPersonId,
+          actingRole: 'club_admin',
+        },
         times: 3,
       },
       { op: 'drain' },
@@ -126,7 +132,9 @@ test('TEST-M07 session cancellation: one session thread, a system message, one e
       .toBe(1)
     const thread = await getThread(request, admin, threadId)
     expect(thread.body?.messages).toHaveLength(1)
-    expect(thread.body?.messages.at(0)).toMatchObject({ system: true, body: reason, actingRole: 'system' })
+    // #139: the notice names who cancelled and in which role (R01) and stays a system message.
+    expect(thread.body?.messages.at(0)).toMatchObject({ system: true, body: reason, actingRole: 'club_admin' })
+    expect(thread.body?.messages.at(0)?.authorName).toBeTruthy()
 
     // One e-mail per recipient, in Polish (the club's language), with the reason; none for the canceller.
     for (const address of recipients) {
@@ -140,7 +148,13 @@ test('TEST-M07 session cancellation: one session thread, a system message, one e
       {
         op: 'command',
         id: 'communication.threads.record_cancellation',
-        input: { occurrenceId: session.id, eventKey, actorUserId: club.adminUserId },
+        input: {
+          occurrenceId: session.id,
+          eventKey,
+          actorUserId: club.adminUserId,
+          actorPersonId: club.adminPersonId,
+          actingRole: 'club_admin',
+        },
       },
       { op: 'drain' },
     ])

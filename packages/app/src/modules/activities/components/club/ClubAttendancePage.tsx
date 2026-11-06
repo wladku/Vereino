@@ -9,6 +9,7 @@
 // says how many unmarked persons are recorded absent, whether the session is still running and to whom the unit is
 // credited; Ctrl/Cmd+Enter starts the close; a closed save names the present count and returns to Today; an empty list
 // links a coordinator to the group roster; on a phone the actions stay in a sticky bar above the bottom navigation.
+// #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog.
 // E06-S13 (#95): the assigned coach reports an absence here before the session starts; "Needs a coach" marks a
 // session without one.
 import * as React from 'react'
@@ -37,6 +38,7 @@ import {
 } from '../../lib/attendance-sheet'
 import { needsCoach } from '../../lib/activities-rules'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { CancelSessionDialog } from './CoachSessionBlock'
 import { GuardianContacts } from './GuardianContacts'
 import { ReportAbsence } from './ReportAbsence'
 import {
@@ -207,6 +209,7 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
   const [selections, setSelections] = React.useState<Selections>(() => new Map())
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
+  const [cancelling, setCancelling] = React.useState(false)
   // One close flow at a time: Ctrl/Cmd+Enter also confirms the open dialog, which must not start a second close.
   const closing = React.useRef(false)
 
@@ -460,6 +463,36 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
           >
             {t('activities.club.attendance.close')}
           </Button>
+        </div>
+      ) : null}
+      {occurrence.status === 'planned' ? (
+        <div className="flex flex-col gap-2" data-testid="club-attendance-cancel-section">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 self-start"
+            disabled={busy}
+            aria-describedby="club-attendance-cancel-hint"
+            data-testid="club-session-cancel"
+            onClick={() => {
+              setCancelling(true)
+            }}
+          >
+            {t('activities.club.session.cancel')}
+          </Button>
+          <p id="club-attendance-cancel-hint" className="text-muted-foreground text-xs">
+            {t('activities.club.session.cancelHint')}
+          </p>
+          <CancelSessionDialog
+            occurrence={occurrence}
+            open={cancelling}
+            onOpenChange={setCancelling}
+            onDone={async (message) => {
+              if (message) succeed(message)
+              await queryClient.invalidateQueries({ queryKey: [ATTENDANCE_LIST_QUERY_KEY, id] })
+              await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
+            }}
+          />
         </div>
       ) : null}
       {list.actingRole === 'coach' && occurrence.status !== 'cancelled' ? (
