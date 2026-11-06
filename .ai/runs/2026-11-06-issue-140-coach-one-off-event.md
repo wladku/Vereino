@@ -19,6 +19,9 @@ A coach or instructor creates a tournament or another one-off event for a group 
 5. UI: `/club/events/new` (`ClubEventPage`, `ClubEventForm`), "New event" on the coach tile of Today and on `/club/calendar` acting as a coach, `newEventHref` with a proposed date, place and group for the phase 5 "Book for group"; `ConflictList` gained `linkSessions` (the member form names the colliding sessions without backend links); en and pl labels.
 6. Test: `packages/app/.ai/qa/tests/activities/ISSUE-140-coach-one-off-event.spec.ts`.
 7. Docs: the club spec (UI table row, API row, *UI architecture*, phase 2 step 8) with a changelog entry, the module README.
+8. Opened PR #201 (labels `review`, `feature`, `needs-qa`, `priority-high`, `risk-medium`); the lock moved from the issue to the PR.
+9. Review by a fresh subagent on the diff: no blockers. Fixed: the options route's `openApi` lacked the 403; errors were announced twice (an sr-only live region next to the `role="alert"` `Alert`); the first invalid control now takes the focus; the type group gets `aria-invalid`; a 404 (place removed meanwhile) points at the place field and a 400 shows the form's own message instead of the platform's English "Validation failed"; the route description names the group kind. Left as noted: invited teams hide silently when their read fails; section names sort with the Polish collation; the groups read caps at 500 rows.
+10. Merged `origin/main` (d1491b8): one conflict in the spec's phase 2 (this PR's step 8 note against #89's step 9 change) — kept both.
 
 ## Decisions
 
@@ -49,6 +52,8 @@ A coach or instructor creates a tournament or another one-off event for a group 
 - Third run: `1 passed (2.2m)`. The log shows the platform's `QueryIndexScopeError` for `directory:organization` and `auth:role` while the fixture deletes the club (installed indexer, also seen in #97's and #87's runs).
 - `yarn verify`: all 14 steps passed on the first full run (build 92 s).
 - Lesson `sign-in-browser-ends-the-api-token` updated with this recurrence (its fourth record); `node scripts/check-lessons.mjs` valid.
+
+- After the review fixes and the merge: `yarn verify` all 14 steps passed; `yarn test:integration:vereino --filter ISSUE-140` 1 passed (1.3 min).
 
 ## Open problems / next steps
 
