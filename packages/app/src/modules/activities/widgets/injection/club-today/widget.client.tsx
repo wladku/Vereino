@@ -10,9 +10,9 @@
 // narrows both to one ward or the member's own sessions. A person who coaches also gets "My sessions today and
 // tomorrow" (E06-S15 #97): each session leads to its page as the coach, with an "Attendance list" button and a "Needs a
 // coach" marker. The coach tile is added to the member tiles, so a coach who is also a guardian sees both; acting as a
-// coach (the header switcher) leaves it alone. E06-S13 (#95): the coach tile opens with an "Unsettled session" alert for
-// each session of the last two weeks that ended 24 hours ago or more and is still not closed, linking to its
-// attendance list.
+// coach (the header switcher) leaves it alone. The coach tile also offers "New event" (#140). E06-S13 (#95): the coach
+// tile opens with an "Unsettled session" alert for each session of the last two weeks that ended 24 hours ago or more
+// and is still not closed, linking to its attendance list.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -44,6 +44,7 @@ import {
   declarationState,
   declareAttendance,
   errorText,
+  newEventHref,
   sessionHref,
   useMemberCalendar,
   type CalendarEntry,
@@ -205,9 +206,16 @@ function CoachTile({
       <h3 className="font-semibold">{t('activities.club.today.coachSessions')}</h3>
       <UnsettledAlerts entries={unsettled} timeZone={timeZone} />
       {body}
-      <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
-        {t('activities.club.today.openCalendar')}
-      </Link>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+          {t('activities.club.today.openCalendar')}
+        </Link>
+        <Button asChild size="sm" variant="outline" className="min-h-11">
+          <Link href={newEventHref()} data-testid="club-today-new-event">
+            {t('activities.club.event.new')}
+          </Link>
+        </Button>
+      </div>
     </div>
   )
 }

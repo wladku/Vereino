@@ -2,7 +2,8 @@
 // The session conflicts a save was refused with (409 `occurrence_place_conflict` / `occurrence_coach_conflict`, club
 // spec glossary *Session conflict*): per conflicting slot the kind (place over capacity or coach busy), the time and
 // the sessions and blocks it collides with, each session linked to its page. Shown in the page, not only in a toast,
-// so the planner can change the time, place or coach and save again.
+// so the planner can change the time, place or coach and save again. The coach's phone form (#140) shows the colliding
+// sessions without links: their pages are the backend's, which a coach cannot open.
 import Link from 'next/link'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -29,7 +30,15 @@ export function conflictNames(t: Translate, conflicts: readonly ScheduleConflict
   return [...names].join(', ')
 }
 
-export function ConflictList({ conflicts, title }: { conflicts: readonly ScheduleConflict[]; title?: string }) {
+export function ConflictList({
+  conflicts,
+  title,
+  linkSessions = true,
+}: {
+  conflicts: readonly ScheduleConflict[]
+  title?: string
+  linkSessions?: boolean
+}) {
   const t = useT()
   return (
     <Alert status="error" data-testid="activities-conflicts">
@@ -48,9 +57,15 @@ export function ConflictList({ conflicts, title }: { conflicts: readonly Schedul
                 <ul className="flex flex-col gap-1 pl-4">
                   {conflict.sessions.map((session) => (
                     <li key={session.id} className="break-words">
-                      <Link className="underline underline-offset-4" href={occurrenceHref(session.id)}>
-                        {session.activityName ?? t('activities.conflicts.unknownActivity')}
-                      </Link>{' '}
+                      {linkSessions ? (
+                        <Link className="underline underline-offset-4" href={occurrenceHref(session.id)}>
+                          {session.activityName ?? t('activities.conflicts.unknownActivity')}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">
+                          {session.activityName ?? t('activities.conflicts.unknownActivity')}
+                        </span>
+                      )}{' '}
                       ({dateLabel(t, instantDate(session.startAt))}{' '}
                       {timeRangeOfInstants(session.startAt, session.endAt)})
                     </li>
