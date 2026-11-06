@@ -11,6 +11,7 @@ import { isInvertedPeriod } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Fee } from '../data/entities'
+import { tryLockGeneration } from '../data/queries'
 import { feeCreateSchema, feeDeleteSchema, feeUpdateSchema } from '../data/validators'
 import { feeTargetInvalid, type FeePeriod } from '../lib/payments-rules'
 import { findActivities, findGroups, type PaymentsScope } from '../services/directory'
@@ -129,6 +130,25 @@ async function assertTarget(
   }
 }
 
+/**
+ * 422 `fee_period_locked` when the period changes on a fee that has billed anyone — its charges are keyed by fee and
+ * period label, so a new period would bill the same people again. Holds the club's generation lock (409
+ * `generation_in_progress` while a run holds it) so a running generation cannot read the old period meanwhile. Used by
+ * the update and by its undo, which would otherwise restore the old period past the check.
+ */
+async function assertPeriodChangeAllowed(em: EntityManager, row: Fee, nextPeriod: FeePeriod): Promise<void> {
+  if (nextPeriod === row.period) return
+  if (!(await tryLockGeneration(em, row.organizationId))) await paymentsErrors.throw('generation_in_progress')
+  const charged = await em.count(Charge, {
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    sourceType: 'fee',
+    sourceId: row.id,
+    deletedAt: null,
+  })
+  if (charged > 0) await paymentsErrors.throw('fee_period_locked')
+}
+
 const createFeeCommand: CommandHandler<Record<string, unknown>, FeeCommandResult> = {
   id: 'payments.fees.create',
   isUndoable: true,
@@ -208,17 +228,7 @@ const updateFeeCommand: CommandHandler<Record<string, unknown>, FeeCommandResult
       } else if (feeTargetInvalid(target)) {
         await paymentsErrors.throw('fee_target_invalid')
       }
-      // A fee's charges are keyed by fee and period label, so its period is fixed once it has billed anyone.
-      if (patch.period !== undefined && patch.period !== row.period) {
-        const charged = await em.count(Charge, {
-          tenantId: row.tenantId,
-          organizationId: row.organizationId,
-          sourceType: 'fee',
-          sourceId: row.id,
-          deletedAt: null,
-        })
-        if (charged > 0) await paymentsErrors.throw('fee_period_locked')
-      }
+      await assertPeriodChangeAllowed(em, row, patch.period ?? row.period)
       row.name = patch.name ?? row.name
       row.amount = patch.amount ?? row.amount
       row.period = patch.period ?? row.period
@@ -249,6 +259,7 @@ const updateFeeCommand: CommandHandler<Record<string, unknown>, FeeCommandResult
     const before = logEntry.snapshotBefore as FeeSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing fee snapshot for undo')
     const row = await authorizeFeeReplay(ctx, before.id)
+    await assertPeriodChangeAllowed(ctx.transactionalEm as EntityManager, row, before.period)
     await undoRestore(ctx, row, before, restoreFee, feeEvents, 'updated')
   },
 }

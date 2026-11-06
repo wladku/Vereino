@@ -276,6 +276,41 @@ test('TEST-018 a period generates once per person with the sibling discount; rep
     expect(again.body).toMatchObject({ created: 5, skipped: 0, payerMissing: 1 })
     expect(await listCharges(request, admin, `&period=${period}&status=open`)).toHaveLength(5)
 
+    // Undoing a period change after the fee has billed anyone → 422 too: the old period would bill the same people again.
+    const camp = await createFee(request, admin, {
+      name: 'Obóz',
+      groupId: zaki,
+      period: 'monthly',
+      amount: 50000,
+      dueDay: 15,
+      validFrom: today,
+    })
+    const campRow = await call<{ items?: Array<{ id: string; updatedAt?: string | null }> }>(
+      request,
+      'GET',
+      `/api/payments/fees?groupId=${zaki}`,
+      admin,
+    )
+    const campLock = campRow.body?.items?.find((item) => item.id === camp)?.updatedAt
+    expect(campLock, 'lock token of the camp fee').toBeTruthy()
+    const toOneOff = await call<CodedBody>(request, 'PUT', '/api/payments/fees', admin, {
+      data: { id: camp, period: 'one_off' },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(campLock) },
+    })
+    expect(toOneOff.status, JSON.stringify(toOneOff.body)).toBe(200)
+    const campRun = await generate(request, admin, periodFromNow(2))
+    expect(campRun.status, JSON.stringify(campRun.body)).toBe(200)
+    expect(
+      (await listCharges(request, admin, `&period=one_off`)).filter((charge) => charge.personId === ola),
+    ).toHaveLength(1)
+    const periodLog = (await actionLogEntries(request, admin, camp)).find(
+      (entry) => entry.commandId === 'payments.fees.update',
+    )
+    expect(periodLog?.undoToken, 'undo token of the period change').toBeTruthy()
+    const undoPeriod = await undoByToken(request, admin, String(periodLog?.undoToken))
+    expect(undoPeriod.status(), await undoPeriod.text()).toBe(422)
+    expect(((await undoPeriod.json()) as CodedBody).code).toBe('fee_period_locked')
+
     // "Coaches and payments": `collect` by default, then saved.
     const defaults = await call<{ coachFeeAccess?: string; updatedAt?: string | null }>(
       request,
