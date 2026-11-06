@@ -44,6 +44,7 @@ export class Activity extends ScopedEntityBase {
     | 'recurrenceRule'
     | 'endsOn'
     | 'generatedUntil'
+    | 'gatheringMinutesBefore'
     | 'description'
     | 'isActive'
 
@@ -96,6 +97,10 @@ export class Activity extends ScopedEntityBase {
   @Property({ name: 'generated_until', type: 'date', nullable: true })
   generatedUntil?: string | null
 
+  /** The default gathering time of its sessions, in minutes before the start (DD-43); null = none. */
+  @Property({ name: 'gathering_minutes_before', type: 'integer', nullable: true })
+  gatheringMinutesBefore?: number | null
+
   @Property({ name: 'description', type: 'text', nullable: true })
   description?: string | null
 
@@ -128,7 +133,13 @@ export class Activity extends ScopedEntityBase {
 @Index({ name: 'activities_occurrences_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Occurrence extends ScopedEntityBase {
   [OptionalProps]?:
-    ScopedEntityOptionalProps | 'coachPersonId' | 'status' | 'cancelReason' | 'isDetached' | 'needsReschedule'
+    | ScopedEntityOptionalProps
+    | 'coachPersonId'
+    | 'status'
+    | 'cancelReason'
+    | 'isDetached'
+    | 'needsReschedule'
+    | 'gatheringMinutesBefore'
 
   @Property({ name: 'activity_id', type: 'uuid' })
   activityId!: string
@@ -166,6 +177,13 @@ export class Occurrence extends ScopedEntityBase {
 
   @Property({ name: 'needs_reschedule', type: 'boolean', default: false })
   needsReschedule: boolean = false
+
+  /**
+   * The session's gathering time in minutes before `start_at` (DD-43): copied from the activity by the planner,
+   * overridden by a session edit; read as the instant `gatheringAt`, so a moved session keeps its offset.
+   */
+  @Property({ name: 'gathering_minutes_before', type: 'integer', nullable: true })
+  gatheringMinutesBefore?: number | null
 }
 
 /**

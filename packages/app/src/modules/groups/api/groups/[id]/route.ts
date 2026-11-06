@@ -1,4 +1,4 @@
-// `GET /api/groups/groups/{id}` — one group with its section and season names and the caller's acting role, guarded by
+// `GET /api/groups/groups/{id}` — one group with its section, season and age category names and the caller's acting role, guarded by
 // `assertInScope` with the list's grant kinds. The acting role is the least-privileged grant that contains the group:
 // a coach or assistant of the group reads it as `coach` (club spec *Record scope*; #26's deferred coach acting role).
 import { z } from 'zod'
@@ -10,6 +10,7 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
+import { ageCategoryNames } from '../../../services/age-categories'
 import { findGroup, sectionNames, seasonNames } from '../../../services/groups-read'
 import { GROUP_READ_KINDS, errorSchema, groupDetailSchema } from '../../shared'
 
@@ -34,9 +35,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sectionId: group.sectionId,
       groupId: group.id,
     })
-    const [sections, seasons] = await Promise.all([
+    const [sections, seasons, categories] = await Promise.all([
       sectionNames(ctx.container, scope, [group.sectionId]),
       seasonNames(ctx.container, scope, group.seasonId ? [group.seasonId] : []),
+      ageCategoryNames(ctx.container, scope, group.ageCategoryEntryId ? [group.ageCategoryEntryId] : []),
     ])
     return Response.json({
       id: group.id,
@@ -44,11 +46,19 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sectionName: sections.get(group.sectionId) ?? null,
       name: group.name,
       kind: group.kind,
+      ageCategoryEntryId: group.ageCategoryEntryId ?? null,
+      ageCategoryName: group.ageCategoryEntryId ? (categories.get(group.ageCategoryEntryId) ?? null) : null,
       league: group.league ?? null,
       seasonId: group.seasonId ?? null,
       seasonName: group.seasonId ? (seasons.get(group.seasonId) ?? null) : null,
       description: group.description ?? null,
       isActive: group.isActive,
+      isPublic: group.isPublic,
+      publicDescription: group.publicDescription ?? null,
+      publicConditions: group.publicConditions ?? null,
+      ageFrom: group.ageFrom ?? null,
+      ageTo: group.ageTo ?? null,
+      levelLabel: group.levelLabel ?? null,
       createdAt: group.createdAt.toISOString(),
       updatedAt: group.updatedAt.toISOString(),
       actingRole,

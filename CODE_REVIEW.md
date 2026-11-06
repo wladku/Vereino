@@ -51,7 +51,7 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 - DI (S4.8): a service holding the request `em`/context is registered `.scoped()` in `di.ts`; singletons are
   stateless; no `new` outside `di.ts`. The container has no Awilix `strict`, so **review is the only check** here.
 - Platform-owned files (anything in `packages/app` outside Vereino paths) change only in an upgrade or as a listed
-  local patch (S3.1 table). An unlisted patch needs a Changelog row in the standards spec first.
+  local patch (S3.1 table). An unlisted patch needs a changelog entry for the standards spec first.
 - Never hand-edit `.mercato/generated/**`, `node_modules/**` or shipped migrations. `@open-mercato/enterprise`
   modules stay disabled in `src/modules.ts` unless explicitly approved (licensing lesson).
 
@@ -130,7 +130,9 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 ### `.ai/` project memory
 - Specs: new ones only as `.ai/specs/YYYY-MM-DD-slug.md`; never deleted; on completion `Status: Implemented` and
   `git mv` to `implemented/`, superseded → `archive/` with successor link; all links fixed in the same commit.
-  Implementing PRs update the spec's Implementation Status, acceptance checkboxes and Changelog.
+  Implementing PRs update the spec's Implementation Status and acceptance checkboxes and add one changelog entry
+  file in `.ai/specs/changelog/<spec>/` (`.ai/specs/changelog/README.md`). A new row appended to a spec's own
+  `## Changelog` table is a finding: it conflicts with every parallel PR (`spec-changelogs:check` rejects it).
 - Autonomous runs commit a complete `.ai/runs/YYYY-MM-DD-slug.md` (goal, steps, decisions, files, commands and
   verbatim failures, open problems) with the work. Agent PRs name agent + model and link the run log (S19.3).
 - Lessons: `.ai/lessons/<slug>.md` from `_template.md` plus exactly one row in `.ai/lessons.md`; `lessons:check`

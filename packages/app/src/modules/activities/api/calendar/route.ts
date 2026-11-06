@@ -35,7 +35,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'The sessions of a range as the caller sees them in one role',
       description:
-        '`from` and `to` are club-zone dates (at most 62 days). `as=self` lists the sessions of the groups the caller is a participant of; `as=guardian` the sessions of every ward (or of `personId`), with each ward’s declaration and, under `show_called_up_children = consented`, the names of other children whose guardian consented; `as=coach` and `as=coordinator` list the staff view with the per-session declaration summary. Errors: 400 `calendar_range_invalid`, 403 `scope_denied` (a perspective or person outside the caller’s scope).',
+        '`from` and `to` are club-zone dates (at most 62 days). `as=self` lists the sessions of the groups the caller is a participant of; `as=guardian` the sessions of every ward (or of `personId`), with each ward’s declaration and, under `show_called_up_children = consented`, the names of other children whose guardian consented; `as=coach` and `as=coordinator` list the staff view with the per-session declaration summary. Errors: 400 `calendar_range_invalid`, 403 `scope_denied` (a perspective or person outside the caller’s scope), 403 `scope_unlinked` (`as=self` for an account not linked to a person of this club).',
       query: calendarQuerySchema,
       responses: [
         {
@@ -51,7 +51,7 @@ export const openApi: OpenApiRouteDoc = {
       ],
       errors: [
         { status: 400, description: 'calendar_range_invalid, validation failed', schema: errorSchema },
-        { status: 403, description: 'scope_denied', schema: errorSchema },
+        { status: 403, description: 'scope_denied, scope_unlinked', schema: errorSchema },
       ],
     },
   },

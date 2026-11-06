@@ -31,7 +31,12 @@ export type MemberPersonView = {
   phone: string | null
   /** BCP 47; null = the club's default locale. */
   preferredLocale: string | null
-  consents: { shareContactWithCoaches: SelfConsentView; sharePresenceWithGuardians: SelfConsentView }
+  consents: {
+    shareContactWithCoaches: SelfConsentView
+    sharePresenceWithGuardians: SelfConsentView
+    /** The instructor's consent to show "First L." on the public pages (DD-29, #91). */
+    publishNameConsent: SelfConsentView
+  }
   /** The lock token of `PUT /api/people/me`. */
   updatedAt: string | null
 }
@@ -81,6 +86,7 @@ export function memberPersonView(person: Person): MemberPersonView {
     consents: {
       shareContactWithCoaches: selfConsentView(person.shareContactWithCoachesAt),
       sharePresenceWithGuardians: selfConsentView(person.sharePresenceWithGuardiansAt),
+      publishNameConsent: selfConsentView(person.publishNameConsentAt),
     },
     updatedAt: iso(person.updatedAt),
   }

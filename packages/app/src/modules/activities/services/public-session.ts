@@ -7,6 +7,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { ClubCorePublicSite, PublicClubFrame } from '../../club_core/services/public-site'
 import { Activity, Occurrence } from '../data/entities'
+import { gatheringAt } from '../lib/gathering'
 import { publicSessionView, type PublicSessionView } from '../lib/share-text'
 import { clubTimeZone } from './directory'
 
@@ -28,13 +29,23 @@ export async function publicSessionPage(
   const occurrence = await em.findOne(
     Occurrence,
     { id: occurrenceId, ...scope, deletedAt: null },
-    { fields: ['id', 'activityId', 'occurrenceDate', 'startAt', 'endAt', 'status'] },
+    { fields: ['id', 'activityId', 'occurrenceDate', 'startAt', 'endAt', 'gatheringMinutesBefore', 'status'] },
   )
   if (!occurrence) return null
   const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'name'] })
   const timeZone = await clubTimeZone(container, scope)
   return {
     club: frame.value.club,
-    session: publicSessionView(occurrence, activity?.name ?? '', timeZone),
+    session: publicSessionView(
+      {
+        occurrenceDate: occurrence.occurrenceDate,
+        startAt: occurrence.startAt,
+        endAt: occurrence.endAt,
+        gatheringAt: gatheringAt(occurrence.startAt, occurrence.gatheringMinutesBefore),
+        status: occurrence.status,
+      },
+      activity?.name ?? '',
+      timeZone,
+    ),
   }
 }

@@ -51,6 +51,7 @@ export type ActivitySnapshot = {
   endsOn: string | null
   defaultStartTime: string
   defaultEndTime: string
+  gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
   /** The sessions a delete removed, so its undo restores exactly them. */
@@ -77,6 +78,7 @@ export function activitySnapshot(row: Activity): ActivitySnapshot {
     endsOn: row.endsOn ?? null,
     defaultStartTime: row.defaultStartTime,
     defaultEndTime: row.defaultEndTime,
+    gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
     description: row.description ?? null,
     isActive: row.isActive,
   }
@@ -94,6 +96,8 @@ function restoreActivity(row: Activity, before: ActivitySnapshot): void {
   row.endsOn = before.endsOn
   row.defaultStartTime = before.defaultStartTime
   row.defaultEndTime = before.defaultEndTime
+  // A snapshot written before DD-43 has no gathering field: no gathering time.
+  row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
   row.description = before.description
   row.isActive = before.isActive
 }
@@ -108,6 +112,7 @@ function seriesKey(row: Activity): string {
     normalizeLocalTime(row.defaultEndTime),
     row.defaultPlaceId,
     row.defaultCoachPersonId ?? null,
+    row.gatheringMinutesBefore ?? null,
     row.isActive,
   ])
 }
@@ -242,6 +247,7 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         endsOn: parsed.endsOn ?? null,
         defaultStartTime: normalizeLocalTime(parsed.startTime),
         defaultEndTime: normalizeLocalTime(parsed.endTime),
+        gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: parsed.isActive ?? true,
       })
@@ -326,6 +332,7 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       row.endsOn = endsOn
       row.defaultStartTime = normalizeLocalTime(startTime)
       row.defaultEndTime = normalizeLocalTime(endTime)
+      if (patch.gatheringMinutesBefore !== undefined) row.gatheringMinutesBefore = patch.gatheringMinutesBefore
       if (patch.description !== undefined) row.description = patch.description
       if (patch.isActive !== undefined) row.isActive = patch.isActive
       row.updatedAt = new Date()

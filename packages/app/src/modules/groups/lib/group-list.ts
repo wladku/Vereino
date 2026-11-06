@@ -1,5 +1,6 @@
 // Pure rules of the groups list (E06-S08 #90; README B-11): the list state kept in the page URL — the perspective
-// (All / Teams / Class groups, which is the kind filter) and the section, season and status filters — and the
+// (All / Teams / Class groups, which is the kind filter) and the section, season, age category (#92) and status
+// filters — and the
 // list-time roster summary of each group (its coaches and its number of active participants). Nothing here reads the
 // database or the clock.
 import { COACHING_ROLES, GROUP_KINDS, type GroupKind, type MembershipRole } from './groups-rules'
@@ -9,12 +10,13 @@ export type GroupListState = {
   readonly kind?: GroupKind
   readonly sectionId?: string
   readonly seasonId?: string
+  readonly ageCategoryEntryId?: string
   readonly isActive?: 'true' | 'false'
   readonly search?: string
 }
 
 /** The keys of the state, in the order a URL writes them. */
-const STATE_KEYS = ['kind', 'sectionId', 'seasonId', 'isActive', 'search'] as const
+const STATE_KEYS = ['kind', 'sectionId', 'seasonId', 'ageCategoryEntryId', 'isActive', 'search'] as const
 
 const MAX_TEXT = 200
 
@@ -45,6 +47,8 @@ export function parseGroupListState(query: { get(key: string): string | null }):
   if (sectionId) state.sectionId = sectionId
   const seasonId = text(query.get('seasonId'))
   if (seasonId) state.seasonId = seasonId
+  const ageCategoryEntryId = text(query.get('ageCategoryEntryId'))
+  if (ageCategoryEntryId) state.ageCategoryEntryId = ageCategoryEntryId
   if (isActive === 'true' || isActive === 'false') state.isActive = isActive
   const search = text(query.get('search'))
   if (search) state.search = search

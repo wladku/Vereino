@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import type { AudienceContact, Recipient, Scope } from '@vereino/core'
-import { preheaderOf, sessionWhenLabel } from '../email-format'
+import { clockLabel, preheaderOf, sessionWhenLabel } from '../email-format'
 import { errorCodes } from '../error-codes'
 import {
   COMPOSER_KINDS,
@@ -449,5 +449,10 @@ describe('text helpers', () => {
       time: '17:00–18:30',
     })
     expect(preheaderOf('Match\nat 11:00')).toBe('Match at 11:00')
+  })
+
+  it('formats a gathering time as a 24-hour clock in the club zone (club spec DD-43)', () => {
+    expect(clockLabel(at('2026-11-03T15:15:00Z'), 'en-GB', 'Europe/Warsaw')).toBe('16:15')
+    expect(clockLabel(at('2026-11-03T15:15:00Z'), 'pl', 'Europe/Warsaw')).toBe('16:15')
   })
 })

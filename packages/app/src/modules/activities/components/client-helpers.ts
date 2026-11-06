@@ -7,7 +7,7 @@ import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badg
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
-import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
+import { Recurrence, WEEKDAYS, errorCodeOf, type Weekday } from '@vereino/core'
 import type { GroupKindLike } from '../lib/activities-rules'
 
 export type Translate = ReturnType<typeof useT>
@@ -49,6 +49,8 @@ export type ActivityRow = {
   startTime: string | null
   endTime: string | null
   generatedUntil: string | null
+  /** The default gathering time of the sessions in minutes before the start (DD-43). */
+  gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
   createdAt: string | null
@@ -69,6 +71,9 @@ export type OccurrenceRow = {
   occurrenceDate: string | null
   startAt: string | null
   endAt: string | null
+  /** The session's gathering instant (DD-43), or null. */
+  gatheringAt: string | null
+  gatheringMinutesBefore: number | null
   placeId: string | null
   placeName?: string | null
   coachPersonId: string | null
@@ -342,12 +347,6 @@ export function tolerant(load: () => Promise<CrudFieldOption[]>): () => Promise<
 
 type CodedError = { status?: unknown; code?: unknown; conflicts?: unknown; field?: unknown }
 
-export function errorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object') return null
-  const code = (error as CodedError).code
-  return typeof code === 'string' ? code : null
-}
-
 export function errorStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null
   const status = (error as CodedError).status
@@ -356,7 +355,7 @@ export function errorStatus(error: unknown): number | null {
 
 /** The `conflicts` list of a 409 `occurrence_place_conflict` / `occurrence_coach_conflict`, or null. */
 export function scheduleConflictsOf(error: unknown): ScheduleConflict[] | null {
-  const code = errorCode(error)
+  const code = errorCodeOf(error)
   if (code !== 'occurrence_place_conflict' && code !== 'occurrence_coach_conflict') return null
   const conflicts = (error as CodedError).conflicts
   return Array.isArray(conflicts) ? (conflicts as ScheduleConflict[]) : []
@@ -372,6 +371,8 @@ const FIELD_OF_CODE = new Map<string, string>([
   ['event_type_not_allowed', 'type'],
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
+  ['occurrence_gathering_after_start', 'gatheringTime'],
+  ['occurrence_gathering_too_early', 'gatheringTime'],
 ])
 
 /** The `field` an `activities_reference_invalid` names, as a form field id. */
@@ -384,7 +385,7 @@ const REFERENCE_FIELDS = new Map<string, string>([
 
 /** The form field a coded 422 belongs to, so the form shows the message next to it; null when none. */
 export function fieldOfError(error: unknown): string | null {
-  const code = errorCode(error)
+  const code = errorCodeOf(error)
   if (!code) return null
   if (code === 'activities_reference_invalid') {
     const field = (error as CodedError).field
@@ -441,6 +442,6 @@ const POLICY_FIELD_OF_CODE = new Map<string, string>([
 
 /** The policy form field a coded 409/422 belongs to (an unknown group lands on `groupId` through `fieldOfError`). */
 export function policyFieldOfError(error: unknown): string | null {
-  const code = errorCode(error)
+  const code = errorCodeOf(error)
   return (code ? POLICY_FIELD_OF_CODE.get(code) : undefined) ?? fieldOfError(error)
 }

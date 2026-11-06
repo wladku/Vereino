@@ -3,8 +3,10 @@
 // another section must be in their scope on both sides), the club administrator every group. Team-only fields on a
 // class group answer 422 `group_team_fields_on_class_group`; the section is a live `club_core` section of the club and
 // an active group needs an active section; a season is a live season of the club, read under its row lock so a
-// concurrent season delete cannot pass its "in use" check. A group with memberships is deactivated, not deleted
-// (409 `group_has_memberships`), so the roster history survives.
+// concurrent season delete cannot pass its "in use" check; an age category is an entry of the club's age category
+// dictionary (`dictionaries`, REQ-019, #92). A group with memberships is deactivated, not deleted
+// (409 `group_has_memberships`), so the roster history survives. The public fields (#91, DD-29) follow the same writes;
+// an age range whose youngest age is above the oldest answers 422 `group_age_range_inverted` on the `ageTo` field.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -15,7 +17,8 @@ import { assertInScope, authorizeScoped, type AuthorizeScopedSpec, type TargetLo
 import { groupsErrors } from '../api/errors'
 import { Group, GroupMembership, Season } from '../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupUpdateSchema } from '../data/validators'
-import { disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
+import { ageRangeInverted, disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
+import { isAgeCategoryEntry } from '../services/age-categories'
 import { lockSectionForShare } from '../services/directory'
 import {
   GROUP_WRITE_KINDS,
@@ -41,10 +44,18 @@ export type GroupSnapshot = {
   sectionId: string
   name: string
   kind: GroupKind
+  ageCategoryEntryId: string | null
   league: string | null
   seasonId: string | null
   description: string | null
   isActive: boolean
+  /** The public fields (#91); absent in snapshots written before them, so an undo then keeps the stored values. */
+  isPublic?: boolean
+  publicDescription?: string | null
+  publicConditions?: string | null
+  ageFrom?: number | null
+  ageTo?: number | null
+  levelLabel?: string | null
 }
 
 export type GroupCommandResult = GroupsCommandResult<Group, GroupSnapshot>
@@ -57,10 +68,17 @@ export function groupSnapshot(row: Group): GroupSnapshot {
     sectionId: row.sectionId,
     name: row.name,
     kind: row.kind,
+    ageCategoryEntryId: row.ageCategoryEntryId ?? null,
     league: row.league ?? null,
     seasonId: row.seasonId ?? null,
     description: row.description ?? null,
     isActive: row.isActive,
+    isPublic: row.isPublic,
+    publicDescription: row.publicDescription ?? null,
+    publicConditions: row.publicConditions ?? null,
+    ageFrom: row.ageFrom ?? null,
+    ageTo: row.ageTo ?? null,
+    levelLabel: row.levelLabel ?? null,
   }
 }
 
@@ -68,10 +86,26 @@ function restoreGroup(row: Group, before: GroupSnapshot): void {
   row.sectionId = before.sectionId
   row.name = before.name
   row.kind = before.kind
+  // Snapshots written before #92 carry no age category.
+  row.ageCategoryEntryId = before.ageCategoryEntryId ?? null
   row.league = before.league
   row.seasonId = before.seasonId
   row.description = before.description
   row.isActive = before.isActive
+  if (before.isPublic !== undefined) row.isPublic = before.isPublic
+  if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
+  if (before.publicConditions !== undefined) row.publicConditions = before.publicConditions
+  if (before.ageFrom !== undefined) row.ageFrom = before.ageFrom
+  if (before.ageTo !== undefined) row.ageTo = before.ageTo
+  if (before.levelLabel !== undefined) row.levelLabel = before.levelLabel
+}
+
+/** 422 `group_age_range_inverted` with a field error on `ageTo`, so the form shows it next to the field. */
+async function assertAgeRange(ageFrom: number | null, ageTo: number | null): Promise<void> {
+  if (!ageRangeInverted(ageFrom, ageTo)) return
+  const error = await groupsErrors.create('group_age_range_inverted', { field: 'ageTo' })
+  error.body = { ...error.body, fieldErrors: { ageTo: String(error.body.error ?? 'group_age_range_inverted') } }
+  throw error
 }
 
 function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
@@ -116,6 +150,7 @@ function movedTarget(row: Group, sectionId: string) {
 type GroupShape = {
   sectionId: string
   kind: GroupKind
+  ageCategoryEntryId: string | null
   league: string | null
   seasonId: string | null
   isActive: boolean
@@ -124,7 +159,8 @@ type GroupShape = {
 /**
  * The rules of a group's fields, checked on the merged values of a write: no team field on a class group (422), a live
  * section of the club (422 `groups_reference_invalid`) that is active for an active group (422
- * `group_section_inactive`), and a live season of the club, row-locked (422 `groups_reference_invalid`). The section
+ * `group_section_inactive`), a live season of the club, row-locked, and an entry of the club's age category dictionary
+ * (both 422 `groups_reference_invalid`). The section
  * is read `FOR SHARE`, so a concurrent deactivation of the section (which holds its row `FOR UPDATE` while it counts
  * the active groups) either waits for this write or is seen by it (UX parity spec DD-U08).
  */
@@ -133,9 +169,13 @@ async function assertGroupShape(
   em: EntityManager,
   scope: GroupsScope,
   shape: GroupShape,
-  changed: { section: boolean; activated: boolean; season: boolean },
+  changed: { section: boolean; activated: boolean; season: boolean; ageCategory: boolean },
 ): Promise<void> {
-  const fields = disallowedTeamFields(shape.kind, { league: shape.league, seasonId: shape.seasonId })
+  const fields = disallowedTeamFields(shape.kind, {
+    ageCategoryEntryId: shape.ageCategoryEntryId,
+    league: shape.league,
+    seasonId: shape.seasonId,
+  })
   if (fields.length > 0) await groupsErrors.throw('group_team_fields_on_class_group', { fields })
   if (changed.section || changed.activated) {
     const section = await lockSectionForShare(ctx.container, scope, shape.sectionId, em)
@@ -149,6 +189,11 @@ async function assertGroupShape(
       { fields: ['id'], lockMode: LockMode.PESSIMISTIC_WRITE },
     )
     if (!season) await groupsErrors.throw('groups_reference_invalid', { field: 'seasonId' })
+  }
+  if (changed.ageCategory && shape.ageCategoryEntryId) {
+    if (!(await isAgeCategoryEntry(em, scope, shape.ageCategoryEntryId))) {
+      await groupsErrors.throw('groups_reference_invalid', { field: 'ageCategoryEntryId' })
+    }
   }
 }
 
@@ -179,6 +224,7 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
       const shape: GroupShape = {
         sectionId: parsed.sectionId,
         kind: parsed.kind,
+        ageCategoryEntryId: parsed.ageCategoryEntryId ?? null,
         league: parsed.league ?? null,
         seasonId: parsed.seasonId ?? null,
         isActive: parsed.isActive ?? true,
@@ -187,7 +233,9 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         section: true,
         activated: shape.isActive,
         season: true,
+        ageCategory: true,
       })
+      await assertAgeRange(parsed.ageFrom ?? null, parsed.ageTo ?? null)
       const row = em.create(Group, {
         id,
         tenantId,
@@ -195,10 +243,17 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         sectionId: shape.sectionId,
         name: parsed.name,
         kind: shape.kind,
+        ageCategoryEntryId: shape.ageCategoryEntryId,
         league: shape.league,
         seasonId: shape.seasonId,
         description: parsed.description ?? null,
         isActive: shape.isActive,
+        isPublic: parsed.isPublic ?? false,
+        publicDescription: parsed.publicDescription ?? null,
+        publicConditions: parsed.publicConditions ?? null,
+        ageFrom: parsed.ageFrom ?? null,
+        ageTo: parsed.ageTo ?? null,
+        levelLabel: parsed.levelLabel ?? null,
       })
       em.persist(row)
       return { entity: row, actingRole: authorized.actingRole, before: null }
@@ -241,6 +296,8 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
       const shape: GroupShape = {
         sectionId: patch.sectionId ?? row.sectionId,
         kind: patch.kind ?? row.kind,
+        ageCategoryEntryId:
+          patch.ageCategoryEntryId !== undefined ? patch.ageCategoryEntryId : (row.ageCategoryEntryId ?? null),
         league: patch.league !== undefined ? patch.league : (row.league ?? null),
         seasonId: patch.seasonId !== undefined ? patch.seasonId : (row.seasonId ?? null),
         isActive: patch.isActive ?? row.isActive,
@@ -255,9 +312,20 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         section: sectionChanged,
         activated: shape.isActive && !row.isActive,
         season: shape.seasonId !== (row.seasonId ?? null),
+        ageCategory: shape.ageCategoryEntryId !== (row.ageCategoryEntryId ?? null),
       })
+      const ageFrom = patch.ageFrom !== undefined ? patch.ageFrom : (row.ageFrom ?? null)
+      const ageTo = patch.ageTo !== undefined ? patch.ageTo : (row.ageTo ?? null)
+      await assertAgeRange(ageFrom, ageTo)
+      row.ageFrom = ageFrom
+      row.ageTo = ageTo
+      if (patch.isPublic !== undefined) row.isPublic = patch.isPublic
+      if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
+      if (patch.publicConditions !== undefined) row.publicConditions = patch.publicConditions
+      if (patch.levelLabel !== undefined) row.levelLabel = patch.levelLabel
       row.sectionId = shape.sectionId
       row.kind = shape.kind
+      row.ageCategoryEntryId = shape.ageCategoryEntryId
       row.league = shape.league
       row.seasonId = shape.seasonId
       if (patch.name !== undefined) row.name = patch.name
@@ -288,10 +356,12 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
     if (before.sectionId !== row.sectionId) {
       await assertInScope(scope, GROUP_WRITE_KINDS, movedTarget(row, before.sectionId))
     }
-    await assertGroupShape(ctx, em, { tenantId: row.tenantId, organizationId: row.organizationId }, before, {
+    const beforeShape = { ...before, ageCategoryEntryId: before.ageCategoryEntryId ?? null }
+    await assertGroupShape(ctx, em, { tenantId: row.tenantId, organizationId: row.organizationId }, beforeShape, {
       section: before.sectionId !== row.sectionId,
       activated: before.isActive && !row.isActive,
       season: before.seasonId !== (row.seasonId ?? null),
+      ageCategory: beforeShape.ageCategoryEntryId !== (row.ageCategoryEntryId ?? null),
     })
     await undoRestore(ctx, row, before, restoreGroup, groupEvents, 'updated')
   },

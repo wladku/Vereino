@@ -1,6 +1,6 @@
 'use client'
 // `/backend/groups/groups/[id]` (club spec UI table): the group record with the tabs "Roster" (memberships with their
-// history) and "Details". A coach reads the roster of their own group; a coordinator of the group's section and the
+// history), "Details" and "Public page" (B-12, #91: the group's public fields, for those who edit the group). A coach reads the roster of their own group; a coordinator of the group's section and the
 // club administrator also edit the group and its roster (`groups.manage`). The server decides the scope: a group
 // outside it answers 403 and the page shows the permission-denied state.
 import * as React from 'react'
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { GroupDetailsForm } from './GroupForm'
+import { GroupPublicForm } from './GroupPublicForm'
 import { RosterPanel } from './RosterPanel'
 import { GROUPS_HREF, OWN_FORBIDDEN_STATE, kindLabel, type GroupDetail, type Translate } from './client-helpers'
 import { useCanManageGroups } from './useCanManageGroups'
@@ -27,7 +28,11 @@ function ReadOnlyDetails({ group, t }: { group: GroupDetail; t: Translate }) {
     [t('groups.groups.fields.description'), group.description],
   ]
   if (group.kind === 'team') {
-    rows.push([t('groups.groups.fields.league'), group.league], [t('groups.groups.fields.season'), group.seasonName])
+    rows.push(
+      [t('groups.groups.fields.ageCategory'), group.ageCategoryName],
+      [t('groups.groups.fields.league'), group.league],
+      [t('groups.groups.fields.season'), group.seasonName],
+    )
   }
   return (
     <section className="bg-card flex flex-col gap-3 rounded-lg border p-4" aria-label={t('groups.groups.tabs.details')}>
@@ -100,6 +105,7 @@ export function GroupRecord({ id }: { id: string }) {
           <TabsList aria-label={t('groups.groups.tabs.label')}>
             <TabsTrigger value="roster">{t('groups.groups.tabs.roster')}</TabsTrigger>
             <TabsTrigger value="details">{t('groups.groups.tabs.details')}</TabsTrigger>
+            {canEdit ? <TabsTrigger value="public">{t('groups.groups.tabs.public')}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="roster" className="pt-4">
@@ -108,6 +114,11 @@ export function GroupRecord({ id }: { id: string }) {
         <TabsContent value="details" className="pt-4">
           {canEdit ? <GroupDetailsForm group={group} onSaved={refetch} /> : <ReadOnlyDetails group={group} t={t} />}
         </TabsContent>
+        {canEdit ? (
+          <TabsContent value="public" className="pt-4">
+            <GroupPublicForm group={group} onSaved={refetch} />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   )

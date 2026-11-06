@@ -22,7 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { CLUB_HOME_HREF, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { CLUB_HOME_HREF, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import {
   closesEarly,
   declaredPresentFill,
@@ -317,6 +317,14 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
         </h1>
         <p className="text-muted-foreground text-sm">
           {formatDayHeading(occurrence.occurrenceDate, locale)} ·{' '}
+          {occurrence.gatheringAt ? (
+            <span data-testid="club-attendance-gathering">
+              {t('activities.gathering.at', {
+                time: formatClockTime(new Date(occurrence.gatheringAt), locale, list.timeZone),
+              })}{' '}
+              ·{' '}
+            </span>
+          ) : null}
           {formatTimeRange(new Date(occurrence.startAt), new Date(occurrence.endAt), locale, list.timeZone)}
           {occurrence.placeName ? ` · ${occurrence.placeName}` : ''}
         </p>

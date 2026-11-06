@@ -1,6 +1,6 @@
 // `activities.shareText` (foundation III DD-M14, REQ-M08; club spec DD-17, J-003 step 2): the one-line text with a
-// link an author pastes into the group chat — in the club's language, with the activity, the date, the time and, for
-// a cancelled session, the status, and the public session page `/p/[clubSlug]/s/[occurrenceId]` (or the member
+// link an author pastes into the group chat — in the club's language, with the activity, the date, the time, the
+// gathering time when the session has one (DD-43) and, for a cancelled session, the status, and the public session page `/p/[clubSlug]/s/[occurrenceId]` (or the member
 // calendar when the club publishes no public page). No names, no roster, no token. `communication` resolves it with
 // `hasRegistration` after it has authorized the author's scope over the session.
 import type { AwilixContainer } from 'awilix'
@@ -40,12 +40,17 @@ export function createShareText(container: AwilixContainer): ActivitiesShareText
       )}`
       const text = await renderLocalized(settings.values.defaultLocale, (t, locale) => {
         const when = sessionWhen(occurrence, locale, settings.values.timezone)
-        return t(shareTextKey(occurrence.status), '{activity}, {date} {time} — details: {url}', {
-          activity: occurrence.activityName ?? '',
-          date: when.date,
-          time: when.startTime,
-          url,
-        })
+        return t(
+          shareTextKey(occurrence.status, when.gatheringTime !== null),
+          '{activity}, {date} {time} — details: {url}',
+          {
+            activity: occurrence.activityName ?? '',
+            date: when.date,
+            time: when.startTime,
+            gathering: when.gatheringTime ?? '',
+            url,
+          },
+        )
       })
       return { text, url }
     },
