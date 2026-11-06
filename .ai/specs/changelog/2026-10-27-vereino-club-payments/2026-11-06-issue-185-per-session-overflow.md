@@ -1,0 +1,1 @@
+| 2026-11-06 | #185: `POST /api/payments/charges/generate` refuses with 422 `charge_amount_over_limit` when a per-session fee's `amount × sessions` would exceed `MAX_AMOUNT` (PLN 100 000) instead of overflowing the `int` amount column with a 500; API table row updated |
