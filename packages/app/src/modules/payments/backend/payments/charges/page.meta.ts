@@ -1,4 +1,4 @@
-// B-21 Charges (UX concept README B-21; issue #108): the generation part; the perspectives arrive with E07-S02.
+// B-21 Charges (UX concept README B-21; issues #108, #109): perspectives, search, CSV export and period generation.
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['payments.view'],

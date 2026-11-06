@@ -5,13 +5,12 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { findEntityIdsBySearchTokens, type SearchTokenDatabase } from '@open-mercato/shared/lib/search/tokenLookup'
 import type { AssignableRole, CalendarDate } from '@vereino/core'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
-import { PERSON_ENTITY_ID } from '../encryption'
 import { ASSIGNABLE_ROLES } from '../data/validators'
 import { intersectIdSets, listDisplayName, type PersonListPlan } from '../lib/person-list-filters'
 import type { ClubScope } from './club-clock'
+import { searchPersonIds as searchDirectoryPersonIds } from './person-directory'
 import { personFilterContract, type PersonFilterContract, type PersonFilterQuery } from './person-filter'
 
 /** Why the list cannot answer a plan: a membership filter without `groups`, or the `groups` contract failed. */
@@ -126,20 +125,12 @@ export async function resolvePlanPersonIds(
  * through the platform's hashed `search_tokens` — the names are encrypted. Null when the index was not consulted
  * (search disabled, or no word long enough): the caller then falls back to a last-name match.
  */
-export async function searchPersonIds(
+export function searchPersonIds(
   container: AwilixContainer,
   scope: ClubScope,
   term: string,
 ): Promise<Set<string> | null> {
-  const em = container.resolve<EntityManager>('em')
-  const result = await findEntityIdsBySearchTokens({
-    db: em.getKysely<SearchTokenDatabase>(),
-    entityType: PERSON_ENTITY_ID,
-    query: term,
-    fields: ['first_name', 'last_name'],
-    scope,
-  })
-  return result.matched ? new Set(result.ids) : null
+  return searchDirectoryPersonIds(container.resolve<EntityManager>('em'), scope, term)
 }
 
 /** The columns `people` adds to a list row: roles, whether the person has wards, and the guardians' names. */
