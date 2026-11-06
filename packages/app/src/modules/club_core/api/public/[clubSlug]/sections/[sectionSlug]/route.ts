@@ -34,7 +34,15 @@ export async function GET(_request: Request, context: PublicRouteContext): Promi
 const textBlock = z.object({ text: z.string() })
 
 const sectionPageSchema = z.object({
-  club: z.object({ name: z.string(), slug: z.string(), logo: publicLogoSchema }),
+  club: z.object({
+    name: z.string(),
+    slug: z.string(),
+    logo: publicLogoSchema,
+    contact: z
+      .object({ phone: z.string() })
+      .nullable()
+      .describe('The club phone of the page footer, only with the `contact` block'),
+  }),
   section: z.object({ name: z.string(), slug: z.string(), logo: publicLogoSchema }),
   blocks: z
     .object({
