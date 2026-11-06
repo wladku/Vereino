@@ -4,14 +4,17 @@
 // conditions, materials (file links with name and format) and contact, and the classes: a card per public group with
 // its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Prices arrive with
 // `payments`; without public groups the classes area says that no classes are published.
+// A breadcrumb "Club › Sections › {name}" leads back to the club page (E06-S07, #89).
 // Headings: h1 section, h2 blocks. States: loading, error with retry, 404 and "the club does not publish a page".
 import * as React from 'react'
+import Link from 'next/link'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { PublicClasses } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
-import { formatFileSize, formatLabel, usePublicSection, type PublicSectionPage } from './public-client'
+import { phoneHref } from '../../lib/public-page'
+import { clubHref, formatFileSize, formatLabel, usePublicSection, type PublicSectionPage } from './public-client'
 
 function Block({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
@@ -24,6 +27,41 @@ function Block({ id, title, children }: { id: string; title: string; children: R
   )
 }
 
+/** "Club › Sections › {name}" (E06-S07, #89): the way back to the club page and to its section tiles. */
+function Breadcrumb({ page }: { page: PublicSectionPage }) {
+  const t = useT()
+  const { club, section } = page
+  const link =
+    'text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center underline-offset-4 hover:underline sm:min-h-6'
+  return (
+    <nav aria-label={t('club_core.public.breadcrumb.label')} data-testid="public-breadcrumb">
+      <ol className="flex flex-wrap items-center gap-x-2 text-sm">
+        <li>
+          <Link href={clubHref(club.slug)} className={link} data-testid="public-breadcrumb-club">
+            {club.name}
+          </Link>
+        </li>
+        <li aria-hidden="true" className="text-muted-foreground">
+          ›
+        </li>
+        <li>
+          <Link href={`${clubHref(club.slug)}#sections`} className={link} data-testid="public-breadcrumb-sections">
+            {t('club_core.public.sections.title')}
+          </Link>
+        </li>
+        <li aria-hidden="true" className="text-muted-foreground">
+          ›
+        </li>
+        <li>
+          <span aria-current="page" className="text-foreground font-medium">
+            {section.name}
+          </span>
+        </li>
+      </ol>
+    </nav>
+  )
+}
+
 function SectionBody({ page }: { page: PublicSectionPage }) {
   const t = useT()
   const locale = useLocale()
@@ -31,6 +69,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
   const contact = blocks.contact
   return (
     <>
+      <Breadcrumb page={page} />
       <section className="flex items-start gap-4" aria-labelledby="public-section-title">
         <LogoMark logo={section.logo} size="lg" />
         <div className="flex flex-col gap-2">
@@ -97,7 +136,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
               <>
                 <dt className="text-muted-foreground">{t('club_core.public.contact.phone')}</dt>
                 <dd className="sm:col-span-2">
-                  <a className="underline underline-offset-4" href={`tel:${contact.phone.replace(/\s+/g, '')}`}>
+                  <a className="underline underline-offset-4" href={phoneHref(contact.phone)}>
                     {contact.phone}
                   </a>
                 </dd>

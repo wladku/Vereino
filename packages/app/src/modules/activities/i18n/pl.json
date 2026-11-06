@@ -444,6 +444,7 @@
   "activities.preview.summary": "Terminy do {until}: {count}, w tym z kolizjami: {conflicts}.",
   "activities.preview.title": "Terminy",
   "activities.publicSession.errors.load": "Nie udało się wczytać zajęć.",
+  "activities.publicSession.footer.phone": "Telefon:",
   "activities.publicSession.loading": "Wczytywanie zajęć…",
   "activities.publicSession.notFound.message": "Ta strona nie istnieje lub nie jest już dostępna.",
   "activities.publicSession.notFound.title": "Nie znaleziono strony",

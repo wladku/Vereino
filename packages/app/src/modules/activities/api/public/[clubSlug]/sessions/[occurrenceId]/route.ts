@@ -42,7 +42,15 @@ const logoSchema = z.object({
 })
 
 const pageSchema = z.object({
-  club: z.object({ name: z.string(), slug: z.string(), logo: logoSchema }),
+  club: z.object({
+    name: z.string(),
+    slug: z.string(),
+    logo: logoSchema,
+    contact: z
+      .object({ phone: z.string() })
+      .nullable()
+      .describe('The club phone of the page footer, only with the `contact` block'),
+  }),
   session: z.object({
     activityName: z.string(),
     occurrenceDate: z.string(),

@@ -40,7 +40,7 @@ export type PublicClubPage = {
     slug: string
     description: string | null
     logo: PublicLogo
-    contact: { phone: string } | null
+    contact: PublicClubContact
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
@@ -48,8 +48,11 @@ export type PublicClubPage = {
   blocks: Record<string, unknown>
 }
 
+/** The club's own contact in the page footer: the club phone, only with the `contact` block (E06-S07, #89). */
+export type PublicClubContact = { phone: string } | null
+
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: ClubCoreSectionBlocks & Record<string, unknown>
 }
@@ -69,7 +72,7 @@ export type PublicFileRef = {
 export type PublicClubFrame = {
   tenantId: string
   organizationId: string
-  club: { name: string; slug: string; logo: PublicLogo }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
 }
 
 export type ClubCorePublicSite = {
@@ -169,6 +172,11 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     }
   }
 
+  /** The footer contact of every public page: the club phone, only with the `contact` block. */
+  function contactOf(club: FoundClub): PublicClubContact {
+    return clubContact(club.publication, club.settings.contactPhone ?? null)
+  }
+
   /** Section logo ?? club logo ?? the initial of the club name (glossary *Logo*). */
   function sectionLogoOf(club: FoundClub, section: Section, clubLogo: PublicLogo): PublicLogo {
     const logo = effectiveLogo({
@@ -264,7 +272,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             slug: club.slug,
             description: club.settings.publicDescription ?? null,
             logo: clubLogo,
-            contact: clubContact(club.publication, club.settings.contactPhone ?? null),
+            contact: contactOf(club),
           },
           sections: sections.map((section) => ({
             name: section.name,
@@ -316,7 +324,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return {
         status: 'ok',
         value: {
-          club: { name, slug: club.slug, logo: clubLogo },
+          club: { name, slug: club.slug, logo: clubLogo, contact: contactOf(club) },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
           blocks: { ...extra, ...own },
         },
@@ -334,7 +342,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
         value: {
           tenantId: club.tenantId,
           organizationId: club.organizationId,
-          club: { name, slug: club.slug, logo: clubLogoOf(club, name) },
+          club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club) },
         },
       }
     },

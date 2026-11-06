@@ -444,6 +444,7 @@
   "activities.preview.summary": "{count} sessions until {until}, {conflicts} with conflicts.",
   "activities.preview.title": "Sessions",
   "activities.publicSession.errors.load": "The session could not be loaded.",
+  "activities.publicSession.footer.phone": "Phone:",
   "activities.publicSession.loading": "Loading the session…",
   "activities.publicSession.notFound.message": "This page does not exist or is no longer available.",
   "activities.publicSession.notFound.title": "Page not found",
