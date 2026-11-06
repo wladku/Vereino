@@ -1,4 +1,4 @@
-// Small client-side helpers shared by the `payments` backend pages (B-20, B-21; issue #108): row types as the API
+// Small client-side helpers shared by the `payments` backend pages (B-20, B-21, B-22; issues #108, #109): row types as the API
 // returns them, links, money in grosz, option loaders and error text. Authorization stays on the routes and commands.
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
@@ -14,6 +14,10 @@ export const FEES_HREF = '/backend/payments/fees'
 export const DISCOUNTS_HREF = '/backend/payments/discounts'
 export const PAYMENT_SETTINGS_HREF = '/backend/payments/settings'
 export const CHARGES_HREF = '/backend/payments/charges'
+
+export function chargeHref(id: string): string {
+  return `${CHARGES_HREF}/${encodeURIComponent(id)}`
+}
 
 export type FeeRow = {
   id: string
@@ -62,9 +66,33 @@ export type ChargeRow = {
   discountRuleId: string | null
   discountRuleName?: string | null
   dueDate: string | null
+  payee: string | null
   status: string | null
   generationId: string | null
+  cancelReason: string | null
+  paid?: number
+  remaining?: number
+  overdue?: boolean
   updatedAt: string | null
+}
+
+export type PaymentRow = {
+  id: string
+  amount: number
+  method: string
+  paidOn: string
+  reference: string | null
+  receivedBy: PersonName | null
+  reversesPaymentId: string | null
+  reversed: boolean
+  createdAt: string
+}
+
+export type ChargeDetail = ChargeRow & {
+  paid: number
+  remaining: number
+  overdue: boolean
+  payments: PaymentRow[]
 }
 
 export type GenerationSummary = {
