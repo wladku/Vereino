@@ -183,5 +183,20 @@
   "groups.club.wardGroups.title": "Grupy",
   "groups.club.wardGroups.loading": "Wczytywanie grup…",
   "groups.club.wardGroups.error": "Nie udało się wczytać grup. Odśwież stronę.",
-  "groups.club.wardGroups.empty": "Jeszcze w żadnej grupie"
+  "groups.club.wardGroups.empty": "Jeszcze w żadnej grupie",
+  "groups.errors.group_age_range_inverted": "„Wiek do” nie może być niższy niż „Wiek od”.",
+  "groups.groups.tabs.public": "Strona publiczna",
+  "groups.groups.groups.public": "Strona publiczna",
+  "groups.groups.groups.public.help": "Co gość widzi o tej grupie na publicznej stronie sekcji. Klub wybiera publikowane bloki w ustawieniach publikacji.",
+  "groups.groups.fields.isPublic": "Pokazuj na stronie publicznej",
+  "groups.groups.fields.isPublic.help": "Na stronie klubu pojawiają się tylko publiczne grupy publicznej sekcji.",
+  "groups.groups.fields.publicDescription": "Opis publiczny",
+  "groups.groups.fields.publicConditions": "Wymagania",
+  "groups.groups.fields.publicConditions.help": "Na przykład strój lub zaświadczenie lekarskie. Widoczne, gdy klub publikuje blok warunków.",
+  "groups.groups.fields.ageFrom": "Wiek od",
+  "groups.groups.fields.ageTo": "Wiek do",
+  "groups.groups.fields.levelLabel": "Poziom",
+  "groups.groups.fields.levelLabel.help": "Na przykład „początkujący”.",
+  "groups.groups.errors.age": "Wpisz pełną liczbę lat od 0 do 99 albo zostaw puste.",
+  "groups.groups.errors.invalid": "Sprawdź zaznaczone pola."
 }

@@ -14,8 +14,15 @@ import {
 } from '@vereino/core'
 import { CONSENT_KINDS, type ConsentKind, type ConsentView, type ConsentsView } from './people-rules'
 
-/** The consents a member gives in their own profile (`GET/PUT /api/people/me`, club spec `people_persons`). */
-export const SELF_CONSENT_KINDS = ['shareContactWithCoaches', 'sharePresenceWithGuardians'] as const
+/**
+ * The consents a member gives in their own profile (`GET/PUT /api/people/me`, club spec `people_persons`): the
+ * guardian's two (REQ-006, REQ-037) and the instructor's consent to publish their name (DD-29, #91).
+ */
+export const SELF_CONSENT_KINDS = [
+  'shareContactWithCoaches',
+  'sharePresenceWithGuardians',
+  'publishNameConsent',
+] as const
 export type SelfConsentKind = (typeof SELF_CONSENT_KINDS)[number]
 
 /** A self consent as the API returns it: granted with the instant it was given, or not granted. */
@@ -42,6 +49,18 @@ export function applySelfConsent(
   const state = { grantedAt: current }
   const transition = desired ? grantConsent(state, now) : withdrawConsent(state, now)
   return { at: transition.state.grantedAt, changed: transition.changed }
+}
+
+/**
+ * An instructor's name as the club's public pages show it with their consent (DD-29, #91): the first name and the
+ * initial of the last name ("Anna K."), whitespace collapsed. The full last name never leaves `people`; a blank first
+ * name gives null (the page then says "Section coach").
+ */
+export function publicPersonName(firstName: string, lastName: string): string | null {
+  const first = firstName.trim().replace(/\s+/g, ' ')
+  if (!first) return null
+  const initial = Array.from(lastName.trim())[0]
+  return initial ? `${first} ${initial.toLocaleUpperCase()}.` : first
 }
 
 /** Why a caller may or may not see their own payments (R10). */

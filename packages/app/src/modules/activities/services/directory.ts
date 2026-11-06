@@ -70,6 +70,16 @@ export function rosterOn(
   return groupDirectory(container).rosterOn(scope, groupId, date, em)
 }
 
+/** The live, active public groups of `sectionIds` (#91): the groups the public schedule may show. */
+export function publicGroups(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionIds: readonly string[],
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  return groupDirectory(container).publicGroups(scope, sectionIds, em)
+}
+
 export function findExternalTeams(
   container: AwilixContainer,
   scope: ActivitiesScope,

@@ -5,7 +5,8 @@
 // an active group needs an active section; a season is a live season of the club, read under its row lock so a
 // concurrent season delete cannot pass its "in use" check; an age category is an entry of the club's age category
 // dictionary (`dictionaries`, REQ-019, #92). A group with memberships is deactivated, not deleted
-// (409 `group_has_memberships`), so the roster history survives.
+// (409 `group_has_memberships`), so the roster history survives. The public fields (#91, DD-29) follow the same writes;
+// an age range whose youngest age is above the oldest answers 422 `group_age_range_inverted` on the `ageTo` field.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -16,7 +17,7 @@ import { assertInScope, authorizeScoped, type AuthorizeScopedSpec, type TargetLo
 import { groupsErrors } from '../api/errors'
 import { Group, GroupMembership, Season } from '../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupUpdateSchema } from '../data/validators'
-import { disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
+import { ageRangeInverted, disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
 import { isAgeCategoryEntry } from '../services/age-categories'
 import { lockSectionForShare } from '../services/directory'
 import {
@@ -48,6 +49,13 @@ export type GroupSnapshot = {
   seasonId: string | null
   description: string | null
   isActive: boolean
+  /** The public fields (#91); absent in snapshots written before them, so an undo then keeps the stored values. */
+  isPublic?: boolean
+  publicDescription?: string | null
+  publicConditions?: string | null
+  ageFrom?: number | null
+  ageTo?: number | null
+  levelLabel?: string | null
 }
 
 export type GroupCommandResult = GroupsCommandResult<Group, GroupSnapshot>
@@ -65,6 +73,12 @@ export function groupSnapshot(row: Group): GroupSnapshot {
     seasonId: row.seasonId ?? null,
     description: row.description ?? null,
     isActive: row.isActive,
+    isPublic: row.isPublic,
+    publicDescription: row.publicDescription ?? null,
+    publicConditions: row.publicConditions ?? null,
+    ageFrom: row.ageFrom ?? null,
+    ageTo: row.ageTo ?? null,
+    levelLabel: row.levelLabel ?? null,
   }
 }
 
@@ -78,6 +92,20 @@ function restoreGroup(row: Group, before: GroupSnapshot): void {
   row.seasonId = before.seasonId
   row.description = before.description
   row.isActive = before.isActive
+  if (before.isPublic !== undefined) row.isPublic = before.isPublic
+  if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
+  if (before.publicConditions !== undefined) row.publicConditions = before.publicConditions
+  if (before.ageFrom !== undefined) row.ageFrom = before.ageFrom
+  if (before.ageTo !== undefined) row.ageTo = before.ageTo
+  if (before.levelLabel !== undefined) row.levelLabel = before.levelLabel
+}
+
+/** 422 `group_age_range_inverted` with a field error on `ageTo`, so the form shows it next to the field. */
+async function assertAgeRange(ageFrom: number | null, ageTo: number | null): Promise<void> {
+  if (!ageRangeInverted(ageFrom, ageTo)) return
+  const error = await groupsErrors.create('group_age_range_inverted', { field: 'ageTo' })
+  error.body = { ...error.body, fieldErrors: { ageTo: String(error.body.error ?? 'group_age_range_inverted') } }
+  throw error
 }
 
 function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
@@ -207,6 +235,7 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         season: true,
         ageCategory: true,
       })
+      await assertAgeRange(parsed.ageFrom ?? null, parsed.ageTo ?? null)
       const row = em.create(Group, {
         id,
         tenantId,
@@ -219,6 +248,12 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         seasonId: shape.seasonId,
         description: parsed.description ?? null,
         isActive: shape.isActive,
+        isPublic: parsed.isPublic ?? false,
+        publicDescription: parsed.publicDescription ?? null,
+        publicConditions: parsed.publicConditions ?? null,
+        ageFrom: parsed.ageFrom ?? null,
+        ageTo: parsed.ageTo ?? null,
+        levelLabel: parsed.levelLabel ?? null,
       })
       em.persist(row)
       return { entity: row, actingRole: authorized.actingRole, before: null }
@@ -279,6 +314,15 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         season: shape.seasonId !== (row.seasonId ?? null),
         ageCategory: shape.ageCategoryEntryId !== (row.ageCategoryEntryId ?? null),
       })
+      const ageFrom = patch.ageFrom !== undefined ? patch.ageFrom : (row.ageFrom ?? null)
+      const ageTo = patch.ageTo !== undefined ? patch.ageTo : (row.ageTo ?? null)
+      await assertAgeRange(ageFrom, ageTo)
+      row.ageFrom = ageFrom
+      row.ageTo = ageTo
+      if (patch.isPublic !== undefined) row.isPublic = patch.isPublic
+      if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
+      if (patch.publicConditions !== undefined) row.publicConditions = patch.publicConditions
+      if (patch.levelLabel !== undefined) row.levelLabel = patch.levelLabel
       row.sectionId = shape.sectionId
       row.kind = shape.kind
       row.ageCategoryEntryId = shape.ageCategoryEntryId

@@ -84,7 +84,13 @@ const memberPersonSchema = z.object({
   email: z.string().nullable(),
   phone: z.string().nullable(),
   preferredLocale: z.string().nullable().describe('null = the club default locale'),
-  consents: z.object({ shareContactWithCoaches: selfConsentSchema, sharePresenceWithGuardians: selfConsentSchema }),
+  consents: z.object({
+    shareContactWithCoaches: selfConsentSchema,
+    sharePresenceWithGuardians: selfConsentSchema,
+    publishNameConsent: selfConsentSchema.describe(
+      'The consent of an instructor to show "First L." on the public club pages (DD-29)',
+    ),
+  }),
   updatedAt: z.string().nullable().describe('Lock token of PUT /api/people/me'),
 })
 
@@ -149,7 +155,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Change own language, contact details and consents',
       description:
-        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone` (a changed number must be Polish or E.164, else 422 `phone_invalid`), `email`, and the consents `shareContactWithCoaches` and `sharePresenceWithGuardians` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        '`preferredLocale` (null = the club default; an unknown locale → 422 `locale_unsupported`), `phone` (a changed number must be Polish or E.164, else 422 `phone_invalid`), `email`, and the consents `shareContactWithCoaches`, `sharePresenceWithGuardians` and `publishNameConsent` (`true` gives with the date, `false` withdraws, absent keeps). Send the person lock token (`person.updatedAt`) in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: selfUpdateSchema },
       responses: [
         {
