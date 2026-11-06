@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5) under cezar (task 10b7e615), `om-auto-fix-issue` with the repo-local override; no subagents
 - **Trigger:** `om-auto-fix-issue 86`, after the owner recorded the phase 3 migration approval on #86 (2026-11-05)
 - **Branch:** `feat/issue-86-place-regulations-photos`, from `main` at 5aa6b8f
-- **Status:** see *Commands and results*; PR opened with `Closes #86`
+- **Status:** done; PR opened with `Closes #86`, in the `review` state
 
 ## Goal
 
@@ -50,6 +50,9 @@ Finish E06-S04 (#86): slice (a) (filters, owner, hierarchy) shipped in PR #163. 
 
 - `yarn test:integration:vereino --filter TEST-U08`, run 1: everything up to the stale-save step passed (byte checks, the parallel pair at 9 photos → `[201, 422]`, the eleventh photo 422, PDF replacement, removal, the browser list, remove and upload, axe in light and dark mode). It then failed with `Expected: 200 Received: 401` on the setup PUT of the stale-save check: `signInBrowser` resets the password and ends the earlier API token (lesson `db-generate-varchar-length-and-concurrent-index-migrations`, point 4). Fixed with a fresh `getAuthToken` after the browser sign-in. Run 2: **1 passed (59.7s)**.
 - `yarn format`, then `yarn verify`: **all 14 steps passed** (jest 41 suites, 461 tests, coverage thresholds held; build green).
+
+- `yarn test:integration:vereino --filter ENG-TEST-25` (the existing `club_core` accessibility test over the places pages, now with the new group): **1 passed (1.1m)**.
+- Not run in this session: the full `om-auto-review-pr` and `om-auto-qa-pr` loop; the PR is left in the `review` state.
 
 ## Open problems
 
