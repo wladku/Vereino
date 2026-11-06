@@ -450,7 +450,7 @@ export type Family = {
   /** The coach of Żaki (`vereino_coach` role and a `coach` membership). */
   coach: { personId: string; userId: string; email: string; token: string }
   /** The instructor of the pool group (`vereino_coach` role and a `coach` membership). */
-  instructor: { personId: string; userId: string; token: string }
+  instructor: { personId: string; userId: string; email: string; token: string }
   academyCoordinator: { personId: string; userId: string; email: string; token: string }
   poolCoordinator: { personId: string; userId: string; email: string; token: string }
 }

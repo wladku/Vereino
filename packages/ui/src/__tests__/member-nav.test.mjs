@@ -43,12 +43,21 @@ test('builds Today, Calendar, Messages and More with Profile for a member withou
 })
 
 test('adds the admin panel behind More for a staff context', () => {
-  for (const context of ['club_admin', 'coordinator', 'coach']) {
+  for (const context of ['club_admin', 'coordinator']) {
     const nav = memberNav({ pathname: '/club', contexts: ['self', context], labels })
     assert.deepEqual(nav.more.items.at(-1), { href: BACKEND_HREF, label: 't:people.club.nav.backend', current: false })
   }
   assert.equal(hasStaffContext(['self', 'guardian']), false)
-  assert.equal(hasStaffContext(['coach']), true)
+  assert.equal(hasStaffContext(['coach', 'coordinator']), true)
+})
+
+test('keeps a coach on the phone: no admin panel without a sessions perspective there (E06-S15 #97)', () => {
+  assert.equal(hasStaffContext(['self', 'coach']), false)
+  const nav = memberNav({ pathname: '/club', contexts: ['self', 'coach'], labels })
+  assert.equal(
+    nav.more.items.some((item) => item.href === BACKEND_HREF),
+    false,
+  )
 })
 
 test('marks the current tab for a page and the pages below it', () => {

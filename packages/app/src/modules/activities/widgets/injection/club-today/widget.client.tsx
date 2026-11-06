@@ -7,8 +7,10 @@
 // {reason}"; and — for a guardian — the wards' declarations waiting for a decision in the next two weeks, with their
 // date and time. With nothing today or tomorrow the tile names the next session; a failed read offers "Try again". The
 // attendance tile renders only when something waits (no empty placeholders). The header's acting context (E06-S19 #101)
-// narrows both: one ward, the member's own sessions, or — acting as a coach — "My sessions today" with the way into each
-// attendance list.
+// narrows both to one ward or the member's own sessions. A person who coaches also gets "My sessions today and
+// tomorrow" (E06-S15 #97): each session leads to its page as the coach, with an "Attendance list" button and a "Needs a
+// coach" marker. The coach tile is added to the member tiles, so a coach who is also a guardian sees both; acting as a
+// coach (the header switcher) leaves it alone.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -46,6 +48,7 @@ import {
   type DeclaredValue,
   type MemberPerspective,
 } from '../../../components/club/club-client'
+import { needsCoach } from '../../../lib/activities-rules'
 
 /** The slice of `people`'s member profile the Today page passes as the spot context. */
 export type ClubTodayContext = {
@@ -67,6 +70,104 @@ function entryLine(entry: CalendarEntry, guardian: boolean): string {
   const names = guardian ? entry.persons.map((person) => person.firstName).join(', ') : ''
   const title = entry.occurrence.activityName ?? entry.occurrence.groupName ?? ''
   return names ? `${names} · ${title}` : title
+}
+
+/** "Today" / "Tomorrow", the gathering time (DD-43) and the time range of a session row. */
+function SessionWhen({ entry, today, timeZone }: { entry: CalendarEntry; today: string; timeZone: string }) {
+  const t = useT()
+  const locale = useLocale()
+  const { occurrence } = entry
+  return (
+    <span className="text-sm font-medium">
+      {occurrence.occurrenceDate === today ? t('activities.club.today.today') : t('activities.club.today.tomorrow')}{' '}
+      {occurrence.gatheringAt ? (
+        <span data-testid="club-today-gathering">
+          {t('activities.gathering.at', {
+            time: formatClockTime(new Date(occurrence.gatheringAt), locale, timeZone),
+          })}
+          {' · '}
+        </span>
+      ) : null}
+      {formatTimeRange(new Date(occurrence.startAt), new Date(occurrence.endAt), locale, timeZone)}
+    </span>
+  )
+}
+
+/** The coach's sessions of today and tomorrow (E06-S15 #97): the session page as the coach and its attendance list. */
+function CoachTile({
+  entries,
+  loading,
+  failed,
+  onRetry,
+  today,
+  timeZone,
+}: {
+  entries: CalendarEntry[]
+  loading: boolean
+  failed: boolean
+  onRetry: () => void
+  today: string
+  timeZone: string
+}) {
+  const t = useT()
+  let body: React.ReactNode
+  if (loading) body = <p className="text-muted-foreground text-sm">{t('activities.club.today.loading')}</p>
+  else if (failed) {
+    body = (
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-muted-foreground text-sm">{t('activities.club.errors.calendar')}</p>
+        <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onRetry}>
+          {t('activities.club.actions.retry')}
+        </Button>
+      </div>
+    )
+  } else if (entries.length === 0)
+    body = <p className="text-muted-foreground text-sm">{t('activities.club.today.coachEmpty')}</p>
+  else {
+    body = (
+      <ul className="flex flex-col gap-3">
+        {entries.map((entry) => (
+          <li key={entry.occurrence.id} className="flex flex-col gap-1" data-testid="club-today-coach-session">
+            <Link href={sessionHref(entry.occurrence.id, 'coach')} className={LINK_CLASS}>
+              <SessionWhen entry={entry} today={today} timeZone={timeZone} />
+              <span className="text-sm">
+                {[entry.occurrence.activityName, entry.occurrence.groupName].filter(Boolean).join(' · ')}
+              </span>
+              {entry.occurrence.placeName ? (
+                <span className="text-muted-foreground text-xs">{entry.occurrence.placeName}</span>
+              ) : null}
+            </Link>
+            <div className="flex flex-wrap items-center gap-2 px-2">
+              {entry.occurrence.status === 'cancelled' ? (
+                <StatusBadge variant="error">{t('activities.occurrences.status.cancelled')}</StatusBadge>
+              ) : null}
+              {needsCoach(entry.occurrence) ? (
+                <span data-testid="club-today-needs-coach">
+                  <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+                </span>
+              ) : null}
+              {entry.occurrence.status !== 'cancelled' ? (
+                <Button asChild size="sm" variant="outline" className="min-h-11">
+                  <Link href={attendanceHref(entry.occurrence.id)} data-testid="club-today-attendance-list">
+                    {t('activities.club.session.attendanceList')}
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  return (
+    <div className={TILE_CLASS} data-testid="club-tile-coach">
+      <h3 className="font-semibold">{t('activities.club.today.coachSessions')}</h3>
+      {body}
+      <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+        {t('activities.club.today.openCalendar')}
+      </Link>
+    </div>
+  )
 }
 
 function PersonDeclaration({
@@ -145,17 +246,21 @@ export default function ClubTodayTilesWidget({
     ? { person, wards: context.profile?.wards ?? [], contexts: context.profile?.contexts ?? [] }
     : null
   const [selection] = useMemberContext(profile)
-  const scope = profile ? memberCalendarScope(profile, selection) : { as: 'self' as const, personId: null }
+  const coaches = profile?.contexts.includes('coach') ?? false
+  // Acting as a coach, the member tiles step aside; otherwise the coach tile is added to them.
+  const actingAsMember = selection.role === 'member'
+  const scope = profile
+    ? memberCalendarScope(profile, { ...selection, role: 'member' })
+    : { as: 'self' as const, personId: null }
   const guardian = scope.as === 'guardian'
-  const coach = scope.as === 'coach'
   const today = calendarDateInZone(new Date(), timeZone)
   const tomorrow = addCalendarDays(today, 1)
-  const query = useMemberCalendar({
-    as: scope.as,
-    from: today,
-    to: addCalendarDays(today, PENDING_WINDOW_DAYS),
-    personId: scope.personId,
-  })
+  const query = useMemberCalendar(
+    actingAsMember
+      ? { as: scope.as, from: today, to: addCalendarDays(today, PENDING_WINDOW_DAYS), personId: scope.personId }
+      : null,
+  )
+  const coachQuery = useMemberCalendar(coaches ? { as: 'coach', from: today, to: tomorrow } : null)
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
   const entries = query.data?.items ?? []
@@ -244,28 +349,11 @@ export default function ClubTodayTilesWidget({
               data-occurrence-id={occurrence.id}
             >
               <Link
-                href={
-                  scope.as === 'coach'
-                    ? attendanceHref(occurrence.id)
-                    : sessionHref(occurrence.id, scope.as, scope.personId)
-                }
+                href={sessionHref(occurrence.id, scope.as, scope.personId)}
                 className={LINK_CLASS}
                 data-testid="club-today-session"
               >
-                <span className="text-sm font-medium">
-                  {occurrence.occurrenceDate === today
-                    ? t('activities.club.today.today')
-                    : t('activities.club.today.tomorrow')}{' '}
-                  {occurrence.gatheringAt ? (
-                    <span data-testid="club-today-gathering">
-                      {t('activities.gathering.at', {
-                        time: formatClockTime(new Date(occurrence.gatheringAt), locale, timeZone),
-                      })}
-                      {' · '}
-                    </span>
-                  ) : null}
-                  {formatTimeRange(new Date(occurrence.startAt), new Date(occurrence.endAt), locale, timeZone)}
-                </span>
+                <SessionWhen entry={entry} today={today} timeZone={timeZone} />
                 <span className="text-sm">{entryLine(entry, guardian)}</span>
                 {groupLine ? <span className="text-muted-foreground text-xs">{groupLine}</span> : null}
                 {occurrence.placeName ? (
@@ -283,7 +371,7 @@ export default function ClubTodayTilesWidget({
                   </StatusBadge>
                 </span>
               ) : null}
-              {coach || occurrence.status === 'cancelled'
+              {occurrence.status === 'cancelled'
                 ? null
                 : entry.persons.map((target) => (
                     <PersonDeclaration
@@ -309,23 +397,35 @@ export default function ClubTodayTilesWidget({
         {t('activities.club.today.title')}
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <li>
-          <div className={TILE_CLASS} data-testid="club-tile-calendar">
-            <h3 className="font-semibold">
-              {coach ? t('activities.club.today.coachSessions') : t('activities.club.today.calendar')}
-            </h3>
-            {calendarBody}
-            <Link
-              href={CLUB_CALENDAR_HREF}
-              className="text-primary inline-flex min-h-11 items-center text-sm underline"
-            >
-              {t('activities.club.today.openCalendar')}
-            </Link>
-            <p className="sr-only" aria-live="polite" data-testid="club-today-announcement">
-              {announcement}
-            </p>
-          </div>
-        </li>
+        {coaches ? (
+          <li>
+            <CoachTile
+              entries={coachQuery.data?.items ?? []}
+              loading={!coachQuery.data && coachQuery.isFetching}
+              failed={!coachQuery.data && !coachQuery.isFetching}
+              onRetry={() => void coachQuery.refetch()}
+              today={today}
+              timeZone={timeZone}
+            />
+          </li>
+        ) : null}
+        {actingAsMember ? (
+          <li>
+            <div className={TILE_CLASS} data-testid="club-tile-calendar">
+              <h3 className="font-semibold">{t('activities.club.today.calendar')}</h3>
+              {calendarBody}
+              <Link
+                href={CLUB_CALENDAR_HREF}
+                className="text-primary inline-flex min-h-11 items-center text-sm underline"
+              >
+                {t('activities.club.today.openCalendar')}
+              </Link>
+              <p className="sr-only" aria-live="polite" data-testid="club-today-announcement">
+                {announcement}
+              </p>
+            </div>
+          </li>
+        ) : null}
         {pending.length > 0 ? (
           <li>
             <div className={TILE_CLASS} data-testid="club-tile-attendance">
