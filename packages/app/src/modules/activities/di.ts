@@ -10,6 +10,7 @@ import { DECLARATION_LINK_TTL_MS } from './lib/declaration-links'
 import notificationTypes from './notifications'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
+import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
 import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
@@ -33,6 +34,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  *
  * `activities.publicSchedule` (club spec DD-28, DD-29; #91): the public groups' schedule on a section's public page and
  * the upcoming one-off events on the club page, which `club_core` reads with `hasRegistration`.
+ *
+ * `activities.placeSessions` (facilities spec DD-20, #121): the planned sessions on places in a window and the
+ * reschedule flag a closure sets on them, for `facilities`.
  */
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
@@ -50,6 +54,9 @@ export function register(container: AppContainer) {
     [ACTIVITIES_SCHEDULE_DIRECTORY]: asFunction((cradle: { em: EntityManager }) =>
       createScheduleDirectory(() => cradle.em),
     )
+      .scoped()
+      .proxy(),
+    [ACTIVITIES_PLACE_SESSIONS]: asFunction((cradle: { em: EntityManager }) => createPlaceSessions(() => cradle.em))
       .scoped()
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),
