@@ -1,11 +1,13 @@
 // Setting up a club's `activities` defaults (foundation II P-12, DD-G07): the daily `activities:generate-occurrences`
-// schedule at 03:00 in the club's time zone and the 15-minute `activities:expire-guardian-confirmations` schedule (club
-// spec *Events, Jobs* rows), plus the default declaration policies (#32). Idempotent (an upsert on the stable id, a
+// schedule at 03:00 in the club's time zone, the 15-minute `activities:expire-guardian-confirmations` schedule and the
+// daily `activities:send-declaration-reminders` schedule at 18:00 in the club's time zone (club spec *Events, Jobs*
+// rows; REQ-017), plus the default declaration policies (#32). Idempotent (an upsert on the stable id, a
 // find-or-create of the policies); used by `setup.ts` `seedDefaults` and re-run when the club's time zone changes.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { registerModuleSchedule } from '@/modules/foundation'
 import { AttendancePolicy } from '../data/entities'
+import { DECLARATION_REMINDERS_CRON } from '../lib/declaration-links'
 import { DEFAULT_POLICIES, policyKey } from '../lib/policy'
 import { clubTimeZone, type ActivitiesScope } from './directory'
 
@@ -32,6 +34,17 @@ export async function registerExpireSchedule(container: AwilixContainer, scope: 
     schedule: { interval: EXPIRE_CONFIRMATIONS_INTERVAL },
     scope,
     description: 'Apply the policy default to guardian confirmations past their time limit.',
+  })
+}
+
+/** Daily at 18:00 in the club's time zone: the personal links for tomorrow's undeclared sessions (REQ-017). */
+export async function registerRemindersSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
+  return registerModuleSchedule(container, {
+    module: 'activities',
+    name: 'send-declaration-reminders',
+    schedule: { cron: DECLARATION_REMINDERS_CRON, timezone: await clubTimeZone(container, scope) },
+    scope,
+    description: 'E-mail a personal declaration link for the undeclared sessions of the next day.',
   })
 }
 
@@ -69,9 +82,10 @@ export async function seedDefaultPolicies(container: AwilixContainer, scope: Act
   return created
 }
 
-/** Everything `seedDefaults` does for one club: the two schedules and the default policies. */
+/** Everything `seedDefaults` does for one club: the three schedules and the default policies. */
 export async function setUpClubActivities(container: AwilixContainer, scope: ActivitiesScope): Promise<void> {
   await registerGenerateSchedule(container, scope)
   await registerExpireSchedule(container, scope)
+  await registerRemindersSchedule(container, scope)
   await seedDefaultPolicies(container, scope)
 }

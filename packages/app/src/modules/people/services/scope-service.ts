@@ -1,11 +1,11 @@
 // `people.scopeService` (foundation spec DD-F03, P-03): the single scope provider, registered under the foundation's
 // `vereino.scopeProvider` token. It returns the grants of the person linked to the user — club_admin, coordinator
 // sections, coached groups, guardian wards, self — computed on today's date in the club zone; no linked person → no
-// grants. The coached groups come from the optional `groups` contribution (`membership-contribution.ts`, #30).
+// grants; `grantsForPerson` returns the same grants for a token link's subject person (P-10). The coached groups come from the optional `groups` contribution (`membership-contribution.ts`, #30).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
-import type { ScopeProvider, ScopeSubject } from '@/modules/foundation'
+import type { PersonScopeSubject, ScopeProvider, ScopeSubject } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { personScope } from '../lib/people-rules'
 import { clubToday } from './club-clock'
@@ -69,6 +69,15 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       )
       if (!person) return []
       const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+      const today = await clubToday(container, scope)
+      return loadPersonScope(em, { ...scope, personId: person.id }, today, membershipContribution(container))
+    },
+    // A token link's subject (foundation P-10): the person's current grants, read anew at every redemption.
+    async grantsForPerson(subject: PersonScopeSubject): Promise<Scope> {
+      const em = container.resolve<EntityManager>('em').fork()
+      const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+      const person = await em.findOne(Person, { id: subject.personId, ...scope, deletedAt: null }, { fields: ['id'] })
+      if (!person) return []
       const today = await clubToday(container, scope)
       return loadPersonScope(em, { ...scope, personId: person.id }, today, membershipContribution(container))
     },

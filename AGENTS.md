@@ -52,6 +52,7 @@ Route first; never probe unmatched context.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
 - Never hard-code user strings/status colors; expose secrets/transcripts; or guess answerable contracts.
+- Never filter or text-search the encrypted `action_logs` columns (`command_id`, `context_json`, `command_payload`, snapshots) in SQL; match unencrypted columns or read through the audit API (lesson `action-log-columns-encrypted-at-rest`).
 
 ## Project memory (`.ai/`)
 

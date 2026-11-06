@@ -5,6 +5,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireJobResult } from './commands/attendance'
+import type { RemindersJobResult } from './commands/declaration-links'
 import type { GenerateJobResult } from './commands/jobs'
 import { checkAppendOnly, listContactAccessLog } from './services/contact-access-log'
 
@@ -68,6 +69,32 @@ const expireGuardianConfirmations: ModuleCli = {
 }
 
 /**
+ * `activities send-declaration-reminders --tenant <id> --org <id> [--now <ISO instant>]`: sends the evening personal
+ * declaration links now — the same command the `activities:send-declaration-reminders` job dispatches — and prints its
+ * counts. `--now` evaluates "tomorrow" as of another instant (an operator catching up; the integration tests' clock).
+ */
+const sendDeclarationReminders: ModuleCli = {
+  command: 'send-declaration-reminders',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato activities send-declaration-reminders --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, RemindersJobResult>(
+      'activities.declaration_links.send_reminders',
+      { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts })}\n`)
+  },
+}
+
+/**
  * `activities contact-access-log --tenant <id> --org <id> [--occurrence <id>]`: prints the newest 100 reads of guardian
  * contacts (REQ-037, DD-39; #34) as one JSON document `{ rows }`, newest first — who, in which role, which session,
  * which person ids, why — for a club's data-protection request. The rows hold ids only; the contacts are never logged.
@@ -112,6 +139,7 @@ const checkAppendOnlyCli: ModuleCli = {
 const commands: ModuleCli[] = [
   generateOccurrences,
   expireGuardianConfirmations,
+  sendDeclarationReminders,
   contactAccessLogCli,
   checkAppendOnlyCli,
 ]

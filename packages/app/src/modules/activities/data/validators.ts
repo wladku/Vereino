@@ -157,6 +157,29 @@ export const attendanceDeclareSchema = z
   })
   .strict()
 
+/** `POST /api/activities/declaration-links` (REQ-017): the address and the session of the public page it came from. */
+export const declarationLinkRequestSchema = z
+  .object({
+    email: z.email().max(254),
+    clubSlug: z.string().min(1).max(100),
+    occurrencePublicRef: z.uuid(),
+  })
+  .strict()
+
+/** `POST /api/activities/declaration-links/{token}` (REQ-017): whom and what; the session comes from the link. */
+export const declarationLinkDeclareSchema = z
+  .object({
+    personId: z.uuid(),
+    declared: z.enum(DECLARED_VALUES),
+  })
+  .strict()
+
+/** `activities.attendance.declare_by_link`: the route's body plus the raw token from the path. */
+export const declareByLinkSchema = declarationLinkDeclareSchema.extend({ token: z.string().min(1).max(200) }).strict()
+
+/** `activities.declaration_links.send_reminders` (job): `now` replays another evening (operators, tests). */
+export const sendRemindersSchema = z.object({ now: instantSchema.optional() }).strict()
+
 /** `POST /api/activities/attendance/{id}/guardian-decision`. */
 export const guardianDecisionSchema = z.object({ id: z.uuid(), approve: z.boolean() }).strict()
 
