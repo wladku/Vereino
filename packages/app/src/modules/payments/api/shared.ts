@@ -195,8 +195,10 @@ export function chargeListItem(row: Row) {
     amountDue: amount - discountAmount,
     discountRuleId: text(row.discount_rule_id),
     dueDate: calendarDate(row.due_date),
+    payee: text(row.payee),
     status: text(row.status),
     generationId: text(row.generation_id),
+    cancelReason: text(row.cancel_reason),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -208,6 +210,9 @@ export type ChargeListItem = ReturnType<typeof chargeListItem> & {
   person?: PersonName | null
   payer?: PersonName | null
   discountRuleName?: string | null
+  paid?: number
+  remaining?: number
+  overdue?: boolean
 }
 
 export const chargeListItemSchema = z.object({
@@ -227,8 +232,13 @@ export const chargeListItemSchema = z.object({
   discountRuleId: z.string().nullable(),
   discountRuleName: z.string().nullable().optional(),
   dueDate: z.string().nullable(),
+  payee: z.string().nullable().describe('`club` or `owner_institution` (a municipality)'),
   status: z.string().nullable(),
   generationId: z.string().nullable(),
+  cancelReason: z.string().nullable(),
+  paid: z.number().int().optional().describe('Grosz paid so far (reversing entries included)'),
+  remaining: z.number().int().optional().describe('Grosz still to pay'),
+  overdue: z.boolean().optional().describe('`open` or `partially_paid` past the due date — a derived marker'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
