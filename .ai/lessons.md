@@ -41,6 +41,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 
 ### architecture
 
+- [A name exported by two @vereino/core files resolves to one of them without an error; grep the index before naming an export](lessons/core-export-star-name-collision.md) — area:architecture,testing; module:platform,facilities; topic:workspaces,exports,export-star,naming,jest
 - [date-fns-tz offsets are wrong around DST: read them through formatInTimeZone and resolve the gap and the ambiguity yourself](lessons/date-fns-tz-dst-offsets-and-wall-time-resolution.md) — area:architecture,testing; module:activities,platform; topic:date-fns-tz,time-zones,dst,recurrence,rfc-5545
 - [Treat @open-mercato/enterprise as commercial and keep its modules disabled](lessons/enterprise-package-is-commercial.md) — area:architecture,spec-pr; module:platform; topic:licensing,modules-ts,enterprise-modules,dependencies
 - [A disabled module's features are never granted; an auth/login interceptor must never throw; pass tenantId to superadmin ACL writes](lessons/future-module-gates-and-auth-login-interceptors.md) — area:architecture,testing; module:people,platform; topic:acl,feature-policy,api-interceptor,auth-login,payments-gate,superadmin
@@ -60,6 +61,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [Scan Vereino pages with the platform axe baseline; CrudForm 0.9.0 labels are not associated](lessons/platform-crudform-labels-axe-baseline.md) — area:backend-ui,testing; module:platform,club_core; topic:accessibility,axe,crud-form,app-shell,wcag
 - [An sr-only label inside a horizontally scrolling table escapes it unless the scroll wrapper is relative](lessons/sr-only-in-scrolling-table-needs-relative-wrapper.md) — area:backend-ui,testing; module:payments,platform; topic:reflow,accessibility,tables,overflow
 - [A sticky bar above the member bottom navigation uses a spacing-scale offset (bottom-24); ds:check refuses arbitrary values and inline styles](lessons/sticky-bar-above-member-bottom-nav-uses-spacing-scale.md) — area:backend-ui; module:activities,ui; topic:ds-check,tailwind,sticky,member-shell,safe-area,mobile
+- [The platform Tag brand variant fails axe color-contrast; use a status variant for text a scan covers](lessons/tag-brand-variant-low-contrast.md) — area:backend-ui,testing; module:platform,facilities; topic:tag,axe,color-contrast,design-tokens,accessibility
 
 ### debugging
 

@@ -1,8 +1,6 @@
 {
   "name": "public",
-  "namespaces": [
-    "public"
-  ],
+  "namespaces": ["public"],
   "tables": [
     {
       "name": "club_core_club_settings",
@@ -402,9 +400,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id"
-          ],
+          "columnNames": ["organization_id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_club_settings_organization_unique",
@@ -412,9 +408,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_club_settings_pkey",
@@ -431,10 +425,7 @@
           "expression": "create unique index \"club_core_club_settings_public_slug_unique\" on \"club_core_club_settings\" (\"public_slug\") where public_slug is not null"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_club_settings_tenant_org_idx",
@@ -692,10 +683,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "type"
-          ],
+          "columnNames": ["organization_id", "type"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_institutions_org_type_idx",
@@ -703,9 +691,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_institutions_pkey",
@@ -713,10 +699,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_institutions_tenant_org_idx",
@@ -1256,6 +1239,23 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "opening_hours": {
+          "name": "opening_hours",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "json"
+        },
         "organization_id": {
           "name": "organization_id",
           "type": "uuid",
@@ -1395,10 +1395,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "parent_place_id"
-          ],
+          "columnNames": ["organization_id", "parent_place_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_places_org_parent_idx",
@@ -1406,9 +1403,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_places_pkey",
@@ -1416,10 +1411,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_places_tenant_org_idx",
@@ -1660,9 +1652,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "attachment_id"
-          ],
+          "columnNames": ["attachment_id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_section_materials_attachment_unique",
@@ -1670,10 +1660,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "organization_id",
-            "section_id"
-          ],
+          "columnNames": ["organization_id", "section_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_section_materials_org_section_idx",
@@ -1681,9 +1668,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_section_materials_pkey",
@@ -1691,10 +1676,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_section_materials_tenant_org_idx",
@@ -2020,10 +2002,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "is_active"
-          ],
+          "columnNames": ["organization_id", "is_active"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_sections_org_active_idx",
@@ -2049,9 +2028,7 @@
           "expression": "create unique index \"club_core_sections_org_public_slug_unique\" on \"club_core_sections\" (\"organization_id\", \"public_slug\") where deleted_at is null and public_slug is not null"
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "club_core_sections_pkey",
@@ -2059,10 +2036,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "club_core_sections_tenant_org_idx",

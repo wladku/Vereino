@@ -137,6 +137,35 @@ export const sectionListQuerySchema = z.object({
 
 const coordinateSchema = (limit: number) => z.number().min(-limit).max(limit).nullable()
 
+/**
+ * The shape of a place's opening hours (facilities spec DD-41): seasons `MM-DD`–`MM-DD` with per-weekday windows
+ * `HH:MM`. Only the shape is checked here; ordered windows, overlaps and seasons covering a date twice are the rule of
+ * `openingHoursProblem` (`@vereino/core`), which the place commands answer with 422 `place_opening_hours_invalid`.
+ */
+const wallTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/)
+const monthDaySchema = z.string().regex(/^\d{2}-\d{2}$/)
+export const openingHoursSchema = z
+  .object({
+    seasons: z
+      .array(
+        z
+          .object({
+            from: monthDaySchema,
+            to: monthDaySchema,
+            windows: z
+              .array(
+                z
+                  .object({ weekday: z.number().int().min(1).max(7), from: wallTimeSchema, to: wallTimeSchema })
+                  .strict(),
+              )
+              .max(50),
+          })
+          .strict(),
+      )
+      .max(12),
+  })
+  .strict()
+
 const placeFields = {
   parentPlaceId: z.uuid().nullable().optional(),
   kind: z.enum(PLACE_KINDS),
@@ -152,6 +181,7 @@ const placeFields = {
   rentedByClub: z.boolean().optional(),
   capacityGroups: z.number().int().min(1).max(100).optional(),
   contacts: placeContactsSchema.nullable().optional(),
+  openingHours: openingHoursSchema.nullable().optional(),
   isActive: z.boolean().optional(),
   /** The place's rules as plain text (UX parity spec, REQ-U03). */
   regulationsText: nullableText(20000).optional(),
