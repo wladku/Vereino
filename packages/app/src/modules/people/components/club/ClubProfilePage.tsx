@@ -2,7 +2,8 @@
 // `/club/profile` (club spec `/club/profile` UI row; REQ-001, REQ-006, REQ-035, REQ-037; #27): the member's interface
 // language (null = the club default), contact details and — for a guardian — the two consents "share my contact
 // details with my children's coaches" (DD-39) and "show my children's presence to other guardians" (REQ-006), each
-// shown with the date it was given and withdrawable at any time. One form, one save through `PUT /api/people/me` with
+// shown with the date it was given and withdrawable at any time; for a coach, the consent to show their name ("First
+// L.") on the club's public pages (DD-29, #91; without it the page says "Section coach"). One form, one save through `PUT /api/people/me` with
 // the person's lock token; a conflict shows the platform's conflict bar. Platform primitives with bound labels are
 // used instead of `CrudForm`, whose labels are not associated with their inputs (lesson
 // `platform-crudform-labels-axe-baseline`) and which cannot show each consent's date next to its switch.
@@ -20,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { resolveLocaleLabel } from '@open-mercato/shared/lib/i18n/locale-label'
 import { useLocale, useSupportedLocales, useT } from '@open-mercato/shared/lib/i18n/context'
+import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
 import {
   MEMBER_PROFILE_API,
@@ -40,6 +42,7 @@ type FormState = {
   phone: string
   shareContactWithCoaches: boolean
   sharePresenceWithGuardians: boolean
+  publishNameConsent: boolean
 }
 
 function initialState(profile: MemberProfile): FormState {
@@ -49,7 +52,13 @@ function initialState(profile: MemberProfile): FormState {
     phone: profile.person.phone ?? '',
     shareContactWithCoaches: profile.person.consents.shareContactWithCoaches.granted,
     sharePresenceWithGuardians: profile.person.consents.sharePresenceWithGuardians.granted,
+    publishNameConsent: profile.person.consents.publishNameConsent.granted,
   }
+}
+
+/** The name the public pages would show ("Anna K."), so the coach sees what the consent publishes. */
+function publicNamePreview(firstName: string, lastName: string): string {
+  return publicPersonName(firstName, lastName) ?? firstName
 }
 
 function blankToNull(value: string): string | null {
@@ -69,6 +78,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
   const [state, setState] = React.useState<FormState>(() => initialState(profile))
   const [busy, setBusy] = React.useState(false)
   const isGuardian = profile.wards.length > 0
+  const isCoach = profile.contexts.includes('coach')
   const refresh = () => queryClient.invalidateQueries({ queryKey: MEMBER_PROFILE_QUERY_KEY })
 
   const consentDescription = (consent: SelfConsent) => {
@@ -91,6 +101,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
               sharePresenceWithGuardians: state.sharePresenceWithGuardians,
             }
           : {}),
+        ...(isCoach ? { publishNameConsent: state.publishNameConsent } : {}),
       }
       await withScopedApiRequestHeaders(buildOptimisticLockHeader(profile.person.updatedAt), () =>
         apiCallOrThrow(
@@ -221,6 +232,31 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
             }}
           />
           <p className="text-muted-foreground max-w-prose text-xs">{t('people.club.profile.consents.withdrawHint')}</p>
+        </section>
+      ) : null}
+
+      {isCoach ? (
+        <section
+          aria-labelledby="club-profile-public-name"
+          className="bg-card flex flex-col gap-4 rounded-lg border p-4"
+          data-testid="club-profile-public-name"
+        >
+          <h2 id="club-profile-public-name" className="text-lg font-semibold">
+            {t('people.club.profile.publicName.title')}
+          </h2>
+          <SwitchField
+            id="club-consent-publish-name"
+            label={t('people.club.profile.consents.publishNameConsent', {
+              name: publicNamePreview(profile.person.firstName, profile.person.lastName),
+            })}
+            description={consentDescription(profile.person.consents.publishNameConsent)}
+            checked={state.publishNameConsent}
+            disabled={busy}
+            onCheckedChange={(checked) => {
+              setState((current) => ({ ...current, publishNameConsent: checked }))
+            }}
+          />
+          <p className="text-muted-foreground max-w-prose text-xs">{t('people.club.profile.publicName.help')}</p>
         </section>
       ) : null}
 

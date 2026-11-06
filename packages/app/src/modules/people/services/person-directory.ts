@@ -10,6 +10,7 @@ import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { contactSharingFilter } from '../lib/contact-sharing'
+import { publicPersonName } from '../lib/member-rules'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -61,6 +62,12 @@ export type PersonDirectory = {
     date: CalendarDate,
     em?: EntityManager,
   ): Promise<Map<string, string>>
+  /**
+   * The public name ("First L.", `publicPersonName`) of each person among `ids` who gave `publish_name_consent_at`
+   * (DD-29), by id; a person without the consent is absent. For the instructors of the public club pages (#91): the
+   * full last name never leaves `people`.
+   */
+  publicNames(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, string>>
   /** The persons holding a live `role` assignment active on `date` (the coach picker of the activity wizard, #93). */
   roleHolderIdsOn(
     scope: ClubScope,
@@ -215,6 +222,28 @@ export async function sharedContacts(
   )
 }
 
+export async function publicNames(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const rows = await findWithDecryption(
+    em,
+    Person,
+    { id: { $in: unique }, ...scope, deletedAt: null, publishNameConsentAt: { $ne: null } },
+    { fields: ['id', 'firstName', 'lastName'] },
+    scope,
+  )
+  return new Map(
+    rows.flatMap((row) => {
+      const name = publicPersonName(row.firstName, row.lastName)
+      return name ? [[row.id, name] as const] : []
+    }),
+  )
+}
+
 export async function roleHolderIdsOn(
   em: EntityManager,
   scope: ClubScope,
@@ -244,6 +273,7 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
     contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
     sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
+    publicNames: (scope, ids, em) => publicNames(em ?? getEm().fork(), scope, ids),
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
   }
 }
