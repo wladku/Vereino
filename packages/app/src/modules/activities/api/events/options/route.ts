@@ -59,9 +59,16 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the groups and places of the coach’s event form',
       description:
-        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place"). Names only.',
+        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place"). Names and the group kind only.',
       responses: [{ status: 200, description: 'The options', schema: responseSchema }],
-      errors: [{ status: 401, description: 'Unauthorized', schema: errorSchema }],
+      errors: [
+        { status: 401, description: 'Unauthorized', schema: errorSchema },
+        {
+          status: 403,
+          description: 'Without `activities.events.create`, or `scope_unlinked` (no linked person)',
+          schema: errorSchema,
+        },
+      ],
     },
   },
 }

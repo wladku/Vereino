@@ -136,12 +136,27 @@ export function ClubEventForm({
 
   const describedBy = (field: EventDraftField) => (problems[field] ? `${id}-${field}-problem` : undefined)
   const invalid = (field: EventDraftField) => (problems[field] ? true : undefined)
+  // The control each field's problem belongs to, in reading order; the first one with a problem takes the focus.
+  const controlIds: Record<EventDraftField, string> = {
+    groupId: `${id}-group`,
+    type: `${id}-type-${draft.type === 'other' ? 'other' : 'tournament'}`,
+    name: `${id}-name`,
+    placeId: `${id}-place`,
+    date: `${id}-date`,
+    startTime: `${id}-start`,
+    endTime: `${id}-end`,
+  }
+  const showProblems = (next: Partial<Record<EventDraftField, string>>) => {
+    setProblems(next)
+    const first = (Object.keys(controlIds) as EventDraftField[]).find((field) => next[field])
+    if (first) window.setTimeout(() => document.getElementById(controlIds[first])?.focus(), 0)
+  }
 
   const submit = async () => {
     const found = eventDraftProblems(draft)
     const fields = Object.keys(found) as EventDraftField[]
     if (fields.length > 0) {
-      setProblems(
+      showProblems(
         Object.fromEntries(fields.map((field) => [field, t(PROBLEM_KEYS[found[field] as EventDraftProblem])])),
       )
       setError(t('activities.club.event.errors.fix'))
@@ -177,13 +192,19 @@ export function ClubEventForm({
       return
     }
     if (call.status === 403) {
-      setProblems({ groupId: t('activities.events.errors.denied') })
+      showProblems({ groupId: t('activities.events.errors.denied') })
       setError(t('activities.events.errors.denied'))
       return
     }
-    const message = typeof answer.error === 'string' && answer.error ? answer.error : null
+    // A place removed since the form loaded answers 404; a 400 carries the platform's English "Validation failed".
+    if (call.status === 404) {
+      showProblems({ placeId: t('activities.club.event.problems.invalid') })
+      setError(t('activities.club.event.errors.create'))
+      return
+    }
+    const message = call.status === 422 && typeof answer.error === 'string' && answer.error ? answer.error : null
     const field = call.status === 422 ? eventFieldOfError(code, answer.field) : null
-    if (field) setProblems({ [field]: message ?? t('activities.club.event.problems.invalid') })
+    if (field) showProblems({ [field]: message ?? t('activities.club.event.problems.invalid') })
     setError(message ?? t('activities.club.event.errors.create'))
   }
 
@@ -233,6 +254,7 @@ export function ClubEventForm({
         <RadioGroup
           aria-labelledby={`${id}-type`}
           aria-describedby={describedBy('type')}
+          aria-invalid={invalid('type')}
           className="flex flex-col gap-2 sm:flex-row"
           value={draft.type}
           onValueChange={(value) => {
@@ -400,9 +422,6 @@ export function ClubEventForm({
           <p>{error}</p>
         </Alert>
       ) : null}
-      <p className="sr-only" aria-live="polite">
-        {error ?? ''}
-      </p>
       {/* On a phone the submit stays in view above the fixed bottom navigation (as the attendance list's bar). */}
       <div
         className="bg-background sticky bottom-24 z-30 -mx-4 flex flex-wrap gap-2 border-t px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"
