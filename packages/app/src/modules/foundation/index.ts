@@ -47,6 +47,7 @@ export { errors, type ErrorDetails, type ModuleErrors } from './services/errors'
 export { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 export {
   OCCUPANCY_PROVIDER_TOKEN,
+  lockOccupancy,
   occupancyProvider,
   type BlockingInterval,
   type OccupancyContext,

@@ -60,6 +60,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [The first .tsx of a Vereino module needs jsx-a11y rules without the plugin object; a stale lock token answers 409 before validation](lessons/eslint-jsx-a11y-and-stale-lock-before-validation.md) — area:backend-ui,debugging; module:club_core,platform; topic:eslint,jsx-a11y,flat-config,optimistic-lock,crud-factory,integration-tests
 - [Scan Vereino pages with the platform axe baseline; CrudForm 0.9.0 labels are not associated](lessons/platform-crudform-labels-axe-baseline.md) — area:backend-ui,testing; module:platform,club_core; topic:accessibility,axe,crud-form,app-shell,wcag
 - [A sticky bar above the member bottom navigation uses a spacing-scale offset (bottom-24); ds:check refuses arbitrary values and inline styles](lessons/sticky-bar-above-member-bottom-nav-uses-spacing-scale.md) — area:backend-ui; module:activities,ui; topic:ds-check,tailwind,sticky,member-shell,safe-area,mobile
+- [The platform Tabs primitives drop data-testid; put the test id on a wrapper and pick a tab by role](lessons/tabs-primitives-drop-data-testid.md) — area:backend-ui,testing; module:platform,facilities; topic:tabs,data-testid,playwright,open-mercato-ui
 - [The platform Tag brand variant fails axe color-contrast; use a status variant for text a scan covers](lessons/tag-brand-variant-low-contrast.md) — area:backend-ui,testing; module:platform,facilities; topic:tag,axe,color-contrast,design-tokens,accessibility
 
 ### debugging

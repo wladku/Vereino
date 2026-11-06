@@ -1,7 +1,7 @@
 // ACL features of `facilities` (facilities spec *API, Command, and Error Contracts*; #121). `dependsOn` is reported by
 // the platform's ACL editor only; it is not expanded at check time, so a role that manages also needs
-// `facilities.view` (`@vereino/core` `roleCatalogue`: the club administrator holds `facilities.*`). The rental,
-// booking, log and maintenance features arrive with their stories.
+// `facilities.view` (`@vereino/core` `roleCatalogue`: the club administrator holds `facilities.*`). Rentals and entry
+// bans arrive with #122; the booking, approval, log and maintenance features arrive with their stories.
 export const features = [
   {
     id: 'facilities.view',
@@ -11,6 +11,18 @@ export const features = [
   {
     id: 'facilities.manage',
     title: 'Manage facility rules: zones, closures, rates and booking availability',
+    module: 'facilities',
+    dependsOn: ['facilities.view'],
+  },
+  {
+    id: 'facilities.rentals.manage',
+    title: 'Enter external rentals and manage their status: confirm, cancel, move, no-show',
+    module: 'facilities',
+    dependsOn: ['facilities.view'],
+  },
+  {
+    id: 'facilities.incidents.manage',
+    title: 'Manage incidents and entry bans',
     module: 'facilities',
     dependsOn: ['facilities.view'],
   },
