@@ -20,6 +20,35 @@ export async function lockOccurrenceThread(em: EntityManager, organizationId: st
   ])
 }
 
+/**
+ * Serializes the direct threads one member starts (DD-M18: at most 20 in 24 hours, also under concurrent requests):
+ * held until the caller's transaction ends.
+ */
+export async function lockDirectThreadAuthor(em: EntityManager, organizationId: string, authorPersonId: string) {
+  await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [
+    `communication.direct_thread:${organizationId}:${authorPersonId}`,
+  ])
+}
+
+/**
+ * The direct threads a member started since `since` (DD-M18) — deleted ones too: the limit counts what was sent. A
+ * member's direct thread carries its group's section; a staff `persons` announcement carries none and is not counted.
+ */
+export async function countDirectThreadsSince(
+  em: EntityManager,
+  scope: CommunicationScope,
+  authorPersonId: string,
+  since: Date,
+): Promise<number> {
+  const rows = await em.execute<Array<{ count: string | number }>>(
+    `select count(*) as count from communication_threads
+      where tenant_id = ? and organization_id = ? and scope_type = 'direct' and section_id is not null
+        and author_person_id = ? and created_at > ?`,
+    [scope.tenantId, scope.organizationId, authorPersonId, since],
+  )
+  return Number(rows[0]?.count ?? 0)
+}
+
 /** Adds participants that are not there yet (append-only: an existing row and its reasons stay as they are). */
 export async function insertParticipants(
   em: EntityManager,

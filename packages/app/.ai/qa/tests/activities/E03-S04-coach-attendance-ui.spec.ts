@@ -148,11 +148,13 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 
-    // "Close session" asks first; confirming closes it and the list becomes read-only.
+    // "Close session" asks first; confirming closes it, returns to Today (E06-S17) and the list becomes read-only.
     await page.getByTestId('club-attendance-close').click()
     const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+    await expect(page).toHaveURL(/\/club$/)
+    await page.goto(`/club/occurrences/${sessionId}/attendance`)
     await expect(page.getByTestId('club-attendance-done')).toBeVisible()
     await expect(page.getByRole('radio')).toHaveCount(0)
     await expect(row(family.elder.firstName).getByTestId('club-attendance-actual')).toHaveText(LATE)

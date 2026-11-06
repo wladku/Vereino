@@ -1,7 +1,8 @@
 // Pure rules of the member side of `people` (club spec phase 1 steps 4, 4a and 5; #27): the two consents a guardian
 // gives in their own profile (P-08 transitions), the R10 gate on a person's own payments, the request locale of a
-// signed-in member (DD-34), the acting contexts of the role-context switcher and where a sign-in lands. Time and the
-// served locales are parameters (engineering standards S3.5, S4.9).
+// signed-in member (DD-34), the acting contexts of the role-context switcher, where a sign-in lands and the authors of
+// the guardianship consents a member page names (E06-S22 #104). Time and the served locales are parameters
+// (engineering standards S3.5, S4.9).
 import {
   grantConsent,
   isAdultOn,
@@ -11,6 +12,7 @@ import {
   type GrantKind,
   type Scope,
 } from '@vereino/core'
+import { CONSENT_KINDS, type ConsentKind, type ConsentView, type ConsentsView } from './people-rules'
 
 /**
  * The consents a member gives in their own profile (`GET/PUT /api/people/me`, club spec `people_persons`): the
@@ -138,4 +140,29 @@ export function memberLanding(input: LandingInput): { redirect: string; notice: 
 /** `path` with the platform's same-origin flash parameters (`flash`, `type=info`). */
 export function withNotice(path: string, message: string): string {
   return `${path}?${new URLSearchParams({ flash: message, type: 'info' }).toString()}`
+}
+
+/** A guardianship consent as the member pages show it (E06-S22 #104): the view plus the name of its last author. */
+export type MemberConsentView = ConsentView & { readonly byName: string | null }
+export type MemberConsentsView = { readonly [kind in ConsentKind]: MemberConsentView }
+
+/** The distinct persons who last changed any of the consents, in first-seen order. */
+export function consentAuthorIds(views: readonly ConsentsView[]): string[] {
+  const ids = new Set<string>()
+  for (const view of views) {
+    for (const kind of CONSENT_KINDS) {
+      const author = view[kind].byPersonId
+      if (author) ids.add(author)
+    }
+  }
+  return [...ids]
+}
+
+/** The consents with each author's name; an author the reader cannot resolve (e.g. deleted) has no name. */
+export function withConsentAuthors(view: ConsentsView, names: ReadonlyMap<string, string>): MemberConsentsView {
+  const entry = (kind: ConsentKind): MemberConsentView => {
+    const consent = view[kind]
+    return { ...consent, byName: consent.byPersonId ? (names.get(consent.byPersonId) ?? null) : null }
+  }
+  return { regulations: entry('regulations'), image: entry('image'), trips: entry('trips') }
 }

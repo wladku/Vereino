@@ -1,12 +1,14 @@
 // Reads behind the `groups` routes: one group of the trusted tenant and organization (the detail route checks it with
 // `assertInScope`), the groups whose rosters a caller may list (`scopeWhere` on the groups, foundation spec P-03 — a
 // coordinator's grant names sections, which memberships do not carry, so the roster list narrows to the visible
-// groups), and the names a list shows next to its rows (sections, seasons, persons, groups).
+// groups), the names a list shows next to its rows (sections, seasons, persons, groups), and the groups of a member's
+// own person and wards (E06-S22 #104).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { ageOn, scopeWhere, type CalendarDate, type GrantKind, type Scope, type ScopeColumnMap } from '@vereino/core'
 import { Group, GroupMembership, Season } from '../data/entities'
 import { summarizeRosters, type GroupRosterSummary } from '../lib/group-list'
+import { memberGroupRows, memberPersonIds, type MemberGroupRow } from '../lib/member-groups'
 import { findPersons, findSections, type GroupsScope } from './directory'
 
 export async function findGroup(container: AwilixContainer, scope: GroupsScope, id: string): Promise<Group | null> {
@@ -150,4 +152,48 @@ export async function rosterSummaries(
     { fields: ['groupId', 'personId', 'role'], orderBy: { validFrom: 'asc', id: 'asc' } },
   )
   return summarizeRosters(unique, rows)
+}
+
+/**
+ * The groups of the member's own person and wards on the club day (E06-S22 #104; README M-10): the persons come only
+ * from the caller's `self` and `guardian` grants, so a member never reads another family's groups.
+ */
+export async function memberGroups(
+  container: AwilixContainer,
+  trusted: GroupsScope,
+  scope: Scope,
+  today: CalendarDate,
+): Promise<MemberGroupRow[]> {
+  const personIds = memberPersonIds(scope)
+  if (personIds.length === 0) return []
+  const em = container.resolve<EntityManager>('em').fork()
+  const memberships = await em.find(
+    GroupMembership,
+    { ...trusted, personId: { $in: personIds }, deletedAt: null },
+    { fields: ['id', 'groupId', 'personId', 'role', 'validFrom', 'validTo'] },
+  )
+  if (memberships.length === 0) return []
+  const groupIds = [...new Set(memberships.map((row) => row.groupId))]
+  const groups = await em.find(
+    Group,
+    { id: { $in: groupIds }, ...trusted, deletedAt: null },
+    { fields: ['id', 'name', 'kind', 'sectionId', 'isActive'] },
+  )
+  const names = await sectionNames(
+    container,
+    trusted,
+    groups.map((group) => group.sectionId),
+  )
+  return memberGroupRows(
+    memberships.map((row) => ({
+      personId: row.personId,
+      groupId: row.groupId,
+      role: row.role,
+      validFrom: row.validFrom,
+      validTo: row.validTo ?? null,
+    })),
+    new Map(groups.map((group) => [group.id, group])),
+    names,
+    today,
+  )
 }

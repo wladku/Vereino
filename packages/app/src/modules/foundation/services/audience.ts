@@ -110,25 +110,50 @@ export async function resolveAudience(
     const returned = new Set(members.map((member) => member.personId))
     if ((spec.ids ?? []).some((id) => !returned.has(id))) return foundationErrors.throw('scope_denied')
   }
+  return expandMembers(members, ctx, resolver, club.today, options)
+}
+
+/**
+ * Resolves members the caller has already chosen and authorized — no provider — into recipients by the same rules
+ * as `resolveAudience` (DD-M06, DD-M18): contacts, the active guardians of minors, the expansion and the 2000 cap.
+ * A member's direct thread (`communication.threads.start_direct`) names its subject and the addressed staff itself.
+ */
+export async function resolveMembers(
+  members: readonly AudienceMember[],
+  ctx: AudienceContext,
+  options: { exclude?: readonly string[] } = {},
+): Promise<ResolvedAudience> {
+  const resolver = contactResolver(ctx.container)
+  const club = await resolver.club(ctx)
+  return expandMembers(members, ctx, resolver, club.today, options)
+}
+
+async function expandMembers(
+  members: readonly AudienceMember[],
+  ctx: AudienceContext,
+  resolver: ContactResolver,
+  today: CalendarDate,
+  options: { exclude?: readonly string[] },
+): Promise<ResolvedAudience> {
   const memberIds = [...new Set(members.map((member) => member.personId))]
   if (memberIds.length > AUDIENCE_MAX_RECIPIENTS) return foundationErrors.throw('audience_too_large')
 
   const memberContacts = await resolver.contacts(memberIds, ctx)
   const contacts = new Map(memberContacts.map((contact) => [contact.personId, contact]))
-  const minors = minorMemberIds(members, contacts, club.today)
+  const minors = minorMemberIds(members, contacts, today)
   const guardiansByWard =
-    minors.length > 0 ? await resolver.guardiansOf(minors, club.today, ctx) : new Map<string, string[]>()
+    minors.length > 0 ? await resolver.guardiansOf(minors, today, ctx) : new Map<string, string[]>()
   const guardianIds = [...new Set([...guardiansByWard.values()].flat())].filter((id) => !contacts.has(id))
   if (guardianIds.length > 0) {
     for (const contact of await resolver.contacts(guardianIds, ctx)) contacts.set(contact.personId, contact)
   }
 
-  const { recipients, unreachable } = expandAudience({ members, contacts, guardiansByWard }, club.today, options)
+  const { recipients, unreachable } = expandAudience({ members, contacts, guardiansByWard }, today, options)
   if (recipients.length > AUDIENCE_MAX_RECIPIENTS) return foundationErrors.throw('audience_too_large')
   return {
     recipients: [...recipients],
     counts: audienceCounts(recipients),
     unreachable: [...unreachable],
-    today: club.today,
+    today,
   }
 }

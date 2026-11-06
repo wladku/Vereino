@@ -2,16 +2,26 @@
 // linked to the session's user, their active wards with the guardianship consents, their active staff roles, the acting
 // contexts of the role-context switcher, the resolved interface locale (DD-34), the club's short name (club content)
 // and whether the payments tile may be shown (R10). The wards come from the `guardian` grant of the scope provider
-// (`scopeContract.resolve`), so the view never names a person outside the caller's scope.
+// (`scopeContract.resolve`), so the view never names a person outside the caller's scope. E06-S22 (#104) adds each
+// ward's age on the club day, the name of each consent's last author, and — under the `self` grant, the member's own
+// guardianships — the member's active guardians with the consents they gave (read-only for the ward).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { defaultLocale } from '@open-mercato/shared/lib/i18n/config'
 import { detectLocale, resolveSupportedLocalesForRequest } from '@open-mercato/shared/lib/i18n/server'
-import { isActiveAt, type ActingRole, type AssignableRole } from '@vereino/core'
+import { ageOn, isActiveAt, type ActingRole, type AssignableRole } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
-import { memberContexts, memberLocale, selfConsentView, type SelfConsentView } from '../lib/member-rules'
+import {
+  consentAuthorIds,
+  memberContexts,
+  memberLocale,
+  selfConsentView,
+  withConsentAuthors,
+  type MemberConsentsView,
+  type SelfConsentView,
+} from '../lib/member-rules'
 import { consentsView, parseStoredConsents, type ConsentsView, type GuardianRelation } from '../lib/people-rules'
 import { clubLogoUrl, clubSettings, clubToday, type ClubScope } from './club-clock'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './payments-gate'
@@ -46,6 +56,8 @@ export type MemberWardView = {
   firstName: string
   lastName: string
   birthDate: string | null
+  /** Completed years on the club day; null without a birth date. */
+  age: number | null
   hasAccount: boolean
   guardianship: {
     id: string
@@ -53,15 +65,26 @@ export type MemberWardView = {
     isPrimaryPayer: boolean
     validFrom: string
     validTo: string | null
-    consents: ConsentsView
+    consents: MemberConsentsView
     /** The lock token of `POST /api/people/guardianships/{id}/consents`. */
     updatedAt: string | null
   }
 }
 
+/** One active guardian of the member (E06-S22 #104): who they are and the consents they gave for the member. */
+export type MemberGuardianView = {
+  guardianshipId: string
+  firstName: string
+  lastName: string
+  relation: GuardianRelation
+  consents: MemberConsentsView
+}
+
 export type MemberProfile = {
   person: MemberPersonView
   wards: MemberWardView[]
+  /** The member's own active guardians; empty for an adult without one. */
+  guardians: MemberGuardianView[]
   /** The person's staff role assignments active today. */
   roles: { role: AssignableRole; sectionId: string | null }[]
   /** The acting contexts of the role-context switcher. */
@@ -92,42 +115,88 @@ export function memberPersonView(person: Person): MemberPersonView {
   }
 }
 
-async function loadWards(
+/** The active link per counterpart (the latest `validFrom` wins), keyed by `keyOf`. */
+function activeLinks(links: readonly Guardianship[], today: string, keyOf: (link: Guardianship) => string) {
+  const byKey = new Map<string, Guardianship>()
+  const active = links
+    .filter((link) => isActiveAt({ validFrom: link.validFrom, validTo: link.validTo ?? null }, today))
+    .sort((a, b) => b.validFrom.localeCompare(a.validFrom))
+  for (const link of active) if (!byKey.has(keyOf(link))) byKey.set(keyOf(link), link)
+  return byKey
+}
+
+function byName<T extends { firstName: string; lastName: string }>(a: T, b: T): number {
+  return a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName)
+}
+
+async function loadWardLinks(
   em: EntityManager,
   scope: ClubScope,
   guardianPersonId: string,
   wardIds: readonly string[],
   today: string,
-): Promise<MemberWardView[]> {
-  if (wardIds.length === 0) return []
-  const links = (
-    await em.find(Guardianship, {
-      ...scope,
-      guardianPersonId,
-      wardPersonId: { $in: [...wardIds] },
-      deletedAt: null,
-    })
-  )
-    .filter((link) => isActiveAt({ validFrom: link.validFrom, validTo: link.validTo ?? null }, today))
-    .sort((a, b) => b.validFrom.localeCompare(a.validFrom))
-  const linkByWard = new Map<string, Guardianship>()
-  for (const link of links) if (!linkByWard.has(link.wardPersonId)) linkByWard.set(link.wardPersonId, link)
-  if (linkByWard.size === 0) return []
-  const persons = await findWithDecryption(
-    em,
-    Person,
-    { id: { $in: [...linkByWard.keys()] }, ...scope, deletedAt: null },
-    {},
-    scope,
-  )
-  return persons
-    .map((ward): MemberWardView => {
-      const link = linkByWard.get(ward.id) as Guardianship
-      return {
+): Promise<Map<string, Guardianship>> {
+  if (wardIds.length === 0) return new Map()
+  const links = await em.find(Guardianship, {
+    ...scope,
+    guardianPersonId,
+    wardPersonId: { $in: [...wardIds] },
+    deletedAt: null,
+  })
+  return activeLinks(links, today, (link) => link.wardPersonId)
+}
+
+async function loadGuardianLinks(
+  em: EntityManager,
+  scope: ClubScope,
+  wardPersonId: string,
+  today: string,
+): Promise<Map<string, Guardianship>> {
+  const links = await em.find(Guardianship, { ...scope, wardPersonId, deletedAt: null })
+  return activeLinks(links, today, (link) => link.guardianPersonId)
+}
+
+async function loadPersons(em: EntityManager, scope: ClubScope, ids: readonly string[]): Promise<Map<string, Person>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const persons = await findWithDecryption(em, Person, { id: { $in: unique }, ...scope, deletedAt: null }, {}, scope)
+  return new Map(persons.map((person) => [person.id, person]))
+}
+
+/**
+ * The wards (`guardian` grant) and the member's own guardians (`self` grant: the links naming the member as the ward),
+ * each with its consents and the names of their authors, read in one pass over the persons involved.
+ */
+async function loadFamily(
+  em: EntityManager,
+  scope: ClubScope,
+  personId: string,
+  wardIds: readonly string[],
+  today: string,
+): Promise<{ wards: MemberWardView[]; guardians: MemberGuardianView[] }> {
+  const wardLinks = await loadWardLinks(em, scope, personId, wardIds, today)
+  const guardianLinks = await loadGuardianLinks(em, scope, personId, today)
+  const consents = new Map<string, ConsentsView>()
+  for (const link of [...wardLinks.values(), ...guardianLinks.values()]) {
+    consents.set(link.id, consentsView(parseStoredConsents(link.consents)))
+  }
+  const persons = await loadPersons(em, scope, [
+    ...wardLinks.keys(),
+    ...guardianLinks.keys(),
+    ...consentAuthorIds([...consents.values()]),
+  ])
+  const names = new Map([...persons.values()].map((person) => [person.id, fullName(person)]))
+  const consentsOf = (link: Guardianship) => withConsentAuthors(consents.get(link.id) as ConsentsView, names)
+  const wards = [...wardLinks.values()].flatMap((link): MemberWardView[] => {
+    const ward = persons.get(link.wardPersonId)
+    if (!ward) return []
+    return [
+      {
         personId: ward.id,
         firstName: ward.firstName,
         lastName: ward.lastName,
         birthDate: ward.birthDate ?? null,
+        age: ward.birthDate ? ageOn(ward.birthDate.slice(0, 10), today) : null,
         hasAccount: Boolean(ward.userId),
         guardianship: {
           id: link.id,
@@ -135,12 +204,30 @@ async function loadWards(
           isPrimaryPayer: link.isPrimaryPayer,
           validFrom: link.validFrom,
           validTo: link.validTo ?? null,
-          consents: consentsView(parseStoredConsents(link.consents)),
+          consents: consentsOf(link),
           updatedAt: iso(link.updatedAt),
         },
-      }
-    })
-    .sort((a, b) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName))
+      },
+    ]
+  })
+  const guardians = [...guardianLinks.values()].flatMap((link): MemberGuardianView[] => {
+    const guardian = persons.get(link.guardianPersonId)
+    if (!guardian) return []
+    return [
+      {
+        guardianshipId: link.id,
+        firstName: guardian.firstName,
+        lastName: guardian.lastName,
+        relation: link.relation,
+        consents: consentsOf(link),
+      },
+    ]
+  })
+  return { wards: wards.sort(byName), guardians: guardians.sort(byName) }
+}
+
+function fullName(person: { firstName: string; lastName: string }): string {
+  return `${person.firstName} ${person.lastName}`.trim()
 }
 
 /**
@@ -156,7 +243,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   const grants = await scopeContract.resolve(ctx)
   const today = await clubToday(ctx.container, scope)
   const wardIds = grants.find((grant) => grant.kind === 'guardian')?.ids ?? []
-  const wards = await loadWards(em, scope, person.id, wardIds, today)
+  const { wards, guardians } = await loadFamily(em, scope, person.id, wardIds, today)
   const assignments = await em.find(
     RoleAssignment,
     { ...scope, personId: person.id, deletedAt: null },
@@ -174,6 +261,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   return {
     person: memberPersonView(person),
     wards,
+    guardians,
     roles,
     contexts: memberContexts(grants),
     locale,

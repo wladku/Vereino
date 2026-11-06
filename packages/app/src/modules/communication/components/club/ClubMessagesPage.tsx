@@ -4,7 +4,8 @@
 // the last author and the time of the newest message they may see, an unread marker and the "Case" mark. A guardian
 // narrows the list to one ward's threads (`wardId`). Anyone with `communication.post` posts a "New announcement" from
 // here (E06-S20): the backend composer in a dialog, "To" limited to their own sections, groups and sessions; after
-// posting a toast counts the recipients and the new thread opens. States: loading, error with retry, empty. Phone-first.
+// posting a toast counts the recipients and the new thread opens. "Write to the coach" opens `/club/messages/new` when
+// the household has a group with staff today (REQ-M12, DD-M18). States: loading, error with retry, empty. Phone-first.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -18,6 +19,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { memberComposerKinds } from '../../lib/member-inbox'
 import {
+  CLUB_MESSAGE_NEW_HREF,
   clubThreadHref,
   formatDateTime,
   inboxQuery,
@@ -29,6 +31,7 @@ import {
 import { ThreadComposer, type PostedThread } from '../ThreadComposer'
 import { useCanPost } from '../useCanPost'
 import { MessagesClubFrame, type MessagesProfile } from './MessagesClubFrame'
+import { hasStaff, useDirectOptions } from './useDirectOptions'
 
 class InboxLoadError extends Error {}
 
@@ -44,6 +47,20 @@ function useInbox(wardId: string | null) {
       return call.result
     },
   })
+}
+
+/** "Write to the coach", offered only when a household member takes part in a group with staff today. */
+function WriteAction() {
+  const t = useT()
+  const options = useDirectOptions()
+  if (!options.data?.some(hasStaff)) return null
+  return (
+    <Button asChild className="min-h-11 self-start">
+      <Link href={CLUB_MESSAGE_NEW_HREF} data-testid="club-messages-write">
+        {t('communication.direct.action')}
+      </Link>
+    </Button>
+  )
 }
 
 /** "scope · last author · time": the newest message's author ("Club" for a system one), else the thread's author. */
@@ -208,7 +225,10 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{t('communication.club.title')}</h1>
-        {canPost ? <NewAnnouncement /> : null}
+        <div className="flex flex-wrap gap-2">
+          <WriteAction />
+          {canPost ? <NewAnnouncement /> : null}
+        </div>
       </div>
       {wards.length > 0 ? <WardFilter wards={wards} value={wardId} onChange={setWardId} /> : null}
       {body}

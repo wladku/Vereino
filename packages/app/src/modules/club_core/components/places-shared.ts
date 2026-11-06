@@ -18,6 +18,7 @@ export type PlaceRow = {
   capacityGroups: number
   contacts: PlaceContact[]
   isActive: boolean
+  regulationsText: string | null
   createdAt: string | null
   updatedAt: string | null
   /** Added by the list hook (UX parity spec, REQ-U03); absent on other reads. */

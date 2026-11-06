@@ -8,11 +8,15 @@ export const MEMBER_PROFILE_API = '/api/people/me'
 export const MEMBER_PROFILE_QUERY_KEY = ['people-me'] as const
 /** The member paths come from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
 export { BACKEND_HREF, CLUB_HOME_HREF, CLUB_PROFILE_HREF } from '@vereino/ui'
+/** The platform's change-password page of the `auth` module (README M-10). */
+export const CHANGE_PASSWORD_HREF = '/backend/profile/change-password'
 
 export type SelfConsent = { granted: boolean; at: string | null }
 export type WardConsentKind = 'regulations' | 'image' | 'trips'
 export const WARD_CONSENT_KINDS: readonly WardConsentKind[] = ['regulations', 'image', 'trips']
-export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null }
+/** A guardianship consent; `byName` names its last author (E06-S22 #104). */
+export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null; byName: string | null }
+export type WardConsents = Record<WardConsentKind, WardConsent>
 
 export type MemberPerson = {
   id: string
@@ -35,6 +39,8 @@ export type MemberWard = {
   firstName: string
   lastName: string
   birthDate: string | null
+  /** Completed years on the club day (E06-S22 #104). */
+  age: number | null
   hasAccount: boolean
   guardianship: {
     id: string
@@ -42,14 +48,24 @@ export type MemberWard = {
     isPrimaryPayer: boolean
     validFrom: string
     validTo: string | null
-    consents: Record<WardConsentKind, WardConsent>
+    consents: WardConsents
     updatedAt: string | null
   }
+}
+
+/** One of the member's own guardians with the consents they gave (E06-S22 #104). */
+export type MemberGuardian = {
+  guardianshipId: string
+  firstName: string
+  lastName: string
+  relation: string
+  consents: WardConsents
 }
 
 export type MemberProfile = {
   person: MemberPerson
   wards: MemberWard[]
+  guardians: MemberGuardian[]
   roles: { role: string; sectionId: string | null }[]
   contexts: string[]
   locale: string

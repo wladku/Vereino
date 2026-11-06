@@ -3,7 +3,7 @@
 - **Date:** 2026-11-04
 - **Agent / tool:** Claude Code (Opus 5.5), cezar task, `om-auto-fix-issue` (feature route → implementation of an existing spec)
 - **Trigger:** `om-auto-fix-issue 83` (E06-S01).
-- **Spec:** `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 1 (REQ-U01); status line updated (phases 1 and 2 implemented), AC-U01 and AC-U02 ticked, V-U01 resolved, Changelog row added.
+- **Spec:** `.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 1 (REQ-U01); status line updated (phases 1 and 2 implemented), AC-U01 and AC-U02 ticked, V-U01 resolved, Changelog row added.
 - **Branch:** `feat/issue-83-people-list-filters`
 - **Status:** completed, PR open for review.
 

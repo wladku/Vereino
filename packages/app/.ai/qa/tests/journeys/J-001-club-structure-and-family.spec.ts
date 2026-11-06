@@ -502,9 +502,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       const me = await getMe(request, token)
       expect(me.status, JSON.stringify(me.body)).toBe(200)
       expect(me.body?.person.id).toBe(family.kasia.id)
-      // `paymentsVisible` is not asserted for Kasia: the `payments` module is not enabled before phase 4, so the
-      // platform grants its features to nobody (lesson `future-module-gates-and-auth-login-interceptors`); her
-      // `vereino_payer` role (step 3) is what phase 1 stores.
+      // Kasia is an adult payer: with the `payments` module enabled (#108) her `vereino_payer` role (step 3) holds
+      // `payments.view_own`, so her own payments are visible.
+      expect(me.body?.paymentsVisible).toBe(true)
       expect(
         me.body?.wards.map((ward) => [
           ward.firstName,

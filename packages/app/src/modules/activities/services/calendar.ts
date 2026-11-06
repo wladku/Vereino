@@ -20,7 +20,7 @@ import {
 import { foundationErrors, scopeContract, scopeDenialCode } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Activity, Attendance, AttendancePolicy, Occurrence } from '../data/entities'
-import type { CalendarPerspective } from '../data/validators'
+import type { CalendarItemPerspective, CalendarPerspective } from '../data/validators'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
 import { gatheringIso } from '../lib/gathering'
 import {
@@ -398,6 +398,7 @@ async function staffCalendar(
   window: DateWindow,
   now: Date,
   sectionId?: string,
+  onlyOccurrenceId?: string,
 ): Promise<CalendarEntry[]> {
   const em = ctx.container.resolve<EntityManager>('em').fork()
   const kinds: readonly GrantKind[] = as === 'coach' ? ['coach'] : ['coordinator', 'club_admin']
@@ -423,8 +424,12 @@ async function staffCalendar(
       ...scope,
       deletedAt: null,
       occurrenceDate: { $gte: window.from, $lte: window.to },
-      // The requested section narrows the scope filter, never replaces it.
-      $and: [where as object, ...(sectionId ? [{ sectionId }] : [])],
+      // The requested section (or session) narrows the scope filter, never replaces it.
+      $and: [
+        where as object,
+        ...(sectionId ? [{ sectionId }] : []),
+        ...(onlyOccurrenceId ? [{ id: onlyOccurrenceId }] : []),
+      ],
     },
     { orderBy: { startAt: 'asc', id: 'asc' } },
   )
@@ -486,12 +491,17 @@ export async function readCalendar(
   return { items, timeZone, from: query.from, to: query.to }
 }
 
-/** `GET /api/activities/calendar/{id}`: one session of the member calendar, or null when it is not in it. */
+/**
+ * `GET /api/activities/calendar/{id}`: one session of the member calendar, or null when it is not in it. As the coach
+ * (E06-S15 #97) it is the session of `as=coach` — one of the coach's groups or the session they are assigned to — with
+ * the declaration summary; a session outside that scope answers 403 `scope_denied` (the attendance list's answer), so
+ * the page says "This is not your session" and shows none of it.
+ */
 export async function readCalendarItem(
   ctx: CommandRuntimeContext,
   scope: ActivitiesScope,
   id: string,
-  as: 'self' | 'guardian',
+  as: CalendarItemPerspective,
   personId: string | undefined,
   now: Date = new Date(),
 ): Promise<(CalendarEntry & { timeZone: string }) | null> {
@@ -499,9 +509,16 @@ export async function readCalendarItem(
   const row = await em.findOne(Occurrence, { id, ...scope, deletedAt: null }, { fields: ['id', 'occurrenceDate'] })
   if (!row) return null
   const grants = await scopeContract.resolve(ctx)
-  const personIds = await memberPersons(grants, as, personId)
   const window = { from: row.occurrenceDate, to: row.occurrenceDate }
-  const item = (await memberCalendar(ctx, scope, as, personIds, window, now, row.id)).at(0)
+  let item: CalendarEntry | undefined
+  if (as === 'coach') {
+    await assertStaffFeature(ctx, scope, 'activities.coach')
+    item = (await staffCalendar(ctx, scope, grants, 'coach', window, now, undefined, row.id)).at(0)
+    if (!item) return foundationErrors.throw('scope_denied')
+  } else {
+    const personIds = await memberPersons(grants, as, personId)
+    item = (await memberCalendar(ctx, scope, as, personIds, window, now, row.id)).at(0)
+  }
   if (!item) return null
   const { timeZone } = await attendanceSettings(ctx.container, scope)
   return { ...item, timeZone }
