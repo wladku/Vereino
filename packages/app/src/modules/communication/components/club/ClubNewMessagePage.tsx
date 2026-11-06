@@ -113,17 +113,25 @@ function Composer({ options }: { options: DirectOption[] }) {
     if (!recipient || !ready) return
     setPending(true)
     setError(null)
-    const call = await apiCall<{ threadId?: string; code?: string }>('/api/communication/direct', {
-      method: 'POST',
-      headers: { ...(OWN_FORBIDDEN_STATE.headers as Record<string, string>), 'content-type': 'application/json' },
-      body: JSON.stringify({
-        personId,
-        groupId: recipient.groupId,
-        to: recipient.to,
-        subject: subject.trim(),
-        body: body.trim(),
-      }),
-    })
+    let call: Awaited<ReturnType<typeof apiCall<{ threadId?: string; code?: string }>>>
+    try {
+      call = await apiCall<{ threadId?: string; code?: string }>('/api/communication/direct', {
+        method: 'POST',
+        headers: { ...(OWN_FORBIDDEN_STATE.headers as Record<string, string>), 'content-type': 'application/json' },
+        body: JSON.stringify({
+          personId,
+          groupId: recipient.groupId,
+          to: recipient.to,
+          subject: subject.trim(),
+          body: body.trim(),
+        }),
+      })
+    } catch {
+      // `fetch` itself failed (offline, connection reset): release the button and say the message was not sent.
+      setPending(false)
+      setError(sendError(t, 0, null))
+      return
+    }
     if (call.ok && call.result?.threadId) {
       void queryClient.invalidateQueries({ queryKey: INBOX_QUERY_KEY })
       router.push(clubThreadHref(call.result.threadId))
