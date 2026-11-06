@@ -43,3 +43,11 @@ README M-10: the profile `/club/profile` lists a guardian's wards with age, acco
 ## Open problems
 
 - None known.
+
+## Follow-up run 2026-11-06: `om-auto-fix-pr 166` (red integration)
+
+- **Agent / tool:** Claude Code (Opus 5.5) under cezar (task 6b91add0), `om-auto-fix-pr`; one read-only review subagent. Worked on a detached HEAD at `origin/feat/issue-104-profile-wards-guardians` (dd25de2, `main` already merged in, no conflicts) and pushed with `git push origin HEAD:feat/issue-104-profile-wards-guardians`.
+- **CI failure (run 42101675559, `integration`):** only `E06-S22` failed, both attempts, at `page.goto('/club/profile')` after the switch to Ola: `net::ERR_ABORTED`, then "Navigation … is interrupted by another navigation to /login?redirect=%2Fbackend%2Fprofile%2Fchange-password". Cause: the test cleared the cookies while `/backend/profile/change-password` was open, and that page's redirect to `/login` raced with the next navigation. Test bug, not a product bug. Fix: `page.goto('about:blank')` before `clearCookies()`. Lesson `leave-backend-page-before-clearing-cookies`.
+- **Review (subagent, read-only):** no blocking findings. Fixed in this run: a blank phone (`"phone": ""`) sent to `PUT /api/people/me` hit the new check and got a 422, where before it was accepted. `people.persons.update_self` now stores a blank phone as `null`, and the E06-S22 API part asserts that. Non-blocking items went to a follow-up issue (see the PR comment).
+- **Commands:** `yarn test:integration:vereino --filter E06-S22`, race fix only: 1 passed (59 s). With the blank-phone fix: 1 passed (58.5 s). `yarn verify`: all 14 steps passed.
+- **Follow-up:** #191 (phone rule on the admin and import paths, unused catalog keys, spec API row, product check on consent author names).

@@ -177,6 +177,10 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     )
     expect(international.status, JSON.stringify(international.body)).toBe(200)
     expect(international.body?.person?.phone).toBe('+49 151 1234 5678')
+    // A blank phone clears the number instead of failing the check.
+    const cleared = await putMe(request, kasiaToken, { phone: '  ' }, international.body?.person?.updatedAt)
+    expect(cleared.status, JSON.stringify(cleared.body)).toBe(200)
+    expect(cleared.body?.person?.phone).toBeNull()
 
     // The app as Kasia: both wards with their groups and sections, at 375 px.
     page.setDefaultTimeout(30_000)
@@ -224,6 +228,9 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     await expect(page.locator('input[type="password"]').first()).toBeVisible()
 
     // The app as Ola: her guardians and the consents without controls; no wards section.
+    // Leave the backend page first: with its session cookie gone it redirects to /login,
+    // which would interrupt the next navigation.
+    await page.goto('about:blank')
     await page.context().clearCookies()
     await signInBrowser(page, request, club, ola.userId, ola.email)
     await page.goto('/club/profile')

@@ -149,11 +149,13 @@ const updateSelfCommand: CommandHandler<Record<string, unknown>, UpdateSelfResul
       }
       if (patch.email !== undefined) person.email = patch.email
       if (patch.phone !== undefined) {
-        // Only a changed number is checked, so a value stored before E06-S22 (#104) does not block other changes.
-        if (patch.phone !== null && patch.phone !== (person.phone ?? null) && !isValidPhone(patch.phone)) {
+        // A blank number clears the phone; only a changed number is checked, so a value stored before
+        // E06-S22 (#104) does not block other changes.
+        const phone = patch.phone || null
+        if (phone !== null && phone !== (person.phone ?? null) && !isValidPhone(phone)) {
           await throwPhoneInvalid()
         }
-        person.phone = patch.phone
+        person.phone = phone
       }
       const now = new Date()
       const consentsChanged: SelfConsentKind[] = []
