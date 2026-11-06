@@ -1,7 +1,7 @@
 // Shared pieces of the `club_core` routes: the grant kinds each list allows, their column maps, list-item
 // serializers and OpenAPI schemas. Lists filter with `scopeWhere` (foundation spec P-03).
 import { z } from 'zod'
-import type { GrantKind, ScopeColumnMap } from '@vereino/core'
+import { readOpeningHours, type GrantKind, type ScopeColumnMap } from '@vereino/core'
 import { decimalOrNull, parsePlaceContacts } from '../lib/places'
 
 /** Sections are read by the club administrator and by the coordinators of each section (`section_ids`). */
@@ -24,6 +24,16 @@ type Row = Record<string, unknown>
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null)
 const bool = (value: unknown): boolean => value === true || value === 't' || value === 'true'
+
+/** A jsonb column as the query engine returns it: an object, or its JSON text. */
+function json(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return null
+  }
+}
 
 function iso(value: unknown): string | null {
   let date: Date | null = null
@@ -69,6 +79,7 @@ export function placeListItem(row: Row) {
     rentedByClub: bool(row.rented_by_club),
     capacityGroups: typeof row.capacity_groups === 'number' ? row.capacity_groups : Number(row.capacity_groups ?? 1),
     contacts: parsePlaceContacts(row.contacts),
+    openingHours: readOpeningHours(json(row.opening_hours)),
     isActive: bool(row.is_active),
     regulationsText: text(row.regulations_text),
     createdAt: iso(row.created_at),
@@ -154,6 +165,18 @@ export const placeListItemSchema = z.object({
   rentedByClub: z.boolean(),
   capacityGroups: z.number(),
   contacts: z.array(z.object({ role: z.string().nullable(), name: z.string(), phone: z.string().nullable() })),
+  openingHours: z
+    .object({
+      seasons: z.array(
+        z.object({
+          from: z.string(),
+          to: z.string(),
+          windows: z.array(z.object({ weekday: z.number(), from: z.string(), to: z.string() })),
+        }),
+      ),
+    })
+    .nullable()
+    .describe("The place's own opening hours (DD-41); null = inherited from the parent place, or no limit"),
   isActive: z.boolean(),
   /** The place's rules as plain text (UX parity spec, REQ-U03). */
   regulationsText: z.string().nullable(),
