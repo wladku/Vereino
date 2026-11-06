@@ -1,6 +1,8 @@
 // Pure rules of the place hierarchy (club spec glossary *Place*): the kinds, the cycle check, the leaf rule for
-// sessions and bookings, and the place contacts, which are stored encrypted as one JSON text.
+// sessions and bookings, the place contacts, which are stored encrypted as one JSON text, and the inherited opening
+// hours (facilities spec DD-41).
 import { z } from 'zod'
+import { readOpeningHours, type OpeningHours } from '@vereino/core'
 
 /** Kinds of a place node: a complex groups the others (club spec glossary *Place*). */
 export const PLACE_KINDS = ['complex', 'pitch', 'multi_pitch', 'hall', 'locker_room', 'pool', 'other'] as const
@@ -115,4 +117,26 @@ export function decimalOrNull(value: unknown): number | null {
   if (typeof value !== 'string' || value.trim() === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * The opening hours that apply to a place (facilities spec DD-41): its own valid value, else the nearest ancestor's;
+ * null when no place on the chain has any (no opening-hours limit). A cycle in a damaged tree stops the walk.
+ */
+export function effectiveOpeningHours(
+  placeId: string,
+  parentOf: ReadonlyMap<string, string | null>,
+  ownHours: ReadonlyMap<string, unknown>,
+): OpeningHours | null {
+  const seen = new Set<string>()
+  for (
+    let current: string | null = placeId;
+    current !== null && !seen.has(current);
+    current = parentOf.get(current) ?? null
+  ) {
+    seen.add(current)
+    const hours = readOpeningHours(ownHours.get(current))
+    if (hours) return hours
+  }
+  return null
 }

@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { audienceProviderToken } from '@vereino/core'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
+import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 
@@ -16,6 +17,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * `communication` (announcement targets, the cancellation thread). `activities.shareText` (#35, foundation III DD-M14):
  * the share text of a session with the link to the public session page. `communication` reads both with
  * `hasRegistration`.
+ *
+ * `activities.placeSessions` (facilities spec DD-20, #121): the planned sessions on places in a window and the
+ * reschedule flag a closure sets on them, for `facilities`.
  */
 export function register(container: AppContainer) {
   container.register({
@@ -25,6 +29,9 @@ export function register(container: AppContainer) {
     [ACTIVITIES_SCHEDULE_DIRECTORY]: asFunction((cradle: { em: EntityManager }) =>
       createScheduleDirectory(() => cradle.em),
     )
+      .scoped()
+      .proxy(),
+    [ACTIVITIES_PLACE_SESSIONS]: asFunction((cradle: { em: EntityManager }) => createPlaceSessions(() => cradle.em))
       .scoped()
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),

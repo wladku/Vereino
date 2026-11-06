@@ -85,6 +85,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'rented_by_club',
       'capacity_groups',
       'contacts',
+      'opening_hours',
       'is_active',
       'tenant_id',
       'organization_id',

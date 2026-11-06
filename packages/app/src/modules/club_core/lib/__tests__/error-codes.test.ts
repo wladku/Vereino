@@ -8,6 +8,11 @@ describe('club_core error codes', () => {
       { code: 'place_reference_invalid', status: 422, messageKey: 'club_core.errors.place_reference_invalid' },
       { code: 'place_not_bookable', status: 422, messageKey: 'club_core.errors.place_not_bookable' },
       { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
+      {
+        code: 'place_opening_hours_invalid',
+        status: 422,
+        messageKey: 'club_core.errors.place_opening_hours_invalid',
+      },
       { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
       { code: 'timezone_unknown', status: 422, messageKey: 'club_core.errors.timezone_unknown' },
       {

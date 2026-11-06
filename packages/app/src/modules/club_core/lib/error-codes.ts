@@ -7,6 +7,8 @@ export const errorCodes = [
   { code: 'place_reference_invalid', status: 422, messageKey: 'club_core.errors.place_reference_invalid' },
   { code: 'place_not_bookable', status: 422, messageKey: 'club_core.errors.place_not_bookable' },
   { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
+  // Facilities spec DD-41 (#121): windows out of order or overlapping, or seasons covering a date twice.
+  { code: 'place_opening_hours_invalid', status: 422, messageKey: 'club_core.errors.place_opening_hours_invalid' },
   { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
   // Club settings and institutions (#87): a known IANA zone, the 13–18 threshold, a club name, an NRB bank account.
   { code: 'timezone_unknown', status: 422, messageKey: 'club_core.errors.timezone_unknown' },

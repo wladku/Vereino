@@ -1,4 +1,5 @@
 // Types of the place and institution list items as the client reads them.
+import type { OpeningHours } from '@vereino/core'
 import type { PlaceContact } from '../lib/places'
 
 export type PlaceRow = {
@@ -17,6 +18,8 @@ export type PlaceRow = {
   rentedByClub: boolean
   capacityGroups: number
   contacts: PlaceContact[]
+  /** The place's own opening hours (DD-41); null = inherited or none. */
+  openingHours: OpeningHours | null
   isActive: boolean
   createdAt: string | null
   updatedAt: string | null

@@ -3,11 +3,14 @@
 // descendants (422 `place_hierarchy_cycle`); hierarchy writes of one club are serialized by an advisory lock, so two
 // concurrent moves cannot close a loop together. A place with live children is not deleted (409
 // `place_has_children`). The rule "a place with sessions or bookings is deactivated, not deleted" arrives with
-// `activities` and `facilities`.
+// `activities` and `facilities`. Opening hours (facilities spec DD-41, #121) are checked by `openingHoursProblem`
+// (`@vereino/core`): windows out of order or overlapping, or two seasons covering a date, answer 422
+// `place_opening_hours_invalid` at the field.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { openingHoursProblem, type OpeningHours } from '@vereino/core'
 import { authorizeScoped, type TargetLock } from '@/modules/foundation'
 import { clubCoreErrors } from '../api/errors'
 import { Institution, Place } from '../data/entities'
@@ -28,6 +31,7 @@ import {
   existingSpec,
   inWriteTransaction,
   structureEvents,
+  throwFieldError,
   structureLog,
   structureTarget,
   trustedTenantId,
@@ -58,6 +62,7 @@ export type PlaceSnapshot = {
   rentedByClub: boolean
   capacityGroups: number
   contacts: PlaceContact[]
+  openingHours: OpeningHours | null
   isActive: boolean
 }
 
@@ -84,6 +89,7 @@ export function placeSnapshot(row: Place): PlaceSnapshot {
     rentedByClub: row.rentedByClub,
     capacityGroups: row.capacityGroups,
     contacts: parsePlaceContacts(row.contacts),
+    openingHours: row.openingHours ?? null,
     isActive: row.isActive,
   }
 }
@@ -106,6 +112,7 @@ function restorePlace(row: Place, before: PlaceSnapshot): void {
   row.rentedByClub = before.rentedByClub
   row.capacityGroups = before.capacityGroups
   row.contacts = serializePlaceContacts(before.contacts)
+  row.openingHours = before.openingHours ?? null
   row.isActive = before.isActive
 }
 
@@ -124,6 +131,11 @@ async function assertParent(em: EntityManager, scope: Scope, placeId: string | n
   const parents = await loadPlaceParents(em, scope)
   if (placeId && wouldCreateCycle(placeId, parentId, parents)) await clubCoreErrors.throw('place_hierarchy_cycle')
   if (!parents.has(parentId)) await clubCoreErrors.throw('place_reference_invalid', { field: 'parentPlaceId' })
+}
+
+/** 422 `place_opening_hours_invalid` at the field for hours that break DD-41; null and absent pass. */
+async function assertOpeningHours(hours: OpeningHours | null | undefined): Promise<void> {
+  if (hours && openingHoursProblem(hours)) await throwFieldError('place_opening_hours_invalid', 'openingHours')
 }
 
 /** The owner must be a live institution of the club; the lock keeps it from being deleted meanwhile. */
@@ -157,6 +169,7 @@ const createPlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
       if (parsed.parentPlaceId) await lockPlaceHierarchy(em, organizationId)
       await assertParent(em, scope, null, parsed.parentPlaceId ?? null)
       await assertOwner(em, scope, parsed.ownerInstitutionId)
+      await assertOpeningHours(parsed.openingHours)
       const row = em.create(Place, {
         id,
         tenantId,
@@ -175,6 +188,7 @@ const createPlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
         rentedByClub: parsed.rentedByClub ?? false,
         capacityGroups: parsed.capacityGroups ?? 1,
         contacts: serializePlaceContacts(parsed.contacts),
+        openingHours: parsed.openingHours ?? null,
         isActive: parsed.isActive ?? true,
       })
       em.persist(row)
@@ -237,6 +251,10 @@ const updatePlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
       if (patch.rentedByClub !== undefined) row.rentedByClub = patch.rentedByClub
       if (patch.capacityGroups !== undefined) row.capacityGroups = patch.capacityGroups
       if (patch.contacts !== undefined) row.contacts = serializePlaceContacts(patch.contacts)
+      if (patch.openingHours !== undefined) {
+        await assertOpeningHours(patch.openingHours)
+        row.openingHours = patch.openingHours
+      }
       if (patch.isActive !== undefined) row.isActive = patch.isActive
       row.updatedAt = new Date()
       return { entity: row, actingRole: authorized.actingRole, before }

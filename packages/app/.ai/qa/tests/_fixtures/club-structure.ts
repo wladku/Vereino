@@ -25,6 +25,8 @@ export type PlaceItem = {
   contacts: { role: string | null; name: string; phone: string | null }[]
   description: string | null
   geoLat: number | null
+  /** The place's own opening hours (facilities spec DD-41, #121); null = inherited or none. */
+  openingHours?: unknown
   updatedAt: string | null
 }
 
