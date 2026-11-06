@@ -30,7 +30,6 @@ import {
   CLASSIFICATION_VARIANTS,
   IMPORTS_HREF,
   STATUS_VARIANTS,
-  codeOf,
   instantLabel,
   membershipState,
   rowProblem,
@@ -350,7 +349,7 @@ export function ImportRecord({ id }: { id: string }) {
       flash(t(ACTION_FLASHES[action]), 'success')
     } catch (error: unknown) {
       if (!surfaceRecordConflict(error, t, { onRefresh: () => void refresh() })) {
-        const code = codeOf(error)
+        const code = errorCodeOf(error)
         flash(code ? t(`people.errors.${code}`) : errorMessage(error, t(`people.imports.errors.${action}`)), 'error')
       }
     } finally {

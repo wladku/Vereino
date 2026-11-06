@@ -14,6 +14,7 @@ import { FileUploadArea } from '@open-mercato/ui/primitives/file-upload'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { IMPORT_MAX_FILE_BYTES, IMPORT_MAX_ROWS, readImportFile } from '../../lib/import-file'
 import {
   IMPORT_PERSON_FIELDS,
@@ -25,7 +26,7 @@ import {
   type ImportMapping,
 } from '../../lib/import-mapping'
 import { errorMessage } from '../client-helpers'
-import { IMPORTS_HREF, codeOf, type ImportRow } from './import-client'
+import { IMPORTS_HREF, type ImportRow } from './import-client'
 
 /** The select value for "not imported" (Radix `Select` items cannot carry an empty value). */
 const NOT_MAPPED = '__none__'
@@ -93,7 +94,7 @@ export function ImportUpload() {
     } catch (error: unknown) {
       const problemCode = (error as { problem?: unknown }).problem
       setProblem(
-        codeOf(error) === 'import_mapping_invalid' && typeof problemCode === 'string'
+        errorCodeOf(error) === 'import_mapping_invalid' && typeof problemCode === 'string'
           ? t(`people.imports.fileProblems.${problemCode}`)
           : errorMessage(error, t('people.imports.errors.upload')),
       )

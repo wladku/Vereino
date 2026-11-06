@@ -70,6 +70,12 @@ export const threadListQuerySchema = z.object({
     .describe(
       'The threads of a section, its groups, activities and sessions; a section outside the caller’s grants lists nothing',
     ),
+  wardId: z
+    .uuid()
+    .optional()
+    .describe(
+      'The threads about one of the caller’s wards (E06-S20): its groups’ and their sections’ threads and the direct threads it takes part in; another person lists nothing',
+    ),
   unread: z.enum(['0', '1']).optional(),
   isCase: z.enum(['0', '1']).optional(),
   as: z.enum(['member', 'staff']).optional(),

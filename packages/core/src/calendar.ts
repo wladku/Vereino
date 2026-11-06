@@ -37,6 +37,8 @@ export type CalendarItem = {
   readonly startsAt: Date
   readonly endsAt: Date
   readonly status: CalendarItemStatus
+  /** When the participants gather, before the start (club spec DD-43); absent or null when the item has none. */
+  readonly gatheringAt?: Date | null
   /** The place's name, and its address when the surface shows one (D21: "an address without a map pin cost 30 minutes"). */
   readonly place?: string | null
   readonly placeAddress?: string | null

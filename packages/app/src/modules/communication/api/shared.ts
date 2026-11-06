@@ -100,6 +100,10 @@ export const threadMessageSchema = z.object({
     .object({ queued: z.number(), sent: z.number(), failed: z.number(), skipped: z.number() })
     .nullable()
     .describe('Deliveries (one per recipient and channel) by status, for a reader who sees the delivery status'),
+  emailCounts: z
+    .object({ queued: z.number(), sent: z.number(), failed: z.number(), skipped: z.number() })
+    .nullable()
+    .describe('The e-mail deliveries of the reader’s own message by status; null for another author’s message'),
 })
 
 export const threadDetailSchema = threadListItemSchema.omit({ messageCount: true, lastMessage: true }).extend({

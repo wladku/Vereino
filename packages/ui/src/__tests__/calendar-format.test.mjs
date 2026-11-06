@@ -8,6 +8,7 @@ import {
   calendarStatusLabel,
   calendarTitleClassName,
   formatDayHeading,
+  formatClockTime,
   formatTimeRange,
   SECTION_MARKER_COLORS,
   sectionMarkerColors,
@@ -32,6 +33,13 @@ test('the time range renders HH:mm–HH:mm with a 24-hour clock in the club zone
     formatTimeRange(new Date('2026-07-07T15:00:00Z'), new Date('2026-07-07T16:30:00Z'), 'pl', 'Europe/Warsaw'),
     '17:00–18:30',
   )
+})
+
+test('a gathering time renders HH:mm with a 24-hour clock in the club zone (club spec DD-43)', () => {
+  const at = new Date('2026-11-03T15:15:00Z')
+  assert.equal(formatClockTime(at, 'pl', 'Europe/Warsaw'), '16:15')
+  assert.equal(formatClockTime(at, 'en-US', 'Europe/Warsaw'), '16:15')
+  assert.equal(formatClockTime(at, 'en-US', 'UTC'), '15:15')
 })
 
 test('the item tone follows the status (DD-G08)', () => {

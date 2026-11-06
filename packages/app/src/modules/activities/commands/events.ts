@@ -107,6 +107,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
         endsOn: end.date,
         defaultStartTime: start.time,
         defaultEndTime: end.time,
+        gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: true,
       })
@@ -123,6 +124,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           endAt,
           placeId: parsed.placeId,
           coachPersonId,
+          gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
         }),
       )
       return { entity: row, actingRole: authorized.actingRole, before: null, occurrenceId }

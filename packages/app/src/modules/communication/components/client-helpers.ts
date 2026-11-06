@@ -36,6 +36,13 @@ export type DirectOption = {
   coordinatorNames: string[]
 }
 
+/** The member inbox query (`as=member`), narrowed to one ward's threads when a guardian picks one (M-06). */
+export function inboxQuery(wardId: string | null): string {
+  const params = new URLSearchParams({ as: 'member', pageSize: '100' })
+  if (wardId) params.set('wardId', wardId)
+  return params.toString()
+}
+
 export type ThreadScopeType = 'club' | 'section' | 'group' | 'activity' | 'occurrence' | 'direct'
 
 /** The scope types of the thread list's filter, in the composer's order (B-18). */
@@ -111,6 +118,8 @@ export type ThreadMessageItem = {
   hasDeliveries: boolean
   canDelete: boolean
   deliveryCounts: DeliveryCounts | null
+  /** The e-mail deliveries of the reader's own message (M-07); null for another author's. */
+  emailCounts: DeliveryCounts | null
 }
 
 /** Deliveries of one message (one per recipient and channel) by status. */
@@ -156,12 +165,6 @@ export function errorStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null
   const status = (error as CodedError).status
   return typeof status === 'number' ? status : null
-}
-
-export function errorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object') return null
-  const code = (error as CodedError).code
-  return typeof code === 'string' ? code : null
 }
 
 export function errorMessage(error: unknown, fallback: string): string {

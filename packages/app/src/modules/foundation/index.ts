@@ -22,6 +22,7 @@ export {
   type CodedIssueParams,
 } from './lib/validity-schema'
 export { accountEmail, createAccount, type CreateAccountInput, type CreateAccountResult } from './services/accounts'
+export { isUnlinkedScope, scopeDenialCode, type ScopeDenialCode } from './lib/scope-denial'
 export {
   assertInScope,
   authorizeScoped,

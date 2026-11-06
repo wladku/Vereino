@@ -34,7 +34,13 @@ import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole, ScopeTarget } from '@vereino/core'
-import { authorizeScoped, foundationErrors, trustedScopeOf, type TargetLock } from '@/modules/foundation'
+import {
+  authorizeScoped,
+  foundationErrors,
+  scopeDenialCode,
+  trustedScopeOf,
+  type TargetLock,
+} from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Person, PersonImport, PersonImportRow, type ImportRowResult, type ImportSummary } from '../data/entities'
 import { importActionSchema, importCreateSchema, importDecisionSchema, importRowRefSchema } from '../data/validators'
@@ -186,7 +192,7 @@ const createImportCommand: CommandHandler<Record<string, unknown>, ImportCommand
       ),
     )
     const createdBy = actorPersonId(authorized.scope)
-    if (!createdBy) return foundationErrors.throw('scope_denied')
+    if (!createdBy) return foundationErrors.throw(scopeDenialCode(authorized.scope))
     const mapping = authorized.parsed.mapping as ImportMapping
     const { header, rows: sheetRows, date1904 } = upload.sheet
     const check = checkMapping(mapping, header.length)
@@ -665,7 +671,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
       }
       await assertOpen(record)
       const committedBy = actorPersonId(authorized.scope)
-      if (!committedBy) return foundationErrors.throw('scope_denied')
+      if (!committedBy) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const scope = { tenantId: record.tenantId, organizationId: record.organizationId }
       const rows = await findWithDecryption(
         em,
