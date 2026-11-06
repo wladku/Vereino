@@ -1,7 +1,7 @@
-// Fixtures of the `payments` tests (payments spec phase 4 step 2, TEST-018, TEST-048; issue #108): fee schedules,
-// discount rules, the period generator and the charge list.
+// Fixtures of the `payments` tests (payments spec phase 4 steps 2 and 3, TEST-018, TEST-048, TEST-020; issues #108,
+// #109): fee schedules, discount rules, the period generator, the charge list and the charge ledger.
 import { expect, type APIRequestContext } from '@playwright/test'
-import { calendarDate, call } from './club'
+import { OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
 
 export type CodedBody = { error?: string; code?: string }
 
@@ -79,4 +79,85 @@ export function chargeOf(charges: readonly ChargeItem[], personId: string, feeId
   const found = charges.filter((charge) => charge.personId === personId && charge.sourceId === feeId)
   expect(found, `one charge of ${personId} for ${feeId}`).toHaveLength(1)
   return found[0]
+}
+
+// --- The charge ledger (phase 4 step 3, TEST-020; issue #109) ---
+
+export type ChargePaymentItem = {
+  id: string
+  amount: number
+  method: string
+  paidOn: string
+  reference: string | null
+  receivedBy: { firstName: string; lastName: string } | null
+  reversesPaymentId: string | null
+  reversed: boolean
+}
+
+export type ChargeDetail = ChargeItem & {
+  payee: string | null
+  cancelReason: string | null
+  paid: number
+  remaining: number
+  overdue: boolean
+  updatedAt: string
+  payments: ChargePaymentItem[]
+}
+
+export type LedgerResult = CodedBody & {
+  paymentId?: string
+  chargeStatus?: string
+  remaining?: number
+  remainingAmount?: number
+  updatedAt?: string
+  status?: string
+}
+
+export async function getCharge(request: APIRequestContext, token: string, id: string): Promise<ChargeDetail> {
+  const result = await call<ChargeDetail>(request, 'GET', `/api/payments/charges/${id}`, token)
+  expect(result.status, `GET /api/payments/charges/${id} ${JSON.stringify(result.body)}`).toBe(200)
+  return result.body as ChargeDetail
+}
+
+function lockHeaders(lock: string | null | undefined): Record<string, string> {
+  return lock ? { [OPTIMISTIC_LOCK_HEADER]: lock } : {}
+}
+
+export async function recordPayment(
+  request: APIRequestContext,
+  token: string,
+  chargeId: string,
+  lock: string | null | undefined,
+  data: Record<string, unknown>,
+) {
+  return call<LedgerResult>(request, 'POST', `/api/payments/charges/${chargeId}/payments`, token, {
+    data,
+    headers: lockHeaders(lock),
+  })
+}
+
+export async function cancelCharge(
+  request: APIRequestContext,
+  token: string,
+  chargeId: string,
+  lock: string | null | undefined,
+  data: Record<string, unknown>,
+) {
+  return call<LedgerResult>(request, 'POST', `/api/payments/charges/${chargeId}/cancel`, token, {
+    data,
+    headers: lockHeaders(lock),
+  })
+}
+
+export async function reversePayment(
+  request: APIRequestContext,
+  token: string,
+  paymentId: string,
+  lock: string | null | undefined,
+  data: Record<string, unknown>,
+) {
+  return call<LedgerResult>(request, 'POST', `/api/payments/payments/${paymentId}/reverse`, token, {
+    data,
+    headers: lockHeaders(lock),
+  })
 }

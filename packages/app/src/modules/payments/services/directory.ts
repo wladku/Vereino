@@ -117,6 +117,15 @@ export function findPersons(
   return personDirectory(container).findPersons(scope, ids, em)
 }
 
+/** The persons whose name matches every word of `term` (three letters or more), or null when none is long enough. */
+export function searchPersonIds(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  term: string,
+): Promise<Set<string> | null> {
+  return personDirectory(container).searchPersonIds(scope, term)
+}
+
 export function primaryPayers(
   container: AwilixContainer,
   scope: PaymentsScope,

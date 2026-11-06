@@ -47,6 +47,13 @@ describe('payments vocabularies', () => {
       period_out_of_range: 422,
       generation_in_progress: 409,
       generation_already_undone: 409,
+      charge_not_payable: 409,
+      payment_exceeds_remaining: 422,
+      payment_date_in_future: 422,
+      charge_has_payments: 409,
+      charge_not_cancellable: 409,
+      payment_not_reversible: 409,
+      payment_already_reversed: 409,
     })
   })
 })
