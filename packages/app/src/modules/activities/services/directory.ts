@@ -10,6 +10,7 @@ import type {
   ClubCoreDirectory,
   PlaceDirectoryEntry,
   PlaceFamily,
+  PlaceOption,
   SectionDirectoryEntry,
 } from '../../club_core/services/directory'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
@@ -105,6 +106,26 @@ export function findSections(
   em?: EntityManager,
 ): Promise<Map<string, SectionDirectoryEntry>> {
   return clubCoreDirectory(container).findSections(scope, ids, em)
+}
+
+/** The live active places of the club with their parent's name and whether they are a leaf (the event form, #140). */
+export function placeOptions(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  em?: EntityManager,
+): Promise<PlaceOption[]> {
+  return clubCoreDirectory(container).placeOptions(scope, em)
+}
+
+/** The live active groups among `groupIds`, by name (the coach's own groups of the event form, #140). */
+export function listGroupsAmong(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  groupIds: readonly string[],
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  if (groupIds.length === 0) return Promise.resolve([])
+  return groupDirectory(container).listGroups(scope, { groupIds }, em)
 }
 
 export function placeFamily(
