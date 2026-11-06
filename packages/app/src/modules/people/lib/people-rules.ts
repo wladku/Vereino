@@ -30,6 +30,19 @@ export function isValidPesel(value: string): boolean {
   return (10 - (sum % 10)) % 10 === Number(value[10])
 }
 
+/** Spaces, hyphens, dots and parentheses people type between the digits of a phone number. */
+const PHONE_SEPARATORS = /[\s\-.()]/g
+
+/**
+ * True for a phone number in the Polish national format (nine digits, not starting with 0, optionally after `0048`)
+ * or in E.164 (`+`, a country code and up to 15 digits in total), with separators allowed between the digits
+ * (README M-10 validation; E06-S22 #104).
+ */
+export function isValidPhone(value: string): boolean {
+  const compact = value.trim().replace(PHONE_SEPARATORS, '')
+  return /^(?:0048)?[1-9]\d{8}$/.test(compact) || /^\+[1-9]\d{6,14}$/.test(compact)
+}
+
 /** Why a role assignment's section does not fit its role: a coordinator needs one, other roles take none. */
 export type RoleScopeProblem = 'required' | 'unexpected'
 

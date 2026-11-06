@@ -3,12 +3,14 @@
 // guardian — name, date of birth, own account — and the guardianship consents (club regulations, image, trips), which
 // the guardian gives or withdraws through `POST /api/people/guardianships/{id}/consents` with the guardianship's lock
 // token. The page reads the ward only from the guardian's own profile (`GET /api/people/me`), so a person who is not
-// the caller's ward is never shown.
+// the caller's ward is never shown. E06-S22 (#104): the ward's age, groups and sections (the `groups` widget on the
+// `vereino:club:ward:groups` spot) and each consent's last author.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert } from '@open-mercato/ui/primitives/alert'
@@ -17,12 +19,12 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClubFrame } from './ClubFrame'
+import { useConsentStatus } from './ConsentList'
 import {
   CLUB_HOME_HREF,
   MEMBER_PROFILE_QUERY_KEY,
   WARD_CONSENT_KINDS,
   formatCalendarDate,
-  formatInstant,
   fullName,
   type MemberProfile,
   type MemberWard,
@@ -45,7 +47,7 @@ function errorText(error: unknown, fallback: string): string {
 
 function WardConsents({ ward, timeZone }: { ward: MemberWard; timeZone: string }) {
   const t = useT()
-  const locale = useLocale()
+  const status = useConsentStatus(timeZone)
   const queryClient = useQueryClient()
   const [state, setState] = React.useState<ConsentState>(() => consentState(ward))
   const [busy, setBusy] = React.useState(false)
@@ -90,17 +92,12 @@ function WardConsents({ ward, timeZone }: { ward: MemberWard; timeZone: string }
         {t('people.club.ward.consents.title')}
       </h2>
       {WARD_CONSENT_KINDS.map((kind) => {
-        const consent = ward.guardianship.consents[kind]
-        const date = formatInstant(consent.at, locale, timeZone)
-        let description = t('people.club.ward.consents.notGiven')
-        if (consent.granted && date) description = t('people.club.ward.consents.givenOn', { date })
-        else if (!consent.granted && date) description = t('people.club.ward.consents.withdrawnOn', { date })
         return (
           <SwitchField
             key={kind}
             id={`club-ward-consent-${kind}`}
             label={t(`people.guardianships.consents.${kind}`)}
-            description={description}
+            description={status(ward.guardianship.consents[kind])}
             checked={state[kind]}
             disabled={busy}
             onCheckedChange={(checked) => {
@@ -149,12 +146,18 @@ function Ward({ profile, personId }: { profile: MemberProfile; personId: string 
               {t('people.club.wards.birthDate', { date: birthDate })}
             </span>
           ) : null}
+          {ward.age !== null ? (
+            <span className="text-muted-foreground text-sm">
+              {t('people.club.profile.wards.age', { age: String(ward.age) })}
+            </span>
+          ) : null}
           {ward.hasAccount ? <StatusBadge variant="neutral">{t('people.club.wards.hasAccount')}</StatusBadge> : null}
           {ward.guardianship.isPrimaryPayer ? (
             <StatusBadge variant="info">{t('people.club.ward.primaryPayer')}</StatusBadge>
           ) : null}
         </div>
       </div>
+      <InjectionSpot spotId="vereino:club:ward:groups" context={{ personId: ward.personId, variant: 'section' }} />
       <WardConsents
         key={ward.guardianship.updatedAt ?? ward.guardianship.id}
         ward={ward}
