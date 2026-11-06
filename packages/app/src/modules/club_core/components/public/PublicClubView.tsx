@@ -1,18 +1,22 @@
 'use client'
 // `/p/[clubSlug]` — the public club page (club spec UI table, J-008, REQ-025; #29): the club's name, logo and
 // description, its contact with the `contact` block, a tile for each public section with the section's effective
-// logo, and the upcoming one-off events of the public groups (`activities.publicSchedule`, #91). States: loading, error with retry, 404 (nothing about any club) and "the club does not publish a page".
+// logo, short description and number of public groups (`groups.publicCatalog`, #89), and the upcoming one-off events
+// of the public groups (`activities.publicSchedule`, #91). States: loading, error with retry, 404 (nothing about any
+// club) and "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { phoneHref, pluralForm } from '../../lib/public-page'
 import { PublicEvents } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { sectionHref, usePublicClub } from './public-client'
 
 export function PublicClubView({ clubSlug }: { clubSlug: string }) {
   const t = useT()
+  const locale = useLocale()
   const query = usePublicClub(clubSlug)
   const load = query.data
 
@@ -62,6 +66,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
 
   const { club, sections, blocks } = load.page
   const events = blocks.schedule?.events ?? []
+  const groupCounts = blocks.groups?.counts ?? {}
   return (
     <PublicFrame club={club}>
       <section className="flex items-start gap-4" aria-labelledby="public-club-title">
@@ -77,7 +82,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
           ) : null}
         </div>
       </section>
-      <section className="flex flex-col gap-3" aria-labelledby="public-sections-title">
+      <section id="sections" className="flex scroll-mt-4 flex-col gap-3" aria-labelledby="public-sections-title">
         <h2 id="public-sections-title" className="text-lg font-semibold">
           {t('club_core.public.sections.title')}
         </h2>
@@ -105,6 +110,16 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
                         {section.shortDescription}
                       </span>
                     ) : null}
+                    {groupCounts[section.slug] ? (
+                      <span
+                        className="text-primary text-sm font-normal"
+                        data-testid={`public-section-${section.slug}-groups`}
+                      >
+                        {t(`club_core.public.sections.groups.${pluralForm(locale, groupCounts[section.slug])}`, {
+                          count: groupCounts[section.slug],
+                        })}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               </li>
@@ -119,7 +134,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
             {t('club_core.public.contact.title')}
           </h2>
           <p data-testid="public-club-contact">
-            <a className="underline underline-offset-4" href={`tel:${club.contact.phone.replace(/\s+/g, '')}`}>
+            <a className="underline underline-offset-4" href={phoneHref(club.contact.phone)}>
               {club.contact.phone}
             </a>
           </p>
