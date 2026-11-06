@@ -8,6 +8,7 @@ import {
   memberLanding,
   memberLocale,
   ownPaymentsAccess,
+  publicPersonName,
   selfConsentView,
   withNotice,
 } from '../member-rules'
@@ -16,8 +17,8 @@ const given = new Date('2026-10-01T08:00:00.000Z')
 const now = new Date('2026-10-29T10:15:00.000Z')
 
 describe('SELF_CONSENT_KINDS', () => {
-  it('lists the two consents of the member profile', () => {
-    expect(SELF_CONSENT_KINDS).toEqual(['shareContactWithCoaches', 'sharePresenceWithGuardians'])
+  it('lists the three consents of the member profile', () => {
+    expect(SELF_CONSENT_KINDS).toEqual(['shareContactWithCoaches', 'sharePresenceWithGuardians', 'publishNameConsent'])
   })
 })
 
@@ -136,5 +137,17 @@ describe('withNotice', () => {
     expect(withNotice('/backend', 'Not linked — contact the club')).toBe(
       '/backend?flash=Not+linked+%E2%80%94+contact+the+club&type=info',
     )
+  })
+})
+
+describe('publicPersonName', () => {
+  it('shows the first name and the initial of the last name', () => {
+    expect(publicPersonName('Anna', 'Kowalska')).toBe('Anna K.')
+    expect(publicPersonName('  Jan  Paweł ', ' łukasiewicz')).toBe('Jan Paweł Ł.')
+  })
+
+  it('shows the first name alone without a last name and nothing without a first name', () => {
+    expect(publicPersonName('Anna', '  ')).toBe('Anna')
+    expect(publicPersonName('  ', 'Kowalska')).toBeNull()
   })
 })

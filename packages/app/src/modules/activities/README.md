@@ -97,7 +97,7 @@ The club is found through `clubCorePublicSite.clubFrame` (the one DD-35 lookup),
 
 ## Deferred
 
-Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), the public schedule block (step 9), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
+Substitutions, absence reports and the "needing a coach" / "unsettled" lists and widgets (A05, D21), `reopen` of a cancelled or done session, the coach units report and settlement (A05), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), personal declaration links (REQ-017), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
 
 ## Types per group kind, opponent and coach picker (#93)
 
@@ -124,6 +124,10 @@ Club spec DD-43 (README B-14, B-15, M-02, M-03, M-04; messaging spec DD-M14):
 - **Reads.** The instant `gatheringAt = start_at − minutes` (`lib/gathering.ts`) on the session detail and list, every calendar entry, the attendance list, the public session page and `activities.scheduleDirectory`, so a moved session keeps its offset.
 - **Writes.** Activity and event writes take `gatheringMinutesBefore`; `PATCH /api/activities/occurrences/{id}` takes `gatheringAt` (null removes it) and detaches the session like a move; at or after the start answers 422 `occurrence_gathering_after_start`, more than 12 hours before it 422 `occurrence_gathering_too_early`. The B-15 move form sends `gatheringAt` only when the field changed.
 - **Display.** "Gathering {time}" before the time range on `/club` Today, the calendar list (`CalendarItem.gatheringAt`), the session page, the attendance list header and the public session page; nothing without one. The share text (`activities.shareText.*WithGathering`) and `communication.session_cancelled` (optional `gatheringAt` parameter) name it. The in-app cancellation notice and the one-off event form (B-14 events) do not carry it yet.
+
+## Public schedule (#91)
+
+`activities.publicSchedule` (club spec phase 2 step 9, DD-28, DD-29, REQ-025; `services/public-schedule.ts`, pure rules in `lib/public-schedule.ts`) is the optional block provider `club_core` reads with `hasRegistration` for a club that publishes `description_schedule`. On a section page (key `schedule`) it returns, for each public group `groups.directory.publicGroups` names in the section, the weekdays, times and place of every active series that has not ended and the next three sessions of those series, a cancelled one flagged (`cancelled: true`; the page strikes it through). On the club page it returns the upcoming one-off activities (no RRULE) of public groups in the public sections `club_core` passes (`PublicClubBlockContext.sections`), at most ten, with date, times, place, section and type. Every query carries the tenant and organization of the slug lookup; no roster, participant or coach enters the block.
 
 ## The coach runs a session from the phone (#97)
 

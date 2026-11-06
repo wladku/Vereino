@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { audienceProviderToken } from '@vereino/core'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
+import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 
@@ -16,6 +17,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * `communication` (announcement targets, the cancellation thread). `activities.shareText` (#35, foundation III DD-M14):
  * the share text of a session with the link to the public session page. `communication` reads both with
  * `hasRegistration`.
+ *
+ * `activities.publicSchedule` (club spec DD-28, DD-29; #91): the public groups' schedule on a section's public page and
+ * the upcoming one-off events on the club page, which `club_core` reads with `hasRegistration`.
  */
 export function register(container: AppContainer) {
   container.register({
@@ -28,5 +32,6 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),
+    [ACTIVITIES_PUBLIC_SCHEDULE]: asFunction(() => createPublicSchedule(container)).scoped(),
   })
 }

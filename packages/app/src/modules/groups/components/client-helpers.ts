@@ -36,6 +36,13 @@ export type GroupRow = {
   seasonName?: string | null
   description: string | null
   isActive: boolean
+  /** The public fields (#91, DD-29). */
+  isPublic?: boolean
+  publicDescription?: string | null
+  publicConditions?: string | null
+  ageFrom?: number | null
+  ageTo?: number | null
+  levelLabel?: string | null
   createdAt: string | null
   updatedAt: string | null
 }
