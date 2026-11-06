@@ -4,6 +4,8 @@
 // opens the attendance list (M-05) and cancels a planned session from the phone with a reason of 3–200 characters.
 // The cancellation sends the session's lock token; the toast names how many people were told (in the app and by
 // e-mail, J-003). Authorization stays on the routes: the block renders only after `as=coach` answered the session.
+// The cancel dialog is shared with the attendance list M-05 (#139); a coach's cancellation also tells the section's
+// coordinators, server-side.
 import * as React from 'react'
 import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -25,13 +27,16 @@ import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib
 import { errorCodeOf } from '@vereino/core'
 import { attendanceHref, cancelSession, errorText, summaryLine, type CalendarEntry } from './club-client'
 
-function CancelSessionDialog({
-  entry,
+/** The session a cancellation targets: its id and the version the page showed (the lock token). */
+export type CancellableSession = { id: string; updatedAt: string }
+
+export function CancelSessionDialog({
+  occurrence,
   open,
   onOpenChange,
   onDone,
 }: {
-  entry: CalendarEntry
+  occurrence: CancellableSession
   open: boolean
   onOpenChange: (open: boolean) => void
   onDone: (message: string) => Promise<void>
@@ -42,7 +47,6 @@ function CancelSessionDialog({
   const [reason, setReason] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
-  const { occurrence } = entry
 
   const submit = async () => {
     const invalid = cancelReasonProblem(reason)
@@ -196,6 +200,7 @@ export function CoachSessionBlock({
             variant="outline"
             className="min-h-11"
             data-testid="club-session-cancel"
+            aria-describedby="club-session-cancel-hint"
             onClick={() => {
               setCancelling(true)
             }}
@@ -204,7 +209,17 @@ export function CoachSessionBlock({
           </Button>
         ) : null}
       </div>
-      <CancelSessionDialog entry={entry} open={cancelling} onOpenChange={setCancelling} onDone={onCancelled} />
+      {occurrence.status === 'planned' ? (
+        <p id="club-session-cancel-hint" className="text-muted-foreground text-xs">
+          {t('activities.club.session.cancelHint')}
+        </p>
+      ) : null}
+      <CancelSessionDialog
+        occurrence={occurrence}
+        open={cancelling}
+        onOpenChange={setCancelling}
+        onDone={onCancelled}
+      />
     </section>
   )
 }

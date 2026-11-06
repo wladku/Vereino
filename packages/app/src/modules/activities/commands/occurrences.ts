@@ -26,6 +26,7 @@ import {
   emitAfterCommit,
   inWriteTransaction,
   scheduleTarget,
+  selfPersonId,
   trustedTenantId,
   type ActivitiesCommandResult,
 } from './shared'
@@ -239,9 +240,15 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       row.status = 'cancelled'
       row.cancelReason = authorized.parsed.reason
       row.updatedAt = new Date()
-      return { entity: row, actingRole: authorized.actingRole, before }
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        actorPersonId: selfPersonId(authorized.scope),
+      }
     })
     const row = result.entity
+    // #139: the payload names who cancelled and in which role (R01), for the coordinators' notice and the thread.
     await emitAfterCommit(
       'activities.occurrence.cancelled',
       { tenantId: row.tenantId, organizationId: row.organizationId },
@@ -250,10 +257,12 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         activityId: row.activityId,
         groupId: row.groupId,
         actorUserId: ctx.auth?.sub ?? null,
+        actorPersonId: result.actorPersonId,
+        actingRole: result.actingRole,
         updatedAt: row.updatedAt.toISOString(),
       },
     )
-    return result
+    return { entity: result.entity, actingRole: result.actingRole, before: result.before }
   },
   buildLog: ({ result }) =>
     activitiesLog({

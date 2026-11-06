@@ -39,6 +39,9 @@ import {
   excerpt,
   grantIds,
   householdOf,
+  ORIGINAL_MESSAGE_KINDS,
+  isOriginalMessage,
+  isSystemMessage,
   isThreadStaff,
   isUnread,
   isVisibleTo,
@@ -188,7 +191,7 @@ async function summaries(em: EntityManager, viewer: Viewer, headers: readonly Th
     const reader = { personId: viewer.personId, staff, household: viewer.household }
     const threadStamps = byThread.get(header.id) ?? []
     const lastVisible = lastVisibleMessageAt(threadStamps, reader)
-    const messageCount = threadStamps.filter((stamp) => stamp.kind === 'message' && isVisibleTo(stamp, reader)).length
+    const messageCount = threadStamps.filter((stamp) => isOriginalMessage(stamp) && isVisibleTo(stamp, reader)).length
     return {
       header,
       unread: viewer.personId ? isUnread(lastVisible, reads.get(header.id) ?? null) : false,
@@ -278,7 +281,7 @@ export async function listThreads(viewer: Viewer, query: ThreadListQuery) {
     lastMessage: last
       ? {
           authorName: last.authorPersonId ? personName(authors.get(last.authorPersonId)) : null,
-          system: last.authorPersonId === null,
+          system: isSystemMessage(last),
           createdAt: last.createdAt.toISOString(),
         }
       : null,
@@ -513,7 +516,7 @@ export async function threadDeliveries(
     {
       ...viewer.scope,
       threadId,
-      kind: 'message',
+      kind: { $in: [...ORIGINAL_MESSAGE_KINDS] },
       ...(query.messageId ? { id: query.messageId } : {}),
     },
     { orderBy: { createdAt: 'asc' }, fields: ['id', 'dispatchId'] },

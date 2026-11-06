@@ -210,7 +210,8 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       const thread = await getThread(request, admin, sessionThreadId)
       expect(thread.body?.authorName ?? null).toBeNull()
       expect(thread.body?.messages).toHaveLength(1)
-      expect(thread.body?.messages.at(0)).toMatchObject({ system: true, body: REASON, actingRole: 'system' })
+      // #139: the system message names the coordinator who cancelled, in the coordinator role (R01).
+      expect(thread.body?.messages.at(0)).toMatchObject({ system: true, body: REASON, actingRole: 'coordinator' })
 
       // The e-mail goes to everyone with an address — the five of them, e-mail only (the in-app notice is the phase 2
       // one) — and to nobody else.
@@ -224,6 +225,9 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       for (const address of recipients.pl) {
         const mail = (await awaitEmails(address, CANCELLED_PL)).at(0)
         expect(mail?.text).toContain('jest odwołane.')
+        // #139: the e-mail names who cancelled and in which role (R01).
+        expect(mail?.text).toContain('Odwołane przez:')
+        expect(mail?.text).toContain('(koordynator).')
         // The capture joins the rendered text with single spaces.
         expect(mail?.text).toContain(`Powód: ${REASON}`)
         expect(mail?.links.some((link) => link.includes(`/club/messages/${sessionThreadId}`))).toBe(true)
@@ -233,6 +237,8 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       for (const address of recipients.en) {
         const mail = (await awaitEmails(address, CANCELLED_EN)).at(0)
         expect(mail?.text).toContain('is cancelled.')
+        expect(mail?.text).toContain('Cancelled by ')
+        expect(mail?.text).toContain('(coordinator).')
         expect(mail?.text).toContain(`Reason: ${REASON}`)
         expect(mail?.links.some((link) => link.includes(`/club/messages/${sessionThreadId}`))).toBe(true)
         expect(emailsTo(address, CANCELLED_EN), address).toHaveLength(1)
