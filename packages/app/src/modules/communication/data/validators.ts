@@ -1,6 +1,7 @@
 // Input schemas of the `communication` commands and routes (foundation III *API, Command, and Error Contracts*).
 import { z } from 'zod'
 import { AUDIENCE_KINDS } from '@vereino/core'
+import { DIRECT_TARGETS } from '../lib/direct-rules'
 
 /** Club text limits: a subject is one line, a message a few screens (it is e-mailed in full). */
 export const SUBJECT_MAX = 200
@@ -27,6 +28,14 @@ export const audienceSchema = z
 export type AudienceInput = z.output<typeof audienceSchema>
 
 export const threadCreateSchema = z.object({ audience: audienceSchema, subject, body }).strict()
+
+/**
+ * `communication.threads.start_direct` (DD-M18): a member writes about a household member (`personId`: themself or a
+ * ward) to the coaches of a group that member takes part in today, or to the coordinators of its section.
+ */
+export const directThreadSchema = z
+  .object({ personId: z.uuid(), groupId: z.uuid(), to: z.enum(DIRECT_TARGETS), subject, body })
+  .strict()
 
 export const audiencePreviewSchema = z.object({ audience: audienceSchema }).strict()
 

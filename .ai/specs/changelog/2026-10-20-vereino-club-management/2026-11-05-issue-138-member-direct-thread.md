@@ -1,0 +1,1 @@
+| 2026-11-05 | #138: REQ-009 lets a guardian or a participant with an account start a direct thread with the coaches of their household’s group or the section’s coordinator; API row `communication.threads.start_direct` (foundation III REQ-M12, DD-M18) |
