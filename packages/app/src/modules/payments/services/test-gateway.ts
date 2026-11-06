@@ -50,7 +50,7 @@ function sessions(): Map<string, TestSession> {
 
 function sessionOf(sessionId: string): TestSession {
   const session = sessions().get(sessionId)
-  if (!session) throw new Error('Test gateway session not found: ' + sessionId)
+  if (!session) throw new Error('[internal] Test gateway session not found: ' + sessionId)
   return session
 }
 
@@ -134,7 +134,7 @@ export const testGatewayAdapter: GatewayAdapter = {
     const provided = Buffer.from(Array.isArray(header) ? (header[0] ?? '') : (header ?? ''), 'utf-8')
     const expected = Buffer.from(testGatewaySignature(rawBody), 'utf-8')
     if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
-      throw new Error('Invalid test gateway signature')
+      throw new Error('[internal] Invalid test gateway signature')
     }
     const body = JSON.parse(rawBody) as {
       id?: string
