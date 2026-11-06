@@ -16,7 +16,7 @@
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { findActingRole, type AudienceSpec, type GrantKind } from '@vereino/core'
+import { cancellationCoordinatorIds, findActingRole, type AudienceSpec, type GrantKind } from '@vereino/core'
 import {
   authorizeScoped,
   contactResolver,
@@ -50,9 +50,12 @@ import {
   threadReplySchema,
 } from '../data/validators'
 import {
+  ORIGINAL_MESSAGE_KINDS,
   THREAD_READ_KINDS,
   audienceTarget,
+  cancelledByOf,
   emailOnlyRecipients,
+  isSystemMessage,
   isThreadStaff,
   participantRows,
   postingKinds,
@@ -60,6 +63,7 @@ import {
   replyRecipients,
   selfPersonId,
   staffParticipants,
+  withExtraRecipients,
 } from '../lib/thread-rules'
 import { CASE_MANAGE_KINDS, messageChangeRefusal } from '../lib/case-rules'
 import {
@@ -549,7 +553,12 @@ async function loadMessageAccess(
   const scope = trusted(ctx)
   const thread = await loadThread(em, scope, threadId, lock)
   if (!thread) return null
-  const message = await em.findOne(ThreadMessage, { id: messageId, ...scope, threadId, kind: 'message' })
+  const message = await em.findOne(ThreadMessage, {
+    id: messageId,
+    ...scope,
+    threadId,
+    kind: { $in: [...ORIGINAL_MESSAGE_KINDS] },
+  })
   if (!message) return null
   const tombstone = await em.findOne(
     ThreadMessage,
@@ -593,7 +602,7 @@ function changeMessageCommand(
         // The thread is row-locked, so a marking that commits first is seen here (REQ-M09: a case refuses every change).
         const refusal = messageChangeRefusal({
           threadIsCase: thread.isCase,
-          system: message.authorPersonId === null || message.authorPersonId === undefined,
+          system: isSystemMessage({ kind: message.kind, authorPersonId: message.authorPersonId ?? null }),
           deleted: access.deleted,
         })
         if (refusal) return communicationErrors.throw(refusal)
@@ -800,9 +809,36 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
         scope: authorized.scope,
         em,
       })
+      // #139: a coach's cancellation also reaches the section's live coordinators (as staff), never the canceller.
+      const actorPersonId = parsed.actorPersonId ?? null
+      const coordinatorIds = cancellationCoordinatorIds(
+        parsed.actingRole ?? null,
+        parsed.actingRole === 'coach'
+          ? await personDirectory(ctx.container).sectionCoordinatorIdsOn(
+              scope,
+              occurrence.sectionId,
+              occurrence.occurrenceDate,
+              em,
+            )
+          : [],
+        actorPersonId,
+      )
+      const coordinators =
+        coordinatorIds.length > 0
+          ? await resolveMembers(
+              coordinatorIds.map((personId) => ({ personId, reason: 'coach' as const })),
+              { container: ctx.container, ...scope, scope: authorized.scope, em },
+            )
+          : null
+      const audienceRecipients = withExtraRecipients(resolved.recipients, coordinators?.recipients ?? [])
       // E-mail only: the in-app notice stays `activities.occurrence_cancelled` (REQ-M07).
-      const recipients = emailOnlyRecipients(resolved.recipients, parsed.actorUserId ?? null)
+      const recipients = emailOnlyRecipients(audienceRecipients, parsed.actorUserId ?? null)
       const reason = occurrence.cancelReason ?? ''
+      // R01: the notice names who cancelled and in which role; an event older than #139 names nobody.
+      const canceller = actorPersonId
+        ? (await personDirectory(ctx.container).findPersons(scope, [actorPersonId], em)).get(actorPersonId)
+        : undefined
+      const cancelledBy = canceller ? cancelledByOf(canceller, parsed.actingRole ?? null) : null
       const { dispatchId, created } = await dispatchService(ctx).enqueue(
         em,
         {
@@ -815,6 +851,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
             gatheringAt: occurrence.gatheringAt?.toISOString() ?? null,
             timeZone,
             reason,
+            ...(cancelledBy ? { cancelledByName: cancelledBy.name, cancelledByRole: cancelledBy.role } : {}),
           },
           recipients,
           audience,
@@ -842,9 +879,10 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
           id: messageId,
           ...scope,
           threadId: thread.id,
-          kind: 'message',
-          authorPersonId: null,
-          actingRole: 'system',
+          // A named canceller makes it a `cancellation` notice (#139); without one it stays the anonymous system message.
+          kind: cancelledBy ? 'cancellation' : 'message',
+          authorPersonId: cancelledBy ? actorPersonId : null,
+          actingRole: cancelledBy?.role ?? 'system',
           audience: 'all',
           body: reason,
           dispatchId,
@@ -853,7 +891,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
       )
       thread.lastMessageAt = now
       await em.flush()
-      await insertParticipants(em, scope, thread.id, participantRows(resolved.recipients, null))
+      await insertParticipants(em, scope, thread.id, participantRows(audienceRecipients, null))
       return {
         threadId: thread.id,
         messageId,

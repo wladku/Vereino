@@ -1,9 +1,9 @@
 'use client'
 // The messages of a thread and the reply box, shared by the admin thread page and the member thread page (foundation
 // III DD-M10, DD-M12; R01, R15): each message with its author and the role they wrote in, "edited" / "deleted", a
-// system message for a cancellation, and the "staff and family only" marker on a member's reply. Club text is shown
-// as written (line breaks kept, never as markup). The admin page adds its own part under each message (`renderFooter`:
-// the delivery status and "Delete message", B-19).
+// system message for a cancellation (naming who cancelled and in which role, #139), and the "staff and family only"
+// marker on a member's reply. Club text is shown as written (line breaks kept, never as markup). The admin page adds
+// its own part under each message (`renderFooter`: the delivery status and "Delete message", B-19).
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
@@ -47,7 +47,16 @@ export function MessageList({
           ) : message.system ? (
             <div className="flex flex-col gap-1">
               <p className="font-medium">{t('communication.message.system')}</p>
-              {message.body ? (
+              {message.authorName ? (
+                // A cancellation notice names who cancelled and in which role (R01, #139).
+                <p className="break-words whitespace-pre-line" data-testid="thread-message-cancelled-by">
+                  {t('communication.message.cancelledBy', {
+                    name: message.authorName,
+                    role: roleLabel(t, message.actingRole),
+                    reason: message.body ?? '',
+                  })}
+                </p>
+              ) : message.body ? (
                 <p className="break-words whitespace-pre-line">
                   {t('communication.message.systemReason', { reason: message.body })}
                 </p>

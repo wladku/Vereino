@@ -227,6 +227,22 @@ describe('the cancellation audience', () => {
     expect(cancellationPersonIds({ ...audience, coachPersonId: null, roster: [] })).toEqual([])
   })
 
+  it('adds the section coordinators of a coach cancellation, once each (#139)', () => {
+    const withCoordinators = { ...audience, coordinatorIds: ['wojtek', 'marek'] }
+    expect(cancellationPersonIds(withCoordinators)).toEqual([
+      'adult',
+      'assistant',
+      'jas',
+      'kasia',
+      'marek',
+      'ola',
+      'piotr',
+      'unknown-age',
+      'wojtek',
+    ])
+    expect(cancellationNotifiedCount(withCoordinators, 'marek')).toBe(8)
+  })
+
   it('notifies only accounts and never the user who cancelled', () => {
     const userIds = new Map([
       ['kasia', 'user-kasia'],
