@@ -8,12 +8,12 @@
 
 ## Goal
 
-The places list (B-06) gets filters for kind, parent and active state, an Owner column, and the hierarchy in the name cell with an External badge. The place form gets regulations (text and one PDF) and photos. This is phase 3 of `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`.
+The places list (B-06) gets filters for kind, parent and active state, an Owner column, and the hierarchy in the name cell with an External badge. The place form gets regulations (text and one PDF) and photos. This is phase 3 of `.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md`.
 
 ## Steps
 
 1. Read the issue: it is open and unassigned, carries the `feature` label and has no open PR that references it. Classified it as a feature, so it takes the feature route. FR triage: the list API already accepted the filters, but the page exposed none, and the list had no owner or hierarchy, so the feature is real and unbuilt.
-2. Resolved the covering spec from the issue comment (spec PR #131, merged): `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 3, which is `In progress` and has an implementation breakdown.
+2. Resolved the covering spec from the issue comment (spec PR #131, merged): `.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 3, which is `In progress` and has an implementation breakdown.
 3. Ask First check: phase 3 needs a new `club_core` migration (`club_core_places.regulations_text` and the table `club_core_place_files`). The spec's status line records the owner's approval only for the two phase 2 migrations (DD-U05): "any other migration, module or dependency stays Ask First". No approval is recorded on #86, #82 or #131. Stopped without claiming and asked on #86 (issuecomment-6640300737). Committed the run log.
 4. The user said to continue autonomously without questions. A general go-ahead is not a recorded migration approval, so the run took the spec's own independent slice (a), which needs no migration. Claimed #86 (assignee, `in-progress`, 🤖 comment issuecomment-6640361208).
 5. Pure logic `club_core/lib/place-hierarchy.ts`: the URL state (`parsePlaceListState`, `placeListQuery`, `hasPlaceFilters`) and `orderParentFirst`, which orders a page parent first, puts children by name under their parent, marks orphans and breaks corrupt loops. Unit tests at 100 %.
@@ -39,7 +39,7 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 - `packages/app/src/modules/club_core/components/PlacesTable.tsx`, `PlaceForm.tsx`, `places-shared.ts`
 - `packages/app/src/modules/club_core/i18n/en.json`, `i18n/pl.json`, `README.md`
 - `packages/app/.ai/qa/tests/club_core/E06-S04-places-filters-hierarchy.spec.ts` (new)
-- `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md` (status and Changelog)
+- `.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md` (status and Changelog)
 - this log
 
 ## Commands and results

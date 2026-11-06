@@ -33,6 +33,13 @@ describe('club_core error codes', () => {
       { code: 'logo_too_large', status: 422, messageKey: 'club_core.errors.logo_too_large' },
       { code: 'material_format_unsupported', status: 422, messageKey: 'club_core.errors.material_format_unsupported' },
       { code: 'material_too_large', status: 422, messageKey: 'club_core.errors.material_too_large' },
+      {
+        code: 'place_file_format_unsupported',
+        status: 422,
+        messageKey: 'club_core.errors.place_file_format_unsupported',
+      },
+      { code: 'place_file_too_large', status: 422, messageKey: 'club_core.errors.place_file_too_large' },
+      { code: 'place_photos_limit_reached', status: 422, messageKey: 'club_core.errors.place_photos_limit_reached' },
       { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
       { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
     ])

@@ -3,7 +3,7 @@
 - **Date:** 2026-11-03 – 2026-11-04
 - **Agent / tool:** Claude Code (Opus 5.5), cezar task, `om-auto-fix-issue` (feature route → implementation of an existing spec)
 - **Trigger:** `om-auto-fix-issue 85` (E06-S03).
-- **Spec:** `.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 2 (REQ-U02); status moved to `In progress`, AC-U03 and AC-U04 ticked.
+- **Spec:** `.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md`, phase 2 (REQ-U02); status moved to `In progress`, AC-U03 and AC-U04 ticked.
 - **Branch:** `feat/issue-85-sections-counts-deactivation-tabs`
 - **Status:** completed, PR open for review.
 

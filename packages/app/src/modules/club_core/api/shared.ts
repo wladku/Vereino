@@ -70,6 +70,7 @@ export function placeListItem(row: Row) {
     capacityGroups: typeof row.capacity_groups === 'number' ? row.capacity_groups : Number(row.capacity_groups ?? 1),
     contacts: parsePlaceContacts(row.contacts),
     isActive: bool(row.is_active),
+    regulationsText: text(row.regulations_text),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -154,6 +155,8 @@ export const placeListItemSchema = z.object({
   capacityGroups: z.number(),
   contacts: z.array(z.object({ role: z.string().nullable(), name: z.string(), phone: z.string().nullable() })),
   isActive: z.boolean(),
+  /** The place's rules as plain text (UX parity spec, REQ-U03). */
+  regulationsText: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   /** The owner institution's name; null without an owner (UX parity spec, REQ-U03). */

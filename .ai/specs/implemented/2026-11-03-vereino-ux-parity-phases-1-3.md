@@ -1,7 +1,7 @@
 # Vereino — UX parity for phases 1–3: people, sections and places lists
 
 **Date**: 2026-11-03
-**Status**: In progress — phases 1 (#83) and 2 (#85) implemented; phase 3 slice (a) implemented (#86: filters, owner, hierarchy); phase 3 slice (b) (regulations and photos, which needs the phase 3 migration) open. Ready for implementation since 2026-11-03: the product owner gave the go on 2026-11-03 ("Yes, mark it Ready"); Q-U10 was confirmed in PR #131 and the other autonomous defaults stand. V-U01 stays non-blocking (fallback defined). The owner also approved, on 2026-11-03 ("Yes, approve them"), generating and applying this spec's two `club_core` migrations (DD-U05: the nullable `short_description` column, and the duplicate check plus the concurrent unique index on live section names), so the Ask First step for them is answered; any other migration, module or dependency stays Ask First
+**Status**: Implemented — phases 1 (#83), 2 (#85) and 3 (#86: slice (a) the list in PR #163, slice (b) the regulations and photos with the phase 3 migration the owner approved on #86 on 2026-11-05) landed; see `.ai/specs/changelog/2026-11-03-vereino-ux-parity-phases-1-3/`. Ready for implementation since 2026-11-03: the product owner gave the go on 2026-11-03 ("Yes, mark it Ready"); Q-U10 was confirmed in PR #131 and the other autonomous defaults stand. V-U01 stays non-blocking (fallback defined). The owner approved the two phase 2 `club_core` migrations on 2026-11-03 (DD-U05) and the phase 3 migration on 2026-11-05
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -519,9 +519,9 @@ Rollback follows S14.6: it redeploys the previous release and never runs `down()
 - [x] **AC-U02** — A coordinator using any filter or perspective sees no e-mail, phone, PESEL or notes, and no person of another tenant. Without `groups` registered, group-based filters answer 400 `people_filter_unavailable` and the rest of the list works.
 - [x] **AC-U03** — Deactivating or deleting a section with active groups answers 409 `section_has_active_groups` listing them, and nothing changes. After the groups are deactivated, the same action succeeds and the list shows Groups = 0.
 - [x] **AC-U04** — Section names are unique case-insensitively among live sections (409 `section_name_taken` on the field, also when an undo would duplicate one). They are 2–80 characters on create and rename (422 `section_name_length`), and a stored longer name saves unchanged. `?tab=coordinators` opens that tab, and a coordinator assignment can carry an end date. The section's coordinator sets the short description, which appears on the public club page tile.
-- [ ] **AC-U05** — The places list filters by kind, parent and active state; it shows the owner and the hierarchy with the External badge. A place accepts one regulations PDF and up to 10 photos, and rejects an SVG renamed `.png` with 422.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-U05** — The places list filters by kind, parent and active state; it shows the owner and the hierarchy with the External badge. A place accepts one regulations PDF and up to 10 photos, and rejects an SVG renamed `.png` with 422.
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
 
 ## Final Compliance Report
 
