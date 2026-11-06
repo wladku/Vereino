@@ -123,7 +123,9 @@ Every PR passes the full validation gate before review sign-off, in this order:
 
 - `yarn verify`
 
-Any non-zero exit fails the gate and blocks the PR. `yarn verify` is the only gate command and is identical locally and in CI (`.github/workflows/ci.yml`); `yarn verify --list` shows its steps and `yarn verify --from <step>` resumes after a fix. CI additionally runs `yarn test:integration:vereino` and the agent-browser login smoke. The implementing skills run the gate before opening a PR, and `om-check-and-commit` runs it before pushing a hand-worked branch. The command list lives in `.ai/agentic.config.json`; when it changes, update it there and in this section together.
+Any non-zero exit fails the gate and blocks the PR. `yarn verify` is the only gate command and is identical locally and in CI (`.github/workflows/ci.yml`); `yarn verify --list` shows its steps and `yarn verify --from <step>` resumes after a fix. CI additionally runs `yarn test:integration:vereino` and the agent-browser login smoke.
+
+**One PR into `main` at a time.** A GitHub ruleset on `main` ("main: merge only when up to date and green") requires the CI jobs `gate`, `integration` and `browser-smoke` to pass on a branch that is up to date with `main`. After every merge the next PR is behind: bring `main` into it (GitHub's "Update branch", or `om-auto-fix-pr`), let CI pass again, then merge. A PR that was green on an older `main` is not mergeable, so two PRs that each pass alone cannot break `main` together (#149 and #150 did, 2026-11-04). Cezar builds one issue at a time (`resources.maxParallel: 1` in the user's `~/.cezar/config.json`) so fewer PRs wait behind each other. The implementing skills run the gate before opening a PR, and `om-check-and-commit` runs it before pushing a hand-worked branch. The command list lives in `.ai/agentic.config.json`; when it changes, update it there and in this section together.
 
 ## Amending this process
 
