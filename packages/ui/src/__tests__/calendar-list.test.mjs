@@ -229,3 +229,24 @@ test('the coach line carries the coach label when one is given, the name alone o
   )
   assert.doesNotMatch(render({ days: days(item({ coach: null })) }), /calendar-item-coach/)
 })
+
+test('renders the gathering time before the time range, with its label (club spec DD-43)', () => {
+  const gatheringAt = new Date('2026-11-03T15:15:00Z')
+  const html = render({ days: days(item({ gatheringAt })), labels: { ...labels, gathering: 'Gathering' } })
+  assert.match(
+    html,
+    /<time dateTime="2026-11-03T15:15:00.000Z" class="font-semibold" data-testid="calendar-item-gathering">Gathering 16:15<\/time><time dateTime="2026-11-03T16:00:00.000Z">17:00–18:30<\/time>/,
+  )
+  // Without a label the time stands alone; a done item mutes it like the range.
+  assert.match(
+    render({ days: days(item({ gatheringAt, status: 'done' })) }),
+    /<time dateTime="2026-11-03T15:15:00.000Z" class="text-muted-foreground font-semibold" data-testid="calendar-item-gathering">16:15<\/time>/,
+  )
+})
+
+test('renders nothing for an item without a gathering time (no placeholder)', () => {
+  assert.doesNotMatch(
+    render({ days: days(item({ gatheringAt: null })), labels: { ...labels, gathering: 'Gathering' } }),
+    /calendar-item-gathering|Gathering/,
+  )
+})

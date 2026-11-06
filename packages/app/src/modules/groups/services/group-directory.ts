@@ -53,6 +53,11 @@ export type GroupDirectory = {
    * picker of the activity wizard, #93). Ids only.
    */
   leaderIdsOn(scope: GroupsScope, date: CalendarDate, em?: EntityManager): Promise<string[]>
+  /**
+   * The live, active groups marked `is_public` in `sectionIds`, by name (#91): the groups the public schedule of
+   * `activities` may show. The caller passes only public sections (`club_core` decides that).
+   */
+  publicGroups(scope: GroupsScope, sectionIds: readonly string[], em?: EntityManager): Promise<GroupDirectoryEntry[]>
   /** The live external teams of the organization among `ids`, by id. */
   findExternalTeams(
     scope: GroupsScope,
@@ -160,6 +165,27 @@ export async function listGroups(
   }))
 }
 
+export async function publicGroups(
+  em: EntityManager,
+  scope: GroupsScope,
+  sectionIds: readonly string[],
+): Promise<GroupDirectoryEntry[]> {
+  const unique = [...new Set(sectionIds)]
+  if (unique.length === 0) return []
+  const rows = await em.find(
+    Group,
+    { ...scope, sectionId: { $in: unique }, isPublic: true, isActive: true, deletedAt: null },
+    { fields: ['id', 'sectionId', 'name', 'kind', 'isActive'], orderBy: { name: 'asc', id: 'asc' } },
+  )
+  return rows.map((row) => ({
+    id: row.id,
+    sectionId: row.sectionId,
+    name: row.name,
+    kind: row.kind,
+    isActive: row.isActive,
+  }))
+}
+
 export async function leaderIdsOn(em: EntityManager, scope: GroupsScope, date: CalendarDate): Promise<string[]> {
   const rows = await em.find(
     GroupMembership,
@@ -197,6 +223,7 @@ export function createGroupDirectory(getEm: () => EntityManager): GroupDirectory
     membershipsOf: (scope, personIds, window, em) => membershipsOf(em ?? getEm().fork(), scope, personIds, window),
     listGroups: (scope, filter, em) => listGroups(em ?? getEm().fork(), scope, filter),
     leaderIdsOn: (scope, date, em) => leaderIdsOn(em ?? getEm().fork(), scope, date),
+    publicGroups: (scope, sectionIds, em) => publicGroups(em ?? getEm().fork(), scope, sectionIds),
     findExternalTeams: (scope, ids, em) => findExternalTeams(em ?? getEm().fork(), scope, ids),
   }
 }

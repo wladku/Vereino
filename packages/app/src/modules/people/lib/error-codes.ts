@@ -40,6 +40,12 @@ export const errorCodes = [
   { code: 'import_review_pending', status: 422, messageKey: 'people.errors.import_review_pending' },
   { code: 'import_decision_invalid', status: 422, messageKey: 'people.errors.import_decision_invalid' },
   { code: 'import_person_not_found', status: 422, messageKey: 'people.errors.import_person_not_found' },
+  // The people list's filters (UX parity spec REQ-U01): a membership filter without `groups`, a filter resolving to
+  // more ids than the list loads, and a failed `groups.personFilter` call (retryable).
+  { code: 'people_filter_age_range', status: 400, messageKey: 'people.errors.people_filter_age_range' },
+  { code: 'people_filter_unavailable', status: 400, messageKey: 'people.errors.people_filter_unavailable' },
+  { code: 'people_filter_too_broad', status: 422, messageKey: 'people.errors.people_filter_too_broad' },
+  { code: 'people_filter_failed', status: 503, messageKey: 'people.errors.people_filter_failed' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

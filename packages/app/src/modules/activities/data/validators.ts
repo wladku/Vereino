@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
+import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import {
   ACTUAL_ATTENDANCE,
   DECLARED_VALUES,
@@ -21,6 +22,8 @@ const localTimeSchema = z.string().refine(isLocalTime, { message: 'Expected a HH
 const instantSchema = z.iso.datetime({ offset: true })
 const externalTeamIds = z.array(z.uuid()).max(50)
 const booleanQuery = z.enum(['true', 'false']).optional()
+/** The default gathering time of a series or event in minutes before the start (DD-43); null clears it. */
+const gatheringMinutesSchema = z.number().int().min(1).max(MAX_GATHERING_MINUTES).nullable().optional()
 
 const listQueryBase = {
   page: z.coerce.number().int().min(1).default(1),
@@ -46,6 +49,7 @@ const activityShape = {
   endsOn: calendarDateSchema.nullable().optional(),
   startTime: localTimeSchema,
   endTime: localTimeSchema,
+  gatheringMinutesBefore: gatheringMinutesSchema,
   description: optionalText(4000),
   isActive: z.boolean().optional(),
 }
@@ -68,6 +72,7 @@ export const activityUpdateSchema = z
     endsOn: calendarDateSchema.nullable().optional(),
     startTime: localTimeSchema.optional(),
     endTime: localTimeSchema.optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
     description: optionalText(4000),
     isActive: z.boolean().optional(),
   })
@@ -99,6 +104,7 @@ export const eventCreateSchema = z
     endsAt: instantSchema,
     coachPersonId: z.uuid().nullable().optional(),
     invitedExternalTeamIds: externalTeamIds.optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
     description: optionalText(4000),
   })
   .strict()
@@ -111,6 +117,8 @@ export const occurrenceUpdateSchema = z
     endAt: instantSchema.optional(),
     placeId: z.uuid().optional(),
     coachPersonId: z.uuid().nullable().optional(),
+    /** The session's own gathering instant (DD-43; 422 at or after the start); null removes it. */
+    gatheringAt: instantSchema.nullable().optional(),
   })
   .strict()
 

@@ -13,7 +13,7 @@ import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
@@ -22,6 +22,7 @@ type PublicSessionPage = {
     activityName: string
     occurrenceDate: string
     startAt: string
+    gatheringAt: string | null
     endAt: string
     timeZone: string
     status: 'planned' | 'done' | 'cancelled'
@@ -113,7 +114,18 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
           {session.activityName}
         </h1>
         <p className="text-lg" data-testid="public-session-when">
-          {formatDayHeading(session.occurrenceDate, locale)} · {formatTimeRange(start, end, locale, session.timeZone)}
+          {formatDayHeading(session.occurrenceDate, locale)} ·{' '}
+          {session.gatheringAt ? (
+            <>
+              <span className="font-semibold" data-testid="public-session-gathering">
+                {t('activities.gathering.at', {
+                  time: formatClockTime(new Date(session.gatheringAt), locale, session.timeZone),
+                })}
+              </span>{' '}
+              ·{' '}
+            </>
+          ) : null}
+          {formatTimeRange(start, end, locale, session.timeZone)}
         </p>
         <p
           className="flex flex-wrap items-center gap-2"

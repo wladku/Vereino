@@ -1,12 +1,13 @@
 'use client'
 // `/p/[clubSlug]` — the public club page (club spec UI table, J-008, REQ-025; #29): the club's name, logo and
-// description, its contact with the `contact` block, and a tile for each public section with the section's effective
-// logo. States: loading, error with retry, 404 (nothing about any club) and "the club does not publish a page".
+// description, its contact with the `contact` block, a tile for each public section with the section's effective
+// logo, and the upcoming one-off events of the public groups (`activities.publicSchedule`, #91). States: loading, error with retry, 404 (nothing about any club) and "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { PublicEvents } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { sectionHref, usePublicClub } from './public-client'
 
@@ -59,7 +60,8 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
     )
   }
 
-  const { club, sections } = load.page
+  const { club, sections, blocks } = load.page
+  const events = blocks.schedule?.events ?? []
   return (
     <PublicFrame club={club}>
       <section className="flex items-start gap-4" aria-labelledby="public-club-title">
@@ -110,6 +112,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
           </ul>
         )}
       </section>
+      {events.length > 0 ? <PublicEvents clubSlug={club.slug} events={events} /> : null}
       {club.contact ? (
         <section className="flex flex-col gap-2" aria-labelledby="public-club-contact-title">
           <h2 id="public-club-contact-title" className="text-lg font-semibold">

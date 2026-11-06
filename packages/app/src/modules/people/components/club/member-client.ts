@@ -22,7 +22,11 @@ export type MemberPerson = {
   email: string | null
   phone: string | null
   preferredLocale: string | null
-  consents: { shareContactWithCoaches: SelfConsent; sharePresenceWithGuardians: SelfConsent }
+  consents: {
+    shareContactWithCoaches: SelfConsent
+    sharePresenceWithGuardians: SelfConsent
+    publishNameConsent: SelfConsent
+  }
   updatedAt: string | null
 }
 

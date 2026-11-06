@@ -3,7 +3,7 @@
 // commands (the kind of an update comes from the stored row), so a class group with team fields answers 422.
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
-import { GROUP_KINDS, MEMBERSHIP_ROLES } from '../lib/groups-rules'
+import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES } from '../lib/groups-rules'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
@@ -18,6 +18,19 @@ const listQueryBase = {
 
 const searchQuery = z.string().trim().min(1).max(200).optional()
 
+/** An age bound in years (#91); null clears it. The order of the two bounds is checked on the merged values. */
+const ageSchema = z.number().int().min(GROUP_AGE_MIN).max(GROUP_AGE_MAX).nullable().optional()
+
+/** The public fields of a group (club spec `groups_groups`, DD-29; #91). */
+const publicShape = {
+  isPublic: z.boolean().optional(),
+  publicDescription: optionalText(4000),
+  publicConditions: optionalText(4000),
+  ageFrom: ageSchema,
+  ageTo: ageSchema,
+  levelLabel: optionalText(100),
+}
+
 // --- Groups ---
 
 export const groupCreateSchema = z
@@ -25,10 +38,12 @@ export const groupCreateSchema = z
     sectionId: z.uuid(),
     name: nameSchema,
     kind: z.enum(GROUP_KINDS),
+    ageCategoryEntryId: z.uuid().nullable().optional(),
     league: optionalText(200),
     seasonId: z.uuid().nullable().optional(),
     description: optionalText(4000),
     isActive: z.boolean().optional(),
+    ...publicShape,
   })
   .strict()
 
@@ -38,10 +53,12 @@ export const groupUpdateSchema = z
     sectionId: z.uuid().optional(),
     name: nameSchema.optional(),
     kind: z.enum(GROUP_KINDS).optional(),
+    ageCategoryEntryId: z.uuid().nullable().optional(),
     league: optionalText(200),
     seasonId: z.uuid().nullable().optional(),
     description: optionalText(4000),
     isActive: z.boolean().optional(),
+    ...publicShape,
   })
   .strict()
 
@@ -54,6 +71,7 @@ export const groupListQuerySchema = z.object({
   sectionId: z.uuid().optional(),
   kind: z.enum(GROUP_KINDS).optional(),
   seasonId: z.uuid().optional(),
+  ageCategoryEntryId: z.uuid().optional(),
   isActive: booleanQuery,
 })
 

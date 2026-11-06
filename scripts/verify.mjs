@@ -16,6 +16,7 @@ export const STEPS = [
   { name: 'i18n:check-hardcoded', args: ['i18n:check-hardcoded', '--strict'] },
   { name: 'contracts:check', args: ['contracts:check'] },
   { name: 'lessons:check', args: ['lessons:check'] },
+  { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
   { name: 'test', args: ['test'] },
   { name: 'test:scripts', args: ['test:scripts'] },
   { name: 'build', args: ['build'] },

@@ -181,7 +181,7 @@ Every gap listed in research A §12 is closed by at least one rule.
 
 ### S2 — Single canonical gate
 
-- **S2.1** `yarn verify` (root script backed by `scripts/verify.mjs`) runs these steps in order and stops at the first failure: `yarn generate`, `yarn typecheck`, `yarn typecheck:packages`, `yarn typecheck:qa` (integration tests, own `tsconfig.json` in `packages/app/.ai/qa/tests/`), `yarn lint` (every workspace), `yarn format:check`, `yarn ds:check`, `yarn i18n:check-hardcoded --strict`, `yarn contracts:check`, `yarn lessons:check`, `yarn test` (every workspace), `yarn test:scripts` (tooling tests on `node:test`), `yarn build`. `yarn verify --from <step>` resumes after a fix; `--list` prints the steps. It prints each step's name and duration; its exit code is the failing step's exit code.
+- **S2.1** `yarn verify` (root script backed by `scripts/verify.mjs`) runs these steps in order and stops at the first failure: `yarn generate`, `yarn typecheck`, `yarn typecheck:packages`, `yarn typecheck:qa` (integration tests, own `tsconfig.json` in `packages/app/.ai/qa/tests/`), `yarn lint` (every workspace), `yarn format:check`, `yarn ds:check`, `yarn i18n:check-hardcoded --strict`, `yarn contracts:check`, `yarn lessons:check`, `yarn spec-changelogs:check`, `yarn test` (every workspace), `yarn test:scripts` (tooling tests on `node:test`), `yarn build`. `yarn verify --from <step>` resumes after a fix; `--list` prints the steps. It prints each step's name and duration; its exit code is the failing step's exit code.
 - **S2.2** The integration gate is `yarn test:integration:vereino` (all tests; ADR-003); locally a focused run uses `--filter <TEST-ID>`, passed to Playwright as a file-path filter. `yarn test:integration:vereino:start` keeps the ephemeral app running (until Ctrl+C) for agent-browser or manual checks. CI runs the full suite on every pull request.
 - **S2.3** `AGENTS.md` → *Validation*, `.ai/agentic.config.json` `validation.commands` (`["yarn verify"]`), the club spec's phase validation lines (amended in E1) and CI all name `yarn verify`. Adding a check means editing `scripts/verify.mjs` only.
 - **S2.4** Every gate step is blocking. `--strict` makes the i18n check fail on findings in Vereino module paths that are not in the module's `i18n/.hardcoded-allowlist.json` (each entry with a reason); findings in `example` and scaffold paths are reported, not failing. The flag is a recorded local patch to `packages/app/scripts/i18n-check-hardcoded.mjs` (S3.1).
@@ -840,6 +840,8 @@ The `om-spec-writing` gate was not run as an interactive stop: the product owner
 Related open items outside this spec: decisions D1 … D5 from `.ai/runs/2026-10-20-spec-consistency-fixes.md` still await the product owner's confirmation in the club spec.
 
 ## Changelog
+
+Rows up to 2026-11-05 stay in this table. Each later change is its own file in `.ai/specs/changelog/2026-10-21-engineering-standards-and-patterns/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/2026-10-21-engineering-standards-and-patterns/*.md` lists them in date order.
 
 | Date | Change |
 |---|---|

@@ -39,16 +39,30 @@ export class Season extends ScopedEntityBase {
 
 /**
  * A group of one section (club spec glossary *Group*, DD-03a, REQ-004): `team` or `class_group`, equal in every rule;
- * only a `team` carries the team fields `league` and `season_id` (`age_category_entry_id` waits for the `dictionaries`
- * module; the public fields arrive with the public page story #29). `section_id` is a `club_core` section id (scalar,
- * no cross-module relation).
+ * only a `team` carries the team fields `age_category_entry_id`, `league` and `season_id`. The public fields (#91, DD-29):
+ * `is_public` puts the group on its section's public page with its public description, conditions, age range
+ * (`age_from` ≤ `age_to`, either may be open) and level label. `section_id` is a `club_core` section id and
+ * `age_category_entry_id` a `dictionaries` entry id of the club's age category dictionary (scalars, no cross-module
+ * relation).
  */
 @Entity({ tableName: 'groups_groups' })
 @Index({ name: 'groups_groups_org_section_active_idx', properties: ['organizationId', 'sectionId', 'isActive'] })
 @Index({ name: 'groups_groups_org_season_idx', properties: ['organizationId', 'seasonId'] })
 @Index({ name: 'groups_groups_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Group extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'league' | 'seasonId' | 'description' | 'isActive'
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'ageCategoryEntryId'
+    | 'league'
+    | 'seasonId'
+    | 'description'
+    | 'isActive'
+    | 'isPublic'
+    | 'publicDescription'
+    | 'publicConditions'
+    | 'ageFrom'
+    | 'ageTo'
+    | 'levelLabel'
 
   @Property({ name: 'section_id', type: 'uuid' })
   sectionId!: string
@@ -58,6 +72,10 @@ export class Group extends ScopedEntityBase {
 
   @Property({ name: 'kind', type: 'text' })
   kind!: GroupKind
+
+  /** Team only: an entry of the club's PZPN age category dictionary (`dictionaries`, REQ-019, #92). */
+  @Property({ name: 'age_category_entry_id', type: 'uuid', nullable: true })
+  ageCategoryEntryId?: string | null
 
   /** Team only. */
   @Property({ name: 'league', type: 'text', nullable: true })
@@ -72,6 +90,30 @@ export class Group extends ScopedEntityBase {
 
   @Property({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean = true
+
+  /** Shown on the section's public page (DD-29) while the club publishes the `description_schedule` block. */
+  @Property({ name: 'is_public', type: 'boolean', default: false })
+  isPublic: boolean = false
+
+  /** Plain text for guests (not the internal `description`). */
+  @Property({ name: 'public_description', type: 'text', nullable: true })
+  publicDescription?: string | null
+
+  /** Requirements for guests (the `conditions` block). */
+  @Property({ name: 'public_conditions', type: 'text', nullable: true })
+  publicConditions?: string | null
+
+  /** Youngest age in years; null = open. */
+  @Property({ name: 'age_from', type: 'smallint', nullable: true })
+  ageFrom?: number | null
+
+  /** Oldest age in years, not below `age_from`; null = open. */
+  @Property({ name: 'age_to', type: 'smallint', nullable: true })
+  ageTo?: number | null
+
+  /** E.g. "beginners". */
+  @Property({ name: 'level_label', type: 'text', nullable: true })
+  levelLabel?: string | null
 }
 
 /**

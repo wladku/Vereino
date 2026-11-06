@@ -5,6 +5,7 @@
 // sends an opponent (#93), and "No coach" sends `coachPersonId: null`.
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
 import { takesOpponent } from '../lib/activities-rules'
+import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import { NO_COACH, localToday, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
 
 export type RepeatMode = 'once' | 'weekly'
@@ -26,6 +27,8 @@ export type ActivityFormValues = Record<string, unknown> & {
   endsOn?: string
   startTime?: string
   endTime?: string
+  /** The default gathering time in minutes before the start (DD-43); empty = none. */
+  gatheringMinutesBefore?: string | number | null
   byDay?: string[]
   interval?: string
   endMode?: EndMode
@@ -48,6 +51,7 @@ export type ActivityBody = {
   endsOn: string | null
   startTime: string
   endTime: string
+  gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
 }
@@ -77,6 +81,10 @@ export function activityToFormValues(activity: ActivityDetail | null): ActivityF
     endsOn: activity?.endsOn ?? '',
     startTime: activity?.startTime ?? '',
     endTime: activity?.endTime ?? '',
+    gatheringMinutesBefore:
+      activity?.gatheringMinutesBefore !== null && activity?.gatheringMinutesBefore !== undefined
+        ? String(activity.gatheringMinutesBefore)
+        : '',
     byDay: [],
     interval: '1',
     endMode: 'none',
@@ -136,6 +144,12 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
   for (const field of ['groupId', 'name', 'type', 'placeId', 'startsOn', 'startTime', 'endTime'] as const) {
     if (!str(values[field]).trim()) fieldErrors[field] = required
   }
+  const gathering = values.gatheringMinutesBefore
+  const gatheringText = typeof gathering === 'number' ? String(gathering) : str(gathering).trim()
+  const gatheringMinutesBefore = gatheringText ? positiveInt(gatheringText, MAX_GATHERING_MINUTES) : null
+  if (gatheringText && gatheringMinutesBefore === null) {
+    fieldErrors.gatheringMinutesBefore = t('activities.form.errors.gathering')
+  }
   const weekly = values.repeat !== 'once'
   let rule: string | null = null
   if (weekly) {
@@ -160,6 +174,7 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
       endsOn: weekly ? textOrNull(values.endsOn) : null,
       startTime: str(values.startTime),
       endTime: str(values.endTime),
+      gatheringMinutesBefore,
       description: textOrNull(values.description),
       isActive: values.isActive !== false,
     },

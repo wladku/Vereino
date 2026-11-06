@@ -192,6 +192,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
           cancelled: t('activities.occurrences.status.cancelled'),
           sections: t('activities.club.calendar.sections'),
           coach: t('activities.club.calendar.coach'),
+          gathering: t('activities.gathering.label'),
         }}
         Link={MemberLink}
         onAction={(itemId, actionId) => void onAction(itemId, actionId)}

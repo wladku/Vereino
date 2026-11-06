@@ -1,10 +1,16 @@
 import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 import {
+  AGE_CATEGORY_DICTIONARY_KEY,
   COACHING_ROLES,
+  GROUP_AGE_MAX,
+  GROUP_AGE_MIN,
   GROUP_KINDS,
   MEMBERSHIP_ROLES,
+  PZPN_AGE_CATEGORIES,
+  ageRangeInverted,
   disallowedTeamFields,
+  parseAgeInput,
   firstOverlapping,
   groupNameKey,
   isCoachingRole,
@@ -27,7 +33,13 @@ describe('group kinds and membership roles', () => {
 
 describe('disallowedTeamFields', () => {
   it('allows the team fields on a team', () => {
-    expect(disallowedTeamFields('team', { league: 'Liga okręgowa', seasonId: 'season-1' })).toEqual([])
+    expect(
+      disallowedTeamFields('team', {
+        ageCategoryEntryId: 'entry-orlik',
+        league: 'Liga okręgowa',
+        seasonId: 'season-1',
+      }),
+    ).toEqual([])
   })
 
   it('names every team field set on a class group, ignoring unset and blank values', () => {
@@ -35,9 +47,27 @@ describe('disallowedTeamFields', () => {
       'league',
       'seasonId',
     ])
+    expect(disallowedTeamFields('class_group', { ageCategoryEntryId: 'entry-orlik' })).toEqual(['ageCategoryEntryId'])
     expect(disallowedTeamFields('class_group', { league: '  ', seasonId: 'season-1' })).toEqual(['seasonId'])
     expect(disallowedTeamFields('class_group', { league: null, seasonId: undefined })).toEqual([])
     expect(disallowedTeamFields('class_group', {})).toEqual([])
+  })
+})
+
+describe('PZPN age categories', () => {
+  it('seeds the PZPN categories youngest first under a dictionary key the dictionaries module accepts', () => {
+    expect(AGE_CATEGORY_DICTIONARY_KEY).toMatch(/^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)*$/)
+    expect(PZPN_AGE_CATEGORIES.map((category) => category.value)).toEqual([
+      'skrzat',
+      'zak',
+      'orlik',
+      'mlodzik',
+      'trampkarz',
+      'junior_mlodszy',
+      'junior_starszy',
+      'senior',
+    ])
+    expect(PZPN_AGE_CATEGORIES.find((category) => category.value === 'orlik')?.label).toBe('Orlik (U10–U11)')
   })
 })
 
@@ -101,6 +131,7 @@ describe('groups error codes', () => {
       ['group_team_fields_on_class_group', 422],
       ['groups_reference_invalid', 422],
       ['group_section_inactive', 422],
+      ['group_age_range_inverted', 422],
       ['group_has_memberships', 409],
       ['membership_overlap', 409],
       ['season_dates_inverted', 422],
@@ -138,5 +169,44 @@ describe('group names of the bulk import (#65)', () => {
     })
     expect(matchGroupNames(['Orliki U8'], []).get('Orliki U8')).toEqual({ status: 'group_not_found' })
     expect(matchGroupNames([], groups).size).toBe(0)
+  })
+})
+
+describe('ageRangeInverted', () => {
+  it('refuses a youngest age above the oldest age (#91)', () => {
+    expect(ageRangeInverted(10, 8)).toBe(true)
+  })
+
+  it('accepts an ordered or equal range and an open bound', () => {
+    expect(ageRangeInverted(8, 10)).toBe(false)
+    expect(ageRangeInverted(9, 9)).toBe(false)
+    expect(ageRangeInverted(10, null)).toBe(false)
+    expect(ageRangeInverted(null, 8)).toBe(false)
+    expect(ageRangeInverted(null, null)).toBe(false)
+  })
+
+  it('bounds an age between 0 and 99 years', () => {
+    expect([GROUP_AGE_MIN, GROUP_AGE_MAX]).toEqual([0, 99])
+  })
+})
+
+describe('parseAgeInput', () => {
+  it('reads a blank bound as open', () => {
+    expect(parseAgeInput(undefined)).toBeNull()
+    expect(parseAgeInput(null)).toBeNull()
+    expect(parseAgeInput('  ')).toBeNull()
+  })
+
+  it('reads whole years from text or a number', () => {
+    expect(parseAgeInput(' 8 ')).toBe(8)
+    expect(parseAgeInput(0)).toBe(0)
+    expect(parseAgeInput('99')).toBe(99)
+  })
+
+  it('refuses fractions, negatives, other types and ages above 99', () => {
+    expect(parseAgeInput('8.5')).toBe('invalid')
+    expect(parseAgeInput(-1)).toBe('invalid')
+    expect(parseAgeInput('100')).toBe('invalid')
+    expect(parseAgeInput(true)).toBe('invalid')
   })
 })

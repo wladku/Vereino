@@ -10,6 +10,7 @@ import { DECLARATION_LINK_TTL_MS } from './lib/declaration-links'
 import notificationTypes from './notifications'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
+import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 
@@ -29,6 +30,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * template `activities.declaration_link` (P-31) is registered for every request and job container, so the dispatch
  * worker finds it, and the in-app types are added to the platform's registry for the worker process too (see
  * `communication/di.ts`).
+ *
+ * `activities.publicSchedule` (club spec DD-28, DD-29; #91): the public groups' schedule on a section's public page and
+ * the upcoming one-off events on the club page, which `club_core` reads with `hasRegistration`.
  */
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
@@ -49,5 +53,6 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),
+    [ACTIVITIES_PUBLIC_SCHEDULE]: asFunction(() => createPublicSchedule(container)).scoped(),
   })
 }

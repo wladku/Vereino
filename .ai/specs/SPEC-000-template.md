@@ -248,6 +248,4 @@ Blocking questions must be resolved before setting `Status: Ready for implementa
 
 ## Changelog
 
-| Date | Change |
-|---|---|
-| {date} | Initial draft |
+Each change is its own file in `.ai/specs/changelog/{YYYY-MM-DD-slug}/` (`YYYY-MM-DD-<slug>.md`, one `| date | change |` row), so parallel PRs never conflict here; `cat .ai/specs/changelog/{YYYY-MM-DD-slug}/*.md` lists them in date order. Never add rows to this section; the first entry is `{date}-initial-draft.md` holding `| {date} | Initial draft |`.

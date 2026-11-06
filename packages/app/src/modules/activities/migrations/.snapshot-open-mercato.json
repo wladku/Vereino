@@ -144,6 +144,23 @@
           "enumItems": [],
           "mappedType": "date"
         },
+        "gathering_minutes_before": {
+          "name": "gathering_minutes_before",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
         "generated_until": {
           "name": "generated_until",
           "type": "date",
@@ -1657,6 +1674,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "gathering_minutes_before": {
+          "name": "gathering_minutes_before",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
         },
         "group_id": {
           "name": "group_id",

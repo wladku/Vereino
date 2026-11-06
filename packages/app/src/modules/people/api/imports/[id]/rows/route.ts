@@ -46,7 +46,12 @@ export const openApi: OpenApiRouteDoc = {
       query: importRowListQuerySchema,
       responses: [{ status: 200, description: 'Paged rows', schema: pagedSchema(importRowViewSchema) }],
       errors: [
-        { status: 403, description: '`scope_denied` or a missing feature', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            '`scope_denied` or a missing feature; `scope_unlinked` — the account is not linked to a person of this club',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
     },

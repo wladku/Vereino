@@ -191,6 +191,13 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
       }),
       timeField('startTime', t('activities.fields.startTime'), { required: true, layout: 'half' }),
       timeField('endTime', t('activities.fields.endTime'), { required: true, layout: 'half' }),
+      {
+        id: 'gatheringMinutesBefore',
+        label: t('activities.fields.gatheringMinutesBefore'),
+        type: 'number',
+        layout: 'half',
+        description: t('activities.fields.gatheringMinutesBefore.help'),
+      },
     ],
     [t, coachSeed, groupField, typeField],
   )
@@ -215,7 +222,7 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
         id: 'dates',
         title: t('activities.form.groups.dates'),
         column: 2,
-        fields: ['startsOn', 'endsOn', 'startTime', 'endTime'],
+        fields: ['startsOn', 'endsOn', 'startTime', 'endTime', 'gatheringMinutesBefore'],
       },
       {
         id: 'recurrence',
