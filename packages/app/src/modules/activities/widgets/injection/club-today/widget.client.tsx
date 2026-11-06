@@ -10,12 +10,15 @@
 // narrows both to one ward or the member's own sessions. A person who coaches also gets "My sessions today and
 // tomorrow" (E06-S15 #97): each session leads to its page as the coach, with an "Attendance list" button and a "Needs a
 // coach" marker. The coach tile is added to the member tiles, so a coach who is also a guardian sees both; acting as a
-// coach (the header switcher) leaves it alone.
+// coach (the header switcher) leaves it alone. E06-S13 (#95): the coach tile opens with an "Unsettled session" alert for
+// each session of the last two weeks that ended 24 hours ago or more and is still not closed, linking to its
+// attendance list.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { ButtonGroup } from '@open-mercato/ui/primitives/button-group'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
@@ -49,6 +52,7 @@ import {
   type MemberPerspective,
 } from '../../../components/club/club-client'
 import { needsCoach } from '../../../lib/activities-rules'
+import { unsettledEntries } from '../../../lib/substitutions'
 
 /** The slice of `people`'s member profile the Today page passes as the spot context. */
 export type ClubTodayContext = {
@@ -63,6 +67,8 @@ export type ClubTodayContext = {
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
 const LINK_CLASS = 'hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
 const PENDING_WINDOW_DAYS = 13
+/** How far back the coach tile looks for unsettled sessions (the same two weeks the pending decisions cover). */
+const UNSETTLED_WINDOW_DAYS = 13
 /** Beyond this many days a weekday alone is ambiguous, so the next session also names its date. */
 const WEEK_AHEAD_DAYS = 6
 
@@ -93,9 +99,43 @@ function SessionWhen({ entry, today, timeZone }: { entry: CalendarEntry; today: 
   )
 }
 
+/** "Unsettled session: Training, Tue, Nov 3, 17:00 — mark attendance and close it." with its attendance list. */
+function UnsettledAlerts({ entries, timeZone }: { entries: CalendarEntry[]; timeZone: string }) {
+  const t = useT()
+  const locale = useLocale()
+  if (entries.length === 0) return null
+  return (
+    <ul className="flex flex-col gap-2" data-testid="club-today-unsettled">
+      {entries.map((entry) => (
+        <li key={entry.occurrence.id}>
+          <Alert status="warning" data-testid="club-today-unsettled-session">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm">
+                <span className="font-semibold">{t('activities.substitutions.unsettled.title')}</span>{' '}
+                {t('activities.substitutions.unsettled.text', {
+                  session: [
+                    entry.occurrence.activityName ?? entry.occurrence.groupName ?? '',
+                    sessionMoment(new Date(entry.occurrence.startAt), locale, timeZone),
+                  ]
+                    .filter(Boolean)
+                    .join(', '),
+                })}
+              </p>
+              <Button asChild size="sm" variant="outline" className="min-h-11 self-start">
+                <Link href={attendanceHref(entry.occurrence.id)}>{t('activities.club.session.attendanceList')}</Link>
+              </Button>
+            </div>
+          </Alert>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** The coach's sessions of today and tomorrow (E06-S15 #97): the session page as the coach and its attendance list. */
 function CoachTile({
   entries,
+  unsettled,
   loading,
   failed,
   onRetry,
@@ -103,6 +143,7 @@ function CoachTile({
   timeZone,
 }: {
   entries: CalendarEntry[]
+  unsettled: CalendarEntry[]
   loading: boolean
   failed: boolean
   onRetry: () => void
@@ -162,6 +203,7 @@ function CoachTile({
   return (
     <div className={TILE_CLASS} data-testid="club-tile-coach">
       <h3 className="font-semibold">{t('activities.club.today.coachSessions')}</h3>
+      <UnsettledAlerts entries={unsettled} timeZone={timeZone} />
       {body}
       <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
         {t('activities.club.today.openCalendar')}
@@ -261,6 +303,9 @@ export default function ClubTodayTilesWidget({
       : null,
   )
   const coachQuery = useMemberCalendar(coaches ? { as: 'coach', from: today, to: tomorrow } : null)
+  const pastCoachQuery = useMemberCalendar(
+    coaches ? { as: 'coach', from: addCalendarDays(today, -UNSETTLED_WINDOW_DAYS), to: today } : null,
+  )
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
   const entries = query.data?.items ?? []
@@ -401,6 +446,7 @@ export default function ClubTodayTilesWidget({
           <li>
             <CoachTile
               entries={coachQuery.data?.items ?? []}
+              unsettled={unsettledEntries(pastCoachQuery.data?.items ?? [], new Date())}
               loading={!coachQuery.data && coachQuery.isFetching}
               failed={!coachQuery.data && !coachQuery.isFetching}
               onRetry={() => void coachQuery.refetch()}
