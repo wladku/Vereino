@@ -44,6 +44,19 @@ On M-04 and M-05, the coach has "Cancel session" ("the session will not take pla
    - a new integration test `ISSUE-139`;
    - updated E06-S15 (dialog text; `notified` 5 → 6, because the coordinator is now told), TEST-M07 (the probe sends the same canceller as the real event; the message's role is `club_admin`) and J-003 (role `coordinator`; the e-mail names the coordinator).
 9. Docs: both spec addenda with their changelog files, and the `activities` and `communication` READMEs.
+10. Merged the latest `main` (#89; no conflicts) and ran `yarn verify` again. Opened PR #203 (labels `review`, `feature`, `needs-qa`, `priority-high`, `risk-medium`). The lock moved from the issue to the PR.
+11. A fresh subagent reviewed the feature diff. Nothing blocking. It checked:
+    - the `cancellation` kind in every read;
+    - edit and delete refused;
+    - tenant scoping;
+    - replays and older events;
+    - the optional template params;
+    - both locales.
+
+    Low findings, left as documented:
+    - the coordinators' audience reason is `coach`, because `AudienceReason` has no coordinator value; the communication README says so;
+    - the thread header still says "club" above the "Cancelled by …" line, consistent with the anonymous system message;
+    - a dispatch queued by new code and rendered by an old worker during a rolling deploy would fail the old strict schema. That is negligible.
 
 ## Decisions
 
