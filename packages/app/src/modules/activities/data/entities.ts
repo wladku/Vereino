@@ -10,6 +10,7 @@ import {
   tokenLinkColumns,
 } from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import type { SubstitutionKind } from '../lib/substitutions'
 import type {
   ActualAttendance,
   Declared,
@@ -346,6 +347,44 @@ export class ContactAccessLog extends AppendOnlyEntityBase {
   /** `coach_contacts`. */
   @Property({ name: 'purpose', type: 'text' })
   purpose!: string
+}
+
+/**
+ * One change of a session's coach (club spec glossary *Substitution*, *Data Models* → `activities_substitution_entries`,
+ * DD-12, REQ-008; E06-S13 #95): the assigned coach reported an absence (`absence_reported`, the session is left without
+ * a coach), the coordinator or administrator assigned a substitute (`substitute_assigned`) or gave the session back to
+ * its own coach (`coach_restored`). The previous and the new coach, who decided it and in which role, and an optional
+ * reason (encrypted, `encryption.ts`). Append-only: the `foundation` guard refuses an update or a delete (409
+ * `append_only`); a correction is a new entry. `occurrence_id` and the person ids are scalar ids.
+ */
+@Entity({ tableName: 'activities_substitution_entries' })
+@Index({ name: 'activities_substitution_entries_org_occurrence_idx', properties: ['organizationId', 'occurrenceId'] })
+@Index({ name: 'activities_substitution_entries_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class SubstitutionEntry extends AppendOnlyEntityBase {
+  [OptionalProps]?: AppendOnlyEntityOptionalProps | 'previousCoachPersonId' | 'newCoachPersonId' | 'reason'
+
+  @Property({ name: 'occurrence_id', type: 'uuid' })
+  occurrenceId!: string
+
+  @Property({ name: 'previous_coach_person_id', type: 'uuid', nullable: true })
+  previousCoachPersonId?: string | null
+
+  @Property({ name: 'new_coach_person_id', type: 'uuid', nullable: true })
+  newCoachPersonId?: string | null
+
+  /** `absence_reported` / `substitute_assigned` / `coach_restored`. */
+  @Property({ name: 'kind', type: 'text' })
+  kind!: SubstitutionKind
+
+  @Property({ name: 'reason', type: 'text', nullable: true })
+  reason?: string | null
+
+  @Property({ name: 'decided_by_person_id', type: 'uuid' })
+  decidedByPersonId!: string
+
+  /** The role the decision was taken in (`coach`, `coordinator`, `club_admin`). */
+  @Property({ name: 'acting_role', type: 'text' })
+  actingRole!: string
 }
 
 const declarationTokenColumns = tokenLinkColumns({ use: 'until_expiry' })

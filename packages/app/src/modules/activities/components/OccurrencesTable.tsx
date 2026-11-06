@@ -2,11 +2,15 @@
 // `/backend/activities/occurrences` — "Sessions" (club spec UI table, REQ-005, REQ-006; README B-15; E06-S12 #94): the
 // sessions in the caller's record scope in date order, with server filters status, date range (slot dates), section,
 // group and "needs reschedule"; the date range starts at 7 days back through 14 days ahead and can be cleared. The
-// perspectives All / Canceled / Calendar live in the URL (`?perspective=`): Canceled lists cancelled sessions with
-// their reason, Calendar is the coordinator's week grid (`CoordinatorCalendar`). The session status, "moved" (detached
-// from its series) and "needs reschedule" (a generated session over a conflict) are badges. Each row opens the session;
-// with `activities.coach` a future planned session is cancelled from its row (reason required) and a started one opens
-// its attendance list. `ActivitySessions` is the same list for one activity (the "Sessions" tab of its record).
+// perspectives All / Needing a coach / Unsettled / Canceled / Calendar live in the URL (`?perspective=`): "Needing a
+// coach" lists planned sessions without a coach from today for 14 days, "Unsettled" planned sessions that ended 24
+// hours ago or more (E06-S13 #95), Canceled cancelled sessions with their reason, Calendar is the coordinator's week
+// grid (`CoordinatorCalendar`). The session status, "unsettled", "moved" (detached from its series) and "needs
+// reschedule" (a generated session over a conflict) are badges, and the coach column marks "Needs a coach" and
+// "(substitution)". Each row opens the session; with `activities.coach` a future planned session is cancelled from its
+// row (reason required) and a started one opens its attendance list; with `activities.manage` a planned session gets
+// "Assign substitute" (no coach) or "Change coach". `ActivitySessions` is the same list for one activity (the
+// "Sessions" tab of its record).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -22,14 +26,18 @@ import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/u
 import { OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import {
   OCCURRENCE_PERSPECTIVES,
-  defaultSessionWindow,
+  coachBadge,
+  coachRowAction,
   localCalendarDate,
   perspectiveHref,
   perspectiveOf,
-  perspectiveStatus,
+  perspectiveQuery,
+  perspectiveWindow,
   sessionRowActions,
   type OccurrencePerspective,
 } from '../lib/occurrence-list'
+import { isUnsettled } from '../lib/substitutions'
+import { AssignCoachDialog } from './AssignCoachDialog'
 import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
 import { CoordinatorCalendar } from './CoordinatorCalendar'
 import { attendanceHref } from './club/club-client'
@@ -52,14 +60,49 @@ import {
 
 const PAGE_SIZE = 50
 
-/** The status badge and the "moved" / "needs reschedule" flags of a session. */
+/** The status badge, "unsettled" and the "moved" / "needs reschedule" flags of a session. */
 export function OccurrenceBadges({ row, t }: { row: OccurrenceRow; t: Translate }) {
   return (
     <span className="flex flex-wrap items-center gap-1">
       <StatusBadge variant={statusVariant(row.status)}>{statusLabel(t, row.status)}</StatusBadge>
+      {isUnsettled(row, new Date()) ? (
+        <span data-testid="occurrence-unsettled">
+          <StatusBadge variant="warning">{t('activities.occurrences.flags.unsettled')}</StatusBadge>
+        </span>
+      ) : null}
       {row.isDetached ? <StatusBadge variant="info">{t('activities.occurrences.flags.moved')}</StatusBadge> : null}
       {row.needsReschedule ? (
         <StatusBadge variant="warning">{t('activities.occurrences.flags.needsReschedule')}</StatusBadge>
+      ) : null}
+    </span>
+  )
+}
+
+/** The coach of a session with "Needs a coach" or "(substitution)" (README B-15, E06-S13 #95). */
+export function OccurrenceCoach({ row, t }: { row: OccurrenceRow; t: Translate }) {
+  const badge = coachBadge(row)
+  if (badge === 'needs_coach') {
+    return (
+      <span data-testid="occurrence-needs-coach">
+        <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+      </span>
+    )
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      <span>{row.coachName ?? <span className="text-muted-foreground">—</span>}</span>
+      {badge === 'substitution' ? (
+        <span
+          className="text-muted-foreground text-xs"
+          data-testid="occurrence-substitution"
+          title={
+            row.substituteForName
+              ? t('activities.substitutions.substituteFor', { name: row.substituteForName })
+              : undefined
+          }
+        >
+          {t('activities.substitutions.substitution')}
+        </span>
       ) : null}
     </span>
   )
@@ -123,7 +166,7 @@ function buildColumns(t: Translate, withActivity: boolean, withReason = false): 
       header: t('activities.occurrences.columns.coach'),
       enableSorting: false,
       meta: { priority: 6 },
-      cell: ({ row }) => row.original.coachName ?? dash,
+      cell: ({ row }) => <OccurrenceCoach row={row.original} t={t} />,
     },
     {
       accessorKey: 'status',
@@ -178,13 +221,15 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
   const features = useActivitiesFeatures()
-  // The browser's today: the default window of 7 days back through 14 days ahead, clearable through the filters.
-  const [filters, setFilters] = React.useState<FilterValues>(() => ({
-    dates: defaultSessionWindow(localCalendarDate(new Date())),
-  }))
+  // The browser's today: the perspective's default window (none for "Unsettled"), clearable through the filters.
+  const [filters, setFilters] = React.useState<FilterValues>(() => {
+    const window = perspectiveWindow(perspective, localCalendarDate(new Date()))
+    return window ? { dates: window } : {}
+  })
   const [page, setPage] = React.useState(1)
   const [cancelling, setCancelling] = React.useState<OccurrenceRow | null>(null)
-  const status = perspectiveStatus(perspective)
+  const [staffing, setStaffing] = React.useState<OccurrenceRow | null>(null)
+  const pinned = perspectiveQuery(perspective)
 
   const { data, isLoading, error, dataUpdatedAt } = useQuery({
     queryKey: ['activities-occurrences', perspective, filters, page, scopeVersion],
@@ -195,7 +240,7 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
         sortField: 'startAt',
         sortDir: 'asc',
         ...filterParams(filters),
-        ...(status ? { status } : {}),
+        ...pinned,
       }),
   })
   // "Started" is judged at the moment the page was read, so the row actions match the rows shown.
@@ -238,6 +283,20 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
 
   const rowActions = (row: OccurrenceRow) => {
     const items: RowActionItem[] = [{ id: 'open', label: t('activities.common.open'), href: occurrenceHref(row.id) }]
+    const coachAction = coachRowAction(row, features.manage)
+    if (coachAction) {
+      items.push({
+        id: 'assign-coach',
+        label: t(
+          coachAction === 'assign'
+            ? 'activities.substitutions.assign.action'
+            : 'activities.substitutions.change.action',
+        ),
+        onSelect: () => {
+          setStaffing(row)
+        },
+      })
+    }
     for (const action of sessionRowActions(row, readAt, features.coach)) {
       if (action === 'attendance') {
         items.push({
@@ -304,6 +363,17 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
           open
           onOpenChange={(open) => {
             if (!open) setCancelling(null)
+          }}
+          onDone={refresh}
+        />
+      ) : null}
+      {staffing ? (
+        <AssignCoachDialog
+          key={staffing.id}
+          occurrence={staffing}
+          open
+          onOpenChange={(open) => {
+            if (!open) setStaffing(null)
           }}
           onDone={refresh}
         />
