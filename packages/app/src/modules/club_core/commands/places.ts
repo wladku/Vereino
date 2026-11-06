@@ -59,6 +59,7 @@ export type PlaceSnapshot = {
   capacityGroups: number
   contacts: PlaceContact[]
   isActive: boolean
+  regulationsText: string | null
 }
 
 export type PlaceCommandResult = StructureCommandResult<Place, PlaceSnapshot>
@@ -85,6 +86,7 @@ export function placeSnapshot(row: Place): PlaceSnapshot {
     capacityGroups: row.capacityGroups,
     contacts: parsePlaceContacts(row.contacts),
     isActive: row.isActive,
+    regulationsText: row.regulationsText ?? null,
   }
 }
 
@@ -107,6 +109,8 @@ function restorePlace(row: Place, before: PlaceSnapshot): void {
   row.capacityGroups = before.capacityGroups
   row.contacts = serializePlaceContacts(before.contacts)
   row.isActive = before.isActive
+  // A snapshot taken before the regulations existed (#86) restores no text.
+  row.regulationsText = before.regulationsText ?? null
 }
 
 function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
@@ -176,6 +180,7 @@ const createPlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
         capacityGroups: parsed.capacityGroups ?? 1,
         contacts: serializePlaceContacts(parsed.contacts),
         isActive: parsed.isActive ?? true,
+        regulationsText: parsed.regulationsText ?? null,
       })
       em.persist(row)
       return { entity: row, actingRole: authorized.actingRole, before: null }
@@ -238,6 +243,7 @@ const updatePlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
       if (patch.capacityGroups !== undefined) row.capacityGroups = patch.capacityGroups
       if (patch.contacts !== undefined) row.contacts = serializePlaceContacts(patch.contacts)
       if (patch.isActive !== undefined) row.isActive = patch.isActive
+      if (patch.regulationsText !== undefined) row.regulationsText = patch.regulationsText
       row.updatedAt = new Date()
       return { entity: row, actingRole: authorized.actingRole, before }
     })

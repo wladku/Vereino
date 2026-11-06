@@ -1,5 +1,5 @@
 // Files the club publishes (club spec glossary *Logo*, REQ-025, REQ-028; engineering standards S8.11): the club and
-// section logos and the section materials. Pure: the format is read from the file's magic bytes, never from its name
+// section logos, the section materials, and a place's photos and regulations PDF (UX parity spec, REQ-U03). Pure: the format is read from the file's magic bytes, never from its name
 // or declared type, so an SVG or HTML file renamed to `.png` is still refused.
 
 /** Formats a logo may have: PNG, JPEG, WebP — no SVG (script risk). */
@@ -61,6 +61,31 @@ export function checkLogo(bytes: Uint8Array) {
 /** A section material upload: PDF, PNG, JPEG or WebP up to 10 MB. */
 export function checkMaterial(bytes: Uint8Array) {
   return checkFile(bytes, MATERIAL_FORMATS, MATERIAL_MAX_BYTES)
+}
+
+/** The kinds of a place file (UX parity spec, REQ-U03): photos, and the one regulations PDF. */
+export const PLACE_FILE_KINDS = ['photo', 'regulations'] as const
+export type PlaceFileKind = (typeof PLACE_FILE_KINDS)[number]
+
+/** Formats of a place photo: the logo image formats (no SVG). */
+export const PLACE_PHOTO_FORMATS = LOGO_FORMATS
+/** 5 MB: a phone photo of a pitch or a hall. */
+export const PLACE_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+/** A place holds at most 10 live photos. */
+export const PLACE_PHOTOS_MAX = 10
+/** 10 MB, like a section material. */
+export const PLACE_REGULATIONS_MAX_BYTES = MATERIAL_MAX_BYTES
+
+/** A place file upload: a PNG, JPEG or WebP photo up to 5 MB, or a regulations PDF up to 10 MB. */
+export function checkPlaceFile(bytes: Uint8Array, kind: PlaceFileKind) {
+  return kind === 'photo'
+    ? checkFile(bytes, PLACE_PHOTO_FORMATS, PLACE_PHOTO_MAX_BYTES)
+    : checkFile(bytes, ['pdf'], PLACE_REGULATIONS_MAX_BYTES)
+}
+
+/** The position of the next photo: one after the highest live position, 0 for the first photo. */
+export function nextPhotoPosition(positions: readonly number[]): number {
+  return positions.length === 0 ? 0 : Math.max(...positions) + 1
 }
 
 /** A stored file name for a format: the uploaded name without path or control characters, with the format's extension. */

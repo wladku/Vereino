@@ -1,4 +1,4 @@
-// The section rules of the UX parity spec (`.ai/specs/2026-11-03-vereino-ux-parity-phases-1-3.md`, REQ-U02):
+// The section rules of the UX parity spec (`.ai/specs/implemented/2026-11-03-vereino-ux-parity-phases-1-3.md`, REQ-U02):
 // the deactivation guard (DD-U04, DD-U08) — deactivating or deleting a live section is refused
 // while the section has active groups, listing at most `SECTION_USAGE_LIST_LIMIT` of them plus the total — and the
 // section name rule (DD-U07): 2–80 characters on create and when the submitted name differs from the stored one, so

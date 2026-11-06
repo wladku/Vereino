@@ -2,6 +2,7 @@
 // organization ids (`.strict()` rejects them); `null` clears a nullable field.
 import { z } from 'zod'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
+import { PLACE_FILE_KINDS } from '../lib/files'
 import { publicSlugSchema, publicationPatchSchema } from '../lib/publication'
 import { clubSettingsPatchSchema } from '../lib/settings'
 
@@ -152,6 +153,8 @@ const placeFields = {
   capacityGroups: z.number().int().min(1).max(100).optional(),
   contacts: placeContactsSchema.nullable().optional(),
   isActive: z.boolean().optional(),
+  /** The place's rules as plain text (UX parity spec, REQ-U03). */
+  regulationsText: nullableText(20000).optional(),
 }
 
 export const placeCreateSchema = z.object(placeFields).strict()
@@ -169,6 +172,11 @@ export const placeListQuerySchema = z.object({
   parentPlaceId: z.uuid().optional(),
   isActive: z.enum(['true', 'false']).optional(),
 })
+
+/** A place file upload (UX parity spec, REQ-U03): the file itself travels next to the command input. */
+export const placeFileAddSchema = z.object({ placeId: z.uuid(), kind: z.enum(PLACE_FILE_KINDS) }).strict()
+
+export const placeFileDeleteSchema = z.object({ id: z.uuid(), placeId: z.uuid() }).strict()
 
 // --- Institutions ---
 
