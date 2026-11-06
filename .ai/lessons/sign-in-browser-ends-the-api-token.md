@@ -14,3 +14,5 @@ topics: ["playwright", "sign-in-browser", "auth-token", "integration-tests"]
 **Rule**: After `signInBrowser` for a user whose API token the test keeps using, fetch a new one from the returned password — `token = await getAuthToken(request, email, password)` — and store it back (`club.adminToken = token`) so later fixtures and the cleanup use it too (TEST-006 does the same).
 
 **Applies to**: every integration test under `packages/app/.ai/qa/tests/` that mixes `signInBrowser` with API calls for the same user.
+
+**Recurrence (2026-11-06, #139)**: ISSUE-139 kept using `family.coach.token` after `signInBrowser` for the coach and got 401 from `GET /api/notifications`. The test now takes a fresh token with `signInAs(request, club, userId, email)` once that person's browser part is over. `signInAs` also resets the password, so call it only after the browser session is no longer needed.

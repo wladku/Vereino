@@ -7,6 +7,7 @@
 import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
+import { CANCELLING_ROLES } from '@vereino/core'
 import { clubText, defineEmailTemplate } from '@/modules/foundation'
 import { clockLabel, preheaderOf, sessionWhenLabel } from '../lib/email-format'
 import { memberThreadPath } from '../lib/thread-rules'
@@ -77,6 +78,9 @@ const cancellationParams = z
     gatheringAt: z.iso.datetime().nullable().optional(),
     timeZone: z.string().min(1).max(64),
     reason: z.string().max(500),
+    /** Who cancelled and in which role (R01, #139); absent for a cancellation that names nobody. */
+    cancelledByName: z.string().min(1).max(250).optional(),
+    cancelledByRole: z.enum(CANCELLING_ROLES).optional(),
   })
   .strict()
 
@@ -96,6 +100,13 @@ function cancellationLines(t: TranslateWithFallbackFn, params: CancellationParam
         )
       : t('communication.email.sessionCancelled.lead', '{activity} on {date}, {time} is cancelled.', values),
     reasonLabel: t('communication.email.sessionCancelled.reason', 'Reason:'),
+    cancelledBy:
+      params.cancelledByName && params.cancelledByRole
+        ? t('communication.email.sessionCancelled.by', 'Cancelled by {name} ({role}).', {
+            name: params.cancelledByName,
+            role: t(`communication.roles.${params.cancelledByRole}`, params.cancelledByRole),
+          })
+        : null,
   }
 }
 
@@ -113,6 +124,7 @@ export const sessionCancelledTemplate = defineEmailTemplate<CancellationParams>(
       'div',
       null,
       h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, lines.lead),
+      lines.cancelledBy ? h('p', { style: { margin: '0 0 12px' } }, lines.cancelledBy) : null,
       params.reason ? h('p', { style: { margin: '0 0 4px' } }, lines.reasonLabel) : null,
       params.reason ? clubText(params.reason) : null,
     )

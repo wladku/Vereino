@@ -155,6 +155,17 @@ export function activeGuardians(
   return personDirectory(container).activeGuardians(scope, wardIds, today, em)
 }
 
+/** The live coordinators of a section on `date` (the coordinators told of a coach's cancellation, #139). Ids only. */
+export function sectionCoordinatorIdsOn(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionId: string,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<string[]> {
+  return personDirectory(container).sectionCoordinatorIdsOn(scope, sectionId, date, em)
+}
+
 /** The participant memberships of persons overlapping a window of club-zone dates (the member calendar, #32). */
 export function membershipsOf(
   container: AwilixContainer,
