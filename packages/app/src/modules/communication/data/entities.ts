@@ -49,7 +49,10 @@ export class Thread extends ScopedEntityBase {
   @Property({ name: 'scope_type', type: 'text' })
   scopeType!: ThreadScopeType
 
-  /** The section, group, activity or session addressed; null for `club` and `direct`. */
+  /**
+   * The section, group, activity or session addressed; null for `club`. For `direct`: the person a member's direct
+   * thread is about (`threads.start_direct`, #187), null for a staff-started one.
+   */
   @Property({ name: 'scope_id', type: 'uuid', nullable: true })
   scopeId?: string | null
 

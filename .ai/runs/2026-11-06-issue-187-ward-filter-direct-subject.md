@@ -1,28 +1,35 @@
 # Run: issue #187: ward filter attributes direct threads by group
 
 - **Goal and trigger:** unattended `om-auto-fix-issue 187` (cezar task `29a13534`). Each direct thread should list under the ward it is about.
-- **Issue / branch:** #187 / `fix/issue-187-ward-filter-direct-subject` (local only, not pushed)
-- **Outcome:** stopped before claiming. The run needs an owner decision. No code changed.
+- **Issue / branch:** #187 / `fix/issue-187-ward-filter-direct-subject`
+- **Outcome:** fixed with option C (no migration).
 
 ## Steps
 
-1. Read issue #187. It names two fixes: **A** (a new `subject_person_id` column, which is a migration) and **B** (a participant row for a subject without an account, which is a privacy/product decision). The issue doesn't approve either one, and no owner comment exists.
-2. Read `communication/data/queries.ts` (`visibleThreadHeaders`, ward clause), `data/entities.ts` (`Thread.scopeId`: "null for `club` and `direct`") and `commands/threads.ts` (`start_direct` sets `scopeId: null`).
-3. Found a no-migration option, **C**: store the subject person id in `scope_id` for member direct threads. The filter matches direct threads by `scope_id` and uses the participant match only when `scope_id` is null. The group clause applies to non-direct threads only. The existing index `communication_threads_org_scope_idx` covers this query.
-4. Checked the spec. DD-M18 of `2026-10-27-vereino-foundation-messaging-primitives.md` explicitly says the direct thread has "`scope_id` null". `scopeId` is also returned by the thread API. So C reverses a recorded design decision and changes an API response value. Under `AGENTS.md` that is Ask First (architecture/contract), so it isn't approved for an unattended run.
-5. Posted a decision request on the issue that lays out A, B and C and recommends C: https://github.com/wladku/Vereino/issues/187#issuecomment-6693689718. I didn't claim the issue (no assignee, `in-progress` label or claim comment), so there is no claim to release.
+1. Read issue #187. It names two fixes: **A** (a new `subject_person_id` column, which is a migration) and **B** (a participant row for a subject without an account, which is a privacy/product decision). The issue doesn't approve either one.
+2. Read `communication/data/queries.ts` (`visibleThreadHeaders`, ward clause), `data/entities.ts` and `commands/threads.ts` (`start_direct` set `scopeId: null`).
+3. Found a no-migration option, **C**: store the subject person in `scope_id` for member direct threads. It reverses the "`scope_id` null" text of DD-M18 (`2026-10-27-vereino-foundation-messaging-primitives.md`), so the run first stopped and asked on the issue (https://github.com/wladku/Vereino/issues/187#issuecomment-6693689718), without claiming it.
+4. The owner told the run to continue without asking. Claimed the issue (assignee, `in-progress`, claim comment https://github.com/wladku/Vereino/issues/187#issuecomment-6693745792) and implemented C.
+5. Implementation:
+   - `commands/threads.ts`: `start_direct` writes `scopeId: parsed.personId`.
+   - `data/queries.ts`: the ward clause matches `direct` threads by `t.scope_id = :ward`. When `scope_id` is null (staff-started threads, and member threads created before this change), it keeps the old match: the ward takes part, or the thread carries one of the ward's groups. The group clause now applies to non-direct threads only. The section clause is unchanged.
+   - `data/entities.ts`, module `README.md`: `scope_id` documentation.
+   - Spec DD-M18 text, plus the changelog file `.ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/2026-11-06-issue-187-direct-thread-subject.md`.
+   - TEST-M12: on the TEST-008 family, Hania's ward filter lists exactly her coaches thread and her coordinator thread (Hania has no account). Kuba's lists exactly his own coaches thread (Kuba has an account), although both are in Żaki. The subject comes back as `scopeId`.
+   - Lesson `record-the-subject-do-not-infer-it-from-participants`.
 
 ## Decisions
 
-- Did not implement C on my own judgement: it contradicts the DD-M18 text in the spec.
-- Did not implement A or B: neither has the owner approval required for Ask First changes.
+- C over A: no migration. The existing `communication_threads_org_scope_idx` index (organization, scope_type, scope_id) already covers the lookup. Pre-deployment tier (BACKWARD_COMPATIBILITY.md), so a response value that was null becoming a person id lands in one PR with the spec changelog entry. The id is the thread's subject, which every reader of the thread already sees.
+- C over B: no change to who receives or later sees a thread.
+- Kept the legacy fallback for null `scope_id`, so threads written before this change still list as they did.
 
 ## Commands and results
 
-- `gh issue view 187`: no comments and no approval.
-- `gh issue comment 187 --body-file …`: posted (an earlier attempt hung on a stray stdin read and was stopped before posting).
-- No tests run: no code changed.
+- `node scripts/check-lessons.mjs`: valid. `node scripts/check-spec-changelogs.mjs`: valid.
+- `yarn verify`: `[verify] all 14 step(s) passed`, exit 0.
+- `yarn test:integration:vereino --filter TEST-M12`: `1 passed (1.7m)`, exit 0.
 
 ## Next steps
 
-- Once the owner chooses A, B or C, rerun `om-auto-fix-issue 187`. Implement the choice, add a spec changelog file under `.ai/specs/changelog/2026-10-27-vereino-foundation-messaging-primitives/`, and add the TEST-008 assertion (Hania and Kuba in Żaki: a thread to the coaches about Kuba and a thread to the coordinator about Hania). Then run `yarn verify` and `yarn test:integration:vereino --filter <ID>`.
+- None beyond review and merge.
