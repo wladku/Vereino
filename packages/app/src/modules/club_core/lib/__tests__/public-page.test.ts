@@ -3,6 +3,8 @@ import {
   CLUB_CORE_BLOCK_KEYS,
   clubContact,
   isMaterialPublished,
+  phoneHref,
+  pluralForm,
   providerMayContribute,
   sectionBlocks,
   type SectionMaterialRow,
@@ -120,5 +122,28 @@ describe('block providers of other modules', () => {
     expect(providerMayContribute(everything, { block: 'prices', key: 'prices' })).toBe(true)
     expect(providerMayContribute(DEFAULT_PUBLICATION, { block: 'prices', key: 'prices' })).toBe(false)
     expect(providerMayContribute(everything, { block: 'description_schedule', key: 'description' })).toBe(false)
+  })
+})
+
+describe('pluralForm', () => {
+  it('picks the Polish forms for one, few and many', () => {
+    expect(pluralForm('pl', 1)).toBe('one')
+    expect(pluralForm('pl', 2)).toBe('few')
+    expect(pluralForm('pl', 5)).toBe('many')
+  })
+
+  it('picks one and other in English', () => {
+    expect(pluralForm('en', 1)).toBe('one')
+    expect(pluralForm('en', 3)).toBe('other')
+  })
+
+  it('falls back to other for a form the catalogs do not carry', () => {
+    expect(pluralForm('ar', 2)).toBe('other')
+  })
+})
+
+describe('phoneHref', () => {
+  it('keeps the digits and the plus sign', () => {
+    expect(phoneHref('+48 600-100 200')).toBe('tel:+48600100200')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { publicCatalogBlock, type PublicGroupRow } from '../public-catalog'
+import { publicCatalogBlock, publicGroupCounts, type PublicGroupRow } from '../public-catalog'
 
 const swimming: PublicGroupRow = {
   id: 'g1',
@@ -66,5 +66,26 @@ describe('publicCatalogBlock', () => {
       instructors: [{ name: 'Anna K.' }, { name: null }],
     })
     expect(block?.items[1]).toMatchObject({ conditions: null, instructors: [] })
+  })
+})
+
+describe('publicGroupCounts', () => {
+  const sections = [
+    { id: 's1', slug: 'basen' },
+    { id: 's2', slug: 'pilka' },
+    { id: 's3', slug: 'judo' },
+  ]
+
+  it('counts the public groups per public section by slug, leaving out sections without groups', () => {
+    expect(publicGroupCounts(sections, ['s1', 's2', 's1'])).toEqual({ counts: { basen: 2, pilka: 1 } })
+  })
+
+  it('ignores groups of a section that is not public', () => {
+    expect(publicGroupCounts(sections, ['s9', 's3'])).toEqual({ counts: { judo: 1 } })
+  })
+
+  it('leaves the block out when no public section has a public group', () => {
+    expect(publicGroupCounts(sections, [])).toBeNull()
+    expect(publicGroupCounts([], ['s1'])).toBeNull()
   })
 })
