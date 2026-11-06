@@ -170,6 +170,35 @@ export const chargeCancelSchema = z.object({ id: z.uuid(), reason: reasonSchema 
 /** `payments.payments.reverse`: the payment `id` with a required reason. */
 export const paymentReverseSchema = z.object({ id: z.uuid(), reason: reasonSchema }).strict()
 
+// --- Online checkout (#110, DD-42) ---
+
+/** The most charges one checkout pays. */
+export const MAX_CHECKOUT_CHARGES = 50
+
+/** `POST /api/payments/checkout` (+ `/quote`): the open charges the payer selected. */
+export const checkoutSchema = z
+  .object({
+    chargeIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_CHECKOUT_CHARGES)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each charge once' }),
+  })
+  .strict()
+
+/**
+ * `payments.payments.refund`: the online payment `id`, the grosz to refund (all of what is not refunded yet when
+ * omitted), a required reason and the operation id that makes a retry return the same refund (S10.4).
+ */
+export const paymentRefundSchema = z
+  .object({
+    id: z.uuid(),
+    amount: z.number().int().min(1).max(MAX_AMOUNT).optional().describe('Grosz; the unrefunded part when omitted'),
+    reason: reasonSchema,
+    operationId: z.uuid().describe('The same id on a retry returns the same refund'),
+  })
+  .strict()
+
 // --- Settings ---
 
 export const paymentsSettingsUpdateSchema = z

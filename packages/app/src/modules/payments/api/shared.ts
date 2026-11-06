@@ -243,6 +243,20 @@ export const chargeListItemSchema = z.object({
   updatedAt: z.string().nullable(),
 })
 
+// --- Online checkout (#110) ---
+
+export const checkoutSummarySchema = z.object({
+  id: z.uuid(),
+  status: z.string().describe('`created`, `completed`, `failed`, `expired`'),
+  state: z.string().describe('M-09: `received`, `in_progress`, `interrupted`'),
+  chargeIds: z.array(z.uuid()),
+  amount: z.number().int(),
+  feeAmount: z.number().int(),
+  total: z.number().int(),
+  amountMismatch: z.boolean(),
+  createdAt: z.string(),
+})
+
 export const errorSchema = z.object({ error: z.string(), code: z.string().optional() }).loose()
 
 export const updateResponseSchema = z.object({
