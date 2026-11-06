@@ -26,6 +26,7 @@ import {
   PAYMENTS_WRITE_KINDS,
   clubTarget,
   emitAfterCommit,
+  emitAfterReplayCommit,
   inWriteTransaction,
   paymentsLog,
   trustedTenantId,
@@ -194,7 +195,8 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
     generation.updatedAt = now
     await em.flush()
     if (open.length > 0) {
-      await emitAfterCommit('payments.charge.cancelled', scope, {
+      // Not `emitAfterCommit`: the replay transaction commits only after the bus's audit write (#184).
+      emitAfterReplayCommit(ctx, 'payments.charge.cancelled', scope, {
         id: generation.id,
         generationId: generation.id,
         chargeIds: open.map((charge) => charge.id),
