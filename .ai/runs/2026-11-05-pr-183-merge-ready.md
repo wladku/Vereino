@@ -16,12 +16,15 @@
    - **Minor, follow-up:** `amount × sessionCount` for a per-session fee is not bounded against the `int4` amount column (`lib/charge-plan.ts`).
    - **Nit, follow-up:** `Promise.all` of two directory reads on one transactional EntityManager (`services/generation.ts`).
 6. Lesson recorded: `.ai/lessons/undo-rechecks-execute-invariants.md`.
+7. Local TEST-018 could not finish: the first run hit the 90-minute background limit right after the ephemeral app reported ready (no Playwright output), and the second never got past its quiet-build-directory wait inside 2 hours. The host was suspended overnight, which matches `stopped-integration-run-leaves-its-build-running`. TEST-018 is therefore verified by the CI `integration` job, which runs every integration test.
+8. 2026-11-06: `main` had advanced (#171, #174). The merge conflicted in `people/services/person-directory.ts`, where both sides added a directory method (`primaryPayers` for #108, `publicNames` for #91), so both were kept. The union-merged `.ai/lessons.md` was re-sorted. Follow-ups filed: #184 (generation undo emits before commit), #185 (per-session amount overflow), #186 (sequential directory reads).
 
 ## Commands and results
 
 - `yarn verify` (merge only): failed at typecheck (TS2741 above).
 - `yarn verify --from typecheck` (after both fixes): EXIT=0.
-- `yarn test:integration:vereino --filter TEST-018`: see the PR comment of this run.
+- `yarn test:integration:vereino --filter TEST-018`: not completed locally (host suspend, see step 7); covered by the CI `integration` job.
+- After the second merge: `yarn generate`, `typecheck`, `typecheck:packages`, `typecheck:qa`, `lint`, `format:check`, `ds:check`, `contracts:check`, `lessons:check`, `spec-changelogs:check` and `test` all passed.
 
 ## Files changed
 
@@ -32,5 +35,5 @@
 
 ## Open problems / next steps
 
-- The three non-blocking findings are filed as follow-up issues (linked from the PR result comment).
+- The three non-blocking findings are filed as #184, #185 and #186.
 - `needs-qa` stays: manual QA of the payments pages is still owed before merge.
