@@ -57,6 +57,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [An empty platform DataTable fails axe scrollable-region-focusable at 375 px; render the empty state outside the table](lessons/empty-datatable-axe-at-375.md) — area:backend-ui; module:people,platform; topic:data-table,axe,empty-state,mobile
 - [The first .tsx of a Vereino module needs jsx-a11y rules without the plugin object; a stale lock token answers 409 before validation](lessons/eslint-jsx-a11y-and-stale-lock-before-validation.md) — area:backend-ui,debugging; module:club_core,platform; topic:eslint,jsx-a11y,flat-config,optimistic-lock,crud-factory,integration-tests
 - [Scan Vereino pages with the platform axe baseline; CrudForm 0.9.0 labels are not associated](lessons/platform-crudform-labels-axe-baseline.md) — area:backend-ui,testing; module:platform,club_core; topic:accessibility,axe,crud-form,app-shell,wcag
+- [A sticky bar above the member bottom navigation uses a spacing-scale offset (bottom-24); ds:check refuses arbitrary values and inline styles](lessons/sticky-bar-above-member-bottom-nav-uses-spacing-scale.md) — area:backend-ui; module:activities,ui; topic:ds-check,tailwind,sticky,member-shell,safe-area,mobile
 
 ### debugging
 

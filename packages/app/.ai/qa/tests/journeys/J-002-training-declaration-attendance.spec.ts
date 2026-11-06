@@ -714,6 +714,9 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
       await expect(dialog).toBeVisible()
       await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+      // A closed session returns to Today (E06-S17); the list is read-only from then on.
+      await expect(page).toHaveURL(/\/club$/)
+      await page.goto(attendanceUrl)
       await expect(page.getByTestId('club-attendance-done')).toBeVisible()
       await expect(page.getByRole('radio')).toHaveCount(0)
       await expect(row(page).getByTestId('club-attendance-actual')).toHaveText(PRESENT)
