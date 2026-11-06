@@ -4,7 +4,7 @@
 // a Testcontainers PostgreSQL, `yarn initialize`, a production build and `yarn start`.
 // Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--no-build] [--port <n>]
 //        node scripts/vereino-ephemeral.mjs start [--no-build] [--port <n>]   (runs until Ctrl+C)
-// Without --port, `test` takes a free port from 5001–5999, so several worktrees can run their tests at once;
+// Without --port, `test` takes a free port from 5001–5999 (never Next's reserved 5060/5061), so several worktrees can run their tests at once;
 // `start` stays on 5001.
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
@@ -19,6 +19,8 @@ export const DEFAULT_POSTGRES_IMAGE = 'pgvector/pgvector:pg17-trixie'
 export const DEFAULT_PORT = 5001
 /** Ports tried when no --port is given: DEFAULT_PORT and the next PORT_RANGE_SIZE - 1. */
 export const PORT_RANGE_SIZE = 999
+/** Ports of that range Next.js refuses to start on (`KNOWN_RESERVED_PORTS` in `next/dist/lib/helpers/get-reserved-port.js`: SIP). */
+export const RESERVED_PORTS = new Set([5060, 5061])
 // Accounts seeded by `yarn initialize` for tests; the passwords are pinned below (test-only).
 export const SEEDED_ADMIN = { email: 'admin@acme.com', password: 'secret' }
 export const POSTGRES_INIT_SQL = [
@@ -56,12 +58,14 @@ export function isPortFree(port, { createServer = net.createServer } = {}) {
 
 /**
  * A free port in DEFAULT_PORT … DEFAULT_PORT + PORT_RANGE_SIZE - 1. The search starts at a random port of the range
- * and wraps around, so runs started at the same moment in different worktrees rarely pick the same one.
+ * and wraps around, so runs started at the same moment in different worktrees rarely pick the same one. It never
+ * returns one of RESERVED_PORTS.
  */
 export async function findFreePort({ isFree = isPortFree, random = Math.random } = {}) {
   const offset = Math.floor(random() * PORT_RANGE_SIZE)
   for (let step = 0; step < PORT_RANGE_SIZE; step += 1) {
     const port = DEFAULT_PORT + ((offset + step) % PORT_RANGE_SIZE)
+    if (RESERVED_PORTS.has(port)) continue
     if (await isFree(port)) return port
   }
   throw new Error(
