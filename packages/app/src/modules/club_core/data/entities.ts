@@ -252,7 +252,9 @@ export class SectionMaterial extends ScopedEntityBase {
  * A node of the place hierarchy (club spec glossary *Place*): a complex groups pitches, halls, locker rooms and
  * pools; sessions and bookings point to a leaf. `contacts` is the encrypted JSON text of `{ role, name, phone }[]`
  * (`encryption.ts`). `opening_hours` holds the place's own opening hours (facilities spec DD-41, #121); a place
- * without them takes its nearest ancestor's. The public slug and schedule, online requests and regulations arrive later.
+ * without them takes its nearest ancestor's. The regulations text and the files (`PlaceFile`: one regulations PDF,
+ * photos) are the UX parity spec's phase 3 (REQ-U03, #86); the public slug and schedule and online requests arrive
+ * later.
  */
 @Entity({ tableName: 'club_core_places' })
 @Index({ name: 'club_core_places_org_parent_idx', properties: ['organizationId', 'parentPlaceId'] })
@@ -274,6 +276,7 @@ export class Place extends ScopedEntityBase {
     | 'contacts'
     | 'openingHours'
     | 'isActive'
+    | 'regulationsText'
 
   /** Scalar id of the parent place in the same organization; null for a root. */
   @Property({ name: 'parent_place_id', type: 'uuid', nullable: true })
@@ -329,6 +332,53 @@ export class Place extends ScopedEntityBase {
 
   @Property({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean = true
+
+  /** The place's rules as plain text (at most 20 000 characters); public rules, no personal data. */
+  @Property({ name: 'regulations_text', type: 'text', nullable: true })
+  regulationsText?: string | null
+}
+
+/**
+ * A file of a place (UX parity spec, REQ-U03, DD-U06; #86): a photo (PNG, JPEG or WebP) or the one regulations PDF.
+ * The bytes live in `attachments` (private partition, owner `club_core:place`, assignment `club_core:place_file`);
+ * this row is the module-owned link the platform's `persistLink` writes in the upload transaction, with a snapshot of
+ * the file's name, type and size, so lists never read the attachment rows. A place has at most one live regulations
+ * file (partial unique index); photos keep their upload order in `position`.
+ */
+@Entity({ tableName: 'club_core_place_files' })
+@Index({ name: 'club_core_place_files_org_place_kind_idx', properties: ['organizationId', 'placeId', 'kind'] })
+@Index({ name: 'club_core_place_files_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Unique({ name: 'club_core_place_files_attachment_unique', properties: ['attachmentId'] })
+@Index({
+  name: 'club_core_place_files_regulations_unique',
+  expression:
+    'create unique index "club_core_place_files_regulations_unique" on "club_core_place_files" ("organization_id", "place_id") where kind = \'regulations\' and deleted_at is null',
+})
+export class PlaceFile extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'position'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'attachment_id', type: 'uuid' })
+  attachmentId!: string
+
+  /** `photo` | `regulations`. */
+  @Property({ name: 'kind', type: 'varchar', length: 16 })
+  kind!: string
+
+  /** Photo order, 0-based; 0 for the regulations file. */
+  @Property({ name: 'position', type: 'int', default: 0 })
+  position: number = 0
+
+  @Property({ name: 'file_name', type: 'text' })
+  fileName!: string
+
+  @Property({ name: 'mime_type', type: 'text' })
+  mimeType!: string
+
+  @Property({ name: 'file_size', type: 'int' })
+  fileSize!: number
 }
 
 /**

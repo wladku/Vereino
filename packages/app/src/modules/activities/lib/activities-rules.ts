@@ -266,3 +266,29 @@ export function cancellationRecipients(audience: CancellationAudience): string[]
   }
   return [...users].sort()
 }
+
+/**
+ * How many people a cancellation tells (the toast "Session canceled — {n} people notified", README M-04; E06-S15 #97):
+ * the persons it concerns — in the app when they have an account, by e-mail when they have an address (J-003) —
+ * without the person who cancelled.
+ */
+export function cancellationNotifiedCount(
+  audience: Omit<CancellationAudience, 'userIds' | 'actorUserId'>,
+  actorPersonId: string | null,
+): number {
+  return cancellationPersonIds(audience).filter((personId) => personId !== actorPersonId).length
+}
+
+/** The cancellation reason the member pages ask for (README M-04: 3–200 characters); the API itself takes 1–500. */
+export const CANCEL_REASON_LIMITS = { min: 3, max: 200 } as const
+
+export function cancelReasonProblem(reason: string): 'too_short' | 'too_long' | null {
+  const length = reason.trim().length
+  if (length < CANCEL_REASON_LIMITS.min) return 'too_short'
+  return length > CANCEL_REASON_LIMITS.max ? 'too_long' : null
+}
+
+/** A session "needing a coach" (README M-02, B-15): planned, with no coach assigned. */
+export function needsCoach(occurrence: { status: OccurrenceStatus; coachPersonId: string | null }): boolean {
+  return occurrence.status === 'planned' && occurrence.coachPersonId === null
+}

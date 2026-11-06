@@ -230,6 +230,7 @@ test('E02-S03 the two consents in the profile: given with the date, withdrawable
     expect(initial.body?.person.consents).toEqual({
       shareContactWithCoaches: { granted: false, at: null },
       sharePresenceWithGuardians: { granted: false, at: null },
+      publishNameConsent: { granted: false, at: null },
     })
 
     // Given: stored with its date.
@@ -341,8 +342,10 @@ test('E02-S03 adult participant without wards: member and payer roles, lands on 
     const me = await getMe(request, token)
     expect(me.status, JSON.stringify(me.body)).toBe(200)
     expect(me.body?.wards).toEqual([])
-    // An adult is never refused for the age: today only the payer feature is missing (no payments module yet).
-    expect(checkOwnPayments(club, userId)).toEqual({ allowed: false, status: 403, code: 'scope_denied' })
+    // An adult payer sees their own payments: the age does not refuse them, and with the `payments` module enabled
+    // (#108) the `vereino_payer` role holds `payments.view_own`.
+    expect(me.body?.paymentsVisible).toBe(true)
+    expect(checkOwnPayments(club, userId)).toEqual({ allowed: true })
 
     page.setDefaultTimeout(30_000)
     await signInThroughForm(page, email, password)

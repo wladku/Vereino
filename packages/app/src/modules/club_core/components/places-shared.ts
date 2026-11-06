@@ -21,6 +21,7 @@ export type PlaceRow = {
   /** The place's own opening hours (DD-41); null = inherited or none. */
   openingHours: OpeningHours | null
   isActive: boolean
+  regulationsText: string | null
   createdAt: string | null
   updatedAt: string | null
   /** Added by the list hook (UX parity spec, REQ-U03); absent on other reads. */

@@ -24,6 +24,7 @@ import {
   PUBLIC_BLOCK_PROVIDER_TOKENS,
   type PublicBlockContext,
   type PublicBlockProvider,
+  type PublicClubBlockContext,
   type PublicSectionBlockContext,
 } from './public-blocks'
 
@@ -43,7 +44,7 @@ export type PublicClubPage = {
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
-  /** Blocks of optional providers (the places calendar, phase 5); absent while none contributes. */
+  /** Blocks of optional providers (upcoming events #91, the places calendar in phase 5); absent while none contributes. */
   blocks: Record<string, unknown>
 }
 
@@ -246,7 +247,14 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
         },
         { orderBy: { name: 'asc' } },
       )
-      const context = blockContext(club)
+      const context: PublicClubBlockContext = {
+        ...blockContext(club),
+        sections: sections.map((section) => ({
+          id: section.id,
+          name: section.name,
+          slug: section.publicSlug as string,
+        })),
+      }
       const blocks = await providerBlocks(club.publication, (provider) => provider.clubBlock?.(context))
       return {
         status: 'ok',

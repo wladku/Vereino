@@ -1,11 +1,23 @@
 // Client pieces of the public club pages `/p/[clubSlug]` and `/p/[clubSlug]/sections/[sectionSlug]` (club spec UI
 // table, DD-23; #29): the response shapes of `GET /api/club_core/public/…`, their queries and the load result, which
 // tells a missing page (404 `public_page_not_found`) from a club that does not publish one (404
-// `public_page_disabled`) and from a failed request.
+// `public_page_disabled`) and from a failed request. The provider blocks (#91): `groups` (`groups.publicCatalog`) and
+// `schedule` (`activities.publicSchedule`: the groups' schedule on a section page, the upcoming events on the club page).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 
 export type PublicLogo = { url: string | null; source: 'section' | 'club' | 'initial'; initial: string }
+
+/** A session or event as a guest sees it: a club-zone date and `HH:mm` times. */
+export type PublicSession = {
+  date: string
+  startTime: string
+  endTime: string
+  place: string | null
+  cancelled: boolean
+}
+
+export type PublicEvent = PublicSession & { name: string; type: string; section: { name: string; slug: string } }
 
 export type PublicClubPage = {
   club: {
@@ -16,7 +28,28 @@ export type PublicClubPage = {
     contact: { phone: string } | null
   }
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
-  blocks: Record<string, unknown>
+  blocks: { schedule?: { events: PublicEvent[] }; [key: string]: unknown }
+}
+
+/** A public group card (`groups.publicCatalog`); `conditions` and `instructors` only with their blocks. */
+export type PublicGroupCard = {
+  id: string
+  name: string
+  kind: string
+  description: string | null
+  ageFrom: number | null
+  ageTo: number | null
+  level: string | null
+  conditions?: string | null
+  /** A null name: the instructor did not consent (the card says "Section coach"). */
+  instructors?: { name: string | null }[]
+}
+
+/** A public group's schedule (`activities.publicSchedule`). */
+export type PublicGroupSchedule = {
+  groupId: string
+  series: { weekdays: string[]; startTime: string; endTime: string; place: string | null }[]
+  upcoming: PublicSession[]
 }
 
 export type PublicMaterial = {
@@ -36,6 +69,8 @@ export type PublicSectionPage = {
     conditions?: { text: string }
     materials?: { items: PublicMaterial[] }
     contact?: { name: string | null; email: string | null; phone: string | null }
+    groups?: { items: PublicGroupCard[] }
+    schedule?: { groups: PublicGroupSchedule[] }
     [key: string]: unknown
   }
 }
@@ -87,4 +122,25 @@ export function formatLabel(mimeType: string): string {
   if (mimeType === 'application/pdf') return 'PDF'
   if (mimeType === 'image/jpeg') return 'JPG'
   return mimeType.replace(/^image\//, '').toUpperCase()
+}
+
+const WEEKDAY_CODES = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
+
+/** The reader's short name of an RFC 5545 weekday (`TU` → "Tue" / "wt."); the code itself when unknown. */
+export function weekdayLabel(code: string, locale: string): string {
+  const index = WEEKDAY_CODES.indexOf(code)
+  if (index < 0) return code
+  // 2024-01-01 was a Monday.
+  return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(2024, 0, 1 + index)),
+  )
+}
+
+/** A club-zone calendar date (`YYYY-MM-DD`) with its weekday, in the reader's locale. */
+export function formatPublicDate(date: string, locale: string): string {
+  const parsed = new Date(`${date}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime())) return date
+  return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    parsed,
+  )
 }

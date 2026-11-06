@@ -1,7 +1,8 @@
 'use client'
 // `/backend/club/places/create` and `/backend/club/places/[id]/edit` (club spec UI table): one place of the
 // hierarchy. The parent and the owner are chosen by name; the contacts and the opening hours (facilities spec DD-41)
-// are edited as rows.
+// are edited as rows. The "Regulations and photos" group holds the regulations text and, on a saved place, the files
+// panel (UX parity spec, REQ-U03; #86).
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -20,6 +21,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { PLACE_KINDS, type PlaceContact } from '../lib/places'
 import { OpeningHoursEditor, openingHoursDrafts, openingHoursPayload } from './OpeningHoursEditor'
 import { enumOptions, errorMessage, numberOrNull, textOrNull, type Translate } from './client-helpers'
+import { PlaceFilesPanel } from './PlaceFilesPanel'
 import type { InstitutionRow, PlaceRow } from './places-shared'
 
 const LIST_HREF = '/backend/club/places'
@@ -94,6 +96,15 @@ function ContactsEditor({ value, setValue, disabled }: CrudCustomFieldRenderProp
       </div>
     </div>
   )
+}
+
+/** Files are uploaded at once, so they need a saved place; a new place shows a hint instead. */
+function PlaceFilesField({ recordId }: CrudCustomFieldRenderProps) {
+  const t = useT()
+  if (!recordId) {
+    return <p className="text-muted-foreground text-sm">{t('club_core.places.fields.files.afterCreate')}</p>
+  }
+  return <PlaceFilesPanel placeId={recordId} />
 }
 
 async function placeOptions(t: Translate, excludeId?: string): Promise<CrudFieldOption[]> {
@@ -176,6 +187,19 @@ function usePlaceFields(t: Translate, placeId?: string) {
         description: t('club_core.places.fields.openingHours.help'),
         component: OpeningHoursEditor,
       },
+      {
+        id: 'regulationsText',
+        label: t('club_core.places.fields.regulationsText'),
+        type: 'textarea',
+        maxLength: 20000,
+        description: t('club_core.places.fields.regulationsText.help'),
+      },
+      {
+        id: 'files',
+        label: t('club_core.places.fields.files'),
+        type: 'custom',
+        component: PlaceFilesField,
+      },
     ],
     [t, placeId],
   )
@@ -206,6 +230,12 @@ function usePlaceFields(t: Translate, placeId?: string) {
         column: 1,
         fields: ['openingHours'],
       },
+      {
+        id: 'regulations',
+        title: t('club_core.places.groups.regulations'),
+        column: 1,
+        fields: ['regulationsText', 'files'],
+      },
     ],
     [t],
   )
@@ -228,6 +258,7 @@ function toFormValues(place: PlaceRow | null): PlaceFormValues {
     rentedByClub: place?.rentedByClub ?? false,
     capacityGroups: place?.capacityGroups ?? 1,
     isActive: place?.isActive ?? true,
+    regulationsText: place?.regulationsText ?? '',
     contacts: (place?.contacts ?? []).map((contact) => ({
       role: contact.role ?? '',
       name: contact.name,
@@ -259,6 +290,7 @@ function toPayload(values: PlaceFormValues) {
     contacts,
     openingHours: openingHoursPayload(values.openingHours),
     isActive: values.isActive !== false,
+    regulationsText: textOrNull(values.regulationsText),
   }
 }
 

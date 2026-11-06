@@ -81,6 +81,7 @@ export function placeListItem(row: Row) {
     contacts: parsePlaceContacts(row.contacts),
     openingHours: readOpeningHours(json(row.opening_hours)),
     isActive: bool(row.is_active),
+    regulationsText: text(row.regulations_text),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -177,6 +178,8 @@ export const placeListItemSchema = z.object({
     .nullable()
     .describe("The place's own opening hours (DD-41); null = inherited from the parent place, or no limit"),
   isActive: z.boolean(),
+  /** The place's rules as plain text (UX parity spec, REQ-U03). */
+  regulationsText: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   /** The owner institution's name; null without an owner (UX parity spec, REQ-U03). */

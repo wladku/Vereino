@@ -4,11 +4,14 @@ import {
   MEMBER_HOME,
   SELF_CONSENT_KINDS,
   applySelfConsent,
+  consentAuthorIds,
   memberContexts,
   memberLanding,
   memberLocale,
   ownPaymentsAccess,
+  publicPersonName,
   selfConsentView,
+  withConsentAuthors,
   withNotice,
 } from '../member-rules'
 
@@ -16,8 +19,8 @@ const given = new Date('2026-10-01T08:00:00.000Z')
 const now = new Date('2026-10-29T10:15:00.000Z')
 
 describe('SELF_CONSENT_KINDS', () => {
-  it('lists the two consents of the member profile', () => {
-    expect(SELF_CONSENT_KINDS).toEqual(['shareContactWithCoaches', 'sharePresenceWithGuardians'])
+  it('lists the three consents of the member profile', () => {
+    expect(SELF_CONSENT_KINDS).toEqual(['shareContactWithCoaches', 'sharePresenceWithGuardians', 'publishNameConsent'])
   })
 })
 
@@ -136,5 +139,49 @@ describe('withNotice', () => {
     expect(withNotice('/backend', 'Not linked — contact the club')).toBe(
       '/backend?flash=Not+linked+%E2%80%94+contact+the+club&type=info',
     )
+  })
+})
+
+describe('consentAuthorIds', () => {
+  const view = (regulations: string | null, image: string | null, trips: string | null) => ({
+    regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: regulations },
+    image: { granted: false, at: null, byPersonId: image },
+    trips: { granted: true, at: '2026-10-02T08:00:00.000Z', byPersonId: trips },
+  })
+
+  it('lists each author once, in first-seen order, and skips consents never set', () => {
+    expect(consentAuthorIds([view('kasia', null, 'admin'), view('admin', 'tomek', null)])).toEqual([
+      'kasia',
+      'admin',
+      'tomek',
+    ])
+    expect(consentAuthorIds([])).toEqual([])
+  })
+})
+
+describe('withConsentAuthors', () => {
+  it('adds the name of each known author; an unknown author or a consent never set has none', () => {
+    const view = {
+      regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'kasia' },
+      image: { granted: false, at: '2026-10-03T08:00:00.000Z', byPersonId: 'gone' },
+      trips: { granted: false, at: null, byPersonId: null },
+    }
+    expect(withConsentAuthors(view, new Map([['kasia', 'Kasia Nowak']]))).toEqual({
+      regulations: { ...view.regulations, byName: 'Kasia Nowak' },
+      image: { ...view.image, byName: null },
+      trips: { ...view.trips, byName: null },
+    })
+  })
+})
+
+describe('publicPersonName', () => {
+  it('shows the first name and the initial of the last name', () => {
+    expect(publicPersonName('Anna', 'Kowalska')).toBe('Anna K.')
+    expect(publicPersonName('  Jan  Paweł ', ' łukasiewicz')).toBe('Jan Paweł Ł.')
+  })
+
+  it('shows the first name alone without a last name and nothing without a first name', () => {
+    expect(publicPersonName('Anna', '  ')).toBe('Anna')
+    expect(publicPersonName('  ', 'Kowalska')).toBeNull()
   })
 })

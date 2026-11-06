@@ -26,15 +26,20 @@ import {
 import { foundationErrors } from '../api/errors'
 import { refusesUnlinked, scopeDenialCode, type ScopeDenialCode } from '../lib/scope-denial'
 import { codedIssueErrorCode } from '../lib/validity-schema'
-import { resolveScope } from './scope-contract'
+import { resolveScope, resolveScopeForPerson } from './scope-contract'
 
 /**
  * Where the scope comes from. Omitted: the session (`scopeContract.resolve(ctx)`). `marker`: only the `self_user`
  * grant of `ctx.auth.sub`, for commands on the caller's own user record. `job`: one `system_job` grant for the
  * organization of a scheduled job's registration (see `jobCommandContext`); accepted only by a command that
- * lists `system_job`. Token links (phase C) add a token source.
+ * lists `system_job`. `token`: the current grants of a redeemed token link's subject person
+ * (`scopeContract.resolveForPerson`, P-10) in the link's tenant and organization — the command passes the view
+ * `TokenLinkService.redeem` returned, never a value from the input.
  */
-export type ScopeSource = { marker: true } | { job: true }
+export type ScopeSource = { marker: true } | { job: true } | { token: TokenScopeSubject }
+
+/** The subject person of a redeemed token link and the tenant and organization the link was found in. */
+export type TokenScopeSubject = { personId: string; tenantId: string; organizationId: string }
 
 /** Lock options `loadTarget` passes to its `findOne`: the target row is loaded `SELECT … FOR UPDATE`. */
 export type TargetLock = { lockMode: LockMode.PESSIMISTIC_WRITE }
@@ -139,7 +144,14 @@ function jobScope(ctx: CommandRuntimeContext): TrustedScope | null {
  */
 export function trustedScopeOf(ctx: CommandRuntimeContext, source?: ScopeSource): TrustedScope | null {
   if (source && 'job' in source) return jobScope(ctx)
+  if (source && 'token' in source) return tokenScope(ctx, source.token)
   return sessionScope(ctx)
+}
+
+function tokenScope(ctx: CommandRuntimeContext, subject: TokenScopeSubject): TrustedScope | null {
+  // A token route carries no session and is never a job: the link alone names the tenant and organization.
+  if (ctx.auth || ctx.systemActor === true) return null
+  return { tenantId: subject.tenantId, organizationId: subject.organizationId }
 }
 
 async function deriveScope(
@@ -149,6 +161,10 @@ async function deriveScope(
   if (source && 'job' in source) {
     const job = jobScope(ctx)
     return job ? { ...job, scope: [{ kind: 'system_job' }] } : null
+  }
+  if (source && 'token' in source) {
+    const trusted = tokenScope(ctx, source.token)
+    return trusted ? { ...trusted, scope: await resolveScopeForPerson(ctx, source.token) } : null
   }
   const trusted = sessionScope(ctx)
   if (!trusted || !ctx.auth) return null
@@ -217,8 +233,8 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
   const derived = await deriveScope(spec.scopeSource, ctx)
   if (!derived) return foundationErrors.throw('scope_denied')
   const { tenantId, organizationId, scope } = derived
-  // Only the session scope says whether a person is linked: a marker scope is `self_user` by construction and a job
-  // scope is `system_job`, so their denials stay `scope_denied`. Refusing before `loadTarget` gives an unlinked
+  // Only the session scope says whether a person is linked: a marker scope is `self_user` by construction, a job
+  // scope is `system_job` and a token scope belongs to a person, so their denials stay `scope_denied`. Refusing before `loadTarget` gives an unlinked
   // account the same answer for a record that exists and one that does not, and locks no row for it.
   const sessionSource = spec.scopeSource === undefined
   if (sessionSource && refusesUnlinked(scope, spec.allowedKinds)) return foundationErrors.throw('scope_unlinked')

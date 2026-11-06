@@ -8,7 +8,7 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call, mercato, uniqueSuffix, type Club } from './club'
 
 export type SelfConsent = { granted: boolean; at: string | null }
-export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null }
+export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null; byName: string | null }
 
 export type MemberProfile = {
   person: {
@@ -19,7 +19,11 @@ export type MemberProfile = {
     email: string | null
     phone: string | null
     preferredLocale: string | null
-    consents: { shareContactWithCoaches: SelfConsent; sharePresenceWithGuardians: SelfConsent }
+    consents: {
+      shareContactWithCoaches: SelfConsent
+      sharePresenceWithGuardians: SelfConsent
+      publishNameConsent: SelfConsent
+    }
     updatedAt: string | null
   }
   wards: {
@@ -27,6 +31,7 @@ export type MemberProfile = {
     firstName: string
     lastName: string
     birthDate: string | null
+    age: number | null
     hasAccount: boolean
     guardianship: {
       id: string
@@ -35,6 +40,13 @@ export type MemberProfile = {
       consents: { regulations: WardConsent; image: WardConsent; trips: WardConsent }
       updatedAt: string | null
     }
+  }[]
+  guardians: {
+    guardianshipId: string
+    firstName: string
+    lastName: string
+    relation: string
+    consents: { regulations: WardConsent; image: WardConsent; trips: WardConsent }
   }[]
   roles: { role: string; sectionId: string | null }[]
   contexts: string[]

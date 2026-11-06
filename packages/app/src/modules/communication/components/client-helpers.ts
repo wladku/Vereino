@@ -20,6 +20,21 @@ export const CASES_HREF = '/backend/communication/cases'
 /** The member inbox path, from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
 export { CLUB_MESSAGES_HREF }
 export const clubThreadHref = (id: string) => `${CLUB_MESSAGES_HREF}/${encodeURIComponent(id)}`
+/** The member page of a direct thread to the staff (REQ-M12, DD-M18). */
+export const CLUB_MESSAGE_NEW_HREF = `${CLUB_MESSAGES_HREF}/new`
+export const DIRECT_OPTIONS_QUERY_KEY = ['communication-direct-options'] as const
+
+/** One option of `GET /api/communication/direct`: a household member, a group they take part in today, its staff. */
+export type DirectOption = {
+  personId: string
+  personName: string
+  groupId: string
+  groupName: string
+  sectionId: string
+  sectionName: string
+  coachNames: string[]
+  coordinatorNames: string[]
+}
 
 /** The member inbox query (`as=member`), narrowed to one ward's threads when a guardian picks one (M-06). */
 export function inboxQuery(wardId: string | null): string {

@@ -7,8 +7,12 @@ import {
   HORIZON_WEEKS,
   OCCURRENCE_STATUSES,
   TEAM_ONLY_TYPES,
+  CANCEL_REASON_LIMITS,
+  cancelReasonProblem,
+  cancellationNotifiedCount,
   cancellationPersonIds,
   cancellationRecipients,
+  needsCoach,
   generationWindow,
   horizonEnd,
   isPinnedSession,
@@ -237,6 +241,31 @@ describe('the cancellation audience', () => {
       'user-ola',
     ])
     expect(cancellationRecipients({ ...audience, userIds, actorUserId: null })).toContain('user-marek')
+  })
+
+  it('counts the people told of it, without the person who cancelled', () => {
+    expect(cancellationNotifiedCount(audience, 'marek')).toBe(7)
+    expect(cancellationNotifiedCount(audience, 'outsider')).toBe(8)
+    expect(cancellationNotifiedCount(audience, null)).toBe(8)
+  })
+})
+
+describe('the cancellation reason on the phone', () => {
+  it('takes 3–200 characters after trimming', () => {
+    expect(cancelReasonProblem('  ab ')).toBe('too_short')
+    expect(cancelReasonProblem('abc')).toBeNull()
+    expect(cancelReasonProblem('Pitch closed')).toBeNull()
+    expect(cancelReasonProblem('x'.repeat(200))).toBeNull()
+    expect(cancelReasonProblem('x'.repeat(201))).toBe('too_long')
+    expect(CANCEL_REASON_LIMITS).toEqual({ min: 3, max: 200 })
+  })
+})
+
+describe('a session needing a coach', () => {
+  it('is a planned session with no coach assigned', () => {
+    expect(needsCoach({ status: 'planned', coachPersonId: null })).toBe(true)
+    expect(needsCoach({ status: 'planned', coachPersonId: 'marek' })).toBe(false)
+    expect(needsCoach({ status: 'cancelled', coachPersonId: null })).toBe(false)
   })
 })
 

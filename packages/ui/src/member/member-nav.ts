@@ -61,8 +61,12 @@ export function memberShellLabels(t: (key: string) => string, prefix: string): M
   return labels
 }
 
-/** Contexts that work in the admin panel: "Admin panel" is offered for them (the panel authorizes itself). */
-const STAFF_CONTEXTS: readonly string[] = ['club_admin', 'coordinator', 'coach']
+/**
+ * Contexts that work in the admin panel: "Admin panel" is offered for them (the panel authorizes itself). A coach is
+ * not one of them (E06-S15 #97): the coach role cannot open the panel's sessions (`activities.view`), so a coach-only
+ * person runs their sessions from `/club` and is not sent to a panel without them.
+ */
+const STAFF_CONTEXTS: readonly string[] = ['club_admin', 'coordinator']
 
 export function hasStaffContext(contexts: readonly string[]): boolean {
   return contexts.some((context) => STAFF_CONTEXTS.includes(context))

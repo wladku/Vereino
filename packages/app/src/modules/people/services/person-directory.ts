@@ -10,6 +10,7 @@ import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { contactSharingFilter } from '../lib/contact-sharing'
+import { publicPersonName } from '../lib/member-rules'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -51,10 +52,36 @@ export type PersonDirectory = {
    * is checked again at read time). Call only after authorizing and logging the read (`auditedRead`).
    */
   sharedContacts(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, SharedContact>>
+  /**
+   * The primary payer of each ward among `wardIds` whose guardianship with `is_primary_payer` is active on `date`, by
+   * ward id (the payments period generator, #108). A ward has at most one (partial unique index).
+   */
+  primaryPayers(
+    scope: ClubScope,
+    wardIds: readonly string[],
+    date: CalendarDate,
+    em?: EntityManager,
+  ): Promise<Map<string, string>>
+  /**
+   * The public name ("First L.", `publicPersonName`) of each person among `ids` who gave `publish_name_consent_at`
+   * (DD-29), by id; a person without the consent is absent. For the instructors of the public club pages (#91): the
+   * full last name never leaves `people`.
+   */
+  publicNames(scope: ClubScope, ids: readonly string[], em?: EntityManager): Promise<Map<string, string>>
   /** The persons holding a live `role` assignment active on `date` (the coach picker of the activity wizard, #93). */
   roleHolderIdsOn(
     scope: ClubScope,
     role: RoleAssignment['role'],
+    date: CalendarDate,
+    em?: EntityManager,
+  ): Promise<string[]>
+  /**
+   * The persons holding a live `coordinator` assignment of `sectionId` active on `date` (the addressed staff of a
+   * member's direct thread to a section's coordinators; foundation III DD-M18, #138).
+   */
+  sectionCoordinatorIdsOn(
+    scope: ClubScope,
+    sectionId: string,
     date: CalendarDate,
     em?: EntityManager,
   ): Promise<string[]>
@@ -130,6 +157,29 @@ export async function activeGuardians(
   return byWard
 }
 
+export async function primaryPayers(
+  em: EntityManager,
+  scope: ClubScope,
+  wardIds: readonly string[],
+  date: CalendarDate,
+): Promise<Map<string, string>> {
+  const unique = [...new Set(wardIds)]
+  if (unique.length === 0) return new Map()
+  const rows = await em.find(
+    Guardianship,
+    {
+      ...scope,
+      wardPersonId: { $in: unique },
+      isPrimaryPayer: true,
+      deletedAt: null,
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'wardPersonId', 'guardianPersonId'] },
+  )
+  return new Map(rows.map((row) => [row.wardPersonId, row.guardianPersonId]))
+}
+
 export async function presenceConsents(
   em: EntityManager,
   scope: ClubScope,
@@ -182,6 +232,28 @@ export async function sharedContacts(
   )
 }
 
+export async function publicNames(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const rows = await findWithDecryption(
+    em,
+    Person,
+    { id: { $in: unique }, ...scope, deletedAt: null, publishNameConsentAt: { $ne: null } },
+    { fields: ['id', 'firstName', 'lastName'] },
+    scope,
+  )
+  return new Map(
+    rows.flatMap((row) => {
+      const name = publicPersonName(row.firstName, row.lastName)
+      return name ? [[row.id, name] as const] : []
+    }),
+  )
+}
+
 export async function roleHolderIdsOn(
   em: EntityManager,
   scope: ClubScope,
@@ -202,14 +274,39 @@ export async function roleHolderIdsOn(
   return [...new Set(rows.map((row) => row.personId))]
 }
 
+export async function sectionCoordinatorIdsOn(
+  em: EntityManager,
+  scope: ClubScope,
+  sectionId: string,
+  date: CalendarDate,
+): Promise<string[]> {
+  const rows = await em.find(
+    RoleAssignment,
+    {
+      ...scope,
+      deletedAt: null,
+      role: 'coordinator',
+      sectionId,
+      validFrom: { $lte: date },
+      $or: [{ validTo: null }, { validTo: { $gte: date } }],
+    },
+    { fields: ['id', 'personId'] },
+  )
+  return [...new Set(rows.map((row) => row.personId))]
+}
+
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
   return {
     findPersons: (scope, ids, em) => findPersons(em ?? getEm().fork(), scope, ids),
     findUserIds: (scope, ids, em) => findUserIds(em ?? getEm().fork(), scope, ids),
     activeGuardians: (scope, wardIds, today, em) => activeGuardians(em ?? getEm().fork(), scope, wardIds, today),
+    primaryPayers: (scope, wardIds, date, em) => primaryPayers(em ?? getEm().fork(), scope, wardIds, date),
     presenceConsents: (scope, ids, em) => presenceConsents(em ?? getEm().fork(), scope, ids),
     contactConsents: (scope, ids, em) => contactConsents(em ?? getEm().fork(), scope, ids),
     sharedContacts: (scope, ids, em) => sharedContacts(em ?? getEm().fork(), scope, ids),
+    publicNames: (scope, ids, em) => publicNames(em ?? getEm().fork(), scope, ids),
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
+    sectionCoordinatorIdsOn: (scope, sectionId, date, em) =>
+      sectionCoordinatorIdsOn(em ?? getEm().fork(), scope, sectionId, date),
   }
 }

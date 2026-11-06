@@ -41,6 +41,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     category: 'activities',
     actions: [],
   },
+  // REQ-017: the in-app type of the `activities.declaration_link` e-mail template (P-31, DD-M07). The link goes by
+  // e-mail only — a dispatch of it has no in-app deliveries.
+  {
+    type: 'activities.declaration_link',
+    module: 'activities',
+    channels: ['in_app'],
+    titleKey: 'activities.notifications.declarationLink.title',
+    bodyKey: 'activities.notifications.declarationLink.body',
+    icon: 'link',
+    severity: 'info',
+    category: 'activities',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

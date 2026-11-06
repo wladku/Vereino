@@ -35,6 +35,11 @@ export const errorCodes = [
   { code: 'logo_too_large', status: 422, messageKey: 'club_core.errors.logo_too_large' },
   { code: 'material_format_unsupported', status: 422, messageKey: 'club_core.errors.material_format_unsupported' },
   { code: 'material_too_large', status: 422, messageKey: 'club_core.errors.material_too_large' },
+  // Place files (UX parity spec, REQ-U03; #86): a photo is PNG, JPEG or WebP up to 5 MB, the regulations a PDF up to
+  // 10 MB; at most 10 live photos per place.
+  { code: 'place_file_format_unsupported', status: 422, messageKey: 'club_core.errors.place_file_format_unsupported' },
+  { code: 'place_file_too_large', status: 422, messageKey: 'club_core.errors.place_file_too_large' },
+  { code: 'place_photos_limit_reached', status: 422, messageKey: 'club_core.errors.place_photos_limit_reached' },
   // Sessionless public pages (DD-23, DD-35): an unknown slug, a section that is not public and a section of another
   // club answer the same 404; a club that does not publish its page answers its own 404.
   { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },

@@ -70,3 +70,13 @@ export function findPersons(
 ): Promise<Map<string, PersonDirectoryEntry>> {
   return personDirectory(container).findPersons(scope, ids, em)
 }
+
+/** The consented public names ("First L.") of the persons among `ids` (DD-29, #91). */
+export function publicNames(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, string>> {
+  return personDirectory(container).publicNames(scope, ids, em)
+}

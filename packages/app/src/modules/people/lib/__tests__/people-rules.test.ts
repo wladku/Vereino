@@ -10,6 +10,7 @@ import {
   parseStoredConsents,
   isPayerEligible,
   isValidPesel,
+  isValidPhone,
   personScope,
   roleScopeProblem,
   sectionCoordinators,
@@ -46,6 +47,31 @@ describe('isValidPesel', () => {
     expect(isValidPesel('90010100008')).toBe(false)
     expect(isValidPesel('9001010000')).toBe(false)
     expect(isValidPesel('9001010000a')).toBe(false)
+  })
+})
+
+describe('isValidPhone', () => {
+  it('accepts a Polish number, with or without 0048 and separators', () => {
+    expect(isValidPhone('600700800')).toBe(true)
+    expect(isValidPhone(' 600 700 800 ')).toBe(true)
+    expect(isValidPhone('0048 600-700-800')).toBe(true)
+    expect(isValidPhone('(22) 123.45.67')).toBe(true)
+  })
+
+  it('accepts E.164 with a country code', () => {
+    expect(isValidPhone('+48 600 700 800')).toBe(true)
+    expect(isValidPhone('+4915112345678')).toBe(true)
+  })
+
+  it('rejects text, a leading zero, wrong lengths and a + without a country code', () => {
+    expect(isValidPhone('abc')).toBe(false)
+    expect(isValidPhone('')).toBe(false)
+    expect(isValidPhone('060070080')).toBe(false)
+    expect(isValidPhone('60070080')).toBe(false)
+    expect(isValidPhone('6007008001')).toBe(false)
+    expect(isValidPhone('+0600700800')).toBe(false)
+    expect(isValidPhone('+123456')).toBe(false)
+    expect(isValidPhone('+1234567890123456')).toBe(false)
   })
 })
 
@@ -166,6 +192,7 @@ describe('people error codes', () => {
       ['account_exists', 409],
       ['pesel_duplicate', 409],
       ['pesel_invalid', 422],
+      ['phone_invalid', 422],
       ['role_scope_required', 422],
       ['role_scope_unexpected', 422],
       ['guardianship_self', 422],

@@ -157,6 +157,29 @@ export const attendanceDeclareSchema = z
   })
   .strict()
 
+/** `POST /api/activities/declaration-links` (REQ-017): the address and the session of the public page it came from. */
+export const declarationLinkRequestSchema = z
+  .object({
+    email: z.email().max(254),
+    clubSlug: z.string().min(1).max(100),
+    occurrencePublicRef: z.uuid(),
+  })
+  .strict()
+
+/** `POST /api/activities/declaration-links/{token}` (REQ-017): whom and what; the session comes from the link. */
+export const declarationLinkDeclareSchema = z
+  .object({
+    personId: z.uuid(),
+    declared: z.enum(DECLARED_VALUES),
+  })
+  .strict()
+
+/** `activities.attendance.declare_by_link`: the route's body plus the raw token from the path. */
+export const declareByLinkSchema = declarationLinkDeclareSchema.extend({ token: z.string().min(1).max(200) }).strict()
+
+/** `activities.declaration_links.send_reminders` (job): `now` replays another evening (operators, tests). */
+export const sendRemindersSchema = z.object({ now: instantSchema.optional() }).strict()
+
 /** `POST /api/activities/attendance/{id}/guardian-decision`. */
 export const guardianDecisionSchema = z.object({ id: z.uuid(), approve: z.boolean() }).strict()
 
@@ -234,7 +257,11 @@ export const calendarQuerySchema = z.object({
   sectionId: z.uuid().optional(),
 })
 
+/** `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward) or the coach (E06-S15 #97). */
+export const CALENDAR_ITEM_PERSPECTIVES = ['self', 'guardian', 'coach'] as const
+export type CalendarItemPerspective = (typeof CALENDAR_ITEM_PERSPECTIVES)[number]
+
 export const calendarItemQuerySchema = z.object({
-  as: z.enum(['self', 'guardian']),
+  as: z.enum(CALENDAR_ITEM_PERSPECTIVES),
   personId: z.uuid().optional(),
 })

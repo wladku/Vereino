@@ -8,9 +8,9 @@ import { createGuardianship } from '../_fixtures/people'
 
 // Issue #101 (E06-S19; README 3.1 *Member `/club`*, M-02, M-03): every `/club` page has the bottom bar Today ·
 // Calendar · Messages · More with the current tab marked and 48 × 48 px targets; More offers Profile, the admin panel
-// for staff only and Sign out, which ends the session through the installed `auth` logout route so the back button
+// for staff only (not for a coach, E06-S15 #97) and Sign out, which ends the session through the installed `auth` logout route so the back button
 // does not reopen `/club`. In the header a guardian of two wards narrows Today and the calendar to one ward, and a
-// coach who is also a guardian switches to "as coach" to see the coach tiles.
+// coach who is also a guardian sees the coach tile beside the ward's, and only it after switching to "as coach".
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -182,16 +182,27 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     await expect(coachTile.getByTestId('club-today-session').filter({ hasText: 'Trening dodatkowy' })).toHaveText(
       new RegExp(family.other.child.firstName),
     )
+    // A coach also gets "My sessions" next to the member tiles (E06-S15 #97); acting as a coach leaves only that tile.
+    await expect(page.getByTestId('club-tile-coach')).toBeVisible()
     await pick(page, 'context', /^(Coach|Trener)$/)
+    await expect(coachTile).toHaveCount(0)
+    const myTile = page.getByTestId('club-tile-coach')
     await expect(
-      coachTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje zajęcia dziś i jutro/ }),
+      myTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje zajęcia dziś i jutro/ }),
     ).toBeVisible()
-    const coachSession = coachTile.getByTestId('club-today-session').filter({ hasText: 'Trening dodatkowy' })
-    await expect(coachSession).toHaveAttribute('href', /\/club\/occurrences\/[^/]+\/attendance$/)
-    await expect(coachTile.getByTestId('club-today-session').filter({ hasText: 'Basen dodatkowy' })).toHaveCount(0)
-    // Staff get the admin panel behind More.
+    const coachSession = myTile.getByTestId('club-today-coach-session').filter({ hasText: 'Trening dodatkowy' })
+    await expect(coachSession.getByRole('link', { name: /Trening dodatkowy/ })).toHaveAttribute(
+      'href',
+      /\/club\/occurrences\/[^/?]+\?as=coach$/,
+    )
+    await expect(coachSession.getByTestId('club-today-attendance-list')).toHaveAttribute(
+      'href',
+      /\/club\/occurrences\/[^/]+\/attendance$/,
+    )
+    await expect(myTile.getByTestId('club-today-coach-session').filter({ hasText: 'Basen dodatkowy' })).toHaveCount(0)
+    // A coach is not sent to the admin panel, where the coach role has no sessions (E06-S15 #97).
     await bar.getByText(MORE).click()
-    await expect(page.getByTestId('club-more').getByRole('link', { name: ADMIN_PANEL })).toBeVisible()
+    await expect(page.getByTestId('club-more').getByRole('link', { name: ADMIN_PANEL })).toHaveCount(0)
     Object.assign(
       violations,
       await scanInColorSchemes(
@@ -200,7 +211,7 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
         '/club as coach',
         async () => {
           await expect(page.getByTestId('club-switcher-context')).toBeVisible()
-          await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
+          await expect(page.getByTestId('club-tile-coach')).toBeVisible()
         },
         { platformBaseline: true },
       ),

@@ -5,8 +5,14 @@ import {
   LOGO_MAX_BYTES,
   MATERIAL_FORMATS,
   MATERIAL_MAX_BYTES,
+  PLACE_FILE_KINDS,
+  PLACE_PHOTOS_MAX,
+  PLACE_PHOTO_MAX_BYTES,
+  PLACE_REGULATIONS_MAX_BYTES,
   checkLogo,
   checkMaterial,
+  checkPlaceFile,
+  nextPhotoPosition,
   detectFileFormat,
   effectiveLogo,
   nameInitial,
@@ -75,6 +81,41 @@ describe('logo and material checks', () => {
     expect(checkMaterial(JPEG)).toMatchObject({ ok: true, file: { format: 'jpeg' } })
     expect(checkMaterial(SVG)).toEqual({ ok: false, problem: 'format_unsupported' })
     expect(checkMaterial(sized(PDF, MATERIAL_MAX_BYTES + 1))).toEqual({ ok: false, problem: 'too_large' })
+  })
+
+  it('accepts a place photo (PNG, JPEG, WebP up to 5 MB) and refuses an SVG, a PDF and a larger file', () => {
+    expect(PLACE_FILE_KINDS).toEqual(['photo', 'regulations'])
+    expect(PLACE_PHOTO_MAX_BYTES).toBe(5 * 1024 * 1024)
+    expect(PLACE_PHOTOS_MAX).toBe(10)
+    expect(checkPlaceFile(PNG, 'photo')).toMatchObject({ ok: true, file: { format: 'png' } })
+    expect(checkPlaceFile(sized(JPEG, PLACE_PHOTO_MAX_BYTES), 'photo')).toMatchObject({ ok: true })
+    expect(checkPlaceFile(WEBP, 'photo')).toMatchObject({ ok: true, file: { mimeType: 'image/webp' } })
+    expect(checkPlaceFile(SVG, 'photo')).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkPlaceFile(PDF, 'photo')).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkPlaceFile(sized(PNG, PLACE_PHOTO_MAX_BYTES + 1), 'photo')).toEqual({
+      ok: false,
+      problem: 'too_large',
+    })
+    expect(checkPlaceFile(bytes(), 'photo')).toEqual({ ok: false, problem: 'empty' })
+  })
+
+  it('accepts only a PDF up to 10 MB as place regulations', () => {
+    expect(PLACE_REGULATIONS_MAX_BYTES).toBe(10 * 1024 * 1024)
+    expect(checkPlaceFile(PDF, 'regulations')).toEqual({
+      ok: true,
+      file: { format: 'pdf', mimeType: 'application/pdf', size: PDF.length },
+    })
+    expect(checkPlaceFile(PNG, 'regulations')).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkPlaceFile(sized(PDF, PLACE_REGULATIONS_MAX_BYTES + 1), 'regulations')).toEqual({
+      ok: false,
+      problem: 'too_large',
+    })
+  })
+
+  it('puts the next photo after the highest live position', () => {
+    expect(nextPhotoPosition([])).toBe(0)
+    expect(nextPhotoPosition([0, 1, 2])).toBe(3)
+    expect(nextPhotoPosition([4, 0])).toBe(5)
   })
 
   it('stores a file name without its path or control characters and with the format extension', () => {
