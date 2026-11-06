@@ -1,5 +1,6 @@
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
+import type { OpeningHours } from '@vereino/core'
 import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
@@ -250,8 +251,10 @@ export class SectionMaterial extends ScopedEntityBase {
 /**
  * A node of the place hierarchy (club spec glossary *Place*): a complex groups pitches, halls, locker rooms and
  * pools; sessions and bookings point to a leaf. `contacts` is the encrypted JSON text of `{ role, name, phone }[]`
- * (`encryption.ts`). The regulations text and the files (`PlaceFile`: one regulations PDF, photos) are the UX parity
- * spec's phase 3 (REQ-U03, #86); the public slug and schedule, online requests and opening hours arrive later.
+ * (`encryption.ts`). `opening_hours` holds the place's own opening hours (facilities spec DD-41, #121); a place
+ * without them takes its nearest ancestor's. The regulations text and the files (`PlaceFile`: one regulations PDF,
+ * photos) are the UX parity spec's phase 3 (REQ-U03, #86); the public slug and schedule and online requests arrive
+ * later.
  */
 @Entity({ tableName: 'club_core_places' })
 @Index({ name: 'club_core_places_org_parent_idx', properties: ['organizationId', 'parentPlaceId'] })
@@ -271,6 +274,7 @@ export class Place extends ScopedEntityBase {
     | 'rentedByClub'
     | 'capacityGroups'
     | 'contacts'
+    | 'openingHours'
     | 'isActive'
     | 'regulationsText'
 
@@ -321,6 +325,10 @@ export class Place extends ScopedEntityBase {
   /** Encrypted JSON text of the contacts. */
   @Property({ name: 'contacts', type: 'text', nullable: true })
   contacts?: string | null
+
+  /** `{ seasons: [{ from, to, windows: [{ weekday, from, to }] }] }` (DD-41); null = inherited from the parent. */
+  @Property({ name: 'opening_hours', type: 'json', nullable: true })
+  openingHours?: OpeningHours | null
 
   @Property({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean = true

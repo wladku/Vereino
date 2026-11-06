@@ -3,7 +3,8 @@
 // REQ-M08, J-M02 step 2): the page a share text from the group chat opens without a sign-in. It shows the club's name,
 // the activity name, the date, the time and the status of the session, and the way to sign in; never a name, the
 // roster or a count. A planned session also offers "Send me a link" (`/club/link`, REQ-017, M-13) for a guardian
-// without an account. States: loading, error with retry, 404 without any detail.
+// without an account. Like every public club page it ends with a footer holding the club name and its published phone
+// (E06-S07, #89). States: loading, error with retry, 404 without any detail.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -17,7 +18,8 @@ import { formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
-  club: { name: string; slug: string }
+  /** `contact` is the club phone, null while the club does not publish the `contact` block. */
+  club: { name: string; slug: string; contact: { phone: string } | null }
   session: {
     activityName: string
     occurrenceDate: string
@@ -48,7 +50,40 @@ function usePublicSession(clubSlug: string, occurrenceId: string) {
   })
 }
 
-function Frame({ clubName, children }: { clubName: string | null; children: React.ReactNode }) {
+/** The page footer of the public club pages (club_core `PublicFrame`): the club name and the published phone. */
+function Footer({ club }: { club: PublicSessionPage['club'] }) {
+  const t = useT()
+  return (
+    <footer className="bg-card border-t" data-testid="public-footer">
+      <div className="text-muted-foreground mx-auto flex max-w-3xl flex-col gap-1 px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-foreground font-medium" data-testid="public-footer-club">
+          {club.name}
+        </span>
+        {club.contact ? (
+          <span data-testid="public-footer-phone">
+            {t('activities.publicSession.footer.phone')}{' '}
+            <a
+              className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+              href={`tel:${club.contact.phone.replace(/[^\d+]/g, '')}`}
+            >
+              {club.contact.phone}
+            </a>
+          </span>
+        ) : null}
+      </div>
+    </footer>
+  )
+}
+
+function Frame({
+  clubName,
+  club = null,
+  children,
+}: {
+  clubName: string | null
+  club?: PublicSessionPage['club'] | null
+  children: React.ReactNode
+}) {
   const t = useT()
   return (
     <div className="bg-background text-foreground min-h-svh">
@@ -61,6 +96,7 @@ function Frame({ clubName, children }: { clubName: string | null; children: Reac
         </div>
       </header>
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
+      {club ? <Footer club={club} /> : null}
     </div>
   )
 }
@@ -108,7 +144,7 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
   const end = new Date(session.endAt)
   const cancelled = session.status === 'cancelled'
   return (
-    <Frame clubName={club.name}>
+    <Frame clubName={club.name} club={club}>
       <section className="flex flex-col gap-3" aria-labelledby="public-session-title" data-testid="public-session">
         <h1 id="public-session-title" className="text-2xl font-semibold" data-testid="public-session-activity">
           {session.activityName}

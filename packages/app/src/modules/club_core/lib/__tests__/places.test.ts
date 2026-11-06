@@ -3,6 +3,7 @@ import {
   PLACE_KINDS,
   bookablePlaceProblem,
   decimalOrNull,
+  effectiveOpeningHours,
   parsePlaceContacts,
   placeContactSchema,
   serializePlaceContacts,
@@ -123,5 +124,27 @@ describe('placeRelatives', () => {
       ['z', 'y'],
     ])
     expect(placeRelatives('x', tail)).toEqual({ ancestorIds: ['y', 'z'], descendantIds: [] })
+  })
+})
+
+describe('effective opening hours (DD-41)', () => {
+  const hours = { seasons: [{ from: '01-01', to: '12-31', windows: [{ weekday: 1, from: '08:00', to: '22:00' }] }] }
+  const parentOf = new Map<string, string | null>([
+    ['orlik', null],
+    ['boisko', 'orlik'],
+    ['loop-a', 'loop-b'],
+    ['loop-b', 'loop-a'],
+  ])
+
+  it('takes the place own hours, else the nearest ancestor, else none', () => {
+    expect(effectiveOpeningHours('boisko', parentOf, new Map([['boisko', hours]]))).toEqual(hours)
+    expect(effectiveOpeningHours('boisko', parentOf, new Map([['orlik', hours]]))).toEqual(hours)
+    expect(effectiveOpeningHours('boisko', parentOf, new Map([['boisko', { seasons: 'bad' }]]))).toBeNull()
+    expect(effectiveOpeningHours('boisko', parentOf, new Map())).toBeNull()
+    expect(effectiveOpeningHours('unknown', parentOf, new Map())).toBeNull()
+  })
+
+  it('stops on a damaged loop', () => {
+    expect(effectiveOpeningHours('loop-a', parentOf, new Map())).toBeNull()
   })
 })

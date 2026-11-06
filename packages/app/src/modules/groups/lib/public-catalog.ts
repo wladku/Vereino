@@ -69,3 +69,24 @@ export function publicCatalogBlock(
     }),
   }
 }
+
+/** The club page's `groups` block (E06-S07, #89): the number of public groups per public section, by its slug. */
+export type PublicGroupCountsBlock = { counts: Record<string, number> }
+
+/**
+ * The tile counts of the club page, or null when no public section has a public group (the block is then left out).
+ * `groupSectionIds` holds the section id of each public group; groups of a section not in `sections` are ignored, and
+ * a section without public groups gets no count.
+ */
+export function publicGroupCounts(
+  sections: readonly { id: string; slug: string }[],
+  groupSectionIds: readonly string[],
+): PublicGroupCountsBlock | null {
+  const slugs = new Map(sections.map((section) => [section.id, section.slug]))
+  const counts: Record<string, number> = {}
+  for (const sectionId of groupSectionIds) {
+    const slug = slugs.get(sectionId)
+    if (slug !== undefined) counts[slug] = (counts[slug] ?? 0) + 1
+  }
+  return Object.keys(counts).length > 0 ? { counts } : null
+}

@@ -35,11 +35,13 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [yarn mercato copies .env.example to .env; pass DATABASE_URL explicitly and remove .env and storage/ after a run](lessons/mercato-cli-writes-env-and-storage.md) — area:ai-workflow; module:platform; topic:mercato-cli,db-generate,env,uploads,worktrees
 - [Book online payments from the provider state, not from payment_gateways events alone](lessons/payment-gateway-events-miss-late-captures.md) — area:integration,framework-context; module:payments,platform; topic:payment-gateways,stripe,events,idempotency,refunds
 - [Run Prettier --write on the changed files only, never on a whole module folder](lessons/prettier-write-changed-files-only.md) — area:ai-workflow; module:platform; topic:prettier,formatting,subagents,diff-noise
+- [Set a section's public fields through its public endpoint, and give a test activity a place](lessons/public-page-test-setup-section-public-fields-and-activity-place.md) — area:testing; module:club_core,activities; topic:integration-tests,public-pages,fixtures,validation
 - [A stopped integration run can leave its next build running; wait for a quiet build directory before the next run](lessons/stopped-integration-run-leaves-its-build-running.md) — area:testing,debugging; module:platform; topic:integration-tests,next-build,background-tasks,host-suspend,worktrees
 - [Subagents never stage changes; commit only explicit paths](lessons/subagents-never-stage-changes.md) — area:ai-workflow; module:platform; topic:subagents,git-staging,commits
 
 ### architecture
 
+- [A name exported by two @vereino/core files resolves to one of them without an error; grep the index before naming an export](lessons/core-export-star-name-collision.md) — area:architecture,testing; module:platform,facilities; topic:workspaces,exports,export-star,naming,jest
 - [date-fns-tz offsets are wrong around DST: read them through formatInTimeZone and resolve the gap and the ambiguity yourself](lessons/date-fns-tz-dst-offsets-and-wall-time-resolution.md) — area:architecture,testing; module:activities,platform; topic:date-fns-tz,time-zones,dst,recurrence,rfc-5545
 - [Treat @open-mercato/enterprise as commercial and keep its modules disabled](lessons/enterprise-package-is-commercial.md) — area:architecture,spec-pr; module:platform; topic:licensing,modules-ts,enterprise-modules,dependencies
 - [A disabled module's features are never granted; an auth/login interceptor must never throw; pass tenantId to superadmin ACL writes](lessons/future-module-gates-and-auth-login-interceptors.md) — area:architecture,testing; module:people,platform; topic:acl,feature-policy,api-interceptor,auth-login,payments-gate,superadmin
@@ -58,6 +60,7 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [The first .tsx of a Vereino module needs jsx-a11y rules without the plugin object; a stale lock token answers 409 before validation](lessons/eslint-jsx-a11y-and-stale-lock-before-validation.md) — area:backend-ui,debugging; module:club_core,platform; topic:eslint,jsx-a11y,flat-config,optimistic-lock,crud-factory,integration-tests
 - [Scan Vereino pages with the platform axe baseline; CrudForm 0.9.0 labels are not associated](lessons/platform-crudform-labels-axe-baseline.md) — area:backend-ui,testing; module:platform,club_core; topic:accessibility,axe,crud-form,app-shell,wcag
 - [A sticky bar above the member bottom navigation uses a spacing-scale offset (bottom-24); ds:check refuses arbitrary values and inline styles](lessons/sticky-bar-above-member-bottom-nav-uses-spacing-scale.md) — area:backend-ui; module:activities,ui; topic:ds-check,tailwind,sticky,member-shell,safe-area,mobile
+- [The platform Tag brand variant fails axe color-contrast; use a status variant for text a scan covers](lessons/tag-brand-variant-low-contrast.md) — area:backend-ui,testing; module:platform,facilities; topic:tag,axe,color-contrast,design-tokens,accessibility
 
 ### debugging
 

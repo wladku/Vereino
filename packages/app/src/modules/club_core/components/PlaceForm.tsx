@@ -1,7 +1,8 @@
 'use client'
 // `/backend/club/places/create` and `/backend/club/places/[id]/edit` (club spec UI table): one place of the
-// hierarchy. The parent and the owner are chosen by name; the contacts are edited as rows. The "Regulations and
-// photos" group holds the regulations text and, on a saved place, the files panel (UX parity spec, REQ-U03; #86).
+// hierarchy. The parent and the owner are chosen by name; the contacts and the opening hours (facilities spec DD-41)
+// are edited as rows. The "Regulations and photos" group holds the regulations text and, on a saved place, the files
+// panel (UX parity spec, REQ-U03; #86).
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -18,6 +19,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { PLACE_KINDS, type PlaceContact } from '../lib/places'
+import { OpeningHoursEditor, openingHoursDrafts, openingHoursPayload } from './OpeningHoursEditor'
 import { enumOptions, errorMessage, numberOrNull, textOrNull, type Translate } from './client-helpers'
 import { PlaceFilesPanel } from './PlaceFilesPanel'
 import type { InstitutionRow, PlaceRow } from './places-shared'
@@ -179,6 +181,13 @@ function usePlaceFields(t: Translate, placeId?: string) {
       { id: 'isActive', label: t('club_core.places.fields.isActive'), type: 'checkbox' },
       { id: 'contacts', label: t('club_core.places.fields.contacts'), type: 'custom', component: ContactsEditor },
       {
+        id: 'openingHours',
+        label: t('club_core.places.fields.openingHours'),
+        type: 'custom',
+        description: t('club_core.places.fields.openingHours.help'),
+        component: OpeningHoursEditor,
+      },
+      {
         id: 'regulationsText',
         label: t('club_core.places.fields.regulationsText'),
         type: 'textarea',
@@ -216,6 +225,12 @@ function usePlaceFields(t: Translate, placeId?: string) {
       },
       { id: 'contacts', title: t('club_core.places.groups.contacts'), column: 1, fields: ['contacts'] },
       {
+        id: 'openingHours',
+        title: t('club_core.places.groups.openingHours'),
+        column: 1,
+        fields: ['openingHours'],
+      },
+      {
         id: 'regulations',
         title: t('club_core.places.groups.regulations'),
         column: 1,
@@ -249,6 +264,7 @@ function toFormValues(place: PlaceRow | null): PlaceFormValues {
       name: contact.name,
       phone: contact.phone ?? '',
     })),
+    openingHours: openingHoursDrafts(place?.openingHours),
     updatedAt: place?.updatedAt ?? null,
   }
 }
@@ -272,6 +288,7 @@ function toPayload(values: PlaceFormValues) {
     rentedByClub: values.rentedByClub === true,
     capacityGroups: numberOrNull(values.capacityGroups) ?? 1,
     contacts,
+    openingHours: openingHoursPayload(values.openingHours),
     isActive: values.isActive !== false,
     regulationsText: textOrNull(values.regulationsText),
   }
