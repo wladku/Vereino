@@ -1,4 +1,4 @@
-// Shared pieces of the `facilities` routes (#121): the list entity ids, list-item serializers and OpenAPI schemas.
+// Shared pieces of the `facilities` routes (#121, #122): the list entity ids, list-item serializers and OpenAPI schemas.
 // Lists filter with `scopeWhere` (foundation spec P-03): the facility rules carry no section, so only the club-wide
 // grant lists them.
 import { z } from 'zod'
@@ -9,6 +9,8 @@ import { wallTimeOf } from '../lib/zones'
 export const ZONE_RULE_ENTITY_ID = 'facilities:zone_rule'
 export const CLOSURE_ENTITY_ID = 'facilities:closure'
 export const RENTAL_RATE_ENTITY_ID = 'facilities:rental_rate'
+export const RENTAL_ENTITY_ID = 'facilities:rental'
+export const ENTRY_BAN_ENTITY_ID = 'facilities:entry_ban'
 
 export const FACILITY_COLUMNS: ScopeColumnMap = {}
 
@@ -86,6 +88,53 @@ export function rentalRateListItem(row: Row) {
   }
 }
 
+export function rentalListItem(row: Row) {
+  return {
+    id: String(row.id),
+    placeId: String(row.place_id),
+    renterType: text(row.renter_type),
+    renterId: text(row.renter_id),
+    renterDisplayName: text(row.renter_display_name),
+    renterCategory: text(row.renter_category),
+    contactName: text(row.contact_name),
+    contactPhone: text(row.contact_phone),
+    contactEmail: text(row.contact_email),
+    purpose: text(row.purpose),
+    requestedVia: text(row.requested_via),
+    startsAt: iso(row.starts_at),
+    endsAt: iso(row.ends_at),
+    units: int(row.units),
+    amount: int(row.amount),
+    chargeId: text(row.charge_id),
+    status: text(row.status),
+    cancellationDeadline: iso(row.cancellation_deadline),
+    paymentDeadline: iso(row.payment_deadline),
+    regulationsAcceptedAt: iso(row.regulations_accepted_at),
+    regulationsAcceptedVia: text(row.regulations_accepted_via),
+    needsReschedule: bool(row.needs_reschedule),
+    notes: text(row.notes),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  }
+}
+
+export function entryBanListItem(row: Row) {
+  return {
+    id: String(row.id),
+    placeId: String(row.place_id),
+    subjectType: text(row.subject_type),
+    subjectId: text(row.subject_id),
+    startsOn: day(row.starts_on),
+    endsOn: day(row.ends_on),
+    reason: text(row.reason),
+    revokedAt: iso(row.revoked_at),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  }
+}
+
+export const errorSchema = z.object({ error: z.string(), code: z.string().optional() }).loose()
+
 export const updateResponseSchema = z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string() })
 
 export const rescheduleCountsSchema = z
@@ -130,4 +179,61 @@ export const rentalRateListItemSchema = z.object({
   validTo: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+})
+
+export const rentalListItemSchema = z.object({
+  id: z.uuid(),
+  placeId: z.uuid(),
+  renterType: z.string().nullable(),
+  renterId: z.string().nullable(),
+  renterDisplayName: z.string().nullable(),
+  renterCategory: z.string().nullable(),
+  contactName: z.string().nullable(),
+  contactPhone: z.string().nullable(),
+  contactEmail: z.string().nullable(),
+  purpose: z.string().nullable(),
+  requestedVia: z.string().nullable(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  units: z.number().int(),
+  amount: z.number().int().describe('Minor units'),
+  chargeId: z.string().nullable(),
+  status: z.string().nullable(),
+  cancellationDeadline: z.string().nullable(),
+  paymentDeadline: z.string().nullable(),
+  regulationsAcceptedAt: z.string().nullable(),
+  regulationsAcceptedVia: z.string().nullable(),
+  needsReschedule: z.boolean(),
+  notes: z.string().nullable(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+})
+
+export const entryBanListItemSchema = z.object({
+  id: z.uuid(),
+  placeId: z.uuid(),
+  subjectType: z.string().nullable(),
+  subjectId: z.string().nullable(),
+  startsOn: z.string().nullable(),
+  endsOn: z.string().nullable(),
+  reason: z.string().nullable(),
+  revokedAt: z.string().nullable(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+})
+
+/** A conflicting entry of a rental check (ids and times only). */
+export const conflictViewSchema = z.object({
+  kind: z.enum(['session', 'rental', 'closure']),
+  id: z.uuid(),
+  start: z.string(),
+  end: z.string(),
+})
+
+/** The answer of a rental status action. */
+export const rentalActionResponseSchema = z.object({
+  ok: z.literal(true),
+  id: z.uuid(),
+  status: z.string(),
+  updatedAt: z.string(),
 })

@@ -3,14 +3,15 @@
 // administrator on behalf of the owner. An end not after the start answers 422 `closure_period_invalid`, an unknown
 // place 422 `facilities_reference_invalid`. After the commit, in a transaction of its own (DD-43), the planned sessions
 // on the place and its sub-places that overlap the closure get `needs_reschedule` through `activities.placeSessions`;
-// the result counts them for the toast "Marked to be moved: n sessions, n rentals" (rentals are flagged from E08-S02
-// on, so their count is 0 here). Moving a closure flags again; deleting or undoing one never clears a flag — the
+// so do the rentals that hold their slot there (#122); the result counts both for the toast "Marked to be moved: n
+// sessions, n rentals". Moving a closure flags again; deleting or undoing one never clears a flag — the
 // coordinator decides what to do with a session already marked.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { authorizeScoped } from '@/modules/foundation'
+import { authorizeScoped, lockOccupancy, trustedScopeOf } from '@/modules/foundation'
 import { Closure } from '../data/entities'
+import { flagRentalsForReschedule } from '../data/queries'
 import { closureCreateSchema, closureDeleteSchema, closureUpdateSchema } from '../data/validators'
 import { closurePeriodProblem, closureWindowChanged, type RescheduleCounts } from '../lib/closures'
 import { flagSessionsForReschedule, placeFamily, type FacilitiesScope } from '../services/directory'
@@ -69,18 +70,22 @@ async function assertPeriod(startsAt: Date, endsAt: Date): Promise<void> {
 }
 
 /**
- * Flags the planned sessions under the closure (the place and its sub-places) after the commit and counts them. A
- * session on an ancestor cannot exist (sessions point at a leaf), so the ancestors are not read.
+ * Flags the planned sessions and the rentals holding their slot under the closure after the commit, each in a
+ * transaction of its own (DD-43), and counts them: sessions on the place and its sub-places (a session points at a
+ * leaf), rentals on its sub-places and its ancestors too (a rental may hold the whole parent place).
  */
 async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promise<RescheduleCounts> {
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
   const family = await placeFamily(ctx.container, scope, row.placeId)
   const placeIds = [row.placeId, ...(family?.descendantIds ?? [])]
-  const flagged = await flagSessionsForReschedule(ctx.container, scope, placeIds, {
-    start: row.startsAt,
-    end: row.endsAt,
-  })
-  return { sessions: flagged.length, rentals: 0 }
+  const window = { start: row.startsAt, end: row.endsAt }
+  const flagged = await flagSessionsForReschedule(ctx.container, scope, placeIds, window)
+  // A rental may hold a whole parent place (the hall a closed court belongs to), so rentals use the full family.
+  const rentalPlaceIds = [...placeIds, ...(family?.ancestorIds ?? [])]
+  const em = ctx.container.resolve<EntityManager>('em').fork()
+  const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, rentalPlaceIds, window))
+  for (const id of rentals) await emitAfterCommit('facilities.rental.updated', scope, { id, placeId: row.placeId })
+  return { sessions: flagged.length, rentals: rentals.length }
 }
 
 async function emitClosure(row: Closure, action: 'created' | 'updated' | 'deleted'): Promise<void> {
@@ -89,6 +94,12 @@ async function emitClosure(row: Closure, action: 'created' | 'updated' | 'delete
     { tenantId: row.tenantId, organizationId: row.organizationId },
     { id: row.id, placeId: row.placeId },
   )
+}
+
+/** A closure adds occupancy: it takes the organization's occupancy lock before any row lock (DD-43). */
+async function lockClosureOccupancy(ctx: CommandRuntimeContext, em: EntityManager): Promise<void> {
+  const scope = trustedScopeOf(ctx)
+  if (scope) await lockOccupancy(em, scope.organizationId)
 }
 
 const NONE_FLAGGED: RescheduleCounts = { sessions: 0, rentals: 0 }
@@ -100,6 +111,7 @@ const createClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
   async execute(rawInput, ctx) {
     const id = randomUUID()
     const result = await inWriteTransaction(ctx, 'facilities.closures.create', async (em) => {
+      await lockClosureOccupancy(ctx, em)
       const authorized = await authorizeScoped(
         {
           input: closureCreateSchema,
@@ -161,6 +173,7 @@ const updateClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
   atomicReplay: true,
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'facilities.closures.update', async (em) => {
+      await lockClosureOccupancy(ctx, em)
       const authorized = await authorizeScoped(
         existingSpec(closureUpdateSchema, CLOSURE_RESOURCE_KIND, rowLoader(ctx, Closure)),
         rawInput,

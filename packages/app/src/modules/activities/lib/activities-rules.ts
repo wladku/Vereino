@@ -143,7 +143,17 @@ export function localDateTime(instant: Date, timeZone: string): { date: Calendar
 // --- Conflicts (club spec glossary *Session conflict*; foundation II DD-G05) ---
 
 /** A session about to be written: its key (the slot date or the session id) and its instants. */
-export type CandidateSession = { readonly key: string; readonly startAt: Date; readonly endAt: Date }
+export type CandidateSession = {
+  readonly key: string
+  readonly startAt: Date
+  readonly endAt: Date
+  /**
+   * A stored session a series edit keeps on its place and times (#122): blocks of the occupancy provider (a closure,
+   * a rental) entered over it already flagged it `needs_reschedule`, so they do not refuse the edit; sessions and the
+   * coach still do.
+   */
+  readonly keepsSlot?: boolean
+}
 
 /** A stored `planned` session that may block a candidate. */
 export type BlockingSession = {
@@ -195,18 +205,28 @@ export function sessionConflicts(input: ConflictInput): SessionConflict[] {
     start,
     end,
   })
-  const placeExisting = [
-    ...input.existing
-      .filter((session) => family.has(session.placeId))
-      .map((session) => toInterval(session.id, PLACE_RESOURCE, session.startAt, session.endAt)),
-    ...(input.external ?? [])
-      .filter((block) => family.has(block.placeId))
-      .map((block) => toInterval(block.id, PLACE_RESOURCE, block.start, block.end)),
-  ]
-  const placeCandidates = input.candidates.map((c) => toInterval(c.key, PLACE_RESOURCE, c.startAt, c.endAt))
-  const conflicts: SessionConflict[] = findOverlaps(placeCandidates, placeExisting, () => input.capacity).map(
-    (conflict) => ({ key: conflict.candidateId, kind: 'place', conflictingIds: conflict.conflictingIds }),
-  )
+  const sessionBlocks = input.existing
+    .filter((session) => family.has(session.placeId))
+    .map((session) => toInterval(session.id, PLACE_RESOURCE, session.startAt, session.endAt))
+  const externalBlocks = (input.external ?? [])
+    .filter((block) => family.has(block.placeId))
+    .map((block) => toInterval(block.id, PLACE_RESOURCE, block.start, block.end))
+  const placeOverlaps = (candidates: readonly CandidateSession[], blocks: Interval[]) =>
+    findOverlaps(
+      candidates.map((c) => toInterval(c.key, PLACE_RESOURCE, c.startAt, c.endAt)),
+      blocks,
+      () => input.capacity,
+    )
+  const conflicts: SessionConflict[] = [
+    ...placeOverlaps(
+      input.candidates.filter((c) => c.keepsSlot !== true),
+      [...sessionBlocks, ...externalBlocks],
+    ),
+    ...placeOverlaps(
+      input.candidates.filter((c) => c.keepsSlot === true),
+      sessionBlocks,
+    ),
+  ].map((conflict) => ({ key: conflict.candidateId, kind: 'place', conflictingIds: conflict.conflictingIds }))
   if (input.coachPersonId !== null) {
     const coachExisting = input.existing
       .filter((session) => session.coachPersonId === input.coachPersonId)
