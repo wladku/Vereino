@@ -198,8 +198,12 @@ test('E02-S03 ward accounts: below the threshold 422; at the threshold an own ac
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()
     await expect(page.getByTestId('club-wards')).toHaveCount(0)
     await expect(page.getByText(/Payments|Płatności/)).toHaveCount(0)
-    const paymentsScreen = await page.goto('/club/payments')
-    expect(paymentsScreen?.status()).toBe(404)
+    // `/club/payments` (#110): with the feature granted by hand she reaches the page, which refuses her (R10) and
+    // shows no charge and no payment form.
+    await page.goto('/club/payments')
+    await expect(page.getByTestId('club-payments-unavailable')).toBeVisible()
+    await expect(page.getByTestId('club-charge')).toHaveCount(0)
+    await expect(page.getByTestId('club-payments-pay')).toHaveCount(0)
   } finally {
     await club.cleanup()
   }

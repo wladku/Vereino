@@ -222,6 +222,10 @@ const refundPaymentCommand: CommandHandler<Record<string, unknown>, RefundComman
         await paymentsErrors.throw('payment_not_refundable')
       }
       const self = authorized.scope.find((grant) => grant.kind === 'self')?.ids?.[0] ?? null
+      // A new lock token before the provider call: a second refund sent with the same token waits for this row lock
+      // and then answers 409, so two concurrent refunds can never both pass the check above (#212 review).
+      charge.updatedAt = new Date()
+      await em.flush()
       return {
         kind: 'refund',
         original,
@@ -269,6 +273,8 @@ const refundPaymentCommand: CommandHandler<Record<string, unknown>, RefundComman
         (await em.findOne(Payment, { id: prepared.entryId, deletedAt: null })) ??
         (await em.findOne(Payment, { gatewayRefundId: result.refundId, deletedAt: null }))
       if (already) return { entry: already, charge }
+      // Read what was paid before the entry is persisted: the find would auto-flush it into the sum (#212 review).
+      const paidBefore = original.isOverpayment ? 0 : paidTotal(await ledgerOf(em, charge))
       const now = new Date()
       const entry = em.create(Payment, {
         id: prepared.entryId,
@@ -289,8 +295,7 @@ const refundPaymentCommand: CommandHandler<Record<string, unknown>, RefundComman
       })
       em.persist(entry)
       if (!original.isOverpayment) {
-        const paid = paidTotal(await ledgerOf(em, charge)) - prepared.amount
-        charge.status = settledStatus(charge.status, amountDueOf(charge), paid)
+        charge.status = settledStatus(charge.status, amountDueOf(charge), paidBefore - prepared.amount)
         charge.updatedAt = now
       }
       await em.flush()

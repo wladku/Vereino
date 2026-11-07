@@ -127,16 +127,18 @@ test('TEST-057 late capture, cash in between, amount mismatch and online refunds
     // (e) Refunds of C's online payment: partial, retried with the same operation id, too much, then the rest.
     const operation = randomUUID()
     const partial = await refundPayment(request, admin, online.id, cAfter.updatedAt, {
-      amount: 5000,
+      amount: 7500,
       reason: 'Fee waived in part',
       operationId: operation,
     })
     expect(partial.status, JSON.stringify(partial.body)).toBe(201)
-    expect(partial.body).toMatchObject({ refunded: 5000, chargeStatus: 'partially_paid' })
+    expect(partial.body).toMatchObject({ refunded: 7500, chargeStatus: 'partially_paid' })
+    // Half refunded: half still paid (a status recomputed from a ledger that already holds the refund would say open).
+    expect(await getCharge(request, admin, c)).toMatchObject({ status: 'partially_paid', paid: 7500, remaining: 7500 })
     expect(partial.body?.gatewayRefundId).toBeTruthy()
     const afterPartial = await getCharge(request, admin, c)
     const retried = await refundPayment(request, admin, online.id, afterPartial.updatedAt, {
-      amount: 5000,
+      amount: 7500,
       reason: 'Fee waived in part',
       operationId: operation,
     })
@@ -156,7 +158,7 @@ test('TEST-057 late capture, cash in between, amount mismatch and online refunds
       operationId: randomUUID(),
     })
     expect(rest.status, JSON.stringify(rest.body)).toBe(201)
-    expect(rest.body).toMatchObject({ refunded: 10000, chargeStatus: 'open' })
+    expect(rest.body).toMatchObject({ refunded: 7500, chargeStatus: 'open' })
     const refunded = await getCharge(request, admin, c)
     expect(refunded).toMatchObject({ status: 'open', paid: 0, remaining: 15000 })
     expect(refunded.payments.filter((payment) => payment.reversesPaymentId === online.id)).toHaveLength(2)

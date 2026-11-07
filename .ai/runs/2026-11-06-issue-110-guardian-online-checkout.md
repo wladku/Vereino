@@ -63,6 +63,21 @@
     - changelog entry `.ai/specs/changelog/2026-10-27-vereino-club-payments/2026-11-06-issue-110-online-checkout.md`.
 13. Lesson `db-generate-ignores-expression-index-changes`.
 
+14. Review of PR #212 (a fresh subagent, read-only, briefed with the code and the spec only). Fixed:
+    - **(1)** the refund's status recompute counted the new entry twice, because the ledger read auto-flushed the persisted entry. The ledger is now read before the entry is created. TEST-057 now refunds 7 500 of 15 000 gr, where the old code would have stored `open` instead of `partially_paid`.
+    - **(4)** concurrent refunds of one payment: the first transaction now bumps the charge's lock token, so a second refund with the same token answers 409.
+    - **(5)** the `paymentMethod` list filter now ignores overpayment rows.
+    - **(6)** M-08 keeps only still-payable charges in its selection.
+
+    Recorded as known gaps under step 4 of the spec:
+    - **(2)** a late capture on a transaction the gateway already marked `failed` or `cancelled` cannot be refunded through the gateway;
+    - **(3)** late captures wait for M-09 or the unscheduled sweep.
+
+    Left as is: the checkout id passed as the renderer's `transactionId` (unused by the Stripe renderer), and the 24-hour "in progress" banner of an abandoned checkout.
+15. First CI run on #212: `gate`, `browser-smoke` and `perf` passed. `integration` had 152 passed and 3 failed:
+    - E02-S03 and J-001 expected `/club/payments` to answer 404 for a minor, written before the page existed. They now assert no charges and no payment form, plus the R10 refusal when the feature was granted by hand.
+    - E06-S12 (activities, a session moved to "now", run early on a Saturday) touches no payments code and passes on `main`; it is rerun with the fixes.
+
 ## Decisions
 
 - **The migration (Ask First):** taken as approved under the owner's instruction and recorded on #110. It is additive (S14.6), with `lock_timeout` and a full `down()`.

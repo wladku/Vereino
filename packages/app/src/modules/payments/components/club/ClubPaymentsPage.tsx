@@ -216,7 +216,12 @@ function Payments() {
       return call.result
     },
   })
-  const selection = React.useMemo(() => [...selected].sort(), [selected])
+  // Only what is still payable: a charge paid or changed meanwhile drops out of the selection when the list reloads.
+  const payableIds = React.useMemo(
+    () => new Set((charges.data?.items ?? []).filter((charge) => charge.payable).map((charge) => charge.id)),
+    [charges.data],
+  )
+  const selection = React.useMemo(() => selected.filter((id) => payableIds.has(id)).sort(), [selected, payableIds])
   const quote = useQuery({
     queryKey: ['payments-quote', selection],
     enabled: selection.length > 0,
@@ -304,7 +309,7 @@ function Payments() {
                 <ChargeRow
                   key={charge.id}
                   charge={charge}
-                  selected={selected.includes(charge.id)}
+                  selected={selection.includes(charge.id)}
                   onToggle={toggle}
                   disabled={starting}
                 />
