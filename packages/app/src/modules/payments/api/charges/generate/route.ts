@@ -52,7 +52,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: "Generate a period's charges",
       description:
-        'Creates one charge per fee schedule valid in the period, participant and period label (`YYYY-MM`, or `one_off` for one-off fees) with the payer (the primary-payer guardian; an adult without one pays for themselves; else the charge is flagged without payer), the most favorable discount and the due date. Idempotent: existing charges are skipped. The period is `YYYY-MM`, from 12 months before to 12 months after the current month. Errors: 400 invalid input, 403 `scope_denied`, 409 `generation_in_progress`, 422 `period_out_of_range`.',
+        'Creates one charge per fee schedule valid in the period, participant and period label (`YYYY-MM`, or `one_off` for one-off fees) with the payer (the primary-payer guardian; an adult without one pays for themselves; else the charge is flagged without payer), the most favorable discount and the due date. Idempotent: existing charges are skipped. The period is `YYYY-MM`, from 12 months before to 12 months after the current month. Errors: 400 invalid input, 403 `scope_denied`, 409 `generation_in_progress`, 422 `period_out_of_range`, 422 `charge_amount_over_limit` (a per-session fee times the sessions of the month exceeds PLN 100 000).',
       requestBody: { contentType: 'application/json', schema: chargeGenerateSchema },
       responses: [{ status: 200, description: 'The summary of the generation', schema: responseSchema }],
       errors: [
@@ -60,6 +60,7 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 409, description: 'generation_in_progress', schema: errorSchema },
         { status: 422, description: 'period_out_of_range', schema: errorSchema },
+        { status: 422, description: 'charge_amount_over_limit', schema: errorSchema },
       ],
     },
   },

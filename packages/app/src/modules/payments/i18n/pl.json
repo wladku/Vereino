@@ -13,6 +13,7 @@
   "payments.errors.discount_value_invalid": "Podaj procent od 1 do 100 albo kwotę większą od zera. Zniżka dla rodzeństwa jest zawsze procentowa.",
   "payments.errors.discount_conditions_invalid": "Wybierz co najmniej jeden rodzaj opłat, a dla zniżki indywidualnej co najmniej jedną osobę.",
   "payments.errors.period_out_of_range": "Wybierz miesiąc od 12 miesięcy wstecz do 12 miesięcy naprzód.",
+  "payments.errors.charge_amount_over_limit": "Należność za {fee} (kwota za zajęcia razy liczba zajęć w miesiącu) przekroczyłaby 100 000 zł. Obniż kwotę za zajęcia.",
   "payments.errors.generation_in_progress": "Trwa generowanie. Poczekaj, aż się zakończy, i spróbuj ponownie.",
   "payments.errors.generation_already_undone": "To generowanie zostało już cofnięte.",
   "payments.nav.group": "Płatności",

@@ -6,6 +6,7 @@ import { isAdultOn, type CalendarDate } from '@vereino/core'
 import {
   discountOn,
   dueDateIn,
+  MAX_AMOUNT,
   periodLabelOf,
   type DiscountConditions,
   type DiscountKind,
@@ -69,6 +70,11 @@ export type ChargePlan = {
   skipped: number
   /** Created charges without a payer (a minor without a primary payer). */
   payerMissing: number
+  /**
+   * The names of the per-session fees whose charge (`amount × sessionCount`) would exceed `MAX_AMOUNT`; no charge of
+   * them is planned and the generation is refused (issue #185: the product would overflow the `int` amount column).
+   */
+  overLimitFees: string[]
 }
 
 /** The payer of a debtor: the primary-payer guardian; an adult without one pays for themselves; else nobody. */
@@ -162,6 +168,7 @@ export function planCharges(input: PlanInput): ChargePlan {
   const feesById = new Map(input.fees.map((fee) => [fee.id, fee]))
   const fresh: Array<Candidate & { fee: PlanFee; amount: number }> = []
   const seen = new Set<string>()
+  const overLimit = new Set<string>()
   let skipped = 0
   for (const fee of input.fees) {
     const amount = fee.period === 'per_occurrence' ? fee.amount * (fee.sessionCount ?? 0) : fee.amount
@@ -175,6 +182,10 @@ export function planCharges(input: PlanInput): ChargePlan {
       }
       // A per-session fee without sessions in the period owes nothing, so no charge is created or counted.
       if (amount <= 0) continue
+      if (amount > MAX_AMOUNT) {
+        overLimit.add(fee.name)
+        continue
+      }
       fresh.push({ feeId: fee.id, personId, payerPersonId: payerOf(personId, input), period: fee.period, fee, amount })
     }
   }
@@ -201,5 +212,10 @@ export function planCharges(input: PlanInput): ChargePlan {
       dueDate: dueDateIn(input.period, candidate.fee.dueDay),
     }
   })
-  return { charges, skipped, payerMissing: charges.filter((charge) => charge.payerMissing).length }
+  return {
+    charges,
+    skipped,
+    payerMissing: charges.filter((charge) => charge.payerMissing).length,
+    overLimitFees: [...overLimit],
+  }
 }
