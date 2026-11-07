@@ -78,6 +78,9 @@ export type OccurrenceRow = {
   placeName?: string | null
   coachPersonId: string | null
   coachName?: string | null
+  /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
+  substituteForPersonId?: string | null
+  substituteForName?: string | null
   status: string | null
   cancelReason: string | null
   isDetached: boolean
@@ -86,12 +89,25 @@ export type OccurrenceRow = {
   updatedAt: string | null
 }
 
+/** One entry of a session's substitution history (E06-S13 #95), oldest first. */
+export type SubstitutionHistoryEntry = {
+  id: string
+  kind: 'absence_reported' | 'substitute_assigned' | 'coach_restored'
+  previousCoachName: string | null
+  newCoachName: string | null
+  reason: string | null
+  decidedByName: string | null
+  actingRole: string
+  createdAt: string
+}
+
 /** `GET /api/activities/occurrences/{id}`. */
 export type OccurrenceDetail = OccurrenceRow & {
   sectionName: string | null
   opponentName: string | null
   invitedTeamNames: string[]
   activityRecurring: boolean
+  substitutions: SubstitutionHistoryEntry[]
   actingRole: string
 }
 
