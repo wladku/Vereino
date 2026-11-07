@@ -21,6 +21,12 @@ export const errorCodes = [
   { code: 'charge_not_cancellable', status: 409, messageKey: 'payments.errors.charge_not_cancellable' },
   { code: 'payment_not_reversible', status: 409, messageKey: 'payments.errors.payment_not_reversible' },
   { code: 'payment_already_reversed', status: 409, messageKey: 'payments.errors.payment_already_reversed' },
+  { code: 'checkout_charge_forbidden', status: 403, messageKey: 'payments.errors.checkout_charge_forbidden' },
+  { code: 'payer_missing', status: 422, messageKey: 'payments.errors.payer_missing' },
+  { code: 'charge_not_open', status: 409, messageKey: 'payments.errors.charge_not_open' },
+  { code: 'gateway_unavailable', status: 502, messageKey: 'payments.errors.gateway_unavailable' },
+  { code: 'payment_not_refundable', status: 409, messageKey: 'payments.errors.payment_not_refundable' },
+  { code: 'refund_exceeds_remaining', status: 422, messageKey: 'payments.errors.refund_exceeds_remaining' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

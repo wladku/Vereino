@@ -51,6 +51,13 @@ enabledModules.push({ id: 'activities', from: '@app' })
 // `communication` requires `people`, `groups` and `club_core` and reads `activities` optionally (foundation III phase B,
 // #35; enabling approved by the product owner on 2026-11-01 for epic #23).
 enabledModules.push({ id: 'communication', from: '@app' })
+// Vereino: online payment of charges through the club's Stripe account (payments spec DD-42, phase 4 step 4, #110;
+// enabling both modules with their migrations approved by the product owner on 2026-11-04, D-030, asked on #107).
+// `payment_gateways` needs `integrations` (enabled above) for the provider credentials.
+enabledModules.push(
+  { id: 'payment_gateways', from: '@open-mercato/core' },
+  { id: 'gateway_stripe', from: '@open-mercato/gateway-stripe' },
+)
 // `payments` requires `people`, `groups`, `activities` and `club_core` (payments spec phase 4 step 2, #108; phase 4
 // approved by the product owner in D-030, 2026-11-04, without the treasurer role).
 enabledModules.push({ id: 'payments', from: '@app' })

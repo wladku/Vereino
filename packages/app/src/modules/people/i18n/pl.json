@@ -455,5 +455,7 @@
   "people.roles.role.coach": "Trener",
   "people.roles.role.coordinator": "Koordynator sekcji",
   "people.roles.title": "Role w klubie",
-  "people.search.person.badge": "Osoba"
+  "people.search.person.badge": "Osoba",
+  "people.club.tiles.payments.title": "Płatności",
+  "people.club.tiles.payments.description": "Należności do zapłaty i płatność online."
 }

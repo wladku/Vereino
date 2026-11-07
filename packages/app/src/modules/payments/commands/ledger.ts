@@ -131,12 +131,16 @@ function chargeSpec<TSchema extends z.ZodType<{ id: string }>>(
   }
 }
 
-/** The live payments of a charge, read inside the write transaction after the charge's row lock. */
-function ledgerOf(em: EntityManager, charge: Charge): Promise<Payment[]> {
+/**
+ * The live payments of a charge, read inside the write transaction after the charge's row lock. An online overpayment
+ * "to refund" (#110, Q-049) is money held for the payer, not a payment of the charge, so it is left out.
+ */
+export function ledgerOf(em: EntityManager, charge: Charge): Promise<Payment[]> {
   return em.find(Payment, {
     chargeId: charge.id,
     tenantId: charge.tenantId,
     organizationId: charge.organizationId,
+    isOverpayment: false,
     deletedAt: null,
   })
 }

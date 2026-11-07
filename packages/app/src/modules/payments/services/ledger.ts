@@ -29,7 +29,10 @@ export function chargePayments(container: AwilixContainer, scope: PaymentsScope,
   )
 }
 
-/** What was paid on each of `chargeIds` (reversing entries included); charges without payments are absent. */
+/**
+ * What was paid on each of `chargeIds` (reversing entries included, online overpayments "to refund" excluded — they
+ * are not payments of the charge, Q-049); charges without payments are absent.
+ */
 export async function paidTotals(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -40,7 +43,7 @@ export async function paidTotals(
   if (unique.length === 0) return totals
   const rows = await freshEm(container).find(
     Payment,
-    { ...scope, chargeId: { $in: unique }, deletedAt: null },
+    { ...scope, chargeId: { $in: unique }, isOverpayment: false, deletedAt: null },
     { fields: ['id', 'chargeId', 'amount'] },
   )
   for (const row of rows) totals.set(row.chargeId, (totals.get(row.chargeId) ?? 0) + row.amount)

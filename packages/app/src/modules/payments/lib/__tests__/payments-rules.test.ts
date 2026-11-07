@@ -54,6 +54,12 @@ describe('payments vocabularies', () => {
       charge_not_cancellable: 409,
       payment_not_reversible: 409,
       payment_already_reversed: 409,
+      checkout_charge_forbidden: 403,
+      payer_missing: 422,
+      charge_not_open: 409,
+      gateway_unavailable: 502,
+      payment_not_refundable: 409,
+      refund_exceeds_remaining: 422,
     })
   })
 })
