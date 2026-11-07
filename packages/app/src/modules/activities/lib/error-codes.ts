@@ -9,6 +9,8 @@ export const errorCodes = [
   { code: 'occurrence_place_conflict', status: 409, messageKey: 'activities.errors.occurrence_place_conflict' },
   { code: 'occurrence_coach_conflict', status: 409, messageKey: 'activities.errors.occurrence_coach_conflict' },
   { code: 'occurrence_not_planned', status: 409, messageKey: 'activities.errors.occurrence_not_planned' },
+  // The club setting `coach_may_cancel` is off and the caller cancels only as a coach (#199, club spec DD-37).
+  { code: 'coach_cancel_disabled', status: 403, messageKey: 'activities.errors.coach_cancel_disabled' },
   { code: 'activity_has_sessions', status: 409, messageKey: 'activities.errors.activity_has_sessions' },
   { code: 'activity_type_requires_team', status: 422, messageKey: 'activities.errors.activity_type_requires_team' },
   { code: 'event_type_not_allowed', status: 422, messageKey: 'activities.errors.event_type_not_allowed' },

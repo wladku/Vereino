@@ -9,6 +9,7 @@ import {
   type PlanInput,
   type PlanRule,
 } from '../charge-plan'
+import { MAX_AMOUNT } from '../payments-rules'
 
 const zaki: PlanFee = { id: 'fee-zaki', name: 'Żaki', amount: 15000, period: 'monthly', dueDay: 10 }
 const basen: PlanFee = { id: 'fee-basen', name: 'Basen', amount: 12000, period: 'monthly', dueDay: 5 }
@@ -280,7 +281,7 @@ describe('planCharges', () => {
         })),
       }),
     )
-    expect(again).toEqual({ charges: [], skipped: 4, payerMissing: 0 })
+    expect(again).toEqual({ charges: [], skipped: 4, payerMissing: 0, overLimitFees: [] })
   })
 
   it('charges a one-off fee once, discounted only when the rule covers one-off fees (TEST-048)', () => {
@@ -332,5 +333,38 @@ describe('planCharges', () => {
     )
     expect(plan.charges).toHaveLength(1)
     expect(plan.charges[0]).toMatchObject({ feeId: 'fee-ps', amount: 10000, dueDate: '2026-12-01' })
+  })
+
+  it('refuses a per-session charge above MAX_AMOUNT instead of overflowing the amount column (#185)', () => {
+    const atLimit: PlanFee = {
+      id: 'fee-limit',
+      name: 'Kort',
+      amount: MAX_AMOUNT / 4,
+      period: 'per_occurrence',
+      dueDay: 1,
+      sessionCount: 4,
+    }
+    const overLimit: PlanFee = {
+      id: 'fee-over',
+      name: 'Hala',
+      amount: MAX_AMOUNT,
+      period: 'per_occurrence',
+      dueDay: 1,
+      sessionCount: 215,
+    }
+    const plan = planCharges(
+      input({
+        fees: [atLimit, overLimit],
+        participants: new Map([
+          ['fee-limit', ['adam']],
+          ['fee-over', ['adam', 'ola']],
+        ]),
+        existing: [{ feeId: 'fee-over', personId: 'ola', payerPersonId: 'anna' }],
+      }),
+    )
+    expect(plan.overLimitFees).toEqual(['Hala'])
+    expect(plan.charges).toHaveLength(1)
+    expect(plan.charges[0]).toMatchObject({ feeId: 'fee-limit', amount: MAX_AMOUNT })
+    expect(plan.skipped).toBe(1)
   })
 })

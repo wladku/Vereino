@@ -61,6 +61,7 @@ export function storedSettingsOf(row: ClubSettings): Record<ClubSettingKey, unkn
     onlineFeeFixed: row.onlineFeeFixed,
     coachSettlementModel: row.coachSettlementModel,
     showCalledUpChildren: row.showCalledUpChildren,
+    coachMayCancel: row.coachMayCancel,
     orderSalesDocument: row.orderSalesDocument,
   }
 }

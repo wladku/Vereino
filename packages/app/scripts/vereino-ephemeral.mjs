@@ -2,10 +2,11 @@
 // The platform runner (`yarn test:integration:ephemeral`) only reports ready when the `customers` module
 // answers, which this app does not enable, so Vereino runs its own thin runner on the same pieces:
 // a Testcontainers PostgreSQL, `yarn initialize`, a production build and `yarn start`.
-// Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--no-build] [--port <n>]
+// Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--shard <i>/<n>] [--no-build] [--port <n>]
 //        node scripts/vereino-ephemeral.mjs start [--no-build] [--port <n>]   (runs until Ctrl+C)
-// Without --port, `test` takes a free port from 5001–5999, so several worktrees can run their tests at once;
-// `start` stays on 5001.
+// Without --port, `test` takes a free port from 5001–5999 (never Next's reserved 5060/5061), so several worktrees can
+// run their tests at once; `start` stays on 5001. `--shard i/n` passes Playwright's shard option through, so CI can
+// split the suite over several jobs, each with its own database and build.
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
@@ -19,6 +20,8 @@ export const DEFAULT_POSTGRES_IMAGE = 'pgvector/pgvector:pg17-trixie'
 export const DEFAULT_PORT = 5001
 /** Ports tried when no --port is given: DEFAULT_PORT and the next PORT_RANGE_SIZE - 1. */
 export const PORT_RANGE_SIZE = 999
+/** Ports of that range Next.js refuses to start on (`KNOWN_RESERVED_PORTS` in `next/dist/lib/helpers/get-reserved-port.js`: SIP). */
+export const RESERVED_PORTS = new Set([5060, 5061])
 // Accounts seeded by `yarn initialize` for tests; the passwords are pinned below (test-only).
 export const SEEDED_ADMIN = { email: 'admin@acme.com', password: 'secret' }
 export const POSTGRES_INIT_SQL = [
@@ -34,15 +37,22 @@ const PLAYWRIGHT_CONFIG = '.ai/qa/tests/playwright.config.ts'
 export function parseArgs(argv) {
   const [mode, ...rest] = argv
   if (mode !== 'test' && mode !== 'start') throw new Error('usage: vereino-ephemeral.mjs <test|start> [options]')
-  const options = { mode, filter: null, build: true, port: null }
+  const options = { mode, filter: null, shard: null, build: true, port: null }
   for (let index = 0; index < rest.length; index += 1) {
     const argument = rest[index]
     if (argument === '--no-build') options.build = false
     else if (argument === '--filter' && rest[index + 1]) options.filter = rest[(index += 1)]
+    else if (argument === '--shard' && isShard(rest[index + 1])) options.shard = rest[(index += 1)]
     else if (argument === '--port' && /^\d+$/.test(rest[index + 1] ?? '')) options.port = Number(rest[(index += 1)])
     else throw new Error(`unknown or incomplete option: ${argument}`)
   }
   return options
+}
+
+/** Whether `value` is a Playwright shard `i/n` with 1 <= i <= n. */
+export function isShard(value) {
+  const match = /^(\d+)\/(\d+)$/.exec(value ?? '')
+  return match !== null && Number(match[1]) >= 1 && Number(match[1]) <= Number(match[2])
 }
 
 /** Whether nothing listens on `port` of 127.0.0.1 (the app binds there). */
@@ -56,12 +66,14 @@ export function isPortFree(port, { createServer = net.createServer } = {}) {
 
 /**
  * A free port in DEFAULT_PORT … DEFAULT_PORT + PORT_RANGE_SIZE - 1. The search starts at a random port of the range
- * and wraps around, so runs started at the same moment in different worktrees rarely pick the same one.
+ * and wraps around, so runs started at the same moment in different worktrees rarely pick the same one. It never
+ * returns one of RESERVED_PORTS.
  */
 export async function findFreePort({ isFree = isPortFree, random = Math.random } = {}) {
   const offset = Math.floor(random() * PORT_RANGE_SIZE)
   for (let step = 0; step < PORT_RANGE_SIZE; step += 1) {
     const port = DEFAULT_PORT + ((offset + step) % PORT_RANGE_SIZE)
+    if (RESERVED_PORTS.has(port)) continue
     if (await isFree(port)) return port
   }
   throw new Error(
@@ -241,7 +253,14 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
     if (runYarnImpl(['playwright', 'install', 'chromium'], { env }) !== 0) {
       throw new Error('[internal] yarn playwright install chromium failed')
     }
-    const args = ['playwright', 'test', '--config', PLAYWRIGHT_CONFIG, ...(options.filter ? [options.filter] : [])]
+    const args = [
+      'playwright',
+      'test',
+      '--config',
+      PLAYWRIGHT_CONFIG,
+      ...(options.shard ? [`--shard=${options.shard}`] : []),
+      ...(options.filter ? [options.filter] : []),
+    ]
     return runYarnImpl(args, { env })
   } finally {
     if (app) stopImpl(app.child)

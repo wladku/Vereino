@@ -1,6 +1,6 @@
 # Required checks for main (engineering standards S14.1-S14.3): gate (build, lint, typecheck, unit tests with
-# 100 % coverage), integration (Playwright on an ephemeral app with Testcontainers PostgreSQL),
-# browser-smoke (the same ephemeral app driven by agent-browser), pr-title, DCO (app).
+# 100 % coverage), integration (aggregates the Playwright shards, each on an ephemeral app with Testcontainers
+# PostgreSQL), browser-smoke (the same ephemeral app driven by agent-browser), pr-title, DCO (app).
 # perf stays advisory until the first member page exists (S7.6). Third-party actions are pinned by
 # commit SHA with the release tag in a comment (S14.2); Renovate updates them from phase E2.
 name: CI
@@ -35,11 +35,17 @@ jobs:
         run: yarn install --immutable || (sleep 20 && yarn install --immutable)
       - run: yarn verify
 
-  integration:
-    name: integration
+  # The whole suite took 43-46 min in one job by 2026-11-06 (#193, #196), so it runs as Playwright shards. Each
+  # shard has its own Testcontainers database and production build; the `integration` job below aggregates them
+  # under the check name the main ruleset requires. Add a shard number when a shard nears its timeout.
+  integration-shard:
+    name: integration (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    # The whole suite took 43-45 min on main by 2026-11-06; sharding it is tracked in #193.
-    timeout-minutes: 60
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: corepack enable
@@ -55,15 +61,29 @@ jobs:
         working-directory: packages/app
         run: npx playwright install --with-deps chromium
       # Vereino runner: Testcontainers PostgreSQL 17 (pgvector), yarn initialize, production build, Playwright.
-      - run: yarn test:integration:vereino
+      - run: yarn test:integration:vereino --shard ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: packages/app/.ai/qa/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  integration:
+    name: integration
+    needs: integration-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS_RESULT: ${{ needs.integration-shard.result }}
+        run: |
+          echo "integration shards: $SHARDS_RESULT"
+          test "$SHARDS_RESULT" = success
 
   browser-smoke:
     name: browser-smoke

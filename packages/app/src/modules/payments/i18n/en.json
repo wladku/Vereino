@@ -13,6 +13,7 @@
   "payments.errors.discount_value_invalid": "Enter either a percentage from 1 to 100 or an amount above zero. A sibling discount is always a percentage.",
   "payments.errors.discount_conditions_invalid": "Choose at least one fee kind, and for a custom discount at least one person.",
   "payments.errors.period_out_of_range": "Choose a month from 12 months back to 12 months ahead.",
+  "payments.errors.charge_amount_over_limit": "The charge of {fee} (the per-session amount times the sessions in the month) would exceed PLN 100,000. Lower the per-session amount.",
   "payments.errors.generation_in_progress": "Generation in progress. Wait until it finishes and try again.",
   "payments.errors.generation_already_undone": "This generation has already been undone.",
   "payments.nav.group": "Payments",

@@ -425,6 +425,12 @@ export const calendarEntrySchema = z.object({
     .array(z.object({ personId: z.uuid(), firstName: z.string(), lastName: z.string() }))
     .optional()
     .describe('as=guardian under show_called_up_children = consented: other children whose guardian consented'),
+  mayCancel: z
+    .boolean()
+    .optional()
+    .describe(
+      'GET /calendar/{id}?as=coach: false when the club setting coach_may_cancel is off and the caller holds only a coach grant on the session',
+    ),
 })
 
 /** `GET`, `PUT /api/activities/occurrences/{id}/attendance` (#33): the coach's attendance list. */
@@ -436,6 +442,9 @@ export const attendanceListSchema = z.object({
     .enum(['open', 'not_started', 'not_planned'])
     .describe('`open` from the start until the session is closed; `not_planned` when cancelled or done'),
   actingRole: z.string().describe('The role the caller checks off in'),
+  mayCancel: z
+    .boolean()
+    .describe('False when the club setting coach_may_cancel is off and the caller holds only a coach grant (#199)'),
   timeZone: z.string(),
   rows: z.array(
     z.object({
