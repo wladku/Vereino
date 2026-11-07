@@ -66,11 +66,24 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
   - Committed, then `yarn verify --from format:check` on the same content passed all 9 remaining steps (format:check, ds:check, i18n:check-hardcoded, contracts:check, lessons:check, spec-changelogs:check, test, test:scripts, build in 138 s).
 - Merged `main` after #200 (#95, "Report absence") landed. Only the header comments of `CoachSessionBlock.tsx` and `ClubAttendancePage.tsx` conflicted, and both were combined. `ReportAbsence` renders regardless of the setting, so with `coach_may_cancel` off the coach is offered only "Report absence" (acceptance criterion 1 is now fully met).
 - After the merge, two backgrounded `yarn verify` runs started in the worktree at once: the chained "commit && verify" command started late, after a fresh run had already been launched. Both were stopped, and one clean `yarn verify` then passed all 14 steps (build 4634 s — the host was suspended during it).
+- Opened PR #214 with the labels `review`, `feature`, `needs-qa`, `priority-medium` and `risk-high`. The issue says `risk-medium`, but the PR carries a migration and an authorization change. The lock moved from the issue to the PR.
+- A fresh subagent reviewed the diff. It found no blockers and checked:
+  - the scope of the settings read;
+  - every cancel path (redo re-runs `execute`; undo restores a session; the backend buttons use the same route);
+  - the migration and the snapshot;
+  - the settings undo, i18n, coverage and backward compatibility.
+
+  Findings:
+  1. **Fixed (minor).** `mayCancel` trusted the read's own role. A coach assigned to a session of another group (who reads it through `self`) was offered "Cancel session", which the command refuses with `scope_denied`; that was already the case before this PR. `cancelRoleOf` now derives the role from `COACH_KINDS` on the schedule target, as the command does (34c759b).
+  2. **Follow-up (minor).** The backend sessions pages still offer "Cancel" to a coordinator of another section who coaches there, and the click answers 403 `coach_cancel_disabled`. The server is safe; only the button dead-ends. The issue covers M-04/M-05 only.
+  3. **Fixed (nit).** The new error key is now sorted into its block.
+- After the fix, `yarn verify` passed all 14 steps again (build 562 s). The rerun of `--filter ISSUE-199` could not start (`Could not find a working container runtime strategy`), so CI's `integration` job runs it.
 - `yarn test:integration:vereino --filter ISSUE-139` (regression) did not run: `Could not find a working container runtime strategy`, because Docker was not available on the host at that moment. The run may not touch Docker Desktop. CI's `integration` job runs the whole suite on the PR.
 
 - Lesson: `.ai/lessons/db-generate-snapshot-style-and-public-block-scope.md` now covers a mixed-style snapshot (restore it from git and insert the block by hand).
 
 ## Open problems / next steps
 
-- The ISSUE-139, E06-S15 and J-003 regressions are left to CI (no container runtime locally at the end of the run).
+- The ISSUE-139, E06-S15 and J-003 regressions, and the ISSUE-199 rerun after the review fix, are left to CI (no container runtime locally at the end of the run).
+- Follow-up: hide "Cancel" on the backend sessions pages when the caller only coaches the session and `coach_may_cancel` is off (review finding 2).
 
