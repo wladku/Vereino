@@ -319,6 +319,7 @@
   "activities.errors.attendance_policy_scope_invalid": "The scope fields do not match the policy scope.",
   "activities.errors.attendance_version_required": "Send the session version you loaded the list with.",
   "activities.errors.calendar_range_invalid": "Choose a range of at most 62 days, with the start before the end.",
+  "activities.errors.coach_cancel_disabled": "The club setting \"Coaches may cancel sessions\" is off: report an absence instead, or ask a coordinator to cancel.",
   "activities.errors.declaration_closed": "Declarations for this session are closed.",
   "activities.errors.declaration_guardian_only": "For this session your guardian declares for you.",
   "activities.errors.declaration_kind_absence_only": "For this session you only report an absence.",

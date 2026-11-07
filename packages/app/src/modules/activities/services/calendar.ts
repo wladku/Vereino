@@ -35,6 +35,7 @@ import {
   type DeclarationSummary,
 } from '../lib/policy'
 import { policyRows } from '../commands/attendance'
+import { cancelRoleOf } from '../commands/occurrences'
 import {
   activeGuardians,
   attendanceSettings,
@@ -117,6 +118,8 @@ export type CalendarEntry = {
   summary?: DeclarationSummary
   /** `as=guardian` under `show_called_up_children = consented`: other children whose guardian consented. */
   calledUpChildren?: { personId: string; firstName: string; lastName: string }[]
+  /** `GET /calendar/{id}?as=coach` (#199): false when `coach_may_cancel` is off and the caller only coaches the session. */
+  mayCancel?: boolean
 }
 
 export type CalendarResult = {
@@ -508,7 +511,8 @@ export async function readCalendar(
  * `GET /api/activities/calendar/{id}`: one session of the member calendar, or null when it is not in it. As the coach
  * (E06-S15 #97) it is the session of `as=coach` — one of the coach's groups or the session they are assigned to — with
  * the declaration summary; a session outside that scope answers 403 `scope_denied` (the attendance list's answer), so
- * the page says "This is not your session" and shows none of it.
+ * the page says "This is not your session" and shows none of it. The coach's entry says whether they may cancel it
+ * (`mayCancel`, #199).
  */
 export async function readCalendarItem(
   ctx: CommandRuntimeContext,
@@ -519,7 +523,11 @@ export async function readCalendarItem(
   now: Date = new Date(),
 ): Promise<(CalendarEntry & { timeZone: string }) | null> {
   const em = ctx.container.resolve<EntityManager>('em').fork()
-  const row = await em.findOne(Occurrence, { id, ...scope, deletedAt: null }, { fields: ['id', 'occurrenceDate'] })
+  const row = await em.findOne(
+    Occurrence,
+    { id, ...scope, deletedAt: null },
+    { fields: ['id', 'tenantId', 'organizationId', 'sectionId', 'groupId', 'occurrenceDate'] },
+  )
   if (!row) return null
   const grants = await scopeContract.resolve(ctx)
   const window = { from: row.occurrenceDate, to: row.occurrenceDate }
@@ -528,6 +536,7 @@ export async function readCalendarItem(
     await assertStaffFeature(ctx, scope, 'activities.coach')
     item = (await staffCalendar(ctx, scope, grants, 'coach', window, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
+    item = { ...item, mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null }
   } else {
     const personIds = await memberPersons(grants, as, personId)
     item = (await memberCalendar(ctx, scope, as, personIds, window, now, row.id)).at(0)

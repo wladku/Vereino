@@ -33,6 +33,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'onlineFeeFixed'
     | 'coachSettlementModel'
     | 'showCalledUpChildren'
+    | 'coachMayCancel'
     | 'orderSalesDocument'
     | 'publicSlug'
     | 'contactPhone'
@@ -90,6 +91,10 @@ export class ClubSettings extends ScopedEntityBase {
   /** `none` | `consented`. */
   @Property({ name: 'show_called_up_children', type: 'text', default: 'none' })
   showCalledUpChildren: string = 'none'
+
+  /** Whether a coach may cancel a session (#199); `false` leaves only reporting an absence. */
+  @Property({ name: 'coach_may_cancel', type: 'boolean', default: true })
+  coachMayCancel: boolean = true
 
   /** `none` | `receipt` | `invoice`; only `none` is accepted in 1.0. */
   @Property({ name: 'order_sales_document', type: 'text', default: 'none' })

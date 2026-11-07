@@ -2,7 +2,8 @@
 // `/backend/club/settings` (club spec UI table, DD-37): the club settings with their defaults, edited in one
 // `CrudForm`; the lock token comes from `initialValues.updatedAt` (null until the first save creates the row). Since
 // #29 the club logo panel sits under the form (upload, replace, remove; REQ-028). Since #87 the club name (the platform
-// organization's) is edited here and the time zone is picked from the runtime's IANA zones.
+// organization's) is edited here and the time zone is picked from the runtime's IANA zones. Since #199 it holds
+// `coach_may_cancel`, whether a coach may cancel a session.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -58,6 +59,7 @@ function toFormValues(settings: SettingsResponse): FormValues {
     onlineFeeFixed: settings.onlineFeeFixed / 100,
     coachSettlementModel: settings.coachSettlementModel,
     showCalledUpChildren: settings.showCalledUpChildren,
+    coachMayCancel: settings.coachMayCancel,
     orderSalesDocument: settings.orderSalesDocument,
     updatedAt: settings.updatedAt,
   }
@@ -82,6 +84,7 @@ function toPayload(values: Record<string, unknown>) {
     onlineFeeFixed: fixed === null ? 0 : Math.round(fixed * 100),
     coachSettlementModel: values.coachSettlementModel,
     showCalledUpChildren: values.showCalledUpChildren,
+    coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
   }
 }
@@ -186,6 +189,12 @@ export function ClubSettingsForm() {
         options: enumOptions(CALLED_UP_CHILDREN_VISIBILITY, 'club_core.settings.showCalledUpChildren', t),
         required: true,
       },
+      {
+        id: 'coachMayCancel',
+        label: t('club_core.settings.fields.coachMayCancel'),
+        type: 'checkbox',
+        description: t('club_core.settings.fields.coachMayCancel.description'),
+      },
     ]
   }, [t, currentTimeZone])
 
@@ -214,7 +223,7 @@ export function ClubSettingsForm() {
         id: 'staff',
         title: t('club_core.settings.groups.staff'),
         column: 2,
-        fields: ['coachSettlementModel', 'showCalledUpChildren'],
+        fields: ['coachSettlementModel', 'showCalledUpChildren', 'coachMayCancel'],
       },
     ],
     [t],

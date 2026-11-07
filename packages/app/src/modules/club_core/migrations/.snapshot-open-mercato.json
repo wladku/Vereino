@@ -6,6 +6,23 @@
       "name": "club_core_club_settings",
       "schema": "public",
       "columns": {
+        "coach_may_cancel": {
+          "name": "coach_may_cancel",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "true",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
         "coach_settlement_model": {
           "name": "coach_settlement_model",
           "type": "text",
