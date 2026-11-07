@@ -31,7 +31,7 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
 
 - **A coach who also coordinates the section still cancels, as the coordinator.** #139 records the least-privileged grant (`coach`), so a plain check "role is coach and the setting is off" would refuse Wojtek or Krystyna even though they plan the section. The issue says coordinators are not affected. Under the setting the cancellation is therefore recorded in the planner role. It then follows the coordinator's path: no coordinator notice, because they decided it.
 - **`mayCancel` on the reads, computed by the same function as the command.** The page shows the button only when the cancellation would be accepted, and the server stays the authority. The field is optional on the calendar entry (only `as=coach` on `/calendar/{id}` fills it) and present on the attendance list. Both are additive response fields (`BACKWARD_COMPATIBILITY.md`).
-- **"Report absence" is not part of this PR.** It is #95, PR #200, which is open and touches the same components. With the setting off, M-04 now shows the summary and "Attendance list" only. The "Report absence" button arrives with #200, and acceptance criterion 1 ("only Report absence is offered") is fully met once #200 merges. The two changes touch neighbouring lines in `CoachSessionBlock.tsx`, so the PR merged second needs a small merge.
+- **"Report absence" comes from #95 (PR #200), merged into this branch from `main`.** The setting only hides "Cancel session"; "Report absence" is shown either way, so with the setting off the coach is offered only "Report absence".
 - **The setting is read inside the cancel transaction through the `club_core` settings service.** Settings change rarely, and a club that switches the setting while a coach is cancelling gets either answer, which is acceptable.
 
 ## Files changed
@@ -64,6 +64,8 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
   - The first run passed generate, typecheck, typecheck:packages, typecheck:qa and lint. Lint reported 6672 s, which means the host was suspended (lesson `axe-baseline-suspended-runs-and-offline-db-generate`), not that lint hung.
   - It then failed `format:check` after 0 s with no file named. Run alone right after, `yarn format:check` reported "973 Vereino file(s), 0 unformatted". Then the cezar process restarted.
   - Committed, then `yarn verify --from format:check` on the same content passed all 9 remaining steps (format:check, ds:check, i18n:check-hardcoded, contracts:check, lessons:check, spec-changelogs:check, test, test:scripts, build in 138 s).
+- Merged `main` after #200 (#95, "Report absence") landed. Only the header comments of `CoachSessionBlock.tsx` and `ClubAttendancePage.tsx` conflicted, and both were combined. `ReportAbsence` renders regardless of the setting, so with `coach_may_cancel` off the coach is offered only "Report absence" (acceptance criterion 1 is now fully met).
+- After the merge, two backgrounded `yarn verify` runs started in the worktree at once: the chained "commit && verify" command started late, after a fresh run had already been launched. Both were stopped, and one clean `yarn verify` then passed all 14 steps (build 4634 s — the host was suspended during it).
 - `yarn test:integration:vereino --filter ISSUE-139` (regression) did not run: `Could not find a working container runtime strategy`, because Docker was not available on the host at that moment. The run may not touch Docker Desktop. CI's `integration` job runs the whole suite on the PR.
 
 - Lesson: `.ai/lessons/db-generate-snapshot-style-and-public-block-scope.md` now covers a mixed-style snapshot (restore it from git and insert the block by hand).
@@ -72,4 +74,3 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
 
 - The ISSUE-139, E06-S15 and J-003 regressions are left to CI (no container runtime locally at the end of the run).
 
-- #95 / PR #200 adds "Report absence" to M-04/M-05; whichever of #200 and this PR merges second resolves the neighbouring lines in `CoachSessionBlock.tsx` and `ClubAttendancePage.tsx`.
