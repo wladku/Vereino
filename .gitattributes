@@ -7,10 +7,3 @@
 
 # Shell scripts must always be LF.
 *.sh text eol=lf
-
-# Every line of the lessons catalog is an independent list item, so a local `git merge` keeps the rows
-# both sides added instead of stopping on a conflict. `lessons:check` still fails on a duplicate,
-# missing or out-of-order row. GitHub's merge button ignores merge drivers; spec changelogs therefore
-# use one file per entry instead (.ai/specs/changelog/README.md). Never set merge=union on a whole
-# spec: edits outside the changelog must still conflict.
-.ai/lessons.md merge=union
