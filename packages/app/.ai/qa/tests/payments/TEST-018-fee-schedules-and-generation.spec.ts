@@ -22,6 +22,7 @@ import {
   periodFromNow,
   postDiscountRule,
   postFee,
+  undoInProbe,
 } from '../_fixtures/payments'
 
 // TEST-018 (payments spec phase 4 step 2, REQ-011; issue #108 E07-S01): two groups with fee schedules in two
@@ -30,7 +31,8 @@ import {
 // person and period with the discount on the younger sibling (and the rule's name), the adult paying for themselves
 // and the minor flagged without payer; a second run creates nothing and skips everything. A fee with both a group and
 // an activity → 422 "Choose exactly one: a group or an activity"; changing a billed fee's period → 422; a running generation → 409; a month too far back →
-// 422; a coordinator → 403. Undoing a generation cancels its open charges, and the period generates again. The
+// 422; a coordinator → 403. Undoing a generation cancels its open charges, and the period generates again; an undo that
+// rolls back emits no `payments.charge.cancelled`, one that commits emits it once (#184). The
 // "Coaches and payments" setting reads `collect` by default and saves.
 test.describe.configure({ timeout: 300_000 })
 
@@ -262,6 +264,17 @@ test('TEST-018 a period generates once per person with the sibling discount; rep
       (entry) => entry.commandId === 'payments.charges.generate',
     )
     expect(firstLog?.undoToken, 'undo token of the first generation').toBeTruthy()
+    // An undo whose replay rolls back after the handler ran (the bus's audit write fails, #184) cancels nothing and
+    // emits no `payments.charge.cancelled`: the event waits for the replay transaction's commit.
+    const scope = { tenantId: club.tenant.tenantId, organizationId: club.tenant.organizationId }
+    const rolledBack = undoInProbe(scope, {
+      userId: club.adminUserId,
+      undoToken: String(firstLog?.undoToken),
+      failAuditWrite: true,
+    })
+    expect(rolledBack.error).toContain('the audit write failed')
+    expect(rolledBack.events.map((entry) => entry.event)).not.toContain('payments.charge.cancelled')
+    expect(await listCharges(request, admin, `&period=${period}&status=open`)).toHaveLength(5)
     const undone = await undoByToken(request, admin, String(firstLog?.undoToken))
     expect(undone.status(), await undone.text()).toBe(200)
     const afterUndo = await listCharges(request, admin, `&period=${period}`)
@@ -275,6 +288,22 @@ test('TEST-018 a period generates once per person with the sibling discount; rep
     const again = await generate(request, admin, period)
     expect(again.body).toMatchObject({ created: 5, skipped: 0, payerMissing: 1 })
     expect(await listCharges(request, admin, `&period=${period}&status=open`)).toHaveLength(5)
+
+    // An undo that commits emits `payments.charge.cancelled` once, with the cancelled charges, after the commit.
+    const againLog = (await actionLogEntries(request, admin, String(again.body?.generationId))).find(
+      (entry) => entry.commandId === 'payments.charges.generate',
+    )
+    expect(againLog?.undoToken, 'undo token of the second generation').toBeTruthy()
+    const againOpen = (await listCharges(request, admin, `&period=${period}&status=open`)).map((charge) => charge.id)
+    const committed = undoInProbe(scope, { userId: club.adminUserId, undoToken: String(againLog?.undoToken) })
+    expect(committed.error).toBeNull()
+    const cancelledEvents = committed.events.filter((entry) => entry.event === 'payments.charge.cancelled')
+    expect(cancelledEvents).toHaveLength(1)
+    expect(cancelledEvents[0]?.payload).toMatchObject({ generationId: again.body?.generationId, ...scope })
+    expect([...((cancelledEvents[0]?.payload.chargeIds as string[] | undefined) ?? [])].sort()).toEqual(
+      [...againOpen].sort(),
+    )
+    expect(await listCharges(request, admin, `&period=${period}&status=open`)).toHaveLength(0)
 
     // Undoing a period change after the fee has billed anyone → 422 too: the old period would bill the same people again.
     const camp = await createFee(request, admin, {
