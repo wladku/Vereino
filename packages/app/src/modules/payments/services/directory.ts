@@ -66,6 +66,16 @@ export function rosterOn(
   return groupDirectory(container).rosterOn(scope, groupId, date, em)
 }
 
+/** The public, active groups of the sections (`groups` alone decides what a public group is; #112). */
+export function publicGroups(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  sectionIds: readonly string[],
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  return groupDirectory(container).publicGroups(scope, sectionIds, em)
+}
+
 export function findActivities(
   container: AwilixContainer,
   scope: PaymentsScope,

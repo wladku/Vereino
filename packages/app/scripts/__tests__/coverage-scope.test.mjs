@@ -15,6 +15,7 @@ const COVERED_GLOBS = [
   { cwd: REPO_ROOT, glob: 'scripts/verify.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/setup.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/check-spec-changelogs.mjs' },
+  { cwd: REPO_ROOT, glob: 'scripts/merge-train-plan.mjs' },
   { cwd: REPO_ROOT, glob: 'eslint.vereino.mjs' },
 ]
 
@@ -33,6 +34,7 @@ test('the coverage globs match the test:scripts script', () => {
     '../../scripts/verify.mjs',
     '../../scripts/setup.mjs',
     '../../scripts/check-spec-changelogs.mjs',
+    '../../scripts/merge-train-plan.mjs',
     '../../eslint.vereino.mjs',
   ])
 })

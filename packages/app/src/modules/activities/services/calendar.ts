@@ -10,12 +10,14 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import {
+  addCalendarDays,
   isServedCalendarRange,
   scopeWhere,
   type CalendarDate,
   type DateWindow,
   type GrantKind,
   type Scope,
+  zonedInstant,
 } from '@vereino/core'
 import { foundationErrors, scopeContract, scopeDenialCode } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
@@ -257,6 +259,27 @@ const activeOn = (period: { validFrom: CalendarDate; validTo: CalendarDate | nul
   period.validFrom <= date && (period.validTo === null || period.validTo >= date)
 
 /**
+ * The sessions a window shows: those whose slot (`occurrence_date`) is one of its days, and those that start on one of
+ * its club-zone days. A moved session keeps its slot, while the week grids place it by `startAt`; read by the slot
+ * alone, a session moved past the end of the shown week appeared in neither week. Reading both keeps every session the
+ * slot read returned (the Today tile and the coach views rely on it). The memberships and the roster stay read on the
+ * slot.
+ */
+function inWindow(window: DateWindow, timeZone: string) {
+  return {
+    $or: [
+      { occurrenceDate: { $gte: window.from, $lte: window.to } },
+      {
+        startAt: {
+          $gte: zonedInstant(window.from, '00:00', timeZone),
+          $lt: zonedInstant(addCalendarDays(window.to, 1), '00:00', timeZone),
+        },
+      },
+    ],
+  }
+}
+
+/**
  * The member calendar: the sessions of the groups the persons are participants of on each session date, in the window,
  * with each concerned person's declaration and options.
  */
@@ -266,6 +289,7 @@ async function memberCalendar(
   as: 'self' | 'guardian',
   personIds: string[],
   window: DateWindow,
+  timeZone: string,
   now: Date,
   onlyOccurrenceId?: string,
 ): Promise<CalendarEntry[]> {
@@ -282,8 +306,7 @@ async function memberCalendar(
       ...scope,
       deletedAt: null,
       groupId: { $in: groupIds },
-      occurrenceDate: { $gte: window.from, $lte: window.to },
-      ...(onlyOccurrenceId ? { id: onlyOccurrenceId } : {}),
+      ...(onlyOccurrenceId ? { id: onlyOccurrenceId } : inWindow(window, timeZone)),
     },
     { orderBy: { startAt: 'asc', id: 'asc' } },
   )
@@ -412,6 +435,7 @@ async function staffCalendar(
   grants: Scope,
   as: 'coach' | 'coordinator',
   window: DateWindow,
+  timeZone: string,
   now: Date,
   sectionId?: string,
   onlyOccurrenceId?: string,
@@ -439,7 +463,7 @@ async function staffCalendar(
     {
       ...scope,
       deletedAt: null,
-      occurrenceDate: { $gte: window.from, $lte: window.to },
+      ...(onlyOccurrenceId ? {} : inWindow(window, timeZone)),
       // The requested section (or session) narrows the scope filter, never replaces it.
       $and: [
         where as object,
@@ -499,10 +523,10 @@ export async function readCalendar(
   let items: CalendarEntry[]
   if (query.as === 'self' || query.as === 'guardian') {
     const personIds = await memberPersons(grants, query.as, query.personId)
-    items = await memberCalendar(ctx, scope, query.as, personIds, window, now)
+    items = await memberCalendar(ctx, scope, query.as, personIds, window, timeZone, now)
   } else {
     await assertStaffFeature(ctx, scope, query.as === 'coach' ? 'activities.coach' : 'activities.view')
-    items = await staffCalendar(ctx, scope, grants, query.as, window, now, query.sectionId)
+    items = await staffCalendar(ctx, scope, grants, query.as, window, timeZone, now, query.sectionId)
   }
   return { items, timeZone, from: query.from, to: query.to }
 }
@@ -530,19 +554,20 @@ export async function readCalendarItem(
   )
   if (!row) return null
   const grants = await scopeContract.resolve(ctx)
+  // The one session is read by its id; the window (its slot) only scopes the memberships and the roster.
   const window = { from: row.occurrenceDate, to: row.occurrenceDate }
+  const { timeZone } = await attendanceSettings(ctx.container, scope)
   let item: CalendarEntry | undefined
   if (as === 'coach') {
     await assertStaffFeature(ctx, scope, 'activities.coach')
-    item = (await staffCalendar(ctx, scope, grants, 'coach', window, now, undefined, row.id)).at(0)
+    item = (await staffCalendar(ctx, scope, grants, 'coach', window, timeZone, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
     item = { ...item, mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null }
   } else {
     const personIds = await memberPersons(grants, as, personId)
-    item = (await memberCalendar(ctx, scope, as, personIds, window, now, row.id)).at(0)
+    item = (await memberCalendar(ctx, scope, as, personIds, window, timeZone, now, row.id)).at(0)
   }
   if (!item) return null
-  const { timeZone } = await attendanceSettings(ctx.container, scope)
   return { ...item, timeZone }
 }
 
