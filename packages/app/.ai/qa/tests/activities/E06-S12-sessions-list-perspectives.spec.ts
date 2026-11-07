@@ -70,11 +70,14 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
       start: '17:00',
       end: '18:00',
     })
+    // `startNow` moves the times only and the session keeps its date, which is what the calendar reads by. Dated today,
+    // the started session's date and start both fall in the week the calendar opens on, whatever the weekday; dated
+    // tomorrow, it left that week on the week's last day (Saturday in an en-US browser), and no week showed it.
     const started = await oneOffTraining(request, club, {
       groupId: orliki,
       placeId: pitch,
       name: 'Trening rozpoczęty',
-      date: tomorrow,
+      date: today,
       start: '19:00',
       end: '20:00',
     })
