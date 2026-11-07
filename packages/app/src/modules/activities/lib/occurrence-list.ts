@@ -1,17 +1,19 @@
 // The sessions list `/backend/activities/occurrences` (README B-15; club spec UI table, REQ-006; E06-S12, #94): the
-// perspectives All / Canceled / Calendar in the URL (`?perspective=`), the default window of 7 days back through 14
-// days ahead, the row actions a session offers (Cancel for a future planned session, Attendance list for a started
-// one), the cancellation reason rule and the date range the coordinator's calendar reads for the shown grid. Pure:
-// the page passes "today" and "now".
+// perspectives All / Needing a coach / Unsettled / Canceled / Calendar in the URL (`?perspective=`, E06-S13 #95 added
+// the two coach perspectives), the default window of each (7 days back through 14 days ahead; from today for 14 days
+// for "Needing a coach"; none for "Unsettled"), the row actions a session offers (Cancel for a future planned session,
+// Attendance list for a started one, Assign substitute / Change coach for a planned one), the coach badges, the
+// cancellation reason rule and the date range the coordinator's calendar reads for the shown grid. Pure: the page
+// passes "today" and "now".
 import { addCalendarDays, trimCalendarRange, type CalendarDate, type DateWindow } from '@vereino/core'
 
-export const OCCURRENCE_PERSPECTIVES = ['all', 'cancelled', 'calendar'] as const
+export const OCCURRENCE_PERSPECTIVES = ['all', 'unassigned', 'unsettled', 'cancelled', 'calendar'] as const
 
 export type OccurrencePerspective = (typeof OCCURRENCE_PERSPECTIVES)[number]
 
 /** The perspective a `?perspective=` value names; anything else is "All". */
 export function perspectiveOf(value: string | null | undefined): OccurrencePerspective {
-  return value === 'cancelled' || value === 'calendar' ? value : 'all'
+  return (OCCURRENCE_PERSPECTIVES as readonly string[]).includes(value ?? '') ? (value as OccurrencePerspective) : 'all'
 }
 
 /** The list URL of a perspective ("All" keeps the bare path). */
@@ -22,6 +24,30 @@ export function perspectiveHref(path: string, perspective: OccurrencePerspective
 /** The status a list perspective pins (Canceled lists cancelled sessions only). */
 export function perspectiveStatus(perspective: OccurrencePerspective): 'cancelled' | undefined {
   return perspective === 'cancelled' ? 'cancelled' : undefined
+}
+
+/**
+ * The list query a perspective pins: Canceled its status, "Needing a coach" `unassigned=1` (planned, no coach),
+ * "Unsettled" `unsettled=1` (planned, ended 24 hours ago or more).
+ */
+export function perspectiveQuery(perspective: OccurrencePerspective): Record<string, string> {
+  if (perspective === 'unassigned') return { unassigned: '1' }
+  if (perspective === 'unsettled') return { unsettled: '1' }
+  const status = perspectiveStatus(perspective)
+  return status ? { status } : {}
+}
+
+/** The days "Needing a coach" looks ahead from today (README B-15, B-01 widget). */
+export const NEEDING_COACH_DAYS_AHEAD = 14
+
+/**
+ * The slot-date window a perspective opens with: from today for 14 days for "Needing a coach", none for "Unsettled"
+ * (an unsettled session stays listed until it is closed), 7 days back through 14 days ahead otherwise.
+ */
+export function perspectiveWindow(perspective: OccurrencePerspective, today: CalendarDate): DateWindow | null {
+  if (perspective === 'unsettled') return null
+  if (perspective === 'unassigned') return { from: today, to: addCalendarDays(today, NEEDING_COACH_DAYS_AHEAD) }
+  return defaultSessionWindow(today)
 }
 
 export const SESSION_WINDOW_DAYS_BACK = 7
@@ -61,6 +87,31 @@ export function sessionRowActions(
   const started = startsAt <= now.getTime()
   if (!started) return row.status === 'planned' ? ['cancel'] : []
   return row.status === 'cancelled' ? [] : ['attendance']
+}
+
+/**
+ * The coach action of a list row (E06-S13 #95): "Assign substitute" for a planned session without a coach, "Change
+ * coach" for a planned one with a coach; none otherwise or without `activities.manage`. The server still decides scope.
+ */
+export function coachRowAction(
+  row: { status: string | null; coachPersonId: string | null },
+  canManage: boolean,
+): 'assign' | 'change' | null {
+  if (!canManage || row.status !== 'planned') return null
+  return row.coachPersonId ? 'change' : 'assign'
+}
+
+/**
+ * The badge next to a session's coach (README B-15, M-03, M-04): "Needs a coach" for a planned session without one,
+ * "(substitution)" when the coach stands in for the session's own coach; none otherwise.
+ */
+export function coachBadge(row: {
+  status: string | null
+  coachPersonId: string | null
+  substituteForPersonId?: string | null
+}): 'needs_coach' | 'substitution' | null {
+  if (row.status === 'planned' && !row.coachPersonId) return 'needs_coach'
+  return row.coachPersonId && row.substituteForPersonId ? 'substitution' : null
 }
 
 /** The calendar date of an instant in the browser's zone (the schedule grid buckets its days there). */

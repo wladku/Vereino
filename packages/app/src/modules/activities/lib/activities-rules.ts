@@ -68,10 +68,11 @@ export const sessionTransitions = defineTransitions({
 
 /**
  * A stored session a series edit leaves where it is (DD-G03): the club acted on it — cancelled, done, or with
- * checked-off attendance (#33; club spec *Data Models*: re-planning touches sessions "without attendance").
+ * checked-off attendance or a substitution (#33, E06-S13 #95; club spec *Data Models*: re-planning touches sessions
+ * "without attendance").
  */
-export function isPinnedSession(status: OccurrenceStatus, hasCheckedOffAttendance: boolean): boolean {
-  return status !== 'planned' || hasCheckedOffAttendance
+export function isPinnedSession(status: OccurrenceStatus, actedOn: boolean): boolean {
+  return status !== 'planned' || actedOn
 }
 
 /** The generation horizon in weeks (club spec DD-10; foundation II keeps the constant, no club setting). */
@@ -237,11 +238,16 @@ export type CancellationAudience = {
   readonly onDate: CalendarDate
   /** The user who cancelled; they are not notified of their own action. */
   readonly actorUserId: string | null
+  /** The section's coordinators told of a coach's cancellation (`@vereino/core` `cancellationCoordinatorIds`, #139). */
+  readonly coordinatorIds?: readonly string[]
 }
 
-/** The persons whose accounts may receive the notice: participants, guardians of minors, the coaches. */
+/**
+ * The persons whose accounts may receive the notice: participants, guardians of minors, the coaches, and the section's
+ * coordinators of a coach's cancellation.
+ */
 export function cancellationPersonIds(audience: Omit<CancellationAudience, 'userIds' | 'actorUserId'>): string[] {
-  const persons = new Set<string>()
+  const persons = new Set<string>(audience.coordinatorIds ?? [])
   for (const member of audience.roster) {
     persons.add(member.personId)
     if (member.role !== 'participant') continue

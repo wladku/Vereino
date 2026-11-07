@@ -7,6 +7,7 @@ import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
+import { SUBSTITUTION_REASON_MAX } from '../lib/substitutions'
 import {
   ACTUAL_ATTENDANCE,
   DECLARED_VALUES,
@@ -22,6 +23,8 @@ const localTimeSchema = z.string().refine(isLocalTime, { message: 'Expected a HH
 const instantSchema = z.iso.datetime({ offset: true })
 const externalTeamIds = z.array(z.uuid()).max(50)
 const booleanQuery = z.enum(['true', 'false']).optional()
+/** A list flag as the README writes it (`unassigned=1`) or as a boolean query (`true`). */
+const flagQuery = z.enum(['1', 'true', '0', 'false']).optional()
 /** The default gathering time of a series or event in minutes before the start (DD-43); null clears it. */
 const gatheringMinutesSchema = z.number().int().min(1).max(MAX_GATHERING_MINUTES).nullable().optional()
 
@@ -129,6 +132,23 @@ export const occurrenceCancelSchema = z
   })
   .strict()
 
+/** `POST /api/activities/occurrences/{id}/absence` (E06-S13 #95): the assigned coach's optional reason. */
+export const occurrenceAbsenceSchema = z
+  .object({
+    id: z.uuid(),
+    reason: z.string().max(SUBSTITUTION_REASON_MAX).nullable().optional(),
+  })
+  .strict()
+
+/** `POST /api/activities/occurrences/{id}/coach` (E06-S13 #95): the substitute (or the own coach back) and a reason. */
+export const occurrenceAssignCoachSchema = z
+  .object({
+    id: z.uuid(),
+    coachPersonId: z.uuid(),
+    reason: z.string().max(SUBSTITUTION_REASON_MAX).nullable().optional(),
+  })
+  .strict()
+
 export const occurrenceListQuerySchema = z.object({
   ...listQueryBase,
   sortField: z.enum(['startAt', 'occurrenceDate', 'createdAt', 'updatedAt']).optional(),
@@ -141,6 +161,10 @@ export const occurrenceListQuerySchema = z.object({
   groupId: z.uuid().optional(),
   activityId: z.uuid().optional(),
   needsReschedule: booleanQuery,
+  /** E06-S13 #95: planned sessions without a coach ("Needing a coach"). */
+  unassigned: flagQuery,
+  /** E06-S13 #95: planned sessions that ended 24 hours ago or more ("Unsettled"). */
+  unsettled: flagQuery,
 })
 
 /** The daily generator's input: `today` only for an operator run (the job uses the club's today). */
