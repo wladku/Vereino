@@ -1,0 +1,53 @@
+# The merge train (SDLC.md "Validation gate"): one PR at a time takes `main` in, runs CI and merges when the required
+# checks are green, around the clock. It needs the `MERGE_TRAIN_TOKEN` secret, a fine-grained token of the owner with
+# Contents, Pull requests and Workflows write on this repository: an update or a merge made with the workflow's own
+# GITHUB_TOKEN would not start the CI it waits for. Without the secret the job only logs a notice.
+# It runs `main`'s copy of the scripts and never checks out PR code.
+name: Merge train
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [labeled, unlabeled, ready_for_review]
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log the plan without changing anything
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-train
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: merge-train
+    if: github.repository == 'wladku/Vereino'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: |
+            scripts
+            .nvmrc
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/merge-train.mjs
+        env:
+          GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
+          MERGE_TRAIN_SKIP_LABELS: ${{ vars.MERGE_TRAIN_SKIP_LABELS }}
+          MERGE_TRAIN_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
