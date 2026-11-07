@@ -4,10 +4,10 @@ import { calendarItems, startNow } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 
 // Regression for the coordinator calendar (E06-S12, #94; `GET /api/activities/calendar`): a moved session keeps its
-// slot (`occurrence_date`) but the calendar shows it on the day it starts, as the week grid places it by `startAt`.
-// Read by the slot, a session moved from next week to today appeared in neither week; E06-S12's calendar step failed
-// every Saturday, when "tomorrow" falls in the next Sunday-first week.
-test('E06-S12 the calendar lists a moved session on the day it starts, not on its slot', async ({ request }) => {
+// slot (`occurrence_date`); the calendar lists it on the day it starts, where the week grid places it by `startAt`, and
+// still on its slot. Read by the slot alone, a session moved from next week to today appeared in neither week's grid;
+// E06-S12's calendar step failed every Saturday, when "tomorrow" falls in the next Sunday-first week.
+test('E06-S12 the calendar lists a moved session on the day it starts as well as on its slot', async ({ request }) => {
   const club = await createClub(request, 'e06-s12-calendar-moved')
   try {
     const { pitch, orliki } = await scheduleFor(request, club)
@@ -34,7 +34,7 @@ test('E06-S12 the calendar lists a moved session on the day it starts, not on it
     )
     expect(ids(around)).toContain(occurrenceId)
     const onSlot = await calendarItems(request, club.adminToken, `as=coordinator&from=${slot}&to=${slot}`)
-    expect(ids(onSlot)).not.toContain(occurrenceId)
+    expect(ids(onSlot)).toContain(occurrenceId)
   } finally {
     await club.cleanup()
   }

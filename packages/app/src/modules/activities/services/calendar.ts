@@ -256,17 +256,23 @@ const activeOn = (period: { validFrom: CalendarDate; validTo: CalendarDate | nul
   period.validFrom <= date && (period.validTo === null || period.validTo >= date)
 
 /**
- * The sessions a window shows: those that start on one of its club-zone days. A moved session keeps its slot
- * (`occurrence_date`) but shows on the day it really happens, as the grids place it by `startAt`; read by the slot, a
- * session moved past the end of the shown week appeared in neither week. The memberships and the roster stay read on
- * the slot.
+ * The sessions a window shows: those whose slot (`occurrence_date`) is one of its days, and those that start on one of
+ * its club-zone days. A moved session keeps its slot, while the week grids place it by `startAt`; read by the slot
+ * alone, a session moved past the end of the shown week appeared in neither week. Reading both keeps every session the
+ * slot read returned (the Today tile and the coach views rely on it). The memberships and the roster stay read on the
+ * slot.
  */
-function startsIn(window: DateWindow, timeZone: string) {
+function inWindow(window: DateWindow, timeZone: string) {
   return {
-    startAt: {
-      $gte: zonedInstant(window.from, '00:00', timeZone),
-      $lt: zonedInstant(addCalendarDays(window.to, 1), '00:00', timeZone),
-    },
+    $or: [
+      { occurrenceDate: { $gte: window.from, $lte: window.to } },
+      {
+        startAt: {
+          $gte: zonedInstant(window.from, '00:00', timeZone),
+          $lt: zonedInstant(addCalendarDays(window.to, 1), '00:00', timeZone),
+        },
+      },
+    ],
   }
 }
 
@@ -297,7 +303,7 @@ async function memberCalendar(
       ...scope,
       deletedAt: null,
       groupId: { $in: groupIds },
-      ...(onlyOccurrenceId ? { id: onlyOccurrenceId } : startsIn(window, timeZone)),
+      ...(onlyOccurrenceId ? { id: onlyOccurrenceId } : inWindow(window, timeZone)),
     },
     { orderBy: { startAt: 'asc', id: 'asc' } },
   )
@@ -454,7 +460,7 @@ async function staffCalendar(
     {
       ...scope,
       deletedAt: null,
-      ...(onlyOccurrenceId ? {} : startsIn(window, timeZone)),
+      ...(onlyOccurrenceId ? {} : inWindow(window, timeZone)),
       // The requested section (or session) narrows the scope filter, never replaces it.
       $and: [
         where as object,
