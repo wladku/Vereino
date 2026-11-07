@@ -3,7 +3,9 @@
 // gets the e-mail `communication.session_cancelled`; the in-app notice stays `activities`' phase 2 one. Persistent and
 // idempotent: the dispatch is keyed by the cancellation event (the session id and the version the cancellation wrote),
 // so a replayed or concurrently delivered event adds nothing, while a later cancellation of the reopened session adds a
-// message and one more e-mail. Runs the command under the `system_job` source of the event's organization.
+// message and one more e-mail. Runs the command under the `system_job` source of the event's organization. The event's
+// canceller and acting role (#139) are passed on: the message names them, and a coach's cancellation also e-mails the
+// section's coordinators.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
@@ -20,6 +22,8 @@ const payloadSchema = z.object({
   tenantId: z.uuid(),
   organizationId: z.uuid(),
   actorUserId: z.uuid().nullable().optional(),
+  actorPersonId: z.uuid().nullable().optional(),
+  actingRole: z.string().min(1).max(40).nullable().optional(),
   updatedAt: z.string().min(1).optional(),
 })
 
@@ -40,6 +44,8 @@ export default async function handle(payload: unknown, ctx: SubscriberContext): 
       occurrenceId: parsed.data.id,
       eventKey: `${parsed.data.id}:${parsed.data.updatedAt ?? 'cancelled'}`,
       actorUserId: parsed.data.actorUserId ?? null,
+      actorPersonId: parsed.data.actorPersonId ?? null,
+      actingRole: parsed.data.actingRole ?? null,
     },
     ctx: jobCommandContext(container, scope),
   })

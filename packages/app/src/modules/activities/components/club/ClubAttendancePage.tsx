@@ -9,6 +9,9 @@
 // says how many unmarked persons are recorded absent, whether the session is still running and to whom the unit is
 // credited; Ctrl/Cmd+Enter starts the close; a closed save names the present count and returns to Today; an empty list
 // links a coordinator to the group roster; on a phone the actions stay in a sticky bar above the bottom navigation.
+// #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog.
+// E06-S13 (#95): the assigned coach reports an absence here before the session starts; "Needs a coach" marks a
+// session without one.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -33,8 +36,11 @@ import {
   sheetEntries,
   unmarkedPersonIds,
 } from '../../lib/attendance-sheet'
+import { needsCoach } from '../../lib/activities-rules'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { CancelSessionDialog } from './CoachSessionBlock'
 import { GuardianContacts } from './GuardianContacts'
+import { ReportAbsence } from './ReportAbsence'
 import {
   ACTUAL_VALUES,
   ATTENDANCE_LIST_QUERY_KEY,
@@ -149,7 +155,7 @@ function AttendanceRowItem({
   )
 }
 
-function Attendance({ id }: { id: string }) {
+function Attendance({ id, selfPersonId }: { id: string; selfPersonId: string }) {
   const t = useT()
   const query = useAttendanceList(id)
 
@@ -182,7 +188,7 @@ function Attendance({ id }: { id: string }) {
       </>
     )
   }
-  return <AttendanceSheet id={id} list={query.data.list} />
+  return <AttendanceSheet id={id} list={query.data.list} selfPersonId={selfPersonId} />
 }
 
 function BackLink() {
@@ -194,7 +200,7 @@ function BackLink() {
   )
 }
 
-function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
+function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: AttendanceList; selfPersonId: string }) {
   const t = useT()
   const locale = useLocale()
   const router = useRouter()
@@ -203,6 +209,7 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
   const [selections, setSelections] = React.useState<Selections>(() => new Map())
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
+  const [cancelling, setCancelling] = React.useState(false)
   // One close flow at a time: Ctrl/Cmd+Enter also confirms the open dialog, which must not start a second close.
   const closing = React.useRef(false)
 
@@ -335,6 +342,27 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
               {t(`activities.occurrences.status.${occurrence.status}`)}
             </StatusBadge>
           ) : null}
+          {needsCoach(occurrence) ? (
+            <span data-testid="club-attendance-needs-coach">
+              <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+            </span>
+          ) : null}
+        </div>
+        {/* E06-S13 #95: the assigned coach who cannot come reports it before the session starts. */}
+        <div className="flex flex-wrap gap-2">
+          <ReportAbsence
+            occurrence={occurrence}
+            selfPersonId={selfPersonId}
+            label={[
+              occurrence.activityName ?? t('activities.club.session.untitled'),
+              `${formatDayHeading(occurrence.occurrenceDate, locale)} ${formatClockTime(new Date(occurrence.startAt), locale, list.timeZone)}`,
+            ].join(', ')}
+            onDone={async (message) => {
+              if (message) succeed(message)
+              await queryClient.invalidateQueries({ queryKey: [ATTENDANCE_LIST_QUERY_KEY, id] })
+              await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
+            }}
+          />
         </div>
       </div>
       <p className="text-base font-semibold" data-testid="club-attendance-summary">
@@ -437,6 +465,36 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
           </Button>
         </div>
       ) : null}
+      {occurrence.status === 'planned' ? (
+        <div className="flex flex-col gap-2" data-testid="club-attendance-cancel-section">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 self-start"
+            disabled={busy}
+            aria-describedby="club-attendance-cancel-hint"
+            data-testid="club-session-cancel"
+            onClick={() => {
+              setCancelling(true)
+            }}
+          >
+            {t('activities.club.session.cancel')}
+          </Button>
+          <p id="club-attendance-cancel-hint" className="text-muted-foreground text-xs">
+            {t('activities.club.session.cancelHint')}
+          </p>
+          <CancelSessionDialog
+            occurrence={occurrence}
+            open={cancelling}
+            onOpenChange={setCancelling}
+            onDone={async (message) => {
+              if (message) succeed(message)
+              await queryClient.invalidateQueries({ queryKey: [ATTENDANCE_LIST_QUERY_KEY, id] })
+              await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
+            }}
+          />
+        </div>
+      ) : null}
       {list.actingRole === 'coach' && occurrence.status !== 'cancelled' ? (
         <GuardianContacts occurrenceId={occurrence.id} />
       ) : null}
@@ -446,5 +504,7 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
 }
 
 export function ClubAttendancePage({ id }: { id: string }) {
-  return <ActivitiesClubFrame>{() => <Attendance id={id} />}</ActivitiesClubFrame>
+  return (
+    <ActivitiesClubFrame>{(profile) => <Attendance id={id} selfPersonId={profile.person.id} />}</ActivitiesClubFrame>
+  )
 }

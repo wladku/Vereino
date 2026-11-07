@@ -1,7 +1,9 @@
 // `GET /api/activities/occurrences` — sessions in the record scope (club spec API table, REQ-005, REQ-006): the coach's
 // groups, the coordinator's sections, the club administrator's club; filters `status`, `from`, `to` (slot dates),
-// `sectionId`, `groupId`, `activityId`, `needsReschedule`; the activity, group, place and coach names are added to the
-// rows the scope filter admitted. Sessions are written through the activity, the move route and the cancel route.
+// `sectionId`, `groupId`, `activityId`, `needsReschedule`, and (E06-S13 #95) `unassigned` — planned sessions without a
+// coach — and `unsettled` — planned sessions that ended 24 hours ago or more; the activity, group, place and coach names
+// and whom a substitute stands in for are added to the rows the scope filter admitted. Sessions are written through
+// the activity, the move, cancel, absence and coach routes.
 import type { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -10,6 +12,7 @@ import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Occurrence } from '../../data/entities'
 import { occurrenceListQuerySchema } from '../../data/validators'
+import { unsettledCutoff } from '../../lib/substitutions'
 import {
   OCCURRENCE_ENTITY_ID,
   OCCURRENCE_LIST_COLUMNS,
@@ -20,6 +23,9 @@ import {
 } from '../shared'
 
 type OccurrenceListQuery = z.infer<typeof occurrenceListQuerySchema>
+
+/** `1` / `true` turn a list flag on. */
+const isOn = (flag: string | undefined): boolean => flag === '1' || flag === 'true'
 
 export const { metadata, GET } = makeCrudRoute({
   metadata: {
@@ -74,6 +80,10 @@ export const { metadata, GET } = makeCrudRoute({
       if (query.groupId) business.push({ group_id: query.groupId })
       if (query.activityId) business.push({ activity_id: query.activityId })
       if (query.needsReschedule) business.push({ needs_reschedule: query.needsReschedule === 'true' })
+      if (isOn(query.unassigned)) business.push({ status: 'planned' }, { coach_person_id: { $exists: false } })
+      if (isOn(query.unsettled)) {
+        business.push({ status: 'planned' }, { end_at: { $lte: unsettledCutoff(new Date()).toISOString() } })
+      }
       return { $and: [scopeWhere(scope, SCHEDULE_READ_KINDS, OCCURRENCE_LIST_COLUMNS), ...business] } as Where
     },
     transformItem: occurrenceListItem,

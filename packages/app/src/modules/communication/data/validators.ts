@@ -56,6 +56,9 @@ export const cancellationSchema = z
     occurrenceId: z.uuid(),
     eventKey: z.string().min(1).max(200),
     actorUserId: z.uuid().nullable().optional(),
+    /** Who cancelled and in which role (R01, #139); absent for an event older than #139. */
+    actorPersonId: z.uuid().nullable().optional(),
+    actingRole: z.string().min(1).max(40).nullable().optional(),
   })
   .strict()
 
