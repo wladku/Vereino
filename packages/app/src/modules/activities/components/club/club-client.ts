@@ -9,6 +9,7 @@ import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-merc
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { calendarRangeRetry } from '../../lib/member-calendar'
+import { coachBadge } from '../../lib/occurrence-list'
 import type { CalendarBadgeTone, CalendarItem, CalendarItemAction, CalendarItemBadge } from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -122,6 +123,9 @@ export type CalendarOccurrence = {
   placeGeoLng: number | null
   coachPersonId: string | null
   coachName: string | null
+  /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
+  substituteForPersonId?: string | null
+  substituteForName?: string | null
   opponentName: string | null
   invitedTeamNames: string[]
   status: 'planned' | 'done' | 'cancelled'
@@ -400,6 +404,29 @@ export async function cancelSession(
   return call.result?.notified ?? 0
 }
 
+/**
+ * The assigned coach reports they cannot run the session (E06-S13 #95), with an optional reason, against the
+ * session's lock token.
+ */
+export async function reportAbsence(
+  id: string,
+  reason: string,
+  errorMessage: string,
+  lockToken: string,
+): Promise<void> {
+  await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow(
+      `/api/activities/occurrences/${encodeURIComponent(id)}/absence`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() || null }),
+      },
+      { errorMessage },
+    ),
+  )
+}
+
 export function errorText(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
@@ -478,6 +505,11 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
   if (as === 'coach' && entry.summary)
     badges.push({ id: 'summary', label: summaryLine(t, entry.summary), tone: 'neutral' })
   if (occurrence.isDetached) badges.push({ id: 'moved', label: t('activities.occurrences.flags.moved'), tone: 'info' })
+  // E06-S13 #95: a session without a coach, or led by a substitute.
+  const coachMark = coachBadge(occurrence)
+  if (coachMark === 'needs_coach') {
+    badges.push({ id: 'needs-coach', label: t('activities.club.session.needsCoach'), tone: 'warning' })
+  }
   const actions: CalendarItemAction[] = []
   if (entry.declarationsOpen && as !== 'coach') {
     for (const person of entry.persons) {
@@ -507,7 +539,10 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
     place: occurrence.placeName,
     placeAddress: occurrence.placeAddress,
     section: occurrence.sectionName ? { id: occurrence.sectionId, label: occurrence.sectionName } : null,
-    coach: occurrence.coachName,
+    coach:
+      coachMark === 'substitution' && occurrence.coachName
+        ? `${occurrence.coachName} ${t('activities.substitutions.substitution')}`
+        : occurrence.coachName,
     subtitle,
     href: as === 'coach' ? attendanceHref(occurrence.id) : sessionHref(occurrence.id, as),
     badges,

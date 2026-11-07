@@ -215,6 +215,21 @@ export async function coachCandidateIds(
   return [...new Set([...assigned, ...leaders])]
 }
 
+/**
+ * Who handles a session left without a coach on `date` (E06-S13 #95): the coordinators of its section, or — when the
+ * section has none — the club administrators. Person ids, unique.
+ */
+export async function coachNeededHandlerIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionId: string,
+  date: CalendarDate,
+): Promise<string[]> {
+  const directory = personDirectory(container)
+  const coordinators = await directory.sectionCoordinatorIdsOn(scope, sectionId, date)
+  return coordinators.length > 0 ? coordinators : directory.roleHolderIdsOn(scope, 'club_admin', date)
+}
+
 /** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
 export function presenceConsents(
   container: AwilixContainer,
