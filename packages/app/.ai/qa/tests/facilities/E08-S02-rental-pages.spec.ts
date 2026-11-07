@@ -8,7 +8,7 @@ import { listRentals, phoneRental, postRental, rentalPitch } from '../_fixtures/
 // Active tab and has no critical or serious axe violation outside the platform baseline and reflows at 320 px; from
 // a "bookable" slot of the B-23 calendar the administrator enters a rental (for next week) for an unregistered renter, sees the live
 // quote with the amount and the deadlines, and saves it; cancelling a rental less than 24 h before its start states
-// in the dialog that the charge is forfeited. B-24 renders in Polish at 375 px.
+// in the dialog that the charge is forfeited. B-24 reflows at 320 px in Polish too.
 test.describe.configure({ timeout: 300_000 })
 
 /** A bookable start within the next day (weekdays 08:00–14:30, weekends 09:00–19:00), at least 30 minutes away. */
@@ -119,8 +119,8 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     expect(entered).toMatchObject({ renterType: 'unregistered', status: 'requested', contactPhone: '600 000 002' })
     expect(entered?.regulationsAcceptedAt).not.toBeNull()
 
-    // B-24 in Polish at 375 px.
-    await page.setViewportSize({ width: 375, height: 800 })
+    // B-24 in Polish (the longer locale) reflows at 320 px.
+    await page.setViewportSize({ width: 320, height: 800 })
     await page.context().addCookies([{ name: 'locale', value: 'pl', url: new URL(page.url()).origin }])
     await page.goto('/backend/facilities/rentals')
     await expect(page.getByTestId('facilities-rentals-tabs').getByRole('tablist')).toBeVisible()

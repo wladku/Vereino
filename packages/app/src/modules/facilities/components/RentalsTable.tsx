@@ -271,7 +271,8 @@ function RentalsList({ tab, onCreate }: { tab: RentalListTab; onCreate: () => vo
           }
         />
       ) : (
-        <div data-testid="facilities-rentals-table">
+        <div className="relative max-w-full min-w-0 overflow-x-auto" data-testid="facilities-rentals-table">
+          {/* The table and its footer scroll inside this region at 320 px (the Polish footer line is wider). */}
           <DataTable<RentalRow>
             title={t('facilities.rentals.title')}
             titleHeadingLevel={1}
