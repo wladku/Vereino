@@ -264,6 +264,12 @@ export async function clubTimeZone(container: AwilixContainer, scope: Activities
   return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.timezone
 }
 
+/** The club setting `coach_may_cancel` (#199, club spec DD-37; yes by default). */
+export async function coachMayCancel(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
+  assertRegistered(container, CLUB_CORE_SETTINGS)
+  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.coachMayCancel
+}
+
 /** The club settings the declarations read (club spec REQ-006, REQ-007; D-022, D-026): the zone, the kinds, the visibility. */
 export type AttendanceSettings = {
   timeZone: string

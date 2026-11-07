@@ -36,6 +36,7 @@ describe('club settings', () => {
       onlineFeeFixed: 0,
       coachSettlementModel: 'units_per_contract',
       showCalledUpChildren: 'none',
+      coachMayCancel: true,
       orderSalesDocument: 'none',
     })
     expect(clubSettingsSchema.parse(CLUB_SETTINGS_DEFAULTS)).toEqual(CLUB_SETTINGS_DEFAULTS)
@@ -78,12 +79,14 @@ describe('club settings', () => {
         shortName: 'Dev Academy',
         declarationKinds: { match: 'absence_only' },
         onlineFeePercent: 1.5,
+        coachMayCancel: false,
       }),
     ).toEqual({
       values: {
         ...CLUB_SETTINGS_DEFAULTS,
         ownAccountMinAge: 13,
         shortName: 'Dev Academy',
+        coachMayCancel: false,
         declarationKinds: { ...DEFAULT_DECLARATION_KINDS, match: 'absence_only' },
         onlineFeePercent: 1.5,
       },
@@ -99,11 +102,19 @@ describe('club settings', () => {
         timezone: 'Nowhere/Land',
         currency: 'zloty',
         declarationKinds: { training: 'maybe' },
+        coachMayCancel: 'no',
         orderSalesDocument: 'invoice',
       }),
     ).toEqual({
       values: { ...CLUB_SETTINGS_DEFAULTS, defaultLocale: 'en' },
-      invalidKeys: ['ownAccountMinAge', 'timezone', 'currency', 'declarationKinds', 'orderSalesDocument'],
+      invalidKeys: [
+        'ownAccountMinAge',
+        'timezone',
+        'currency',
+        'declarationKinds',
+        'coachMayCancel',
+        'orderSalesDocument',
+      ],
     })
   })
 

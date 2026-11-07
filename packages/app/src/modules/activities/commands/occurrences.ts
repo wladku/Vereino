@@ -5,17 +5,21 @@
 //   coordinator of the session's section or the club administrator;
 // - cancelling a planned session with a reason (`planned → cancelled`; a cancelled or done session answers 409
 //   `invalid_transition`) — also by a coach of the session's group; `activities.occurrence.cancelled` after commit
-//   sends the in-app notice (`subscribers/notify-occurrence-cancelled.ts`).
+//   sends the in-app notice (`subscribers/notify-occurrence-cancelled.ts`). Where the club setting `coach_may_cancel`
+//   is off (#199), a coach cancels only through a coordinator or administrator grant they also hold; otherwise 403
+//   `coach_cancel_disabled`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
-import type { GrantKind } from '@vereino/core'
+import type { AwilixContainer } from 'awilix'
+import { findActingRole, type ActingRole, type GrantKind, type Scope } from '@vereino/core'
 import { assertTransition, authorizeScoped, type TargetLock } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
 import { occurrenceCancelSchema, occurrenceUpdateSchema } from '../data/validators'
-import { sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
+import { permittedCancelRole, sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
+import { coachMayCancel } from '../services/directory'
 import { gatheringOffset } from '../lib/gathering'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
@@ -222,6 +226,30 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
   },
 }
 
+/**
+ * The role the caller cancels the session in (#199): the first of their `COACH_KINDS` grants on the session
+ * (least-privileged first), except that where the club setting `coach_may_cancel` is off a coach cancels only through
+ * a coordinator or administrator grant they also hold; null when they may not cancel. The command and the member reads
+ * (M-04, M-05) share it, so "Cancel session" is offered only when the cancellation would be accepted — an assigned
+ * coach of another group, who reads the session through `self`, is not offered it.
+ */
+export async function cancelRoleOf(
+  container: AwilixContainer,
+  grants: Scope,
+  row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
+): Promise<ActingRole | null> {
+  const target = scheduleTarget(row, row.id)
+  // The command's own check (`COACH_KINDS` on the schedule target), so a read never promises more than it accepts.
+  const actingRole = findActingRole(grants, COACH_KINDS, target)
+  if (actingRole !== 'coach') return actingRole
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  return permittedCancelRole(
+    await coachMayCancel(container, scope),
+    actingRole,
+    findActingRole(grants, PLAN_KINDS, target),
+  )
+}
+
 const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, OccurrenceCommandResult> = {
   id: 'activities.occurrences.cancel',
   isUndoable: true,
@@ -235,6 +263,8 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         em,
       )
       const row = authorized.entity as Occurrence
+      const actingRole = await cancelRoleOf(ctx.container, authorized.scope, row)
+      if (!actingRole) return activitiesErrors.throw('coach_cancel_disabled', { setting: 'coach_may_cancel' })
       await assertTransition(sessionTransitions, row.status, 'cancelled')
       const before = occurrenceSnapshot(row)
       row.status = 'cancelled'
@@ -242,7 +272,7 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       row.updatedAt = new Date()
       return {
         entity: row,
-        actingRole: authorized.actingRole,
+        actingRole,
         before,
         actorPersonId: selfPersonId(authorized.scope),
       }

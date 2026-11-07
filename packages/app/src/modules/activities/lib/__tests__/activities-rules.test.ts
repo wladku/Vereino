@@ -13,6 +13,7 @@ import {
   cancellationPersonIds,
   cancellationRecipients,
   needsCoach,
+  permittedCancelRole,
   generationWindow,
   horizonEnd,
   isPinnedSession,
@@ -295,6 +296,25 @@ describe('the cancellation reason on the phone', () => {
     expect(cancelReasonProblem('x'.repeat(200))).toBeNull()
     expect(cancelReasonProblem('x'.repeat(201))).toBe('too_long')
     expect(CANCEL_REASON_LIMITS).toEqual({ min: 3, max: 200 })
+  })
+})
+
+describe('cancelling under coach_may_cancel (#199)', () => {
+  it('keeps the acting role while coaches may cancel', () => {
+    expect(permittedCancelRole(true, 'coach', null)).toBe('coach')
+  })
+
+  it('refuses a coach without a planning grant when coaches may not cancel', () => {
+    expect(permittedCancelRole(false, 'coach', null)).toBeNull()
+  })
+
+  it('lets a coach who also coordinates cancel as the coordinator', () => {
+    expect(permittedCancelRole(false, 'coach', 'coordinator')).toBe('coordinator')
+  })
+
+  it('leaves coordinators and the administrator unaffected', () => {
+    expect(permittedCancelRole(false, 'coordinator', null)).toBe('coordinator')
+    expect(permittedCancelRole(false, 'club_admin', null)).toBe('club_admin')
   })
 })
 
