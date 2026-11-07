@@ -2,13 +2,18 @@ import { describe, expect, it } from '@jest/globals'
 import {
   CANCEL_REASON_MAX_LENGTH,
   CANCEL_REASON_MIN_LENGTH,
+  NEEDING_COACH_DAYS_AHEAD,
   OCCURRENCE_PERSPECTIVES,
+  coachBadge,
+  coachRowAction,
   defaultSessionWindow,
   isCancelReasonValid,
   localCalendarDate,
   perspectiveHref,
   perspectiveOf,
+  perspectiveQuery,
   perspectiveStatus,
+  perspectiveWindow,
   scheduleRangeWindow,
   sessionRowActions,
 } from '../occurrence-list'
@@ -17,12 +22,14 @@ import {
 // range. Instants are fixed; local dates are built with the local-time `Date` constructor, so the zone the test runs
 // in does not matter.
 describe('sessions list perspectives', () => {
-  it('knows All, Canceled and Calendar and reads anything else as All', () => {
-    expect(OCCURRENCE_PERSPECTIVES).toEqual(['all', 'cancelled', 'calendar'])
+  it('knows All, Needing a coach, Unsettled, Canceled and Calendar and reads anything else as All', () => {
+    expect(OCCURRENCE_PERSPECTIVES).toEqual(['all', 'unassigned', 'unsettled', 'cancelled', 'calendar'])
     expect(perspectiveOf('cancelled')).toBe('cancelled')
     expect(perspectiveOf('calendar')).toBe('calendar')
     expect(perspectiveOf('all')).toBe('all')
-    expect(perspectiveOf('unsettled')).toBe('all')
+    expect(perspectiveOf('unassigned')).toBe('unassigned')
+    expect(perspectiveOf('unsettled')).toBe('unsettled')
+    expect(perspectiveOf('settled')).toBe('all')
     expect(perspectiveOf(null)).toBe('all')
     expect(perspectiveOf(undefined)).toBe('all')
   })
@@ -41,6 +48,43 @@ describe('sessions list perspectives', () => {
     expect(perspectiveStatus('cancelled')).toBe('cancelled')
     expect(perspectiveStatus('all')).toBeUndefined()
     expect(perspectiveStatus('calendar')).toBeUndefined()
+  })
+})
+
+describe('sessions list perspective queries and windows (E06-S13)', () => {
+  it('pins unassigned=1, unsettled=1 or the cancelled status, and nothing for All and Calendar', () => {
+    expect(perspectiveQuery('unassigned')).toEqual({ unassigned: '1' })
+    expect(perspectiveQuery('unsettled')).toEqual({ unsettled: '1' })
+    expect(perspectiveQuery('cancelled')).toEqual({ status: 'cancelled' })
+    expect(perspectiveQuery('all')).toEqual({})
+    expect(perspectiveQuery('calendar')).toEqual({})
+  })
+
+  it('opens Needing a coach from today for 14 days, Unsettled without a window, the others on the default window', () => {
+    expect(NEEDING_COACH_DAYS_AHEAD).toBe(14)
+    expect(perspectiveWindow('unassigned', '2026-12-25')).toEqual({ from: '2026-12-25', to: '2027-01-08' })
+    expect(perspectiveWindow('unsettled', '2026-11-04')).toBeNull()
+    expect(perspectiveWindow('all', '2026-11-04')).toEqual({ from: '2026-10-28', to: '2026-11-18' })
+    expect(perspectiveWindow('cancelled', '2026-11-04')).toEqual({ from: '2026-10-28', to: '2026-11-18' })
+  })
+})
+
+describe('coach row action and badge (E06-S13)', () => {
+  it('offers Assign substitute without a coach and Change coach with one, for a planned session and a planner', () => {
+    expect(coachRowAction({ status: 'planned', coachPersonId: null }, true)).toBe('assign')
+    expect(coachRowAction({ status: 'planned', coachPersonId: 'p1' }, true)).toBe('change')
+    expect(coachRowAction({ status: 'planned', coachPersonId: null }, false)).toBeNull()
+    expect(coachRowAction({ status: 'done', coachPersonId: 'p1' }, true)).toBeNull()
+    expect(coachRowAction({ status: 'cancelled', coachPersonId: null }, true)).toBeNull()
+  })
+
+  it('marks a planned session without a coach and a substitute, nothing else', () => {
+    expect(coachBadge({ status: 'planned', coachPersonId: null })).toBe('needs_coach')
+    expect(coachBadge({ status: 'cancelled', coachPersonId: null })).toBeNull()
+    expect(coachBadge({ status: 'planned', coachPersonId: 'p2', substituteForPersonId: 'p1' })).toBe('substitution')
+    expect(coachBadge({ status: 'done', coachPersonId: 'p2', substituteForPersonId: 'p1' })).toBe('substitution')
+    expect(coachBadge({ status: 'planned', coachPersonId: 'p1', substituteForPersonId: null })).toBeNull()
+    expect(coachBadge({ status: 'planned', coachPersonId: 'p1' })).toBeNull()
   })
 })
 

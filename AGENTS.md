@@ -83,7 +83,7 @@ Rules (MUST):
 
 ## Validation
 
-Gate: `yarn verify` — the only gate command, identical locally and in CI; every step blocks; `yarn verify --list` shows the steps, `yarn verify --from <step>` resumes after a fix. Integration: `yarn test:integration:vereino` (Testcontainers PostgreSQL 17, production build, Playwright; focused: `--filter <TEST-ID>`). Do not use the platform runner `yarn test:integration:ephemeral`: it waits for the `customers` module, which this app does not enable. Formatting: `yarn format`. Never migrate to validate.
+Gate: `yarn verify` — the only gate command, identical locally and in CI; every step blocks; `yarn verify --list` shows the steps, `yarn verify --from <step>` resumes after a fix. Integration: `yarn test:integration:vereino` (Testcontainers PostgreSQL 17, production build, Playwright; focused: `--filter <TEST-ID>`). In an integration test, `signInBrowser` sets a new password and ends that user's API tokens: take a fresh token from the returned password before the next API call as that user (lesson `sign-in-browser-ends-the-api-token`). Do not use the platform runner `yarn test:integration:ephemeral`: it waits for the `customers` module, which this app does not enable. Formatting: `yarn format`. Never migrate to validate.
 
 ## Three-Axis Context Assembler
 
