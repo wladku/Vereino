@@ -12,6 +12,7 @@ import {
   type CalendarDate,
   type DateWindow,
   type Interval,
+  type ActingRole,
   type Recurrence,
 } from '@vereino/core'
 
@@ -292,6 +293,19 @@ export function cancelReasonProblem(reason: string): 'too_short' | 'too_long' | 
   const length = reason.trim().length
   if (length < CANCEL_REASON_LIMITS.min) return 'too_short'
   return length > CANCEL_REASON_LIMITS.max ? 'too_long' : null
+}
+
+/**
+ * The role a session is cancelled in under the club setting `coach_may_cancel` (#199, club spec DD-37): the acting
+ * role, except that where coaches may not cancel, a coach cancels only through a coordinator or administrator grant
+ * they also hold on the session (`plannerRole`); null when they hold none (403 `coach_cancel_disabled`).
+ */
+export function permittedCancelRole(
+  coachMayCancel: boolean,
+  actingRole: ActingRole,
+  plannerRole: ActingRole | null,
+): ActingRole | null {
+  return actingRole !== 'coach' || coachMayCancel ? actingRole : plannerRole
 }
 
 /** A session "needing a coach" (README M-02, B-15): planned, with no coach assigned. */

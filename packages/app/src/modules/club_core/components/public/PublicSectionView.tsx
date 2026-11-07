@@ -2,8 +2,8 @@
 // `/p/[clubSlug]/sections/[sectionSlug]` — the public section page (club spec UI table and mock-up, J-008, DD-28,
 // DD-29, REQ-025; #29): the section's name and effective logo and the blocks the club publishes — description,
 // conditions, materials (file links with name and format) and contact, and the classes: a card per public group with
-// its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Prices arrive with
-// `payments`; without public groups the classes area says that no classes are published.
+// its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Each card's fee
+// and sibling discount come from `payments.publicPrices` (#112); without public groups the classes area says that no classes are published.
 // A breadcrumb "Club › Sections › {name}" leads back to the club page (E06-S07, #89).
 // Headings: h1 section, h2 blocks. States: loading, error with retry, 404 and "the club does not publish a page".
 import * as React from 'react'
@@ -84,7 +84,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
         </div>
       </section>
       <Block id="classes" title={t('club_core.public.classes.title')}>
-        <PublicClasses groups={blocks.groups} schedule={blocks.schedule} />
+        <PublicClasses groups={blocks.groups} schedule={blocks.schedule} prices={blocks.prices} />
       </Block>
       {blocks.conditions ? (
         <Block id="conditions" title={t('club_core.public.conditions.title')}>

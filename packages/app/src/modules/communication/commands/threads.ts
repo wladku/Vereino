@@ -269,8 +269,9 @@ const DIRECT_KINDS: readonly GrantKind[] = ['self', 'guardian']
  * live `participant` membership of the group active today (club time), else 403 `scope_denied`; no staff → 422
  * `direct_no_recipients`; the 21st direct thread of the member in 24 hours → 429 `direct_thread_limit` (counted under
  * an advisory lock on the organization and the author). The audience is the subject and the staff, expanded by
- * `resolveMembers` (a minor adds their active guardians). Not undoable for the reason of `threads.create`: a sent
- * e-mail cannot be recalled.
+ * `resolveMembers` (a minor adds their active guardians). The thread's `scope_id` is the subject, so a guardian's ward
+ * filter lists it under exactly that ward, with or without an account (#187). Not undoable for the reason of
+ * `threads.create`: a sent e-mail cannot be recalled.
  */
 const startDirectCommand: CommandHandler<Record<string, unknown>, ThreadCommandResult> = {
   id: 'communication.threads.start_direct',
@@ -321,7 +322,7 @@ const startDirectCommand: CommandHandler<Record<string, unknown>, ThreadCommandR
         id: threadId,
         ...scope,
         scopeType: 'direct',
-        scopeId: null,
+        scopeId: parsed.personId,
         sectionId: group.sectionId,
         groupId: parsed.to === 'coaches' ? group.id : null,
         subject: parsed.subject,

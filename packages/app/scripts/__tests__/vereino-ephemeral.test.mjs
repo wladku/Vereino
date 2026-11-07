@@ -8,8 +8,10 @@ import net from 'node:net'
 import {
   DEFAULT_PORT,
   PORT_RANGE_SIZE,
+  RESERVED_PORTS,
   findFreePort,
   isPortFree,
+  isShard,
   DEFAULT_POSTGRES_IMAGE,
   POSTGRES_INIT_SQL,
   SEEDED_ADMIN,
@@ -25,10 +27,11 @@ import {
 } from '../vereino-ephemeral.mjs'
 
 test('parseArgs reads the mode and options', () => {
-  assert.deepEqual(parseArgs(['test']), { mode: 'test', filter: null, build: true, port: null })
+  assert.deepEqual(parseArgs(['test']), { mode: 'test', filter: null, shard: null, build: true, port: null })
   assert.deepEqual(parseArgs(['start', '--no-build', '--port', '6001', '--filter', 'ENG-TEST']), {
     mode: 'start',
     filter: 'ENG-TEST',
+    shard: null,
     build: false,
     port: 6001,
   })
@@ -40,7 +43,19 @@ test('parseArgs rejects unknown modes and incomplete options', () => {
   assert.throws(() => parseArgs(['test', '--filter']), /incomplete option: --filter/)
   assert.throws(() => parseArgs(['test', '--port', 'abc']), /incomplete option: --port/)
   assert.throws(() => parseArgs(['test', '--port']), /incomplete option: --port/)
+  assert.equal(parseArgs(['test', '--shard', '2/3']).shard, '2/3')
+  assert.throws(() => parseArgs(['test', '--shard']), /incomplete option: --shard/)
+  assert.throws(() => parseArgs(['test', '--shard', '4/3']), /incomplete option: --shard/)
   assert.throws(() => parseArgs(['test', '--verbose']), /unknown or incomplete option: --verbose/)
+})
+
+test('isShard accepts i/n with 1 <= i <= n only', () => {
+  assert.equal(isShard('1/1'), true)
+  assert.equal(isShard('3/3'), true)
+  assert.equal(isShard('0/3'), false)
+  assert.equal(isShard('4/3'), false)
+  assert.equal(isShard('1-3'), false)
+  assert.equal(isShard(undefined), false)
 })
 
 test('buildAppEnv points the app at the database and pins test-only values', () => {
@@ -299,7 +314,11 @@ function fakeDeps(overrides = {}) {
 test('runEphemeral test mode builds, starts, runs Playwright and cleans up', async () => {
   const deps = fakeDeps()
   const lines = []
-  const code = await runEphemeral({ argv: ['test', '--filter', 'ENG-TEST'], deps, log: (line) => lines.push(line) })
+  const code = await runEphemeral({
+    argv: ['test', '--filter', 'ENG-TEST', '--shard', '2/3'],
+    deps,
+    log: (line) => lines.push(line),
+  })
   assert.equal(code, 0)
   assert.deepEqual(deps.calls, [
     ['db', 'pg:test'],
@@ -309,7 +328,11 @@ test('runEphemeral test mode builds, starts, runs Playwright and cleans up', asy
     ['app'],
     ['ready', 'http://127.0.0.1:5001'],
     ['yarn', 'playwright install chromium', 'http://127.0.0.1:5001'],
-    ['yarn', 'playwright test --config .ai/qa/tests/playwright.config.ts ENG-TEST', 'http://127.0.0.1:5001'],
+    [
+      'yarn',
+      'playwright test --config .ai/qa/tests/playwright.config.ts --shard=2/3 ENG-TEST',
+      'http://127.0.0.1:5001',
+    ],
     ['app-stop', 4242],
     ['db-stop'],
   ])
@@ -380,6 +403,30 @@ test('findFreePort starts at a random port of the range and wraps around past bu
   })
   assert.equal(port, DEFAULT_PORT + 1)
   assert.deepEqual(probed, [DEFAULT_PORT + PORT_RANGE_SIZE - 1, DEFAULT_PORT, DEFAULT_PORT + 1])
+})
+
+test('findFreePort skips the ports Next.js reserves', async () => {
+  const probed = []
+  const port = await findFreePort({
+    random: () => (5060 - DEFAULT_PORT) / PORT_RANGE_SIZE,
+    isFree: async (candidate) => (probed.push(candidate), true),
+  })
+  assert.equal(port, 5062)
+  assert.deepEqual(probed, [5062])
+  assert.deepEqual([...RESERVED_PORTS], [5060, 5061])
+})
+
+test('findFreePort never probes a reserved port, even when every other port is taken', async () => {
+  const probed = []
+  await assert.rejects(
+    findFreePort({ random: () => 0, isFree: async (candidate) => (probed.push(candidate), false) }),
+    /no free port/,
+  )
+  assert.equal(probed.length, PORT_RANGE_SIZE - RESERVED_PORTS.size)
+  assert.equal(
+    probed.some((candidate) => RESERVED_PORTS.has(candidate)),
+    false,
+  )
 })
 
 test('findFreePort fails when every port of the range is taken', async () => {

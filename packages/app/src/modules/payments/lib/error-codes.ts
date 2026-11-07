@@ -12,6 +12,7 @@ export const errorCodes = [
   { code: 'discount_value_invalid', status: 422, messageKey: 'payments.errors.discount_value_invalid' },
   { code: 'discount_conditions_invalid', status: 422, messageKey: 'payments.errors.discount_conditions_invalid' },
   { code: 'period_out_of_range', status: 422, messageKey: 'payments.errors.period_out_of_range' },
+  { code: 'charge_amount_over_limit', status: 422, messageKey: 'payments.errors.charge_amount_over_limit' },
   { code: 'generation_in_progress', status: 409, messageKey: 'payments.errors.generation_in_progress' },
   { code: 'generation_already_undone', status: 409, messageKey: 'payments.errors.generation_already_undone' },
   { code: 'charge_not_payable', status: 409, messageKey: 'payments.errors.charge_not_payable' },

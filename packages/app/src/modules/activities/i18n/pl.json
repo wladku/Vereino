@@ -319,6 +319,7 @@
   "activities.errors.attendance_policy_scope_invalid": "Pola zakresu nie pasują do zakresu polityki.",
   "activities.errors.attendance_version_required": "Wyślij wersję zajęć, z którą wczytano listę.",
   "activities.errors.calendar_range_invalid": "Wybierz zakres najwyżej 62 dni, z początkiem przed końcem.",
+  "activities.errors.coach_cancel_disabled": "Ustawienie klubu „Trenerzy mogą odwoływać zajęcia” jest wyłączone: zgłoś nieobecność albo poproś koordynatora o odwołanie.",
   "activities.errors.declaration_closed": "Deklaracje na te zajęcia są już zamknięte.",
   "activities.errors.declaration_guardian_only": "Na te zajęcia deklaruje za Ciebie opiekun.",
   "activities.errors.declaration_kind_absence_only": "Na te zajęcia zgłasza się tylko nieobecność.",

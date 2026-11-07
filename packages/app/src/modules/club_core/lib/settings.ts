@@ -137,6 +137,8 @@ export const clubSettingFieldSchemas = {
   onlineFeeFixed: z.number().int().min(0).max(1_000_000),
   coachSettlementModel: z.enum(COACH_SETTLEMENT_MODELS),
   showCalledUpChildren: z.enum(CALLED_UP_CHILDREN_VISIBILITY),
+  /** Whether a coach may cancel a session; `false` leaves the coach only reporting an absence (#199, DD-37). */
+  coachMayCancel: z.boolean(),
   orderSalesDocument: z
     .enum(ORDER_SALES_DOCUMENTS)
     .refine(isAvailableSalesDocument, { message: 'This sales document is not available in this version' }),
@@ -170,6 +172,7 @@ export const CLUB_SETTINGS_DEFAULTS: Readonly<ClubSettingsValues> = {
   onlineFeeFixed: 0,
   coachSettlementModel: 'units_per_contract',
   showCalledUpChildren: 'none',
+  coachMayCancel: true,
   orderSalesDocument: 'none',
 }
 

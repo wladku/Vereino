@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Payments',
   version: '0.1.0',
   description:
-    'Club payments, phase 4 steps 2 and 3 (#108, #109): fee schedules, discount rules, the "Coaches and payments" setting, the idempotent period generator of membership-fee charges with the sibling discount, and the charge ledger: charges by perspective, cash and transfer payments, reversing entries and cancellation with a reason.',
+    'Club payments, phase 4 steps 2, 3 and 6 (#108, #109, #112): fee schedules, discount rules, the "Coaches and payments" setting, the idempotent period generator of membership-fee charges with the sibling discount, the charge ledger (charges by perspective, cash and transfer payments, reversing entries and cancellation with a reason) and the public prices block of the section page.',
   author: 'Vereino',
   license: 'MIT',
   // Payments spec *Architecture*: the participants, payers and activities are reached only through DI and ids.

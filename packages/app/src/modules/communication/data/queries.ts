@@ -181,8 +181,9 @@ export type ThreadFilters = {
   isCase?: boolean
   /**
    * A ward's threads (E06-S20): its groups' (with their activities' and sessions', through `group_id`), its groups'
-   * sections' own threads, and the direct threads it takes part in (a club-wide thread is about no ward, even one
-   * it reaches). The caller checks first that the reader is its guardian.
+   * sections' own threads, and the direct threads about it (a member's names its subject in `scope_id`; a staff-started
+   * one counts when the ward takes part in it). A club-wide thread is about no ward, even one it reaches. The caller
+   * checks first that the reader is its guardian.
    */
   ward?: WardThreads
 }
@@ -227,17 +228,21 @@ export async function visibleThreadHeaders(
     bindings.push(filters.isCase)
   }
   if (filters.ward) {
+    // A member's direct thread names its subject in `scope_id` (#187); one without (staff-started) is about the ward
+    // when the ward takes part in it, or when it carries one of the ward's groups.
+    const { personId, groupIds, sectionIds } = filters.ward
+    const ofGroups = groupIds.length > 0 ? `t.group_id in (${placeholders(groupIds)})` : 'false'
     const about = [
-      "(t.scope_type = 'direct' and exists (select 1 from communication_thread_participants w where w.thread_id = t.id and w.organization_id = t.organization_id and w.person_id = ?))",
+      `(t.scope_type = 'direct' and (t.scope_id = ? or (t.scope_id is null and (exists (select 1 from communication_thread_participants w where w.thread_id = t.id and w.organization_id = t.organization_id and w.person_id = ?) or ${ofGroups}))))`,
     ]
-    bindings.push(filters.ward.personId)
-    if (filters.ward.groupIds.length > 0) {
-      about.push(`t.group_id in (${placeholders(filters.ward.groupIds)})`)
-      bindings.push(...filters.ward.groupIds)
+    bindings.push(personId, personId, ...groupIds)
+    if (groupIds.length > 0) {
+      about.push(`(t.scope_type <> 'direct' and ${ofGroups})`)
+      bindings.push(...groupIds)
     }
-    if (filters.ward.sectionIds.length > 0) {
-      about.push(`(t.scope_type = 'section' and t.section_id in (${placeholders(filters.ward.sectionIds)}))`)
-      bindings.push(...filters.ward.sectionIds)
+    if (sectionIds.length > 0) {
+      about.push(`(t.scope_type = 'section' and t.section_id in (${placeholders(sectionIds)}))`)
+      bindings.push(...sectionIds)
     }
     conditions.push(`(${about.join(' or ')})`)
   }
