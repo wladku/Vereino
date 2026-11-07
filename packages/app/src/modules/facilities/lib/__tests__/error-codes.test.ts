@@ -14,6 +14,16 @@ describe('facilities error codes', () => {
       'closure_period_invalid',
       'rental_rate_season_invalid',
       'rental_rate_overlap',
+      'rental_units_invalid',
+      'rental_rate_missing',
+      'rental_renter_invalid',
+      'zone_not_reservable',
+      'rental_conflict',
+      'place_closed',
+      'entry_ban_active',
+      'rental_start_past',
+      'rental_not_started',
+      'entry_ban_period_invalid',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
