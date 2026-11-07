@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-pr` with the repo-local overrides applied, run unattended under cezar (task 52e8f123); no subagents.
 - **Trigger:** `/om-auto-fix-pr 214` — the PR was 4 commits behind `main` and its `integration` check was red.
 - **Spec / issue / branch:** #199; PR #214; `feat/issue-199-coach-may-cancel`, worked on a detached HEAD at `origin/feat/issue-199-coach-may-cancel` (the branch may be checked out in another worktree) and pushed with `git push origin HEAD:feat/issue-199-coach-may-cancel`.
-- **Status:** in progress
+- **Status:** merge-ready (handed off to the merge train; not merged)
 
 ## Goal
 
@@ -30,7 +30,17 @@ Merge the latest `main` into the PR, make the required checks green without weak
 ## Commands and results
 
 - `yarn install --immutable`, then `yarn verify` on the merge: `[verify] all 14 step(s) passed`.
+- `yarn test:integration:vereino --filter E06-S12` on the merge: `1 passed, 1 flaky`.
+  - `E06-S12-sessions-list-perspectives`, the spec that was red in CI, passed on its first try.
+  - `E06-S12-calendar-moved-session` (from `main`, #216) failed its first try with `Test timeout of 20000ms exceeded` and passed on retry. It was the first test of the run, against a server that had just started. This PR does not touch it.
+- CI run 42387327953 on 5b6ab3a: `gate`, `browser-smoke`, `perf`, `dependency-review`, `pr-title`, `integration` (shards 1/3, 2/3, 3/3) all passed.
+- `main` then moved to ff5c44b (#213, the lessons catalog). A trial merge (`git merge --no-commit`, then aborted) applied cleanly and `yarn lessons:check` passed. I did not merge it in: the merge train updates the branch (`AGENTS.md`, Never).
 
 ## Open problems
 
+- None blocking. `E06-S12-calendar-moved-session` (from #216) was flaky once locally, a 20 s timeout on a cold server.
+
 ## Next steps
+
+- Labels: `review` and `in-progress` replaced by `merge-queue`; `needs-qa` stays (advisory, `qaGate` is off).
+- The merge train or `om-approve-merge-pr` merges it.
