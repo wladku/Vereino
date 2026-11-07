@@ -80,7 +80,7 @@ export async function readAttendanceList(
     describeOccurrence(ctx, scope, occurrence),
     attendanceSettings(ctx.container, scope),
     activityOf(em, scope, occurrence.activityId),
-    cancelRoleOf(ctx.container, grants, actingRole, occurrence),
+    cancelRoleOf(ctx.container, grants, occurrence),
   ])
   const kind = settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm'
   const roster = new Set(rosterIds)

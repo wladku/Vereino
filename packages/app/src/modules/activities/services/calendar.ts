@@ -536,7 +536,7 @@ export async function readCalendarItem(
     await assertStaffFeature(ctx, scope, 'activities.coach')
     item = (await staffCalendar(ctx, scope, grants, 'coach', window, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
-    item = { ...item, mayCancel: (await cancelRoleOf(ctx.container, grants, 'coach', row)) !== null }
+    item = { ...item, mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null }
   } else {
     const personIds = await memberPersons(grants, as, personId)
     item = (await memberCalendar(ctx, scope, as, personIds, window, now, row.id)).at(0)

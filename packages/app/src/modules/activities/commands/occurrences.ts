@@ -227,22 +227,26 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
 }
 
 /**
- * The role the caller cancels the session in (#199): their acting role, unless the club setting `coach_may_cancel` is
- * off and they act as a coach — then a coordinator or administrator grant they also hold on the session, or null. The
- * member reads (M-04, M-05) use it to offer "Cancel session" only when the cancellation would be accepted.
+ * The role the caller cancels the session in (#199): the first of their `COACH_KINDS` grants on the session
+ * (least-privileged first), except that where the club setting `coach_may_cancel` is off a coach cancels only through
+ * a coordinator or administrator grant they also hold; null when they may not cancel. The command and the member reads
+ * (M-04, M-05) share it, so "Cancel session" is offered only when the cancellation would be accepted — an assigned
+ * coach of another group, who reads the session through `self`, is not offered it.
  */
 export async function cancelRoleOf(
   container: AwilixContainer,
   grants: Scope,
-  actingRole: ActingRole,
   row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
 ): Promise<ActingRole | null> {
+  const target = scheduleTarget(row, row.id)
+  // The command's own check (`COACH_KINDS` on the schedule target), so a read never promises more than it accepts.
+  const actingRole = findActingRole(grants, COACH_KINDS, target)
   if (actingRole !== 'coach') return actingRole
   const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
   return permittedCancelRole(
     await coachMayCancel(container, scope),
     actingRole,
-    findActingRole(grants, PLAN_KINDS, scheduleTarget(row, row.id)),
+    findActingRole(grants, PLAN_KINDS, target),
   )
 }
 
@@ -259,7 +263,7 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         em,
       )
       const row = authorized.entity as Occurrence
-      const actingRole = await cancelRoleOf(ctx.container, authorized.scope, authorized.actingRole, row)
+      const actingRole = await cancelRoleOf(ctx.container, authorized.scope, row)
       if (!actingRole) return activitiesErrors.throw('coach_cancel_disabled', { setting: 'coach_may_cancel' })
       await assertTransition(sessionTransitions, row.status, 'cancelled')
       const before = occurrenceSnapshot(row)
