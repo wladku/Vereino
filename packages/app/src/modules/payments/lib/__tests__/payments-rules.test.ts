@@ -45,6 +45,7 @@ describe('payments vocabularies', () => {
       discount_value_invalid: 422,
       discount_conditions_invalid: 422,
       period_out_of_range: 422,
+      charge_amount_over_limit: 422,
       generation_in_progress: 409,
       generation_already_undone: 409,
       charge_not_payable: 409,

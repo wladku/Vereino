@@ -182,6 +182,15 @@ test('TEST-M12 member direct thread: the coaches or the coordinator of a househo
     expect(emailsTo(coach.email, toCoordinatorSubject)).toEqual([])
     expect((await getThread(request, coach.token, coordinatorThreadId)).status).toBe(403)
 
+    // The ward filter (#187): each direct thread lists under exactly the ward it is about, whether it went to the
+    // coaches or the coordinator, and whether the ward has an account (Hania none, Kuba one), although both wards are
+    // in Żaki. The subject is the thread's `scopeId`.
+    const sorted = (items: { id: string }[]) => items.map((item) => item.id).sort()
+    const haniaThreads = await listThreads(request, anna.token, `&as=member&wardId=${hania.personId}`)
+    expect(sorted(haniaThreads)).toEqual([threadId, coordinatorThreadId].sort())
+    expect(sorted(await listThreads(request, anna.token, `&as=member&wardId=${kuba.personId}`))).toEqual([kubaThreadId])
+    expect(haniaThreads.map((thread) => thread.scopeId)).toEqual([hania.personId, hania.personId])
+
     // The coordinator marks Anna's first thread as a case; Anna's edit of her message answers 409 `case_immutable`.
     const marked = await markCase(
       request,
