@@ -30,4 +30,4 @@
 
 ## Open problems / next steps
 
-- No integration test added: the overflow needs 215+ sessions in one month; the refusal is a single guarded throw covered by the pure-plan unit test.
+- No integration test added: the overflow needs 215+ sessions in one month; the refusal is a single guarded throw covered by the pure-plan unit test. (Superseded 2026-11-07: the limit trips with a `MAX_AMOUNT` fee and 2 sessions, so `E07-S01-per-session-charge-limit.spec.ts` now covers the 422 — `.ai/runs/2026-11-07-pr-207-merge-ready.md`.)
