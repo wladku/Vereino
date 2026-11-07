@@ -1,15 +1,17 @@
 'use client'
 // `/backend/activities/occurrences/[id]` — one session (club spec UI table, glossary *Session*, *Session
 // cancellation*; REQ-005, REQ-009): activity, group, section, date, time, place, coach and status. With
-// `activities.manage` a planned session is moved or re-staffed ("Move": date, times, place, coach), which detaches it
-// from its series; a move that overbooks a place or a coach is refused with 409 and its conflict list is shown. With
+// `activities.manage` a planned session is moved ("Move": date, times, gathering time, place), which detaches it from
+// its series — its coach changes only through the substitute dialog, so every change is in the history (#95); a move that overbooks a place or a coach is refused with 409 and its conflict list is shown. With
 // `activities.coach` a planned session is cancelled with a required reason; the people it concerns get an in-app
 // notice. A cancelled session shows its reason and no actions. Both writes send the session's lock token. With
-// `activities.coach` the record links to the session's attendance list on the member side (#33).
+// `activities.coach` the record links to the session's attendance list on the member side (#33). E06-S13 #95: the coach
+// row shows "Needs a coach" or "{substitute} (substitute for {coach})"; with `activities.manage` a planned session gets
+// "Assign substitute" / "Change coach" (the substitute dialog), and the substitution history is listed, oldest first.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { CrudForm, type CrudField, type CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
+import { CrudForm, type CrudField } from '@open-mercato/ui/backend/CrudForm'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
@@ -18,9 +20,10 @@ import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { AssignCoachDialog } from './AssignCoachDialog'
 import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
 import { ConflictList } from './ConflictList'
-import { OccurrenceBadges } from './OccurrencesTable'
+import { OccurrenceBadges, OccurrenceCoach } from './OccurrencesTable'
 import { attendanceHref } from './club/club-client'
 import {
   OWN_FORBIDDEN_STATE,
@@ -31,10 +34,8 @@ import {
   fieldOfError,
   instantDate,
   instantTime,
-  personOptions,
   placeOptions,
   scheduleConflictsOf,
-  textOrNull,
   timeRangeOfInstants,
   toInstant,
   tolerant,
@@ -59,7 +60,6 @@ type MoveValues = Record<string, unknown> & {
   /** The gathering wall time on the session's date (DD-43); empty = none. */
   gatheringTime?: string
   placeId?: string
-  coachPersonId?: string
   updatedAt?: string | null
 }
 
@@ -97,7 +97,20 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
       : []),
     [t('activities.occurrences.fields.time'), timeRangeOfInstants(occurrence.startAt, occurrence.endAt)],
     [t('activities.fields.place'), occurrence.placeName],
-    [t('activities.fields.coach'), occurrence.coachName],
+    [
+      t('activities.fields.coach'),
+      <span key="coach" className="flex flex-col gap-1" data-testid="occurrence-coach">
+        <OccurrenceCoach row={occurrence} t={t} />
+        {occurrence.substituteForName ? (
+          <span className="text-muted-foreground text-xs" data-testid="occurrence-substitute-for">
+            {t('activities.substitutions.forLine', {
+              substitute: occurrence.coachName ?? '',
+              coach: occurrence.substituteForName,
+            })}
+          </span>
+        ) : null}
+      </span>,
+    ],
     ...(occurrence.opponentName
       ? ([[t('activities.fields.opponent'), occurrence.opponentName]] as Array<[string, React.ReactNode]>)
       : []),
@@ -128,6 +141,52 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
   )
 }
 
+/** The substitution history of a session (E06-S13 #95), oldest first; entries are never edited. */
+function SubstitutionHistory({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate }) {
+  if (occurrence.substitutions.length === 0) return null
+  return (
+    <section
+      className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+      aria-labelledby="occurrence-substitutions"
+      data-testid="occurrence-substitutions"
+    >
+      <h2 id="occurrence-substitutions" className="text-lg font-semibold">
+        {t('activities.substitutions.history.title')}
+      </h2>
+      <ol className="flex flex-col gap-2">
+        {occurrence.substitutions.map((entry) => (
+          <li key={entry.id} className="flex flex-col gap-0.5 text-sm" data-kind={entry.kind}>
+            <span>
+              {t(`activities.substitutions.history.${entry.kind}`, {
+                previous: entry.previousCoachName ?? t('activities.common.unknownPerson'),
+                next: entry.newCoachName ?? t('activities.common.unknownPerson'),
+              })}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {[
+                `${dateLabel(t, instantDate(entry.createdAt))} ${instantTime(entry.createdAt)}`,
+                entry.decidedByName
+                  ? t('activities.substitutions.history.by', {
+                      name: entry.decidedByName,
+                      role: t(`activities.substitutions.roles.${entry.actingRole}`),
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+            {entry.reason ? (
+              <span className="text-muted-foreground text-xs break-words whitespace-pre-wrap">
+                {t('activities.substitutions.history.reason', { reason: entry.reason })}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 function MoveForm({
   occurrence,
   onDone,
@@ -139,13 +198,6 @@ function MoveForm({
 }) {
   const t = useT()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
-  const coachSeed = React.useMemo<CrudFieldOption[]>(
-    () =>
-      occurrence.coachPersonId
-        ? [{ value: occurrence.coachPersonId, label: occurrence.coachName ?? t('activities.common.unknownPerson') }]
-        : [],
-    [occurrence.coachPersonId, occurrence.coachName, t],
-  )
   const fields = React.useMemo<CrudField[]>(
     () => [
       dateField('date', t('activities.occurrences.fields.date'), { required: true }),
@@ -162,17 +214,8 @@ function MoveForm({
         loadOptions: tolerant(placeOptions),
         required: true,
       },
-      {
-        id: 'coachPersonId',
-        label: t('activities.fields.coach'),
-        type: 'combobox',
-        placeholder: t('activities.fields.coach.placeholder'),
-        loadOptions: (query?: string) => personOptions(query),
-        seedOptions: coachSeed,
-        allowCustomValues: false,
-      },
     ],
-    [t, coachSeed],
+    [t],
   )
   const initialValues = React.useMemo<MoveValues>(
     () => ({
@@ -182,7 +225,6 @@ function MoveForm({
       endTime: instantTime(occurrence.endAt),
       gatheringTime: instantTime(occurrence.gatheringAt),
       placeId: occurrence.placeId ?? '',
-      coachPersonId: occurrence.coachPersonId ?? '',
       updatedAt: occurrence.updatedAt,
     }),
     [occurrence],
@@ -239,7 +281,6 @@ function MoveForm({
                   startAt,
                   endAt,
                   placeId: values.placeId,
-                  coachPersonId: textOrNull(values.coachPersonId),
                   ...(gatheringChanged ? { gatheringAt } : {}),
                 }),
               },
@@ -274,6 +315,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const features = useActivitiesFeatures()
   const [moving, setMoving] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
+  const [staffing, setStaffing] = React.useState(false)
   const query = useQuery({
     queryKey: ['activities-occurrence', id],
     queryFn: async (): Promise<OccurrenceLoad> => {
@@ -312,6 +354,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const occurrence = load.occurrence
   const planned = occurrence.status === 'planned'
   const canMove = features.manage && planned
+  const canStaff = features.manage && planned
   const canCancel = features.coach && planned
   // The coach's attendance list (#33) lives on the member side; it reads and saves through the same record scope.
   const canOpenAttendance = features.coach && occurrence.status !== 'cancelled'
@@ -334,13 +377,30 @@ export function OccurrenceRecord({ id }: { id: string }) {
           </span>
           <OccurrenceBadges row={occurrence} t={t} />
         </div>
-        {canMove || canCancel || canOpenAttendance ? (
+        {canMove || canCancel || canOpenAttendance || canStaff ? (
           <div className="flex flex-wrap items-center gap-2">
             {canOpenAttendance ? (
               <Button asChild variant="outline" size="sm">
                 <Link href={attendanceHref(occurrence.id)} data-testid="occurrence-attendance-link">
                   {t('activities.occurrences.actions.attendance')}
                 </Link>
+              </Button>
+            ) : null}
+            {canStaff ? (
+              <Button
+                type="button"
+                variant={occurrence.coachPersonId ? 'outline' : 'default'}
+                size="sm"
+                data-testid="occurrence-assign-coach-button"
+                onClick={() => {
+                  setStaffing(true)
+                }}
+              >
+                {t(
+                  occurrence.coachPersonId
+                    ? 'activities.substitutions.change.action'
+                    : 'activities.substitutions.assign.action',
+                )}
               </Button>
             ) : null}
             {canMove ? (
@@ -392,6 +452,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
         <p className="text-muted-foreground text-sm">{t('activities.occurrences.moved.help')}</p>
       ) : null}
       <Details occurrence={occurrence} t={t} />
+      <SubstitutionHistory occurrence={occurrence} t={t} />
       {canMove && moving ? (
         <MoveForm
           key={occurrence.updatedAt ?? occurrence.id}
@@ -403,6 +464,15 @@ export function OccurrenceRecord({ id }: { id: string }) {
             setMoving(false)
             await refetch()
           }}
+        />
+      ) : null}
+      {canStaff && staffing ? (
+        <AssignCoachDialog
+          key={occurrence.updatedAt ?? occurrence.id}
+          occurrence={occurrence}
+          open
+          onOpenChange={setStaffing}
+          onDone={refetch}
         />
       ) : null}
       {canCancel ? (
