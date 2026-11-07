@@ -112,7 +112,16 @@ describe('session row actions', () => {
   const past = '2026-11-04T11:00:00Z'
 
   it('offers Cancel for a planned session that has not started', () => {
-    expect(sessionRowActions({ status: 'planned', startAt: future }, now, true)).toEqual(['cancel'])
+    expect(sessionRowActions({ status: 'planned', startAt: future, mayCancel: true }, now, true)).toEqual(['cancel'])
+  })
+
+  it('offers no Cancel when the caller may not cancel the session (#215)', () => {
+    expect(sessionRowActions({ status: 'planned', startAt: future, mayCancel: false }, now, true)).toEqual([])
+    expect(sessionRowActions({ status: 'planned', startAt: future }, now, true)).toEqual([])
+  })
+
+  it('still offers the attendance list of a started session the caller may not cancel', () => {
+    expect(sessionRowActions({ status: 'planned', startAt: past, mayCancel: false }, now, true)).toEqual(['attendance'])
   })
 
   it('offers nothing for a future session that is cancelled or done', () => {
@@ -128,7 +137,7 @@ describe('session row actions', () => {
   })
 
   it('offers nothing without activities.coach or without a readable start', () => {
-    expect(sessionRowActions({ status: 'planned', startAt: future }, now, false)).toEqual([])
+    expect(sessionRowActions({ status: 'planned', startAt: future, mayCancel: true }, now, false)).toEqual([])
     expect(sessionRowActions({ status: 'planned', startAt: null }, now, true)).toEqual([])
     expect(sessionRowActions({ status: 'planned', startAt: 'not a date' }, now, true)).toEqual([])
   })

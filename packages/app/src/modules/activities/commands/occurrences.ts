@@ -230,24 +230,42 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
  * The role the caller cancels the session in (#199): the first of their `COACH_KINDS` grants on the session
  * (least-privileged first), except that where the club setting `coach_may_cancel` is off a coach cancels only through
  * a coordinator or administrator grant they also hold; null when they may not cancel. The command and the member reads
- * (M-04, M-05) share it, so "Cancel session" is offered only when the cancellation would be accepted — an assigned
- * coach of another group, who reads the session through `self`, is not offered it.
+ * (M-04, M-05) and the backend session reads (B-15, #215) share it, so "Cancel" is offered only when the cancellation
+ * would be accepted — an assigned coach of another group, who reads the session through `self`, is not offered it.
  */
 export async function cancelRoleOf(
   container: AwilixContainer,
   grants: Scope,
-  row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
+  row: CancelTargetRow,
 ): Promise<ActingRole | null> {
-  const target = scheduleTarget(row, row.id)
-  // The command's own check (`COACH_KINDS` on the schedule target), so a read never promises more than it accepts.
-  const actingRole = findActingRole(grants, COACH_KINDS, target)
-  if (actingRole !== 'coach') return actingRole
-  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
-  return permittedCancelRole(
-    await coachMayCancel(container, scope),
-    actingRole,
-    findActingRole(grants, PLAN_KINDS, target),
-  )
+  return (await cancelRolesOf(container, grants, [row])).get(row.id) ?? null
+}
+
+type CancelTargetRow = Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>
+
+/**
+ * `cancelRoleOf` for the sessions of one club page (#215): the role per session id, reading the club setting
+ * `coach_may_cancel` at most once and only when a session is reached through a coach grant.
+ */
+export async function cancelRolesOf(
+  container: AwilixContainer,
+  grants: Scope,
+  rows: CancelTargetRow[],
+): Promise<Map<string, ActingRole | null>> {
+  const roles = new Map<string, ActingRole | null>()
+  let mayCancel: Promise<boolean> | undefined
+  for (const row of rows) {
+    const target = scheduleTarget(row, row.id)
+    // The command's own check (`COACH_KINDS` on the schedule target), so a read never promises more than it accepts.
+    const actingRole = findActingRole(grants, COACH_KINDS, target)
+    if (actingRole !== 'coach') {
+      roles.set(row.id, actingRole)
+      continue
+    }
+    mayCancel ??= coachMayCancel(container, { tenantId: row.tenantId, organizationId: row.organizationId })
+    roles.set(row.id, permittedCancelRole(await mayCancel, actingRole, findActingRole(grants, PLAN_KINDS, target)))
+  }
+  return roles
 }
 
 const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, OccurrenceCommandResult> = {

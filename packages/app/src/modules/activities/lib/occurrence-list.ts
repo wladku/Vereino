@@ -72,12 +72,13 @@ export function isCancelReasonValid(reason: string): boolean {
 export type SessionRowAction = 'cancel' | 'attendance'
 
 /**
- * The actions of one list row besides "Open": Cancel for a planned session that has not started yet, Attendance list
- * for a session that has started and is not cancelled. Both need `activities.coach` (the record page's gate); the
+ * The actions of one list row besides "Open": Cancel for a planned session that has not started yet and that the
+ * caller may cancel (`mayCancel` of the list, #215 — the club setting `coach_may_cancel` may forbid a coach), Attendance
+ * list for a session that has started and is not cancelled. Both need `activities.coach` (the record page's gate); the
  * server still decides the scope.
  */
 export function sessionRowActions(
-  row: { status: string | null; startAt: string | null },
+  row: { status: string | null; startAt: string | null; mayCancel?: boolean },
   now: Date,
   canCoach: boolean,
 ): SessionRowAction[] {
@@ -85,7 +86,7 @@ export function sessionRowActions(
   const startsAt = Date.parse(row.startAt)
   if (Number.isNaN(startsAt)) return []
   const started = startsAt <= now.getTime()
-  if (!started) return row.status === 'planned' ? ['cancel'] : []
+  if (!started) return row.status === 'planned' && row.mayCancel === true ? ['cancel'] : []
   return row.status === 'cancelled' ? [] : ['attendance']
 }
 
