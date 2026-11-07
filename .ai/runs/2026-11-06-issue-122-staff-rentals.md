@@ -56,6 +56,13 @@ A fresh-eyes review subagent read `git diff origin/main...HEAD` (read-only). Its
 - **CI after the reflow fix (run 42353152382, 5315c26):** gate, browser-smoke, perf, dependency review green; integration 157 passed, 1 failed — only `activities` E06-S12, which failed the same way that morning on unrelated PRs (#199 run 42352595701, #184 run 42352581448): its started session falls outside the calendar week on Saturdays; fixed separately by PR #218. Every test of this PR passed, including E08-S02 at 320 px in Polish and the new TEST-027 series case.
 - **L2–L5 (follow-ups):** a move does not update a future charge's due date (when `payments` implements DD-19); the dialog converts wall times in the browser's zone; existing clubs get the lifecycle schedule only on a setup re-run; the week preview lists rentals of the exact place, not of its parent.
 
+## om-auto-fix-pr run (2026-11-07, PR #210)
+
+- **Trigger:** PR #210 was behind `main` and `integration` was red (run 42356967639). The only failing test was `activities` E06-S12: on Saturdays its started session fell outside the calendar week, and `main` fixed that in #216.
+- **Base merge:** `origin/main` merged into the PR head, which brought in #216, #219 (merge train) and #204 (sharded integration). The merge was clean, with no conflicts.
+- **Review round 2:** a fresh-eyes subagent read `git diff origin/main...HEAD` without changing anything. Verdict: approve, nothing blocking. One low finding was fixed here: when a closure on a court flagged a rental of the parent hall, `facilities.rental.updated` carried the closure's `placeId`. `flagRentalsForReschedule` now returns each rental's own `place_id` and the event emits it. The other findings went to follow-up issue #221: closure undo and redo skip the occupancy lock and the flagging, the job writes `--now` into `updatedAt`, a move to another place keeps the old amount, the lock key changed across a rolling deploy, and one dead check. #221 also lists the round-1 deferrals M1 and L2–L5.
+- **Gate:** see the PR comment for the `yarn verify` result and the CI run on the pushed head.
+
 ## Open problems
 
 - `payments.chargeService` does not exist yet: no charge is created, the `payments.payment.recorded` → `facilities.rentals.confirm_paid` path is not built, and the TEST-023 assertions about charges (`cancelled`/`forfeited`, a throwing service rolling the rental back) cannot run. When `payments` implements DD-19, the place owner (payee) must be exposed by `club_core`'s directory.

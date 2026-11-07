@@ -18,23 +18,24 @@ export async function lockRentalRates(em: EntityManager, organizationId: string)
 /**
  * Sets `needs_reschedule` on the rentals that still hold their slot (`requested`, `confirmed`) on the given places
  * and overlap `start`–`end` and are not flagged yet (facilities spec `facilities.closure.created`; #122): one
- * conditional update, so a repeated call flags nothing twice. Returns the ids it flagged.
+ * conditional update, so a repeated call flags nothing twice. Returns the rentals it flagged with their own place
+ * (a rental of a parent hall is flagged by a closure on one of its courts).
  */
 export async function flagRentalsForReschedule(
   em: EntityManager,
   scope: { tenantId: string; organizationId: string },
   placeIds: readonly string[],
   window: { start: Date; end: Date },
-): Promise<string[]> {
+): Promise<Array<{ id: string; placeId: string }>> {
   if (placeIds.length === 0) return []
   const placeholders = placeIds.map(() => '?').join(', ')
-  const rows = await em.execute<{ id: string }[]>(
+  const rows = await em.execute<{ id: string; place_id: string }[]>(
     `update facilities_rentals
      set needs_reschedule = true, updated_at = now()
      where tenant_id = ? and organization_id = ? and deleted_at is null and status in ('requested', 'confirmed')
        and needs_reschedule = false and place_id in (${placeholders}) and starts_at < ? and ends_at > ?
-     returning id`,
+     returning id, place_id`,
     [scope.tenantId, scope.organizationId, ...placeIds, window.end, window.start],
   )
-  return rows.map((row) => row.id)
+  return rows.map((row) => ({ id: row.id, placeId: row.place_id }))
 }

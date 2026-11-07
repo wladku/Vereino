@@ -84,7 +84,7 @@ async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promi
   const rentalPlaceIds = [...placeIds, ...(family?.ancestorIds ?? [])]
   const em = ctx.container.resolve<EntityManager>('em').fork()
   const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, rentalPlaceIds, window))
-  for (const id of rentals) await emitAfterCommit('facilities.rental.updated', scope, { id, placeId: row.placeId })
+  for (const rental of rentals) await emitAfterCommit('facilities.rental.updated', scope, rental)
   return { sessions: flagged.length, rentals: rentals.length }
 }
 
