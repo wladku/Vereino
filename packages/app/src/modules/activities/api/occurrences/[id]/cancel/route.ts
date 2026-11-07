@@ -3,7 +3,8 @@
 // its group, the coordinator of its section or the club administrator; the people it concerns get an in-app notice
 // after commit. Send the lock token in the platform optimistic-lock header. The answer names how many people the
 // cancellation tells (`notified`, without the canceller; E06-S15 #97), for the member page's toast. A coach's
-// cancellation also tells the section's coordinators (#139).
+// cancellation also tells the section's coordinators (#139). Where the club setting `coach_may_cancel` is off, a
+// caller who holds only a coach grant on the session gets 403 `coach_cancel_disabled` (#199).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -73,7 +74,12 @@ export const openApi: OpenApiRouteDoc = {
       responses: [{ status: 200, description: 'The cancelled session', schema: responseSchema }],
       errors: [
         { status: 400, description: 'Invalid input (a reason is required)', schema: errorSchema },
-        { status: 403, description: 'scope_denied', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            '`scope_denied`; `coach_cancel_disabled` when the club setting `coach_may_cancel` is off and the caller holds only a coach grant on the session',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
         {
           status: 409,
