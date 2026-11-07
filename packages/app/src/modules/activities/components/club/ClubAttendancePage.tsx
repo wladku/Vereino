@@ -11,6 +11,8 @@
 // links a coordinator to the group roster; on a phone the actions stay in a sticky bar above the bottom navigation.
 // #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog — unless
 // the club setting `coach_may_cancel` is off and the caller only coaches the session (`mayCancel: false`, #199).
+// E06-S13 (#95): the assigned coach reports an absence here before the session starts; "Needs a coach" marks a
+// session without one.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -35,9 +37,11 @@ import {
   sheetEntries,
   unmarkedPersonIds,
 } from '../../lib/attendance-sheet'
+import { needsCoach } from '../../lib/activities-rules'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CancelSessionDialog } from './CoachSessionBlock'
 import { GuardianContacts } from './GuardianContacts'
+import { ReportAbsence } from './ReportAbsence'
 import {
   ACTUAL_VALUES,
   ATTENDANCE_LIST_QUERY_KEY,
@@ -152,7 +156,7 @@ function AttendanceRowItem({
   )
 }
 
-function Attendance({ id }: { id: string }) {
+function Attendance({ id, selfPersonId }: { id: string; selfPersonId: string }) {
   const t = useT()
   const query = useAttendanceList(id)
 
@@ -185,7 +189,7 @@ function Attendance({ id }: { id: string }) {
       </>
     )
   }
-  return <AttendanceSheet id={id} list={query.data.list} />
+  return <AttendanceSheet id={id} list={query.data.list} selfPersonId={selfPersonId} />
 }
 
 function BackLink() {
@@ -197,7 +201,7 @@ function BackLink() {
   )
 }
 
-function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
+function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: AttendanceList; selfPersonId: string }) {
   const t = useT()
   const locale = useLocale()
   const router = useRouter()
@@ -339,6 +343,27 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
               {t(`activities.occurrences.status.${occurrence.status}`)}
             </StatusBadge>
           ) : null}
+          {needsCoach(occurrence) ? (
+            <span data-testid="club-attendance-needs-coach">
+              <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+            </span>
+          ) : null}
+        </div>
+        {/* E06-S13 #95: the assigned coach who cannot come reports it before the session starts. */}
+        <div className="flex flex-wrap gap-2">
+          <ReportAbsence
+            occurrence={occurrence}
+            selfPersonId={selfPersonId}
+            label={[
+              occurrence.activityName ?? t('activities.club.session.untitled'),
+              `${formatDayHeading(occurrence.occurrenceDate, locale)} ${formatClockTime(new Date(occurrence.startAt), locale, list.timeZone)}`,
+            ].join(', ')}
+            onDone={async (message) => {
+              if (message) succeed(message)
+              await queryClient.invalidateQueries({ queryKey: [ATTENDANCE_LIST_QUERY_KEY, id] })
+              await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
+            }}
+          />
         </div>
       </div>
       <p className="text-base font-semibold" data-testid="club-attendance-summary">
@@ -480,5 +505,7 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
 }
 
 export function ClubAttendancePage({ id }: { id: string }) {
-  return <ActivitiesClubFrame>{() => <Attendance id={id} />}</ActivitiesClubFrame>
+  return (
+    <ActivitiesClubFrame>{(profile) => <Attendance id={id} selfPersonId={profile.person.id} />}</ActivitiesClubFrame>
+  )
 }

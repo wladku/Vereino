@@ -53,6 +53,10 @@ export const errorCodes = [
   // Personal declaration links (REQ-017): an unknown, malformed or foreign token answers 404 without detail; an expired
   // one the foundation's 410 `token_link_expired`.
   { code: 'declaration_link_not_found', status: 404, messageKey: 'activities.errors.declaration_link_not_found' },
+  // Substitutions (E06-S13 #95; club spec glossary *Substitution*): an absence is reported before the session starts;
+  // an assignment names a coach of the club other than the session's current one.
+  { code: 'absence_after_start', status: 409, messageKey: 'activities.errors.absence_after_start' },
+  { code: 'occurrence_coach_unchanged', status: 422, messageKey: 'activities.errors.occurrence_coach_unchanged' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

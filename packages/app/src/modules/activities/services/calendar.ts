@@ -47,6 +47,7 @@ import {
   type ActivitiesScope,
 } from './directory'
 import { activityLabels, activityTeams, nameMaps } from './read'
+import { substituteForOf, type SubstituteFor } from './substitutions'
 
 export type CalendarDeclarationView = {
   attendanceId: string
@@ -93,6 +94,9 @@ export type CalendarOccurrenceView = {
   placeGeoLng: number | null
   coachPersonId: string | null
   coachName: string | null
+  /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
+  substituteForPersonId: string | null
+  substituteForName: string | null
   /** The opponent of a match or sparring (README M-04, #93). */
   opponentName: string | null
   /** The invited external teams of a tournament or another event (#93). */
@@ -168,11 +172,12 @@ async function assertStaffFeature(ctx: CommandRuntimeContext, scope: ActivitiesS
 type Names = Awaited<ReturnType<typeof nameMaps>> & {
   activities: Awaited<ReturnType<typeof activityLabels>>
   teams: Awaited<ReturnType<typeof activityTeams>>
+  substitutions: Map<string, SubstituteFor>
 }
 
 async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, rows: Occurrence[]): Promise<Names> {
   const activityIds = rows.map((row) => row.activityId)
-  const [names, activities, teams] = await Promise.all([
+  const [names, activities, teams, substitutions] = await Promise.all([
     nameMaps(ctx.container, scope, {
       groupIds: rows.map((row) => row.groupId),
       sectionIds: rows.map((row) => row.sectionId),
@@ -181,8 +186,13 @@ async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, row
     }),
     activityLabels(ctx.container, scope, activityIds),
     activityTeams(ctx.container, scope, activityIds),
+    substituteForOf(
+      ctx.container,
+      scope,
+      rows.map((row) => ({ id: row.id, coachPersonId: row.coachPersonId ?? null })),
+    ),
   ])
-  return { ...names, activities, teams }
+  return { ...names, activities, teams, substitutions }
 }
 
 function placeDetails(ctx: CommandRuntimeContext, scope: ActivitiesScope, placeIds: string[]) {
@@ -197,6 +207,7 @@ function occurrenceView(
   const activity = names.activities.get(row.activityId)
   const teams = names.teams.get(row.activityId)
   const place = places.get(row.placeId)
+  const substitution = names.substitutions.get(row.id)
   return {
     id: row.id,
     activityId: row.activityId,
@@ -217,6 +228,8 @@ function occurrenceView(
     placeGeoLng: place?.geoLng ?? null,
     coachPersonId: row.coachPersonId ?? null,
     coachName: row.coachPersonId ? (names.persons.get(row.coachPersonId) ?? null) : null,
+    substituteForPersonId: substitution?.personId ?? null,
+    substituteForName: substitution?.name ?? null,
     opponentName: teams?.opponentName ?? null,
     invitedTeamNames: teams?.invitedTeamNames ?? [],
     status: row.status,

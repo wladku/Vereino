@@ -69,10 +69,11 @@ export const sessionTransitions = defineTransitions({
 
 /**
  * A stored session a series edit leaves where it is (DD-G03): the club acted on it — cancelled, done, or with
- * checked-off attendance (#33; club spec *Data Models*: re-planning touches sessions "without attendance").
+ * checked-off attendance or a substitution (#33, E06-S13 #95; club spec *Data Models*: re-planning touches sessions
+ * "without attendance").
  */
-export function isPinnedSession(status: OccurrenceStatus, hasCheckedOffAttendance: boolean): boolean {
-  return status !== 'planned' || hasCheckedOffAttendance
+export function isPinnedSession(status: OccurrenceStatus, actedOn: boolean): boolean {
+  return status !== 'planned' || actedOn
 }
 
 /** The generation horizon in weeks (club spec DD-10; foundation II keeps the constant, no club setting). */

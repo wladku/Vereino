@@ -1,6 +1,6 @@
 // `GET, PATCH /api/activities/occurrences/{id}` (club spec API table, REQ-005, TEST-007): one session with its names
-// and the caller's acting role (a coach of the group, the coordinator of its section, the club administrator), and
-// the move — `activities.occurrences.update`, which detaches the session from its series and is refused with 409 when
+// and the caller's acting role (a coach of the group, the coordinator of its section, the club administrator), whom a
+// substitute stands in for and the substitution history (E06-S13 #95), and the move — `activities.occurrences.update`, which detaches the session from its series and is refused with 409 when
 // it overbooks the place tree or the coach. Send the lock token in the platform optimistic-lock header.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -16,6 +16,7 @@ import type { OccurrenceCommandResult } from '../../../commands/occurrences'
 import { occurrenceUpdateSchema } from '../../../data/validators'
 import { gatheringIso } from '../../../lib/gathering'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
+import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
 import {
   SCHEDULE_READ_KINDS,
   conflictErrorSchema,
@@ -36,6 +37,23 @@ const detailSchema = occurrenceListItemSchema.extend({
   activityRecurring: z.boolean().describe('The session belongs to a weekly series (not a one-off activity).'),
   opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
   invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
+  substitutions: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        kind: z.enum(['absence_reported', 'substitute_assigned', 'coach_restored']),
+        previousCoachPersonId: z.string().nullable(),
+        previousCoachName: z.string().nullable(),
+        newCoachPersonId: z.string().nullable(),
+        newCoachName: z.string().nullable(),
+        reason: z.string().nullable(),
+        decidedByPersonId: z.uuid(),
+        decidedByName: z.string().nullable(),
+        actingRole: z.string(),
+        createdAt: z.string(),
+      }),
+    )
+    .describe('The substitution history, oldest first (E06-S13); entries are never edited.'),
   actingRole: z.string(),
 })
 
@@ -55,7 +73,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       groupId: row.groupId,
       occurrenceId: row.id,
     })
-    const [names, activities, teams] = await Promise.all([
+    const [names, activities, teams, substituted, substitutions] = await Promise.all([
       nameMaps(ctx.container, scope, {
         groupIds: [row.groupId],
         sectionIds: [row.sectionId],
@@ -64,7 +82,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }),
       activityLabels(ctx.container, scope, [row.activityId]),
       activityTeams(ctx.container, scope, [row.activityId]),
+      substituteForOf(ctx.container, scope, [{ id: row.id, coachPersonId: row.coachPersonId ?? null }]),
+      substitutionHistory(ctx.container, scope, row.id),
     ])
+    const substituteFor = substituted.get(row.id)
     const activity = activities.get(row.activityId)
     const activityTeam = teams.get(row.activityId)
     return Response.json({
@@ -86,6 +107,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       placeName: names.places.get(row.placeId) ?? null,
       coachPersonId: row.coachPersonId ?? null,
       coachName: row.coachPersonId ? (names.persons.get(row.coachPersonId) ?? null) : null,
+      substituteForPersonId: substituteFor?.personId ?? null,
+      substituteForName: substituteFor?.name ?? null,
       status: row.status,
       cancelReason: row.cancelReason ?? null,
       isDetached: row.isDetached,
@@ -94,6 +117,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       updatedAt: row.updatedAt.toISOString(),
       opponentName: activityTeam?.opponentName ?? null,
       invitedTeamNames: activityTeam?.invitedTeamNames ?? [],
+      substitutions,
       actingRole,
     })
   } catch (error: unknown) {
@@ -130,7 +154,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read one session',
       description:
-        'Returns the session when it is in the record scope of the caller (a coach of its group, the coordinator of its section, the club administrator), with the role the caller reads it as.',
+        'Returns the session when it is in the record scope of the caller (a coach of its group, the coordinator of its section, the club administrator), with the role the caller reads it as, whom a substitute coach stands in for and the substitution history.',
       responses: [{ status: 200, description: 'The session', schema: detailSchema }],
       errors: [
         { status: 403, description: 'scope_denied', schema: errorSchema },

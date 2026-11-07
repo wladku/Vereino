@@ -14,6 +14,7 @@ import {
 } from '../lib/policy'
 import { gatheringIso } from '../lib/gathering'
 import { activityLabels, nameMaps } from '../services/read'
+import { substituteForOf } from '../services/substitutions'
 
 /**
  * Who reads activities and sessions (club spec *Users, Permissions, and Scope*): a coach of the group
@@ -132,6 +133,8 @@ export type OccurrenceListItem = ReturnType<typeof occurrenceListItem> & {
   groupName?: string | null
   placeName?: string | null
   coachName?: string | null
+  substituteForPersonId?: string | null
+  substituteForName?: string | null
 }
 
 function trustedScope(ctx: CrudCtx): { tenantId: string; organizationId: string } | null {
@@ -159,12 +162,15 @@ export async function attachActivityNames(payload: { items?: unknown[] }, ctx: C
   }
 }
 
-/** Adds the activity, group, place and coach names to the session rows the scope filter already admitted. */
+/**
+ * Adds the activity, group, place and coach names to the session rows the scope filter already admitted, and whom the
+ * coach of a substituted session stands in for (E06-S13 #95, the "(substitution)" badge).
+ */
 export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as OccurrenceListItem[]
   const scope = trustedScope(ctx)
   if (items.length === 0 || !scope) return
-  const [names, activities] = await Promise.all([
+  const [names, activities, substitutions] = await Promise.all([
     nameMaps(ctx.container, scope, {
       groupIds: items.flatMap((item) => (item.groupId ? [item.groupId] : [])),
       sectionIds: [],
@@ -176,8 +182,16 @@ export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx:
       scope,
       items.flatMap((item) => (item.activityId ? [item.activityId] : [])),
     ),
+    substituteForOf(
+      ctx.container,
+      scope,
+      items.map((item) => ({ id: item.id, coachPersonId: item.coachPersonId })),
+    ),
   ])
   for (const item of items) {
+    const substitution = substitutions.get(item.id)
+    item.substituteForPersonId = substitution?.personId ?? null
+    item.substituteForName = substitution?.name ?? null
     const activity = item.activityId ? activities.get(item.activityId) : undefined
     item.activityName = activity?.name ?? null
     item.activityType = activity?.type ?? null
@@ -265,6 +279,12 @@ export const occurrenceListItemSchema = z.object({
   placeName: z.string().nullable().optional(),
   coachPersonId: z.string().nullable(),
   coachName: z.string().nullable().optional(),
+  substituteForPersonId: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('The session’s own coach when its current coach is a substitute (E06-S13), else null.'),
+  substituteForName: z.string().nullable().optional(),
   status: z.string().nullable(),
   cancelReason: z.string().nullable(),
   isDetached: z.boolean(),
