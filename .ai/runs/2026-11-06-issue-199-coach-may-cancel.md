@@ -78,11 +78,16 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
   2. **Follow-up (minor).** The backend sessions pages still offer "Cancel" to a coordinator of another section who coaches there, and the click answers 403 `coach_cancel_disabled`. The server is safe; only the button dead-ends. The issue covers M-04/M-05 only.
   3. **Fixed (nit).** The new error key is now sorted into its block.
 - After the fix, `yarn verify` passed all 14 steps again (build 562 s). The rerun of `--filter ISSUE-199` could not start (`Could not find a working container runtime strategy`), so CI's `integration` job runs it.
+- CI on PR #214 (run 42355252862): `gate`, `browser-smoke`, `perf`, `dependency-review` and `pr-title` passed. `integration`: 149 passed, 2 flaky, 1 failed (48.8 min). ISSUE-199, ISSUE-139 and E06-S15 passed.
+  - **Failed:** `E06-S12` at line 140 (`expect(startedEvent).toBeVisible()`, the coordinator calendar), on both attempts. This is a pre-existing Saturday failure: the test's started session is not in the calendar's week on Saturdays, and 2026-11-07 is a Saturday. PR #218 (`fix/e06-s12-calendar-week`) fixes it; nothing in this PR touches the backend calendar.
+  - **Flaky:** `J-003` step 5 and `TEST-M05`, both at `expect(probe.result.failure).toBeNull()` (received `undefined`) in the e-mail delivery-failure probe, which this PR does not touch. Both passed on retry.
 - `yarn test:integration:vereino --filter ISSUE-139` (regression) did not run: `Could not find a working container runtime strategy`, because Docker was not available on the host at that moment. The run may not touch Docker Desktop. CI's `integration` job runs the whole suite on the PR.
 
 - Lesson: `.ai/lessons/db-generate-snapshot-style-and-public-block-scope.md` now covers a mixed-style snapshot (restore it from git and insert the block by hand).
 
 ## Open problems / next steps
+
+- PR #214 needs `main` merged in after #218 lands, then a green CI run, before it can merge (one PR into `main` at a time).
 
 - The ISSUE-139, E06-S15 and J-003 regressions, and the ISSUE-199 rerun after the review fix, are left to CI (no container runtime locally at the end of the run).
 - Follow-up: hide "Cancel" on the backend sessions pages when the caller only coaches the session and `coach_may_cancel` is off (review finding 2).
