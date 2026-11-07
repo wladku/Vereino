@@ -54,3 +54,20 @@ export async function paidTotals(
 export function chargesPaidBy(container: AwilixContainer, scope: PaymentsScope, method: string): Promise<string[]> {
   return chargeIdsWithPayment(freshEm(container), scope, method)
 }
+
+/** The descriptions of live charges of the club, decrypted (the cash confirmation e-mail, #114). */
+export async function chargeDescriptions(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  chargeIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (chargeIds.length === 0) return new Map()
+  const rows = await findWithDecryption(
+    freshEm(container),
+    Charge,
+    { id: { $in: [...chargeIds] }, ...scope, deletedAt: null },
+    { fields: ['id', 'description'] },
+    scope,
+  )
+  return new Map(rows.map((row) => [row.id, row.description]))
+}

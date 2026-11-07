@@ -61,6 +61,9 @@ describe('payments vocabularies', () => {
       gateway_unavailable: 502,
       payment_not_refundable: 409,
       refund_exceeds_remaining: 422,
+      charge_already_paid: 409,
+      cash_exceeds_selected: 422,
+      cash_charges_invalid: 422,
     })
   })
 })

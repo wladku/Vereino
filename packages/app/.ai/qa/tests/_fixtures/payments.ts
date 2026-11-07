@@ -1,6 +1,7 @@
-// Fixtures of the `payments` tests (payments spec phase 4 steps 2 to 4, TEST-018, TEST-048, TEST-020, TEST-019,
-// TEST-021, TEST-057; issues #108, #109, #110): fee schedules, discount rules, the period generator, the charge list,
-// the charge ledger, the undo probe (#184) and the online checkout through the gateway test adapter.
+// Fixtures of the `payments` tests (payments spec phase 4 steps 2, 3, 4 and 8, TEST-018, TEST-048, TEST-020, TEST-019,
+// TEST-021, TEST-057, TEST-043; issues #108, #109, #110, #114): fee schedules, discount rules, the period generator,
+// the charge list, the charge ledger, the undo probe (#184), the online checkout through the gateway test adapter and
+// "Accept cash".
 import { spawnSync } from 'node:child_process'
 import { createHmac } from 'node:crypto'
 import fs from 'node:fs'
@@ -298,4 +299,50 @@ export function undoInProbe(
   } finally {
     fs.rmSync(queueDir, { recursive: true, force: true })
   }
+}
+
+// --- "Accept cash" (#114) ---
+
+export type CashResult = CodedBody & {
+  receiptNumber?: string
+  amount?: number
+  notified?: boolean
+  selectedAmount?: number
+  payments?: { paymentId: string; chargeId: string; amount: number; chargeStatus: string; remaining: number }[]
+}
+
+export async function acceptCash(request: APIRequestContext, token: string, data: Record<string, unknown>) {
+  return call<CashResult>(request, 'POST', '/api/payments/cash', token, { data })
+}
+
+export type CashPayerItem = {
+  payerPersonId: string
+  firstName: string
+  lastName: string
+  wards: { personId: string; firstName: string; lastName: string }[]
+  totalDue: number
+  chargeCount: number
+}
+
+export async function cashPayers(request: APIRequestContext, token: string, query = '') {
+  return call<{ items: CashPayerItem[]; total: number }>(request, 'GET', `/api/payments/cash/payers${query}`, token)
+}
+
+export type CashChargeItem = { id: string; dueDate: string; remaining: number; overdue: boolean; status: string }
+
+export async function cashCharges(request: APIRequestContext, token: string, payerPersonId: string) {
+  return call<{ items: CashChargeItem[]; total: number }>(
+    request,
+    'GET',
+    `/api/payments/cash/charges?payerPersonId=${payerPersonId}`,
+    token,
+  )
+}
+
+export async function cashToday(request: APIRequestContext, token: string) {
+  return call<{
+    date: string
+    items: { receiptNumber: string; payerPersonId: string | null; amount: number; reversed: boolean }[]
+    total: number
+  }>(request, 'GET', '/api/payments/cash', token)
 }

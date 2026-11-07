@@ -1,9 +1,10 @@
 'use client'
-// The frame of the `payments` member pages (`/club/payments`, `/club/payments/return`; M-08, M-09; #110): the shared
-// `MemberShell` of `@vereino/ui` with the member navigation (plus the Payments tab), and the loading, error and "not
-// linked" states of the member profile. The profile is read over HTTP (`GET /api/people/me`, the query key `people`'s
-// pages use), so `payments` imports nothing of `people`'s components. A profile without `paymentsVisible` (a minor,
-// R10, or no payer feature) gets no payments content: the API refuses it too (403 `payments_minor`).
+// The frame of the `payments` member pages (`/club/payments`, `/club/payments/return`; M-08, M-09; #110; `/club/cash`,
+// M-15, #114): the shared `MemberShell` of `@vereino/ui` with the member navigation (plus the Payments tab), and the
+// loading, error and "not linked" states of the member profile. The profile is read over HTTP (`GET /api/people/me`,
+// the query key `people`'s pages use), so `payments` imports nothing of `people`'s components. On a payer page
+// (`payerOnly`, the default) a profile without `paymentsVisible` (a minor, R10, or no payer feature) gets no payments
+// content: the API refuses it too (403 `payments_minor`). "Accept cash" is a staff page, so it passes `payerOnly={false}`.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -83,7 +84,13 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
   )
 }
 
-export function PaymentsClubFrame({ children }: { children: (profile: PaymentsProfile) => React.ReactNode }) {
+export function PaymentsClubFrame({
+  children,
+  payerOnly = true,
+}: {
+  children: (profile: PaymentsProfile) => React.ReactNode
+  payerOnly?: boolean
+}) {
   const t = useT()
   const pathname = usePathname()
   const query = useMemberProfile()
@@ -117,7 +124,7 @@ export function PaymentsClubFrame({ children }: { children: (profile: PaymentsPr
         </div>
       </Alert>
     )
-  } else if (!query.data.profile.paymentsVisible) {
+  } else if (payerOnly && !query.data.profile.paymentsVisible) {
     body = (
       <Alert status="information" data-testid="club-payments-unavailable">
         <div className="flex flex-col gap-3">
