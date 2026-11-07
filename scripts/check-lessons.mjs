@@ -1,8 +1,16 @@
 #!/usr/bin/env node
+// Lessons live one per file in `.ai/lessons/<slug>.md`; their front matter is the only catalog.
+// `.ai/lessons.md` explains how to find and write lessons and holds no rows: a committed index that every
+// lesson PR edited broke `lessons:check` after merges (a union merge kept a stale and an updated row, or
+// appended a row out of order, and GitHub's merge button conflicted on it anyway). The catalog is printed
+// on demand from the records instead, so merging branches that add or edit lessons touches no shared file.
+// Usage:
+//   check-lessons.mjs [--root <app-root>]                  validate every record (yarn lessons:check)
+//   check-lessons.mjs --list [<term>...] [--root <dir>]    print catalog rows matching every term (yarn lessons:list)
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 export const LESSON_AREAS = new Set([
   'architecture',
@@ -17,19 +25,12 @@ export const LESSON_AREAS = new Set([
   'spec-pr',
 ])
 
-// The budget exists to keep the index cheap to load in full, not to cap how many lessons
-// the repo may accumulate — trimming real rows to fit would defeat the routing the catalog
-// exists to provide. A fixed cap broke twice as the catalog legitimately grew (119 then
-// 130 records), so the budget now scales with the record count: a base allowance for the
-// header plus a per-row allowance that still catches prose creep inside individual rows.
-const INDEX_BASE_BUDGET_BYTES = 16 * 1024
-const INDEX_PER_RECORD_BUDGET_BYTES = 320
 const RECORD_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
 const MODULE_PATTERN = /^[a-z0-9]+(?:_[a-z0-9]+)*$/
 const TOPIC_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const INDEX_ROW_PATTERN = /^- \[(.+)]\(lessons\/([a-z0-9-]+\.md)\) — area:([^;]+); module:([^;]+); topic:(.+)$/
+const CATALOG_ROW_PATTERN = /^- \[.+]\(lessons\/[^)]+\.md\)/m
 
-function parseFrontMatter(source, relativePath, errors) {
+export function parseFrontMatter(source, relativePath, errors) {
   const match = source.match(/^---\n([\s\S]*?)\n---\n\n# (.+)\n/)
   if (!match) {
     errors.push(`${relativePath}: expected JSON-valued front matter followed by one H1`)
@@ -62,9 +63,6 @@ function parseFrontMatter(source, relativePath, errors) {
     errors.push(`${relativePath}: front matter title must match the H1`)
   }
 
-  for (const key of ['modules', 'areas', 'topics']) {
-    if (!Array.isArray(metadata[key])) errors.push(`${relativePath}: ${key} must be an array`)
-  }
   if (!Array.isArray(metadata.modules) || metadata.modules.length === 0) {
     errors.push(`${relativePath}: modules must contain an owning module/package or platform`)
   } else if (metadata.modules.some((value) => typeof value !== 'string' || !MODULE_PATTERN.test(value))) {
@@ -90,103 +88,106 @@ function parseFrontMatter(source, relativePath, errors) {
   return metadata
 }
 
-export function checkLessonsCatalog(rootDir) {
+// The valid records in `.ai/lessons/` (all but `_template.md`), sorted by file name, and every error found.
+export function readLessonRecords(rootDir) {
   const errors = []
-  const indexPath = path.join(rootDir, '.ai', 'lessons.md')
   const lessonsDir = path.join(rootDir, '.ai', 'lessons')
-  if (!fs.existsSync(indexPath)) return [`${indexPath}: lesson index is missing`]
-
-  const indexSource = fs.readFileSync(indexPath, 'utf8')
-  const indexBytes = Buffer.byteLength(indexSource)
-  if (/\*\*(?:Context|Problem|Rule|Applies to)\*\*:/.test(indexSource)) {
-    errors.push('.ai/lessons.md: full lesson prose belongs in .ai/lessons/, not the catalog')
-  }
-
-  const recordNames = fs.existsSync(lessonsDir)
-    ? fs.readdirSync(lessonsDir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && !entry.name.startsWith('_'))
-      .map((entry) => entry.name)
-      .sort()
+  const fileNames = fs.existsSync(lessonsDir)
+    ? fs
+        .readdirSync(lessonsDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && !entry.name.startsWith('_'))
+        .map((entry) => entry.name)
+        .sort()
     : []
-  const indexBudgetBytes = INDEX_BASE_BUDGET_BYTES + recordNames.length * INDEX_PER_RECORD_BUDGET_BYTES
-  if (indexBytes > indexBudgetBytes) {
-    errors.push(
-      `.ai/lessons.md: ${indexBytes} bytes exceeds the ${indexBudgetBytes}-byte progressive-loading budget`
-      + ` (${INDEX_BASE_BUDGET_BYTES} base + ${recordNames.length} records × ${INDEX_PER_RECORD_BUDGET_BYTES})`,
-    )
-  }
-  const records = new Map()
+  const records = []
   const titles = new Set()
-  for (const fileName of recordNames) {
+  for (const fileName of fileNames) {
     const relativePath = `.ai/lessons/${fileName}`
+    const errorCount = errors.length
     if (!RECORD_NAME_PATTERN.test(fileName)) errors.push(`${relativePath}: filename must use kebab-case`)
     const metadata = parseFrontMatter(fs.readFileSync(path.join(lessonsDir, fileName), 'utf8'), relativePath, errors)
-    if (!metadata) continue
-    if (titles.has(metadata.title)) errors.push(`${relativePath}: duplicate lesson title ${JSON.stringify(metadata.title)}`)
+    if (errors.length > errorCount) continue
+    if (titles.has(metadata.title)) {
+      errors.push(`${relativePath}: duplicate lesson title ${JSON.stringify(metadata.title)}`)
+      continue
+    }
     titles.add(metadata.title)
-    records.set(fileName, metadata)
+    records.push({ fileName, metadata })
   }
+  return { records, errors }
+}
 
-  // Rows stay in file-name order within each area section, so parallel branches that each add a lesson insert at
-  // different lines instead of all appending to the same spot (a merge conflict on every parallel PR).
-  const indexed = new Set()
-  let previousInSection = null
-  for (const line of indexSource.split('\n')) {
-    if (line.startsWith('#')) previousInSection = null
-    if (!line.startsWith('- [')) continue
-    const match = line.match(INDEX_ROW_PATTERN)
-    if (!match) {
-      errors.push(`.ai/lessons.md: malformed catalog row ${JSON.stringify(line)}`)
-      continue
-    }
-    const [, title, fileName, areaText, moduleText, topicText] = match
-    if (indexed.has(fileName)) errors.push(`.ai/lessons.md: duplicate link to lessons/${fileName}`)
-    indexed.add(fileName)
-    if (previousInSection && previousInSection.localeCompare(fileName) > 0) {
-      errors.push(`.ai/lessons.md: lessons/${fileName} must come before lessons/${previousInSection} (rows sorted by file name)`)
-    }
-    previousInSection = fileName
-    const metadata = records.get(fileName)
-    if (!metadata) {
-      errors.push(`.ai/lessons.md: lessons/${fileName} does not exist`)
-      continue
-    }
-    const indexedMetadata = {
-      title,
-      areas: areaText.split(','),
-      modules: moduleText.split(','),
-      topics: topicText.split(','),
-    }
-    for (const key of ['title', 'areas', 'modules', 'topics']) {
-      if (JSON.stringify(indexedMetadata[key]) !== JSON.stringify(metadata[key])) {
-        errors.push(`.ai/lessons.md: ${key} drift for lessons/${fileName}`)
-      }
-    }
+export function formatCatalogRow({ fileName, metadata }) {
+  const { title, areas, modules, topics } = metadata
+  return `- [${title}](lessons/${fileName}) — area:${areas.join(',')}; module:${modules.join(',')}; topic:${topics.join(',')}`
+}
+
+// Catalog rows of the records whose row contains every term (case-insensitive), in file-name order.
+export function listLessons(rootDir, terms = []) {
+  const needles = terms.map((term) => term.toLowerCase())
+  return readLessonRecords(rootDir)
+    .records.map(formatCatalogRow)
+    .filter((row) => needles.every((needle) => row.toLowerCase().includes(needle)))
+}
+
+export function checkLessonsCatalog(rootDir) {
+  const guidePath = path.join(rootDir, '.ai', 'lessons.md')
+  if (!fs.existsSync(guidePath)) return [`${guidePath}: lessons guide is missing`]
+
+  const { errors } = readLessonRecords(rootDir)
+  const guideSource = fs.readFileSync(guidePath, 'utf8')
+  if (/\*\*(?:Context|Problem|Rule|Applies to)\*\*:/.test(guideSource)) {
+    errors.push('.ai/lessons.md: full lesson prose belongs in .ai/lessons/, not the guide')
   }
-
-  for (const fileName of records.keys()) {
-    if (!indexed.has(fileName)) errors.push(`.ai/lessons/${fileName}: record is missing from the catalog`)
+  if (CATALOG_ROW_PATTERN.test(guideSource)) {
+    errors.push(
+      '.ai/lessons.md: must not hold catalog rows (a shared index breaks merges); the front matter of'
+        + ' .ai/lessons/*.md is the catalog, printed by `yarn lessons:list`. Keep your record and restore the guide:'
+        + ' git checkout origin/main -- .ai/lessons.md',
+    )
   }
-
   return errors
 }
 
-function parseRoot(args) {
-  if (args.length === 0) return process.cwd()
-  if (args.length === 2 && args[0] === '--root') return path.resolve(args[1])
-  throw new Error('Usage: check-lessons.mjs [--root <app-root>]')
+const USAGE = 'Usage: check-lessons.mjs [--root <app-root>] | check-lessons.mjs --list [<term>...] [--root <app-root>]'
+
+export function parseArgs(args) {
+  const options = { rootDir: process.cwd(), list: false, terms: [] }
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === '--root' && index + 1 < args.length) {
+      index += 1
+      options.rootDir = path.resolve(args[index])
+    } else if (arg === '--list') {
+      options.list = true
+    } else if (options.list && !arg.startsWith('--')) {
+      options.terms.push(arg)
+    } else {
+      throw new Error(USAGE)
+    }
+  }
+  return options
 }
 
-export function main(args = process.argv.slice(2)) {
-  const rootDir = parseRoot(args)
+export function main({ args, log, logError }) {
+  const { rootDir, list, terms } = parseArgs(args)
+  if (list) {
+    const rows = listLessons(rootDir, terms)
+    for (const row of rows) log(row)
+    if (rows.length > 0) return 0
+    logError(`No lesson matches ${terms.join(' ')}`)
+    return 1
+  }
   const errors = checkLessonsCatalog(rootDir)
   if (errors.length > 0) {
-    for (const error of errors) console.error(`- ${error}`)
-    process.exitCode = 1
-    return
+    for (const message of errors) logError(`- ${message}`)
+    return 1
   }
-  console.log(`Lessons catalog is valid: ${rootDir}`)
+  log(`Lessons catalog is valid: ${rootDir}`)
+  return 0
 }
 
-const entryPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null
-if (entryPath === import.meta.url) main()
+/* node:coverage ignore next 3 */
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = main({ args: process.argv.slice(2), log: console.log, logError: console.error })
+}

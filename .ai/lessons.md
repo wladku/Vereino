@@ -1,26 +1,25 @@
 # Lessons
 
-This catalog indexes the focused lessons without loading their full text. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
+Each lesson is one record, `.ai/lessons/<kebab-case-slug>.md`, whose front matter (`title`, `modules`, `areas`, `topics`) is the catalog. This file holds no rows: a shared index that every lesson PR edited broke `lessons:check` after merges, so the catalog is printed from the records on demand. Route the task first, then read only records whose **modules**, standalone-harness **areas**, or **topics** match the work.
 
-## How to use this catalog
+## Finding lessons
 
 1. Start with the exact module ID when one is named by the task.
 2. Add every matching area from the standalone harness router: `architecture`, `module-data`, `umes`, `backend-ui`, `integration`, `ai-workflow`, `debugging`, `testing`, `framework-context`, or `spec-pr`.
 3. Use topics to narrow cross-cutting concerns such as `data-scoping`, `optimistic-locking`, `query-index`, or `generated-files`.
-4. Open only the linked lesson records that match; do not bulk-read `.ai/lessons/`.
-
-Useful searches:
+4. Open only the matching records; do not bulk-read `.ai/lessons/`.
 
 ```bash
-rg -n '\b<module-or-topic>\b' .ai/lessons.md
+yarn lessons:list                      # every record as one row: title, link, areas, modules, topics
+yarn lessons:list <term> [<term>...]   # rows containing every term, e.g. yarn lessons:list club_core testing
 rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 ```
 
 ## Adding or updating a lesson
 
 - Copy `.ai/lessons/_template.md` to one focused `.ai/lessons/<kebab-case-slug>.md`; update an existing record instead of duplicating it.
-- Preserve the front matter keys `title`, `modules`, `areas`, and `topics`. Use `platform` only when no module or package owns the lesson, and put the primary area first.
-- Add or update exactly one catalog row under its primary area below, in file-name order within the section (`lessons:check` enforces it, so parallel branches rarely touch the same line). `.gitattributes` merges this file with `merge=union`, so a local `git merge` keeps rows both sides added; GitHub's merge button ignores that, so merge `main` locally when it reports a conflict here. Keep the title stable when code or specs cite it.
+- Preserve the front matter keys `title`, `modules`, `areas`, and `topics`. Use `platform` only when no module or package owns the lesson, and put the primary area first. Keep the title stable when code or specs cite it.
+- There is no row to add anywhere else, so branches that add or edit different lessons merge without a conflict, on GitHub and locally.
 - Put hard boundaries in `AGENTS.md`; lessons explain recurring evidence and the durable rule.
 - Run `node scripts/check-lessons.mjs` before committing.
 
@@ -124,3 +123,4 @@ rg -l '"<area>"|"<module>"|"<topic>"' .ai/lessons/*.md
 - [@vereino/ui admin components cannot use DataTable or CrudForm, so they build on primitives and keep every effect and handler in a tested .ts model](lessons/vereino-ui-admin-components-without-next.md) — area:backend-ui,testing; module:ui,communication; topic:vereino-ui,datatable,crudform,coverage,next-navigation
 - [A response that gains a field breaks every exact key-list assertion, including tests main added after the branch was cut](lessons/widened-response-shape-breaks-key-list-assertions.md) — area:testing,spec-pr; module:activities,communication; topic:integration-tests,public-api,parallel-agents,merge-main,contract-tests
 - [Code that platform workers or the CLI load may import only .ts from @vereino/ui, and the notification delivery strategies exist only in the web runtime](lessons/worker-runtime-imports-and-notification-strategies.md) — area:architecture,integration; module:foundation,platform,notifications; topic:workers,cli,tsx,notifications,di,email
+- Run `yarn lessons:check` before committing.

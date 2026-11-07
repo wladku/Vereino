@@ -3,7 +3,8 @@
 // #91): on a section page, a card per public group (`groups.publicCatalog`) with its age and level, description,
 // regular days and times with the place and its next sessions (`activities.publicSchedule`, a cancelled one struck
 // through and labelled), requirements and instructors — "First L." with consent, else "Section coach" (team) or
-// "Section instructor" (class group); on the club page, the upcoming one-off events. Only what the API sends is shown:
+// "Section instructor" (class group) — and the membership fee with the sibling discount (`payments.publicPrices`, #112,
+// mock-up "Membership fee: 120 zł / month · siblings −30%"); on the club page, the upcoming one-off events. Only what the API sends is shown:
 // a block the club switched off never reaches the browser. Dates are formatted in the reader's locale; they are already
 // club-zone dates.
 import * as React from 'react'
@@ -11,11 +12,13 @@ import Link from 'next/link'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
+  formatPublicAmount,
   formatPublicDate,
   sectionHref,
   weekdayLabel,
   type PublicEvent,
   type PublicGroupCard,
+  type PublicGroupPrices,
   type PublicGroupSchedule,
   type PublicSession,
 } from './public-client'
@@ -54,7 +57,23 @@ function SessionDate({ session, locale }: { session: PublicSession; locale: stri
   )
 }
 
-function GroupCard({ card, schedule }: { card: PublicGroupCard; schedule: PublicGroupSchedule | undefined }) {
+function feeText(t: Translate, fee: PublicGroupPrices['fees'][number], locale: string): string {
+  const amount = t(`club_core.public.classes.feePeriod.${fee.period}`, {
+    amount: formatPublicAmount(fee.amount, fee.currency, locale),
+  })
+  if (fee.siblingDiscountPercent === null) return amount
+  return `${amount} · ${t('club_core.public.classes.siblingDiscount', { percent: fee.siblingDiscountPercent })}`
+}
+
+function GroupCard({
+  card,
+  schedule,
+  prices,
+}: {
+  card: PublicGroupCard
+  schedule: PublicGroupSchedule | undefined
+  prices: PublicGroupPrices | undefined
+}) {
   const t = useT()
   const locale = useLocale()
   const age = ageLabel(t, card)
@@ -99,6 +118,12 @@ function GroupCard({ card, schedule }: { card: PublicGroupCard; schedule: Public
           <span className="font-medium">{t('club_core.public.classes.requirements')}</span> {card.conditions}
         </p>
       ) : null}
+      {prices && prices.fees.length > 0 ? (
+        <p className="text-sm" data-testid="public-group-fee">
+          <span className="font-medium">{t('club_core.public.classes.fee')}</span>{' '}
+          {prices.fees.map((fee) => feeText(t, fee, locale)).join('; ')}
+        </p>
+      ) : null}
       {instructors ? (
         <p className="text-sm" data-testid="public-group-instructors">
           <span className="font-medium">{t('club_core.public.classes.ledBy')}</span> {instructors}
@@ -112,19 +137,22 @@ function GroupCard({ card, schedule }: { card: PublicGroupCard; schedule: Public
 export function PublicClasses({
   groups,
   schedule,
+  prices,
 }: {
   groups: { items: PublicGroupCard[] } | undefined
   schedule: { groups: PublicGroupSchedule[] } | undefined
+  prices: { groups: PublicGroupPrices[] } | undefined
 }) {
   const t = useT()
   if (!groups || groups.items.length === 0) {
     return <p className="text-muted-foreground max-w-prose">{t('club_core.public.classes.empty')}</p>
   }
   const byGroup = new Map((schedule?.groups ?? []).map((item) => [item.groupId, item]))
+  const pricesByGroup = new Map((prices?.groups ?? []).map((item) => [item.groupId, item]))
   return (
     <ul className="flex flex-col gap-3" data-testid="public-groups">
       {groups.items.map((card) => (
-        <GroupCard key={card.id} card={card} schedule={byGroup.get(card.id)} />
+        <GroupCard key={card.id} card={card} schedule={byGroup.get(card.id)} prices={pricesByGroup.get(card.id)} />
       ))}
     </ul>
   )
