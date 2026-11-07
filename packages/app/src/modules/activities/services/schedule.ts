@@ -28,6 +28,7 @@ import {
   type SessionConflict,
 } from '../lib/activities-rules'
 import { placeFamily, type ActivitiesScope } from './directory'
+import { substitutedSessionIds } from './substitutions'
 
 const logger = createLogger('activities').child({ component: 'schedule' })
 
@@ -99,24 +100,44 @@ export async function checkedOffSessionIds(
   return new Set(marked.map((row) => row.occurrenceId))
 }
 
+/**
+ * The sessions among `rows` the club has acted on besides their status: checked-off attendance (#33) or a substitution
+ * entry (E06-S13 #95; club spec risk "sessions with attendance or a substitution are untouchable"). A series edit
+ * leaves them where they are.
+ */
+export async function actedOnSessionIds(
+  em: EntityManager,
+  scope: ActivitiesScope,
+  rows: readonly Occurrence[],
+): Promise<Set<string>> {
+  // One after the other: inside a write transaction both reads share its connection.
+  const checkedOff = await checkedOffSessionIds(em, scope, rows)
+  const substituted = await substitutedSessionIds(
+    em,
+    scope,
+    rows.map((row) => row.id),
+  )
+  return new Set([...checkedOff, ...substituted])
+}
+
 /** A stored session wrapped for the series-edit plan. */
 export type StoredSession = { id: string; date: CalendarDate; isDetached: boolean; pinned: boolean; row: Occurrence }
 
 /**
  * The series-edit plan over stored sessions (DD-G03): a session is pinned when the club has acted on it — cancelled,
- * done, or with checked-off attendance (`checkedOff`, #33); substitutions join with their story.
+ * done, with checked-off attendance or a substitution (`actedOn`, #33, E06-S13 #95).
  */
 export function sessionPlan(
   existing: readonly Occurrence[],
   generated: readonly ExpandedOccurrence[],
   today: CalendarDate,
-  checkedOff: ReadonlySet<string> = new Set(),
+  actedOn: ReadonlySet<string> = new Set(),
 ): SeriesEditPlan<StoredSession> {
   const sessions = existing.map((row) => ({
     id: row.id,
     date: row.occurrenceDate,
     isDetached: row.isDetached,
-    pinned: isPinnedSession(row.status, checkedOff.has(row.id)),
+    pinned: isPinnedSession(row.status, actedOn.has(row.id)),
     row,
   }))
   return seriesEditPlan(sessions, generated, today)

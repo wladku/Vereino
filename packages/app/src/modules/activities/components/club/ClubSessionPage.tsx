@@ -7,7 +7,9 @@
 // `guardian_only`. A session outside the caller's (or the wards') calendar is "not found". A person who coaches also
 // reads it as the coach (E06-S15 #97): the coach of its group or its assigned coach gets "Running the session"
 // (attendance list, cancellation); a coach of another group sees "This is not your session" and none of its data; a
-// coach who is also a guardian gets the declarations and the coach block together on a ward's session.
+// coach who is also a guardian gets the declarations and the coach block together on a ward's session. The coach row
+// marks "Needs a coach" and "(substitution)", and the assigned coach reports an absence from the coach block (E06-S13
+// #95).
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -21,6 +23,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
+import { coachBadge } from '../../lib/occurrence-list'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CoachSessionBlock } from './CoachSessionBlock'
 import {
@@ -149,6 +152,29 @@ function PersonDeclaration({
   )
 }
 
+/** The coach of the session with "Needs a coach" or "(substitution)" (README M-04, E06-S13 #95). */
+function CoachName({ occurrence }: { occurrence: CalendarEntry['occurrence'] }) {
+  const t = useT()
+  const badge = coachBadge(occurrence)
+  if (badge === 'needs_coach') {
+    return (
+      <span data-testid="club-session-coach-needed">
+        <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+      </span>
+    )
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      <span>{occurrence.coachName ?? t('activities.common.empty')}</span>
+      {badge === 'substitution' ? (
+        <span className="text-muted-foreground text-xs" data-testid="club-session-substitution">
+          {t('activities.substitutions.substitution')}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   const t = useT()
   const locale = useLocale()
@@ -270,7 +296,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
         ) : null}
       </span>,
     ],
-    [t('activities.club.session.coach'), occurrence.coachName],
+    [t('activities.club.session.coach'), <CoachName key="coach" occurrence={occurrence} />],
   ]
   if (occurrence.opponentName) {
     rows.push([
@@ -329,6 +355,11 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
       {coachEntry ? (
         <CoachSessionBlock
           entry={coachEntry}
+          selfPersonId={profile.person.id}
+          absenceLabel={[
+            occurrence.activityName ?? t('activities.club.session.untitled'),
+            `${formatDayHeading(occurrence.occurrenceDate, locale)} ${formatClockTime(startsAt, locale, entry.timeZone)}`,
+          ].join(', ')}
           onCancelled={async (message) => {
             if (message) {
               setAnnouncement(message)

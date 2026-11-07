@@ -15,7 +15,7 @@ import { lastSessionDay, ruleYieldsSessions } from '../lib/activities-rules'
 import type { ActivitiesScope } from './directory'
 import {
   assertNoConflicts,
-  checkedOffSessionIds,
+  actedOnSessionIds,
   findConflicts,
   futureSessions,
   plannedSessions,
@@ -77,7 +77,7 @@ export async function replanSeries(
     clock.timeZone,
   )
   const stored = await futureSessions(em, scope, activity.id, clock.today)
-  const plan = sessionPlan(stored, sessions, clock.today, await checkedOffSessionIds(em, scope, stored))
+  const plan = sessionPlan(stored, sessions, clock.today, await actedOnSessionIds(em, scope, stored))
   const coachPersonId = activity.defaultCoachPersonId ?? null
   const gatheringMinutesBefore = activity.gatheringMinutesBefore ?? null
   await assertNoConflicts(
