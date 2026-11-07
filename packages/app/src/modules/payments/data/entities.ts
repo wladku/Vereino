@@ -16,6 +16,7 @@ import type {
   FeePeriod,
 } from '../lib/payments-rules'
 import type { PaymentMethod } from '../lib/charge-ledger'
+import type { CheckoutStatus } from '../lib/checkout-rules'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -186,10 +187,11 @@ export class Charge extends ScopedEntityBase {
 /**
  * A payment of a charge (payments spec *Data Models* → `payments_payments`; REQ-012, TEST-020; issue #109): an
  * immutable credit in grosz with its method, the day the money arrived and the title or receipt. A correction is a
- * reversing entry — a negative payment of the same charge that names the original in `reverses_payment_id` (one per
- * payment, partial unique index); nothing is edited or deleted. `recorded_by_*` is who received it (B-22). Cash
- * accepted with "Accept cash" (REQ-031, #114) also carries who collected it and its `KP/YYYY/MM/NNN` receipt number;
- * one acceptance spread over several charges is one receipt, so its payments share the number.
+ * reversing entry — a negative payment of the same charge that names the original in `reverses_payment_id` (one
+ * reversal per payment, partial unique index; an online payment may have several refunds, each with its provider
+ * refund id, #110); nothing is edited or deleted. `recorded_by_*` is who received it (B-22). Cash accepted with
+ * "Accept cash" (REQ-031, #114) also carries who collected it and its `KP/YYYY/MM/NNN` receipt number; one acceptance
+ * spread over several charges is one receipt, so its payments share the number.
  */
 @Entity({ tableName: 'payments_payments' })
 @Index({ name: 'payments_payments_org_charge_idx', properties: ['organizationId', 'chargeId'] })
@@ -200,7 +202,17 @@ export class Charge extends ScopedEntityBase {
 @Index({
   name: 'payments_payments_reverses_unique',
   expression:
-    'create unique index "payments_payments_reverses_unique" on "payments_payments" ("reverses_payment_id") where reverses_payment_id is not null and deleted_at is null',
+    'create unique index "payments_payments_reverses_unique" on "payments_payments" ("reverses_payment_id") where reverses_payment_id is not null and gateway_refund_id is null and deleted_at is null',
+})
+@Index({
+  name: 'payments_payments_gateway_charge_unique',
+  expression:
+    'create unique index "payments_payments_gateway_charge_unique" on "payments_payments" ("gateway_transaction_id", "charge_id", "is_overpayment") where gateway_transaction_id is not null and reverses_payment_id is null and deleted_at is null',
+})
+@Index({
+  name: 'payments_payments_gateway_refund_unique',
+  expression:
+    'create unique index "payments_payments_gateway_refund_unique" on "payments_payments" ("gateway_refund_id") where gateway_refund_id is not null and deleted_at is null',
 })
 export class Payment extends ScopedEntityBase {
   [OptionalProps]?:
@@ -209,6 +221,9 @@ export class Payment extends ScopedEntityBase {
     | 'recordedByPersonId'
     | 'recordedByUserId'
     | 'reversesPaymentId'
+    | 'gatewayTransactionId'
+    | 'gatewayRefundId'
+    | 'isOverpayment'
     | 'collectedByPersonId'
     | 'receiptNumber'
 
@@ -239,6 +254,24 @@ export class Payment extends ScopedEntityBase {
   @Property({ name: 'reverses_payment_id', type: 'uuid', nullable: true })
   reversesPaymentId?: string | null
 
+  /**
+   * The `payment_gateways` transaction of an `online` payment (DD-42; #110). Unique with the charge and the
+   * overpayment flag, so a repeated capture event or a second fulfilment books nothing again.
+   */
+  @Property({ name: 'gateway_transaction_id', type: 'uuid', nullable: true })
+  gatewayTransactionId?: string | null
+
+  /** The provider's refund id of an online refund (a reversing entry; S10.4). */
+  @Property({ name: 'gateway_refund_id', type: 'text', nullable: true })
+  gatewayRefundId?: string | null
+
+  /**
+   * An online share whose charge was no longer open at fulfilment (paid or cancelled meanwhile): money received and
+   * flagged "to refund" (Q-049). It is not a payment of the charge, so it never counts towards what was paid on it.
+   */
+  @Property({ name: 'is_overpayment', type: 'boolean', default: false })
+  isOverpayment: boolean = false
+
   /** The person who took the cash in hand ("Accept cash", #114); held by them until a handover (E07-S11). */
   @Property({ name: 'collected_by_person_id', type: 'uuid', nullable: true })
   collectedByPersonId?: string | null
@@ -246,6 +279,52 @@ export class Payment extends ScopedEntityBase {
   /** `KP/YYYY/MM/NNN`, sequential within the club and month; shared by the payments of one acceptance. */
   @Property({ name: 'receipt_number', type: 'text', nullable: true })
   receiptNumber?: string | null
+}
+
+/**
+ * An online checkout (payments spec *Data Models* → `payments_checkouts`, DD-42; #110): the open charges the payer
+ * selected, their amount, the `payer_pays` surcharge (R13), the key sent to the gateway and its transaction. Its id is
+ * the gateway `paymentId`, so a gateway event finds it without trusting event metadata. Completed only by the
+ * fulfilment — from `failed` or `expired` too, when the provider captured late.
+ */
+@Entity({ tableName: 'payments_checkouts' })
+@Unique({ name: 'payments_checkouts_idempotency_key_unique', properties: ['idempotencyKey'] })
+@Unique({ name: 'payments_checkouts_gateway_transaction_unique', properties: ['gatewayTransactionId'] })
+@Index({ name: 'payments_checkouts_org_status_created_idx', properties: ['organizationId', 'status', 'createdAt'] })
+@Index({ name: 'payments_checkouts_org_payer_idx', properties: ['organizationId', 'payerPersonId'] })
+@Index({ name: 'payments_checkouts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class Checkout extends ScopedEntityBase {
+  [OptionalProps]?:
+    ScopedEntityOptionalProps | 'feeAmount' | 'gatewayTransactionId' | 'status' | 'amountMismatch' | 'lastCheckedAt'
+
+  @Property({ name: 'payer_person_id', type: 'uuid' })
+  payerPersonId!: string
+
+  @Property({ name: 'charge_ids', type: 'text[]', columnType: 'uuid[]' })
+  chargeIds!: string[]
+
+  /** Grosz: the charges' amounts due. */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  /** Grosz: the `payer_pays` surcharge, a separate line (R13). */
+  @Property({ name: 'fee_amount', type: 'int', default: 0 })
+  feeAmount: number = 0
+
+  @Property({ name: 'idempotency_key', type: 'text' })
+  idempotencyKey!: string
+
+  @Property({ name: 'gateway_transaction_id', type: 'uuid', nullable: true })
+  gatewayTransactionId?: string | null
+
+  @Property({ name: 'status', type: 'text', default: 'created' })
+  status: CheckoutStatus = 'created'
+
+  @Property({ name: 'amount_mismatch', type: 'boolean', default: false })
+  amountMismatch: boolean = false
+
+  @Property({ name: 'last_checked_at', type: Date, nullable: true })
+  lastCheckedAt?: Date | null
 }
 
 /**

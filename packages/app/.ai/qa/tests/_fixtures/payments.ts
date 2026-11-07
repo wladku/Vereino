@@ -1,7 +1,9 @@
-// Fixtures of the `payments` tests (payments spec phase 4 steps 2, 3 and 8, TEST-018, TEST-048, TEST-020, TEST-043;
-// issues #108, #109, #114): fee schedules, discount rules, the period generator, the charge list, the charge ledger, the
-// undo probe (#184) and "Accept cash".
+// Fixtures of the `payments` tests (payments spec phase 4 steps 2, 3, 4 and 8, TEST-018, TEST-048, TEST-020, TEST-019,
+// TEST-021, TEST-057, TEST-043; issues #108, #109, #110, #114): fee schedules, discount rules, the period generator,
+// the charge list, the charge ledger, the undo probe (#184), the online checkout through the gateway test adapter and
+// "Accept cash".
 import { spawnSync } from 'node:child_process'
+import { createHmac } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -97,6 +99,8 @@ export type ChargePaymentItem = {
   receivedBy: { firstName: string; lastName: string } | null
   reversesPaymentId: string | null
   reversed: boolean
+  overpayment?: boolean
+  gatewayRefundId?: string | null
 }
 
 export type ChargeDetail = ChargeItem & {
@@ -165,6 +169,99 @@ export async function reversePayment(
     data,
     headers: lockHeaders(lock),
   })
+}
+
+// --- The online checkout (phase 4 step 4, TEST-019, TEST-021, TEST-055, TEST-057; issue #110) ---
+
+/**
+ * The gateway test adapter's webhook secret and signature header (`payments/services/test-gateway.ts`), registered
+ * only under `OM_INTEGRATION_TEST`; repeated here because the tests do not import app modules.
+ */
+const TEST_GATEWAY_WEBHOOK_SECRET = 'vereino-integration-test-gateway'
+const TEST_GATEWAY_SIGNATURE_HEADER = 'x-vereino-test-signature'
+
+export type Quote = CodedBody & { amount?: number; feeAmount?: number; total?: number; feeMode?: string }
+
+export type StartedCheckout = Quote & {
+  checkoutId?: string
+  providerKey?: string
+  clientSession?: { type: string; rendererKey?: string; payload?: { sessionId?: string } } | null
+}
+
+export type RefreshedCheckout = CodedBody & {
+  id?: string
+  status?: string
+  state?: string
+  amountMismatch?: boolean
+  charges?: { id: string; status: string }[]
+}
+
+export type MyChargesResult = CodedBody & {
+  items?: { id: string; status: string; payable: boolean; payerMissing: boolean; remaining: number }[]
+  total?: number
+  checkouts?: { id: string; state: string }[]
+}
+
+export async function myCharges(request: APIRequestContext, token: string) {
+  return call<MyChargesResult>(request, 'GET', '/api/payments/my-charges?pageSize=100', token)
+}
+
+export async function quote(request: APIRequestContext, token: string, chargeIds: string[]) {
+  return call<Quote>(request, 'POST', '/api/payments/checkout/quote', token, { data: { chargeIds } })
+}
+
+export async function startCheckout(request: APIRequestContext, token: string, chargeIds: string[]) {
+  return call<StartedCheckout>(request, 'POST', '/api/payments/checkout', token, { data: { chargeIds } })
+}
+
+/** Starts a checkout that must succeed; returns its id and the test gateway's session id. */
+export async function checkout(request: APIRequestContext, token: string, chargeIds: string[]) {
+  const started = await startCheckout(request, token, chargeIds)
+  expect(started.status, `POST /api/payments/checkout ${JSON.stringify(started.body)}`).toBe(201)
+  const sessionId = started.body?.clientSession?.payload?.sessionId
+  expect(sessionId, 'the test gateway session id').toBeTruthy()
+  return { checkoutId: String(started.body?.checkoutId), sessionId: String(sessionId), body: started.body }
+}
+
+export async function refreshCheckout(request: APIRequestContext, token: string, checkoutId: string) {
+  return call<RefreshedCheckout>(request, 'POST', `/api/payments/checkouts/${checkoutId}/refresh`, token)
+}
+
+/**
+ * Sets the test gateway's provider state with a signed webhook. `notify: false` sends `payment.silent`, which changes
+ * only the provider state (no gateway event: the delayed-webhook and late-capture cases). `amountReceived` in złoty.
+ */
+export async function gatewayWebhook(
+  request: APIRequestContext,
+  input: { sessionId: string; status: string; amountReceived?: number; eventId?: string; notify?: boolean },
+) {
+  const raw = JSON.stringify({
+    id: input.eventId ?? `evt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+    type: input.notify === false ? 'payment.silent' : 'payment.updated',
+    data: { id: input.sessionId, status: input.status, amountReceived: input.amountReceived },
+  })
+  const signature = createHmac('sha256', TEST_GATEWAY_WEBHOOK_SECRET).update(raw, 'utf-8').digest('hex')
+  const response = await request.post('/api/payment_gateways/webhook/vereino_test', {
+    data: raw,
+    headers: { 'content-type': 'application/json', [TEST_GATEWAY_SIGNATURE_HEADER]: signature },
+  })
+  expect(response.status(), `webhook ${input.status} ${await response.text()}`).toBe(202)
+}
+
+export async function refundPayment(
+  request: APIRequestContext,
+  token: string,
+  paymentId: string,
+  lock: string | null | undefined,
+  data: Record<string, unknown>,
+) {
+  return call<LedgerResult & { gatewayRefundId?: string; refunded?: number }>(
+    request,
+    'POST',
+    `/api/payments/payments/${paymentId}/refund`,
+    token,
+    { data, headers: lockHeaders(lock) },
+  )
 }
 
 const UNDO_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'payments-undo-probe', 'probe.mjs')

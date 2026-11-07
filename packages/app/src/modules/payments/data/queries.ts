@@ -48,7 +48,7 @@ export async function chargeIdsWithPayment(
     `select distinct p.charge_id
        from payments_payments p
       where p.tenant_id = ? and p.organization_id = ? and p.method = ? and p.deleted_at is null
-        and p.reverses_payment_id is null
+        and p.reverses_payment_id is null and p.is_overpayment = false
         and not exists (
           select 1 from payments_payments r
            where r.reverses_payment_id = p.id and r.organization_id = p.organization_id and r.deleted_at is null

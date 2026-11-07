@@ -152,6 +152,9 @@ export function groupsForProfile(profile: ClientBootstrapProfile): ClientRegistr
       // sales, catalog, staff, and others), not only under /backend/messages.
       return ['translations', 'injection', 'notifications', 'messages']
     case 'member':
+      // Vereino (#110): `/club/payments` renders the gateway's embedded payment form (M-08), whose renderers are
+      // registered by the `payments` client group.
+      return ['translations', 'injection', 'payments']
     case 'portal':
       // Injection tables include the translations table, which is materialized
       // at module evaluation time. Register translations first so a later

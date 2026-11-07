@@ -34,6 +34,10 @@ const paymentSchema = z.object({
   receivedBy: personSchema,
   reversesPaymentId: z.string().nullable(),
   reversed: z.boolean().describe('A reversing entry names this payment'),
+  overpayment: z
+    .boolean()
+    .describe('An online share whose charge was no longer open: money to refund, not paid (#110)'),
+  gatewayRefundId: z.string().nullable().describe("The provider's refund id of an online refund"),
   createdAt: z.string(),
 })
 
@@ -76,7 +80,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
     const reversed = new Set(payments.flatMap((row) => (row.reversesPaymentId ? [row.reversesPaymentId] : [])))
     const amountDue = amountDueOf(charge)
-    const paid = paidTotal(payments)
+    const paid = paidTotal(payments.filter((row) => !row.isOverpayment))
     const dueDate = calendarDate(charge.dueDate)
     return Response.json({
       id: charge.id,
@@ -113,6 +117,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         receivedBy: nameOf(row.recordedByPersonId),
         reversesPaymentId: row.reversesPaymentId ?? null,
         reversed: reversed.has(row.id),
+        overpayment: row.isOverpayment,
+        gatewayRefundId: row.gatewayRefundId ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
     })

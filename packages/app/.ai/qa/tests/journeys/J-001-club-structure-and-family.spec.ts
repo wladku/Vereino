@@ -551,7 +551,10 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await expect(page.getByTestId('club-tile-profile')).toBeVisible()
       await expect(page.getByTestId('club-wards')).toHaveCount(0)
       await expect(page.getByText(/Payments|Płatności/)).toHaveCount(0)
-      expect((await page.goto('/club/payments'))?.status()).toBe(404)
+      // `/club/payments` exists since #110; without the payer feature a minor gets no payments screen and no charge.
+      await page.goto('/club/payments')
+      await expect(page.getByTestId('club-charge')).toHaveCount(0)
+      await expect(page.getByTestId('club-payments-pay')).toHaveCount(0)
       const me = await getMe(request, await getAuthToken(request, olaEmail, password))
       expect(me.body?.person.id).toBe(family.ola.id)
       expect(me.body?.wards).toEqual([])

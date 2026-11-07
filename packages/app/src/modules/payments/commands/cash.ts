@@ -163,7 +163,13 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
       ) {
         await paymentsErrors.throw('cash_charges_invalid')
       }
-      const ledger = await em.find(Payment, { chargeId: { $in: parsed.chargeIds }, ...scope, deletedAt: null })
+      // An online overpayment "to refund" (#110, Q-049) is not a payment of the charge, as in `ledgerOf`.
+      const ledger = await em.find(Payment, {
+        chargeId: { $in: parsed.chargeIds },
+        ...scope,
+        isOverpayment: false,
+        deletedAt: null,
+      })
       const paidByCharge = new Map(
         charges.map((charge) => [charge.id, paidTotal(ledger.filter((row) => row.chargeId === charge.id))]),
       )

@@ -11,7 +11,7 @@ import { PaymentsClubFrame } from './PaymentsClubFrame'
 export function ClubCashPage() {
   const t = useT()
   return (
-    <PaymentsClubFrame>
+    <PaymentsClubFrame payerOnly={false}>
       {() => (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-1">

@@ -456,5 +456,7 @@
   "people.roles.role.coach": "Coach",
   "people.roles.role.coordinator": "Section coordinator",
   "people.roles.title": "Staff roles",
-  "people.search.person.badge": "Person"
+  "people.search.person.badge": "Person",
+  "people.club.tiles.payments.title": "Payments",
+  "people.club.tiles.payments.description": "Charges to pay and online payment."
 }
