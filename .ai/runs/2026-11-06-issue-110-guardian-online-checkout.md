@@ -111,12 +111,19 @@
 - `yarn i18n:check-hardcoded --strict`: first run flagged `"Invalid test gateway signature"`; developer errors now carry `[internal]`; then exit 0.
 - `yarn ds:check`, `yarn contracts:check`, `yarn lessons:check`, `yarn spec-changelogs:check`, `yarn format:check`: all exit 0.
 - `yarn test`: 56 suites, 643 tests passed, coverage thresholds met.
-- `yarn test:integration:vereino --filter TEST-019`: 1 passed (2.2 m) on the first run; rerun after the lint fixes is recorded below.
+- `yarn test:integration:vereino --filter TEST-019`: 1 passed (2.2 m) on the first run, and 1 passed (1.7 m) again after the lint fixes.
 - `--filter TEST-021`: 1 passed (1.6 m).
 - `--filter TEST-057`: 1 passed (1.6 m).
 - `--filter E07-S03`: 1 passed (1.4 m), with no blocking axe violation and no overflow at 375 px in either scheme.
 
+- Merged `origin/main` (#200, #203) cleanly into the branch (00089c3, signed off).
+- `yarn verify` on the merged tree: every step through `test:scripts` passed. The run includes `generate`, the three typechecks, `lint`, `format:check`, `ds:check`, `i18n:check-hardcoded`, `contracts:check`, `lessons:check`, `spec-changelogs:check`, `test` and `test:scripts`.
+- `build` failed three times after the cezar process restarted, always with `TurbopackInternalError … react-big-calendar.css … node process exited before we could connect to it with exit code: 0xc0000142`. That code means Windows could not start a child process (`STATUS_DLL_INIT_FAILED`). The same code built successfully four times earlier in the run, inside the integration runner. It is an environment failure, not a code one; CI's `gate` job runs the build on the PR.
+- Regression integration runs after the restart (`--filter TEST-020`, `E07-S02`, `E02-S03`) could not start: `Could not find a working container runtime strategy`, because Docker Desktop is not running. The run may not start it. CI's `integration` job runs the whole suite on the PR.
+
 ## Open problems / next steps
+
+- CI must show `gate`, `integration` and `browser-smoke` green on the PR; the local build and the post-restart regression runs were blocked by the environment (above).
 
 - The owner confirms or overrides the defaults recorded on #110:
   - the migration;
