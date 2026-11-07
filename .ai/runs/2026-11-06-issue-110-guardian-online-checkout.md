@@ -78,6 +78,8 @@
     - E02-S03 and J-001 expected `/club/payments` to answer 404 for a minor, written before the page existed. They now assert no charges and no payment form, plus the R10 refusal when the feature was granted by hand.
     - E06-S12 (activities, a session moved to "now", run early on a Saturday) touches no payments code and passes on `main`; it is rerun with the fixes.
 
+16. Second CI run on #212 (8ef6d48): `gate` (including the build), `browser-smoke`, `perf`, `pr-title` and `dependency-review` passed. `integration` had 154 passed and 1 failed, E06-S12 (with its retry). The Playwright snapshot shows the coordinator calendar's week Sun Nov 1 – Sat Nov 7 with "No sessions in this period", although the session was started "now" on Saturday. The spec passed on `main` on Friday, and this PR touches no `activities` code, so the failure is filed as follow-up #217 (day-dependent coordinator calendar) and not fixed here.
+
 ## Decisions
 
 - **The migration (Ask First):** taken as approved under the owner's instruction and recorded on #110. It is additive (S14.6), with `lock_timeout` and a full `down()`.
@@ -138,7 +140,7 @@
 
 ## Open problems / next steps
 
-- CI must show `gate`, `integration` and `browser-smoke` green on the PR; the local build and the post-restart regression runs were blocked by the environment (above).
+- CI on #212: everything green except E06-S12, the follow-up #217 (activities calendar on a Saturday, not touched by this PR). `main`'s ruleset needs `integration` green, so either #217 is fixed first or the job is rerun on a weekday.
 
 - The owner confirms or overrides the defaults recorded on #110:
   - the migration;
