@@ -48,6 +48,7 @@ Route first; never probe unmatched context.
 ## Never
 
 - Never leak tenants, trust payload scope, or treat missing scope as unrestricted.
+- Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
