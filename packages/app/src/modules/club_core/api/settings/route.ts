@@ -140,6 +140,7 @@ const settingsResponseSchema = z.object({
   onlineFeeFixed: z.number().int().describe('Minor units (grosz) of the club currency'),
   coachSettlementModel: z.enum(COACH_SETTLEMENT_MODELS),
   showCalledUpChildren: z.enum(CALLED_UP_CHILDREN_VISIBILITY),
+  coachMayCancel: z.boolean().describe('Whether a coach may cancel a session; false leaves only reporting an absence'),
   orderSalesDocument: z.enum(ORDER_SALES_DOCUMENTS),
   publicSlug: z.string().nullable().describe('Globally unique slug of `/p/{publicSlug}`'),
   publicDescription: z.string().nullable(),

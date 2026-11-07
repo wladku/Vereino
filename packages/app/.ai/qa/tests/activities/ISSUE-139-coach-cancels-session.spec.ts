@@ -15,7 +15,7 @@ import { actionLogEntries } from '../_fixtures/people'
 // in-app notice naming "Marek Trener" as the coach and the e-mail, and the session thread reads "Cancelled by Marek
 // Trener (coach): Pitch closed". The instructor of the pool group, a coach of another group, is refused with 403.
 // Krystyna, who also coaches Żaki, cancels another session from M-05 in the coach role she acted in, and gets no
-// coordinator notice about her own cancellation. The club setting `coach_may_cancel` is a follow-up (a migration).
+// coordinator notice about her own cancellation. The club setting `coach_may_cancel` is covered by ISSUE-199.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
