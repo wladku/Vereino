@@ -133,3 +133,29 @@ export async function signInBrowser(
   expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
   return password
 }
+
+/**
+ * Signs the browser page out: leaves the current page for `about:blank`, then clears the cookies. An open signed-in
+ * page (a `/backend/**` one above all) notices the missing session and redirects to `/login`, and that redirect aborts
+ * the test's next `page.goto` (`net::ERR_ABORTED`) — lesson `leave-backend-page-before-clearing-cookies`. Use this
+ * instead of a bare `page.context().clearCookies()`.
+ */
+export async function signOutBrowser(page: Page): Promise<void> {
+  await page.goto('about:blank')
+  await page.context().clearCookies()
+}
+
+/**
+ * Switches the browser page to another user: signs the current one out safely (`signOutBrowser`), then signs `email`
+ * in with a new password (`signInBrowser`) and returns that password.
+ */
+export async function switchBrowserUser(
+  page: Page,
+  request: APIRequestContext,
+  club: Club,
+  userId: string,
+  email: string,
+): Promise<string> {
+  await signOutBrowser(page)
+  return signInBrowser(page, request, club, userId, email)
+}
