@@ -1,7 +1,13 @@
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import type { OpeningHours } from '@vereino/core'
-import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
+import {
+  ScopedEntityBase,
+  decorateScopedEntityBase,
+  validFromColumn,
+  validToColumn,
+  type ScopedEntityOptionalProps,
+} from '@vereino/db'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -416,4 +422,38 @@ export class Institution extends ScopedEntityBase {
 
   @Property({ name: 'notes', type: 'text', nullable: true })
   notes?: string | null
+}
+
+/**
+ * A contract of the club (club spec *Data Models* → `club_core_contracts`, DD-09; #96): a coach contract with the
+ * rates of the club's settlement model (phase 2), later the management agreement (phase 5). `terms` is the encrypted
+ * JSON text of the rates (`encryption.ts`); active contracts of one kind for one party never overlap (409
+ * `contract_overlap`). The party is a person (`people`) or an institution, held as a scalar id.
+ */
+@Entity({ tableName: 'club_core_contracts' })
+@Index({ name: 'club_core_contracts_party_idx', properties: ['organizationId', 'partyType', 'partyId', 'kind'] })
+@Index({ name: 'club_core_contracts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class Contract extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'terms'
+
+  /** `person` | `institution`. */
+  @Property({ name: 'party_type', type: 'text' })
+  partyType!: string
+
+  @Property({ name: 'party_id', type: 'uuid' })
+  partyId!: string
+
+  /** `coach` | `facility_management` | `rental` | `grant` | `other`. */
+  @Property({ name: 'kind', type: 'text' })
+  kind!: string
+
+  @Property(validFromColumn())
+  validFrom!: string
+
+  @Property(validToColumn())
+  validTo?: string | null
+
+  /** Encrypted JSON text of the terms; a coach contract holds its rates in grosz (`lib/contracts.ts`). */
+  @Property({ name: 'terms', type: 'text', nullable: true })
+  terms?: string | null
 }

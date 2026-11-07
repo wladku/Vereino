@@ -183,6 +183,12 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
       },
       { id: 'description', label: t('activities.fields.description'), type: 'textarea', maxLength: 4000 },
       { id: 'isActive', label: t('activities.fields.isActive'), type: 'checkbox' },
+      {
+        id: 'isAway',
+        label: t('activities.fields.isAway'),
+        type: 'checkbox',
+        description: t('activities.fields.isAway.help'),
+      },
       dateField('startsOn', t('activities.fields.startsOn'), { required: true, layout: 'half' }),
       dateField('endsOn', t('activities.fields.endsOn'), {
         layout: 'half',
@@ -216,6 +222,7 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId }: Fie
           'coachPersonId',
           'description',
           'isActive',
+          'isAway',
         ],
       },
       {

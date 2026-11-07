@@ -2,6 +2,7 @@
 // serializers and OpenAPI schemas. Lists filter with `scopeWhere` (foundation spec P-03).
 import { z } from 'zod'
 import { readOpeningHours, type GrantKind, type ScopeColumnMap } from '@vereino/core'
+import { parseCoachTerms } from '../lib/contracts'
 import { decimalOrNull, parsePlaceContacts } from '../lib/places'
 
 /** Sections are read by the club administrator and by the coordinators of each section (`section_ids`). */
@@ -19,6 +20,7 @@ export const STRUCTURE_COLUMNS: ScopeColumnMap = {}
 export const SECTION_ENTITY_ID = 'club_core:section'
 export const PLACE_LIST_ENTITY_ID = 'club_core:place'
 export const INSTITUTION_LIST_ENTITY_ID = 'club_core:institution'
+export const CONTRACT_LIST_ENTITY_ID = 'club_core:contract'
 
 type Row = Record<string, unknown>
 
@@ -108,6 +110,30 @@ export function institutionListItem(row: Row) {
     updatedAt: iso(row.updated_at),
   }
 }
+
+/** A `date` column as `YYYY-MM-DD` (the driver may return a Date or a string). */
+function day(value: unknown): string | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10)
+  return typeof value === 'string' ? value.slice(0, 10) : null
+}
+
+export function contractListItem(row: Row) {
+  const terms = text(row.terms)
+  return {
+    id: String(row.id),
+    partyType: text(row.party_type),
+    partyId: text(row.party_id),
+    kind: text(row.kind),
+    validFrom: day(row.valid_from),
+    validTo: day(row.valid_to),
+    terms: terms ? parseCoachTerms(terms) : null,
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  }
+}
+
+/** A contract list row with the party's name the list hook adds; null for an unknown or deleted party. */
+export type ContractListItem = ReturnType<typeof contractListItem> & { partyName?: string | null }
 
 export const errorSchema = z.object({ error: z.string(), code: z.string().optional() }).loose()
 
@@ -200,4 +226,20 @@ export const institutionListItemSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+})
+
+export const contractListItemSchema = z.object({
+  id: z.uuid(),
+  partyType: z.string().nullable(),
+  partyId: z.string().nullable(),
+  kind: z.string().nullable(),
+  validFrom: z.string().nullable(),
+  validTo: z.string().nullable(),
+  terms: z
+    .record(z.string(), z.number())
+    .nullable()
+    .describe("A coach contract's rates in grosz (the club model's fields); null for the other kinds"),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  partyName: z.string().nullable().optional().describe("The person's or institution's name; null when unknown"),
 })

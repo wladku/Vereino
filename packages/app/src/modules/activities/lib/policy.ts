@@ -128,7 +128,7 @@ export function policyKey(policy: Pick<PolicyRow, 'scope' | 'groupId' | 'activit
 export type PolicySubject = {
   readonly groupId: string
   readonly activityType: ActivityType
-  /** `activity.is_away` (step 7); false until the column exists. */
+  /** `activity.is_away` (#96). */
   readonly isAway: boolean
 }
 

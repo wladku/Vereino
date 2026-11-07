@@ -169,3 +169,11 @@ E06-S13 (README M-04, M-05, B-15, B-01, flow F-03 path A; club spec REQ-008, DD-
 - **Widgets.** `activities.dashboard.sessionsNeedingCoach` and `activities.dashboard.unsettledSessions` (`dashboards.view` + `activities.view`; the E06-S06 pattern, `lib/dashboard-rules.ts`): the count, five sessions and "Open list" to the perspective, in the record scope of the list route. The coordinator role has no `dashboards.view` (D29: the coordinator works from the phone), so today they serve the administrator.
 - **Today.** The coach tile opens with an "Unsettled session" alert for each of the coach's sessions of the last two weeks that is unsettled, linking to its attendance list.
 - **Not here.** The unit credit and the settlement (#96).
+
+## Coach units report and My units (#96)
+
+- `GET /api/activities/reports/coach-units?month=YYYY-MM[&sectionId][&mine=1][&format=csv]` (`services/coach-units.ts`, rules in `lib/coach-units.ts`): the month's `done` sessions per coach. A unit is one `training` session, owed to whoever led it; the own coach is the one before the session's first substitution entry. Planned, handed over, taken over, balance (= units led), matches (`match` / `sparring` led), away trips (sessions of an `is_away` activity led).
+- Reach: `activities.reports.view` — the administrator every section, a coordinator their sections (another section → 403); `activities.reports.view_own` or `mine=1` — only the caller's own row (`self` grant). Amounts and `contractState` only with `club_core.contracts.manage`, priced in the club's `coach_settlement_model` from the `clubCoreContracts` DI read: each session by the contract in force on its day, the base once from the latest contract overlapping the month.
+- `unsettledCount` counts the month's planned sessions that ended 24 h ago or more (the B-15 "Unsettled" predicate) in the same reach.
+- `/backend/activities/reports/coach-units` (B-16) and `/club/coach/units` (More → My units for a coach context, no amounts).
+- `activities_activities.is_away` (activity form "Away trip") also feeds the `away_trip` declaration policy, which until now always resolved as not away.
