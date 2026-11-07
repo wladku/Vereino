@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { call, createClub } from '../_fixtures/club'
-import { create, signInBrowser } from '../_fixtures/club-structure'
+import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 
 // Issue #86 (E06-S04; README B-06; UX parity spec REQ-U03, TEST-U08 and TEST-U09 list part, AC-U05 list part): the
 // places list filters by kind, parent and active state; each row carries the owner institution's name and the parent's
@@ -159,8 +159,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     // The empty state of a club without places offers "Add place".
     const empty = await createClub(request, 'e06-s04-empty')
     try {
-      await page.context().clearCookies()
-      await signInBrowser(page, request, empty, empty.adminUserId, empty.tenant.email)
+      await switchBrowserUser(page, request, empty, empty.adminUserId, empty.tenant.email)
       await page.goto('/backend/club/places')
       await expect(page.getByTestId('places-empty')).toBeVisible()
       await expect(

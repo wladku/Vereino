@@ -30,7 +30,8 @@ decorateAppendOnlyEntityBase({ PrimaryKey, Property })
  * rule: one session on `starts_on`, REQ-027). `section_id` is the group's section, copied when the activity is written;
  * `group_id`, `default_place_id`, `default_coach_person_id` and the external teams are scalar ids of `groups`,
  * `club_core` and `people` (no cross-module relation). `generated_until` is the last day the generator filled.
- * Attendance, declaration, away-trip, fixture and public-schedule fields arrive with their stories (#32–#34, REQ-039,
+ * `is_away` marks an away trip (club spec glossary *Coach settlement*, #96): the coach units report counts it and the
+ * declaration policy of `away_trip` governs it. Fixture and public-schedule fields arrive with their stories (REQ-039,
  * step 9).
  */
 @Entity({ tableName: 'activities_activities' })
@@ -49,6 +50,7 @@ export class Activity extends ScopedEntityBase {
     | 'gatheringMinutesBefore'
     | 'description'
     | 'isActive'
+    | 'isAway'
 
   @Property({ name: 'section_id', type: 'uuid' })
   sectionId!: string
@@ -108,6 +110,10 @@ export class Activity extends ScopedEntityBase {
 
   @Property({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean = true
+
+  /** An away trip (#96): its sessions count as trips in the coach units report. */
+  @Property({ name: 'is_away', type: 'boolean', default: false })
+  isAway: boolean = false
 }
 
 /**

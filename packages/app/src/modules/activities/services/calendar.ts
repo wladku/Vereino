@@ -350,7 +350,7 @@ async function memberCalendar(
     const activityType = (activity?.type as ActivityType | undefined) ?? 'other'
     const kind = settings.declarationKinds[activityType] ?? 'confirm'
     const open = declarationWindow(row, now) === 'open'
-    const policy = resolvePolicy(policies, { groupId: row.groupId, activityType, isAway: false })
+    const policy = resolvePolicy(policies, { groupId: row.groupId, activityType, isAway: activity?.isAway === true })
     const personViews = (concerned.get(row.id) ?? []).map((personId): CalendarPersonView => {
       const person = persons.get(personId)
       const minor = isMinorOn(person?.birthDate ?? null, row.occurrenceDate)

@@ -13,6 +13,10 @@ const events = [
   { id: 'club_core.institution.created', label: 'Institution created', entity: 'institution', category: 'crud' },
   { id: 'club_core.institution.updated', label: 'Institution updated', entity: 'institution', category: 'crud' },
   { id: 'club_core.institution.deleted', label: 'Institution deleted', entity: 'institution', category: 'crud' },
+  // #96: contracts (coach rates are encrypted and never in a payload).
+  { id: 'club_core.contract.created', label: 'Contract created', entity: 'contract', category: 'crud' },
+  { id: 'club_core.contract.updated', label: 'Contract updated', entity: 'contract', category: 'crud' },
+  { id: 'club_core.contract.deleted', label: 'Contract deleted', entity: 'contract', category: 'crud' },
   // #29: files of a section's materials (the public flag changes with `updated`).
   {
     id: 'club_core.section_material.created',

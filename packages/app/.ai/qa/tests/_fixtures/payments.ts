@@ -1,9 +1,13 @@
 // Fixtures of the `payments` tests (payments spec phase 4 steps 2 to 4, TEST-018, TEST-048, TEST-020, TEST-019,
 // TEST-021, TEST-057; issues #108, #109, #110): fee schedules, discount rules, the period generator, the charge list,
-// the charge ledger and the online checkout through the gateway test adapter.
+// the charge ledger, the undo probe (#184) and the online checkout through the gateway test adapter.
+import { spawnSync } from 'node:child_process'
 import { createHmac } from 'node:crypto'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
-import { OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
 
 export type CodedBody = { error?: string; code?: string }
 
@@ -257,4 +261,41 @@ export async function refundPayment(
     token,
     { data, headers: lockHeaders(lock) },
   )
+}
+
+const UNDO_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'payments-undo-probe', 'probe.mjs')
+
+export type UndoProbeResult = {
+  error: string | null
+  events: Array<{ event: string; payload: Record<string, unknown> }>
+}
+
+/**
+ * Replays `undoToken` through the command bus in a probe process as `userId` of the club and returns the `payments.*`
+ * events it emitted (#184); `failAuditWrite` makes the bus's audit write fail, so the replay rolls back after the undo
+ * handler ran. The probe gets its own private queue directory.
+ */
+export function undoInProbe(
+  scope: { tenantId: string; organizationId: string },
+  input: { userId: string; undoToken: string; failAuditWrite?: boolean },
+): UndoProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [UNDO_PROBE, JSON.stringify({ ...scope, ...input })], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the payments undo probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as UndoProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
 }

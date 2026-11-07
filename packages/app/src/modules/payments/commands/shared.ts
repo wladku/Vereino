@@ -2,7 +2,7 @@
 // loads, CRUD side-effect configs, the audit log entry and the generic undo steps. Phase 4 runs without the treasurer
 // role (D-030): every `payments` write is the club administrator's, club-wide (`authorizeScoped` with `club_admin`).
 import type { EntityManager } from '@mikro-orm/postgresql'
-import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { onTransactionLifetimeComplete, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
 import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shared/lib/commands/helpers'
 import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
@@ -98,6 +98,25 @@ export function emitAfterCommit(
   payload: Record<string, unknown>,
 ): Promise<void> {
   return emitPaymentsEvent(eventId, { ...payload, ...scope }, { persistent: true, ...scope })
+}
+
+/**
+ * Emits a custom `payments.*` event from an undo once the command bus's replay transaction commits (#184). An
+ * `atomicReplay` undo runs inside that transaction and the bus still writes the audit entry after the handler
+ * returns, so an event emitted by the handler itself would go out even when the replay rolls back; it is dropped on
+ * a rollback instead.
+ */
+export function emitAfterReplayCommit(
+  ctx: CommandRuntimeContext,
+  eventId: PaymentsEventId,
+  scope: { tenantId: string; organizationId: string },
+  payload: Record<string, unknown>,
+): void {
+  const em = ctx.transactionalEm
+  if (!em) throw new Error('[internal] a replay event needs the replay transaction: ' + eventId)
+  onTransactionLifetimeComplete(em, async (outcome) => {
+    if (outcome === 'committed') await emitAfterCommit(eventId, scope, payload)
+  })
 }
 
 export async function paymentsLog<

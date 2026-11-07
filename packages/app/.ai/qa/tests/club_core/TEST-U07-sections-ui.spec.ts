@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { assignRole, birthDateTurning, createClub, createStaff, expectRoles, uniqueSuffix } from '../_fixtures/club'
-import { create, getOne, signInBrowser } from '../_fixtures/club-structure'
+import { create, getOne, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { createGroup } from '../_fixtures/groups'
 import { publish, putSectionPublic } from '../_fixtures/publication'
 
@@ -131,8 +131,7 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
       validFrom: '2020-01-01',
     })
     await expectRoles(request, club, marek.userId, ['vereino_coordinator', 'vereino_member'])
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, marek.userId, marek.email)
+    await switchBrowserUser(page, request, club, marek.userId, marek.email)
     await page.goto(`/backend/club/sections/${pool}/edit?tab=public`)
     await expect(page.getByRole('tab', { name: /^(Public page|Strona publiczna)$/ })).toHaveAttribute(
       'aria-selected',

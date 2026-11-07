@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { assignRole, birthDateTurning, createClub, createStaff, expectRoles, uniqueSuffix } from '../_fixtures/club'
-import { create, signInBrowser } from '../_fixtures/club-structure'
+import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { getSettings, pdf, png, publish, putSectionPublic, putSettings, upload } from '../_fixtures/publication'
 
 // E02-S05 (issue #29; club spec UI rows `/p/[clubSlug]`, `/p/[clubSlug]/sections/[sectionSlug]`,
@@ -248,8 +248,7 @@ test('E02-S05 the publication page and the coordinator’s section page: save, r
       validFrom: '2020-01-01',
     })
     await expectRoles(request, club, marek.userId, ['vereino_coordinator', 'vereino_member'])
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, marek.userId, marek.email)
+    await switchBrowserUser(page, request, club, marek.userId, marek.email)
     await page.goto(`/backend/club/sections/${pool}/edit?tab=public`)
     await expect(page.getByTestId('section-edit-name')).toHaveText('Basen')
     await expect(page.getByTestId('section-public-panel')).toBeVisible()

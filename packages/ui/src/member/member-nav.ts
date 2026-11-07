@@ -1,6 +1,6 @@
 // The one navigation definition of the member pages (README 3.1 *Member `/club`*; E06-S19 #101): the bottom-bar tabs
-// Today · Calendar · Messages · [a fourth tab a later module grants] · More, the entries behind More (Profile, the
-// admin panel for staff) and which of them is current for a path. Framework-free: every label comes in through
+// Today · Calendar · Messages · [a fourth tab a later module grants] · More, the entries behind More (Profile, My units
+// for a coach (#96), the admin panel for staff) and which of them is current for a path. Framework-free: every label comes in through
 // `memberShellLabels`, which reads one fixed list of keys under the calling module's catalog prefix, so the three
 // member frames (`people`, `activities`, `communication`) share the definition and keep their own catalogs.
 
@@ -8,6 +8,8 @@ export const CLUB_HOME_HREF = '/club'
 export const CLUB_CALENDAR_HREF = '/club/calendar'
 export const CLUB_MESSAGES_HREF = '/club/messages'
 export const CLUB_PROFILE_HREF = '/club/profile'
+/** A coach's own row of the monthly coach units report (#96). */
+export const CLUB_MY_UNITS_HREF = '/club/coach/units'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -27,6 +29,7 @@ export type MemberShellLabels = {
   messages: string
   more: string
   profile: string
+  myUnits: string
   backend: string
   signOut: string
   context: string
@@ -44,6 +47,7 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'messages',
   'more',
   'profile',
+  'myUnits',
   'backend',
   'signOut',
   'context',
@@ -108,6 +112,10 @@ export function memberNav({ pathname, contexts, labels, extraTab = null }: Membe
   ]
   if (extraTab) tabs.push({ ...extraTab, current: under(pathname, extraTab.href) })
   const items: MemberNavItem[] = [{ href: CLUB_PROFILE_HREF, label: labels.profile, current: profileCurrent }]
+  // Every role but the club administrator works from the phone (product rule of 2026-11-03): a coach reads their own
+  // units here.
+  const unitsCurrent = contexts.includes('coach') && under(pathname, CLUB_MY_UNITS_HREF)
+  if (contexts.includes('coach')) items.push({ href: CLUB_MY_UNITS_HREF, label: labels.myUnits, current: unitsCurrent })
   if (hasStaffContext(contexts)) items.push({ href: BACKEND_HREF, label: labels.backend, current: false })
-  return { tabs, more: { label: labels.more, current: profileCurrent, items } }
+  return { tabs, more: { label: labels.more, current: profileCurrent || unitsCurrent, items } }
 }

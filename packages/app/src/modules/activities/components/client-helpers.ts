@@ -53,6 +53,8 @@ export type ActivityRow = {
   gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
+  /** An away trip (#96). */
+  isAway: boolean
   createdAt: string | null
   updatedAt: string | null
 }

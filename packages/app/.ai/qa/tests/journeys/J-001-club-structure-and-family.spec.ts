@@ -12,7 +12,7 @@ import {
   getPerson,
   uniqueSuffix,
 } from '../_fixtures/club'
-import { list, signInBrowser } from '../_fixtures/club-structure'
+import { list, signInBrowser, signOutBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { acceptInvitation, capturedEmails, checkOwnPayments, getMe, signInThroughForm } from '../_fixtures/members'
 import { guardianships, persons } from '../_fixtures/people'
 import { getSettings, publicGet, type PublicSectionPage } from '../_fixtures/publication'
@@ -478,7 +478,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
     })
 
     await test.step('step 4: Kasia sets a password, signs in, lands on /club and sees both children with their consents', async () => {
-      await page.context().clearCookies()
+      await signOutBrowser(page)
       const invitation = capturedEmails(kasiaEmail).at(-1)
       const resetLink = invitation?.links.find((href) => href.includes('/reset/'))
       expect(resetLink, JSON.stringify(invitation)).toBeTruthy()
@@ -544,7 +544,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
 
     await test.step('step 4: Ola signs in and sees no payments', async () => {
       const password = await acceptInvitation(request, olaEmail)
-      await page.context().clearCookies()
+      await signOutBrowser(page)
       await signInThroughForm(page, olaEmail, password)
       await expect(page).toHaveURL(/\/club$/)
       await expect(page.getByRole('heading', { level: 1, name: /Hello, Ola|Cześć, Ola/ })).toBeVisible()
@@ -564,8 +564,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
     })
 
     await test.step('step 5: an e-mail already in use answers 409; a stale person record answers 409 with the conflict notice', async () => {
-      await page.context().clearCookies()
-      const password = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+      const password = await switchBrowserUser(page, request, club, club.adminUserId, club.tenant.email)
       club.adminToken = await getAuthToken(request, club.tenant.email, password)
 
       // Ewa's account with Kasia's address: 409 `email_taken`, shown to the administrator; no account is created.
@@ -650,8 +649,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
 
     await test.step('step 5 and exit gate: a user without people.manage sees "Access denied"', async () => {
       // Marek (coordinator) reads the people list (`people.view`) but may not add a person (`people.manage`).
-      await page.context().clearCookies()
-      const password = await signInBrowser(page, request, club, marek.userId, marek.email)
+      const password = await switchBrowserUser(page, request, club, marek.userId, marek.email)
       await page.goto('/backend/people/persons')
       await expect(page.getByRole('heading', { level: 1, name: /^People$|^Osoby$/ })).toBeVisible()
       await expect(page.getByText(ACCESS_DENIED)).toHaveCount(0)
@@ -667,7 +665,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
     })
 
     await test.step('exit gate: /p/[clubSlug] in light and dark mode at 375 px; the section page shows only the enabled blocks', async () => {
-      await page.context().clearCookies()
+      await signOutBrowser(page)
       await prepareForAccessibilityScan(page)
       await page.setViewportSize({ width: 375, height: 812 })
       const violations: Record<string, unknown> = {}

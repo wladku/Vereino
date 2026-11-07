@@ -3,6 +3,7 @@ import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legac
 import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
 import type { ClosureReason } from '../lib/closures'
 import type { RenterCategory } from '../lib/rates'
+import type { EntryBanSubjectType, RenterType, RentalStatus, RequestedVia } from '../lib/rentals'
 import type { Zone, ZoneSource } from '../lib/zones'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
@@ -117,4 +118,179 @@ export class RentalRate extends ScopedEntityBase {
 
   @Property({ name: 'valid_to', type: 'date', nullable: true })
   validTo?: string | null
+}
+
+/**
+ * An external rental of a place (facilities spec *Data Models* → `facilities_rentals`, glossary *Booking (external
+ * rental)*; REQ-013, DD-19, DD-46; #122): a renter, a slot of 90-minute units, the amount from the rate, the deadlines
+ * and a status that only commands change. A staff entry starts at `requested`; the online request columns
+ * (`verification_*`, `hold_expires_at`, the decision) are filled from E08-S05 on. `charge_id` is set at most once, by
+ * the optional `payments.chargeService`, in the rental's own transaction. Contact data, the renter's name, the
+ * purpose, the decision reason and the notes are encrypted at rest (`encryption.ts`).
+ */
+@Entity({ tableName: 'facilities_rentals' })
+@Index({ name: 'facilities_rentals_org_place_start_idx', properties: ['organizationId', 'placeId', 'startsAt'] })
+@Index({ name: 'facilities_rentals_org_status_hold_idx', properties: ['organizationId', 'status', 'holdExpiresAt'] })
+@Index({ name: 'facilities_rentals_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class Rental extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'renterId'
+    | 'contactName'
+    | 'contactPhone'
+    | 'contactEmail'
+    | 'purpose'
+    | 'rateId'
+    | 'chargeId'
+    | 'verificationTokenHash'
+    | 'verificationExpiresAt'
+    | 'emailVerifiedAt'
+    | 'holdExpiresAt'
+    | 'decidedByPersonId'
+    | 'decidedAt'
+    | 'decisionReason'
+    | 'entryBanMatch'
+    | 'cancellationDeadline'
+    | 'paymentDeadline'
+    | 'regulationsAcceptedAt'
+    | 'regulationsAcceptedVia'
+    | 'needsReschedule'
+    | 'notes'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'renter_type', type: 'text' })
+  renterType!: RenterType
+
+  /** A `club_core` institution or a `people` person, by id; null for an unregistered renter. */
+  @Property({ name: 'renter_id', type: 'uuid', nullable: true })
+  renterId?: string | null
+
+  @Property({ name: 'renter_display_name', type: 'text' })
+  renterDisplayName!: string
+
+  @Property({ name: 'renter_category', type: 'text' })
+  renterCategory!: RenterCategory
+
+  @Property({ name: 'contact_name', type: 'text', nullable: true })
+  contactName?: string | null
+
+  @Property({ name: 'contact_phone', type: 'text', nullable: true })
+  contactPhone?: string | null
+
+  @Property({ name: 'contact_email', type: 'text', nullable: true })
+  contactEmail?: string | null
+
+  @Property({ name: 'purpose', type: 'text', nullable: true })
+  purpose?: string | null
+
+  @Property({ name: 'requested_via', type: 'text' })
+  requestedVia!: RequestedVia
+
+  @Property({ name: 'starts_at', type: Date })
+  startsAt!: Date
+
+  @Property({ name: 'ends_at', type: Date })
+  endsAt!: Date
+
+  @Property({ name: 'units', type: 'smallint' })
+  units!: number
+
+  @Property({ name: 'rate_id', type: 'uuid', nullable: true })
+  rateId?: string | null
+
+  /** Minor units. */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  @Property({ name: 'charge_id', type: 'uuid', nullable: true })
+  chargeId?: string | null
+
+  @Property({ name: 'status', type: 'text' })
+  status!: RentalStatus
+
+  @Property({ name: 'verification_token_hash', type: 'text', nullable: true, unique: true })
+  verificationTokenHash?: string | null
+
+  @Property({ name: 'verification_expires_at', type: Date, nullable: true })
+  verificationExpiresAt?: Date | null
+
+  @Property({ name: 'email_verified_at', type: Date, nullable: true })
+  emailVerifiedAt?: Date | null
+
+  @Property({ name: 'hold_expires_at', type: Date, nullable: true })
+  holdExpiresAt?: Date | null
+
+  @Property({ name: 'decided_by_person_id', type: 'uuid', nullable: true })
+  decidedByPersonId?: string | null
+
+  @Property({ name: 'decided_at', type: Date, nullable: true })
+  decidedAt?: Date | null
+
+  @Property({ name: 'decision_reason', type: 'text', nullable: true })
+  decisionReason?: string | null
+
+  @Property({ name: 'entry_ban_match', type: 'boolean', default: false })
+  entryBanMatch: boolean = false
+
+  @Property({ name: 'cancellation_deadline', type: Date, nullable: true })
+  cancellationDeadline?: Date | null
+
+  @Property({ name: 'payment_deadline', type: Date, nullable: true })
+  paymentDeadline?: Date | null
+
+  @Property({ name: 'regulations_accepted_at', type: Date, nullable: true })
+  regulationsAcceptedAt?: Date | null
+
+  @Property({ name: 'regulations_accepted_via', type: 'text', nullable: true })
+  regulationsAcceptedVia?: RequestedVia | null
+
+  @Property({ name: 'needs_reschedule', type: 'boolean', default: false })
+  needsReschedule: boolean = false
+
+  @Property({ name: 'notes', type: 'text', nullable: true })
+  notes?: string | null
+}
+
+/**
+ * An entry ban (facilities spec *Data Models* → `facilities_entry_bans`, REQ-016; #122): an institution or a person
+ * may not book a place from `starts_on` to `ends_on` (inclusive; open-ended without it). A rental for a renter with an
+ * active ban on the place answers 409 `entry_ban_active`. Revoked through `revoked_at`, never deleted; the incident
+ * link, the revocation and the pages arrive with E08-S06 (#126). The reason is encrypted at rest.
+ */
+@Entity({ tableName: 'facilities_entry_bans' })
+@Index({ name: 'facilities_entry_bans_org_subject_idx', properties: ['organizationId', 'subjectType', 'subjectId'] })
+@Index({ name: 'facilities_entry_bans_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class EntryBan extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'endsOn' | 'incidentId' | 'issuedByPersonId' | 'revokedAt'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'subject_type', type: 'text' })
+  subjectType!: EntryBanSubjectType
+
+  @Property({ name: 'subject_id', type: 'uuid' })
+  subjectId!: string
+
+  /** `YYYY-MM-DD`, inclusive. */
+  @Property({ name: 'starts_on', type: 'date' })
+  startsOn!: string
+
+  /** `YYYY-MM-DD`, inclusive; null = until revoked. */
+  @Property({ name: 'ends_on', type: 'date', nullable: true })
+  endsOn?: string | null
+
+  @Property({ name: 'reason', type: 'text' })
+  reason!: string
+
+  @Property({ name: 'incident_id', type: 'uuid', nullable: true })
+  incidentId?: string | null
+
+  @Property({ name: 'issued_by_person_id', type: 'uuid', nullable: true })
+  issuedByPersonId?: string | null
+
+  @Property({ name: 'revoked_at', type: Date, nullable: true })
+  revokedAt?: Date | null
 }
