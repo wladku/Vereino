@@ -2,10 +2,11 @@
 // The platform runner (`yarn test:integration:ephemeral`) only reports ready when the `customers` module
 // answers, which this app does not enable, so Vereino runs its own thin runner on the same pieces:
 // a Testcontainers PostgreSQL, `yarn initialize`, a production build and `yarn start`.
-// Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--no-build] [--port <n>]
+// Usage: node scripts/vereino-ephemeral.mjs test [--filter <text>] [--shard <i>/<n>] [--no-build] [--port <n>]
 //        node scripts/vereino-ephemeral.mjs start [--no-build] [--port <n>]   (runs until Ctrl+C)
 // Without --port, `test` takes a free port from 5001–5999, so several worktrees can run their tests at once;
-// `start` stays on 5001.
+// `start` stays on 5001. `--shard i/n` passes Playwright's shard option through, so CI can split the suite over
+// several jobs, each with its own database and build.
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
@@ -34,15 +35,22 @@ const PLAYWRIGHT_CONFIG = '.ai/qa/tests/playwright.config.ts'
 export function parseArgs(argv) {
   const [mode, ...rest] = argv
   if (mode !== 'test' && mode !== 'start') throw new Error('usage: vereino-ephemeral.mjs <test|start> [options]')
-  const options = { mode, filter: null, build: true, port: null }
+  const options = { mode, filter: null, shard: null, build: true, port: null }
   for (let index = 0; index < rest.length; index += 1) {
     const argument = rest[index]
     if (argument === '--no-build') options.build = false
     else if (argument === '--filter' && rest[index + 1]) options.filter = rest[(index += 1)]
+    else if (argument === '--shard' && isShard(rest[index + 1])) options.shard = rest[(index += 1)]
     else if (argument === '--port' && /^\d+$/.test(rest[index + 1] ?? '')) options.port = Number(rest[(index += 1)])
     else throw new Error(`unknown or incomplete option: ${argument}`)
   }
   return options
+}
+
+/** Whether `value` is a Playwright shard `i/n` with 1 <= i <= n. */
+export function isShard(value) {
+  const match = /^(\d+)\/(\d+)$/.exec(value ?? '')
+  return match !== null && Number(match[1]) >= 1 && Number(match[1]) <= Number(match[2])
 }
 
 /** Whether nothing listens on `port` of 127.0.0.1 (the app binds there). */
@@ -241,7 +249,14 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
     if (runYarnImpl(['playwright', 'install', 'chromium'], { env }) !== 0) {
       throw new Error('[internal] yarn playwright install chromium failed')
     }
-    const args = ['playwright', 'test', '--config', PLAYWRIGHT_CONFIG, ...(options.filter ? [options.filter] : [])]
+    const args = [
+      'playwright',
+      'test',
+      '--config',
+      PLAYWRIGHT_CONFIG,
+      ...(options.shard ? [`--shard=${options.shard}`] : []),
+      ...(options.filter ? [options.filter] : []),
+    ]
     return runYarnImpl(args, { env })
   } finally {
     if (app) stopImpl(app.child)
