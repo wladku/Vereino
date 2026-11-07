@@ -147,6 +147,8 @@ export type CalendarEntry = {
   persons: CalendarPerson[]
   summary?: CalendarSummary
   calledUpChildren?: { personId: string; firstName: string; lastName: string }[]
+  /** `as=coach` (#199): false when the club setting `coach_may_cancel` keeps this coach from cancelling. */
+  mayCancel?: boolean
 }
 
 export type CalendarResponse = { items: CalendarEntry[]; timeZone: string; from: string; to: string }
@@ -243,6 +245,8 @@ export type AttendanceList = {
   summary: CalendarSummary
   checkOff: CheckOffWindow
   actingRole: string
+  /** False when the club setting `coach_may_cancel` keeps the caller from cancelling (#199). */
+  mayCancel: boolean
   timeZone: string
   rows: AttendanceRow[]
 }

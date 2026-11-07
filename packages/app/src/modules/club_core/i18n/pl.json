@@ -54,6 +54,8 @@
   "club_core.settings.fields.orderSalesDocument.description": "Paragony i faktury nie są dostępne w tej wersji.",
   "club_core.settings.fields.coachSettlementModel": "Model rozliczania trenerów",
   "club_core.settings.fields.showCalledUpChildren": "Inne powołane dzieci",
+  "club_core.settings.fields.coachMayCancel": "Trenerzy mogą odwoływać zajęcia",
+  "club_core.settings.fields.coachMayCancel.description": "Gdy wyłączone, trener może tylko zgłosić nieobecność; koordynatorzy i administrator nadal odwołują zajęcia.",
   "club_core.settings.activityType.training": "Trening",
   "club_core.settings.activityType.match": "Mecz",
   "club_core.settings.activityType.sparring": "Sparing",

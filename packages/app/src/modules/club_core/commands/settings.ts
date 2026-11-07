@@ -110,6 +110,7 @@ function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
   row.onlineFeeFixed = values.onlineFeeFixed
   row.coachSettlementModel = values.coachSettlementModel
   row.showCalledUpChildren = values.showCalledUpChildren
+  row.coachMayCancel = values.coachMayCancel
   row.orderSalesDocument = values.orderSalesDocument
   row.updatedAt = new Date()
 }
@@ -132,6 +133,7 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   row.onlineFeeFixed = integer(before.onlineFeeFixed, row.onlineFeeFixed)
   row.coachSettlementModel = text(before.coachSettlementModel, row.coachSettlementModel)
   row.showCalledUpChildren = text(before.showCalledUpChildren, row.showCalledUpChildren)
+  if (typeof before.coachMayCancel === 'boolean') row.coachMayCancel = before.coachMayCancel
   row.orderSalesDocument = text(before.orderSalesDocument, row.orderSalesDocument)
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription

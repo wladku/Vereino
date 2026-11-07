@@ -5,7 +5,8 @@
 // The cancellation sends the session's lock token; the toast names how many people were told (in the app and by
 // e-mail, J-003). Authorization stays on the routes: the block renders only after `as=coach` answered the session.
 // The cancel dialog is shared with the attendance list M-05 (#139); a coach's cancellation also tells the section's
-// coordinators, server-side.
+// coordinators, server-side. Where the club setting `coach_may_cancel` is off (#199), the read says `mayCancel: false`
+// and "Cancel session" is not offered; the coach reports an absence instead (#95).
 import * as React from 'react'
 import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -165,6 +166,7 @@ export function CoachSessionBlock({
   const t = useT()
   const [cancelling, setCancelling] = React.useState(false)
   const { occurrence } = entry
+  const cancellable = occurrence.status === 'planned' && entry.mayCancel !== false
   return (
     <section
       aria-labelledby="club-session-coach"
@@ -194,7 +196,7 @@ export function CoachSessionBlock({
             </Link>
           </Button>
         ) : null}
-        {occurrence.status === 'planned' ? (
+        {cancellable ? (
           <Button
             type="button"
             variant="outline"
@@ -209,7 +211,7 @@ export function CoachSessionBlock({
           </Button>
         ) : null}
       </div>
-      {occurrence.status === 'planned' ? (
+      {cancellable ? (
         <p id="club-session-cancel-hint" className="text-muted-foreground text-xs">
           {t('activities.club.session.cancelHint')}
         </p>

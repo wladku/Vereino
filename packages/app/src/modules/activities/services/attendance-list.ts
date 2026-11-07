@@ -9,6 +9,7 @@ import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { ActingRole } from '@vereino/core'
 import { assertInScope, scopeContract } from '@/modules/foundation'
 import { CHECK_OFF_KINDS, checkOffRole, checkOffTarget, listedPersonIds } from '../commands/check-off'
+import { cancelRoleOf } from '../commands/occurrences'
 import { Attendance, Occurrence } from '../data/entities'
 import {
   checkOffWindow,
@@ -48,6 +49,8 @@ export type AttendanceList = {
   checkOff: CheckOffWindow
   /** The role the caller checks off in. */
   actingRole: ActingRole
+  /** Whether the caller may cancel the session (`coach_may_cancel`, #199). */
+  mayCancel: boolean
   timeZone: string
   rows: AttendanceListRow[]
 }
@@ -72,11 +75,12 @@ export async function readAttendanceList(
   const byPerson = new Map(attendances.map((row) => [row.personId, row]))
   const { rosterIds, listed } = await listedPersonIds(ctx, em, occurrence, attendances)
   const markerIds = attendances.flatMap((row) => (row.markedByPersonId ? [row.markedByPersonId] : []))
-  const [persons, view, settings, activity] = await Promise.all([
+  const [persons, view, settings, activity, cancelRole] = await Promise.all([
     findPersons(ctx.container, scope, [...new Set([...listed, ...markerIds])], em),
     describeOccurrence(ctx, scope, occurrence),
     attendanceSettings(ctx.container, scope),
     activityOf(em, scope, occurrence.activityId),
+    cancelRoleOf(ctx.container, grants, actingRole, occurrence),
   ])
   const kind = settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm'
   const roster = new Set(rosterIds)
@@ -109,6 +113,7 @@ export async function readAttendanceList(
     summary: declarationSummary(kind, rosterIds, attendances),
     checkOff: checkOffWindow(occurrence, now),
     actingRole,
+    mayCancel: cancelRole !== null,
     timeZone: settings.timeZone,
     rows,
   }

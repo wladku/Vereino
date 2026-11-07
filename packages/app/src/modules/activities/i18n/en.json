@@ -312,6 +312,7 @@
   "activities.errors.occurrence_gathering_after_start": "The gathering time must be before the start.",
   "activities.errors.occurrence_gathering_too_early": "The gathering time can be at most 12 hours before the start.",
   "activities.errors.occurrence_not_planned": "Only a planned session can be changed.",
+  "activities.errors.coach_cancel_disabled": "The club setting \"Coaches may cancel sessions\" is off: report an absence instead, or ask a coordinator to cancel.",
   "activities.errors.occurrence_place_conflict": "The place is already taken at this time.",
   "activities.errors.public_session_not_found": "This page does not exist or is no longer available.",
   "activities.events.create.title": "New one-off event",

@@ -9,7 +9,8 @@
 // says how many unmarked persons are recorded absent, whether the session is still running and to whom the unit is
 // credited; Ctrl/Cmd+Enter starts the close; a closed save names the present count and returns to Today; an empty list
 // links a coordinator to the group roster; on a phone the actions stay in a sticky bar above the bottom navigation.
-// #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog.
+// #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog — unless
+// the club setting `coach_may_cancel` is off and the caller only coaches the session (`mayCancel: false`, #199).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -440,7 +441,7 @@ function AttendanceSheet({ id, list }: { id: string; list: AttendanceList }) {
           </Button>
         </div>
       ) : null}
-      {occurrence.status === 'planned' ? (
+      {occurrence.status === 'planned' && list.mayCancel ? (
         <div className="flex flex-col gap-2" data-testid="club-attendance-cancel-section">
           <Button
             type="button"

@@ -312,6 +312,7 @@
   "activities.errors.occurrence_gathering_after_start": "Zbiórka musi być przed rozpoczęciem.",
   "activities.errors.occurrence_gathering_too_early": "Zbiórka może być najwyżej 12 godzin przed rozpoczęciem.",
   "activities.errors.occurrence_not_planned": "Zmienić można tylko zaplanowane zajęcia.",
+  "activities.errors.coach_cancel_disabled": "Ustawienie klubu „Trenerzy mogą odwoływać zajęcia” jest wyłączone: zgłoś nieobecność albo poproś koordynatora o odwołanie.",
   "activities.errors.occurrence_place_conflict": "Miejsce jest w tym czasie zajęte.",
   "activities.errors.public_session_not_found": "Ta strona nie istnieje lub nie jest już dostępna.",
   "activities.events.create.title": "Nowe wydarzenie jednorazowe",
