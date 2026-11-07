@@ -1,7 +1,7 @@
 import { createModuleEvents } from '@open-mercato/shared/modules/events'
 
 /**
- * Events of `facilities` (facilities spec *Events, Jobs, Notifications*; #121): payloads carry ids only (S4.6), plus
+ * Events of `facilities` (facilities spec *Events, Jobs, Notifications*; #121, #122): payloads carry ids only (S4.6), plus
  * `placeId` for the events that change occupancy. `facilities.zone_rules.bulk_updated` has no subscriber in 1.0: the
  * public calendar has no server-side cache to invalidate (DD-45).
  */
@@ -21,6 +21,14 @@ const events = [
   { id: 'facilities.rental_rate.created', label: 'Rental rate created', entity: 'rental_rate', category: 'crud' },
   { id: 'facilities.rental_rate.updated', label: 'Rental rate updated', entity: 'rental_rate', category: 'crud' },
   { id: 'facilities.rental_rate.deleted', label: 'Rental rate deleted', entity: 'rental_rate', category: 'crud' },
+  { id: 'facilities.rental.requested', label: 'Rental entered', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.confirmed', label: 'Rental confirmed', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.cancelled', label: 'Rental cancelled', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.moved', label: 'Rental moved', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.no_show', label: 'Rental no-show recorded', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.done', label: 'Rental completed', entity: 'rental', category: 'custom' },
+  { id: 'facilities.rental.updated', label: 'Rental updated', entity: 'rental', category: 'crud' },
+  { id: 'facilities.entry_ban.created', label: 'Entry ban issued', entity: 'entry_ban', category: 'crud' },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'facilities', events })
