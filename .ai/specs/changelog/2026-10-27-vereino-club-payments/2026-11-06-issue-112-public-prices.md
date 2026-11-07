@@ -1,0 +1,1 @@
+| 2026-11-06 | E07-S05 (#112): phase 4 step 6 implemented — `payments.publicPrices` (block `prices`) gives each public group card its valid fees and the sibling discount percent; no names, no custom discounts, no activity fees; TEST-038 added |
