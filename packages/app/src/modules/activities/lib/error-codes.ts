@@ -43,6 +43,8 @@ export const errorCodes = [
     messageKey: 'activities.errors.attendance_policy_scope_invalid',
   },
   { code: 'calendar_range_invalid', status: 400, messageKey: 'activities.errors.calendar_range_invalid' },
+  // The coach units report (#96): a month other than `YYYY-MM`.
+  { code: 'report_month_invalid', status: 400, messageKey: 'activities.errors.report_month_invalid' },
   // Actual attendance (#33; club spec glossary *Actual attendance*).
   { code: 'attendance_not_started', status: 409, messageKey: 'activities.errors.attendance_not_started' },
   { code: 'attendance_person_not_listed', status: 422, messageKey: 'activities.errors.attendance_person_not_listed' },

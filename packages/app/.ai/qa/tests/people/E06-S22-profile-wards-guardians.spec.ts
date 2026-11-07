@@ -9,7 +9,7 @@ import {
   createStaff,
   signInAs,
 } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
 import { createGuardianship, setConsents } from '../_fixtures/people'
@@ -228,11 +228,7 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     await expect(page.locator('input[type="password"]').first()).toBeVisible()
 
     // The app as Ola: her guardians and the consents without controls; no wards section.
-    // Leave the backend page first: with its session cookie gone it redirects to /login,
-    // which would interrupt the next navigation.
-    await page.goto('about:blank')
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, ola.userId, ola.email)
+    await switchBrowserUser(page, request, club, ola.userId, ola.email)
     await page.goto('/club/profile')
     const guardians = page.getByTestId('club-profile-guardians')
     await expect(guardians).toContainText(/Kasia Rodzic, Tomek Rodzic/)

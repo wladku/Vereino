@@ -87,3 +87,14 @@ export async function lookupClubByPublicSlug(
   const row = rows.at(0)
   return row ? { settingsId: row.id, tenantId: row.tenant_id, organizationId: row.organization_id } : null
 }
+
+/**
+ * Serializes the contract writes of one party until the caller's transaction ends (#96), so two concurrent saves
+ * cannot each pass the overlap check and leave two active contracts of one kind for the same period.
+ */
+export async function lockContractParty(em: EntityManager, organizationId: string, partyId: string): Promise<void> {
+  await em.execute(`select pg_advisory_xact_lock(hashtext('club_core.contracts:' || ? || ':' || ?))`, [
+    organizationId,
+    partyId,
+  ])
+}

@@ -29,7 +29,7 @@ import {
 } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createPerson, type Club } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, listGroups, roster, signedInStaff } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
 import { createGuardianship, persons } from '../_fixtures/people'
@@ -69,8 +69,7 @@ type Account = { personId: string; userId: string; email: string }
 
 /** Signs `user` in to the browser (a new password ends the user's earlier tokens) and returns a fresh API token. */
 async function signIn(page: Page, request: APIRequestContext, club: Club, user: Account): Promise<string> {
-  await page.context().clearCookies()
-  const password = await signInBrowser(page, request, club, user.userId, user.email)
+  const password = await switchBrowserUser(page, request, club, user.userId, user.email)
   return getAuthToken(request, user.email, password)
 }
 

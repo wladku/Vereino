@@ -1,4 +1,4 @@
-// Shared pieces of the `club_core` structure commands (sections, places, institutions): the write transaction, the
+// Shared pieces of the `club_core` structure commands (sections, places, institutions, contracts): the write transaction, the
 // scope target, tenant-narrowed loads, CRUD side-effect configs and the generic create/update/delete undo steps.
 // Scope checks stay in `authorizeScoped` (foundation spec REQ-F16); club structure is written by the club
 // administrator only.
@@ -99,7 +99,7 @@ export function structureTarget(
 
 /** `club_core.<entity>.created|updated|deleted`; ids only (S4.6). */
 export function structureEvents<TEntity>(
-  entity: 'section' | 'place' | 'institution' | 'section_material',
+  entity: 'section' | 'place' | 'institution' | 'section_material' | 'contract',
 ): CrudEventsConfig<TEntity> {
   return {
     module: 'club_core',

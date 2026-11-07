@@ -18,7 +18,7 @@ import {
   signInAs,
   userRoles,
 } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import {
   SENSITIVE_PERSON_FIELDS,
   actionLogEntries,
@@ -638,8 +638,7 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
       lastName: 'Członek',
       birthDate: birthDateTurning(30),
     })
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, member.userId, member.email)
+    await switchBrowserUser(page, request, club, member.userId, member.email)
     await page.goto('/backend/people/persons')
     await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
     await expect(page.getByText(marker)).toHaveCount(0)

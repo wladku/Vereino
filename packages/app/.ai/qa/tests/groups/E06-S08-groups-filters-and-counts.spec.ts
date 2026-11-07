@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createPerson } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, createSeason, listGroups, roster, signedInStaff } from '../_fixtures/groups'
 
 // Issue #90 (E06-S08; README B-11, B-12): the groups list filters by section, kind, season and status inside the
@@ -186,8 +186,7 @@ test('E06-S08 groups list: filters, perspectives in the URL, coaches and partici
     // The empty state of a club without groups offers "Add group".
     const empty = await createClub(request, 'e06-s08-empty')
     try {
-      await page.context().clearCookies()
-      await signInBrowser(page, request, empty, empty.adminUserId, empty.tenant.email)
+      await switchBrowserUser(page, request, empty, empty.adminUserId, empty.tenant.email)
       await page.goto('/backend/groups/groups')
       await expect(page.getByTestId('groups-empty')).toBeVisible()
       await expect(

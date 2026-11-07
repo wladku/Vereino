@@ -19,6 +19,7 @@ import {
   listOccurrences,
   scheduleFor,
 } from '../_fixtures/activities'
+import { signOutBrowser } from '../_fixtures/club-structure'
 import { awaitEmails } from '../_fixtures/communication'
 import { addMembership } from '../_fixtures/groups'
 import { acceptInvitation, getMe, signInThroughForm, updateClubSettings } from '../_fixtures/members'
@@ -130,7 +131,7 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
     expect((await getMe(request, aToken)).body?.person.preferredLocale).toBe('pl')
 
     // B, from an English browser, gets the club default: Polish, with the same club name and Polish dates.
-    await page.context().clearCookies()
+    await signOutBrowser(page)
     await page.context().setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
     await signInThroughForm(page, b.email, bPassword)
     await expect(page).toHaveURL(/\/club$/)

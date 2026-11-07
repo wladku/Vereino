@@ -1,8 +1,10 @@
 'use client'
 // `/backend/facilities/calendar` (facilities spec B-23, REQ-029; #121) — for this story: the place selector, the
 // weekly availability table of the place (the `availability` rules in force today, with "Remove" per day), the
-// "Set booking availability" dialog and the week preview of the zones. Sessions, rentals and requests arrive with
-// their stories. Read with `facilities.view`; the dialog and "Remove" need `facilities.manage`.
+// "Set booking availability" dialog and the week preview of the zones. Sessions and requests arrive with their
+// stories. Read with `facilities.view`; the dialog and "Remove" need `facilities.manage`. With
+// `facilities.rentals.manage` (#122) the week shows the place's active rentals and a bookable, paid segment opens the
+// "New rental" dialog prefilled with the place and the segment's start.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -15,6 +17,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS } from '@vereino/core'
 import { AvailabilityDialog, type BulkResult } from './AvailabilityDialog'
 import { PlaceSelect } from './FacilitiesControls'
+import { RentalDialog, type RentalDialogPreset } from './RentalDialog'
 import { WeekZonePreview } from './WeekZonePreview'
 import {
   ZONES_HREF,
@@ -26,8 +29,10 @@ import {
   useFacilitiesManage,
   usePlaceOptions,
   usePlaceZoneRules,
+  useRentalsManage,
   type ZoneRuleRow,
 } from './facilities-client'
+import { RENTALS_KEY } from './rentals-client'
 
 type AvailabilityWindow = { id: string; from: string; to: string; validTo: string | null }
 
@@ -164,6 +169,9 @@ export function FacilityCalendar() {
   const [dialogKey, setDialogKey] = React.useState(0)
   const [result, setResult] = React.useState<BulkResult | null>(null)
   const [busyDay, setBusyDay] = React.useState<number | null>(null)
+  const rentalsManage = useRentalsManage()
+  const [rentalPreset, setRentalPreset] = React.useState<RentalDialogPreset | null>(null)
+  const [rentalKey, setRentalKey] = React.useState(0)
   const placeId = chosenPlace ?? places.options.at(0)?.value ?? null
   const rules = usePlaceZoneRules(placeId)
   const rows = rules.data?.items ?? []
@@ -253,7 +261,15 @@ export function FacilityCalendar() {
             void removeDay(day)
           }}
         />
-        <WeekZonePreview rows={rows} />
+        <WeekZonePreview
+          rows={rows}
+          placeId={placeId}
+          rentalsEnabled={rentalsManage}
+          onNewRental={(slot) => {
+            setRentalKey((current) => current + 1)
+            setRentalPreset({ placeId, date: slot.date, time: slot.time })
+          }}
+        />
       </>
     )
   }
@@ -299,6 +315,20 @@ export function FacilityCalendar() {
             setResult(saved)
             flash(t('facilities.availability.saved.title'), 'success')
             await refresh()
+          }}
+        />
+      ) : null}
+      {rentalsManage && rentalPreset ? (
+        <RentalDialog
+          key={rentalKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRentalPreset(null)
+          }}
+          places={places.options}
+          preset={rentalPreset}
+          onSaved={async () => {
+            await queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] })
           }}
         />
       ) : null}

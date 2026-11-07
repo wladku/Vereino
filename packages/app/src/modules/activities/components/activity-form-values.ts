@@ -22,6 +22,8 @@ export type ActivityFormValues = Record<string, unknown> & {
   takesOpponent?: boolean
   description?: string
   isActive?: boolean
+  /** An away trip (#96). */
+  isAway?: boolean
   repeat?: RepeatMode
   startsOn?: string
   endsOn?: string
@@ -54,6 +56,7 @@ export type ActivityBody = {
   gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
+  isAway: boolean
 }
 
 export type ActivityBodyResult =
@@ -76,6 +79,7 @@ export function activityToFormValues(activity: ActivityDetail | null): ActivityF
     takesOpponent: takesOpponent(activity?.type),
     description: activity?.description ?? '',
     isActive: activity?.isActive ?? true,
+    isAway: activity?.isAway ?? false,
     repeat: activity && !activity.recurrenceRule ? 'once' : 'weekly',
     startsOn: activity?.startsOn ?? localToday(),
     endsOn: activity?.endsOn ?? '',
@@ -177,6 +181,7 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
       gatheringMinutesBefore,
       description: textOrNull(values.description),
       isActive: values.isActive !== false,
+      isAway: values.isAway === true,
     },
   }
 }

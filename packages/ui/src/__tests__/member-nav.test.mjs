@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   BACKEND_HREF,
+  CLUB_MY_UNITS_HREF,
   MEMBER_SHELL_LABEL_KEYS,
   SIGN_OUT_ACTION,
   hasStaffContext,
@@ -18,7 +19,7 @@ const currentOf = (pathname, extraTab) => {
 }
 
 test('reads every label from the module prefix, `label` for the navigation name', () => {
-  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 14)
+  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 15)
   assert.equal(labels.nav, 't:people.club.nav.label')
   assert.equal(labels.signOut, 't:people.club.nav.signOut')
   assert.equal(labels.allWards, 't:people.club.nav.allWards')
@@ -58,6 +59,27 @@ test('keeps a coach on the phone: no admin panel without a sessions perspective 
     nav.more.items.some((item) => item.href === BACKEND_HREF),
     false,
   )
+})
+
+test('offers My units behind More to a coach and marks More current on it (#96)', () => {
+  const coach = memberNav({ pathname: '/club/coach/units', contexts: ['self', 'coach'], labels })
+  assert.deepEqual(coach.more.items, [
+    { href: '/club/profile', label: 't:people.club.nav.profile', current: false },
+    { href: CLUB_MY_UNITS_HREF, label: 't:people.club.nav.myUnits', current: true },
+  ])
+  assert.equal(coach.more.current, true)
+  const both = memberNav({ pathname: '/club', contexts: ['coach', 'coordinator'], labels })
+  assert.deepEqual(
+    both.more.items.map((item) => item.href),
+    ['/club/profile', CLUB_MY_UNITS_HREF, BACKEND_HREF],
+  )
+  assert.equal(both.more.current, false)
+  const member = memberNav({ pathname: '/club/coach/units', contexts: ['self'], labels })
+  assert.equal(
+    member.more.items.some((item) => item.href === CLUB_MY_UNITS_HREF),
+    false,
+  )
+  assert.equal(member.more.current, false)
 })
 
 test('marks the current tab for a page and the pages below it', () => {
