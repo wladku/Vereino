@@ -4,6 +4,8 @@
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import type { GrantKind, ScopeColumnMap } from '@vereino/core'
+import { scopeContract } from '@/modules/foundation'
+import { cancelRolesOf } from '../commands/occurrences'
 import type { Attendance } from '../data/entities'
 import {
   ACTUAL_ATTENDANCE,
@@ -135,6 +137,7 @@ export type OccurrenceListItem = ReturnType<typeof occurrenceListItem> & {
   coachName?: string | null
   substituteForPersonId?: string | null
   substituteForName?: string | null
+  mayCancel?: boolean
 }
 
 function trustedScope(ctx: CrudCtx): { tenantId: string; organizationId: string } | null {
@@ -163,14 +166,16 @@ export async function attachActivityNames(payload: { items?: unknown[] }, ctx: C
 }
 
 /**
- * Adds the activity, group, place and coach names to the session rows the scope filter already admitted, and whom the
- * coach of a substituted session stands in for (E06-S13 #95, the "(substitution)" badge).
+ * Adds the activity, group, place and coach names to the session rows the scope filter already admitted, whom the
+ * coach of a substituted session stands in for (E06-S13 #95, the "(substitution)" badge), and whether the caller may
+ * cancel each session (`mayCancel`, #215: the cancel command's own `cancelRoleOf`, so `coach_may_cancel` applies).
  */
 export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as OccurrenceListItem[]
   const scope = trustedScope(ctx)
   if (items.length === 0 || !scope) return
-  const [names, activities, substitutions] = await Promise.all([
+  const grants = await scopeContract.resolve(ctx)
+  const [names, activities, substitutions, cancelRoles] = await Promise.all([
     nameMaps(ctx.container, scope, {
       groupIds: items.flatMap((item) => (item.groupId ? [item.groupId] : [])),
       sectionIds: [],
@@ -187,8 +192,18 @@ export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx:
       scope,
       items.map((item) => ({ id: item.id, coachPersonId: item.coachPersonId })),
     ),
+    cancelRolesOf(
+      ctx.container,
+      grants,
+      items.flatMap((item) =>
+        item.sectionId && item.groupId
+          ? [{ id: item.id, ...scope, sectionId: item.sectionId, groupId: item.groupId }]
+          : [],
+      ),
+    ),
   ])
   for (const item of items) {
+    item.mayCancel = (cancelRoles.get(item.id) ?? null) !== null
     const substitution = substitutions.get(item.id)
     item.substituteForPersonId = substitution?.personId ?? null
     item.substituteForName = substitution?.name ?? null
@@ -285,6 +300,12 @@ export const occurrenceListItemSchema = z.object({
     .optional()
     .describe('The session’s own coach when its current coach is a substitute (E06-S13), else null.'),
   substituteForName: z.string().nullable().optional(),
+  mayCancel: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether the caller may cancel the session (#215): false when the club setting coach_may_cancel is off and the caller holds only a coach grant on it',
+    ),
   status: z.string().nullable(),
   cancelReason: z.string().nullable(),
   isDetached: z.boolean(),

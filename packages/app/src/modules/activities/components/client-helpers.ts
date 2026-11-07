@@ -81,6 +81,8 @@ export type OccurrenceRow = {
   /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
   substituteForPersonId?: string | null
   substituteForName?: string | null
+  /** Whether the caller may cancel the session (#215; `coach_may_cancel` may forbid a coach). */
+  mayCancel?: boolean
   status: string | null
   cancelReason: string | null
   isDetached: boolean

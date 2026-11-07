@@ -3,8 +3,8 @@
 // cancellation*; REQ-005, REQ-009): activity, group, section, date, time, place, coach and status. With
 // `activities.manage` a planned session is moved ("Move": date, times, gathering time, place), which detaches it from
 // its series — its coach changes only through the substitute dialog, so every change is in the history (#95); a move that overbooks a place or a coach is refused with 409 and its conflict list is shown. With
-// `activities.coach` a planned session is cancelled with a required reason; the people it concerns get an in-app
-// notice. A cancelled session shows its reason and no actions. Both writes send the session's lock token. With
+// `activities.coach` a planned session is cancelled with a required reason when the caller may cancel it (`mayCancel`,
+// #215: the club setting `coach_may_cancel` may forbid a coach); the people it concerns get an in-app notice. A cancelled session shows its reason and no actions. Both writes send the session's lock token. With
 // `activities.coach` the record links to the session's attendance list on the member side (#33). E06-S13 #95: the coach
 // row shows "Needs a coach" or "{substitute} (substitute for {coach})"; with `activities.manage` a planned session gets
 // "Assign substitute" / "Change coach" (the substitute dialog), and the substitution history is listed, oldest first.
@@ -355,7 +355,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const planned = occurrence.status === 'planned'
   const canMove = features.manage && planned
   const canStaff = features.manage && planned
-  const canCancel = features.coach && planned
+  const canCancel = features.coach && planned && occurrence.mayCancel === true
   // The coach's attendance list (#33) lives on the member side; it reads and saves through the same record scope.
   const canOpenAttendance = features.coach && occurrence.status !== 'cancelled'
 
