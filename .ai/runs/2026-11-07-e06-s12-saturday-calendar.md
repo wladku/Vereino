@@ -32,7 +32,11 @@ Make the E06-S12 spec pass on every weekday without changing the product and wit
 
 ## Commands and results
 
-- Pending (local run on Saturday 2026-11-07 and CI).
+Run locally on Saturday 2026-11-07 (about 08:30 UTC), so the real clock is the failing weekday; no faked clock was needed:
+
+- `yarn test:integration:vereino --filter E06-S12` with the fix: `1 passed (2.4m)`.
+- The same build with the spec from `origin/main` (`--no-build`): `1 failed` — `Error: expect(locator).toBeVisible() failed` / `Error: element(s) not found` at `E06-S12-sessions-list-perspectives.spec.ts:140:32`, both attempts, the same as CI run 42347096425.
+- CI on PR #218: see the PR checks.
 
 ## Open problems / next steps
 
