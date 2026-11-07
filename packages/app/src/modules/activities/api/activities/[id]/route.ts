@@ -65,6 +65,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
       description: row.description ?? null,
       isActive: row.isActive,
+      isAway: row.isAway,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       actingRole,

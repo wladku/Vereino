@@ -40,6 +40,11 @@ export const errorCodes = [
   { code: 'place_file_format_unsupported', status: 422, messageKey: 'club_core.errors.place_file_format_unsupported' },
   { code: 'place_file_too_large', status: 422, messageKey: 'club_core.errors.place_file_too_large' },
   { code: 'place_photos_limit_reached', status: 422, messageKey: 'club_core.errors.place_photos_limit_reached' },
+  // Contracts (#96; README B-07): active contracts of one kind for one party never overlap; a coach contract is with a
+  // known person and carries every rate of the club's settlement model.
+  { code: 'contract_overlap', status: 409, messageKey: 'club_core.errors.contract_overlap' },
+  { code: 'contract_party_invalid', status: 422, messageKey: 'club_core.errors.contract_party_invalid' },
+  { code: 'contract_terms_invalid', status: 422, messageKey: 'club_core.errors.contract_terms_invalid' },
   // Sessionless public pages (DD-23, DD-35): an unknown slug, a section that is not public and a section of another
   // club answer the same 404; a club that does not publish its page answers its own 404.
   { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },

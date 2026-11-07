@@ -23,6 +23,7 @@ import {
   PAYEES,
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
+import { MAX_CASH_CHARGES } from '../lib/cash'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const amountSchema = z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)')
@@ -163,6 +164,33 @@ export const paymentRecordSchema = z
     reference: z.string().trim().max(MAX_REFERENCE_LENGTH).nullable().optional().describe('Transfer title or receipt'),
   })
   .strict()
+
+/**
+ * `payments.cash.record` ("Accept cash", REQ-031, #114): the payer, their selected open charges, the amount received
+ * (at most what remains on them; a lower amount pays the oldest first), the day and whether the payer gets an e-mail.
+ */
+export const cashRecordSchema = z
+  .object({
+    payerPersonId: z.uuid(),
+    chargeIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_CASH_CHARGES)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each charge may be selected once' }),
+    amount: z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)'),
+    paidOn: calendarDateSchema.describe('The day the cash was received; not in the future'),
+    notify: z.boolean().default(true).describe('E-mail the payer a confirmation with the receipt number'),
+  })
+  .strict()
+
+/** `GET /api/payments/cash/charges` and `/cash/payers`. */
+export const cashChargesQuerySchema = z.object({ payerPersonId: z.uuid() })
+
+export const cashPayersQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
 
 /** `payments.charges.cancel`: the charge `id` with a required reason. */
 export const chargeCancelSchema = z.object({ id: z.uuid(), reason: reasonSchema }).strict()

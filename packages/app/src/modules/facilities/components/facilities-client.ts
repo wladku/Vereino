@@ -22,6 +22,7 @@ export const CALENDAR_HREF = '/backend/facilities/calendar'
 export const ZONES_HREF = '/backend/facilities/zones'
 export const CLOSURES_HREF = '/backend/facilities/closures'
 export const RATES_HREF = '/backend/facilities/rates'
+export const RENTALS_HREF = '/backend/facilities/rentals'
 
 export const editHref = (base: string, id: string) => `${base}/${encodeURIComponent(id)}/edit`
 
@@ -207,7 +208,7 @@ export function usePlaceZoneRules(placeId: string | null, source?: ZoneSource) {
 
 // --- Features ---
 
-const FEATURES = ['facilities.manage'] as const
+const FEATURES = ['facilities.manage', 'facilities.rentals.manage'] as const
 
 function grants(granted: readonly string[], feature: string): boolean {
   return granted.some(
@@ -215,8 +216,7 @@ function grants(granted: readonly string[], feature: string): boolean {
   )
 }
 
-/** Whether the signed-in user may write facility rules (`facilities.manage`, wildcard-aware). */
-export function useFacilitiesManage(): boolean {
+function useGrantedFeatures(): readonly string[] {
   const query = useQuery({
     queryKey: ['feature-check', ...FEATURES],
     staleTime: 5 * 60 * 1000,
@@ -229,7 +229,17 @@ export function useFacilitiesManage(): boolean {
       return call.ok && Array.isArray(call.result?.granted) ? call.result.granted.map(String) : []
     },
   })
-  return grants(query.data ?? [], 'facilities.manage')
+  return query.data ?? []
+}
+
+/** Whether the signed-in user may write facility rules (`facilities.manage`, wildcard-aware). */
+export function useFacilitiesManage(): boolean {
+  return grants(useGrantedFeatures(), 'facilities.manage')
+}
+
+/** Whether the signed-in user may enter and manage rentals (`facilities.rentals.manage`, wildcard-aware). */
+export function useRentalsManage(): boolean {
+  return grants(useGrantedFeatures(), 'facilities.rentals.manage')
 }
 
 // --- Coded API errors ---

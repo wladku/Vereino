@@ -255,7 +255,11 @@ export async function writeDeclaration(
   }
   await assertStaffMayDeclare(ctx, actingRole, scope)
   await assertDeclarationsOpen(occurrence, now)
-  const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'type'] })
+  const activity = await em.findOne(
+    Activity,
+    { id: occurrence.activityId, ...scope },
+    { fields: ['id', 'type', 'isAway'] },
+  )
   if (!activity) throw new Error('[internal] a session without its activity: ' + occurrence.id)
   const settings = await attendanceSettings(ctx.container, scope)
   const kind = settings.declarationKinds[activity.type] ?? 'confirm'
@@ -271,7 +275,7 @@ export async function writeDeclaration(
   const policy = resolvePolicy(policies, {
     groupId: occurrence.groupId,
     activityType: activity.type,
-    isAway: false,
+    isAway: activity.isAway,
   })
   const outcome = declarationOutcome({ actingRole, isMinor, policy, now, startsAt: occurrence.startAt })
   if (outcome.kind === 'guardian_only') await activitiesErrors.throw('declaration_guardian_only')

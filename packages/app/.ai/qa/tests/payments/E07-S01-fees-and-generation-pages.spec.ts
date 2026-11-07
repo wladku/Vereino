@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createPerson, createStaff } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 import { createDiscountRule, listCharges, periodFromNow } from '../_fixtures/payments'
@@ -137,8 +137,7 @@ test('E07-S01 fees, discounts, coaches and payments, and Generate period with it
       lastName: 'Czlonek',
       birthDate: birthDateTurning(30),
     })
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, member.userId, member.email)
+    await switchBrowserUser(page, request, club, member.userId, member.email)
     for (const path of ['/backend/payments/fees', '/backend/payments/charges']) {
       await page.goto(path)
       await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()

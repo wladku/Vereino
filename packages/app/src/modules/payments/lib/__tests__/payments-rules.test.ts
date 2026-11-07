@@ -45,6 +45,7 @@ describe('payments vocabularies', () => {
       discount_value_invalid: 422,
       discount_conditions_invalid: 422,
       period_out_of_range: 422,
+      charge_amount_over_limit: 422,
       generation_in_progress: 409,
       generation_already_undone: 409,
       charge_not_payable: 409,
@@ -54,6 +55,9 @@ describe('payments vocabularies', () => {
       charge_not_cancellable: 409,
       payment_not_reversible: 409,
       payment_already_reversed: 409,
+      charge_already_paid: 409,
+      cash_exceeds_selected: 422,
+      cash_charges_invalid: 422,
     })
   })
 })

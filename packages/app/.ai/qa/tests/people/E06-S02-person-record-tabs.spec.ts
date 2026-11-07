@@ -9,7 +9,7 @@ import {
   createPerson,
   uniqueSuffix,
 } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 
 // E06-S02 (#84; README B-10, flow F-01): the person record's Groups tab with the membership history (ended ones
@@ -139,8 +139,7 @@ test('E06-S02 the person record: Groups tab with history and scope, ?tab= links,
     )
     expect(scoped.status).toBe(200)
     expect((scoped.body?.items ?? []).map((item) => item.groupId).sort()).toEqual([zaki, orliki].sort())
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, coordinator.userId, coordinator.email)
+    await switchBrowserUser(page, request, club, coordinator.userId, coordinator.email)
     await page.goto(`/backend/people/persons/${child}?tab=account`)
     await expect(page.getByRole('tab', { name: /^Account$|^Konto$/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByText(/This person has no account yet|Ta osoba nie ma jeszcze konta/)).toBeVisible()

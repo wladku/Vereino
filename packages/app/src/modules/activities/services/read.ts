@@ -29,17 +29,20 @@ export async function activityLabels(
   container: AwilixContainer,
   scope: ActivitiesScope,
   ids: readonly string[],
-): Promise<Map<string, { name: string; type: string; recurring: boolean }>> {
+): Promise<Map<string, { name: string; type: string; recurring: boolean; isAway: boolean }>> {
   const unique = [...new Set(ids)]
   if (unique.length === 0) return new Map()
   const em = container.resolve<EntityManager>('em').fork()
   const rows = await em.find(
     Activity,
     { id: { $in: unique }, ...scope },
-    { fields: ['id', 'name', 'type', 'recurrenceRule'] },
+    { fields: ['id', 'name', 'type', 'recurrenceRule', 'isAway'] },
   )
   return new Map(
-    rows.map((row) => [row.id, { name: row.name, type: row.type, recurring: Boolean(row.recurrenceRule) }]),
+    rows.map((row) => [
+      row.id,
+      { name: row.name, type: row.type, recurring: Boolean(row.recurrenceRule), isAway: row.isAway },
+    ]),
   )
 }
 

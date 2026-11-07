@@ -4,7 +4,7 @@ import { addDays, readNotifications } from '../_fixtures/activities'
 import { familyFor, firstSession, weeklySeries } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createPerson, uniqueSuffix, type Club } from '../_fixtures/club'
-import { signInBrowser } from '../_fixtures/club-structure'
+import { switchBrowserUser } from '../_fixtures/club-structure'
 import {
   awaitEmails,
   deleteMessage,
@@ -56,8 +56,7 @@ type Account = { personId: string; userId: string; email: string }
 
 /** Signs `user` in to the browser (a new password ends the user's earlier tokens) and returns a fresh API token. */
 async function signIn(page: Page, request: APIRequestContext, club: Club, user: Account): Promise<string> {
-  await page.context().clearCookies()
-  const password = await signInBrowser(page, request, club, user.userId, user.email)
+  const password = await switchBrowserUser(page, request, club, user.userId, user.email)
   return getAuthToken(request, user.email, password)
 }
 

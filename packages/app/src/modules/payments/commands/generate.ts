@@ -26,6 +26,7 @@ import {
   PAYMENTS_WRITE_KINDS,
   clubTarget,
   emitAfterCommit,
+  emitAfterReplayCommit,
   inWriteTransaction,
   paymentsLog,
   trustedTenantId,
@@ -114,6 +115,9 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
       if (!(await tryLockGeneration(em, organizationId))) await paymentsErrors.throw('generation_in_progress')
 
       const plan = planCharges(await loadGenerationInputs(ctx.container, em, scope, parsed.period, clock))
+      if (plan.overLimitFees.length > 0) {
+        await paymentsErrors.throw('charge_amount_over_limit', { fee: plan.overLimitFees.join(', ') })
+      }
       const generation = em.create(ChargeGeneration, {
         id,
         tenantId,
@@ -194,7 +198,8 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
     generation.updatedAt = now
     await em.flush()
     if (open.length > 0) {
-      await emitAfterCommit('payments.charge.cancelled', scope, {
+      // Not `emitAfterCommit`: the replay transaction commits only after the bus's audit write (#184).
+      emitAfterReplayCommit(ctx, 'payments.charge.cancelled', scope, {
         id: generation.id,
         generationId: generation.id,
         chargeIds: open.map((charge) => charge.id),

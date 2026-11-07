@@ -1,7 +1,12 @@
-// Fixtures of the `payments` tests (payments spec phase 4 steps 2 and 3, TEST-018, TEST-048, TEST-020; issues #108,
-// #109): fee schedules, discount rules, the period generator, the charge list and the charge ledger.
+// Fixtures of the `payments` tests (payments spec phase 4 steps 2, 3 and 8, TEST-018, TEST-048, TEST-020, TEST-043;
+// issues #108, #109, #114): fee schedules, discount rules, the period generator, the charge list, the charge ledger, the
+// undo probe (#184) and "Accept cash".
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
-import { OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
 
 export type CodedBody = { error?: string; code?: string }
 
@@ -160,4 +165,87 @@ export async function reversePayment(
     data,
     headers: lockHeaders(lock),
   })
+}
+
+const UNDO_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'payments-undo-probe', 'probe.mjs')
+
+export type UndoProbeResult = {
+  error: string | null
+  events: Array<{ event: string; payload: Record<string, unknown> }>
+}
+
+/**
+ * Replays `undoToken` through the command bus in a probe process as `userId` of the club and returns the `payments.*`
+ * events it emitted (#184); `failAuditWrite` makes the bus's audit write fail, so the replay rolls back after the undo
+ * handler ran. The probe gets its own private queue directory.
+ */
+export function undoInProbe(
+  scope: { tenantId: string; organizationId: string },
+  input: { userId: string; undoToken: string; failAuditWrite?: boolean },
+): UndoProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [UNDO_PROBE, JSON.stringify({ ...scope, ...input })], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the payments undo probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as UndoProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
+}
+
+// --- "Accept cash" (#114) ---
+
+export type CashResult = CodedBody & {
+  receiptNumber?: string
+  amount?: number
+  notified?: boolean
+  selectedAmount?: number
+  payments?: { paymentId: string; chargeId: string; amount: number; chargeStatus: string; remaining: number }[]
+}
+
+export async function acceptCash(request: APIRequestContext, token: string, data: Record<string, unknown>) {
+  return call<CashResult>(request, 'POST', '/api/payments/cash', token, { data })
+}
+
+export type CashPayerItem = {
+  payerPersonId: string
+  firstName: string
+  lastName: string
+  wards: { personId: string; firstName: string; lastName: string }[]
+  totalDue: number
+  chargeCount: number
+}
+
+export async function cashPayers(request: APIRequestContext, token: string, query = '') {
+  return call<{ items: CashPayerItem[]; total: number }>(request, 'GET', `/api/payments/cash/payers${query}`, token)
+}
+
+export type CashChargeItem = { id: string; dueDate: string; remaining: number; overdue: boolean; status: string }
+
+export async function cashCharges(request: APIRequestContext, token: string, payerPersonId: string) {
+  return call<{ items: CashChargeItem[]; total: number }>(
+    request,
+    'GET',
+    `/api/payments/cash/charges?payerPersonId=${payerPersonId}`,
+    token,
+  )
+}
+
+export async function cashToday(request: APIRequestContext, token: string) {
+  return call<{
+    date: string
+    items: { receiptNumber: string; payerPersonId: string | null; amount: number; reversed: boolean }[]
+    total: number
+  }>(request, 'GET', '/api/payments/cash', token)
 }

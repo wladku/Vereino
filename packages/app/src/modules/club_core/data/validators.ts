@@ -1,6 +1,8 @@
 // Request schemas of `club_core`, shared by routes (OpenAPI) and commands. Public schemas never accept tenant or
 // organization ids (`.strict()` rejects them); `null` clears a nullable field.
 import { z } from 'zod'
+import { isCalendarDate, isInvertedPeriod } from '@vereino/core'
+import { CONTRACT_KINDS, CONTRACT_PARTY_TYPES, MAX_RATE_GROSZ, type CoachTermField } from '../lib/contracts'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
 import { PLACE_FILE_KINDS } from '../lib/files'
 import { publicSlugSchema, publicationPatchSchema } from '../lib/publication'
@@ -239,6 +241,70 @@ export const institutionListQuerySchema = z.object({
   sortField: z.enum(['name', 'type', 'createdAt', 'updatedAt']).optional(),
   type: z.enum(INSTITUTION_TYPES).optional(),
 })
+
+// --- Contracts (#96) ---
+
+// The client forms import this file, so it cannot import `@/modules/foundation` (server code). These mirror the
+// foundation's `validityShape` / `refineValidity`: the coded issue still answers 422 `validity_inverted`.
+const calendarDate = z.string().refine(isCalendarDate, { message: 'Expected a YYYY-MM-DD date' })
+const validityShape = { validFrom: calendarDate, validTo: calendarDate.nullable().optional() }
+
+function refineValidity(value: { validFrom: string; validTo?: string | null }, ctx: z.RefinementCtx): void {
+  if (!isInvertedPeriod(value.validFrom, value.validTo)) return
+  ctx.addIssue({
+    code: 'custom',
+    path: ['validTo'],
+    message: 'validity_inverted',
+    params: { errorCode: 'validity_inverted' },
+  })
+}
+
+/** A rate in whole grosz, 0 – 1 000 000 zł. */
+const rateSchema = z.number().int().min(0).max(MAX_RATE_GROSZ)
+
+/**
+ * A contract's terms: a coach's rates in grosz. Every rate is optional here; the command keeps the club model's rates
+ * and requires each of them (422 `contract_terms_invalid`), and stores no terms for the other kinds.
+ */
+export const contractTermsSchema = z
+  .object({
+    baseMonthly: rateSchema.optional(),
+    unitRate: rateSchema.optional(),
+    matchRate: rateSchema.optional(),
+    travelRate: rateSchema.optional(),
+    sessionAmount: rateSchema.optional(),
+    tripAmount: rateSchema.optional(),
+  } satisfies Record<CoachTermField, z.ZodType>)
+  .strict()
+
+export const contractCreateSchema = z
+  .object({
+    partyType: z.enum(CONTRACT_PARTY_TYPES),
+    partyId: z.uuid(),
+    kind: z.enum(CONTRACT_KINDS),
+    ...validityShape,
+    terms: contractTermsSchema.nullable().optional(),
+  })
+  .strict()
+  .superRefine(refineValidity)
+
+/** The party and the kind are fixed once a contract exists; an edit changes its period and terms. */
+export const contractUpdateSchema = z
+  .object({ id: z.uuid(), ...validityShape, terms: contractTermsSchema.nullable().optional() })
+  .strict()
+  .superRefine(refineValidity)
+
+export const contractDeleteSchema = z.object({ id: z.uuid() }).strict()
+
+export const contractListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['validFrom', 'validTo', 'kind', 'createdAt', 'updatedAt']).optional(),
+  kind: z.enum(CONTRACT_KINDS).optional(),
+  partyId: z.uuid().optional(),
+})
+
+export type ContractCreateInput = z.output<typeof contractCreateSchema>
+export type ContractUpdateInput = z.output<typeof contractUpdateSchema>
 
 export type SectionCreateInput = z.output<typeof sectionCreateSchema>
 export type SectionUpdateInput = z.output<typeof sectionUpdateSchema>
