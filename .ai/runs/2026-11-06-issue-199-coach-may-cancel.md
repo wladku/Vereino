@@ -58,9 +58,18 @@ Add the club setting `coach_may_cancel` (default yes). When it is off, a coach i
 - `npx jest` on the `club_core` settings test and the `activities` rules test: 2 suites, 36 tests passed.
 - `yarn typecheck`: passed. `yarn typecheck:qa`: passed.
 - `yarn spec-changelogs:check`: valid.
-- `yarn test:integration:vereino --filter ISSUE-199`: see below.
-- `yarn verify`: see below.
+- `yarn test:integration:vereino --filter ISSUE-199`: 1 passed (2.0 min), on the first run.
+- `yarn format`: 2 files reformatted, both from this change.
+- `yarn verify`:
+  - The first run passed generate, typecheck, typecheck:packages, typecheck:qa and lint. Lint reported 6672 s, which means the host was suspended (lesson `axe-baseline-suspended-runs-and-offline-db-generate`), not that lint hung.
+  - It then failed `format:check` after 0 s with no file named. Run alone right after, `yarn format:check` reported "973 Vereino file(s), 0 unformatted". Then the cezar process restarted.
+  - Committed, then `yarn verify --from format:check` on the same content passed all 9 remaining steps (format:check, ds:check, i18n:check-hardcoded, contracts:check, lessons:check, spec-changelogs:check, test, test:scripts, build in 138 s).
+- `yarn test:integration:vereino --filter ISSUE-139` (regression) did not run: `Could not find a working container runtime strategy`, because Docker was not available on the host at that moment. The run may not touch Docker Desktop. CI's `integration` job runs the whole suite on the PR.
+
+- Lesson: `.ai/lessons/db-generate-snapshot-style-and-public-block-scope.md` now covers a mixed-style snapshot (restore it from git and insert the block by hand).
 
 ## Open problems / next steps
+
+- The ISSUE-139, E06-S15 and J-003 regressions are left to CI (no container runtime locally at the end of the run).
 
 - #95 / PR #200 adds "Report absence" to M-04/M-05; whichever of #200 and this PR merges second resolves the neighbouring lines in `CoachSessionBlock.tsx` and `ClubAttendancePage.tsx`.
