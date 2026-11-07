@@ -8,6 +8,7 @@ import net from 'node:net'
 import {
   DEFAULT_PORT,
   PORT_RANGE_SIZE,
+  RESERVED_PORTS,
   findFreePort,
   isPortFree,
   DEFAULT_POSTGRES_IMAGE,
@@ -380,6 +381,30 @@ test('findFreePort starts at a random port of the range and wraps around past bu
   })
   assert.equal(port, DEFAULT_PORT + 1)
   assert.deepEqual(probed, [DEFAULT_PORT + PORT_RANGE_SIZE - 1, DEFAULT_PORT, DEFAULT_PORT + 1])
+})
+
+test('findFreePort skips the ports Next.js reserves', async () => {
+  const probed = []
+  const port = await findFreePort({
+    random: () => (5060 - DEFAULT_PORT) / PORT_RANGE_SIZE,
+    isFree: async (candidate) => (probed.push(candidate), true),
+  })
+  assert.equal(port, 5062)
+  assert.deepEqual(probed, [5062])
+  assert.deepEqual([...RESERVED_PORTS], [5060, 5061])
+})
+
+test('findFreePort never probes a reserved port, even when every other port is taken', async () => {
+  const probed = []
+  await assert.rejects(
+    findFreePort({ random: () => 0, isFree: async (candidate) => (probed.push(candidate), false) }),
+    /no free port/,
+  )
+  assert.equal(probed.length, PORT_RANGE_SIZE - RESERVED_PORTS.size)
+  assert.equal(
+    probed.some((candidate) => RESERVED_PORTS.has(candidate)),
+    false,
+  )
 })
 
 test('findFreePort fails when every port of the range is taken', async () => {
