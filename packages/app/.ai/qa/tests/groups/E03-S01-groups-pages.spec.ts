@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, createClub, createPerson, createStaff } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, createSeason } from '../_fixtures/groups'
 
 // Issue #30 pages (club spec UI table: `/backend/groups/groups` + `create`, `[id]`, tabs "Seasons" and "External
@@ -117,11 +117,7 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
       lastName: 'Czlonek',
       birthDate: birthDateTurning(30),
     })
-    // Leave the backend page first: with its session cookie gone it redirects to /login, which aborted the next
-    // page.goto (net::ERR_ABORTED) — .ai/lessons/leave-backend-page-before-clearing-cookies.md.
-    await page.goto('about:blank')
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, member.userId, member.email)
+    await switchBrowserUser(page, request, club, member.userId, member.email)
     for (const path of ['/backend/groups/groups', `/backend/groups/groups/${team}`, '/backend/groups/seasons']) {
       await page.goto(path)
       await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()

@@ -3,7 +3,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { familyFor } from '../_fixtures/attendance'
 import { createClub } from '../_fixtures/club'
-import { signInBrowser } from '../_fixtures/club-structure'
+import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { getThread, listThreads } from '../_fixtures/communication'
 import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
 
@@ -107,8 +107,7 @@ test('TEST-M13 write to the coach: inbox action, pick the member and the coaches
     })
 
     // A member in no group (the academy coordinator): no action in the inbox, the empty state on the page.
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, family.academyCoordinator.userId, family.academyCoordinator.email)
+    await switchBrowserUser(page, request, club, family.academyCoordinator.userId, family.academyCoordinator.email)
     await page.goto('/club/messages')
     await expect(page.getByTestId('club-messages-empty')).toBeVisible()
     await page.waitForLoadState('networkidle')
