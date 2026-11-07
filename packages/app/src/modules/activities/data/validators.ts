@@ -55,6 +55,8 @@ const activityShape = {
   gatheringMinutesBefore: gatheringMinutesSchema,
   description: optionalText(4000),
   isActive: z.boolean().optional(),
+  /** An away trip (#96). */
+  isAway: z.boolean().optional(),
 }
 
 export const activityCreateSchema = z.object(activityShape).strict()
@@ -78,6 +80,7 @@ export const activityUpdateSchema = z
     gatheringMinutesBefore: gatheringMinutesSchema,
     description: optionalText(4000),
     isActive: z.boolean().optional(),
+    isAway: z.boolean().optional(),
   })
   .strict()
 
@@ -279,6 +282,20 @@ export const calendarQuerySchema = z.object({
   as: z.enum(CALENDAR_PERSPECTIVES),
   personId: z.uuid().optional(),
   sectionId: z.uuid().optional(),
+})
+
+/**
+ * `GET /api/activities/reports/coach-units` (#96): `month` `YYYY-MM` (anything else → 400 `report_month_invalid`), an
+ * optional section, `format=csv` for the export, and `mine=1` for the caller's own row only.
+ */
+export const coachUnitsQuerySchema = z.object({
+  month: z.string().trim().max(20),
+  sectionId: z.uuid().optional(),
+  format: z.enum(['json', 'csv']).optional(),
+  mine: z
+    .enum(['1', 'true', '0', 'false'])
+    .optional()
+    .transform((value) => value === '1' || value === 'true'),
 })
 
 /** `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward) or the coach (E06-S15 #97). */

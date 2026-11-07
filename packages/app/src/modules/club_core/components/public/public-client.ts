@@ -2,7 +2,8 @@
 // table, DD-23; #29): the response shapes of `GET /api/club_core/public/…`, their queries and the load result, which
 // tells a missing page (404 `public_page_not_found`) from a club that does not publish one (404
 // `public_page_disabled`) and from a failed request. The provider blocks (#91): `groups` (`groups.publicCatalog`) and
-// `schedule` (`activities.publicSchedule`: the groups' schedule on a section page, the upcoming events on the club page).
+// `schedule` (`activities.publicSchedule`: the groups' schedule on a section page, the upcoming events on the club page);
+// `prices` (`payments.publicPrices`, #112: each public group's fees and sibling discount on a section page).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 
@@ -60,6 +61,17 @@ export type PublicGroupSchedule = {
   upcoming: PublicSession[]
 }
 
+/** A public group's fees (`payments.publicPrices`, #112): grosz, the period and the sibling discount in percent. */
+export type PublicGroupPrices = {
+  groupId: string
+  fees: {
+    amount: number
+    currency: string
+    period: 'monthly' | 'one_off' | 'per_occurrence'
+    siblingDiscountPercent: number | null
+  }[]
+}
+
 export type PublicMaterial = {
   id: string
   title: string
@@ -79,6 +91,7 @@ export type PublicSectionPage = {
     contact?: { name: string | null; email: string | null; phone: string | null }
     groups?: { items: PublicGroupCard[] }
     schedule?: { groups: PublicGroupSchedule[] }
+    prices?: { groups: PublicGroupPrices[] }
     [key: string]: unknown
   }
 }
@@ -123,6 +136,17 @@ export function formatFileSize(bytes: number, locale: string): string {
   return bytes < 1024 * 1024
     ? `${format.format(Math.max(1, Math.round(bytes / 1024)))} kB`
     : `${format.format(bytes / (1024 * 1024))} MB`
+}
+
+/** An amount in minor units in the reader's locale, without the grosz when it is whole (`12000` → "120 zł"). */
+export function formatPublicAmount(minor: number, currency: string, locale: string): string {
+  const whole = minor % 100 === 0
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  }).format(minor / 100)
 }
 
 /** The short format label of a material (PDF, PNG, JPG, WEBP). */

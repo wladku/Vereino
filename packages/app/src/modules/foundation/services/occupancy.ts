@@ -2,6 +2,7 @@
 // blocking intervals outside `activities` — bookings, rentals, closures and maintenance of the `facilities` module
 // (phase 5). The foundation only names the token and its shape; `activities` resolves it with `hasRegistration` and
 // never imports the implementing module. Absent → no extra intervals.
+import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Interval } from '@vereino/core'
 
@@ -28,4 +29,14 @@ export type OccupancyProvider = {
 export function occupancyProvider(container: AwilixContainer): OccupancyProvider | null {
   if (!container.hasRegistration(OCCUPANCY_PROVIDER_TOKEN)) return null
   return container.resolve<OccupancyProvider>(OCCUPANCY_PROVIDER_TOKEN)
+}
+
+/**
+ * The one occupancy lock of an organization (facilities spec DD-43): a transaction-scoped advisory lock that every
+ * write adding occupancy takes before it checks and inserts — `activities`' session writes (through `lockSchedule`)
+ * and `facilities`' rentals, bookings, closures and maintenance windows — so a check and its insert are atomic across
+ * both modules. Held until the caller's transaction ends; take it before any row lock (lock order: occupancy, rows).
+ */
+export async function lockOccupancy(em: EntityManager, organizationId: string): Promise<void> {
+  await em.execute(`select pg_advisory_xact_lock(hashtext('vereino.occupancy:' || ?))`, [organizationId])
 }

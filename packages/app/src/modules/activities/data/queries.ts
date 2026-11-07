@@ -1,14 +1,17 @@
 // Raw SQL of `activities` (engineering standards S5.8: raw SQL lives in a module's data/queries.ts and takes the
 // organization explicitly).
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { lockOccupancy } from '@/modules/foundation'
 
 /**
  * Serializes every session write of one organization (a new series, a series edit, a moved session, a one-off event,
  * the generator) until the caller's transaction ends, so two writes cannot each pass the conflict check and overbook a
- * place or a coach together (`.ai/review-checklist.md`: an availability decision that races takes a lock).
+ * place or a coach together (`.ai/review-checklist.md`: an availability decision that races takes a lock). It is the
+ * organization's one occupancy lock (facilities spec DD-43), so a session write and a facility rental or closure
+ * serialize too.
  */
 export async function lockSchedule(em: EntityManager, organizationId: string): Promise<void> {
-  await em.execute(`select pg_advisory_xact_lock(hashtext('activities.schedule:' || ?))`, [organizationId])
+  await lockOccupancy(em, organizationId)
 }
 
 /**

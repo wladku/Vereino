@@ -13,6 +13,7 @@ import {
   cancellationPersonIds,
   cancellationRecipients,
   needsCoach,
+  permittedCancelRole,
   generationWindow,
   horizonEnd,
   isPinnedSession,
@@ -187,6 +188,27 @@ describe('sessionConflicts', () => {
       }),
     ).toEqual([{ key: '2026-11-10', kind: 'place', conflictingIds: ['closure', 'complex'] }])
   })
+
+  it('lets a session that keeps its slot ignore external blocks, never other sessions (#122)', () => {
+    const kept = candidates.map((candidate) => ({ ...candidate, keepsSlot: true }))
+    const input = {
+      placeId: 'pitch',
+      capacity: 1,
+      relatedPlaceIds: ['orlik'],
+      coachPersonId: null,
+      existing,
+      external: [
+        { id: 'rental', placeId: 'pitch', start: at('2026-11-17T16:30:00Z'), end: at('2026-11-17T18:00:00Z') },
+      ],
+    }
+    expect(sessionConflicts({ ...input, candidates: kept })).toEqual([
+      { key: '2026-11-10', kind: 'place', conflictingIds: ['complex'] },
+    ])
+    expect(sessionConflicts({ ...input, candidates: [kept[0], candidates[1]] })).toEqual([
+      { key: '2026-11-17', kind: 'place', conflictingIds: ['rental'] },
+      { key: '2026-11-10', kind: 'place', conflictingIds: ['complex'] },
+    ])
+  })
 })
 
 describe('the cancellation audience', () => {
@@ -274,6 +296,25 @@ describe('the cancellation reason on the phone', () => {
     expect(cancelReasonProblem('x'.repeat(200))).toBeNull()
     expect(cancelReasonProblem('x'.repeat(201))).toBe('too_long')
     expect(CANCEL_REASON_LIMITS).toEqual({ min: 3, max: 200 })
+  })
+})
+
+describe('cancelling under coach_may_cancel (#199)', () => {
+  it('keeps the acting role while coaches may cancel', () => {
+    expect(permittedCancelRole(true, 'coach', null)).toBe('coach')
+  })
+
+  it('refuses a coach without a planning grant when coaches may not cancel', () => {
+    expect(permittedCancelRole(false, 'coach', null)).toBeNull()
+  })
+
+  it('lets a coach who also coordinates cancel as the coordinator', () => {
+    expect(permittedCancelRole(false, 'coach', 'coordinator')).toBe('coordinator')
+  })
+
+  it('leaves coordinators and the administrator unaffected', () => {
+    expect(permittedCancelRole(false, 'coordinator', null)).toBe('coordinator')
+    expect(permittedCancelRole(false, 'club_admin', null)).toBe('club_admin')
   })
 })
 

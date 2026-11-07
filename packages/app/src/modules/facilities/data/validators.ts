@@ -6,6 +6,13 @@ import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
 import { CLOSURE_REASONS } from '../lib/closures'
 import { RENTER_CATEGORIES } from '../lib/rates'
+import {
+  ENTRY_BAN_SUBJECT_TYPES,
+  RENTAL_STATUSES,
+  RENTAL_TABS,
+  RENTER_TYPES,
+  STAFF_REQUESTED_VIA,
+} from '../lib/rentals'
 import { MAX_ZONE_PRIORITY, ZONES, ZONE_SOURCES } from '../lib/zones'
 
 const wallTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$|^24:00(?::00)?$/)
@@ -146,4 +153,89 @@ export const rentalRateListQuerySchema = z.object({
   renterCategory: z.enum(RENTER_CATEGORIES).optional(),
 })
 
+// --- Rentals (#122) ---
+
+/**
+ * `POST /api/facilities/rentals` (`facilities.rentals.create`, B-24 "New rental"): a staff entry after a phone call.
+ * `renterId` names the institution or person for those renter types; an unregistered renter carries its name. The
+ * units (1–4), the renter and the slot are checked by the command (422 / 409 with a code).
+ */
+export const rentalCreateSchema = z
+  .object({
+    placeId: z.uuid(),
+    renterType: z.enum(RENTER_TYPES),
+    renterId: z.uuid().nullable().optional(),
+    renterDisplayName: optionalText(200),
+    renterCategory: z.enum(RENTER_CATEGORIES),
+    startsAt: instantSchema,
+    units: z.number().int(),
+    contactName: optionalText(200),
+    contactPhone: optionalText(50),
+    contactEmail: z.email().max(320).nullable().optional(),
+    purpose: optionalText(500),
+    requestedVia: z.enum(STAFF_REQUESTED_VIA).default('phone'),
+    /** "Rules accepted (by phone)": recorded with the time and the channel. */
+    regulationsAccepted: z.boolean().default(false),
+    notes: optionalText(2000),
+  })
+  .strict()
+
+/** `POST /api/facilities/rentals/quote`: the same slot fields, nothing saved; the renter only for the ban check. */
+export const rentalQuoteSchema = z
+  .object({
+    placeId: z.uuid(),
+    renterType: z.enum(RENTER_TYPES).optional(),
+    renterId: z.uuid().nullable().optional(),
+    renterCategory: z.enum(RENTER_CATEGORIES),
+    startsAt: instantSchema,
+    units: z.number().int(),
+    /** The rental being moved, left out of the conflict check. */
+    ignoreRentalId: z.uuid().optional(),
+  })
+  .strict()
+
+export const rentalActionSchema = z.object({ id: z.uuid() }).strict()
+
+export const rentalCancelSchema = z.object({ id: z.uuid(), reason: optionalText(500) }).strict()
+
+/** A move keeps the status and the amount; the units stay, so only the start and the place change. */
+export const rentalMoveSchema = z
+  .object({ id: z.uuid(), startsAt: instantSchema, placeId: z.uuid().optional() })
+  .strict()
+
+export const rentalListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['startsAt', 'amount', 'createdAt', 'updatedAt']).optional(),
+  placeId: z.uuid().optional(),
+  status: z.enum(RENTAL_STATUSES).optional(),
+  /** B-24 tabs: `active` (requested, confirmed), `awaiting_approval` (pending approval); omitted = all. */
+  tab: z.enum(Object.keys(RENTAL_TABS) as [keyof typeof RENTAL_TABS, ...Array<keyof typeof RENTAL_TABS>]).optional(),
+  needsReschedule: z.enum(['true', 'false']).optional(),
+  /** Rentals that end on or after / start before an instant (the calendar week). */
+  endsAfter: instantSchema.optional(),
+  startsBefore: instantSchema.optional(),
+})
+
+// --- Entry bans (#122; the pages and revocation arrive with E08-S06) ---
+
+export const entryBanCreateSchema = z
+  .object({
+    placeId: z.uuid(),
+    subjectType: z.enum(ENTRY_BAN_SUBJECT_TYPES),
+    subjectId: z.uuid(),
+    startsOn: calendarDateSchema,
+    endsOn: calendarDateSchema.nullable().optional(),
+    reason: z.string().trim().min(1).max(2000),
+  })
+  .strict()
+
+export const entryBanListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['startsOn', 'createdAt', 'updatedAt']).optional(),
+  placeId: z.uuid().optional(),
+  subjectId: z.uuid().optional(),
+})
+
+export type RentalCreateInput = z.output<typeof rentalCreateSchema>
+export type RentalQuoteInput = z.output<typeof rentalQuoteSchema>
 export type AvailabilityBulkInput = z.output<typeof availabilityBulkSchema>

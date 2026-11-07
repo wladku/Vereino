@@ -135,7 +135,7 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
   `## Changelog` table is a finding: it conflicts with every parallel PR (`spec-changelogs:check` rejects it).
 - Autonomous runs commit a complete `.ai/runs/YYYY-MM-DD-slug.md` (goal, steps, decisions, files, commands and
   verbatim failures, open problems) with the work. Agent PRs name agent + model and link the run log (S19.3).
-- Lessons: `.ai/lessons/<slug>.md` from `_template.md` plus exactly one row in `.ai/lessons.md`; `lessons:check`
+- Lessons: one `.ai/lessons/<slug>.md` from `_template.md` and no row in `.ai/lessons.md`; `lessons:check`
   is part of the gate. A mistake corrected twice belongs in `AGENTS.md`, not a lesson.
 - Repository language is English (except `pl.json` and Polish legal texts). No `TODO` without an issue link.
 

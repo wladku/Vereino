@@ -180,7 +180,7 @@ flowchart LR
 
 | Shell | Structure | Who sees it |
 |---|---|---|
-| **Member `/club`** | bottom bar: **Today · Calendar · Messages · Payments · More** (More: Profile, Facilities, Today at the facility, Orders, My groups' payments, Accept cash, Sign out); in the header a child switcher (guardian) and a role context switcher ("as guardian / as coach") — only when the person has more than one role | items filtered by ACL features: Payments — `payments.view_own` (adults only: guardian, adult participant; a minor participant does not have this item); Facilities — `facilities.view`; Today at the facility — `facilities.log.write` |
+| **Member `/club`** | bottom bar: **Today · Calendar · Messages · Payments · More** (More: Profile, My units (coach), Facilities, Today at the facility, Orders, My groups' payments, Accept cash, Sign out); in the header a child switcher (guardian) and a role context switcher ("as guardian / as coach") — only when the person has more than one role | items filtered by ACL features: Payments — `payments.view_own` (adults only: guardian, adult participant; a minor participant does not have this item); Facilities — `facilities.view`; Today at the facility — `facilities.log.write` |
 | **Panel `/backend`** | side menu in groups: **Dashboard · Club** (Sections, Places, Institutions, Contracts, Settings, Publication) **· People** (People) **· Classes** (Groups, Activities, Sessions, Coach units report, Declaration policies) **· Communication** (Threads, Cases) **· Finance** (Fees and discounts, Charges, Bank statements, Order campaigns, Cash to settle) **· Facility** (Calendar, Rentals, Requests, Zones and rates, Log and incidents, Municipality report) | groups and items according to the pages' `requireFeatures`; the coordinator does not see Finance; the attendant sees only Facility |
 | **Public `/p/[klub]`** | header: **Club · Sections · Facilities**; footer: contact, rules, privacy policy (`/privacy` of the `content` module) | everyone; blocks according to the publication settings |
 
@@ -219,7 +219,7 @@ flowchart LR
 | B-11 / B-12 | `/backend/groups/groups` (tabs: Groups, External teams, Seasons), `…/[id]` | Groups | `groups.view` / `groups.manage` | 2 |
 | B-13 / B-14 | `/backend/activities/activities`, `…/create` | Activities, wizard | `activities.manage` | 2 |
 | B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
-| B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` | 2 |
+| B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` (own row on the phone: `activities.reports.view_own`) | 2 |
 | B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
 | B-18 / B-19 | `/backend/communication/threads` ("cases only" perspective = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
 | B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
@@ -421,7 +421,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-07 Institutions and contracts — `/backend/club/institutions`, `/backend/club/contracts`
 - **Goal:** contract parties and institutional payers; coach rates.
-- **Features:** institutions (type, contact, bank account); contracts (party, kind, period, terms per kind: coach — base, rate per unit, match, away trip; management agreement — days to pay, automatic expiry).
+- **Features:** institutions (type, contact, bank account); contracts (party, kind, period, terms per kind: coach — the rates of the club's settlement model, `units_per_contract`: base, rate per unit, per match and per away trip; `fixed_base_adjusted`: base, session amount (subtracted for an own session another coach led, added for one led as a substitute) and amount per away trip; management agreement — days to pay, automatic expiry). A coach contract is with a person; the party and the kind are fixed once it exists (#96).
 - **Components:** `DataTable`, `CrudForm` with fields that depend on the kind.
 - **States:** standard.
 - **Validation:** overlapping active contracts of the same kind for a party → 409; amounts ≥ 0; bank account — NRB format (26 digits).
@@ -483,7 +483,9 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-16 Coach units report — `/backend/activities/reports/coach-units`
 - **Goal:** coach settlement without disputes (REQ-008, REQ-021).
-- **Features:** month, section; columns: planned, handed over, taken over, balance, matches, away trips, amount (administrator only); expanding a row → list of sessions; link to unsettled ones; CSV export.
+- **Features:** month, section; the header names the settlement model in use (AC-021: "units per contract" or "fixed base, adjusted"); columns: planned, handed over, taken over, balance, matches, away trips, amount (only with `club_core.contracts.manage`, the administrator; "No contract" / "Incomplete contract" instead of an amount); expanding a row → list of sessions; link to unsettled ones; CSV export (coach, planned, given, taken, balance, matches, trips, amount).
+- **Who:** `activities.reports.view` — the administrator every section, a coordinator their sections; a coach reads only their own row with `activities.reports.view_own`, on the phone as More → My units (`/club/coach/units`, no amounts).
+- **Pricing (R14, #96):** the default model is `units_per_contract`, the value a club reads until it saves another one (changing the default would silently re-price every club that never saved the setting). Each counted session is priced by the coach contract in force on its own day, so a contract that ends mid-month prices the sessions up to its last day and the next contract the rest; the monthly base is counted once, from the latest contract that overlaps the month.
 - **Components:** `DataTable` with row expansion and export.
 - **States:** loading; empty — "No closed sessions this month"; error.
 - **Validation:** month `YYYY-MM`.
