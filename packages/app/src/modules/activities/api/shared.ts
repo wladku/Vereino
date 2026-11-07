@@ -87,6 +87,7 @@ export function activityListItem(row: Row) {
     gatheringMinutesBefore: integer(row.gathering_minutes_before),
     description: text(row.description),
     isActive: bool(row.is_active),
+    isAway: bool(row.is_away),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -258,6 +259,7 @@ export const activityListItemSchema = z.object({
     .describe('The default gathering time in minutes before the start.'),
   description: z.string().nullable(),
   isActive: z.boolean(),
+  isAway: z.boolean().describe('An away trip: its sessions count as trips in the coach units report (#96).'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })

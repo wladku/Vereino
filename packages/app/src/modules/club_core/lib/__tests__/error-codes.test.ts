@@ -45,6 +45,9 @@ describe('club_core error codes', () => {
       },
       { code: 'place_file_too_large', status: 422, messageKey: 'club_core.errors.place_file_too_large' },
       { code: 'place_photos_limit_reached', status: 422, messageKey: 'club_core.errors.place_photos_limit_reached' },
+      { code: 'contract_overlap', status: 409, messageKey: 'club_core.errors.contract_overlap' },
+      { code: 'contract_party_invalid', status: 422, messageKey: 'club_core.errors.contract_party_invalid' },
+      { code: 'contract_terms_invalid', status: 422, messageKey: 'club_core.errors.contract_terms_invalid' },
       { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
       { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
     ])

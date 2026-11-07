@@ -1,6 +1,7 @@
 import { asFunction } from 'awilix'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
+import { createClubCoreContracts } from './services/contracts'
 import { createClubCoreDirectory } from './services/directory'
 import { createClubCorePlacesService } from './services/places'
 import { createClubCorePublicSite } from './services/public-site'
@@ -30,6 +31,12 @@ export const CLUB_CORE_DIRECTORY = 'clubCoreDirectory' as const
  */
 export const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite' as const
 
+/**
+ * DI token of the contracts read side (#96): `settlement(scope)` — the club's coach settlement model and currency — and
+ * `coachContracts(scope, personIds, from, to)`, the coach contracts with their rates, for the coach units report.
+ */
+export const CLUB_CORE_CONTRACTS = 'clubCoreContracts' as const
+
 export { PUBLIC_BLOCK_PROVIDER_TOKENS } from './services/public-blocks'
 
 export function register(container: AppContainer) {
@@ -46,6 +53,9 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [CLUB_CORE_DIRECTORY]: asFunction((cradle: { em: EntityManager }) => createClubCoreDirectory(() => cradle.em))
+      .scoped()
+      .proxy(),
+    [CLUB_CORE_CONTRACTS]: asFunction((cradle: { em: EntityManager }) => createClubCoreContracts(() => cradle.em))
       .scoped()
       .proxy(),
     // The request container is passed in, so the optional block providers are found with `hasRegistration`.

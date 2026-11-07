@@ -9,6 +9,14 @@ export const features = [
     module: 'club_core',
     dependsOn: ['club_core.view'],
   },
+  // #96: contracts and their rates (README B-07) are the club administrator's; the coach units report shows amounts
+  // only to a holder of this feature.
+  {
+    id: 'club_core.contracts.manage',
+    title: 'Manage contracts and coach rates',
+    module: 'club_core',
+    dependsOn: ['club_core.view'],
+  },
   {
     id: 'club_core.publication.manage',
     title: 'Manage the publication of the club page',

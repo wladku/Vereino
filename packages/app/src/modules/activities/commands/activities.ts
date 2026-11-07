@@ -54,6 +54,8 @@ export type ActivitySnapshot = {
   gatheringMinutesBefore: number | null
   description: string | null
   isActive: boolean
+  /** Absent in a snapshot written before #96: not an away trip. */
+  isAway?: boolean
   /** The sessions a delete removed, so its undo restores exactly them. */
   removedSessionIds?: string[]
 }
@@ -81,6 +83,7 @@ export function activitySnapshot(row: Activity): ActivitySnapshot {
     gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
     description: row.description ?? null,
     isActive: row.isActive,
+    isAway: row.isAway,
   }
 }
 
@@ -100,6 +103,7 @@ function restoreActivity(row: Activity, before: ActivitySnapshot): void {
   row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
   row.description = before.description
   row.isActive = before.isActive
+  row.isAway = before.isAway ?? false
 }
 
 /** The fields whose change re-plans the future sessions. */
@@ -250,6 +254,7 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: parsed.isActive ?? true,
+        isAway: parsed.isAway ?? false,
       })
       em.persist(row)
       const changes = await replanSeries(ctx, em, row, clock)
@@ -335,6 +340,7 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       if (patch.gatheringMinutesBefore !== undefined) row.gatheringMinutesBefore = patch.gatheringMinutesBefore
       if (patch.description !== undefined) row.description = patch.description
       if (patch.isActive !== undefined) row.isActive = patch.isActive
+      if (patch.isAway !== undefined) row.isAway = patch.isAway
       row.updatedAt = new Date()
       const changes =
         seriesKey(row) !== beforeKey

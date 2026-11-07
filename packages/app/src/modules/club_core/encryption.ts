@@ -14,8 +14,14 @@ export const institutionContactEmail = encryptedField({ entityId: INSTITUTION_EN
 export const institutionBankAccount = encryptedField({ entityId: INSTITUTION_ENTITY_ID, field: 'bank_account' })
 export const institutionNotes = encryptedField({ entityId: INSTITUTION_ENTITY_ID, field: 'notes' })
 
+export const CONTRACT_ENTITY_ID = 'club_core:contract'
+
+/** A contract's terms — a coach's rates (#96). */
+export const contractTerms = encryptedField({ entityId: CONTRACT_ENTITY_ID, field: 'terms' })
+
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   { entityId: PLACE_ENTITY_ID, fields: [placeContacts.mapEntry] },
+  { entityId: CONTRACT_ENTITY_ID, fields: [contractTerms.mapEntry] },
   {
     entityId: INSTITUTION_ENTITY_ID,
     fields: [
