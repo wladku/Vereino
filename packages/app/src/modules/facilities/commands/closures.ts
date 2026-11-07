@@ -70,9 +70,9 @@ async function assertPeriod(startsAt: Date, endsAt: Date): Promise<void> {
 }
 
 /**
- * Flags the planned sessions and the rentals holding their slot under the closure (the place and its sub-places)
- * after the commit, each in a transaction of its own (DD-43), and counts them. A session on an ancestor cannot exist
- * (sessions point at a leaf), so the ancestors are not read.
+ * Flags the planned sessions and the rentals holding their slot under the closure after the commit, each in a
+ * transaction of its own (DD-43), and counts them: sessions on the place and its sub-places (a session points at a
+ * leaf), rentals on its sub-places and its ancestors too (a rental may hold the whole parent place).
  */
 async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promise<RescheduleCounts> {
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
@@ -80,8 +80,10 @@ async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promi
   const placeIds = [row.placeId, ...(family?.descendantIds ?? [])]
   const window = { start: row.startsAt, end: row.endsAt }
   const flagged = await flagSessionsForReschedule(ctx.container, scope, placeIds, window)
+  // A rental may hold a whole parent place (the hall a closed court belongs to), so rentals use the full family.
+  const rentalPlaceIds = [...placeIds, ...(family?.ancestorIds ?? [])]
   const em = ctx.container.resolve<EntityManager>('em').fork()
-  const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, placeIds, window))
+  const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, rentalPlaceIds, window))
   for (const id of rentals) await emitAfterCommit('facilities.rental.updated', scope, { id, placeId: row.placeId })
   return { sessions: flagged.length, rentals: rentals.length }
 }

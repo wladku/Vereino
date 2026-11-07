@@ -86,10 +86,15 @@ export async function replanSeries(
       em,
       scope,
       {
-        candidates: plan.upsert.map(({ occurrence }) => ({
+        candidates: plan.upsert.map(({ occurrence, existing }) => ({
           key: occurrence.date,
           startAt: occurrence.startAt,
           endAt: occurrence.endAt,
+          keepsSlot:
+            existing !== null &&
+            existing.row.startAt.getTime() === occurrence.startAt.getTime() &&
+            existing.row.endAt.getTime() === occurrence.endAt.getTime() &&
+            existing.row.placeId === activity.defaultPlaceId,
         })),
         placeId: activity.defaultPlaceId,
         coachPersonId,

@@ -34,6 +34,8 @@
   "facilities.errors.rental_conflict": "Ten termin jest zajęty przez zajęcia lub inny wynajem.",
   "facilities.errors.place_closed": "Miejsce jest wtedy zamknięte: zamknięcie lub poza godzinami otwarcia.",
   "facilities.errors.entry_ban_active": "Ten najemca ma aktywny zakaz wstępu na to miejsce.",
+  "facilities.errors.rental_start_past": "Wynajem musi zaczynać się w przyszłości.",
+  "facilities.errors.rental_not_started": "Niestawienie się można odnotować dopiero po rozpoczęciu wynajmu.",
   "facilities.errors.entry_ban_period_invalid": "Koniec nie może być przed początkiem.",
   "facilities.errors.validity_inverted": "„Obowiązuje do” nie może być przed „Obowiązuje od”.",
   "facilities.errors.invalid": "Sprawdź zaznaczone pola.",

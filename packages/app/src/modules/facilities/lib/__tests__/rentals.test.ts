@@ -11,6 +11,7 @@ import {
   cancellationDeadline,
   cancellationOutcome,
   localSlotOf,
+  noShowAllowed,
   occupancyConflictCode,
   overlappingEntries,
   paymentDeadline,
@@ -20,6 +21,7 @@ import {
   rentalTransitions,
   slotReservable,
   slotWithinOpeningHours,
+  startAllowed,
   unitsAllowed,
   type OccupancyEntry,
 } from '../rentals'
@@ -65,6 +67,13 @@ describe('units, amount and deadlines (R05)', () => {
     expect(unitsAllowed(0)).toBe(false)
     expect(unitsAllowed(5)).toBe(false)
     expect(unitsAllowed(1.5)).toBe(false)
+  })
+
+  it('takes only future starts and records a no-show only after the start', () => {
+    expect(startAllowed(START, new Date('2026-11-11T18:29:00Z'))).toBe(true)
+    expect(startAllowed(START, START)).toBe(false)
+    expect(noShowAllowed(START, new Date('2026-11-11T18:29:00Z'))).toBe(false)
+    expect(noShowAllowed(START, START)).toBe(true)
   })
 
   it('ends after units × 90 minutes and multiplies the rate', () => {

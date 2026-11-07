@@ -21,6 +21,8 @@ describe('facilities error codes', () => {
       'rental_conflict',
       'place_closed',
       'entry_ban_active',
+      'rental_start_past',
+      'rental_not_started',
       'entry_ban_period_invalid',
     ])
     for (const entry of errorCodes) {

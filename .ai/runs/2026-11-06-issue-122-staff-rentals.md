@@ -42,6 +42,18 @@ See the commit; areas: `packages/app/src/modules/foundation/{index.ts,services/o
 - `yarn verify` — failed at lint (numbers in template literals in two tests; `@mikro-orm/postgresql` imported in the quote route, which the boundary rule allows only in data/commands/services); fixed (the quote's EntityManager fork moved to `services/rental-slot.ts` `quoteRentalSlot`), `yarn verify --from lint` passed all 10 remaining steps. After the tabs test-id fix: `--filter E08-S02` 1 passed, and the final full `yarn verify` passed all 14 steps.
 - Platform `QueryIndexScopeError` lines for `auth:role` / `directory:organization` events from the fixture cleanup appear in the integration logs, unrelated to `facilities` (as in #121).
 
+## Review (PR #210)
+
+A fresh-eyes review subagent read `git diff origin/main...HEAD` (read-only). Its findings and what was done:
+
+- **H1 (fixed):** registering the occupancy provider made every series edit re-check unchanged future sessions against closures and rentals, so a series with one session under a closure could not be renamed. Fix in `activities/lib/activities-rules.ts`: a candidate with `keepsSlot` (a stored session the edit leaves on its place and times, set in `services/series.ts`) ignores the provider's blocks but not other sessions or the coach. Unit test added; TEST-027 gained the case "rename refused before, accepted now; a time change into the closure still 409 with reason `closure`".
+- **H2 (fixed):** a closure on a court did not flag a rental of the whole parent hall; rentals are now flagged on the place, its sub-places and its ancestors.
+- **M2 (fixed):** a staff entry or move into the past answers 422 `rental_start_past`; a no-show before the start answers 409 `rental_not_started`. Ended `requested` rentals stay for the spec's unpaid "to clarify" list (Q04).
+- **L1 (fixed):** the rental stores the requested category (a move re-quotes with it); `rate_id` names the rate applied.
+- **M1 (follow-up):** the provider reads on a forked EntityManager — a second pool connection — while the caller holds the occupancy lock; with as many concurrent occupancy writes of one club as pool connections, the holder could wait for a connection. Passing the caller's EntityManager needs an optional `em` on the foundation `OccupancyContext` (a contract change, Ask First). Low likelihood (a club writes a few entries a minute).
+- **After the fixes:** `npx jest` on `facilities/lib` + `activities/lib` 175 passed (100 % coverage kept); `yarn typecheck` ok; full `yarn verify` passed all 14 steps. The local integration reruns (TEST-027 with the new series case, TEST-022, TEST-023, E08-S02, TEST-007, TEST-012) could not run: the first attempt died with a Playwright worker crash (`exit code=3221225794`) during a cezar restart, the second found no container runtime (Docker Desktop engine not running; the run may not start it). They are left to the PR's CI integration jobs.
+- **L2–L5 (follow-ups):** a move does not update a future charge's due date (when `payments` implements DD-19); the dialog converts wall times in the browser's zone; existing clubs get the lifecycle schedule only on a setup re-run; the week preview lists rentals of the exact place, not of its parent.
+
 ## Open problems
 
 - `payments.chargeService` does not exist yet: no charge is created, the `payments.payment.recorded` → `facilities.rentals.confirm_paid` path is not built, and the TEST-023 assertions about charges (`cancelled`/`forfeited`, a throwing service rolling the rental back) cannot run. When `payments` implements DD-19, the place owner (payee) must be exposed by `club_core`'s directory.

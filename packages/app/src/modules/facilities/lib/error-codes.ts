@@ -30,6 +30,8 @@ export const errorCodes = [
   { code: 'rental_conflict', status: 409, messageKey: 'facilities.errors.rental_conflict' },
   { code: 'place_closed', status: 409, messageKey: 'facilities.errors.place_closed' },
   { code: 'entry_ban_active', status: 409, messageKey: 'facilities.errors.entry_ban_active' },
+  { code: 'rental_start_past', status: 422, messageKey: 'facilities.errors.rental_start_past' },
+  { code: 'rental_not_started', status: 409, messageKey: 'facilities.errors.rental_not_started' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },
 ] as const satisfies ErrorCodeTable

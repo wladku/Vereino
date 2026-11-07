@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { addDays, nextWeekday, weekdayOf, zoneInstant } from '../_fixtures/activities'
+import { addDays, mondayOf, nextWeekday, weekdayOf, zoneDate, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { listRentals, phoneRental, postRental, rentalPitch } from '../_fixtures/facilities'
 
 // Issue #122 (E08-S02; README B-23, B-24, flow F-10): the club administrator's rental pages. B-24 lists rentals in the
 // Active tab and has no critical or serious axe violation outside the platform baseline and reflows at 320 px; from
-// a "bookable" slot of the B-23 calendar the administrator enters a rental for an unregistered renter, sees the live
+// a "bookable" slot of the B-23 calendar the administrator enters a rental (for next week) for an unregistered renter, sees the live
 // quote with the amount and the deadlines, and saves it; cancelling a rental less than 24 h before its start states
 // in the dialog that the charge is forfeited. B-24 renders in Polish at 375 px.
 test.describe.configure({ timeout: 300_000 })
@@ -70,6 +70,15 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 1280, height: 800 })
 
+    // Given a saved rental, it appears on B-23 as a booked block (the calendar shows the current week; a rental
+    // starting within the next day falls into it unless today is Sunday).
+    const soonDate = zoneDate(String(soon.body?.endsAt))
+    if (soonDate <= addDays(mondayOf(calendarDate()), 6)) {
+      await page.goto('/backend/facilities/calendar')
+      await expect(page.getByTestId(`facilities-calendar-rental-${String(soon.body?.id)}`)).toBeVisible()
+      await page.goto('/backend/facilities/rentals')
+    }
+
     // Given a cancellation under 24 h before, the dialog states that the charge is forfeited.
     await page
       .getByTestId(`facilities-rental-actions-${String(soon.body?.id)}`)
@@ -89,6 +98,9 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await page.locator('[data-testid^="facilities-calendar-new-rental-"]').first().click()
     const dialog = page.getByTestId('facilities-rental-dialog')
     await expect(dialog).toBeVisible()
+    // The week's first bookable slot may be over already; a rental starts in the future, so pick next week's Thursday.
+    await dialog.getByTestId('facilities-rental-date').fill(nextWeekday(addDays(calendarDate(), 7), 'TH'))
+    await dialog.getByTestId('facilities-rental-time').fill('08:00')
     await dialog.getByTestId('facilities-rental-renter-type').getByText('Unregistered').click()
     await dialog.getByTestId('facilities-rental-renter-name').fill('Drużyna Firmowa')
     await dialog.getByTestId('facilities-rental-category').click()
@@ -106,7 +118,6 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     )
     expect(entered).toMatchObject({ renterType: 'unregistered', status: 'requested', contactPhone: '600 000 002' })
     expect(entered?.regulationsAcceptedAt).not.toBeNull()
-    await expect(page.getByTestId(`facilities-calendar-rental-${String(entered?.id)}`)).toBeVisible()
 
     // B-24 in Polish at 375 px.
     await page.setViewportSize({ width: 375, height: 800 })

@@ -34,6 +34,8 @@
   "facilities.errors.rental_conflict": "This time is taken by a session or another rental.",
   "facilities.errors.place_closed": "The place is closed then: a closure or outside the opening hours.",
   "facilities.errors.entry_ban_active": "This renter has an active entry ban on this place.",
+  "facilities.errors.rental_start_past": "The rental must start in the future.",
+  "facilities.errors.rental_not_started": "A no-show can be recorded only after the rental has started.",
   "facilities.errors.entry_ban_period_invalid": "The end must not be before the start.",
   "facilities.errors.validity_inverted": "“Valid until” must not be before “Valid from”.",
   "facilities.errors.invalid": "Check the highlighted fields.",

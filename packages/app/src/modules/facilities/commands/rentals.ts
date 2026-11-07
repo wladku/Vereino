@@ -24,14 +24,17 @@ import {
   lockOccupancy,
   trustedScopeOf,
 } from '@/modules/foundation'
+import { facilitiesErrors } from '../api/errors'
 import { Rental } from '../data/entities'
 import { rentalActionSchema, rentalCancelSchema, rentalCreateSchema, rentalMoveSchema } from '../data/validators'
 import {
   cancellationDeadline,
   cancellationOutcome,
   MOVABLE_RENTAL_STATUSES,
+  noShowAllowed,
   paymentDeadline,
   rentalTransitions,
+  startAllowed,
   type RentalStatus,
 } from '../lib/rentals'
 import { chargeService } from '../services/charges'
@@ -179,6 +182,7 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
       await assertPlaces(ctx, em, scope, [parsed.placeId])
       const name = await renterName(ctx, em, scope, parsed)
       const startsAt = new Date(parsed.startsAt)
+      if (!startAllowed(startsAt, now)) await throwFieldError('rental_start_past', 'startsAt')
       const renterId = parsed.renterType === 'unregistered' ? null : (parsed.renterId ?? null)
       const assessment = await assessRentalSlot(
         ctx.container,
@@ -202,7 +206,8 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
         renterType: parsed.renterType,
         renterId,
         renterDisplayName: name,
-        renterCategory: assessment.appliedCategory ?? parsed.renterCategory,
+        // The requested category stays on the rental (a move re-quotes with it); `rate_id` names the rate applied.
+        renterCategory: parsed.renterCategory,
         contactName: parsed.contactName ?? null,
         contactPhone: parsed.contactPhone ?? null,
         contactEmail: parsed.contactEmail ?? null,
@@ -267,6 +272,8 @@ type TransitionSpec = {
   labelKey: string
   fallback: string
   schema: typeof rentalActionSchema | typeof rentalCancelSchema
+  /** A check after the transition table allows the move (a no-show only after the start). */
+  guard?: (row: Rental, now: Date) => Promise<void>
 }
 
 /** A status move on an existing rental with the lock token; a cancellation also cancels or forfeits the charge. */
@@ -289,6 +296,7 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
         const before = rentalSnapshot(row)
         const to = typeof spec.to === 'function' ? spec.to(row, now) : spec.to
         await assertTransition(rentalTransitions, row.status, to)
+        if (spec.guard) await spec.guard(row, now)
         row.status = to
         row.updatedAt = now
         if (to === 'cancelled_free' || to === 'cancelled_late') {
@@ -347,6 +355,9 @@ const noShowRentalCommand = transitionCommand({
   labelKey: 'facilities.audit.rentals.noShow',
   fallback: 'Record a no-show',
   schema: rentalActionSchema,
+  guard: async (row, now) => {
+    if (!noShowAllowed(row.startsAt, now)) await facilitiesErrors.throw('rental_not_started')
+  },
 })
 
 const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandResult> = {
@@ -372,6 +383,7 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       const placeId = authorized.parsed.placeId ?? row.placeId
       if (placeId !== row.placeId) await assertPlaces(ctx, em, scope, [placeId])
       const startsAt = new Date(authorized.parsed.startsAt)
+      if (!startAllowed(startsAt, now)) await throwFieldError('rental_start_past', 'startsAt')
       const assessment = await assessRentalSlot(
         ctx.container,
         em,

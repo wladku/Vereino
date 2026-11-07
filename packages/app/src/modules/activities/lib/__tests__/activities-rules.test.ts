@@ -187,6 +187,27 @@ describe('sessionConflicts', () => {
       }),
     ).toEqual([{ key: '2026-11-10', kind: 'place', conflictingIds: ['closure', 'complex'] }])
   })
+
+  it('lets a session that keeps its slot ignore external blocks, never other sessions (#122)', () => {
+    const kept = candidates.map((candidate) => ({ ...candidate, keepsSlot: true }))
+    const input = {
+      placeId: 'pitch',
+      capacity: 1,
+      relatedPlaceIds: ['orlik'],
+      coachPersonId: null,
+      existing,
+      external: [
+        { id: 'rental', placeId: 'pitch', start: at('2026-11-17T16:30:00Z'), end: at('2026-11-17T18:00:00Z') },
+      ],
+    }
+    expect(sessionConflicts({ ...input, candidates: kept })).toEqual([
+      { key: '2026-11-10', kind: 'place', conflictingIds: ['complex'] },
+    ])
+    expect(sessionConflicts({ ...input, candidates: [kept[0], candidates[1]] })).toEqual([
+      { key: '2026-11-17', kind: 'place', conflictingIds: ['rental'] },
+      { key: '2026-11-10', kind: 'place', conflictingIds: ['complex'] },
+    ])
+  })
 })
 
 describe('the cancellation audience', () => {

@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { addDays, createEvent, nextWeekday, zoneInstant } from '../_fixtures/activities'
+import {
+  addDays,
+  createActivity,
+  createEvent,
+  getActivity,
+  juneThirtiethNextYear,
+  nextWeekday,
+  updateActivity,
+  zoneInstant,
+} from '../_fixtures/activities'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { getRental, phoneRental, postClosure, postRental, rentalPitch } from '../_fixtures/facilities'
 
@@ -74,6 +83,61 @@ test('TEST-058 (b) a rental and a session saved at once on one slot: exactly one
       if (rental.status === 201) expect(session.body?.code).toBe('occurrence_place_conflict')
       else expect(rental.body?.code).toBe('rental_conflict')
     }
+  } finally {
+    await club.cleanup()
+  }
+})
+
+test('TEST-027 a series edit that keeps a flagged session in place is not refused by the closure over it', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'test-027-series')
+  try {
+    const admin = club.adminToken
+    const setup = await rentalPitch(request, club)
+    const today = calendarDate()
+    const { id: activityId } = await createActivity(request, setup.coordinator, {
+      groupId: setup.orliki,
+      name: 'Trening Orlików',
+      type: 'training',
+      placeId: setup.pitch,
+      recurrenceRule: `FREQ=WEEKLY;BYDAY=TU;UNTIL=${juneThirtiethNextYear(today).until}`,
+      startsOn: today,
+      startTime: '17:00',
+      endTime: '18:30',
+    })
+    const tuesday = nextWeekday(addDays(today, 7), 'TU')
+    const closure = await postClosure(request, admin, {
+      placeId: setup.pitch,
+      startsAt: zoneInstant(tuesday, '16:00'),
+      endsAt: zoneInstant(tuesday, '20:00'),
+      reason: 'municipal_event',
+    })
+    expect(closure.status, JSON.stringify(closure.body)).toBe(201)
+    expect(closure.body?.flagged?.sessions).toBe(1)
+
+    // A rename keeps every session where it is: the flagged session stays for the coordinator to resolve.
+    const before = await getActivity(request, setup.coordinator, activityId)
+    const renamed = await updateActivity(
+      request,
+      setup.coordinator,
+      { id: activityId, name: 'Trening Orlików U10' },
+      before.body?.updatedAt,
+    )
+    expect(renamed.status, JSON.stringify(renamed.body)).toBe(200)
+
+    // Moving the times moves that session too, into the closure: refused with the reason `closure`.
+    const after = await getActivity(request, setup.coordinator, activityId)
+    const moved = await updateActivity(
+      request,
+      setup.coordinator,
+      { id: activityId, startTime: '17:30', endTime: '19:00' },
+      after.body?.updatedAt,
+    )
+    expect(moved.status, JSON.stringify(moved.body)).toBe(409)
+    expect(moved.body?.code).toBe('occurrence_place_conflict')
+    const blocks = moved.body?.conflicts?.flatMap((conflict) => conflict.blocks) ?? []
+    expect(blocks).toContainEqual(expect.objectContaining({ id: closure.body?.id, reason: 'closure' }))
   } finally {
     await club.cleanup()
   }

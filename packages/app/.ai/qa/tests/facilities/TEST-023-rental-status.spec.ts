@@ -80,10 +80,11 @@ test('TEST-023 rental status: confirm, cancel free and late, move, no-show, life
     expect(late.status, JSON.stringify(late.body)).toBe(200)
     expect(late.body?.status).toBe('cancelled_late')
 
-    // A no-show of a requested rental.
+    // A no-show only after the start: before it, 409 `rental_not_started` (the allowed case is unit-tested,
+    // `noShowAllowed`, because the real clock cannot reach a future start here).
     const noShow = await rentalAction(request, admin, again, 'no-show')
-    expect(noShow.status, JSON.stringify(noShow.body)).toBe(200)
-    expect(noShow.body?.status).toBe('no_show')
+    expect(noShow.status, JSON.stringify(noShow.body)).toBe(409)
+    expect(noShow.body?.code).toBe('rental_not_started')
 
     // The lifecycle: before the end nothing moves; after it the confirmed rental is `done`, and a rerun changes nothing.
     const before = runRentalLifecycle(club, zoneInstant(tuesday, '10:00'))

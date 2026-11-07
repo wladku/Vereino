@@ -101,6 +101,16 @@ export function unitsAllowed(units: number): boolean {
   return Number.isInteger(units) && units >= MIN_RENTAL_UNITS && units <= MAX_RENTAL_UNITS
 }
 
+/** True when a staff entry or a move may take this start: it lies after `now` (422 `rental_start_past` otherwise). */
+export function startAllowed(startsAt: Date, now: Date): boolean {
+  return startsAt.getTime() > now.getTime()
+}
+
+/** True when a no-show may be recorded: the rental has started (409 `rental_not_started` otherwise). */
+export function noShowAllowed(startsAt: Date, now: Date): boolean {
+  return now.getTime() >= startsAt.getTime()
+}
+
 /** The end of a rental of `units` 90-minute units. */
 export function rentalEnd(startsAt: Date, units: number): Date {
   return new Date(startsAt.getTime() + units * RENTAL_UNIT_MINUTES * MINUTE_MS)

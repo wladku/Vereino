@@ -132,7 +132,7 @@ test('TEST-022 rentals: quote, save, list, and the refusals with their codes', a
     expect(late.status, JSON.stringify(late.body)).toBe(409)
     expect(late.body?.code).toBe('place_closed')
 
-    // Units outside 1–4 and an unregistered renter without a name answer 422; a coordinator cannot enter rentals.
+    // Units outside 1–4, an unregistered renter without a name and a start in the past answer 422; a coordinator cannot enter rentals.
     const tooMany = await postRental(
       request,
       admin,
@@ -147,6 +147,13 @@ test('TEST-022 rentals: quote, save, list, and the refusals with their codes', a
     })
     expect(nameless.status, JSON.stringify(nameless.body)).toBe(422)
     expect(nameless.body?.code).toBe('rental_renter_invalid')
+    const past = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.neighbours, new Date(Date.now() - 3_600_000).toISOString()),
+    )
+    expect(past.status, JSON.stringify(past.body)).toBe(422)
+    expect(past.body?.code).toBe('rental_start_past')
     const forbidden = await postRental(
       request,
       setup.coordinator,
