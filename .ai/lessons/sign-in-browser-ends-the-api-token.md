@@ -1,13 +1,13 @@
 ---
 title: "signInBrowser sets a new password: fetch a fresh API token for that user afterwards"
-modules: ["platform", "people"]
+modules: ["platform", "people", "activities"]
 areas: ["testing"]
 topics: ["playwright", "sign-in-browser", "auth-token", "integration-tests"]
 ---
 
 # signInBrowser sets a new password: fetch a fresh API token for that user afterwards
 
-**Context**: The first run of E06-S02 (#84, 2026-11-04) signed the club administrator in to the browser with `signInBrowser` and then created an account through the API with the token `createClub` returned. The call answered 401 `Unauthorized`.
+**Context**: The first run of E06-S02 (#84, 2026-11-04) signed the club administrator in to the browser with `signInBrowser` and then created an account through the API with the token `createClub` returned. The call answered 401 `Unauthorized`. It recurred in E06-S13 (#95, 2026-11-06): the coordinator's token, taken before `signInBrowser`, answered 401 on the next list read, which first looked like an empty list. Corrected twice, the rule is now in `AGENTS.md` → Validation.
 
 **Problem**: `signInBrowser` (`packages/app/.ai/qa/tests/_fixtures/club-structure.ts`) resets the user's password through `PUT /api/auth/users` before the browser login, and the reset ends that user's existing sessions, so a token obtained earlier stops working. The failure surfaces only at the next API call, far from the sign-in.
 

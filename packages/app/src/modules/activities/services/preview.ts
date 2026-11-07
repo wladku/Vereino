@@ -13,7 +13,7 @@ import { horizonEnd } from '../lib/activities-rules'
 import { clubClock, findGroups } from './directory'
 import { findActivity } from './read'
 import {
-  checkedOffSessionIds,
+  actedOnSessionIds,
   findConflicts,
   futureSessions,
   plannedSessions,
@@ -79,7 +79,7 @@ export async function previewSeries(
     clock.timeZone,
   )
   const stored = edited ? await futureSessions(em, scope, edited.id, clock.today) : []
-  const plan = sessionPlan(stored, sessions, clock.today, await checkedOffSessionIds(em, scope, stored))
+  const plan = sessionPlan(stored, sessions, clock.today, await actedOnSessionIds(em, scope, stored))
   const report = await findConflicts(
     ctx.container,
     em,
