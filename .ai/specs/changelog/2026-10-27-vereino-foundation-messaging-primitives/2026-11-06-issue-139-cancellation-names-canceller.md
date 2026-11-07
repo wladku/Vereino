@@ -1,0 +1,1 @@
+| 2026-11-06 | #139: REQ-M07 — the cancellation system message becomes a `cancellation` row naming the canceller and their acting role (still a system message, never edited or deleted), the e-mail `communication.session_cancelled` takes `cancelledByName` / `cancelledByRole`, and a coach's cancellation also e-mails the section's coordinators |

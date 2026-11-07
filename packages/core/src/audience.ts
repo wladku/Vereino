@@ -178,3 +178,26 @@ export function audienceCounts(recipients: readonly Recipient[]): AudienceCounts
   }
   return { recipients: reachable, withoutEmail, unreachable: recipients.length - reachable }
 }
+
+/** The roles a session cancellation is taken in, least-privileged first (club spec REQ-009, R01; #139). */
+export const CANCELLING_ROLES = ['coach', 'coordinator', 'club_admin'] as const
+export type CancellingRole = (typeof CANCELLING_ROLES)[number]
+
+/** The acting role as one of `CANCELLING_ROLES`, or null for a missing or unknown one (an event older than #139). */
+export function cancellingRole(actingRole: string | null | undefined): CancellingRole | null {
+  return (CANCELLING_ROLES as readonly string[]).includes(actingRole ?? '') ? (actingRole as CancellingRole) : null
+}
+
+/**
+ * The section coordinators a session cancellation also tells (#139): a coach's cancellation reaches the live
+ * coordinators of the session's section — never the person who cancelled, also when they coordinate it themself. A
+ * coordinator's or the administrator's cancellation adds none (they are the ones who decide). Unique, sorted.
+ */
+export function cancellationCoordinatorIds(
+  actingRole: string | null,
+  coordinatorIds: readonly string[],
+  actorPersonId: string | null,
+): string[] {
+  if (actingRole !== 'coach') return []
+  return [...new Set(coordinatorIds)].filter((personId) => personId !== actorPersonId).sort()
+}

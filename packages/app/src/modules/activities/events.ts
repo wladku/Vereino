@@ -41,6 +41,20 @@ const events = [
   // closing the session with it also emits `activities.occurrence.completed`.
   { id: 'activities.attendance.marked', label: 'Attendance checked off', entity: 'attendance', category: 'custom' },
   { id: 'activities.occurrence.completed', label: 'Session closed', entity: 'occurrence', category: 'custom' },
+  // E06-S13 #95: the assigned coach reported an absence (the session has no coach), or the coordinator assigned a
+  // coach; both name the session, the previous and the new coach and the substitution entry.
+  {
+    id: 'activities.occurrence.coach_unassigned',
+    label: 'Coach reported an absence',
+    entity: 'occurrence',
+    category: 'custom',
+  },
+  {
+    id: 'activities.occurrence.coach_changed',
+    label: 'Session coach changed',
+    entity: 'occurrence',
+    category: 'custom',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'activities', events })

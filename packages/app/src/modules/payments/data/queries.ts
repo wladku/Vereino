@@ -34,3 +34,26 @@ export async function tryLockGeneration(em: EntityManager, organizationId: strin
   )
   return rows[0]?.locked ?? false
 }
+
+/**
+ * The charges of the organization with a live payment of `method` that no reversing entry cancelled (the B-21 "Cash
+ * payments" perspective, #109). Distinct charge ids; a club has at most a few thousand charges a year.
+ */
+export async function chargeIdsWithPayment(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  method: string,
+): Promise<string[]> {
+  const rows = await em.execute<{ charge_id: string }[]>(
+    `select distinct p.charge_id
+       from payments_payments p
+      where p.tenant_id = ? and p.organization_id = ? and p.method = ? and p.deleted_at is null
+        and p.reverses_payment_id is null
+        and not exists (
+          select 1 from payments_payments r
+           where r.reverses_payment_id = p.id and r.organization_id = p.organization_id and r.deleted_at is null
+        )`,
+    [scope.tenantId, scope.organizationId, method],
+  )
+  return rows.map((row) => row.charge_id)
+}

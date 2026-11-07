@@ -117,6 +117,9 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
       lastName: 'Czlonek',
       birthDate: birthDateTurning(30),
     })
+    // Leave the backend page first: with its session cookie gone it redirects to /login, which aborted the next
+    // page.goto (net::ERR_ABORTED) — .ai/lessons/leave-backend-page-before-clearing-cookies.md.
+    await page.goto('about:blank')
     await page.context().clearCookies()
     await signInBrowser(page, request, club, member.userId, member.email)
     for (const path of ['/backend/groups/groups', `/backend/groups/groups/${team}`, '/backend/groups/seasons']) {

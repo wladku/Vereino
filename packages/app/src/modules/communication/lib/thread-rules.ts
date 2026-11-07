@@ -2,24 +2,46 @@
 // *Thread* rule, R01, R15): which audience kinds an author may address, who is the staff of a thread, who a reply
 // reaches, which messages a member sees, the latest revision of each message, unread state and the share text line.
 // The services and commands apply them; nothing here touches the database.
-import type {
-  AudienceContact,
-  AudienceKind,
-  AudienceReason,
-  GrantKind,
-  Recipient,
-  RecipientChannel,
-  Scope,
-  ScopeTarget,
+import {
+  cancellingRole,
+  type AudienceContact,
+  type AudienceKind,
+  type AudienceReason,
+  type CancellingRole,
+  type GrantKind,
+  type Recipient,
+  type RecipientChannel,
+  type Scope,
+  type ScopeTarget,
 } from '@vereino/core'
 
 /** A thread's scope (club spec glossary *Thread*); `direct` is an audience of kind `persons`. */
 export const THREAD_SCOPE_TYPES = ['club', 'section', 'group', 'activity', 'occurrence', 'direct'] as const
 export type ThreadScopeType = (typeof THREAD_SCOPE_TYPES)[number]
 
-/** A thread message row (DD-M10): a message, a revision that supersedes one, or a tombstone that deletes one. */
-export const MESSAGE_KINDS = ['message', 'revision', 'tombstone'] as const
+/**
+ * A thread message row (DD-M10): a message, a revision that supersedes one, or a tombstone that deletes one; or the
+ * system message of a session cancellation (`cancellation`, #139), which names who cancelled (`author_person_id`)
+ * and in which role (`acting_role`, R01) and, like every system message, is never edited or deleted.
+ */
+export const MESSAGE_KINDS = ['message', 'revision', 'tombstone', 'cancellation'] as const
 export type MessageKind = (typeof MESSAGE_KINDS)[number]
+
+/** The kinds that start a message of their own (a revision or a tombstone only changes one). */
+export const ORIGINAL_MESSAGE_KINDS: readonly MessageKind[] = ['message', 'cancellation']
+
+/** True for a row that is a message of its own: a message or a cancellation notice. */
+export function isOriginalMessage(row: { kind: MessageKind }): boolean {
+  return ORIGINAL_MESSAGE_KINDS.includes(row.kind)
+}
+
+/**
+ * True for a message the club wrote, not a person (DD-M10): one without an author — the session cancellation of
+ * before #139 — or a cancellation notice, whose author is the person who cancelled the session.
+ */
+export function isSystemMessage(row: { kind: MessageKind; authorPersonId: string | null }): boolean {
+  return row.authorPersonId === null || row.kind === 'cancellation'
+}
 
 /** Who a message is for: everyone in the thread, or the staff only (a member's reply, DD-M12). */
 export const MESSAGE_AUDIENCES = ['all', 'staff'] as const
@@ -121,6 +143,27 @@ export function emailOnlyRecipients(recipients: readonly Recipient[], excludeUse
     result.push({ ...recipient, channels: ['email'] })
   }
   return result
+}
+
+/**
+ * The recipients of `base` followed by those of `extra` that `base` does not already reach (by person id): the session
+ * audience plus the section's coordinators told of a coach's cancellation (#139). Order kept, no person twice.
+ */
+export function withExtraRecipients(base: readonly Recipient[], extra: readonly Recipient[]): Recipient[] {
+  const reached = new Set(base.map((recipient) => recipient.personId))
+  return [...base, ...extra.filter((recipient) => !reached.has(recipient.personId))]
+}
+
+/**
+ * Who a cancellation notice names (R01, #139): the canceller's full name and a known acting role, or null when the
+ * role is missing or unknown (the notice then stays the anonymous system message).
+ */
+export function cancelledByOf(
+  person: { firstName: string; lastName: string },
+  actingRole: string | null,
+): { name: string; role: CancellingRole } | null {
+  const role = cancellingRole(actingRole)
+  return role ? { name: `${person.firstName} ${person.lastName}`.trim(), role } : null
 }
 
 /** The channels a contact can be reached on (an account → in-app, an address → e-mail). */
@@ -229,15 +272,15 @@ export type MessageView = {
 }
 
 /**
- * Collapses the append-only rows into one view per original message, oldest first: a revision replaces the body and
- * marks it edited, a tombstone empties it and marks it deleted. Revisions and tombstones supersede the original
- * message id; a row that supersedes an unknown id is ignored.
+ * Collapses the append-only rows into one view per original message (`ORIGINAL_MESSAGE_KINDS`), oldest first: a
+ * revision replaces the body and marks it edited, a tombstone empties it and marks it deleted. Revisions and
+ * tombstones supersede the original message id; a row that supersedes an unknown id is ignored.
  */
 export function latestMessages(rows: readonly MessageRow[]): MessageView[] {
   const ordered = [...rows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
   const views = new Map<string, MessageView>()
   for (const row of ordered) {
-    if (row.kind === 'message') {
+    if (isOriginalMessage(row)) {
       views.set(row.id, {
         id: row.id,
         authorPersonId: row.authorPersonId,
@@ -247,7 +290,7 @@ export function latestMessages(rows: readonly MessageRow[]): MessageView[] {
         createdAt: row.createdAt,
         editedAt: null,
         deleted: false,
-        system: row.authorPersonId === null,
+        system: isSystemMessage(row),
       })
       continue
     }
@@ -308,7 +351,7 @@ export function lastVisibleMessage<T extends MessageStamp & { id: string; kind: 
 ): T | null {
   let latest: T | null = null
   for (const stamp of stamps) {
-    if (stamp.kind !== 'message' || !isVisibleTo(stamp, viewer)) continue
+    if (!isOriginalMessage(stamp) || !isVisibleTo(stamp, viewer)) continue
     const newer =
       !latest ||
       stamp.createdAt.getTime() > latest.createdAt.getTime() ||
