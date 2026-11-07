@@ -9,7 +9,7 @@ import {
 } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createStaff } from '../_fixtures/club'
-import { signInBrowser } from '../_fixtures/club-structure'
+import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 
 // Issue #31 pages (club spec UI table: `/backend/activities/activities` + `create`, `[id]`, `/backend/activities/
 // occurrences` + `[id]`, `/backend/activities/events/create`): every page renders its content with no critical or
@@ -145,8 +145,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
       lastName: 'Czlonek',
       birthDate: birthDateTurning(30),
     })
-    await page.context().clearCookies()
-    await signInBrowser(page, request, club, member.userId, member.email)
+    await switchBrowserUser(page, request, club, member.userId, member.email)
     for (const path of [
       '/backend/activities/activities',
       `/backend/activities/activities/${activityId}`,
