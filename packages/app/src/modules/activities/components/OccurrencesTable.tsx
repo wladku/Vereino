@@ -7,8 +7,8 @@
 // hours ago or more (E06-S13 #95), Canceled cancelled sessions with their reason, Calendar is the coordinator's week
 // grid (`CoordinatorCalendar`). The session status, "unsettled", "moved" (detached from its series) and "needs
 // reschedule" (a generated session over a conflict) are badges, and the coach column marks "Needs a coach" and
-// "(substitution)". Each row opens the session; with `activities.coach` a future planned session is cancelled from its
-// row (reason required) and a started one opens its attendance list; with `activities.manage` a planned session gets
+// "(substitution)". Each row opens the session; with `activities.coach` a future planned session the caller may cancel
+// (`mayCancel`, #215) is cancelled from its row (reason required) and a started one opens its attendance list; with `activities.manage` a planned session gets
 // "Assign substitute" (no coach) or "Change coach". `ActivitySessions` is the same list for one activity (the
 // "Sessions" tab of its record).
 import * as React from 'react'
