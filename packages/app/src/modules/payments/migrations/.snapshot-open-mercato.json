@@ -1320,6 +1320,23 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "collected_by_person_id": {
+          "name": "collected_by_person_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamptz(6)",
@@ -1421,6 +1438,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "date"
+        },
+        "receipt_number": {
+          "name": "receipt_number",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         },
         "recorded_by_person_id": {
           "name": "recorded_by_person_id",
@@ -1540,11 +1574,34 @@
         {
           "columnNames": [
             "organization_id",
+            "collected_by_person_id",
+            "paid_on"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "payments_payments_org_collector_idx",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "organization_id",
             "method"
           ],
           "composite": true,
           "constraint": false,
           "keyName": "payments_payments_org_method_idx",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "organization_id",
+            "receipt_number"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "payments_payments_org_receipt_idx",
           "primary": false,
           "unique": false
         },

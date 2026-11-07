@@ -55,6 +55,9 @@ describe('payments vocabularies', () => {
       charge_not_cancellable: 409,
       payment_not_reversible: 409,
       payment_already_reversed: 409,
+      charge_already_paid: 409,
+      cash_exceeds_selected: 422,
+      cash_charges_invalid: 422,
     })
   })
 })

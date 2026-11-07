@@ -187,11 +187,15 @@ export class Charge extends ScopedEntityBase {
  * A payment of a charge (payments spec *Data Models* → `payments_payments`; REQ-012, TEST-020; issue #109): an
  * immutable credit in grosz with its method, the day the money arrived and the title or receipt. A correction is a
  * reversing entry — a negative payment of the same charge that names the original in `reverses_payment_id` (one per
- * payment, partial unique index); nothing is edited or deleted. `recorded_by_*` is who received it (B-22).
+ * payment, partial unique index); nothing is edited or deleted. `recorded_by_*` is who received it (B-22). Cash
+ * accepted with "Accept cash" (REQ-031, #114) also carries who collected it and its `KP/YYYY/MM/NNN` receipt number;
+ * one acceptance spread over several charges is one receipt, so its payments share the number.
  */
 @Entity({ tableName: 'payments_payments' })
 @Index({ name: 'payments_payments_org_charge_idx', properties: ['organizationId', 'chargeId'] })
 @Index({ name: 'payments_payments_org_method_idx', properties: ['organizationId', 'method'] })
+@Index({ name: 'payments_payments_org_receipt_idx', properties: ['organizationId', 'receiptNumber'] })
+@Index({ name: 'payments_payments_org_collector_idx', properties: ['organizationId', 'collectedByPersonId', 'paidOn'] })
 @Index({ name: 'payments_payments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({
   name: 'payments_payments_reverses_unique',
@@ -200,7 +204,13 @@ export class Charge extends ScopedEntityBase {
 })
 export class Payment extends ScopedEntityBase {
   [OptionalProps]?:
-    ScopedEntityOptionalProps | 'reference' | 'recordedByPersonId' | 'recordedByUserId' | 'reversesPaymentId'
+    | ScopedEntityOptionalProps
+    | 'reference'
+    | 'recordedByPersonId'
+    | 'recordedByUserId'
+    | 'reversesPaymentId'
+    | 'collectedByPersonId'
+    | 'receiptNumber'
 
   @Property({ name: 'charge_id', type: 'uuid' })
   chargeId!: string
@@ -228,6 +238,14 @@ export class Payment extends ScopedEntityBase {
 
   @Property({ name: 'reverses_payment_id', type: 'uuid', nullable: true })
   reversesPaymentId?: string | null
+
+  /** The person who took the cash in hand ("Accept cash", #114); held by them until a handover (E07-S11). */
+  @Property({ name: 'collected_by_person_id', type: 'uuid', nullable: true })
+  collectedByPersonId?: string | null
+
+  /** `KP/YYYY/MM/NNN`, sequential within the club and month; shared by the payments of one acceptance. */
+  @Property({ name: 'receipt_number', type: 'text', nullable: true })
+  receiptNumber?: string | null
 }
 
 /**

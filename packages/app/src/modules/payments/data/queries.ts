@@ -57,3 +57,31 @@ export async function chargeIdsWithPayment(
   )
   return rows.map((row) => row.charge_id)
 }
+
+/**
+ * Takes the club's receipt-numbering lock until the caller's transaction ends ("Accept cash", #114): two acceptances
+ * of one club wait for each other, so the month's highest number read after the lock is never issued twice.
+ */
+export async function lockReceiptNumbering(em: EntityManager, organizationId: string): Promise<void> {
+  await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`payments.cash.receipt:${organizationId}`])
+}
+
+/**
+ * The club's highest receipt number starting with `prefix` (`KP/2026/11/`), or null. Read under
+ * `lockReceiptNumbering`; numbers past 999 are longer, so length orders before text.
+ */
+export async function lastReceiptNumber(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  prefix: string,
+): Promise<string | null> {
+  const rows = await em.execute<{ receipt_number: string }[]>(
+    `select receipt_number
+       from payments_payments
+      where tenant_id = ? and organization_id = ? and receipt_number like ?
+      order by length(receipt_number) desc, receipt_number desc
+      limit 1`,
+    [scope.tenantId, scope.organizationId, `${prefix}%`],
+  )
+  return rows[0]?.receipt_number ?? null
+}

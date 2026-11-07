@@ -4,7 +4,8 @@
 // cash payments, orders (and rentals once `facilities` is enabled) — searchable by surname and exportable to CSV. Each
 // row shows the charge and its period, the payer (or "Without payer"), the amount with the discount, what remains,
 // the due date with the overdue marker, the payee and the status, and opens the charge (B-22). "Generate period"
-// creates all charges of a month at once and shows the summary.
+// creates all charges of a month at once and shows the summary. "Accept cash" (#114) takes cash for a payer's selected
+// charges with a numbered receipt.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -24,6 +25,7 @@ import {
   visiblePerspectives,
   type ChargePerspective,
 } from '../lib/charge-ledger'
+import { AcceptCashDialog } from './AcceptCashDialog'
 import { GeneratePeriodDialog } from './GeneratePeriodDialog'
 import {
   chargeHref,
@@ -235,6 +237,7 @@ export function ChargesTable() {
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
   const [generating, setGenerating] = React.useState(false)
+  const [acceptingCash, setAcceptingCash] = React.useState(false)
   const [exporting, setExporting] = React.useState(false)
   const [summary, setSummary] = React.useState<GenerationSummary | null>(null)
 
@@ -339,6 +342,16 @@ export function ChargesTable() {
                 </Button>
                 <Button
                   type="button"
+                  variant="outline"
+                  data-testid="accept-cash-open"
+                  onClick={() => {
+                    setAcceptingCash(true)
+                  }}
+                >
+                  {t('payments.cash.action')}
+                </Button>
+                <Button
+                  type="button"
                   data-testid="generate-period-open"
                   onClick={() => {
                     setGenerating(true)
@@ -388,6 +401,13 @@ export function ChargesTable() {
           />
         </TabsContent>
       </Tabs>
+      <AcceptCashDialog
+        open={acceptingCash}
+        onOpenChange={setAcceptingCash}
+        onDone={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['payments-charges'] })
+        }}
+      />
       <GeneratePeriodDialog
         open={generating}
         onOpenChange={setGenerating}
