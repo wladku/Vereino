@@ -5,7 +5,9 @@
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import type { GrantKind, ScopeColumnMap } from '@vereino/core'
+import type { CampaignKpis } from '../lib/order-campaigns'
 import { findActivities, findGroups, findPersons, type PaymentsScope } from '../services/directory'
+import { campaignNames, campaignsKpis } from '../services/order-campaigns'
 
 export const PAYMENTS_READ_KINDS: readonly GrantKind[] = ['club_admin']
 export const CLUB_WIDE_COLUMNS: ScopeColumnMap = {}
@@ -265,3 +267,82 @@ export const updateResponseSchema = z.object({
   updatedAt: z.string(),
   actingRole: z.string(),
 })
+
+// --- Order campaigns (#115) ---
+
+export const ORDER_CAMPAIGN_ENTITY_ID = 'payments:order_campaign'
+
+/** A `uuid[]` column as the query engine hands it back: an array, or the Postgres literal `{a,b}`. */
+function uuidList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String)
+  if (typeof value === 'string') {
+    const inner = value.replace(/^\{|\}$/g, '').trim()
+    return inner ? inner.split(',').map((entry) => entry.replace(/"/g, '').trim()) : []
+  }
+  return []
+}
+
+export function orderCampaignListItem(row: Row) {
+  return {
+    id: String(row.id),
+    name: text(row.name),
+    sectionId: text(row.section_id),
+    groupIds: uuidList(row.group_ids),
+    closesOn: calendarDate(row.closes_on),
+    paymentDueOn: calendarDate(row.payment_due_on),
+    status: text(row.status),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  }
+}
+
+export type OrderCampaignListItem = ReturnType<typeof orderCampaignListItem> & {
+  sectionName?: string | null
+  groupNames?: string[]
+  kpis?: CampaignKpis
+}
+
+/** Adds the section and group names and the KPIs of each listed campaign. */
+export async function attachCampaignFacts(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
+  const items = (payload.items ?? []) as OrderCampaignListItem[]
+  const scope = listScope(ctx)
+  if (items.length === 0 || !scope) return
+  const campaigns = items.map((item) => ({ id: item.id, sectionId: item.sectionId ?? '', groupIds: item.groupIds }))
+  const [names, kpis] = await Promise.all([
+    campaignNames(ctx.container, scope, campaigns),
+    campaignsKpis(ctx.container, scope, campaigns),
+  ])
+  for (const item of items) {
+    item.sectionName = item.sectionId ? (names.sections.get(item.sectionId) ?? null) : null
+    item.groupNames = item.groupIds.flatMap((id) => {
+      const name = names.groups.get(id)
+      return name ? [name] : []
+    })
+    item.kpis = kpis.get(item.id)
+  }
+}
+
+export const campaignKpisSchema = z.object({
+  orders: z.number().int(),
+  children: z.number().int().describe('Children of the campaign groups today'),
+  missing: z.number().int().describe('Children without an order'),
+  value: z.number().int().describe('Grosz due on the orders'),
+  paid: z.number().int().describe('Grosz paid on the orders'),
+  handedOver: z.number().int(),
+})
+
+export const orderCampaignListItemSchema = z.object({
+  id: z.uuid(),
+  name: z.string().nullable(),
+  sectionId: z.string().nullable(),
+  sectionName: z.string().nullable().optional(),
+  groupIds: z.array(z.string()),
+  groupNames: z.array(z.string()).optional(),
+  closesOn: z.string().nullable(),
+  paymentDueOn: z.string().nullable(),
+  status: z.string().nullable().describe('`draft`, `open`, `closed`, `ordered`, `delivered`, `completed`'),
+  kpis: campaignKpisSchema.optional(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+})
+

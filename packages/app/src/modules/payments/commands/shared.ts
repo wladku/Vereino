@@ -70,7 +70,9 @@ const idsOnly = (ctx: { identifiers: { id: string; tenantId: string | null; orga
 })
 
 /** `payments.<entity>.created|updated|deleted`; ids only (S4.6). */
-export function paymentsEvents<TEntity>(entity: 'fee' | 'discount_rule' | 'settings'): CrudEventsConfig<TEntity> {
+export function paymentsEvents<TEntity>(
+  entity: 'fee' | 'discount_rule' | 'settings' | 'order_campaign',
+): CrudEventsConfig<TEntity> {
   return { module: 'payments', entity, persistent: true, buildPayload: idsOnly }
 }
 

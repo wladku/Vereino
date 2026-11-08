@@ -17,6 +17,7 @@ import type {
 } from '../lib/payments-rules'
 import type { PaymentMethod } from '../lib/charge-ledger'
 import type { CheckoutStatus } from '../lib/checkout-rules'
+import type { CampaignStatus, OrderStatus, ProductKind } from '../lib/order-campaigns'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -374,4 +375,206 @@ export class PaymentsSettings extends ScopedEntityBase {
 
   @Property({ name: 'coach_fee_access', type: 'text', default: 'collect' })
   coachFeeAccess: CoachFeeAccess = 'collect'
+}
+
+/**
+ * An order campaign — the order form for kits (payments spec *Data Models* → `payments_order_campaigns`, REQ-032,
+ * DD-30; issue #115, B-30…B-32): a name, the parent description, one section and its groups (scalar ids), the orders
+ * deadline and the payment deadline (≥ the orders deadline), personalisation (print name and number), a notes
+ * question and the supplier. Its stage changes only through `payments.order_campaigns.transition`; the form is
+ * editable in `draft` and `open` only.
+ */
+@Entity({ tableName: 'payments_order_campaigns' })
+@Index({ name: 'payments_order_campaigns_org_status_idx', properties: ['organizationId', 'status'] })
+@Index({ name: 'payments_order_campaigns_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderCampaign extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'description'
+    | 'status'
+    | 'askPrintName'
+    | 'askPrintNumber'
+    | 'notesLabel'
+    | 'supplierName'
+    | 'createdByPersonId'
+
+  @Property({ name: 'name', type: 'text' })
+  name!: string
+
+  @Property({ name: 'description', type: 'text', nullable: true })
+  description?: string | null
+
+  @Property({ name: 'section_id', type: 'uuid' })
+  sectionId!: string
+
+  @Property({ name: 'group_ids', type: 'text[]', columnType: 'uuid[]' })
+  groupIds!: string[]
+
+  @Property({ name: 'closes_on', type: 'date' })
+  closesOn!: string
+
+  @Property({ name: 'payment_due_on', type: 'date' })
+  paymentDueOn!: string
+
+  @Property({ name: 'status', type: 'text', default: 'draft' })
+  status: CampaignStatus = 'draft'
+
+  @Property({ name: 'ask_print_name', type: 'boolean', default: false })
+  askPrintName: boolean = false
+
+  @Property({ name: 'ask_print_number', type: 'boolean', default: false })
+  askPrintNumber: boolean = false
+
+  /** The notes question shown to the guardian; null asks none. */
+  @Property({ name: 'notes_label', type: 'text', nullable: true })
+  notesLabel?: string | null
+
+  @Property({ name: 'supplier_name', type: 'text', nullable: true })
+  supplierName?: string | null
+
+  @Property({ name: 'created_by_person_id', type: 'uuid', nullable: true })
+  createdByPersonId?: string | null
+}
+
+/**
+ * A product of a campaign (`payments_order_products`): a single product with children's and adult sizes and prices
+ * (grosz; no sizes = a product without a size), or the one set of at least two single products at a set price.
+ * Placed orders keep the price of their lines, so a later price change leaves them as they are; a product used in an
+ * order cannot be removed (409 `order_product_in_use`).
+ */
+@Entity({ tableName: 'payments_order_products' })
+@Index({ name: 'payments_order_products_campaign_sort_idx', properties: ['campaignId', 'sort'] })
+@Index({ name: 'payments_order_products_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderProduct extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'priceAdult' | 'requiredAnswer' | 'componentProductIds'
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  @Property({ name: 'name', type: 'text' })
+  name!: string
+
+  @Property({ name: 'kind', type: 'text' })
+  kind!: ProductKind
+
+  @Property({ name: 'component_product_ids', type: 'text[]', columnType: 'uuid[]' })
+  componentProductIds: string[] = []
+
+  @Property({ name: 'sizes_child', type: 'text[]' })
+  sizesChild!: string[]
+
+  @Property({ name: 'sizes_adult', type: 'text[]' })
+  sizesAdult!: string[]
+
+  /** Grosz; for a set, the set price. */
+  @Property({ name: 'price_child', type: 'int' })
+  priceChild!: number
+
+  /** Grosz; required when the product has adult sizes. */
+  @Property({ name: 'price_adult', type: 'int', nullable: true })
+  priceAdult?: number | null
+
+  /** The guardian must pick a size (or "not ordering"). */
+  @Property({ name: 'required_answer', type: 'boolean', default: false })
+  requiredAnswer: boolean = false
+
+  @Property({ name: 'sort', type: 'int' })
+  sort!: number
+}
+
+/**
+ * An order of one child in a campaign (`payments_orders`). Placed by a guardian in E07-S09; this story reads it for
+ * the KPIs, the Orders and No order tabs and the supplier summary. It owns an `order` charge (`charge_id`). One
+ * submitted order per child and campaign (partial unique index).
+ */
+@Entity({ tableName: 'payments_orders' })
+@Index({ name: 'payments_orders_org_campaign_idx', properties: ['organizationId', 'campaignId'] })
+@Index({ name: 'payments_orders_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'payments_orders_campaign_participant_unique',
+  expression:
+    'create unique index "payments_orders_campaign_participant_unique" on "payments_orders" ("campaign_id", "participant_person_id") where status = \'submitted\' and deleted_at is null',
+})
+export class Order extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'contactEmail'
+    | 'contactPhone'
+    | 'printName'
+    | 'printNumber'
+    | 'notes'
+    | 'status'
+    | 'submittedVia'
+    | 'handedOverAt'
+    | 'handedOverByPersonId'
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  @Property({ name: 'participant_person_id', type: 'uuid' })
+  participantPersonId!: string
+
+  @Property({ name: 'ordered_by_person_id', type: 'uuid' })
+  orderedByPersonId!: string
+
+  /** Encrypted at rest. */
+  @Property({ name: 'contact_email', type: 'text', nullable: true })
+  contactEmail?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'contact_phone', type: 'text', nullable: true })
+  contactPhone?: string | null
+
+  @Property({ name: 'print_name', type: 'text', nullable: true })
+  printName?: string | null
+
+  @Property({ name: 'print_number', type: 'int', nullable: true })
+  printNumber?: number | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'notes', type: 'text', nullable: true })
+  notes?: string | null
+
+  @Property({ name: 'status', type: 'text', default: 'submitted' })
+  status: OrderStatus = 'submitted'
+
+  @Property({ name: 'charge_id', type: 'uuid' })
+  chargeId!: string
+
+  @Property({ name: 'submitted_via', type: 'text', default: 'app' })
+  submittedVia: 'app' | 'email_link' = 'app'
+
+  @Property({ name: 'handed_over_at', type: Date, nullable: true })
+  handedOverAt?: Date | null
+
+  @Property({ name: 'handed_over_by_person_id', type: 'uuid', nullable: true })
+  handedOverByPersonId?: string | null
+}
+
+/**
+ * A line of an order (`payments_order_lines`): the product, its size (or a set's sizes by product) and the unit price
+ * recorded when the order was placed.
+ */
+@Entity({ tableName: 'payments_order_lines' })
+@Index({ name: 'payments_order_lines_order_idx', properties: ['orderId'] })
+@Index({ name: 'payments_order_lines_org_product_idx', properties: ['organizationId', 'productId'] })
+@Index({ name: 'payments_order_lines_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderLine extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'size' | 'componentSizes'
+
+  @Property({ name: 'order_id', type: 'uuid' })
+  orderId!: string
+
+  @Property({ name: 'product_id', type: 'uuid' })
+  productId!: string
+
+  @Property({ name: 'size', type: 'text', nullable: true })
+  size?: string | null
+
+  @Property({ name: 'component_sizes', type: 'json', nullable: true })
+  componentSizes?: Record<string, string> | null
+
+  /** Grosz, recorded at order time. */
+  @Property({ name: 'unit_price', type: 'int' })
+  unitPrice!: number
 }

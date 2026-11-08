@@ -1,6 +1,6 @@
 // Error codes owned by `payments` (engineering standards S6.7; payments spec *API, Command, and Error Contracts* →
 // `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108; the charge payments,
-// cancellation and reversal of issue #109; "Accept cash" of issue #114). Thrown through
+// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115). Thrown through
 // `api/errors.ts`. An inverted validity answers the foundation's `validity_inverted`; a stale lock token the
 // platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
@@ -32,6 +32,19 @@ export const errorCodes = [
   { code: 'charge_already_paid', status: 409, messageKey: 'payments.errors.charge_already_paid' },
   { code: 'cash_exceeds_selected', status: 422, messageKey: 'payments.errors.cash_exceeds_selected' },
   { code: 'cash_charges_invalid', status: 422, messageKey: 'payments.errors.cash_charges_invalid' },
+  // Order campaigns (#115).
+  { code: 'order_closes_on_past', status: 422, messageKey: 'payments.errors.order_closes_on_past' },
+  { code: 'order_payment_due_before_close', status: 422, messageKey: 'payments.errors.order_payment_due_before_close' },
+  { code: 'order_section_unknown', status: 422, messageKey: 'payments.errors.order_section_unknown' },
+  { code: 'order_groups_invalid', status: 422, messageKey: 'payments.errors.order_groups_invalid' },
+  { code: 'order_set_too_many', status: 422, messageKey: 'payments.errors.order_set_too_many' },
+  { code: 'order_set_too_small', status: 422, messageKey: 'payments.errors.order_set_too_small' },
+  { code: 'order_set_component_invalid', status: 422, messageKey: 'payments.errors.order_set_component_invalid' },
+  { code: 'order_adult_price_missing', status: 422, messageKey: 'payments.errors.order_adult_price_missing' },
+  { code: 'order_campaign_not_editable', status: 409, messageKey: 'payments.errors.order_campaign_not_editable' },
+  { code: 'order_product_in_use', status: 409, messageKey: 'payments.errors.order_product_in_use' },
+  { code: 'order_campaign_transition_invalid', status: 409, messageKey: 'payments.errors.order_campaign_transition_invalid' },
+  { code: 'order_campaign_not_collecting', status: 409, messageKey: 'payments.errors.order_campaign_not_collecting' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

@@ -2,7 +2,7 @@ import { asFunction } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerGatewayAdapter, registerWebhookHandler } from '@open-mercato/shared/modules/payment_gateways/types'
 import { registerEmailTemplate } from '@/modules/foundation'
-import { cashReceivedTemplate } from './emails/templates'
+import { cashReceivedTemplate, orderReminderTemplate } from './emails/templates'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
 
@@ -25,6 +25,7 @@ export function checkoutProviderKey(): string {
  */
 export function register(container: AppContainer) {
   registerEmailTemplate(container, cashReceivedTemplate)
+  registerEmailTemplate(container, orderReminderTemplate)
   container.register({
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
   })
