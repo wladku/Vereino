@@ -158,7 +158,7 @@
   "facilities.closures.flash.created": "Dodano zamknięcie.",
   "facilities.closures.flash.saved": "Zapisano zamknięcie.",
   "facilities.closures.flash.deleted": "Usunięto zamknięcie.",
-  "facilities.closures.flash.flagged": "Zapisano. Oznaczono do przeniesienia: zajęcia — {sessions}, wynajmy — {rentals}.",
+  "facilities.closures.flash.flagged": "Zapisano. Oznaczono do przeniesienia: zajęcia — {sessions}, wynajmy — {rentals}, rezerwacje — {bookings}.",
   "facilities.closures.groups.closure": "Zamknięcie",
   "facilities.rates.category.municipal_club": "Klub gminny",
   "facilities.rates.category.municipal_club_winter_lighting": "Klub gminny, zima z oświetleniem",

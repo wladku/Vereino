@@ -158,7 +158,7 @@
   "facilities.closures.flash.created": "Closure added.",
   "facilities.closures.flash.saved": "Closure saved.",
   "facilities.closures.flash.deleted": "Closure deleted.",
-  "facilities.closures.flash.flagged": "Saved. Marked to be moved: {sessions} sessions, {rentals} rentals.",
+  "facilities.closures.flash.flagged": "Saved. Marked to be moved: {sessions} sessions, {rentals} rentals, {bookings} bookings.",
   "facilities.closures.groups.closure": "Closure",
   "facilities.rates.category.municipal_club": "Municipal club",
   "facilities.rates.category.municipal_club_winter_lighting": "Municipal club, winter with lighting",

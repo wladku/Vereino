@@ -250,6 +250,15 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     expect(overBooking.body?.conflicts).toContainEqual(
       expect.objectContaining({ kind: 'booking', label: 'Szkolenie instruktorów · Ola Instruktorka' }),
     )
+    // The hall has no opening hours: an overnight booking is not refused as `place_closed`.
+    const overnight = await postInternalBooking(request, ola.token, {
+      placeId: hall,
+      startsAt: zoneInstant(tuesday, '22:00'),
+      endsAt: zoneInstant(wednesday, '08:00'),
+      sectionId: fitness,
+      purpose: 'Nocny obóz instruktorów',
+    })
+    expect(overnight.status, JSON.stringify(overnight.body)).toBe(201)
     const tooShort = await postInternalBooking(request, ola.token, {
       placeId: hall,
       startsAt: zoneInstant(tuesday, '16:00'),

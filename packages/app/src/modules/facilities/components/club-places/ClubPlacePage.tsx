@@ -121,7 +121,10 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
     void refresh()
   }
 
+  const cancelling = React.useRef(new Set<string>())
   const cancel = async (entry: CalendarEntry) => {
+    // A second click while the first cancellation runs would send the old version and answer 409.
+    if (cancelling.current.has(entry.id)) return
     const label = entryLabel(t, entry)
     const confirmed = await confirm({
       title: t('facilities.places.cancel.title'),
@@ -131,7 +134,8 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
       variant: 'destructive',
     })
     if (!confirmed) return
-    const result = await cancelInternalBooking(entry)
+    cancelling.current.add(entry.id)
+    const result = await cancelInternalBooking(entry).finally(() => cancelling.current.delete(entry.id))
     if (result.ok) flash(t('facilities.places.cancel.done', { label }), 'success')
     else if (result.status === 409) flash(t('facilities.places.cancel.stale'), 'error')
     else if (result.status === 403) flash(t('facilities.places.errors.denied'), 'error')

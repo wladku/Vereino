@@ -150,7 +150,9 @@ const createInternalBookingCommand: CommandHandler<Record<string, unknown>, Inte
       const closures = entries.filter((entry) => entry.kind === 'closure')
       const timeZone = await clubTimeZone(ctx.container, scope)
       const hours = (await openingHours(ctx.container, scope, [parsed.placeId], em)).get(parsed.placeId) ?? null
-      if (closures.length > 0 || !slotWithinOpeningHours(hours, localSlotOf(startsAt, endsAt, timeZone))) {
+      // No opening hours on the place chain means no limit, overnight and multi-day bookings included (DD-41).
+      const outsideHours = hours !== null && !slotWithinOpeningHours(hours, localSlotOf(startsAt, endsAt, timeZone))
+      if (closures.length > 0 || outsideHours) {
         await throwFieldError('place_closed', 'startsAt', { conflicts: closures.map(conflictView) })
       }
       const occupying = entries.filter((entry) => entry.kind !== 'closure' && entry.kind !== 'request')
@@ -308,6 +310,14 @@ const supersedeBySessionsCommand: CommandHandler<Record<string, unknown>, Supers
       )
       const now = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
       const trusted = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      // Most clubs hold no request most of the time: one cheap probe before reading the sessions.
+      const anyHeld = await em.count(Rental, {
+        ...trusted,
+        deletedAt: null,
+        status: 'pending_approval',
+        holdExpiresAt: { $gt: now },
+      })
+      if (anyHeld === 0) return trusted
       const sessions = await sessionsByIds(ctx.container, trusted, authorized.parsed.occurrenceIds, em)
       const families = new Map<string, string[]>()
       const holds = new Map<string, string>()
