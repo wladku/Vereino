@@ -12,11 +12,7 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { cashPayersQuerySchema } from '../../../data/validators'
-import { payerSummaries } from '../../../lib/cash'
-import { amountDueOf, remainingOf } from '../../../lib/charge-ledger'
-import { openPayableCharges } from '../../../services/cash'
-import { findPersons, searchPersonIds } from '../../../services/directory'
-import { paidTotals } from '../../../services/ledger'
+import { payersWithDue } from '../../../services/cash'
 import { PAYMENTS_READ_KINDS, errorSchema } from '../../shared'
 
 export const metadata = {
@@ -53,54 +49,7 @@ export async function GET(request: Request): Promise<Response> {
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
     })
-    const charges = await openPayableCharges(ctx.container, scope)
-    const paid = await paidTotals(
-      ctx.container,
-      scope,
-      charges.map((charge) => charge.id),
-    )
-    const summaries = payerSummaries(
-      charges.map((charge) => ({
-        payerPersonId: charge.payerPersonId as string,
-        personId: charge.personId ?? null,
-        remaining: remainingOf(amountDueOf(charge), paid.get(charge.id) ?? 0),
-      })),
-    )
-    const matching = query.search ? await searchPersonIds(ctx.container, scope, query.search) : null
-    const filtered = matching
-      ? summaries.filter(
-          (summary) => matching.has(summary.payerPersonId) || summary.wardIds.some((id) => matching.has(id)),
-        )
-      : summaries
-    const persons = await findPersons(
-      ctx.container,
-      scope,
-      filtered.flatMap((summary) => [summary.payerPersonId, ...summary.wardIds]),
-    )
-    const named = filtered
-      .flatMap((summary) => {
-        const payer = persons.get(summary.payerPersonId)
-        if (!payer) return []
-        return [
-          {
-            payerPersonId: summary.payerPersonId,
-            firstName: payer.firstName,
-            lastName: payer.lastName,
-            wards: summary.wardIds.flatMap((personId) => {
-              const ward = persons.get(personId)
-              return ward ? [{ personId, firstName: ward.firstName, lastName: ward.lastName }] : []
-            }),
-            totalDue: summary.totalDue,
-            chargeCount: summary.chargeCount,
-          },
-        ]
-      })
-      .sort(
-        (a, b) =>
-          a.lastName.localeCompare(b.lastName, 'pl') ||
-          a.firstName.localeCompare(b.firstName, 'pl') ||
-          a.payerPersonId.localeCompare(b.payerPersonId),
-      )
+    const named = await payersWithDue(ctx.container, scope, query.search)
     const start = (query.page - 1) * query.pageSize
     return Response.json({
       items: named.slice(start, start + query.pageSize),
