@@ -75,7 +75,7 @@ export type RateRow = {
 }
 
 /** What a closure save marked to be moved. */
-export type FlaggedCounts = { sessions: number; rentals: number }
+export type FlaggedCounts = { sessions: number; rentals: number; bookings?: number }
 
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback

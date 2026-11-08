@@ -138,8 +138,10 @@ export const errorSchema = z.object({ error: z.string(), code: z.string().option
 export const updateResponseSchema = z.object({ ok: z.literal(true), id: z.uuid(), updatedAt: z.string() })
 
 export const rescheduleCountsSchema = z
-  .object({ sessions: z.number().int(), rentals: z.number().int() })
-  .describe('What the save marked to be moved: planned sessions, and rentals (from E08-S02 on)')
+  .object({ sessions: z.number().int(), rentals: z.number().int(), bookings: z.number().int() })
+  .describe(
+    'What the save marked to be moved: planned sessions, rentals (from E08-S02 on) and internal bookings (E08-S03)',
+  )
 
 export const zoneRuleListItemSchema = z.object({
   id: z.uuid(),
@@ -222,12 +224,18 @@ export const entryBanListItemSchema = z.object({
   updatedAt: z.string().nullable(),
 })
 
-/** A conflicting entry of a rental check (ids and times only). */
+/** A conflicting entry of a rental or booking check: ids and times, and for staff a label (#123). */
 export const conflictViewSchema = z.object({
-  kind: z.enum(['session', 'rental', 'closure']),
+  kind: z.enum(['session', 'rental', 'booking', 'closure']),
   id: z.uuid(),
   start: z.string(),
   end: z.string(),
+  placeId: z.uuid().optional(),
+  label: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Staff only: the activity, the renter, the booking purpose or the closure reason'),
 })
 
 /** The answer of a rental status action. */

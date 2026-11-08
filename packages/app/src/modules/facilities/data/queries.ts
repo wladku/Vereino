@@ -39,3 +39,27 @@ export async function flagRentalsForReschedule(
   )
   return rows.map((row) => ({ id: row.id, placeId: row.place_id }))
 }
+
+/**
+ * Sets `needs_reschedule` on the `confirmed` internal bookings on the given places that overlap `start`–`end` and are
+ * not flagged yet (facilities spec `facilities.closure.created`: "`needs_reschedule` on sessions, internal bookings and
+ * rentals"; #123): one conditional update, so a repeated call flags nothing twice. Returns the bookings it flagged.
+ */
+export async function flagInternalBookingsForReschedule(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+): Promise<Array<{ id: string; placeId: string }>> {
+  if (placeIds.length === 0) return []
+  const placeholders = placeIds.map(() => '?').join(', ')
+  const rows = await em.execute<{ id: string; place_id: string }[]>(
+    `update facilities_internal_bookings
+     set needs_reschedule = true, updated_at = now()
+     where tenant_id = ? and organization_id = ? and deleted_at is null and status = 'confirmed'
+       and needs_reschedule = false and place_id in (${placeholders}) and starts_at < ? and ends_at > ?
+     returning id, place_id`,
+    [scope.tenantId, scope.organizationId, ...placeIds, window.end, window.start],
+  )
+  return rows.map((row) => ({ id: row.id, placeId: row.place_id }))
+}

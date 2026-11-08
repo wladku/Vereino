@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
 import { CLOSURE_REASONS } from '../lib/closures'
+import { PURPOSE_MAX_LENGTH, PURPOSE_MIN_LENGTH } from '../lib/internal-bookings'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import {
   ENTRY_BAN_SUBJECT_TYPES,
@@ -234,6 +235,33 @@ export const entryBanListQuerySchema = z.object({
   sortField: z.enum(['startsOn', 'createdAt', 'updatedAt']).optional(),
   placeId: z.uuid().optional(),
   subjectId: z.uuid().optional(),
+})
+
+// --- Internal bookings (#123) ---
+
+/**
+ * `POST /api/facilities/internal-bookings` (`facilities.internal_bookings.create`, M-11 "Book" → "General purpose"):
+ * a place, a period (any length, within the opening hours), the purpose (3–120 characters) and the section the booking
+ * is made for. The period, the opening hours and the occupancy are checked by the command (422 / 409 with a code).
+ */
+export const internalBookingCreateSchema = z
+  .object({
+    placeId: z.uuid(),
+    startsAt: instantSchema,
+    endsAt: instantSchema,
+    sectionId: z.uuid(),
+    purpose: z.string().trim().min(PURPOSE_MIN_LENGTH).max(PURPOSE_MAX_LENGTH),
+  })
+  .strict()
+
+/** `DELETE /api/facilities/internal-bookings/{id}`: the booker, the section's coordinator or the administrator. */
+export const internalBookingCancelSchema = z.object({ id: z.uuid(), reason: optionalText(500) }).strict()
+
+/** `GET /api/facilities/calendar`: a window of at most 31 days; one place (with its timeline) or every bookable place. */
+export const calendarQuerySchema = z.object({
+  placeId: z.uuid().optional(),
+  from: instantSchema,
+  to: instantSchema,
 })
 
 export type RentalCreateInput = z.output<typeof rentalCreateSchema>

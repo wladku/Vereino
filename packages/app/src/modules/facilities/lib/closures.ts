@@ -10,8 +10,11 @@ export function closurePeriodProblem(startsAt: Date, endsAt: Date): string | nul
   return endsAt.getTime() > startsAt.getTime() ? null : 'inverted'
 }
 
-/** What a closure save flagged for rescheduling: the toast "Marked to be moved: n sessions, n rentals". */
-export type RescheduleCounts = { readonly sessions: number; readonly rentals: number }
+/**
+ * What a closure save flagged for rescheduling: the toast "Marked to be moved: n sessions, n rentals"; internal
+ * bookings are counted too (#123).
+ */
+export type RescheduleCounts = { readonly sessions: number; readonly rentals: number; readonly bookings: number }
 
 /** True when two periods move the reschedule window (a changed start or end flags again). */
 export function closureWindowChanged(

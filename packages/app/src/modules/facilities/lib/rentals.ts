@@ -181,10 +181,10 @@ export function slotWithinOpeningHours(hours: OpeningHours | null, slot: LocalSl
   return windows === null || withinWindows(windows, slot.from, slot.to)
 }
 
-/** An occupying entry on a place (a session, a rental, a closure) as the occupancy check reads it. */
+/** An occupying entry on a place (a session, a rental, an internal booking, a closure) as the occupancy check reads it. */
 export type OccupancyEntry = {
   readonly id: string
-  readonly kind: 'session' | 'rental' | 'closure'
+  readonly kind: 'session' | 'rental' | 'booking' | 'closure'
   readonly placeId: string
   readonly start: Date
   readonly end: Date

@@ -156,7 +156,7 @@ test('TEST-022 closures: a closure on the complex marks the sessions on its pitc
       note: 'Gminny festyn',
     })
     expect(closure.status, JSON.stringify(closure.body)).toBe(201)
-    expect(closure.body?.flagged).toEqual({ sessions: 1, rentals: 0 })
+    expect(closure.body?.flagged).toEqual({ sessions: 1, rentals: 0, bookings: 0 })
     const flagged = await getOccurrence(request, coordinator, tuesdaySession.id)
     expect(flagged.body?.needsReschedule).toBe(true)
     const wednesday = await listOccurrences(request, coordinator, '&needsReschedule=false')
@@ -176,7 +176,7 @@ test('TEST-022 closures: a closure on the complex marks the sessions on its pitc
       stored.updatedAt,
     )
     expect(wednesdayClosure.status, JSON.stringify(wednesdayClosure.body)).toBe(200)
-    expect(wednesdayClosure.body?.flagged).toEqual({ sessions: 1, rentals: 0 })
+    expect(wednesdayClosure.body?.flagged).toEqual({ sessions: 1, rentals: 0, bookings: 0 })
     const again = await postClosure(request, admin, {
       placeId: pitch,
       startsAt: zoneInstant(tuesday, '17:30'),
@@ -184,7 +184,7 @@ test('TEST-022 closures: a closure on the complex marks the sessions on its pitc
       reason: 'snow',
     })
     expect(again.status, JSON.stringify(again.body)).toBe(201)
-    expect(again.body?.flagged).toEqual({ sessions: 0, rentals: 0 })
+    expect(again.body?.flagged).toEqual({ sessions: 0, rentals: 0, bookings: 0 })
 
     // A coordinator holds `facilities.view` only: a closure is refused.
     const forbidden = await postClosure(request, coordinator, {

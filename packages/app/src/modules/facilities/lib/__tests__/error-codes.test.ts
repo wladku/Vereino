@@ -23,6 +23,9 @@ describe('facilities error codes', () => {
       'entry_ban_active',
       'rental_start_past',
       'rental_not_started',
+      'booking_period_invalid',
+      'booking_start_past',
+      'booking_section_invalid',
       'entry_ban_period_invalid',
     ])
     for (const entry of errorCodes) {

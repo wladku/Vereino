@@ -16,14 +16,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
 import { calendarDateInZone } from '@vereino/core'
-import {
-  advanceWhere,
-  assertTransition,
-  authorizeScoped,
-  foundationErrors,
-  lockOccupancy,
-  trustedScopeOf,
-} from '@/modules/foundation'
+import { advanceWhere, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { Rental } from '../data/entities'
 import { rentalActionSchema, rentalCancelSchema, rentalCreateSchema, rentalMoveSchema } from '../data/validators'
@@ -48,6 +41,7 @@ import {
   facilitiesLog,
   facilityTarget,
   inWriteTransaction,
+  lockForOccupancy,
   rowLoader,
   throwFieldError,
   type FacilitiesCommandResult,
@@ -117,12 +111,6 @@ async function throwFirstIssue(issues: readonly RentalIssue[]): Promise<void> {
   const first = issues.at(0)
   if (!first) return
   await throwFieldError(first.code, ISSUE_FIELDS[first.code], first.conflicts ? { conflicts: first.conflicts } : {})
-}
-
-/** Takes the organization's occupancy lock first (DD-43: before any row lock); no trusted scope fails closed later. */
-async function lockForOccupancy(ctx: CommandRuntimeContext, em: EntityManager): Promise<void> {
-  const scope = trustedScopeOf(ctx)
-  if (scope) await lockOccupancy(em, scope.organizationId)
 }
 
 type RentalCreateParsed = z.output<typeof rentalCreateSchema>

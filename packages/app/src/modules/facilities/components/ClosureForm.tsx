@@ -117,7 +117,14 @@ function closureBody(values: ClosureFormValues, t: Translate) {
 function flashFlagged(t: Translate, result: unknown, fallback: string) {
   const flagged = (result as { flagged?: Partial<FlaggedCounts> } | null)?.flagged
   if (flagged && typeof flagged.sessions === 'number' && typeof flagged.rentals === 'number') {
-    flash(t('facilities.closures.flash.flagged', { sessions: flagged.sessions, rentals: flagged.rentals }), 'success')
+    flash(
+      t('facilities.closures.flash.flagged', {
+        sessions: flagged.sessions,
+        rentals: flagged.rentals,
+        bookings: flagged.bookings ?? 0,
+      }),
+      'success',
+    )
   } else {
     flash(fallback, 'success')
   }

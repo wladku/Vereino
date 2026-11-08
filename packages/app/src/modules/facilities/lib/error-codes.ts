@@ -1,5 +1,5 @@
 // Error codes owned by `facilities` (engineering standards S6.7; facilities spec *API, Command, and Error Contracts*;
-// #121, #122). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
+// #121, #122, #123). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
 // stale lock token the platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
 
@@ -32,6 +32,11 @@ export const errorCodes = [
   { code: 'entry_ban_active', status: 409, messageKey: 'facilities.errors.entry_ban_active' },
   { code: 'rental_start_past', status: 422, messageKey: 'facilities.errors.rental_start_past' },
   { code: 'rental_not_started', status: 409, messageKey: 'facilities.errors.rental_not_started' },
+  // Internal bookings (glossary *Internal booking*, REQ-023, M-11 validation; #123). An occupied slot answers
+  // `rental_conflict` with the list (club spec), a closure or the opening hours `place_closed`.
+  { code: 'booking_period_invalid', status: 422, messageKey: 'facilities.errors.booking_period_invalid' },
+  { code: 'booking_start_past', status: 422, messageKey: 'facilities.errors.booking_start_past' },
+  { code: 'booking_section_invalid', status: 422, messageKey: 'facilities.errors.booking_section_invalid' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },
 ] as const satisfies ErrorCodeTable
