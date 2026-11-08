@@ -24,6 +24,8 @@ import {
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
 import { MAX_CASH_CHARGES } from '../lib/cash'
+import { BANK_FORMATS } from '../lib/bank-statement'
+import { BANK_SKIP_REASONS, BANK_TRANSACTION_STATUSES, MAX_SKIP_NOTE_LENGTH } from '../lib/bank-matching'
 import {
   CAMPAIGN_ACTIONS,
   CAMPAIGN_DESCRIPTION_MAX,
@@ -326,6 +328,60 @@ export const ordersListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 })
+
+// --- Bank statement import (#113, REQ-030) ---
+
+const columnNameSchema = z.string().trim().min(1).max(100)
+
+/** The treasurer's CSV column mapping: the header text of each column in the bank's file. */
+export const columnProfileSchema = z
+  .object({
+    date: columnNameSchema.optional(),
+    amount: columnNameSchema.optional(),
+    sender: columnNameSchema.optional(),
+    title: columnNameSchema.optional(),
+    account: columnNameSchema.optional(),
+  })
+  .strict()
+
+/** `payments.bank_imports.create`: the text fields next to the file (the format is detected when omitted). */
+export const bankImportCreateSchema = z
+  .object({
+    format: z
+      .enum(BANK_FORMATS)
+      .nullable()
+      .optional()
+      .describe('`csv` or `mt940`; detected from the content when omitted'),
+    columnProfile: columnProfileSchema.nullable().optional(),
+  })
+  .strict()
+
+export const bankImportListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+export const bankTransactionListQuerySchema = z.object({
+  status: z.enum(BANK_TRANSACTION_STATUSES).optional(),
+  importId: z.uuid().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+/** Confirm, Restore and Undo of the transfer `id` (the route's path parameter). */
+export const bankTransactionActionSchema = z.object({ id: z.uuid() }).strict()
+
+/** Assign (or change) the payer of the transfer `id`; it is recorded against their open charges, oldest first. */
+export const bankTransactionAssignSchema = z.object({ id: z.uuid(), payerPersonId: z.uuid() }).strict()
+
+/** Skip the transfer `id` with its reason (a donation, a grant, a refund, other) and an optional note. */
+export const bankTransactionIgnoreSchema = z
+  .object({
+    id: z.uuid(),
+    reason: z.enum(BANK_SKIP_REASONS),
+    note: z.string().trim().max(MAX_SKIP_NOTE_LENGTH).nullable().optional(),
+  })
+  .strict()
 
 // --- Guardian orders (#116, REQ-032, M-17, M-19) ---
 

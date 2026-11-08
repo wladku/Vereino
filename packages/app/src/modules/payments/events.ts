@@ -46,6 +46,13 @@ const events = [
   { id: 'payments.order.submitted', label: 'Kit order placed', entity: 'order', category: 'custom' },
   { id: 'payments.order.updated', label: 'Kit order changed', entity: 'order', category: 'custom' },
   { id: 'payments.order.cancelled', label: 'Kit order cancelled', entity: 'order', category: 'custom' },
+  { id: 'payments.bank_import.completed', label: 'Bank statement imported', entity: 'bank_import', category: 'custom' },
+  {
+    id: 'payments.bank_transaction.decided',
+    label: 'Statement transfer decided',
+    entity: 'bank_transaction',
+    category: 'custom',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'payments', events })

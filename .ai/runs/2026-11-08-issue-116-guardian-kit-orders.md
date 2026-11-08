@@ -27,3 +27,36 @@
 - **The link request needs the club's public slug.** D-024 allows a sessionless lookup only by a public slug or a token hash, so the share link carries `?club=<slug>` (while the club's public pages are on) and the request sends it.
 - **One command per write for both channels.** A `token` in the input switches the actor to the link's guardian; the session path keeps the R10 gate.
 - **The copy e-mail goes after the commit** (with the payer code), through the foundation dispatch; a failure is logged and the order stands.
+8. **UI:** M-16 `/club/orders` (`ClubOrdersPage`), M-17 `/club/orders/[campaignId]` (`ClubOrderPage`: the member frame when signed in, the campaign card with "Sign in" and the link request without a session), M-19 `/club/o/[token]` (`OrderLinkPage` in the foundation `TokenPageShell`); the shared `OrderFormSection` (child switcher, the set with its saving, a size or "Not ordering" per product, print name and number with the numbers taken in the group, contact, notes, live total; the summary with how to pay, "Change" and "Cancel"). A "Kit orders" button on M-08. en and pl catalogs.
+9. **Test:** `E07-S09-guardian-kit-orders.spec.ts` covers every acceptance criterion of #116 (API, link and browser at 375 px).
+10. **Docs:** the spec (step 9 note, J-009, the UI and API rows) and its changelog file, the module README and description, lesson `optional-session-page-disables-401-redirect`.
+11. **Merge with `origin/main` (#229, the bank statement import):** additive conflicts in the entities, validators, events, error codes, ACL comment, README, i18n and the error-code test. The payments snapshot was taken from main and regenerated; the duplicate migration it produced (the same `payments_order_links` SQL as `Migration20261108223622_payments`) was deleted.
+
+## Files changed
+
+- `packages/app/src/modules/payments/`:
+  - `lib/orders.ts` and its test, `lib/error-codes.ts`, `lib/__tests__/payments-rules.test.ts`;
+  - `data/entities.ts`, `data/validators.ts`, the migration `Migration20261108223622_payments.ts` and the snapshot;
+  - `acl.ts`, `events.ts`, `di.ts`, `index.ts`, `README.md`, `emails/templates.ts`, `i18n/en.json`, `i18n/pl.json`;
+  - `commands/orders.ts`; `services/orders.ts`, `services/order-links.ts`, `services/order-campaigns.ts` (exports `orderMoney`);
+  - `api/order-routes.ts`, `api/my-orders`, `api/orders/**`, `api/order-campaigns/[id]/form`, `api/order-campaigns/[id]/share-text` (club slug), `api/public/order-campaigns/**`, `api/order-links/**`;
+  - `components/club/orders/*`, `components/club/ClubPaymentsPage.tsx`, `frontend/club/orders/**`, `frontend/club/o/[token]/*`.
+- `packages/app/.ai/qa/tests/payments/E07-S09-guardian-kit-orders.spec.ts`.
+- `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/changelog/2026-10-27-vereino-club-payments/2026-11-08-issue-116-guardian-orders.md`, `.ai/lessons/optional-session-page-disables-401-redirect.md`.
+
+## Commands and results
+
+- `npx jest src/modules/payments/lib/__tests__/orders.test.ts --coverage`: 18 passed, 100 % lines, branches and functions on `lib/orders.ts`.
+- `DATABASE_URL=postgres://u:p@127.0.0.1:1/none yarn db:generate`: `Migration20261108223622_payments` (one table, its unique hash, two indexes).
+- `yarn test:integration:vereino --filter E07-S09`: **did not run**: `[ephemeral] starting PostgreSQL (pgvector/pgvector:pg17-trixie)` / `Could not find a working container runtime strategy`. Docker Desktop is not running on this machine, and this run may not start it. The migration was therefore not applied to a throwaway database either. The CI integration shards run the test on the PR.
+- `yarn verify`:
+  1. failed at `lint` (22 errors in the new files: template literals with `string | undefined`, a spread of an entity, `FormEvent`, arrow shorthands returning `void`, `setState` in an effect, a dynamic `delete`, an unnecessary assertion). Fixed; the effect became a reset-on-key during render.
+  2. failed at `lessons:check` (`apiCall` is not a kebab-case topic) and at `test` (the error-code table test lists the codes). Fixed.
+  3. Full run: all 14 steps passed.
+  4. After the merge with `origin/main`: all 14 steps passed.
+
+## Open problems / next steps
+
+- The owner confirms or overrides the defaults on the PR: the migration, Q1, `GET /api/payments/my-orders` instead of `?for=me`, the club slug in the share link, and the commands not being undoable.
+- E07-S09 must pass on the CI integration shards (first run there).
+- E07-S10 (#117): the kit handover and the coach view.

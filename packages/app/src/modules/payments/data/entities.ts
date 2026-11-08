@@ -19,6 +19,8 @@ import type {
 import type { PaymentMethod } from '../lib/charge-ledger'
 import type { CheckoutStatus } from '../lib/checkout-rules'
 import type { CampaignStatus, OrderStatus, ProductKind } from '../lib/order-campaigns'
+import type { BankFormat, ColumnProfile } from '../lib/bank-statement'
+import type { BankSkipReason, BankTransactionStatus, MatchReason } from '../lib/bank-matching'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -201,6 +203,7 @@ export class Charge extends ScopedEntityBase {
 @Index({ name: 'payments_payments_org_receipt_idx', properties: ['organizationId', 'receiptNumber'] })
 @Index({ name: 'payments_payments_org_collector_idx', properties: ['organizationId', 'collectedByPersonId', 'paidOn'] })
 @Index({ name: 'payments_payments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'payments_payments_org_bank_transaction_idx', properties: ['organizationId', 'bankTransactionId'] })
 @Index({
   name: 'payments_payments_reverses_unique',
   expression:
@@ -228,6 +231,7 @@ export class Payment extends ScopedEntityBase {
     | 'isOverpayment'
     | 'collectedByPersonId'
     | 'receiptNumber'
+    | 'bankTransactionId'
 
   @Property({ name: 'charge_id', type: 'uuid' })
   chargeId!: string
@@ -281,6 +285,13 @@ export class Payment extends ScopedEntityBase {
   /** `KP/YYYY/MM/NNN`, sequential within the club and month; shared by the payments of one acceptance. */
   @Property({ name: 'receipt_number', type: 'text', nullable: true })
   receiptNumber?: string | null
+
+  /**
+   * The statement transfer a `transfer` payment records (#113). Its undo writes reversing entries that name the same
+   * transfer, so the transfer's live payments are those not reversed.
+   */
+  @Property({ name: 'bank_transaction_id', type: 'uuid', nullable: true })
+  bankTransactionId?: string | null
 }
 
 /**
@@ -598,6 +609,139 @@ export class PayerRef extends ScopedEntityBase {
 
   @Property({ name: 'code', type: 'text' })
   code!: string
+}
+
+/**
+ * One imported bank statement (payments spec *Data Models* → `payments_bank_imports`; REQ-030, TEST-042; issue #113,
+ * B-29): the file in the private `attachments` partition (read only with `payments.bank.import`), its format and the
+ * CSV column mapping used, who imported it and what happened to its lines — recorded, to confirm, unmatched, skipped
+ * (debits and transfers imported before). The counts are the import's summary; later decisions do not change them.
+ */
+@Entity({ tableName: 'payments_bank_imports' })
+@Index({ name: 'payments_bank_imports_org_created_idx', properties: ['organizationId', 'createdAt'] })
+@Index({ name: 'payments_bank_imports_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class BankImport extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'columnProfile' | 'importedByPersonId' | 'importedByUserId'
+
+  @Property({ name: 'attachment_id', type: 'uuid' })
+  attachmentId!: string
+
+  @Property({ name: 'file_name', type: 'text' })
+  fileName!: string
+
+  @Property({ name: 'format', type: 'text' })
+  format!: BankFormat
+
+  @Property({ name: 'column_profile', type: 'json', nullable: true })
+  columnProfile?: ColumnProfile | null
+
+  @Property({ name: 'imported_by_person_id', type: 'uuid', nullable: true })
+  importedByPersonId?: string | null
+
+  @Property({ name: 'imported_by_user_id', type: 'uuid', nullable: true })
+  importedByUserId?: string | null
+
+  @Property({ name: 'total', type: 'int' })
+  total!: number
+
+  @Property({ name: 'booked', type: 'int' })
+  booked!: number
+
+  @Property({ name: 'suggested', type: 'int' })
+  suggested!: number
+
+  @Property({ name: 'unmatched', type: 'int' })
+  unmatched!: number
+
+  @Property({ name: 'skipped', type: 'int' })
+  skipped!: number
+}
+
+/**
+ * An incoming transfer of an imported statement (payments spec *Data Models* → `payments_bank_transactions`; REQ-030,
+ * TEST-042; issue #113, B-29): the day, the amount in grosz, the sender, their account and the title (encrypted), the
+ * fingerprint that keeps a re-import from storing it twice, the status, the payer it is matched to with the charges it
+ * pays (`allocation`, oldest first) and why. Its status changes only through the `payments.bank_transactions.*`
+ * commands; a recorded transfer's payments carry its id. Debits and duplicates are never stored.
+ */
+@Entity({ tableName: 'payments_bank_transactions' })
+@Unique({ name: 'payments_bank_transactions_org_hash_unique', properties: ['organizationId', 'txHash'] })
+@Index({ name: 'payments_bank_transactions_org_status_idx', properties: ['organizationId', 'status', 'bookedOn'] })
+@Index({ name: 'payments_bank_transactions_org_import_idx', properties: ['organizationId', 'importId'] })
+@Index({ name: 'payments_bank_transactions_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class BankTransaction extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'counterpartyName'
+    | 'counterpartyAccount'
+    | 'payerPersonId'
+    | 'allocation'
+    | 'autoBooked'
+    | 'skipReason'
+    | 'skipNote'
+    | 'decidedByPersonId'
+    | 'decidedByUserId'
+    | 'decidedAt'
+
+  @Property({ name: 'import_id', type: 'uuid' })
+  importId!: string
+
+  /** The line of the statement file. */
+  @Property({ name: 'line', type: 'int' })
+  line!: number
+
+  @Property({ name: 'booked_on', type: 'date' })
+  bookedOn!: string
+
+  /** Grosz; always positive (debits are skipped). */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  /** Encrypted at rest. */
+  @Property({ name: 'counterparty_name', type: 'text', nullable: true })
+  counterpartyName?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'counterparty_account', type: 'text', nullable: true })
+  counterpartyAccount?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'title', type: 'text' })
+  title!: string
+
+  @Property({ name: 'tx_hash', type: 'text' })
+  txHash!: string
+
+  @Property({ name: 'status', type: 'text' })
+  status!: BankTransactionStatus
+
+  @Property({ name: 'payer_person_id', type: 'uuid', nullable: true })
+  payerPersonId?: string | null
+
+  /** The charges the transfer pays, oldest first, in grosz. */
+  @Property({ name: 'allocation', type: 'json' })
+  allocation: { chargeId: string; amount: number }[] = []
+
+  @Property({ name: 'match_reason', type: 'text' })
+  matchReason!: MatchReason
+
+  @Property({ name: 'auto_booked', type: 'boolean', default: false })
+  autoBooked: boolean = false
+
+  @Property({ name: 'skip_reason', type: 'text', nullable: true })
+  skipReason?: BankSkipReason | null
+
+  @Property({ name: 'skip_note', type: 'text', nullable: true })
+  skipNote?: string | null
+
+  @Property({ name: 'decided_by_person_id', type: 'uuid', nullable: true })
+  decidedByPersonId?: string | null
+
+  @Property({ name: 'decided_by_user_id', type: 'uuid', nullable: true })
+  decidedByUserId?: string | null
+
+  @Property({ name: 'decided_at', type: Date, nullable: true })
+  decidedAt?: Date | null
 }
 
 const orderLinkColumns = tokenLinkColumns({ use: 'until_expiry' })
