@@ -1,7 +1,7 @@
 // Fixtures of the `payments` tests (payments spec phase 4 steps 2, 3, 4 and 8, TEST-018, TEST-048, TEST-020, TEST-019,
-// TEST-021, TEST-057, TEST-043; issues #108, #109, #110, #114): fee schedules, discount rules, the period generator,
+// TEST-021, TEST-057, TEST-043, TEST-042; issues #108, #109, #110, #114, #113): fee schedules, discount rules, the period generator,
 // the charge list, the charge ledger, the undo probe (#184), the online checkout through the gateway test adapter and
-// "Accept cash".
+// "Accept cash" and the bank statement import.
 import { spawnSync } from 'node:child_process'
 import { createHmac } from 'node:crypto'
 import fs from 'node:fs'
@@ -368,4 +368,104 @@ export async function cashToday(request: APIRequestContext, token: string) {
     items: { receiptNumber: string; payerPersonId: string | null; amount: number; reversed: boolean }[]
     total: number
   }>(request, 'GET', '/api/payments/cash', token)
+}
+
+// --- Bank statement import (phase 4 step 7, TEST-042; issue #113) ---
+
+export type BankImportBody = CodedBody & {
+  importId?: string
+  format?: string
+  total?: number
+  booked?: number
+  suggested?: number
+  unmatched?: number
+  skipped?: number
+  debits?: number
+  duplicates?: number
+  unreadable?: number[]
+  required?: string
+  missing?: string
+}
+
+/** `POST /api/payments/bank-imports` (multipart `file`, optional `format` and `columnProfile`). */
+export async function importStatement(
+  request: APIRequestContext,
+  token: string,
+  text: string,
+  fields: Record<string, string> = {},
+  name = 'statement.csv',
+): Promise<{ status: number; body: BankImportBody | null }> {
+  const response = await request.fetch('/api/payments/bank-imports', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    multipart: { file: { name, mimeType: 'text/csv', buffer: Buffer.from(text, 'utf-8') }, ...fields },
+    timeout: 60_000,
+  })
+  let body: BankImportBody | null = null
+  try {
+    body = (await response.json()) as BankImportBody
+  } catch {
+    body = null
+  }
+  return { status: response.status(), body }
+}
+
+export type BankTransferItem = {
+  id: string
+  amount: number
+  title: string
+  counterpartyName: string | null
+  status: string
+  payerPersonId: string | null
+  payerCode: string | null
+  allocation: { chargeId: string; amount: number; description: string | null }[]
+  unallocated: number
+  matchReason: string
+  autoBooked: boolean
+  skipReason: string | null
+  updatedAt: string
+}
+
+export async function bankTransfers(request: APIRequestContext, token: string, query = '') {
+  return call<{ items: BankTransferItem[]; total: number; counts: Record<string, number> }>(
+    request,
+    'GET',
+    `/api/payments/bank-transactions?pageSize=100${query}`,
+    token,
+  )
+}
+
+export async function bankDecide(
+  request: APIRequestContext,
+  token: string,
+  id: string,
+  action: 'confirm' | 'assign' | 'ignore' | 'restore' | 'undo',
+  lock: string | null | undefined,
+  data: Record<string, unknown> = {},
+) {
+  return call<CodedBody & { status?: string; updatedAt?: string; payments?: { chargeId: string; amount: number }[] }>(
+    request,
+    'POST',
+    `/api/payments/bank-transactions/${id}/${action}`,
+    token,
+    { data, headers: lockHeaders(lock) },
+  )
+}
+
+export async function bankPayers(request: APIRequestContext, token: string, query = '') {
+  return call<{ items: { payerPersonId: string; payerCode: string; totalDue: number }[] }>(
+    request,
+    'GET',
+    `/api/payments/bank-payers${query}`,
+    token,
+  )
+}
+
+export async function bankImports(request: APIRequestContext, token: string) {
+  return call<{ items: { id: string; total: number; booked: number; skipped: number }[]; total: number }>(
+    request,
+    'GET',
+    '/api/payments/bank-imports',
+    token,
+  )
 }
