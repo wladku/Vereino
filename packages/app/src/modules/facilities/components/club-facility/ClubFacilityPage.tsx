@@ -31,6 +31,7 @@ import {
   FACILITY_TODAY_KEY,
   clubTime,
   entryTimes,
+  CLUB_FACILITY_HREF,
   facilityHref,
   groupOf,
   groupsWith,
@@ -73,8 +74,21 @@ function EntryCard({
   const t = useT()
   const ids = React.useId()
   const saved = groupOf(today.log, entry)
-  const [headcount, setHeadcount] = React.useState(saved ? String(saved.headcount) : '')
-  const [supervisor, setSupervisor] = React.useState(saved?.adultSupervisorPresent ?? false)
+  const savedHeadcount = saved ? String(saved.headcount) : ''
+  const savedSupervisor = saved?.adultSupervisorPresent ?? false
+  const [headcount, setHeadcount] = React.useState(savedHeadcount)
+  const [supervisor, setSupervisor] = React.useState(savedSupervisor)
+  // Unsaved input survives another card's save (which changes the log's version); a clean card follows the log.
+  // (State adjusted during render when the saved values change, React's "storing information from previous renders".)
+  const [dirty, setDirty] = React.useState(false)
+  const [synced, setSynced] = React.useState({ headcount: savedHeadcount, supervisor: savedSupervisor })
+  if (synced.headcount !== savedHeadcount || synced.supervisor !== savedSupervisor) {
+    setSynced({ headcount: savedHeadcount, supervisor: savedSupervisor })
+    if (!dirty) {
+      setHeadcount(savedHeadcount)
+      setSupervisor(savedSupervisor)
+    }
+  }
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
   const label = entry.label ?? t('facilities.places.entry.unnamed')
@@ -89,7 +103,9 @@ function EntryCard({
     setPending(true)
     setProblem(null)
     try {
-      setProblem(await onSaveGroup(entry, count, supervisor))
+      const failure = await onSaveGroup(entry, count, supervisor)
+      setProblem(failure)
+      if (failure === null) setDirty(false)
     } finally {
       setPending(false)
     }
@@ -138,6 +154,7 @@ function EntryCard({
             data-testid="club-facility-entry-headcount"
             onChange={(event) => {
               setHeadcount(event.target.value)
+              setDirty(true)
               setProblem(null)
             }}
           />
@@ -150,6 +167,7 @@ function EntryCard({
             data-testid="club-facility-entry-supervisor"
             onCheckedChange={(next) => {
               setSupervisor(next === true)
+              setDirty(true)
             }}
           />
           <Label htmlFor={`${ids}-supervisor`}>{t('facilities.facility.groups.supervisor')}</Label>
@@ -319,9 +337,23 @@ function FacilityDay() {
       <ErrorMessage
         label={t('facilities.facility.errors.load')}
         action={
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
-            {t('facilities.places.retry')}
-          </Button>
+          requested ? (
+            // A stale or deleted `?place=` answers 404 for good: offer the club's first place instead of a retry.
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                router.replace(CLUB_FACILITY_HREF)
+              }}
+            >
+              {t('facilities.facility.showFirstPlace')}
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
+              {t('facilities.places.retry')}
+            </Button>
+          )
         }
       />
     )
@@ -426,7 +458,7 @@ function FacilityDay() {
             <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="club-facility-entries">
               {today.entries.map((entry) => (
                 <EntryCard
-                  key={`${entry.kind}:${entry.id}:${log?.updatedAt ?? 'none'}:${entry.updatedAt ?? ''}`}
+                  key={`${entry.kind}:${entry.id}`}
                   entry={entry}
                   today={today}
                   noShowAllowed={noShowAllowed}

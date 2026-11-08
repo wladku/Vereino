@@ -1,11 +1,14 @@
 // `GET /api/facilities/today` (facilities spec the calendar and today row of *API*; M-12 `/club/facility`; REQ-013,
 // REQ-016; #126): the attendant's day at one place — the club's places to choose from, today's log in the club time
 // zone and the planned sessions and rentals on the place, its ancestors and descendants, each rental with whether a
-// no-show may be recorded now. Staff with `facilities.view` read every club place; the attendant's place scope
+// no-show may be recorded now. Staff with `facilities.view` read every club place; the log itself only callers who
+// may write it (`facilities.log.write` and its grant), others get `log: null`. The attendant's place scope
 // arrives with the facility attendant role (#126, it needs a `people` migration not approved yet).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
+import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
+import { LOG_KINDS } from '../../commands/logs'
 import { todayQuerySchema } from '../../data/validators'
 import { facilityToday } from '../../services/today'
 import { errorSchema } from '../shared'
@@ -62,7 +65,16 @@ export async function GET(request: Request): Promise<Response> {
     if (!parsed.success) return Response.json({ error: 'Invalid query', code: 'today_query_invalid' }, { status: 400 })
     const today = await facilityToday(ctx.container, scope, parsed.data.placeId, new Date())
     if (!today) return Response.json({ error: 'Not found' }, { status: 404 })
-    return Response.json(today, { headers: { 'cache-control': 'no-store' } })
+    // The log (its conditions and encrypted remarks) only for its writers, as `/api/facilities/logs` does: the feature
+    // and a grant of the log's kinds; other staff with `facilities.view` read the day without it.
+    const grants = await scopeContract.resolve(ctx)
+    const userId = ctx.auth?.sub
+    const rbac = ctx.container.resolve<RbacService>('rbacService')
+    const logReader =
+      grants.some((grant) => LOG_KINDS.includes(grant.kind)) &&
+      !!userId &&
+      (await rbac.userHasAllFeatures(userId, ['facilities.log.write'], scope))
+    return Response.json(logReader ? today : { ...today, log: null }, { headers: { 'cache-control': 'no-store' } })
   } catch (error: unknown) {
     return errorResponse(error, 'facilities.today')
   }

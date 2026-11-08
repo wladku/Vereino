@@ -186,6 +186,15 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
     const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
     const coachLog = await postLog(request, coach.token, { placeId: setup.pitch, logDate: addDays(today, -1) })
     expect(coachLog.status, JSON.stringify(coachLog.body)).toBe(403)
+    // The coach reads the day with `facilities.view`, but not the log (its conditions and remarks).
+    const coachDay = await call<{ place: { id: string } | null; log: unknown }>(
+      request,
+      'GET',
+      `/api/facilities/today?placeId=${setup.pitch}`,
+      coach.token,
+    )
+    expect(coachDay.status, JSON.stringify(coachDay.body)).toBe(200)
+    expect(coachDay.body).toMatchObject({ place: { id: setup.pitch }, log: null })
 
     // Given an incident with a 5-character description, when saved, then 422; one in the future, 422.
     const incident = {

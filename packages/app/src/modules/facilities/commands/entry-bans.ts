@@ -87,7 +87,12 @@ const createEntryBanCommand: CommandHandler<Record<string, unknown>, EntryBanCom
           : await personNames(ctx.container, scope, [parsed.subjectId], em)
       if (!subjects.has(parsed.subjectId)) await throwFieldError('facilities_reference_invalid', 'subjectId')
       if (parsed.incidentId) {
-        const incident = await em.count(Incident, { ...scope, deletedAt: null, id: parsed.incidentId })
+        const incident = await em.count(Incident, {
+          ...scope,
+          deletedAt: null,
+          id: parsed.incidentId,
+          placeId: parsed.placeId,
+        })
         if (incident === 0) await throwFieldError('facilities_reference_invalid', 'incidentId')
       }
       const row = em.create(EntryBan, {

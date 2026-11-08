@@ -8,6 +8,7 @@
 // scope) arrives — it needs a `people` migration that is not approved yet (#126). Not undoable: a log is corrected by
 // another update, and the audit log keeps each version.
 import { randomUUID } from 'node:crypto'
+import { UniqueConstraintViolationException } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { calendarDateInZone, type GrantKind, type Scope } from '@vereino/core'
@@ -192,6 +193,13 @@ const createLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       applyFields(row, parsed)
       await assertContent(ctx, em, scope, row)
       em.persist(row)
+      // A concurrent first write of the same day passes the check above; the unique key answers it with 409 too.
+      try {
+        await em.flush()
+      } catch (error: unknown) {
+        if (error instanceof UniqueConstraintViolationException) await throwFieldError('log_exists', 'logDate')
+        throw error
+      }
       return { entity: row, actingRole: authorized.actingRole, before: null }
     })
     const row = result.entity
@@ -239,7 +247,8 @@ const updateLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       await assertEditable(ctx, scope, row.logDate, authorized.actingRole)
       applyFields(row, authorized.parsed)
       await assertContent(ctx, em, scope, row)
-      row.operatorPersonId = await callerPersonId(authorized.scope)
+      // The operator is who ran the day: set on the first write; a later correction is recorded in the audit log.
+      await callerPersonId(authorized.scope)
       row.updatedAt = new Date()
       return { entity: row, actingRole: authorized.actingRole, before }
     })

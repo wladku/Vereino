@@ -483,6 +483,7 @@
   "facilities.places.errors.book": "Nie udało się zarezerwować obiektu.",
   "facilities.places.conflicts.block": "{kind} · {time}",
   "facilities.facility.title": "Dziś na obiekcie",
+  "facilities.facility.showFirstPlace": "Pokaż pierwszy obiekt klubu",
   "facilities.facility.intro": "Otwórz obiekt, zapisz, kto jest obecny, zgłaszaj zdarzenia i zamknij obiekt na koniec dnia.",
   "facilities.facility.allPlaces": "Wszystkie obiekty",
   "facilities.facility.loading": "Wczytywanie dnia na obiekcie…",

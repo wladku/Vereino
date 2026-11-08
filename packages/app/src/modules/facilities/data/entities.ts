@@ -379,7 +379,7 @@ export class FacilityLog extends ScopedEntityBase {
   @Property({ name: 'log_date', type: 'date' })
   logDate!: string
 
-  /** The person who last wrote the log (the attendant on duty, or the administrator). */
+  /** The person who ran the day: who wrote the log first (the attendant on duty, or the administrator). */
   @Property({ name: 'operator_person_id', type: 'uuid' })
   operatorPersonId!: string
 

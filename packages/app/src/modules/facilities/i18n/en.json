@@ -483,6 +483,7 @@
   "facilities.places.errors.book": "The facility could not be booked.",
   "facilities.places.conflicts.block": "{kind} · {time}",
   "facilities.facility.title": "Today at the facility",
+  "facilities.facility.showFirstPlace": "Show the club's first place",
   "facilities.facility.intro": "Open the facility, note who is present, report incidents and close the facility at the end of the day.",
   "facilities.facility.allPlaces": "All facilities",
   "facilities.facility.loading": "Loading today at the facility…",

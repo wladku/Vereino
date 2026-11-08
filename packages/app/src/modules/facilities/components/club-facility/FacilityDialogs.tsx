@@ -20,6 +20,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { addDays } from '@vereino/core'
 import {
   INCIDENT_ACTIONS,
   INCIDENT_DESCRIPTION_MAX_LENGTH,
@@ -277,7 +278,11 @@ export function CloseFacilityDialog({ today, open, onOpenChange, onOutcome }: Di
   const { pending, problem, setProblem, run } = useSubmit(onOutcome, onOpenChange)
 
   const submit = () => {
-    const closedAt = clubInstant(today.date, time, today.timeZone)
+    // A place that closes after midnight: a closing time before the opening one is on the next day.
+    const sameDay = clubInstant(today.date, time, today.timeZone)
+    const openedAt = today.log?.openedAt ?? null
+    const closedAt =
+      sameDay && openedAt && sameDay < openedAt ? clubInstant(addDays(today.date, 1), time, today.timeZone) : sameDay
     if (!condition.trim()) {
       setMissing(t('facilities.errors.log_condition_required'))
       return
