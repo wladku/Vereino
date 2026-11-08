@@ -49,6 +49,19 @@ export const errorCodes = [
     messageKey: 'payments.errors.order_campaign_transition_invalid',
   },
   { code: 'order_campaign_not_collecting', status: 409, messageKey: 'payments.errors.order_campaign_not_collecting' },
+  // Bank statement import (#113).
+  { code: 'bank_statement_missing', status: 422, messageKey: 'payments.errors.bank_statement_missing' },
+  { code: 'bank_statement_too_large', status: 413, messageKey: 'payments.errors.bank_statement_too_large' },
+  { code: 'bank_statement_unsupported', status: 422, messageKey: 'payments.errors.bank_statement_unsupported' },
+  { code: 'bank_statement_columns_missing', status: 422, messageKey: 'payments.errors.bank_statement_columns_missing' },
+  { code: 'bank_statement_unreadable', status: 422, messageKey: 'payments.errors.bank_statement_unreadable' },
+  { code: 'bank_statement_too_many', status: 413, messageKey: 'payments.errors.bank_statement_too_many' },
+  {
+    code: 'bank_transaction_status_changed',
+    status: 409,
+    messageKey: 'payments.errors.bank_transaction_status_changed',
+  },
+  { code: 'bank_payer_no_open_charges', status: 422, messageKey: 'payments.errors.bank_payer_no_open_charges' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

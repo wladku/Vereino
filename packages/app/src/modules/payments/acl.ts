@@ -5,8 +5,9 @@
 // D-030). `payments.cash.record` is "Accept cash" (REQ-031); its command still requires the club administrator's grant,
 // like every `payments` write of phase 4 — the treasurer's grant arrives with DD-33 and the coach's own path
 // (`payments.groups.collect`, DD-31, DD-32) with E07-S10 (#117). `payments.orders.manage` is the order campaigns of
-// E07-S08 (#115), also the club administrator's only. The statement and coach features and the guardian's
-// `payments.orders.place` (E07-S09) arrive with their steps.
+// E07-S08 (#115), also the club administrator's only. `payments.bank.import` is the statement import of E07-S06 (#113):
+// the file, its transfers and the decisions on them, the club administrator's only until DD-33. The coach features and
+// the guardian's `payments.orders.place` (E07-S09) arrive with their steps.
 export const features = [
   { id: 'payments.view', title: 'View charges', module: 'payments' },
   {
@@ -23,6 +24,12 @@ export const features = [
     dependsOn: ['payments.view_own'],
   },
   { id: 'payments.cash.record', title: 'Accept cash with a numbered receipt', module: 'payments' },
+  {
+    id: 'payments.bank.import',
+    title: 'Import bank statements and decide on the matched transfers',
+    module: 'payments',
+    dependsOn: ['payments.view'],
+  },
   {
     id: 'payments.orders.manage',
     title: 'Manage order campaigns (kit order forms, stages, supplier summary, reminders)',
