@@ -12,7 +12,7 @@ import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shar
 import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
-import type { ActingRole } from '@vereino/core'
+import { normalizeBankAccount, type ActingRole } from '@vereino/core'
 import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
@@ -56,6 +56,8 @@ type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
   publicSlug?: string | null
   publicDescription?: string | null
   contactPhone?: string | null
+  // The club's bank account (#111); absent in log entries written before it.
+  bankAccount?: string | null
   publication?: Publication
 }
 
@@ -77,6 +79,7 @@ function snapshot(row: ClubSettings): SettingsSnapshot {
     publicSlug: row.publicSlug ?? null,
     publicDescription: row.publicDescription ?? null,
     contactPhone: row.contactPhone ?? null,
+    bankAccount: row.bankAccount ?? null,
     publication: resolvePublication(row.publication),
   }
 }
@@ -138,6 +141,7 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone
+  if (before.bankAccount !== undefined) row.bankAccount = before.bankAccount
   if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
   row.updatedAt = new Date()
 }
@@ -201,6 +205,13 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
               typeof patch.defaultLocale === 'string' ? await assertSupportedLocale(patch.defaultLocale) : undefined
             const values = applyClubSettingsPatch(current, defaultLocale ? { ...patch, defaultLocale } : patch)
             writeValues(row, values)
+            // The club's bank account (#111): an NRB stored as its 26 digits, or 422 `bank_account_invalid`.
+            const bankAccount = patch.bankAccount
+            if (bankAccount === null) row.bankAccount = null
+            else if (typeof bankAccount === 'string' && bankAccount !== row.bankAccount) {
+              row.bankAccount =
+                normalizeBankAccount(bankAccount) ?? (await throwFieldError('bank_account_invalid', 'bankAccount'))
+            }
             const problem = writePublicSettings(row, patch)
             if (problem) await clubCoreErrors.throw(problem)
             result = {

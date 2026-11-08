@@ -17,8 +17,8 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { formatBankAccount } from '@vereino/core'
 import { INSTITUTION_TYPES } from '../data/validators'
-import { formatBankAccount } from '../lib/institutions'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
 import type { InstitutionRow } from './places-shared'
 

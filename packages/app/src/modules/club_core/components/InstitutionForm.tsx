@@ -7,8 +7,8 @@ import { ErrorMessage, RecordNotFoundState } from '@open-mercato/ui/backend/deta
 import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { formatBankAccount } from '@vereino/core'
 import { INSTITUTION_TYPES } from '../data/validators'
-import { formatBankAccount } from '../lib/institutions'
 import { enumOptions, errorMessage, textOrNull, type Translate } from './client-helpers'
 import type { InstitutionRow } from './places-shared'
 

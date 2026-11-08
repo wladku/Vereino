@@ -43,6 +43,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'orderSalesDocument'
     | 'publicSlug'
     | 'contactPhone'
+    | 'bankAccount'
     | 'logoAttachmentId'
     | 'publicDescription'
     | 'publication'
@@ -113,6 +114,13 @@ export class ClubSettings extends ScopedEntityBase {
   /** The club's phone shown with the `contact` block. */
   @Property({ name: 'contact_phone', type: 'text', nullable: true })
   contactPhone?: string | null
+
+  /**
+   * The club's own bank account (an NRB stored as its 26 digits, #111): the transfer instructions on the payer's
+   * `/club/payments` show it with the payer code. Not encrypted: every payer of the club is shown it.
+   */
+  @Property({ name: 'bank_account', type: 'text', nullable: true })
+  bankAccount?: string | null
 
   /** The club logo in `attachments` (glossary *Logo*); null shows the initial of the club name. */
   @Property({ name: 'logo_attachment_id', type: 'uuid', nullable: true })

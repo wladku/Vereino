@@ -4,7 +4,8 @@
 // `payer_pays` mode) and "Pay", which starts the checkout and renders the gateway's embedded payment form (the Stripe
 // Payment Element). A charge without a payer is shown disabled: "No payer — contact the club". Paid charges follow.
 // After the form confirms, the page goes to M-09 (`/club/payments/return?checkout=…`), which is also Stripe's return
-// URL for methods that redirect.
+// URL for methods that redirect. Since #111 each charge names its period and discount, the paid history lists up to six
+// charges, and the transfer instructions show the club's account, its name and the payer code `GW-XXXX` for the title.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -20,6 +21,7 @@ import {
   type PaymentGatewayRendererProps,
 } from '@open-mercato/shared/modules/payment_gateways/client'
 import type { EmbeddedPaymentGatewayClientSession } from '@open-mercato/shared/modules/payment_gateways/types'
+import { formatBankAccount } from '@vereino/core'
 import { formatZloty } from '../../lib/charge-ledger'
 import { CLUB_PAYMENTS_HREF, PaymentsClubFrame } from './PaymentsClubFrame'
 
@@ -29,8 +31,10 @@ export type MyCharge = {
   id: string
   description: string
   person: { firstName: string; lastName: string } | null
+  periodLabel: string | null
   dueDate: string
   amountDue: number
+  discountAmount: number
   paid: number
   remaining: number
   status: string
@@ -41,7 +45,15 @@ export type MyCharge = {
 
 export type MyCheckout = { id: string; state: string; total: number; createdAt: string }
 
-type MyChargesResponse = { items: MyCharge[]; total: number; checkouts: MyCheckout[] }
+export type TransferInstructions = { bankAccount: string | null; recipient: string | null; payerCode: string }
+
+type MyChargesResponse = {
+  items: MyCharge[]
+  total: number
+  checkouts: MyCheckout[]
+  history: MyCharge[]
+  transfer: TransferInstructions | null
+}
 
 type Quote = { amount: number; feeAmount: number; total: number }
 
@@ -113,10 +125,15 @@ function ChargeRow({
           {charge.description}
         </label>
         <span className="text-muted-foreground text-sm">
-          {[name, t('payments.club.charges.due', { date: formatDate(charge.dueDate, locale) })]
+          {[name, charge.periodLabel, t('payments.club.charges.due', { date: formatDate(charge.dueDate, locale) })]
             .filter(Boolean)
             .join(' · ')}
         </span>
+        {charge.discountAmount > 0 ? (
+          <span className="text-muted-foreground text-sm" data-testid="club-charge-discount">
+            {t('payments.club.charges.discount', { amount: formatZloty(charge.discountAmount) })}
+          </span>
+        ) : null}
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{formatZloty(charge.remaining)}</span>
           {charge.overdue ? <StatusBadge variant="error">{t('payments.club.charges.overdue')}</StatusBadge> : null}
@@ -201,6 +218,52 @@ function PaymentForm({ started, onCancel }: { started: Started; onCancel: () => 
   )
 }
 
+function TransferDetails({ transfer }: { transfer: TransferInstructions }) {
+  const t = useT()
+  return (
+    <section
+      aria-labelledby="club-payments-transfer"
+      className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+      data-testid="club-payments-transfer"
+    >
+      <h2 id="club-payments-transfer" className="text-lg font-semibold">
+        {t('payments.club.transfer.title')}
+      </h2>
+      {transfer.bankAccount ? (
+        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3 sm:gap-x-4">
+          {transfer.recipient ? (
+            <>
+              <dt className="text-muted-foreground">{t('payments.club.transfer.recipient')}</dt>
+              <dd className="font-medium break-words sm:col-span-2">{transfer.recipient}</dd>
+            </>
+          ) : null}
+          <dt className="text-muted-foreground">{t('payments.club.transfer.account')}</dt>
+          <dd className="font-medium break-all sm:col-span-2" data-testid="club-payments-transfer-account">
+            {formatBankAccount(transfer.bankAccount)}
+          </dd>
+          <dt className="text-muted-foreground">{t('payments.club.transfer.reference')}</dt>
+          <dd className="font-medium sm:col-span-2" data-testid="club-payments-transfer-code">
+            {transfer.payerCode}
+          </dd>
+        </dl>
+      ) : (
+        <>
+          <p className="text-muted-foreground text-sm" data-testid="club-payments-transfer-missing">
+            {t('payments.club.transfer.noAccount')}
+          </p>
+          <p className="text-sm">
+            {t('payments.club.transfer.reference')}:{' '}
+            <span className="font-medium" data-testid="club-payments-transfer-code">
+              {transfer.payerCode}
+            </span>
+          </p>
+        </>
+      )}
+      <p className="text-muted-foreground text-sm">{t('payments.club.transfer.hint', { code: transfer.payerCode })}</p>
+    </section>
+  )
+}
+
 function Payments() {
   const t = useT()
   const queryClient = useQueryClient()
@@ -271,7 +334,7 @@ function Payments() {
     )
   }
   const toPay = charges.data.items.filter((charge) => TO_PAY.includes(charge.status))
-  const paid = charges.data.items.filter((charge) => charge.status === 'paid')
+  const history = charges.data.history
   const inProgress = charges.data.checkouts.find((checkout) => checkout.state === 'in_progress')
 
   return (
@@ -346,19 +409,26 @@ function Payments() {
           ) : null}
         </section>
       )}
-      {paid.length > 0 ? (
+      {history.length > 0 ? (
         <section aria-labelledby="club-payments-paid" className="flex flex-col gap-3">
           <h2 id="club-payments-paid" className="text-lg font-semibold">
             {t('payments.club.paid')}
           </h2>
           <ul className="flex flex-col gap-2">
-            {paid.map((charge) => (
+            {history.map((charge) => (
               <li
                 key={charge.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"
                 data-testid="club-charge-paid"
               >
-                <span className="break-words">{charge.description}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="break-words">{charge.description}</span>
+                  <span className="text-muted-foreground text-sm">
+                    {[charge.person ? `${charge.person.firstName} ${charge.person.lastName}` : null, charge.periodLabel]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </span>
                 <span className="flex items-center gap-2">
                   <span>{formatZloty(charge.amountDue)}</span>
                   <StatusBadge variant="success">{t('payments.club.charges.status.paid')}</StatusBadge>
@@ -368,6 +438,7 @@ function Payments() {
           </ul>
         </section>
       ) : null}
+      {charges.data.transfer ? <TransferDetails transfer={charges.data.transfer} /> : null}
     </>
   )
 }

@@ -6,6 +6,23 @@
       "name": "club_core_club_settings",
       "schema": "public",
       "columns": {
+        "bank_account": {
+          "name": "bank_account",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "coach_may_cancel": {
           "name": "coach_may_cancel",
           "type": "boolean",

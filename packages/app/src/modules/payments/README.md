@@ -28,6 +28,15 @@ A payment is an immutable credit of a charge; what was paid is the sum of the ch
 
 "Accept cash" (#114, REQ-031; the B-21 dialog and `/club/cash`, M-15) takes cash for selected charges of one payer: `GET /api/payments/cash/payers` lists the payers with something to pay (wards, total due), `GET /api/payments/cash/charges` their charges oldest first, and `POST /api/payments/cash` (`payments.cash.record`) spreads the amount over them oldest first, issues one `KP/YYYY/MM/NNN` number per acceptance (sequential per club and month, under an advisory lock), records the collector and queues the `payments.cash_received` e-mail to the payer unless `notify` is false. `GET /api/payments/cash` is "Received by me today" with the total to hand over. Like every write of phase 4 it needs the administrator's grant; the coach's path (`payments.groups.collect`) is #117 and the handover to the treasurer #118.
 
+## Payer code, Today and the dashboard
+
+Phase 4 step 5 (#111, E07-S04; REQ-012, REQ-030; README M-02, M-08, B-01):
+
+- **Payer code.** `PayerRef` / `payments_payer_refs` holds each payer's permanent `GW-XXXX` code, unique in the club (`lib/payer-summary.ts`, `services/payer-overview.ts`). It is assigned on first use under both unique indexes.
+- **M-08.** `GET /api/payments/my-charges` adds `transfer` (the club's account from `club_core`'s `bank_account`, its name and the payer code; null for someone who pays nothing), `history` (the six most recently due paid charges) and each charge's `discountAmount`.
+- **Today tile.** The body of the "Payments" tile on `/club` is the injection widget `payments.injection.club-today-payments` on the spot `vereino:club:today:payments`, fed by `GET /api/payments/my-charges/summary`. It shows the amount, the nearest due date and "Pay", or "Everything is paid", or "The guardian pays".
+- **B-01 widgets.** The dashboard widgets `payments.dashboard.overdue` and `payments.dashboard.withoutPayer` read `GET /api/payments/dashboard` (`payments.view` and the `club_admin` grant) and open B-21 with `?perspective=overdue` or `?perspective=payer_missing`.
+
 ## Deferred
 
 The scheduled `payments:generate-charges` job (generation is manual for now); checkout and online payments, statements, cash handovers (E07-S11) and the coach's cash (E07-S10), order campaigns, the coach view (`coach_fee_access` is stored here and read there), the treasurer role (A02, D-030), the online payment fee setting (club setting, REQ-012), `payments.chargeService` for `facilities`.

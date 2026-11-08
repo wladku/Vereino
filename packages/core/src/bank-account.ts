@@ -1,4 +1,5 @@
-// Institutions' bank accounts (README B-07, #87): a Polish NRB — 26 digits, typed with or without spaces and an
+// Polish bank accounts — an institution's (README B-07, #87) and the club's own (#111, shown in the payers' transfer
+// instructions): an NRB — 26 digits, typed with or without spaces and an
 // optional `PL` country prefix — stored as the 26 digits and shown in the usual 2 + 6 × 4 grouping. Pure.
 
 const NRB_DIGITS = 26

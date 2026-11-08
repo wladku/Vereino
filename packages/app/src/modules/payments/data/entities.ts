@@ -375,3 +375,22 @@ export class PaymentsSettings extends ScopedEntityBase {
   @Property({ name: 'coach_fee_access', type: 'text', default: 'collect' })
   coachFeeAccess: CoachFeeAccess = 'collect'
 }
+
+/**
+ * A payer's permanent code (payments spec *Data Models* → `payments_payer_refs`, *Domain Vocabulary* → Payer code;
+ * REQ-030; issue #111): `GW-XXXX`, unique in the club, shown on `/club/payments` with the transfer instructions and
+ * matched in transfer titles by the statement import (#113). Assigned on first use and never changed.
+ */
+@Entity({ tableName: 'payments_payer_refs' })
+@Unique({ name: 'payments_payer_refs_org_person_unique', properties: ['organizationId', 'personId'] })
+@Unique({ name: 'payments_payer_refs_org_code_unique', properties: ['organizationId', 'code'] })
+@Index({ name: 'payments_payer_refs_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class PayerRef extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps
+
+  @Property({ name: 'person_id', type: 'uuid' })
+  personId!: string
+
+  @Property({ name: 'code', type: 'text' })
+  code!: string
+}

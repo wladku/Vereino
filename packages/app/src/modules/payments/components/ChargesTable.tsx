@@ -8,7 +8,7 @@
 // charges with a numbered receipt.
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
-  DEFAULT_CHARGE_PERSPECTIVE,
+  chargePerspectiveOf,
   perspectiveQuery,
   toCsv,
   visiblePerspectives,
@@ -232,7 +232,11 @@ export function ChargesTable() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
-  const [perspective, setPerspective] = React.useState<ChargePerspective>(DEFAULT_CHARGE_PERSPECTIVE)
+  const searchParams = useSearchParams()
+  // A B-01 widget opens the list in its perspective (`?perspective=overdue`, #111); later tab changes stay local.
+  const [perspective, setPerspective] = React.useState<ChargePerspective>(() =>
+    chargePerspectiveOf(searchParams.get('perspective'), visiblePerspectives(FACILITIES_ENABLED)),
+  )
   const [period, setPeriod] = React.useState('')
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)

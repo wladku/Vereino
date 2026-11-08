@@ -3,7 +3,8 @@
 // profile entry point and — only for a guardian — the wards with their consents. The calendar and attendance tiles
 // of phase 2 are mounted by the `activities` module through the `vereino:club:today:sections` injection spot; the
 // messages tile arrives with phase 3 and is not rendered before (no empty placeholders). The payments tile leads to
-// `/club/payments` (M-08, #110); a minor never gets it (R10, `paymentsVisible`).
+// `/club/payments` (M-08, #110); a minor never gets it (R10, `paymentsVisible`). Its body — what is owed and by when —
+// comes from `payments` on the spot `vereino:club:today:payments` (#111).
 import * as React from 'react'
 import Link from 'next/link'
 import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
@@ -70,9 +71,8 @@ function Today({ profile }: { profile: MemberProfile }) {
             <li>
               <Link href="/club/payments" className={LINK_TILE_CLASS} data-testid="club-tile-payments">
                 <span className="font-semibold">{t('people.club.tiles.payments.title')}</span>
-                <span className="text-muted-foreground max-w-prose text-sm">
-                  {t('people.club.tiles.payments.description')}
-                </span>
+                {/* `payments` fills the body: the open total and nearest due date, or "Everything is paid" (#111). */}
+                <InjectionSpot spotId="vereino:club:today:payments" context={{ profile }} />
               </Link>
             </li>
           ) : null}

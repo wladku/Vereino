@@ -3,7 +3,8 @@
 // `CrudForm`; the lock token comes from `initialValues.updatedAt` (null until the first save creates the row). Since
 // #29 the club logo panel sits under the form (upload, replace, remove; REQ-028). Since #87 the club name (the platform
 // organization's) is edited here and the time zone is picked from the runtime's IANA zones. Since #199 it holds
-// `coach_may_cancel`, whether a coach may cancel a session.
+// `coach_may_cancel`, whether a coach may cancel a session; since #111 the club's bank account for the payers' transfer
+// instructions.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -11,6 +12,7 @@ import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { formatBankAccount } from '@vereino/core'
 import {
   ACTIVITY_TYPES,
   AVAILABLE_ORDER_SALES_DOCUMENTS,
@@ -31,6 +33,7 @@ const LOCALES = ['pl', 'en'] as const
 
 type SettingsResponse = ClubSettingsValues & {
   clubName: string | null
+  bankAccount: string | null
   logoAttachmentId: string | null
   logoUrl: string | null
   updatedAt: string | null
@@ -61,6 +64,7 @@ function toFormValues(settings: SettingsResponse): FormValues {
     showCalledUpChildren: settings.showCalledUpChildren,
     coachMayCancel: settings.coachMayCancel,
     orderSalesDocument: settings.orderSalesDocument,
+    bankAccount: settings.bankAccount ? formatBankAccount(settings.bankAccount) : '',
     updatedAt: settings.updatedAt,
   }
   for (const type of ACTIVITY_TYPES) values[kindField(type)] = settings.declarationKinds[type]
@@ -86,6 +90,7 @@ function toPayload(values: Record<string, unknown>) {
     showCalledUpChildren: values.showCalledUpChildren,
     coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
+    bankAccount: textOrNull(values.bankAccount),
   }
 }
 
@@ -176,6 +181,13 @@ export function ClubSettingsForm() {
         required: true,
       },
       {
+        id: 'bankAccount',
+        label: t('club_core.settings.fields.bankAccount'),
+        type: 'text',
+        maxLength: 64,
+        description: t('club_core.settings.fields.bankAccount.description'),
+      },
+      {
         id: 'coachSettlementModel',
         label: t('club_core.settings.fields.coachSettlementModel'),
         type: 'select',
@@ -217,7 +229,7 @@ export function ClubSettingsForm() {
         id: 'payments',
         title: t('club_core.settings.groups.payments'),
         column: 1,
-        fields: ['onlineFeeMode', 'onlineFeePercent', 'onlineFeeFixed', 'orderSalesDocument'],
+        fields: ['onlineFeeMode', 'onlineFeePercent', 'onlineFeeFixed', 'orderSalesDocument', 'bankAccount'],
       },
       {
         id: 'staff',
