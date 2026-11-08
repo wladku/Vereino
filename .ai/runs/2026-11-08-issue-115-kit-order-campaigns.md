@@ -87,6 +87,11 @@
   - `yarn test:integration:vereino --filter E07-S08`: 1 passed (1.4m).
   - Regressions `--filter TEST-043` and `--filter E07-S02`: 1 passed each (1.3m).
 
+- **Merge with `origin/main` (#224, the payer code)** before opening the PR:
+  - additive conflicts in `data/entities.ts`, the README, the module description and the payments snapshot;
+  - the snapshot was taken from main and regenerated, and the duplicate migration it produced was deleted (the same four tables as `Migration20261108154449_payments`).
+  - After the merge: `yarn verify` all 14 steps passed; `--filter E07-S08` 1 passed; `--filter E07-S04` (#224) 1 passed.
+
 ## Open problems / next steps
 
 - The owner confirms or overrides the defaults on the PR: the migration, Q1, Q2, the operator command instead of a schedule, and the commands not being undoable.
