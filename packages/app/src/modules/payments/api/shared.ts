@@ -345,4 +345,3 @@ export const orderCampaignListItemSchema = z.object({
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
-

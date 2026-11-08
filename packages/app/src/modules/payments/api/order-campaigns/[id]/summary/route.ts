@@ -67,7 +67,9 @@ export const openApi: OpenApiRouteDoc = {
       description:
         'Counts the submitted orders: a set counts under each of its products. `format=csv` answers a `text/csv` file with the units block (product, size, quantity), an empty line and the prints block (print name, number, group, sizes). No contact details and no full names.',
       query: orderCampaignSummaryQuerySchema,
-      responses: [{ status: 200, description: 'The summary (or, with `format=csv`, a CSV file)', schema: summarySchema }],
+      responses: [
+        { status: 200, description: 'The summary (or, with `format=csv`, a CSV file)', schema: summarySchema },
+      ],
       errors: [
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },

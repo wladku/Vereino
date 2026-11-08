@@ -201,7 +201,12 @@ export function supplierSummary(products: readonly SummaryProduct[], orders: rea
   }
   const sortedUnits = [...units.values()]
     .sort((a, b) => a.product.sort - b.product.sort || sizeRank(a.product, a.size) - sizeRank(b.product, b.size))
-    .map(({ product: _product, ...unit }) => unit)
+    .map((unit) => ({
+      productId: unit.productId,
+      productName: unit.productName,
+      size: unit.size,
+      quantity: unit.quantity,
+    }))
   prints.sort(
     (a, b) =>
       (a.groupName ?? '').localeCompare(b.groupName ?? '') ||

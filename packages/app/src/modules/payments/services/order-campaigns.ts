@@ -7,6 +7,8 @@ import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Charge, Order, OrderCampaign, OrderLine, OrderProduct } from '../data/entities'
+import { closeExpiredCampaigns } from '../data/queries'
+import { emitPaymentsEvent } from '../events'
 import { amountDueOf, remainingOf } from '../lib/charge-ledger'
 import {
   campaignKpis,
@@ -477,4 +479,25 @@ export async function campaignSummary(
       }
     }),
   )
+}
+
+/**
+ * One run of `payments:close-order-campaigns` for a club (payments spec *Events* row; REQ-032, #115): every `open`
+ * campaign past the end of its orders deadline (in the club's calendar) becomes `closed`, and each emits
+ * `payments.order_campaign.status_changed` after the commit.
+ */
+export async function closeOrderCampaigns(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+): Promise<{ closed: string[] }> {
+  const { today } = await clubClock(container, scope)
+  const closed = await closeExpiredCampaigns(freshEm(container), scope, today)
+  for (const id of closed) {
+    await emitPaymentsEvent(
+      'payments.order_campaign.status_changed',
+      { id, status: 'closed', from: 'open', ...scope },
+      { persistent: true, ...scope },
+    )
+  }
+  return { closed }
 }

@@ -127,7 +127,15 @@ describe('removedProductIds', () => {
 })
 
 const products: SummaryProduct[] = [
-  { id: 'shirt', name: 'Shirt', kind: 'item', componentProductIds: [], sizesChild: ['128', '140'], sizesAdult: ['M'], sort: 0 },
+  {
+    id: 'shirt',
+    name: 'Shirt',
+    kind: 'item',
+    componentProductIds: [],
+    sizesChild: ['128', '140'],
+    sizesAdult: ['M'],
+    sort: 0,
+  },
   { id: 'shorts', name: 'Shorts', kind: 'item', componentProductIds: [], sizesChild: ['128'], sizesAdult: [], sort: 1 },
   { id: 'scarf', name: 'Scarf', kind: 'item', componentProductIds: [], sizesChild: [], sizesAdult: [], sort: 2 },
   {

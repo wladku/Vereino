@@ -296,9 +296,7 @@ const campaignFields = {
 }
 
 /** `payments.order_campaigns.create`: the form; `open` also opens collection ("Save and open collection"). */
-export const orderCampaignCreateSchema = z
-  .object({ ...campaignFields, open: z.boolean().default(false) })
-  .strict()
+export const orderCampaignCreateSchema = z.object({ ...campaignFields, open: z.boolean().default(false) }).strict()
 
 /** `payments.order_campaigns.update`: the whole form again (products nested), in `draft` or `open` only. */
 export const orderCampaignUpdateSchema = z

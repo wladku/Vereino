@@ -88,8 +88,6 @@ export const cashReceivedTemplate = defineEmailTemplate<CashReceivedParams>({
   link: () => '/club',
 })
 
-
-
 const orderReminderParams = z
   .object({
     campaignId: z.uuid(),

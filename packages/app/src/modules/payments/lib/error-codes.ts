@@ -43,7 +43,11 @@ export const errorCodes = [
   { code: 'order_adult_price_missing', status: 422, messageKey: 'payments.errors.order_adult_price_missing' },
   { code: 'order_campaign_not_editable', status: 409, messageKey: 'payments.errors.order_campaign_not_editable' },
   { code: 'order_product_in_use', status: 409, messageKey: 'payments.errors.order_product_in_use' },
-  { code: 'order_campaign_transition_invalid', status: 409, messageKey: 'payments.errors.order_campaign_transition_invalid' },
+  {
+    code: 'order_campaign_transition_invalid',
+    status: 409,
+    messageKey: 'payments.errors.order_campaign_transition_invalid',
+  },
   { code: 'order_campaign_not_collecting', status: 409, messageKey: 'payments.errors.order_campaign_not_collecting' },
 ] as const satisfies ErrorCodeTable
 
