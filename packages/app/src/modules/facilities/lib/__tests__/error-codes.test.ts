@@ -27,10 +27,20 @@ describe('facilities error codes', () => {
       'booking_start_past',
       'booking_section_invalid',
       'entry_ban_period_invalid',
+      'entry_ban_revoked',
+      'log_date_invalid',
+      'log_exists',
+      'log_edit_closed',
+      'log_condition_required',
+      'log_not_opened',
+      'log_period_invalid',
+      'log_groups_invalid',
+      'incident_description_length',
+      'incident_time_future',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
-      expect([409, 422]).toContain(entry.status)
+      expect([403, 409, 422]).toContain(entry.status)
     }
   })
 })

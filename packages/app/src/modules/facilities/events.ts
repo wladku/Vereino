@@ -53,6 +53,11 @@ const events = [
     category: 'crud',
   },
   { id: 'facilities.entry_ban.created', label: 'Entry ban issued', entity: 'entry_ban', category: 'crud' },
+  { id: 'facilities.entry_ban.revoked', label: 'Entry ban revoked', entity: 'entry_ban', category: 'custom' },
+  { id: 'facilities.log.created', label: 'Facility log started', entity: 'facility_log', category: 'crud' },
+  { id: 'facilities.log.updated', label: 'Facility log updated', entity: 'facility_log', category: 'crud' },
+  { id: 'facilities.incident.created', label: 'Incident reported', entity: 'incident', category: 'crud' },
+  { id: 'facilities.incident.updated', label: 'Incident updated', entity: 'incident', category: 'crud' },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'facilities', events })

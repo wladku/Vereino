@@ -1,7 +1,8 @@
 // `/api/facilities/entry-bans` — entry bans of the club's places (facilities spec the CRUD row for `/entry-bans`,
 // REQ-016; #122): listed and issued with `facilities.incidents.manage` by the club administrator; a rental for a banned
-// renter answers 409 `entry_ban_active`. The reason is decrypted by the query engine. Revocation, the incident link and
-// the pages arrive with E08-S06 (#126).
+// renter answers 409 `entry_ban_active`. The reason is decrypted by the query engine. Since E08-S06 (#126) a ban names
+// its incident and issuer, the list filters by `state` and carries the place, subject and issuer names, and
+// `POST …/{id}/revoke` ends a ban.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -12,6 +13,7 @@ import type { EntryBanCommandResult } from '../../commands/entry-bans'
 import { READ_KINDS } from '../../commands/shared'
 import { EntryBan } from '../../data/entities'
 import { entryBanCreateSchema, entryBanListQuerySchema } from '../../data/validators'
+import { attachEntryBanNames } from '../records'
 import { ENTRY_BAN_ENTITY_ID, FACILITY_COLUMNS, entryBanListItem, entryBanListItemSchema } from '../shared'
 
 type EntryBanListQuery = z.infer<typeof entryBanListQuerySchema>
@@ -41,6 +43,8 @@ export const { metadata, GET, POST } = makeCrudRoute({
       'starts_on',
       'ends_on',
       'reason',
+      'incident_id',
+      'issued_by_person_id',
       'revoked_at',
       'tenant_id',
       'organization_id',
@@ -55,9 +59,14 @@ export const { metadata, GET, POST } = makeCrudRoute({
       const business: Where[] = []
       if (query.placeId) business.push({ place_id: query.placeId })
       if (query.subjectId) business.push({ subject_id: query.subjectId })
+      if (query.state === 'active') business.push({ revoked_at: null })
+      if (query.state === 'revoked') business.push({ revoked_at: { $ne: null } })
       return { $and: [scopeWhere(scope, READ_KINDS, FACILITY_COLUMNS), ...business] } as Where
     },
     transformItem: entryBanListItem,
+  },
+  hooks: {
+    afterList: attachEntryBanNames,
   },
   actions: {
     create: {

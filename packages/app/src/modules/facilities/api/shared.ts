@@ -127,9 +127,15 @@ export function entryBanListItem(row: Row) {
     startsOn: day(row.starts_on),
     endsOn: day(row.ends_on),
     reason: text(row.reason),
+    incidentId: text(row.incident_id),
+    issuedByPersonId: text(row.issued_by_person_id),
     revokedAt: iso(row.revoked_at),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
+    // Names added by `attachEntryBanNames` (#126).
+    placeName: null as string | null,
+    subjectName: null as string | null,
+    issuedByName: null as string | null,
   }
 }
 
@@ -219,9 +225,14 @@ export const entryBanListItemSchema = z.object({
   startsOn: z.string().nullable(),
   endsOn: z.string().nullable(),
   reason: z.string().nullable(),
+  incidentId: z.string().nullable(),
+  issuedByPersonId: z.string().nullable(),
   revokedAt: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+  placeName: z.string().nullable(),
+  subjectName: z.string().nullable(),
+  issuedByName: z.string().nullable(),
 })
 
 /** A conflicting entry of a rental or booking check: ids and times, and for staff a label (#123). */

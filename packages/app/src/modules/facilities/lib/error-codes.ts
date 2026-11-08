@@ -39,6 +39,18 @@ export const errorCodes = [
   { code: 'booking_section_invalid', status: 422, messageKey: 'facilities.errors.booking_section_invalid' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },
+  { code: 'entry_ban_revoked', status: 409, messageKey: 'facilities.errors.entry_ban_revoked' },
+  // The facility log (REQ-016, M-12, B-27; #126): one per place and day, editable until the end of the next day.
+  { code: 'log_date_invalid', status: 422, messageKey: 'facilities.errors.log_date_invalid' },
+  { code: 'log_exists', status: 409, messageKey: 'facilities.errors.log_exists' },
+  { code: 'log_edit_closed', status: 403, messageKey: 'facilities.errors.log_edit_closed' },
+  { code: 'log_condition_required', status: 422, messageKey: 'facilities.errors.log_condition_required' },
+  { code: 'log_not_opened', status: 422, messageKey: 'facilities.errors.log_not_opened' },
+  { code: 'log_period_invalid', status: 422, messageKey: 'facilities.errors.log_period_invalid' },
+  { code: 'log_groups_invalid', status: 422, messageKey: 'facilities.errors.log_groups_invalid' },
+  // Incidents (REQ-016, M-12): never deleted.
+  { code: 'incident_description_length', status: 422, messageKey: 'facilities.errors.incident_description_length' },
+  { code: 'incident_time_future', status: 422, messageKey: 'facilities.errors.incident_time_future' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']
