@@ -185,7 +185,8 @@ test('ISSUE-136 gathering time: default and override, kept on a move, 422 when f
     await expect(page.getByRole('heading', { level: 1, name: /Trening bez zbiórki/ })).toBeVisible()
     await expect(page.getByTestId('club-session-gathering')).toHaveCount(0)
 
-    await page.goto('/club/calendar')
+    // The sessions are tomorrow: on a Sunday that is the next Monday-Sunday week, so open today to tomorrow.
+    await page.goto(`/club/calendar?from=${today}&to=${tomorrow}`)
     const calendarItem = page.locator(`[data-testid="calendar-item"][data-item-id="${matchSession.id}"]`)
     await expect(calendarItem.getByTestId('calendar-item-gathering')).toContainText('09:15')
     await expect(
