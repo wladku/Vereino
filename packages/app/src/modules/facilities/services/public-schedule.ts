@@ -19,9 +19,8 @@ import type {
 } from '../../club_core/services/public-site'
 import type { PublicBlockProvider } from '../../club_core/services/public-blocks'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
-import { rentalRateShapeOf } from '../commands/rental-rates'
-import { zoneRuleShapeOf } from '../commands/zone-rules'
 import { Closure, InternalBooking, Rental, RentalRate, ZoneRule } from '../data/entities'
+import { rentalRateShapeOf, zoneRuleShapeOf } from '../data/shapes'
 import { OCCUPYING_BOOKING_STATUSES } from '../lib/internal-bookings'
 import {
   datesBetween,

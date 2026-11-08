@@ -53,10 +53,12 @@ Left as notes: (L5) making a place public needs `club_core.manage` only, while p
 - `yarn verify` (final, after the review fixes) — all 14 steps passed.
 - Lesson: `.ai/lessons/public-routes-convert-time-zones-once.md`.
 
+- CI on PR #230 (run 42529611277): `gate` pass; integration shard 3/3 pass; shard 2/3: **TEST-024 ✓ (12.2 s) and TEST-028 ✓ (17.2 s)**, but TEST-023 ✘ twice — `yarn mercato facilities rental-lifecycle … exited 1: … Duplicate command registration for id facilities.rental_rates.create`. Cause: `services/public-schedule.ts` (reached from `facilities/di.ts` through the club page block) imported the shape mappers from `commands/rental-rates.ts` and `commands/zone-rules.ts`, which register their commands on import, so the CLI registered them twice. Reproduced locally without a database (`DATABASE_URL=<unreachable> yarn mercato facilities rental-lifecycle …` → `Duplicate command registration`); fixed by moving `zoneRuleShapeOf` and `rentalRateShapeOf` to `data/shapes.ts` (re-exported by the command files); the same command then reaches `connect ECONNREFUSED`. Lesson `.ai/lessons/di-loaded-modules-never-import-command-files.md`.
+
 ## Open problems
 
 - No browser test drives the place form's public group or the list columns; TEST-024 covers 422/409 through the API. The empty public list and "no published schedule this month" are not exercised by a test.
-- **TEST-024 has not run locally**: the Docker Desktop engine stayed down for the rest of the run (not touched, per the run rules); CI's sharded `test:integration:vereino` runs it on the PR. TEST-028 passed before the review fixes; the fixture changes since then (an extra internal booking, the day choice) only add entries its substring checks tolerate.
+- TEST-024 never ran locally (the Docker Desktop engine stayed down; not touched, per the run rules); it passed in CI after the review fixes, as did TEST-028.
 - The 429 is not integration-tested: `OM_INTEGRATION_TEST` disables rate limits (V-10, TEST-024); both facilities routes and the club_core file route declare `metadata.GET.rateLimit` (120/min per client IP).
 - Past days: rentals that are `done` and sessions that are not `planned` no longer occupy (the occupancy reads), so a past stretch can read "bookable". `canRequest` is false on past days.
 - Planned maintenance ("unavailable") joins with phase 5 step 9.
