@@ -26,6 +26,8 @@ export type ClubPublicSettings = {
   publicSlug: string | null
   publicDescription: string | null
   contactPhone: string | null
+  /** The club's own bank account (26 digits, #111), shown in the payer's transfer instructions. */
+  bankAccount: string | null
   logoAttachmentId: string | null
   /** The logo through the platform's authenticated image route (same organization only); null without a logo. */
   logoUrl: string | null
@@ -73,6 +75,7 @@ export function publicSettingsOf(row: ClubSettings | null): ClubPublicSettings {
     publicSlug: row?.publicSlug ?? null,
     publicDescription: row?.publicDescription ?? null,
     contactPhone: row?.contactPhone ?? null,
+    bankAccount: row?.bankAccount ?? null,
     logoAttachmentId,
     logoUrl: staffLogoUrl(logoAttachmentId),
     publication: resolvePublication(row?.publication ?? null),

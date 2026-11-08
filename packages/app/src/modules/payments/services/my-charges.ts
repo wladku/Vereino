@@ -1,13 +1,15 @@
 // Reads of the payer's own charges and checkouts (`GET /api/payments/my-charges`, M-08; `POST
 // /api/payments/checkouts/{id}/refresh`, M-09; payments spec API table, REQ-012; #110). The payer sees the charges
 // they pay, and their own or their wards' charges without a payer — shown, but not payable online ("no payer —
-// contact the club"). Cancelled charges are not listed. Routes reach the ORM only through services (REQ-F16).
+// contact the club"). Cancelled charges are not listed. Since #111 the paid history (up to six) is read apart.
+// Routes reach the ORM only through services (REQ-F16).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Charge, Checkout, Payment } from '../data/entities'
 import { amountDueOf, isOverdue, paidTotal, remainingOf } from '../lib/charge-ledger'
 import { returnState } from '../lib/checkout-rules'
+import { PAYMENT_HISTORY_LIMIT } from '../lib/payer-summary'
 import type { Payer } from './checkout'
 import { clubClock, findPersons } from './directory'
 
@@ -30,6 +32,8 @@ export type MyChargeItem = {
   periodLabel: string | null
   dueDate: string
   amountDue: number
+  /** The discount already deducted from `amountDue` (grosz). */
+  discountAmount: number
   paid: number
   remaining: number
   status: string
@@ -77,6 +81,60 @@ function visibleWhere(payer: Payer) {
   }
 }
 
+/** The M-08 rows of charges: debtor's name, what was paid and remains, the overdue marker and whether it is payable. */
+async function chargeItems(container: AwilixContainer, payer: Payer, rows: Charge[]): Promise<MyChargeItem[]> {
+  const em = freshEm(container)
+  const payments = rows.length
+    ? await em.find(
+        Payment,
+        { ...payer.scope, chargeId: { $in: rows.map((row) => row.id) }, isOverpayment: false, deletedAt: null },
+        { fields: ['id', 'chargeId', 'amount'] },
+      )
+    : []
+  const [persons, clock] = await Promise.all([
+    findPersons(
+      container,
+      payer.scope,
+      rows.flatMap((row) => (row.personId ? [row.personId] : [])),
+    ),
+    clubClock(container, payer.scope),
+  ])
+  return rows.map((row): MyChargeItem => {
+    const amountDue = amountDueOf(row)
+    const paid = paidTotal(payments.filter((payment) => payment.chargeId === row.id))
+    const dueDate = calendarDate(row.dueDate)
+    const person = row.personId ? persons.get(row.personId) : undefined
+    return {
+      id: row.id,
+      description: row.description,
+      personId: row.personId ?? null,
+      person: person ? { firstName: person.firstName, lastName: person.lastName } : null,
+      periodLabel: row.periodLabel ?? null,
+      dueDate,
+      amountDue,
+      discountAmount: row.discountAmount,
+      paid,
+      remaining: remainingOf(amountDue, paid),
+      status: row.status,
+      overdue: isOverdue({ status: row.status, dueDate }, clock.today),
+      payerMissing: row.payerMissing,
+      payable: row.status === 'open' && !row.payerMissing && row.payerPersonId === payer.personId,
+    }
+  })
+}
+
+/** The payer's most recently due paid charges (M-08 history after the open ones, issue #111). */
+export async function myPaymentHistory(container: AwilixContainer, payer: Payer): Promise<MyChargeItem[]> {
+  const rows = await findWithDecryption(
+    freshEm(container),
+    Charge,
+    { ...payer.scope, deletedAt: null, status: 'paid' as const, payerPersonId: payer.personId },
+    { orderBy: { dueDate: 'desc', id: 'desc' }, limit: PAYMENT_HISTORY_LIMIT },
+    payer.scope,
+  )
+  return chargeItems(container, payer, rows)
+}
+
 /** The payer's charges as M-08 lists them, by due date (the page groups what is still to pay). */
 export async function myCharges(
   container: AwilixContainer,
@@ -98,47 +156,14 @@ export async function myCharges(
     ),
     em.count(Charge, visibleWhere(payer)),
   ])
-  const payments = rows.length
-    ? await em.find(
-        Payment,
-        { ...payer.scope, chargeId: { $in: rows.map((row) => row.id) }, isOverpayment: false, deletedAt: null },
-        { fields: ['id', 'chargeId', 'amount'] },
-      )
-    : []
-  const [persons, clock, checkouts] = await Promise.all([
-    findPersons(
-      container,
-      payer.scope,
-      rows.flatMap((row) => (row.personId ? [row.personId] : [])),
-    ),
-    clubClock(container, payer.scope),
+  const [items, checkouts] = await Promise.all([
+    chargeItems(container, payer, rows),
     em.find(
       Checkout,
       { ...payer.scope, payerPersonId: payer.personId, deletedAt: null },
       { orderBy: { createdAt: 'desc' }, limit: RECENT_CHECKOUTS },
     ),
   ])
-  const items = rows.map((row): MyChargeItem => {
-    const amountDue = amountDueOf(row)
-    const paid = paidTotal(payments.filter((payment) => payment.chargeId === row.id))
-    const dueDate = calendarDate(row.dueDate)
-    const person = row.personId ? persons.get(row.personId) : undefined
-    return {
-      id: row.id,
-      description: row.description,
-      personId: row.personId ?? null,
-      person: person ? { firstName: person.firstName, lastName: person.lastName } : null,
-      periodLabel: row.periodLabel ?? null,
-      dueDate,
-      amountDue,
-      paid,
-      remaining: remainingOf(amountDue, paid),
-      status: row.status,
-      overdue: isOverdue({ status: row.status, dueDate }, clock.today),
-      payerMissing: row.payerMissing,
-      payable: row.status === 'open' && !row.payerMissing && row.payerPersonId === payer.personId,
-    }
-  })
   return { items, total, checkouts: checkouts.map(checkoutSummary) }
 }
 

@@ -8,11 +8,11 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { authorizeScoped, type TargetLock } from '@/modules/foundation'
+import { normalizeBankAccount } from '@vereino/core'
 import { clubCoreErrors } from '../api/errors'
 import { Institution } from '../data/entities'
 import { countPlacesOwnedBy, lockPlaceHierarchy } from '../data/queries'
 import { institutionCreateSchema, institutionDeleteSchema, institutionUpdateSchema } from '../data/validators'
-import { normalizeBankAccount } from '../lib/institutions'
 import {
   STRUCTURE_WRITE_KINDS,
   authorizeReplay,
