@@ -36,7 +36,12 @@
 - `yarn typecheck`, `yarn typecheck:qa` → clean.
 - `yarn test:integration:vereino --filter TEST-026` → `1 passed (1.6m)`.
 - `yarn ds:check` → `1072 files passed`; eslint on facilities + its tests → 0 errors.
-- E08-S06 and `yarn verify`: see the PR.
+- `yarn test:integration:vereino --filter E08-S06` → `1 passed (1.7m)`; `yarn verify` → all 14 steps passed (before the review).
+- After the review fixes (2646ec3): `yarn verify` → all 14 steps passed again. The reruns of `--filter TEST-026` and `--filter E08-S06` failed to start: `[ephemeral] starting PostgreSQL … Could not find a working container runtime strategy` (Docker was down; the run may not touch Docker Desktop). TEST-026 gained a coach `/today` assertion (`log: null`) that has therefore not run locally; CI runs it on the PR.
+
+## Review
+
+A fresh-eyes subagent reviewed `git diff origin/main...HEAD` (read-only): request changes. Fixed in 2646ec3: (M1) `GET /api/facilities/today` returned the log (conditions, decrypted remarks) to anyone with `facilities.view` — now only to callers with `facilities.log.write` and a log grant, others get `log: null`; (M2) saving one card on `/club/facility` reset the other cards' unsaved input — cards keep a stable key and follow the log only while clean; (L1) a concurrent first log of the day answered 500 — the unique violation now answers 409 `log_exists`; (L2) every update overwrote the operator — set on create only; (L5) a ban could link an incident of another place — the check includes the place; (L3, part) a closing time before the opening time rolls to the next day; (L4) an unknown `?place=` offers the club's first place. Left as follow-ups: the admin log edit dialog uses the browser time zone; a page left open over midnight keeps writing yesterday's log; the ban list shows "Linked" without an incident summary.
 
 ## Open problems / next steps
 
