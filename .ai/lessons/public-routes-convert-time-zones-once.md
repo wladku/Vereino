@@ -1,7 +1,7 @@
 ---
 title: "On sessionless routes, build one Intl formatter per time zone and convert each entry once"
 modules: ["facilities", "activities", "club_core"]
-areas: ["security", "performance"]
+areas: ["module-data", "debugging"]
 topics: ["public-routes", "time-zones", "rate-limit"]
 ---
 
