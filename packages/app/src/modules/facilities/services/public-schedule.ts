@@ -1,13 +1,16 @@
 // The public facility calendar (facilities spec P-03, P-04, the two `GET /api/facilities/public/…` rows, REQ-014,
 // TEST-024; #124). The club and the place come from `club_core`'s public site — the one approved slug lookup
 // (`clubCorePublicSite`, AGENTS.md exception D-024/D-026, DD-35) and the place's `is_public_schedule` (DD-29) — and
-// every later read carries the tenant and organization that lookup found. The month is built from the staff calendar's
-// entries (`calendarEntries`) and the place's zones and opening hours, then reduced to states: nothing a guest receives
-// names a renter, a person, a group, an activity, a booking's purpose or a closure's reason, and no record id leaves
-// this file. The responses are cached by shared caches for 60 s only and never on the server (DD-45).
+// every later read carries the tenant and organization that lookup found. The month is built from the entries on
+// the place family — read with their kind and times only, never an encrypted column or a name (`publicEntries`) —
+// and the place's zones and opening hours, then reduced to states: nothing a guest receives names a renter, a person,
+// a group, an activity, a booking's purpose or a closure's reason, and no entry or place id leaves this file (the
+// photo and regulations URLs carry the public file's id, as the section materials do). Each entry is converted to
+// club-zone minutes once, so a busy month costs one pass. The responses are cached by shared caches for 60 s only and
+// never on the server (DD-45).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { addDays, calendarDateInZone, openingWindowsOn, zonedInstant, type OpeningHours } from '@vereino/core'
+import { addDays, openingWindowsOn, zonedInstant, type CalendarDate, type OpeningHours } from '@vereino/core'
 import type {
   ClubCorePublicSite,
   PublicClubFrame,
@@ -18,21 +21,25 @@ import type { PublicBlockProvider } from '../../club_core/services/public-blocks
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { rentalRateShapeOf } from '../commands/rental-rates'
 import { zoneRuleShapeOf } from '../commands/zone-rules'
-import { RentalRate, ZoneRule } from '../data/entities'
+import { Closure, InternalBooking, Rental, RentalRate, ZoneRule } from '../data/entities'
+import { OCCUPYING_BOOKING_STATUSES } from '../lib/internal-bookings'
 import {
   datesBetween,
   entryState,
+  daySpans,
   firstRequestMinute,
-  minutesOnDate,
+  localMoment,
   publicDaySlots,
   publicRates,
   scheduleMonth,
   type PublicRate,
   type PublicSlot,
+  type PublicSlotState,
+  type ScheduleEntryKind,
 } from '../lib/public-schedule'
+import { OCCUPYING_RENTAL_STATUSES } from '../lib/rentals'
 import { dayZoneSegments } from '../lib/zones'
-import { calendarEntries } from './calendar'
-import { openingHours } from './directory'
+import { openingHours, plannedSessions, type FacilitiesScope } from './directory'
 import { placeFamilyIds } from './occupancy'
 
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
@@ -126,7 +133,7 @@ export async function publicScheduleView(
   const scope = { tenantId: frame.tenantId, organizationId: frame.organizationId }
   const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
   const timeZone = settings.values.timezone
-  const range = scheduleMonth(month, calendarDateInZone(now, timeZone))
+  const range = scheduleMonth(month, localMoment(now, timeZone).date)
   if (!range) return { status: 'month_invalid' }
   const em = container.resolve<EntityManager>('em').fork()
   const window = {
@@ -134,25 +141,28 @@ export async function publicScheduleView(
     end: zonedInstant(addDays(range.last, 1), '00:00', timeZone),
   }
   const familyIds = await placeFamilyIds(container, scope, place.id, em)
-  const entries = await calendarEntries(container, em, scope, familyIds, window, now)
+  const entries = await publicEntries(container, em, scope, familyIds, window, now)
+  const byDate = new Map<CalendarDate, Array<{ from: number; to: number; state: PublicSlotState }>>()
+  for (const entry of entries) {
+    for (const [date, span] of daySpans(entry, timeZone)) {
+      byDate.set(date, [...(byDate.get(date) ?? []), { ...span, state: entryState(entry.kind) }])
+    }
+  }
+  const nowLocal = localMoment(now, timeZone)
   const hours = (await openingHours(container, scope, [place.id], em)).get(place.id) ?? null
   const rules = (await em.find(ZoneRule, { ...scope, deletedAt: null, placeId: place.id })).map(zoneRuleShapeOf)
   const rates = (await em.find(RentalRate, { ...scope, deletedAt: null, placeId: place.id })).map(rentalRateShapeOf)
   const days = datesBetween(range.first, range.last).map((date) => {
     const opening = openingWindowsOn(hours, date)?.map((w) => ({ from: w.from, to: w.to })) ?? null
-    const dayEntries = entries.flatMap((entry) => {
-      const span = minutesOnDate(entry, date, timeZone)
-      return span ? [{ ...span, state: entryState(entry.kind) }] : []
-    })
     return {
       date,
       opening,
       slots: publicDaySlots({
         zones: dayZoneSegments(rules, date),
         opening,
-        entries: dayEntries,
+        entries: byDate.get(date) ?? [],
         requestsEnabled: place.acceptsOnlineRequests,
-        notBefore: firstRequestMinute(date, now, timeZone),
+        notBefore: firstRequestMinute(date, nowLocal),
       }),
     }
   })
@@ -177,6 +187,57 @@ export async function publicScheduleView(
       days,
     },
   }
+}
+
+/**
+ * The entries on `placeIds` overlapping the window, as a kind and times only: planned sessions, confirmed internal
+ * bookings, occupying rentals, external requests whose hold is valid at `now`, closures. The same entries as the staff
+ * calendar (`services/calendar.ts`), without decrypting a renter's name or resolving a booker's.
+ */
+async function publicEntries(
+  container: AwilixContainer,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+  now: Date,
+): Promise<Array<{ kind: ScheduleEntryKind; start: Date; end: Date }>> {
+  const where = {
+    ...scope,
+    deletedAt: null,
+    placeId: { $in: [...placeIds] },
+    startsAt: { $lt: window.end },
+    endsAt: { $gt: window.start },
+  }
+  const times = ['id', 'startsAt', 'endsAt'] as const
+  const sessions = await plannedSessions(container, scope, placeIds, window, em)
+  const rentals = await em.find(
+    Rental,
+    {
+      ...where,
+      $or: [
+        { status: { $in: [...OCCUPYING_RENTAL_STATUSES] } },
+        { status: 'pending_approval', holdExpiresAt: { $gt: now } },
+      ],
+    },
+    { fields: [...times, 'status'] },
+  )
+  const bookings = await em.find(
+    InternalBooking,
+    { ...where, status: { $in: [...OCCUPYING_BOOKING_STATUSES] } },
+    { fields: [...times] },
+  )
+  const closures = await em.find(Closure, where, { fields: [...times] })
+  return [
+    ...sessions.map((row) => ({ kind: 'session' as const, start: row.startAt, end: row.endAt })),
+    ...rentals.map((row) => ({
+      kind: row.status === 'pending_approval' ? ('request' as const) : ('rental' as const),
+      start: row.startsAt,
+      end: row.endsAt,
+    })),
+    ...bookings.map((row) => ({ kind: 'booking' as const, start: row.startsAt, end: row.endsAt })),
+    ...closures.map((row) => ({ kind: 'closure' as const, start: row.startsAt, end: row.endsAt })),
+  ]
 }
 
 /** The public path of P-03. */

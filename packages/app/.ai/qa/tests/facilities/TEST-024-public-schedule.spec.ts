@@ -6,8 +6,9 @@ import { PRIVATE_NAMES, publicPitch, publicPlaces, publicSchedule, setPlacePubli
 
 // Issue #124 (E08-S04), facilities spec REQ-014, P-03, P-04, TEST-024 (security), DD-29, DD-45: a guest reads the
 // club's public facilities and a public pitch's month without a session. The month shows states only — "taken by the
-// club" for a club event, "booked" for a rental, "requested" for a held request, "closed" for a closure — and the
-// responses carry no renter, contact, group, activity or closure detail and no record id. A place that is not public,
+// club" for a club event and an internal booking, "booked" for a rental, "requested" for a held request, "closed" for
+// a closure — and the responses carry no renter, contact, group, activity, booking purpose or closure detail and no
+// record id. A place that is not public,
 // an inactive place, an unknown club or place answer 404 `public_place_not_found`; a club that does not publish its
 // places calendar 404 `public_places_disabled` and nothing else; a month outside the readable range 400. The place
 // fields of B-06: a public calendar needs a slug (422), a slug is unique among the club's places (409). The 429 is
@@ -112,7 +113,9 @@ test('TEST-024 public facilities and month: states without names or ids; 404 for
     expect(day?.slots).toEqual([
       { from: '08:00', to: '10:00', state: 'bookable', canRequest: true },
       { from: '10:00', to: '11:30', state: 'requested', canRequest: false },
-      { from: '11:30', to: '16:00', state: 'bookable', canRequest: true },
+      { from: '11:30', to: '12:00', state: 'bookable', canRequest: false },
+      { from: '12:00', to: '13:00', state: 'club', canRequest: false },
+      { from: '13:00', to: '16:00', state: 'bookable', canRequest: true },
       { from: '16:00', to: '17:30', state: 'club_training', canRequest: false },
       { from: '17:30', to: '19:00', state: 'club', canRequest: false },
       { from: '19:00', to: '19:30', state: 'club_training', canRequest: false },

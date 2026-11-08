@@ -3,9 +3,9 @@ import {
   PUBLIC_SLOT_STATES,
   datesBetween,
   entryState,
+  daySpans,
   firstRequestMinute,
-  minuteInZone,
-  minutesOnDate,
+  localMoment,
   publicDaySlots,
   publicRates,
   scheduleMonth,
@@ -79,31 +79,45 @@ describe('datesBetween', () => {
   })
 })
 
-describe('minuteInZone and minutesOnDate', () => {
-  it('reads the wall minute of an instant in the club zone', () => {
-    expect(minuteInZone(new Date('2026-11-08T16:30:00Z'), WARSAW)).toBe(17 * 60 + 30)
+describe('localMoment and daySpans', () => {
+  it('reads the club-zone date and minute of an instant, with one formatter per zone', () => {
+    expect(localMoment(new Date('2026-11-08T16:30:00Z'), WARSAW)).toEqual({ date: '2026-11-08', minute: 17 * 60 + 30 })
+    expect(localMoment(new Date('2026-11-08T23:30:00Z'), WARSAW)).toEqual({ date: '2026-11-09', minute: 30 })
+    expect(localMoment(new Date('2026-11-08T23:30:00Z'), 'UTC')).toEqual({ date: '2026-11-08', minute: 23 * 60 + 30 })
   })
 
-  it('cuts an interval to one date', () => {
+  it('places an interval within one date', () => {
     const evening = { start: new Date('2026-11-12T17:30:00Z'), end: new Date('2026-11-12T19:00:00Z') }
-    expect(minutesOnDate(evening, '2026-11-12', WARSAW)).toEqual({ from: 18 * 60 + 30, to: 20 * 60 })
-    expect(minutesOnDate(evening, '2026-11-13', WARSAW)).toBeNull()
-    expect(minutesOnDate(evening, '2026-11-11', WARSAW)).toBeNull()
+    expect([...daySpans(evening, WARSAW)]).toEqual([['2026-11-12', { from: 18 * 60 + 30, to: 20 * 60 }]])
   })
 
-  it('splits an interval over midnight and reads an end at midnight as 24:00', () => {
-    const overnight = { start: new Date('2026-11-12T21:00:00Z'), end: new Date('2026-11-13T23:00:00Z') }
-    expect(minutesOnDate(overnight, '2026-11-12', WARSAW)).toEqual({ from: 22 * 60, to: 1440 })
-    expect(minutesOnDate(overnight, '2026-11-13', WARSAW)).toEqual({ from: 0, to: 1440 })
+  it('splits an interval over several dates and reads an end at midnight as 24:00', () => {
+    const long = { start: new Date('2026-11-12T21:00:00Z'), end: new Date('2026-11-14T10:00:00Z') }
+    expect([...daySpans(long, WARSAW)]).toEqual([
+      ['2026-11-12', { from: 22 * 60, to: 1440 }],
+      ['2026-11-13', { from: 0, to: 1440 }],
+      ['2026-11-14', { from: 0, to: 11 * 60 }],
+    ])
     const untilMidnight = { start: new Date('2026-11-12T21:00:00Z'), end: new Date('2026-11-12T23:00:00Z') }
-    expect(minutesOnDate(untilMidnight, '2026-11-12', WARSAW)).toEqual({ from: 22 * 60, to: 1440 })
-    expect(minutesOnDate(untilMidnight, '2026-11-13', WARSAW)).toBeNull()
+    expect([...daySpans(untilMidnight, WARSAW)]).toEqual([['2026-11-12', { from: 22 * 60, to: 1440 }]])
+    const pastMidnight = { start: new Date('2026-11-12T21:00:00Z'), end: new Date('2026-11-13T23:00:00Z') }
+    expect([...daySpans(pastMidnight, WARSAW)]).toEqual([
+      ['2026-11-12', { from: 22 * 60, to: 1440 }],
+      ['2026-11-13', { from: 0, to: 1440 }],
+    ])
   })
 
-  it('drops an empty, inverted or sub-minute interval', () => {
+  it('keeps an entry over the repeated autumn hour by its length', () => {
+    // 2026-10-25 in Warsaw: 02:30 CEST (00:30Z) to 02:15 CET (01:15Z) is 45 minutes, not an inverted interval.
+    const night = { start: new Date('2026-10-25T00:30:00Z'), end: new Date('2026-10-25T01:15:00Z') }
+    expect([...daySpans(night, WARSAW)]).toEqual([['2026-10-25', { from: 2 * 60 + 30, to: 3 * 60 + 15 }]])
+  })
+
+  it('places nothing for an empty, inverted or sub-minute interval', () => {
     const at = new Date('2026-11-12T17:30:00Z')
-    expect(minutesOnDate({ start: at, end: at }, '2026-11-12', WARSAW)).toBeNull()
-    expect(minutesOnDate({ start: at, end: new Date(at.getTime() + 30_000) }, '2026-11-12', WARSAW)).toBeNull()
+    expect(daySpans({ start: at, end: at }, WARSAW).size).toBe(0)
+    expect(daySpans({ start: at, end: new Date(at.getTime() + 30_000) }, WARSAW).size).toBe(0)
+    expect(daySpans({ start: at, end: new Date(at.getTime() - 60_000) }, WARSAW).size).toBe(0)
   })
 })
 
@@ -188,24 +202,40 @@ describe('publicDaySlots', () => {
     ])
   })
 
+  it('offers a request while a 90-minute unit of a started stretch is still ahead', () => {
+    const bookable = [{ from: '08:00', to: '16:00', zone: 'reservable_paid' as const }]
+    expect(
+      publicDaySlots({ zones: bookable, opening: null, entries: [], requestsEnabled: true, notBefore: 9 * 60 })[0],
+    ).toMatchObject({ state: 'bookable', canRequest: true })
+    expect(
+      publicDaySlots({ zones: bookable, opening: null, entries: [], requestsEnabled: true, notBefore: 15 * 60 })[0],
+    ).toMatchObject({ state: 'bookable', canRequest: false })
+  })
+
   it('offers no request when requests are off or the stretch has started', () => {
     const bookable = [{ from: '19:30', to: '22:00', zone: 'reservable_paid' as const }]
     expect(
       publicDaySlots({ zones: bookable, opening: null, entries: [], requestsEnabled: false, notBefore: 0 })[0],
     ).toMatchObject({ state: 'bookable', canRequest: false })
     expect(
-      publicDaySlots({ zones: bookable, opening: null, entries: [], requestsEnabled: true, notBefore: 20 * 60 })[0],
+      publicDaySlots({
+        zones: bookable,
+        opening: null,
+        entries: [],
+        requestsEnabled: true,
+        notBefore: 20 * 60 + 31,
+      })[0],
     ).toMatchObject({ state: 'bookable', canRequest: false })
   })
 })
 
 describe('firstRequestMinute', () => {
-  const now = new Date('2026-11-08T16:30:00Z')
+  const now = { date: '2026-11-08', minute: 17 * 60 + 30 }
 
   it('allows nothing on a past day, the rest of today and all of a later day', () => {
-    expect(firstRequestMinute('2026-11-07', now, WARSAW)).toBe(1440)
-    expect(firstRequestMinute('2026-11-08', now, WARSAW)).toBe(17 * 60 + 30)
-    expect(firstRequestMinute('2026-11-09', now, WARSAW)).toBe(0)
+    expect(firstRequestMinute('2026-11-07', now)).toBe(1440)
+    expect(firstRequestMinute('2026-11-08', now)).toBe(17 * 60 + 30)
+    expect(firstRequestMinute('2026-11-09', now)).toBe(0)
   })
 })
 
@@ -232,6 +262,7 @@ describe('publicRates', () => {
       rate({ validFrom: '2026-12-01' }),
       rate({ validTo: '2026-10-31' }),
       rate({ renterCategory: 'municipal_club', pricePer90: 12000, validTo: '2026-11-15' }),
+      rate({ pricePer90: 9000, seasonFrom: '05-01', seasonTo: '09-30' }),
     ]
     expect(publicRates(rates, 'p1', '2026-11-01', '2026-11-30')).toEqual([
       { category: 'municipal_club', pricePer90: 12000, seasonFrom: null, seasonTo: null, includesLighting: false },

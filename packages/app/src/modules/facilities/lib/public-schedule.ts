@@ -6,7 +6,7 @@
 // `reservable_paid` zone is "bookable", and offers "Request a booking" when the place and the club take online
 // requests, it starts in the future and it is at least one 90-minute unit long. Nothing here reads the database or
 // the clock (S3.5): the caller passes the dates, the time zone and the current instant.
-import { addDays, calendarDateInZone, calendarMonth, minutesOfDay, type CalendarDate } from '@vereino/core'
+import { addDays, calendarMonth, minutesOfDay, seasonCovers, type CalendarDate } from '@vereino/core'
 import type { RentalRateShape, RenterCategory } from './rates'
 import { PUBLIC_RENTER_CATEGORIES } from './rates'
 import { MIN_AVAILABILITY_MINUTES, type Zone } from './zones'
@@ -98,34 +98,63 @@ export function datesBetween(first: CalendarDate, last: CalendarDate): CalendarD
 
 const MINUTES_PER_DAY = 24 * 60
 
-/** The minute of the day an instant shows in a time zone. */
-export function minuteInZone(instant: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(instant)
-  const byType = Object.fromEntries(parts.map((entry) => [entry.type, entry.value])) as Record<string, string>
-  return Number(byType.hour) * 60 + Number(byType.minute)
+/** One formatter per time zone: a month read converts every entry, so building one per call would cost CPU. */
+const FORMATTERS = new Map<string, Intl.DateTimeFormat>()
+
+function formatterOf(timeZone: string): Intl.DateTimeFormat {
+  let formatter = FORMATTERS.get(timeZone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+    FORMATTERS.set(timeZone, formatter)
+  }
+  return formatter
+}
+
+/** The club-zone calendar date and minute of the day of an instant. */
+export function localMoment(instant: Date, timeZone: string): { date: CalendarDate; minute: number } {
+  const parts = Object.fromEntries(
+    formatterOf(timeZone)
+      .formatToParts(instant)
+      .map((entry) => [entry.type, entry.value]),
+  ) as Record<string, string>
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minute: Number(parts.hour) * 60 + Number(parts.minute),
+  }
 }
 
 /**
- * The part of `[start, end)` on a club-zone date, in minutes of that day (`to` 1440 = until midnight), or null when the
- * interval does not touch the date.
+ * The parts of `[start, end)` on each club-zone date it touches, in minutes of the day (`to` 1440 = until midnight),
+ * computed once per entry. An entry within one date keeps its length in minutes, so the repeated hour of the autumn
+ * clock change does not invert it; an empty, inverted or sub-minute interval touches no date.
  */
-export function minutesOnDate(
+export function daySpans(
   interval: { start: Date; end: Date },
-  date: CalendarDate,
   timeZone: string,
-): { from: number; to: number } | null {
-  if (interval.end.getTime() <= interval.start.getTime()) return null
-  const startDate = calendarDateInZone(interval.start, timeZone)
-  const lastDate = calendarDateInZone(new Date(interval.end.getTime() - 1), timeZone)
-  if (date < startDate || date > lastDate) return null
-  const from = startDate === date ? minuteInZone(interval.start, timeZone) : 0
-  const to = lastDate === date ? minuteInZone(interval.end, timeZone) || MINUTES_PER_DAY : MINUTES_PER_DAY
-  return to > from ? { from, to } : null
+): Map<CalendarDate, { from: number; to: number }> {
+  const spans = new Map<CalendarDate, { from: number; to: number }>()
+  const length = Math.floor((interval.end.getTime() - interval.start.getTime()) / 60_000)
+  if (length <= 0) return spans
+  const first = localMoment(interval.start, timeZone)
+  const last = localMoment(new Date(interval.end.getTime() - 1), timeZone).date
+  if (last === first.date) {
+    spans.set(first.date, { from: first.minute, to: Math.min(MINUTES_PER_DAY, first.minute + length) })
+    return spans
+  }
+  spans.set(first.date, { from: first.minute, to: MINUTES_PER_DAY })
+  for (let date = addDays(first.date, 1); date < last; date = addDays(date, 1)) {
+    spans.set(date, { from: 0, to: MINUTES_PER_DAY })
+  }
+  spans.set(last, { from: 0, to: localMoment(interval.end, timeZone).minute || MINUTES_PER_DAY })
+  return spans
 }
 
 export type PublicSlot = { from: string; to: string; state: PublicSlotState; canRequest: boolean }
@@ -162,8 +191,8 @@ function openZones(
 /**
  * One day of a place for the public: the zones inside the opening hours, covered by the entries of the day (the
  * state of the highest rank wins a minute), merged into stretches. `notBefore` is the first minute a request may start
- * (the current minute today, 0 on a later day, 1440 on a past day); `requestsEnabled` is the place's and the club's
- * switch together.
+ * (the current minute today, 0 on a later day, 1440 on a past day): a bookable stretch offers a request when at least
+ * one 90-minute unit of it is still ahead. `requestsEnabled` is the place's and the club's switch together.
  */
 export function publicDaySlots(input: {
   zones: ReadonlyArray<{ from: string; to: string; zone: Zone }>
@@ -194,16 +223,14 @@ export function publicDaySlots(input: {
     canRequest:
       input.requestsEnabled &&
       stretch.state === 'bookable' &&
-      stretch.from >= input.notBefore &&
-      stretch.to - stretch.from >= MIN_AVAILABILITY_MINUTES,
+      stretch.to - Math.max(stretch.from, input.notBefore) >= MIN_AVAILABILITY_MINUTES,
   }))
 }
 
 /** The first minute of `date` a request may start: past days none, today the current minute, later days all. */
-export function firstRequestMinute(date: CalendarDate, now: Date, timeZone: string): number {
-  const today = calendarDateInZone(now, timeZone)
-  if (date < today) return MINUTES_PER_DAY
-  return date === today ? minuteInZone(now, timeZone) : 0
+export function firstRequestMinute(date: CalendarDate, now: { date: CalendarDate; minute: number }): number {
+  if (date < now.date) return MINUTES_PER_DAY
+  return date === now.date ? now.minute : 0
 }
 
 export type PublicRate = {
@@ -216,8 +243,9 @@ export type PublicRate = {
 }
 
 /**
- * The rates of the public renter categories in force on any day of the month, cheapest first within a category: the
- * guest sees what a 90-minute unit costs (the staff-only winter-lighting rate is left out).
+ * The rates of the public renter categories in force on any day of the month — a seasonal rate only when its season
+ * covers a day of the month — cheapest first within a category: the guest sees what a 90-minute unit costs (the
+ * staff-only winter-lighting rate is left out).
  */
 export function publicRates(
   rates: readonly RentalRateShape[],
@@ -231,7 +259,12 @@ export function publicRates(
         rate.placeId === placeId &&
         PUBLIC_RENTER_CATEGORIES.includes(rate.renterCategory) &&
         rate.validFrom <= last &&
-        (rate.validTo === null || rate.validTo >= first),
+        (rate.validTo === null || rate.validTo >= first) &&
+        (rate.seasonFrom === null ||
+          rate.seasonTo === null ||
+          datesBetween(first, last).some((date) =>
+            seasonCovers({ from: rate.seasonFrom as string, to: rate.seasonTo as string }, date),
+          )),
     )
     .sort(
       (a, b) =>
