@@ -6,7 +6,8 @@ import { createModuleEvents } from '@open-mercato/shared/modules/events'
  * undo emits one `payments.charge.cancelled` with the cancelled ids, and so does a single cancellation (#109). A
  * recorded payment emits `payments.payment.recorded`, a reversing entry `payments.payment.reversed`. The online
  * checkout (#110) emits `payments.checkout.created` and, once booked, `payments.checkout.completed` with a
- * `payments.payment.recorded` per online payment; an online refund emits `payments.payment.refunded`.
+ * `payments.payment.recorded` per online payment; an online refund emits `payments.payment.refunded`. An order campaign (#115) emits
+ * `payments.order_campaign.created|updated` and, per stage, `payments.order_campaign.status_changed` with the new status.
  */
 const events = [
   { id: 'payments.fee.created', label: 'Fee schedule created', entity: 'fee', category: 'crud' },
@@ -23,6 +24,24 @@ const events = [
   { id: 'payments.payment.refunded', label: 'Online payment refunded', entity: 'payment', category: 'custom' },
   { id: 'payments.checkout.created', label: 'Online payment started', entity: 'checkout', category: 'custom' },
   { id: 'payments.checkout.completed', label: 'Online payment received', entity: 'checkout', category: 'custom' },
+  {
+    id: 'payments.order_campaign.created',
+    label: 'Order campaign created',
+    entity: 'order_campaign',
+    category: 'crud',
+  },
+  {
+    id: 'payments.order_campaign.updated',
+    label: 'Order campaign updated',
+    entity: 'order_campaign',
+    category: 'crud',
+  },
+  {
+    id: 'payments.order_campaign.status_changed',
+    label: 'Order campaign stage changed',
+    entity: 'order_campaign',
+    category: 'custom',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'payments', events })

@@ -64,6 +64,18 @@ describe('payments vocabularies', () => {
       charge_already_paid: 409,
       cash_exceeds_selected: 422,
       cash_charges_invalid: 422,
+      order_closes_on_past: 422,
+      order_payment_due_before_close: 422,
+      order_section_unknown: 422,
+      order_groups_invalid: 422,
+      order_set_too_many: 422,
+      order_set_too_small: 422,
+      order_set_component_invalid: 422,
+      order_adult_price_missing: 422,
+      order_campaign_not_editable: 409,
+      order_product_in_use: 409,
+      order_campaign_transition_invalid: 409,
+      order_campaign_not_collecting: 409,
     })
   })
 })
