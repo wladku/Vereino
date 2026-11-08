@@ -1,6 +1,6 @@
 // Error codes owned by `payments` (engineering standards S6.7; payments spec *API, Command, and Error Contracts* →
 // `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108; the charge payments,
-// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115). Thrown through
+// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115; the guardian orders and personal links of issue #116). Thrown through
 // `api/errors.ts`. An inverted validity answers the foundation's `validity_inverted`; a stale lock token the
 // platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
@@ -49,6 +49,21 @@ export const errorCodes = [
     messageKey: 'payments.errors.order_campaign_transition_invalid',
   },
   { code: 'order_campaign_not_collecting', status: 409, messageKey: 'payments.errors.order_campaign_not_collecting' },
+  // Guardian orders and personal order links (#116).
+  { code: 'order_campaign_not_found', status: 404, messageKey: 'payments.errors.order_campaign_not_found' },
+  { code: 'campaign_closed', status: 409, messageKey: 'payments.errors.campaign_closed' },
+  { code: 'order_child_not_in_campaign', status: 403, messageKey: 'payments.errors.order_child_not_in_campaign' },
+  { code: 'order_exists', status: 409, messageKey: 'payments.errors.order_exists' },
+  { code: 'order_not_found', status: 404, messageKey: 'payments.errors.order_not_found' },
+  { code: 'order_answer_missing', status: 422, messageKey: 'payments.errors.order_answer_missing' },
+  { code: 'order_answer_invalid', status: 422, messageKey: 'payments.errors.order_answer_invalid' },
+  { code: 'order_set_size_missing', status: 422, messageKey: 'payments.errors.order_set_size_missing' },
+  { code: 'order_empty', status: 422, messageKey: 'payments.errors.order_empty' },
+  { code: 'order_print_number_taken', status: 422, messageKey: 'payments.errors.order_print_number_taken' },
+  { code: 'order_below_paid', status: 409, messageKey: 'payments.errors.order_below_paid' },
+  { code: 'order_cancel_paid', status: 409, messageKey: 'payments.errors.order_cancel_paid' },
+  { code: 'order_link_not_found', status: 404, messageKey: 'payments.errors.order_link_not_found' },
+  { code: 'order_campaign_completed', status: 410, messageKey: 'payments.errors.order_campaign_completed' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

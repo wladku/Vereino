@@ -1,4 +1,4 @@
-// The e-mail template of `payments` (foundation III P-31; payments spec REQ-031, API row `payments.cash.record` →
+// The e-mail templates of `payments` (foundation III P-31; payments spec REQ-031, API row `payments.cash.record` →
 // "confirmation email to each payer"; issue #114): the confirmation of cash accepted with its receipt number, the
 // amount, the day and the charges it paid. `optOut: 'never'` (a confirmation of the payer's own money). The params are
 // encrypted at rest in the dispatch outbox (foundation `encryption.ts`), so the charge descriptions may travel in them.
@@ -9,6 +9,7 @@ import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { defineEmailTemplate } from '@/modules/foundation'
 import { formatZloty } from '../lib/charge-ledger'
+import { orderLinkPath } from '../lib/orders'
 
 const h = React.createElement
 
@@ -138,4 +139,139 @@ export const orderReminderTemplate = defineEmailTemplate<OrderReminderParams>({
   },
   link: (params) => `/club/orders/${params.campaignId}`,
 })
-export const paymentsEmailTemplates = [cashReceivedTemplate, orderReminderTemplate]
+const orderCopyParams = z
+  .object({
+    campaignId: z.uuid(),
+    campaignName: z.string().min(1).max(200),
+    childName: z.string().max(200),
+    lines: z.array(z.object({ text: z.string().max(500), amount: z.number().int() })).max(50),
+    total: z.number().int(),
+    printName: z.string().max(40).nullable(),
+    printNumber: z.number().int().nullable(),
+    closesOn: z.string().min(10).max(10),
+    paymentDueOn: z.string().min(10).max(10),
+    payerCode: z.string().max(20).nullable(),
+    changed: z.boolean(),
+  })
+  .strict()
+
+export type OrderCopyParams = z.output<typeof orderCopyParams>
+
+function orderCopy(t: TranslateWithFallbackFn, params: OrderCopyParams) {
+  const values = {
+    name: params.campaignName,
+    child: params.childName,
+    total: formatZloty(params.total),
+    closes: params.closesOn,
+    due: params.paymentDueOn,
+    code: params.payerCode ?? '',
+  }
+  const print = [params.printName, params.printNumber === null ? null : String(params.printNumber)]
+    .filter((part): part is string => !!part)
+    .join(' ')
+  return {
+    subject: params.changed
+      ? t('payments.email.orderCopy.subjectChanged', 'Order changed: {name} — {child}', values)
+      : t('payments.email.orderCopy.subject', 'Your order: {name} — {child}', values),
+    lead: t('payments.email.orderCopy.lead', 'Order for {child} in "{name}". Total: {total}.', values),
+    lines: params.lines.map((line) => `${line.text}: ${formatZloty(line.amount)}`),
+    print: print ? t('payments.email.orderCopy.print', 'Print: {print}', { print }) : null,
+    pay: params.payerCode
+      ? t(
+          'payments.email.orderCopy.payWithCode',
+          'Pay by {due}: online in the app, by transfer with the code {code} in the title, or in cash to the coach.',
+          values,
+        )
+      : t('payments.email.orderCopy.pay', 'Pay by {due}: online in the app, by transfer or in cash to the coach.', values),
+    change: t('payments.email.orderCopy.change', 'You can change or cancel the order until {closes}.', values),
+  }
+}
+
+/**
+ * `payments.order_copy` (M-17; REQ-032, #116): the copy of a placed or changed kit order — the lines with their
+ * prices, the print, the total and how to pay. `optOut: 'never'`: the guardian's own order, sent to the address they
+ * entered on it.
+ */
+export const orderCopyTemplate = defineEmailTemplate<OrderCopyParams>({
+  id: 'payments.order_copy',
+  notificationType: 'payments.order_copy',
+  optOut: 'never',
+  params: orderCopyParams,
+  subject: (t, params) => orderCopy(t, params).subject,
+  preheader: (t, params) => orderCopy(t, params).lead,
+  body: (t, params) => {
+    const text = orderCopy(t, params)
+    return h(
+      'div',
+      null,
+      h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, text.lead),
+      h(
+        'ul',
+        { style: { margin: '0 0 12px', paddingLeft: '20px' } },
+        ...text.lines.map((line, index) => h('li', { key: String(index) }, line)),
+      ),
+      text.print ? h('p', { style: { margin: '0 0 12px' } }, text.print) : null,
+      h('p', { style: { margin: '0 0 12px' } }, text.pay),
+      h('p', { style: { margin: '0' } }, text.change),
+    )
+  },
+  text: (t, params) => {
+    const text = orderCopy(t, params)
+    return [text.lead, '', ...text.lines.map((line) => `- ${line}`), '', text.print, text.pay, text.change]
+      .filter((line): line is string => line !== null)
+      .join('\n')
+  },
+  link: (params) => `/club/orders/${params.campaignId}`,
+})
+
+const orderLinkParams = z
+  .object({
+    campaignName: z.string().min(1).max(200),
+    closesOn: z.string().min(10).max(10),
+  })
+  .strict()
+
+export type OrderLinkParams = z.output<typeof orderLinkParams>
+
+function orderLinkCopy(t: TranslateWithFallbackFn, params: OrderLinkParams) {
+  const values = { name: params.campaignName, date: params.closesOn }
+  return {
+    subject: t('payments.email.orderLink.subject', 'Your order link: {name}', values),
+    lead: t(
+      'payments.email.orderLink.lead',
+      'Here is your personal link to order "{name}" for your child. It works until {date}, without signing in.',
+      values,
+    ),
+    hint: t('payments.email.orderLink.hint', 'Do not forward this e-mail: the link lets anyone order for your child.'),
+  }
+}
+
+/**
+ * `payments.order_link` (M-19; REQ-032, #116): a personal link to `/club/o/<token>`, sent on request to a guardian of
+ * a child in the campaign's groups. The raw token reaches the template only through the delivery's secret.
+ */
+export const orderLinkTemplate = defineEmailTemplate<OrderLinkParams>({
+  id: 'payments.order_link',
+  notificationType: 'payments.order_link',
+  optOut: 'never',
+  params: orderLinkParams,
+  subject: (t, params) => orderLinkCopy(t, params).subject,
+  preheader: (t, params) => orderLinkCopy(t, params).lead,
+  body: (t, params) => {
+    const text = orderLinkCopy(t, params)
+    return h(
+      'div',
+      null,
+      h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, text.lead),
+      h('p', { style: { margin: '0' } }, text.hint),
+    )
+  },
+  text: (t, params) => {
+    const text = orderLinkCopy(t, params)
+    return `${text.lead}\n\n${text.hint}`
+  },
+  link: (_params, ctx) => (typeof ctx.secrets.token === 'string' ? orderLinkPath(ctx.secrets.token) : null),
+  actionLabel: (t) => t('payments.email.orderLink.action', 'Open the order form'),
+})
+
+export const paymentsEmailTemplates = [cashReceivedTemplate, orderReminderTemplate, orderCopyTemplate, orderLinkTemplate]

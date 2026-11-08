@@ -5,6 +5,7 @@ import {
   decorateScopedEntityBase,
   validFromColumn,
   validToColumn,
+  tokenLinkColumns,
   type ScopedEntityOptionalProps,
 } from '@vereino/db'
 import type {
@@ -483,9 +484,10 @@ export class OrderProduct extends ScopedEntityBase {
 }
 
 /**
- * An order of one child in a campaign (`payments_orders`). Placed by a guardian in E07-S09; this story reads it for
- * the KPIs, the Orders and No order tabs and the supplier summary. It owns an `order` charge (`charge_id`). One
- * submitted order per child and campaign (partial unique index).
+ * An order of one child in a campaign (`payments_orders`): placed, changed or cancelled by a guardian — in the app or
+ * from a personal link — until the orders deadline (#116); the administrator reads it for the KPIs, the Orders and No
+ * order tabs and the supplier summary (#115). It owns an `order` charge (`charge_id`). One submitted order per child
+ * and campaign (partial unique index).
  */
 @Entity({ tableName: 'payments_orders' })
 @Index({ name: 'payments_orders_org_campaign_idx', properties: ['organizationId', 'campaignId'] })
@@ -596,4 +598,38 @@ export class PayerRef extends ScopedEntityBase {
 
   @Property({ name: 'code', type: 'text' })
   code!: string
+}
+
+const orderLinkColumns = tokenLinkColumns({ use: 'until_expiry' })
+
+/**
+ * A personal order link (payments spec *Data Models* → `payments_order_links`, REQ-032, DD-30; foundation P-10; issue
+ * #116, M-19): the hash of the raw token (the raw token exists only in the e-mail), the guardian it was sent to and
+ * the campaign. Usable until `expires_at` (the end of the orders deadline at the latest) any number of times; never
+ * edited. Whom the link may order for is not stored: each use recomputes the guardian's current grants.
+ */
+@Entity({ tableName: 'payments_order_links' })
+@Index({ name: 'payments_order_links_org_campaign_idx', properties: ['organizationId', 'campaignId'] })
+@Index({ name: 'payments_order_links_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderLink extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'usedCount' | 'lastUsedAt'
+
+  @Property(orderLinkColumns.tokenHash)
+  tokenHash!: string
+
+  @Property(orderLinkColumns.expiresAt)
+  expiresAt!: Date
+
+  @Property(orderLinkColumns.usedCount)
+  usedCount: number = 0
+
+  @Property(orderLinkColumns.lastUsedAt)
+  lastUsedAt?: Date | null
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  /** The guardian the link was sent to (`people_persons`). */
+  @Property({ name: 'guardian_person_id', type: 'uuid' })
+  guardianPersonId!: string
 }

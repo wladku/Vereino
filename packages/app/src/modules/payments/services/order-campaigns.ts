@@ -90,10 +90,10 @@ export function submittedOrders(
   )
 }
 
-type OrderMoney = { total: number; paid: number; chargeStatus: string | null }
+export type OrderMoney = { total: number; paid: number; chargeStatus: string | null }
 
 /** The amount due and what was paid on each order's charge. */
-async function orderMoney(
+export async function orderMoney(
   container: AwilixContainer,
   em: EntityManager,
   scope: PaymentsScope,

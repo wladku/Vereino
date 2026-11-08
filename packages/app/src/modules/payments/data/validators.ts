@@ -34,10 +34,13 @@ import {
   MAX_CAMPAIGN_GROUPS,
   MAX_CAMPAIGN_PRODUCTS,
   MAX_PRODUCT_SIZES,
+  PRINT_NUMBER_MAX,
+  PRINT_NUMBER_MIN,
   PRODUCT_KINDS,
   PRODUCT_NAME_MAX,
   SIZE_MAX,
 } from '../lib/order-campaigns'
+import { CONTACT_PHONE_MAX, ORDER_NOTES_MAX, PRINT_NAME_MAX } from '../lib/orders'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const amountSchema = z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)')
@@ -323,3 +326,39 @@ export const ordersListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 })
+
+// --- Guardian orders (#116, REQ-032, M-17, M-19) ---
+
+const orderFields = {
+  setSelected: z.boolean().default(false).describe('The set is ordered (its products at the set price)'),
+  choices: z
+    .record(z.uuid(), z.string().trim().min(1).max(SIZE_MAX))
+    .refine((choices) => Object.keys(choices).length <= MAX_CAMPAIGN_PRODUCTS)
+    .default({})
+    .describe('Product id → a size, `none` ("Not ordering") or `yes` (a product without a size)'),
+  printName: z.string().trim().max(PRINT_NAME_MAX).nullable().optional(),
+  printNumber: z.number().int().min(PRINT_NUMBER_MIN).max(PRINT_NUMBER_MAX).nullable().optional(),
+  contactEmail: z.email().max(254),
+  contactPhone: z.string().trim().min(3).max(CONTACT_PHONE_MAX),
+  notes: z.string().trim().max(ORDER_NOTES_MAX).nullable().optional(),
+}
+
+/** `payments.orders.place`: one child's order in a campaign. */
+export const orderPlaceSchema = z
+  .object({ campaignId: z.uuid(), participantPersonId: z.uuid(), ...orderFields })
+  .strict()
+
+/** `payments.orders.update`: the whole order again; the lock token is the order's `updatedAt`. */
+export const orderUpdateSchema = z.object({ id: z.uuid(), ...orderFields }).strict()
+
+export const orderCancelSchema = z.object({ id: z.uuid() }).strict()
+
+/** The body of `POST /api/payments/order-links/{token}/orders`: a new order, or a change when `id` is sent. */
+export const orderLinkWriteSchema = z
+  .object({ id: z.uuid().optional(), participantPersonId: z.uuid().optional(), ...orderFields })
+  .strict()
+
+/** `POST /api/payments/public/order-campaigns/{id}/link-request`: the address and the club of the share link. */
+export const orderLinkRequestSchema = z
+  .object({ email: z.email().max(254), clubSlug: z.string().trim().min(1).max(120) })
+  .strict()
