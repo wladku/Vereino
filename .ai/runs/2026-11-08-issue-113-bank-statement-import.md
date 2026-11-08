@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task `om-auto-fix-issue 113`, unattended. It first stopped for approval, then resumed on the owner's instruction (2026-11-08): "continue autonomously, make reasonable assumptions, do not ask".
 - **Issue:** #113 (feature, priority-medium, risk-high). **Spec:** `.ai/specs/2026-10-27-vereino-club-payments.md`, phase 4 step 7 (REQ-030, TEST-042, B-29).
 - **Branch:** `feat/issue-113-bank-statement-import` (renamed from `feat/issue-113-task`).
-- **Outcome:** step 7 is implemented. `yarn verify` passes. TEST-042 could not run locally, because Docker Desktop is not running and this run may not start it; CI runs it on the PR.
+- **Outcome:** step 7 is implemented on PR #229. `yarn verify` passes locally. TEST-042 could not run locally (no container runtime), but it passed in CI.
 
 ## Steps
 
@@ -64,7 +64,8 @@
 
   `docker info` answers `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`. The run's rules forbid touching Docker Desktop, so the integration test is left to CI's integration shards.
 
+- CI on PR #229 (run 42529244085): every check passed, including `gate`, `browser-smoke` and the three integration shards. In shard 3, `TEST-042 bank statement import, matching and the confirmation queue` passed in 10.0s.
+
 ## Open problems and next steps
 
-- Watch TEST-042 and the other payments tests in CI, and fix any failure on this branch.
-- The owner confirms the defaults listed on the PR.
+- The owner confirms the defaults listed on PR #229: the migration, Undo by reversing entries, debits and duplicates not stored, the synchronous cap, and the deferrals.
