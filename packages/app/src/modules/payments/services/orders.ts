@@ -40,6 +40,19 @@ function calendarDate(value: unknown): string {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10)
 }
 
+/** The children by first name, then id: a stable order whatever order the grants listed them in. */
+function byFirstName<T>(
+  entries: readonly T[],
+  persons: ReadonlyMap<string, { firstName: string }>,
+  idOf: (entry: T) => string,
+): T[] {
+  return [...entries].sort(
+    (a, b) =>
+      (persons.get(idOf(a))?.firstName ?? '').localeCompare(persons.get(idOf(b))?.firstName ?? '') ||
+      idOf(a).localeCompare(idOf(b)),
+  )
+}
+
 export type MyCampaignChild = {
   personId: string
   firstName: string
@@ -113,7 +126,7 @@ export async function myOrderCampaigns(
     paymentDueOn: calendarDate(campaign.paymentDueOn),
     status: campaign.status,
     ordersOpen: ordersOpen({ status: campaign.status, closesOn: calendarDate(campaign.closesOn) }, today),
-    children: [...children.entries()].map(([personId, groupId]) => {
+    children: byFirstName([...children.entries()], persons, ([personId]) => personId).map(([personId, groupId]) => {
       const order = orders.find((row) => row.campaignId === campaign.id && row.participantPersonId === personId)
       const own = order ? (money.get(order.id) as OrderMoney) : null
       return {
@@ -219,15 +232,15 @@ export async function orderFormView(
       scope,
     ),
   ])
-  const childIds = [...new Set(personIds)].filter((id) => participants.has(id))
+  const candidates = [...new Set(personIds)].filter((id) => participants.has(id))
   const holders = all.map((order) => ({
     participantPersonId: order.participantPersonId,
     printNumber: order.printNumber ?? null,
     groupId: participants.get(order.participantPersonId) ?? null,
   }))
-  const own = all.filter((order) => childIds.includes(order.participantPersonId))
+  const own = all.filter((order) => candidates.includes(order.participantPersonId))
   const [persons, money, lines, contacts, transfer] = await Promise.all([
-    findPersons(container, scope, childIds, em),
+    findPersons(container, scope, candidates, em),
     orderMoney(container, em, scope, own),
     own.length === 0
       ? Promise.resolve([] as OrderLine[])
@@ -235,6 +248,7 @@ export async function orderFormView(
     contactResolver(container).contacts([ordererPersonId], { container, ...scope, scope: [], em }),
     transferInstructions(container, { scope, personId: ordererPersonId, wardIds: [] }),
   ])
+  const childIds = byFirstName(candidates, persons, (id) => id)
   const productName = new Map(products.map((product) => [product.id, product.name]))
   const latest = [...all].reverse().find((order) => order.orderedByPersonId === ordererPersonId)
   return {

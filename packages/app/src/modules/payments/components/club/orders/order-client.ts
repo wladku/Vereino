@@ -126,10 +126,15 @@ export type OrderEndpoints = {
   cancel: (orderId: string) => string
 }
 
-export const appEndpoints: OrderEndpoints = {
-  place: (participantPersonId, draft) => ({ url: '/api/payments/orders', body: { participantPersonId, ...draft } }),
-  update: (orderId, draft) => ({ url: `/api/payments/orders/${orderId}`, method: 'PUT', body: { ...draft } }),
-  cancel: (orderId) => `/api/payments/orders/${orderId}/cancel`,
+export function appEndpoints(campaignId: string): OrderEndpoints {
+  return {
+    place: (participantPersonId, draft) => ({
+      url: '/api/payments/orders',
+      body: { campaignId, participantPersonId, ...draft },
+    }),
+    update: (orderId, draft) => ({ url: `/api/payments/orders/${orderId}`, method: 'PUT', body: { ...draft } }),
+    cancel: (orderId) => `/api/payments/orders/${orderId}/cancel`,
+  }
 }
 
 export function linkEndpoints(token: string): OrderEndpoints {

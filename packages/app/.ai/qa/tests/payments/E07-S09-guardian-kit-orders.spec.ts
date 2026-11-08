@@ -177,12 +177,12 @@ test('E07-S09 a guardian orders kit in the app and from a personal link', async 
     expect(mine.status, JSON.stringify(mine.body)).toBe(200)
     expect(mine.body?.items).toHaveLength(1)
     expect(mine.body?.items[0].children.map((entry) => [entry.firstName, entry.state, entry.groupName])).toEqual([
-      ['Jaś', 'not_ordered', 'Żaki'],
       ['Ada', 'not_ordered', 'Orliki'],
+      ['Jaś', 'not_ordered', 'Żaki'],
     ])
     const first = await form(kasiaToken)
     expect(first.campaign.ordersOpen).toBe(true)
-    expect(first.children.map((entry) => entry.firstName)).toEqual(['Jaś', 'Ada'])
+    expect(first.children.map((entry) => entry.firstName)).toEqual(['Ada', 'Jaś'])
     const products = (
       await call<{ products: { id: string; name: string }[] }>(
         request,

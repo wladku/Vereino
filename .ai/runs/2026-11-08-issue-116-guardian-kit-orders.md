@@ -60,3 +60,11 @@
 - The owner confirms or overrides the defaults on the PR: the migration, Q1, `GET /api/payments/my-orders` instead of `?for=me`, the club slug in the share link, and the commands not being undoable.
 - E07-S09 must pass on the CI integration shards (first run there).
 - E07-S10 (#117): the kit handover and the coach view.
+
+## Review (fresh agent, after the PR opened)
+
+- **Fixed:** the M-17 form's first order sent no `campaignId` (strict schema → 400); `appEndpoints` is now built per campaign.
+- **Fixed:** the children came in grant (UUID) order, so the test's expected order was random; both services now sort the children by first name, then id.
+- **Fixed:** a change or cancellation while an online checkout of the charge is still `created` now answers 409 `order_payment_in_progress`, so the provider cannot book the old amount on a changed or cancelled charge.
+- **Left as is (minor):** an invalid e-mail sent from the form comes back as a plain 400 banner, not a field error; the per-guardian link limit (3 an hour) is counted without a lock, and the per-IP rate limit bounds it.
+- `yarn verify` after the fixes: all 14 steps passed.

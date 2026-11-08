@@ -64,6 +64,7 @@ export const errorCodes = [
   { code: 'order_cancel_paid', status: 409, messageKey: 'payments.errors.order_cancel_paid' },
   { code: 'order_link_not_found', status: 404, messageKey: 'payments.errors.order_link_not_found' },
   { code: 'order_campaign_completed', status: 410, messageKey: 'payments.errors.order_campaign_completed' },
+  { code: 'order_payment_in_progress', status: 409, messageKey: 'payments.errors.order_payment_in_progress' },
   // Bank statement import (#113).
   { code: 'bank_statement_missing', status: 422, messageKey: 'payments.errors.bank_statement_missing' },
   { code: 'bank_statement_too_large', status: 413, messageKey: 'payments.errors.bank_statement_too_large' },

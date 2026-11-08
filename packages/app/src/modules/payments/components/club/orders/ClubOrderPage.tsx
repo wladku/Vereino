@@ -176,6 +176,7 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
   const clubSlug = searchParams?.get('club') || null
   const childId = searchParams?.get('child') || null
   const queryKey = orderFormQueryKey(campaignId)
+  const endpoints = React.useMemo(() => appEndpoints(campaignId), [campaignId])
   const query = useQuery({
     queryKey,
     queryFn: async (): Promise<FormLoad> => {
@@ -216,7 +217,7 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
           <OrderFormSection
             form={query.data.form}
             mode="app"
-            endpoints={appEndpoints}
+            endpoints={endpoints}
             queryKey={queryKey}
             initialChildId={childId}
           />

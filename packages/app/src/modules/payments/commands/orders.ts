@@ -25,7 +25,7 @@ import { createLogger } from '@open-mercato/shared/lib/logger'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
 import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
-import { Charge, Order, OrderCampaign, OrderLine, type OrderProduct } from '../data/entities'
+import { Charge, Checkout, Order, OrderCampaign, OrderLine, type OrderProduct } from '../data/entities'
 import { orderCancelSchema, orderPlaceSchema, orderUpdateSchema } from '../data/validators'
 import type { OrderCopyParams } from '../emails/templates'
 import { paidTotal, settledStatus } from '../lib/charge-ledger'
@@ -244,6 +244,28 @@ async function checkOrder(
   }
   const { lines: drafts, total } = lines as Extract<typeof lines, { ok: true }>
   return { lines: drafts, total, printName, printNumber, groupId, products }
+}
+
+/**
+ * 409 `order_payment_in_progress` while an online payment of the charge is still open (a checkout `created` for it):
+ * a change or a cancellation now would let the provider book the old amount on a changed or cancelled charge.
+ */
+async function assertNoPaymentInProgress(em: EntityManager, charge: Charge): Promise<void> {
+  if (!charge.payerPersonId) return
+  const open = await em.find(
+    Checkout,
+    {
+      tenantId: charge.tenantId,
+      organizationId: charge.organizationId,
+      payerPersonId: charge.payerPersonId,
+      status: 'created',
+      deletedAt: null,
+    },
+    { fields: ['id', 'chargeIds'] },
+  )
+  if (open.some((checkout) => checkout.chargeIds.includes(charge.id))) {
+    await paymentsErrors.throw('order_payment_in_progress')
+  }
 }
 
 function writeLines(em: EntityManager, order: Order, lines: readonly OrderLineDraft[], now: Date): void {
@@ -518,6 +540,7 @@ const updateOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
       const lines = await em.find(OrderLine, { ...actor.scope, orderId: order.id, deletedAt: null })
       const before = snapshotOf(order, charge.amount)
       const checked = await checkOrder(ctx, em, campaign, order.participantPersonId, parsed)
+      await assertNoPaymentInProgress(em, charge)
       const paid = paidTotal(await ledgerOf(em, charge))
       if (belowPaid(checked.total, paid)) {
         await paymentsErrors.throw('order_below_paid', { paid, total: checked.total })
@@ -596,6 +619,7 @@ const cancelOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
         { lockMode: LockMode.PESSIMISTIC_WRITE },
       )) as Charge
       const before = snapshotOf(order, charge.amount)
+      await assertNoPaymentInProgress(em, charge)
       const paid = paidTotal(await ledgerOf(em, charge))
       if (paid > 0) await paymentsErrors.throw('order_cancel_paid', { paid })
       const now = new Date()

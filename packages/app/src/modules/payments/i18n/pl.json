@@ -743,5 +743,6 @@
   "payments.orders.link.expired.message": "Zamówienia przez ten link są zakończone. Zaloguj się do aplikacji klubu, aby zobaczyć zamówienie.",
   "payments.orders.link.notFound.title": "Nieprawidłowy link",
   "payments.orders.link.notFound.message": "Ten link nie działa. Sprawdź, czy skopiowano go w całości.",
-  "payments.orders.link.signIn": "Zaloguj się"
+  "payments.orders.link.signIn": "Zaloguj się",
+  "payments.errors.order_payment_in_progress": "Trwa płatność online za to zamówienie. Poczekaj na jej wynik i spróbuj ponownie."
 }

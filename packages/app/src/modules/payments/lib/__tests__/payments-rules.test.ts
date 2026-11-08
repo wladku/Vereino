@@ -90,6 +90,7 @@ describe('payments vocabularies', () => {
       order_cancel_paid: 409,
       order_link_not_found: 404,
       order_campaign_completed: 410,
+      order_payment_in_progress: 409,
       bank_statement_missing: 422,
       bank_statement_too_large: 413,
       bank_statement_unsupported: 422,
