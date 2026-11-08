@@ -52,6 +52,7 @@ export const clubSettingsUpdateSchema = clubSettingsPatchSchema
     publicSlug: nullableSlug.optional(),
     publicDescription: nullableText(4000).optional(),
     contactPhone: nullableText(50).optional(),
+    bankAccount: nullableText(64).optional(),
     publication: publicationPatchSchema.optional(),
   })
   .strict()
