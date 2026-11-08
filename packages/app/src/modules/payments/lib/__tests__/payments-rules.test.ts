@@ -76,6 +76,14 @@ describe('payments vocabularies', () => {
       order_product_in_use: 409,
       order_campaign_transition_invalid: 409,
       order_campaign_not_collecting: 409,
+      bank_statement_missing: 422,
+      bank_statement_too_large: 413,
+      bank_statement_unsupported: 422,
+      bank_statement_columns_missing: 422,
+      bank_statement_unreadable: 422,
+      bank_statement_too_many: 413,
+      bank_transaction_status_changed: 409,
+      bank_payer_no_open_charges: 422,
     })
   })
 })

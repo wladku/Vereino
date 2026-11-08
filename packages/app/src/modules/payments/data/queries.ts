@@ -105,3 +105,12 @@ export async function closeExpiredCampaigns(
   )
   return rows.map((row) => row.id)
 }
+
+/**
+ * Takes the club's statement lock until the caller's transaction ends (#113): an import and every decision on a
+ * transfer (Confirm, Assign, Undo) wait for each other, so two of them never spread one transfer — or one charge's
+ * remaining amount — twice.
+ */
+export async function lockBankStatements(em: EntityManager, organizationId: string): Promise<void> {
+  await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`payments.bank:${organizationId}`])
+}
