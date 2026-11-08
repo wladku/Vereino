@@ -188,6 +188,10 @@ const placeFields = {
   isActive: z.boolean().optional(),
   /** The place's rules as plain text (UX parity spec, REQ-U03). */
   regulationsText: nullableText(20000).optional(),
+  /** The public calendar (DD-23, DD-29; #124): the slug, the switch and whether guests may request a booking. */
+  publicSlug: nullableSlug.optional(),
+  isPublicSchedule: z.boolean().optional(),
+  acceptsOnlineRequests: z.boolean().optional(),
 }
 
 export const placeCreateSchema = z.object(placeFields).strict()

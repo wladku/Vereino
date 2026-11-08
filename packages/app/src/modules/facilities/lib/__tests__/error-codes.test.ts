@@ -27,10 +27,13 @@ describe('facilities error codes', () => {
       'booking_start_past',
       'booking_section_invalid',
       'entry_ban_period_invalid',
+      'public_place_not_found',
+      'public_places_disabled',
+      'public_schedule_month_invalid',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
-      expect([409, 422]).toContain(entry.status)
+      expect([400, 404, 409, 422]).toContain(entry.status)
     }
   })
 })

@@ -3,13 +3,15 @@
 // index-backed lookup of the globally unique `public_slug` (`lookupClubByPublicSlug`, AGENTS.md exception D-024/D-026)
 // — and every later query carries the tenant and organization it found. An unknown slug, a section that is not public
 // (or inactive, deleted, without a slug, or of another club) and a file that is not published all answer the same
-// `not_found`; a club whose page is off answers `disabled` and nothing else about it.
+// `not_found`; a club whose page is off answers `disabled` and nothing else about it. The public places (#124) need the
+// `places_calendar` block too (`disabled` without it) and `is_public_schedule` on an active, live place with a slug
+// (DD-29); a place's photos and regulations PDF are served under its public slug.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { createLogger } from '@open-mercato/shared/lib/logger'
-import { ClubSettings, Section, SectionMaterial } from '../data/entities'
+import { ClubSettings, Place, PlaceFile, Section, SectionMaterial } from '../data/entities'
 import { lookupClubByPublicSlug } from '../data/queries'
 import { effectiveLogo, nameInitial, type LogoSource } from '../lib/files'
 import {
@@ -19,7 +21,14 @@ import {
   sectionBlocks,
   type ClubCoreSectionBlocks,
 } from '../lib/public-page'
-import { isPublicSlug, publishedBlocks, resolvePublication, type Publication } from '../lib/publication'
+import { PLACE_FILE_ASSIGNMENT, PLACE_FILE_OWNER_ENTITY } from '../lib/files'
+import {
+  isPublicSlug,
+  publishedBlocks,
+  resolvePublication,
+  type Publication,
+  type PublicationBlock,
+} from '../lib/publication'
 import {
   PUBLIC_BLOCK_PROVIDER_TOKENS,
   type PublicBlockContext,
@@ -73,7 +82,37 @@ export type PublicClubFrame = {
   tenantId: string
   organizationId: string
   club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
+  /** Every block the club publishes (e.g. `online_requests` for the public places, #124). */
+  publishedBlocks: readonly PublicationBlock[]
 }
+
+/**
+ * A place with a public calendar (P-03, #124). `id` is for the module that serves the calendar (`facilities`), which
+ * must not put it in a public response. `acceptsOnlineRequests` is the place's switch AND the club's `online_requests`
+ * block.
+ */
+export type PublicPlace = {
+  id: string
+  slug: string
+  name: string
+  kind: string
+  surface: string | null
+  address: string | null
+  /** The first photo, or null. */
+  photoUrl: string | null
+  acceptsOnlineRequests: boolean
+}
+
+/** One public place in full (P-04): its photos, its rules and the URL of its regulations PDF. */
+export type PublicPlaceDetail = PublicPlace & {
+  photoUrls: string[]
+  regulationsText: string | null
+  regulationsUrl: string | null
+}
+
+export type PublicPlacesPage = { frame: PublicClubFrame; places: PublicPlace[] }
+
+export type PublicPlacePage = { frame: PublicClubFrame; place: PublicPlaceDetail }
 
 export type ClubCorePublicSite = {
   clubPage(clubSlug: string): Promise<PublicSiteResult<PublicClubPage>>
@@ -87,12 +126,35 @@ export type ClubCorePublicSite = {
   clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
+  /**
+   * The club's places with a public calendar, by name (P-03, #124): `disabled` while the club does not publish its page
+   * or its `places_calendar` block.
+   */
+  publicPlaces(clubSlug: string): Promise<PublicSiteResult<PublicPlacesPage>>
+  /** One place with a public calendar by its slug (P-04); `not_found` for an unknown or non-public place. */
+  publicPlace(clubSlug: string, placeSlug: string): Promise<PublicSiteResult<PublicPlacePage>>
+  /** A photo or the regulations PDF of a place with a public calendar. */
+  placeFile(clubSlug: string, placeSlug: string, fileId: string): Promise<PublicSiteResult<PublicFileRef>>
 }
 
 /** The attachment owners and assignments the logo and material commands write (`commands/logos.ts`, `materials.ts`). */
 const CLUB_LOGO = { entityId: 'club_core:club_settings', assignment: 'club_core:club_logo' }
 const SECTION_LOGO = { entityId: 'club_core:section', assignment: 'club_core:section_logo' }
 const MATERIAL = { entityId: 'club_core:section', assignment: 'club_core:section_material' }
+
+/** The columns a public place read needs: never the encrypted contacts or the internal description. */
+const PUBLIC_PLACE_FIELDS = [
+  'id',
+  'name',
+  'kind',
+  'surface',
+  'address',
+  'publicSlug',
+  'acceptsOnlineRequests',
+  'regulationsText',
+] as const
+
+type PublicPlaceRow = Pick<Place, (typeof PUBLIC_PLACE_FIELDS)[number]>
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -114,6 +176,9 @@ export const publicClubPath = (clubSlug: string): string => `/api/club_core/publ
 
 export const publicSectionPath = (clubSlug: string, sectionSlug: string): string =>
   `${publicClubPath(clubSlug)}/sections/${encodeURIComponent(sectionSlug)}`
+
+export const publicPlaceFilePath = (clubSlug: string, placeSlug: string, fileId: string): string =>
+  `${publicClubPath(clubSlug)}/places/${encodeURIComponent(placeSlug)}/files/${fileId}`
 
 export function createClubCorePublicSite(getEm: () => EntityManager, container: AwilixContainer): ClubCorePublicSite {
   const em = (): EntityManager => getEm().fork()
@@ -226,6 +291,73 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     return blocks
   }
 
+  /** The club found by its slug, with its places calendar published (`disabled` otherwise). */
+  async function findPlacesClub(db: EntityManager, clubSlug: string): Promise<PublicSiteResult<FoundClub>> {
+    const found = await findClub(db, clubSlug)
+    if (found.status !== 'ok') return found
+    return found.value.publication.blocks.places_calendar ? found : DISABLED
+  }
+
+  async function frameOf(db: EntityManager, club: FoundClub): Promise<PublicClubFrame> {
+    const name = await clubName(db, club)
+    return {
+      tenantId: club.tenantId,
+      organizationId: club.organizationId,
+      club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club) },
+      publishedBlocks: publishedBlocks(club.publication),
+    }
+  }
+
+  /** The live, active place with a public calendar behind a slug (DD-29), or null. */
+  async function findPublicPlace(
+    db: EntityManager,
+    club: FoundClub,
+    placeSlug: string,
+  ): Promise<PublicPlaceRow | null> {
+    if (!isPublicSlug(placeSlug)) return null
+    return db.findOne(
+      Place,
+      {
+        tenantId: club.tenantId,
+        organizationId: club.organizationId,
+        publicSlug: placeSlug,
+        isPublicSchedule: true,
+        isActive: true,
+        deletedAt: null,
+      },
+      { fields: [...PUBLIC_PLACE_FIELDS] },
+    )
+  }
+
+  async function placeFiles(db: EntityManager, club: FoundClub, placeIds: readonly string[]): Promise<PlaceFile[]> {
+    if (placeIds.length === 0) return []
+    return db.find(
+      PlaceFile,
+      {
+        tenantId: club.tenantId,
+        organizationId: club.organizationId,
+        placeId: { $in: [...placeIds] },
+        deletedAt: null,
+      },
+      { orderBy: { position: 'asc', createdAt: 'asc' } },
+    )
+  }
+
+  function publicPlaceOf(club: FoundClub, place: PublicPlaceRow, files: readonly PlaceFile[]): PublicPlace {
+    const slug = place.publicSlug as string
+    const photo = files.find((file) => file.kind === 'photo' && file.placeId === place.id)
+    return {
+      id: place.id,
+      slug,
+      name: place.name,
+      kind: place.kind,
+      surface: place.surface ?? null,
+      address: place.address ?? null,
+      photoUrl: photo ? publicPlaceFilePath(club.slug, slug, photo.id) : null,
+      acceptsOnlineRequests: place.acceptsOnlineRequests && club.publication.blocks.online_requests,
+    }
+  }
+
   function blockContext(club: FoundClub): PublicBlockContext {
     return {
       tenantId: club.tenantId,
@@ -335,14 +467,87 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       const db = em()
       const found = await findClub(db, clubSlug)
       if (found.status !== 'ok') return found
+      return { status: 'ok', value: await frameOf(db, found.value) }
+    },
+
+    async publicPlaces(clubSlug) {
+      const db = em()
+      const found = await findPlacesClub(db, clubSlug)
+      if (found.status !== 'ok') return found
       const club = found.value
-      const name = await clubName(db, club)
+      const places = await db.find(
+        Place,
+        {
+          tenantId: club.tenantId,
+          organizationId: club.organizationId,
+          isPublicSchedule: true,
+          isActive: true,
+          deletedAt: null,
+          publicSlug: { $ne: null },
+        },
+        { fields: [...PUBLIC_PLACE_FIELDS], orderBy: { name: 'asc' } },
+      )
+      const files = await placeFiles(
+        db,
+        club,
+        places.map((place) => place.id),
+      )
+      return {
+        status: 'ok',
+        value: { frame: await frameOf(db, club), places: places.map((place) => publicPlaceOf(club, place, files)) },
+      }
+    },
+
+    async publicPlace(clubSlug, placeSlug) {
+      const db = em()
+      const found = await findPlacesClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const club = found.value
+      const place = await findPublicPlace(db, club, placeSlug)
+      if (!place) return NOT_FOUND
+      const files = await placeFiles(db, club, [place.id])
+      const regulations = files.find((file) => file.kind === 'regulations')
+      return {
+        status: 'ok',
+        value: {
+          frame: await frameOf(db, club),
+          place: {
+            ...publicPlaceOf(club, place, files),
+            photoUrls: files
+              .filter((file) => file.kind === 'photo')
+              .map((file) => publicPlaceFilePath(club.slug, placeSlug, file.id)),
+            regulationsText: place.regulationsText ?? null,
+            regulationsUrl: regulations ? publicPlaceFilePath(club.slug, placeSlug, regulations.id) : null,
+          },
+        },
+      }
+    },
+
+    async placeFile(clubSlug, placeSlug, fileId) {
+      if (!UUID_PATTERN.test(fileId)) return NOT_FOUND
+      const db = em()
+      const found = await findPlacesClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const club = found.value
+      const place = await findPublicPlace(db, club, placeSlug)
+      if (!place) return NOT_FOUND
+      const file = await db.findOne(PlaceFile, {
+        id: fileId,
+        tenantId: club.tenantId,
+        organizationId: club.organizationId,
+        placeId: place.id,
+        deletedAt: null,
+      })
+      if (!file) return NOT_FOUND
       return {
         status: 'ok',
         value: {
           tenantId: club.tenantId,
           organizationId: club.organizationId,
-          club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club) },
+          attachmentId: file.attachmentId,
+          owner: { entityId: PLACE_FILE_OWNER_ENTITY, recordId: place.id },
+          assignment: { type: PLACE_FILE_ASSIGNMENT, id: file.id },
+          mimeType: file.mimeType,
         },
       }
     },
