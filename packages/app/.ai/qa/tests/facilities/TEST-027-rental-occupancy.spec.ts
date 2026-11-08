@@ -52,7 +52,7 @@ test('TEST-027 a rented slot refuses a session; a closure flags the rental', asy
       reason: 'municipal_event',
     })
     expect(closure.status, JSON.stringify(closure.body)).toBe(201)
-    expect(closure.body?.flagged).toEqual({ sessions: 0, rentals: 1 })
+    expect(closure.body?.flagged).toEqual({ sessions: 0, rentals: 1, bookings: 0 })
     expect((await getRental(request, admin, String(rental.body?.id))).needsReschedule).toBe(true)
   } finally {
     await club.cleanup()
