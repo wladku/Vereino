@@ -58,6 +58,15 @@ async function parentOptions(): Promise<CrudFieldOption[]> {
   }
 }
 
+/** A yes/no badge of the public calendar switches (#124): status tokens, the word carries the meaning. */
+function YesNo({ value, t }: { value: boolean; t: Translate }) {
+  return (
+    <StatusBadge variant={value ? 'success' : 'neutral'}>
+      {value ? t('club_core.places.public.yes') : t('club_core.places.public.no')}
+    </StatusBadge>
+  )
+}
+
 function buildColumns(t: Translate): TableColumns<PlaceTableRow> {
   const dash = <span className="text-muted-foreground">—</span>
   return [
@@ -110,6 +119,20 @@ function buildColumns(t: Translate): TableColumns<PlaceTableRow> {
       enableSorting: false,
       meta: { priority: 4 },
       cell: ({ row }) => <span className="block text-right tabular-nums">{row.original.capacityGroups}</span>,
+    },
+    {
+      accessorKey: 'isPublicSchedule',
+      header: t('club_core.places.columns.publicSchedule'),
+      enableSorting: false,
+      meta: { priority: 6 },
+      cell: ({ row }) => <YesNo value={row.original.isPublicSchedule} t={t} />,
+    },
+    {
+      accessorKey: 'acceptsOnlineRequests',
+      header: t('club_core.places.columns.acceptsRequests'),
+      enableSorting: false,
+      meta: { priority: 7 },
+      cell: ({ row }) => <YesNo value={row.original.acceptsOnlineRequests} t={t} />,
     },
     {
       accessorKey: 'isActive',

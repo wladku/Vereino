@@ -36,6 +36,8 @@ export type PublicClubPage = {
     schedule?: { events: PublicEvent[] }
     /** The number of public groups per public section slug (`groups.publicCatalog`, #89). */
     groups?: { counts: Record<string, number> }
+    /** The club's places with a public calendar and their list (`facilities.publicPlaces`, #124; P-01 → P-03). */
+    places?: { count: number; path: string }
     [key: string]: unknown
   }
 }
