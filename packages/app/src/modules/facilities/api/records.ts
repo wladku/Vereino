@@ -144,7 +144,7 @@ export const incidentListItemSchema = z.object({
 type Named = { placeId: string; placeName: string | null }
 
 async function namePlaces(ctx: CrudCtx, scope: FacilitiesScope, items: Named[]): Promise<void> {
-  const places = await findPlaces(ctx.container, scope, [...new Set(items.map((item) => item.placeId))])
+  const places = await findPlaces(ctx.container, scope, Array.from(new Set(items.map((item) => item.placeId))))
   for (const item of items) item.placeName = places.get(item.placeId)?.name ?? null
 }
 
@@ -196,8 +196,8 @@ export async function attachEntryBanNames(payload: { items?: unknown[] }, ctx: C
     ...(item.subjectType === 'person' && item.subjectId ? [item.subjectId] : []),
     ...(item.issuedByPersonId ? [item.issuedByPersonId] : []),
   ])
-  const institutions = await institutionNames(ctx.container, scope, [...new Set(institutionIds)])
-  const persons = await personNames(ctx.container, scope, [...new Set(personIds)])
+  const institutions = await institutionNames(ctx.container, scope, Array.from(new Set(institutionIds)))
+  const persons = await personNames(ctx.container, scope, Array.from(new Set(personIds)))
   for (const item of items) {
     const names = item.subjectType === 'institution' ? institutions : persons
     item.subjectName = item.subjectId ? (names.get(item.subjectId) ?? null) : null

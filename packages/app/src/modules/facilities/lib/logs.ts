@@ -62,8 +62,8 @@ export function logStateProblem(state: LogState): LogProblem | null {
 export function groupKey(group: GroupPresent): string | null {
   const occurrenceId = group.occurrenceId ?? null
   const rentalId = group.rentalId ?? null
-  if ((occurrenceId === null) === (rentalId === null)) return null
-  return occurrenceId !== null ? `occurrence:${occurrenceId}` : `rental:${rentalId}`
+  if (occurrenceId !== null) return rentalId === null ? `occurrence:${occurrenceId}` : null
+  return rentalId === null ? null : `rental:${rentalId}`
 }
 
 /** True when every group names exactly one session or rental, at most once, with a valid head count. */

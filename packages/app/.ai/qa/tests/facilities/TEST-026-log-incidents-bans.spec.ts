@@ -229,8 +229,12 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
     expect(incidents[0]?.reportedByName).not.toBeNull()
     const caseId = '3f0b8c8e-1f5e-4d65-9f6a-2c4f8f1e0b11'
     const linked = await call<Saved>(request, 'PUT', '/api/facilities/incidents', admin, {
-      data: { id: incidentId, threadId: caseId, actionTaken: ['warning_given', 'owner_notified', 'entry_ban_requested'] },
-      headers: { [OPTIMISTIC_LOCK_HEADER]: String(incidents[0]?.updatedAt) },
+      data: {
+        id: incidentId,
+        threadId: caseId,
+        actionTaken: ['warning_given', 'owner_notified', 'entry_ban_requested'],
+      },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: incidents[0]?.updatedAt ?? '' },
     })
     expect(linked.status, JSON.stringify(linked.body)).toBe(200)
 
@@ -256,7 +260,11 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
     const ban = await postEntryBan(request, admin, { ...banBody, incidentId })
     expect(ban.status, JSON.stringify(ban.body)).toBe(201)
     const thursday = nextWeekday(addDays(today, 7), 'TH')
-    const banned = await postRental(request, admin, phoneRental(setup.pitch, setup.banned, zoneInstant(thursday, '08:00')))
+    const banned = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.banned, zoneInstant(thursday, '08:00')),
+    )
     expect(banned.status, JSON.stringify(banned.body)).toBe(409)
     expect(banned.body?.code).toBe('entry_ban_active')
     const active = await listOf<BanItem>(request, admin, '/api/facilities/entry-bans?state=active')
@@ -268,11 +276,11 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
       call<CodedError & { revokedAt?: string; updatedAt?: string }>(
         request,
         'POST',
-        `/api/facilities/entry-bans/${ban.body?.id}/revoke`,
+        `/api/facilities/entry-bans/${String(ban.body?.id)}/revoke`,
         admin,
         { data: {}, headers: { [OPTIMISTIC_LOCK_HEADER]: lockToken } },
       )
-    const revoked = await revoke(String(active[0]?.updatedAt))
+    const revoked = await revoke(active[0]?.updatedAt ?? '')
     expect(revoked.status, JSON.stringify(revoked.body)).toBe(200)
     expect(revoked.body?.revokedAt).toBeTruthy()
     const twice = await revoke(String(revoked.body?.updatedAt))
@@ -280,7 +288,11 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
     expect(twice.body?.code).toBe('entry_ban_revoked')
     expect(await listOf<BanItem>(request, admin, '/api/facilities/entry-bans?state=active')).toHaveLength(0)
     expect(await listOf<BanItem>(request, admin, '/api/facilities/entry-bans?state=revoked')).toHaveLength(1)
-    const allowed = await postRental(request, admin, phoneRental(setup.pitch, setup.banned, zoneInstant(thursday, '08:00')))
+    const allowed = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.banned, zoneInstant(thursday, '08:00')),
+    )
     expect(allowed.status, JSON.stringify(allowed.body)).toBe(201)
   } finally {
     await club.cleanup()
