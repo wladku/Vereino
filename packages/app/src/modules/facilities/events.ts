@@ -1,7 +1,7 @@
 import { createModuleEvents } from '@open-mercato/shared/modules/events'
 
 /**
- * Events of `facilities` (facilities spec *Events, Jobs, Notifications*; #121, #122): payloads carry ids only (S4.6), plus
+ * Events of `facilities` (facilities spec *Events, Jobs, Notifications*; #121, #122, #123): payloads carry ids only (S4.6), plus
  * `placeId` for the events that change occupancy. `facilities.zone_rules.bulk_updated` has no subscriber in 1.0: the
  * public calendar has no server-side cache to invalidate (DD-45).
  */
@@ -28,6 +28,30 @@ const events = [
   { id: 'facilities.rental.no_show', label: 'Rental no-show recorded', entity: 'rental', category: 'custom' },
   { id: 'facilities.rental.done', label: 'Rental completed', entity: 'rental', category: 'custom' },
   { id: 'facilities.rental.updated', label: 'Rental updated', entity: 'rental', category: 'crud' },
+  {
+    id: 'facilities.rental.superseded',
+    label: 'Request superseded by a club booking',
+    entity: 'rental',
+    category: 'custom',
+  },
+  {
+    id: 'facilities.internal_booking.created',
+    label: 'Internal booking created',
+    entity: 'internal_booking',
+    category: 'crud',
+  },
+  {
+    id: 'facilities.internal_booking.cancelled',
+    label: 'Internal booking cancelled',
+    entity: 'internal_booking',
+    category: 'custom',
+  },
+  {
+    id: 'facilities.internal_booking.updated',
+    label: 'Internal booking updated',
+    entity: 'internal_booking',
+    category: 'crud',
+  },
   { id: 'facilities.entry_ban.created', label: 'Entry ban issued', entity: 'entry_ban', category: 'crud' },
 ] as const
 

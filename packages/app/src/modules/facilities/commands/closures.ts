@@ -3,7 +3,7 @@
 // administrator on behalf of the owner. An end not after the start answers 422 `closure_period_invalid`, an unknown
 // place 422 `facilities_reference_invalid`. After the commit, in a transaction of its own (DD-43), the planned sessions
 // on the place and its sub-places that overlap the closure get `needs_reschedule` through `activities.placeSessions`;
-// so do the rentals that hold their slot there (#122); the result counts both for the toast "Marked to be moved: n
+// so do the rentals that hold their slot there (#122) and the confirmed internal bookings (#123); the result counts both for the toast "Marked to be moved: n
 // sessions, n rentals". Moving a closure flags again; deleting or undoing one never clears a flag — the
 // coordinator decides what to do with a session already marked.
 import { randomUUID } from 'node:crypto'
@@ -11,7 +11,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { authorizeScoped, lockOccupancy, trustedScopeOf } from '@/modules/foundation'
 import { Closure } from '../data/entities'
-import { flagRentalsForReschedule } from '../data/queries'
+import { flagInternalBookingsForReschedule, flagRentalsForReschedule } from '../data/queries'
 import { closureCreateSchema, closureDeleteSchema, closureUpdateSchema } from '../data/validators'
 import { closurePeriodProblem, closureWindowChanged, type RescheduleCounts } from '../lib/closures'
 import { flagSessionsForReschedule, placeFamily, type FacilitiesScope } from '../services/directory'
@@ -85,7 +85,10 @@ async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promi
   const em = ctx.container.resolve<EntityManager>('em').fork()
   const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, rentalPlaceIds, window))
   for (const rental of rentals) await emitAfterCommit('facilities.rental.updated', scope, rental)
-  return { sessions: flagged.length, rentals: rentals.length }
+  // An internal booking may hold a parent place too (#123).
+  const bookings = await em.transactional((tx) => flagInternalBookingsForReschedule(tx, scope, rentalPlaceIds, window))
+  for (const booking of bookings) await emitAfterCommit('facilities.internal_booking.updated', scope, booking)
+  return { sessions: flagged.length, rentals: rentals.length, bookings: bookings.length }
 }
 
 async function emitClosure(row: Closure, action: 'created' | 'updated' | 'deleted'): Promise<void> {
@@ -102,7 +105,7 @@ async function lockClosureOccupancy(ctx: CommandRuntimeContext, em: EntityManage
   if (scope) await lockOccupancy(em, scope.organizationId)
 }
 
-const NONE_FLAGGED: RescheduleCounts = { sessions: 0, rentals: 0 }
+const NONE_FLAGGED: RescheduleCounts = { sessions: 0, rentals: 0, bookings: 0 }
 
 const createClosureCommand: CommandHandler<Record<string, unknown>, ClosureCommandResult> = {
   id: 'facilities.closures.create',

@@ -8,7 +8,13 @@ import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
-import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
+import {
+  authorizeScoped,
+  lockOccupancy,
+  trustedScopeOf,
+  type AuthorizeScopedSpec,
+  type TargetLock,
+} from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { emitFacilitiesEvent, type FacilitiesEventId } from '../events'
 import type { FacilitiesErrorCode } from '../lib/error-codes'
@@ -50,6 +56,12 @@ export async function inWriteTransaction<T>(
   )
   if (!('value' in box)) throw new Error('[internal] the write transaction produced no result: ' + label)
   return box.value as T
+}
+
+/** Takes the organization's occupancy lock first (DD-43: before any row lock); no trusted scope fails closed later. */
+export async function lockForOccupancy(ctx: CommandRuntimeContext, em: EntityManager): Promise<void> {
+  const scope = trustedScopeOf(ctx)
+  if (scope) await lockOccupancy(em, scope.organizationId)
 }
 
 /** The tenant a command may load targets from; null fails closed later in `authorizeScoped`. */

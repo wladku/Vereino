@@ -8,7 +8,13 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { OpeningHours } from '@vereino/core'
 import type { ActivitiesPlaceSessions, PlaceSessionEntry } from '../../activities/services/place-sessions'
-import type { ClubCoreDirectory, PlaceDirectoryEntry, PlaceFamily } from '../../club_core/services/directory'
+import type {
+  ClubCoreDirectory,
+  PlaceDirectoryEntry,
+  PlaceFamily,
+  PlaceOption,
+  SectionDirectoryEntry,
+} from '../../club_core/services/directory'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type { PersonDirectory } from '../../people/services/person-directory'
@@ -45,6 +51,26 @@ export function findPlaces(
   return directory(container).findPlaces(scope, ids, em)
 }
 
+/** The live sections of the club among `ids`, by id (an internal booking's section, #123). */
+export function findSections(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, SectionDirectoryEntry>> {
+  return directory(container).findSections(scope, ids, em)
+}
+
+/** The live active sections of the club, by name (the section options of the booking dialog, #123). */
+export function listSections(container: AwilixContainer, scope: FacilitiesScope): Promise<SectionDirectoryEntry[]> {
+  return directory(container).listSections(scope, null)
+}
+
+/** The live active places of the club, by name (the place cards of `/club/places`, #123). */
+export function placeOptions(container: AwilixContainer, scope: FacilitiesScope): Promise<PlaceOption[]> {
+  return directory(container).placeOptions(scope)
+}
+
 export function placeFamily(
   container: AwilixContainer,
   scope: FacilitiesScope,
@@ -77,6 +103,16 @@ export function plannedSessions(
   em?: EntityManager,
 ): Promise<PlaceSessionEntry[]> {
   return placeSessions(container).plannedSessions(scope, placeIds, window, em)
+}
+
+/** The live planned sessions among `ids` with their times and places (#123: a group event supersedes requests). */
+export function sessionsByIds(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<PlaceSessionEntry[]> {
+  return placeSessions(container).sessionsByIds(scope, ids, em)
 }
 
 export function flagSessionsForReschedule(

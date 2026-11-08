@@ -2,6 +2,7 @@ import { ArrayType, OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
 import type { ClosureReason } from '../lib/closures'
+import type { InternalBookingStatus } from '../lib/internal-bookings'
 import type { RenterCategory } from '../lib/rates'
 import type { EntryBanSubjectType, RenterType, RentalStatus, RequestedVia } from '../lib/rentals'
 import type { Zone, ZoneSource } from '../lib/zones'
@@ -293,4 +294,58 @@ export class EntryBan extends ScopedEntityBase {
 
   @Property({ name: 'revoked_at', type: Date, nullable: true })
   revokedAt?: Date | null
+}
+
+/**
+ * An internal booking (facilities spec *Data Models* → `facilities_internal_bookings`, glossary *Internal booking*;
+ * REQ-023, DD-25; #123): the club occupying a place without a group — coach training, a meeting — booked at once by
+ * staff of any section, `confirmed` from the start, without an amount or a charge. A booking for a group is a one-off
+ * event of `activities` instead (DD-26). Cancelled by the booker, the coordinator of its section or the club
+ * administrator. The purpose and the cancellation reason are encrypted at rest (free text may name people).
+ */
+@Entity({ tableName: 'facilities_internal_bookings' })
+@Index({
+  name: 'facilities_internal_bookings_org_place_start_idx',
+  properties: ['organizationId', 'placeId', 'startsAt'],
+})
+@Index({ name: 'facilities_internal_bookings_org_booker_idx', properties: ['organizationId', 'bookedByPersonId'] })
+@Index({ name: 'facilities_internal_bookings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class InternalBooking extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'status' | 'needsReschedule' | 'cancelledByPersonId' | 'cancelReason'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'starts_at', type: Date })
+  startsAt!: Date
+
+  @Property({ name: 'ends_at', type: Date })
+  endsAt!: Date
+
+  /** The `club_core` section the booking is made for. */
+  @Property({ name: 'section_id', type: 'uuid' })
+  sectionId!: string
+
+  @Property({ name: 'purpose', type: 'text' })
+  purpose!: string
+
+  @Property({ name: 'booked_by_person_id', type: 'uuid' })
+  bookedByPersonId!: string
+
+  /** The role the booking was made in (`club_admin`, `coordinator`, `coach`). */
+  @Property({ name: 'acting_role', type: 'text' })
+  actingRole!: string
+
+  @Property({ name: 'status', type: 'text', default: 'confirmed' })
+  status: InternalBookingStatus = 'confirmed'
+
+  /** Set by a closure or a maintenance window; cleared when the booking is cancelled. */
+  @Property({ name: 'needs_reschedule', type: 'boolean', default: false })
+  needsReschedule: boolean = false
+
+  @Property({ name: 'cancelled_by_person_id', type: 'uuid', nullable: true })
+  cancelledByPersonId?: string | null
+
+  @Property({ name: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason?: string | null
 }
