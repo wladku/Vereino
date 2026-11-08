@@ -43,6 +43,8 @@ export type CalendarEntry = {
   bookedByName: string | null
   /** A request's hold (the supersession and the expiry read it). */
   holdExpiresAt: Date | null
+  /** The version of an internal booking (its cancellation sends it as the lock token). */
+  updatedAt: Date | null
 }
 
 type Window = { start: Date; end: Date }
@@ -54,6 +56,7 @@ const EMPTY = {
   bookedByPersonId: null,
   bookedByName: null,
   holdExpiresAt: null,
+  updatedAt: null,
 } as const
 
 /**
@@ -142,6 +145,7 @@ export async function calendarEntries(
       sectionId: row.sectionId,
       bookedByPersonId: row.bookedByPersonId,
       bookedByName: bookers.get(row.bookedByPersonId) ?? null,
+      updatedAt: row.updatedAt,
     })),
     ...closures.map((row) => ({
       ...EMPTY,
@@ -181,6 +185,8 @@ export type CalendarEntryView = {
   own: boolean
   /** An internal booking the caller may cancel (the booker, the section's coordinator, the administrator). */
   canCancel: boolean
+  /** An internal booking's version, the lock token of its cancellation. */
+  updatedAt: string | null
 }
 
 export type StaffCalendar = {
@@ -266,6 +272,7 @@ export async function staffCalendar(
         bookedByName: entry.bookedByName,
         own: booking !== null && caller.personId === booking.bookedByPersonId,
         canCancel: booking !== null && bookingCancellable(booking, caller),
+        updatedAt: entry.updatedAt?.toISOString() ?? null,
       }
     }),
   }

@@ -43,6 +43,7 @@ const responseSchema = z.object({
       bookedByName: z.string().nullable(),
       own: z.boolean(),
       canCancel: z.boolean(),
+      updatedAt: z.string().nullable().describe('An internal booking’s version: the lock token of its cancellation'),
     }),
   ),
 })

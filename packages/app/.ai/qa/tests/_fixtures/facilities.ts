@@ -1,8 +1,10 @@
 // Facilities fixtures (#121, facilities spec phase 5 step 2): zone rules, the bulk booking availability, closures,
 // rental rates and the opening hours of a place (`club_core_places.opening_hours`, DD-41).
+import { spawnSync } from 'node:child_process'
+import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
 import { scheduleFor, type ScheduleSetup } from './activities'
-import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
 import { create, getOne, update } from './club-structure'
 
 type List<T> = { items?: T[]; total?: number }
@@ -103,7 +105,7 @@ export async function bulkAvailability(request: APIRequestContext, token: string
 }
 
 export async function postClosure(request: APIRequestContext, token: string, data: Record<string, unknown>) {
-  return call<CodedError & { id?: string; flagged?: { sessions: number; rentals: number } }>(
+  return call<CodedError & { id?: string; flagged?: { sessions: number; rentals: number; bookings: number } }>(
     request,
     'POST',
     '/api/facilities/closures',
@@ -118,7 +120,7 @@ export async function putClosure(
   data: Record<string, unknown> & { id: string },
   lockToken: string | null | undefined,
 ) {
-  return call<CodedError & { updatedAt?: string; flagged?: { sessions: number; rentals: number } }>(
+  return call<CodedError & { updatedAt?: string; flagged?: { sessions: number; rentals: number; bookings: number } }>(
     request,
     'PUT',
     '/api/facilities/closures',
@@ -329,4 +331,94 @@ export function runRentalLifecycle(club: Club, nowIso: string): LifecycleResult 
   ]) as LifecycleResult | null
   if (!result) throw new Error('[internal] facilities rental-lifecycle printed no result')
   return result
+}
+
+// --- Internal bookings and the staff calendar (#123, E08-S03) ---
+
+export type BookingConflict = {
+  kind: string
+  id: string
+  placeId?: string
+  start: string
+  end: string
+  label?: string | null
+}
+
+export type BookingCreated = CodedError & {
+  id?: string
+  status?: string
+  updatedAt?: string
+  actingRole?: string
+  supersededRequestIds?: string[]
+  conflicts?: BookingConflict[]
+}
+
+export type CalendarEntryItem = {
+  id: string
+  kind: 'session' | 'rental' | 'request' | 'booking' | 'closure'
+  placeId: string
+  start: string
+  end: string
+  label: string | null
+  needsReschedule: boolean
+  groupId: string | null
+  sectionId: string | null
+  bookedByName: string | null
+  own: boolean
+  canCancel: boolean
+  updatedAt: string | null
+}
+
+export type StaffCalendar = CodedError & {
+  timeZone?: string
+  places?: Array<{ id: string; name: string; parentName: string | null; isLeaf: boolean }>
+  days?: Array<{ date: string; opening: Array<{ from: string; to: string }> | null; zones: Array<{ zone: string }> }>
+  entries?: CalendarEntryItem[]
+}
+
+export async function postInternalBooking(request: APIRequestContext, token: string, data: Record<string, unknown>) {
+  return call<BookingCreated>(request, 'POST', '/api/facilities/internal-bookings', token, { data })
+}
+
+export async function cancelInternalBooking(
+  request: APIRequestContext,
+  token: string,
+  id: string,
+  lockToken: string | null | undefined,
+) {
+  return call<CodedError & { status?: string; updatedAt?: string }>(
+    request,
+    'DELETE',
+    `/api/facilities/internal-bookings/${id}`,
+    token,
+    { data: {}, headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {} },
+  )
+}
+
+export async function staffCalendar(request: APIRequestContext, token: string, query: string) {
+  return call<StaffCalendar>(request, 'GET', `/api/facilities/calendar?${query}`, token)
+}
+
+const REQUEST_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'facilities-request-probe', 'probe.mjs')
+
+/**
+ * Runs the facilities request probe (`facilities-request-probe/probe.mjs`) in the club's scope: it stands in for the
+ * online request flow of E08-S05 by storing a `pending_approval` request with a valid hold, or reads a request back.
+ */
+export function runRequestProbe(club: Club, input: Record<string, unknown>): Record<string, unknown> {
+  const run = spawnSync(
+    process.execPath,
+    [
+      REQUEST_PROBE,
+      JSON.stringify({ tenantId: club.tenant.tenantId, organizationId: club.tenant.organizationId, ...input }),
+    ],
+    { cwd: APP_ROOT, env: process.env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 300_000 },
+  )
+  const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+  if (run.status !== 0 || !last.startsWith('{')) {
+    throw new Error(
+      `[internal] the request probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+    )
+  }
+  return JSON.parse(last) as Record<string, unknown>
 }
