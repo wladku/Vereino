@@ -26,6 +26,8 @@
 - `yarn test:integration:vereino --filter TEST-M12` — could not start: `Could not find a working container runtime strategy` (no running Docker on this machine; the run may not start Docker Desktop). CI runs it on the PR.
 - `yarn verify` — all 14 steps passed (jest 65 suites, 761 tests).
 
+- PR #232 CI, first head: cancelled when the merge train updated the branch with `main`. Second head `bbe96b4`: gate, browser-smoke, perf green; integration shard 1/3 green with `✓ TEST-M12 member direct thread … (20.1s)` (the 422 and the parallel race included); shards 2/3 and 3/3 failed on `E08-S02-rental-pages` (rental not visible on the calendar), `TEST-043-cash-with-receipts` (`cash-today-item` count 2, expected 3) and `E06-S02-person-record-tabs` (membership `upcoming`, expected `active`). The run went 23:30–23:55 UTC, i.e. after midnight in Warsaw; PR #228, an unrelated change, failed on exactly the same three tests in the same window. Not caused by this PR: re-ran the failed jobs.
+
 ## Open problems / next steps
 
-- TEST-M12 is verified only by CI on the PR.
+- E08-S02, TEST-043 and E06-S02 fail between 00:00 Warsaw and 00:00 UTC (the fixtures' Warsaw `calendarDate()` against a UTC date somewhere in the app or the fixtures). Worth a follow-up issue; out of scope here.
