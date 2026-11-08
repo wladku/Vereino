@@ -24,6 +24,22 @@ import {
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
 import { MAX_CASH_CHARGES } from '../lib/cash'
+import { BANK_FORMATS } from '../lib/bank-statement'
+import { BANK_SKIP_REASONS, BANK_TRANSACTION_STATUSES, MAX_SKIP_NOTE_LENGTH } from '../lib/bank-matching'
+import {
+  CAMPAIGN_ACTIONS,
+  CAMPAIGN_DESCRIPTION_MAX,
+  CAMPAIGN_NAME_MAX,
+  CAMPAIGN_NAME_MIN,
+  CAMPAIGN_STATUSES,
+  CAMPAIGN_TEXT_MAX,
+  MAX_CAMPAIGN_GROUPS,
+  MAX_CAMPAIGN_PRODUCTS,
+  MAX_PRODUCT_SIZES,
+  PRODUCT_KINDS,
+  PRODUCT_NAME_MAX,
+  SIZE_MAX,
+} from '../lib/order-campaigns'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const amountSchema = z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)')
@@ -233,5 +249,133 @@ export const paymentsSettingsUpdateSchema = z
   .object({
     coachFeeAccess: z.enum(COACH_FEE_ACCESS).optional(),
     autoBookBankMatches: z.boolean().optional(),
+  })
+  .strict()
+
+// --- Order campaigns (#115, REQ-032, DD-30) ---
+
+const sizesSchema = z
+  .array(z.string().trim().min(1).max(SIZE_MAX))
+  .max(MAX_PRODUCT_SIZES)
+  .refine((sizes) => new Set(sizes).size === sizes.length, { message: 'payments.orders.validation.sizesUnique' })
+  .default([])
+
+/**
+ * A product of the campaign form. `key` ties a set to its products (`componentKeys`); for a stored product it is its
+ * id, and `id` names the product an update changes (a product the update no longer sends is removed).
+ */
+export const orderProductInputSchema = z
+  .object({
+    id: z.uuid().optional(),
+    key: z.string().trim().min(1).max(60),
+    name: z.string().trim().min(1).max(PRODUCT_NAME_MAX),
+    kind: z.enum(PRODUCT_KINDS).default('item'),
+    componentKeys: z.array(z.string().trim().min(1).max(60)).max(MAX_CAMPAIGN_PRODUCTS).default([]),
+    sizesChild: sizesSchema,
+    sizesAdult: sizesSchema,
+    priceChild: z.number().int().min(0).max(MAX_AMOUNT).describe('Grosz; for a set, the set price'),
+    priceAdult: z.number().int().min(0).max(MAX_AMOUNT).nullable().optional().describe('Grosz, for adult sizes'),
+    requiredAnswer: z.boolean().default(false),
+  })
+  .strict()
+
+const campaignFields = {
+  name: z.string().trim().min(CAMPAIGN_NAME_MIN).max(CAMPAIGN_NAME_MAX),
+  description: z.string().trim().max(CAMPAIGN_DESCRIPTION_MAX).nullable().optional(),
+  sectionId: z.uuid(),
+  groupIds: z
+    .array(z.uuid())
+    .min(1, { message: 'payments.orders.validation.groupsRequired' })
+    .max(MAX_CAMPAIGN_GROUPS)
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'payments.orders.validation.groupsRequired' }),
+  closesOn: calendarDateSchema.describe('The orders deadline; not before today'),
+  paymentDueOn: calendarDateSchema.describe('The payment deadline; not before the orders deadline'),
+  askPrintName: z.boolean().default(false),
+  askPrintNumber: z.boolean().default(false),
+  notesLabel: z.string().trim().max(CAMPAIGN_TEXT_MAX).nullable().optional(),
+  supplierName: z.string().trim().max(CAMPAIGN_TEXT_MAX).nullable().optional(),
+  products: z.array(orderProductInputSchema).min(1).max(MAX_CAMPAIGN_PRODUCTS),
+}
+
+/** `payments.order_campaigns.create`: the form; `open` also opens collection ("Save and open collection"). */
+export const orderCampaignCreateSchema = z.object({ ...campaignFields, open: z.boolean().default(false) }).strict()
+
+/** `payments.order_campaigns.update`: the whole form again (products nested), in `draft` or `open` only. */
+export const orderCampaignUpdateSchema = z
+  .object({ id: z.uuid(), ...campaignFields, open: z.boolean().default(false) })
+  .strict()
+
+export const orderCampaignListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['name', 'closesOn', 'createdAt', 'updatedAt']).optional(),
+  status: z.enum(CAMPAIGN_STATUSES).optional(),
+  sectionId: z.uuid().optional(),
+})
+
+/** `payments.order_campaigns.transition`: the campaign `id` and the action of the route. */
+export const orderCampaignTransitionSchema = z.object({ id: z.uuid(), action: z.enum(CAMPAIGN_ACTIONS) }).strict()
+
+/** `payments.order_campaigns.remind`: e-mail the guardians of children without an order (optionally one group). */
+export const orderCampaignRemindSchema = z.object({ id: z.uuid(), groupId: z.uuid().optional() }).strict()
+
+export const orderCampaignSummaryQuerySchema = z.object({ format: z.enum(['json', 'csv']).default('json') })
+
+export const ordersListQuerySchema = z.object({
+  campaignId: z.uuid(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+// --- Bank statement import (#113, REQ-030) ---
+
+const columnNameSchema = z.string().trim().min(1).max(100)
+
+/** The treasurer's CSV column mapping: the header text of each column in the bank's file. */
+export const columnProfileSchema = z
+  .object({
+    date: columnNameSchema.optional(),
+    amount: columnNameSchema.optional(),
+    sender: columnNameSchema.optional(),
+    title: columnNameSchema.optional(),
+    account: columnNameSchema.optional(),
+  })
+  .strict()
+
+/** `payments.bank_imports.create`: the text fields next to the file (the format is detected when omitted). */
+export const bankImportCreateSchema = z
+  .object({
+    format: z
+      .enum(BANK_FORMATS)
+      .nullable()
+      .optional()
+      .describe('`csv` or `mt940`; detected from the content when omitted'),
+    columnProfile: columnProfileSchema.nullable().optional(),
+  })
+  .strict()
+
+export const bankImportListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+export const bankTransactionListQuerySchema = z.object({
+  status: z.enum(BANK_TRANSACTION_STATUSES).optional(),
+  importId: z.uuid().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+/** Confirm, Restore and Undo of the transfer `id` (the route's path parameter). */
+export const bankTransactionActionSchema = z.object({ id: z.uuid() }).strict()
+
+/** Assign (or change) the payer of the transfer `id`; it is recorded against their open charges, oldest first. */
+export const bankTransactionAssignSchema = z.object({ id: z.uuid(), payerPersonId: z.uuid() }).strict()
+
+/** Skip the transfer `id` with its reason (a donation, a grant, a refund, other) and an optional note. */
+export const bankTransactionIgnoreSchema = z
+  .object({
+    id: z.uuid(),
+    reason: z.enum(BANK_SKIP_REASONS),
+    note: z.string().trim().max(MAX_SKIP_NOTE_LENGTH).nullable().optional(),
   })
   .strict()

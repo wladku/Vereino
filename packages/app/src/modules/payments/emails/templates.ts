@@ -88,4 +88,54 @@ export const cashReceivedTemplate = defineEmailTemplate<CashReceivedParams>({
   link: () => '/club',
 })
 
-export const paymentsEmailTemplates = [cashReceivedTemplate]
+const orderReminderParams = z
+  .object({
+    campaignId: z.uuid(),
+    campaignName: z.string().min(1).max(200),
+    closesOn: z.string().min(10).max(10),
+  })
+  .strict()
+
+export type OrderReminderParams = z.output<typeof orderReminderParams>
+
+function reminderCopy(t: TranslateWithFallbackFn, params: OrderReminderParams) {
+  const values = { name: params.campaignName, date: params.closesOn }
+  return {
+    subject: t('payments.email.orderReminder.subject', 'Reminder: order "{name}" by {date}', values),
+    lead: t(
+      'payments.email.orderReminder.lead',
+      'Your child has no order in "{name}" yet. Orders close on {date}.',
+      values,
+    ),
+    action: t('payments.email.orderReminder.action', 'Open the order form in the club app.'),
+  }
+}
+
+/**
+ * `payments.order_reminder` ("Remind everyone", B-32; REQ-032, #115): a guardian of a child without an order in an
+ * open campaign is reminded of its name and deadline. `optOut: 'never'`: a club's own service message about the
+ * guardian's child, sent only on the administrator's request.
+ */
+export const orderReminderTemplate = defineEmailTemplate<OrderReminderParams>({
+  id: 'payments.order_reminder',
+  notificationType: 'payments.order_reminder',
+  optOut: 'never',
+  params: orderReminderParams,
+  subject: (t, params) => reminderCopy(t, params).subject,
+  preheader: (t, params) => reminderCopy(t, params).lead,
+  body: (t, params) => {
+    const text = reminderCopy(t, params)
+    return h(
+      'div',
+      null,
+      h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, text.lead),
+      h('p', { style: { margin: '0' } }, text.action),
+    )
+  },
+  text: (t, params) => {
+    const text = reminderCopy(t, params)
+    return [text.lead, '', text.action].join('\n')
+  },
+  link: (params) => `/club/orders/${params.campaignId}`,
+})
+export const paymentsEmailTemplates = [cashReceivedTemplate, orderReminderTemplate]

@@ -1,12 +1,15 @@
 // Reads of "Accept cash" for the `payments` routes (issue #114; foundation spec REQ-F16: routes reach the ORM only
 // through services): the club's charges still to pay, optionally of one payer, their descriptions decrypted and what was
-// paid on them; and the cash one user accepted on a day, with the reversals that cancel some of it.
+// paid on them; the payers with something to pay (also the statement's Assign, #113); and the cash one user accepted on
+// a day, with the reversals that cancel some of it.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Charge, Payment } from '../data/entities'
-import { OPEN_CHARGE_STATUSES } from '../lib/charge-ledger'
-import type { PaymentsScope } from './directory'
+import { payerSummaries } from '../lib/cash'
+import { OPEN_CHARGE_STATUSES, amountDueOf, remainingOf } from '../lib/charge-ledger'
+import { findPersons, searchPersonIds, type PaymentsScope } from './directory'
+import { paidTotals } from './ledger'
 
 function freshEm(container: AwilixContainer): EntityManager {
   return container.resolve<EntityManager>('em').fork()
@@ -78,4 +81,73 @@ export async function chargePayers(
     { fields: ['id', 'payerPersonId'] },
   )
   return new Map(rows.map((row) => [row.id, row.payerPersonId ?? null]))
+}
+
+export type PayerWithDue = {
+  payerPersonId: string
+  firstName: string
+  lastName: string
+  wards: { personId: string; firstName: string; lastName: string }[]
+  totalDue: number
+  chargeCount: number
+}
+
+/**
+ * The payers with charges still to pay, each with the wards the charges are for and the total due, sorted by surname;
+ * `search` (three letters or more) matches the payer's or a ward's name. The payer select of "Accept cash" (#114) and
+ * of the statement's Assign (#113).
+ */
+export async function payersWithDue(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  search?: string,
+): Promise<PayerWithDue[]> {
+  const charges = await openPayableCharges(container, scope)
+  const paid = await paidTotals(
+    container,
+    scope,
+    charges.map((charge) => charge.id),
+  )
+  const summaries = payerSummaries(
+    charges.map((charge) => ({
+      payerPersonId: charge.payerPersonId as string,
+      personId: charge.personId ?? null,
+      remaining: remainingOf(amountDueOf(charge), paid.get(charge.id) ?? 0),
+    })),
+  )
+  const matching = search ? await searchPersonIds(container, scope, search) : null
+  const filtered = matching
+    ? summaries.filter(
+        (summary) => matching.has(summary.payerPersonId) || summary.wardIds.some((id) => matching.has(id)),
+      )
+    : summaries
+  const persons = await findPersons(
+    container,
+    scope,
+    filtered.flatMap((summary) => [summary.payerPersonId, ...summary.wardIds]),
+  )
+  return filtered
+    .flatMap((summary) => {
+      const payer = persons.get(summary.payerPersonId)
+      if (!payer) return []
+      return [
+        {
+          payerPersonId: summary.payerPersonId,
+          firstName: payer.firstName,
+          lastName: payer.lastName,
+          wards: summary.wardIds.flatMap((personId) => {
+            const ward = persons.get(personId)
+            return ward ? [{ personId, firstName: ward.firstName, lastName: ward.lastName }] : []
+          }),
+          totalDue: summary.totalDue,
+          chargeCount: summary.chargeCount,
+        },
+      ]
+    })
+    .sort(
+      (a, b) =>
+        a.lastName.localeCompare(b.lastName, 'pl') ||
+        a.firstName.localeCompare(b.firstName, 'pl') ||
+        a.payerPersonId.localeCompare(b.payerPersonId),
+    )
 }

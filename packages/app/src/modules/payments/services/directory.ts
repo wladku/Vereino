@@ -6,6 +6,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { calendarDateInZone, type CalendarDate } from '@vereino/core'
+import type { ClubCoreDirectory, SectionDirectoryEntry } from '../../club_core/services/directory'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type {
   ActivitiesScheduleDirectory,
@@ -17,6 +18,7 @@ import type { PersonDirectory, PersonDirectoryEntry } from '../../people/service
 
 /** Tokens of the required modules' services (`activities/di.ts`, `groups/di.ts`, `people/di.ts`, `club_core/di.ts`). */
 const ACTIVITIES_SCHEDULE_DIRECTORY = 'activities.scheduleDirectory'
+const CLUB_CORE_DIRECTORY = 'clubCoreDirectory'
 const CLUB_CORE_SETTINGS = 'clubCoreSettings'
 const GROUPS_DIRECTORY = 'groups.directory'
 const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory'
@@ -45,6 +47,21 @@ function personDirectory(container: AwilixContainer): PersonDirectory {
 function settingsService(container: AwilixContainer): ClubCoreSettingsService {
   assertRegistered(container, CLUB_CORE_SETTINGS)
   return container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS)
+}
+
+function clubDirectory(container: AwilixContainer): ClubCoreDirectory {
+  assertRegistered(container, CLUB_CORE_DIRECTORY)
+  return container.resolve<ClubCoreDirectory>(CLUB_CORE_DIRECTORY)
+}
+
+/** The live sections of the club among `ids` (an order campaign's section, #115). */
+export function findSections(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, SectionDirectoryEntry>> {
+  return clubDirectory(container).findSections(scope, ids, em)
 }
 
 export function findGroups(
@@ -134,6 +151,17 @@ export function searchPersonIds(
   term: string,
 ): Promise<Set<string> | null> {
   return personDirectory(container).searchPersonIds(scope, term)
+}
+
+/** The guardians of each ward whose guardianship is active on `date` (the order reminder, #115). */
+export function activeGuardians(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  wardIds: readonly string[],
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<Map<string, string[]>> {
+  return personDirectory(container).activeGuardians(scope, wardIds, date, em)
 }
 
 export function primaryPayers(

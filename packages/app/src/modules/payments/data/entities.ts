@@ -17,6 +17,9 @@ import type {
 } from '../lib/payments-rules'
 import type { PaymentMethod } from '../lib/charge-ledger'
 import type { CheckoutStatus } from '../lib/checkout-rules'
+import type { CampaignStatus, OrderStatus, ProductKind } from '../lib/order-campaigns'
+import type { BankFormat, ColumnProfile } from '../lib/bank-statement'
+import type { BankSkipReason, BankTransactionStatus, MatchReason } from '../lib/bank-matching'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
 
@@ -199,6 +202,7 @@ export class Charge extends ScopedEntityBase {
 @Index({ name: 'payments_payments_org_receipt_idx', properties: ['organizationId', 'receiptNumber'] })
 @Index({ name: 'payments_payments_org_collector_idx', properties: ['organizationId', 'collectedByPersonId', 'paidOn'] })
 @Index({ name: 'payments_payments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'payments_payments_org_bank_transaction_idx', properties: ['organizationId', 'bankTransactionId'] })
 @Index({
   name: 'payments_payments_reverses_unique',
   expression:
@@ -226,6 +230,7 @@ export class Payment extends ScopedEntityBase {
     | 'isOverpayment'
     | 'collectedByPersonId'
     | 'receiptNumber'
+    | 'bankTransactionId'
 
   @Property({ name: 'charge_id', type: 'uuid' })
   chargeId!: string
@@ -279,6 +284,13 @@ export class Payment extends ScopedEntityBase {
   /** `KP/YYYY/MM/NNN`, sequential within the club and month; shared by the payments of one acceptance. */
   @Property({ name: 'receipt_number', type: 'text', nullable: true })
   receiptNumber?: string | null
+
+  /**
+   * The statement transfer a `transfer` payment records (#113). Its undo writes reversing entries that name the same
+   * transfer, so the transfer's live payments are those not reversed.
+   */
+  @Property({ name: 'bank_transaction_id', type: 'uuid', nullable: true })
+  bankTransactionId?: string | null
 }
 
 /**
@@ -377,6 +389,208 @@ export class PaymentsSettings extends ScopedEntityBase {
 }
 
 /**
+ * An order campaign — the order form for kits (payments spec *Data Models* → `payments_order_campaigns`, REQ-032,
+ * DD-30; issue #115, B-30…B-32): a name, the parent description, one section and its groups (scalar ids), the orders
+ * deadline and the payment deadline (≥ the orders deadline), personalisation (print name and number), a notes
+ * question and the supplier. Its stage changes only through `payments.order_campaigns.transition`; the form is
+ * editable in `draft` and `open` only.
+ */
+@Entity({ tableName: 'payments_order_campaigns' })
+@Index({ name: 'payments_order_campaigns_org_status_idx', properties: ['organizationId', 'status'] })
+@Index({ name: 'payments_order_campaigns_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderCampaign extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'description'
+    | 'status'
+    | 'askPrintName'
+    | 'askPrintNumber'
+    | 'notesLabel'
+    | 'supplierName'
+    | 'createdByPersonId'
+
+  @Property({ name: 'name', type: 'text' })
+  name!: string
+
+  @Property({ name: 'description', type: 'text', nullable: true })
+  description?: string | null
+
+  @Property({ name: 'section_id', type: 'uuid' })
+  sectionId!: string
+
+  @Property({ name: 'group_ids', type: 'text[]', columnType: 'uuid[]' })
+  groupIds!: string[]
+
+  @Property({ name: 'closes_on', type: 'date' })
+  closesOn!: string
+
+  @Property({ name: 'payment_due_on', type: 'date' })
+  paymentDueOn!: string
+
+  @Property({ name: 'status', type: 'text', default: 'draft' })
+  status: CampaignStatus = 'draft'
+
+  @Property({ name: 'ask_print_name', type: 'boolean', default: false })
+  askPrintName: boolean = false
+
+  @Property({ name: 'ask_print_number', type: 'boolean', default: false })
+  askPrintNumber: boolean = false
+
+  /** The notes question shown to the guardian; null asks none. */
+  @Property({ name: 'notes_label', type: 'text', nullable: true })
+  notesLabel?: string | null
+
+  @Property({ name: 'supplier_name', type: 'text', nullable: true })
+  supplierName?: string | null
+
+  @Property({ name: 'created_by_person_id', type: 'uuid', nullable: true })
+  createdByPersonId?: string | null
+}
+
+/**
+ * A product of a campaign (`payments_order_products`): a single product with children's and adult sizes and prices
+ * (grosz; no sizes = a product without a size), or the one set of at least two single products at a set price.
+ * Placed orders keep the price of their lines, so a later price change leaves them as they are; a product used in an
+ * order cannot be removed (409 `order_product_in_use`).
+ */
+@Entity({ tableName: 'payments_order_products' })
+@Index({ name: 'payments_order_products_campaign_sort_idx', properties: ['campaignId', 'sort'] })
+@Index({ name: 'payments_order_products_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderProduct extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'priceAdult' | 'requiredAnswer' | 'componentProductIds'
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  @Property({ name: 'name', type: 'text' })
+  name!: string
+
+  @Property({ name: 'kind', type: 'text' })
+  kind!: ProductKind
+
+  @Property({ name: 'component_product_ids', type: 'text[]', columnType: 'uuid[]' })
+  componentProductIds: string[] = []
+
+  @Property({ name: 'sizes_child', type: 'text[]' })
+  sizesChild!: string[]
+
+  @Property({ name: 'sizes_adult', type: 'text[]' })
+  sizesAdult!: string[]
+
+  /** Grosz; for a set, the set price. */
+  @Property({ name: 'price_child', type: 'int' })
+  priceChild!: number
+
+  /** Grosz; required when the product has adult sizes. */
+  @Property({ name: 'price_adult', type: 'int', nullable: true })
+  priceAdult?: number | null
+
+  /** The guardian must pick a size (or "not ordering"). */
+  @Property({ name: 'required_answer', type: 'boolean', default: false })
+  requiredAnswer: boolean = false
+
+  @Property({ name: 'sort', type: 'int' })
+  sort!: number
+}
+
+/**
+ * An order of one child in a campaign (`payments_orders`). Placed by a guardian in E07-S09; this story reads it for
+ * the KPIs, the Orders and No order tabs and the supplier summary. It owns an `order` charge (`charge_id`). One
+ * submitted order per child and campaign (partial unique index).
+ */
+@Entity({ tableName: 'payments_orders' })
+@Index({ name: 'payments_orders_org_campaign_idx', properties: ['organizationId', 'campaignId'] })
+@Index({ name: 'payments_orders_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'payments_orders_campaign_participant_unique',
+  expression:
+    'create unique index "payments_orders_campaign_participant_unique" on "payments_orders" ("campaign_id", "participant_person_id") where status = \'submitted\' and deleted_at is null',
+})
+export class Order extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'contactEmail'
+    | 'contactPhone'
+    | 'printName'
+    | 'printNumber'
+    | 'notes'
+    | 'status'
+    | 'submittedVia'
+    | 'handedOverAt'
+    | 'handedOverByPersonId'
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  @Property({ name: 'participant_person_id', type: 'uuid' })
+  participantPersonId!: string
+
+  @Property({ name: 'ordered_by_person_id', type: 'uuid' })
+  orderedByPersonId!: string
+
+  /** Encrypted at rest. */
+  @Property({ name: 'contact_email', type: 'text', nullable: true })
+  contactEmail?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'contact_phone', type: 'text', nullable: true })
+  contactPhone?: string | null
+
+  @Property({ name: 'print_name', type: 'text', nullable: true })
+  printName?: string | null
+
+  @Property({ name: 'print_number', type: 'int', nullable: true })
+  printNumber?: number | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'notes', type: 'text', nullable: true })
+  notes?: string | null
+
+  @Property({ name: 'status', type: 'text', default: 'submitted' })
+  status: OrderStatus = 'submitted'
+
+  @Property({ name: 'charge_id', type: 'uuid' })
+  chargeId!: string
+
+  @Property({ name: 'submitted_via', type: 'text', default: 'app' })
+  submittedVia: 'app' | 'email_link' = 'app'
+
+  @Property({ name: 'handed_over_at', type: Date, nullable: true })
+  handedOverAt?: Date | null
+
+  @Property({ name: 'handed_over_by_person_id', type: 'uuid', nullable: true })
+  handedOverByPersonId?: string | null
+}
+
+/**
+ * A line of an order (`payments_order_lines`): the product, its size (or a set's sizes by product) and the unit price
+ * recorded when the order was placed.
+ */
+@Entity({ tableName: 'payments_order_lines' })
+@Index({ name: 'payments_order_lines_order_idx', properties: ['orderId'] })
+@Index({ name: 'payments_order_lines_org_product_idx', properties: ['organizationId', 'productId'] })
+@Index({ name: 'payments_order_lines_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class OrderLine extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'size' | 'componentSizes'
+
+  @Property({ name: 'order_id', type: 'uuid' })
+  orderId!: string
+
+  @Property({ name: 'product_id', type: 'uuid' })
+  productId!: string
+
+  @Property({ name: 'size', type: 'text', nullable: true })
+  size?: string | null
+
+  @Property({ name: 'component_sizes', type: 'json', nullable: true })
+  componentSizes?: Record<string, string> | null
+
+  /** Grosz, recorded at order time. */
+  @Property({ name: 'unit_price', type: 'int' })
+  unitPrice!: number
+}
+
+/**
  * A payer's permanent code (payments spec *Data Models* → `payments_payer_refs`, *Domain Vocabulary* → Payer code;
  * REQ-030; issue #111): `GW-XXXX`, unique in the club, shown on `/club/payments` with the transfer instructions and
  * matched in transfer titles by the statement import (#113). Assigned on first use and never changed.
@@ -393,4 +607,137 @@ export class PayerRef extends ScopedEntityBase {
 
   @Property({ name: 'code', type: 'text' })
   code!: string
+}
+
+/**
+ * One imported bank statement (payments spec *Data Models* → `payments_bank_imports`; REQ-030, TEST-042; issue #113,
+ * B-29): the file in the private `attachments` partition (read only with `payments.bank.import`), its format and the
+ * CSV column mapping used, who imported it and what happened to its lines — recorded, to confirm, unmatched, skipped
+ * (debits and transfers imported before). The counts are the import's summary; later decisions do not change them.
+ */
+@Entity({ tableName: 'payments_bank_imports' })
+@Index({ name: 'payments_bank_imports_org_created_idx', properties: ['organizationId', 'createdAt'] })
+@Index({ name: 'payments_bank_imports_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class BankImport extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'columnProfile' | 'importedByPersonId' | 'importedByUserId'
+
+  @Property({ name: 'attachment_id', type: 'uuid' })
+  attachmentId!: string
+
+  @Property({ name: 'file_name', type: 'text' })
+  fileName!: string
+
+  @Property({ name: 'format', type: 'text' })
+  format!: BankFormat
+
+  @Property({ name: 'column_profile', type: 'json', nullable: true })
+  columnProfile?: ColumnProfile | null
+
+  @Property({ name: 'imported_by_person_id', type: 'uuid', nullable: true })
+  importedByPersonId?: string | null
+
+  @Property({ name: 'imported_by_user_id', type: 'uuid', nullable: true })
+  importedByUserId?: string | null
+
+  @Property({ name: 'total', type: 'int' })
+  total!: number
+
+  @Property({ name: 'booked', type: 'int' })
+  booked!: number
+
+  @Property({ name: 'suggested', type: 'int' })
+  suggested!: number
+
+  @Property({ name: 'unmatched', type: 'int' })
+  unmatched!: number
+
+  @Property({ name: 'skipped', type: 'int' })
+  skipped!: number
+}
+
+/**
+ * An incoming transfer of an imported statement (payments spec *Data Models* → `payments_bank_transactions`; REQ-030,
+ * TEST-042; issue #113, B-29): the day, the amount in grosz, the sender, their account and the title (encrypted), the
+ * fingerprint that keeps a re-import from storing it twice, the status, the payer it is matched to with the charges it
+ * pays (`allocation`, oldest first) and why. Its status changes only through the `payments.bank_transactions.*`
+ * commands; a recorded transfer's payments carry its id. Debits and duplicates are never stored.
+ */
+@Entity({ tableName: 'payments_bank_transactions' })
+@Unique({ name: 'payments_bank_transactions_org_hash_unique', properties: ['organizationId', 'txHash'] })
+@Index({ name: 'payments_bank_transactions_org_status_idx', properties: ['organizationId', 'status', 'bookedOn'] })
+@Index({ name: 'payments_bank_transactions_org_import_idx', properties: ['organizationId', 'importId'] })
+@Index({ name: 'payments_bank_transactions_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class BankTransaction extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'counterpartyName'
+    | 'counterpartyAccount'
+    | 'payerPersonId'
+    | 'allocation'
+    | 'autoBooked'
+    | 'skipReason'
+    | 'skipNote'
+    | 'decidedByPersonId'
+    | 'decidedByUserId'
+    | 'decidedAt'
+
+  @Property({ name: 'import_id', type: 'uuid' })
+  importId!: string
+
+  /** The line of the statement file. */
+  @Property({ name: 'line', type: 'int' })
+  line!: number
+
+  @Property({ name: 'booked_on', type: 'date' })
+  bookedOn!: string
+
+  /** Grosz; always positive (debits are skipped). */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  /** Encrypted at rest. */
+  @Property({ name: 'counterparty_name', type: 'text', nullable: true })
+  counterpartyName?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'counterparty_account', type: 'text', nullable: true })
+  counterpartyAccount?: string | null
+
+  /** Encrypted at rest. */
+  @Property({ name: 'title', type: 'text' })
+  title!: string
+
+  @Property({ name: 'tx_hash', type: 'text' })
+  txHash!: string
+
+  @Property({ name: 'status', type: 'text' })
+  status!: BankTransactionStatus
+
+  @Property({ name: 'payer_person_id', type: 'uuid', nullable: true })
+  payerPersonId?: string | null
+
+  /** The charges the transfer pays, oldest first, in grosz. */
+  @Property({ name: 'allocation', type: 'json' })
+  allocation: { chargeId: string; amount: number }[] = []
+
+  @Property({ name: 'match_reason', type: 'text' })
+  matchReason!: MatchReason
+
+  @Property({ name: 'auto_booked', type: 'boolean', default: false })
+  autoBooked: boolean = false
+
+  @Property({ name: 'skip_reason', type: 'text', nullable: true })
+  skipReason?: BankSkipReason | null
+
+  @Property({ name: 'skip_note', type: 'text', nullable: true })
+  skipNote?: string | null
+
+  @Property({ name: 'decided_by_person_id', type: 'uuid', nullable: true })
+  decidedByPersonId?: string | null
+
+  @Property({ name: 'decided_by_user_id', type: 'uuid', nullable: true })
+  decidedByUserId?: string | null
+
+  @Property({ name: 'decided_at', type: Date, nullable: true })
+  decidedAt?: Date | null
 }

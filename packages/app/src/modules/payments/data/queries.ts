@@ -85,3 +85,32 @@ export async function lastReceiptNumber(
   )
   return rows[0]?.receipt_number ?? null
 }
+
+/**
+ * Closes the club's `open` campaigns whose orders deadline is before `today` (the `payments:close-order-campaigns`
+ * sweep, #115) in one conditional UPDATE, so a campaign the administrator closed meanwhile is not touched twice.
+ * Returns the ids it closed.
+ */
+export async function closeExpiredCampaigns(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  today: string,
+): Promise<string[]> {
+  const rows = await em.execute<{ id: string }[]>(
+    `update payments_order_campaigns
+        set status = 'closed', updated_at = now()
+      where tenant_id = ? and organization_id = ? and status = 'open' and closes_on < ? and deleted_at is null
+      returning id`,
+    [scope.tenantId, scope.organizationId, today],
+  )
+  return rows.map((row) => row.id)
+}
+
+/**
+ * Takes the club's statement lock until the caller's transaction ends (#113): an import and every decision on a
+ * transfer (Confirm, Assign, Undo) wait for each other, so two of them never spread one transfer — or one charge's
+ * remaining amount — twice.
+ */
+export async function lockBankStatements(em: EntityManager, organizationId: string): Promise<void> {
+  await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`payments.bank:${organizationId}`])
+}
