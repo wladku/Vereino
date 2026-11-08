@@ -60,6 +60,8 @@
   "club_core.settings.fields.orderSalesDocument.description": "Receipts and invoices are not available in this version.",
   "club_core.settings.fields.coachSettlementModel": "Coach settlement model",
   "club_core.settings.fields.showCalledUpChildren": "Other called-up children",
+  "club_core.settings.fields.bankAccount": "Club bank account",
+  "club_core.settings.fields.bankAccount.description": "26-digit account number shown to payers in the transfer instructions with their payer code.",
   "club_core.settings.fields.coachMayCancel": "Coaches may cancel sessions",
   "club_core.settings.fields.coachMayCancel.description": "When off, a coach can only report an absence; the coordinators and the administrator still cancel sessions.",
   "club_core.settings.activityType.training": "Training",

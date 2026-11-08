@@ -200,6 +200,29 @@ export type MyChargesResult = CodedBody & {
   items?: { id: string; status: string; payable: boolean; payerMissing: boolean; remaining: number }[]
   total?: number
   checkouts?: { id: string; state: string }[]
+  history?: { id: string; status: string; periodLabel: string | null }[]
+  transfer?: { bankAccount: string | null; recipient: string | null; payerCode: string } | null
+}
+
+export type MyPaymentsSummary = CodedBody & {
+  state?: 'due' | 'paid' | 'guardian_pays'
+  openTotal?: number
+  openCount?: number
+  nearestDueDate?: string
+  overdue?: boolean
+}
+
+export async function myPaymentsSummary(request: APIRequestContext, token: string) {
+  return call<MyPaymentsSummary>(request, 'GET', '/api/payments/my-charges/summary', token)
+}
+
+export type PaymentsDashboardResult = CodedBody & {
+  overdue?: { total: number; charges: number; families: number }
+  withoutPayer?: { charges: number }
+}
+
+export async function paymentsDashboard(request: APIRequestContext, token: string) {
+  return call<PaymentsDashboardResult>(request, 'GET', '/api/payments/dashboard', token)
 }
 
 export async function myCharges(request: APIRequestContext, token: string) {

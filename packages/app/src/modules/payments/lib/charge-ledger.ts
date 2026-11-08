@@ -142,6 +142,16 @@ export function perspectiveQuery(perspective: ChargePerspective): Record<string,
   }
 }
 
+/** The B-21 list opened in a perspective (`?perspective=…`, the B-01 widgets' links, #111); the default needs none. */
+export function chargesPerspectiveHref(path: string, perspective: ChargePerspective): string {
+  return perspective === DEFAULT_CHARGE_PERSPECTIVE ? path : `${path}?perspective=${perspective}`
+}
+
+/** The perspective a `?perspective=` value names among those shown, or the default. */
+export function chargePerspectiveOf(value: string | null, shown: readonly ChargePerspective[]): ChargePerspective {
+  return shown.find((perspective) => perspective === value) ?? DEFAULT_CHARGE_PERSPECTIVE
+}
+
 /** The perspectives shown: rentals only when the `facilities` module is enabled. */
 export function visiblePerspectives(facilitiesEnabled: boolean): ChargePerspective[] {
   return CHARGE_PERSPECTIVES.filter((perspective) => perspective !== 'rentals' || facilitiesEnabled)

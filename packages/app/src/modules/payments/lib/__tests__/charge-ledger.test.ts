@@ -19,6 +19,8 @@ import {
   settledStatus,
   toCsv,
   visiblePerspectives,
+  chargePerspectiveOf,
+  chargesPerspectiveHref,
 } from '../charge-ledger'
 
 describe('charge ledger vocabularies', () => {
@@ -121,6 +123,19 @@ describe('perspectives', () => {
   it('shows rentals only when facilities is enabled', () => {
     expect(visiblePerspectives(false)).not.toContain('rentals')
     expect(visiblePerspectives(true)).toEqual([...CHARGE_PERSPECTIVES])
+  })
+})
+
+describe('perspective links', () => {
+  it('opens B-21 in a perspective and reads it back', () => {
+    expect(chargesPerspectiveHref('/backend/payments/charges', 'overdue')).toBe(
+      '/backend/payments/charges?perspective=overdue',
+    )
+    expect(chargesPerspectiveHref('/backend/payments/charges', 'fees')).toBe('/backend/payments/charges')
+    const shown = visiblePerspectives(false)
+    expect(chargePerspectiveOf('payer_missing', shown)).toBe('payer_missing')
+    expect(chargePerspectiveOf('rentals', shown)).toBe('fees')
+    expect(chargePerspectiveOf(null, shown)).toBe('fees')
   })
 })
 

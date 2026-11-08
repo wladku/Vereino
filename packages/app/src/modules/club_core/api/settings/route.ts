@@ -72,6 +72,7 @@ function publicFields(settings: ClubPublicSettings) {
     publicSlug: settings.publicSlug,
     publicDescription: settings.publicDescription,
     contactPhone: settings.contactPhone,
+    bankAccount: settings.bankAccount,
     logoAttachmentId: settings.logoAttachmentId,
     logoUrl: settings.logoUrl,
     publication: settings.publication,
@@ -145,6 +146,10 @@ const settingsResponseSchema = z.object({
   publicSlug: z.string().nullable().describe('Globally unique slug of `/p/{publicSlug}`'),
   publicDescription: z.string().nullable(),
   contactPhone: z.string().nullable(),
+  bankAccount: z
+    .string()
+    .nullable()
+    .describe("The club's bank account (NRB, 26 digits), shown in the payers' transfer instructions"),
   logoAttachmentId: z.string().nullable(),
   logoUrl: z.string().nullable().describe('The logo through the authenticated attachment image route'),
   publication: z.object({
