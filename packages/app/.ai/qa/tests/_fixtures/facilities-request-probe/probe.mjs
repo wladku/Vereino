@@ -17,15 +17,18 @@ const di = await import('@open-mercato/shared/lib/di/container')
 
 const container = await di.createRequestContainer()
 const em = container.resolve('em').fork()
-const meta = em.getMetadata().getAll()
-const rental = Object.values(meta).find((entity) => entity.tableName === 'facilities_rentals')
+// MikroORM 7 returns the metadata as a Map (older versions as a dictionary).
+const all = em.getMetadata().getAll()
+const metas = all instanceof Map ? [...all.values()] : Object.values(all)
+const rental = metas.find((entity) => (entity.tableName ?? entity.collection) === 'facilities_rentals')
 if (!rental) throw new Error('[internal] facilities_rentals is not registered')
+const Rental = rental.class ?? rental.className
 const scope = { tenantId: input.tenantId, organizationId: input.organizationId }
 
 let result
 if (input.op === 'seed') {
   const now = new Date()
-  const row = em.create(rental.className, {
+  const row = em.create(Rental, {
     id: randomUUID(),
     ...scope,
     createdAt: now,
@@ -45,10 +48,11 @@ if (input.op === 'seed') {
     emailVerifiedAt: now,
     holdExpiresAt: new Date(now.getTime() + Number(input.holdHours ?? 48) * 3_600_000),
   })
-  await em.persistAndFlush(row)
+  em.persist(row)
+  await em.flush()
   result = { id: row.id }
 } else if (input.op === 'status') {
-  const row = await em.findOne(rental.className, { ...scope, id: input.id }, { fields: ['id', 'status', 'decidedAt'] })
+  const row = await em.findOne(Rental, { ...scope, id: input.id }, { fields: ['id', 'status', 'decidedAt'] })
   result = { status: row?.status ?? null, decidedAt: row?.decidedAt ? row.decidedAt.toISOString() : null }
 } else {
   throw new Error(`[internal] unknown probe op ${String(input.op)}`)
