@@ -48,7 +48,11 @@ export const openApi: OpenApiRouteDoc = {
         "Sessionless (REQ-032, M-19). Spends nothing. The campaign, its products, the link guardian's children in the campaign's groups (by the guardian's current grants) with their orders, and the transfer instructions.",
       responses: [{ status: 200, description: 'The form', schema: pageSchema }],
       errors: [
-        { status: 404, description: '`order_link_not_found` — unknown, malformed or foreign token', schema: errorSchema },
+        {
+          status: 404,
+          description: '`order_link_not_found` — unknown, malformed or foreign token',
+          schema: errorSchema,
+        },
         {
           status: 410,
           description: '`token_link_expired` (request a new link), `order_campaign_completed`',

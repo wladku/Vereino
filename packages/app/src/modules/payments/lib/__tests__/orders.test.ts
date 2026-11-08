@@ -90,9 +90,9 @@ describe('orderLines', () => {
       error: 'order_answer_missing',
       productId: 'shirt',
     })
-    expect(orderLines(products, { setSelected: false, choices: { shirt: 'XXL', shorts: 'none', bag: 'none' } })).toEqual(
-      { ok: false, error: 'order_answer_invalid', productId: 'shirt' },
-    )
+    expect(
+      orderLines(products, { setSelected: false, choices: { shirt: 'XXL', shorts: 'none', bag: 'none' } }),
+    ).toEqual({ ok: false, error: 'order_answer_invalid', productId: 'shirt' })
     expect(
       orderLines(products, { setSelected: false, choices: { shirt: 'none', shorts: 'none', bag: 'maybe' } }),
     ).toEqual({ ok: false, error: 'order_answer_invalid', productId: 'bag' })
@@ -114,9 +114,11 @@ describe('orderLines', () => {
       error: 'order_set_size_missing',
       productId: 'shorts',
     })
-    expect(orderLines(products, { setSelected: true, choices: { shirt: 'none', shorts: 'M', bag: 'none' } })).toEqual(
-      { ok: false, error: 'order_set_size_missing', productId: 'shirt' },
-    )
+    expect(orderLines(products, { setSelected: true, choices: { shirt: 'none', shorts: 'M', bag: 'none' } })).toEqual({
+      ok: false,
+      error: 'order_set_size_missing',
+      productId: 'shirt',
+    })
     expect(orderLines([shirt], { setSelected: true, choices: {} })).toEqual({
       ok: false,
       error: 'order_answer_invalid',
@@ -130,9 +132,9 @@ describe('orderLines', () => {
       ok: true,
       lines: [{ productId: 'set', componentSizes: {} }],
     })
-    expect(orderLines(products, { setSelected: false, choices: { shirt: 'none', shorts: 'none', bag: 'none' } })).toEqual(
-      { ok: false, error: 'order_empty', productId: null },
-    )
+    expect(
+      orderLines(products, { setSelected: false, choices: { shirt: 'none', shorts: 'none', bag: 'none' } }),
+    ).toEqual({ ok: false, error: 'order_empty', productId: null })
   })
 })
 

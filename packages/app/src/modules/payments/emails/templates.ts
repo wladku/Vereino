@@ -182,7 +182,11 @@ function orderCopy(t: TranslateWithFallbackFn, params: OrderCopyParams) {
           'Pay by {due}: online in the app, by transfer with the code {code} in the title, or in cash to the coach.',
           values,
         )
-      : t('payments.email.orderCopy.pay', 'Pay by {due}: online in the app, by transfer or in cash to the coach.', values),
+      : t(
+          'payments.email.orderCopy.pay',
+          'Pay by {due}: online in the app, by transfer or in cash to the coach.',
+          values,
+        ),
     change: t('payments.email.orderCopy.change', 'You can change or cancel the order until {closes}.', values),
   }
 }
@@ -274,4 +278,9 @@ export const orderLinkTemplate = defineEmailTemplate<OrderLinkParams>({
   actionLabel: (t) => t('payments.email.orderLink.action', 'Open the order form'),
 })
 
-export const paymentsEmailTemplates = [cashReceivedTemplate, orderReminderTemplate, orderCopyTemplate, orderLinkTemplate]
+export const paymentsEmailTemplates = [
+  cashReceivedTemplate,
+  orderReminderTemplate,
+  orderCopyTemplate,
+  orderLinkTemplate,
+]

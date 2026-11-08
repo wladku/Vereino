@@ -32,7 +32,8 @@ export async function POST(request: Request, context: { params: Promise<{ token?
     }
     const ctx = sessionlessContext(await createRequestContainer(), request)
     const { id, participantPersonId, ...order } = parsed.data
-    if (id) return noStore(await orderCommandResponse(ctx, 'payments.orders.update', { ...order, id, token: token ?? '' }))
+    if (id)
+      return noStore(await orderCommandResponse(ctx, 'payments.orders.update', { ...order, id, token: token ?? '' }))
     // The campaign is the link's; the command fills it in.
     return noStore(
       await orderCommandResponse(ctx, 'payments.orders.place', {

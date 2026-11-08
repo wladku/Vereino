@@ -53,7 +53,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Send a personal order link to an address',
       description:
-        "Sessionless (REQ-032). The club comes from its public slug, the campaign from the share link. While the campaign takes orders and the address belongs to an active guardian of a child in its groups, an e-mail with a personal link to `/club/o/{token}` is sent (valid until the end of the orders deadline); otherwise nothing is sent. Always 202 with the same body and no sooner than one second. Rate-limited per client IP.",
+        'Sessionless (REQ-032). The club comes from its public slug, the campaign from the share link. While the campaign takes orders and the address belongs to an active guardian of a child in its groups, an e-mail with a personal link to `/club/o/{token}` is sent (valid until the end of the orders deadline); otherwise nothing is sent. Always 202 with the same body and no sooner than one second. Rate-limited per client IP.',
       requestBody: { contentType: 'application/json', schema: orderLinkRequestSchema },
       responses: [{ status: 202, description: 'Accepted', schema: z.object({ status: z.literal('accepted') }) }],
       errors: [

@@ -197,7 +197,16 @@ async function checkOrder(
   if (!groupId) return paymentsErrors.throw('order_child_not_in_campaign')
   const products = await campaignProducts(em, scope, [campaign.id])
   const lines = orderLines(
-    products.map((product) => ({ ...product, priceAdult: product.priceAdult ?? null })),
+    products.map((product) => ({
+      id: product.id,
+      kind: product.kind,
+      componentProductIds: product.componentProductIds,
+      sizesChild: product.sizesChild,
+      sizesAdult: product.sizesAdult,
+      priceChild: product.priceChild,
+      priceAdult: product.priceAdult ?? null,
+      requiredAnswer: product.requiredAnswer,
+    })),
     { setSelected: input.setSelected, choices: input.choices },
   )
   if (!lines.ok) {
@@ -272,21 +281,22 @@ function copyLines(products: readonly OrderProduct[], lines: readonly OrderLineD
 
 function copyOf(
   campaign: OrderCampaign,
-  order: Order,
   checked: CheckedOrder,
   childName: string,
   changed: boolean,
+  email: string,
 ): NonNullable<OrderCommandResult['copy']> {
+  // The address as entered: the order's own field may hold its encrypted value after the flush.
   return {
-    email: order.contactEmail as string,
+    email,
     params: {
       campaignId: campaign.id,
       campaignName: campaign.name,
       childName,
       lines: copyLines(checked.products, checked.lines),
       total: checked.total,
-      printName: order.printName ?? null,
-      printNumber: order.printNumber ?? null,
+      printName: checked.printName,
+      printNumber: checked.printNumber,
       closesOn: calendarDate(campaign.closesOn),
       paymentDueOn: calendarDate(campaign.paymentDueOn),
       changed,
@@ -324,7 +334,7 @@ async function sendCopy(ctx: CommandRuntimeContext, result: OrderCommandResult):
             },
           ],
           source: { module: 'payments', type: 'payments:order', id: result.entity.id },
-          idempotencyKey: `payments:order-copy:${result.entity.id}:${result.entity.updatedAt.getTime()}`,
+          idempotencyKey: `payments:order-copy:${result.entity.id}:${result.entity.updatedAt.toISOString()}`,
           actor: { userId: ctx.auth?.sub ?? null, actingRole: result.actingRole },
         },
         { ...scope, scope: [], em: tx },
@@ -462,7 +472,7 @@ const placeOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRes
         charge,
         total: checked.total,
         via: actor.via,
-        copy: copyOf(campaign, order, checked, childName, false),
+        copy: copyOf(campaign, checked, childName, false, parsed.contactEmail),
       }
     })
     await emitAfterCommit(
@@ -538,7 +548,13 @@ const updateOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
         charge,
         total: checked.total,
         via: actor.via,
-        copy: copyOf(campaign, order, checked, persons.get(order.participantPersonId)?.firstName ?? '', true),
+        copy: copyOf(
+          campaign,
+          checked,
+          persons.get(order.participantPersonId)?.firstName ?? '',
+          true,
+          parsed.contactEmail,
+        ),
       }
     })
     await emitOrderEvent('payments.order.updated', result)

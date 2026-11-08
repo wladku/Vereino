@@ -50,8 +50,7 @@ export type OrderAnswers = {
 export type OrderLinesError = 'order_answer_missing' | 'order_answer_invalid' | 'order_set_size_missing' | 'order_empty'
 
 export type OrderLinesResult =
-  | { ok: true; lines: OrderLineDraft[]; total: number }
-  | { ok: false; error: OrderLinesError; productId: string | null }
+  { ok: true; lines: OrderLineDraft[]; total: number } | { ok: false; error: OrderLinesError; productId: string | null }
 
 function sizesOf(product: FormProduct): string[] {
   return [...product.sizesChild, ...product.sizesAdult]
@@ -114,21 +113,24 @@ export function answersOfLines(
   lines: readonly Pick<OrderLineDraft, 'productId' | 'size' | 'componentSizes'>[],
 ): OrderAnswers {
   const byId = new Map(products.map((product) => [product.id, product]))
-  const choices: Record<string, string> = {}
+  const single: Record<string, string> = {}
+  const setSizes: Record<string, string> = {}
+  const inSet = new Set<string>()
   let setSelected = false
-  for (const product of products) if (product.kind === 'item') choices[product.id] = NOT_ORDERING
+  for (const product of products) if (product.kind === 'item') single[product.id] = NOT_ORDERING
   for (const line of lines) {
     const product = byId.get(line.productId)
     if (product?.kind === 'set') {
       setSelected = true
-      // A product of the set without a size has no answer of its own.
-      for (const id of product.componentProductIds) delete choices[id]
-      for (const [id, size] of Object.entries(line.componentSizes ?? {})) choices[id] = size
+      for (const id of product.componentProductIds) inSet.add(id)
+      Object.assign(setSizes, line.componentSizes ?? {})
     } else if (product) {
-      choices[line.productId] = line.size ?? ORDERING
+      single[line.productId] = line.size ?? ORDERING
     }
   }
-  return { setSelected, choices }
+  // A product of the set answers with its size in the set; one without a size has no answer of its own.
+  const own = Object.entries(single).filter(([id]) => !inSet.has(id))
+  return { setSelected, choices: { ...Object.fromEntries(own), ...setSizes } }
 }
 
 /** The default print name: the child's first name in capitals, cut to the print limit. */
@@ -178,9 +180,7 @@ export function ordersOpen(campaign: { status: CampaignStatus; closesOn: Calenda
 /** A child's state in a campaign (M-16). */
 export type ChildOrderState = 'not_ordered' | 'to_pay' | 'paid' | 'picked_up'
 
-export function childOrderState(
-  order: { chargeStatus: string | null; handedOver: boolean } | null,
-): ChildOrderState {
+export function childOrderState(order: { chargeStatus: string | null; handedOver: boolean } | null): ChildOrderState {
   if (!order) return 'not_ordered'
   if (order.handedOver) return 'picked_up'
   return order.chargeStatus === 'paid' ? 'paid' : 'to_pay'
@@ -222,7 +222,14 @@ function zoneOffsetMs(instant: Date, timeZone: string): number {
   }).formatToParts(instant)
   const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   const value = (type: string) => Number(byType[type])
-  const asUtc = Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'), value('second'))
+  const asUtc = Date.UTC(
+    value('year'),
+    value('month') - 1,
+    value('day'),
+    value('hour'),
+    value('minute'),
+    value('second'),
+  )
   return asUtc - Math.floor(instant.getTime() / 1000) * 1000
 }
 

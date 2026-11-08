@@ -160,7 +160,7 @@ export async function requestOrderLink(
         const recipient: Recipient = {
           personId,
           userId: null,
-          email: contact.email as string,
+          email: contact.email,
           locale: contact.locale,
           reasons: ['guardian'],
           channels: ['email'],
