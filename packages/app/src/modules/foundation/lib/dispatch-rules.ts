@@ -1,5 +1,6 @@
 // P-30 dispatch rules (foundation III DD-M03, DD-M04, DD-M06, DD-M09; S12.4 as amended by DD-M17): the delivery rows a
 // dispatch writes, the retry schedule, the failure codes and the per-process send rate. Pure; the services apply them.
+import { createHash } from 'node:crypto'
 import type { AudienceReason, Recipient, RecipientChannel } from '@vereino/core'
 
 export const DELIVERY_STATUSES = ['queued', 'sent', 'failed', 'skipped'] as const
@@ -26,9 +27,24 @@ export const EMAIL_SENDS_PER_SECOND = 8
 /** `notificationService.createBatch` takes at most this many users per call. */
 export const IN_APP_BATCH_SIZE = 1000
 
+/**
+ * A bare address (foundation III glossary *Recipient*: phase 5 requesters): someone the club writes to without a
+ * person record, e.g. a guest who requested a facility booking. E-mail only, in the locale the guest used.
+ */
+export type BareAddress = { readonly email: string; readonly locale: string }
+
+/**
+ * The key of a bare address in a dispatch's `secrets` (P-30 `recipientKey`): the SHA-256 of the trimmed, lower-cased
+ * address, so the map never holds the address itself.
+ */
+export function bareAddressKey(email: string): string {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
+}
+
 /** One planned delivery row: a recipient on one channel, or one `skipped` row for an unreachable person. */
 export type PlannedDelivery = {
-  personId: string
+  /** Null for a bare address. */
+  personId: string | null
   userId: string | null
   channel: RecipientChannel
   email: string | null
@@ -78,6 +94,28 @@ export function planDeliveries(
     }
   }
   return rows
+}
+
+/**
+ * One e-mail row per bare address, with its secret (looked up by `bareAddressKey`); an empty address is one `skipped` /
+ * `unreachable` row. Bare addresses have no reasons and no in-app channel.
+ */
+export function planAddressDeliveries(
+  addresses: readonly BareAddress[],
+  secrets: ReadonlyMap<string, Record<string, unknown>> = new Map(),
+): PlannedDelivery[] {
+  return addresses.map((address) => {
+    const email = address.email.trim()
+    const base = { personId: null, userId: null, channel: 'email' as const, locale: address.locale, reasons: [] }
+    if (!email) return { ...base, email: null, status: 'skipped', skipReason: 'unreachable', secret: null }
+    return {
+      ...base,
+      email,
+      status: 'queued',
+      skipReason: null,
+      secret: secrets.get(bareAddressKey(email)) ?? null,
+    }
+  })
 }
 
 /** The installed classifier's verdict (`communication_channels/lib/error-classification.ts`, DD-M09). */

@@ -19,7 +19,15 @@ import {
   queuedDeliveriesOf,
   type DispatchScope,
 } from '../data/queries'
-import { chunk, planDeliveries, type DeliveryStatus, type FailureCode, type SkipReason } from '../lib/dispatch-rules'
+import {
+  chunk,
+  planAddressDeliveries,
+  planDeliveries,
+  type BareAddress,
+  type DeliveryStatus,
+  type FailureCode,
+  type SkipReason,
+} from '../lib/dispatch-rules'
 import { isOptOutAvailable } from '../lib/email-templates'
 import { contactResolver, resolveAudience, type AudienceContext } from './audience'
 import { resolveEmailTemplate } from './email-templates'
@@ -50,13 +58,18 @@ export type DispatchRequest = {
   /** The recipients, already resolved (e.g. by the composer's preview); otherwise `audience` is resolved here. */
   recipients?: readonly Recipient[]
   audience?: AudienceSpec
+  /** Bare addresses without a person record (a guest's request e-mails), e-mail only; added to the recipients. */
+  addresses?: readonly BareAddress[]
   /** Person ids to drop from a resolved `audience` (the author). */
   exclude?: readonly string[]
   /** The record that caused the message, e.g. `{ module: 'communication', type: 'communication:thread_message', id }`. */
   source: { module: string; type: string; id: string }
   /** One dispatch per key and organization, e.g. `communication:thread:${messageId}` or `…:${eventId}`. */
   idempotencyKey: string
-  /** Per-recipient secret params by person id (a raw link token), attached to the e-mail delivery only (DD-M04). */
+  /**
+   * Per-recipient secret params (a raw link token), attached to the e-mail delivery only (DD-M04): by person id, or by
+   * `bareAddressKey(email)` for a bare address.
+   */
   secrets?: ReadonlyMap<string, Record<string, unknown>>
   /** From `authorizeScoped`: the acting user (null for a job) and the acting role. */
   actor: { userId: string | null; actingRole: ActingRole }
@@ -128,7 +141,8 @@ export async function enqueueDispatch(
     (request.audience
       ? (await resolveAudience(request.audience, { ...ctx, em }, { exclude: request.exclude })).recipients
       : [])
-  const rows = planDeliveries(recipients, request.secrets)
+  const addresses = request.addresses ?? []
+  const rows = [...planDeliveries(recipients, request.secrets), ...planAddressDeliveries(addresses, request.secrets)]
   const skipped = rows.filter((row) => row.status === 'skipped').length
   const dispatch = em.create(Dispatch, {
     id: randomUUID(),
@@ -142,7 +156,7 @@ export async function enqueueDispatch(
     params: JSON.stringify(parsed.data),
     actorUserId: request.actor.userId,
     actingRole: request.actor.actingRole,
-    recipientCount: recipients.length,
+    recipientCount: recipients.length + addresses.length,
     skippedCount: skipped,
     // Nothing to deliver (every recipient unreachable): the dispatch is final at once.
     status: skipped === rows.length ? 'done' : 'queued',
