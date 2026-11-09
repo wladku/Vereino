@@ -6,7 +6,7 @@
 // "Earlier" and "Later" move a month within the readable range and keep it in the URL, so a QR code or a permalink
 // opens the same month. Below the month: the opening hours, the rates per 90 minutes, the rules, the club phone and
 // the photos — only what the API sends, never a name of a renter, a group or a person. A bookable stretch that a guest
-// could request is only marked as such; the request form comes with E08-S05.
+// could request offers "Request a booking", which opens the request dialog (P-04, E08-S05 #125).
 // States: loading, error with retry, 404, "the club does not share facility calendars", a month that cannot be shown,
 // and a month without any published stretch.
 import * as React from 'react'
@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { PublicRequestDialog, type RequestTarget } from './PublicRequestDialog'
 import {
   PublicFacilitiesDisabled,
   PublicFacilitiesError,
@@ -50,6 +51,9 @@ import {
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const
 
+/** Opens the request dialog for a slot of a day; null while the place takes no requests. */
+const RequestContext = React.createContext<((target: RequestTarget) => void) | null>(null)
+
 function StateLabel({ state }: { state: PublicSlotState }) {
   const t = useT()
   return (
@@ -62,13 +66,33 @@ function StateLabel({ state }: { state: PublicSlotState }) {
   )
 }
 
-function SlotLine({ slot, compact = false }: { slot: PublicSlot; compact?: boolean }) {
+function SlotLine({ date, slot, compact = false }: { date: string; slot: PublicSlot; compact?: boolean }) {
   const t = useT()
+  const locale = useLocale()
+  const request = React.useContext(RequestContext)
+  const range = isAllDay(slot) ? t('facilities.public.schedule.allDay') : timeRange(slot)
   return (
-    <li className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${compact ? 'text-xs' : 'text-sm'}`}>
-      <span className="tabular-nums">{isAllDay(slot) ? t('facilities.public.schedule.allDay') : timeRange(slot)}</span>
+    <li className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${compact ? 'text-xs' : 'text-sm'}`}>
+      <span className="tabular-nums">{range}</span>
       <StateLabel state={slot.state} />
-      {slot.canRequest && !compact ? (
+      {slot.canRequest && request ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={compact ? 'h-auto min-h-6 px-1.5 py-0.5 text-xs' : 'min-h-11 sm:min-h-8'}
+          aria-label={t('facilities.public.request.open.label', {
+            slot: `${formatDayHeading(date, locale)}, ${range}`,
+          })}
+          data-testid={`public-request-open-${date}-${slot.from.replace(':', '')}`}
+          onClick={() => {
+            request({ date, slot })
+          }}
+        >
+          {compact ? t('facilities.public.request.open.short') : t('facilities.public.request.open')}
+        </Button>
+      ) : null}
+      {slot.canRequest && !request && !compact ? (
         <span className="text-muted-foreground text-xs">{t('facilities.public.schedule.canRequest')}</span>
       ) : null}
     </li>
@@ -93,7 +117,7 @@ function DayContent({ day, compact = false }: { day: PublicScheduleDay; compact?
   return (
     <ul className="flex flex-col gap-1">
       {day.slots.map((slot) => (
-        <SlotLine key={`${slot.from}-${slot.to}-${slot.state}`} slot={slot} compact={compact} />
+        <SlotLine key={`${slot.from}-${slot.to}-${slot.state}`} date={day.date} slot={slot} compact={compact} />
       ))}
     </ul>
   )
@@ -330,100 +354,121 @@ function MonthNavigation({ page, busy }: { page: ScheduleView; busy: boolean }) 
   )
 }
 
-function SchedulePage({ page, busy }: { page: ScheduleView; busy: boolean }) {
+function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boolean; onRefresh: () => void }) {
   const t = useT()
   const { place } = page
   const hasContent = page.days.some(dayHasContent)
+  const [target, setTarget] = React.useState<RequestTarget | null>(null)
+  // A new key per opening starts the dialog fresh.
+  const [targetKey, setTargetKey] = React.useState(0)
+  const openRequest = React.useCallback((next: RequestTarget) => {
+    setTargetKey((current) => current + 1)
+    setTarget(next)
+  }, [])
   return (
-    <PublicFacilitiesFrame club={page.club} wide>
-      <Breadcrumb page={page} />
-      <section className="flex flex-col gap-1" aria-labelledby="public-place-title">
-        <h1 id="public-place-title" className="text-2xl font-semibold" data-testid="public-place-title">
-          {place.name}
-        </h1>
-        {place.address ? <p className="text-muted-foreground text-sm">{place.address}</p> : null}
-        {place.surface ? (
-          <p className="text-sm">{t('facilities.public.places.surface', { surface: place.surface })}</p>
-        ) : null}
-        <p className="text-sm font-medium" data-testid="public-place-requests">
-          {place.acceptsOnlineRequests
-            ? t('facilities.public.places.onlineRequests')
-            : t('facilities.public.places.byPhone')}
-        </p>
-      </section>
-      <section className="flex flex-col gap-3" aria-labelledby="public-schedule-month" data-testid="public-schedule">
-        <MonthNavigation page={page} busy={busy} />
-        {hasContent ? (
-          <>
-            <DayList days={page.days} />
-            <MonthGrid days={page.days} />
-          </>
-        ) : (
-          <p className="text-muted-foreground" data-testid="public-schedule-empty">
-            {t('facilities.public.schedule.empty')}
-          </p>
-        )}
-      </section>
-      <Legend />
-      <Block id="hours" title={t('facilities.public.hours.title')}>
-        <OpeningHoursBlock hours={page.openingHours} />
-      </Block>
-      {page.rates.length > 0 ? (
-        <Block id="rates" title={t('facilities.public.rates.title')}>
-          <RatesBlock page={page} />
-        </Block>
-      ) : null}
-      {place.regulationsText || place.regulationsUrl ? (
-        <Block id="rules" title={t('facilities.public.rules.title')}>
-          {place.regulationsText ? (
-            <p className="max-w-prose text-sm whitespace-pre-line">{place.regulationsText}</p>
+    <RequestContext.Provider value={place.acceptsOnlineRequests ? openRequest : null}>
+      <PublicFacilitiesFrame club={page.club} wide>
+        <Breadcrumb page={page} />
+        <section className="flex flex-col gap-1" aria-labelledby="public-place-title">
+          <h1 id="public-place-title" className="text-2xl font-semibold" data-testid="public-place-title">
+            {place.name}
+          </h1>
+          {place.address ? <p className="text-muted-foreground text-sm">{place.address}</p> : null}
+          {place.surface ? (
+            <p className="text-sm">{t('facilities.public.places.surface', { surface: place.surface })}</p>
           ) : null}
-          {place.regulationsUrl ? (
+          <p className="text-sm font-medium" data-testid="public-place-requests">
+            {place.acceptsOnlineRequests
+              ? t('facilities.public.places.onlineRequests')
+              : t('facilities.public.places.byPhone')}
+          </p>
+        </section>
+        <section className="flex flex-col gap-3" aria-labelledby="public-schedule-month" data-testid="public-schedule">
+          <MonthNavigation page={page} busy={busy} />
+          {hasContent ? (
+            <>
+              <DayList days={page.days} />
+              <MonthGrid days={page.days} />
+            </>
+          ) : (
+            <p className="text-muted-foreground" data-testid="public-schedule-empty">
+              {t('facilities.public.schedule.empty')}
+            </p>
+          )}
+        </section>
+        <Legend />
+        <Block id="hours" title={t('facilities.public.hours.title')}>
+          <OpeningHoursBlock hours={page.openingHours} />
+        </Block>
+        {page.rates.length > 0 ? (
+          <Block id="rates" title={t('facilities.public.rates.title')}>
+            <RatesBlock page={page} />
+          </Block>
+        ) : null}
+        {place.regulationsText || place.regulationsUrl ? (
+          <Block id="rules" title={t('facilities.public.rules.title')}>
+            {place.regulationsText ? (
+              <p className="max-w-prose text-sm whitespace-pre-line">{place.regulationsText}</p>
+            ) : null}
+            {place.regulationsUrl ? (
+              <p className="text-sm">
+                <a
+                  className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                  href={place.regulationsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="public-place-regulations"
+                >
+                  {t('facilities.public.rules.pdf')}
+                </a>
+              </p>
+            ) : null}
+          </Block>
+        ) : null}
+        {page.phone ? (
+          <Block id="phone" title={t('facilities.public.phone.title')}>
             <p className="text-sm">
               <a
                 className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                href={place.regulationsUrl}
-                target="_blank"
-                rel="noreferrer"
-                data-testid="public-place-regulations"
+                href={phoneHref(page.phone)}
               >
-                {t('facilities.public.rules.pdf')}
+                {page.phone}
               </a>
             </p>
-          ) : null}
-        </Block>
+          </Block>
+        ) : null}
+        {place.photoUrls.length > 0 ? (
+          <Block id="photos" title={t('facilities.public.photos.title')}>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {place.photoUrls.map((url, index) => (
+                <li key={url}>
+                  <Image
+                    src={url}
+                    alt={t('facilities.public.photos.alt', { place: place.name, number: index + 1 })}
+                    width={640}
+                    height={480}
+                    unoptimized
+                    className="bg-muted aspect-4/3 w-full rounded-md object-cover"
+                  />
+                </li>
+              ))}
+            </ul>
+          </Block>
+        ) : null}
+      </PublicFacilitiesFrame>
+      {target ? (
+        <PublicRequestDialog
+          key={targetKey}
+          page={page}
+          target={target}
+          open
+          onOpenChange={(open) => {
+            if (!open) setTarget(null)
+          }}
+          onSlotTaken={onRefresh}
+        />
       ) : null}
-      {page.phone ? (
-        <Block id="phone" title={t('facilities.public.phone.title')}>
-          <p className="text-sm">
-            <a
-              className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-              href={phoneHref(page.phone)}
-            >
-              {page.phone}
-            </a>
-          </p>
-        </Block>
-      ) : null}
-      {place.photoUrls.length > 0 ? (
-        <Block id="photos" title={t('facilities.public.photos.title')}>
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {place.photoUrls.map((url, index) => (
-              <li key={url}>
-                <Image
-                  src={url}
-                  alt={t('facilities.public.photos.alt', { place: place.name, number: index + 1 })}
-                  width={640}
-                  height={480}
-                  unoptimized
-                  className="bg-muted aspect-4/3 w-full rounded-md object-cover"
-                />
-              </li>
-            ))}
-          </ul>
-        </Block>
-      ) : null}
-    </PublicFacilitiesFrame>
+    </RequestContext.Provider>
   )
 }
 
@@ -474,7 +519,7 @@ export function PublicScheduleView({
       </PublicFacilitiesFrame>
     )
   }
-  return <SchedulePage page={load.page} busy={query.isFetching} />
+  return <SchedulePage page={load.page} busy={query.isFetching} onRefresh={() => void query.refetch()} />
 }
 
 function ScheduleFromUrl({ clubSlug, placeSlug }: { clubSlug: string; placeSlug: string }) {

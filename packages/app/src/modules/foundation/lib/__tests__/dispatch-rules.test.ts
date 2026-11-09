@@ -10,9 +10,11 @@ import {
   RETRY_BACKOFF_MINUTES,
   SKIP_REASONS,
   attemptOutcome,
+  bareAddressKey,
   chunk,
   createSendRateLimiter,
   failureCodeFor,
+  planAddressDeliveries,
   planDeliveries,
   primaryReason,
 } from '../dispatch-rules'
@@ -37,6 +39,68 @@ describe('dispatch constants', () => {
     expect(LEASE_SECONDS).toBe(120)
     expect(EMAIL_SENDS_PER_SECOND).toBe(8)
     expect(IN_APP_BATCH_SIZE).toBe(1000)
+  })
+})
+
+describe('bareAddressKey', () => {
+  it('hashes the trimmed, lower-cased address', () => {
+    expect(bareAddressKey(' Guest@Example.org ')).toBe(bareAddressKey('guest@example.org'))
+    expect(bareAddressKey('guest@example.org')).toMatch(/^[0-9a-f]{64}$/)
+    expect(bareAddressKey('guest@example.org')).not.toBe(bareAddressKey('other@example.org'))
+  })
+})
+
+describe('planAddressDeliveries', () => {
+  it('writes one e-mail row per address with its secret and no person', () => {
+    const secrets = new Map([[bareAddressKey('guest@example.org'), { token: 'raw' }]])
+    expect(
+      planAddressDeliveries(
+        [
+          { email: ' guest@example.org ', locale: 'en' },
+          { email: 'other@example.org', locale: 'pl' },
+        ],
+        secrets,
+      ),
+    ).toEqual([
+      {
+        personId: null,
+        userId: null,
+        channel: 'email',
+        email: 'guest@example.org',
+        locale: 'en',
+        reasons: [],
+        status: 'queued',
+        skipReason: null,
+        secret: { token: 'raw' },
+      },
+      {
+        personId: null,
+        userId: null,
+        channel: 'email',
+        email: 'other@example.org',
+        locale: 'pl',
+        reasons: [],
+        status: 'queued',
+        skipReason: null,
+        secret: null,
+      },
+    ])
+  })
+
+  it('skips an empty address as unreachable and needs no secrets', () => {
+    expect(planAddressDeliveries([{ email: '  ', locale: 'pl' }])).toEqual([
+      {
+        personId: null,
+        userId: null,
+        channel: 'email',
+        email: null,
+        locale: 'pl',
+        reasons: [],
+        status: 'skipped',
+        skipReason: 'unreachable',
+        secret: null,
+      },
+    ])
   })
 })
 

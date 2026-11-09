@@ -13,6 +13,7 @@ import type {
   PlaceDirectoryEntry,
   PlaceFamily,
   PlaceOption,
+  PlacePayee,
   SectionDirectoryEntry,
 } from '../../club_core/services/directory'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
@@ -145,4 +146,43 @@ export async function personNames(
   assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
   const found = await container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).findPersons(scope, ids, em)
   return new Map([...found.values()].map((entry) => [entry.id, `${entry.firstName} ${entry.lastName}`.trim()]))
+}
+
+/** The owner institution a rental of the place is paid to, with its account (the approval e-mail, #125). */
+export function placePayee(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeId: string,
+  em?: EntityManager,
+): Promise<PlacePayee | null> {
+  return directory(container).placePayee(scope, placeId, em)
+}
+
+/** The club values the request e-mails need: the time zone, the currency, the default language and the own account. */
+export async function clubRequestSettings(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+): Promise<{ timeZone: string; currency: string; locale: string; bankAccount: string | null }> {
+  assertRegistered(container, CLUB_CORE_SETTINGS)
+  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  return {
+    timeZone: settings.values.timezone,
+    currency: settings.values.currency,
+    locale: settings.values.defaultLocale,
+    bankAccount: settings.publicSettings.bankAccount,
+  }
+}
+
+/** The user ids of the club's administrators on `date` (the request approvers, #125); persons without an account skipped. */
+export async function clubAdminUserIds(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  date: string,
+  em?: EntityManager,
+): Promise<string[]> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  const people = container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY)
+  const personIds = await people.roleHolderIdsOn(scope, 'club_admin', date, em)
+  const users = await people.findUserIds(scope, personIds, em)
+  return [...new Set(users.values())]
 }
