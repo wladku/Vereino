@@ -73,6 +73,19 @@ export function findGroups(
   return groupDirectory(container).findGroups(scope, ids, em)
 }
 
+/**
+ * The live active groups by name: all of them (`filter` null) or those in `sectionIds` or among `groupIds` — the
+ * groups of "My groups' payments" (#117), the filter derived from the caller's grants.
+ */
+export function listGroups(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  filter: { sectionIds?: readonly string[]; groupIds?: readonly string[] } | null,
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  return groupDirectory(container).listGroups(scope, filter, em)
+}
+
 export function rosterOn(
   container: AwilixContainer,
   scope: PaymentsScope,

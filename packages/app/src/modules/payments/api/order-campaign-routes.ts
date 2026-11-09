@@ -4,6 +4,8 @@
 import { z } from 'zod'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
+import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
+import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import {
   assertInScope,
   commandContextForRequest,
@@ -14,6 +16,7 @@ import {
 import type { OrderCampaignCommandResult } from '../commands/order-campaigns'
 import type { OrderCampaign } from '../data/entities'
 import type { CampaignAction } from '../lib/order-campaigns'
+import { orderPagePath } from '../lib/orders'
 import type { PaymentsScope } from '../services/directory'
 import { findCampaign } from '../services/order-campaigns'
 import { PAYMENTS_READ_KINDS, errorSchema } from './shared'
@@ -41,6 +44,37 @@ export async function campaignForRequest(
     organizationId: campaign.organizationId,
   })
   return { ok: true, ctx, scope, campaign }
+}
+
+function calendarDate(value: unknown): string {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10)
+}
+
+/**
+ * The Messenger text of a campaign (B-31, B-32, M-18): its name, description, the orders deadline and the link to the
+ * guardian's order form (`/club/orders/{id}`, M-17) on the host the caller works on, in the caller's language. While
+ * the club's public pages are on, the link carries the club's public slug, so a guardian without a session can ask for
+ * a personal link there.
+ */
+export async function campaignShareText(
+  request: Request,
+  ctx: CommandRuntimeContext,
+  scope: PaymentsScope,
+  campaign: Pick<OrderCampaign, 'id' | 'name' | 'description' | 'closesOn'>,
+): Promise<{ text: string; link: string }> {
+  const settings = await ctx.container.resolve<ClubCoreSettingsService>('clubCoreSettings').get(scope)
+  const { publicSlug, publication } = settings.publicSettings
+  const link = `${new URL(request.url).origin}${orderPagePath(campaign.id, publication.enabled ? publicSlug : null)}`
+  const { translate } = await resolveTranslations()
+  const lines = [
+    campaign.name,
+    campaign.description ?? null,
+    translate('payments.orders.shareText.deadline', 'Orders until {date}: {link}', {
+      date: calendarDate(campaign.closesOn),
+      link,
+    }),
+  ].filter((line): line is string => !!line)
+  return { text: lines.join('\n\n'), link }
 }
 
 const transitionResponseSchema = z.object({

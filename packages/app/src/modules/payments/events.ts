@@ -8,7 +8,8 @@ import { createModuleEvents } from '@open-mercato/shared/modules/events'
  * checkout (#110) emits `payments.checkout.created` and, once booked, `payments.checkout.completed` with a
  * `payments.payment.recorded` per online payment; an online refund emits `payments.payment.refunded`. An order campaign (#115) emits
  * `payments.order_campaign.created|updated` and, per stage, `payments.order_campaign.status_changed` with the new status.
- * A guardian's order (#116) emits `payments.order.submitted|updated|cancelled` with its campaign and `order` charge.
+ * A guardian's order (#116) emits `payments.order.submitted|updated|cancelled` with its campaign and `order` charge;
+ * a kit handed over at the pitch (#117) emits `payments.order.handed_over`.
  */
 const events = [
   { id: 'payments.fee.created', label: 'Fee schedule created', entity: 'fee', category: 'crud' },
@@ -46,6 +47,7 @@ const events = [
   { id: 'payments.order.submitted', label: 'Kit order placed', entity: 'order', category: 'custom' },
   { id: 'payments.order.updated', label: 'Kit order changed', entity: 'order', category: 'custom' },
   { id: 'payments.order.cancelled', label: 'Kit order cancelled', entity: 'order', category: 'custom' },
+  { id: 'payments.order.handed_over', label: 'Kit handed over', entity: 'order', category: 'custom' },
   { id: 'payments.bank_import.completed', label: 'Bank statement imported', entity: 'bank_import', category: 'custom' },
   {
     id: 'payments.bank_transaction.decided',
