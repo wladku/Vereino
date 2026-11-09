@@ -32,7 +32,9 @@ export async function lockDirectThreadAuthor(em: EntityManager, organizationId: 
 
 /**
  * The direct threads a member started since `since` (DD-M18) — deleted ones too: the limit counts what was sent. A
- * member's direct thread carries its group's section; a staff `persons` announcement carries none and is not counted.
+ * member's direct thread is told from a staff `persons` announcement (also `direct`) by its `scope_id`: only
+ * `threads.start_direct` sets it (the household member it is about, #187), a staff-started one keeps it null, so staff
+ * announcements never count toward a member's limit. Keep this coupling in step with `startDirectCommand`.
  */
 export async function countDirectThreadsSince(
   em: EntityManager,
@@ -42,7 +44,7 @@ export async function countDirectThreadsSince(
 ): Promise<number> {
   const rows = await em.execute<Array<{ count: string | number }>>(
     `select count(*) as count from communication_threads
-      where tenant_id = ? and organization_id = ? and scope_type = 'direct' and section_id is not null
+      where tenant_id = ? and organization_id = ? and scope_type = 'direct' and scope_id is not null
         and author_person_id = ? and created_at > ?`,
     [scope.tenantId, scope.organizationId, authorPersonId, since],
   )

@@ -15,6 +15,13 @@ import {
   type ScopeTarget,
 } from '@vereino/core'
 
+/**
+ * Club text limits: a subject is one line, a message a few screens (it is e-mailed in full). Shared by the input
+ * schemas (`data/validators.ts`) and the forms' `maxLength`, so they live here, free of server-only imports.
+ */
+export const SUBJECT_MAX = 200
+export const BODY_MAX = 10_000
+
 /** A thread's scope (club spec glossary *Thread*); `direct` is an audience of kind `persons`. */
 export const THREAD_SCOPE_TYPES = ['club', 'section', 'group', 'activity', 'occurrence', 'direct'] as const
 export type ThreadScopeType = (typeof THREAD_SCOPE_TYPES)[number]

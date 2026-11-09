@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { readNotifications } from '../_fixtures/activities'
 import { familyFor } from '../_fixtures/attendance'
-import { createClub } from '../_fixtures/club'
+import { calendarDate, createClub } from '../_fixtures/club'
 import {
   awaitEmails,
   directOptions,
@@ -15,7 +15,7 @@ import {
   settledDeliveries,
   threadVersion,
 } from '../_fixtures/communication'
-import { createGroup } from '../_fixtures/groups'
+import { addMembership, createGroup } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
 
 // TEST-M12 (foundation III REQ-M12, DD-M18, AC-M12; #138) on the TEST-008 family: Anna ("Kasia" of the spec) is the
@@ -25,7 +25,8 @@ import { updateClubSettings } from '../_fixtures/members'
 // the staff lists, Piotr sees nothing (403 on the thread). Kuba writes to his coach: Anna is among the recipients, and
 // her reply reaches the coach. A group or a person outside the household → 403 `scope_denied`. A thread to the
 // coordinator reaches Krystyna, not Marek. Krystyna marks Anna's thread as a case → Anna's edit answers 409
-// `case_immutable`. The 21st direct thread of one member in 24 hours → 429 `direct_thread_limit`.
+// `case_immutable`. A group without a coach today → 422 `direct_no_recipients` (#188). The 21st direct thread of one
+// member in 24 hours → 429 `direct_thread_limit`, also when three requests race for the 20th place (#188).
 test.describe.configure({ timeout: 900_000 })
 
 test('TEST-M12 member direct thread: the coaches or the coordinator of a household group, never another family, case, 403 outside the household, 429 after 20 a day', async ({
@@ -165,6 +166,23 @@ test('TEST-M12 member direct thread: the coaches or the coordinator of a househo
       expect(refused.body?.code, what).toBe('scope_denied')
     }
 
+    // Nobody to address: Hania joins Orliki, which has no coach today → 422 `direct_no_recipients`, no thread.
+    await addMembership(request, club.adminToken, {
+      groupId: orliki,
+      personId: hania.personId,
+      role: 'participant',
+      validFrom: calendarDate(),
+    })
+    const noCoach = await postDirect(request, anna.token, {
+      personId: hania.personId,
+      groupId: orliki,
+      to: 'coaches',
+      subject: 'Do trenera Orlików',
+      body: 'Treść',
+    })
+    expect(noCoach.status, JSON.stringify(noCoach.body)).toBe(422)
+    expect(noCoach.body?.code).toBe('direct_no_recipients')
+
     // To the coordinator: Krystyna gets it, Marek does not.
     const toCoordinatorSubject = `Do koordynatora ${String(Date.now())}`
     const toCoordinator = await postDirect(request, anna.token, {
@@ -210,24 +228,28 @@ test('TEST-M12 member direct thread: the coaches or the coordinator of a househo
     expect(edit.status, JSON.stringify(edit.body)).toBe(409)
     expect(edit.body?.code).toBe('case_immutable')
 
-    // The daily limit: Anna has started 2 direct threads; the 3rd…20th pass, the 21st answers 429.
-    for (let index = 3; index <= 20; index += 1) {
-      const next = await postDirect(request, anna.token, {
+    // The daily limit: Anna has started 2 direct threads (the 422 above sent none); the 3rd…19th pass.
+    const nth = (index: number) =>
+      postDirect(request, anna.token, {
         personId: hania.personId,
         groupId: family.poolGroup,
         to: 'coaches',
         subject: `Wiadomość ${String(index)}`,
         body: 'Treść',
       })
+    for (let index = 3; index <= 19; index += 1) {
+      const next = await nth(index)
       expect(next.status, `thread ${String(index)}: ${JSON.stringify(next.body)}`).toBe(201)
     }
-    const limited = await postDirect(request, anna.token, {
-      personId: hania.personId,
-      groupId: family.poolGroup,
-      to: 'coaches',
-      subject: 'Wiadomość 21',
-      body: 'Treść',
-    })
+    // Three at once for the 20th place: the advisory lock on the author lets exactly one in, the others answer 429.
+    const raced = await Promise.all([nth(20), nth(21), nth(22)])
+    expect(raced.map((result) => result.status).sort(), JSON.stringify(raced.map((result) => result.body))).toEqual([
+      201, 429, 429,
+    ])
+    for (const result of raced.filter((entry) => entry.status === 429)) {
+      expect(result.body?.code).toBe('direct_thread_limit')
+    }
+    const limited = await nth(23)
     expect(limited.status, JSON.stringify(limited.body)).toBe(429)
     expect(limited.body?.code).toBe('direct_thread_limit')
     // Kuba's own limit is separate.
