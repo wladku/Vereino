@@ -4,8 +4,8 @@ import { setUpClubPeople } from './services/club-setup'
 
 /**
  * `people` seeds the phase 1 `vereino_*` roles (foundation spec P-04, Q17): `vereino_club_admin` (module
- * wildcards), `vereino_coordinator`, `vereino_coach`, `vereino_member` and `vereino_payer`, with the features of the
- * club spec's *Users, Permissions, and Scope* table (`catalogueRoleFeatures()`); the names serve only for
+ * wildcards), `vereino_coordinator`, `vereino_coach`, `vereino_member` and `vereino_payer`, plus the derived
+ * `vereino_maintenance_planner` (facilities spec DD-36, #128), with the features of the club spec's *Users, Permissions, and Scope* table (`catalogueRoleFeatures()`); the names serve only for
  * assignment, never for checking (DD-06). The platform built-in roles get no Vereino feature.
  */
 export const setup: ModuleSetupConfig = {
