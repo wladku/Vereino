@@ -44,3 +44,4 @@
 ## Next steps
 
 - E08-S06 (#126) incidents and entry-ban pages; the maintenance windows (step 9) add the 409 `maintenance_scheduled` to the public request.
+- `git merge origin/main` (PR #236 conflicted with #126/#233): resolved the facilities spec (step 6 and step 7 notes, phase status), `data/validators.ts` (both blocks) and the en/pl catalogs (key union, 879 keys each); offline `db:generate` shows no change; `yarn verify` all 14 steps passed.

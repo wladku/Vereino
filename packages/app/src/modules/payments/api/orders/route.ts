@@ -1,17 +1,19 @@
 // `GET /api/payments/orders?campaignId=` — B-32 "Orders" (payments spec API table, REQ-032; issue #115): the
 // campaign's submitted orders with the child, the group, the person who ordered, the print, the lines with the price
-// recorded at order time, the total, what was paid and the handover. Placing orders (`POST`, `PUT`) arrives with
-// E07-S09.
+// recorded at order time, the total, what was paid and the handover. `POST` places a guardian's order (#116, M-17:
+// `payments.orders.place`); a change and a cancellation are `PUT /api/payments/orders/{id}` and `…/{id}/cancel`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { errorResponse } from '@/modules/foundation'
-import { ordersListQuerySchema } from '../../data/validators'
+import { commandContextForRequest, errorResponse } from '@/modules/foundation'
+import { orderPlaceSchema, ordersListQuerySchema } from '../../data/validators'
 import { campaignOrders } from '../../services/order-campaigns'
 import { campaignForRequest } from '../order-campaign-routes'
+import { orderCommandResponse, orderWriteErrors, orderWriteResponseSchema } from '../order-routes'
 import { errorSchema } from '../shared'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['payments.orders.manage'] },
+  POST: { requireAuth: true, requireFeatures: ['payments.orders.place'] },
 }
 
 const personSchema = z.object({ firstName: z.string(), lastName: z.string() }).nullable()
@@ -70,6 +72,17 @@ export async function GET(request: Request): Promise<Response> {
   }
 }
 
+export async function POST(request: Request): Promise<Response> {
+  try {
+    const ctx = await commandContextForRequest(request)
+    if (!ctx) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const body: unknown = await request.json().catch(() => ({}))
+    return await orderCommandResponse(ctx, 'payments.orders.place', (body ?? {}) as Record<string, unknown>)
+  } catch (error: unknown) {
+    return errorResponse(error, 'payments.orders.place')
+  }
+}
+
 export const openApi: OpenApiRouteDoc = {
   tag: 'Payments',
   summary: 'Orders of a campaign',
@@ -82,6 +95,14 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
       ],
+    },
+    POST: {
+      summary: 'Order kit for a child',
+      description:
+        "A guardian orders for a ward in the campaign's groups, an adult participant for themself (`payments.orders.place`). The lines come from the answers: the set at its set price, single products at the price of their size; an `order` charge (payer = the caller, due on the payment deadline) is created in the same transaction and a copy is e-mailed to `contactEmail`. A print number must be free in the child's group.",
+      requestBody: { contentType: 'application/json', schema: orderPlaceSchema },
+      responses: [{ status: 201, description: 'The order and its charge', schema: orderWriteResponseSchema }],
+      errors: orderWriteErrors,
     },
   },
 }

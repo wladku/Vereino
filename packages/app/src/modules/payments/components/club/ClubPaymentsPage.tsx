@@ -218,7 +218,7 @@ function PaymentForm({ started, onCancel }: { started: Started; onCancel: () => 
   )
 }
 
-function TransferDetails({ transfer }: { transfer: TransferInstructions }) {
+export function TransferDetails({ transfer }: { transfer: TransferInstructions }) {
   const t = useT()
   return (
     <section
@@ -339,7 +339,14 @@ function Payments() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t('payments.club.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{t('payments.club.title')}</h1>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href="/club/orders" data-testid="club-payments-orders">
+            {t('payments.orders.club.listTitle')}
+          </Link>
+        </Button>
+      </div>
       {inProgress && !started ? (
         <Alert status="information" data-testid="club-payments-in-progress">
           <div className="flex flex-col gap-2">
