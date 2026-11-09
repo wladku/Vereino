@@ -13,7 +13,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { generateAuthToken, hashAuthToken } from '@open-mercato/core/modules/auth/lib/tokenHash'
 import type { TokenLinkFields, TokenLinkUse } from '@vereino/db'
 import { foundationErrors } from '../api/errors'
-import { expiryFor, hashesMatch, isWellFormedToken, tokenLinkState } from '../lib/token-link'
+import { expiryFor, hashesMatch, isWellFormedToken, tokenLinkState, type TokenLinkState } from '../lib/token-link'
 
 /** The trusted tenant and organization a link is issued in, or the only ones a route accepts it from. */
 export type TokenLinkScope = { tenantId: string; organizationId: string }
@@ -77,6 +77,16 @@ export type TokenLinkService<TEntity> = {
   ): Promise<IssuedTokenLink<TEntity>>
   /** `null` for an unknown token (the route answers 404 with the expired copy); 410 for an expired or used link. */
   peek(em: EntityManager, rawToken: unknown, options?: LookupOptions): Promise<TokenLinkView<TEntity> | null>
+  /**
+   * As `peek`, but an expired or used link answers its state instead of 410, so a page can point the holder to where a
+   * new link is requested (#192). The same single lookup; spends nothing. The caller must still refuse a non-`active`
+   * link's data — only the target ids may be used.
+   */
+  inspect(
+    em: EntityManager,
+    rawToken: unknown,
+    options?: LookupOptions,
+  ): Promise<{ state: TokenLinkState; view: TokenLinkView<TEntity> } | null>
   /** As `peek`, then spends the link in `em`'s transaction; a lost race answers 410 `token_link_used`. */
   redeem(em: EntityManager, rawToken: unknown, options?: LookupOptions): Promise<TokenLinkView<TEntity> | null>
 }
@@ -140,6 +150,12 @@ export function createTokenLinkService<TUse extends TokenLinkUse, TEntity extend
       if (!link) return null
       await assertActive(link, new Date())
       return view(link)
+    },
+
+    async inspect(em, rawToken, lookup = {}) {
+      const link = await find(em, rawToken, lookup)
+      if (!link) return null
+      return { state: tokenLinkState(link, use, new Date()), view: view(link) }
     },
 
     async redeem(em, rawToken, lookup = {}) {

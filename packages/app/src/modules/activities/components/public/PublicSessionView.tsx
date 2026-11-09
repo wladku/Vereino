@@ -2,8 +2,8 @@
 // `/p/[clubSlug]/s/[occurrenceId]` — the public session page (club spec DD-17, J-003 step 2; foundation III DD-M14,
 // REQ-M08, J-M02 step 2): the page a share text from the group chat opens without a sign-in. It shows the club's name,
 // the activity name, the date, the time and the status of the session, and the way to sign in; never a name, the
-// roster or a count. A planned session also offers "Send me a link" (`/club/link`, REQ-017, M-13) for a guardian
-// without an account. Like every public club page it ends with a footer holding the club name and its published phone
+// roster or a count. A planned session that has not started also offers "Send me a link" (`/club/link`, REQ-017, M-13)
+// for a guardian without an account — after the start a request sends nothing, so the page does not offer it (#192). Like every public club page it ends with a footer holding the club name and its published phone
 // (E06-S07, #89). States: loading, error with retry, 404 without any detail.
 import * as React from 'react'
 import Link from 'next/link'
@@ -15,7 +15,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
-import { linkRequestPath } from '../../lib/declaration-links'
+import { linkRequestOpen, linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
   /** `contact` is the club phone, null while the club does not publish the `contact` block. */
@@ -174,7 +174,7 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
           </StatusBadge>
         </p>
       </section>
-      {session.status === 'planned' ? (
+      {linkRequestOpen(session, new Date()) ? (
         <section className="bg-card flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="public-session-link">
           <h2 id="public-session-link" className="font-semibold">
             {t('activities.publicSession.link.title')}

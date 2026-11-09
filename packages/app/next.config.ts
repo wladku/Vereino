@@ -132,6 +132,12 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         ],
       },
       {
+        // The personal declaration link page (`activities`, REQ-017, #192): the raw token is in the address, so no
+        // request from the page (a link, an image, a script) may carry it on as a referrer.
+        source: '/club/d/:token*',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+      {
         // Marker header consumed by the custom-domain DNS reverse-resolve check
         // (see SPEC 2026-04-08-portal-custom-domain-routing). Lets the verifier
         // tell "request reached our origin" from "request was answered by an

@@ -15,14 +15,17 @@ import { createLogger } from '@open-mercato/shared/lib/logger'
 import { addCalendarDays, type CalendarDate, type Recipient, type Scope } from '@vereino/core'
 import {
   contactResolver,
+  foundationErrors,
   resolveScopeForPerson,
   type DispatchService,
   type TokenLinkService,
 } from '@/modules/foundation'
 import type { ClubCorePublicSite } from '../../club_core/services/public-site'
+import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { Activity, Attendance, DeclarationToken, Occurrence } from '../data/entities'
 import {
   MAX_LINKS_PER_HOUR,
+  expiredLinkRequestPath,
   linkExpiry,
   linkRequestOwners,
   personIdsWithEmail,
@@ -46,6 +49,7 @@ const logger = createLogger('activities').child({ component: 'declaration-links'
 export const ACTIVITIES_DECLARATION_LINKS = 'activities.declarationLinks'
 
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
+const CLUB_CORE_SETTINGS = 'clubCoreSettings'
 const DISPATCH = 'foundationDispatch'
 const TEMPLATE = 'activities.declaration_link'
 
@@ -275,7 +279,9 @@ export async function linkPersons(
 
 /**
  * The page of a link: null for an unknown, malformed or deleted token or a session that no longer exists (404); the
- * foundation's 410 `token_link_expired` for an expired one. Spends nothing (a mail scanner opening it is harmless).
+ * foundation's 410 `token_link_expired` for an expired one, carrying `requestLinkPath` — the request page of the link's
+ * session when the club publishes its pages, else null (#192); nothing else of an expired link is read. Spends nothing
+ * (a mail scanner opening it is harmless).
  */
 export async function readDeclarationLink(
   container: AwilixContainer,
@@ -283,9 +289,21 @@ export async function readDeclarationLink(
   now: Date = new Date(),
 ): Promise<DeclarationLinkPage | null> {
   const em = container.resolve<EntityManager>('em').fork()
-  const view = await declarationLinkService(container).peek(em, rawToken)
-  if (!view) return null
+  const found = await declarationLinkService(container).inspect(em, rawToken)
+  if (!found) return null
+  const { view } = found
   const scope: ActivitiesScope = { tenantId: view.tenantId, organizationId: view.organizationId }
+  if (found.state === 'used') await foundationErrors.throw('token_link_used')
+  if (found.state === 'expired') {
+    const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+    const club = {
+      publicSlug: settings.publicSettings.publicSlug,
+      publicationEnabled: settings.publicSettings.publication.enabled,
+    }
+    await foundationErrors.throw('token_link_expired', {
+      requestLinkPath: expiredLinkRequestPath(club, view.link.occurrenceId),
+    })
+  }
   const occurrence = await em.findOne(Occurrence, { id: view.link.occurrenceId, ...scope, deletedAt: null })
   if (!occurrence) return null
   const facts = await sessionFacts(container, scope, occurrence, em)

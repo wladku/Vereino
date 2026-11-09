@@ -4,7 +4,9 @@
 // link". The answer is always the same neutral line ("If the address is registered with the club, we have sent a
 // link"), whether or not the address is known; 429 asks to try again in a moment. The club and the session come from
 // the query (`?club=<slug>&session=<id>`, built by the public session page); without them the page explains where the
-// request starts. States: loading, the form, sending (spinner), sent, invalid address, rate-limited, error.
+// request starts. A session that has started or is no longer planned shows "Declarations closed" instead of the form:
+// a request then sends nothing (#192). States: loading, the form, sending (spinner), sent, invalid address,
+// rate-limited, closed, error.
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -17,10 +19,18 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { linkRequestOpen } from '../../lib/declaration-links'
 
 type PublicSession = {
   club: { name: string }
-  session: { activityName: string; occurrenceDate: string; startAt: string; endAt: string; timeZone: string }
+  session: {
+    activityName: string
+    occurrenceDate: string
+    startAt: string
+    endAt: string
+    timeZone: string
+    status: 'planned' | 'done' | 'cancelled'
+  }
 }
 
 type SendState = 'idle' | 'sending' | 'sent' | 'invalid' | 'rate_limited' | 'error'
@@ -145,21 +155,32 @@ export function DeclarationLinkRequestView() {
     error: { text: t('activities.linkRequest.errors.send'), alert: true },
   }
   const shown = state === 'idle' || state === 'sending' ? null : feedback[state]
+  const heading = (
+    <section className="flex flex-col gap-2" aria-labelledby="link-request-session" data-testid="link-request-session">
+      <h1 id="link-request-session" className="text-2xl font-semibold">
+        {session.activityName}
+      </h1>
+      <p className="text-lg" data-testid="link-request-when">
+        {formatDayHeading(session.occurrenceDate, locale)} ·{' '}
+        {formatTimeRange(new Date(session.startAt), new Date(session.endAt), locale, session.timeZone)}
+      </p>
+    </section>
+  )
+  if (!linkRequestOpen(session, new Date())) {
+    return (
+      <Frame clubName={club.name}>
+        {heading}
+        <section className="flex flex-col gap-2" role="status" data-testid="link-request-closed">
+          <h2 className="font-semibold">{t('activities.linkRequest.closed.title')}</h2>
+          <p className="text-muted-foreground max-w-prose">{t('activities.linkRequest.closed.message')}</p>
+        </section>
+        <SignIn />
+      </Frame>
+    )
+  }
   return (
     <Frame clubName={club.name}>
-      <section
-        className="flex flex-col gap-2"
-        aria-labelledby="link-request-session"
-        data-testid="link-request-session"
-      >
-        <h1 id="link-request-session" className="text-2xl font-semibold">
-          {session.activityName}
-        </h1>
-        <p className="text-lg" data-testid="link-request-when">
-          {formatDayHeading(session.occurrenceDate, locale)} ·{' '}
-          {formatTimeRange(new Date(session.startAt), new Date(session.endAt), locale, session.timeZone)}
-        </p>
-      </section>
+      {heading}
       <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-labelledby="link-request-form-title">
         <h2 id="link-request-form-title" className="font-semibold">
           {t('activities.linkRequest.form.title')}

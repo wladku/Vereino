@@ -98,6 +98,25 @@ export function linkRequestPath(clubSlug: string, occurrenceId: string): string 
   return `/club/link?${query.toString()}`
 }
 
+/**
+ * Where an expired link sends its holder for a new one (#192): the request page of the link's session when the club
+ * publishes its public pages under a slug; null otherwise (the page then explains where a request starts).
+ */
+export function expiredLinkRequestPath(
+  club: { publicSlug: string | null; publicationEnabled: boolean },
+  occurrenceId: string,
+): string | null {
+  return club.publicSlug && club.publicationEnabled ? linkRequestPath(club.publicSlug, occurrenceId) : null
+}
+
+/**
+ * Whether "Send me a link" may be offered for a session (#192): only for a planned one that has not started yet — a
+ * request after the start sends nothing, so the page must not promise a link.
+ */
+export function linkRequestOpen(session: { status: string; startAt: string | Date }, now: Date): boolean {
+  return session.status === 'planned' && new Date(session.startAt).getTime() > now.getTime()
+}
+
 /** The idempotency key of one reminder: one per person and session, so a rerun of the job sends nothing twice. */
 export function reminderKey(occurrenceId: string, personId: string): string {
   return `activities:declaration-reminder:${occurrenceId}:${personId}`

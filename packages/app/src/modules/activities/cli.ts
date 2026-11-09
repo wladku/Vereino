@@ -7,6 +7,7 @@ import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireJobResult } from './commands/attendance'
 import type { RemindersJobResult } from './commands/declaration-links'
 import type { GenerateJobResult } from './commands/jobs'
+import { setUpClubActivities } from './services/club-setup'
 import { checkAppendOnly, listContactAccessLog } from './services/contact-access-log'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
@@ -95,6 +96,28 @@ const sendDeclarationReminders: ModuleCli = {
 }
 
 /**
+ * `activities set-up-club --tenant <id> --org <id>`: re-runs the club's `activities` setup — the generator, expiry and
+ * evening-reminder schedules and the default declaration policies — and prints what it registered. Idempotent (an
+ * upsert of each schedule, no policy twice); the backfill for a club set up before a schedule existed, e.g. the 18:00
+ * declaration reminders of clubs created before #105 (#192).
+ */
+const setUpClub: ModuleCli = {
+  command: 'set-up-club',
+  async run(argv) {
+    const { tenant, org } = readOptions(argv, ['tenant', 'org'])
+    if (!tenant || !org) {
+      process.stderr.write('Usage: mercato activities set-up-club --tenant <tenantId> --org <organizationId>\n')
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const result = await setUpClubActivities(container, { tenantId: tenant, organizationId: org })
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+  },
+}
+
+/**
  * `activities contact-access-log --tenant <id> --org <id> [--occurrence <id>]`: prints the newest 100 reads of guardian
  * contacts (REQ-037, DD-39; #34) as one JSON document `{ rows }`, newest first — who, in which role, which session,
  * which person ids, why — for a club's data-protection request. The rows hold ids only; the contacts are never logged.
@@ -140,6 +163,7 @@ const commands: ModuleCli[] = [
   generateOccurrences,
   expireGuardianConfirmations,
   sendDeclarationReminders,
+  setUpClub,
   contactAccessLogCli,
   checkAppendOnlyCli,
 ]
