@@ -13,7 +13,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
-import type { Recipient, Scope } from '@vereino/core'
+import type { GrantKind, Recipient, Scope } from '@vereino/core'
 import { authorizeScoped, contactResolver, type DispatchService, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { OrderCampaign, OrderProduct } from '../data/entities'
@@ -449,6 +449,13 @@ const transitionCampaignCommand: CommandHandler<Record<string, unknown>, OrderCa
     campaignLog(result, 'payments.audit.orderCampaigns.transition', 'Move an order campaign to its next stage'),
 }
 
+/**
+ * "Remind everyone" (B-32) and the coach's "Remind guardians" (M-18, #117), least-privileged first: a coach for one
+ * campaign group they lead, a coordinator for a campaign of their section, the administrator for any. The routes gate
+ * the features (`payments.orders.manage`, `payments.groups.collect`).
+ */
+const REMIND_KINDS: readonly GrantKind[] = ['coach', 'coordinator', ...PAYMENTS_WRITE_KINDS]
+
 export type OrderCampaignRemindResult = PaymentsCommandResult<OrderCampaign, null> & {
   children: number
   recipients: number
@@ -465,9 +472,14 @@ const remindCampaignCommand: CommandHandler<Record<string, unknown>, OrderCampai
         {
           input: orderCampaignRemindSchema,
           resourceKind: ORDER_CAMPAIGN_RESOURCE_KIND,
-          allowedKinds: PAYMENTS_WRITE_KINDS,
+          // The administrator from B-32; a coach or coordinator from M-18 for a campaign group of theirs (#117).
+          allowedKinds: REMIND_KINDS,
           loadTarget: (parsed, lockEm, lock) => loader(ctx)(lockEm, parsed.id, lock),
-          resolveTarget: (_parsed, entity) => clubTarget(entity as OrderCampaign),
+          resolveTarget: (parsed, entity) => {
+            const row = entity as OrderCampaign
+            const groupId = parsed.groupId && row.groupIds.includes(parsed.groupId) ? parsed.groupId : null
+            return { ...clubTarget(row), sectionId: row.sectionId, groupId }
+          },
           // A reminder changes nothing on the campaign, so it needs no lock token.
           lock: 'none',
         },

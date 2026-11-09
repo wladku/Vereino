@@ -278,9 +278,85 @@ export const orderLinkTemplate = defineEmailTemplate<OrderLinkParams>({
   actionLabel: (t) => t('payments.email.orderLink.action', 'Open the order form'),
 })
 
+const chargeReminderParams = z
+  .object({
+    childName: z.string().max(200),
+    lines: z
+      .array(
+        z.object({
+          description: z.string().max(500),
+          remaining: z.number().int(),
+          dueDate: z.string().min(10).max(10),
+        }),
+      )
+      .min(1)
+      .max(50),
+    total: z.number().int(),
+  })
+  .strict()
+
+export type ChargeReminderParams = z.output<typeof chargeReminderParams>
+
+function chargeReminderCopy(t: TranslateWithFallbackFn, params: ChargeReminderParams) {
+  const values = { name: params.childName, total: formatZloty(params.total) }
+  return {
+    subject: t('payments.email.chargeReminder.subject', 'Reminder: {total} overdue for {name}', values),
+    lead: t(
+      'payments.email.chargeReminder.lead',
+      'These payments for {name} are past their due date ({total} in total):',
+      values,
+    ),
+    lines: params.lines.map((line) =>
+      t('payments.email.chargeReminder.line', '{description}: {amount}, due {date}', {
+        description: line.description,
+        amount: formatZloty(line.remaining),
+        date: line.dueDate,
+      }),
+    ),
+    action: t(
+      'payments.email.chargeReminder.action',
+      'Pay online in the club app, by transfer with your payer code, or in cash to the coach.',
+    ),
+  }
+}
+
+/**
+ * `payments.charge_reminder` ("Send reminder" of M-18; REQ-033, #117): the payer of a child's overdue charges of the
+ * coach's group gets their list and total. `optOut: 'never'`: a club's own service message about the payer's money,
+ * sent only on the coach's request. The descriptions travel in the encrypted params.
+ */
+export const chargeReminderTemplate = defineEmailTemplate<ChargeReminderParams>({
+  id: 'payments.charge_reminder',
+  notificationType: 'payments.charge_reminder',
+  optOut: 'never',
+  params: chargeReminderParams,
+  subject: (t, params) => chargeReminderCopy(t, params).subject,
+  preheader: (t, params) => chargeReminderCopy(t, params).lead,
+  body: (t, params) => {
+    const text = chargeReminderCopy(t, params)
+    return h(
+      'div',
+      null,
+      h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, text.lead),
+      h(
+        'ul',
+        { style: { margin: '0 0 12px', paddingLeft: '20px' } },
+        ...text.lines.map((line, index) => h('li', { key: String(index) }, line)),
+      ),
+      h('p', { style: { margin: '0' } }, text.action),
+    )
+  },
+  text: (t, params) => {
+    const text = chargeReminderCopy(t, params)
+    return [text.lead, ...text.lines.map((line) => `- ${line}`), '', text.action].join('\n')
+  },
+  link: () => '/club/payments',
+})
+
 export const paymentsEmailTemplates = [
   cashReceivedTemplate,
   orderReminderTemplate,
   orderCopyTemplate,
   orderLinkTemplate,
+  chargeReminderTemplate,
 ]

@@ -1,6 +1,6 @@
 // Error codes owned by `payments` (engineering standards S6.7; payments spec *API, Command, and Error Contracts* →
 // `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108; the charge payments,
-// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115; the guardian orders and personal links of issue #116). Thrown through
+// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115; the guardian orders and personal links of issue #116; "My groups' payments" of issue #117). Thrown through
 // `api/errors.ts`. An inverted validity answers the foundation's `validity_inverted`; a stale lock token the
 // platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
@@ -78,6 +78,13 @@ export const errorCodes = [
     messageKey: 'payments.errors.bank_transaction_status_changed',
   },
   { code: 'bank_payer_no_open_charges', status: 422, messageKey: 'payments.errors.bank_payer_no_open_charges' },
+  // "My groups' payments" (#117).
+  { code: 'charge_out_of_scope', status: 403, messageKey: 'payments.errors.charge_out_of_scope' },
+  { code: 'coach_fee_cash_disabled', status: 403, messageKey: 'payments.errors.coach_fee_cash_disabled' },
+  { code: 'charge_payer_missing', status: 422, messageKey: 'payments.errors.charge_payer_missing' },
+  { code: 'order_not_delivered', status: 409, messageKey: 'payments.errors.order_not_delivered' },
+  { code: 'order_already_handed_over', status: 409, messageKey: 'payments.errors.order_already_handed_over' },
+  { code: 'order_unpaid_confirm_required', status: 409, messageKey: 'payments.errors.order_unpaid_confirm_required' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

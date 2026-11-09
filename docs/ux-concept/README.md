@@ -653,7 +653,7 @@ Common rules (they apply to every screen and are not repeated):
 - **Features:** "Cash with you" with the list of KPs and the total to hand over to the treasurer; group chips with the number of people with amounts due (the coordinator also sees the other groups of the section); filter **Everyone / To pay**; group total and number of people overdue; per child: group fees (current period and overdue) and kit orders — amount due, due date, status, without the discount reason; "Accept cash" (select several charges, amount, date, email to each payer; partial payments oldest first), "Send reminder" (overdue), "Hand over kit" after delivery (unpaid — with a warning); below the list, the group's campaigns with "Remind guardians" and "Text with link for the group chat".
 - **Rules:** only charges linked to the group — fees from that group's fee schedule and orders from campaigns that cover the group; fee scope according to the club setting; child without a payer — visible, no cash.
 - **States:** loading; empty — "All paid"; 403 — child or charge out of scope; 409 — handover before delivery; 422 — amount larger than the selected charges.
-- **API:** `GET /api/payments/group-charges?groupId=&due=`; `POST /api/payments/cash`; `POST /api/payments/group-charges/remind`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/order-campaigns/{id}/remind`.
+- **API:** `GET /api/payments/group-charges?groupId=&due=`; `POST /api/payments/group-charges/cash`; `POST /api/payments/group-charges/remind`; `POST /api/payments/orders/{id}/hand-over`; `POST /api/payments/group-charges/campaigns/{id}/remind`.
 
 #### M-19 Order from link — `/club/o/[token]`
 - **Goal:** a guardian without an account orders the same way as in the app.

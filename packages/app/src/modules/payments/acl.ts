@@ -8,7 +8,9 @@
 // E07-S08 (#115), also the club administrator's only. `payments.bank.import` is the statement import of E07-S06 (#113):
 // the file, its transfers and the decisions on them, the club administrator's only until DD-33.
 // `payments.orders.place` is the guardian's kit order of E07-S09 (#116), held by `vereino_payer`. The coach features
-// arrive with their steps.
+// of E07-S10 (#117, DD-31, DD-32) are "My groups' payments": `payments.groups.view` reads the charges of the children
+// of the caller's groups, `payments.groups.collect` accepts cash for them, reminds payers and hands over kit; both are
+// held by `vereino_coach` and `vereino_coordinator` (`@vereino/core` `roleCatalogue`), and the scope stays the grants'.
 export const features = [
   { id: 'payments.view', title: 'View charges', module: 'payments' },
   {
@@ -42,6 +44,13 @@ export const features = [
     title: 'Order kit for my children (and myself) and change or cancel the order before the deadline',
     module: 'payments',
     dependsOn: ['payments.view_own'],
+  },
+  { id: 'payments.groups.view', title: "View my groups' fees and kit orders", module: 'payments' },
+  {
+    id: 'payments.groups.collect',
+    title: "Accept cash for my groups' charges, remind payers and hand over kit",
+    module: 'payments',
+    dependsOn: ['payments.groups.view'],
   },
 ]
 
