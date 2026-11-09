@@ -125,7 +125,7 @@ export class RentalRate extends ScopedEntityBase {
  * An external rental of a place (facilities spec *Data Models* → `facilities_rentals`, glossary *Booking (external
  * rental)*; REQ-013, DD-19, DD-46; #122): a renter, a slot of 90-minute units, the amount from the rate, the deadlines
  * and a status that only commands change. A staff entry starts at `requested`; the online request columns
- * (`verification_*`, `hold_expires_at`, the decision) are filled from E08-S05 on. `charge_id` is set at most once, by
+ * (`verification_*`, `hold_expires_at`, the decision) are filled by an online request (E08-S05, #125). `charge_id` is set at most once, by
  * the optional `payments.chargeService`, in the rental's own transaction. Contact data, the renter's name, the
  * purpose, the decision reason and the notes are encrypted at rest (`encryption.ts`).
  */
@@ -140,12 +140,13 @@ export class Rental extends ScopedEntityBase {
     | 'contactName'
     | 'contactPhone'
     | 'contactEmail'
+    | 'contactLocale'
     | 'purpose'
     | 'rateId'
     | 'chargeId'
-    | 'verificationTokenHash'
-    | 'verificationExpiresAt'
-    | 'emailVerifiedAt'
+    | 'tokenHash'
+    | 'expiresAt'
+    | 'usedAt'
     | 'holdExpiresAt'
     | 'decidedByPersonId'
     | 'decidedAt'
@@ -183,6 +184,10 @@ export class Rental extends ScopedEntityBase {
   @Property({ name: 'contact_email', type: 'text', nullable: true })
   contactEmail?: string | null
 
+  /** The language of an online requester's e-mails (the form's locale, #125); null for a staff entry. */
+  @Property({ name: 'contact_locale', type: 'text', nullable: true })
+  contactLocale?: string | null
+
   @Property({ name: 'purpose', type: 'text', nullable: true })
   purpose?: string | null
 
@@ -211,14 +216,21 @@ export class Rental extends ScopedEntityBase {
   @Property({ name: 'status', type: 'text' })
   status!: RentalStatus
 
+  // The online request is its own P-10 single-use token link (DD-44): the foundation `createTokenLinkService` reads
+  // and writes the properties `tokenHash`, `expiresAt` and `usedAt`, mapped here onto the request's verification
+  // columns. Null on a staff entry.
+
+  /** `hashAuthToken` of the e-mailed confirmation token (`verification_token_hash`); the raw token is never stored. */
   @Property({ name: 'verification_token_hash', type: 'text', nullable: true, unique: true })
-  verificationTokenHash?: string | null
+  tokenHash?: string | null
 
+  /** When the confirmation link stops working (`verification_expires_at`, 1 h after the request). */
   @Property({ name: 'verification_expires_at', type: Date, nullable: true })
-  verificationExpiresAt?: Date | null
+  expiresAt?: Date | null
 
+  /** When the requester confirmed the e-mail (`email_verified_at`): the link is spent. */
   @Property({ name: 'email_verified_at', type: Date, nullable: true })
-  emailVerifiedAt?: Date | null
+  usedAt?: Date | null
 
   @Property({ name: 'hold_expires_at', type: Date, nullable: true })
   holdExpiresAt?: Date | null

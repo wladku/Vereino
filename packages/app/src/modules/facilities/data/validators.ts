@@ -8,6 +8,14 @@ import { CLOSURE_REASONS } from '../lib/closures'
 import { PURPOSE_MAX_LENGTH, PURPOSE_MIN_LENGTH } from '../lib/internal-bookings'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import {
+  APPROVAL_NOTE_MAX_LENGTH,
+  REJECT_REASON_MAX_LENGTH,
+  REJECT_REASON_MIN_LENGTH,
+  REQUESTER_NAME_MAX_LENGTH,
+  REQUESTER_NAME_MIN_LENGTH,
+  REQUEST_PURPOSE_MAX_LENGTH,
+} from '../lib/requests'
+import {
   ENTRY_BAN_SUBJECT_TYPES,
   RENTAL_STATUSES,
   RENTAL_TABS,
@@ -217,6 +225,69 @@ export const rentalListQuerySchema = z.object({
   startsBefore: instantSchema.optional(),
 })
 
+// --- Online requests (#125) ---
+
+/**
+ * `POST /api/facilities/public/{clubSlug}/places/{placeSlug}/requests` (P-04): the guest's form. The category is one
+ * of the public ones (`municipal_club`, `external_commercial`; the winter-lighting rate is staff-only). `website` is
+ * the hidden honeypot field — a filled one is refused by the command; `regulationsAccepted` must be true (422 from
+ * the command, so the form shows it at the field). The units, the zone and the slot are checked by the command.
+ */
+export const publicRequestSchema = z
+  .object({
+    startsAt: instantSchema,
+    units: z.number().int(),
+    renterDisplayName: z.string().trim().min(REQUESTER_NAME_MIN_LENGTH).max(REQUESTER_NAME_MAX_LENGTH),
+    renterCategory: z.enum(['municipal_club', 'external_commercial']),
+    contactName: z.string().trim().min(2).max(200),
+    contactPhone: z.string().trim().min(5).max(50),
+    contactEmail: z.email().max(320),
+    purpose: z.string().trim().max(REQUEST_PURPOSE_MAX_LENGTH).nullable().optional(),
+    regulationsAccepted: z.boolean(),
+    /** The language of the form; the e-mails are sent in it (the club's default when unsupported). */
+    locale: z.string().max(10).optional(),
+    website: z.string().max(500).optional(),
+  })
+  .strict()
+
+/** `POST /api/facilities/public/requests/verify` (P-05): the token in the body, never in the path (DD-44). */
+export const requestVerifySchema = z.object({ token: z.string().min(1).max(200) }).strict()
+
+/**
+ * `POST /api/facilities/rentals/{id}/approve` (B-25): the renter — an existing institution or person, or a new
+ * institution — optionally another category (the staff-only winter-lighting rate) and an amount; a changed amount
+ * needs a note (422 `rental_amount_note_required` from the command).
+ */
+export const requestApproveSchema = z
+  .object({
+    id: z.uuid(),
+    renterType: z.enum(['institution', 'person']).optional(),
+    renterId: z.uuid().optional(),
+    createInstitution: z
+      .object({
+        name: z.string().trim().min(1).max(200),
+        type: z.enum(['municipality', 'school', 'club', 'company', 'sponsor', 'other']).default('club'),
+      })
+      .strict()
+      .optional(),
+    renterCategory: z.enum(RENTER_CATEGORIES).optional(),
+    /** Minor units. */
+    amountOverride: z.number().int().min(0).max(100_000_000).nullable().optional(),
+    note: optionalText(APPROVAL_NOTE_MAX_LENGTH),
+  })
+  .strict()
+
+/** `POST /api/facilities/rentals/{id}/reject` (B-25): a reason of 5–500 characters. */
+export const requestRejectSchema = z
+  .object({ id: z.uuid(), reason: z.string().trim().min(REJECT_REASON_MIN_LENGTH).max(REJECT_REASON_MAX_LENGTH) })
+  .strict()
+
+/** `GET /api/facilities/rentals/requests` (B-25, the B-01 widget): the requests awaiting approval, soonest expiry first. */
+export const requestQueueQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
+
 // --- Entry bans (#122; the pages and revocation arrive with E08-S06) ---
 
 export const entryBanCreateSchema = z
@@ -265,5 +336,6 @@ export const calendarQuerySchema = z.object({
 })
 
 export type RentalCreateInput = z.output<typeof rentalCreateSchema>
+export type PublicRequestInput = z.output<typeof publicRequestSchema>
 export type RentalQuoteInput = z.output<typeof rentalQuoteSchema>
 export type AvailabilityBulkInput = z.output<typeof availabilityBulkSchema>

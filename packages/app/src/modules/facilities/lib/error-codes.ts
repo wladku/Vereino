@@ -1,5 +1,5 @@
 // Error codes owned by `facilities` (engineering standards S6.7; facilities spec *API, Command, and Error Contracts*;
-// #121, #122, #123, #124). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
+// #121, #122, #123, #124, #125). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
 // stale lock token the platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
 
@@ -45,6 +45,20 @@ export const errorCodes = [
   { code: 'public_place_not_found', status: 404, messageKey: 'facilities.errors.public_place_not_found' },
   { code: 'public_places_disabled', status: 404, messageKey: 'facilities.errors.public_places_disabled' },
   { code: 'public_schedule_month_invalid', status: 400, messageKey: 'facilities.errors.public_schedule_month_invalid' },
+  // Online requests (P-04, P-05, B-25, TEST-035, TEST-036; #125): a slot taken or held by another confirmed request
+  // answers 409 `slot_unavailable`; the place or the club not taking requests 403; a request outside the `reservable_paid`
+  // zone, without the rules accepted, starting in the past or with the honeypot filled 422. An unknown, used or expired
+  // link answers the foundation's 410 `token_link_expired` / `token_link_used`. On B-25 a request whose hold lapsed
+  // answers 409 `request_hold_expired`, an approval without a renter 422 `request_renter_required` and a changed amount
+  // without a note 422 `rental_amount_note_required`.
+  { code: 'slot_unavailable', status: 409, messageKey: 'facilities.errors.slot_unavailable' },
+  { code: 'requests_not_accepted', status: 403, messageKey: 'facilities.errors.requests_not_accepted' },
+  { code: 'request_zone_invalid', status: 422, messageKey: 'facilities.errors.request_zone_invalid' },
+  { code: 'request_regulations_required', status: 422, messageKey: 'facilities.errors.request_regulations_required' },
+  { code: 'request_refused', status: 422, messageKey: 'facilities.errors.request_refused' },
+  { code: 'request_hold_expired', status: 409, messageKey: 'facilities.errors.request_hold_expired' },
+  { code: 'request_renter_required', status: 422, messageKey: 'facilities.errors.request_renter_required' },
+  { code: 'rental_amount_note_required', status: 422, messageKey: 'facilities.errors.rental_amount_note_required' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']
