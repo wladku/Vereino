@@ -88,6 +88,32 @@ export async function auditRows(resourceId: string) {
   })
 }
 
+/** The scheduler's id of the evening reminder job (`moduleWorkerId('activities', 'send-declaration-reminders')`). */
+const REMINDERS_JOB = 'activities:send-declaration-reminders'
+
+/** Removes a club's evening reminder schedule: the state of a club set up before the schedule existed (#192). */
+export async function dropRemindersSchedule(organizationId: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query('delete from scheduled_jobs where organization_id = $1 and name = $2', [
+      organizationId,
+      REMINDERS_JOB,
+    ])
+    return result.rowCount ?? 0
+  })
+}
+
+/** A club's live evening reminder schedules: their cron and time zone. */
+export async function remindersSchedules(organizationId: string) {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ schedule_value: string; timezone: string; is_enabled: boolean }>(
+      `select schedule_value, timezone, is_enabled from scheduled_jobs
+        where organization_id = $1 and name = $2 and deleted_at is null`,
+      [organizationId, REMINDERS_JOB],
+    )
+    return rows
+  })
+}
+
 /** How many links a person holds for a session, how often each was used, and whether a row stores the raw token. */
 export async function linkFacts(personId: string, occurrenceId: string, rawToken: string) {
   return withClient(async (client) => {

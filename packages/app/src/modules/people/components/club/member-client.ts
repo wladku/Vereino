@@ -14,8 +14,14 @@ export const CHANGE_PASSWORD_HREF = '/backend/profile/change-password'
 export type SelfConsent = { granted: boolean; at: string | null }
 export type WardConsentKind = 'regulations' | 'image' | 'trips'
 export const WARD_CONSENT_KINDS: readonly WardConsentKind[] = ['regulations', 'image', 'trips']
-/** A guardianship consent; `byName` names its last author (E06-S22 #104). */
-export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null; byName: string | null }
+/** A guardianship consent; `byName` names its last author from the family, `byRole` labels anyone else (#104, #191). */
+export type WardConsent = {
+  granted: boolean
+  at: string | null
+  byPersonId: string | null
+  byName: string | null
+  byRole: 'club_admin' | 'coordinator' | 'coach' | 'staff' | null
+}
 export type WardConsents = Record<WardConsentKind, WardConsent>
 
 export type MemberPerson = {

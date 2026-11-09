@@ -43,6 +43,16 @@ export function isValidPhone(value: string): boolean {
   return /^(?:0048)?[1-9]\d{8}$/.test(compact) || /^\+[1-9]\d{6,14}$/.test(compact)
 }
 
+/**
+ * True when a write of `next` over the stored `current` must be refused with `phone_invalid` — the one phone rule of
+ * the profile, the person form and the import (#191): a blank value clears the phone and an unchanged one is kept, so
+ * only a new number is checked and a value stored before the rule does not block other changes.
+ */
+export function isRejectedPhone(next: string | null | undefined, current: string | null | undefined): boolean {
+  if (!next?.trim() || next === (current ?? null)) return false
+  return !isValidPhone(next)
+}
+
 /** Why a role assignment's section does not fit its role: a coordinator needs one, other roles take none. */
 export type RoleScopeProblem = 'required' | 'unexpected'
 

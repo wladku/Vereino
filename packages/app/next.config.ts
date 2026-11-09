@@ -132,6 +132,18 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         ],
       },
       {
+        // The personal declaration link page (`activities`, REQ-017, #192): the raw token is in the address, so no
+        // request from the page (a link, an image, a script) may carry it on as a referrer.
+        source: '/club/d/:token*',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+      {
+        // Its API (`GET`, `POST /api/activities/declaration-links/{token}`): set here, because these config headers
+        // override a header the route handler sets.
+        source: '/api/activities/declaration-links/:token',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+      {
         // The request confirmation page carries the e-mailed token in its path: no browser may send it on as a
         // referrer, and no cache may keep the page (facilities spec DD-44, #125).
         source: '/p/:clubSlug/requests/verify/:token',

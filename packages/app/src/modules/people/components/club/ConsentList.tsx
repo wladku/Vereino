@@ -14,7 +14,11 @@ export function useConsentStatus(timeZone: string): (consent: WardConsent) => st
   return (consent) => {
     const date = formatInstant(consent.at, locale, timeZone)
     if (!date) return t('people.club.ward.consents.notGiven')
-    const name = consent.byName
+    // A family author by name; anyone else by the role label only (#191).
+    const role = consent.byRole
+    const name =
+      consent.byName ??
+      (role ? t(role === 'staff' ? 'people.club.consents.authorStaff' : `people.roles.role.${role}`) : null)
     if (consent.granted) {
       return name ? t('people.club.consents.givenBy', { date, name }) : t('people.club.consents.givenOn', { date })
     }

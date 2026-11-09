@@ -16,6 +16,7 @@ import { personCreateSchema, personUpdateSchema } from '../data/validators'
 import { personExternalId, personPesel } from '../encryption'
 import { isValidPesel } from '../lib/people-rules'
 import {
+  assertPhoneAllowed,
   inWriteTransaction,
   isUniqueViolation,
   loadPersonLocked,
@@ -147,6 +148,7 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         const externalId = parsed.externalId ?? null
         if (externalId) await assertExternalIdAvailable(em, { tenantId, organizationId }, externalId, null)
         const preferredLocale = parsed.preferredLocale ? await assertSupportedLocale(parsed.preferredLocale) : null
+        await assertPhoneAllowed(parsed.phone, null)
         const person = em.create(Person, {
           id,
           tenantId,
@@ -231,7 +233,11 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
         }
         if (patch.birthDate !== undefined) person.birthDate = patch.birthDate
         if (patch.email !== undefined) person.email = patch.email
-        if (patch.phone !== undefined) person.phone = patch.phone
+        if (patch.phone !== undefined) {
+          // The profile's rule (#191): only a changed number is checked, so a value stored before it stays editable.
+          await assertPhoneAllowed(patch.phone, person.phone)
+          person.phone = patch.phone
+        }
         if (patch.notes !== undefined) person.notes = patch.notes
         if (patch.pesel !== undefined) {
           const pesel = patch.pesel

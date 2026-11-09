@@ -16,6 +16,7 @@ import {
   normalizeImportRow,
   parseImportDate,
   personPatch,
+  phoneProblem,
   planImport,
   type ExistingDirectory,
   type ExistingPerson,
@@ -399,8 +400,11 @@ describe('planImport', () => {
       [
         row(2, { participant: child(), guardian1: mother() }),
         row(3, { participant: child({ firstName: 'Ala', pesel: PESEL_C }), guardian1: mother() }),
-        row(4, { participant: child(), guardian2: values({ firstName: 'Jan', lastName: 'Nowak', phone: '600' }) }),
-        row(5, { participant: child({ externalId: 'K-1' }), guardian1: mother({ email: null, phone: '601' }) }),
+        row(4, {
+          participant: child(),
+          guardian2: values({ firstName: 'Jan', lastName: 'Nowak', phone: '600700800' }),
+        }),
+        row(5, { participant: child({ externalId: 'K-1' }), guardian1: mother({ email: null, phone: '601700800' }) }),
       ],
       EMPTY,
       noDecisions,
@@ -418,8 +422,29 @@ describe('planImport', () => {
       create: null,
       update: null,
     })
-    expect(plans[3].persons[1].create).toEqual(mother({ email: null, phone: '601' }))
+    expect(plans[3].persons[1].create).toEqual(mother({ email: null, phone: '601700800' }))
     expect(plans[3].links.map((link) => link.isPrimaryPayer)).toEqual([false])
+  })
+
+  it('refuses a row with a phone that is neither Polish nor E.164, naming the column (#191)', () => {
+    const plans = planImport(
+      [
+        row(2, { participant: child({ phone: '+48 600 700 800' }), guardian1: mother({ phone: 'call the office' }) }),
+        row(3, { participant: child({ firstName: 'Ala', pesel: PESEL_C, phone: '12' }), guardian1: mother() }),
+      ],
+      EMPTY,
+      noDecisions,
+      planOptions,
+    )
+    expect(plans.map((plan) => [plan.rowNo, plan.classification, plan.errorCode, plan.errorColumn])).toEqual([
+      [2, 'error', 'import_phone_invalid', 'Telefon rodzica'],
+      [3, 'error', 'import_phone_invalid', 'Telefon'],
+    ])
+    expect(phoneProblem(row(4, { participant: child() }), { header, mapping: {} })).toBeNull()
+    expect(phoneProblem(row(4, { participant: child({ phone: 'x' }) }), { header, mapping: {} })).toEqual({
+      code: 'import_phone_invalid',
+      column: null,
+    })
   })
 
   it('does not link a guardian twice or a person to themselves', () => {
@@ -504,7 +529,7 @@ describe('planImport', () => {
         row(3, { participant: child() }, 'Orliki'),
         row(4, { participant: child({ email: 'OLA@example.org' }) }, 'orliki'),
         row(5, { participant: child({ email: 'ola@example.org' }) }, ' Orliki'),
-        row(7, { participant: child({ firstName: 'Ola', birthDate: '2016-05-02', phone: '1' }) }),
+        row(7, { participant: child({ firstName: 'Ola', birthDate: '2016-05-02', phone: '700800900' }) }),
         row(8, { participant: child({ pesel: null, birthDate: null, externalId: 'E-1' }) }),
         row(9, { participant: child({ pesel: null, birthDate: null, externalId: 'E-1', firstName: 'Ina' }) }),
       ],

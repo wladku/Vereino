@@ -3,7 +3,9 @@
 // the path is the only credential. `GET` peeks (spends nothing): the session, what may be declared and the persons the
 // link's holder may declare for — first names only. `POST` declares for one of them through
 // `activities.attendance.declare_by_link` (`source = link`). An unknown, malformed or foreign token answers 404
-// `declaration_link_not_found`; an expired one 410 `token_link_expired`; a person outside the link 403 `scope_denied`.
+// `declaration_link_not_found`; an expired one 410 `token_link_expired` (the read also names the request page of the
+// link's session, #192); a person outside the link 403 `scope_denied`. The page is personal: never cached, and the
+// token in its address is not sent on as a referrer.
 import { z } from 'zod'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
@@ -25,7 +27,7 @@ export const metadata = {
 
 type RouteContext = { params: Promise<{ token?: string }> }
 
-/** A personal page: never kept by a shared cache. */
+/** A personal page: never kept by a shared cache. (`Referrer-Policy: no-referrer` comes from `next.config.ts`.) */
 const NO_STORE = 'no-store'
 
 function noStore(response: Response): Response {
@@ -106,14 +108,29 @@ const pageSchema = z.object({
   expiresAt: z.string(),
 })
 
+const notFoundError = {
+  status: 404,
+  description: '`declaration_link_not_found` — an unknown, malformed or foreign token',
+  schema: errorSchema,
+}
+const rateLimitError = { status: 429, description: 'Too many requests', schema: z.object({ error: z.string() }) }
+
 const linkErrors = [
-  {
-    status: 404,
-    description: '`declaration_link_not_found` — an unknown, malformed or foreign token',
-    schema: errorSchema,
-  },
+  notFoundError,
   { status: 410, description: '`token_link_expired` — the link has expired; request a new one', schema: errorSchema },
-  { status: 429, description: 'Too many requests', schema: z.object({ error: z.string() }) },
+  rateLimitError,
+]
+
+/** The read's 410 also names where a new link for the same session is requested (#192). */
+const readErrors = [
+  notFoundError,
+  {
+    status: 410,
+    description:
+      '`token_link_expired` — the link has expired. `requestLinkPath` is the request page of the link session (`/club/link?club=…&session=…`) when the club publishes its public pages, else null.',
+    schema: errorSchema.extend({ requestLinkPath: z.string().nullable() }),
+  },
+  rateLimitError,
 ]
 
 export const openApi: OpenApiRouteDoc = {
@@ -125,7 +142,7 @@ export const openApi: OpenApiRouteDoc = {
       description:
         'Sessionless (REQ-017). Spends nothing. The session (activity name, date, time, status, what may be declared and whether declarations are still open) and the persons the link holder may declare for — themself when a participant, and their wards among the participants — with first names and current declarations.',
       responses: [{ status: 200, description: 'The link page', schema: pageSchema }],
-      errors: linkErrors,
+      errors: readErrors,
     },
     POST: {
       summary: 'Declare for one person from a personal link',

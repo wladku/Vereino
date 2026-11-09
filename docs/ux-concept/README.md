@@ -332,9 +332,9 @@ Common rules (they apply to every screen and are not repeated):
 #### M-10 Profile and wards — `/club/profile`, `/club/wards/[personId]`
 - **Goal:** contact details, consents on behalf of children, consent to publishing one's name (coach).
 - **Features:** my details (phone, contact email); **interface language** (select: English / Polish — REQ-035; saved as the person's `preferredLocale`, the interface re-renders immediately); list of wards with groups and sections; consents (rules, image, trips) with date; coach: "I consent to my first and last name being published on the club page"; password change (link to `auth`).
-- **Components:** `CrudForm`, consent toggles with date and author.
+- **Components:** `CrudForm`, consent toggles with date and author. The author is named only when they are family (the ward or a guardian of the ward); anyone else is shown by a role label such as "Club administrator" or "Coach" (#191, club spec DD-48).
 - **States:** loading; empty — "You have no wards" (for a person without children the section is hidden); error; success — "Consents saved"; conflict — 409.
-- **Validation:** phone in PL/E.164 format; email; consents can be changed only by the guardian (the ward sees them read-only).
+- **Validation:** phone in PL/E.164 format (the same rule on the admin person form and the import — club spec DD-47); email; consents can be changed only by the guardian (the ward sees them read-only).
 - **API:** `GET /api/people/me`; `PUT /api/people/me` (`preferredLocale`, `publishNameConsent`); `PUT /api/people/persons/{id}`; `PUT /api/people/guardianships/{id}`.
 
 #### M-11 Facilities and booking — `/club/places`, `/club/places/[placeId]`

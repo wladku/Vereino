@@ -8,8 +8,9 @@ import type { CrudEventsConfig, CrudIndexerConfig } from '@open-mercato/shared/l
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { Scope, ScopeTarget } from '@vereino/core'
 import { trustedScopeOf, type TargetLock } from '@/modules/foundation'
+import { peopleErrors } from '../api/errors'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
-import { parseStoredConsents, type GuardianRelation, type StoredConsents } from '../lib/people-rules'
+import { isRejectedPhone, parseStoredConsents, type GuardianRelation, type StoredConsents } from '../lib/people-rules'
 
 export const PERSON_ENTITY_ID = 'people:person'
 
@@ -35,6 +36,20 @@ export async function inWriteTransaction<T>(
   )
   if (!('value' in box)) throw new Error('[internal] the write transaction produced no result: ' + label)
   return box.value as T
+}
+
+/**
+ * 422 `phone_invalid` with a field error on `phone` (so the profile and the person form show it next to the field)
+ * when `next` is a new number that is neither Polish nor E.164 (#104, #191).
+ */
+export async function assertPhoneAllowed(
+  next: string | null | undefined,
+  current: string | null | undefined,
+): Promise<void> {
+  if (!isRejectedPhone(next, current)) return
+  const error = await peopleErrors.create('phone_invalid', { field: 'phone' })
+  error.body = { ...error.body, fieldErrors: { phone: String(error.body.error ?? 'phone_invalid') } }
+  throw error
 }
 
 export function isUniqueViolation(error: unknown): boolean {
