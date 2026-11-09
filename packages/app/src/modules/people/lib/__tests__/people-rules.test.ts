@@ -10,6 +10,7 @@ import {
   parseStoredConsents,
   isPayerEligible,
   isValidPesel,
+  isRejectedPhone,
   isValidPhone,
   personScope,
   roleScopeProblem,
@@ -47,6 +48,22 @@ describe('isValidPesel', () => {
     expect(isValidPesel('90010100008')).toBe(false)
     expect(isValidPesel('9001010000')).toBe(false)
     expect(isValidPesel('9001010000a')).toBe(false)
+  })
+})
+
+describe('isRejectedPhone', () => {
+  it('refuses a new number that is neither Polish nor E.164', () => {
+    expect(isRejectedPhone('abc', null)).toBe(true)
+    expect(isRejectedPhone('abc', undefined)).toBe(true)
+    expect(isRejectedPhone('12', '600700800')).toBe(true)
+  })
+
+  it('keeps a valid number, a blank value and an unchanged stored value', () => {
+    expect(isRejectedPhone('600 700 800', null)).toBe(false)
+    expect(isRejectedPhone(null, 'abc')).toBe(false)
+    expect(isRejectedPhone(undefined, null)).toBe(false)
+    expect(isRejectedPhone('  ', null)).toBe(false)
+    expect(isRejectedPhone('call the office', 'call the office')).toBe(false)
   })
 })
 

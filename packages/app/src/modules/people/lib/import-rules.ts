@@ -18,7 +18,7 @@ import {
   type ImportPersonField,
   type ImportSlot,
 } from './import-mapping'
-import { isValidPesel } from './people-rules'
+import { isValidPesel, isValidPhone } from './people-rules'
 
 export const IMPORT_CLASSIFICATIONS = ['new', 'matched', 'review', 'error'] as const
 export type ImportClassification = (typeof IMPORT_CLASSIFICATIONS)[number]
@@ -33,6 +33,7 @@ export const IMPORT_ROW_ERRORS = [
   'import_date_invalid',
   'import_pesel_invalid',
   'import_email_invalid',
+  'import_phone_invalid',
   'import_value_too_long',
   'import_row_duplicate',
   'import_identifier_conflict',
@@ -500,6 +501,21 @@ function plannedLinks(refs: Partial<Record<ImportSlot, PersonRef>>, state: PlanS
  * and are written only with a decision (`create`, or `match` to an existing person); the others are `matched` when
  * every person of the row exists, else `new`. A `skip` decision keeps the classification and writes nothing.
  */
+/**
+ * The first phone of the row that breaks the people commands' phone rule (#191: Polish or E.164), with its column.
+ * Checked when the rows are planned, so it holds at the preview and again at the commit — also for rows staged before
+ * the rule, whose stored normalization has no such error.
+ */
+export function phoneProblem(row: NormalizedImportRow, options: PlanOptions): NormalizedImportRow['error'] {
+  for (const slot of IMPORT_SLOTS) {
+    const phone = row.persons[slot]?.phone
+    if (phone && !isValidPhone(phone)) {
+      return { code: 'import_phone_invalid', column: columnName(options, slotField(slot, 'phone')) }
+    }
+  }
+  return null
+}
+
 export function planImport(
   rows: readonly NormalizedImportRow[],
   directory: ExistingDirectory,
@@ -518,7 +534,8 @@ export function planImport(
   return [...rows]
     .sort((a, b) => a.rowNo - b.rowNo)
     .map((row) => {
-      if (row.error) return errorPlan(row, row.error.code, row.error.column)
+      const problem = row.error ?? phoneProblem(row, options)
+      if (problem) return errorPlan(row, problem.code, problem.column)
       const print = fingerprint(row)
       if (state.fingerprints.has(print)) return errorPlan(row, 'import_row_duplicate', null)
       state.fingerprints.add(print)

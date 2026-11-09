@@ -22,8 +22,14 @@ import { peopleErrors } from '../api/errors'
 import { Person } from '../data/entities'
 import { selfUpdateSchema } from '../data/validators'
 import { applySelfConsent, type SelfConsentKind } from '../lib/member-rules'
-import { isValidPhone } from '../lib/people-rules'
-import { inWriteTransaction, loadPersonLocked, personEvents, personIndexer, personTarget } from './shared'
+import {
+  assertPhoneAllowed,
+  inWriteTransaction,
+  loadPersonLocked,
+  personEvents,
+  personIndexer,
+  personTarget,
+} from './shared'
 
 const RESOURCE_KIND = 'people.person'
 /** Only the person's own grant: nobody changes another person's language, contact or consents through `/me`. */
@@ -115,13 +121,6 @@ async function authorizeSelfReplay(ctx: CommandRuntimeContext, personId: string 
   return entity as Person
 }
 
-/** 422 `phone_invalid` with a field error on `phone`, so the profile form shows it next to the field. */
-async function throwPhoneInvalid(): Promise<never> {
-  const error = await peopleErrors.create('phone_invalid', { field: 'phone' })
-  error.body = { ...error.body, fieldErrors: { phone: String(error.body.error ?? 'phone_invalid') } }
-  throw error
-}
-
 function emitPersonUpdated(ctx: CommandRuntimeContext, person: Person, undo: boolean) {
   const args = {
     dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),
@@ -152,9 +151,7 @@ const updateSelfCommand: CommandHandler<Record<string, unknown>, UpdateSelfResul
         // A blank number clears the phone; only a changed number is checked, so a value stored before
         // E06-S22 (#104) does not block other changes.
         const phone = patch.phone || null
-        if (phone !== null && phone !== (person.phone ?? null) && !isValidPhone(phone)) {
-          await throwPhoneInvalid()
-        }
+        await assertPhoneAllowed(phone, person.phone)
         person.phone = phone
       }
       const now = new Date()
