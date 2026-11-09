@@ -5,7 +5,9 @@
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
 import { CLOSURE_REASONS } from '../lib/closures'
+import { INCIDENT_ACTIONS, INCIDENT_INVOLVED_MAX_LENGTH, INCIDENT_KINDS } from '../lib/incidents'
 import { PURPOSE_MAX_LENGTH, PURPOSE_MIN_LENGTH } from '../lib/internal-bookings'
+import { HEADCOUNT_MAX, LOG_TEXT_MAX_LENGTH } from '../lib/logs'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import {
   ENTRY_BAN_SUBJECT_TYPES,
@@ -217,7 +219,7 @@ export const rentalListQuerySchema = z.object({
   startsBefore: instantSchema.optional(),
 })
 
-// --- Entry bans (#122; the pages and revocation arrive with E08-S06) ---
+// --- Entry bans (#122; the incident link and the revocation since E08-S06, #126) ---
 
 export const entryBanCreateSchema = z
   .object({
@@ -227,15 +229,95 @@ export const entryBanCreateSchema = z
     startsOn: calendarDateSchema,
     endsOn: calendarDateSchema.nullable().optional(),
     reason: z.string().trim().min(1).max(2000),
+    incidentId: z.uuid().nullable().optional(),
   })
   .strict()
+
+/** `POST /api/facilities/entry-bans/{id}/revoke`: the lock token travels in the optimistic-lock header. */
+export const entryBanRevokeSchema = z.object({ id: z.uuid() }).strict()
 
 export const entryBanListQuerySchema = z.object({
   ...listQueryBase,
   sortField: z.enum(['startsOn', 'createdAt', 'updatedAt']).optional(),
   placeId: z.uuid().optional(),
   subjectId: z.uuid().optional(),
+  /** `active` = not revoked; `revoked` = revoked. */
+  state: z.enum(['active', 'revoked']).optional(),
 })
+
+// --- Facility log (#126) ---
+
+const groupPresentSchema = z
+  .object({
+    occurrenceId: z.uuid().nullable().optional(),
+    rentalId: z.uuid().nullable().optional(),
+    headcount: z.number().int().min(0).max(HEADCOUNT_MAX),
+    adultSupervisorPresent: z.boolean(),
+  })
+  .strict()
+
+const logFieldsShape = {
+  openedAt: instantSchema.nullable().optional(),
+  closedAt: instantSchema.nullable().optional(),
+  conditionBefore: optionalText(LOG_TEXT_MAX_LENGTH),
+  conditionAfter: optionalText(LOG_TEXT_MAX_LENGTH),
+  groupsPresent: z.array(groupPresentSchema).max(100).optional(),
+  remarks: optionalText(LOG_TEXT_MAX_LENGTH),
+}
+
+/**
+ * `POST /api/facilities/logs` (`facilities.logs.create`; M-12 "Open facility"): the log of a place and a day, with
+ * any of its fields. The command checks the day (422 `log_date_invalid`), the one log per day (409 `log_exists`), the
+ * edit window (403 `log_edit_closed`) and the opening and closing rules (422).
+ */
+export const logCreateSchema = z.object({ placeId: z.uuid(), logDate: calendarDateSchema, ...logFieldsShape }).strict()
+
+/** `PUT /api/facilities/logs` (`facilities.logs.update`; M-12 "Close facility", today's groups): the fields given. */
+export const logUpdateSchema = z.object({ id: z.uuid(), ...logFieldsShape }).strict()
+
+export const logListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['logDate', 'createdAt', 'updatedAt']).optional(),
+  placeId: z.uuid().optional(),
+  from: calendarDateSchema.optional(),
+  to: calendarDateSchema.optional(),
+})
+
+// --- Incidents (#126) ---
+
+/**
+ * `POST /api/facilities/incidents` (`facilities.incidents.create`; M-12 "Report incident"): the description's length
+ * (10–2000) and the time are checked by the command (422 `incident_description_length`, `incident_time_future`).
+ */
+export const incidentCreateSchema = z
+  .object({
+    placeId: z.uuid(),
+    occurredAt: instantSchema,
+    kind: z.enum(INCIDENT_KINDS),
+    description: z.string().max(10_000),
+    involved: optionalText(INCIDENT_INVOLVED_MAX_LENGTH),
+    actionTaken: z.array(z.enum(INCIDENT_ACTIONS)).max(INCIDENT_ACTIONS.length).optional(),
+  })
+  .strict()
+
+/** `PUT /api/facilities/incidents` (`facilities.incidents.update`; B-27): the actions taken and the case link only. */
+export const incidentUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    actionTaken: z.array(z.enum(INCIDENT_ACTIONS)).max(INCIDENT_ACTIONS.length).optional(),
+    threadId: z.uuid().nullable().optional(),
+  })
+  .strict()
+
+export const incidentListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['occurredAt', 'createdAt', 'updatedAt']).optional(),
+  placeId: z.uuid().optional(),
+  kind: z.enum(INCIDENT_KINDS).optional(),
+})
+
+/** `GET /api/facilities/today` (M-12): one place, or the first place of the club when none is named. */
+export const todayQuerySchema = z.object({ placeId: z.uuid().optional() })
 
 // --- Internal bookings (#123) ---
 
