@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 import { builtinModules } from 'node:module'
 import { resolveAllowedDevOrigins } from './src/lib/dev-origins'
 import { telemetryServerExternalPackages } from '@open-mercato/telemetry/nextjs-config'
@@ -142,6 +142,15 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         // override a header the route handler sets.
         source: '/api/activities/declaration-links/:token',
         headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+      {
+        // The request confirmation page carries the e-mailed token in its path: no browser may send it on as a
+        // referrer, and no cache may keep the page (facilities spec DD-44, #125).
+        source: '/p/:clubSlug/requests/verify/:token',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
       },
       {
         // Marker header consumed by the custom-domain DNS reverse-resolve check

@@ -40,6 +40,14 @@ describe('facilities error codes', () => {
       'public_place_not_found',
       'public_places_disabled',
       'public_schedule_month_invalid',
+      'slot_unavailable',
+      'requests_not_accepted',
+      'request_zone_invalid',
+      'request_regulations_required',
+      'request_refused',
+      'request_hold_expired',
+      'request_renter_required',
+      'rental_amount_note_required',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
