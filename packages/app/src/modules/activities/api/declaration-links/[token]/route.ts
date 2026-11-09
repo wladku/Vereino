@@ -27,12 +27,11 @@ export const metadata = {
 
 type RouteContext = { params: Promise<{ token?: string }> }
 
-/** A personal page: never kept by a shared cache, and its token-bearing address is never sent as a referrer. */
+/** A personal page: never kept by a shared cache. (`Referrer-Policy: no-referrer` comes from `next.config.ts`.) */
 const NO_STORE = 'no-store'
 
 function noStore(response: Response): Response {
   response.headers.set('Cache-Control', NO_STORE)
-  response.headers.set('Referrer-Policy', 'no-referrer')
   return response
 }
 

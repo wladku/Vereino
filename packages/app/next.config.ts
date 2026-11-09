@@ -138,6 +138,12 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
       },
       {
+        // Its API (`GET`, `POST /api/activities/declaration-links/{token}`): set here, because these config headers
+        // override a header the route handler sets.
+        source: '/api/activities/declaration-links/:token',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+      {
         // Marker header consumed by the custom-domain DNS reverse-resolve check
         // (see SPEC 2026-04-08-portal-custom-domain-routing). Lets the verifier
         // tell "request reached our origin" from "request was answered by an
