@@ -202,6 +202,48 @@ export const cashRecordSchema = z
   })
   .strict()
 
+// --- "My groups' payments" (#117, REQ-033, DD-31, DD-32) ---
+
+/** `GET /api/payments/group-charges`: the group (default: the first of the caller's groups) and the "To pay" filter. */
+export const groupChargesQuerySchema = z.object({
+  groupId: z.uuid().optional(),
+  due: z
+    .enum(['0', '1', 'true', 'false'])
+    .optional()
+    .transform((value) => value === '1' || value === 'true'),
+})
+
+/**
+ * `payments.cash.collect` (the coach's "Accept cash"): a child of the caller's group, the child's selected charges of
+ * that group (they may have different payers), the amount, the day and whether each payer gets an e-mail.
+ */
+export const groupCashSchema = z
+  .object({
+    groupId: z.uuid(),
+    participantPersonId: z.uuid(),
+    chargeIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_CASH_CHARGES)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each charge may be selected once' }),
+    amount: z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)'),
+    paidOn: calendarDateSchema.describe('The day the cash was received; not in the future'),
+    notify: z.boolean().default(true).describe('E-mail each payer a confirmation with the receipt number'),
+  })
+  .strict()
+
+/** `payments.group_charges.remind` ("Send reminder"): the child's overdue charges of the group, to their payers. */
+export const groupRemindSchema = z.object({ groupId: z.uuid(), participantPersonId: z.uuid() }).strict()
+
+/** `payments.orders.hand_over` ("Hand over kit"): the order, the group it is handed over in, the unpaid warning. */
+export const orderHandOverSchema = z
+  .object({
+    id: z.uuid(),
+    groupId: z.uuid().describe("The caller's group the child belongs to (the scope of the handover)"),
+    confirmUnpaid: z.boolean().default(false).describe('Hand over a kit that is not fully paid; the charge stays open'),
+  })
+  .strict()
+
 /** `GET /api/payments/cash/charges` and `/cash/payers`. */
 export const cashChargesQuerySchema = z.object({ payerPersonId: z.uuid() })
 

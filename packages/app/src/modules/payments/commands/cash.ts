@@ -7,7 +7,8 @@
 // (cancelled, forfeited), 409 `charge_already_paid`, 422 `cash_exceeds_selected` (more than remains on the selection),
 // 422 `payment_date_in_future`. The selected charges are row-locked in id order, so concurrent payments never over-pay
 // them; the receipt numbering takes the club's advisory lock, so no number is issued twice. Like every `payments`
-// write of phase 4 it needs the club administrator's grant (D-030); the coach's path is E07-S10 (#117). Money is
+// write of phase 4 it needs the club administrator's grant (D-030); the coach's path is `payments.cash.collect`
+// (`commands/group-charges.ts`, E07-S10 #117), which shares `acceptCashOnCharges` and the confirmation. Money is
 // never edited or deleted: the command is not undoable, and a reversing entry (`payments.payments.reverse`) corrects.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
@@ -63,7 +64,7 @@ export type CashRecordResult = PaymentsCommandResult<Payment, null> & {
 }
 
 /** The caller's own person (the `self` grant): who collected the cash. */
-function selfPersonId(scope: Scope): string | null {
+export function selfPersonId(scope: Scope): string | null {
   return scope.find((grant) => grant.kind === 'self')?.ids?.[0] ?? null
 }
 
@@ -81,10 +82,12 @@ type ConfirmationInput = {
   collectorPersonId: string | null
   params: Omit<CashReceivedParams, 'collectorName' | 'lines'>
   lines: { paymentId: string; chargeId: string; amount: number; remaining: number }[]
+  /** One per receipt and payer: `payments:cash:<receipt>`, with `:<payer>` when a receipt has several payers. */
+  idempotencyKey: string
 }
 
 /** Enqueues the payer's confirmation in the write transaction; null when the payer has no e-mail address. */
-async function enqueueConfirmation(input: ConfirmationInput): Promise<string | null> {
+export async function enqueueConfirmation(input: ConfirmationInput): Promise<string | null> {
   const { ctx, em, scope } = input
   const resolverCtx = { container: ctx.container, ...scope, scope: input.grants, em }
   const contacts = await contactResolver(ctx.container).contacts([input.payerPersonId], resolverCtx)
@@ -124,12 +127,117 @@ async function enqueueConfirmation(input: ConfirmationInput): Promise<string | n
       recipients: [recipient],
       // The source is the receipt's first payment (a uuid); the receipt number keys the idempotency.
       source: { module: 'payments', type: 'payments:payment', id: input.lines[0]?.paymentId ?? input.payerPersonId },
-      idempotencyKey: `payments:cash:${input.params.receiptNumber}`,
+      idempotencyKey: input.idempotencyKey,
       actor: { userId: ctx.auth?.sub ?? null, actingRole: input.actingRole },
     },
     { ...scope, scope: input.grants, em },
   )
   return dispatchId
+}
+
+export type CashAcceptance = { receiptNumber: string; lines: CashPaymentLine[]; created: Payment[] }
+
+/**
+ * Pays the row-locked `charges` with `amount` of cash received on `paidOn` (oldest first) under one new receipt
+ * number: refuses a cancelled, forfeited or paid charge (409), an amount above what remains (422) and a future day
+ * (422), takes the club's receipt numbering lock, writes the payments with their collector and settles the charges.
+ * Shared by "Accept cash" (#114) and the coach's cash of "My groups' payments" (#117).
+ */
+export async function acceptCashOnCharges(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  charges: readonly Charge[],
+  input: { amount: number; paidOn: string; collectorPersonId: string | null },
+): Promise<CashAcceptance> {
+  const chargeIds = charges.map((charge) => charge.id)
+  // An online overpayment "to refund" (#110, Q-049) is not a payment of the charge, as in `ledgerOf`.
+  const ledger = await em.find(Payment, {
+    chargeId: { $in: chargeIds },
+    ...scope,
+    isOverpayment: false,
+    deletedAt: null,
+  })
+  const paidByCharge = new Map(
+    charges.map((charge) => [charge.id, paidTotal(ledger.filter((row) => row.chargeId === charge.id))]),
+  )
+  const selection: CashCharge[] = charges.map((charge) => ({
+    id: charge.id,
+    status: charge.status,
+    dueDate: calendarDate(charge.dueDate),
+    createdAt: charge.createdAt.toISOString(),
+    remaining: charge.status === 'cancelled' ? 0 : remainingOf(amountDueOf(charge), paidByCharge.get(charge.id) ?? 0),
+  }))
+  const { today } = await clubClock(ctx.container, scope)
+  const refusal = cashRefusal({ charges: selection, amount: input.amount, paidOn: input.paidOn, today })
+  if (refusal === 'cash_exceeds_selected') {
+    const selected = selectedTotal(selection)
+    await paymentsErrors.throw(refusal, { selected: formatZloty(selected), selectedAmount: selected })
+  } else if (refusal) {
+    await paymentsErrors.throw(refusal)
+  }
+
+  await lockReceiptNumbering(em, scope.organizationId)
+  const last = await lastReceiptNumber(em, scope, receiptPrefix(input.paidOn))
+  const receiptNumber = nextReceiptNumber(input.paidOn, (last && receiptSequence(last)) || 0)
+
+  const now = new Date()
+  const byId = new Map(charges.map((charge) => [charge.id, charge]))
+  const lines: CashPaymentLine[] = []
+  const created: Payment[] = []
+  for (const allocation of allocateCash(selection, input.amount)) {
+    const charge = byId.get(allocation.chargeId) as Charge
+    const payment = em.create(Payment, {
+      id: randomUUID(),
+      ...scope,
+      chargeId: charge.id,
+      amount: allocation.amount,
+      method: 'cash',
+      paidOn: input.paidOn,
+      reference: null,
+      recordedByPersonId: input.collectorPersonId,
+      recordedByUserId: ctx.auth?.sub ?? null,
+      collectedByPersonId: input.collectorPersonId,
+      receiptNumber,
+      createdAt: now,
+      updatedAt: now,
+    })
+    em.persist(payment)
+    created.push(payment)
+    const amountDue = amountDueOf(charge)
+    const paid = (paidByCharge.get(charge.id) ?? 0) + allocation.amount
+    charge.status = settledStatus(charge.status, amountDue, paid)
+    charge.updatedAt = now
+    lines.push({
+      paymentId: payment.id,
+      chargeId: charge.id,
+      amount: allocation.amount,
+      chargeStatus: charge.status,
+      remaining: remainingOf(amountDue, paid),
+      chargeUpdatedAt: now.toISOString(),
+    })
+  }
+  await em.flush()
+  return { receiptNumber, lines, created }
+}
+
+/** Publishes the confirmations and emits `payments.payment.recorded` per payment, once the acceptance committed. */
+export async function afterCashCommit(
+  ctx: CommandRuntimeContext,
+  result: { dispatchIds: readonly string[]; payments: readonly CashPaymentLine[]; receiptNumber: string },
+  scope: { tenantId: string; organizationId: string },
+): Promise<void> {
+  for (const dispatchId of result.dispatchIds) {
+    await ctx.container.resolve<DispatchService>('foundationDispatch').publish(dispatchId, scope)
+  }
+  for (const line of result.payments) {
+    await emitAfterCommit('payments.payment.recorded', scope, {
+      id: line.paymentId,
+      chargeId: line.chargeId,
+      method: 'cash',
+      receiptNumber: result.receiptNumber,
+    })
+  }
 }
 
 const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResult> = {
@@ -163,75 +271,12 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
       ) {
         await paymentsErrors.throw('cash_charges_invalid')
       }
-      // An online overpayment "to refund" (#110, Q-049) is not a payment of the charge, as in `ledgerOf`.
-      const ledger = await em.find(Payment, {
-        chargeId: { $in: parsed.chargeIds },
-        ...scope,
-        isOverpayment: false,
-        deletedAt: null,
-      })
-      const paidByCharge = new Map(
-        charges.map((charge) => [charge.id, paidTotal(ledger.filter((row) => row.chargeId === charge.id))]),
-      )
-      const selection: CashCharge[] = charges.map((charge) => ({
-        id: charge.id,
-        status: charge.status,
-        dueDate: calendarDate(charge.dueDate),
-        createdAt: charge.createdAt.toISOString(),
-        remaining:
-          charge.status === 'cancelled' ? 0 : remainingOf(amountDueOf(charge), paidByCharge.get(charge.id) ?? 0),
-      }))
-      const { today } = await clubClock(ctx.container, scope)
-      const refusal = cashRefusal({ charges: selection, amount: parsed.amount, paidOn: parsed.paidOn, today })
-      if (refusal === 'cash_exceeds_selected') {
-        const selected = selectedTotal(selection)
-        await paymentsErrors.throw(refusal, { selected: formatZloty(selected), selectedAmount: selected })
-      } else if (refusal) {
-        await paymentsErrors.throw(refusal)
-      }
-
-      await lockReceiptNumbering(em, organizationId)
-      const last = await lastReceiptNumber(em, scope, receiptPrefix(parsed.paidOn))
-      const receiptNumber = nextReceiptNumber(parsed.paidOn, (last && receiptSequence(last)) || 0)
-
       const collectorPersonId = selfPersonId(authorized.scope)
-      const now = new Date()
-      const byId = new Map(charges.map((charge) => [charge.id, charge]))
-      const lines: CashPaymentLine[] = []
-      const created: Payment[] = []
-      for (const allocation of allocateCash(selection, parsed.amount)) {
-        const charge = byId.get(allocation.chargeId) as Charge
-        const payment = em.create(Payment, {
-          id: randomUUID(),
-          ...scope,
-          chargeId: charge.id,
-          amount: allocation.amount,
-          method: 'cash',
-          paidOn: parsed.paidOn,
-          reference: null,
-          recordedByPersonId: collectorPersonId,
-          recordedByUserId: ctx.auth?.sub ?? null,
-          collectedByPersonId: collectorPersonId,
-          receiptNumber,
-          createdAt: now,
-          updatedAt: now,
-        })
-        em.persist(payment)
-        created.push(payment)
-        const amountDue = amountDueOf(charge)
-        const paid = (paidByCharge.get(charge.id) ?? 0) + allocation.amount
-        charge.status = settledStatus(charge.status, amountDue, paid)
-        charge.updatedAt = now
-        lines.push({
-          paymentId: payment.id,
-          chargeId: charge.id,
-          amount: allocation.amount,
-          chargeStatus: charge.status,
-          remaining: remainingOf(amountDue, paid),
-          chargeUpdatedAt: now.toISOString(),
-        })
-      }
-      await em.flush()
+      const { receiptNumber, lines, created } = await acceptCashOnCharges(ctx, em, scope, charges, {
+        amount: parsed.amount,
+        paidOn: parsed.paidOn,
+        collectorPersonId,
+      })
 
       const dispatchId = parsed.notify
         ? await enqueueConfirmation({
@@ -244,6 +289,7 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
             collectorPersonId,
             params: { receiptNumber, amount: parsed.amount, paidOn: parsed.paidOn },
             lines,
+            idempotencyKey: `payments:cash:${receiptNumber}`,
           })
         : null
       return {
@@ -259,17 +305,15 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         scope,
       }
     })
-    if (result.dispatchId) {
-      await ctx.container.resolve<DispatchService>('foundationDispatch').publish(result.dispatchId, result.scope)
-    }
-    for (const line of result.payments) {
-      await emitAfterCommit('payments.payment.recorded', result.scope, {
-        id: line.paymentId,
-        chargeId: line.chargeId,
-        method: 'cash',
+    await afterCashCommit(
+      ctx,
+      {
+        dispatchIds: result.dispatchId ? [result.dispatchId] : [],
+        payments: result.payments,
         receiptNumber: result.receiptNumber,
-      })
-    }
+      },
+      result.scope,
+    )
     return result
   },
   buildLog: ({ result }) =>

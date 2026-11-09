@@ -3,7 +3,13 @@ import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerGatewayAdapter, registerWebhookHandler } from '@open-mercato/shared/modules/payment_gateways/types'
 import { createTokenLinkService, registerEmailTemplate } from '@/modules/foundation'
 import { OrderLink } from './data/entities'
-import { cashReceivedTemplate, orderCopyTemplate, orderLinkTemplate, orderReminderTemplate } from './emails/templates'
+import {
+  cashReceivedTemplate,
+  chargeReminderTemplate,
+  orderCopyTemplate,
+  orderLinkTemplate,
+  orderReminderTemplate,
+} from './emails/templates'
 import { ORDER_LINK_TTL_MS } from './lib/orders'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
@@ -29,7 +35,7 @@ export function checkoutProviderKey(): string {
  * `payments.orderLinks` (REQ-032, #116; foundation P-10): the token-link service of `payments_order_links`
  * (`until_expiry`, at most 120 days, a link ends with the orders deadline) — the single DD-35 lookup of that table.
  * The order copy and the personal link e-mails (`payments.order_copy`, `payments.order_link`) are registered with the
- * other templates.
+ * other templates, and so is the coach's overdue reminder (`payments.charge_reminder`, REQ-033, #117).
  */
 const orderLinks = createTokenLinkService(OrderLink, { use: 'until_expiry', ttlMs: ORDER_LINK_TTL_MS })
 
@@ -38,6 +44,7 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, orderReminderTemplate)
   registerEmailTemplate(container, orderCopyTemplate)
   registerEmailTemplate(container, orderLinkTemplate)
+  registerEmailTemplate(container, chargeReminderTemplate)
   container.register({
     [PAYMENTS_ORDER_LINKS]: asValue(orderLinks),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
