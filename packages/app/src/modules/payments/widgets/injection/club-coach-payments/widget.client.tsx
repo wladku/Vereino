@@ -1,7 +1,9 @@
 'use client'
 // The "My groups' payments" tile of `/club` — Today (README M-02 → M-18; payments spec REQ-033; issue #117): a link to
-// `/club/coach/payments` with the people to pay and overdue in the coach's groups and the cash the coach holds. A
-// caller without groups sees no tile; a failed read keeps the link with the plain description.
+// `/club/coach/payments` with the people to pay and overdue in the coach's groups and the cash the coach holds. The
+// spot does not enforce the widget's `features`, so the tile stays hidden until the read answers and for a caller the
+// API refuses (no `payments.groups.view`, e.g. a ward) or who has no groups; any other failed read keeps the link
+// with the plain description.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -14,6 +16,12 @@ const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
 const LINK_CLASS =
   'hover:bg-accent focus-visible:shadow-focus -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
 
+class CoachTileLoadError extends Error {
+  constructor(readonly status: number) {
+    super(String(status))
+  }
+}
+
 export default function ClubCoachPaymentsWidget() {
   const t = useT()
   const query = useQuery({
@@ -21,11 +29,15 @@ export default function ClubCoachPaymentsWidget() {
     retry: false,
     queryFn: async () => {
       const call = await apiCall<GroupChargesView>('/api/payments/group-charges')
-      if (!call.ok || !call.result) throw new Error(String(call.status))
+      if (!call.ok || !call.result) throw new CoachTileLoadError(call.status)
       return call.result
     },
   })
   const view = query.data
+  if (query.isPending) return null
+  if (query.error instanceof CoachTileLoadError && (query.error.status === 401 || query.error.status === 403)) {
+    return null
+  }
   if (view && view.groups.length === 0) return null
   const people = view ? view.groups.reduce((sum, group) => sum + group.peopleToPay, 0) : null
   const overdue = view ? view.groups.reduce((sum, group) => sum + group.peopleOverdue, 0) : null
