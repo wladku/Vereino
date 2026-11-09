@@ -24,6 +24,7 @@ export const LEGEND_STATES: readonly PublicSlotState[] = [
   'booked',
   'requested',
   'closed',
+  'unavailable',
 ]
 
 /** The status token family of a state: an extra cue next to its label, never the only one. */
@@ -35,6 +36,7 @@ export const STATE_TONE: Record<PublicSlotState, 'success' | 'info' | 'warning' 
   booked: 'neutral',
   requested: 'neutral',
   closed: 'error',
+  unavailable: 'error',
 }
 
 /** Static class names per tone, so Tailwind emits them. */

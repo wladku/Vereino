@@ -47,7 +47,7 @@ export async function requestSummary(
 }
 
 export type QueueConflict = {
-  kind: 'session' | 'rental' | 'booking' | 'closure' | 'request'
+  kind: 'session' | 'rental' | 'booking' | 'closure' | 'maintenance' | 'request'
   start: string
   end: string
 }

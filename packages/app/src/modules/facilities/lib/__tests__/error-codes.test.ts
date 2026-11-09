@@ -48,6 +48,13 @@ describe('facilities error codes', () => {
       'request_hold_expired',
       'request_renter_required',
       'rental_amount_note_required',
+      'maintenance_scheduled',
+      'maintenance_window_invalid',
+      'maintenance_schedule_invalid',
+      'maintenance_usage_threshold_invalid',
+      'maintenance_task_closed',
+      'maintainer_exists',
+      'maintainer_person_invalid',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)

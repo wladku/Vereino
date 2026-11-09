@@ -237,7 +237,7 @@ export const entryBanListItemSchema = z.object({
 
 /** A conflicting entry of a rental or booking check: ids and times, and for staff a label (#123). */
 export const conflictViewSchema = z.object({
-  kind: z.enum(['session', 'rental', 'booking', 'closure']),
+  kind: z.enum(['session', 'rental', 'booking', 'closure', 'maintenance']),
   id: z.uuid(),
   start: z.string(),
   end: z.string(),

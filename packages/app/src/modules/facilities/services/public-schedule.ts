@@ -19,7 +19,7 @@ import type {
 } from '../../club_core/services/public-site'
 import type { PublicBlockProvider } from '../../club_core/services/public-blocks'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
-import { Closure, InternalBooking, Rental, RentalRate, ZoneRule } from '../data/entities'
+import { Closure, InternalBooking, MaintenanceTask, Rental, RentalRate, ZoneRule } from '../data/entities'
 import { rentalRateShapeOf, zoneRuleShapeOf } from '../data/shapes'
 import { OCCUPYING_BOOKING_STATUSES } from '../lib/internal-bookings'
 import {
@@ -227,6 +227,7 @@ async function publicEntries(
     { fields: [...times] },
   )
   const closures = await em.find(Closure, where, { fields: [...times] })
+  const works = await em.find(MaintenanceTask, { ...where, status: 'planned' }, { fields: [...times] })
   return [
     ...sessions.map((row) => ({ kind: 'session' as const, start: row.startAt, end: row.endAt })),
     ...rentals.map((row) => ({
@@ -236,6 +237,7 @@ async function publicEntries(
     })),
     ...bookings.map((row) => ({ kind: 'booking' as const, start: row.startsAt, end: row.endsAt })),
     ...closures.map((row) => ({ kind: 'closure' as const, start: row.startsAt, end: row.endsAt })),
+    ...works.map((row) => ({ kind: 'maintenance' as const, start: row.startsAt as Date, end: row.endsAt as Date })),
   ]
 }
 

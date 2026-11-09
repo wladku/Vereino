@@ -4,7 +4,10 @@
 // time zone with its zones and blocks and a text legend, and — for a user with `facilities.bookings.create` — the
 // booking range (from / to; picking a free segment fills it) with "Book", which opens the booking dialog. A booking
 // the user may cancel shows "Cancel" (with a confirmation; the booking's version travels as the lock token). States:
-// a timeline skeleton while loading, an error with retry, and "no zone rules" when the day has none.
+// a timeline skeleton while loading, an error with retry, a permission-denied state (403), and "no zone rules" when the
+// day has none. Planned maintenance (#128): a user who may plan on the place (`maintenance.canPlan`, the place among
+// `planPlaceIds` or every place) gets "Plan maintenance" — a one-off window in the club's zone, prefilled from the
+// booking range; a place maintainer without `facilities.view` reads the day redacted and cannot book.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -20,12 +23,16 @@ import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { addDays, calendarDateInZone, isCalendarDate, isLocalTime } from '@vereino/core'
 import { formatDayHeading } from '@vereino/ui'
+import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
+import { flashFlagged } from '../maintenance-client'
 import { BookDialog } from './BookDialog'
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
 import { PlaceTimeline, TimelineLegend } from './PlaceTimeline'
 import {
   CLUB_PLACES_HREF,
   PLACES_CALENDAR_KEY,
+  calendarErrorStatus,
+  canPlanMaintenance,
   cancelInternalBooking,
   compactRange,
   dayWindow,
@@ -37,6 +44,8 @@ import {
   shortWeekday,
   usePlacesFeatures,
   useStaffCalendar,
+  zonedLocalInstant,
+  zonedLocalValue,
   type CalendarEntry,
 } from './places-client'
 
@@ -69,6 +78,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const [to, setTo] = React.useState('')
   const [rangeProblem, setRangeProblem] = React.useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [planKey, setPlanKey] = React.useState(0)
 
   const goTo = (next: string) => {
     if (!isCalendarDate(next)) return
@@ -93,6 +103,13 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const day = calendar?.days.find((entry) => entry.date === date) ?? null
   const entries = calendar ? entriesOfDay(calendar.entries, date, timeZone) : []
   const segments = calendar ? daySegments(day, entries, date, timeZone) : []
+  const redacted = calendar?.maintenance?.redacted === true
+  const canBook = features.book && !redacted
+  const canPlan = calendar ? canPlanMaintenance(calendar, placeId) : false
+  const planWindow = {
+    startsAt: `${date}T${from || '08:00'}`,
+    endsAt: `${date}T${to || '10:00'}`,
+  }
 
   const openBooking = () => {
     if (!isLocalTime(from) || !isLocalTime(to)) {
@@ -146,6 +163,12 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   let body: React.ReactNode
   if (!calendar && query.isFetching) {
     body = <TimelineSkeleton label={t('facilities.places.loading')} />
+  } else if (!calendar && calendarErrorStatus(query.error) === 403) {
+    body = (
+      <Alert status="warning" data-testid="club-place-denied">
+        <p className="max-w-prose">{t('facilities.places.errors.forbidden')}</p>
+      </Alert>
+    )
   } else if (!calendar) {
     body = (
       <ErrorMessage
@@ -171,7 +194,8 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           placeId={placeId}
           places={calendar.places}
           selected={from && to ? { from, to } : null}
-          canBook={features.book}
+          canBook={canBook}
+          redacted={redacted}
           onPick={(nextFrom, nextTo) => {
             setFrom(nextFrom)
             setTo(nextTo)
@@ -243,7 +267,22 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
         {formatDayHeading(date, locale)}
       </h2>
       <p className="text-muted-foreground text-sm">{t('facilities.places.day.zone', { zone: timeZone })}</p>
-      {features.book && calendar && place ? (
+      {canPlan && place ? (
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => {
+              setPlanKey((current) => current + 1)
+            }}
+            data-testid="club-place-plan-maintenance"
+          >
+            {t('facilities.maintenance.actions.plan')}
+          </Button>
+        </div>
+      ) : null}
+      {canBook && calendar && place ? (
         <section
           aria-labelledby={`${id}-range`}
           className="flex flex-col gap-2 rounded-md border p-3"
@@ -307,6 +346,26 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           timeZone={timeZone}
           groupEvents={features.groupEvents}
           onBooked={onBooked}
+        />
+      ) : null}
+      {planKey > 0 && place ? (
+        <MaintenanceTaskDialog
+          key={planKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setPlanKey(0)
+          }}
+          places={[{ value: place.id, label: place.name }]}
+          windowOnly
+          initialWindow={planWindow}
+          toInstant={(local) => zonedLocalInstant(local, timeZone)}
+          toLocal={(iso) => zonedLocalValue(iso, timeZone)}
+          windowHelp={t('facilities.maintenance.plan.zone', { zone: timeZone })}
+          testId="club-place-maintenance-dialog"
+          onSaved={async (result) => {
+            flashFlagged(t, result, t('facilities.maintenance.flash.planned'))
+            await refresh()
+          }}
         />
       ) : null}
       {ConfirmDialogElement}

@@ -28,6 +28,7 @@ const issueCodes = [
   'rental_units_invalid',
   'rental_rate_missing',
   'place_closed',
+  'maintenance_scheduled',
   'zone_not_reservable',
   'rental_conflict',
   'entry_ban_active',

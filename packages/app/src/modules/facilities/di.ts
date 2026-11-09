@@ -3,9 +3,10 @@ import { registerNotificationTypes } from '@open-mercato/core/modules/notificati
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { OCCUPANCY_PROVIDER_TOKEN, registerEmailTemplate } from '@/modules/foundation'
-import { requestEmailTemplates } from './emails/templates'
+import { maintenanceDueTemplate, requestEmailTemplates } from './emails/templates'
 import notificationTypes from './notifications'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
+import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
 import { createPublicPlacesBlock } from './services/public-schedule'
 import { FACILITIES_REQUEST_LINKS, createRequestLinkService } from './services/requests'
 
@@ -28,6 +29,7 @@ const requestLinkService = createRequestLinkService()
 export function register(container: AppContainer) {
   registerNotificationTypes(notificationTypes)
   for (const template of requestEmailTemplates) registerEmailTemplate(container, template)
+  registerEmailTemplate(container, maintenanceDueTemplate)
   const service = asFunction((cradle: { em: EntityManager }) => createOccupancyService(() => cradle.em))
     .scoped()
     .proxy()
@@ -36,5 +38,7 @@ export function register(container: AppContainer) {
     [OCCUPANCY_PROVIDER_TOKEN]: service,
     [FACILITIES_PUBLIC_PLACES]: asFunction(() => createPublicPlacesBlock(container)).scoped(),
     [FACILITIES_REQUEST_LINKS]: asValue(requestLinkService),
+    // #128 (DD-36): the places a person maintains, read by `people` for the scope grant and the derived role.
+    [FACILITIES_MAINTAINER_SCOPE_PROVIDER]: asValue(createMaintainerScopeProvider()),
   })
 }

@@ -74,6 +74,44 @@ const events = [
   { id: 'facilities.log.updated', label: 'Facility log updated', entity: 'facility_log', category: 'crud' },
   { id: 'facilities.incident.created', label: 'Incident reported', entity: 'incident', category: 'crud' },
   { id: 'facilities.incident.updated', label: 'Incident updated', entity: 'incident', category: 'crud' },
+  // Maintenance (#128): `scheduled` when a window is created or moved (it flags the entries under it), `completed` on
+  // completion; `placeId` rides along as on every occupancy event.
+  {
+    id: 'facilities.maintenance_task.created',
+    label: 'Maintenance task planned',
+    entity: 'maintenance_task',
+    category: 'crud',
+  },
+  {
+    id: 'facilities.maintenance_task.updated',
+    label: 'Maintenance task changed',
+    entity: 'maintenance_task',
+    category: 'crud',
+  },
+  {
+    id: 'facilities.maintenance.scheduled',
+    label: 'Maintenance window scheduled',
+    entity: 'maintenance_task',
+    category: 'custom',
+  },
+  {
+    id: 'facilities.maintenance.completed',
+    label: 'Maintenance task completed',
+    entity: 'maintenance_task',
+    category: 'custom',
+  },
+  {
+    id: 'facilities.place_maintainer.created',
+    label: 'Place maintainer assigned',
+    entity: 'place_maintainer',
+    category: 'crud',
+  },
+  {
+    id: 'facilities.place_maintainer.deleted',
+    label: 'Place maintainer removed',
+    entity: 'place_maintainer',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'facilities', events })

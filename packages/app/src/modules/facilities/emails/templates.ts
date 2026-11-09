@@ -274,6 +274,57 @@ function supersededLead(t: TranslateWithFallbackFn, params: RequestClosedParams,
   )
 }
 
+// --- The maintenance reminder (#128) ---
+
+/** The in-app reminder of a maintenance task (REQ-022, DD-46): its id is the dispatch template of the daily job. */
+export const MAINTENANCE_DUE_TEMPLATE = 'facilities.maintenance_due'
+
+const maintenanceDueParams = z
+  .object({
+    taskId: z.uuid(),
+    placeName: z.string().max(200),
+    kind: z.string().min(1).max(40),
+    dueDate: z.string().nullable(),
+    stage: z.enum(['d14', 'd1', 'usage']),
+    hours: z.number().int().nullable(),
+  })
+  .strict()
+
+export type MaintenanceDueParams = z.output<typeof maintenanceDueParams>
+
+function maintenanceLead(t: TranslateWithFallbackFn, params: MaintenanceDueParams): string {
+  const values = {
+    place: params.placeName,
+    kind: t(`facilities.maintenance.kinds.${params.kind}`, params.kind),
+    date: params.dueDate ?? '',
+    hours: String(params.hours ?? 0),
+  }
+  if (params.stage === 'usage') {
+    return t(
+      'facilities.email.maintenanceDue.usage',
+      '{kind} at {place}: {hours} hours of use since it was last done.',
+      values,
+    )
+  }
+  return t('facilities.email.maintenanceDue.date', '{kind} at {place} is due on {date}.', values)
+}
+
+/**
+ * `facilities.maintenance_due`: delivered in-app only (the recipients carry no e-mail channel); the in-app notice uses
+ * the generic keys of the `facilities.maintenance_due` notification type (DD-M07), this copy serves the e-mail render.
+ */
+export const maintenanceDueTemplate = defineEmailTemplate<MaintenanceDueParams>({
+  id: MAINTENANCE_DUE_TEMPLATE,
+  notificationType: 'facilities.maintenance_due',
+  optOut: 'never',
+  params: maintenanceDueParams,
+  subject: (t, params) => maintenanceLead(t, params),
+  body: (t, params) => paragraphs(maintenanceLead(t, params), []),
+  text: (t, params) => plainText(maintenanceLead(t, params), []),
+  actionLabel: (t) => t('facilities.email.maintenanceDue.action', 'Open maintenance'),
+  link: () => '/backend/facilities/maintenance',
+})
+
 export const requestEmailTemplates = [
   requestVerificationTemplate,
   requestApprovedTemplate,

@@ -181,10 +181,13 @@ export function slotWithinOpeningHours(hours: OpeningHours | null, slot: LocalSl
   return windows === null || withinWindows(windows, slot.from, slot.to)
 }
 
-/** An occupying entry on a place (a session, a rental, an internal booking, a closure) as the occupancy check reads it. */
+/**
+ * An occupying entry on a place (a session, a rental, an internal booking, a closure, a planned maintenance window —
+ * #128) as the occupancy check reads it.
+ */
 export type OccupancyEntry = {
   readonly id: string
-  readonly kind: 'session' | 'rental' | 'booking' | 'closure'
+  readonly kind: 'session' | 'rental' | 'booking' | 'closure' | 'maintenance'
   readonly placeId: string
   readonly start: Date
   readonly end: Date
@@ -203,11 +206,15 @@ export function overlappingEntries<T extends OccupancyEntry>(
 
 /**
  * The code a rental save answers for the overlapping entries, or null when the slot is free: a closure closes the
- * place (409 `place_closed`), any other entry is a conflict (409 `rental_conflict`).
+ * place (409 `place_closed`), a planned maintenance window blocks it (409 `maintenance_scheduled`, #128), any other
+ * entry is a conflict (409 `rental_conflict`).
  */
-export function occupancyConflictCode(entries: readonly OccupancyEntry[]): 'place_closed' | 'rental_conflict' | null {
+export function occupancyConflictCode(
+  entries: readonly OccupancyEntry[],
+): 'place_closed' | 'maintenance_scheduled' | 'rental_conflict' | null {
   if (entries.length === 0) return null
-  return entries.some((entry) => entry.kind === 'closure') ? 'place_closed' : 'rental_conflict'
+  if (entries.some((entry) => entry.kind === 'closure')) return 'place_closed'
+  return entries.some((entry) => entry.kind === 'maintenance') ? 'maintenance_scheduled' : 'rental_conflict'
 }
 
 /** Who an entry ban names: a registered renter (an institution or a person). */

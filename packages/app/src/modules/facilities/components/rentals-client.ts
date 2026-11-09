@@ -52,7 +52,7 @@ export type RentalRow = {
   updatedAt: string | null
 }
 
-export type ConflictKind = 'session' | 'rental' | 'closure'
+export type ConflictKind = 'session' | 'rental' | 'closure' | 'maintenance'
 export type RentalConflict = { kind: ConflictKind; id: string; start: string; end: string }
 export type QuoteIssue = { code: string; conflicts?: RentalConflict[] }
 
@@ -193,7 +193,7 @@ function isConflict(entry: unknown): entry is RentalConflict {
   if (typeof entry !== 'object' || entry === null) return false
   const value = entry as Partial<RentalConflict>
   return (
-    (value.kind === 'session' || value.kind === 'rental' || value.kind === 'closure') &&
+    (value.kind === 'session' || value.kind === 'rental' || value.kind === 'closure' || value.kind === 'maintenance') &&
     typeof value.start === 'string' &&
     typeof value.end === 'string'
   )

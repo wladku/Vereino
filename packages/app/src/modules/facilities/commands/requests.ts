@@ -67,6 +67,9 @@ async function throwRequestIssue(issues: readonly RentalIssue[]): Promise<void> 
       return throwFieldError('rental_rate_missing', 'renterCategory')
     case 'zone_not_reservable':
       return throwFieldError('request_zone_invalid', 'startsAt')
+    case 'maintenance_scheduled':
+      // Planned facility work answers its own 409 to the guest too (TEST-049, D-024), without the kind.
+      return facilitiesErrors.throw('maintenance_scheduled')
     case 'place_closed':
     case 'rental_conflict':
     case 'entry_ban_active':
@@ -369,6 +372,7 @@ const APPROVAL_ISSUE_FIELDS: Record<RentalIssue['code'], string> = {
   rental_units_invalid: 'units',
   rental_rate_missing: 'renterCategory',
   place_closed: 'startsAt',
+  maintenance_scheduled: 'startsAt',
   zone_not_reservable: 'startsAt',
   rental_conflict: 'startsAt',
   entry_ban_active: 'renterId',
