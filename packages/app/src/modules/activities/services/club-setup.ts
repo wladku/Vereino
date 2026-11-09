@@ -82,10 +82,26 @@ export async function seedDefaultPolicies(container: AwilixContainer, scope: Act
   return created
 }
 
-/** Everything `seedDefaults` does for one club: the three schedules and the default policies. */
-export async function setUpClubActivities(container: AwilixContainer, scope: ActivitiesScope): Promise<void> {
-  await registerGenerateSchedule(container, scope)
-  await registerExpireSchedule(container, scope)
-  await registerRemindersSchedule(container, scope)
-  await seedDefaultPolicies(container, scope)
+/** Which schedules were registered (false: the registration failed and was logged) and how many policies were added. */
+export type ClubActivitiesSetUp = {
+  schedules: { generateOccurrences: boolean; expireGuardianConfirmations: boolean; sendDeclarationReminders: boolean }
+  policiesCreated: number
+}
+
+/**
+ * Everything `seedDefaults` does for one club: the three schedules and the default policies. Idempotent, so the
+ * `activities set-up-club` command re-runs it for a club set up before a schedule existed (#192: the reminders).
+ */
+export async function setUpClubActivities(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+): Promise<ClubActivitiesSetUp> {
+  const generateOccurrences = await registerGenerateSchedule(container, scope)
+  const expireGuardianConfirmations = await registerExpireSchedule(container, scope)
+  const sendDeclarationReminders = await registerRemindersSchedule(container, scope)
+  const policiesCreated = await seedDefaultPolicies(container, scope)
+  return {
+    schedules: { generateOccurrences, expireGuardianConfirmations, sendDeclarationReminders },
+    policiesCreated,
+  }
 }
