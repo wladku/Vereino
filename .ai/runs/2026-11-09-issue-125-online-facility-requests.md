@@ -33,9 +33,11 @@
 - Integration: **not run locally** — `docker info` fails (the Docker Desktop engine is down; the run rules forbid touching it). TEST-035, TEST-036, TEST-039 (and TEST-028/TEST-033, whose pages and probe changed) are left to CI.
 - `yarn verify` run 1: generate … lint passed; `format:check` failed on TEST-035/TEST-036 (unformatted); after `prettier --write`, `yarn verify --from format:check` — format:check, ds:check, i18n:check-hardcoded, contracts:check, lessons:check, spec-changelogs:check, test (70 suites, 885 tests), test:scripts, build all passed.
 
+- CI on PR #236 (run 42664947486): gate, browser-smoke, perf and the three integration shards pass; shard 2/3: **TEST-028 ✓ (22.1 s), TEST-033 ✓ (25.2 s), TEST-035 ✓ (27.3 s), TEST-036 ✓ (16.3 s), TEST-039 ✓ (23.1 s)** — first runs of the new tests, all green.
+
 ## Open problems
 
-- TEST-035, TEST-036 and TEST-039 have not run (no container runtime here); CI runs the integration shards. TEST-028 (its P-04 axe scan now includes the request buttons) and TEST-033 (the probe's renamed property) re-run there too.
+- The integration tests ran only in CI (no container runtime locally); they passed there.
 - The 429 / 503 of the request limits are not integration-tested (`OM_INTEGRATION_TEST` disables limits); the key and `failClosed` are unit-tested.
 - No charge on approval until `payments` registers `payments.chargeService` (DD-19).
 - The `facilities:expire-requests` schedule is registered by `seedDefaults` (new organizations); existing organizations get it from a setup re-run, like `rental-lifecycle`.
