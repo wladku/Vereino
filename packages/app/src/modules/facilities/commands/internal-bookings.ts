@@ -155,7 +155,14 @@ const createInternalBookingCommand: CommandHandler<Record<string, unknown>, Inte
       if (closures.length > 0 || outsideHours) {
         await throwFieldError('place_closed', 'startsAt', { conflicts: closures.map(conflictView) })
       }
-      const occupying = entries.filter((entry) => entry.kind !== 'closure' && entry.kind !== 'request')
+      // A planned maintenance window blocks the slot like a closure, with its own code (#128).
+      const works = entries.filter((entry) => entry.kind === 'maintenance')
+      if (works.length > 0) {
+        await throwFieldError('maintenance_scheduled', 'startsAt', { conflicts: works.map(conflictView) })
+      }
+      const occupying = entries.filter(
+        (entry) => entry.kind !== 'closure' && entry.kind !== 'request' && entry.kind !== 'maintenance',
+      )
       if (occupying.length > 0) {
         await throwFieldError('rental_conflict', 'startsAt', { conflicts: occupying.map(conflictView) })
       }

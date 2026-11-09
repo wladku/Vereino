@@ -1,7 +1,7 @@
 // The checks of a rental slot (facilities spec glossary *Booking (external rental)*, *Slot occupancy*; REQ-013, B-24
 // validation; #122), shared by the quote (`POST /api/facilities/rentals/quote`, nothing saved), the staff entry and the
 // move. In order: the units, the rate of the place for the renter category on the date, a closure or the opening
-// hours (`place_closed`), the zone (`zone_not_reservable`), the other occupancy (`rental_conflict`) and the renter's
+// hours (`place_closed`), a planned maintenance window (`maintenance_scheduled`, #128), the zone (`zone_not_reservable`), the other occupancy (`rental_conflict`) and the renter's
 // entry ban (`entry_ban_active`). The commands throw the first issue; the quote lists them all next to the amount and
 // the deadlines. Every read uses the caller's EntityManager, so under the occupancy lock (DD-43) the result stands
 // until the commit.
@@ -31,6 +31,7 @@ export type RentalIssueCode =
   | 'rental_units_invalid'
   | 'rental_rate_missing'
   | 'place_closed'
+  | 'maintenance_scheduled'
   | 'zone_not_reservable'
   | 'rental_conflict'
   | 'entry_ban_active'
@@ -122,11 +123,14 @@ export async function assessRentalSlot(
     if (closures.length > 0 || !slotWithinOpeningHours(hours, slot)) {
       issues.push({ code: 'place_closed', ...(closures.length > 0 ? { conflicts: closures.map(conflictView) } : {}) })
     } else {
+      // A planned maintenance window blocks the slot like a closure (#128), ahead of the zone.
+      const works = entries.filter((entry) => entry.kind === 'maintenance')
+      if (works.length > 0) issues.push({ code: 'maintenance_scheduled', conflicts: works.map(conflictView) })
       const rules = await em.find(ZoneRule, { ...scope, deletedAt: null, placeId: input.placeId })
       if (!slotReservable(dayZoneSegments(rules.map(zoneRuleShapeOf), slot.date), slot)) {
         issues.push({ code: 'zone_not_reservable' })
       }
-      const others = entries.filter((entry) => entry.kind !== 'closure')
+      const others = entries.filter((entry) => entry.kind !== 'closure' && entry.kind !== 'maintenance')
       if (occupancyConflictCode(others) === 'rental_conflict') {
         issues.push({ code: 'rental_conflict', conflicts: others.map(conflictView) })
       }

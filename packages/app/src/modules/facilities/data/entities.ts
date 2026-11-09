@@ -4,6 +4,12 @@ import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalPr
 import type { ClosureReason } from '../lib/closures'
 import type { IncidentAction, IncidentKind } from '../lib/incidents'
 import type { InternalBookingStatus } from '../lib/internal-bookings'
+import type {
+  MaintenanceKind,
+  MaintenanceResponsible,
+  MaintenanceScheduleType,
+  MaintenanceStatus,
+} from '../lib/maintenance'
 import type { GroupPresent } from '../lib/logs'
 import type { RenterCategory } from '../lib/rates'
 import type { EntryBanSubjectType, RenterType, RentalStatus, RequestedVia } from '../lib/rentals'
@@ -451,4 +457,120 @@ export class Incident extends ScopedEntityBase {
   /** The `communication` case thread the incident is followed in (a scalar id, no relation). */
   @Property({ name: 'thread_id', type: 'uuid', nullable: true })
   threadId?: string | null
+}
+
+/**
+ * A maintenance task of a place (facilities spec *Data Models* → `facilities_maintenance_tasks`, glossary *Maintenance
+ * task*; REQ-022, DD-36; #128): line marking, mowing, brushing, an inspection. A task with a window (`starts_at`–
+ * `ends_at`) and status `planned` occupies the slot like a closure; a task by date carries a due date (recurring:
+ * an RRULE, each completion creates the next instance of the series); a task by use counts the occupied hours since
+ * `usage_counted_from`, which a completion resets. The notes are encrypted at rest (free text may name people).
+ */
+@Entity({ tableName: 'facilities_maintenance_tasks' })
+@Index({ name: 'facilities_maintenance_tasks_org_place_start_idx', properties: ['organizationId', 'placeId', 'startsAt'] })
+@Index({ name: 'facilities_maintenance_tasks_org_place_due_idx', properties: ['organizationId', 'placeId', 'dueDate'] })
+@Index({
+  name: 'facilities_maintenance_tasks_org_status_type_idx',
+  properties: ['organizationId', 'status', 'scheduleType'],
+})
+@Index({ name: 'facilities_maintenance_tasks_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class MaintenanceTask extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'startsAt'
+    | 'endsAt'
+    | 'dueDate'
+    | 'recurrenceRule'
+    | 'usageHoursThreshold'
+    | 'usageCountedFrom'
+    | 'seriesId'
+    | 'status'
+    | 'doneAt'
+    | 'doneByPersonId'
+    | 'cost'
+    | 'notes'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'kind', type: 'text' })
+  kind!: MaintenanceKind
+
+  @Property({ name: 'responsible', type: 'text' })
+  responsible!: MaintenanceResponsible
+
+  @Property({ name: 'schedule_type', type: 'text' })
+  scheduleType!: MaintenanceScheduleType
+
+  @Property({ name: 'starts_at', type: Date, nullable: true })
+  startsAt?: Date | null
+
+  @Property({ name: 'ends_at', type: Date, nullable: true })
+  endsAt?: Date | null
+
+  /** `YYYY-MM-DD` in the club time zone. */
+  @Property({ name: 'due_date', type: 'date', nullable: true })
+  dueDate?: string | null
+
+  /** The RRULE subset `FREQ=…[;INTERVAL=n]` of a `date_recurring` task. */
+  @Property({ name: 'recurrence_rule', type: 'text', nullable: true })
+  recurrenceRule?: string | null
+
+  @Property({ name: 'usage_hours_threshold', type: 'integer', nullable: true })
+  usageHoursThreshold?: number | null
+
+  @Property({ name: 'usage_counted_from', type: Date, nullable: true })
+  usageCountedFrom?: Date | null
+
+  /** The instances of one recurring task share it (the first instance's id). */
+  @Property({ name: 'series_id', type: 'uuid', nullable: true })
+  seriesId?: string | null
+
+  @Property({ name: 'status', type: 'text', default: 'planned' })
+  status: MaintenanceStatus = 'planned'
+
+  @Property({ name: 'planned_by_person_id', type: 'uuid' })
+  plannedByPersonId!: string
+
+  @Property({ name: 'done_at', type: Date, nullable: true })
+  doneAt?: Date | null
+
+  @Property({ name: 'done_by_person_id', type: 'uuid', nullable: true })
+  doneByPersonId?: string | null
+
+  /** In minor units. */
+  @Property({ name: 'cost', type: 'integer', nullable: true })
+  cost?: number | null
+
+  @Property({ name: 'notes', type: 'text', nullable: true })
+  notes?: string | null
+}
+
+/**
+ * A person assigned to maintain a place (facilities spec *Data Models* → `facilities_place_maintainers`; DD-36; #128):
+ * while a person has a row, the `people` role sync gives them the derived role `vereino_maintenance_planner` and their
+ * scope the place (`maintenance_planner` grant). Managed with `facilities.manage`; removing the row ends the scope at
+ * once (a hard delete: the assignment carries no history beyond the audit log).
+ */
+@Entity({ tableName: 'facilities_place_maintainers' })
+@Unique({
+  name: 'facilities_place_maintainers_org_place_person_unique',
+  properties: ['organizationId', 'placeId', 'personId'],
+})
+@Index({ name: 'facilities_place_maintainers_org_person_idx', properties: ['organizationId', 'personId'] })
+@Index({ name: 'facilities_place_maintainers_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class PlaceMaintainer extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'assignedByPersonId'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'person_id', type: 'uuid' })
+  personId!: string
+
+  @Property({ name: 'assigned_by_person_id', type: 'uuid', nullable: true })
+  assignedByPersonId?: string | null
+
+  @Property({ name: 'assigned_at', type: Date })
+  assignedAt!: Date
 }

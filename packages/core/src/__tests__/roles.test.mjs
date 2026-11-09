@@ -15,15 +15,19 @@ import {
 
 const TODAY = '2026-10-27'
 
-test('the catalogue holds the five phase 1 roles (Q17)', () => {
+test('the catalogue holds the five phase 1 roles (Q17) and the derived maintenance planner (DD-36)', () => {
   assert.deepEqual(catalogueAuthRoles(), [
     'vereino_club_admin',
     'vereino_coach',
     'vereino_coordinator',
+    'vereino_maintenance_planner',
     'vereino_member',
     'vereino_payer',
   ])
-  assert.deepEqual(VEREINO_ROLES, ['club_admin', 'coordinator', 'coach', 'member', 'payer'])
+  assert.deepEqual(VEREINO_ROLES, ['club_admin', 'coordinator', 'coach', 'member', 'payer', 'maintenance_planner'])
+  assert.deepEqual(roleCatalogue.maintenance_planner.features, ['facilities.maintenance.manage'])
+  assert.equal(roleCatalogue.maintenance_planner.implies, undefined)
+  assert.ok(!roleCatalogue.coordinator.features.includes('facilities.maintenance.manage'))
   assert.equal(roleCatalogue.coordinator.requiresScope, 'section')
   assert.equal(roleCatalogue.club_admin.requiresScope, null)
 })
@@ -105,6 +109,16 @@ test('desiredRoles drops every vereino_* role that is no longer earned', () => {
   assert.deepEqual(desiredRoles({ currentRoles: [], assignments: [], hasAccount: true, payerEligible: false }, TODAY), [
     'vereino_member',
   ])
+})
+
+test('desiredRoles adds vereino_maintenance_planner only for a place maintainer (DD-36)', () => {
+  const base = { currentRoles: ['vereino_maintenance_planner'], assignments: [], hasAccount: true, payerEligible: false }
+  assert.deepEqual(desiredRoles({ ...base, maintenancePlanner: true }, TODAY), [
+    'vereino_maintenance_planner',
+    'vereino_member',
+  ])
+  assert.deepEqual(desiredRoles({ ...base, maintenancePlanner: false }, TODAY), ['vereino_member'])
+  assert.deepEqual(desiredRoles(base, TODAY), ['vereino_member'])
 })
 
 test('sameRoleSet compares as sets', () => {

@@ -71,6 +71,19 @@ export const errorCodes = [
   { code: 'request_hold_expired', status: 409, messageKey: 'facilities.errors.request_hold_expired' },
   { code: 'request_renter_required', status: 422, messageKey: 'facilities.errors.request_renter_required' },
   { code: 'rental_amount_note_required', status: 422, messageKey: 'facilities.errors.rental_amount_note_required' },
+  // Maintenance (REQ-022, DD-36, TEST-049, TEST-050; #128): a new entry in a planned maintenance window answers 409
+  // `maintenance_scheduled`; a task's window, schedule and usage threshold 422; a planned task only is changed or completed.
+  { code: 'maintenance_scheduled', status: 409, messageKey: 'facilities.errors.maintenance_scheduled' },
+  { code: 'maintenance_window_invalid', status: 422, messageKey: 'facilities.errors.maintenance_window_invalid' },
+  { code: 'maintenance_schedule_invalid', status: 422, messageKey: 'facilities.errors.maintenance_schedule_invalid' },
+  {
+    code: 'maintenance_usage_threshold_invalid',
+    status: 422,
+    messageKey: 'facilities.errors.maintenance_usage_threshold_invalid',
+  },
+  { code: 'maintenance_task_closed', status: 409, messageKey: 'facilities.errors.maintenance_task_closed' },
+  { code: 'maintainer_exists', status: 409, messageKey: 'facilities.errors.maintainer_exists' },
+  { code: 'maintainer_person_invalid', status: 422, messageKey: 'facilities.errors.maintainer_person_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']

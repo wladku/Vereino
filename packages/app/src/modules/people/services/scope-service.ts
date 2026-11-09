@@ -9,17 +9,20 @@ import type { PersonScopeSubject, ScopeProvider, ScopeSubject } from '@/modules/
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { personScope } from '../lib/people-rules'
 import { clubToday } from './club-clock'
+import { maintainerScopeProvider, type MaintainerScopeProvider } from './maintainer-scope'
 import { membershipContribution, type MembershipContribution } from './membership-contribution'
 
 /**
  * The grants of the person `personId` on `today`, read with `em` (scoped to the subject's organization);
- * `contribution` is the optional `groups` contribution (null without `groups`).
+ * `contribution` is the optional `groups` contribution (null without `groups`), `maintainers` the optional
+ * `facilities` maintainer scope (null without `facilities`, #128).
  */
 export async function loadPersonScope(
   em: EntityManager,
   subject: { personId: string; tenantId: string; organizationId: string },
   today: string,
   contribution: MembershipContribution | null = null,
+  maintainers: MaintainerScopeProvider | null = null,
 ): Promise<Scope> {
   const where = { tenantId: subject.tenantId, organizationId: subject.organizationId, deletedAt: null }
   const assignments = await em.find(
@@ -33,10 +36,12 @@ export async function loadPersonScope(
     { fields: ['id', 'wardPersonId', 'validFrom', 'validTo'] },
   )
   const coachedGroupIds = contribution ? await contribution.coachedGroupIds(em, subject, today) : []
+  const maintenancePlaceIds = maintainers ? await maintainers.placeIdsFor(em, subject) : []
   return personScope(
     {
       personId: subject.personId,
       coachedGroupIds,
+      maintenancePlaceIds,
       assignments: assignments.map((row) => ({
         role: row.role,
         sectionId: row.sectionId ?? null,
@@ -70,7 +75,13 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       if (!person) return []
       const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
       const today = await clubToday(container, scope)
-      return loadPersonScope(em, { ...scope, personId: person.id }, today, membershipContribution(container))
+      return loadPersonScope(
+        em,
+        { ...scope, personId: person.id },
+        today,
+        membershipContribution(container),
+        maintainerScopeProvider(container),
+      )
     },
     // A token link's subject (foundation P-10): the person's current grants, read anew at every redemption.
     async grantsForPerson(subject: PersonScopeSubject): Promise<Scope> {
@@ -79,7 +90,13 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       const person = await em.findOne(Person, { id: subject.personId, ...scope, deletedAt: null }, { fields: ['id'] })
       if (!person) return []
       const today = await clubToday(container, scope)
-      return loadPersonScope(em, { ...scope, personId: person.id }, today, membershipContribution(container))
+      return loadPersonScope(
+        em,
+        { ...scope, personId: person.id },
+        today,
+        membershipContribution(container),
+        maintainerScopeProvider(container),
+      )
     },
   }
 }

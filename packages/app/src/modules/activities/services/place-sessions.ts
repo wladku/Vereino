@@ -30,6 +30,16 @@ export type ActivitiesPlaceSessions = {
     window: { start: Date; end: Date },
     em?: EntityManager,
   ): Promise<PlaceSessionEntry[]>
+  /**
+   * The start and end of the live `done` sessions on the places that overlap the window (the hours of use a
+   * maintenance task counts, facilities #128); times only, no names.
+   */
+  doneSessionTimes(
+    scope: ActivitiesScope,
+    placeIds: readonly string[],
+    window: { start: Date; end: Date },
+    em?: EntityManager,
+  ): Promise<Array<{ start: Date; end: Date }>>
   /** The live `planned` sessions among `ids` (a group event or a generated series that may take a requested slot, #123). */
   sessionsByIds(scope: ActivitiesScope, ids: readonly string[], em?: EntityManager): Promise<PlaceSessionEntry[]>
   /**
@@ -66,6 +76,28 @@ export async function plannedSessions(
     { fields: [...SESSION_FIELDS], orderBy: { startAt: 'asc' }, limit: 2000 },
   )
   return withActivityNames(em, scope, rows)
+}
+
+export async function doneSessionTimes(
+  em: EntityManager,
+  scope: ActivitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+): Promise<Array<{ start: Date; end: Date }>> {
+  if (placeIds.length === 0) return []
+  const rows = await em.find(
+    Occurrence,
+    {
+      ...scope,
+      deletedAt: null,
+      status: 'done',
+      placeId: { $in: [...new Set(placeIds)] },
+      startAt: { $lt: window.end },
+      endAt: { $gt: window.start },
+    },
+    { fields: ['id', 'startAt', 'endAt'], orderBy: { startAt: 'asc' } },
+  )
+  return rows.map((row) => ({ start: row.startAt, end: row.endAt }))
 }
 
 export async function sessionsByIds(
@@ -121,6 +153,8 @@ export async function flagForReschedule(
 export function createPlaceSessions(getEm: () => EntityManager): ActivitiesPlaceSessions {
   return {
     plannedSessions: (scope, placeIds, window, em) => plannedSessions(em ?? getEm().fork(), scope, placeIds, window),
+    doneSessionTimes: (scope, placeIds, window, em) =>
+      doneSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
     sessionsByIds: (scope, ids, em) => sessionsByIds(em ?? getEm().fork(), scope, ids),
     flagForReschedule: (scope, placeIds, window) => flagForReschedule(getEm().fork(), scope, placeIds, window),
   }

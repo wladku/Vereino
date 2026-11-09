@@ -35,6 +35,7 @@ export const STATE_TONE: Record<PublicSlotState, 'success' | 'info' | 'warning' 
   booked: 'neutral',
   requested: 'neutral',
   closed: 'error',
+  unavailable: 'error',
 }
 
 /** Static class names per tone, so Tailwind emits them. */

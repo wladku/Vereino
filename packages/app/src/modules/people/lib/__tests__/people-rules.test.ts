@@ -87,6 +87,18 @@ describe('roleScopeProblem', () => {
 describe('personScope', () => {
   const today = '2026-10-27'
 
+  it('adds the maintenance_planner grant with the maintained places (DD-36, #128)', () => {
+    expect(
+      personScope(
+        { personId: 'p1', assignments: [], guardianships: [], maintenancePlaceIds: ['pitch', 'hall', 'pitch'] },
+        today,
+      ),
+    ).toEqual([
+      { kind: 'maintenance_planner', ids: ['hall', 'pitch'] },
+      { kind: 'self', ids: ['p1'] },
+    ])
+  })
+
   it('gives a person without assignments or wards only the self grant', () => {
     expect(personScope({ personId: 'p1', assignments: [], guardianships: [] }, today)).toEqual([
       { kind: 'self', ids: ['p1'] },

@@ -45,6 +45,14 @@ export const features = [
     module: 'facilities',
     dependsOn: ['facilities.view'],
   },
+  {
+    // #128 (REQ-022, DD-36): the club administrator holds it through `facilities.*`; a place maintainer through the
+    // derived role `vereino_maintenance_planner`, limited to the places assigned to them. No `dependsOn`: a maintainer
+    // without `facilities.view` reads the redacted calendar of their places.
+    id: 'facilities.maintenance.manage',
+    title: 'Plan and complete maintenance work on the assigned places',
+    module: 'facilities',
+  },
 ]
 
 export default features

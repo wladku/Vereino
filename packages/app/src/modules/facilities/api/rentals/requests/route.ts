@@ -41,7 +41,7 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 const conflictSchema = z.object({
-  kind: z.enum(['session', 'rental', 'booking', 'closure', 'request']),
+  kind: z.enum(['session', 'rental', 'booking', 'closure', 'maintenance', 'request']),
   start: z.string(),
   end: z.string(),
 })

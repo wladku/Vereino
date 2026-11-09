@@ -1,6 +1,7 @@
 // The `auth` role sync of `people` (foundation spec DD-F05, P-04, P-05; club spec TEST-005): a person's desired role
 // set — the roles outside `vereino_*`, the roles of the active assignments, `vereino_member` for an account and
-// `vereino_payer` for an adult guardian or an adult active participant (the optional `groups` contribution, #30) —
+// `vereino_payer` for an adult guardian or an adult active participant (the optional `groups` contribution, #30),
+// `vereino_maintenance_planner` while the person maintains a place (the optional `facilities` provider, DD-36, #128) —
 // written through the foundation's `syncAuthRoles`. Used by the `people:sync-auth-roles` subscriber, the
 // `people.roleSync` DI service (the `groups` membership subscriber) and the `people.persons.sync_roles` job command;
 // idempotent by set comparison.
@@ -13,6 +14,7 @@ import { desiredRoles, jobCommandContext, syncAuthRoles, type RoleSyncResult } f
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { isPayerEligible } from '../lib/people-rules'
 import { clubToday, type ClubScope } from './club-clock'
+import { maintainerScopeProvider } from './maintainer-scope'
 import { membershipContribution } from './membership-contribution'
 
 export type PersonRoleSyncOutcome = RoleSyncResult | 'no_account' | 'person_missing'
@@ -53,8 +55,13 @@ export async function desiredRolesForPerson(
     },
     today,
   )
+  const maintainers = maintainerScopeProvider(container)
+  const maintenancePlanner = maintainers
+    ? (await maintainers.placeIdsFor(em, { ...scope, personId: person.id })).length > 0
+    : false
   const periods = assignments.map((row) => ({ role: row.role, validFrom: row.validFrom, validTo: row.validTo ?? null }))
-  return (currentRoles) => desiredRoles({ currentRoles, assignments: periods, hasAccount: true, payerEligible }, today)
+  return (currentRoles) =>
+    desiredRoles({ currentRoles, assignments: periods, hasAccount: true, payerEligible, maintenancePlanner }, today)
 }
 
 /** Syncs one person's roles inside the caller's transaction (`em`). */
