@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { addDays, scheduleFor, type WeekdayCode } from '../_fixtures/activities'
-import { oneOff } from '../_fixtures/attendance'
+import { ensureDefaultPolicies, oneOff } from '../_fixtures/attendance'
 import { birthDateTurning, calendarDate, createClub, createPerson, mercato, uniqueSuffix } from '../_fixtures/club'
 import { awaitEmails } from '../_fixtures/communication'
 import {
@@ -39,6 +39,9 @@ test('ISSUE-192 declaration link follow-ups: pending state, expired-link target,
     const slug = `i192-${uniqueSuffix()}`.toLowerCase()
     await publish(request, admin, slug, [])
     const { pitch, zaki, coordinator } = await scheduleFor(request, club)
+    // A tenant created through the API runs no `seedDefaults`: the default policies (matches `guardian_confirm`) are
+    // created here.
+    await ensureDefaultPolicies(request, club)
     const since = addDays(calendarDate(), -30)
 
     // A 16-year-old participant with an own address and a guardian: their own "yes" to a match waits for the guardian
