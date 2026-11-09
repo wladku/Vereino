@@ -2,10 +2,9 @@
 import { z } from 'zod'
 import { AUDIENCE_KINDS } from '@vereino/core'
 import { DIRECT_TARGETS } from '../lib/direct-rules'
+import { BODY_MAX, SUBJECT_MAX } from '../lib/thread-rules'
 
-/** Club text limits: a subject is one line, a message a few screens (it is e-mailed in full). */
-export const SUBJECT_MAX = 200
-export const BODY_MAX = 10_000
+export { BODY_MAX, SUBJECT_MAX }
 
 const subject = z.string().trim().min(1).max(SUBJECT_MAX)
 const body = z.string().trim().min(1).max(BODY_MAX)

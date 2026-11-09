@@ -26,12 +26,10 @@ import {
   type DirectOption,
   type Translate,
 } from '../client-helpers'
+import { BODY_MAX, SUBJECT_MAX } from '../../lib/thread-rules'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
 import { MessagesClubFrame } from './MessagesClubFrame'
 import { hasStaff, useDirectOptions } from './useDirectOptions'
-
-const SUBJECT_MAX = 200
-const BODY_MAX = 10000
 
 type Recipient = { key: string; groupId: string; to: 'coaches' | 'coordinator'; label: string; names: string }
 
