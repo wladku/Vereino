@@ -5,6 +5,7 @@ import {
   SELF_CONSENT_KINDS,
   applySelfConsent,
   consentAuthorIds,
+  consentAuthorRole,
   memberContexts,
   memberLanding,
   memberLocale,
@@ -159,17 +160,44 @@ describe('consentAuthorIds', () => {
   })
 })
 
+describe('consentAuthorRole', () => {
+  it('picks the most senior staff role, else staff', () => {
+    expect(consentAuthorRole(['coach', 'club_admin'])).toBe('club_admin')
+    expect(consentAuthorRole(['coach', 'coordinator'])).toBe('coordinator')
+    expect(consentAuthorRole(['coach'])).toBe('coach')
+    expect(consentAuthorRole([])).toBe('staff')
+  })
+})
+
 describe('withConsentAuthors', () => {
-  it('adds the name of each known author; an unknown author or a consent never set has none', () => {
+  it('names a family author, labels an author outside the family by role, and leaves a consent never set empty', () => {
     const view = {
       regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'kasia' },
-      image: { granted: false, at: '2026-10-03T08:00:00.000Z', byPersonId: 'gone' },
+      image: { granted: false, at: '2026-10-03T08:00:00.000Z', byPersonId: 'admin' },
       trips: { granted: false, at: null, byPersonId: null },
     }
-    expect(withConsentAuthors(view, new Map([['kasia', 'Kasia Nowak']]))).toEqual({
-      regulations: { ...view.regulations, byName: 'Kasia Nowak' },
-      image: { ...view.image, byName: null },
-      trips: { ...view.trips, byName: null },
+    const authors = {
+      family: new Set(['kasia', 'ola']),
+      names: new Map([['kasia', 'Kasia Nowak']]),
+      roles: new Map([['admin', 'club_admin' as const]]),
+    }
+    expect(withConsentAuthors(view, authors)).toEqual({
+      regulations: { ...view.regulations, byName: 'Kasia Nowak', byRole: null },
+      image: { ...view.image, byName: null, byRole: 'club_admin' },
+      trips: { ...view.trips, byName: null, byRole: null },
+    })
+  })
+
+  it('has no name for an unresolvable family author and labels an outside author without a role as staff', () => {
+    const view = {
+      regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'gone' },
+      image: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'former-coach' },
+      trips: { granted: false, at: null, byPersonId: null },
+    }
+    const authors = { family: new Set(['gone']), names: new Map(), roles: new Map() }
+    expect(withConsentAuthors(view, authors)).toMatchObject({
+      regulations: { byName: null, byRole: null },
+      image: { byName: null, byRole: 'staff' },
     })
   })
 })
