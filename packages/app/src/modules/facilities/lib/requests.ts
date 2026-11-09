@@ -1,24 +1,12 @@
 // Pure rules of the online booking requests (facilities spec glossary *External request*, REQ-024, R06, DD-44, DD-46,
-// V-10; #125): the request form's limits (P-04), the 1-hour confirmation link, the 48-hour hold, the per-e-mail rate
+// V-10; #125): the 1-hour confirmation link, the 48-hour hold, the per-e-mail rate
 // limit of the public request route, the entry-ban name hint of the B-25 queue and the approval's amount rule. Nothing
 // here reads the database or the clock (S3.5): `now` is a parameter.
 import { createHash } from 'node:crypto'
 import { intervalsOverlap } from '@vereino/core'
 import type { RentalStatus } from './rentals'
 
-/** The requester's organisation or name (P-04: 2–120 characters). */
-export const REQUESTER_NAME_MIN_LENGTH = 2
-export const REQUESTER_NAME_MAX_LENGTH = 120
-
-/** The purpose of a request (P-04: at most 300 characters). */
-export const REQUEST_PURPOSE_MAX_LENGTH = 300
-
-/** A rejection reason (B-25: 5–500 characters). */
-export const REJECT_REASON_MIN_LENGTH = 5
-export const REJECT_REASON_MAX_LENGTH = 500
-
-/** The note an amount change needs (B-25). */
-export const APPROVAL_NOTE_MAX_LENGTH = 500
+// The form limits (P-04, B-25) live in the client-safe `request-form.ts`: this file imports `node:crypto`.
 
 /** The confirmation link works for 1 hour (DD-44); an unconfirmed request is purged after it (DD-46). */
 export const REQUEST_VERIFICATION_TTL_MS = 60 * 60 * 1000

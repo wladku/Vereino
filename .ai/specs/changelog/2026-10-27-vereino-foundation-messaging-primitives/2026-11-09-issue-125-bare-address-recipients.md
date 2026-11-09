@@ -1,0 +1,1 @@
+| 2026-11-09 | #125 (facilities phase 5 requesters): P-30 `dispatch.enqueue` takes bare-address recipients — `addresses: [{ email, locale }]`, e-mail only, no reasons, one delivery each with `person_id` null — and their secrets by `bareAddressKey(email)` (SHA-256 of the trimmed, lower-cased address), the `recipientKey` of P-30; `recipient_count` counts them |

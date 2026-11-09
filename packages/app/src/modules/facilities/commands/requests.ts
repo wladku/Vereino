@@ -23,6 +23,7 @@
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { z } from 'zod'
 import { calendarDateInZone } from '@vereino/core'
 import { advanceWhere, assertTransition, authorizeScoped, foundationErrors, lockOccupancy } from '@/modules/foundation'
@@ -39,7 +40,6 @@ import { enqueueVerificationMail, publishDispatch, requestLinks, requestLocale }
 import { assessRentalSlot, type RentalIssue } from '../services/rental-slot'
 import { RENTAL_RESOURCE_KIND, rentalSnapshot, type RentalCommandResult } from './rentals'
 import {
-  MANAGE_KINDS,
   emitAfterCommit,
   existingSpec,
   facilitiesLog,
@@ -67,8 +67,11 @@ async function throwRequestIssue(issues: readonly RentalIssue[]): Promise<void> 
       return throwFieldError('rental_rate_missing', 'renterCategory')
     case 'zone_not_reservable':
       return throwFieldError('request_zone_invalid', 'startsAt')
-    default:
-      // A closure, the opening hours, a session, a rental or a club booking: the slot is not free.
+    case 'place_closed':
+    case 'rental_conflict':
+    case 'entry_ban_active':
+      // A closure, the opening hours, a session, a rental or a club booking: the slot is not free. (A guest names no
+      // registered renter, so no ban applies here.)
       return facilitiesErrors.throw('slot_unavailable')
   }
 }
@@ -134,6 +137,21 @@ async function bannedNames(
     personNames(ctx.container, scope, ids('person'), em),
   ])
   return [...institutions.values(), ...persons.values()]
+}
+
+/**
+ * The requester's organisation and contact name, decrypted on a read-only fork: the transactional row stays as loaded,
+ * so its encrypted columns are never rewritten. Compared for the entry-ban hint only, never stored elsewhere.
+ */
+async function requesterNames(em: EntityManager, scope: FacilitiesScope, id: string): Promise<string[]> {
+  const row = await findOneWithDecryption(
+    em.fork(),
+    Rental,
+    { id, ...scope, deletedAt: null },
+    { fields: ['id', 'renterDisplayName', 'contactName'] },
+    scope,
+  )
+  return row ? [row.renterDisplayName, row.contactName ?? ''] : []
 }
 
 // --- Submit (P-04) ---
@@ -211,7 +229,7 @@ const submitRequestCommand: CommandHandler<Record<string, unknown>, RentalComman
         locale: link.contactLocale ?? settings.locale,
         email: input.contactEmail,
       })
-      return { entity: link as Rental, actingRole: GUEST_ROLE, before: null }
+      return { entity: link, actingRole: GUEST_ROLE, before: null }
     })
     await publishDispatch(ctx.container, dispatchId, scope)
     await emitAfterCommit('facilities.rental.request_submitted', scope, { id: result.entity.id })
@@ -279,8 +297,7 @@ const verifyRequestCommand: CommandHandler<Record<string, unknown>, VerifyReques
       const banned = await bannedNames(ctx, em, scope, row.placeId, calendarDateInZone(row.startsAt, settings.timeZone))
       row.status = 'pending_approval'
       row.holdExpiresAt = holdExpiry(now)
-      // Decrypted by the platform on load: the requester's names are compared, never stored elsewhere.
-      row.entryBanMatch = entryBanNameMatch([row.renterDisplayName, row.contactName ?? ''], banned)
+      row.entryBanMatch = entryBanNameMatch(await requesterNames(em, scope, row.id), banned)
       row.updatedAt = now
       return { entity: row, actingRole: GUEST_ROLE, before, timeZone: settings.timeZone, placeId: row.placeId }
     })
@@ -408,6 +425,8 @@ const approveRequestCommand: CommandHandler<Record<string, unknown>, RentalComma
       if (amount.noteMissing) await throwFieldError('rental_amount_note_required', 'note')
       row.renterType = renter.renterType
       row.renterId = renter.renterId
+      // The registered renter's name, as a staff entry stores it; the requester's typed name stays in the audit trail.
+      row.renterDisplayName = renter.name
       row.renterCategory = category
       row.rateId = assessment.rateId
       row.amount = amount.amount ?? 0

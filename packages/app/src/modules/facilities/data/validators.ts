@@ -14,7 +14,7 @@ import {
   REQUESTER_NAME_MAX_LENGTH,
   REQUESTER_NAME_MIN_LENGTH,
   REQUEST_PURPOSE_MAX_LENGTH,
-} from '../lib/requests'
+} from '../lib/request-form'
 import {
   ENTRY_BAN_SUBJECT_TYPES,
   RENTAL_STATUSES,

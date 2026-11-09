@@ -125,13 +125,14 @@ export async function publishDispatch(
 
 export type DecisionStatus = 'approved' | 'rejected' | 'expired' | 'superseded'
 
-/** The rental status each decision e-mail belongs to: a later status change does not resend it. */
-const DECISION_RENTAL_STATUS = {
-  approved: 'requested',
-  rejected: 'rejected',
-  expired: 'expired',
-  superseded: 'superseded',
-} as const
+/** The rental statuses each decision e-mail is sent in; a later status change does not resend it. */
+const DECISION_RENTAL_STATUSES: Record<DecisionStatus, readonly string[]> = {
+  // An approved request may already be confirmed (paid) when the subscriber runs.
+  approved: ['requested', 'confirmed'],
+  rejected: ['rejected'],
+  expired: ['expired'],
+  superseded: ['superseded'],
+}
 
 /**
  * The requester's e-mail about a decision on their online request, once per request and status. Nothing for a staff
@@ -146,7 +147,7 @@ export async function sendDecisionMail(
   const em = container.resolve<EntityManager>('em').fork()
   const row = await findOneWithDecryption(em, Rental, { id: rentalId, ...scope, deletedAt: null }, {}, scope)
   if (!row || row.requestedVia !== 'online_form' || !row.contactEmail) return false
-  if (row.status !== DECISION_RENTAL_STATUS[status]) return false
+  if (!DECISION_RENTAL_STATUSES[status].includes(row.status)) return false
   const settings = await clubRequestSettings(container, scope)
   const place = (await findPlaces(container, scope, [row.placeId], em)).get(row.placeId)
   const base = {
