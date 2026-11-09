@@ -59,10 +59,8 @@ export async function loadGenerationInputs(
   )
 
   const personIds = [...new Set([...participants.values()].flat())]
-  const [persons, payers] = await Promise.all([
-    findPersons(container, scope, personIds, em),
-    primaryPayers(container, scope, personIds, refDate, em),
-  ])
+  const persons = await findPersons(container, scope, personIds, em)
+  const payers = await primaryPayers(container, scope, personIds, refDate, em)
   const birthDates = new Map(personIds.map((id) => [id, persons.get(id)?.birthDate ?? null]))
 
   const allRules = await em.find(DiscountRule, { ...scope, deletedAt: null }, { orderBy: { name: 'asc', id: 'asc' } })
