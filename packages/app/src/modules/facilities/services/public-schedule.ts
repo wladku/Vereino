@@ -239,6 +239,40 @@ async function publicEntries(
   ]
 }
 
+/** The place an online request names (P-04, #125): its trusted scope, id and name, and whether it takes requests. */
+export type RequestPlace = {
+  scope: FacilitiesScope
+  placeId: string
+  placeName: string
+  /** The place's switch AND the club's `online_requests` block. */
+  acceptsOnlineRequests: boolean
+}
+
+/**
+ * The one slug lookup of `POST …/places/{placeSlug}/requests` (DD-35, through `clubCorePublicSite`): the club and the
+ * public place, or why there is none. Every later read and write of the request uses the scope found here.
+ */
+export async function requestPlace(
+  container: AwilixContainer,
+  clubSlug: string,
+  placeSlug: string,
+): Promise<PublicFacilitiesResult<RequestPlace>> {
+  const publicSite = site(container)
+  if (!publicSite) return { status: 'not_found' }
+  const found = await publicSite.publicPlace(clubSlug, placeSlug)
+  if (found.status !== 'ok') return notOk(found)
+  const { frame, place } = found.value
+  return {
+    status: 'ok',
+    value: {
+      scope: { tenantId: frame.tenantId, organizationId: frame.organizationId },
+      placeId: place.id,
+      placeName: place.name,
+      acceptsOnlineRequests: place.acceptsOnlineRequests,
+    },
+  }
+}
+
 /** The public path of P-03. */
 export const publicPlacesPath = (clubSlug: string): string => `/p/${encodeURIComponent(clubSlug)}/places`
 

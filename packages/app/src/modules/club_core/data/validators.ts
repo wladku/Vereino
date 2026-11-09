@@ -5,7 +5,7 @@ import { isCalendarDate, isInvertedPeriod } from '@vereino/core'
 import { CONTRACT_KINDS, CONTRACT_PARTY_TYPES, MAX_RATE_GROSZ, type CoachTermField } from '../lib/contracts'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
 import { PLACE_FILE_KINDS } from '../lib/files'
-import { publicSlugSchema, publicationPatchSchema } from '../lib/publication'
+import { publicLinkUrlSchema, publicSlugSchema, publicationPatchSchema } from '../lib/publication'
 import { clubSettingsPatchSchema } from '../lib/settings'
 
 /** Institution types (club spec *Data Models* → `club_core_institutions.type`). */
@@ -38,8 +38,12 @@ const nullableEmail = z
 /** A public slug (`lib/publication.ts`); blank or null clears it. */
 const nullableSlug = z.union([z.literal('').transform(() => null), z.null(), publicSlugSchema])
 
+/** A footer link (`lib/publication.ts`, #195): an http(s) URL; blank or null clears it. */
+const nullableLink = z.union([z.literal('').transform(() => null), z.null(), publicLinkUrlSchema])
+
 /**
- * Body of `PUT /api/club_core/settings`: any subset of the settings, the club's public slug, description and phone,
+ * Body of `PUT /api/club_core/settings`: any subset of the settings, the club's public slug, description, phone,
+ * rules and privacy-policy URLs (#195),
  * and a partial `publication` (#29; the route also requires `club_core.publication.manage` for it); unknown keys (e.g.
  * scope ids or the logo, which has its own route) are rejected.
  */
@@ -53,6 +57,8 @@ export const clubSettingsUpdateSchema = clubSettingsPatchSchema
     publicDescription: nullableText(4000).optional(),
     contactPhone: nullableText(50).optional(),
     bankAccount: nullableText(64).optional(),
+    rulesUrl: nullableLink.optional(),
+    privacyPolicyUrl: nullableLink.optional(),
     publication: publicationPatchSchema.optional(),
   })
   .strict()

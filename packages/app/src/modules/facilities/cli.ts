@@ -4,6 +4,7 @@ import type { ModuleCli } from '@open-mercato/shared/modules/registry'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
+import type { ExpireRequestsJobResult } from './commands/requests'
 import type { LifecycleJobResult } from './commands/rentals'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
@@ -38,6 +39,35 @@ const rentalLifecycle: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [rentalLifecycle]
+/**
+ * `facilities expire-requests --tenant <id> --org <id> [--now <ISO instant>]` (facilities spec DD-46; #125): runs the
+ * 15-minute request expiry now — the same command the `facilities:expire-requests` job dispatches — and prints its
+ * counts. `--now` moves the clock (the integration tests drive the 1-hour link and the 48-hour hold through it).
+ */
+const expireRequests: ModuleCli = {
+  command: 'expire-requests',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato facilities expire-requests --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, ExpireRequestsJobResult>(
+      'facilities.rentals.expire_requests',
+      {
+        input: now ? { now } : {},
+        ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }),
+      },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts, expiredIds: result.expiredIds })}\n`)
+  },
+}
+
+const commands: ModuleCli[] = [rentalLifecycle, expireRequests]
 
 export default commands

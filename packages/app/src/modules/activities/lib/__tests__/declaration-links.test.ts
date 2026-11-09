@@ -4,7 +4,9 @@ import {
   DECLARATION_REMINDERS_CRON,
   MAX_LINKS_PER_HOUR,
   declarationLinkPath,
+  expiredLinkRequestPath,
   linkExpiry,
+  linkRequestOpen,
   linkPersonIds,
   linkRequestOwners,
   linkRequestPath,
@@ -94,6 +96,23 @@ describe('declaration link paths (M-13, M-14)', () => {
     expect(declarationLinkPath('abc_-123')).toBe('/club/d/abc_-123')
     expect(declarationLinkPath('a/b')).toBe('/club/d/a%2Fb')
     expect(linkRequestPath('dev academy', 'occ-1')).toBe('/club/link?club=dev+academy&session=occ-1')
+  })
+
+  it('sends an expired link to its session request page only when the club publishes its pages (#192)', () => {
+    expect(expiredLinkRequestPath({ publicSlug: 'dev', publicationEnabled: true }, 'occ-1')).toBe(
+      '/club/link?club=dev&session=occ-1',
+    )
+    expect(expiredLinkRequestPath({ publicSlug: 'dev', publicationEnabled: false }, 'occ-1')).toBeNull()
+    expect(expiredLinkRequestPath({ publicSlug: null, publicationEnabled: true }, 'occ-1')).toBeNull()
+  })
+})
+
+describe('when a link may be requested (#192)', () => {
+  it('only for a planned session that has not started', () => {
+    expect(linkRequestOpen({ status: 'planned', startAt: '2026-11-05T12:00:01.000Z' }, NOW)).toBe(true)
+    expect(linkRequestOpen({ status: 'planned', startAt: NOW }, NOW)).toBe(false)
+    expect(linkRequestOpen({ status: 'planned', startAt: '2026-11-05T11:00:00.000Z' }, NOW)).toBe(false)
+    expect(linkRequestOpen({ status: 'cancelled', startAt: '2026-11-06T12:00:00.000Z' }, NOW)).toBe(false)
   })
 })
 

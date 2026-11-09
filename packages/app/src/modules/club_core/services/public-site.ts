@@ -16,10 +16,12 @@ import { lookupClubByPublicSlug } from '../data/queries'
 import { effectiveLogo, nameInitial, type LogoSource } from '../lib/files'
 import {
   clubContact,
+  clubLinks,
   isMaterialPublished,
   providerMayContribute,
   sectionBlocks,
   type ClubCoreSectionBlocks,
+  type PublicClubLinks,
 } from '../lib/public-page'
 import { PLACE_FILE_ASSIGNMENT, PLACE_FILE_OWNER_ENTITY } from '../lib/files'
 import {
@@ -50,6 +52,7 @@ export type PublicClubPage = {
     description: string | null
     logo: PublicLogo
     contact: PublicClubContact
+    links: PublicClubLinks
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
@@ -61,7 +64,7 @@ export type PublicClubPage = {
 export type PublicClubContact = { phone: string } | null
 
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: ClubCoreSectionBlocks & Record<string, unknown>
 }
@@ -81,7 +84,7 @@ export type PublicFileRef = {
 export type PublicClubFrame = {
   tenantId: string
   organizationId: string
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
   /** Every block the club publishes (e.g. `online_requests` for the public places, #124). */
   publishedBlocks: readonly PublicationBlock[]
 }
@@ -242,6 +245,11 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     return clubContact(club.publication, club.settings.contactPhone ?? null)
   }
 
+  /** The footer links of every public page: the club's rules and privacy policy, each only when set (#195). */
+  function linksOf(club: FoundClub): PublicClubLinks {
+    return clubLinks(club.settings.rulesUrl ?? null, club.settings.privacyPolicyUrl ?? null)
+  }
+
   /** Section logo ?? club logo ?? the initial of the club name (glossary *Logo*). */
   function sectionLogoOf(club: FoundClub, section: Section, clubLogo: PublicLogo): PublicLogo {
     const logo = effectiveLogo({
@@ -303,7 +311,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     return {
       tenantId: club.tenantId,
       organizationId: club.organizationId,
-      club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club) },
+      club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club), links: linksOf(club) },
       publishedBlocks: publishedBlocks(club.publication),
     }
   }
@@ -405,6 +413,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             description: club.settings.publicDescription ?? null,
             logo: clubLogo,
             contact: contactOf(club),
+            links: linksOf(club),
           },
           sections: sections.map((section) => ({
             name: section.name,
@@ -456,7 +465,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return {
         status: 'ok',
         value: {
-          club: { name, slug: club.slug, logo: clubLogo, contact: contactOf(club) },
+          club: { name, slug: club.slug, logo: clubLogo, contact: contactOf(club), links: linksOf(club) },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
           blocks: { ...extra, ...own },
         },

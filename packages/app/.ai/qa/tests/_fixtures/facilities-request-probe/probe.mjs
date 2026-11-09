@@ -45,7 +45,7 @@ if (input.op === 'seed') {
     units: 1,
     amount: 0,
     status: 'pending_approval',
-    emailVerifiedAt: now,
+    usedAt: now,
     holdExpiresAt: new Date(now.getTime() + Number(input.holdHours ?? 48) * 3_600_000),
   })
   em.persist(row)

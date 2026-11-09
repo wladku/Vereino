@@ -6,7 +6,10 @@ import {
   applyPublicationPatch,
   clubPublicationProblem,
   isBlockPublished,
+  isPublicLinkUrl,
   isPublicSlug,
+  PUBLIC_LINK_MAX_LENGTH,
+  publicLinkUrlSchema,
   publicSlugSchema,
   publicationPatchSchema,
   publishedBlocks,
@@ -120,6 +123,29 @@ describe('public slugs', () => {
     expect(placePublicationProblem({ isPublicSchedule: true, publicSlug: null })).toBe('place_public_slug_required')
     expect(placePublicationProblem({ isPublicSchedule: true, publicSlug: 'orlik' })).toBeNull()
     expect(placePublicationProblem({ isPublicSchedule: false, publicSlug: null })).toBeNull()
+  })
+})
+
+describe('footer links (#195)', () => {
+  it('accepts an absolute http or https URL with a host', () => {
+    expect(isPublicLinkUrl('https://club.example/rules.pdf')).toBe(true)
+    expect(isPublicLinkUrl('http://club.example/privacy?lang=pl#top')).toBe(true)
+  })
+
+  it('refuses other schemes, relative or malformed addresses, surrounding spaces and overlong URLs', () => {
+    expect(isPublicLinkUrl('javascript:alert(1)')).toBe(false)
+    expect(isPublicLinkUrl('mailto:club@example.org')).toBe(false)
+    expect(isPublicLinkUrl('file:///etc/passwd')).toBe(false)
+    expect(isPublicLinkUrl('/rules')).toBe(false)
+    expect(isPublicLinkUrl('club.example/rules')).toBe(false)
+    expect(isPublicLinkUrl(' https://club.example/rules')).toBe(false)
+    const long = `https://club.example/${'a'.repeat(PUBLIC_LINK_MAX_LENGTH)}`
+    expect(isPublicLinkUrl(long)).toBe(false)
+  })
+
+  it('trims the input before checking it', () => {
+    expect(publicLinkUrlSchema.parse('  https://club.example/rules  ')).toBe('https://club.example/rules')
+    expect(publicLinkUrlSchema.safeParse('ftp://club.example/rules').success).toBe(false)
   })
 })
 

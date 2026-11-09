@@ -6,7 +6,9 @@
 // attending" for a `confirm` one — and "Sign in to see the full calendar". A started, cancelled or done session shows
 // "Declarations closed". States: loading, 410 "Link expired — request a new one", 404 "Invalid link", error with
 // retry, saving per person, "Saved", 409 (closed meanwhile, or changed meanwhile by another guardian or the ward — the
-// page sends each person's lock token and refreshes after either 409).
+// page sends each person's lock token and refreshes after either 409). "Request a new one" opens the request page of the
+// link's session when the 410 names it, else the untargeted explanation (#192); a declaration waiting for a guardian's
+// confirmation says so under its controls.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -25,7 +27,15 @@ import {
   type TokenPageState,
 } from '@vereino/ui'
 
-type LinkPerson = { id: string; firstName: string; declared: DeclaredValue; updatedAt: string | null }
+type DeclarationStatus = 'final' | 'pending_guardian' | 'rejected_by_guardian'
+
+type LinkPerson = {
+  id: string
+  firstName: string
+  declared: DeclaredValue
+  declarationStatus: DeclarationStatus | null
+  updatedAt: string | null
+}
 
 type LinkPage = {
   club: { name: string }
@@ -42,9 +52,11 @@ type LinkPage = {
   persons: LinkPerson[]
 }
 
-type LinkLoad = { status: 'ok'; page: LinkPage } | { status: 'expired' } | { status: 'not_found' }
+type LinkLoad =
+  { status: 'ok'; page: LinkPage } | { status: 'expired'; requestLinkPath: string | null } | { status: 'not_found' }
 
 const SIGN_IN_HREF = '/login'
+/** Where "request a new one" leads when the expired link names no session page (the untargeted explanation). */
 const REQUEST_LINK_HREF = '/club/link'
 /** The platform's optimistic-lock 409 code: the declaration changed since the page was read. */
 const LOCK_CONFLICT_CODE = 'optimistic_lock_conflict'
@@ -65,9 +77,9 @@ function useDeclarationLink(token: string) {
   return useQuery({
     queryKey: ['activities-declaration-link', token],
     queryFn: async (): Promise<LinkLoad> => {
-      const call = await apiCall<LinkPage>(linkUrl(token))
+      const call = await apiCall<LinkPage & { requestLinkPath?: string | null }>(linkUrl(token))
       if (call.ok && call.result) return { status: 'ok', page: call.result }
-      if (call.status === 410) return { status: 'expired' }
+      if (call.status === 410) return { status: 'expired', requestLinkPath: call.result?.requestLinkPath ?? null }
       if (call.status === 404) return { status: 'not_found' }
       throw new Error(`[internal] declaration link request failed with ${String(call.status)}`)
     },
@@ -77,7 +89,7 @@ function useDeclarationLink(token: string) {
 
 /** What the page changed for a person since it was read: the saved declaration and its lock token override the page's. */
 type PersonState = {
-  saved?: { declared: DeclaredValue; updatedAt: string }
+  saved?: { declared: DeclaredValue; declarationStatus: DeclarationStatus; updatedAt: string }
   busy: boolean
   error: string | null
 }
@@ -108,16 +120,22 @@ export function DeclarationLinkView({ token }: { token: string }) {
     let reload = false
     try {
       const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
-        apiCall<{ declared: DeclaredValue; updatedAt: string; code?: string }>(linkUrl(token), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ personId, declared }),
-        }),
+        apiCall<{ declared: DeclaredValue; declarationStatus: DeclarationStatus; updatedAt: string; code?: string }>(
+          linkUrl(token),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ personId, declared }),
+          },
+        ),
       )
       if (call.ok && call.result) {
-        next = { busy: false, error: null, saved: { declared: call.result.declared, updatedAt: call.result.updatedAt } }
+        const { declared: savedValue, declarationStatus, updatedAt } = call.result
+        next = { busy: false, error: null, saved: { declared: savedValue, declarationStatus, updatedAt } }
       } else if (call.status === 410) {
+        // Read the page again: its 410 names where a new link for this session is requested.
         setExpired(true)
+        reload = true
         next = { busy: false, error: null, saved: people[personId]?.saved }
       } else if (call.status === 409) {
         // Either way the page is stale: read it again, so the controls show the current declaration or the closed state.
@@ -144,6 +162,7 @@ export function DeclarationLinkView({ token }: { token: string }) {
 
   const state: TokenPageState = expired ? 'expired' : load ? load.status : query.isError ? 'error' : 'loading'
   const page = load?.status === 'ok' ? load.page : null
+  const requestLinkHref = (load?.status === 'expired' ? load.requestLinkPath : null) ?? REQUEST_LINK_HREF
   const shellLabels = {
     title: t('activities.declarationLink.title'),
     loading: t('activities.declarationLink.loading'),
@@ -161,7 +180,7 @@ export function DeclarationLinkView({ token }: { token: string }) {
       state={state}
       clubName={page?.club.name ?? null}
       labels={shellLabels}
-      requestLinkHref={REQUEST_LINK_HREF}
+      requestLinkHref={requestLinkHref}
       Link={RouterLink}
       onRetry={() => void query.refetch()}
       headerEnd={<LanguageSwitcher />}
@@ -209,6 +228,7 @@ export function DeclarationLinkView({ token }: { token: string }) {
               <ul className="flex flex-col gap-4">
                 {page.persons.map((person) => {
                   const current = people[person.id]
+                  const pending = (current?.saved?.declarationStatus ?? person.declarationStatus) === 'pending_guardian'
                   return (
                     <li
                       key={person.id}
@@ -227,6 +247,11 @@ export function DeclarationLinkView({ token }: { token: string }) {
                         error={current?.error ?? null}
                         onDeclare={(value) => void declare(person, value)}
                       />
+                      {pending ? (
+                        <p className="text-muted-foreground mt-2 text-sm" data-testid="declaration-link-pending">
+                          {t('activities.declarationLink.pendingGuardian')}
+                        </p>
+                      ) : null}
                       {current?.saved && !current.busy && !current.error ? (
                         <p className="mt-2 text-sm" role="status" data-testid="declaration-link-saved">
                           {t('activities.declarationLink.saved')}

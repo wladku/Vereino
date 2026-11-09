@@ -4,6 +4,7 @@
 // `activities` reads places — their names, capacity and the place tree its conflict check projects (#31).
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Institution, Place, Section } from '../data/entities'
 import { loadPlaceParents } from '../data/queries'
 import { placeRelatives } from '../lib/places'
@@ -35,6 +36,9 @@ export type PlaceOption = {
   capacityGroups: number
   isLeaf: boolean
 }
+
+/** Who a rental of a place is paid to (facilities spec DD-19, J-007 step 4): the owner institution and its account. */
+export type PlacePayee = { institutionId: string; name: string; bankAccount: string | null }
 
 /** A place with its ancestors and descendants in the live tree of the club. */
 export type PlaceFamily = { place: PlaceDirectoryEntry; ancestorIds: string[]; descendantIds: string[] }
@@ -81,6 +85,11 @@ export type ClubCoreDirectory = {
   placeFamily(scope: ClubDirectoryScope, placeId: string, em?: EntityManager): Promise<PlaceFamily | null>
   /** The live active places of the club for a selector, by name; a leaf takes sessions and bookings. */
   placeOptions(scope: ClubDirectoryScope, em?: EntityManager): Promise<PlaceOption[]>
+  /**
+   * The owner institution of the place or of its nearest ancestor with one, with its decrypted bank account (the
+   * transfer details of an approved rental, #125); null when no place on the chain names a live owner.
+   */
+  placePayee(scope: ClubDirectoryScope, placeId: string, em?: EntityManager): Promise<PlacePayee | null>
 }
 
 export async function findSections(
@@ -228,6 +237,28 @@ export async function placeOptions(em: EntityManager, scope: ClubDirectoryScope)
     }))
 }
 
+export async function placePayee(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  placeId: string,
+): Promise<PlacePayee | null> {
+  const parents = await loadPlaceParents(em, scope)
+  const chain = [placeId, ...placeRelatives(placeId, parents).ancestorIds]
+  const places = await em.find(
+    Place,
+    { id: { $in: chain }, ...scope, deletedAt: null },
+    { fields: ['id', 'ownerInstitutionId'] },
+  )
+  const owners = new Map(places.map((place) => [place.id, place.ownerInstitutionId ?? null]))
+  for (const id of chain) {
+    const ownerId = owners.get(id)
+    if (!ownerId) continue
+    const owner = await findOneWithDecryption(em, Institution, { id: ownerId, ...scope, deletedAt: null }, {}, scope)
+    if (owner) return { institutionId: owner.id, name: owner.name, bankAccount: owner.bankAccount ?? null }
+  }
+  return null
+}
+
 export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDirectory {
   return {
     findSections: (scope, ids, em) => findSections(em ?? getEm().fork(), scope, ids),
@@ -237,5 +268,6 @@ export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDir
     findPlaces: (scope, ids, em) => findPlaces(em ?? getEm().fork(), scope, ids),
     placeFamily: (scope, placeId, em) => placeFamily(em ?? getEm().fork(), scope, placeId),
     placeOptions: (scope, em) => placeOptions(em ?? getEm().fork(), scope),
+    placePayee: (scope, placeId, em) => placePayee(em ?? getEm().fork(), scope, placeId),
   }
 }

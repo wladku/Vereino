@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import {
   CLUB_CORE_BLOCK_KEYS,
   clubContact,
+  clubLinks,
   isMaterialPublished,
   phoneHref,
   pluralForm,
@@ -107,6 +108,18 @@ describe('section blocks of club_core', () => {
     expect(clubContact(everything, '+48 22 000 00 00')).toEqual({ phone: '+48 22 000 00 00' })
     expect(clubContact(everything, null)).toBeNull()
     expect(clubContact({ ...everything, blocks: { ...everything.blocks, contact: false } }, '1')).toBeNull()
+  })
+
+  it('publishes each footer link only when it is filled with an http(s) URL (#195)', () => {
+    expect(clubLinks('https://club.example/rules.pdf', 'http://club.example/privacy')).toEqual({
+      rules: 'https://club.example/rules.pdf',
+      privacyPolicy: 'http://club.example/privacy',
+    })
+    expect(clubLinks(null, null)).toEqual({ rules: null, privacyPolicy: null })
+    expect(clubLinks('javascript:alert(1)', 'https://club.example/privacy')).toEqual({
+      rules: null,
+      privacyPolicy: 'https://club.example/privacy',
+    })
   })
 
   it('publishes a material only when it is public and the materials block is on', () => {

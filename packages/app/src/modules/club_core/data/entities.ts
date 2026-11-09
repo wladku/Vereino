@@ -14,8 +14,9 @@ decorateScopedEntityBase({ PrimaryKey, Property })
 /**
  * The club's settings, one row per organization (club spec DD-02, DD-37; foundation spec DD-F16). A club without a
  * row reads the defaults of `lib/settings.ts`; the first update creates the row. The public slug, publication, logo,
- * public description and contact phone are phase 1 steps 6–7 (#29): `public_slug` is globally unique, because the
- * sessionless public pages resolve the club from it (DD-23, DD-35) — its unique index backs that one lookup.
+ * public description and contact phone are phase 1 steps 6–7 (#29), the rules and privacy-policy URLs of the page
+ * footer #195: `public_slug` is globally unique, because the sessionless public pages resolve the club from it (DD-23,
+ * DD-35) — its unique index backs that one lookup.
  */
 @Entity({ tableName: 'club_core_club_settings' })
 @Unique({ name: 'club_core_club_settings_organization_unique', properties: ['organizationId'] })
@@ -46,6 +47,8 @@ export class ClubSettings extends ScopedEntityBase {
     | 'bankAccount'
     | 'logoAttachmentId'
     | 'publicDescription'
+    | 'rulesUrl'
+    | 'privacyPolicyUrl'
     | 'publication'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
@@ -129,6 +132,14 @@ export class ClubSettings extends ScopedEntityBase {
   /** The club description on its public page. */
   @Property({ name: 'public_description', type: 'text', nullable: true })
   publicDescription?: string | null
+
+  /** The URL of the club's rules, linked in the public page footer when set (#195). */
+  @Property({ name: 'rules_url', type: 'text', nullable: true })
+  rulesUrl?: string | null
+
+  /** The URL of the club's privacy policy, linked in the public page footer when set (#195). */
+  @Property({ name: 'privacy_policy_url', type: 'text', nullable: true })
+  privacyPolicyUrl?: string | null
 
   /** `{ enabled, blocks }` (glossary *Publication*); everything off by default, read through `lib/publication.ts`. */
   @Property({
