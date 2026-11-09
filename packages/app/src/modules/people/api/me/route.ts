@@ -67,7 +67,14 @@ const memberConsentSchema = z.object({
   granted: z.boolean(),
   at: z.string().nullable(),
   byPersonId: z.string().nullable(),
-  byName: z.string().nullable().describe('The name of the last author; null when never set or not resolvable'),
+  byName: z
+    .string()
+    .nullable()
+    .describe('The name of the last author when family (the ward or a guardian of the ward); null otherwise'),
+  byRole: z
+    .enum(['club_admin', 'coordinator', 'coach', 'staff'])
+    .nullable()
+    .describe('The role label of the last author outside the family (#191); null for a family author or never set'),
 })
 
 const memberConsentsSchema = z.object({

@@ -8,6 +8,7 @@ import {
   isAdultOn,
   withdrawConsent,
   type ActingRole,
+  type AssignableRole,
   type CalendarDate,
   type GrantKind,
   type Scope,
@@ -142,8 +143,28 @@ export function withNotice(path: string, message: string): string {
   return `${path}?${new URLSearchParams({ flash: message, type: 'info' }).toString()}`
 }
 
-/** A guardianship consent as the member pages show it (E06-S22 #104): the view plus the name of its last author. */
-export type MemberConsentView = ConsentView & { readonly byName: string | null }
+/**
+ * Who an author outside the family is shown as (#191, README M-10): the most senior staff role they hold, or `staff`
+ * when they hold none any more.
+ */
+export type ConsentAuthorRole = AssignableRole | 'staff'
+
+const AUTHOR_ROLE_ORDER: readonly AssignableRole[] = ['club_admin', 'coordinator', 'coach']
+
+/** The label role of a consent author from the roles they hold; none → `staff`. */
+export function consentAuthorRole(roles: readonly AssignableRole[]): ConsentAuthorRole {
+  return AUTHOR_ROLE_ORDER.find((role) => roles.includes(role)) ?? 'staff'
+}
+
+/**
+ * A guardianship consent as the member pages show it (E06-S22 #104): the view plus its last author — by name when the
+ * author is family (the ward or a guardian of the ward), else by role only, so a ward never sees a staff member's
+ * name (#191).
+ */
+export type MemberConsentView = ConsentView & {
+  readonly byName: string | null
+  readonly byRole: ConsentAuthorRole | null
+}
 export type MemberConsentsView = { readonly [kind in ConsentKind]: MemberConsentView }
 
 /** The distinct persons who last changed any of the consents, in first-seen order. */
@@ -158,11 +179,24 @@ export function consentAuthorIds(views: readonly ConsentsView[]): string[] {
   return [...ids]
 }
 
-/** The consents with each author's name; an author the reader cannot resolve (e.g. deleted) has no name. */
-export function withConsentAuthors(view: ConsentsView, names: ReadonlyMap<string, string>): MemberConsentsView {
+/** What the reader knows about the authors of one guardianship's consents. */
+export type ConsentAuthors = {
+  /** The ward and every guardian of the ward: shown by name. */
+  readonly family: ReadonlySet<string>
+  /** Names of the family authors; an author the reader cannot resolve (e.g. deleted) has no name. */
+  readonly names: ReadonlyMap<string, string>
+  /** Label roles of the authors outside the family; a missing one is `staff`. */
+  readonly roles: ReadonlyMap<string, ConsentAuthorRole>
+}
+
+/** The consents with each author as the member pages may show them: a family name or a staff role label. */
+export function withConsentAuthors(view: ConsentsView, authors: ConsentAuthors): MemberConsentsView {
   const entry = (kind: ConsentKind): MemberConsentView => {
     const consent = view[kind]
-    return { ...consent, byName: consent.byPersonId ? (names.get(consent.byPersonId) ?? null) : null }
+    const author = consent.byPersonId
+    if (!author) return { ...consent, byName: null, byRole: null }
+    if (authors.family.has(author)) return { ...consent, byName: authors.names.get(author) ?? null, byRole: null }
+    return { ...consent, byName: null, byRole: authors.roles.get(author) ?? 'staff' }
   }
   return { regulations: entry('regulations'), image: entry('image'), trips: entry('trips') }
 }

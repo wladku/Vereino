@@ -15,10 +15,12 @@ import { scopeContract } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import {
   consentAuthorIds,
+  consentAuthorRole,
   memberContexts,
   memberLocale,
   selfConsentView,
   withConsentAuthors,
+  type ConsentAuthorRole,
   type MemberConsentsView,
   type SelfConsentView,
 } from '../lib/member-rules'
@@ -163,6 +165,34 @@ async function loadPersons(em: EntityManager, scope: ClubScope, ids: readonly st
   return new Map(persons.map((person) => [person.id, person]))
 }
 
+/** Each ward with its family: the ward and every guardian the club ever linked to the ward (not deleted). */
+async function loadFamilies(
+  em: EntityManager,
+  scope: ClubScope,
+  wardIds: readonly string[],
+): Promise<Map<string, Set<string>>> {
+  const families = new Map(wardIds.map((id) => [id, new Set([id])]))
+  const links = await em.find(Guardianship, { ...scope, wardPersonId: { $in: [...families.keys()] }, deletedAt: null })
+  for (const link of links) families.get(link.wardPersonId)?.add(link.guardianPersonId)
+  return families
+}
+
+/** The label role of each consent author outside the family, from their staff roles (#191). */
+async function loadAuthorRoles(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+): Promise<Map<string, ConsentAuthorRole>> {
+  if (ids.length === 0) return new Map()
+  const assignments = await em.find(RoleAssignment, { ...scope, personId: { $in: [...ids] }, deletedAt: null })
+  return new Map(
+    ids.map((id) => [
+      id,
+      consentAuthorRole(assignments.filter((assignment) => assignment.personId === id).map((a) => a.role)),
+    ]),
+  )
+}
+
 /**
  * The wards (`guardian` grant) and the member's own guardians (`self` grant: the links naming the member as the ward),
  * each with its consents and the names of their authors, read in one pass over the persons involved.
@@ -180,13 +210,27 @@ async function loadFamily(
   for (const link of [...wardLinks.values(), ...guardianLinks.values()]) {
     consents.set(link.id, consentsView(parseStoredConsents(link.consents)))
   }
+  // #191: an author is shown by name only to the family (the ward and every guardian of the ward, past ones too);
+  // anyone else — a club administrator — by the role label.
+  const families = await loadFamilies(em, scope, [...wardLinks.keys(), personId])
+  const familyOf = (link: Guardianship) => families.get(link.wardPersonId) as Set<string>
+  const authorIds = consentAuthorIds([...consents.values()])
+  const outsiders = new Set<string>()
+  for (const link of [...wardLinks.values(), ...guardianLinks.values()]) {
+    const family = familyOf(link)
+    for (const author of consentAuthorIds([consents.get(link.id) as ConsentsView])) {
+      if (!family.has(author)) outsiders.add(author)
+    }
+  }
   const persons = await loadPersons(em, scope, [
     ...wardLinks.keys(),
     ...guardianLinks.keys(),
-    ...consentAuthorIds([...consents.values()]),
+    ...authorIds.filter((id) => !outsiders.has(id)),
   ])
   const names = new Map([...persons.values()].map((person) => [person.id, fullName(person)]))
-  const consentsOf = (link: Guardianship) => withConsentAuthors(consents.get(link.id) as ConsentsView, names)
+  const roles = await loadAuthorRoles(em, scope, [...outsiders])
+  const consentsOf = (link: Guardianship) =>
+    withConsentAuthors(consents.get(link.id) as ConsentsView, { family: familyOf(link), names, roles })
   const wards = [...wardLinks.values()].flatMap((link): MemberWardView[] => {
     const ward = persons.get(link.wardPersonId)
     if (!ward) return []

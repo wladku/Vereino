@@ -8,7 +8,13 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, call, mercato, uniqueSuffix, type Club } from './club'
 
 export type SelfConsent = { granted: boolean; at: string | null }
-export type WardConsent = { granted: boolean; at: string | null; byPersonId: string | null; byName: string | null }
+export type WardConsent = {
+  granted: boolean
+  at: string | null
+  byPersonId: string | null
+  byName: string | null
+  byRole: 'club_admin' | 'coordinator' | 'coach' | 'staff' | null
+}
 
 export type MemberProfile = {
   person: {
