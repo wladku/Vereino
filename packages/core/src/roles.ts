@@ -5,9 +5,10 @@ import type { CalendarDate } from '#src/calendar-date'
 
 /**
  * Phase 1 roles (foundation spec Q17); `treasurer` and `facility_operator` arrive with phases 4 and 5.
- * `member` and `payer` are derived roles, never assigned.
+ * `member`, `payer` and `maintenance_planner` are derived roles, never assigned: the last one (facilities spec DD-36,
+ * #128) carries only `facilities.maintenance.manage` and is held while the person maintains at least one place.
  */
-export type VereinoRole = 'club_admin' | 'coordinator' | 'coach' | 'member' | 'payer'
+export type VereinoRole = 'club_admin' | 'coordinator' | 'coach' | 'member' | 'payer' | 'maintenance_planner'
 
 /** Roles a `people_role_assignments` row can carry in phase 1. */
 export type AssignableRole = 'club_admin' | 'coordinator' | 'coach'
@@ -99,9 +100,22 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     features: ['payments.view_own', 'payments.pay_online', 'payments.orders.place'],
     requiresScope: null,
   },
+  maintenance_planner: {
+    authRole: 'vereino_maintenance_planner',
+    // That feature only (DD-36): the place scope comes from the person's `facilities_place_maintainers` rows.
+    features: ['facilities.maintenance.manage'],
+    requiresScope: null,
+  },
 }
 
-export const VEREINO_ROLES: readonly VereinoRole[] = ['club_admin', 'coordinator', 'coach', 'member', 'payer']
+export const VEREINO_ROLES: readonly VereinoRole[] = [
+  'club_admin',
+  'coordinator',
+  'coach',
+  'member',
+  'payer',
+  'maintenance_planner',
+]
 
 /** True for an `auth` role name Vereino owns; a role sync never removes any other role. */
 export function isVereinoAuthRole(roleName: string): boolean {
@@ -160,6 +174,8 @@ export type DesiredRolesInput = {
   readonly hasAccount: boolean
   /** An adult guardian or adult participant, computed by `people`: adds `vereino_payer`. */
   readonly payerEligible: boolean
+  /** The person maintains at least one place (`facilities.maintainerScopeProvider`): adds `vereino_maintenance_planner`. */
+  readonly maintenancePlanner?: boolean
 }
 
 /**
@@ -171,6 +187,7 @@ export function desiredRoles(input: DesiredRolesInput, today: CalendarDate): str
   const derived: VereinoRole[] = []
   if (input.hasAccount) derived.push('member')
   if (input.payerEligible) derived.push('payer')
+  if (input.maintenancePlanner === true) derived.push('maintenance_planner')
   const roles = new Set<string>(input.currentRoles.filter((role) => !isVereinoAuthRole(role)))
   for (const role of rolesForAssignments(input.assignments, today)) roles.add(role)
   for (const role of authRolesFor(derived)) roles.add(role)

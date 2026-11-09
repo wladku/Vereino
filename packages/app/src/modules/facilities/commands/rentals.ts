@@ -102,6 +102,7 @@ const ISSUE_FIELDS: Record<RentalIssue['code'], string> = {
   rental_units_invalid: 'units',
   rental_rate_missing: 'renterCategory',
   place_closed: 'startsAt',
+  maintenance_scheduled: 'startsAt',
   zone_not_reservable: 'startsAt',
   rental_conflict: 'startsAt',
   entry_ban_active: 'renterId',

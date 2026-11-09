@@ -9,7 +9,7 @@ import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { openingWindowsOn, type CalendarDate, type Scope } from '@vereino/core'
 import { zoneRuleShapeOf } from '../commands/zone-rules'
-import { Closure, InternalBooking, Rental, ZoneRule } from '../data/entities'
+import { Closure, InternalBooking, MaintenanceTask, Rental, ZoneRule } from '../data/entities'
 import { OCCUPYING_BOOKING_STATUSES, bookingCancellable, calendarDatesOf } from '../lib/internal-bookings'
 import { OCCUPYING_RENTAL_STATUSES } from '../lib/rentals'
 import { dayZoneSegments, type Zone } from '../lib/zones'
@@ -24,7 +24,7 @@ import {
 } from './directory'
 import { placeFamilyIds } from './occupancy'
 
-export type CalendarEntryKind = 'session' | 'rental' | 'request' | 'booking' | 'closure'
+export type CalendarEntryKind = 'session' | 'rental' | 'request' | 'booking' | 'closure' | 'maintenance'
 
 export type CalendarEntry = {
   id: string
@@ -32,18 +32,18 @@ export type CalendarEntry = {
   placeId: string
   start: Date
   end: Date
-  /** The activity, the renter, the booking's purpose or the closure reason. */
+  /** The activity, the renter, the booking's purpose, the closure reason or the maintenance kind. */
   label: string | null
   needsReschedule: boolean
   /** A session's group. */
   groupId: string | null
-  /** An internal booking's section, booker and booker's name. */
+  /** An internal booking's section, booker and booker's name; a maintenance task's planner and name (#128). */
   sectionId: string | null
   bookedByPersonId: string | null
   bookedByName: string | null
   /** A request's hold (the supersession and the expiry read it). */
   holdExpiresAt: Date | null
-  /** The version of an internal booking (its cancellation sends it as the lock token). */
+  /** The version of an internal booking or a maintenance task (its change sends it as the lock token). */
   updatedAt: Date | null
 }
 
@@ -104,10 +104,12 @@ export async function calendarEntries(
     scope,
   )
   const closures = await em.find(Closure, where)
+  // A planned maintenance window (#128): the kind of work and who planned it, as staff see it.
+  const works = await em.find(MaintenanceTask, { ...where, status: 'planned' })
   const bookers = await personNames(
     container,
     scope,
-    bookings.map((row) => row.bookedByPersonId),
+    [...bookings.map((row) => row.bookedByPersonId), ...works.map((row) => row.plannedByPersonId)],
     em,
   )
   const entries: CalendarEntry[] = [
@@ -156,6 +158,18 @@ export async function calendarEntries(
       end: row.endsAt,
       label: row.reason,
     })),
+    ...works.map((row) => ({
+      ...EMPTY,
+      id: row.id,
+      kind: 'maintenance' as const,
+      placeId: row.placeId,
+      start: row.startsAt as Date,
+      end: row.endsAt as Date,
+      label: row.kind,
+      bookedByPersonId: row.plannedByPersonId,
+      bookedByName: bookers.get(row.plannedByPersonId) ?? null,
+      updatedAt: row.updatedAt,
+    })),
   ]
   return entries.sort((a, b) => a.start.getTime() - b.start.getTime() || a.id.localeCompare(b.id))
 }
@@ -189,8 +203,22 @@ export type CalendarEntryView = {
   updatedAt: string | null
 }
 
+/**
+ * Who reads the calendar (#128, DD-36, Q-043): staff with `facilities.view` read the club with names; a maintainer
+ * holding only `facilities.maintenance.manage` reads the places assigned to them with the public calendar's
+ * redaction — no renter, person or group names — and the maintenance details. `canPlan` and `planPlaceIds` tell the
+ * page where "Plan maintenance" applies (null = every place).
+ */
+export type CalendarAccess = {
+  redacted: boolean
+  canPlan: boolean
+  planPlaceIds: string[] | null
+}
+
 export type StaffCalendar = {
   timeZone: string
+  /** The caller's maintenance access (#128). */
+  maintenance: CalendarAccess
   places: CalendarPlace[]
   /** One place only: its days in the window. */
   days: CalendarDay[]
@@ -208,7 +236,11 @@ export async function staffCalendar(
   grants: Scope,
   query: { placeId?: string; from: Date; to: Date },
   now: Date,
-): Promise<StaffCalendar | null> {
+  access: CalendarAccess = { redacted: false, canPlan: false, planPlaceIds: null },
+): Promise<StaffCalendar | null | 'forbidden'> {
+  // A redacted reader sees only the places assigned to them (403 for any other place).
+  const visible = access.redacted ? new Set(access.planPlaceIds ?? []) : null
+  if (visible && query.placeId && !visible.has(query.placeId)) return 'forbidden'
   const em = container.resolve<EntityManager>('em').fork()
   const timeZone = await clubTimeZone(container, scope)
   const window = { start: query.from, end: query.to }
@@ -236,12 +268,14 @@ export async function staffCalendar(
       })),
     }))
   } else {
-    places = options.map((option) => ({
-      id: option.id,
-      name: option.name,
-      parentName: option.parentName,
-      isLeaf: option.isLeaf,
-    }))
+    places = options
+      .filter((option) => !visible || visible.has(option.id))
+      .map((option) => ({
+        id: option.id,
+        name: option.name,
+        parentName: option.parentName,
+        isLeaf: option.isLeaf,
+      }))
     entryPlaceIds = places.map((place) => place.id)
   }
   const caller = {
@@ -252,9 +286,28 @@ export async function staffCalendar(
   const entries = await calendarEntries(container, em, scope, entryPlaceIds, window, now)
   return {
     timeZone,
+    maintenance: { redacted: access.redacted, canPlan: access.canPlan, planPlaceIds: access.planPlaceIds },
     places,
     days,
     entries: entries.map((entry) => {
+      if (access.redacted && entry.kind !== 'maintenance') {
+        // The public calendar's redaction: what occupies the slot, never who.
+        return {
+          id: entry.id,
+          kind: entry.kind,
+          placeId: entry.placeId,
+          start: entry.start.toISOString(),
+          end: entry.end.toISOString(),
+          label: null,
+          needsReschedule: entry.needsReschedule,
+          groupId: null,
+          sectionId: null,
+          bookedByName: null,
+          own: false,
+          canCancel: false,
+          updatedAt: null,
+        }
+      }
       const booking =
         entry.kind === 'booking' && entry.sectionId && entry.bookedByPersonId
           ? { sectionId: entry.sectionId, bookedByPersonId: entry.bookedByPersonId }

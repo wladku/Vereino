@@ -5,10 +5,11 @@
 /**
  * Grant kinds of club spec phase 1. Q17 of the foundation spec limits phase 1 to the roles
  * `vereino_club_admin`, `vereino_coordinator`, `vereino_coach`, `vereino_member` and `vereino_payer`, so the
- * kinds `treasurer` (with its `modules` payload), `facility_operator` and `maintenance_planner` arrive with
- * phases 4 and 5 and are not part of this union yet.
+ * kinds `treasurer` (with its `modules` payload) and `facility_operator` arrive with phases 4 and 5 and are not part
+ * of this union yet. `maintenance_planner` (facilities spec DD-36, #128) carries the places a person maintains.
  */
-export type GrantKind = 'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'self_user' | 'system_job'
+export type GrantKind =
+  'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'self_user' | 'system_job' | 'maintenance_planner'
 
 export const GRANT_KINDS: readonly GrantKind[] = [
   'club_admin',
@@ -18,10 +19,18 @@ export const GRANT_KINDS: readonly GrantKind[] = [
   'self',
   'self_user',
   'system_job',
+  'maintenance_planner',
 ]
 
 /** Kinds a registered scope provider may return; `self_user` and `system_job` are computed by the foundation. */
-export const PROVIDER_GRANT_KINDS: readonly GrantKind[] = ['club_admin', 'coordinator', 'coach', 'guardian', 'self']
+export const PROVIDER_GRANT_KINDS: readonly GrantKind[] = [
+  'club_admin',
+  'coordinator',
+  'coach',
+  'guardian',
+  'self',
+  'maintenance_planner',
+]
 
 export type ScopeGrant = {
   readonly kind: GrantKind
@@ -32,7 +41,7 @@ export type ScopeGrant = {
 export type Scope = readonly ScopeGrant[]
 
 /** The role recorded as `acting_role`: the kind of the grant that allowed the action. */
-export type ActingRole = 'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'system'
+export type ActingRole = 'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'system' | 'maintenance_planner'
 
 /** Target fields a grant can match, and the fields a list column map can name. */
 export type ScopeTargetField = 'sectionId' | 'groupId' | 'occurrenceId' | 'placeId' | 'personId' | 'userId'
@@ -62,6 +71,7 @@ const KIND_TARGET_FIELDS: Readonly<Record<GrantKind, readonly ScopeTargetField[]
   guardian: ['personId'],
   self: ['personId'],
   self_user: ['userId'],
+  maintenance_planner: ['placeId'],
 }
 
 const ACTING_ROLES: Readonly<Record<GrantKind, ActingRole>> = {
@@ -72,6 +82,7 @@ const ACTING_ROLES: Readonly<Record<GrantKind, ActingRole>> = {
   self: 'self',
   self_user: 'self',
   system_job: 'system',
+  maintenance_planner: 'maintenance_planner',
 }
 
 /**

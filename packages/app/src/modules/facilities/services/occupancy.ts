@@ -5,11 +5,12 @@
 // serves the rental commands and the quote and reads with the caller's EntityManager, so under the occupancy lock it
 // sees the caller's uncommitted rows. `blockingIntervals` is the `vereino.occupancyProvider` implementation the session
 // preview and save consult (foundation II P-26): rentals, internal bookings and closures, because `activities` checks
-// its own sessions; maintenance windows join with E08-S08.
+// its own sessions. Planned maintenance windows (#128) occupy like a closure: they answer 409 `maintenance_scheduled`
+// and reach a session's 409 with the reason `maintenance`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { BlockingInterval, OccupancyContext, OccupancyProvider } from '@/modules/foundation'
-import { Closure, InternalBooking, Rental } from '../data/entities'
+import { Closure, InternalBooking, MaintenanceTask, Rental } from '../data/entities'
 import { OCCUPYING_BOOKING_STATUSES } from '../lib/internal-bookings'
 import { OCCUPYING_RENTAL_STATUSES, overlappingEntries, type OccupancyEntry } from '../lib/rentals'
 import { placeFamily, plannedSessions, type FacilitiesScope } from './directory'
@@ -50,6 +51,12 @@ async function facilityEntries(
     { fields: ['id', 'placeId', 'startsAt', 'endsAt'] },
   )
   const closures = await em.find(Closure, where, { fields: ['id', 'placeId', 'startsAt', 'endsAt'] })
+  // A task without a window has null times, so the overlap condition leaves it out.
+  const works = await em.find(
+    MaintenanceTask,
+    { ...where, status: 'planned' },
+    { fields: ['id', 'placeId', 'startsAt', 'endsAt'] },
+  )
   return [
     ...rentals.map((row) => ({
       id: row.id,
@@ -71,6 +78,13 @@ async function facilityEntries(
       placeId: row.placeId,
       start: row.startsAt,
       end: row.endsAt,
+    })),
+    ...works.map((row) => ({
+      id: row.id,
+      kind: 'maintenance' as const,
+      placeId: row.placeId,
+      start: row.startsAt as Date,
+      end: row.endsAt as Date,
     })),
   ]
 }
@@ -105,10 +119,11 @@ const PROVIDER_REASONS: Record<Exclude<OccupancyEntry['kind'], 'session'>, Block
   rental: 'rental',
   booking: 'booking',
   closure: 'closure',
+  maintenance: 'maintenance',
 }
 
 /**
- * The DI service: the `vereino.occupancyProvider` contract (rentals, internal bookings and closures as blocking
+ * The DI service: the `vereino.occupancyProvider` contract (rentals, internal bookings, closures and maintenance windows as blocking
  * intervals). The rental
  * commands and the quote call `occupancyEntries` with the request container and their transactional EntityManager.
  */

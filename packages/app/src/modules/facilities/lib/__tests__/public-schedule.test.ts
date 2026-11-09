@@ -22,6 +22,7 @@ describe('public slot states (#124)', () => {
       'club_training',
       'bookable',
       'closed',
+      'unavailable',
       'club',
       'booked',
       'requested',
@@ -30,6 +31,7 @@ describe('public slot states (#124)', () => {
 
   it('shows an entry by what it does to the slot, never by who or why', () => {
     expect(entryState('closure')).toBe('closed')
+    expect(entryState('maintenance')).toBe('unavailable')
     expect(entryState('rental')).toBe('booked')
     expect(entryState('request')).toBe('requested')
     expect(entryState('session')).toBe('club')

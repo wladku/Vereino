@@ -106,6 +106,17 @@ export function plannedSessions(
   return placeSessions(container).plannedSessions(scope, placeIds, window, em)
 }
 
+/** The times of the done sessions on the places in the window (the hours of use of a maintenance task, #128). */
+export function doneSessionTimes(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+  em?: EntityManager,
+): Promise<Array<{ start: Date; end: Date }>> {
+  return placeSessions(container).doneSessionTimes(scope, placeIds, window, em)
+}
+
 /** The live planned sessions among `ids` with their times and places (#123: a group event supersedes requests). */
 export function sessionsByIds(
   container: AwilixContainer,
@@ -171,6 +182,28 @@ export async function clubRequestSettings(
     locale: settings.values.defaultLocale,
     bankAccount: settings.publicSettings.bankAccount,
   }
+}
+
+/** The `auth` user id of every person among `ids` with an account, by person id (the maintenance reminders, #128). */
+export function userIdsOf(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, string>> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).findUserIds(scope, ids, em)
+}
+
+/** The person ids holding the club administrator role on `date` (the maintenance reminders, #128). */
+export function clubAdminPersonIds(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  date: string,
+  em?: EntityManager,
+): Promise<string[]> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
 /** The user ids of the club's administrators on `date` (the request approvers, #125); persons without an account skipped. */

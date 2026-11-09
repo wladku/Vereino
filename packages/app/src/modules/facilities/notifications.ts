@@ -29,6 +29,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     category: 'facilities',
     actions: [],
   },
+  {
+    // #128: the date and usage reminders of a maintenance task, through the foundation `dispatch` (in-app only).
+    type: 'facilities.maintenance_due',
+    module: 'facilities',
+    channels: ['in_app'],
+    titleKey: 'facilities.notifications.maintenanceDue.title',
+    bodyKey: 'facilities.notifications.maintenanceDue.body',
+    icon: 'wrench',
+    severity: 'warning',
+    category: 'facilities',
+    linkHref: '/backend/facilities/maintenance',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

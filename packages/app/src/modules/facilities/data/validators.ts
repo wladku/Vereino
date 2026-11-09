@@ -8,6 +8,12 @@ import { CLOSURE_REASONS } from '../lib/closures'
 import { INCIDENT_ACTIONS, INCIDENT_INVOLVED_MAX_LENGTH, INCIDENT_KINDS } from '../lib/incidents'
 import { PURPOSE_MAX_LENGTH, PURPOSE_MIN_LENGTH } from '../lib/internal-bookings'
 import { HEADCOUNT_MAX, LOG_TEXT_MAX_LENGTH } from '../lib/logs'
+import {
+  MAINTENANCE_KINDS,
+  MAINTENANCE_RESPONSIBLE,
+  MAINTENANCE_SCHEDULE_TYPES,
+  MAINTENANCE_STATUSES,
+} from '../lib/maintenance'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import {
   APPROVAL_NOTE_MAX_LENGTH,
@@ -415,6 +421,76 @@ export const calendarQuerySchema = z.object({
   placeId: z.uuid().optional(),
   from: instantSchema,
   to: instantSchema,
+})
+
+// --- Maintenance (REQ-022, DD-36; #128) ---
+
+const costSchema = z.number().int().min(0).max(100_000_000)
+
+/** A task: a window, a due date (recurring: an RRULE) or a usage threshold; the combinations are checked in the command. */
+export const maintenanceTaskCreateSchema = z
+  .object({
+    placeId: z.uuid(),
+    kind: z.enum(MAINTENANCE_KINDS),
+    responsible: z.enum(MAINTENANCE_RESPONSIBLE).default('club'),
+    scheduleType: z.enum(MAINTENANCE_SCHEDULE_TYPES),
+    startsAt: instantSchema.nullable().optional(),
+    endsAt: instantSchema.nullable().optional(),
+    dueDate: calendarDateSchema.nullable().optional(),
+    recurrenceRule: z.string().trim().max(200).nullable().optional(),
+    usageHoursThreshold: z.number().nullable().optional(),
+    /** A usage task counts from this instant (default: now). */
+    usageCountedFrom: instantSchema.nullable().optional(),
+    cost: costSchema.nullable().optional(),
+    notes: optionalText(2000),
+  })
+  .strict()
+
+/** A change of a planned task; `status: 'cancelled'` cancels it (moving the window flags the conflicts again). */
+export const maintenanceTaskUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    placeId: z.uuid().optional(),
+    kind: z.enum(MAINTENANCE_KINDS).optional(),
+    responsible: z.enum(MAINTENANCE_RESPONSIBLE).optional(),
+    startsAt: instantSchema.nullable().optional(),
+    endsAt: instantSchema.nullable().optional(),
+    dueDate: calendarDateSchema.nullable().optional(),
+    recurrenceRule: z.string().trim().max(200).nullable().optional(),
+    usageHoursThreshold: z.number().nullable().optional(),
+    status: z.literal('cancelled').optional(),
+    cost: costSchema.nullable().optional(),
+    notes: optionalText(2000),
+  })
+  .strict()
+
+/** `POST /api/facilities/maintenance-tasks/{id}/complete`. */
+export const maintenanceCompleteSchema = z
+  .object({
+    id: z.uuid(),
+    doneAt: instantSchema.optional(),
+    cost: costSchema.nullable().optional(),
+    notes: optionalText(2000),
+  })
+  .strict()
+
+export const maintenanceTaskListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['startsAt', 'dueDate', 'createdAt', 'updatedAt']).optional(),
+  placeId: z.uuid().optional(),
+  status: z.enum(MAINTENANCE_STATUSES).optional(),
+  scheduleType: z.enum(MAINTENANCE_SCHEDULE_TYPES).optional(),
+})
+
+export const placeMaintainerCreateSchema = z.object({ placeId: z.uuid(), personId: z.uuid() }).strict()
+
+export const placeMaintainerDeleteSchema = z.object({ id: z.uuid() }).strict()
+
+export const placeMaintainerListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['createdAt']).optional(),
+  placeId: z.uuid().optional(),
+  personId: z.uuid().optional(),
 })
 
 export type RentalCreateInput = z.output<typeof rentalCreateSchema>

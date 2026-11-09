@@ -16,16 +16,18 @@ const ORG = { tenantId: 't1', organizationId: 'o1' }
 const SECTION_A = 'section-a'
 const SECTION_B = 'section-b'
 
-test('the phase 1 grant kinds exclude treasurer, facility_operator and maintenance_planner', () => {
+test('the grant kinds exclude treasurer and facility_operator; maintenance_planner arrives with #128', () => {
   assert.deepEqual([...GRANT_KINDS].sort(), [
     'club_admin',
     'coach',
     'coordinator',
     'guardian',
+    'maintenance_planner',
     'self',
     'self_user',
     'system_job',
   ])
+  assert.equal(PROVIDER_GRANT_KINDS.includes('maintenance_planner'), true)
   assert.equal(PROVIDER_GRANT_KINDS.includes('self_user'), false)
   assert.equal(PROVIDER_GRANT_KINDS.includes('system_job'), false)
 })
@@ -38,6 +40,7 @@ test('actingRoleFor maps self_user to self and system_job to system', () => {
   assert.equal(actingRoleFor('self'), 'self')
   assert.equal(actingRoleFor('self_user'), 'self')
   assert.equal(actingRoleFor('system_job'), 'system')
+  assert.equal(actingRoleFor('maintenance_planner'), 'maintenance_planner')
 })
 
 test('unionScopes concatenates and hasKind finds a kind', () => {
@@ -178,4 +181,15 @@ test('clubWideKinds makes an allowed kind cover every record of the resource', (
       id: { $in: ['person-1'] },
     },
   )
+})
+
+test('a maintenance_planner grant matches the places it lists, and filters by place (DD-36)', () => {
+  const scope = [{ kind: 'maintenance_planner', ids: ['pitch'] }]
+  const kinds = ['club_admin', 'maintenance_planner']
+  assert.equal(findActingRole(scope, kinds, { id: 'x', ...ORG, placeId: 'pitch' }), 'maintenance_planner')
+  assert.equal(findActingRole(scope, kinds, { id: 'x', ...ORG, placeId: 'hall' }), null)
+  assert.deepEqual(scopeWhere(scope, kinds, { placeId: 'place_id' }), { place_id: { $in: ['pitch'] } })
+  assert.deepEqual(sanitizeProviderGrants([{ kind: 'maintenance_planner', ids: ['pitch', ''] }]), [
+    { kind: 'maintenance_planner', ids: ['pitch'] },
+  ])
 })

@@ -2,10 +2,12 @@
 // staff view of the club's places. With `placeId`, the timeline of one place — the days of the window with their
 // opening windows and zones, and the sessions, rentals, pending requests, internal bookings and closures on the place,
 // its ancestors and descendants, with the names staff see; without it, every live active place with the entries on
-// it. Staff with `facilities.view` read the whole club; the attendant's place scope and the maintenance planner's
-// redacted read arrive with their stories (E08-S04, E08-S08).
+// it. Staff with `facilities.view` read the whole club; a maintainer holding only `facilities.maintenance.manage`
+// reads the places assigned to them, without renter, person or group names (#128, DD-36, TEST-050; 403 for another
+// place). The attendant's place scope arrives with E08-S04.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
 import { calendarQuerySchema } from '../../data/validators'
 import { calendarWindowProblem } from '../../lib/internal-bookings'
@@ -13,11 +15,17 @@ import { staffCalendar } from '../../services/calendar'
 import { errorSchema } from '../shared'
 
 export const metadata = {
-  GET: { requireAuth: true, requireFeatures: ['facilities.view'] },
+  // `facilities.view` or `facilities.maintenance.manage`: checked in the handler (the metadata requires all features).
+  GET: { requireAuth: true },
 }
 
 const responseSchema = z.object({
   timeZone: z.string(),
+  maintenance: z.object({
+    redacted: z.boolean().describe('A maintainer without facilities.view: no names, only the assigned places'),
+    canPlan: z.boolean(),
+    planPlaceIds: z.array(z.string()).nullable().describe('The places the caller may plan maintenance on; null = all'),
+  }),
   places: z.array(z.object({ id: z.uuid(), name: z.string(), parentName: z.string().nullable(), isLeaf: z.boolean() })),
   days: z.array(
     z.object({
@@ -32,7 +40,7 @@ const responseSchema = z.object({
   entries: z.array(
     z.object({
       id: z.uuid(),
-      kind: z.enum(['session', 'rental', 'request', 'booking', 'closure']),
+      kind: z.enum(['session', 'rental', 'request', 'booking', 'closure', 'maintenance']),
       placeId: z.uuid(),
       start: z.string(),
       end: z.string(),
@@ -64,14 +72,27 @@ export async function GET(request: Request): Promise<Response> {
     if (problem) {
       return Response.json({ error: 'Invalid date range', code: 'calendar_range_invalid', problem }, { status: 400 })
     }
+    const userId = ctx.auth?.sub
+    const rbac = ctx.container.resolve<RbacService>('rbacService')
+    const canView = !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.view'], scope))
+    const canPlan = !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.maintenance.manage'], scope))
+    if (!canView && !canPlan) return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
     const grants = await scopeContract.resolve(ctx)
+    const clubWide = grants.some((grant) => grant.kind === 'club_admin')
+    const maintained = grants.flatMap((grant) => (grant.kind === 'maintenance_planner' ? [...(grant.ids ?? [])] : []))
     const calendar = await staffCalendar(
       ctx.container,
       scope,
       grants,
       { placeId: parsed.data.placeId, from, to },
       new Date(),
+      {
+        redacted: !canView,
+        canPlan: canPlan && (clubWide || maintained.length > 0),
+        planPlaceIds: clubWide ? null : maintained,
+      },
     )
+    if (calendar === 'forbidden') return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
     if (!calendar) return Response.json({ error: 'Not found' }, { status: 404 })
     return Response.json(calendar, { headers: { 'cache-control': 'no-store' } })
   } catch (error: unknown) {
@@ -86,13 +107,18 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read the occupancy of the club places',
       description:
-        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking and closure on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller.',
+        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking, closure and planned maintenance window on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller. A caller with `facilities.maintenance.manage` but without `facilities.view` (a place maintainer) reads only the places assigned to them, and every entry except maintenance without its label, names or group (`maintenance.redacted`).',
       query: calendarQuerySchema,
       responses: [{ status: 200, description: 'The calendar', schema: responseSchema }],
       errors: [
         { status: 400, description: '`calendar_query_invalid`, `calendar_range_invalid`', schema: errorSchema },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
-        { status: 403, description: 'Without `facilities.view`', schema: errorSchema },
+        {
+          status: 403,
+          description:
+            'Without `facilities.view` and `facilities.maintenance.manage`, or a maintainer reading another place',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Unknown place', schema: errorSchema },
       ],
     },

@@ -2,7 +2,8 @@
 // `/p/[clubSlug]/places/[placeSlug]?month=YYYY-MM` — one facility's public month (facilities spec P-04, REQ-014,
 // glossary *Public facility calendar*; #124). The month is a list of days on a phone and a month grid from `md` up;
 // every stretch of a day is written as its time and a state label ("Taken by the club", "Booked", "Requested —
-// pending", "Closed", …), and a text legend explains the states — colour is only an extra cue from the status tokens.
+// pending", "Closed", "Unavailable" for planned maintenance work — #128, …), and a text legend explains the states —
+// colour is only an extra cue from the status tokens.
 // "Earlier" and "Later" move a month within the readable range and keep it in the URL, so a QR code or a permalink
 // opens the same month. Below the month: the opening hours, the rates per 90 minutes, the rules, the club phone and
 // the photos — only what the API sends, never a name of a renter, a group or a person. A bookable stretch that a guest

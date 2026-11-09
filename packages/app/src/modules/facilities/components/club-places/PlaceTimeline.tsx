@@ -4,6 +4,8 @@
 // (sessions, rentals, pending requests, internal bookings with "purpose · booker", closures) or "Free"; nothing relies
 // on colour — the kind and the zone are written out, and the text legend explains both. A free segment can be picked
 // to prefill the booking range; an own or cancellable booking offers "Cancel". On a phone the segments stack.
+// A planned maintenance window (#128) shows its kind of work and who planned it (dotted outline); for a redacted
+// reader (a place maintainer) the other blocks say only what occupies the slot ("Taken by the club", "Booked", …).
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Tag, type TagMap } from '@open-mercato/ui/primitives/tag'
@@ -27,6 +29,7 @@ export const KIND_TAGS: TagMap<CalendarEntryKind> = {
   rental: 'warning',
   request: 'neutral',
   closure: 'error',
+  maintenance: 'brand',
 }
 
 const ZONE_TAGS: TagMap<Zone> = {
@@ -43,6 +46,7 @@ const KIND_BORDERS: Record<CalendarEntryKind, string> = {
   rental: 'border-solid',
   request: 'border-dashed',
   closure: 'border-double border-4',
+  maintenance: 'border-dotted border-2',
 }
 
 export function TimelineLegend() {
@@ -84,16 +88,18 @@ function EntryBlock({
   first,
   timeZone,
   placeName,
+  redacted,
   onCancel,
 }: {
   entry: CalendarEntry
   first: boolean
   timeZone: string
   placeName: string | null
+  redacted: boolean
   onCancel: (entry: CalendarEntry) => void
 }) {
   const t = useT()
-  const label = entryLabel(t, entry)
+  const label = entryLabel(t, entry, redacted)
   const range = entryRange(entry, timeZone)
   if (!first) {
     return (
@@ -117,7 +123,9 @@ function EntryBlock({
       <p className="text-sm break-words">
         {entry.kind === 'booking' && entry.bookedByName
           ? t('facilities.places.entry.booking', { purpose: label, booker: entry.bookedByName })
-          : label}
+          : entry.kind === 'maintenance' && entry.bookedByName
+            ? t('facilities.places.entry.maintenance', { kind: label, planner: entry.bookedByName })
+            : label}
       </p>
       {placeName ? (
         <p className="text-muted-foreground text-xs break-words">
@@ -151,6 +159,7 @@ export function PlaceTimeline({
   places,
   selected,
   canBook,
+  redacted = false,
   onPick,
   onCancel,
 }: {
@@ -160,6 +169,8 @@ export function PlaceTimeline({
   places: readonly CalendarPlace[]
   selected: { from: string; to: string } | null
   canBook: boolean
+  /** A place maintainer's view: the blocks other than maintenance without names. */
+  redacted?: boolean
   onPick: (from: string, to: string) => void
   onCancel: (entry: CalendarEntry) => void
 }) {
@@ -209,6 +220,7 @@ export function PlaceTimeline({
                       first={first}
                       timeZone={timeZone}
                       placeName={nameOf(entry)}
+                      redacted={redacted}
                       onCancel={onCancel}
                     />
                   ))}

@@ -2,13 +2,16 @@
 // REQ-027; #123): the shape of `GET /api/facilities/calendar`, the reads and writes the pages run (the calendar, the
 // booking options, the feature check, an internal booking, its cancellation with the lock token, a group's event),
 // the wall-time handling in the club's time zone (`Intl`, never the browser's zone) and the cutting of a day into the
-// timeline segments of 08:00–22:00. Authorization stays on the routes and commands; these helpers only hide what the
+// timeline segments of 08:00–22:00. Planned maintenance windows (#128) are entries of their own; a place maintainer
+// without `facilities.view` reads the calendar redacted (`maintenance.redacted`: the other entries without names), and
+// `maintenance.canPlan` / `planPlaceIds` say where "Plan maintenance" applies. Authorization stays on the routes and commands; these helpers only hide what the
 // server would refuse.
 import { useQuery } from '@tanstack/react-query'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
-import { addDays, zonedInstant } from '@vereino/core'
+import { addDays, isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
+import { MAINTENANCE_KINDS } from '../../lib/maintenance'
 import type { Zone } from '../../lib/zones'
 
 export type Translate = ReturnType<typeof useT>
@@ -41,8 +44,15 @@ export const PURPOSE_MAX = 120
 export const DAY_START = 8 * 60
 export const DAY_END = 22 * 60
 
-export type CalendarEntryKind = 'session' | 'rental' | 'request' | 'booking' | 'closure'
-export const ENTRY_KINDS: readonly CalendarEntryKind[] = ['session', 'booking', 'rental', 'request', 'closure']
+export type CalendarEntryKind = 'session' | 'rental' | 'request' | 'booking' | 'closure' | 'maintenance'
+export const ENTRY_KINDS: readonly CalendarEntryKind[] = [
+  'session',
+  'booking',
+  'rental',
+  'request',
+  'closure',
+  'maintenance',
+]
 
 export type CalendarPlace = { id: string; name: string; parentName: string | null; isLeaf: boolean }
 export type CalendarDay = {
@@ -63,11 +73,14 @@ export type CalendarEntry = {
   bookedByName: string | null
   own: boolean
   canCancel: boolean
-  /** An internal booking's version, the lock token of its cancellation. */
+  /** An internal booking's or a maintenance task's version, the lock token of its change. */
   updatedAt?: string | null
 }
+/** The caller's maintenance access (#128): a redacted reader, and where maintenance may be planned (null = everywhere). */
+export type CalendarMaintenanceAccess = { redacted: boolean; canPlan: boolean; planPlaceIds: string[] | null }
 export type StaffCalendar = {
   timeZone: string
+  maintenance?: CalendarMaintenanceAccess
   places: CalendarPlace[]
   days: CalendarDay[]
   entries: CalendarEntry[]
@@ -77,7 +90,7 @@ export type BookingSection = { id: string; name: string; coordinated: boolean }
 
 /** A colliding entry of a 409 `rental_conflict` / `place_closed`. */
 export type BookingConflict = {
-  kind: 'session' | 'rental' | 'booking' | 'closure'
+  kind: 'session' | 'rental' | 'booking' | 'closure' | 'maintenance'
   id: string
   placeId?: string
   start: string
@@ -246,8 +259,31 @@ export function entriesOfDay(
     .sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id))
 }
 
-/** The text of an entry: an activity, a renter, a booking purpose, or a closure's reason. */
-export function entryLabel(t: Translate, entry: { kind: string; label?: string | null }): string {
+const REDACTED_KEYS: Record<string, string> = {
+  session: 'facilities.places.redacted.club',
+  booking: 'facilities.places.redacted.club',
+  rental: 'facilities.places.redacted.booked',
+  request: 'facilities.places.redacted.requested',
+  closure: 'facilities.places.redacted.closed',
+}
+
+/** A maintenance entry's kind of work in words; a conflict's label may carry " · planner" after the kind. */
+function maintenanceLabel(t: Translate, label: string | null | undefined): string {
+  if (!label) return t('facilities.places.kind.maintenance')
+  const [kind, ...rest] = label.split(' · ')
+  const known = MAINTENANCE_KINDS.find((entry) => entry === kind)
+  if (!known) return label
+  return [t(`facilities.maintenance.kinds.${known}`), ...rest].join(' · ')
+}
+
+/**
+ * The text of an entry: an activity, a renter, a booking purpose, a closure's reason or the kind of maintenance work.
+ * A redacted reader (a place maintainer) sees what occupies the slot, never who: "Taken by the club", "Booked", …
+ */
+export function entryLabel(t: Translate, entry: { kind: string; label?: string | null }, redacted = false): string {
+  if (entry.kind === 'maintenance') return maintenanceLabel(t, entry.label)
+  const redactedKey = redacted ? REDACTED_KEYS[entry.kind] : undefined
+  if (redactedKey) return t(redactedKey)
   if (entry.kind === 'closure') {
     return entry.label ? t(`facilities.closures.reason.${entry.label}`) : t('facilities.places.kind.closure')
   }
@@ -255,6 +291,36 @@ export function entryLabel(t: Translate, entry: { kind: string; label?: string |
 }
 
 // --- Reads ---
+
+/** The HTTP status a failed calendar read carries (`useStaffCalendar` throws it as the message). */
+export function calendarErrorStatus(error: unknown): number | null {
+  const status = error instanceof Error ? Number(error.message) : Number.NaN
+  return Number.isInteger(status) ? status : null
+}
+
+/** Whether the caller may plan maintenance on the place. */
+export function canPlanMaintenance(calendar: Pick<StaffCalendar, 'maintenance'>, placeId: string): boolean {
+  const access = calendar.maintenance
+  if (!access?.canPlan) return false
+  return access.planPlaceIds === null || access.planPlaceIds.includes(placeId)
+}
+
+/** A `datetime-local` value (`YYYY-MM-DDTHH:MM`) read in the club's zone, as an ISO instant; null when invalid. */
+export function zonedLocalInstant(local: string, timeZone: string): string | null {
+  const date = local.slice(0, 10)
+  const time = local.slice(11, 16)
+  if (!isCalendarDate(date) || !isLocalTime(time)) return null
+  return zonedInstant(date, time, timeZone).toISOString()
+}
+
+/** An instant as a `datetime-local` value in the club's zone; '' when there is none. */
+export function zonedLocalValue(iso: string | null | undefined, timeZone: string): string {
+  if (!iso) return ''
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return ''
+  const wall = zoneWallTime(at, timeZone)
+  return `${wall.date}T${timeOf(wall.minutes)}`
+}
 
 export function useStaffCalendar(window: { from: string; to: string; placeId?: string }) {
   return useQuery({
@@ -391,6 +457,7 @@ export function bookingConflicts(answer: ApiAnswer): BookingConflict[] {
 const BOOKING_ERROR_KEYS: Record<string, string> = {
   rental_conflict: 'facilities.places.errors.conflict',
   place_closed: 'facilities.places.errors.closed',
+  maintenance_scheduled: 'facilities.places.errors.maintenance',
   booking_period_invalid: 'facilities.places.errors.period',
   booking_start_past: 'facilities.places.errors.past',
   booking_section_invalid: 'facilities.places.errors.section',

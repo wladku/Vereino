@@ -2,7 +2,8 @@
 // TEST-024; #124): the month a guest may read, and one day of a place as stretches of time with a state and nothing
 // else — no names, no kinds of closure, no ids. A day starts from the place's effective zones inside its opening
 // hours; the entries on the place family then cover them: a closure "closed", a club session or an internal booking
-// "taken by the club", a rental "booked", a request holding the slot "requested — pending". A free stretch of the
+// "taken by the club", a rental "booked", a request holding the slot "requested — pending", planned maintenance work
+// "unavailable" (#128, without its kind). A free stretch of the
 // `reservable_paid` zone is "bookable", and offers "Request a booking" when the place and the club take online
 // requests, it starts in the future and it is at least one 90-minute unit long. Nothing here reads the database or
 // the clock (S3.5): the caller passes the dates, the time zone and the current instant.
@@ -17,6 +18,7 @@ export const PUBLIC_SLOT_STATES = [
   'club_training',
   'bookable',
   'closed',
+  'unavailable',
   'club',
   'booked',
   'requested',
@@ -24,11 +26,12 @@ export const PUBLIC_SLOT_STATES = [
 export type PublicSlotState = (typeof PUBLIC_SLOT_STATES)[number]
 
 /** The entry kinds of the staff calendar (`services/calendar.ts`). */
-export type ScheduleEntryKind = 'session' | 'booking' | 'rental' | 'request' | 'closure'
+export type ScheduleEntryKind = 'session' | 'booking' | 'rental' | 'request' | 'closure' | 'maintenance'
 
 /** The state an entry shows the public: never who or why. */
 export function entryState(kind: ScheduleEntryKind): PublicSlotState {
   if (kind === 'closure') return 'closed'
+  if (kind === 'maintenance') return 'unavailable'
   if (kind === 'rental') return 'booked'
   if (kind === 'request') return 'requested'
   return 'club'
@@ -41,7 +44,8 @@ export function zoneState(zone: Zone): PublicSlotState {
 
 /** Which state wins where several cover the same minute: a closure first, a free zone last. */
 const STATE_RANK: Record<PublicSlotState, number> = {
-  closed: 6,
+  closed: 7,
+  unavailable: 6,
   club: 5,
   booked: 4,
   requested: 3,

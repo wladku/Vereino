@@ -77,13 +77,19 @@ export type PersonScopeInput = {
    * as the optional `groups` contribution returns them; absent or empty without `groups`.
    */
   readonly coachedGroupIds?: readonly string[]
+  /**
+   * Places the person maintains (`facilities_place_maintainers`, facilities spec DD-36, #128), as the optional
+   * `facilities.maintainerScopeProvider` returns them; absent or empty without `facilities` (fail closed).
+   */
+  readonly maintenancePlaceIds?: readonly string[]
 }
 
 /**
  * The record scope of a person on `today` (foundation spec *Grant kinds*): `club_admin` for an active club_admin
  * assignment; `coordinator` with the sections of the active coordinator assignments; `coach` with the groups of the
  * active `coach`/`assistant` memberships (#30 — a `coach` role assignment alone grants only the `auth` role, not a
- * group); `guardian` with the wards of the active guardianships; `self` always.
+ * group); `guardian` with the wards of the active guardianships; `maintenance_planner` with the places the person
+ * maintains (#128); `self` always.
  */
 export function personScope(input: PersonScopeInput, today: CalendarDate): Scope {
   const active = input.assignments.filter((assignment) => isActiveAt(assignment, today))
@@ -99,6 +105,8 @@ export function personScope(input: PersonScopeInput, today: CalendarDate): Scope
     input.guardianships.filter((guardianship) => isActiveAt(guardianship, today)).map((g) => g.wardPersonId),
   )
   if (wardIds.length > 0) grants.push({ kind: 'guardian', ids: wardIds })
+  const maintainedPlaceIds = uniqueSorted(input.maintenancePlaceIds ?? [])
+  if (maintainedPlaceIds.length > 0) grants.push({ kind: 'maintenance_planner', ids: maintainedPlaceIds })
   grants.push({ kind: 'self', ids: [input.personId] })
   return grants
 }

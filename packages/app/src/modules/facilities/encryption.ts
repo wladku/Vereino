@@ -11,6 +11,7 @@ export const ENTRY_BAN_ENCRYPTION_ENTITY_ID = 'facilities:entry_ban'
 export const INTERNAL_BOOKING_ENCRYPTION_ENTITY_ID = 'facilities:internal_booking'
 export const LOG_ENCRYPTION_ENTITY_ID = 'facilities:facility_log'
 export const INCIDENT_ENCRYPTION_ENTITY_ID = 'facilities:incident'
+export const MAINTENANCE_TASK_ENCRYPTION_ENTITY_ID = 'facilities:maintenance_task'
 
 const rentalFields = [
   'renter_display_name',
@@ -35,12 +36,18 @@ const incidentFields = ['description', 'involved'].map((field) =>
   encryptedField({ entityId: INCIDENT_ENCRYPTION_ENTITY_ID, field }),
 )
 
+// #128: the notes of a maintenance task (free text that may name people).
+const maintenanceFields = ['notes'].map((field) =>
+  encryptedField({ entityId: MAINTENANCE_TASK_ENCRYPTION_ENTITY_ID, field }),
+)
+
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   { entityId: RENTAL_ENCRYPTION_ENTITY_ID, fields: rentalFields.map((field) => field.mapEntry) },
   { entityId: ENTRY_BAN_ENCRYPTION_ENTITY_ID, fields: [entryBanReason.mapEntry] },
   { entityId: INTERNAL_BOOKING_ENCRYPTION_ENTITY_ID, fields: internalBookingFields.map((field) => field.mapEntry) },
   { entityId: LOG_ENCRYPTION_ENTITY_ID, fields: logFields.map((field) => field.mapEntry) },
   { entityId: INCIDENT_ENCRYPTION_ENTITY_ID, fields: incidentFields.map((field) => field.mapEntry) },
+  { entityId: MAINTENANCE_TASK_ENCRYPTION_ENTITY_ID, fields: maintenanceFields.map((field) => field.mapEntry) },
 ]
 
 export default defaultEncryptionMaps

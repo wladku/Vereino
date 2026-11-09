@@ -11,10 +11,10 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { authorizeScoped, lockOccupancy, trustedScopeOf } from '@/modules/foundation'
 import { Closure } from '../data/entities'
-import { flagInternalBookingsForReschedule, flagRentalsForReschedule } from '../data/queries'
 import { closureCreateSchema, closureDeleteSchema, closureUpdateSchema } from '../data/validators'
 import { closurePeriodProblem, closureWindowChanged, type RescheduleCounts } from '../lib/closures'
-import { flagSessionsForReschedule, placeFamily, type FacilitiesScope } from '../services/directory'
+import type { FacilitiesScope } from '../services/directory'
+import { flagUnderWindow } from '../services/reschedule'
 import {
   MANAGE_KINDS,
   assertPlaces,
@@ -69,26 +69,10 @@ async function assertPeriod(startsAt: Date, endsAt: Date): Promise<void> {
   if (closurePeriodProblem(startsAt, endsAt)) await throwFieldError('closure_period_invalid', 'endsAt')
 }
 
-/**
- * Flags the planned sessions and the rentals holding their slot under the closure after the commit, each in a
- * transaction of its own (DD-43), and counts them: sessions on the place and its sub-places (a session points at a
- * leaf), rentals on its sub-places and its ancestors too (a rental may hold the whole parent place).
- */
-async function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promise<RescheduleCounts> {
+/** Flags the entries under the closure after the commit (`services/reschedule.ts`, DD-43). */
+function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promise<RescheduleCounts> {
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
-  const family = await placeFamily(ctx.container, scope, row.placeId)
-  const placeIds = [row.placeId, ...(family?.descendantIds ?? [])]
-  const window = { start: row.startsAt, end: row.endsAt }
-  const flagged = await flagSessionsForReschedule(ctx.container, scope, placeIds, window)
-  // A rental may hold a whole parent place (the hall a closed court belongs to), so rentals use the full family.
-  const rentalPlaceIds = [...placeIds, ...(family?.ancestorIds ?? [])]
-  const em = ctx.container.resolve<EntityManager>('em').fork()
-  const rentals = await em.transactional((tx) => flagRentalsForReschedule(tx, scope, rentalPlaceIds, window))
-  for (const rental of rentals) await emitAfterCommit('facilities.rental.updated', scope, rental)
-  // An internal booking may hold a parent place too (#123).
-  const bookings = await em.transactional((tx) => flagInternalBookingsForReschedule(tx, scope, rentalPlaceIds, window))
-  for (const booking of bookings) await emitAfterCommit('facilities.internal_booking.updated', scope, booking)
-  return { sessions: flagged.length, rentals: rentals.length, bookings: bookings.length }
+  return flagUnderWindow(ctx.container, scope, row.placeId, { start: row.startsAt, end: row.endsAt })
 }
 
 async function emitClosure(row: Closure, action: 'created' | 'updated' | 'deleted'): Promise<void> {

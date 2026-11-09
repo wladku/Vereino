@@ -189,6 +189,12 @@ describe('occupancy', () => {
         entry('b', 'closure', '2026-11-11T00:00:00Z', '2026-11-12T00:00:00Z'),
       ]),
     ).toBe('place_closed')
+    expect(
+      occupancyConflictCode([
+        entry('a', 'session', '2026-11-11T18:00:00Z', '2026-11-11T19:00:00Z'),
+        entry('m', 'maintenance', '2026-11-11T08:00:00Z', '2026-11-11T19:00:00Z'),
+      ]),
+    ).toBe('maintenance_scheduled')
   })
 })
 
