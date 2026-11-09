@@ -22,6 +22,11 @@ const CLUB_CORE_PARTITION = 'privateAttachments'
 
 export const publicErrorSchema = z.object({ error: z.string(), code: z.string().optional() })
 
+/** The footer links of every public page (#195): each URL, or null while the club has not set it. */
+export const publicClubLinksSchema = z
+  .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
+  .describe("The club's rules and privacy policy in the page footer; null while not set")
+
 export const publicLogoSchema = z.object({
   url: z.string().nullable().describe('The logo image; null shows `initial`'),
   source: z.enum(['section', 'club', 'initial']),

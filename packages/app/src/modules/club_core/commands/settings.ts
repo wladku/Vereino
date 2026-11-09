@@ -2,6 +2,7 @@
 // settings by the club administrator. `execute` creates the row on the first update, row-locks it and authorizes
 // through `authorizeScoped` inside one write transaction; undo restores the previous values after `authorizeReplay`
 // re-checks the current scope. Since #29 it also writes the club's public slug, description, phone and publication
+// (and since #195 the rules and privacy-policy URLs of the page footer)
 // (glossary *Publication*): a page switched on needs the slug (422), and a slug another club holds answers 409 from
 // the unique index — no lookup across clubs runs here. The logo has its own commands (`commands/logos.ts`).
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -58,6 +59,9 @@ type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
   contactPhone?: string | null
   // The club's bank account (#111); absent in log entries written before it.
   bankAccount?: string | null
+  // The footer links (#195); absent in log entries written before them.
+  rulesUrl?: string | null
+  privacyPolicyUrl?: string | null
   publication?: Publication
 }
 
@@ -80,6 +84,8 @@ function snapshot(row: ClubSettings): SettingsSnapshot {
     publicDescription: row.publicDescription ?? null,
     contactPhone: row.contactPhone ?? null,
     bankAccount: row.bankAccount ?? null,
+    rulesUrl: row.rulesUrl ?? null,
+    privacyPolicyUrl: row.privacyPolicyUrl ?? null,
     publication: resolvePublication(row.publication),
   }
 }
@@ -88,6 +94,8 @@ type PublicPatch = {
   publicSlug?: string | null
   publicDescription?: string | null
   contactPhone?: string | null
+  rulesUrl?: string | null
+  privacyPolicyUrl?: string | null
   publication?: Parameters<typeof applyPublicationPatch>[1]
 }
 
@@ -96,6 +104,8 @@ function writePublicSettings(row: ClubSettings, patch: PublicPatch): 'publicatio
   if (patch.publicSlug !== undefined) row.publicSlug = patch.publicSlug
   if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
   if (patch.contactPhone !== undefined) row.contactPhone = patch.contactPhone
+  if (patch.rulesUrl !== undefined) row.rulesUrl = patch.rulesUrl
+  if (patch.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = patch.privacyPolicyUrl
   const publication = applyPublicationPatch(resolvePublication(row.publication), patch.publication)
   row.publication = publication
   return clubPublicationProblem({ publication, publicSlug: row.publicSlug ?? null })
@@ -142,6 +152,8 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone
   if (before.bankAccount !== undefined) row.bankAccount = before.bankAccount
+  if (before.rulesUrl !== undefined) row.rulesUrl = before.rulesUrl
+  if (before.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = before.privacyPolicyUrl
   if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
   row.updatedAt = new Date()
 }

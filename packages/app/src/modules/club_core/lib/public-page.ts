@@ -2,7 +2,7 @@
 // gets for the club and for one public section. Pure: a block the club disabled is left out of the result (absent from
 // the API response, not hidden by the page), and an enabled block with nothing to show is left out as well. Blocks of
 // later modules (groups, schedule, prices, places) come from optional DI providers and are merged by the service.
-import { isBlockPublished, type Publication, type PublicationBlock } from './publication'
+import { isBlockPublished, isPublicLinkUrl, type Publication, type PublicationBlock } from './publication'
 
 /** Section content written for publication (glossary *Section*: "for publication" fields, never people records). */
 export type SectionPublicContent = {
@@ -87,6 +87,19 @@ export function sectionBlocks(
 /** The club's own contact on its page: the club phone, only with the `contact` block. */
 export function clubContact(publication: Publication, contactPhone: string | null): { phone: string } | null {
   return isBlockPublished(publication, 'contact') && filled(contactPhone) ? { phone: contactPhone } : null
+}
+
+/** The club's own documents in the page footer (README 3.1, #195): each URL, or null when the club has none. */
+export type PublicClubLinks = { rules: string | null; privacyPolicy: string | null }
+
+const publishedLink = (url: string | null): string | null => (url !== null && isPublicLinkUrl(url) ? url : null)
+
+/**
+ * The footer links of every public page: the rules and the privacy policy, each only when the club filled it in. No
+ * block gates them (owner decision on #195); a stored value that is not an http(s) URL is left out.
+ */
+export function clubLinks(rulesUrl: string | null, privacyPolicyUrl: string | null): PublicClubLinks {
+  return { rules: publishedLink(rulesUrl), privacyPolicy: publishedLink(privacyPolicyUrl) }
 }
 
 /** A material a guest may download: public, of a public section, with the `materials` block on. */

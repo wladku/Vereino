@@ -105,6 +105,30 @@ export function isPublicSlug(value: string): boolean {
   )
 }
 
+export const PUBLIC_LINK_MAX_LENGTH = 2000
+
+/**
+ * True when `value` may be published as a footer link (the club's rules and privacy policy, #195): an absolute `http:`
+ * or `https:` URL (both require a host), at most 2000 characters. Any other scheme (`javascript:`, `data:`,
+ * `mailto:`) is refused, because the page puts the value in an `href`.
+ */
+export function isPublicLinkUrl(value: string): boolean {
+  if (value.length > PUBLIC_LINK_MAX_LENGTH || value.trim() !== value) return false
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return false
+  }
+  return url.protocol === 'https:' || url.protocol === 'http:'
+}
+
+/** A footer link as entered (#195): trimmed, then an absolute http(s) URL (`isPublicLinkUrl`). */
+export const publicLinkUrlSchema = z
+  .string()
+  .trim()
+  .refine(isPublicLinkUrl, { message: 'Enter a full address starting with https://' })
+
 /** Why a club's publication cannot be saved: an enabled page needs the club's public slug. */
 export function clubPublicationProblem(input: {
   publication: Publication

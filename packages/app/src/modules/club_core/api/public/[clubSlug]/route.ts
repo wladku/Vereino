@@ -9,6 +9,7 @@ import {
   jsonResponse,
   notOkResponse,
   publicErrorSchema,
+  publicClubLinksSchema,
   publicLogoSchema,
   publicRoute,
   publicSite,
@@ -36,6 +37,7 @@ const clubPageSchema = z.object({
     description: z.string().nullable(),
     logo: publicLogoSchema,
     contact: z.object({ phone: z.string() }).nullable().describe('Only with the `contact` block'),
+    links: publicClubLinksSchema,
   }),
   sections: z.array(
     z.object({

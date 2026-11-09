@@ -73,6 +73,8 @@ function publicFields(settings: ClubPublicSettings) {
     publicDescription: settings.publicDescription,
     contactPhone: settings.contactPhone,
     bankAccount: settings.bankAccount,
+    rulesUrl: settings.rulesUrl,
+    privacyPolicyUrl: settings.privacyPolicyUrl,
     logoAttachmentId: settings.logoAttachmentId,
     logoUrl: settings.logoUrl,
     publication: settings.publication,
@@ -150,6 +152,8 @@ const settingsResponseSchema = z.object({
     .string()
     .nullable()
     .describe("The club's bank account (NRB, 26 digits), shown in the payers' transfer instructions"),
+  rulesUrl: z.string().nullable().describe("The club's rules, linked in the public page footer"),
+  privacyPolicyUrl: z.string().nullable().describe("The club's privacy policy, linked in the public page footer"),
   logoAttachmentId: z.string().nullable(),
   logoUrl: z.string().nullable().describe('The logo through the authenticated attachment image route'),
   publication: z.object({
@@ -175,7 +179,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone` and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
+        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
       requestBody: {
         contentType: 'application/json',
         schema: clubSettingsUpdateSchema.extend({ clubName: clubNameSchema.optional() }),

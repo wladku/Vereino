@@ -21,6 +21,9 @@ export const publicClubSchema = z.object({
   slug: z.string(),
   logo: z.object({ url: z.string().nullable(), source: z.enum(['section', 'club', 'initial']), initial: z.string() }),
   contact: z.object({ phone: z.string() }).nullable().describe('The club phone, only with the `contact` block'),
+  links: z
+    .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
+    .describe("The club's rules and privacy policy in the page footer; null while not set"),
 })
 
 export const publicPlaceCardSchema = z.object({

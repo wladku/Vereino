@@ -1,7 +1,8 @@
 'use client'
 // The frame of the public facility pages (P-03, P-04; #124), the same header and footer as the public club pages of
 // `club_core` (`PublicFrame`, which another module may not import at runtime, S4.3): the club logo and name linking
-// to the club page, the language switcher, the page body and a footer with the club name and its published phone.
+// to the club page, the language switcher, the page body and a footer with the club name, its published phone and the
+// club's rules and privacy-policy links (#195).
 // Also the notices of a page with nothing to show and the loading and error states with retry.
 import * as React from 'react'
 import Image from 'next/image'
@@ -87,6 +88,36 @@ export function PublicFacilitiesFrame({
                   {club.contact.phone}
                 </a>
               </span>
+            ) : null}
+            {club.links.rules || club.links.privacyPolicy ? (
+              <nav aria-label={t('facilities.public.footer.links')} data-testid="public-footer-links">
+                <ul className="flex flex-wrap gap-x-4">
+                  {club.links.rules ? (
+                    <li>
+                      <a
+                        className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                        href={club.links.rules}
+                        rel="noopener noreferrer"
+                        data-testid="public-footer-rules"
+                      >
+                        {t('facilities.public.footer.rules')}
+                      </a>
+                    </li>
+                  ) : null}
+                  {club.links.privacyPolicy ? (
+                    <li>
+                      <a
+                        className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                        href={club.links.privacyPolicy}
+                        rel="noopener noreferrer"
+                        data-testid="public-footer-privacy"
+                      >
+                        {t('facilities.public.footer.privacyPolicy')}
+                      </a>
+                    </li>
+                  ) : null}
+                </ul>
+              </nav>
             ) : null}
           </div>
         </footer>

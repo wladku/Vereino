@@ -50,6 +50,9 @@ const pageSchema = z.object({
       .object({ phone: z.string() })
       .nullable()
       .describe('The club phone of the page footer, only with the `contact` block'),
+    links: z
+      .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
+      .describe("The club's rules and privacy policy in the page footer; null while not set"),
   }),
   session: z.object({
     activityName: z.string(),
