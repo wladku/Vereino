@@ -32,6 +32,11 @@ describe('club_core error codes', () => {
         status: 422,
         messageKey: 'club_core.errors.section_public_slug_required',
       },
+      {
+        code: 'place_public_slug_required',
+        status: 422,
+        messageKey: 'club_core.errors.place_public_slug_required',
+      },
       { code: 'publication_forbidden', status: 403, messageKey: 'club_core.errors.publication_forbidden' },
       { code: 'upload_file_missing', status: 400, messageKey: 'club_core.errors.upload_file_missing' },
       { code: 'logo_format_unsupported', status: 422, messageKey: 'club_core.errors.logo_format_unsupported' },

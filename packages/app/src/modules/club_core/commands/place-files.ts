@@ -15,7 +15,7 @@ import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec, type TargetL
 import { clubCoreErrors } from '../api/errors'
 import { Place, PlaceFile } from '../data/entities'
 import { placeFileAddSchema, placeFileDeleteSchema } from '../data/validators'
-import { PLACE_PHOTOS_MAX, nextPhotoPosition } from '../lib/files'
+import { PLACE_FILE_ASSIGNMENT, PLACE_FILE_OWNER_ENTITY, PLACE_PHOTOS_MAX, nextPhotoPosition } from '../lib/files'
 import { CLUB_CORE_PARTITION, attachmentServiceOf, uploadOf } from './logos'
 import { PLACE_RESOURCE_KIND } from './places'
 import {
@@ -28,9 +28,6 @@ import {
 } from './shared'
 
 export const PLACE_FILE_RESOURCE_KIND = 'club_core.place_file'
-/** Attachment owner (the place) and assignment (the file link) of a place file. */
-export const PLACE_FILE_OWNER_ENTITY = 'club_core:place'
-export const PLACE_FILE_ASSIGNMENT = 'club_core:place_file'
 
 export type PlaceFileSnapshot = {
   id: string

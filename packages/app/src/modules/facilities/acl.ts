@@ -27,6 +27,13 @@ export const features = [
     dependsOn: ['facilities.view'],
   },
   {
+    // #126: the facility log and reporting incidents (M-12, B-27).
+    id: 'facilities.log.write',
+    title: 'Keep the facility log and report incidents',
+    module: 'facilities',
+    dependsOn: ['facilities.view'],
+  },
+  {
     id: 'facilities.incidents.manage',
     title: 'Manage incidents and entry bans',
     module: 'facilities',

@@ -1,8 +1,10 @@
 import { ArrayType, OptionalProps } from '@mikro-orm/core'
-import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
+import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
 import type { ClosureReason } from '../lib/closures'
+import type { IncidentAction, IncidentKind } from '../lib/incidents'
 import type { InternalBookingStatus } from '../lib/internal-bookings'
+import type { GroupPresent } from '../lib/logs'
 import type { RenterCategory } from '../lib/rates'
 import type { EntryBanSubjectType, RenterType, RentalStatus, RequestedVia } from '../lib/rentals'
 import type { Zone, ZoneSource } from '../lib/zones'
@@ -257,8 +259,8 @@ export class Rental extends ScopedEntityBase {
 /**
  * An entry ban (facilities spec *Data Models* → `facilities_entry_bans`, REQ-016; #122): an institution or a person
  * may not book a place from `starts_on` to `ends_on` (inclusive; open-ended without it). A rental for a renter with an
- * active ban on the place answers 409 `entry_ban_active`. Revoked through `revoked_at`, never deleted; the incident
- * link, the revocation and the pages arrive with E08-S06 (#126). The reason is encrypted at rest.
+ * active ban on the place answers 409 `entry_ban_active`. Revoked through `revoked_at`, never deleted; since E08-S06
+ * (#126) it names the incident it follows and the person who issued it. The reason is encrypted at rest.
  */
 @Entity({ tableName: 'facilities_entry_bans' })
 @Index({ name: 'facilities_entry_bans_org_subject_idx', properties: ['organizationId', 'subjectType', 'subjectId'] })
@@ -348,4 +350,93 @@ export class InternalBooking extends ScopedEntityBase {
 
   @Property({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason?: string | null
+}
+
+/**
+ * The facility log of a place and a day (facilities spec *Data Models* → `facilities_logs`, REQ-016; M-12 "Open
+ * facility" / "Close facility", B-27; #126): who ran the day, when the place opened and closed, its condition before
+ * and after, the groups present (a session or a rental each, with the head count and whether an adult supervisor was
+ * there) and the remarks. One log per place and day; editable until the end of the next day, then by the club
+ * administrator only. The remarks are encrypted at rest.
+ */
+@Entity({ tableName: 'facilities_logs' })
+@Unique({ name: 'facilities_logs_org_place_date_unique', properties: ['organizationId', 'placeId', 'logDate'] })
+@Index({ name: 'facilities_logs_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class FacilityLog extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'openedAt'
+    | 'closedAt'
+    | 'conditionBefore'
+    | 'conditionAfter'
+    | 'groupsPresent'
+    | 'remarks'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  /** `YYYY-MM-DD` in the club time zone. */
+  @Property({ name: 'log_date', type: 'date' })
+  logDate!: string
+
+  /** The person who ran the day: who wrote the log first (the attendant on duty, or the administrator). */
+  @Property({ name: 'operator_person_id', type: 'uuid' })
+  operatorPersonId!: string
+
+  @Property({ name: 'opened_at', type: Date, nullable: true })
+  openedAt?: Date | null
+
+  @Property({ name: 'closed_at', type: Date, nullable: true })
+  closedAt?: Date | null
+
+  @Property({ name: 'condition_before', type: 'text', nullable: true })
+  conditionBefore?: string | null
+
+  @Property({ name: 'condition_after', type: 'text', nullable: true })
+  conditionAfter?: string | null
+
+  @Property({ name: 'groups_present', type: 'json', defaultRaw: `'[]'::jsonb` })
+  groupsPresent: GroupPresent[] = []
+
+  @Property({ name: 'remarks', type: 'text', nullable: true })
+  remarks?: string | null
+}
+
+/**
+ * An incident at a place (facilities spec *Data Models* → `facilities_incidents`, REQ-016, §6 of the regulations;
+ * M-12 "Report incident", B-27; #126): when and where it happened, who reported it, its kind, the description, the
+ * people involved, the actions taken and the communication case it is followed in. Evidence: never deleted, so the
+ * route has no DELETE and the commands never set `deleted_at`. The description and the people involved are encrypted
+ * at rest; the people involved are free text (names or descriptions), not a structured list.
+ */
+@Entity({ tableName: 'facilities_incidents' })
+@Index({ name: 'facilities_incidents_org_place_time_idx', properties: ['organizationId', 'placeId', 'occurredAt'] })
+@Index({ name: 'facilities_incidents_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class Incident extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'involved' | 'actionTaken' | 'threadId'
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'occurred_at', type: Date })
+  occurredAt!: Date
+
+  @Property({ name: 'reported_by_person_id', type: 'uuid' })
+  reportedByPersonId!: string
+
+  @Property({ name: 'kind', type: 'text' })
+  kind!: IncidentKind
+
+  @Property({ name: 'description', type: 'text' })
+  description!: string
+
+  @Property({ name: 'involved', type: 'text', nullable: true })
+  involved?: string | null
+
+  @Property({ name: 'action_taken', type: 'text[]', defaultRaw: `'{}'` })
+  actionTaken: IncidentAction[] = []
+
+  /** The `communication` case thread the incident is followed in (a scalar id, no relation). */
+  @Property({ name: 'thread_id', type: 'uuid', nullable: true })
+  threadId?: string | null
 }

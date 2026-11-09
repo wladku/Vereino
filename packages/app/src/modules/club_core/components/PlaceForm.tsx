@@ -2,7 +2,10 @@
 // `/backend/club/places/create` and `/backend/club/places/[id]/edit` (club spec UI table): one place of the
 // hierarchy. The parent and the owner are chosen by name; the contacts and the opening hours (facilities spec DD-41)
 // are edited as rows. The "Regulations and photos" group holds the regulations text and, on a saved place, the files
-// panel (UX parity spec, REQ-U03; #86).
+// panel (UX parity spec, REQ-U03; #86). The "Public calendar" group holds the place's public address, the "Public
+// schedule" and "Accepts online requests" switches and a preview of `/p/<club>/places/<slug>` (facilities spec P-03,
+// P-04, DD-29; #124); a public schedule without an address (422) and an address another place uses (409) show at the
+// address field.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,11 +16,14 @@ import {
   type CrudFormGroup,
 } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
+import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { errorCodeOf } from '@vereino/core'
 import { PLACE_KINDS, type PlaceContact } from '../lib/places'
 import { OpeningHoursEditor, openingHoursDrafts, openingHoursPayload } from './OpeningHoursEditor'
 import { enumOptions, errorMessage, numberOrNull, textOrNull, type Translate } from './client-helpers'
@@ -107,6 +113,40 @@ function PlaceFilesField({ recordId }: CrudCustomFieldRenderProps) {
   return <PlaceFilesPanel placeId={recordId} />
 }
 
+/** The club's page address, for the preview of a place's public calendar address; null while unknown. */
+function useClubSlug(): string | null {
+  const query = useQuery({
+    queryKey: ['club_core-settings'],
+    queryFn: () => readApiResultOrThrow<{ publicSlug: string | null }>('/api/club_core/settings'),
+    retry: false,
+  })
+  return query.data?.publicSlug ?? null
+}
+
+/** Where the place's public calendar opens (`/p/<club>/places/<slug>`), or why that is not known yet. */
+function publicAddressField(clubSlug: string | null) {
+  return function PublicAddress({ values }: CrudCustomFieldRenderProps) {
+    const t = useT()
+    const slug = typeof values?.publicSlug === 'string' ? values.publicSlug.trim().toLowerCase() : ''
+    if (!clubSlug)
+      return <p className="text-muted-foreground text-sm">{t('club_core.places.public.address.noClubSlug')}</p>
+    if (!slug) return <p className="text-muted-foreground text-sm">{t('club_core.places.public.address.noSlug')}</p>
+    const path = `/p/${encodeURIComponent(clubSlug)}/places/${encodeURIComponent(slug)}`
+    return (
+      <p className="text-sm break-all" data-testid="place-public-address">
+        {t('club_core.places.public.address.preview', { path })}
+      </p>
+    )
+  }
+}
+
+/** A refused save: an address another place uses (409 `public_slug_taken`) shows at the address field. */
+function slugConflict(error: unknown): unknown {
+  if (errorCodeOf(error) !== 'public_slug_taken') return error
+  const message = error instanceof Error ? error.message : String(error)
+  return createCrudFormError(message, { publicSlug: message }, { status: 409 })
+}
+
 async function placeOptions(t: Translate, excludeId?: string): Promise<CrudFieldOption[]> {
   const data = await fetchCrudList<PlaceRow>('club_core/places', { pageSize: 100, sortField: 'name', sortDir: 'asc' })
   return [
@@ -130,6 +170,8 @@ async function institutionOptions(t: Translate): Promise<CrudFieldOption[]> {
 }
 
 function usePlaceFields(t: Translate, placeId?: string) {
+  const clubSlug = useClubSlug()
+  const PublicAddress = React.useMemo(() => publicAddressField(clubSlug), [clubSlug])
   const fields = React.useMemo<CrudField[]>(
     () => [
       { id: 'name', label: t('club_core.places.fields.name'), type: 'text', required: true, maxLength: 200 },
@@ -200,8 +242,33 @@ function usePlaceFields(t: Translate, placeId?: string) {
         type: 'custom',
         component: PlaceFilesField,
       },
+      {
+        id: 'isPublicSchedule',
+        label: t('club_core.places.public.fields.isPublicSchedule'),
+        type: 'checkbox',
+        description: t('club_core.places.public.fields.isPublicSchedule.help'),
+      },
+      {
+        id: 'publicSlug',
+        label: t('club_core.places.public.fields.publicSlug'),
+        type: 'text',
+        maxLength: 60,
+        description: t('club_core.places.public.fields.publicSlug.help'),
+      },
+      {
+        id: 'publicAddress',
+        label: t('club_core.places.public.fields.address'),
+        type: 'custom',
+        component: PublicAddress,
+      },
+      {
+        id: 'acceptsOnlineRequests',
+        label: t('club_core.places.public.fields.acceptsOnlineRequests'),
+        type: 'checkbox',
+        description: t('club_core.places.public.fields.acceptsOnlineRequests.help'),
+      },
     ],
-    [t, placeId],
+    [t, placeId, PublicAddress],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -222,6 +289,13 @@ function usePlaceFields(t: Translate, placeId?: string) {
         title: t('club_core.places.groups.ownership'),
         column: 2,
         fields: ['ownerInstitutionId', 'managedByClub', 'isExternal', 'rentedByClub'],
+      },
+      {
+        id: 'publicCalendar',
+        title: t('club_core.places.public.group'),
+        description: t('club_core.places.public.group.help'),
+        column: 2,
+        fields: ['isPublicSchedule', 'publicSlug', 'publicAddress', 'acceptsOnlineRequests'],
       },
       { id: 'contacts', title: t('club_core.places.groups.contacts'), column: 1, fields: ['contacts'] },
       {
@@ -259,6 +333,9 @@ function toFormValues(place: PlaceRow | null): PlaceFormValues {
     capacityGroups: place?.capacityGroups ?? 1,
     isActive: place?.isActive ?? true,
     regulationsText: place?.regulationsText ?? '',
+    publicSlug: place?.publicSlug ?? '',
+    isPublicSchedule: place?.isPublicSchedule ?? false,
+    acceptsOnlineRequests: place?.acceptsOnlineRequests ?? false,
     contacts: (place?.contacts ?? []).map((contact) => ({
       role: contact.role ?? '',
       name: contact.name,
@@ -291,6 +368,9 @@ function toPayload(values: PlaceFormValues) {
     openingHours: openingHoursPayload(values.openingHours),
     isActive: values.isActive !== false,
     regulationsText: textOrNull(values.regulationsText),
+    publicSlug: textOrNull(values.publicSlug),
+    isPublicSchedule: values.isPublicSchedule === true,
+    acceptsOnlineRequests: values.acceptsOnlineRequests === true,
   }
 }
 
@@ -310,7 +390,9 @@ export function PlaceCreateForm() {
       submitLabel={t('club_core.common.create')}
       successRedirect={withFlash(LIST_HREF, t('club_core.places.flash.created'), 'success')}
       onSubmit={async (values) => {
-        await createCrud('club_core/places', toPayload(values))
+        await createCrud('club_core/places', toPayload(values)).catch((error: unknown) => {
+          throw slugConflict(error)
+        })
       }}
     />
   )
@@ -356,7 +438,9 @@ export function PlaceEditForm({ id }: { id: string }) {
       successRedirect={withFlash(LIST_HREF, t('club_core.places.flash.saved'), 'success')}
       deleteRedirect={withFlash(LIST_HREF, t('club_core.places.flash.deleted'), 'success')}
       onSubmit={async (values) => {
-        await updateCrud('club_core/places', { id, ...toPayload(values) })
+        await updateCrud('club_core/places', { id, ...toPayload(values) }).catch((error: unknown) => {
+          throw slugConflict(error)
+        })
       }}
       onDelete={async () => {
         await deleteCrud('club_core/places', id)

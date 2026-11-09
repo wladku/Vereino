@@ -26,6 +26,9 @@ import {
   throwFieldError,
   type FacilitiesCommandResult,
 } from './shared'
+import { rentalRateShapeOf } from '../data/shapes'
+
+export { rentalRateShapeOf }
 
 export const RENTAL_RATE_RESOURCE_KIND = 'facilities.rental_rate'
 
@@ -34,20 +37,6 @@ export type RentalRateSnapshot = RentalRateShape & { id: string; tenantId: strin
 export type RentalRateCommandResult = FacilitiesCommandResult<RentalRate, RentalRateSnapshot>
 
 type Scope = { tenantId: string; organizationId: string }
-
-export function rentalRateShapeOf(row: RentalRate): RentalRateShape {
-  return {
-    id: row.id,
-    placeId: row.placeId,
-    renterCategory: row.renterCategory,
-    pricePer90: row.pricePer90,
-    seasonFrom: row.seasonFrom ?? null,
-    seasonTo: row.seasonTo ?? null,
-    includesLighting: row.includesLighting,
-    validFrom: row.validFrom,
-    validTo: row.validTo ?? null,
-  }
-}
 
 export function rentalRateSnapshot(row: RentalRate): RentalRateSnapshot {
   return { ...rentalRateShapeOf(row), id: row.id, tenantId: row.tenantId, organizationId: row.organizationId }

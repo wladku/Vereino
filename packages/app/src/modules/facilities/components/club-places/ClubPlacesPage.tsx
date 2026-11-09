@@ -10,6 +10,7 @@ import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
+import { CLUB_FACILITY_HREF, useFacilityFeatures } from '../club-facility/facility-client'
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
 import { KIND_TAGS } from './PlaceTimeline'
 import {
@@ -78,6 +79,7 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
   const today = calendarDateInZone(new Date(), profile.club.timezone)
   const window = React.useMemo(() => dayWindow(today, profile.club.timezone), [today, profile.club.timezone])
   const query = useStaffCalendar(window)
+  const features = useFacilityFeatures()
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
@@ -120,7 +122,16 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t('facilities.places.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{t('facilities.places.title')}</h1>
+        {features.logWrite ? (
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={CLUB_FACILITY_HREF} data-testid="club-places-facility-today">
+              {t('facilities.facility.title')}
+            </Link>
+          </Button>
+        ) : null}
+      </div>
       <p className="text-muted-foreground max-w-prose text-sm">{t('facilities.places.list.intro')}</p>
       {body}
     </>

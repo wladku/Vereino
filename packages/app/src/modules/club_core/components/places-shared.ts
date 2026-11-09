@@ -22,6 +22,10 @@ export type PlaceRow = {
   openingHours: OpeningHours | null
   isActive: boolean
   regulationsText: string | null
+  /** The place's public calendar (facilities spec P-03, P-04, DD-29; #124): its slug and two switches. */
+  publicSlug: string | null
+  isPublicSchedule: boolean
+  acceptsOnlineRequests: boolean
   createdAt: string | null
   updatedAt: string | null
   /** Added by the list hook (UX parity spec, REQ-U03); absent on other reads. */

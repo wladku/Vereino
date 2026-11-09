@@ -1,5 +1,5 @@
 // Error codes owned by `facilities` (engineering standards S6.7; facilities spec *API, Command, and Error Contracts*;
-// #121, #122, #123). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
+// #121, #122, #123, #124). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
 // stale lock token the platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
 
@@ -39,6 +39,24 @@ export const errorCodes = [
   { code: 'booking_section_invalid', status: 422, messageKey: 'facilities.errors.booking_section_invalid' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },
+  { code: 'entry_ban_revoked', status: 409, messageKey: 'facilities.errors.entry_ban_revoked' },
+  // The facility log (REQ-016, M-12, B-27; #126): one per place and day, editable until the end of the next day.
+  { code: 'log_date_invalid', status: 422, messageKey: 'facilities.errors.log_date_invalid' },
+  { code: 'log_exists', status: 409, messageKey: 'facilities.errors.log_exists' },
+  { code: 'log_edit_closed', status: 403, messageKey: 'facilities.errors.log_edit_closed' },
+  { code: 'log_condition_required', status: 422, messageKey: 'facilities.errors.log_condition_required' },
+  { code: 'log_not_opened', status: 422, messageKey: 'facilities.errors.log_not_opened' },
+  { code: 'log_period_invalid', status: 422, messageKey: 'facilities.errors.log_period_invalid' },
+  { code: 'log_groups_invalid', status: 422, messageKey: 'facilities.errors.log_groups_invalid' },
+  // Incidents (REQ-016, M-12): never deleted.
+  { code: 'incident_description_length', status: 422, messageKey: 'facilities.errors.incident_description_length' },
+  { code: 'incident_time_future', status: 422, messageKey: 'facilities.errors.incident_time_future' },
+  // The public facility calendar (P-03, P-04, TEST-024; #124): an unknown club, place or a place that is not public
+  // answer the same 404; a club that does not publish its places calendar answers its own 404; a month outside the
+  // readable range 400.
+  { code: 'public_place_not_found', status: 404, messageKey: 'facilities.errors.public_place_not_found' },
+  { code: 'public_places_disabled', status: 404, messageKey: 'facilities.errors.public_places_disabled' },
+  { code: 'public_schedule_month_invalid', status: 400, messageKey: 'facilities.errors.public_schedule_month_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']
