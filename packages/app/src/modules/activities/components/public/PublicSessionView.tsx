@@ -3,8 +3,9 @@
 // REQ-M08, J-M02 step 2): the page a share text from the group chat opens without a sign-in. It shows the club's name,
 // the activity name, the date, the time and the status of the session, and the way to sign in; never a name, the
 // roster or a count. A planned session also offers "Send me a link" (`/club/link`, REQ-017, M-13) for a guardian
-// without an account. Like every public club page it ends with a footer holding the club name and its published phone
-// (E06-S07, #89). States: loading, error with retry, 404 without any detail.
+// without an account. Like every public club page it ends with a footer holding the club name, its published phone
+// (E06-S07, #89) and the club's rules and privacy-policy links (#195). States: loading, error with retry, 404 without
+// any detail.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -18,8 +19,16 @@ import { formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
-  /** `contact` is the club phone, null while the club does not publish the `contact` block. */
-  club: { name: string; slug: string; contact: { phone: string } | null }
+  /**
+   * `contact` is the club phone, null while the club does not publish the `contact` block; `links` are the club's rules
+   * and privacy policy, each null while not set (#195).
+   */
+  club: {
+    name: string
+    slug: string
+    contact: { phone: string } | null
+    links: { rules: string | null; privacyPolicy: string | null }
+  }
   session: {
     activityName: string
     occurrenceDate: string
@@ -50,7 +59,10 @@ function usePublicSession(clubSlug: string, occurrenceId: string) {
   })
 }
 
-/** The page footer of the public club pages (club_core `PublicFrame`): the club name and the published phone. */
+/**
+ * The page footer of the public club pages (club_core `PublicFrame`): the club name, the published phone and the club's
+ * rules and privacy-policy links (#195).
+ */
 function Footer({ club }: { club: PublicSessionPage['club'] }) {
   const t = useT()
   return (
@@ -69,6 +81,36 @@ function Footer({ club }: { club: PublicSessionPage['club'] }) {
               {club.contact.phone}
             </a>
           </span>
+        ) : null}
+        {club.links.rules || club.links.privacyPolicy ? (
+          <nav aria-label={t('activities.publicSession.footer.links')} data-testid="public-footer-links">
+            <ul className="flex flex-wrap gap-x-4">
+              {club.links.rules ? (
+                <li>
+                  <a
+                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                    href={club.links.rules}
+                    rel="noopener noreferrer"
+                    data-testid="public-footer-rules"
+                  >
+                    {t('activities.publicSession.footer.rules')}
+                  </a>
+                </li>
+              ) : null}
+              {club.links.privacyPolicy ? (
+                <li>
+                  <a
+                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                    href={club.links.privacyPolicy}
+                    rel="noopener noreferrer"
+                    data-testid="public-footer-privacy"
+                  >
+                    {t('activities.publicSession.footer.privacyPolicy')}
+                  </a>
+                </li>
+              ) : null}
+            </ul>
+          </nav>
         ) : null}
       </div>
     </footer>

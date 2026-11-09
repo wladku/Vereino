@@ -12,6 +12,9 @@ export type PublicLogo = { url: string | null; source: 'section' | 'club' | 'ini
 /** The club phone of the page footer; null while the club does not publish the `contact` block (E06-S07, #89). */
 export type PublicClubContact = { phone: string } | null
 
+/** The club's rules and privacy policy in the page footer; each null while the club has not set it (#195). */
+export type PublicClubLinks = { rules: string | null; privacyPolicy: string | null }
+
 /** A session or event as a guest sees it: a club-zone date and `HH:mm` times. */
 export type PublicSession = {
   date: string
@@ -30,6 +33,7 @@ export type PublicClubPage = {
     description: string | null
     logo: PublicLogo
     contact: PublicClubContact
+    links: PublicClubLinks
   }
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
   blocks: {
@@ -84,7 +88,7 @@ export type PublicMaterial = {
 }
 
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact }
+  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: {
     description?: { text: string }

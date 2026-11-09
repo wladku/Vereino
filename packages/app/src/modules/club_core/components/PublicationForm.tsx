@@ -1,10 +1,11 @@
 'use client'
 // `/backend/club/publication` (club spec UI table, glossary *Publication*, REQ-025; #29): the club page switch, the
-// club's public slug, description and phone, and one switch per block with a description of its effect — everything
-// off by default. Saved through `PUT /api/club_core/settings` (`publication` needs `club_core.publication.manage`)
-// with the settings lock token. Blocks of modules that do not exist yet are stored and take effect when the module
-// arrives (prices, instructors, places calendar, online requests). Since #87 the public address is always shown, and
-// "Preview" is disabled with its reason while the page is off or has no slug.
+// club's public slug, description and phone, the rules and privacy-policy links of the page footer (#195), and one
+// switch per block with a description of its effect — everything off by default. Saved through
+// `PUT /api/club_core/settings` (`publication` needs `club_core.publication.manage`) with the settings lock token.
+// Blocks of modules that do not exist yet are stored and take effect when the module arrives (prices, instructors,
+// places calendar, online requests). Since #87 the public address is always shown, and "Preview" is disabled with its
+// reason while the page is off or has no slug.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,8 +13,15 @@ import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/b
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { PUBLICATION_BLOCKS, clubPagePreview, type Publication } from '../lib/publication'
+import {
+  PUBLICATION_BLOCKS,
+  PUBLIC_LINK_MAX_LENGTH,
+  clubPagePreview,
+  isPublicLinkUrl,
+  type Publication,
+} from '../lib/publication'
 import { errorMessage, textOrNull } from './client-helpers'
 
 const SETTINGS_API = '/api/club_core/settings'
@@ -22,6 +30,8 @@ type SettingsResponse = {
   publicSlug: string | null
   publicDescription: string | null
   contactPhone: string | null
+  rulesUrl: string | null
+  privacyPolicyUrl: string | null
   publication: Publication
   updatedAt: string | null
 }
@@ -29,6 +39,8 @@ type SettingsResponse = {
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
 const blockField = (block: string) => `block_${block}`
+
+const LINK_FIELDS = ['rulesUrl', 'privacyPolicyUrl'] as const
 
 export function PublicationForm() {
   const t = useT()
@@ -64,6 +76,14 @@ export function PublicationForm() {
         type: 'text',
         description: t('club_core.publication.fields.contactPhone.help'),
       },
+      ...LINK_FIELDS.map<CrudField>((field) => ({
+        id: field,
+        label: t(`club_core.publication.fields.${field}`),
+        type: 'text',
+        maxLength: PUBLIC_LINK_MAX_LENGTH,
+        placeholder: 'https://',
+        description: t(`club_core.publication.fields.${field}.help`),
+      })),
       ...PUBLICATION_BLOCKS.map<CrudField>((block) => ({
         id: blockField(block),
         label: t(`club_core.publication.blocks.${block}`),
@@ -79,7 +99,7 @@ export function PublicationForm() {
         id: 'page',
         title: t('club_core.publication.groups.page'),
         column: 1,
-        fields: ['enabled', 'publicSlug', 'publicDescription', 'contactPhone'],
+        fields: ['enabled', 'publicSlug', 'publicDescription', 'contactPhone', ...LINK_FIELDS],
       },
       {
         id: 'blocks',
@@ -100,6 +120,8 @@ export function PublicationForm() {
     publicSlug: settings.publicSlug ?? '',
     publicDescription: settings.publicDescription ?? '',
     contactPhone: settings.contactPhone ?? '',
+    rulesUrl: settings.rulesUrl ?? '',
+    privacyPolicyUrl: settings.privacyPolicyUrl ?? '',
     updatedAt: settings.updatedAt,
   }
   for (const block of PUBLICATION_BLOCKS) initialValues[blockField(block)] = settings.publication.blocks[block]
@@ -117,6 +139,16 @@ export function PublicationForm() {
         initialValues={initialValues}
         submitLabel={t('club_core.publication.save')}
         onSubmit={async (values) => {
+          // A footer link must be a full http(s) address (`isPublicLinkUrl`); the API refuses anything else with 400.
+          const links = Object.fromEntries(LINK_FIELDS.map((field) => [field, textOrNull(values[field])]))
+          const invalid = LINK_FIELDS.filter((field) => {
+            const value = links[field]
+            return value !== null && !isPublicLinkUrl(value)
+          })
+          if (invalid.length > 0) {
+            const message = t('club_core.publication.errors.linkInvalid')
+            throw createCrudFormError(message, Object.fromEntries(invalid.map((field) => [field, message])))
+          }
           const blocks = Object.fromEntries(
             PUBLICATION_BLOCKS.map((block) => [block, values[blockField(block)] === true]),
           )
@@ -129,6 +161,7 @@ export function PublicationForm() {
                 publicSlug: textOrNull(values.publicSlug),
                 publicDescription: textOrNull(values.publicDescription),
                 contactPhone: textOrNull(values.contactPhone),
+                ...links,
                 publication: { enabled: values.enabled === true, blocks },
               }),
             },

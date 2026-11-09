@@ -295,6 +295,23 @@
           "enumItems": [],
           "mappedType": "integer"
         },
+        "privacy_policy_url": {
+          "name": "privacy_policy_url",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "public_description": {
           "name": "public_description",
           "type": "text",
@@ -345,6 +362,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "json"
+        },
+        "rules_url": {
+          "name": "rules_url",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         },
         "short_name": {
           "name": "short_name",
