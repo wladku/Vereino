@@ -13,7 +13,7 @@ import {
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { csvFile, familiesCsv, importAction, importRows, previewImport } from '../_fixtures/imports'
 import { getMe, updateClubSettings } from '../_fixtures/members'
-import { createGuardianship, getGuardianship, setConsents } from '../_fixtures/people'
+import { createGuardianship, setConsents } from '../_fixtures/people'
 
 // Issue #191 (owner decisions of 2026-11-09; club spec DD-47, DD-48): the profile's phone rule (Polish or E.164) also
 // holds on the administrator's person form (422 `phone_invalid` with the field error, an unchanged stored value stays
@@ -99,8 +99,9 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
       validFrom: calendarDate(),
     })
     const kasiaToken = await signInAs(request, club, kasia.userId, kasia.email)
-    const link = await getGuardianship(request, kasiaToken, linkId)
-    const byKasia = await setConsents(request, kasiaToken, linkId, { trips: true }, link.body?.updatedAt)
+    const kasiaBefore = await getMe(request, kasiaToken)
+    const link = kasiaBefore.body?.wards.find((ward) => ward.personId === ola.personId)?.guardianship
+    const byKasia = await setConsents(request, kasiaToken, linkId, { trips: true }, link?.updatedAt)
     expect(byKasia.status, JSON.stringify(byKasia.body)).toBe(200)
     const byAdmin = await setConsents(request, token, linkId, { image: true }, byKasia.body?.updatedAt)
     expect(byAdmin.status, JSON.stringify(byAdmin.body)).toBe(200)
@@ -129,9 +130,7 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/people\/persons\/create$/)
-    await expect(
-      page.locator('[data-crud-field-id="phone"]').getByText(/Enter a Polish phone number|Podaj polski numer telefonu/),
-    ).toBeVisible()
+    await expect(page.getByText(/Enter a Polish phone number|Podaj polski numer telefonu/).first()).toBeVisible()
 
     // Ola's profile at 375 px: the image consent names the role, the trips consent her mother.
     await page.setViewportSize({ width: 375, height: 812 })

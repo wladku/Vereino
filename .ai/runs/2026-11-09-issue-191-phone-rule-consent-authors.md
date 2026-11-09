@@ -33,6 +33,7 @@
 - `yarn test:integration:vereino --filter ISSUE-191` — could not start: `Could not find a working container runtime strategy` (no running Docker on this machine; the run may not start Docker Desktop). CI runs it on the PR.
 - `yarn verify` — first run: generate … test:scripts (13 steps) passed, then stopped by the tool's 30-minute limit inside `build`; `yarn verify --from build` — passed (63 s). All 14 steps green.
 - PR #237 CI (run 42685685239, after the merge train merged `main`): gate, browser-smoke, perf, integration shards 1/3 and 2/3 green (E06-S22 and TEST-051 included); shard 3/3 failed only on `ISSUE-191` at line 68: `expect(JSON.stringify(badRow)).not.toContain('zadzwoń')` — the rows API returns the row's `values` to the administrator by design (the "never the value" rule covers `error_code` / `error_column`, which the test already checks). Removed that wrong assertion; every assertion before it (422s on the person form, the row's `import_phone_invalid` and column) had passed. `yarn typecheck:qa` and `yarn format:check` green.
+- Second CI run (head 6d26447): the person form and import parts passed; `ISSUE-191` then failed at the guardian's first `set_consents` with 400 `lock_token_required` — the guardian's `GET /api/people/guardianships/{id}` gave no `updatedAt`. The test now takes the lock token from the guardian's `GET /api/people/me` ward (as E06-S22 does), and the form error is matched page-wide.
 
 ## Open problems / next steps
 
