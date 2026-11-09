@@ -44,7 +44,10 @@ Close the five non-blocking findings and the nits that the #182 review left out 
 
 - CI after the merge train's `main` merge (8213ec4): `gate`, `perf` and `browser-smoke` passed, which confirms the earlier smoke failure was a flake. Shards 2 and 3 passed; shard 1 ran 61 passed, 1 failed. `ISSUE-192` now passes the pending step and the page's `no-referrer`, but at line 115 the token API answered `Referrer-Policy: strict-origin-when-cross-origin`: the global `/:path*` header rule in `next.config.ts` overrides a header the route handler sets. Fixed by adding a `next.config.ts` rule for `/api/activities/declaration-links/:token` and dropping the handler's header.
 
+- CI on e757ac9 (run 42665966590): all jobs green — `gate`, `perf`, `browser-smoke`, and integration shards with 59, 60 and 62 passed, including `ISSUE-192-declaration-link-follow-ups` ✓ and `TEST-017` ✓.
+
 ## Open problems / next steps
 
-- The integration tests are proven only by CI on the PR; a reviewer should check the `integration` job, especially `ISSUE-192` (new) and `TEST-017` (the link request now works after the response).
 - The `after()` work is not durable: a process crash between the response and the work loses that one request (the user can ask again).
+- Operators run `yarn mercato activities set-up-club --tenant --org` once for each club created before #105, to get the 18:00 reminder schedule.
+- PR #234 waits for review and the merge train; this run does not merge.
