@@ -153,8 +153,7 @@ export async function flagForReschedule(
 export function createPlaceSessions(getEm: () => EntityManager): ActivitiesPlaceSessions {
   return {
     plannedSessions: (scope, placeIds, window, em) => plannedSessions(em ?? getEm().fork(), scope, placeIds, window),
-    doneSessionTimes: (scope, placeIds, window, em) =>
-      doneSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
+    doneSessionTimes: (scope, placeIds, window, em) => doneSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
     sessionsByIds: (scope, ids, em) => sessionsByIds(em ?? getEm().fork(), scope, ids),
     flagForReschedule: (scope, placeIds, window) => flagForReschedule(getEm().fork(), scope, placeIds, window),
   }

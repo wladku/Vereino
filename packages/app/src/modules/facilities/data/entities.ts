@@ -467,7 +467,10 @@ export class Incident extends ScopedEntityBase {
  * `usage_counted_from`, which a completion resets. The notes are encrypted at rest (free text may name people).
  */
 @Entity({ tableName: 'facilities_maintenance_tasks' })
-@Index({ name: 'facilities_maintenance_tasks_org_place_start_idx', properties: ['organizationId', 'placeId', 'startsAt'] })
+@Index({
+  name: 'facilities_maintenance_tasks_org_place_start_idx',
+  properties: ['organizationId', 'placeId', 'startsAt'],
+})
 @Index({ name: 'facilities_maintenance_tasks_org_place_due_idx', properties: ['organizationId', 'placeId', 'dueDate'] })
 @Index({
   name: 'facilities_maintenance_tasks_org_status_type_idx',

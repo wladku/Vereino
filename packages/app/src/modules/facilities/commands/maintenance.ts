@@ -262,7 +262,12 @@ const updateMaintenanceCommand: CommandHandler<Record<string, unknown>, Maintena
       if (patch.placeId !== undefined && patch.placeId !== row.placeId) {
         await assertPlaces(ctx, em, scope, [patch.placeId])
         // A maintainer moves a task only to another place they maintain.
-        const target = taskTarget({ ...row, placeId: patch.placeId })
+        const target = taskTarget({
+          id: row.id,
+          tenantId: row.tenantId,
+          organizationId: row.organizationId,
+          placeId: patch.placeId,
+        })
         if (!findActingRole(authorized.scope, MAINTENANCE_KINDS_ALLOWED, target)) {
           await foundationErrors.throw('scope_denied')
         }
@@ -298,7 +303,11 @@ const updateMaintenanceCommand: CommandHandler<Record<string, unknown>, Maintena
         startsAt: before.startsAt ? new Date(before.startsAt) : null,
         endsAt: before.endsAt ? new Date(before.endsAt) : null,
       },
-      { placeId: result.entity.placeId, startsAt: result.entity.startsAt ?? null, endsAt: result.entity.endsAt ?? null },
+      {
+        placeId: result.entity.placeId,
+        startsAt: result.entity.startsAt ?? null,
+        endsAt: result.entity.endsAt ?? null,
+      },
     )
     const flagged = moved ? await scheduleWindow(ctx, result.entity) : NONE_FLAGGED
     return { ...result, flagged }
@@ -308,7 +317,9 @@ const updateMaintenanceCommand: CommandHandler<Record<string, unknown>, Maintena
       result,
       resourceKind: MAINTENANCE_RESOURCE_KIND,
       labelKey:
-        result.entity.status === 'cancelled' ? 'facilities.audit.maintenance.cancel' : 'facilities.audit.maintenance.update',
+        result.entity.status === 'cancelled'
+          ? 'facilities.audit.maintenance.cancel'
+          : 'facilities.audit.maintenance.update',
       fallback: result.entity.status === 'cancelled' ? 'Cancel maintenance' : 'Change maintenance',
       after: maintenanceSnapshot(result.entity),
       context: { flagged: result.flagged },

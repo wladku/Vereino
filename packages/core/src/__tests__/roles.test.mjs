@@ -112,7 +112,12 @@ test('desiredRoles drops every vereino_* role that is no longer earned', () => {
 })
 
 test('desiredRoles adds vereino_maintenance_planner only for a place maintainer (DD-36)', () => {
-  const base = { currentRoles: ['vereino_maintenance_planner'], assignments: [], hasAccount: true, payerEligible: false }
+  const base = {
+    currentRoles: ['vereino_maintenance_planner'],
+    assignments: [],
+    hasAccount: true,
+    payerEligible: false,
+  }
   assert.deepEqual(desiredRoles({ ...base, maintenancePlanner: true }, TODAY), [
     'vereino_maintenance_planner',
     'vereino_member',

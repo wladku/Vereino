@@ -49,7 +49,11 @@ const FREQUENCIES = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'])
  * null for anything outside the subset — daily, annual and five-year inspections need no more.
  */
 export function parseMaintenanceRecurrence(rule: string): MaintenanceRecurrence | null {
-  const parts = rule.trim().replace(/^RRULE:/i, '').toUpperCase().split(';')
+  const parts = rule
+    .trim()
+    .replace(/^RRULE:/i, '')
+    .toUpperCase()
+    .split(';')
   let freq: string | null = null
   let interval = 1
   for (const part of parts) {
@@ -70,7 +74,7 @@ function addMonths(date: CalendarDate, months: number): CalendarDate {
   const targetMonth = (index % 12) + 1
   const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate()
   const pad = (value: number) => String(value).padStart(2, '0')
-  return `${targetYear}-${pad(targetMonth)}-${pad(Math.min(day, lastDay))}`
+  return `${String(targetYear)}-${pad(targetMonth)}-${pad(Math.min(day, lastDay))}`
 }
 
 /** The due date after `dueDate` (a month end is kept within the shorter month: 31 Jan → 28/29 Feb). */
@@ -162,11 +166,7 @@ export function dateReminderStage(dueDate: CalendarDate, today: CalendarDate): D
  * the intervals clipped to the window, so two entries at the same time (a session on a court and a booking of the
  * hall) count once.
  */
-export function usedHours(
-  intervals: ReadonlyArray<{ start: Date; end: Date }>,
-  since: Date,
-  until: Date,
-): number {
+export function usedHours(intervals: ReadonlyArray<{ start: Date; end: Date }>, since: Date, until: Date): number {
   const clipped = intervals
     .map((interval) => ({
       start: Math.max(interval.start.getTime(), since.getTime()),

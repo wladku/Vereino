@@ -53,6 +53,7 @@ export const FIELD_OF_ISSUE: Partial<Record<string, RentalField>> = {
   zone_not_reservable: 'start',
   rental_conflict: 'start',
   place_closed: 'start',
+  maintenance_scheduled: 'start',
 }
 
 export type RentalField = 'place' | 'start' | 'units' | 'renter' | 'category'

@@ -1,10 +1,13 @@
 'use client'
 // `/club/places` — the club's facilities with today's occupancy (README M-11; REQ-023; #123): one card per live active
 // place with the number of today's blocks in the club's time zone and the first of them (time, kind in text, name),
-// linking to the place's day timeline. One read: `GET /api/facilities/calendar` without `placeId` for today.
+// linking to the place's day timeline. One read: `GET /api/facilities/calendar` without `placeId` for today. A place
+// maintainer without `facilities.view` (#128) sees the places assigned to them with the blocks unnamed ("Taken by the
+// club", "Booked", …) and the maintenance work named; a user who may read neither sees a permission-denied state.
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { Tag } from '@open-mercato/ui/primitives/tag'
@@ -14,6 +17,7 @@ import { CLUB_FACILITY_HREF, useFacilityFeatures } from '../club-facility/facili
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
 import { KIND_TAGS } from './PlaceTimeline'
 import {
+  calendarErrorStatus,
   dayWindow,
   entriesOfDay,
   entryLabel,
@@ -53,7 +57,7 @@ function PlaceCard({ place, calendar, today }: { place: CalendarPlace; calendar:
             <li key={`${entry.kind}:${entry.id}`} className="flex flex-wrap items-center gap-2">
               <span className="font-medium tabular-nums">{entryRange(entry, calendar.timeZone)}</span>
               <Tag variant={KIND_TAGS[entry.kind]}>{t(`facilities.places.kind.${entry.kind}`)}</Tag>
-              <span className="break-words">{entryLabel(t, entry)}</span>
+              <span className="break-words">{entryLabel(t, entry, calendar.maintenance?.redacted === true)}</span>
             </li>
           ))}
         </ul>
@@ -90,6 +94,12 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
           <Skeleton key={index} className="h-32 w-full" />
         ))}
       </div>
+    )
+  } else if (!query.data && calendarErrorStatus(query.error) === 403) {
+    body = (
+      <Alert status="warning" data-testid="club-places-denied">
+        <p className="max-w-prose">{t('facilities.places.errors.forbidden')}</p>
+      </Alert>
     )
   } else if (!query.data) {
     body = (

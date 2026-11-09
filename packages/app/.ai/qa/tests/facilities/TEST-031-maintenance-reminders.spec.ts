@@ -9,7 +9,12 @@ import {
   rentalPitch,
   runRentalLifecycle,
 } from '../_fixtures/facilities'
-import { completeMaintenance, listMaintenance, postMaintenance, runMaintenanceReminders } from '../_fixtures/maintenance'
+import {
+  completeMaintenance,
+  listMaintenance,
+  postMaintenance,
+  runMaintenanceReminders,
+} from '../_fixtures/maintenance'
 
 // Issue #128 (E08-S08), facilities spec REQ-022, DD-36, DD-46, TEST-031: a yearly inspection by date and a brushing
 // task every 10 hours of use on the pitch. The daily reminder job, driven through the CLI with `--now`, reminds 14
@@ -112,14 +117,19 @@ test('TEST-031 reminders by date and by hours of use; completion continues the s
     // Completing the inspection creates next year's instance in the same series.
     const tasks = await listMaintenance(request, admin, `&placeId=${setup.pitch}`)
     const inspectionRow = tasks.find((task) => task.id === inspection.body?.id)
-    const inspectionDone = await completeMaintenance(request, admin, String(inspection.body?.id), inspectionRow?.updatedAt)
+    const inspectionDone = await completeMaintenance(
+      request,
+      admin,
+      String(inspection.body?.id),
+      inspectionRow?.updatedAt,
+    )
     expect(inspectionDone.status, JSON.stringify(inspectionDone.body)).toBe(200)
     const nextInspection = (await listMaintenance(request, admin, `&placeId=${setup.pitch}&status=planned`)).find(
       (task) => task.id === inspectionDone.body?.nextTaskId,
     )
     expect(nextInspection).toMatchObject({
       kind: 'inspection',
-      dueDate: `${Number(dueDate.slice(0, 4)) + 1}${dueDate.slice(4)}`,
+      dueDate: `${String(Number(dueDate.slice(0, 4)) + 1)}${dueDate.slice(4)}`,
       seriesId: inspection.body?.id,
     })
 

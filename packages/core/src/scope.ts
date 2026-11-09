@@ -9,14 +9,7 @@
  * of this union yet. `maintenance_planner` (facilities spec DD-36, #128) carries the places a person maintains.
  */
 export type GrantKind =
-  | 'club_admin'
-  | 'coordinator'
-  | 'coach'
-  | 'guardian'
-  | 'self'
-  | 'self_user'
-  | 'system_job'
-  | 'maintenance_planner'
+  'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'self_user' | 'system_job' | 'maintenance_planner'
 
 export const GRANT_KINDS: readonly GrantKind[] = [
   'club_admin',

@@ -51,9 +51,9 @@ test('TEST-050 a maintainer reads a redacted calendar of their places and plans 
     const { assignmentId, token } = await makeMaintainer(request, club, groundsman, setup.pitch)
     const roles = await userRoles(request, club, groundsman.userId)
     expect(roles).toContain('vereino_maintenance_planner')
-    expect(roles.filter((role) => ['vereino_coordinator', 'vereino_coach', 'vereino_club_admin'].includes(role))).toEqual(
-      [],
-    )
+    expect(
+      roles.filter((role) => ['vereino_coordinator', 'vereino_coach', 'vereino_club_admin'].includes(role)),
+    ).toEqual([])
 
     // Plan brushing on the pitch on Saturday morning (before the session).
     const planned = await postMaintenance(request, token, {
@@ -78,7 +78,12 @@ test('TEST-050 a maintainer reads a redacted calendar of their places and plans 
     expect(entries).toContainEqual(expect.objectContaining({ kind: 'rental', label: null, bookedByName: null }))
     expect(entries).toContainEqual(expect.objectContaining({ kind: 'session', label: null, groupId: null }))
     expect(entries).toContainEqual(
-      expect.objectContaining({ id: planned.body?.id, kind: 'maintenance', label: 'brushing', bookedByName: 'Zenon Gospodarz' }),
+      expect.objectContaining({
+        id: planned.body?.id,
+        kind: 'maintenance',
+        label: 'brushing',
+        bookedByName: 'Zenon Gospodarz',
+      }),
     )
     expect((pitchView.body as { maintenance?: unknown }).maintenance).toEqual({
       redacted: true,

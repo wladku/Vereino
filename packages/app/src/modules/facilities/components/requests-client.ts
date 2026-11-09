@@ -19,7 +19,7 @@ export const REQUESTS_URL = '/api/facilities/rentals/requests'
 /** The query key prefix of every queue read (under the rentals prefix, so a rental write refreshes it too). */
 export const REQUESTS_KEY = [RENTALS_KEY, 'requests'] as const
 
-export type QueueConflictKind = 'session' | 'rental' | 'booking' | 'closure' | 'request'
+export type QueueConflictKind = 'session' | 'rental' | 'booking' | 'closure' | 'maintenance' | 'request'
 
 export type RequestQueueItem = {
   id: string

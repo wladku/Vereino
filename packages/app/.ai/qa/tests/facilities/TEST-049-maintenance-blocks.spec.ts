@@ -53,10 +53,18 @@ test('TEST-049 planned maintenance flags what is booked and refuses new entries 
     expect(staffView.status, JSON.stringify(staffView.body)).toBe(200)
     const entries = staffView.body?.entries ?? []
     expect(entries).toContainEqual(
-      expect.objectContaining({ id: planned.body?.id, kind: 'maintenance', label: 'line_marking', bookedByName: 'Marta Gospodarz' }),
+      expect.objectContaining({
+        id: planned.body?.id,
+        kind: 'maintenance',
+        label: 'line_marking',
+        bookedByName: 'Marta Gospodarz',
+      }),
     )
     for (const kind of ['session', 'rental', 'booking'] as const) {
-      expect(entries.filter((entry) => entry.kind === kind).every((entry) => entry.needsReschedule), kind).toBe(true)
+      expect(
+        entries.filter((entry) => entry.kind === kind).every((entry) => entry.needsReschedule),
+        kind,
+      ).toBe(true)
     }
 
     // New entries in the window: 409 `maintenance_scheduled` (the guest's request too, D-024).
@@ -69,7 +77,11 @@ test('TEST-049 planned maintenance flags what is booked and refuses new entries 
     })
     expect(booking.status, JSON.stringify(booking.body)).toBe(409)
     expect(booking.body?.code).toBe('maintenance_scheduled')
-    const rental = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, zoneInstant(day, '14:00')))
+    const rental = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.neighbours, zoneInstant(day, '14:00')),
+    )
     expect(rental.status, JSON.stringify(rental.body)).toBe(409)
     expect(rental.body?.code).toBe('maintenance_scheduled')
     const guest = await submitRequest(

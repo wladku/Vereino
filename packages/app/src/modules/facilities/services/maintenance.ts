@@ -102,6 +102,17 @@ export async function usageHoursSince(
   )
 }
 
+/** `usageHoursSince` on a fresh EntityManager (the list's counted hours). */
+export function usageHoursOfPlace(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeId: string,
+  since: Date,
+  until: Date,
+): Promise<number> {
+  return usageHoursSince(container, container.resolve<EntityManager>('em').fork(), scope, placeId, since, until)
+}
+
 export type MaintenanceReminderCounts = { sent: number; skipped: number; failed: number }
 
 type Reminder = { task: MaintenanceTask; key: string; stage: DateReminderStage | 'usage'; hours: number | null }
@@ -185,15 +196,15 @@ export async function sendMaintenanceReminders(
   const today = calendarDateInZone(now, await clubTimeZone(container, scope))
   const tasks = await em.find(
     MaintenanceTask,
-    { ...scope, deletedAt: null, status: 'planned', $or: [{ dueDate: { $ne: null } }, { scheduleType: 'usage_hours' }] },
+    {
+      ...scope,
+      deletedAt: null,
+      status: 'planned',
+      $or: [{ dueDate: { $ne: null } }, { scheduleType: 'usage_hours' }],
+    },
     { orderBy: { id: 'asc' } },
   )
-  const places = await findPlaces(
-    container,
-    scope,
-    [...new Set(tasks.map((task) => task.placeId))],
-    em,
-  )
+  const places = await findPlaces(container, scope, [...new Set(tasks.map((task) => task.placeId))], em)
   for (const task of tasks) {
     try {
       const reminders: Reminder[] = []

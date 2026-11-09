@@ -2,11 +2,10 @@
 // REQ-022, DD-36; #128), as the query engine returns them (the notes already decrypted), plus what `afterList` adds to
 // the rows the scope filter admitted: the place, the planner's and the maintainer's names and, for a planned usage
 // task, the hours counted since `usage_counted_from`.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { findPlaces, personNames, type FacilitiesScope } from '../services/directory'
-import { usageHoursSince } from '../services/maintenance'
+import { usageHoursOfPlace } from '../services/maintenance'
 
 export const MAINTENANCE_TASK_ENTITY_ID = 'facilities:maintenance_task'
 export const PLACE_MAINTAINER_ENTITY_ID = 'facilities:place_maintainer'
@@ -100,14 +99,13 @@ export async function attachMaintenanceNames(payload: { items?: unknown[] }, ctx
   const places = await findPlaces(ctx.container, scope, [...new Set(items.map((item) => item.placeId))])
   const personIds = items.flatMap((item) => [item.plannedByPersonId, item.doneByPersonId]).filter(Boolean) as string[]
   const persons = await personNames(ctx.container, scope, [...new Set(personIds)])
-  const em = ctx.container.resolve<EntityManager>('em').fork()
   const now = new Date()
   for (const item of items) {
     item.placeName = places.get(item.placeId)?.name ?? null
     item.plannedByName = item.plannedByPersonId ? (persons.get(item.plannedByPersonId) ?? null) : null
     item.doneByName = item.doneByPersonId ? (persons.get(item.doneByPersonId) ?? null) : null
     if (item.status === 'planned' && item.scheduleType === 'usage_hours' && item.usageCountedFrom) {
-      const hours = await usageHoursSince(ctx.container, em, scope, item.placeId, new Date(item.usageCountedFrom), now)
+      const hours = await usageHoursOfPlace(ctx.container, scope, item.placeId, new Date(item.usageCountedFrom), now)
       item.usageHours = Math.round(hours * 10) / 10
     }
   }

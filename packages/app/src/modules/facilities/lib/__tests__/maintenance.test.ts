@@ -79,9 +79,9 @@ describe('maintenance tasks (REQ-022, DD-36)', () => {
     const recurring = { ...base, scheduleType: 'date_recurring' as const, startsAt: null, endsAt: null }
     expect(maintenanceTaskProblem(recurring)?.field).toBe('dueDate')
     expect(maintenanceTaskProblem({ ...recurring, dueDate: '2026-12-01' })?.field).toBe('recurrenceRule')
-    expect(maintenanceTaskProblem({ ...recurring, dueDate: '2026-12-01', recurrenceRule: 'FREQ=SECONDLY' })?.field).toBe(
-      'recurrenceRule',
-    )
+    expect(
+      maintenanceTaskProblem({ ...recurring, dueDate: '2026-12-01', recurrenceRule: 'FREQ=SECONDLY' })?.field,
+    ).toBe('recurrenceRule')
     expect(maintenanceTaskProblem({ ...recurring, dueDate: '2026-12-01', recurrenceRule: 'FREQ=YEARLY' })).toBeNull()
 
     const usage = { ...base, scheduleType: 'usage_hours' as const, startsAt: null, endsAt: null }
@@ -113,7 +113,10 @@ describe('maintenance tasks (REQ-022, DD-36)', () => {
     expect(maintenanceWindowChanged(before, { ...before, startsAt: null, endsAt: null })).toBe(true)
     expect(maintenanceWindowChanged({ ...before, startsAt: null, endsAt: null }, before)).toBe(true)
     expect(
-      maintenanceWindowChanged({ placeId: 'p', startsAt: null, endsAt: null }, { placeId: 'p', startsAt: null, endsAt: null }),
+      maintenanceWindowChanged(
+        { placeId: 'p', startsAt: null, endsAt: null },
+        { placeId: 'p', startsAt: null, endsAt: null },
+      ),
     ).toBe(false)
   })
 

@@ -115,7 +115,8 @@ export const openApi: OpenApiRouteDoc = {
         { status: 401, description: 'Unauthorized', schema: errorSchema },
         {
           status: 403,
-          description: 'Without `facilities.view` and `facilities.maintenance.manage`, or a maintainer reading another place',
+          description:
+            'Without `facilities.view` and `facilities.maintenance.manage`, or a maintainer reading another place',
           schema: errorSchema,
         },
         { status: 404, description: 'Unknown place', schema: errorSchema },

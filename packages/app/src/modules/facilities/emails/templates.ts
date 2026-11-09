@@ -300,7 +300,11 @@ function maintenanceLead(t: TranslateWithFallbackFn, params: MaintenanceDueParam
     hours: String(params.hours ?? 0),
   }
   if (params.stage === 'usage') {
-    return t('facilities.email.maintenanceDue.usage', '{kind} at {place}: {hours} hours of use since it was last done.', values)
+    return t(
+      'facilities.email.maintenanceDue.usage',
+      '{kind} at {place}: {hours} hours of use since it was last done.',
+      values,
+    )
   }
   return t('facilities.email.maintenanceDue.date', '{kind} at {place} is due on {date}.', values)
 }

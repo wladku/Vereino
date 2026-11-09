@@ -24,6 +24,7 @@ export const LEGEND_STATES: readonly PublicSlotState[] = [
   'booked',
   'requested',
   'closed',
+  'unavailable',
 ]
 
 /** The status token family of a state: an extra cue next to its label, never the only one. */
