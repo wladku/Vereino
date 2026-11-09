@@ -74,3 +74,8 @@
 - **E07-S09 failed at its last step** (`getByTestId('order-card')` not found): the signed-out browser was sent to `/login?redirect=/club/orders/…`. Every API, link and signed-in browser step before it passed. Cause: `ClubOrderPage` rendered `PaymentsClubFrame` while the session probe was still loading, and the frame's `/api/people/me` read redirects on 401. Fixed: the page shows a plain loading state until the probe answers. The lesson `optional-session-page-disables-401-redirect` records it.
 - **Also failed, not caused by this PR:** TEST-043 (`cash-today-item` count 2 instead of 3), E06-S02 (`data-membership-status` "upcoming" instead of "active"), E08-S02 (`facilities-calendar-rental-…` not found), and J-003 flaky. The shards ran 00:37–01:02 Europe/Warsaw, across midnight, and each assertion depends on "today": the tests' Warsaw date and the server's date disagree there. This PR changes neither people, facilities, the cash list nor the journeys.
 - `yarn verify` after the fix: all 14 steps passed.
+
+## CI run 42538737720 (after the fix)
+
+- All checks passed: gate, browser-smoke, perf, and the three integration shards (61, 57 and 58 tests passed). E07-S09 passed (19.6 s), as did TEST-043, E06-S02 and E08-S02, which confirms their earlier failures came from running across midnight.
+- The PR is ready for review; the run's lock on #233 is released.
