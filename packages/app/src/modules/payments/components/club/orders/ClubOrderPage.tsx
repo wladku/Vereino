@@ -190,10 +190,18 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
     },
   })
   if (query.data?.status === 'signed_out') return <SignedOut campaignId={campaignId} clubSlug={clubSlug} />
+  // The member frame reads the profile with the platform's 401 redirect, so it waits until the probe says signed in
+  // (lesson `optional-session-page-disables-401-redirect`).
+  if (query.isLoading) {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-6">
+        <LoadingMessage label={t('payments.orders.club.loading')} />
+      </main>
+    )
+  }
   return (
     <PaymentsClubFrame>
       {() => {
-        if (query.isLoading) return <LoadingMessage label={t('payments.orders.club.loading')} />
         if (query.data?.status === 'not_found') {
           return (
             <Alert status="information" data-testid="order-not-found">

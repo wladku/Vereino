@@ -68,3 +68,9 @@
 - **Fixed:** a change or cancellation while an online checkout of the charge is still `created` now answers 409 `order_payment_in_progress`, so the provider cannot book the old amount on a changed or cancelled charge.
 - **Left as is (minor):** an invalid e-mail sent from the form comes back as a plain 400 banner, not a field error; the per-guardian link limit (3 an hour) is counted without a lock, and the per-IP rate limit bounds it.
 - `yarn verify` after the fixes: all 14 steps passed.
+
+## CI run 42536001900 (first integration run of E07-S09)
+
+- **E07-S09 failed at its last step** (`getByTestId('order-card')` not found): the signed-out browser was sent to `/login?redirect=/club/orders/…`. Every API, link and signed-in browser step before it passed. Cause: `ClubOrderPage` rendered `PaymentsClubFrame` while the session probe was still loading, and the frame's `/api/people/me` read redirects on 401. Fixed: the page shows a plain loading state until the probe answers. The lesson `optional-session-page-disables-401-redirect` records it.
+- **Also failed, not caused by this PR:** TEST-043 (`cash-today-item` count 2 instead of 3), E06-S02 (`data-membership-status` "upcoming" instead of "active"), E08-S02 (`facilities-calendar-rental-…` not found), and J-003 flaky. The shards ran 00:37–01:02 Europe/Warsaw, across midnight, and each assertion depends on "today": the tests' Warsaw date and the server's date disagree there. This PR changes neither people, facilities, the cash list nor the journeys.
+- `yarn verify` after the fix: all 14 steps passed.
