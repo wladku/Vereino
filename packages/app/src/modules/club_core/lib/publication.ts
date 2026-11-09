@@ -121,6 +121,14 @@ export function sectionPublicationProblem(input: {
   return input.isPublic && !input.publicSlug ? 'section_public_slug_required' : null
 }
 
+/** Why a place's public fields cannot be saved: a place with a public calendar needs its own slug (DD-23, #124). */
+export function placePublicationProblem(input: {
+  isPublicSchedule: boolean
+  publicSlug: string | null
+}): 'place_public_slug_required' | null {
+  return input.isPublicSchedule && !input.publicSlug ? 'place_public_slug_required' : null
+}
+
 export type ClubPagePreview = {
   /** `/p/{slug}`, or null while the club has no slug. */
   path: string | null

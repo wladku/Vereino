@@ -37,10 +37,13 @@ describe('facilities error codes', () => {
       'log_groups_invalid',
       'incident_description_length',
       'incident_time_future',
+      'public_place_not_found',
+      'public_places_disabled',
+      'public_schedule_month_invalid',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
-      expect([403, 409, 422]).toContain(entry.status)
+      expect([400, 403, 404, 409, 422]).toContain(entry.status)
     }
   })
 })

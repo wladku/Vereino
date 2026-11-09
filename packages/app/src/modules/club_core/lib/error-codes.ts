@@ -28,6 +28,8 @@ export const errorCodes = [
   { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
   { code: 'section_public_slug_required', status: 422, messageKey: 'club_core.errors.section_public_slug_required' },
+  // A place with a public calendar needs its own slug, unique among the club's live places (#124).
+  { code: 'place_public_slug_required', status: 422, messageKey: 'club_core.errors.place_public_slug_required' },
   { code: 'publication_forbidden', status: 403, messageKey: 'club_core.errors.publication_forbidden' },
   // Logos and materials (#29, glossary *Logo*): checked by their magic bytes; no SVG.
   { code: 'upload_file_missing', status: 400, messageKey: 'club_core.errors.upload_file_missing' },

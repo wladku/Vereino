@@ -11,6 +11,7 @@ import {
   publicationPatchSchema,
   publishedBlocks,
   resolvePublication,
+  placePublicationProblem,
   sectionPublicationProblem,
   type Publication,
 } from '../publication'
@@ -113,6 +114,12 @@ describe('public slugs', () => {
     expect(sectionPublicationProblem({ isPublic: true, publicSlug: null })).toBe('section_public_slug_required')
     expect(sectionPublicationProblem({ isPublic: true, publicSlug: 'basen' })).toBeNull()
     expect(sectionPublicationProblem({ isPublic: false, publicSlug: null })).toBeNull()
+  })
+
+  it('requires a slug for a place with a public calendar (#124)', () => {
+    expect(placePublicationProblem({ isPublicSchedule: true, publicSlug: null })).toBe('place_public_slug_required')
+    expect(placePublicationProblem({ isPublicSchedule: true, publicSlug: 'orlik' })).toBeNull()
+    expect(placePublicationProblem({ isPublicSchedule: false, publicSlug: null })).toBeNull()
   })
 })
 

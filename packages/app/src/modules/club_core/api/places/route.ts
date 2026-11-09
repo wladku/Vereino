@@ -88,6 +88,9 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'opening_hours',
       'is_active',
       'regulations_text',
+      'public_slug',
+      'is_public_schedule',
+      'accepts_online_requests',
       'tenant_id',
       'organization_id',
       'created_at',
@@ -146,13 +149,13 @@ export const openApi = buildOpenApi({
   create: {
     schema: placeCreateSchema,
     description:
-      'Creates a place (club administrator). Errors: 400 invalid input, 403 `scope_denied`, 422 `place_reference_invalid` (unknown parent or owner).',
+      'Creates a place (club administrator). Errors: 400 invalid input, 403 `scope_denied`, 409 `public_slug_taken`, 422 `place_reference_invalid` (unknown parent or owner), 422 `place_public_slug_required`.',
   },
   update: {
     schema: placeUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a place; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `place_hierarchy_cycle`, 422 `place_reference_invalid`.',
+      'Changes a place; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `public_slug_taken`, 422 `place_hierarchy_cycle`, 422 `place_reference_invalid`, 422 `place_public_slug_required`.',
   },
   del: {
     schema: placeDeleteSchema,

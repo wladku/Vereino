@@ -51,7 +51,7 @@ export class Thread extends ScopedEntityBase {
 
   /**
    * The section, group, activity or session addressed; null for `club`. For `direct`: the person a member's direct
-   * thread is about (`threads.start_direct`, #187), null for a staff-started one.
+   * thread is about (`threads.start_direct`, #187), null for a staff-started one — the daily limit counts by it.
    */
   @Property({ name: 'scope_id', type: 'uuid', nullable: true })
   scopeId?: string | null

@@ -322,6 +322,7 @@ const startDirectCommand: CommandHandler<Record<string, unknown>, ThreadCommandR
         id: threadId,
         ...scope,
         scopeType: 'direct',
+        // The subject marks a member's direct thread: `countDirectThreadsSince` counts the daily limit by it.
         scopeId: parsed.personId,
         sectionId: group.sectionId,
         groupId: parsed.to === 'coaches' ? group.id : null,

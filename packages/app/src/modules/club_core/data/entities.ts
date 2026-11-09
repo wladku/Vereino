@@ -272,12 +272,18 @@ export class SectionMaterial extends ScopedEntityBase {
  * pools; sessions and bookings point to a leaf. `contacts` is the encrypted JSON text of `{ role, name, phone }[]`
  * (`encryption.ts`). `opening_hours` holds the place's own opening hours (facilities spec DD-41, #121); a place
  * without them takes its nearest ancestor's. The regulations text and the files (`PlaceFile`: one regulations PDF,
- * photos) are the UX parity spec's phase 3 (REQ-U03, #86); the public slug and schedule and online requests arrive
- * later.
+ * photos) are the UX parity spec's phase 3 (REQ-U03, #86). The public slug, `is_public_schedule` and
+ * `accepts_online_requests` are the public facility calendar's (club spec DD-23, DD-29; facilities spec phase 5 step
+ * 5, #124): the slug is unique among the club's live places.
  */
 @Entity({ tableName: 'club_core_places' })
 @Index({ name: 'club_core_places_org_parent_idx', properties: ['organizationId', 'parentPlaceId'] })
 @Index({ name: 'club_core_places_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'club_core_places_org_public_slug_unique',
+  expression:
+    'create unique index "club_core_places_org_public_slug_unique" on "club_core_places" ("organization_id", "public_slug") where deleted_at is null and public_slug is not null',
+})
 export class Place extends ScopedEntityBase {
   [OptionalProps]?:
     | ScopedEntityOptionalProps
@@ -296,6 +302,9 @@ export class Place extends ScopedEntityBase {
     | 'openingHours'
     | 'isActive'
     | 'regulationsText'
+    | 'publicSlug'
+    | 'isPublicSchedule'
+    | 'acceptsOnlineRequests'
 
   /** Scalar id of the parent place in the same organization; null for a root. */
   @Property({ name: 'parent_place_id', type: 'uuid', nullable: true })
@@ -355,6 +364,18 @@ export class Place extends ScopedEntityBase {
   /** The place's rules as plain text (at most 20 000 characters); public rules, no personal data. */
   @Property({ name: 'regulations_text', type: 'text', nullable: true })
   regulationsText?: string | null
+
+  /** Slug of `/p/{club}/places/{publicSlug}` (DD-23), unique among the club's live places; null until chosen. */
+  @Property({ name: 'public_slug', type: 'text', nullable: true })
+  publicSlug?: string | null
+
+  /** The place's calendar is public (DD-29, with the club's `places_calendar` block); requires `public_slug`. */
+  @Property({ name: 'is_public_schedule', type: 'boolean', default: false })
+  isPublicSchedule: boolean = false
+
+  /** Guests may request a booking from the public calendar (REQ-024, with the club's `online_requests` block). */
+  @Property({ name: 'accepts_online_requests', type: 'boolean', default: false })
+  acceptsOnlineRequests: boolean = false
 }
 
 /**
