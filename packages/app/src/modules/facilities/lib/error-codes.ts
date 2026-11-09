@@ -1,5 +1,5 @@
 // Error codes owned by `facilities` (engineering standards S6.7; facilities spec *API, Command, and Error Contracts*;
-// #121, #122, #123). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
+// #121, #122, #123, #124). Thrown through `api/errors.ts`. An inverted validity period answers the foundation's `validity_inverted`, a
 // stale lock token the platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
 
@@ -39,6 +39,12 @@ export const errorCodes = [
   { code: 'booking_section_invalid', status: 422, messageKey: 'facilities.errors.booking_section_invalid' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },
+  // The public facility calendar (P-03, P-04, TEST-024; #124): an unknown club, place or a place that is not public
+  // answer the same 404; a club that does not publish its places calendar answers its own 404; a month outside the
+  // readable range 400.
+  { code: 'public_place_not_found', status: 404, messageKey: 'facilities.errors.public_place_not_found' },
+  { code: 'public_places_disabled', status: 404, messageKey: 'facilities.errors.public_places_disabled' },
+  { code: 'public_schedule_month_invalid', status: 400, messageKey: 'facilities.errors.public_schedule_month_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']

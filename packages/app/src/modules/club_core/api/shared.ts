@@ -84,6 +84,9 @@ export function placeListItem(row: Row) {
     openingHours: readOpeningHours(json(row.opening_hours)),
     isActive: bool(row.is_active),
     regulationsText: text(row.regulations_text),
+    publicSlug: text(row.public_slug),
+    isPublicSchedule: bool(row.is_public_schedule),
+    acceptsOnlineRequests: bool(row.accepts_online_requests),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -206,6 +209,10 @@ export const placeListItemSchema = z.object({
   isActive: z.boolean(),
   /** The place's rules as plain text (UX parity spec, REQ-U03). */
   regulationsText: z.string().nullable(),
+  /** The public calendar (DD-23, DD-29; #124). */
+  publicSlug: z.string().nullable(),
+  isPublicSchedule: z.boolean(),
+  acceptsOnlineRequests: z.boolean(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   /** The owner institution's name; null without an owner (UX parity spec, REQ-U03). */

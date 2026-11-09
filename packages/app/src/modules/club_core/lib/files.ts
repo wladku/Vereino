@@ -65,6 +65,10 @@ export function checkMaterial(bytes: Uint8Array) {
 
 /** The kinds of a place file (UX parity spec, REQ-U03): photos, and the one regulations PDF. */
 export const PLACE_FILE_KINDS = ['photo', 'regulations'] as const
+
+/** Attachment owner (the place) and assignment (the file link) of a place file (the upload and the public read). */
+export const PLACE_FILE_OWNER_ENTITY = 'club_core:place'
+export const PLACE_FILE_ASSIGNMENT = 'club_core:place_file'
 export type PlaceFileKind = (typeof PLACE_FILE_KINDS)[number]
 
 /** Formats of a place photo: the logo image formats (no SVG). */

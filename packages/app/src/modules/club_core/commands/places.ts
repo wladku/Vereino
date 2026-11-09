@@ -5,10 +5,13 @@
 // `place_has_children`). The rule "a place with sessions or bookings is deactivated, not deleted" arrives with
 // `activities` and `facilities`. Opening hours (facilities spec DD-41, #121) are checked by `openingHoursProblem`
 // (`@vereino/core`): windows out of order or overlapping, or two seasons covering a date, answer 422
-// `place_opening_hours_invalid` at the field.
+// `place_opening_hours_invalid` at the field. A place with a public calendar needs its own slug (422
+// `place_public_slug_required`), unique among the club's live places (409 `public_slug_taken` from the partial unique
+// index; #124).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { isUniqueViolation } from '@open-mercato/shared/lib/crud/errors'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { openingHoursProblem, type OpeningHours } from '@vereino/core'
 import { authorizeScoped, type TargetLock } from '@/modules/foundation'
@@ -23,6 +26,7 @@ import {
   wouldCreateCycle,
   type PlaceContact,
 } from '../lib/places'
+import { placePublicationProblem } from '../lib/publication'
 import {
   STRUCTURE_WRITE_KINDS,
   authorizeReplay,
@@ -41,6 +45,9 @@ import {
 } from './shared'
 
 export const PLACE_RESOURCE_KIND = 'club_core.place'
+
+/** The partial unique index on the live places' public slugs (`data/entities.ts`). */
+export const PLACE_SLUG_INDEX = 'club_core_places_org_public_slug_unique'
 
 export const placeEvents = structureEvents<Place>('place')
 
@@ -65,6 +72,9 @@ export type PlaceSnapshot = {
   openingHours: OpeningHours | null
   isActive: boolean
   regulationsText: string | null
+  publicSlug: string | null
+  isPublicSchedule: boolean
+  acceptsOnlineRequests: boolean
 }
 
 export type PlaceCommandResult = StructureCommandResult<Place, PlaceSnapshot>
@@ -93,6 +103,9 @@ export function placeSnapshot(row: Place): PlaceSnapshot {
     openingHours: row.openingHours ?? null,
     isActive: row.isActive,
     regulationsText: row.regulationsText ?? null,
+    publicSlug: row.publicSlug ?? null,
+    isPublicSchedule: row.isPublicSchedule,
+    acceptsOnlineRequests: row.acceptsOnlineRequests,
   }
 }
 
@@ -118,6 +131,29 @@ function restorePlace(row: Place, before: PlaceSnapshot): void {
   row.isActive = before.isActive
   // A snapshot taken before the regulations existed (#86) restores no text.
   row.regulationsText = before.regulationsText ?? null
+  // A snapshot taken before the public calendar fields existed (#124) restores them off.
+  row.publicSlug = before.publicSlug ?? null
+  row.isPublicSchedule = before.isPublicSchedule ?? false
+  row.acceptsOnlineRequests = before.acceptsOnlineRequests ?? false
+}
+
+/** 422 `place_public_slug_required` for a public calendar without a slug. */
+async function assertPublication(row: Place): Promise<void> {
+  const problem = placePublicationProblem({
+    isPublicSchedule: row.isPublicSchedule,
+    publicSlug: row.publicSlug ?? null,
+  })
+  if (problem) await throwFieldError(problem, 'publicSlug')
+}
+
+/** Runs a place write and turns a violated slug index (23505) into 409 `public_slug_taken`. */
+async function withSlugConflict<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write()
+  } catch (error: unknown) {
+    if (isUniqueViolation(error, PLACE_SLUG_INDEX)) return clubCoreErrors.throw('public_slug_taken')
+    throw error
+  }
 }
 
 function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
@@ -156,49 +192,55 @@ const createPlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
   atomicReplay: true,
   async execute(rawInput, ctx) {
     const id = randomUUID()
-    const result = await inWriteTransaction(ctx, 'club_core.places.create', async (em) => {
-      const authorized = await authorizeScoped(
-        {
-          input: placeCreateSchema,
-          resourceKind: PLACE_RESOURCE_KIND,
-          allowedKinds: STRUCTURE_WRITE_KINDS,
-          resolveTarget: (_parsed, _entity, scope) => structureTarget({ id, ...scope }),
-        },
-        rawInput,
-        ctx,
-        em,
-      )
-      const { parsed, tenantId, organizationId } = authorized
-      const scope = { tenantId, organizationId }
-      if (parsed.parentPlaceId) await lockPlaceHierarchy(em, organizationId)
-      await assertParent(em, scope, null, parsed.parentPlaceId ?? null)
-      await assertOwner(em, scope, parsed.ownerInstitutionId)
-      await assertOpeningHours(parsed.openingHours)
-      const row = em.create(Place, {
-        id,
-        tenantId,
-        organizationId,
-        parentPlaceId: parsed.parentPlaceId ?? null,
-        kind: parsed.kind,
-        name: parsed.name,
-        surface: parsed.surface ?? null,
-        address: parsed.address ?? null,
-        geoLat: decimalText(parsed.geoLat),
-        geoLng: decimalText(parsed.geoLng),
-        description: parsed.description ?? null,
-        ownerInstitutionId: parsed.ownerInstitutionId ?? null,
-        managedByClub: parsed.managedByClub ?? false,
-        isExternal: parsed.isExternal ?? false,
-        rentedByClub: parsed.rentedByClub ?? false,
-        capacityGroups: parsed.capacityGroups ?? 1,
-        contacts: serializePlaceContacts(parsed.contacts),
-        openingHours: parsed.openingHours ?? null,
-        isActive: parsed.isActive ?? true,
-        regulationsText: parsed.regulationsText ?? null,
-      })
-      em.persist(row)
-      return { entity: row, actingRole: authorized.actingRole, before: null }
-    })
+    const result = await withSlugConflict(() =>
+      inWriteTransaction(ctx, 'club_core.places.create', async (em) => {
+        const authorized = await authorizeScoped(
+          {
+            input: placeCreateSchema,
+            resourceKind: PLACE_RESOURCE_KIND,
+            allowedKinds: STRUCTURE_WRITE_KINDS,
+            resolveTarget: (_parsed, _entity, scope) => structureTarget({ id, ...scope }),
+          },
+          rawInput,
+          ctx,
+          em,
+        )
+        const { parsed, tenantId, organizationId } = authorized
+        const scope = { tenantId, organizationId }
+        if (parsed.parentPlaceId) await lockPlaceHierarchy(em, organizationId)
+        await assertParent(em, scope, null, parsed.parentPlaceId ?? null)
+        await assertOwner(em, scope, parsed.ownerInstitutionId)
+        await assertOpeningHours(parsed.openingHours)
+        const row = em.create(Place, {
+          id,
+          tenantId,
+          organizationId,
+          parentPlaceId: parsed.parentPlaceId ?? null,
+          kind: parsed.kind,
+          name: parsed.name,
+          surface: parsed.surface ?? null,
+          address: parsed.address ?? null,
+          geoLat: decimalText(parsed.geoLat),
+          geoLng: decimalText(parsed.geoLng),
+          description: parsed.description ?? null,
+          ownerInstitutionId: parsed.ownerInstitutionId ?? null,
+          managedByClub: parsed.managedByClub ?? false,
+          isExternal: parsed.isExternal ?? false,
+          rentedByClub: parsed.rentedByClub ?? false,
+          capacityGroups: parsed.capacityGroups ?? 1,
+          contacts: serializePlaceContacts(parsed.contacts),
+          openingHours: parsed.openingHours ?? null,
+          isActive: parsed.isActive ?? true,
+          regulationsText: parsed.regulationsText ?? null,
+          publicSlug: parsed.publicSlug ?? null,
+          isPublicSchedule: parsed.isPublicSchedule ?? false,
+          acceptsOnlineRequests: parsed.acceptsOnlineRequests ?? false,
+        })
+        await assertPublication(row)
+        em.persist(row)
+        return { entity: row, actingRole: authorized.actingRole, before: null }
+      }),
+    )
     await emitStructure(ctx, result.entity, 'created', placeEvents)
     return result
   },
@@ -224,47 +266,53 @@ const updatePlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
   isUndoable: true,
   atomicReplay: true,
   async execute(rawInput, ctx) {
-    const result = await inWriteTransaction(ctx, 'club_core.places.update', async (em) => {
-      const authorized = await authorizeScoped(
-        existingSpec(placeUpdateSchema, PLACE_RESOURCE_KIND, loader(ctx)),
-        rawInput,
-        ctx,
-        em,
-      )
-      const row = authorized.entity as Place
-      const before = placeSnapshot(row)
-      const patch = authorized.parsed
-      const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
-      if (patch.parentPlaceId !== undefined && patch.parentPlaceId !== (row.parentPlaceId ?? null)) {
-        await lockPlaceHierarchy(em, row.organizationId)
-        await assertParent(em, scope, row.id, patch.parentPlaceId)
-        row.parentPlaceId = patch.parentPlaceId
-      }
-      if (patch.ownerInstitutionId !== undefined) {
-        await assertOwner(em, scope, patch.ownerInstitutionId)
-        row.ownerInstitutionId = patch.ownerInstitutionId
-      }
-      if (patch.kind !== undefined) row.kind = patch.kind
-      if (patch.name !== undefined) row.name = patch.name
-      if (patch.surface !== undefined) row.surface = patch.surface
-      if (patch.address !== undefined) row.address = patch.address
-      if (patch.geoLat !== undefined) row.geoLat = decimalText(patch.geoLat)
-      if (patch.geoLng !== undefined) row.geoLng = decimalText(patch.geoLng)
-      if (patch.description !== undefined) row.description = patch.description
-      if (patch.managedByClub !== undefined) row.managedByClub = patch.managedByClub
-      if (patch.isExternal !== undefined) row.isExternal = patch.isExternal
-      if (patch.rentedByClub !== undefined) row.rentedByClub = patch.rentedByClub
-      if (patch.capacityGroups !== undefined) row.capacityGroups = patch.capacityGroups
-      if (patch.contacts !== undefined) row.contacts = serializePlaceContacts(patch.contacts)
-      if (patch.openingHours !== undefined) {
-        await assertOpeningHours(patch.openingHours)
-        row.openingHours = patch.openingHours
-      }
-      if (patch.isActive !== undefined) row.isActive = patch.isActive
-      if (patch.regulationsText !== undefined) row.regulationsText = patch.regulationsText
-      row.updatedAt = new Date()
-      return { entity: row, actingRole: authorized.actingRole, before }
-    })
+    const result = await withSlugConflict(() =>
+      inWriteTransaction(ctx, 'club_core.places.update', async (em) => {
+        const authorized = await authorizeScoped(
+          existingSpec(placeUpdateSchema, PLACE_RESOURCE_KIND, loader(ctx)),
+          rawInput,
+          ctx,
+          em,
+        )
+        const row = authorized.entity as Place
+        const before = placeSnapshot(row)
+        const patch = authorized.parsed
+        const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+        if (patch.parentPlaceId !== undefined && patch.parentPlaceId !== (row.parentPlaceId ?? null)) {
+          await lockPlaceHierarchy(em, row.organizationId)
+          await assertParent(em, scope, row.id, patch.parentPlaceId)
+          row.parentPlaceId = patch.parentPlaceId
+        }
+        if (patch.ownerInstitutionId !== undefined) {
+          await assertOwner(em, scope, patch.ownerInstitutionId)
+          row.ownerInstitutionId = patch.ownerInstitutionId
+        }
+        if (patch.kind !== undefined) row.kind = patch.kind
+        if (patch.name !== undefined) row.name = patch.name
+        if (patch.surface !== undefined) row.surface = patch.surface
+        if (patch.address !== undefined) row.address = patch.address
+        if (patch.geoLat !== undefined) row.geoLat = decimalText(patch.geoLat)
+        if (patch.geoLng !== undefined) row.geoLng = decimalText(patch.geoLng)
+        if (patch.description !== undefined) row.description = patch.description
+        if (patch.managedByClub !== undefined) row.managedByClub = patch.managedByClub
+        if (patch.isExternal !== undefined) row.isExternal = patch.isExternal
+        if (patch.rentedByClub !== undefined) row.rentedByClub = patch.rentedByClub
+        if (patch.capacityGroups !== undefined) row.capacityGroups = patch.capacityGroups
+        if (patch.contacts !== undefined) row.contacts = serializePlaceContacts(patch.contacts)
+        if (patch.openingHours !== undefined) {
+          await assertOpeningHours(patch.openingHours)
+          row.openingHours = patch.openingHours
+        }
+        if (patch.isActive !== undefined) row.isActive = patch.isActive
+        if (patch.regulationsText !== undefined) row.regulationsText = patch.regulationsText
+        if (patch.publicSlug !== undefined) row.publicSlug = patch.publicSlug
+        if (patch.isPublicSchedule !== undefined) row.isPublicSchedule = patch.isPublicSchedule
+        if (patch.acceptsOnlineRequests !== undefined) row.acceptsOnlineRequests = patch.acceptsOnlineRequests
+        await assertPublication(row)
+        row.updatedAt = new Date()
+        return { entity: row, actingRole: authorized.actingRole, before }
+      }),
+    )
     await emitStructure(ctx, result.entity, 'updated', placeEvents)
     return result
   },
@@ -293,7 +341,7 @@ const updatePlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
         before.parentPlaceId,
       )
     }
-    await undoRestore(ctx, row, before, restorePlace, placeEvents, 'updated')
+    await withSlugConflict(() => undoRestore(ctx, row, before, restorePlace, placeEvents, 'updated'))
   },
 }
 
@@ -346,7 +394,7 @@ const deletePlaceCommand: CommandHandler<Record<string, unknown>, PlaceCommandRe
         before.parentPlaceId,
       )
     }
-    await undoRestore(ctx, row, before, restorePlace, placeEvents, 'created')
+    await withSlugConflict(() => undoRestore(ctx, row, before, restorePlace, placeEvents, 'created'))
   },
 }
 
