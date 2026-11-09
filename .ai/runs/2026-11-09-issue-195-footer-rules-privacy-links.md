@@ -33,10 +33,11 @@
 - `yarn typecheck`, `yarn typecheck:qa` — ok.
 - `yarn verify` run 1: generate, typecheck, typecheck:packages, typecheck:qa, lint (0 errors) passed; `format:check` failed: `packages/app/src/modules/club_core/components/public/PublicFrame.tsx is not formatted`. After prettier: `yarn verify --from format:check` — all 9 remaining steps passed (`test`: 70 suites, 876 tests; `build` ok).
 - `yarn test:integration:vereino --filter E06-S07b` — not run locally: `docker info` → `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`, and the run rules forbid touching Docker Desktop. Left to CI.
+- CI on PR #235 (run 42662744032): gate, browser-smoke, perf, dependency-review, pr-title and integration shards 1–3 pass; shard 1/3: `✓ … E06-S07b-public-footer-links.spec.ts:32:1 › E06-S07b footer links to the club rules and privacy policy, only when set (21.8s)`.
 
 ## Open problems
 
-- The new integration test has not run yet; CI runs it.
+- None. UI QA evidence (`needs-qa`) is left to the review pipeline.
 
 ## Next steps
 
