@@ -1,6 +1,6 @@
 ---
 title: "An atomicReplay undo emits its custom event from onTransactionLifetimeComplete, because the bus commits only after its audit write"
-modules: ["payments", "platform"]
+modules: ["payments", "facilities", "platform"]
 areas: ["module-data"]
 topics: ["commands", "undo-redo", "events", "transactions", "post-commit"]
 ---
@@ -13,4 +13,6 @@ topics: ["commands", "undo-redo", "events", "transactions", "post-commit"]
 
 **Rule**: A custom event emitted from an `atomicReplay` undo or redo handler is registered with `onTransactionLifetimeComplete(ctx.transactionalEm, outcome => …)` from `@open-mercato/shared/lib/commands` and emitted only when `outcome === 'committed'` (in payments: `emitAfterReplayCommit` in `commands/shared.ts`). The hook also follows an ambient outer transaction. Prove it with an integration case that makes the bus's audit write fail in a probe process (`.ai/qa/tests/_fixtures/payments-undo-probe`) and asserts no event, plus a committed undo that emits it once.
 
-**Applies to**: every `undo`/redo handler in `packages/app/src/modules/*/commands/*.ts` that emits a module event itself; `payments.charges.generate` undo.
+The same holds for any post-commit effect, not only events. Issue #221: `facilities.closures` flagged the rentals and sessions under a closure only on the first execution (`ctx.transactionalEm ? none : flag`), so an undo of a delete or update, or a redo of a create, put a closure back over a rental entered in the meantime without flagging it, and the undo did not take the occupancy lock that execute takes. An effect that runs in transactions of its own (the reschedule flags, DD-43) cannot run inside the replay: the replay still holds the lock and may roll back. Register it with the same hook (`flagAfterReplayCommit` in `facilities/commands/closures.ts`) and take execute's lock at the top of the undo.
+
+**Applies to**: every `undo`/redo handler in `packages/app/src/modules/*/commands/*.ts` that emits a module event or runs a post-commit effect itself; `payments.charges.generate` undo; `facilities.closures.create|update|delete` undo and redo.

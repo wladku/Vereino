@@ -217,7 +217,7 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
       em.persist(row)
       // DD-19: with `payments` the charge is written in this transaction; a throw rolls the rental back with it.
       const charges = chargeService(ctx.container)
-      if (charges && row.chargeId == null) {
+      if (charges) {
         await em.flush()
         const timeZone = await clubTimeZone(ctx.container, scope)
         const charge = await charges.createForSource(
@@ -446,7 +446,8 @@ const advanceLifecycleCommand: CommandHandler<Record<string, unknown>, Lifecycle
         where: { ...trusted, deletedAt: null, endsAt: { $lte: at } },
         from: 'confirmed',
         to: 'done',
-        set: { updatedAt: at },
+        // `at` decides which rentals ended; the row itself changes now (the CLI's `--now` may be in the past).
+        set: { updatedAt: new Date() },
       })
       return { scope: trusted, ids: changed, now: at }
     })
