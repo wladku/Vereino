@@ -56,7 +56,9 @@ export function register(container: AppContainer) {
     )
       .scoped()
       .proxy(),
-    [ACTIVITIES_PLACE_SESSIONS]: asFunction((cradle: { em: EntityManager }) => createPlaceSessions(() => cradle.em))
+    [ACTIVITIES_PLACE_SESSIONS]: asFunction((cradle: { em: EntityManager }) =>
+      createPlaceSessions(() => cradle.em, container),
+    )
       .scoped()
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),

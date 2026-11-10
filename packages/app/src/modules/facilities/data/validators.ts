@@ -407,6 +407,17 @@ export const ownerReportQuerySchema = z.object({
   format: z.enum(['json', 'csv']).optional(),
 })
 
+/**
+ * `GET /api/facilities/reports/rented-hours` (REQ-038; #129): a period of club-zone dates, optionally one rented place,
+ * as JSON or CSV. The period rules are the owner report's (422 from the route).
+ */
+export const rentedHoursReportQuerySchema = z.object({
+  placeId: z.uuid().optional(),
+  from: calendarDateSchema,
+  to: calendarDateSchema,
+  format: z.enum(['json', 'csv']).optional(),
+})
+
 // --- Internal bookings (#123) ---
 
 /**

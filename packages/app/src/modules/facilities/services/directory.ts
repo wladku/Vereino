@@ -7,13 +7,18 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { OpeningHours } from '@vereino/core'
-import type { ActivitiesPlaceSessions, PlaceSessionEntry } from '../../activities/services/place-sessions'
+import type {
+  ActivitiesPlaceSessions,
+  DoneSessionReportEntry,
+  PlaceSessionEntry,
+} from '../../activities/services/place-sessions'
 import type {
   ClubCoreDirectory,
   PlaceDirectoryEntry,
   PlaceFamily,
   PlaceOption,
   PlacePayee,
+  RentedPlace,
   SectionDirectoryEntry,
 } from '../../club_core/services/directory'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
@@ -126,6 +131,26 @@ export function clubSessionTimes(
   em?: EntityManager,
 ): Promise<Array<{ placeId: string; start: Date; end: Date }>> {
   return placeSessions(container).clubSessionTimes(scope, placeIds, window, em)
+}
+
+/** The live places the club rents from their owners, with their descendants (the rented-hours report, #129). */
+export function rentedPlaces(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  em?: EntityManager,
+): Promise<RentedPlace[]> {
+  return directory(container).rentedPlaces(scope, em)
+}
+
+/** The done sessions on the places that start in the window, with group names and coach ids (rented hours, #129). */
+export function doneSessionsForReport(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+  em?: EntityManager,
+): Promise<DoneSessionReportEntry[]> {
+  return placeSessions(container).doneSessionsForReport(scope, placeIds, window, em)
 }
 
 /** The live planned sessions among `ids` with their times and places (#123: a group event supersedes requests). */

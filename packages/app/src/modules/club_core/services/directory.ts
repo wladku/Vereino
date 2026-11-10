@@ -43,6 +43,9 @@ export type PlacePayee = { institutionId: string; name: string; bankAccount: str
 /** A place with its ancestors and descendants in the live tree of the club. */
 export type PlaceFamily = { place: PlaceDirectoryEntry; ancestorIds: string[]; descendantIds: string[] }
 
+/** A live place the club rents from its owner (`rented_by_club`, REQ-038) with its live descendants. */
+export type RentedPlace = { id: string; name: string; isActive: boolean; descendantIds: string[] }
+
 export type ClubCoreDirectory = {
   /** The live sections of the organization among `ids`, by id; `em` is the caller's when given. */
   findSections(
@@ -90,6 +93,11 @@ export type ClubCoreDirectory = {
    * transfer details of an approved rental, #125); null when no place on the chain names a live owner.
    */
   placePayee(scope: ClubDirectoryScope, placeId: string, em?: EntityManager): Promise<PlacePayee | null>
+  /**
+   * The live places flagged `rented_by_club`, active or not, by name, each with its live descendants (the rented-hours
+   * report, facilities REQ-038, #129).
+   */
+  rentedPlaces(scope: ClubDirectoryScope, em?: EntityManager): Promise<RentedPlace[]>
 }
 
 export async function findSections(
@@ -259,6 +267,22 @@ export async function placePayee(
   return null
 }
 
+export async function rentedPlaces(em: EntityManager, scope: ClubDirectoryScope): Promise<RentedPlace[]> {
+  const rows = await em.find(
+    Place,
+    { ...scope, deletedAt: null, rentedByClub: true },
+    { fields: ['id', 'name', 'isActive'], orderBy: { name: 'asc', id: 'asc' } },
+  )
+  if (rows.length === 0) return []
+  const parents = await loadPlaceParents(em, scope)
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    isActive: row.isActive,
+    descendantIds: placeRelatives(row.id, parents).descendantIds,
+  }))
+}
+
 export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDirectory {
   return {
     findSections: (scope, ids, em) => findSections(em ?? getEm().fork(), scope, ids),
@@ -269,5 +293,6 @@ export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDir
     placeFamily: (scope, placeId, em) => placeFamily(em ?? getEm().fork(), scope, placeId),
     placeOptions: (scope, em) => placeOptions(em ?? getEm().fork(), scope),
     placePayee: (scope, placeId, em) => placePayee(em ?? getEm().fork(), scope, placeId),
+    rentedPlaces: (scope, em) => rentedPlaces(em ?? getEm().fork(), scope),
   }
 }

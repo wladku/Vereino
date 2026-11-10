@@ -1070,5 +1070,20 @@
   "facilities.reports.owner.empty": "Brak danych za ten okres",
   "facilities.reports.owner.emptyHint": "W wybranym okresie w tym obiekcie nie zapisano czasu klubu, wynajmów, wpłat, zdarzeń ani konserwacji.",
   "facilities.reports.owner.noPlaces": "Dodaj obiekt klubu, aby zbudować jego raport.",
-  "facilities.reports.owner.errors.load": "Nie udało się wczytać raportu. Spróbuj ponownie."
+  "facilities.reports.owner.errors.load": "Nie udało się wczytać raportu. Spróbuj ponownie.",
+  "facilities.reports.rentedHours.title": "Wynajmowane godziny",
+  "facilities.reports.rentedHours.subtitle": "Godziny odbytych zajęć w obiektach wynajmowanych przez klub, według miesiąca, grupy i trenera — do sprawdzenia rachunku właściciela.",
+  "facilities.reports.rentedHours.totals": "Godziny według obiektu i miesiąca",
+  "facilities.reports.rentedHours.byGroup": "Godziny według grupy i trenera",
+  "facilities.reports.rentedHours.columns.place": "Obiekt",
+  "facilities.reports.rentedHours.columns.month": "Miesiąc",
+  "facilities.reports.rentedHours.columns.group": "Grupa",
+  "facilities.reports.rentedHours.columns.coach": "Trener",
+  "facilities.reports.rentedHours.columns.sessions": "Zajęcia",
+  "facilities.reports.rentedHours.columns.hours": "Godziny",
+  "facilities.reports.rentedHours.unknownGroup": "Grupa usunięta",
+  "facilities.reports.rentedHours.noCoach": "Bez trenera",
+  "facilities.reports.rentedHours.noPlaces": "Brak obiektów oznaczonych jako wynajmowane",
+  "facilities.reports.rentedHours.noPlacesHint": "Oznacz obiekt jako wynajmowany przez klub w jego ustawieniach, aby raportować jego godziny.",
+  "facilities.reports.rentedHours.empty": "Brak odbytych zajęć w wynajmowanych obiektach w tym okresie"
 }
