@@ -10,13 +10,15 @@
 //   and move (same checks for the new slot, the rental itself left out; keeps the status and the amount, clears the
 //   reschedule flag) go through the status table (409 `invalid_transition`) with the lock token;
 // - the lifecycle job closes the confirmed rentals whose end has passed (`confirmed → done`) with `advanceWhere`.
-// Rental commands are not undoable: the status only moves forward (DD-46); a wrong entry is cancelled.
+// Rental commands are not undoable: the status only moves forward (DD-46); a wrong entry is cancelled. Staff commands
+// run for the club administrator and, within their places, the facility attendant (`PLACE_KINDS`, #126): a create
+// or a move names a place of the caller's grant (403 `scope_denied` otherwise).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
 import { calendarDateInZone } from '@vereino/core'
-import { advanceWhere, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
+import { advanceWhere, assertInScope, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { Rental } from '../data/entities'
 import { rentalActionSchema, rentalCancelSchema, rentalCreateSchema, rentalMoveSchema } from '../data/validators'
@@ -34,15 +36,15 @@ import { chargeService } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
 import { assessRentalSlot, type RentalIssue } from '../services/rental-slot'
 import {
-  MANAGE_KINDS,
+  PLACE_KINDS,
   assertPlaces,
   emitAfterCommit,
-  existingSpec,
+  existingPlaceSpec,
   facilitiesLog,
-  facilityTarget,
   inWriteTransaction,
   lockForOccupancy,
   rowLoader,
+  placeTarget,
   throwFieldError,
   type FacilitiesCommandResult,
 } from './shared'
@@ -159,8 +161,8 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
         {
           input: rentalCreateSchema,
           resourceKind: RENTAL_RESOURCE_KIND,
-          allowedKinds: MANAGE_KINDS,
-          resolveTarget: (_parsed, _entity, scope) => facilityTarget({ id, ...scope }),
+          allowedKinds: PLACE_KINDS,
+          resolveTarget: (parsed, _entity, scope) => placeTarget({ id, ...scope, placeId: parsed.placeId }),
         },
         rawInput,
         ctx,
@@ -276,7 +278,7 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
       let chargeWarning: 'charge_paid' | undefined
       const result = await inWriteTransaction(ctx, spec.id, async (em) => {
         const authorized = await authorizeScoped(
-          existingSpec(spec.schema, RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
+          existingPlaceSpec(spec.schema, RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
           rawInput,
           ctx,
           em,
@@ -357,7 +359,7 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
     const result = await inWriteTransaction(ctx, 'facilities.rentals.move', async (em) => {
       await lockForOccupancy(ctx, em)
       const authorized = await authorizeScoped(
-        existingSpec(rentalMoveSchema, RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
+        existingPlaceSpec(rentalMoveSchema, RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
         rawInput,
         ctx,
         em,
@@ -370,7 +372,10 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       }
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const placeId = authorized.parsed.placeId ?? row.placeId
-      if (placeId !== row.placeId) await assertPlaces(ctx, em, scope, [placeId])
+      if (placeId !== row.placeId) {
+        await assertInScope(authorized.scope, PLACE_KINDS, placeTarget({ id: row.id, ...scope, placeId }))
+        await assertPlaces(ctx, em, scope, [placeId])
+      }
       const startsAt = new Date(authorized.parsed.startsAt)
       if (!startAllowed(startsAt, now)) await throwFieldError('rental_start_past', 'startsAt')
       const assessment = await assessRentalSlot(

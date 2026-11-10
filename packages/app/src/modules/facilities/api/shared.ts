@@ -1,6 +1,7 @@
 // Shared pieces of the `facilities` routes (#121, #122): the list entity ids, list-item serializers and OpenAPI schemas.
 // Lists filter with `scopeWhere` (foundation spec P-03): the facility rules carry no section, so only the club-wide
-// grant lists them.
+// grant lists them; the records of one place (rentals, logs, incidents, bans) also list for the facility attendant's
+// `facility_operator` grant through their `place_id` (#126).
 import { z } from 'zod'
 import type { ScopeColumnMap } from '@vereino/core'
 import { wallTimeOf } from '../lib/zones'
@@ -13,6 +14,9 @@ export const RENTAL_ENTITY_ID = 'facilities:rental'
 export const ENTRY_BAN_ENTITY_ID = 'facilities:entry_ban'
 
 export const FACILITY_COLUMNS: ScopeColumnMap = {}
+
+/** The column a `facility_operator` grant filters the records of one place by (#126). */
+export const PLACE_COLUMNS: ScopeColumnMap = { placeId: 'place_id' }
 
 type Row = Record<string, unknown>
 

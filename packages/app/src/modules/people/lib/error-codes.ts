@@ -12,6 +12,8 @@ export const errorCodes = [
   { code: 'phone_invalid', status: 422, messageKey: 'people.errors.phone_invalid' },
   { code: 'role_scope_required', status: 422, messageKey: 'people.errors.role_scope_required' },
   { code: 'role_scope_unexpected', status: 422, messageKey: 'people.errors.role_scope_unexpected' },
+  // #126: a facility attendant's place that is not a live place of the club (field error on `placeId`).
+  { code: 'role_place_invalid', status: 422, messageKey: 'people.errors.role_place_invalid' },
   { code: 'guardianship_self', status: 422, messageKey: 'people.errors.guardianship_self' },
   {
     code: 'guardianship_primary_payer_conflict',

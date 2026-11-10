@@ -109,7 +109,7 @@ export function intersectIdSets(sets: ReadonlyArray<ReadonlySet<string> | null>)
 }
 
 /** The badges of the Roles column, in a stable order; each carries text (never colour alone). */
-export const PERSON_ROLE_BADGES = ['club_admin', 'coordinator', 'coach', 'guardian'] as const
+export const PERSON_ROLE_BADGES = ['club_admin', 'coordinator', 'coach', 'facility_operator', 'guardian'] as const
 export type PersonRoleBadge = (typeof PERSON_ROLE_BADGES)[number]
 
 /**

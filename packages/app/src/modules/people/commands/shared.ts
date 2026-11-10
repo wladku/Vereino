@@ -230,6 +230,8 @@ export type RoleAssignmentSnapshot = {
   personId: string
   role: RoleAssignment['role']
   sectionId: string | null
+  /** Absent in snapshots written before #126 (read as null). */
+  placeId?: string | null
   validFrom: string
   validTo: string | null
 }
@@ -242,6 +244,7 @@ export function roleAssignmentSnapshot(row: RoleAssignment): RoleAssignmentSnaps
     personId: row.personId,
     role: row.role,
     sectionId: row.sectionId ?? null,
+    placeId: row.placeId ?? null,
     validFrom: row.validFrom,
     validTo: row.validTo ?? null,
   }

@@ -13,7 +13,7 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { MANAGE_KINDS, facilityTarget } from '../../../commands/shared'
+import { PLACE_KINDS, placeTarget } from '../../../commands/shared'
 import { rentalQuoteSchema } from '../../../data/validators'
 import { findPlaces } from '../../../services/directory'
 import { quoteRentalSlot } from '../../../services/rental-slot'
@@ -54,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!ctx || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const input = rentalQuoteSchema.parse(await request.json().catch(() => ({})))
     const grants = await scopeContract.resolve(ctx)
-    await assertInScope(grants, MANAGE_KINDS, facilityTarget({ id: input.placeId, ...scope }))
+    await assertInScope(grants, PLACE_KINDS, placeTarget({ id: input.placeId, ...scope, placeId: input.placeId }))
     const places = await findPlaces(ctx.container, scope, [input.placeId])
     if (!places.has(input.placeId)) await facilitiesErrors.throw('facilities_reference_invalid', { field: 'placeId' })
     const assessment = await quoteRentalSlot(

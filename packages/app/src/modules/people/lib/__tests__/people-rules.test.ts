@@ -94,10 +94,18 @@ describe('isValidPhone', () => {
 
 describe('roleScopeProblem', () => {
   it('requires a section for a coordinator and refuses one for other roles', () => {
-    expect(roleScopeProblem('coordinator', null)).toBe('required')
-    expect(roleScopeProblem('coordinator', 'section-a')).toBeNull()
-    expect(roleScopeProblem('coach', 'section-a')).toBe('unexpected')
-    expect(roleScopeProblem('club_admin', undefined)).toBeNull()
+    expect(roleScopeProblem('coordinator', { sectionId: null })).toBe('required')
+    expect(roleScopeProblem('coordinator', { sectionId: 'section-a' })).toBeNull()
+    expect(roleScopeProblem('coach', { sectionId: 'section-a' })).toBe('unexpected')
+    expect(roleScopeProblem('club_admin', {})).toBeNull()
+  })
+
+  it('requires a place for a facility attendant and refuses one for other roles (#126)', () => {
+    expect(roleScopeProblem('facility_operator', {})).toBe('required')
+    expect(roleScopeProblem('facility_operator', { placeId: 'hall' })).toBeNull()
+    expect(roleScopeProblem('facility_operator', { placeId: 'hall', sectionId: 'section-a' })).toBe('unexpected')
+    expect(roleScopeProblem('coordinator', { sectionId: 'section-a', placeId: 'hall' })).toBe('unexpected')
+    expect(roleScopeProblem('club_admin', { placeId: 'hall' })).toBe('unexpected')
   })
 })
 
@@ -112,6 +120,34 @@ describe('personScope', () => {
       ),
     ).toEqual([
       { kind: 'maintenance_planner', ids: ['hall', 'pitch'] },
+      { kind: 'self', ids: ['p1'] },
+    ])
+  })
+
+  it('adds the facility_operator grant with the active places and their descendants (#126)', () => {
+    const attendant = (placeId: string | null, validTo: string | null = null): AssignmentRecord => ({
+      role: 'facility_operator',
+      validFrom: '2026-01-01',
+      validTo,
+      sectionId: null,
+      placeId,
+    })
+    expect(
+      personScope(
+        {
+          personId: 'p1',
+          assignments: [attendant('hall'), attendant('pitch'), attendant('old', '2026-10-26'), attendant(null)],
+          guardianships: [],
+          placeDescendants: { hall: ['hall-court-a', 'hall-court-b'], old: ['old-room'] },
+        },
+        today,
+      ),
+    ).toEqual([
+      { kind: 'facility_operator', ids: ['hall', 'hall-court-a', 'hall-court-b', 'pitch'] },
+      { kind: 'self', ids: ['p1'] },
+    ])
+    expect(personScope({ personId: 'p1', assignments: [attendant('hall')], guardianships: [] }, today)).toEqual([
+      { kind: 'facility_operator', ids: ['hall'] },
       { kind: 'self', ids: ['p1'] },
     ])
   })
@@ -224,6 +260,7 @@ describe('people error codes', () => {
       ['phone_invalid', 422],
       ['role_scope_required', 422],
       ['role_scope_unexpected', 422],
+      ['role_place_invalid', 422],
       ['guardianship_self', 422],
       ['guardianship_primary_payer_conflict', 409],
       ['guardianship_ended', 409],

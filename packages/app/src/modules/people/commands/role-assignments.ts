@@ -2,8 +2,9 @@
 // TEST-005). Only the club administrator assigns staff roles. Every change emits `people.role_assignment.*`, on which
 // the `people:sync-auth-roles` subscriber recomputes the person's `auth` roles; an assignment of a person without
 // an account is stored and its role is granted when the account is created. A second assignment of the same role
-// and section whose period overlaps an existing one is refused with 409 `role_assignment_duplicate` (#26); the check
-// runs under the person's row lock, so concurrent saves for one person are serialized.
+// and section (or place) whose period overlaps an existing one is refused with 409 `role_assignment_duplicate` (#26);
+// the check runs under the person's row lock, so concurrent saves for one person are serialized. A facility
+// attendant (`facility_operator`, #126) names a live place of the club (422 `role_place_invalid`).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -19,6 +20,7 @@ import { RoleAssignment } from '../data/entities'
 import { roleAssignmentCreateSchema, roleAssignmentEndSchema, roleAssignmentUpdateSchema } from '../data/validators'
 import { firstOverlapping, roleScopeProblem } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
+import { isClubPlace } from '../services/place-scope'
 import {
   inWriteTransaction,
   loadRoleAssignmentLocked,
@@ -38,23 +40,31 @@ export type RoleAssignmentCommandResult = {
   before: RoleAssignmentSnapshot | null
 }
 
-async function assertRoleScope(role: RoleAssignment['role'], sectionId: string | null | undefined): Promise<void> {
-  const problem = roleScopeProblem(role, sectionId)
-  if (problem === 'required') await peopleErrors.throw('role_scope_required')
-  if (problem === 'unexpected') await peopleErrors.throw('role_scope_unexpected')
-}
-
 type AssignmentKey = {
   tenantId: string
   organizationId: string
   personId: string
   role: RoleAssignment['role']
   sectionId: string | null
+  placeId: string | null
+}
+
+/** 422 when the section or place does not fit the role, or the place is not a live place of the club. */
+async function assertRoleScope(ctx: CommandRuntimeContext, em: EntityManager, key: AssignmentKey): Promise<void> {
+  const problem = roleScopeProblem(key.role, key)
+  if (problem === 'required') await peopleErrors.throw('role_scope_required')
+  if (problem === 'unexpected') await peopleErrors.throw('role_scope_unexpected')
+  const scope = { tenantId: key.tenantId, organizationId: key.organizationId }
+  if (key.placeId && !(await isClubPlace(ctx.container, em, scope, key.placeId))) {
+    const error = await peopleErrors.create('role_place_invalid', { field: 'placeId' })
+    error.body = { ...error.body, fieldErrors: { placeId: String(error.body.error ?? 'role_place_invalid') } }
+    throw error
+  }
 }
 
 /**
- * 409 `role_assignment_duplicate` when another live assignment of the same person, role and section overlaps the
- * period (overlapping validity counts as active). The caller holds the person's row lock.
+ * 409 `role_assignment_duplicate` when another live assignment of the same person, role and section (or place)
+ * overlaps the period (overlapping validity counts as active). The caller holds the person's row lock.
  */
 async function assertNoDuplicate(
   em: EntityManager,
@@ -70,6 +80,7 @@ async function assertNoDuplicate(
       personId: key.personId,
       role: key.role,
       sectionId: key.sectionId,
+      placeId: key.placeId,
       deletedAt: null,
       ...(exceptId ? { id: { $ne: exceptId } } : {}),
     },
@@ -130,17 +141,19 @@ async function buildAssignmentLog(result: RoleAssignmentCommandResult, labelKey:
   }
 }
 
-/** Undo of an update or an end: restores the previous period, role and section. */
+/** Undo of an update or an end: restores the previous period, role, section and place. */
 async function restoreAssignment(ctx: CommandRuntimeContext, before: RoleAssignmentSnapshot | null | undefined) {
   if (!before?.id) throw new Error('[internal] missing role assignment snapshot for undo')
   const row = await authorizeAssignmentReplay(ctx, before.id)
   const em = ctx.transactionalEm as EntityManager
   const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
   await lockPerson(em, scope, row.personId)
-  const key = { ...scope, personId: row.personId, role: before.role, sectionId: before.sectionId }
+  const placeId = before.placeId ?? null
+  const key = { ...scope, personId: row.personId, role: before.role, sectionId: before.sectionId, placeId }
   await assertNoDuplicate(em, key, { validFrom: before.validFrom, validTo: before.validTo }, row.id)
   row.role = before.role
   row.sectionId = before.sectionId
+  row.placeId = placeId
   row.validFrom = before.validFrom
   row.validTo = before.validTo
   row.updatedAt = new Date()
@@ -182,13 +195,16 @@ const createRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
         const { translate } = await resolveTranslations()
         throw notFound(translate('foundation.errors.not_found', 'Not found'))
       }
-      await assertRoleScope(parsed.role, parsed.sectionId)
-      await assertNoDuplicate(
-        em,
-        { tenantId, organizationId, personId: parsed.personId, role: parsed.role, sectionId: parsed.sectionId ?? null },
-        { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null },
-        null,
-      )
+      const key: AssignmentKey = {
+        tenantId,
+        organizationId,
+        personId: parsed.personId,
+        role: parsed.role,
+        sectionId: parsed.sectionId ?? null,
+        placeId: parsed.placeId ?? null,
+      }
+      await assertRoleScope(ctx, em, key)
+      await assertNoDuplicate(em, key, { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null }, null)
       const row = em.create(RoleAssignment, {
         id,
         tenantId,
@@ -196,6 +212,7 @@ const createRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
         personId: parsed.personId,
         role: parsed.role,
         sectionId: parsed.sectionId ?? null,
+        placeId: parsed.placeId ?? null,
         validFrom: parsed.validFrom,
         validTo: parsed.validTo ?? null,
       })
@@ -235,15 +252,18 @@ const updateRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
       const patch = authorized.parsed
       const role = patch.role ?? row.role
       const sectionId = patch.sectionId !== undefined ? patch.sectionId : (row.sectionId ?? null)
+      const placeId = patch.placeId !== undefined ? patch.placeId : (row.placeId ?? null)
       const validFrom = patch.validFrom ?? row.validFrom
       const validTo = patch.validTo !== undefined ? patch.validTo : (row.validTo ?? null)
       if (isInvertedPeriod(validFrom, validTo)) await foundationErrors.throw('validity_inverted')
-      await assertRoleScope(role, sectionId)
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      const key: AssignmentKey = { ...scope, personId: row.personId, role, sectionId, placeId }
+      await assertRoleScope(ctx, em, key)
       await lockPerson(em, scope, row.personId)
-      await assertNoDuplicate(em, { ...scope, personId: row.personId, role, sectionId }, { validFrom, validTo }, row.id)
+      await assertNoDuplicate(em, key, { validFrom, validTo }, row.id)
       row.role = role
       row.sectionId = sectionId
+      row.placeId = placeId
       row.validFrom = validFrom
       row.validTo = validTo
       row.updatedAt = new Date()

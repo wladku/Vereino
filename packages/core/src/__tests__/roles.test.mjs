@@ -15,16 +15,34 @@ import {
 
 const TODAY = '2026-10-27'
 
-test('the catalogue holds the five phase 1 roles (Q17) and the derived maintenance planner (DD-36)', () => {
+test('the catalogue holds the five phase 1 roles (Q17), the facility attendant and the derived maintenance planner', () => {
   assert.deepEqual(catalogueAuthRoles(), [
     'vereino_club_admin',
     'vereino_coach',
     'vereino_coordinator',
+    'vereino_facility_operator',
     'vereino_maintenance_planner',
     'vereino_member',
     'vereino_payer',
   ])
-  assert.deepEqual(VEREINO_ROLES, ['club_admin', 'coordinator', 'coach', 'member', 'payer', 'maintenance_planner'])
+  assert.deepEqual(VEREINO_ROLES, [
+    'club_admin',
+    'coordinator',
+    'coach',
+    'facility_operator',
+    'member',
+    'payer',
+    'maintenance_planner',
+  ])
+  assert.deepEqual(roleCatalogue.facility_operator.features, [
+    'facilities.view',
+    'facilities.rentals.manage',
+    'facilities.log.write',
+    'facilities.incidents.manage',
+  ])
+  assert.equal(roleCatalogue.facility_operator.requiresScope, 'place')
+  assert.ok(!roleCatalogue.facility_operator.features.includes('facilities.rentals.approve'))
+  assert.deepEqual(authRolesFor(['facility_operator']), ['vereino_facility_operator', 'vereino_member'])
   assert.deepEqual(roleCatalogue.maintenance_planner.features, ['facilities.maintenance.manage'])
   assert.equal(roleCatalogue.maintenance_planner.implies, undefined)
   assert.ok(!roleCatalogue.coordinator.features.includes('facilities.maintenance.manage'))

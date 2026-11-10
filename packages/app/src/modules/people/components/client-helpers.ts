@@ -85,6 +85,8 @@ export type RoleAssignmentRow = {
   personId: string
   role: string
   sectionId: string | null
+  /** The facility attendant's place (#126). */
+  placeId?: string | null
   validFrom: string | null
   validTo: string | null
   updatedAt: string | null

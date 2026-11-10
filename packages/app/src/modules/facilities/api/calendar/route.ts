@@ -4,13 +4,14 @@
 // its ancestors and descendants, with the names staff see; without it, every live active place with the entries on
 // it. Staff with `facilities.view` read the whole club; a maintainer holding only `facilities.maintenance.manage`
 // reads the places assigned to them, without renter, person or group names (#128, DD-36, TEST-050; 403 for another
-// place). The attendant's place scope arrives with E08-S04.
+// place). A facility attendant reads the places of their grant with names (#126; 403 for another place).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
 import { calendarQuerySchema } from '../../data/validators'
 import { calendarWindowProblem } from '../../lib/internal-bookings'
+import { attendantPlaceIds } from '../../lib/place-scope'
 import { staffCalendar } from '../../services/calendar'
 import { errorSchema } from '../shared'
 
@@ -90,6 +91,7 @@ export async function GET(request: Request): Promise<Response> {
         redacted: !canView,
         canPlan: canPlan && (clubWide || maintained.length > 0),
         planPlaceIds: clubWide ? null : maintained,
+        placeIds: canView ? attendantPlaceIds(grants) : null,
       },
     )
     if (calendar === 'forbidden') return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
@@ -107,7 +109,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read the occupancy of the club places',
       description:
-        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking, closure and planned maintenance window on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller. A caller with `facilities.maintenance.manage` but without `facilities.view` (a place maintainer) reads only the places assigned to them, and every entry except maintenance without its label, names or group (`maintenance.redacted`).',
+        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking, closure and planned maintenance window on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller. A caller with `facilities.maintenance.manage` but without `facilities.view` (a place maintainer) reads only the places assigned to them, and every entry except maintenance without its label, names or group (`maintenance.redacted`). A facility attendant reads only the places of their assignments and their descendants.',
       query: calendarQuerySchema,
       responses: [{ status: 200, description: 'The calendar', schema: responseSchema }],
       errors: [
@@ -116,7 +118,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 403,
           description:
-            'Without `facilities.view` and `facilities.maintenance.manage`, or a maintainer reading another place',
+            'Without `facilities.view` and `facilities.maintenance.manage`, or a maintainer or attendant reading another place',
           schema: errorSchema,
         },
         { status: 404, description: 'Unknown place', schema: errorSchema },

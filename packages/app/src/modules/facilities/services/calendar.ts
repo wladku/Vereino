@@ -207,12 +207,14 @@ export type CalendarEntryView = {
  * Who reads the calendar (#128, DD-36, Q-043): staff with `facilities.view` read the club with names; a maintainer
  * holding only `facilities.maintenance.manage` reads the places assigned to them with the public calendar's
  * redaction — no renter, person or group names — and the maintenance details. `canPlan` and `planPlaceIds` tell the
- * page where "Plan maintenance" applies (null = every place).
+ * page where "Plan maintenance" applies (null = every place). A facility attendant reads with names, but only the
+ * places of their grant (`placeIds`, #126; absent or null = every place).
  */
 export type CalendarAccess = {
   redacted: boolean
   canPlan: boolean
   planPlaceIds: string[] | null
+  placeIds?: string[] | null
 }
 
 export type StaffCalendar = {
@@ -238,8 +240,9 @@ export async function staffCalendar(
   now: Date,
   access: CalendarAccess = { redacted: false, canPlan: false, planPlaceIds: null },
 ): Promise<StaffCalendar | null | 'forbidden'> {
-  // A redacted reader sees only the places assigned to them (403 for any other place).
-  const visible = access.redacted ? new Set(access.planPlaceIds ?? []) : null
+  // A redacted reader sees only the places assigned to them, an attendant only their places (403 for any other place).
+  const visibleIds = access.redacted ? (access.planPlaceIds ?? []) : (access.placeIds ?? null)
+  const visible = visibleIds ? new Set(visibleIds) : null
   if (visible && query.placeId && !visible.has(query.placeId)) return 'forbidden'
   const em = container.resolve<EntityManager>('em').fork()
   const timeZone = await clubTimeZone(container, scope)

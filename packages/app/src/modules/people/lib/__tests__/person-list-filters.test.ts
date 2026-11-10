@@ -181,6 +181,14 @@ describe('personRoleBadges', () => {
     expect(personRoleBadges({ roles: [], hasWards: false, membershipRoles: ['participant'] })).toEqual([])
   })
 
+  it('shows the facility attendant after the coach (#126)', () => {
+    expect(personRoleBadges({ roles: ['facility_operator', 'coach'], hasWards: true })).toEqual([
+      'coach',
+      'facility_operator',
+      'guardian',
+    ])
+  })
+
   it('ignores an unknown role', () => {
     expect(personRoleBadges({ roles: ['treasurer'], hasWards: false })).toEqual([])
   })

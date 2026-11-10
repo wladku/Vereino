@@ -163,8 +163,9 @@
   "people.errors.pesel_invalid": "The PESEL number is not valid.",
   "people.errors.phone_invalid": "Enter a Polish phone number (9 digits) or an international one starting with +.",
   "people.errors.role_assignment_duplicate": "This person already holds this role for that section in that period.",
-  "people.errors.role_scope_required": "A coordinator role needs a section.",
-  "people.errors.role_scope_unexpected": "Only a coordinator role is assigned to a section.",
+  "people.errors.role_scope_required": "A coordinator role needs a section, a facility attendant role a place.",
+  "people.errors.role_scope_unexpected": "Only a coordinator role is assigned to a section, and only a facility attendant role to a place.",
+  "people.errors.role_place_invalid": "Choose a place of the club.",
   "people.guardianships.actions.add": "Add guardianship",
   "people.guardianships.actions.edit": "Edit",
   "people.guardianships.actions.end": "End",
@@ -457,5 +458,11 @@
   "people.roles.role.coordinator": "Section coordinator",
   "people.roles.title": "Staff roles",
   "people.search.person.badge": "Person",
-  "people.club.tiles.payments.title": "Payments"
+  "people.club.tiles.payments.title": "Payments",
+  "people.roles.fields.place": "Place",
+  "people.roles.fields.place.empty": "No place found",
+  "people.roles.fields.place.placeholder": "Choose a place",
+  "people.roles.fields.place.search": "Search places",
+  "people.roles.role.facility_operator": "Facility attendant",
+  "people.persons.roleBadges.facility_operator": "Attendant"
 }

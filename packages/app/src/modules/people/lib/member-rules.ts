@@ -147,9 +147,10 @@ export function withNotice(path: string, message: string): string {
  * Who an author outside the family is shown as (#191, README M-10): the most senior staff role they hold, or `staff`
  * when they hold none any more.
  */
-export type ConsentAuthorRole = AssignableRole | 'staff'
+export type ConsentAuthorRole = 'club_admin' | 'coordinator' | 'coach' | 'staff'
 
-const AUTHOR_ROLE_ORDER: readonly AssignableRole[] = ['club_admin', 'coordinator', 'coach']
+/** A facility attendant (#126) holds no people grant, so they never author a consent and show as `staff`. */
+const AUTHOR_ROLE_ORDER = ['club_admin', 'coordinator', 'coach'] as const
 
 /** The label role of a consent author from the roles they hold; none → `staff`. */
 export function consentAuthorRole(roles: readonly AssignableRole[]): ConsentAuthorRole {
