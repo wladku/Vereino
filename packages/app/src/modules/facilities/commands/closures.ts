@@ -5,10 +5,17 @@
 // on the place and its sub-places that overlap the closure get `needs_reschedule` through `activities.placeSessions`;
 // so do the rentals that hold their slot there (#122) and the confirmed internal bookings (#123); the result counts both for the toast "Marked to be moved: n
 // sessions, n rentals". Moving a closure flags again; deleting or undoing one never clears a flag — the
-// coordinator decides what to do with a session already marked.
+// coordinator decides what to do with a session already marked. An undo or redo that puts a closure back (undo of
+// delete or update, redo of create or update) takes the occupancy lock like a first execution and flags the entries under it
+// once the replay transaction commits (#221).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
-import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import {
+  onTransactionLifetimeComplete,
+  registerCommand,
+  type CommandHandler,
+  type CommandRuntimeContext,
+} from '@open-mercato/shared/lib/commands'
 import { authorizeScoped, lockOccupancy, trustedScopeOf } from '@/modules/foundation'
 import { Closure } from '../data/entities'
 import { closureCreateSchema, closureDeleteSchema, closureUpdateSchema } from '../data/validators'
@@ -69,10 +76,33 @@ async function assertPeriod(startsAt: Date, endsAt: Date): Promise<void> {
   if (closurePeriodProblem(startsAt, endsAt)) await throwFieldError('closure_period_invalid', 'endsAt')
 }
 
+type ClosureWindow = Pick<Closure, 'tenantId' | 'organizationId' | 'placeId' | 'startsAt' | 'endsAt'>
+
 /** Flags the entries under the closure after the commit (`services/reschedule.ts`, DD-43). */
-function flagUnderClosure(ctx: CommandRuntimeContext, row: Closure): Promise<RescheduleCounts> {
+function flagUnderClosure(ctx: CommandRuntimeContext, row: ClosureWindow): Promise<RescheduleCounts> {
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
   return flagUnderWindow(ctx.container, scope, row.placeId, { start: row.startsAt, end: row.endsAt })
+}
+
+/**
+ * Flags the entries under a closure an undo or redo put back, once the command bus's replay transaction commits: the
+ * replay holds the occupancy lock until then, and the flags run in transactions of their own (DD-43). A rollback
+ * flags nothing.
+ */
+function flagAfterReplayCommit(ctx: CommandRuntimeContext, row: Closure): void {
+  const em = ctx.transactionalEm
+  if (!em) throw new Error('[internal] a replay flag needs the replay transaction: ' + row.id)
+  // The window as replayed: a copy, so nothing that touches the row before the commit moves it.
+  const window: ClosureWindow = {
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    placeId: row.placeId,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+  }
+  onTransactionLifetimeComplete(em, async (outcome) => {
+    if (outcome === 'committed') await flagUnderClosure(ctx, window)
+  })
 }
 
 async function emitClosure(row: Closure, action: 'created' | 'updated' | 'deleted'): Promise<void> {
@@ -129,9 +159,12 @@ const createClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
       return { entity: row, actingRole: authorized.actingRole, before: null }
     })
     await emitClosure(result.entity, 'created')
-    // A replay (redo) runs inside the audit transaction: the flags follow the first execution only.
-    const flagged = ctx.transactionalEm ? NONE_FLAGGED : await flagUnderClosure(ctx, result.entity)
-    return { ...result, flagged }
+    // A replay (redo) runs inside the audit transaction: its flags wait for the commit and are not counted here.
+    if (ctx.transactionalEm) {
+      flagAfterReplayCommit(ctx, result.entity)
+      return { ...result, flagged: NONE_FLAGGED }
+    }
+    return { ...result, flagged: await flagUnderClosure(ctx, result.entity) }
   },
   buildLog: ({ result }) =>
     facilitiesLog({
@@ -190,8 +223,12 @@ const updateClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
       { placeId: before.placeId, startsAt: new Date(before.startsAt), endsAt: new Date(before.endsAt) },
       result.entity,
     )
-    const flagged = moved && !ctx.transactionalEm ? await flagUnderClosure(ctx, result.entity) : NONE_FLAGGED
-    return { ...result, flagged }
+    if (!moved) return { ...result, flagged: NONE_FLAGGED }
+    if (ctx.transactionalEm) {
+      flagAfterReplayCommit(ctx, result.entity)
+      return { ...result, flagged: NONE_FLAGGED }
+    }
+    return { ...result, flagged: await flagUnderClosure(ctx, result.entity) }
   },
   buildLog: ({ result }) =>
     facilitiesLog({
@@ -208,11 +245,14 @@ const updateClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as ClosureSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing closure snapshot for undo')
+    await lockClosureOccupancy(ctx, ctx.transactionalEm as EntityManager)
     const row = await authorizeReplay(ctx, CLOSURE_RESOURCE_KIND, before.id, rowLoader(ctx, Closure))
+    const current = { placeId: row.placeId, startsAt: row.startsAt, endsAt: row.endsAt }
     restoreClosure(row, before)
     row.updatedAt = new Date()
     await (ctx.transactionalEm as EntityManager).flush()
     await emitClosure(row, 'updated')
+    if (closureWindowChanged(current, row)) flagAfterReplayCommit(ctx, row)
   },
 }
 
@@ -252,12 +292,14 @@ const deleteClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as ClosureSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing closure snapshot for undo')
+    await lockClosureOccupancy(ctx, ctx.transactionalEm as EntityManager)
     const row = await authorizeReplay(ctx, CLOSURE_RESOURCE_KIND, before.id, rowLoader(ctx, Closure, true))
     restoreClosure(row, before)
     row.deletedAt = null
     row.updatedAt = new Date()
     await (ctx.transactionalEm as EntityManager).flush()
     await emitClosure(row, 'created')
+    flagAfterReplayCommit(ctx, row)
   },
 }
 

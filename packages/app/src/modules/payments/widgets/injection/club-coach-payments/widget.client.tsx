@@ -28,7 +28,11 @@ export default function ClubCoachPaymentsWidget() {
     queryKey: ['payments-coach', 'tile'],
     retry: false,
     queryFn: async () => {
-      const call = await apiCall<GroupChargesView>('/api/payments/group-charges')
+      // Without the header `apiFetch` throws `ForbiddenError` on the 403 before the status check below (lesson
+      // `apifetch-403-throws-before-page-branch`) and a ward gets the tile with the plain description.
+      const call = await apiCall<GroupChargesView>('/api/payments/group-charges', {
+        headers: { 'x-om-forbidden-redirect': '0' },
+      })
       if (!call.ok || !call.result) throw new CoachTileLoadError(call.status)
       return call.result
     },

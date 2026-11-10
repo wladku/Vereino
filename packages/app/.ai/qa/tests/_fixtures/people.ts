@@ -120,9 +120,9 @@ export async function actionLogEntries(
   request: APIRequestContext,
   token: string,
   resourceId: string,
-): Promise<{ commandId?: string; undoToken?: string | null; context?: Record<string, unknown> | null }[]> {
+): Promise<{ id?: string; commandId?: string; undoToken?: string | null; context?: Record<string, unknown> | null }[]> {
   const result = await call<{
-    items?: { commandId?: string; undoToken?: string | null; context?: Record<string, unknown> | null }[]
+    items?: { id?: string; commandId?: string; undoToken?: string | null; context?: Record<string, unknown> | null }[]
   }>(request, 'GET', `/api/audit_logs/audit-logs/actions?resourceId=${resourceId}`, token)
   expect(result.status, `GET actions ${JSON.stringify(result.body)}`).toBe(200)
   return result.body?.items ?? []
