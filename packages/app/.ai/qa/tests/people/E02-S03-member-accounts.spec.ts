@@ -192,7 +192,10 @@ test('E02-S03 ward accounts: below the threshold 422; at the threshold an own ac
     // The app: profile and calendar entry points, no wards section, no payments tile and no payments screen.
     page.setDefaultTimeout(30_000)
     await signInBrowser(page, request, club, teenUserId, teenEmail)
+    // The coach tile's read must have answered (403) before "no payments text" is asserted, or the check passes early.
+    const coachTileRead = page.waitForResponse((response) => response.url().includes('/api/payments/group-charges'))
     await page.goto('/club')
+    expect((await coachTileRead).status()).toBe(403)
     await expect(page.getByRole('heading', { level: 1, name: /Hello, Zuzia|Cześć, Zuzia/ })).toBeVisible()
     await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()

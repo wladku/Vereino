@@ -206,7 +206,7 @@ function groszToDecimal(grosz: number): string {
 }
 
 /** One CSV field, quoted when it holds a separator, a quote or a line break; a formula prefix is neutralized. */
-function csvField(value: string): string {
+export function csvField(value: string): string {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
