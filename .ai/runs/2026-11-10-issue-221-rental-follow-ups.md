@@ -10,6 +10,7 @@
 2. Triage: every item is still present on `main` (`ebeea88`).
 3. Fixed the code-level items (below), added an integration case to TEST-027, extended a lesson.
 4. `yarn verify`, then `yarn test:integration:vereino --filter TEST-027`.
+5. Committed, pushed, opened PR #242 (`Refs #221`: the issue stays open for the items left below), released the issue's `in-progress` lock with a summary comment.
 
 ## Items of #221 and what this run did
 
