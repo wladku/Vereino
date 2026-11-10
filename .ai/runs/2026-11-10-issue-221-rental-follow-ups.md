@@ -51,3 +51,13 @@
 ## Open problems / next steps
 
 M1, L2, L3, L4, L5 and the product question stay open on #221 (or in split issues), as listed above.
+
+## CI stabilization (om-auto-fix-pr, 2026-11-10)
+
+- Trigger: PR #242 red on the required check `integration (shard 3/3)`; worked on a detached HEAD at `origin/fix/issue-221-rental-follow-ups` (already up to date with `main`).
+- Failure: `E02-S03 ward accounts` failed on both attempts — `expect(page.getByText(/Payments|Płatności/)).toHaveCount(0)` received 2. The trace showed `GET /api/payments/group-charges` answering 403 and the page showing the coach tile "Płatności moich grup". `E02-S03 guardian account` failed once on `page.waitForURL` and passed on retry (flaky, unrelated).
+- Root cause (on `main` since #238, not in this PR's diff): the coach-payments tile widget read `/api/payments/group-charges` without `x-om-forbidden-redirect: 0`, so `apiFetch` threw `ForbiddenError` and the widget's 401/403 guard never ran. The test only caught it when the read answered before `toHaveCount(0)` checked; main passed three runs in a row.
+- Fix: the widget sends the header; the test waits for the 403 read before asserting there is no payments text. Lesson `apifetch-403-throws-before-page-branch` extended.
+- Files: `packages/app/src/modules/payments/widgets/injection/club-coach-payments/widget.client.tsx`, `packages/app/.ai/qa/tests/people/E02-S03-member-accounts.spec.ts`, `.ai/lessons/apifetch-403-throws-before-page-branch.md`, this log.
+- `yarn test:integration:vereino --filter E02-S03` — `7 passed (4.5m)`.
+- `yarn verify` — `all 14 step(s) passed`, exit 0.

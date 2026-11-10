@@ -1,6 +1,6 @@
 ---
 title: "The platform apiFetch throws ForbiddenError on every 403, so a page's own 403 branch never runs; test the forbidden state in the UI"
-modules: ["activities", "platform"]
+modules: ["activities", "payments", "platform"]
 areas: ["backend-ui", "testing"]
 topics: ["api-client", "forbidden", "error-states", "journeys"]
 ---
@@ -15,4 +15,6 @@ topics: ["api-client", "forbidden", "error-states", "journeys"]
 
 In Vereino the read passes `OWN_FORBIDDEN_STATE` from the module's `components/client-helpers.ts` (fixed for the member and backend record pages on 2026-11-01).
 
-**Applies to**: member and backend pages that show a page-specific 403 state, and the integration tests of those pages.
+The same holds for a widget that hides itself on 403: the `/club` coach-payments tile (#117) checked the status after `apiCall` without the header, so a ward got the tile. E02-S03 asserted "no payments text" with `toHaveCount(0)`, which passes before the read answers, so main stayed green until a slower run (PR #242, 2026-11-10). An absence assertion waits for the read it depends on (`page.waitForResponse`) first.
+
+**Applies to**: member and backend pages and injected widgets that show or hide on a 403, and the integration tests of those pages.
