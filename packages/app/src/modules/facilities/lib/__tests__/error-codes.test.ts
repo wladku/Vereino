@@ -55,6 +55,8 @@ describe('facilities error codes', () => {
       'maintenance_task_closed',
       'maintainer_exists',
       'maintainer_person_invalid',
+      'report_period_order',
+      'report_period_too_long',
     ])
     for (const entry of errorCodes) {
       expect(entry.messageKey).toBe(`facilities.errors.${entry.code}`)
