@@ -204,7 +204,14 @@ export async function createPerson(
 export async function assignRole(
   request: APIRequestContext,
   token: string,
-  input: { personId: string; role: string; sectionId?: string; validFrom: string; validTo?: string | null },
+  input: {
+    personId: string
+    role: string
+    sectionId?: string
+    placeId?: string
+    validFrom: string
+    validTo?: string | null
+  },
 ): Promise<string> {
   const result = await call<{ id?: string }>(request, 'POST', '/api/people/role-assignments', token, { data: input })
   expect(result.status, `POST /api/people/role-assignments ${JSON.stringify(result.body)}`).toBe(201)

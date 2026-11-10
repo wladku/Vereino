@@ -183,7 +183,14 @@ export async function createSeason(
 export async function signedInStaff(
   request: APIRequestContext,
   club: Club,
-  input: { firstName: string; lastName: string; role: 'coordinator' | 'coach'; sectionId?: string },
+  input: {
+    firstName: string
+    lastName: string
+    role: 'coordinator' | 'coach' | 'facility_operator'
+    sectionId?: string
+    /** The facility attendant's place (#126). */
+    placeId?: string
+  },
 ): Promise<{ personId: string; userId: string; email: string; token: string }> {
   const staff = await createStaff(request, club, {
     firstName: input.firstName,
@@ -194,6 +201,7 @@ export async function signedInStaff(
     personId: staff.personId,
     role: input.role,
     ...(input.sectionId ? { sectionId: input.sectionId } : {}),
+    ...(input.placeId ? { placeId: input.placeId } : {}),
     validFrom: '2020-01-01',
   })
   // The role sync runs after the assignment commits; a fresh token after the password reflects the new roles.
@@ -210,7 +218,7 @@ export async function signedInStaff(
       },
       { timeout: 20_000 },
     )
-    .toContain(input.role === 'coach' ? 'vereino_coach' : 'vereino_coordinator')
+    .toContain(`vereino_${input.role}`)
   const token = await signInAs(request, club, staff.userId, staff.email)
   return { personId: staff.personId, userId: staff.userId, email: staff.email, token }
 }
