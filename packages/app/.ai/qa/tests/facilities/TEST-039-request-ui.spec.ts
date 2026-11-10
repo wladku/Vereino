@@ -130,10 +130,17 @@ test('TEST-039 request UI: P-04 dialog at 375 px, e-mail link to P-05, B-25 queu
     await expect(table).toContainText(requester)
     await expect(table).toContainText(email)
     await expect(page.getByTestId(`facilities-request-expiry-${id}`)).toContainText(/\d+ h \d+ min/)
-    await page.getByTestId(`facilities-request-actions-${id}`).getByRole('button').click()
-    await page.getByRole('menuitem', { name: 'Approve' }).click()
+    // The queue re-renders after its first fetch and can detach an open row menu; reopen it until the dialog shows.
     const approve = page.getByTestId('facilities-request-approve-dialog')
-    await expect(approve).toBeVisible()
+    const approveItem = page.getByRole('menuitem', { name: 'Approve' })
+    await expect(async () => {
+      if (await approve.isVisible()) return
+      if (!(await approveItem.isVisible())) {
+        await page.getByTestId(`facilities-request-actions-${id}`).getByRole('button').click({ timeout: 2_000 })
+      }
+      await approveItem.click({ timeout: 2_000 })
+      await expect(approve).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
     await approve.getByTestId('facilities-request-renter-mode').getByText('New institution').click()
     await expect(approve.getByTestId('facilities-request-institution-name')).toHaveValue(requester)
     await approve.getByTestId('facilities-request-approve-confirm').click()
