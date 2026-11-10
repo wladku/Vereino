@@ -54,9 +54,10 @@ export const features = [
     module: 'facilities',
   },
   {
-    // #127 (REQ-015, B-28): the municipality report; the club administrator holds it through `facilities.*`.
+    // #127 (REQ-015, B-28): the municipality report; #129 (REQ-038): the rented-hours report. The club administrator
+    // holds it through `facilities.*`.
     id: 'facilities.reports.view',
-    title: 'View the owner (municipality) report of a facility and export it as CSV',
+    title: 'View the facility reports (owner report, rented hours) and export them as CSV',
     module: 'facilities',
     dependsOn: ['facilities.view'],
   },

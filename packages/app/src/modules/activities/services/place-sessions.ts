@@ -1,12 +1,15 @@
 // `activities.placeSessions` (facilities spec DD-20, DD-43; #121): the planned sessions on a set of places in a window
 // and the reschedule flag a closure sets on them, for `facilities`, which requires `activities` and reaches it only
 // through this DI service. The caller passes the place family (the place, its ancestors and descendants) and has
-// authorized its own record; nothing here checks a grant.
+// authorized its own record; nothing here checks a grant. The rented-hours report (#129) also reads the done sessions
+// with their group's name, which `activities` resolves through `groups.directory` (`facilities` does not require
+// `groups`).
 import type { EntityManager } from '@mikro-orm/postgresql'
+import type { AwilixContainer } from 'awilix'
 import { Activity, Occurrence } from '../data/entities'
 import { flagSessionsForReschedule } from '../data/queries'
 import { emitActivitiesEvent } from '../events'
-import type { ActivitiesScope } from './directory'
+import { findGroups, type ActivitiesScope } from './directory'
 
 export const ACTIVITIES_PLACE_SESSIONS = 'activities.placeSessions' as const
 
@@ -20,6 +23,17 @@ export type PlaceSessionEntry = {
   activityId: string
   groupId: string
   activityName: string | null
+}
+
+/** A done session as the rented-hours report counts it (facilities REQ-038, #129): place, times, group and coach. */
+export type DoneSessionReportEntry = {
+  placeId: string
+  start: Date
+  end: Date
+  groupId: string
+  /** The group's name, or null when the group is gone. */
+  groupName: string | null
+  coachPersonId: string | null
 }
 
 export type ActivitiesPlaceSessions = {
@@ -50,6 +64,16 @@ export type ActivitiesPlaceSessions = {
     window: { start: Date; end: Date },
     em?: EntityManager,
   ): Promise<Array<{ placeId: string; start: Date; end: Date }>>
+  /**
+   * The live `done` sessions on the places that start in the window, by start, without a limit, with their group's
+   * name and their coach's person id (the rented-hours report, facilities #129).
+   */
+  doneSessionsForReport(
+    scope: ActivitiesScope,
+    placeIds: readonly string[],
+    window: { start: Date; end: Date },
+    em?: EntityManager,
+  ): Promise<DoneSessionReportEntry[]>
   /** The live `planned` sessions among `ids` (a group event or a generated series that may take a requested slot, #123). */
   sessionsByIds(scope: ActivitiesScope, ids: readonly string[], em?: EntityManager): Promise<PlaceSessionEntry[]>
   /**
@@ -132,6 +156,39 @@ export async function clubSessionTimes(
   return rows.map((row) => ({ placeId: row.placeId, start: row.startAt, end: row.endAt }))
 }
 
+export async function doneSessionsForReport(
+  container: AwilixContainer,
+  em: EntityManager,
+  scope: ActivitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+): Promise<DoneSessionReportEntry[]> {
+  if (placeIds.length === 0) return []
+  const rows = await em.find(
+    Occurrence,
+    {
+      ...scope,
+      deletedAt: null,
+      status: 'done',
+      placeId: { $in: [...new Set(placeIds)] },
+      startAt: { $gte: window.start, $lt: window.end },
+    },
+    {
+      fields: ['id', 'placeId', 'startAt', 'endAt', 'groupId', 'coachPersonId'],
+      orderBy: { startAt: 'asc', id: 'asc' },
+    },
+  )
+  const groups = await findGroups(container, scope, [...new Set(rows.map((row) => row.groupId))], em)
+  return rows.map((row) => ({
+    placeId: row.placeId,
+    start: row.startAt,
+    end: row.endAt,
+    groupId: row.groupId,
+    groupName: groups.get(row.groupId)?.name ?? null,
+    coachPersonId: row.coachPersonId ?? null,
+  }))
+}
+
 export async function sessionsByIds(
   em: EntityManager,
   scope: ActivitiesScope,
@@ -182,11 +239,13 @@ export async function flagForReschedule(
   return ids
 }
 
-export function createPlaceSessions(getEm: () => EntityManager): ActivitiesPlaceSessions {
+export function createPlaceSessions(getEm: () => EntityManager, container: AwilixContainer): ActivitiesPlaceSessions {
   return {
     plannedSessions: (scope, placeIds, window, em) => plannedSessions(em ?? getEm().fork(), scope, placeIds, window),
     doneSessionTimes: (scope, placeIds, window, em) => doneSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
     clubSessionTimes: (scope, placeIds, window, em) => clubSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
+    doneSessionsForReport: (scope, placeIds, window, em) =>
+      doneSessionsForReport(container, em ?? getEm().fork(), scope, placeIds, window),
     sessionsByIds: (scope, ids, em) => sessionsByIds(em ?? getEm().fork(), scope, ids),
     flagForReschedule: (scope, placeIds, window) => flagForReschedule(getEm().fork(), scope, placeIds, window),
   }

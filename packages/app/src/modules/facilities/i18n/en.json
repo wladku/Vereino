@@ -1070,5 +1070,20 @@
   "facilities.reports.owner.empty": "No data for this period",
   "facilities.reports.owner.emptyHint": "No club time, rentals, payments, incidents or maintenance were recorded at this facility in the chosen period.",
   "facilities.reports.owner.noPlaces": "Add a place of the club to build its report.",
-  "facilities.reports.owner.errors.load": "The report could not be loaded. Try again."
+  "facilities.reports.owner.errors.load": "The report could not be loaded. Try again.",
+  "facilities.reports.rentedHours.title": "Rented hours",
+  "facilities.reports.rentedHours.subtitle": "Hours of completed sessions on the places the club rents, per month, group and coach — to check the owner's bill.",
+  "facilities.reports.rentedHours.totals": "Hours per place and month",
+  "facilities.reports.rentedHours.byGroup": "Hours per group and coach",
+  "facilities.reports.rentedHours.columns.place": "Place",
+  "facilities.reports.rentedHours.columns.month": "Month",
+  "facilities.reports.rentedHours.columns.group": "Group",
+  "facilities.reports.rentedHours.columns.coach": "Coach",
+  "facilities.reports.rentedHours.columns.sessions": "Sessions",
+  "facilities.reports.rentedHours.columns.hours": "Hours",
+  "facilities.reports.rentedHours.unknownGroup": "Group removed",
+  "facilities.reports.rentedHours.noCoach": "No coach",
+  "facilities.reports.rentedHours.noPlaces": "No places flagged as rented",
+  "facilities.reports.rentedHours.noPlacesHint": "Mark a place as rented by the club in its settings to report its hours.",
+  "facilities.reports.rentedHours.empty": "No completed sessions on rented places in this period"
 }
