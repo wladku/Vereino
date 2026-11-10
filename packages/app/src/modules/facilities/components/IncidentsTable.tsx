@@ -3,7 +3,8 @@
 // REQ-016; E08-S06 #126): time, place, kind, reporter, description, the people involved, the actions taken and the
 // linked case; a place selector and a kind filter. An incident is evidence and is never deleted: no row offers a
 // delete. With `facilities.incidents.manage` "Edit" records further actions taken and links the communication case
-// the incident is followed in (chosen from the club's cases, or given by its id when the cases cannot be listed).
+// the incident is followed in (chosen from the club's cases, or given by its id when the cases cannot be listed), and
+// adds photos (PNG, JPEG or WebP up to 5 MB, at most 5; never deleted, #126). The photos open in a new tab.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -27,7 +28,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { INCIDENT_ACTIONS, INCIDENT_KINDS, type IncidentAction } from '../lib/incidents'
+import { INCIDENT_ACTIONS, INCIDENT_KINDS, INCIDENT_PHOTOS_MAX, type IncidentAction } from '../lib/incidents'
 import { ActionChoices } from './club-facility/FacilityDialogs'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import {
@@ -43,6 +44,7 @@ import {
   INCIDENTS_KEY,
   caseHref,
   updateIncidentRecord,
+  uploadIncidentPhotoRecord,
   useCaseOptions,
   useIncidentsManage,
   type IncidentRow,
@@ -124,6 +126,13 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
       cell: ({ row }) => actionsLabel(t, row.original.actionTaken),
     },
     {
+      id: 'photos',
+      header: t('facilities.records.incidents.columns.photos'),
+      enableSorting: false,
+      meta: { priority: 4 },
+      cell: ({ row }) => <PhotoLinks photos={row.original.photos ?? []} />,
+    },
+    {
       id: 'case',
       header: t('facilities.records.incidents.columns.case'),
       enableSorting: false,
@@ -144,6 +153,32 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
         ),
     },
   ]
+}
+
+/** The photo links of an incident, "Photo 1", "Photo 2" …, each opening the photo in a new tab. */
+function PhotoLinks({ photos }: { photos: IncidentRow['photos'] }) {
+  const t = useT()
+  if (photos.length === 0) return <>{t('facilities.common.empty')}</>
+  return (
+    <span className="flex flex-wrap gap-2">
+      {photos.map((photo, index) => (
+        <a
+          key={photo.id}
+          className="underline-offset-4 hover:underline"
+          href={photo.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={photo.fileName}
+          data-testid="facilities-incident-photo"
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+        >
+          {t('facilities.records.incidents.photo', { number: index + 1 })}
+        </a>
+      ))}
+    </span>
+  )
 }
 
 function filterParams(values: FilterValues): Record<string, string> {
@@ -171,7 +206,33 @@ function IncidentEditDialog({
   const [threadId, setThreadId] = React.useState(row.threadId ?? '')
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
+  const [photos, setPhotos] = React.useState(row.photos ?? [])
   const options = cases.data ?? null
+  const photoRoom = INCIDENT_PHOTOS_MAX - photos.length
+
+  const addPhotos = async (files: File[]) => {
+    if (files.length === 0 || pending) return
+    setPending(true)
+    setProblem(null)
+    let added = 0
+    try {
+      for (const file of files.slice(0, photoRoom)) {
+        try {
+          const photo = await uploadIncidentPhotoRecord(row.id, file, t('facilities.records.incidents.errors.photo'))
+          if (photo) setPhotos((current) => [...current, photo])
+          added += 1
+        } catch (error: unknown) {
+          setProblem(codedMessage(error, t) ?? errorMessage(error, t('facilities.records.incidents.errors.photo')))
+        }
+      }
+    } finally {
+      setPending(false)
+      if (added > 0) {
+        flash(t('facilities.records.incidents.flash.photos', { count: added }), 'success')
+        await onDone()
+      }
+    }
+  }
   // The linked case stays choosable even when it is not among the listed ones.
   const caseOptions =
     options && row.threadId && !options.some((option) => option.value === row.threadId)
@@ -248,6 +309,31 @@ function IncidentEditDialog({
             disabled={pending}
             testIdPrefix="facilities-incident-action"
           />
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-photos`}>{t('facilities.records.incidents.columns.photos')}</Label>
+            <PhotoLinks photos={photos} />
+            {photoRoom > 0 ? (
+              <Input
+                id={`${ids}-photos`}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                disabled={pending}
+                aria-describedby={`${ids}-photos-help`}
+                data-testid="facilities-incident-photo-input"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? [])
+                  event.target.value = ''
+                  void addPhotos(files)
+                }}
+              />
+            ) : null}
+            <p id={`${ids}-photos-help`} className="text-muted-foreground text-xs">
+              {photoRoom > 0
+                ? t('facilities.facility.incident.photosHelp', { max: INCIDENT_PHOTOS_MAX })
+                : t('facilities.records.incidents.photosFull', { max: INCIDENT_PHOTOS_MAX })}
+            </p>
+          </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${ids}-case`}>{t('facilities.records.incidents.columns.case')}</Label>
             {caseOptions ? (

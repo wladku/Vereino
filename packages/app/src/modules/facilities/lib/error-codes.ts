@@ -51,6 +51,15 @@ export const errorCodes = [
   // Incidents (REQ-016, M-12): never deleted.
   { code: 'incident_description_length', status: 422, messageKey: 'facilities.errors.incident_description_length' },
   { code: 'incident_time_future', status: 422, messageKey: 'facilities.errors.incident_time_future' },
+  // #126: incident photos — a missing file, a format other than PNG/JPEG/WebP, more than 5 MB, a sixth photo.
+  { code: 'incident_photo_missing', status: 422, messageKey: 'facilities.errors.incident_photo_missing' },
+  {
+    code: 'incident_photo_format_unsupported',
+    status: 422,
+    messageKey: 'facilities.errors.incident_photo_format_unsupported',
+  },
+  { code: 'incident_photo_too_large', status: 422, messageKey: 'facilities.errors.incident_photo_too_large' },
+  { code: 'incident_photos_limit_reached', status: 422, messageKey: 'facilities.errors.incident_photos_limit_reached' },
   // The public facility calendar (P-03, P-04, TEST-024; #124): an unknown club, place or a place that is not public
   // answer the same 404; a club that does not publish its places calendar answers its own 404; a month outside the
   // readable range 400.

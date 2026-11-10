@@ -460,6 +460,42 @@ export class Incident extends ScopedEntityBase {
 }
 
 /**
+ * A photo of an incident (M-12 "photo", B-27; #126): the bytes live in `attachments` (private partition, owner
+ * `facilities:incident`, assignment `facilities:incident_photo`); this row is the module-owned link the platform's
+ * `persistLink` writes in the upload transaction, with the incident's place (the scope of the read) and a snapshot of
+ * the file's name, type and size, so lists never read the attachment rows. Evidence like the incident: never deleted.
+ * At most 5 per incident, counted under the incident's row lock; `position` keeps the upload order.
+ */
+@Entity({ tableName: 'facilities_incident_photos' })
+@Index({ name: 'facilities_incident_photos_org_incident_idx', properties: ['organizationId', 'incidentId'] })
+@Index({ name: 'facilities_incident_photos_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Unique({ name: 'facilities_incident_photos_attachment_unique', properties: ['attachmentId'] })
+export class IncidentPhoto extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'position'
+
+  @Property({ name: 'incident_id', type: 'uuid' })
+  incidentId!: string
+
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  @Property({ name: 'attachment_id', type: 'uuid' })
+  attachmentId!: string
+
+  @Property({ name: 'position', type: 'int', default: 0 })
+  position: number = 0
+
+  @Property({ name: 'file_name', type: 'text' })
+  fileName!: string
+
+  @Property({ name: 'mime_type', type: 'text' })
+  mimeType!: string
+
+  @Property({ name: 'file_size', type: 'int' })
+  fileSize!: number
+}
+
+/**
  * A maintenance task of a place (facilities spec *Data Models* → `facilities_maintenance_tasks`, glossary *Maintenance
  * task*; REQ-022, DD-36; #128): line marking, mowing, brushing, an inspection. A task with a window (`starts_at`–
  * `ends_at`) and status `planned` occupies the slot like a closure; a task by date carries a due date (recurring:

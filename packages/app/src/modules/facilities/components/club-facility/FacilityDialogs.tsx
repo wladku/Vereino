@@ -2,7 +2,8 @@
 // The dialogs of `/club/facility` (README M-12; REQ-013, REQ-016; #126): "Open facility" (the time, now by default,
 // and the condition before, required), "Close facility" (the time, the condition after, required, and remarks) and
 // "Report incident" (the kind, the time, now by default, a description of 10–2000 characters with the hint not to
-// enter health data, the actions taken and the people involved). A coded refusal stays in the dialog next to the
+// enter health data, the actions taken, the people involved and up to 5 photos, uploaded once the incident is saved,
+// #126). A coded refusal stays in the dialog next to the
 // form; a conflict (the log changed or was started meanwhile) closes it and the page reloads the day.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -27,6 +28,7 @@ import {
   INCIDENT_DESCRIPTION_MIN_LENGTH,
   INCIDENT_INVOLVED_MAX_LENGTH,
   INCIDENT_KINDS,
+  INCIDENT_PHOTOS_MAX,
   type IncidentAction,
   type IncidentKind,
 } from '../../lib/incidents'
@@ -36,6 +38,7 @@ import {
   clubTimeNow,
   reportIncident,
   saveLog,
+  uploadIncidentPhoto,
   writeErrorMessage,
   type FacilityToday,
   type WriteResult,
@@ -435,7 +438,9 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
   const [description, setDescription] = React.useState('')
   const [actions, setActions] = React.useState<IncidentAction[]>([])
   const [involved, setInvolved] = React.useState('')
+  const [photos, setPhotos] = React.useState<File[]>([])
   const [kindMissing, setKindMissing] = React.useState(false)
+  const failedPhotos = React.useRef(0)
   const { pending, problem, setProblem, run } = useSubmit(onOutcome, onOpenChange)
 
   const submit = () => {
@@ -450,16 +455,29 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
     }
     const placeId = today.place.id
     void run(
-      () =>
-        reportIncident({
+      async () => {
+        failedPhotos.current = 0
+        const reported = await reportIncident({
           placeId,
           occurredAt,
           kind,
           description: description.trim(),
           involved: involved.trim() || null,
           actionTaken: actions,
-        }),
-      () => t('facilities.facility.incident.done'),
+        })
+        // The photos follow the saved incident; one that fails leaves the incident reported and is counted.
+        const incidentId = reported.ok ? reported.answer.id : undefined
+        if (incidentId) {
+          for (const photo of photos) {
+            if (!(await uploadIncidentPhoto(incidentId, photo)).ok) failedPhotos.current += 1
+          }
+        }
+        return reported
+      },
+      () =>
+        failedPhotos.current > 0
+          ? t('facilities.facility.incident.donePhotosFailed', { count: failedPhotos.current })
+          : t('facilities.facility.incident.done'),
       'facilities.facility.errors.incident',
     )
   }
@@ -577,6 +595,26 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
             />
             <p id={`${ids}-involved-help`} className="text-muted-foreground text-xs">
               {t('facilities.facility.incident.involvedHelp')}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-photos`}>{t('facilities.facility.incident.photos')}</Label>
+            <Input
+              id={`${ids}-photos`}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              disabled={pending}
+              className="min-h-11"
+              aria-describedby={`${ids}-photos-help`}
+              data-testid="club-facility-incident-photos"
+              onChange={(event) => {
+                setPhotos(Array.from(event.target.files ?? []).slice(0, INCIDENT_PHOTOS_MAX))
+              }}
+            />
+            <p id={`${ids}-photos-help`} className="text-muted-foreground text-xs">
+              {t('facilities.facility.incident.photosHelp', { max: INCIDENT_PHOTOS_MAX })}
+              {photos.length > 0 ? ` ${t('facilities.facility.incident.photosChosen', { count: photos.length })}` : ''}
             </p>
           </div>
           <Problem text={problem} testId="club-facility-incident-problem" />

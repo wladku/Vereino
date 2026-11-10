@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { findPlaces, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
+import { photosOfIncidents, type IncidentPhotoView } from '../services/incident-photos'
 
 export const LOG_ENTITY_ID = 'facilities:facility_log'
 export const INCIDENT_ENTITY_ID = 'facilities:incident'
@@ -120,6 +121,7 @@ export function incidentListItem(row: Row) {
     involved: text(row.involved),
     actionTaken: list(row.action_taken).filter((item): item is string => typeof item === 'string'),
     threadId: text(row.thread_id),
+    photos: [] as IncidentPhotoView[],
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -137,6 +139,17 @@ export const incidentListItemSchema = z.object({
   involved: z.string().nullable(),
   actionTaken: z.array(z.string()),
   threadId: z.string().nullable(),
+  photos: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        fileName: z.string(),
+        mimeType: z.string(),
+        size: z.number().int(),
+        url: z.string().describe('The authenticated photo route'),
+      }),
+    )
+    .describe('The incident photos in upload order (#126)'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
@@ -161,7 +174,7 @@ export async function attachLogNames(payload: { items?: unknown[] }, ctx: CrudCt
     item.operatorName = item.operatorPersonId ? (persons.get(item.operatorPersonId) ?? null) : null
 }
 
-/** Adds the place and the reporter's name to the incident rows. */
+/** Adds the place, the reporter's name and the photos to the incident rows. */
 export async function attachIncidentNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as Array<ReturnType<typeof incidentListItem>>
   const scope = trustedScope(ctx)
@@ -170,8 +183,14 @@ export async function attachIncidentNames(payload: { items?: unknown[] }, ctx: C
   const persons = await personNames(ctx.container, scope, [
     ...new Set(items.flatMap((item) => (item.reportedByPersonId ? [item.reportedByPersonId] : []))),
   ])
+  const photos = await photosOfIncidents(
+    ctx.container,
+    scope,
+    items.map((item) => item.id),
+  )
   for (const item of items) {
     item.reportedByName = item.reportedByPersonId ? (persons.get(item.reportedByPersonId) ?? null) : null
+    item.photos = photos.get(item.id) ?? []
   }
 }
 

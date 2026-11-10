@@ -2,7 +2,9 @@
 // regulations; M-12 "Report incident", B-27; #126): an incident has a kind, a description of 10–2000 characters, the
 // actions taken and the people involved; it happened no later than now; it is never deleted (evidence). The kinds
 // deliberately name no injury or illness: the description must not hold health data (M-12 hint), and a health
-// category would invite it. Nothing here reads the database or the clock (S3.5).
+// category would invite it. An incident keeps up to 5 photos (PNG, JPEG or WebP up to 5 MB, checked by the bytes;
+// never deleted either). Nothing here reads the database or the clock (S3.5).
+import { checkFileBytes, type FileCheck, type FileFormat } from '@vereino/core'
 
 export const INCIDENT_KINDS = [
   'rules_violation',
@@ -52,4 +54,31 @@ export function normalizedActions(actions: readonly IncidentAction[]): IncidentA
   const held = new Set(actions)
   if (held.size > 1) held.delete('none')
   return INCIDENT_ACTIONS.filter((action) => held.has(action))
+}
+
+/** Attachment owner (the incident) and assignment (the photo link) of an incident photo (the upload and the read). */
+export const INCIDENT_PHOTO_OWNER_ENTITY = 'facilities:incident'
+export const INCIDENT_PHOTO_ASSIGNMENT = 'facilities:incident_photo'
+
+/** The private partition the incident photos are stored in. */
+export const INCIDENT_PHOTO_PARTITION = 'privateAttachments'
+
+/** Formats of an incident photo: the raster image formats (no SVG, no PDF). */
+export const INCIDENT_PHOTO_FORMATS: readonly FileFormat[] = ['png', 'jpeg', 'webp']
+
+/** 5 MB: a phone photo, as for a place photo. */
+export const INCIDENT_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+
+/** An incident holds at most 5 photos (422 `incident_photos_limit_reached`). */
+export const INCIDENT_PHOTOS_MAX = 5
+
+/** An incident photo upload: PNG, JPEG or WebP up to 5 MB, by its bytes. */
+export function checkIncidentPhoto(bytes: Uint8Array): FileCheck {
+  return checkFileBytes(bytes, INCIDENT_PHOTO_FORMATS, INCIDENT_PHOTO_MAX_BYTES)
+}
+
+/** The position of the next photo: after the highest one, 0 for the first; null when the incident is full. */
+export function nextIncidentPhotoPosition(positions: readonly number[]): number | null {
+  if (positions.length >= INCIDENT_PHOTOS_MAX) return null
+  return positions.length === 0 ? 0 : Math.max(...positions) + 1
 }

@@ -237,6 +237,17 @@ export function reportIncident(input: IncidentInput): Promise<WriteResult> {
   return send(INCIDENTS_URL, json('POST', input))
 }
 
+/** Adds one photo to a reported incident (`POST /api/facilities/incidents/{id}/photos`, multipart, #126). */
+export function uploadIncidentPhoto(incidentId: string, file: File): Promise<WriteResult> {
+  const body = new FormData()
+  body.append('file', file)
+  return send(`${INCIDENTS_URL}/${encodeURIComponent(incidentId)}/photos`, {
+    method: 'POST',
+    headers: OWN_FORBIDDEN,
+    body,
+  })
+}
+
 /** Records a rental's no-show with its version as the lock token. */
 export function recordNoShow(entry: Pick<TodayEntry, 'id' | 'updatedAt'>): Promise<WriteResult> {
   return withScopedApiRequestHeaders(buildOptimisticLockHeader(entry.updatedAt ?? null), () =>
