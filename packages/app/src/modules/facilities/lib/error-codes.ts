@@ -84,6 +84,9 @@ export const errorCodes = [
   { code: 'maintenance_task_closed', status: 409, messageKey: 'facilities.errors.maintenance_task_closed' },
   { code: 'maintainer_exists', status: 409, messageKey: 'facilities.errors.maintainer_exists' },
   { code: 'maintainer_person_invalid', status: 422, messageKey: 'facilities.errors.maintainer_person_invalid' },
+  // The owner report (REQ-015, B-28; #127): the period runs from ≤ to and lasts less than a year.
+  { code: 'report_period_order', status: 422, messageKey: 'facilities.errors.report_period_order' },
+  { code: 'report_period_too_long', status: 422, messageKey: 'facilities.errors.report_period_too_long' },
 ] as const satisfies ErrorCodeTable
 
 export type FacilitiesErrorCode = (typeof errorCodes)[number]['code']

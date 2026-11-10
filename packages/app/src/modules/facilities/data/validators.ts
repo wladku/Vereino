@@ -396,6 +396,17 @@ export const incidentListQuerySchema = z.object({
 /** `GET /api/facilities/today` (M-12): one place, or the first place of the club when none is named. */
 export const todayQuerySchema = z.object({ placeId: z.uuid().optional() })
 
+/**
+ * `GET /api/facilities/reports/owner` (B-28, REQ-015; #127): a place and a period of club-zone dates, as JSON or CSV.
+ * The period rules (from ≤ to, less than a year) answer 422 from the route (`reportPeriodProblem`).
+ */
+export const ownerReportQuerySchema = z.object({
+  placeId: z.uuid(),
+  from: calendarDateSchema,
+  to: calendarDateSchema,
+  format: z.enum(['json', 'csv']).optional(),
+})
+
 // --- Internal bookings (#123) ---
 
 /**
