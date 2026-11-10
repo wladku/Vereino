@@ -117,6 +117,17 @@ export function doneSessionTimes(
   return placeSessions(container).doneSessionTimes(scope, placeIds, window, em)
 }
 
+/** The places and times of the planned and done sessions on the places in the window (the owner report, #127). */
+export function clubSessionTimes(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeIds: readonly string[],
+  window: { start: Date; end: Date },
+  em?: EntityManager,
+): Promise<Array<{ placeId: string; start: Date; end: Date }>> {
+  return placeSessions(container).clubSessionTimes(scope, placeIds, window, em)
+}
+
 /** The live planned sessions among `ids` with their times and places (#123: a group event supersedes requests). */
 export function sessionsByIds(
   container: AwilixContainer,
