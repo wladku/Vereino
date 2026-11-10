@@ -44,6 +44,14 @@ A facility and a period picker (month or quarter; from ≤ to; at most a year), 
 - `yarn test:integration:vereino --filter TEST-025` — 1 passed (1.9 min); the `QueryIndexScopeError` log lines are the platform's club cleanup noise, also present in other runs.
 - `yarn verify` — all 14 steps passed (`yarn test`: 76 suites, 971 tests; build green).
 
+## Review (PR #241)
+
+A fresh-context review subagent read the diff and the requirements. Its verdict was approve, with no high-severity findings:
+
+- **Medium, deferred on purpose:** payments leave out a late cancellation or no-show of a rental that was confirmed (paid). The register stores no payment marker, and `requested → cancelled_late` / `no_show` also exist, so the status cannot tell paid from unpaid. The screen names the source ("confirmed or completed rentals"). This is solved by the `payments` charge service follow-up, or by a confirmation timestamp on the rental, which would need an owner-approved migration.
+- **Low, fixed:** the club-time total was rounded separately from its parts, so it could differ from sessions + bookings by 0.01 h. The total is now the sum of the shown parts. The per-zone figures can still differ by 0.01 h through rounding. After the fix: `yarn typecheck`, `yarn format:check` green, and `--filter TEST-025` 1 passed again.
+- **Low, kept:** scheduled zone hours are wall-clock, while club time is real time, so they differ on the two DST days. The rentals table shows times in the browser zone (the existing rentals pattern), while the CSV uses the club zone.
+
 ## Not verified
 
 - The page was checked by TEST-025 at 375 px in English only (KPIs visible, export link, no overflow, no console errors); Polish was not walked in a browser, its catalog keys match the English ones.

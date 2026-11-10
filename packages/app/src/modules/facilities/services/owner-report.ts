@@ -88,6 +88,8 @@ export async function ownerReport(
   const zoneKeys = [...ZONES, 'none' as const]
   const minutesOf = (totals: Record<string, number>) => zoneKeys.reduce((sum, zone) => sum + totals[zone], 0)
   const paid = rentals.filter((row) => PAID_RENTAL_STATUSES.includes(row.status))
+  const sessionHours = hoursOf(minutesOf(sessionMinutes))
+  const bookingHours = hoursOf(minutesOf(bookingMinutes))
   return {
     place: { id: place.id, name: place.name },
     from: query.from,
@@ -96,9 +98,10 @@ export async function ownerReport(
     currency,
     zoneHours: Object.fromEntries(ZONES.map((zone) => [zone, hoursOf(zoneMinutes[zone])])) as OwnerReport['zoneHours'],
     clubTime: {
-      total: hoursOf(minutesOf(sessionMinutes) + minutesOf(bookingMinutes)),
-      sessions: hoursOf(minutesOf(sessionMinutes)),
-      bookings: hoursOf(minutesOf(bookingMinutes)),
+      // The total is the sum of the shown parts, so the screen and the CSV add up (each part is rounded to 0.01 h).
+      total: Math.round((sessionHours + bookingHours) * 100) / 100,
+      sessions: sessionHours,
+      bookings: bookingHours,
       byZone: Object.fromEntries(
         zoneKeys.map((zone) => [zone, hoursOf(sessionMinutes[zone] + bookingMinutes[zone])]),
       ) as OwnerReport['clubTime']['byZone'],
