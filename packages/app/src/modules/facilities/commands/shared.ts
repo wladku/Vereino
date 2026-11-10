@@ -82,7 +82,9 @@ export function facilityTarget(row: Pick<ScopedRow, 'id' | 'tenantId' | 'organiz
 }
 
 /** A record of one place as a scope target: the club-wide grant and a `facility_operator` grant of the place match it. */
-export function placeTarget(row: Pick<ScopedRow, 'id' | 'tenantId' | 'organizationId'> & { placeId: string }): ScopeTarget {
+export function placeTarget(
+  row: Pick<ScopedRow, 'id' | 'tenantId' | 'organizationId'> & { placeId: string },
+): ScopeTarget {
   return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId, placeId: row.placeId }
 }
 

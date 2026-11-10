@@ -290,7 +290,10 @@ export function RolesPanel({
               }}
             />
           </div>
-          <Button type="submit" disabled={busy || !validFrom || (needsSection && !sectionId) || (needsPlace && !placeId)}>
+          <Button
+            type="submit"
+            disabled={busy || !validFrom || (needsSection && !sectionId) || (needsPlace && !placeId)}
+          >
             {t('people.roles.actions.assign')}
           </Button>
         </form>

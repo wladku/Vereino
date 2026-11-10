@@ -8,7 +8,9 @@ import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
+import { findActingRole } from '@vereino/core'
 import { LOG_KINDS } from '../../commands/logs'
+import { placeTarget } from '../../commands/shared'
 import { todayQuerySchema } from '../../data/validators'
 import { attendantPlaceIds } from '../../lib/place-scope'
 import { facilityToday } from '../../services/today'
@@ -69,11 +71,13 @@ export async function GET(request: Request): Promise<Response> {
     if (today === 'forbidden') return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
     if (!today) return Response.json({ error: 'Not found' }, { status: 404 })
     // The log (its conditions and encrypted remarks) only for its writers, as `/api/facilities/logs` does: the feature
-    // and a grant of the log's kinds; other staff with `facilities.view` read the day without it.
+    // and a grant of the log's kinds covering the chosen place (an attendant who only maintains a place does not read
+    // its log); other staff with `facilities.view` read the day without it.
     const userId = ctx.auth?.sub
     const rbac = ctx.container.resolve<RbacService>('rbacService')
     const logReader =
-      grants.some((grant) => LOG_KINDS.includes(grant.kind)) &&
+      !!today.place &&
+      !!findActingRole(grants, LOG_KINDS, placeTarget({ id: today.place.id, ...scope, placeId: today.place.id })) &&
       !!userId &&
       (await rbac.userHasAllFeatures(userId, ['facilities.log.write'], scope))
     return Response.json(logReader ? today : { ...today, log: null }, { headers: { 'cache-control': 'no-store' } })
@@ -95,7 +99,11 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: '`today_query_invalid`', schema: errorSchema },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
-        { status: 403, description: 'Without `facilities.view`, or an attendant naming another place', schema: errorSchema },
+        {
+          status: 403,
+          description: 'Without `facilities.view`, or an attendant naming another place',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Unknown place', schema: errorSchema },
       ],
     },

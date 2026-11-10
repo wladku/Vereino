@@ -53,14 +53,7 @@ export type Scope = readonly ScopeGrant[]
 
 /** The role recorded as `acting_role`: the kind of the grant that allowed the action. */
 export type ActingRole =
-  | 'club_admin'
-  | 'coordinator'
-  | 'coach'
-  | 'guardian'
-  | 'self'
-  | 'system'
-  | 'maintenance_planner'
-  | 'facility_operator'
+  'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'system' | 'maintenance_planner' | 'facility_operator'
 
 /** Target fields a grant can match, and the fields a list column map can name. */
 export type ScopeTargetField = 'sectionId' | 'groupId' | 'occurrenceId' | 'placeId' | 'personId' | 'userId'

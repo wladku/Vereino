@@ -32,7 +32,8 @@ export async function GET(
     return new Response(new Uint8Array(photo.buffer), {
       headers: {
         'Content-Type': photo.mimeType,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(photo.fileName)}"`,
+        // RFC 6266: an ASCII fallback and the UTF-8 name (the stored name has no path or control characters).
+        'Content-Disposition': `inline; filename="photo"; filename*=UTF-8''${encodeURIComponent(photo.fileName)}`,
         'Content-Length': String(photo.buffer.length),
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',

@@ -3,12 +3,13 @@
 // `facilities.log.write` — the place, the time (not in the future, 422 `incident_time_future`), the kind, a
 // description of 10–2000 characters (422 `incident_description_length`), the people involved and the actions taken;
 // the reporter is the caller's person. With `facilities.incidents.manage` the administrator or the attendant later
-// records further actions and links the `communication` case it is followed in. There is no delete command: an
-// incident is evidence and is never deleted. Like the log, written by the facility attendant within their places (the
+// records further actions; only the club administrator links (or unlinks) the `communication` case it is followed in —
+// the case id is not checked against `communication`, so the attendant cannot change it (403 `scope_denied`; sending
+// the same value again is allowed). There is no delete command: an incident is evidence and is never deleted. Like the log, written by the facility attendant within their places (the
 // `facility_operator` grant, #126) and by the club administrator.
 import { randomUUID } from 'node:crypto'
 import { registerCommand, type CommandHandler } from '@open-mercato/shared/lib/commands'
-import type { GrantKind } from '@vereino/core'
+import { hasKind, type GrantKind } from '@vereino/core'
 import { authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { Incident } from '../data/entities'
 import { incidentCreateSchema, incidentUpdateSchema } from '../data/validators'
@@ -140,6 +141,8 @@ const updateIncidentCommand: CommandHandler<Record<string, unknown>, IncidentCom
       const row = authorized.entity as Incident
       const before = incidentSnapshot(row)
       const { parsed } = authorized
+      const caseChanged = parsed.threadId !== undefined && parsed.threadId !== (row.threadId ?? null)
+      if (caseChanged && !hasKind(authorized.scope, 'club_admin')) await foundationErrors.throw('scope_denied')
       if (parsed.actionTaken !== undefined) row.actionTaken = normalizedActions(parsed.actionTaken)
       if (parsed.threadId !== undefined) row.threadId = parsed.threadId
       row.updatedAt = new Date()

@@ -358,7 +358,11 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
     const hall = await createStructure(request, admin, 'places', { name: 'Hala', kind: 'hall', capacityGroups: 2 })
 
     // An attendant's assignment names a place of the club, and only an attendant's does.
-    const staffPerson = await createPerson(request, admin, { firstName: 'Bez', lastName: 'Miejsca', birthDate: '1990-01-01' })
+    const staffPerson = await createPerson(request, admin, {
+      firstName: 'Bez',
+      lastName: 'Miejsca',
+      birthDate: '1990-01-01',
+    })
     const assign = (data: Record<string, unknown>) =>
       call<CodedError>(request, 'POST', '/api/people/role-assignments', admin, {
         data: { personId: staffPerson, validFrom: today, ...data },
@@ -407,7 +411,12 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
     )
     expect(calendar.status, JSON.stringify(calendar.body)).toBe(200)
     expect(calendar.body?.places.map((place) => place.id).sort()).toEqual([setup.pitch, pitchHalf].sort())
-    const hallCalendar = await call(request, 'GET', `/api/facilities/calendar?${range}&placeId=${hall}`, attendant.token)
+    const hallCalendar = await call(
+      request,
+      'GET',
+      `/api/facilities/calendar?${range}&placeId=${hall}`,
+      attendant.token,
+    )
     expect(hallCalendar.status, JSON.stringify(hallCalendar.body)).toBe(403)
 
     // The log: written at the descendant, refused at the hall; the list holds the attendant's places only.
@@ -438,7 +447,12 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
       return { id: String(created.body?.id), updatedAt: String(created.body?.updatedAt) }
     }
     const yesterday = await pastLog(1)
-    const yesterdayEdit = await putLog(request, attendant.token, { id: yesterday.id, remarks: 'Dopisane' }, yesterday.updatedAt)
+    const yesterdayEdit = await putLog(
+      request,
+      attendant.token,
+      { id: yesterday.id, remarks: 'Dopisane' },
+      yesterday.updatedAt,
+    )
     expect(yesterdayEdit.status, JSON.stringify(yesterdayEdit.body)).toBe(200)
     const older = await pastLog(2)
     const closedEdit = await putLog(request, attendant.token, { id: older.id, remarks: 'Za późno' }, older.updatedAt)
@@ -455,7 +469,9 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
       description: 'Grupa weszła na boisko bez opiekuna i nie opuściła go po wezwaniu.',
       actionTaken: ['warning_given'],
     }
-    const reported = await call<Saved>(request, 'POST', '/api/facilities/incidents', attendant.token, { data: incident })
+    const reported = await call<Saved>(request, 'POST', '/api/facilities/incidents', attendant.token, {
+      data: incident,
+    })
     expect(reported.status, JSON.stringify(reported.body)).toBe(201)
     const hallIncident = await call<Saved>(request, 'POST', '/api/facilities/incidents', attendant.token, {
       data: { ...incident, placeId: hall },
@@ -468,6 +484,12 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
       headers: { [OPTIMISTIC_LOCK_HEADER]: listed[0]?.updatedAt ?? '' },
     })
     expect(changed.status, JSON.stringify(changed.body)).toBe(200)
+    // Linking the communication case stays the administrator's (the case id is not checked against `communication`).
+    const caseLink = await call<Saved>(request, 'PUT', '/api/facilities/incidents', attendant.token, {
+      data: { id: String(reported.body?.id), threadId: '3f0b8c8e-1f5e-4d65-9f6a-2c4f8f1e0b11' },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(changed.body?.updatedAt) },
+    })
+    expect(caseLink.status, JSON.stringify(caseLink.body)).toBe(403)
 
     // Photos: the attendant adds a PNG and reads it back; a file that is not an image is refused by its bytes (422),
     // a sixth photo too; the coach (no log feature) neither adds nor reads one. A photo is never deleted.
@@ -487,7 +509,7 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
     expect(fake.body?.code).toBe('incident_photo_format_unsupported')
     for (let index = 0; index < 4; index += 1) {
       const more = await uploadPhoto(request, attendant.token, reportedId, {
-        name: `zdjecie-${index}.png`,
+        name: `zdjecie-${String(index)}.png`,
         mimeType: 'image/png',
         buffer: PNG,
       })
@@ -502,13 +524,21 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
     expect(sixth.body?.code).toBe('incident_photos_limit_reached')
     const withPhotos = await listOf<IncidentItem>(request, attendant.token, '/api/facilities/incidents')
     expect(withPhotos[0]?.photos).toHaveLength(5)
-    expect(withPhotos[0]?.photos?.[0]).toMatchObject({ id: photo.body?.id, fileName: 'bramka.png', mimeType: 'image/png' })
-    const read = await request.fetch(String(photo.body?.url), { headers: { Authorization: `Bearer ${attendant.token}` } })
+    expect(withPhotos[0]?.photos?.[0]).toMatchObject({
+      id: photo.body?.id,
+      fileName: 'bramka.png',
+      mimeType: 'image/png',
+    })
+    const read = await request.fetch(String(photo.body?.url), {
+      headers: { Authorization: `Bearer ${attendant.token}` },
+    })
     expect(read.status()).toBe(200)
     expect(read.headers()['content-type']).toBe('image/png')
     expect(Buffer.from(await read.body()).equals(PNG)).toBe(true)
     const coach = await signedInStaff(request, club, { firstName: 'Cezary', lastName: 'Trener', role: 'coach' })
-    const coachRead = await request.fetch(String(photo.body?.url), { headers: { Authorization: `Bearer ${coach.token}` } })
+    const coachRead = await request.fetch(String(photo.body?.url), {
+      headers: { Authorization: `Bearer ${coach.token}` },
+    })
     expect(coachRead.status()).toBe(403)
     const coachUpload = await uploadPhoto(request, coach.token, reportedId, {
       name: 'x.png',
@@ -546,7 +576,13 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
 
     // Bans: the administrator issues one at the pitch; the attendant lists it, cannot issue one, and a rental they
     // enter for the banned renter answers 409 `entry_ban_active`.
-    const banBody = { placeId: setup.pitch, subjectType: 'institution', subjectId: setup.banned, startsOn: today, reason: 'Zniszczenie' }
+    const banBody = {
+      placeId: setup.pitch,
+      subjectType: 'institution',
+      subjectId: setup.banned,
+      startsOn: today,
+      reason: 'Zniszczenie',
+    }
     const attendantBan = await postEntryBan(request, attendant.token, banBody)
     expect(attendantBan.status, JSON.stringify(attendantBan.body)).toBe(403)
     const ban = await postEntryBan(request, admin, banBody)

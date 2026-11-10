@@ -15,8 +15,18 @@ describe('attendantPlaceIds', () => {
 
   it('keeps the whole club for club staff, even when they also attend a place', () => {
     expect(attendantPlaceIds([{ kind: 'club_admin' }, { kind: 'facility_operator', ids: ['hall'] }])).toBeNull()
-    expect(attendantPlaceIds([{ kind: 'coordinator', ids: ['s1'] }, { kind: 'facility_operator', ids: ['hall'] }])).toBeNull()
-    expect(attendantPlaceIds([{ kind: 'coach', ids: ['g1'] }, { kind: 'facility_operator', ids: ['hall'] }])).toBeNull()
+    expect(
+      attendantPlaceIds([
+        { kind: 'coordinator', ids: ['s1'] },
+        { kind: 'facility_operator', ids: ['hall'] },
+      ]),
+    ).toBeNull()
+    expect(
+      attendantPlaceIds([
+        { kind: 'coach', ids: ['g1'] },
+        { kind: 'facility_operator', ids: ['hall'] },
+      ]),
+    ).toBeNull()
   })
 
   it('keeps the whole club for a reader without an attendant grant', () => {

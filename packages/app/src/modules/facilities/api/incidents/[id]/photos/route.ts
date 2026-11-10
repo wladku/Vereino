@@ -39,13 +39,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!service.readUploadForm) return Response.json({ error: 'Attachment service is unavailable' }, { status: 503 })
     const form = await service.readUploadForm(request)
     const file = form.get('file')
-    if (!file || typeof file === 'string') return throwFieldError('incident_photo_missing', 'file')
+    if (!file || typeof file === 'string') return await throwFieldError('incident_photo_missing', 'file')
     const buffer = Buffer.from(await file.arrayBuffer())
     const checked = checkIncidentPhoto(buffer)
     if (!checked.ok) {
-      if (checked.problem === 'too_large') return throwFieldError('incident_photo_too_large', 'file')
-      if (checked.problem === 'empty') return throwFieldError('incident_photo_missing', 'file')
-      return throwFieldError('incident_photo_format_unsupported', 'file')
+      if (checked.problem === 'too_large') return await throwFieldError('incident_photo_too_large', 'file')
+      if (checked.problem === 'empty') return await throwFieldError('incident_photo_missing', 'file')
+      return await throwFieldError('incident_photo_format_unsupported', 'file')
     }
     const photo = {
       buffer,

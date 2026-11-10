@@ -440,7 +440,6 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
   const [involved, setInvolved] = React.useState('')
   const [photos, setPhotos] = React.useState<File[]>([])
   const [kindMissing, setKindMissing] = React.useState(false)
-  const failedPhotos = React.useRef(0)
   const { pending, problem, setProblem, run } = useSubmit(onOutcome, onOpenChange)
 
   const submit = () => {
@@ -454,9 +453,9 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
       return
     }
     const placeId = today.place.id
+    let failedPhotos = 0
     void run(
       async () => {
-        failedPhotos.current = 0
         const reported = await reportIncident({
           placeId,
           occurredAt,
@@ -469,14 +468,14 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
         const incidentId = reported.ok ? reported.answer.id : undefined
         if (incidentId) {
           for (const photo of photos) {
-            if (!(await uploadIncidentPhoto(incidentId, photo)).ok) failedPhotos.current += 1
+            if (!(await uploadIncidentPhoto(incidentId, photo)).ok) failedPhotos += 1
           }
         }
         return reported
       },
       () =>
-        failedPhotos.current > 0
-          ? t('facilities.facility.incident.donePhotosFailed', { count: failedPhotos.current })
+        failedPhotos > 0
+          ? t('facilities.facility.incident.donePhotosFailed', { count: failedPhotos })
           : t('facilities.facility.incident.done'),
       'facilities.facility.errors.incident',
     )
