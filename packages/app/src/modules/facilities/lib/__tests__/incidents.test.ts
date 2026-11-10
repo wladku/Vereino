@@ -6,7 +6,11 @@ import {
   INCIDENT_DESCRIPTION_MIN_LENGTH,
   INCIDENT_INVOLVED_MAX_LENGTH,
   INCIDENT_KINDS,
+  INCIDENT_PHOTOS_MAX,
+  INCIDENT_PHOTO_MAX_BYTES,
+  checkIncidentPhoto,
   incidentDescriptionValid,
+  nextIncidentPhotoPosition,
   incidentTimeAllowed,
   normalizedActions,
 } from '../incidents'
@@ -43,5 +47,25 @@ describe('incidents (REQ-016, M-12)', () => {
       'warning_given',
       'police_called',
     ])
+  })
+})
+
+describe('incident photos (#126, M-12 "photo")', () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])
+  const pdf = new Uint8Array(Array.from('%PDF-1.7', (char) => char.charCodeAt(0)))
+
+  it('accepts a raster photo up to 5 MB and refuses a PDF, an empty or a too large file', () => {
+    expect(checkIncidentPhoto(png)).toEqual({ ok: true, file: { format: 'png', mimeType: 'image/png', size: 9 } })
+    expect(checkIncidentPhoto(pdf)).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkIncidentPhoto(new Uint8Array())).toEqual({ ok: false, problem: 'empty' })
+    const large = new Uint8Array(INCIDENT_PHOTO_MAX_BYTES + 1)
+    large.set(png)
+    expect(checkIncidentPhoto(large)).toEqual({ ok: false, problem: 'too_large' })
+  })
+
+  it('places the next photo after the highest one and refuses a sixth', () => {
+    expect(nextIncidentPhotoPosition([])).toBe(0)
+    expect(nextIncidentPhotoPosition([0, 3, 1])).toBe(4)
+    expect(nextIncidentPhotoPosition(Array.from({ length: INCIDENT_PHOTOS_MAX }, (_, index) => index))).toBeNull()
   })
 })

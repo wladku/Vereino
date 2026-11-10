@@ -4,14 +4,16 @@ import { isActiveAt, type Validity } from '#src/validity'
 import type { CalendarDate } from '#src/calendar-date'
 
 /**
- * Phase 1 roles (foundation spec Q17); `treasurer` and `facility_operator` arrive with phases 4 and 5.
- * `member`, `payer` and `maintenance_planner` are derived roles, never assigned: the last one (facilities spec DD-36,
- * #128) carries only `facilities.maintenance.manage` and is held while the person maintains at least one place.
+ * Phase 1 roles (foundation spec Q17), and the facility attendant `facility_operator` of phase 5 (#126; its assignment
+ * names a place); `treasurer` arrives with phase 4. `member`, `payer` and `maintenance_planner` are derived roles,
+ * never assigned: the last one (facilities spec DD-36, #128) carries only `facilities.maintenance.manage` and is held
+ * while the person maintains at least one place.
  */
-export type VereinoRole = 'club_admin' | 'coordinator' | 'coach' | 'member' | 'payer' | 'maintenance_planner'
+export type VereinoRole =
+  'club_admin' | 'coordinator' | 'coach' | 'facility_operator' | 'member' | 'payer' | 'maintenance_planner'
 
-/** Roles a `people_role_assignments` row can carry in phase 1. */
-export type AssignableRole = 'club_admin' | 'coordinator' | 'coach'
+/** Roles a `people_role_assignments` row can carry. */
+export type AssignableRole = 'club_admin' | 'coordinator' | 'coach' | 'facility_operator'
 
 export const VEREINO_AUTH_ROLE_PREFIX = 'vereino_'
 
@@ -23,7 +25,7 @@ export type RoleDefinition = {
   readonly features: readonly string[]
   /** Roles a holder of this role also holds (Odoo `implied_ids`); expanded transitively. */
   readonly implies?: readonly VereinoRole[]
-  /** The record a role assignment must name: a section for a coordinator. */
+  /** The record a role assignment must name: a section for a coordinator, a place for a facility attendant. */
   readonly requiresScope?: 'section' | 'place' | null
 }
 
@@ -90,6 +92,15 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     implies: ['member'],
     requiresScope: null,
   },
+  facility_operator: {
+    authRole: 'vereino_facility_operator',
+    // The facility attendant (club spec *Users, Permissions, and Scope*; #126): the calendar, rentals entered after a
+    // phone call, the log and incidents — limited by the `facility_operator` grant to the assigned place and its
+    // descendants. Approving online requests stays the administrator's (`facilities.rentals.approve`, Q-025).
+    features: ['facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage'],
+    implies: ['member'],
+    requiresScope: 'place',
+  },
   member: {
     authRole: 'vereino_member',
     features: ['people.self', 'activities.attendance.declare', 'communication.view'],
@@ -112,6 +123,7 @@ export const VEREINO_ROLES: readonly VereinoRole[] = [
   'club_admin',
   'coordinator',
   'coach',
+  'facility_operator',
   'member',
   'payer',
   'maintenance_planner',

@@ -13,7 +13,7 @@ import { LOG_KINDS } from '../../commands/logs'
 import { FacilityLog } from '../../data/entities'
 import { logCreateSchema, logListQuerySchema, logUpdateSchema } from '../../data/validators'
 import { LOG_ENTITY_ID, attachLogNames, logListItem, logListItemSchema } from '../records'
-import { FACILITY_COLUMNS, updateResponseSchema } from '../shared'
+import { PLACE_COLUMNS, updateResponseSchema } from '../shared'
 
 type LogListQuery = z.infer<typeof logListQuerySchema>
 
@@ -60,7 +60,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       if (query.placeId) business.push({ place_id: query.placeId })
       if (query.from) business.push({ log_date: { $gte: query.from } })
       if (query.to) business.push({ log_date: { $lte: query.to } })
-      return { $and: [scopeWhere(scope, LOG_KINDS, FACILITY_COLUMNS), ...business] } as Where
+      return { $and: [scopeWhere(scope, LOG_KINDS, PLACE_COLUMNS), ...business] } as Where
     },
     transformItem: logListItem,
   },

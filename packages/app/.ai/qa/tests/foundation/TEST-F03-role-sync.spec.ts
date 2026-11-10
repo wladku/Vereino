@@ -58,6 +58,7 @@ test('TEST-F03 role seeding, sync, expiry job, payer birthday, future start and 
       vereino_club_admin: 1,
       vereino_coach: 1,
       vereino_coordinator: 1,
+      vereino_facility_operator: 1,
       vereino_maintenance_planner: 1,
       vereino_member: 1,
       vereino_payer: 1,

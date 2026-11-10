@@ -8,6 +8,7 @@ import {
   validToColumn,
   type ScopedEntityOptionalProps,
 } from '@vereino/db'
+import type { AssignableRole } from '@vereino/core'
 import type { GuardianRelation, StoredConsents } from '../lib/people-rules'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
@@ -114,25 +115,34 @@ export class Person extends ScopedEntityBase {
 }
 
 /**
- * A staff role of a person for a period (club spec → `people_role_assignments`, DD-33). Phase 1 roles:
- * `club_admin`, `coordinator` (with `section_id`), `coach`; ended through `valid_to`, never deleted by the UI.
+ * A staff role of a person for a period (club spec → `people_role_assignments`, DD-33): `club_admin`, `coordinator`
+ * (with `section_id`), `coach`, and the facility attendant `facility_operator` (with `place_id`, #126); ended through
+ * `valid_to`, never deleted by the UI.
  */
 @Entity({ tableName: 'people_role_assignments' })
 @Index({ name: 'people_role_assignments_org_person_role_idx', properties: ['organizationId', 'personId', 'role'] })
 @Index({ name: 'people_role_assignments_org_section_idx', properties: ['organizationId', 'sectionId'] })
+@Index({ name: 'people_role_assignments_org_place_idx', properties: ['organizationId', 'placeId'] })
 @Index({ name: 'people_role_assignments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class RoleAssignment extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'sectionId' | 'validTo'
+  [OptionalProps]?: ScopedEntityOptionalProps | 'sectionId' | 'placeId' | 'validTo'
 
   @Property({ name: 'person_id', type: 'uuid' })
   personId!: string
 
   @Property({ name: 'role', type: 'text' })
-  role!: 'club_admin' | 'coordinator' | 'coach'
+  role!: AssignableRole
 
   /** `club_core` section id (scalar; no cross-module relation). Required for a coordinator. */
   @Property({ name: 'section_id', type: 'uuid', nullable: true })
   sectionId?: string | null
+
+  /**
+   * `club_core` place id (scalar; no cross-module relation). Required for a facility attendant, whose scope is the
+   * place and its descendants (club spec *Record scope* → `place_ids`, #126).
+   */
+  @Property({ name: 'place_id', type: 'uuid', nullable: true })
+  placeId?: string | null
 
   @Property(validFromColumn())
   validFrom!: string

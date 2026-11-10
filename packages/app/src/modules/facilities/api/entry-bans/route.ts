@@ -1,8 +1,9 @@
 // `/api/facilities/entry-bans` — entry bans of the club's places (facilities spec the CRUD row for `/entry-bans`,
-// REQ-016; #122): listed and issued with `facilities.incidents.manage` by the club administrator; a rental for a banned
-// renter answers 409 `entry_ban_active`. The reason is decrypted by the query engine. Since E08-S06 (#126) a ban names
-// its incident and issuer, the list filters by `state` and carries the place, subject and issuer names, and
-// `POST …/{id}/revoke` ends a ban.
+// REQ-016; #122): listed and issued with `facilities.incidents.manage` by the club administrator; the facility
+// attendant lists the bans of their places, which they enforce at the door, but does not issue or revoke one (the
+// club spec gives them an entry ban request, #126); a rental for a banned renter answers 409 `entry_ban_active`. The
+// reason is decrypted by the query engine. Since E08-S06 (#126) a ban names its incident and issuer, the list filters
+// by `state` and carries the place, subject and issuer names, and `POST …/{id}/revoke` ends a ban.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -10,11 +11,11 @@ import type { Where } from '@open-mercato/shared/lib/query/types'
 import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import type { EntryBanCommandResult } from '../../commands/entry-bans'
-import { READ_KINDS } from '../../commands/shared'
+import { PLACE_KINDS } from '../../commands/shared'
 import { EntryBan } from '../../data/entities'
 import { entryBanCreateSchema, entryBanListQuerySchema } from '../../data/validators'
 import { attachEntryBanNames } from '../records'
-import { ENTRY_BAN_ENTITY_ID, FACILITY_COLUMNS, entryBanListItem, entryBanListItemSchema } from '../shared'
+import { ENTRY_BAN_ENTITY_ID, PLACE_COLUMNS, entryBanListItem, entryBanListItemSchema } from '../shared'
 
 type EntryBanListQuery = z.infer<typeof entryBanListQuerySchema>
 
@@ -61,7 +62,7 @@ export const { metadata, GET, POST } = makeCrudRoute({
       if (query.subjectId) business.push({ subject_id: query.subjectId })
       if (query.state === 'active') business.push({ revoked_at: null })
       if (query.state === 'revoked') business.push({ revoked_at: { $ne: null } })
-      return { $and: [scopeWhere(scope, READ_KINDS, FACILITY_COLUMNS), ...business] } as Where
+      return { $and: [scopeWhere(scope, PLACE_KINDS, PLACE_COLUMNS), ...business] } as Where
     },
     transformItem: entryBanListItem,
   },

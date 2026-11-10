@@ -163,8 +163,9 @@
   "people.errors.pesel_invalid": "Numer PESEL jest nieprawidłowy.",
   "people.errors.phone_invalid": "Podaj polski numer telefonu (9 cyfr) albo międzynarodowy zaczynający się od +.",
   "people.errors.role_assignment_duplicate": "Ta osoba ma już tę rolę w tej sekcji w tym okresie.",
-  "people.errors.role_scope_required": "Rola koordynatora wymaga wskazania sekcji.",
-  "people.errors.role_scope_unexpected": "Do sekcji przypisuje się tylko rolę koordynatora.",
+  "people.errors.role_scope_required": "Rola koordynatora wymaga wskazania sekcji, a rola animatora obiektu – miejsca.",
+  "people.errors.role_scope_unexpected": "Do sekcji przypisuje się tylko rolę koordynatora, a do miejsca tylko rolę animatora obiektu.",
+  "people.errors.role_place_invalid": "Wybierz miejsce klubu.",
   "people.guardianships.actions.add": "Dodaj opiekę",
   "people.guardianships.actions.edit": "Edytuj",
   "people.guardianships.actions.end": "Zakończ",
@@ -457,5 +458,11 @@
   "people.roles.role.coordinator": "Koordynator sekcji",
   "people.roles.title": "Role w klubie",
   "people.search.person.badge": "Osoba",
-  "people.club.tiles.payments.title": "Płatności"
+  "people.club.tiles.payments.title": "Płatności",
+  "people.roles.fields.place": "Miejsce",
+  "people.roles.fields.place.empty": "Nie znaleziono miejsca",
+  "people.roles.fields.place.placeholder": "Wybierz miejsce",
+  "people.roles.fields.place.search": "Szukaj miejsc",
+  "people.roles.role.facility_operator": "Animator obiektu",
+  "people.persons.roleBadges.facility_operator": "Animator"
 }

@@ -2,8 +2,8 @@
 // M-12; #126): for one place of the club — the one named, or the first — the day in the club's time zone, the day's
 // log (with its version, the lock token of its update) and the planned sessions and the rentals on the place, its
 // ancestors and descendants: each with its label (activity or renter) and, for a rental, its status, its version and
-// whether a no-show may be recorded now (after the start, while `requested` or `confirmed`). Encrypted columns are read
-// with `findWithDecryption`.
+// whether a no-show may be recorded now (after the start, while `requested` or `confirmed`). A facility attendant
+// chooses among the places of their grant only (#126). Encrypted columns are read with `findWithDecryption`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -54,17 +54,25 @@ export type Today = {
   entries: TodayEntry[]
 }
 
-/** Null when `placeId` names no live place of the club. */
+/**
+ * Null when `placeId` names no live place of the club; `forbidden` when it names a place outside `visiblePlaceIds` (the
+ * attendant's places; null = every place).
+ */
 export async function facilityToday(
   container: AwilixContainer,
   scope: FacilitiesScope,
   placeId: string | undefined,
   now: Date,
-): Promise<Today | null> {
+  visiblePlaceIds: readonly string[] | null = null,
+): Promise<Today | null | 'forbidden'> {
   const em = container.resolve<EntityManager>('em').fork()
   const timeZone = await clubTimeZone(container, scope)
   const date = calendarDateInZone(now, timeZone)
-  const options = await placeOptions(container, scope)
+  const all = await placeOptions(container, scope)
+  if (placeId && visiblePlaceIds && all.some((option) => option.id === placeId) && !visiblePlaceIds.includes(placeId)) {
+    return 'forbidden'
+  }
+  const options = visiblePlaceIds ? all.filter((option) => visiblePlaceIds.includes(option.id)) : all
   const places = options.map((option) => ({ id: option.id, name: option.name, parentName: option.parentName }))
   const chosen = placeId ? options.find((option) => option.id === placeId) : options[0]
   if (placeId && !chosen) return null

@@ -53,17 +53,28 @@ export function isRejectedPhone(next: string | null | undefined, current: string
   return !isValidPhone(next)
 }
 
-/** Why a role assignment's section does not fit its role: a coordinator needs one, other roles take none. */
+/**
+ * Why a role assignment's section or place does not fit its role: a coordinator needs a section, a facility attendant
+ * a place (#126); a role takes no record it does not require.
+ */
 export type RoleScopeProblem = 'required' | 'unexpected'
 
-export function roleScopeProblem(role: AssignableRole, sectionId: string | null | undefined): RoleScopeProblem | null {
-  const needsSection = roleCatalogue[role].requiresScope === 'section'
-  if (needsSection && !sectionId) return 'required'
-  if (!needsSection && sectionId) return 'unexpected'
-  return null
+export type RoleScopeRecords = { readonly sectionId?: string | null; readonly placeId?: string | null }
+
+export function roleScopeProblem(role: AssignableRole, records: RoleScopeRecords): RoleScopeProblem | null {
+  const requires = roleCatalogue[role].requiresScope
+  const needed = requires === 'section' ? records.sectionId : requires === 'place' ? records.placeId : null
+  if (requires && !needed) return 'required'
+  const extraSection = requires !== 'section' && !!records.sectionId
+  const extraPlace = requires !== 'place' && !!records.placeId
+  return extraSection || extraPlace ? 'unexpected' : null
 }
 
-export type AssignmentRecord = RoleAssignmentPeriod & { readonly sectionId: string | null }
+export type AssignmentRecord = RoleAssignmentPeriod & {
+  readonly sectionId: string | null
+  /** The place of a `facility_operator` assignment (#126); absent or null for the other roles. */
+  readonly placeId?: string | null
+}
 
 export type GuardianshipRecord = Validity & { readonly wardPersonId: string }
 
@@ -82,6 +93,12 @@ export type PersonScopeInput = {
    * `facilities.maintainerScopeProvider` returns them; absent or empty without `facilities` (fail closed).
    */
   readonly maintenancePlaceIds?: readonly string[]
+  /**
+   * The descendants of each assigned place (`club_core`'s live place tree, by place id), so a facility attendant's
+   * grant covers the place and every place under it (club spec *Record scope* → `place_ids`); a place missing here
+   * covers itself only.
+   */
+  readonly placeDescendants?: Readonly<Record<string, readonly string[]>>
 }
 
 /**
@@ -89,7 +106,8 @@ export type PersonScopeInput = {
  * assignment; `coordinator` with the sections of the active coordinator assignments; `coach` with the groups of the
  * active `coach`/`assistant` memberships (#30 — a `coach` role assignment alone grants only the `auth` role, not a
  * group); `guardian` with the wards of the active guardianships; `maintenance_planner` with the places the person
- * maintains (#128); `self` always.
+ * maintains (#128); `facility_operator` with the places of the active facility attendant assignments and their
+ * descendants (#126); `self` always.
  */
 export function personScope(input: PersonScopeInput, today: CalendarDate): Scope {
   const active = input.assignments.filter((assignment) => isActiveAt(assignment, today))
@@ -107,6 +125,14 @@ export function personScope(input: PersonScopeInput, today: CalendarDate): Scope
   if (wardIds.length > 0) grants.push({ kind: 'guardian', ids: wardIds })
   const maintainedPlaceIds = uniqueSorted(input.maintenancePlaceIds ?? [])
   if (maintainedPlaceIds.length > 0) grants.push({ kind: 'maintenance_planner', ids: maintainedPlaceIds })
+  const attendedPlaceIds = uniqueSorted(
+    active
+      .filter((assignment) => assignment.role === 'facility_operator')
+      .flatMap((assignment) =>
+        assignment.placeId ? [assignment.placeId, ...(input.placeDescendants?.[assignment.placeId] ?? [])] : [],
+      ),
+  )
+  if (attendedPlaceIds.length > 0) grants.push({ kind: 'facility_operator', ids: attendedPlaceIds })
   grants.push({ kind: 'self', ids: [input.personId] })
   return grants
 }

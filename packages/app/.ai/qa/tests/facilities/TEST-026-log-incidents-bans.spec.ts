@@ -1,15 +1,22 @@
 import { expect, type APIRequestContext, test } from '@playwright/test'
 import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
-import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub } from '../_fixtures/club'
-import { type CodedError, phoneRental, postEntryBan, postRental, rentalPitch } from '../_fixtures/facilities'
+import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub, createPerson } from '../_fixtures/club'
+import { create as createStructure } from '../_fixtures/club-structure'
+import {
+  type CodedError,
+  phoneRental,
+  postEntryBan,
+  postRental,
+  rentalAction,
+  rentalPitch,
+} from '../_fixtures/facilities'
 import { signedInStaff } from '../_fixtures/groups'
 
 // Issue #126 (E08-S06), facilities spec REQ-016, TEST-026: the facility log, incidents and entry bans. The day's log is
 // opened with the condition before ("Facility opened"), records the groups present (a rental of the place with its head
 // count and adult supervisor) and is closed with the condition after; a second log for the day answers 409
-// `log_exists`, a later day 422 `log_date_invalid`; the administrator still edits a log days later (the 403
-// `log_edit_closed` for the attendant the day after next is unit-tested, `logEditable`: the attendant role needs the
-// `people` migration that is not approved yet). An incident with a 5-character description answers 422, a valid one
+// `log_exists`, a later day 422 `log_date_invalid`; the administrator still edits a log days later (the attendant's
+// 403 `log_edit_closed` and place scope are the second test). An incident with a 5-character description answers 422, a valid one
 // is listed with its decrypted description and can never be deleted; a ban linked to the incident blocks the renter's
 // rental with 409 `entry_ban_active` until it is revoked; a second revocation answers 409. Staff without
 // `facilities.log.write` cannot write the log. The no-show after the start is covered by TEST-023 and the unit tests.
@@ -34,6 +41,7 @@ type LogItem = {
 
 type IncidentItem = {
   id: string
+  photos?: Array<{ id: string; fileName: string; mimeType: string; url: string }>
   placeName: string | null
   kind: string
   description: string | null
@@ -54,6 +62,28 @@ type BanItem = {
 }
 
 type Saved = CodedError & { id?: string; updatedAt?: string }
+
+/** A 1×1 PNG: the smallest real image the byte check accepts. */
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+)
+
+/** `POST /api/facilities/incidents/{id}/photos` (multipart `file`). */
+async function uploadPhoto(
+  request: APIRequestContext,
+  token: string,
+  incidentId: string,
+  file: { name: string; mimeType: string; buffer: Buffer },
+): Promise<{ status: number; body: (CodedError & { id?: string; url?: string }) | null }> {
+  const response = await request.fetch(`/api/facilities/incidents/${incidentId}/photos`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    multipart: { file },
+    timeout: 60_000,
+  })
+  return { status: response.status(), body: (await response.json().catch(() => null)) as never }
+}
 
 const postLog = (request: APIRequestContext, token: string, data: Record<string, unknown>) =>
   call<Saved>(request, 'POST', '/api/facilities/logs', token, { data })
@@ -303,6 +333,269 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
       phoneRental(setup.pitch, setup.banned, zoneInstant(thursday, '08:00')),
     )
     expect(allowed.status, JSON.stringify(allowed.body)).toBe(201)
+  } finally {
+    await club.cleanup()
+  }
+})
+
+// The facility attendant (#126; club spec *Users, Permissions, and Scope*, `place_ids`): a `facility_operator`
+// assignment names a live place (422 otherwise) and grants `vereino_facility_operator`; the attendant then reads,
+// writes and lists the day, the log, incidents and rentals of the place and its descendants only (403 for another
+// place), lists the bans of the place but does not issue one, and edits a log until the end of the next day — after
+// that 403 `log_edit_closed`, while the administrator still edits it.
+test('TEST-026 the facility attendant: place scope, log edit window, rentals and bans', async ({ request }) => {
+  const club = await createClub(request, 'test-026-attendant')
+  try {
+    const admin = club.adminToken
+    const setup = await rentalPitch(request, club)
+    const today = calendarDate()
+    const pitchHalf = await createStructure(request, admin, 'places', {
+      name: 'Boisko A – połowa',
+      kind: 'pitch',
+      capacityGroups: 1,
+      parentPlaceId: setup.pitch,
+    })
+    const hall = await createStructure(request, admin, 'places', { name: 'Hala', kind: 'hall', capacityGroups: 2 })
+
+    // An attendant's assignment names a place of the club, and only an attendant's does.
+    const staffPerson = await createPerson(request, admin, {
+      firstName: 'Bez',
+      lastName: 'Miejsca',
+      birthDate: '1990-01-01',
+    })
+    const assign = (data: Record<string, unknown>) =>
+      call<CodedError>(request, 'POST', '/api/people/role-assignments', admin, {
+        data: { personId: staffPerson, validFrom: today, ...data },
+      })
+    const noPlace = await assign({ role: 'facility_operator' })
+    expect(noPlace.status, JSON.stringify(noPlace.body)).toBe(422)
+    expect(noPlace.body?.code).toBe('role_scope_required')
+    const strayPlace = await assign({ role: 'facility_operator', placeId: setup.academy })
+    expect(strayPlace.status, JSON.stringify(strayPlace.body)).toBe(422)
+    expect(strayPlace.body?.code).toBe('role_place_invalid')
+    const coachWithPlace = await assign({ role: 'coach', placeId: setup.pitch })
+    expect(coachWithPlace.status, JSON.stringify(coachWithPlace.body)).toBe(422)
+    expect(coachWithPlace.body?.code).toBe('role_scope_unexpected')
+
+    const attendant = await signedInStaff(request, club, {
+      firstName: 'Adam',
+      lastName: 'Animator',
+      role: 'facility_operator',
+      placeId: setup.pitch,
+    })
+    const assignments = await listOf<{ role: string; placeId: string | null }>(
+      request,
+      admin,
+      `/api/people/role-assignments?personId=${attendant.personId}`,
+    )
+    expect(assignments).toEqual([expect.objectContaining({ role: 'facility_operator', placeId: setup.pitch })])
+
+    // Today and the calendar: the pitch and its descendant, never the hall.
+    const day = await call<{ places: Array<{ id: string }>; place: { id: string } | null }>(
+      request,
+      'GET',
+      `/api/facilities/today?placeId=${pitchHalf}`,
+      attendant.token,
+    )
+    expect(day.status, JSON.stringify(day.body)).toBe(200)
+    expect(day.body?.place?.id).toBe(pitchHalf)
+    expect(day.body?.places.map((place) => place.id).sort()).toEqual([setup.pitch, pitchHalf].sort())
+    const hallDay = await call(request, 'GET', `/api/facilities/today?placeId=${hall}`, attendant.token)
+    expect(hallDay.status, JSON.stringify(hallDay.body)).toBe(403)
+    const range = `from=${encodeURIComponent(zoneInstant(today, '00:00'))}&to=${encodeURIComponent(zoneInstant(addDays(today, 7), '00:00'))}`
+    const calendar = await call<{ places: Array<{ id: string }> }>(
+      request,
+      'GET',
+      `/api/facilities/calendar?${range}`,
+      attendant.token,
+    )
+    expect(calendar.status, JSON.stringify(calendar.body)).toBe(200)
+    expect(calendar.body?.places.map((place) => place.id).sort()).toEqual([setup.pitch, pitchHalf].sort())
+    const hallCalendar = await call(
+      request,
+      'GET',
+      `/api/facilities/calendar?${range}&placeId=${hall}`,
+      attendant.token,
+    )
+    expect(hallCalendar.status, JSON.stringify(hallCalendar.body)).toBe(403)
+
+    // The log: written at the descendant, refused at the hall; the list holds the attendant's places only.
+    const opened = await postLog(request, attendant.token, {
+      placeId: pitchHalf,
+      logDate: today,
+      openedAt: new Date().toISOString(),
+      conditionBefore: 'Linie widoczne',
+    })
+    expect(opened.status, JSON.stringify(opened.body)).toBe(201)
+    const hallLog = await postLog(request, attendant.token, { placeId: hall, logDate: today })
+    expect(hallLog.status, JSON.stringify(hallLog.body)).toBe(403)
+    const adminHallLog = await postLog(request, admin, { placeId: hall, logDate: today })
+    expect(adminHallLog.status, JSON.stringify(adminHallLog.body)).toBe(201)
+    const attendantLogs = await listOf<LogItem>(request, attendant.token, '/api/facilities/logs')
+    expect(attendantLogs.map((log) => log.placeId)).toEqual([pitchHalf])
+
+    // The edit window: yesterday's log is still the attendant's; the one of the day before is closed (403), and the
+    // administrator still edits it.
+    const pastLog = async (daysBack: number) => {
+      const created = await postLog(request, admin, {
+        placeId: setup.pitch,
+        logDate: addDays(today, -daysBack),
+        openedAt: zoneInstant(addDays(today, -daysBack), '15:00'),
+        conditionBefore: 'Bez uwag',
+      })
+      expect(created.status, JSON.stringify(created.body)).toBe(201)
+      return { id: String(created.body?.id), updatedAt: String(created.body?.updatedAt) }
+    }
+    const yesterday = await pastLog(1)
+    const yesterdayEdit = await putLog(
+      request,
+      attendant.token,
+      { id: yesterday.id, remarks: 'Dopisane' },
+      yesterday.updatedAt,
+    )
+    expect(yesterdayEdit.status, JSON.stringify(yesterdayEdit.body)).toBe(200)
+    const older = await pastLog(2)
+    const closedEdit = await putLog(request, attendant.token, { id: older.id, remarks: 'Za późno' }, older.updatedAt)
+    expect(closedEdit.status, JSON.stringify(closedEdit.body)).toBe(403)
+    expect(closedEdit.body?.code).toBe('log_edit_closed')
+    const adminEdit = await putLog(request, admin, { id: older.id, remarks: 'Uzupełnione' }, older.updatedAt)
+    expect(adminEdit.status, JSON.stringify(adminEdit.body)).toBe(200)
+
+    // Incidents: reported and changed at the attendant's places, refused at the hall.
+    const incident = {
+      placeId: pitchHalf,
+      occurredAt: new Date(Date.now() - 600_000).toISOString(),
+      kind: 'rules_violation',
+      description: 'Grupa weszła na boisko bez opiekuna i nie opuściła go po wezwaniu.',
+      actionTaken: ['warning_given'],
+    }
+    const reported = await call<Saved>(request, 'POST', '/api/facilities/incidents', attendant.token, {
+      data: incident,
+    })
+    expect(reported.status, JSON.stringify(reported.body)).toBe(201)
+    const hallIncident = await call<Saved>(request, 'POST', '/api/facilities/incidents', attendant.token, {
+      data: { ...incident, placeId: hall },
+    })
+    expect(hallIncident.status, JSON.stringify(hallIncident.body)).toBe(403)
+    const listed = await listOf<IncidentItem>(request, attendant.token, '/api/facilities/incidents')
+    expect(listed.map((item) => item.id)).toEqual([String(reported.body?.id)])
+    const changed = await call<Saved>(request, 'PUT', '/api/facilities/incidents', attendant.token, {
+      data: { id: String(reported.body?.id), actionTaken: ['warning_given', 'entry_ban_requested'] },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: listed[0]?.updatedAt ?? '' },
+    })
+    expect(changed.status, JSON.stringify(changed.body)).toBe(200)
+    // Linking the communication case stays the administrator's (the case id is not checked against `communication`).
+    const caseLink = await call<Saved>(request, 'PUT', '/api/facilities/incidents', attendant.token, {
+      data: { id: String(reported.body?.id), threadId: '3f0b8c8e-1f5e-4d65-9f6a-2c4f8f1e0b11' },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(changed.body?.updatedAt) },
+    })
+    expect(caseLink.status, JSON.stringify(caseLink.body)).toBe(403)
+
+    // Photos: the attendant adds a PNG and reads it back; a file that is not an image is refused by its bytes (422),
+    // a sixth photo too; the coach (no log feature) neither adds nor reads one. A photo is never deleted.
+    const reportedId = String(reported.body?.id)
+    const photo = await uploadPhoto(request, attendant.token, reportedId, {
+      name: 'bramka.png',
+      mimeType: 'image/png',
+      buffer: PNG,
+    })
+    expect(photo.status, JSON.stringify(photo.body)).toBe(201)
+    const fake = await uploadPhoto(request, attendant.token, reportedId, {
+      name: 'notatka.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+    })
+    expect(fake.status, JSON.stringify(fake.body)).toBe(422)
+    expect(fake.body?.code).toBe('incident_photo_format_unsupported')
+    for (let index = 0; index < 4; index += 1) {
+      const more = await uploadPhoto(request, attendant.token, reportedId, {
+        name: `zdjecie-${String(index)}.png`,
+        mimeType: 'image/png',
+        buffer: PNG,
+      })
+      expect(more.status, JSON.stringify(more.body)).toBe(201)
+    }
+    const sixth = await uploadPhoto(request, attendant.token, reportedId, {
+      name: 'szoste.png',
+      mimeType: 'image/png',
+      buffer: PNG,
+    })
+    expect(sixth.status, JSON.stringify(sixth.body)).toBe(422)
+    expect(sixth.body?.code).toBe('incident_photos_limit_reached')
+    const withPhotos = await listOf<IncidentItem>(request, attendant.token, '/api/facilities/incidents')
+    expect(withPhotos[0]?.photos).toHaveLength(5)
+    expect(withPhotos[0]?.photos?.[0]).toMatchObject({
+      id: photo.body?.id,
+      fileName: 'bramka.png',
+      mimeType: 'image/png',
+    })
+    const read = await request.fetch(String(photo.body?.url), {
+      headers: { Authorization: `Bearer ${attendant.token}` },
+    })
+    expect(read.status()).toBe(200)
+    expect(read.headers()['content-type']).toBe('image/png')
+    expect(Buffer.from(await read.body()).equals(PNG)).toBe(true)
+    const coach = await signedInStaff(request, club, { firstName: 'Cezary', lastName: 'Trener', role: 'coach' })
+    const coachRead = await request.fetch(String(photo.body?.url), {
+      headers: { Authorization: `Bearer ${coach.token}` },
+    })
+    expect(coachRead.status()).toBe(403)
+    const coachUpload = await uploadPhoto(request, coach.token, reportedId, {
+      name: 'x.png',
+      mimeType: 'image/png',
+      buffer: PNG,
+    })
+    expect(coachUpload.status, JSON.stringify(coachUpload.body)).toBe(403)
+    const deletePhoto = await request.fetch(String(photo.body?.url), {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${attendant.token}` },
+    })
+    expect([404, 405]).toContain(deletePhoto.status())
+
+    // Rentals: entered and confirmed at the pitch after a phone call, refused at the hall; a no-show before the start
+    // is refused.
+    const wednesday = nextWeekday(addDays(today, 7), 'WE')
+    const rental = await postRental(
+      request,
+      attendant.token,
+      phoneRental(setup.pitch, setup.neighbours, zoneInstant(wednesday, '08:00')),
+    )
+    expect(rental.status, JSON.stringify(rental.body)).toBe(201)
+    const rentalId = String(rental.body?.id)
+    const confirmed = await rentalAction(request, attendant.token, rentalId, 'confirm')
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+    const early = await rentalAction(request, attendant.token, rentalId, 'no-show')
+    expect(early.status, JSON.stringify(early.body)).toBe(409)
+    expect(early.body?.code).toBe('rental_not_started')
+    const hallRental = await postRental(
+      request,
+      attendant.token,
+      phoneRental(hall, setup.neighbours, zoneInstant(wednesday, '10:00')),
+    )
+    expect(hallRental.status, JSON.stringify(hallRental.body)).toBe(403)
+
+    // Bans: the administrator issues one at the pitch; the attendant lists it, cannot issue one, and a rental they
+    // enter for the banned renter answers 409 `entry_ban_active`.
+    const banBody = {
+      placeId: setup.pitch,
+      subjectType: 'institution',
+      subjectId: setup.banned,
+      startsOn: today,
+      reason: 'Zniszczenie',
+    }
+    const attendantBan = await postEntryBan(request, attendant.token, banBody)
+    expect(attendantBan.status, JSON.stringify(attendantBan.body)).toBe(403)
+    const ban = await postEntryBan(request, admin, banBody)
+    expect(ban.status, JSON.stringify(ban.body)).toBe(201)
+    const bans = await listOf<BanItem>(request, attendant.token, '/api/facilities/entry-bans?state=active')
+    expect(bans.map((item) => item.id)).toEqual([String(ban.body?.id)])
+    const bannedRental = await postRental(
+      request,
+      attendant.token,
+      phoneRental(setup.pitch, setup.banned, zoneInstant(nextWeekday(addDays(today, 7), 'TH'), '08:00')),
+    )
+    expect(bannedRental.status, JSON.stringify(bannedRental.body)).toBe(409)
+    expect(bannedRental.body?.code).toBe('entry_ban_active')
   } finally {
     await club.cleanup()
   }

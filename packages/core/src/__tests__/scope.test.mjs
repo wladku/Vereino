@@ -16,11 +16,12 @@ const ORG = { tenantId: 't1', organizationId: 'o1' }
 const SECTION_A = 'section-a'
 const SECTION_B = 'section-b'
 
-test('the grant kinds exclude treasurer and facility_operator; maintenance_planner arrives with #128', () => {
+test('the grant kinds exclude treasurer; maintenance_planner arrives with #128, facility_operator with #126', () => {
   assert.deepEqual([...GRANT_KINDS].sort(), [
     'club_admin',
     'coach',
     'coordinator',
+    'facility_operator',
     'guardian',
     'maintenance_planner',
     'self',
@@ -28,6 +29,7 @@ test('the grant kinds exclude treasurer and facility_operator; maintenance_plann
     'system_job',
   ])
   assert.equal(PROVIDER_GRANT_KINDS.includes('maintenance_planner'), true)
+  assert.equal(PROVIDER_GRANT_KINDS.includes('facility_operator'), true)
   assert.equal(PROVIDER_GRANT_KINDS.includes('self_user'), false)
   assert.equal(PROVIDER_GRANT_KINDS.includes('system_job'), false)
 })
@@ -41,6 +43,7 @@ test('actingRoleFor maps self_user to self and system_job to system', () => {
   assert.equal(actingRoleFor('self_user'), 'self')
   assert.equal(actingRoleFor('system_job'), 'system')
   assert.equal(actingRoleFor('maintenance_planner'), 'maintenance_planner')
+  assert.equal(actingRoleFor('facility_operator'), 'facility_operator')
 })
 
 test('unionScopes concatenates and hasKind finds a kind', () => {
@@ -191,5 +194,18 @@ test('a maintenance_planner grant matches the places it lists, and filters by pl
   assert.deepEqual(scopeWhere(scope, kinds, { placeId: 'place_id' }), { place_id: { $in: ['pitch'] } })
   assert.deepEqual(sanitizeProviderGrants([{ kind: 'maintenance_planner', ids: ['pitch', ''] }]), [
     { kind: 'maintenance_planner', ids: ['pitch'] },
+  ])
+})
+
+test('a facility_operator grant matches the places it lists, and filters by place (#126)', () => {
+  const scope = [{ kind: 'facility_operator', ids: ['hall', 'hall-court'] }]
+  const kinds = ['facility_operator', 'club_admin']
+  assert.equal(findActingRole(scope, kinds, { id: 'x', ...ORG, placeId: 'hall-court' }), 'facility_operator')
+  assert.equal(findActingRole(scope, kinds, { id: 'x', ...ORG, placeId: 'pitch' }), null)
+  assert.equal(findActingRole(scope, kinds, { id: 'x', ...ORG }), null)
+  assert.deepEqual(scopeWhere(scope, kinds, { placeId: 'place_id' }), { place_id: { $in: ['hall', 'hall-court'] } })
+  assert.deepEqual(scopeWhere(scope, kinds, {}), { id: { $exists: false } })
+  assert.deepEqual(sanitizeProviderGrants([{ kind: 'facility_operator', ids: ['hall'] }]), [
+    { kind: 'facility_operator', ids: ['hall'] },
   ])
 })

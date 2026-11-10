@@ -4,14 +4,13 @@
 // day 409 `log_exists`; opening needs the condition before, closing an opened log and the condition after (422); the
 // groups present each name a live session or rental of the place, its ancestors or descendants, once (422). A log is
 // editable until the end of the next day in the club time zone, then by the club administrator only (403
-// `log_edit_closed`). The club administrator is the only writer until the facility attendant role (with its place
-// scope) arrives — it needs a `people` migration that is not approved yet (#126). Not undoable: a log is corrected by
-// another update, and the audit log keeps each version.
+// `log_edit_closed`). Written by the facility attendant within their places (the `facility_operator` grant, #126) and
+// by the club administrator. Not undoable: a log is corrected by another update, and the audit log keeps each version.
 import { randomUUID } from 'node:crypto'
 import { UniqueConstraintViolationException } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { calendarDateInZone, type GrantKind, type Scope } from '@vereino/core'
+import { calendarDateInZone, hasKind, type GrantKind, type Scope } from '@vereino/core'
 import { authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { FacilityLog, Rental } from '../data/entities'
@@ -27,11 +26,12 @@ import {
 import { clubTimeZone, sessionsByIds, type FacilitiesScope } from '../services/directory'
 import { placeFamilyIds } from '../services/occupancy'
 import {
+  PLACE_KINDS,
   assertPlaces,
   emitAfterCommit,
   facilitiesLog,
-  facilityTarget,
   inWriteTransaction,
+  placeTarget,
   rowLoader,
   throwFieldError,
   type FacilitiesCommandResult,
@@ -39,8 +39,8 @@ import {
 
 export const LOG_RESOURCE_KIND = 'facilities.facility_log'
 
-/** Who writes the log: the club administrator (the facility attendant arrives with its place scope, #126). */
-export const LOG_KINDS: readonly GrantKind[] = ['club_admin']
+/** Who writes the log: the facility attendant within their places and the club administrator (`PLACE_KINDS`, #126). */
+export const LOG_KINDS: readonly GrantKind[] = PLACE_KINDS
 
 export type LogSnapshot = {
   id: string
@@ -106,15 +106,18 @@ function applyFields(row: FacilityLog, fields: LogFields): void {
   }
 }
 
-/** 403 `log_edit_closed` unless the log's day is still open for the caller. */
+/**
+ * 403 `log_edit_closed` unless the log's day is still open for the caller. The exception is the club administrator's
+ * — the caller holding the club-wide grant, even when the attendant grant was matched first (least-privileged order).
+ */
 async function assertEditable(
   ctx: CommandRuntimeContext,
   scope: FacilitiesScope,
   logDate: string,
-  actingRole: string,
+  grants: Scope,
 ): Promise<void> {
   const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope))
-  if (!logEditable(logDate, today, actingRole === 'club_admin')) await facilitiesErrors.throw('log_edit_closed')
+  if (!logEditable(logDate, today, hasKind(grants, 'club_admin'))) await facilitiesErrors.throw('log_edit_closed')
 }
 
 /** The state rules (422) and the groups: each once, each a live session or rental of the place family (422). */
@@ -159,7 +162,7 @@ const createLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
           input: logCreateSchema,
           resourceKind: LOG_RESOURCE_KIND,
           allowedKinds: LOG_KINDS,
-          resolveTarget: (parsed, _entity, scope) => ({ ...facilityTarget({ id, ...scope }), placeId: parsed.placeId }),
+          resolveTarget: (parsed, _entity, scope) => placeTarget({ id, ...scope, placeId: parsed.placeId }),
         },
         rawInput,
         ctx,
@@ -171,7 +174,7 @@ const createLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       await assertPlaces(ctx, em, scope, [parsed.placeId])
       const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope))
       if (!logDateAllowed(parsed.logDate, today)) await throwFieldError('log_date_invalid', 'logDate')
-      await assertEditable(ctx, scope, parsed.logDate, authorized.actingRole)
+      await assertEditable(ctx, scope, parsed.logDate, authorized.scope)
       const existing = await em.findOne(
         FacilityLog,
         { ...scope, placeId: parsed.placeId, logDate: parsed.logDate },
@@ -232,10 +235,7 @@ const updateLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
           resourceKind: LOG_RESOURCE_KIND,
           allowedKinds: LOG_KINDS,
           loadTarget: (parsed, txEm, lock) => load(txEm, parsed.id, lock),
-          resolveTarget: (_parsed, entity) => {
-            const row = entity as FacilityLog
-            return { ...facilityTarget(row), placeId: row.placeId }
-          },
+          resolveTarget: (_parsed, entity) => placeTarget(entity as FacilityLog),
         },
         rawInput,
         ctx,
@@ -244,7 +244,7 @@ const updateLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       const row = authorized.entity as FacilityLog
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const before = logSnapshot(row)
-      await assertEditable(ctx, scope, row.logDate, authorized.actingRole)
+      await assertEditable(ctx, scope, row.logDate, authorized.scope)
       applyFields(row, authorized.parsed)
       await assertContent(ctx, em, scope, row)
       // The operator is who ran the day: set on the first write; a later correction is recorded in the audit log.

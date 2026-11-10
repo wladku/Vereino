@@ -13,7 +13,7 @@ import { INCIDENT_REPORT_KINDS, type IncidentCommandResult } from '../../command
 import { Incident } from '../../data/entities'
 import { incidentCreateSchema, incidentListQuerySchema, incidentUpdateSchema } from '../../data/validators'
 import { INCIDENT_ENTITY_ID, attachIncidentNames, incidentListItem, incidentListItemSchema } from '../records'
-import { FACILITY_COLUMNS, updateResponseSchema } from '../shared'
+import { PLACE_COLUMNS, updateResponseSchema } from '../shared'
 
 type IncidentListQuery = z.infer<typeof incidentListQuerySchema>
 
@@ -58,7 +58,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       const business: Where[] = []
       if (query.placeId) business.push({ place_id: query.placeId })
       if (query.kind) business.push({ kind: query.kind })
-      return { $and: [scopeWhere(scope, INCIDENT_REPORT_KINDS, FACILITY_COLUMNS), ...business] } as Where
+      return { $and: [scopeWhere(scope, INCIDENT_REPORT_KINDS, PLACE_COLUMNS), ...business] } as Where
     },
     transformItem: incidentListItem,
   },

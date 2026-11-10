@@ -26,6 +26,13 @@ export const MANAGE_KINDS: readonly GrantKind[] = ['club_admin']
 /** The facility rules are read by the club administrator (places carry no section). */
 export const READ_KINDS: readonly GrantKind[] = ['club_admin']
 
+/**
+ * The day-to-day records of a place — rentals, the log, incidents — are written by the facility attendant within
+ * their places (the `facility_operator` grant: the assigned place and its descendants, #126) and by the club
+ * administrator; least-privileged first (DD-F08). The targets carry the record's `placeId`.
+ */
+export const PLACE_KINDS: readonly GrantKind[] = ['facility_operator', 'club_admin']
+
 export type FacilitiesCommandResult<TEntity, TSnapshot> = {
   entity: TEntity
   actingRole: ActingRole
@@ -74,6 +81,13 @@ export function facilityTarget(row: Pick<ScopedRow, 'id' | 'tenantId' | 'organiz
   return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId }
 }
 
+/** A record of one place as a scope target: the club-wide grant and a `facility_operator` grant of the place match it. */
+export function placeTarget(
+  row: Pick<ScopedRow, 'id' | 'tenantId' | 'organizationId'> & { placeId: string },
+): ScopeTarget {
+  return { id: row.id, tenantId: row.tenantId, organizationId: row.organizationId, placeId: row.placeId }
+}
+
 /** A row of the trusted tenant by id, row-locked as `authorizeScoped` asks; deleted rows only for a replay. */
 export function rowLoader<TEntity extends ScopedRow>(
   ctx: CommandRuntimeContext,
@@ -100,6 +114,25 @@ export function existingSpec<TSchema extends z.ZodType<{ id: string }>, TEntity 
     allowedKinds: MANAGE_KINDS,
     loadTarget: (parsed, em, lock) => load(em, parsed.id, lock),
     resolveTarget: (_parsed, entity) => facilityTarget(entity as TEntity),
+  }
+}
+
+/** As `existingSpec`, for a record of one place: `PLACE_KINDS` (or `kinds`) and the record's place as the target. */
+export function existingPlaceSpec<
+  TSchema extends z.ZodType<{ id: string }>,
+  TEntity extends ScopedRow & { placeId: string },
+>(
+  input: TSchema,
+  resourceKind: string,
+  load: (em: EntityManager, id: string, lock: TargetLock) => Promise<TEntity | null>,
+  kinds: readonly GrantKind[] = PLACE_KINDS,
+): AuthorizeScopedSpec<TSchema, TEntity> {
+  return {
+    input,
+    resourceKind,
+    allowedKinds: kinds,
+    loadTarget: (parsed, em, lock) => load(em, parsed.id, lock),
+    resolveTarget: (_parsed, entity) => placeTarget(entity as TEntity),
   }
 }
 

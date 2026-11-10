@@ -1,8 +1,9 @@
 'use client'
 // The "Roles" tab of the person record (club spec UI table; DD-33): the person's staff role assignments in the
-// caller's scope with the section name and the period; with `people.roles.manage` the club administrator assigns a
-// role (a coordinator with the section picker) and ends an assignment through the existing role-assignment routes.
-// A second assignment of the same role and section in an overlapping period is refused by the server (409).
+// caller's scope with the section or place name and the period; with `people.roles.manage` the club administrator
+// assigns a role (a coordinator with the section picker, a facility attendant with the place picker, #126) and ends an
+// assignment through the existing role-assignment routes. A second assignment of the same role and section (or place)
+// in an overlapping period is refused by the server (409).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
@@ -25,9 +26,13 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, localToday, periodLabel, periodStatus, type RoleAssignmentRow } from './client-helpers'
 
-const ROLES = ['club_admin', 'coordinator', 'coach'] as const
+const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
 type SectionItem = { id: string; name: string | null }
+
+type PlaceOption = { id: string; name: string; parentName: string | null }
+
+const placeTitle = (place: PlaceOption) => (place.parentName ? `${place.parentName} › ${place.name}` : place.name)
 
 export function RolesPanel({
   personId,
@@ -45,6 +50,7 @@ export function RolesPanel({
   const [busy, setBusy] = React.useState(false)
   const [role, setRole] = React.useState<string>('coordinator')
   const [sectionId, setSectionId] = React.useState<string | null>(null)
+  const [placeId, setPlaceId] = React.useState<string | null>(null)
   const [validFrom, setValidFrom] = React.useState(localToday)
 
   const query = useQuery({
@@ -55,7 +61,7 @@ export function RolesPanel({
       )
       const rows = data.items ?? []
       const sectionIds = [...new Set(rows.map((row) => row.sectionId).filter((id): id is string => Boolean(id)))]
-      // Section names come from `club_core`; a reader without access to the section list sees no name.
+      // Section and place names come from `club_core`; a reader without access to its lists sees no name.
       const sections =
         sectionIds.length > 0
           ? await readApiResultOrThrow<{ items?: SectionItem[] }>(
@@ -64,7 +70,16 @@ export function RolesPanel({
               .then((result) => result.items ?? [])
               .catch(() => [])
           : []
-      return { rows, sections: new Map(sections.map((section) => [section.id, section.name])) }
+      const places = rows.some((row) => row.placeId)
+        ? await readApiResultOrThrow<{ items?: PlaceOption[] }>('/api/club_core/options/places')
+            .then((result) => result.items ?? [])
+            .catch(() => [])
+        : []
+      return {
+        rows,
+        sections: new Map(sections.map((section) => [section.id, section.name])),
+        places: new Map(places.map((place) => [place.id, placeTitle(place)])),
+      }
     },
   })
 
@@ -73,6 +88,14 @@ export function RolesPanel({
     if (search.trim()) params.set('search', search.trim())
     const data = await readApiResultOrThrow<{ items?: SectionItem[] }>(`/api/club_core/sections?${params.toString()}`)
     return (data.items ?? []).map((section) => ({ id: section.id, title: section.name ?? section.id }))
+  }, [])
+
+  const fetchPlaces = React.useCallback(async (search: string): Promise<LookupSelectItem[]> => {
+    const data = await readApiResultOrThrow<{ items?: PlaceOption[] }>('/api/club_core/options/places')
+    const needle = search.trim().toLocaleLowerCase()
+    return (data.items ?? [])
+      .filter((place) => !needle || placeTitle(place).toLocaleLowerCase().includes(needle))
+      .map((place) => ({ id: place.id, title: placeTitle(place) }))
   }, [])
 
   const refresh = async () => {
@@ -91,6 +114,7 @@ export function RolesPanel({
             personId,
             role,
             ...(role === 'coordinator' ? { sectionId } : {}),
+            ...(role === 'facility_operator' ? { placeId } : {}),
             validFrom,
           }),
         },
@@ -98,6 +122,7 @@ export function RolesPanel({
       )
       flash(t('people.roles.flash.assigned'), 'success')
       setSectionId(null)
+      setPlaceId(null)
     } catch (error: unknown) {
       flash(errorMessage(error, t('people.roles.errors.assign')), 'error')
     } finally {
@@ -132,6 +157,7 @@ export function RolesPanel({
   const rows = query.data?.rows ?? []
   const today = localToday()
   const needsSection = role === 'coordinator'
+  const needsPlace = role === 'facility_operator'
 
   return (
     <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-label={t('people.roles.title')}>
@@ -145,13 +171,17 @@ export function RolesPanel({
         <ul className="flex flex-col divide-y">
           {rows.map((row) => {
             const status = periodStatus(row.validFrom, row.validTo, today)
-            const sectionName = row.sectionId ? query.data?.sections.get(row.sectionId) : null
+            const scopeName = row.sectionId
+              ? query.data?.sections.get(row.sectionId)
+              : row.placeId
+                ? query.data?.places.get(row.placeId)
+                : null
             return (
               <li key={row.id} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex flex-col">
                   <span className="font-medium">
                     {t(`people.roles.role.${row.role}`)}
-                    {sectionName ? ` — ${sectionName}` : ''}
+                    {scopeName ? ` — ${scopeName}` : ''}
                   </span>
                   <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                     <span>{periodLabel(t, row.validFrom, row.validTo)}</span>
@@ -229,6 +259,25 @@ export function RolesPanel({
               />
             </div>
           ) : null}
+          {needsPlace ? (
+            <div className="flex flex-1 flex-col gap-1">
+              <Label>{t('people.roles.fields.place')}</Label>
+              <LookupSelect
+                value={placeId}
+                onChange={setPlaceId}
+                fetchItems={fetchPlaces}
+                minQuery={0}
+                placeholder={t('people.roles.fields.place.placeholder')}
+                searchPlaceholder={t('people.roles.fields.place.search')}
+                emptyLabel={t('people.roles.fields.place.empty')}
+                loadingLabel={t('people.common.loading')}
+                clearLabel={t('people.common.clear')}
+                selectLabel={t('people.common.select')}
+                selectedLabel={t('people.common.selected')}
+                disabled={busy}
+              />
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1">
             <Label htmlFor="people-role-from">{t('people.roles.fields.validFrom')}</Label>
             <Input
@@ -241,7 +290,10 @@ export function RolesPanel({
               }}
             />
           </div>
-          <Button type="submit" disabled={busy || !validFrom || (needsSection && !sectionId)}>
+          <Button
+            type="submit"
+            disabled={busy || !validFrom || (needsSection && !sectionId) || (needsPlace && !placeId)}
+          >
             {t('people.roles.actions.assign')}
           </Button>
         </form>

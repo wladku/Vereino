@@ -16,7 +16,7 @@ import type { Where } from '@open-mercato/shared/lib/query/types'
 import { ageOn, findActingRole, scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Person } from '../../data/entities'
-import { personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
+import { ASSIGNABLE_ROLES, personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
 import { PERSON_ENTITY_ID } from '../../encryption'
 import { PERSON_FILTER_ID_LIMIT, intersectIdSets, personListPlan } from '../../lib/person-list-filters'
 import { clubToday, type ClubScope } from '../../services/club-clock'
@@ -187,7 +187,7 @@ const listItemSchema = z.object({
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   age: z.number().int().nullable().describe('Completed years on the club date; null without a birth date'),
-  roles: z.array(z.enum(['club_admin', 'coordinator', 'coach'])).describe('Active role assignments today'),
+  roles: z.array(z.enum(ASSIGNABLE_ROLES)).describe('Active role assignments today'),
   hasWards: z.boolean().describe('The person is an active guardian today'),
   guardians: z
     .array(z.object({ id: z.uuid(), displayName: z.string() }))

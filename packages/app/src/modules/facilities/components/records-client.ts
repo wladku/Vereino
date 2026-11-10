@@ -71,8 +71,26 @@ export type IncidentRow = {
   involved: string | null
   actionTaken: string[]
   threadId: string | null
+  /** The incident photos in upload order, each with its authenticated route (#126). */
+  photos: Array<{ id: string; fileName: string; url: string }>
   createdAt: string | null
   updatedAt: string | null
+}
+
+/** Adds one photo to an incident (multipart `file`; 422 with a coded refusal, #126) and returns it. */
+export async function uploadIncidentPhotoRecord(
+  incidentId: string,
+  file: File,
+  errorMessage: string,
+): Promise<IncidentRow['photos'][number] | null> {
+  const body = new FormData()
+  body.append('file', file)
+  const call = await apiCallOrThrow<IncidentRow['photos'][number]>(
+    `/api/${INCIDENTS_API}/${encodeURIComponent(incidentId)}/photos`,
+    { method: 'POST', body },
+    { errorMessage },
+  )
+  return call.result ?? null
 }
 
 /** One row of `GET /api/facilities/entry-bans`. */

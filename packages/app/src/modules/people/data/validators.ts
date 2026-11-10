@@ -17,7 +17,7 @@ const notesSchema = z.string().max(4000)
 /** An identifier from an import file for a person without a PESEL (#28). */
 const externalIdSchema = z.string().trim().min(1).max(100)
 
-export const ASSIGNABLE_ROLES = ['club_admin', 'coordinator', 'coach'] as const
+export const ASSIGNABLE_ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
 const personFields = {
   firstName: nameSchema,
@@ -55,6 +55,8 @@ export const roleAssignmentCreateSchema = z
     personId: z.uuid(),
     role: z.enum(ASSIGNABLE_ROLES),
     sectionId: z.uuid().nullable().optional(),
+    /** The facility attendant's place (#126); required for `facility_operator`, refused for the other roles. */
+    placeId: z.uuid().nullable().optional(),
     ...validityShape,
   })
   .strict()
@@ -65,6 +67,7 @@ export const roleAssignmentUpdateSchema = z
     id: z.uuid(),
     role: z.enum(ASSIGNABLE_ROLES).optional(),
     sectionId: z.uuid().nullable().optional(),
+    placeId: z.uuid().nullable().optional(),
     validFrom: calendarDateSchema.optional(),
     validTo: calendarDateSchema.nullable().optional(),
   })

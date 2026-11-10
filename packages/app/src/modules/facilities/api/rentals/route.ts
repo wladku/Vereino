@@ -1,6 +1,6 @@
 // `/api/facilities/rentals` — external rentals of the club's places (facilities spec the `facilities.rentals.create`
 // row of *API, Command, and Error Contracts*, B-24; REQ-013; #122): listed with `facilities.rentals.manage` by the club
-// administrator — the B-24 tabs (`tab=active|awaiting_approval`), a status, a place, the reschedule flag and a time
+// administrator and, for their places, the facility attendant (#126) — the B-24 tabs (`tab=active|awaiting_approval`), a status, a place, the reschedule flag and a time
 // window for the calendar — with the renter's name and contact decrypted by the query engine; a staff entry runs
 // `facilities.rentals.create` and answers 201 with the amount and the deadlines. Status actions live under `[id]/`.
 import { z } from 'zod'
@@ -10,11 +10,11 @@ import type { Where } from '@open-mercato/shared/lib/query/types'
 import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import type { RentalCommandResult } from '../../commands/rentals'
-import { READ_KINDS } from '../../commands/shared'
+import { PLACE_KINDS } from '../../commands/shared'
 import { Rental } from '../../data/entities'
 import { rentalCreateSchema, rentalListQuerySchema } from '../../data/validators'
 import { RENTAL_TABS } from '../../lib/rentals'
-import { FACILITY_COLUMNS, RENTAL_ENTITY_ID, rentalListItem, rentalListItemSchema } from '../shared'
+import { PLACE_COLUMNS, RENTAL_ENTITY_ID, rentalListItem, rentalListItemSchema } from '../shared'
 
 type RentalListQuery = z.infer<typeof rentalListQuerySchema>
 
@@ -87,7 +87,7 @@ export const { metadata, GET, POST } = makeCrudRoute({
       if (query.needsReschedule) business.push({ needs_reschedule: query.needsReschedule === 'true' })
       if (query.endsAfter) business.push({ ends_at: { $gt: query.endsAfter } })
       if (query.startsBefore) business.push({ starts_at: { $lt: query.startsBefore } })
-      return { $and: [scopeWhere(scope, READ_KINDS, FACILITY_COLUMNS), ...business] } as Where
+      return { $and: [scopeWhere(scope, PLACE_KINDS, PLACE_COLUMNS), ...business] } as Where
     },
     transformItem: rentalListItem,
   },
