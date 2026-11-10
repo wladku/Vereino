@@ -53,6 +53,13 @@ export const features = [
     title: 'Plan and complete maintenance work on the assigned places',
     module: 'facilities',
   },
+  {
+    // #127 (REQ-015, B-28): the municipality report; the club administrator holds it through `facilities.*`.
+    id: 'facilities.reports.view',
+    title: 'View the owner (municipality) report of a facility and export it as CSV',
+    module: 'facilities',
+    dependsOn: ['facilities.view'],
+  },
 ]
 
 export default features
