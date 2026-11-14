@@ -16,30 +16,42 @@ import { resolveBrowserTelemetryConfig } from '@open-mercato/telemetry/browser/s
 import { DemoFeedbackWidget } from '@/components/DemoFeedbackWidget'
 import { BackendHeaderChrome } from '@/components/BackendHeaderChrome'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { ClubTimeZone } from '@/components/ClubTimeZone'
 
-type ClubLogoSettings = {
-  get(scope: { tenantId: string; organizationId: string }): Promise<{ publicSettings: { logoUrl: string | null } }>
+type ClubChromeSettings = {
+  get(scope: { tenantId: string; organizationId: string }): Promise<{
+    values: { timezone: string }
+    publicSettings: { logoUrl: string | null }
+  }>
+}
+
+type ClubChrome = {
+  logo: { src: string; alt: string; preserveAspectRatio: boolean } | undefined
+  /** The club time zone the pages compute "today" in (#231); null leaves the browser's. */
+  timeZone: string | null
 }
 
 /**
- * The club logo for the AppShell header (Vereino club spec REQ-028, issue #29): read through the optional
- * `clubCoreSettings` DI service of the `club_core` module. The platform's organization branding (`Organization.logoUrl`
- * in the backend chrome) and a brand style still take precedence when an organization configures them.
+ * The club logo for the AppShell header (Vereino club spec REQ-028, issue #29) and the club time zone of the pages
+ * (#231): read through the optional `clubCoreSettings` DI service of the `club_core` module. The platform's
+ * organization branding (`Organization.logoUrl` in the backend chrome) and a brand style still take precedence when an
+ * organization configures them.
  */
-async function resolveClubLogo(
+async function resolveClubChrome(
   auth: Awaited<ReturnType<typeof getAuthFromCookies>>,
   alt: string,
-): Promise<{ src: string; alt: string; preserveAspectRatio: boolean } | undefined> {
-  if (!auth?.tenantId || !auth.orgId) return undefined
+): Promise<ClubChrome> {
+  const none: ClubChrome = { logo: undefined, timeZone: null }
+  if (!auth?.tenantId || !auth.orgId) return none
   try {
     const container = await createRequestContainer()
-    if (!container.hasRegistration('clubCoreSettings')) return undefined
-    const settings = container.resolve<ClubLogoSettings>('clubCoreSettings')
+    if (!container.hasRegistration('clubCoreSettings')) return none
+    const settings = container.resolve<ClubChromeSettings>('clubCoreSettings')
     const snapshot = await settings.get({ tenantId: auth.tenantId, organizationId: auth.orgId })
     const src = snapshot.publicSettings.logoUrl
-    return src ? { src, alt, preserveAspectRatio: true } : undefined
+    return { logo: src ? { src, alt, preserveAspectRatio: true } : undefined, timeZone: snapshot.values.timezone }
   } catch {
-    return undefined
+    return none
   }
 }
 
@@ -141,7 +153,7 @@ export default async function BackendLayout({
   // ever being requested.
   const browserTelemetryConfig = resolveBrowserTelemetryConfig({ cookieHeader: cookieStore.toString() })
 
-  const clubLogo = await resolveClubLogo(auth, translate('club_core.logo.headerAlt', 'Club logo'))
+  const clubChrome = await resolveClubChrome(auth, translate('club_core.logo.headerAlt', 'Club logo'))
 
   return (
     <I18nProvider
@@ -152,7 +164,7 @@ export default async function BackendLayout({
     >
       <AppShell
         productName={productName}
-        logo={clubLogo}
+        logo={clubChrome.logo}
         email={auth?.email}
         canManageUpgradeActions={canManageUpgradeActions}
         groups={[]}
@@ -179,9 +191,11 @@ export default async function BackendLayout({
         profileSectionTitle={translate('profile.page.title', 'Profile')}
         profilePathPrefixes={profilePathPrefixes}
       >
-        <PageInjectionBoundary path={path} context={injectionContext}>
-          {children}
-        </PageInjectionBoundary>
+        <ClubTimeZone timeZone={clubChrome.timeZone}>
+          <PageInjectionBoundary path={path} context={injectionContext}>
+            {children}
+          </PageInjectionBoundary>
+        </ClubTimeZone>
         {demoModeEnabled ? <DemoFeedbackWidget demoModeEnabled={demoModeEnabled} /> : null}
         <BrowserTelemetry config={browserTelemetryConfig} />
       </AppShell>

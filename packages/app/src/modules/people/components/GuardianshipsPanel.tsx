@@ -32,7 +32,6 @@ import {
   GUARDIAN_RELATIONS,
   PERSONS_HREF,
   errorMessage,
-  localToday,
   periodLabel,
   periodStatus,
   personName,
@@ -41,6 +40,7 @@ import {
   type PersonListRow,
   type Translate,
 } from './client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 type ConsentFlags = Record<ConsentKind, boolean>
 
@@ -162,8 +162,9 @@ function GuardianshipItem({
   onSave: (row: GuardianshipRow, state: EditorState) => Promise<boolean>
   t: Translate
 }) {
+  const today = useClubToday()
   const [editor, setEditor] = React.useState<EditorState | null>(null)
-  const status = periodStatus(row.validFrom, row.validTo, localToday())
+  const status = periodStatus(row.validFrom, row.validTo, today)
   const counterpartId = counterpart?.id
   return (
     <li className="flex flex-col gap-3 py-3">
@@ -322,11 +323,12 @@ function AddGuardianship({
   onClose: () => void
   t: Translate
 }) {
+  const today = useClubToday()
   const [otherId, setOtherId] = React.useState<string | null>(null)
   const [relation, setRelation] = React.useState<string>('parent')
   const [isPrimaryPayer, setIsPrimaryPayer] = React.useState(false)
   const [consents, setConsents] = React.useState<ConsentFlags>(NO_CONSENTS)
-  const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validFrom, setValidFrom] = React.useState(today)
 
   const fetchPersons = React.useCallback(
     async (query: string): Promise<LookupSelectItem[]> => {
@@ -451,6 +453,7 @@ function AddGuardianship({
 
 export function GuardianshipsPanel({ personId, canManage }: { personId: string; canManage: boolean }) {
   const t = useT()
+  const today = useClubToday()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
@@ -559,7 +562,6 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
   const guardians = rows.filter((row) => row.wardPersonId === personId)
   // Links never chain (`guardianship_guardian_is_ward`, `guardianship_ward_is_guardian`): a person with a live
   // guardian gets no "Add a ward", a live guardian no "Add a guardian". Ended links do not count.
-  const today = localToday()
   const live = (row: GuardianshipRow) => periodStatus(row.validFrom, row.validTo, today) !== 'ended'
   const hasGuardian = guardians.some(live)
   const isGuardian = wards.some(live)

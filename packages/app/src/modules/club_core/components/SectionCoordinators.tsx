@@ -22,21 +22,16 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage } from './client-helpers'
 import { coordinatorName, type SectionCoordinatorView, type SectionRow } from './sections-shared'
+import { useClubToday } from '@vereino/ui'
 
 type PersonItem = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
-/** Today's local calendar date (`YYYY-MM-DD`) as the default start of an assignment. */
-function localToday(): string {
-  const now = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
 export function SectionCoordinators({ section, onChanged }: { section: SectionRow; onChanged: () => Promise<void> }) {
   const t = useT()
+  const today = useClubToday()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [personId, setPersonId] = React.useState<string | null>(null)
-  const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validFrom, setValidFrom] = React.useState(today)
   const [validTo, setValidTo] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const enrichment = section._people

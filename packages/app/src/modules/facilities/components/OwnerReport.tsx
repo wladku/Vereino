@@ -20,15 +20,9 @@ import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/u
 import { ownerReportEmpty, presetPeriod, shiftPeriod, type OwnerReport as Report } from '../lib/owner-report'
 import { ZONES } from '../lib/zones'
 import { PlaceSelect } from './FacilitiesControls'
-import {
-  codedMessage,
-  localToday,
-  usePlaceOptions,
-  zoneLabel,
-  type TableColumns,
-  type Translate,
-} from './facilities-client'
+import { codedMessage, usePlaceOptions, zoneLabel, type TableColumns, type Translate } from './facilities-client'
 import { rentalStatusLabel, rentalStatusVariant, slotLabel } from './rentals-client'
+import { useClubToday } from '@vereino/ui'
 
 type PeriodKind = 'month' | 'quarter'
 type RentalRow = Report['rentals']['items'][number]
@@ -166,12 +160,13 @@ function ReportKpis({ report, t, locale }: { report: Report; t: Translate; local
 
 export function OwnerReport() {
   const t = useT()
+  const today = useClubToday()
   const locale = useLocale()
   const scopeVersion = useOrganizationScopeVersion()
   const places = usePlaceOptions()
   const [placeId, setPlaceId] = React.useState('')
   const [kind, setKind] = React.useState<PeriodKind>('month')
-  const [period, setPeriod] = React.useState(() => presetPeriod('month', localToday()))
+  const [period, setPeriod] = React.useState(() => presetPeriod('month', today))
   const chosenPlace = placeId || places.options[0]?.value || ''
 
   const { data, isLoading, error } = useQuery({

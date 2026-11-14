@@ -16,7 +16,8 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { accountAgePolicy } from '@vereino/core'
-import { errorMessage, localToday, textOrNull, type PersonDetail } from './client-helpers'
+import { errorMessage, textOrNull, type PersonDetail } from './client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 export function AccountPanel({
   person,
@@ -28,6 +29,7 @@ export function AccountPanel({
   onChanged: () => Promise<void>
 }) {
   const t = useT()
+  const today = useClubToday()
   const [email, setEmail] = React.useState(person.email ?? '')
   const [busy, setBusy] = React.useState(false)
   const settings = useQuery({
@@ -38,7 +40,7 @@ export function AccountPanel({
   const threshold = settings.data?.ownAccountMinAge ?? null
   const belowThreshold =
     threshold !== null && person.birthDate
-      ? accountAgePolicy({ birthDate: person.birthDate, threshold, today: localToday() }) === 'below_threshold'
+      ? accountAgePolicy({ birthDate: person.birthDate, threshold, today }) === 'below_threshold'
       : false
   const blocked = !person.birthDate || belowThreshold
 

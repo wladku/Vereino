@@ -25,7 +25,8 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS, isWallTime, minutesOfDay } from '@vereino/core'
 import { MIN_AVAILABILITY_MINUTES } from '../lib/zones'
 import { WeekdayToggles } from './FacilitiesControls'
-import { ZONE_RULES_BULK_URL, codedMessage, errorMessage, localToday, type Translate } from './facilities-client'
+import { ZONE_RULES_BULK_URL, codedMessage, errorMessage, type Translate } from './facilities-client'
+import { useClubToday } from '@vereino/ui'
 
 /** `POST /api/facilities/zone-rules/bulk` → 200. */
 export type BulkResult = {
@@ -102,13 +103,14 @@ export function AvailabilityDialog({
   onSaved: (result: BulkResult) => Promise<void>
 }) {
   const t = useT()
+  const today = useClubToday()
   const ids = React.useId()
   const [placeIds, setPlaceIds] = React.useState<string[]>(initialPlaceId ? [initialPlaceId] : [])
   const [days, setDays] = React.useState<number[]>(WORKDAYS)
   const [hoursMode, setHoursMode] = React.useState<HoursMode>('same')
   const [hours, setHours] = React.useState<Hours>(DEFAULT_HOURS)
   const [perDay, setPerDay] = React.useState<Record<number, Hours>>({})
-  const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validFrom, setValidFrom] = React.useState(today)
   const [validTo, setValidTo] = React.useState('')
   const [writeMode, setWriteMode] = React.useState<WriteMode>('replace')
   const [pending, setPending] = React.useState(false)

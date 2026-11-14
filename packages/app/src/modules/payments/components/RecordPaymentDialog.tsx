@@ -23,7 +23,8 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MANUAL_PAYMENT_METHODS, MAX_REFERENCE_LENGTH, type ManualPaymentMethod } from '../lib/charge-ledger'
-import { errorMessage, fromGrosz, localToday, toGrosz, type ChargeDetail } from './client-helpers'
+import { errorMessage, fromGrosz, toGrosz, type ChargeDetail } from './client-helpers'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 type RecordResult = { chargeStatus?: string }
 
@@ -39,10 +40,12 @@ export function RecordPaymentDialog({
   onDone: () => Promise<void>
 }) {
   const t = useT()
+  const timeZone = useClubTimeZone()
+  const today = useClubToday()
   const ids = { amount: React.useId(), date: React.useId(), reference: React.useId(), problem: React.useId() }
   const [amount, setAmount] = React.useState(() => fromGrosz(charge.remaining))
   const [method, setMethod] = React.useState<ManualPaymentMethod>('cash')
-  const [paidOn, setPaidOn] = React.useState(localToday)
+  const [paidOn, setPaidOn] = React.useState(today)
   const [reference, setReference] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
@@ -153,7 +156,7 @@ export function RecordPaymentDialog({
               required
               aria-required
               aria-invalid={invalid === 'date' ? true : undefined}
-              max={localToday()}
+              max={clubToday(new Date(), timeZone)}
               value={paidOn}
               disabled={pending}
               onChange={(event) => {

@@ -20,7 +20,6 @@ import {
   externalTeamOptions,
   fieldOfError,
   groupOptions,
-  localToday,
   occurrenceHref,
   placeOptions,
   scheduleConflictsOf,
@@ -29,7 +28,7 @@ import {
   tolerant,
   type ScheduleConflict,
 } from './client-helpers'
-import { dateField, timeField } from '@vereino/ui'
+import { dateField, timeField, useClubToday } from '@vereino/ui'
 
 type EventValues = Record<string, unknown> & {
   groupId?: string
@@ -46,6 +45,7 @@ type EventValues = Record<string, unknown> & {
 
 export function EventCreateForm() {
   const t = useT()
+  const today = useClubToday()
   const router = useRouter()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
   const fields = React.useMemo<CrudField[]>(
@@ -114,7 +114,6 @@ export function EventCreateForm() {
     [t],
   )
   const initialValues = React.useMemo<EventValues>(() => {
-    const today = localToday()
     return {
       groupId: '',
       type: 'tournament',
@@ -127,7 +126,7 @@ export function EventCreateForm() {
       invitedExternalTeamIds: [],
       description: '',
     }
-  }, [])
+  }, [today])
 
   return (
     <CrudForm<EventValues>

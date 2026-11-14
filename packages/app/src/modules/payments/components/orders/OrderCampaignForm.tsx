@@ -30,7 +30,7 @@ import {
   productDrafts,
   type ProductKind,
 } from '../../lib/order-campaigns'
-import { errorMessage, fromGrosz, localToday, toGrosz, type Translate } from '../client-helpers'
+import { errorMessage, fromGrosz, toGrosz, type Translate } from '../client-helpers'
 import {
   ORDERS_HREF,
   campaignApi,
@@ -42,6 +42,7 @@ import {
   type CampaignDetail,
   type Option,
 } from './orders-client'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'payments:order_campaign'
 const FORM_ID = 'order-campaign-form'
@@ -103,8 +104,8 @@ function addDays(date: string, days: number): string {
   return value.toISOString().slice(0, 10)
 }
 
-function blankValues(): CampaignFormValues {
-  const today = localToday()
+/** A new campaign closing in 14 and due in 21 days from `today`, the club's calendar date (#231). */
+function blankValues(today: string): CampaignFormValues {
   return {
     name: '',
     sectionId: '',
@@ -124,12 +125,12 @@ const CHILD_SIZES = '116, 128, 140, 152, 164'
 const ADULT_SIZES = 'S, M, L, XL'
 
 /** The "Academy kit" template of the mockup: shirt, shorts and socks, and the three as a set. */
-function templateValues(t: Translate): CampaignFormValues {
+function templateValues(t: Translate, today: string): CampaignFormValues {
   const shirt = { ...blankProduct('item'), name: t('payments.orders.template.shirt') }
   const shorts = { ...blankProduct('item'), name: t('payments.orders.template.shorts') }
   const socks = { ...blankProduct('item'), name: t('payments.orders.template.socks') }
   return {
-    ...blankValues(),
+    ...blankValues(today),
     name: t('payments.orders.template.name'),
     askPrintName: true,
     askPrintNumber: true,
@@ -149,9 +150,9 @@ function templateValues(t: Translate): CampaignFormValues {
 }
 
 /** A stored campaign as form values: editing keeps the ids; a copy drops them and starts with fresh dates. */
-function detailValues(detail: CampaignDetail, copy: boolean): CampaignFormValues {
+function detailValues(detail: CampaignDetail, copy: boolean, today: string): CampaignFormValues {
   const used = new Set(detail.products.filter((product) => product.used).map((product) => product.id))
-  const blank = blankValues()
+  const blank = blankValues(today)
   return {
     name: copy ? '' : detail.name,
     sectionId: detail.sectionId,
@@ -683,23 +684,28 @@ function StartingPointPicker({ onPick, t }: { onPick: (point: StartingPoint) => 
 
 export function OrderCampaignCreateForm() {
   const t = useT()
+  const timeZone = useClubTimeZone()
+  const today = useClubToday()
   const router = useRouter()
   const { fields, groups } = useCampaignFields(t)
   const [start, setStart] = React.useState<{ version: number; values: CampaignFormValues }>(() => ({
     version: 0,
-    values: blankValues(),
+    values: blankValues(today),
   }))
 
   const pick = async (point: StartingPoint) => {
-    if (point.kind === 'blank') setStart((prev) => ({ version: prev.version + 1, values: blankValues() }))
-    else if (point.kind === 'template') setStart((prev) => ({ version: prev.version + 1, values: templateValues(t) }))
+    // The dates of a fresh start count from the day the choice is made in the club zone.
+    const now = clubToday(new Date(), timeZone)
+    if (point.kind === 'blank') setStart((prev) => ({ version: prev.version + 1, values: blankValues(now) }))
+    else if (point.kind === 'template')
+      setStart((prev) => ({ version: prev.version + 1, values: templateValues(t, now) }))
     else {
       const call = await apiCall<CampaignDetail>(campaignApi(point.id))
       if (!call.ok || !call.result) {
         flash(t('payments.orders.errors.load'), 'error')
         return
       }
-      const values = detailValues(call.result, true)
+      const values = detailValues(call.result, true, now)
       setStart((prev) => ({ version: prev.version + 1, values }))
     }
   }
@@ -740,6 +746,7 @@ export function OrderCampaignCreateForm() {
 
 export function OrderCampaignEditForm({ id }: { id: string }) {
   const t = useT()
+  const today = useClubToday()
   const router = useRouter()
   const { fields, groups } = useCampaignFields(t)
   const query = useQuery({
@@ -780,7 +787,7 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
       groups={groups}
       isLoading={query.isLoading}
       loadingMessage={t('payments.orders.loading')}
-      initialValues={detail ? { ...detailValues(detail, false), id } : blankValues()}
+      initialValues={detail ? { ...detailValues(detail, false, today), id } : blankValues(today)}
       submitLabel={detail?.status === 'draft' ? t('payments.orders.actions.saveDraft') : t('payments.common.save')}
       extraActions={detail?.status === 'draft' ? <OpenCollectionButton t={t} /> : undefined}
       onSubmit={async (values, context) => {

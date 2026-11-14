@@ -18,7 +18,6 @@ import {
   ZONE_RULES_API,
   chosen,
   errorMessage,
-  localToday,
   placeLabel,
   saveError,
   textOrNull,
@@ -28,6 +27,7 @@ import {
   type Translate,
   type ZoneRuleRow,
 } from './facilities-client'
+import { useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'facilities:zone_rule'
 
@@ -100,7 +100,7 @@ function useZoneFields(t: Translate, editing: boolean) {
   return { fields, groups }
 }
 
-function toFormValues(row: ZoneRuleRow | null, place: string): ZoneFormValues {
+function toFormValues(row: ZoneRuleRow | null, place: string, today: string): ZoneFormValues {
   return {
     placeId: row?.placeId ?? undefined,
     placeLabel: place,
@@ -109,7 +109,7 @@ function toFormValues(row: ZoneRuleRow | null, place: string): ZoneFormValues {
     timeTo: row?.timeTo ?? '16:00',
     zone: row?.zone ?? 'club_training',
     priority: row?.priority ?? 1,
-    validFrom: row?.validFrom ?? localToday(),
+    validFrom: row?.validFrom ?? today,
     validTo: row?.validTo ?? undefined,
     updatedAt: row?.updatedAt ?? null,
   }
@@ -138,8 +138,9 @@ function ruleBody(values: ZoneFormValues, t: Translate) {
 
 export function ZoneRuleCreateForm() {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useZoneFields(t, false)
-  const initialValues = React.useMemo(() => toFormValues(null, ''), [])
+  const initialValues = React.useMemo(() => toFormValues(null, '', today), [today])
   return (
     <CrudForm<ZoneFormValues>
       title={t('facilities.zones.create.title')}
@@ -166,6 +167,7 @@ export function ZoneRuleCreateForm() {
 
 export function ZoneRuleEditForm({ id }: { id: string }) {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useZoneFields(t, true)
   const places = usePlaceOptions()
   const query = useQuery({
@@ -177,7 +179,7 @@ export function ZoneRuleEditForm({ id }: { id: string }) {
   })
   const row = query.data ?? null
   const place = row ? placeLabel(t, places.names, row.placeId) : ''
-  const initialValues = React.useMemo(() => ({ ...toFormValues(row, place), id }), [row, place, id])
+  const initialValues = React.useMemo(() => ({ ...toFormValues(row, place, today), id }), [row, place, today, id])
 
   if (query.isSuccess && !row) {
     return (

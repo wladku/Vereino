@@ -151,13 +151,6 @@ export function personName(person: { firstName?: string | null; lastName?: strin
   return [person?.firstName, person?.lastName].filter(Boolean).join(' ')
 }
 
-/** Today's local calendar date (`YYYY-MM-DD`), the default start day the forms propose. */
-export function localToday(): string {
-  const now = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
 /** The period status of a roster row on `today` (the server decides with the club zone). */
 export function rowStatus(row: Pick<MembershipRow, 'validFrom' | 'validTo'>, today: string): PeriodStatus {
   if (!row.validFrom) return 'active'

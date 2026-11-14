@@ -3,6 +3,8 @@
 // and the bundler all agree on the extensions without `.ts` suffixes in the specifiers.
 export * from '#src/admin/audience-picker-model'
 export * from '#tsx/admin/audience-picker'
+export * from '#src/admin/club-today'
+export * from '#tsx/admin/club-today-context'
 export * from '#src/admin/delivery-status-model'
 export * from '#tsx/admin/delivery-status-list'
 export * from '#tsx/admin/native-fields'

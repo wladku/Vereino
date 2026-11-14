@@ -19,7 +19,6 @@ import {
   amountToMinor,
   chosen,
   errorMessage,
-  localToday,
   minorToAmount,
   placeLabel,
   saveError,
@@ -29,6 +28,7 @@ import {
   type RateRow,
   type Translate,
 } from './facilities-client'
+import { useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'facilities:rental_rate'
 const MAX_MINOR = 100_000_000
@@ -128,7 +128,7 @@ function useRateFields(t: Translate, editing: boolean) {
   return { fields, groups }
 }
 
-function toFormValues(t: Translate, row: RateRow | null, place: string): RateFormValues {
+function toFormValues(t: Translate, row: RateRow | null, place: string, today: string): RateFormValues {
   return {
     placeId: row?.placeId ?? undefined,
     placeLabel: place,
@@ -138,7 +138,7 @@ function toFormValues(t: Translate, row: RateRow | null, place: string): RateFor
     seasonFrom: row?.seasonFrom ?? '',
     seasonTo: row?.seasonTo ?? '',
     includesLighting: row?.includesLighting ?? false,
-    validFrom: row?.validFrom ?? localToday(),
+    validFrom: row?.validFrom ?? today,
     validTo: row?.validTo ?? undefined,
     updatedAt: row?.updatedAt ?? null,
   }
@@ -168,8 +168,9 @@ function rateBody(values: RateFormValues, t: Translate) {
 
 export function RateCreateForm() {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useRateFields(t, false)
-  const initialValues = React.useMemo(() => toFormValues(t, null, ''), [t])
+  const initialValues = React.useMemo(() => toFormValues(t, null, '', today), [t, today])
   return (
     <CrudForm<RateFormValues>
       title={t('facilities.rates.create.title')}
@@ -200,6 +201,7 @@ export function RateCreateForm() {
 
 export function RateEditForm({ id }: { id: string }) {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useRateFields(t, true)
   const places = usePlaceOptions()
   const query = useQuery({
@@ -211,7 +213,7 @@ export function RateEditForm({ id }: { id: string }) {
   })
   const row = query.data ?? null
   const place = row ? placeLabel(t, places.names, row.placeId) : ''
-  const initialValues = React.useMemo(() => ({ ...toFormValues(t, row, place), id }), [t, row, place, id])
+  const initialValues = React.useMemo(() => ({ ...toFormValues(t, row, place, today), id }), [t, row, place, today, id])
 
   if (query.isSuccess && !row) {
     return (

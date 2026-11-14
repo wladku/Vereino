@@ -17,12 +17,12 @@ import {
   errorMessage,
   fromGrosz,
   groupOptions,
-  localToday,
   toGrosz,
   tolerant,
   type FeeRow,
   type Translate,
 } from './client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'payments:fee'
 
@@ -109,7 +109,7 @@ function useFeeFields(t: Translate) {
   return { fields, groups }
 }
 
-function toFormValues(row: FeeRow | null): FeeFormValues {
+function toFormValues(row: FeeRow | null, today: string): FeeFormValues {
   return {
     name: row?.name ?? '',
     targetKind: row?.activityId ? 'activity' : 'group',
@@ -118,7 +118,7 @@ function toFormValues(row: FeeRow | null): FeeFormValues {
     period: row?.period ?? 'monthly',
     amount: fromGrosz(row?.amount),
     dueDay: row?.dueDay ?? 10,
-    validFrom: row?.validFrom ?? localToday(),
+    validFrom: row?.validFrom ?? today,
     validTo: row?.validTo ?? '',
     updatedAt: row?.updatedAt ?? null,
   }
@@ -144,6 +144,7 @@ function toPayload(values: FeeFormValues, t: Translate) {
 
 export function FeeCreateForm() {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useFeeFields(t)
   return (
     <CrudForm<FeeFormValues>
@@ -154,7 +155,7 @@ export function FeeCreateForm() {
       entityId={ENTITY_ID}
       fields={fields}
       groups={groups}
-      initialValues={toFormValues(null)}
+      initialValues={toFormValues(null, today)}
       submitLabel={t('payments.common.create')}
       successRedirect={withFlash(FEES_HREF, t('payments.fees.flash.created'), 'success')}
       onSubmit={async (values) => {
@@ -166,6 +167,7 @@ export function FeeCreateForm() {
 
 export function FeeEditForm({ id }: { id: string }) {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useFeeFields(t)
   const query = useQuery({
     queryKey: ['payments-fees-record', id],
@@ -199,7 +201,7 @@ export function FeeEditForm({ id }: { id: string }) {
       groups={groups}
       isLoading={query.isLoading}
       loadingMessage={t('payments.fees.loading')}
-      initialValues={{ ...toFormValues(row), id }}
+      initialValues={{ ...toFormValues(row, today), id }}
       submitLabel={t('payments.common.save')}
       successRedirect={withFlash(FEES_HREF, t('payments.fees.flash.saved'), 'success')}
       deleteRedirect={withFlash(FEES_HREF, t('payments.fees.flash.deleted'), 'success')}

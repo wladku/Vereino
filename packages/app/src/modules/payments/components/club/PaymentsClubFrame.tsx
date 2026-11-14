@@ -18,6 +18,7 @@ import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/
 import {
   BACKEND_HREF,
   CLUB_HOME_HREF,
+  ClubTimeZoneProvider,
   MemberShell,
   memberContextStore,
   memberNav,
@@ -35,7 +36,7 @@ export type PaymentsProfile = {
   contexts: string[]
   locale: string
   paymentsVisible: boolean
-  club: { shortName: string | null; logoUrl: string | null }
+  club: { shortName: string | null; timezone: string; logoUrl: string | null }
 }
 
 type ProfileLoad = { status: 'ok'; profile: PaymentsProfile } | { status: 'not_linked' }
@@ -138,7 +139,12 @@ export function PaymentsClubFrame({
       </Alert>
     )
   } else {
-    body = children(query.data.profile)
+    // The club zone of the profile decides "today" on the page (#231), e.g. the date a cash payment proposes.
+    body = (
+      <ClubTimeZoneProvider timeZone={query.data.profile.club.timezone}>
+        {children(query.data.profile)}
+      </ClubTimeZoneProvider>
+    )
   }
 
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.

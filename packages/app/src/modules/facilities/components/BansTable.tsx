@@ -42,7 +42,6 @@ import {
   codedMessage,
   errorMessage,
   instantLabel,
-  localToday,
   usePlaceOptions,
   type TableColumns,
   type Translate,
@@ -58,6 +57,7 @@ import {
   type IncidentRow,
 } from './records-client'
 import { searchInstitutions, searchPersons } from './rentals-client'
+import { useClubToday } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 const REASON_MAX_LENGTH = 2000
@@ -187,11 +187,12 @@ function BanDialog({
   onSaved: () => Promise<void>
 }) {
   const t = useT()
+  const today = useClubToday()
   const ids = React.useId()
   const [placeId, setPlaceId] = React.useState(places.length === 1 ? (places[0]?.value ?? '') : '')
   const [subjectType, setSubjectType] = React.useState<SubjectType>('institution')
   const [subjectId, setSubjectId] = React.useState<string | null>(null)
-  const [startsOn, setStartsOn] = React.useState(localToday())
+  const [startsOn, setStartsOn] = React.useState(today)
   const [endsOn, setEndsOn] = React.useState('')
   const [reason, setReason] = React.useState('')
   const [incidentId, setIncidentId] = React.useState(NO_INCIDENT)

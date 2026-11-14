@@ -16,12 +16,12 @@ import { rosterOrder } from '../../../lib/groups-rules'
 import {
   GROUPS_HREF,
   errorMessage,
-  localToday,
   periodLabel,
   roleLabel,
   rowStatus,
   type MembershipRow,
 } from '../../../components/client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 /** What `people`'s person record passes as the spot context. */
 export type PersonGroupsContext = { personId?: string }
@@ -32,6 +32,7 @@ export default function PersonGroupsWidget({
   context,
 }: InjectionWidgetComponentProps<PersonGroupsContext, Record<string, unknown>>) {
   const t = useT()
+  const today = useClubToday()
   const personId = context?.personId ?? null
   const query = useQuery({
     queryKey: ['groups-person-memberships', personId],
@@ -50,7 +51,6 @@ export default function PersonGroupsWidget({
     },
   })
 
-  const today = localToday()
   const rows = rosterOrder(
     (query.data ?? []).map((row) => ({ ...row, validFrom: row.validFrom ?? '', validTo: row.validTo })),
     today,
