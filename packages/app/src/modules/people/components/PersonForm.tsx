@@ -12,15 +12,8 @@ import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { birthDateBounds, birthDateProblem, type BirthDateProblem } from '@vereino/core'
-import { dateField } from '@vereino/ui'
-import {
-  PERSONS_HREF,
-  localToday,
-  personRecordHref,
-  textOrNull,
-  type PersonDetail,
-  type Translate,
-} from './client-helpers'
+import { clubToday, dateField, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { PERSONS_HREF, personRecordHref, textOrNull, type PersonDetail, type Translate } from './client-helpers'
 
 const ENTITY_ID = 'people:person'
 // What the date input stores for a partly typed date; `birthDateProblem` reports it as malformed.
@@ -41,6 +34,7 @@ type PersonFormValues = {
 }
 
 function usePersonFields(t: Translate, withPesel: boolean) {
+  const today = useClubToday()
   const fields = React.useMemo<CrudField[]>(() => {
     const list: CrudField[] = [
       {
@@ -62,7 +56,7 @@ function usePersonFields(t: Translate, withPesel: boolean) {
       dateField('birthDate', t('people.persons.fields.birthDate'), {
         layout: 'half',
         incompleteValue: INCOMPLETE_BIRTH_DATE,
-        ...birthDateBounds(localToday()),
+        ...birthDateBounds(today),
       }),
       {
         id: 'preferredLocale',
@@ -95,7 +89,7 @@ function usePersonFields(t: Translate, withPesel: boolean) {
       })
     }
     return list
-  }, [t, withPesel])
+  }, [t, withPesel, today])
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
       {
@@ -119,9 +113,10 @@ const BIRTH_DATE_MESSAGES: Record<BirthDateProblem, string> = {
 }
 
 /** The request body; the PESEL only when the user may see it (otherwise it is left as it is). */
-function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Translate) {
+/** `today` is the club's calendar date at the save (#231): a birth date after it is in the future. */
+function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Translate, today: string) {
   const birthDate = textOrNull(values.birthDate)
-  const problem = birthDate ? birthDateProblem(birthDate, localToday()) : null
+  const problem = birthDate ? birthDateProblem(birthDate, today) : null
   if (problem) {
     const message = t(BIRTH_DATE_MESSAGES[problem])
     throw createCrudFormError(message, { birthDate: message })
@@ -140,6 +135,7 @@ function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Trans
 
 export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
   const t = useT()
+  const timeZone = useClubTimeZone()
   const router = useRouter()
   const { fields, groups } = usePersonFields(t, withPesel)
   return (
@@ -163,7 +159,10 @@ export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
       }}
       submitLabel={t('people.common.create')}
       onSubmit={async (values) => {
-        const created = await createCrud<{ id?: string }>('people/persons', payload(values, withPesel, t))
+        const created = await createCrud<{ id?: string }>(
+          'people/persons',
+          payload(values, withPesel, t, clubToday(new Date(), timeZone)),
+        )
         flash(t('people.persons.flash.created'), 'success')
         router.push(created.result?.id ? personRecordHref(created.result.id, 'guardianship') : PERSONS_HREF)
       }}
@@ -181,6 +180,7 @@ export function PersonDetailsForm({
   onSaved: () => Promise<void>
 }) {
   const t = useT()
+  const timeZone = useClubTimeZone()
   const { fields, groups } = usePersonFields(t, withPesel)
   return (
     <CrudForm<PersonFormValues>
@@ -203,7 +203,10 @@ export function PersonDetailsForm({
       }}
       submitLabel={t('people.common.save')}
       onSubmit={async (values) => {
-        await updateCrud('people/persons', { id: person.id, ...payload(values, withPesel, t) })
+        await updateCrud('people/persons', {
+          id: person.id,
+          ...payload(values, withPesel, t, clubToday(new Date(), timeZone)),
+        })
         flash(t('people.persons.flash.saved'), 'success')
         await onSaved()
       }}

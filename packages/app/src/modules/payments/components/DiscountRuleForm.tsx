@@ -16,13 +16,13 @@ import {
   DISCOUNTS_HREF,
   errorMessage,
   fromGrosz,
-  localToday,
   personOptions,
   toGrosz,
   tolerant,
   type DiscountRuleRow,
   type Translate,
 } from './client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'payments:discount_rule'
 
@@ -109,7 +109,7 @@ function useRuleFields(t: Translate, editing: boolean) {
   return { fields, groups }
 }
 
-function toFormValues(row: DiscountRuleRow | null): RuleFormValues {
+function toFormValues(row: DiscountRuleRow | null, today: string): RuleFormValues {
   return {
     name: row?.name ?? '',
     kind: row?.kind ?? 'sibling',
@@ -118,7 +118,7 @@ function toFormValues(row: DiscountRuleRow | null): RuleFormValues {
     fullRate: row?.conditions.fullRate ?? 'oldest',
     feePeriods: row?.conditions.feePeriods ?? ['monthly'],
     personIds: row?.conditions.personIds ?? [],
-    validFrom: row?.validFrom ?? localToday(),
+    validFrom: row?.validFrom ?? today,
     validTo: row?.validTo ?? '',
     updatedAt: row?.updatedAt ?? null,
   }
@@ -151,6 +151,7 @@ function toPayload(values: RuleFormValues, t: Translate, includeKind: boolean) {
 
 export function DiscountRuleCreateForm() {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useRuleFields(t, false)
   return (
     <CrudForm<RuleFormValues>
@@ -161,7 +162,7 @@ export function DiscountRuleCreateForm() {
       entityId={ENTITY_ID}
       fields={fields}
       groups={groups}
-      initialValues={toFormValues(null)}
+      initialValues={toFormValues(null, today)}
       submitLabel={t('payments.common.create')}
       successRedirect={withFlash(DISCOUNTS_HREF, t('payments.discounts.flash.created'), 'success')}
       onSubmit={async (values) => {
@@ -173,6 +174,7 @@ export function DiscountRuleCreateForm() {
 
 export function DiscountRuleEditForm({ id }: { id: string }) {
   const t = useT()
+  const today = useClubToday()
   const { fields, groups } = useRuleFields(t, true)
   const query = useQuery({
     queryKey: ['payments-discounts-record', id],
@@ -206,7 +208,7 @@ export function DiscountRuleEditForm({ id }: { id: string }) {
       groups={groups}
       isLoading={query.isLoading}
       loadingMessage={t('payments.discounts.loading')}
-      initialValues={{ ...toFormValues(row), id }}
+      initialValues={{ ...toFormValues(row, today), id }}
       submitLabel={t('payments.common.save')}
       successRedirect={withFlash(DISCOUNTS_HREF, t('payments.discounts.flash.saved'), 'success')}
       deleteRedirect={withFlash(DISCOUNTS_HREF, t('payments.discounts.flash.deleted'), 'success')}

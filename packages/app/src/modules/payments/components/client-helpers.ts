@@ -138,18 +138,6 @@ export function fromGrosz(grosz: number | null | undefined): string {
   return grosz % 100 === 0 ? String(grosz / 100) : (grosz / 100).toFixed(2)
 }
 
-/** Today's local month (`YYYY-MM`), the period the generation dialog proposes. */
-export function localMonth(): string {
-  const now = new Date()
-  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
-
-/** Today's local calendar date (`YYYY-MM-DD`), the default validity start the forms propose. */
-export function localToday(): string {
-  const now = new Date()
-  return `${localMonth()}-${String(now.getDate()).padStart(2, '0')}`
-}
-
 /** The club's active groups, by name (the fee form's group field). */
 export async function groupOptions(): Promise<CrudFieldOption[]> {
   const data = await fetchCrudList<{ id: string; name: string | null; sectionName?: string | null }>('groups/groups', {

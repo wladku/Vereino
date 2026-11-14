@@ -29,13 +29,9 @@ import {
   type CoachUnitsReportData,
   type CoachUnitsRow,
 } from './coach-units-client'
+import { monthOf, useClubToday } from '@vereino/ui'
 
 const ALL_SECTIONS = '__all'
-
-function currentMonth(): string {
-  const now = new Date()
-  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
 
 function buildColumns(
   t: (key: string, params?: Record<string, string | number>) => string,
@@ -88,8 +84,9 @@ function buildColumns(
 export function CoachUnitsReport() {
   const t = useT()
   const locale = useLocale()
+  const today = useClubToday()
   const scopeVersion = useOrganizationScopeVersion()
-  const [month, setMonth] = React.useState(currentMonth)
+  const [month, setMonth] = React.useState(() => monthOf(today))
   const [sectionId, setSectionId] = React.useState<string>(ALL_SECTIONS)
   const section = sectionId === ALL_SECTIONS ? undefined : sectionId
 

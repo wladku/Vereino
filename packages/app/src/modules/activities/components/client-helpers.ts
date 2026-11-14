@@ -174,11 +174,6 @@ export function personName(person: { firstName?: string | null; lastName?: strin
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
-/** Today's local calendar date (`YYYY-MM-DD`), the default first day the forms propose. */
-export function localToday(): string {
-  return localDateOf(new Date())
-}
-
 function localDateOf(date: Date): string {
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }

@@ -18,15 +18,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import {
-  errorMessage,
-  formatMoney,
-  fromGrosz,
-  localToday,
-  personName,
-  toGrosz,
-  type Translate,
-} from '../../client-helpers'
+import { errorMessage, formatMoney, fromGrosz, personName, toGrosz, type Translate } from '../../client-helpers'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
 import {
   COACH_PAYMENTS_QUERY_KEY,
@@ -40,6 +32,7 @@ import {
   type CoachChild,
   type GroupChargesView,
 } from './coach-client'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function statusBadge(charge: CoachCharge, t: Translate) {
   if (charge.overdue) return <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge>
@@ -121,11 +114,13 @@ function CashForm({
 }) {
   const t = useT()
   const locale = useLocale()
+  const timeZone = useClubTimeZone()
+  const today = useClubToday()
   const ids = { amount: React.useId(), date: React.useId(), problem: React.useId(), charges: React.useId() }
   const collectible = child.charges.filter((charge) => charge.collectible)
   const [selected, setSelected] = React.useState<string[]>(() => collectible.map((charge) => charge.id))
   const [typedAmount, setTypedAmount] = React.useState<string | null>(null)
-  const [paidOn, setPaidOn] = React.useState(localToday)
+  const [paidOn, setPaidOn] = React.useState(today)
   const [notify, setNotify] = React.useState(true)
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
@@ -227,7 +222,7 @@ function CashForm({
             id={ids.date}
             type="date"
             required
-            max={localToday()}
+            max={clubToday(new Date(), timeZone)}
             value={paidOn}
             disabled={pending}
             onChange={(event) => {

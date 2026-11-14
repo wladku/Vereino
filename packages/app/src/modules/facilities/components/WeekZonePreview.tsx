@@ -13,7 +13,7 @@ import { Tag, type TagMap } from '@open-mercato/ui/primitives/tag'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { addDays, isoWeekdayOf } from '@vereino/core'
 import { ZONES, dayZoneSegments, weekDates, type Zone, type ZoneRuleShape } from '../lib/zones'
-import { errorMessage, localToday, zoneLabel, type ZoneRuleRow } from './facilities-client'
+import { errorMessage, zoneLabel, type ZoneRuleRow } from './facilities-client'
 import {
   RENTALS_API,
   RENTALS_KEY,
@@ -23,6 +23,7 @@ import {
   rentalStatusLabel,
   type RentalRow,
 } from './rentals-client'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 const ZONE_TAGS: TagMap<Zone> = {
   public_free: 'success',
@@ -143,10 +144,11 @@ export function WeekZonePreview({
 }) {
   const t = useT()
   const headingId = React.useId()
-  const [anchor, setAnchor] = React.useState(localToday)
+  const timeZone = useClubTimeZone()
+  const today = useClubToday()
+  const [anchor, setAnchor] = React.useState(today)
   const rules = React.useMemo(() => previewRules(rows), [rows])
   const dates = React.useMemo(() => weekDates(anchor), [anchor])
-  const today = localToday()
   const rentals = useWeekRentals(placeId, dates, rentalsEnabled)
   const byDate = React.useMemo(() => rentalsByDate(rentals.data?.items ?? []), [rentals.data])
 
@@ -172,7 +174,7 @@ export function WeekZonePreview({
             variant="outline"
             size="sm"
             onClick={() => {
-              setAnchor(localToday())
+              setAnchor(clubToday(new Date(), timeZone))
             }}
           >
             {t('facilities.preview.current')}

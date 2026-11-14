@@ -14,7 +14,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorMessage, formatMoney, fromGrosz, localToday, personName, toGrosz } from '../client-helpers'
+import { errorMessage, formatMoney, fromGrosz, personName, toGrosz } from '../client-helpers'
 import {
   CASH_QUERY_KEY,
   recordCash,
@@ -23,6 +23,7 @@ import {
   type CashPayer,
   type CashRecorded,
 } from './cash-client'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function wardsLabel(payer: CashPayer): string {
   return payer.wards.map((ward) => personName(ward)).join(', ')
@@ -37,6 +38,8 @@ export function CashAcceptForm({
 }) {
   const t = useT()
   const locale = useLocale()
+  const timeZone = useClubTimeZone()
+  const today = useClubToday()
   const queryClient = useQueryClient()
   const ids = {
     search: React.useId(),
@@ -51,7 +54,7 @@ export function CashAcceptForm({
   // collector types one (null = the selected sum).
   const [unticked, setUnticked] = React.useState<string[]>([])
   const [typedAmount, setTypedAmount] = React.useState<string | null>(null)
-  const [paidOn, setPaidOn] = React.useState(localToday)
+  const [paidOn, setPaidOn] = React.useState(today)
   const [notify, setNotify] = React.useState(true)
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
@@ -75,7 +78,7 @@ export function CashAcceptForm({
     setPayer(null)
     setUnticked([])
     setTypedAmount(null)
-    setPaidOn(localToday())
+    setPaidOn(clubToday(new Date(), timeZone))
     setNotify(true)
     setProblem(null)
     setInvalid(null)
@@ -309,7 +312,7 @@ export function CashAcceptForm({
             required
             aria-required
             aria-invalid={invalid === 'date' ? true : undefined}
-            max={localToday()}
+            max={clubToday(new Date(), timeZone)}
             value={paidOn}
             disabled={pending}
             onChange={(event) => {

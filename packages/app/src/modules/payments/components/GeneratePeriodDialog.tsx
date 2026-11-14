@@ -17,7 +17,8 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { isBillingPeriod } from '../lib/payments-rules'
-import { errorCode, errorMessage, localMonth, type GenerationSummary } from './client-helpers'
+import { errorCode, errorMessage, type GenerationSummary } from './client-helpers'
+import { monthOf, useClubToday } from '@vereino/ui'
 
 export function GeneratePeriodDialog({
   open,
@@ -29,9 +30,10 @@ export function GeneratePeriodDialog({
   onGenerated: (summary: GenerationSummary) => Promise<void>
 }) {
   const t = useT()
+  const today = useClubToday()
   const periodId = React.useId()
   const problemId = React.useId()
-  const [period, setPeriod] = React.useState(localMonth)
+  const [period, setPeriod] = React.useState(() => monthOf(today))
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
 

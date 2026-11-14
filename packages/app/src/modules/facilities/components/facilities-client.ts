@@ -93,12 +93,6 @@ export const chosen = (value: unknown): string => (typeof value === 'string' ? v
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
-/** Today's local calendar date (`YYYY-MM-DD`): the default start of a validity and the preview week. */
-export function localToday(): string {
-  const now = new Date()
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
 /** "2027-01-05 17:00" — an instant in the browser's local time; '' when there is none. */
 export function instantLabel(iso: string | null | undefined): string {
   if (!iso) return ''

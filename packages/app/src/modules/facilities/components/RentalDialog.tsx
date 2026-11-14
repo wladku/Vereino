@@ -28,7 +28,7 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import { MAX_RENTAL_UNITS, MIN_RENTAL_UNITS, RENTER_TYPES, STAFF_REQUESTED_VIA, type RenterType } from '../lib/rentals'
-import { codedMessage, errorMessage, localToday, textOrNull, type Translate } from './facilities-client'
+import { codedMessage, errorMessage, textOrNull, type Translate } from './facilities-client'
 import { QuotePanel } from './RentalQuotePanel'
 import {
   RENTALS_URL,
@@ -42,6 +42,7 @@ import {
   type QuoteIssue,
   type RenterChoice,
 } from './rentals-client'
+import { useClubToday } from '@vereino/ui'
 
 /** The field a coded issue belongs to (shown next to it); unknown codes go to the dialog. */
 export const FIELD_OF_ISSUE: Partial<Record<string, RentalField>> = {
@@ -123,9 +124,10 @@ export function RentalDialog({
   onSaved: () => Promise<void>
 }) {
   const t = useT()
+  const today = useClubToday()
   const ids = React.useId()
   const [placeId, setPlaceId] = React.useState(preset?.placeId ?? '')
-  const [date, setDate] = React.useState(preset?.date ?? localToday())
+  const [date, setDate] = React.useState(preset?.date ?? today)
   const [time, setTime] = React.useState(preset?.time ?? '')
   const [units, setUnits] = React.useState(1)
   const [renterType, setRenterType] = React.useState<RenterType>('institution')

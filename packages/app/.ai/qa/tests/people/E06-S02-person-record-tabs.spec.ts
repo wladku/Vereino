@@ -17,6 +17,9 @@ import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 // guardianship tab, and the Account tab showing "Account active" with the login e-mail to every reader of the record
 // while only `people.accounts.manage` gets "Create account".
 test.describe.configure({ timeout: 300_000 })
+// The browser runs 12 hours behind the club zone (Europe/Warsaw): until noon in Warsaw its local date is yesterday, so
+// a Groups tab that took "today" from the browser clock would show the membership starting today as upcoming (#231).
+test.use({ timezoneId: 'Pacific/Pago_Pago' })
 
 type PersonBody = { accountEmail?: string | null; access?: string }
 type MembershipList = { items?: { groupId: string; group?: { name: string; sectionName: string | null } | null }[] }

@@ -45,7 +45,7 @@ import {
   type ScheduleConflict,
   type Translate,
 } from './client-helpers'
-import { dateField, timeField } from '@vereino/ui'
+import { dateField, timeField, useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'activities:activity'
 
@@ -280,8 +280,9 @@ export function ActivityCreateForm() {
   const router = useRouter()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
   const coachSeed = React.useMemo<CrudFieldOption[]>(() => [], [])
+  const today = useClubToday()
   const { fields, groups } = useActivityFields(t, { editing: false, coachSeed })
-  const initialValues = React.useMemo(() => activityToFormValues(null), [])
+  const initialValues = React.useMemo(() => activityToFormValues(null, today), [today])
   return (
     <CrudForm<ActivityFormValues>
       title={t('activities.activities.create.title')}
@@ -322,7 +323,11 @@ export function ActivityDetailsForm({ activity, onSaved }: { activity: ActivityD
     [activity.coachPersonId, activity.coachName, t],
   )
   const { fields, groups } = useActivityFields(t, { editing: true, coachSeed, activityId: activity.id })
-  const initialValues = React.useMemo(() => ({ ...activityToFormValues(activity), id: activity.id }), [activity])
+  const today = useClubToday()
+  const initialValues = React.useMemo(
+    () => ({ ...activityToFormValues(activity, today), id: activity.id }),
+    [activity, today],
+  )
   return (
     <CrudForm<ActivityFormValues>
       key={activity.updatedAt ?? activity.id}

@@ -17,7 +17,8 @@ import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/u
 import { presetPeriod, shiftPeriod } from '../lib/owner-report'
 import type { RentedHoursReport as Report, RentedHoursRow, RentedHoursTotal } from '../lib/rented-hours'
 import { ALL_PLACES, PlaceSelect } from './FacilitiesControls'
-import { codedMessage, localToday, type TableColumns, type Translate } from './facilities-client'
+import { codedMessage, type TableColumns, type Translate } from './facilities-client'
+import { useClubToday } from '@vereino/ui'
 
 type PeriodKind = 'month' | 'quarter'
 
@@ -109,11 +110,12 @@ function rowColumns(t: Translate, locale: string): TableColumns<RentedHoursRow> 
 
 export function RentedHoursReport() {
   const t = useT()
+  const today = useClubToday()
   const locale = useLocale()
   const scopeVersion = useOrganizationScopeVersion()
   const [placeId, setPlaceId] = React.useState(ALL_PLACES)
   const [kind, setKind] = React.useState<PeriodKind>('month')
-  const [period, setPeriod] = React.useState(() => presetPeriod('month', localToday()))
+  const [period, setPeriod] = React.useState(() => presetPeriod('month', today))
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['facilities-rented-hours', placeId, period.from, period.to, scopeVersion],

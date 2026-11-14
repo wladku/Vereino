@@ -13,6 +13,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
+  ClubTimeZoneProvider,
   MemberShell,
   memberContextStore,
   memberNav,
@@ -88,7 +89,12 @@ export function ActivitiesClubFrame({ children }: { children: (profile: ClubProf
       </Alert>
     )
   } else {
-    body = children(query.data.profile)
+    // The club zone of the profile decides "today" on the page (#231), e.g. the month the units page opens on.
+    body = (
+      <ClubTimeZoneProvider timeZone={query.data.profile.club.timezone}>
+        {children(query.data.profile)}
+      </ClubTimeZoneProvider>
+    )
   }
 
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.

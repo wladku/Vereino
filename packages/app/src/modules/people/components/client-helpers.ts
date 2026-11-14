@@ -107,13 +107,6 @@ export function personName(person: { firstName?: string | null; lastName?: strin
   return [person?.firstName, person?.lastName].filter(Boolean).join(' ')
 }
 
-/** Today's local calendar date (`YYYY-MM-DD`), the default start or end day the forms propose. */
-export function localToday(): string {
-  const now = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
 export type PeriodStatus = 'active' | 'ended' | 'upcoming'
 
 /** Whether a period is active, ended or still to start on `today` (the server decides with the club zone). */

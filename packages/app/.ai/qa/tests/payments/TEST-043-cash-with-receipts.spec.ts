@@ -30,6 +30,9 @@ import {
 // today" sums what the caller accepted; a coach without `payments.cash.record` → 403. The B-21 dialog takes cash in the
 // browser and shows the receipt in its toast; `/club/cash` fits 375 px.
 test.describe.configure({ timeout: 300_000 })
+// The browser runs 13 hours ahead of the club zone (Europe/Warsaw): from 11:00 in Warsaw its local date is tomorrow,
+// so a cash form that proposed the browser's date would date the receipt in the future of the club (#231).
+test.use({ timezoneId: 'Pacific/Kiritimati' })
 
 const KP = /^KP\/\d{4}\/\d{2}\/\d{3}$/
 const CASH_TOAST =

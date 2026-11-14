@@ -25,7 +25,6 @@ import {
   ZONE_RULES_KEY,
   codedMessage,
   errorMessage,
-  localToday,
   useFacilitiesManage,
   usePlaceOptions,
   usePlaceZoneRules,
@@ -33,6 +32,7 @@ import {
   type ZoneRuleRow,
 } from './facilities-client'
 import { RENTALS_KEY } from './rentals-client'
+import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 type AvailabilityWindow = { id: string; from: string; to: string; validTo: string | null }
 
@@ -64,8 +64,8 @@ function WeeklyAvailability({
   onRemove: (day: number) => void
 }) {
   const t = useT()
+  const today = useClubToday()
   const headingId = React.useId()
-  const today = localToday()
   const byDay = React.useMemo(() => availabilityByDay(rows, today), [rows, today])
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border p-4">
@@ -159,6 +159,7 @@ function SaveSummary({ result }: { result: BulkResult }) {
 
 export function FacilityCalendar() {
   const t = useT()
+  const timeZone = useClubTimeZone()
   const queryClient = useQueryClient()
   const manage = useFacilitiesManage()
   const places = usePlaceOptions()
@@ -183,9 +184,11 @@ export function FacilityCalendar() {
   const removeDay = async (day: number) => {
     if (!placeId) return
     const dayName = t(`facilities.weekdays.long.${String(day)}`)
+    // The day the click happens in the club zone: the removal takes effect from it (#231).
+    const today = clubToday(new Date(), timeZone)
     const confirmed = await confirm({
       title: t('facilities.calendar.availability.confirm.title', { day: dayName }),
-      text: t('facilities.calendar.availability.confirm.text', { day: dayName, date: localToday() }),
+      text: t('facilities.calendar.availability.confirm.text', { day: dayName, date: today }),
       confirmText: t('facilities.calendar.availability.remove'),
       cancelText: t('facilities.common.cancel'),
       variant: 'destructive',
@@ -203,7 +206,7 @@ export function FacilityCalendar() {
             mode: 'replace',
             weekdays: [day],
             windows: [],
-            validFrom: localToday(),
+            validFrom: today,
           }),
         },
         { errorMessage: t('facilities.availability.errors.save') },

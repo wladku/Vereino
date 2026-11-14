@@ -24,7 +24,8 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorMessage, localToday, periodLabel, periodStatus, type RoleAssignmentRow } from './client-helpers'
+import { errorMessage, periodLabel, periodStatus, type RoleAssignmentRow } from './client-helpers'
+import { useClubToday } from '@vereino/ui'
 
 const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
@@ -45,13 +46,14 @@ export function RolesPanel({
   onOpenGuardianship?: () => void
 }) {
   const t = useT()
+  const today = useClubToday()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
   const [role, setRole] = React.useState<string>('coordinator')
   const [sectionId, setSectionId] = React.useState<string | null>(null)
   const [placeId, setPlaceId] = React.useState<string | null>(null)
-  const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validFrom, setValidFrom] = React.useState(today)
 
   const query = useQuery({
     queryKey: ['people-role-assignments', personId],
@@ -155,7 +157,6 @@ export function RolesPanel({
   }
 
   const rows = query.data?.rows ?? []
-  const today = localToday()
   const needsSection = role === 'coordinator'
   const needsPlace = role === 'facility_operator'
 

@@ -6,7 +6,7 @@
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
 import { takesOpponent } from '../lib/activities-rules'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
-import { NO_COACH, localToday, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
+import { NO_COACH, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
 
 export type RepeatMode = 'once' | 'weekly'
 export type EndMode = 'none' | 'until' | 'count'
@@ -68,7 +68,8 @@ export function sortedWeekdays(days: readonly unknown[]): Weekday[] {
   return WEEKDAYS.filter((day) => days.includes(day))
 }
 
-export function activityToFormValues(activity: ActivityDetail | null): ActivityFormValues {
+/** The form values of an activity, or of a new one starting on `today` (the club's calendar date, #231). */
+export function activityToFormValues(activity: ActivityDetail | null, today: string): ActivityFormValues {
   const base: ActivityFormValues = {
     groupId: activity?.groupId ?? '',
     name: activity?.name ?? '',
@@ -81,7 +82,7 @@ export function activityToFormValues(activity: ActivityDetail | null): ActivityF
     isActive: activity?.isActive ?? true,
     isAway: activity?.isAway ?? false,
     repeat: activity && !activity.recurrenceRule ? 'once' : 'weekly',
-    startsOn: activity?.startsOn ?? localToday(),
+    startsOn: activity?.startsOn ?? today,
     endsOn: activity?.endsOn ?? '',
     startTime: activity?.startTime ?? '',
     endTime: activity?.endTime ?? '',

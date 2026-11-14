@@ -29,7 +29,6 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MEMBERSHIP_ROLES, rosterOrder } from '../lib/groups-rules'
 import {
   errorMessage,
-  localToday,
   periodLabel,
   personHref,
   personName,
@@ -38,6 +37,7 @@ import {
   type MembershipRow,
 } from './client-helpers'
 import { useHasFeature } from './useCanManageGroups'
+import { useClubToday } from '@vereino/ui'
 
 type PersonOption = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
@@ -51,13 +51,14 @@ export function RosterPanel({
   canManage: boolean
 }) {
   const t = useT()
+  const today = useClubToday()
   const queryClient = useQueryClient()
   const canViewPeople = useHasFeature('people.view')
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
   const [personId, setPersonId] = React.useState<string | null>(null)
   const [role, setRole] = React.useState<string>('participant')
-  const [validFrom, setValidFrom] = React.useState(localToday)
+  const [validFrom, setValidFrom] = React.useState(today)
   const queryKey = ['groups-roster', groupId]
 
   const query = useQuery({
@@ -131,7 +132,6 @@ export function RosterPanel({
     }
   }
 
-  const today = localToday()
   const rows = rosterOrder(
     (query.data ?? []).map((row) => ({ ...row, validFrom: row.validFrom ?? '', validTo: row.validTo })),
     today,

@@ -15,13 +15,9 @@ import { shiftMonth } from '../../lib/coach-units'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { CoachUnitsSessions, coachUnitsUrl, type CoachUnitsReportData } from '../coach-units-client'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { monthOf, useClubToday } from '@vereino/ui'
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
-
-function currentMonth(): string {
-  const now = new Date()
-  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
 
 /** "November 2026" in the user's locale. */
 function monthLabel(month: string, locale: string): string {
@@ -58,7 +54,8 @@ function Stat({ label, value, testId }: { label: string; value: number; testId: 
 
 function MyUnits({ t }: { t: Translate }) {
   const locale = useLocale()
-  const [month, setMonth] = React.useState(currentMonth)
+  const today = useClubToday()
+  const [month, setMonth] = React.useState(() => monthOf(today))
   const query = useMyUnits(month)
   const row = query.data?.status === 'ok' ? query.data.report.items[0] : undefined
 
