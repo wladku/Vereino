@@ -179,14 +179,15 @@ export async function createSeason(
   return String(result.body?.id)
 }
 
-/** A person with an account, a role assignment (`coordinator` of `sectionId`, or `coach`) and a fresh token. */
+/** A person with an account, a role assignment (`coordinator` of `sectionId`, `coach`, a facility attendant of
+ * `placeId` or `club_admin`) and a fresh token. */
 export async function signedInStaff(
   request: APIRequestContext,
   club: Club,
   input: {
     firstName: string
     lastName: string
-    role: 'coordinator' | 'coach' | 'facility_operator'
+    role: 'coordinator' | 'coach' | 'facility_operator' | 'club_admin'
     sectionId?: string
     /** The facility attendant's place (#126). */
     placeId?: string

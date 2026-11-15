@@ -55,6 +55,8 @@ export type ClubProfile = {
   /** The member's resolved interface locale (DD-34). */
   locale: string
   club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
+  /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
+  paymentsVisible: boolean
 }
 
 export type ClubProfileLoad = { status: 'ok'; profile: ClubProfile } | { status: 'not_linked' }

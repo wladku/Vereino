@@ -1,6 +1,6 @@
 'use client'
 // The frame of the `payments` member pages (`/club/payments`, `/club/payments/return`; M-08, M-09; #110; `/club/cash`,
-// M-15, #114): the shared `MemberShell` of `@vereino/ui` with the member navigation (plus the Payments tab), and the
+// M-15, #114): the shared `MemberShell` of `@vereino/ui` with the member navigation of every member page (#258), and the
 // loading, error and "not linked" states of the member profile. The profile is read over HTTP (`GET /api/people/me`,
 // the query key `people`'s pages use), so `payments` imports nothing of `people`'s components. On a payer page
 // (`payerOnly`, the default) a profile without `paymentsVisible` (a minor, R10, or no payer feature) gets no payments
@@ -25,6 +25,7 @@ import {
   memberShellLabels,
   memberSwitchers,
   useMemberContext,
+  useMemberNavFeatures,
   type MemberLinkProps,
 } from '@vereino/ui'
 
@@ -150,10 +151,11 @@ export function PaymentsClubFrame({
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.
   const labels = memberShellLabels(t, 'payments.club.nav')
   const [context, setContext] = useMemberContext(profile)
-  const extraTab = profile?.paymentsVisible
-    ? { href: CLUB_PAYMENTS_HREF, label: t('payments.club.nav.payments'), icon: 'payments' as const }
+  // The same bar on every member page: one feature check per session, shared by the five frames (#258).
+  const features = useMemberNavFeatures(apiCall)
+  const nav = profile
+    ? memberNav({ pathname, contexts: profile.contexts, labels, paymentsVisible: profile.paymentsVisible, features })
     : null
-  const nav = profile ? memberNav({ pathname, contexts: profile.contexts, labels, extraTab }) : null
   const switchers = profile ? memberSwitchers(profile, context, setContext, labels) : []
 
   return (

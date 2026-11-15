@@ -22,6 +22,7 @@ import {
   memberShellLabels,
   memberSwitchers,
   useMemberContext,
+  useMemberNavFeatures,
   type MemberLinkProps,
 } from '@vereino/ui'
 import { BACKEND_HREF, useMemberProfile, type MemberProfile } from './member-client'
@@ -96,7 +97,11 @@ export function ClubFrame({ children }: { children: (profile: MemberProfile) => 
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.
   const labels = memberShellLabels(t, 'people.club.nav')
   const [context, setContext] = useMemberContext(profile)
-  const nav = profile ? memberNav({ pathname, contexts: profile.contexts, labels }) : null
+  // The same bar on every member page: one feature check per session, shared by the five frames (#258).
+  const features = useMemberNavFeatures(apiCall)
+  const nav = profile
+    ? memberNav({ pathname, contexts: profile.contexts, labels, paymentsVisible: profile.paymentsVisible, features })
+    : null
   const switchers = profile ? memberSwitchers(profile, context, setContext, labels) : []
 
   return (

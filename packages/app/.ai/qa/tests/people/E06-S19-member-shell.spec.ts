@@ -23,12 +23,14 @@ async function pick(page: Page, switcher: 'context' | 'ward', option: string | R
   await page.getByRole('option', { name: option }).click()
 }
 
-/** Every link and the More toggle of the bottom bar is at least 48 × 48 px (README 3.1, WCAG 2.5.5). */
+/** Every link and the More toggle of the bottom bar is at least 48 × 48 px (README 3.1, WCAG 2.5.5). The adult
+ * guardian has five: the fourth tab is Payments (#258). */
 async function expectBarTargets(page: Page): Promise<void> {
   const bar = page.getByTestId('club-bottom-bar')
   const targets = bar.locator(':scope > div > a, :scope > div > details > summary')
+  // Retrying: the Payments tab appears once the feature check has answered, after the bar itself (#258).
+  await expect(targets).toHaveCount(5)
   const count = await targets.count()
-  expect(count).toBe(4)
   for (let index = 0; index < count; index += 1) {
     const box = await targets.nth(index).boundingBox()
     expect(box, `bottom-bar target ${String(index)}`).not.toBeNull()
