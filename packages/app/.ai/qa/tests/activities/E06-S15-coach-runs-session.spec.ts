@@ -118,7 +118,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     await page.getByTestId('club-session-cancel').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(
-      /Participants, guardians and the coaches will be notified|Uczestnicy, opiekunowie i trenerzy dostaną powiadomienie/,
+      /Participants, guardians and the coaches will be notified|Uczestnicy, opiekunowie i prowadzący dostaną powiadomienie/,
     )
     await dialog.getByTestId('club-session-cancel-reason').fill('ab')
     await dialog.getByTestId('club-session-cancel-confirm').click()

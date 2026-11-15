@@ -188,7 +188,7 @@ test('TEST-047 cancellation e-mail per locale: guardian A (en) gets it in Englis
     expect(english?.text).toContain('is cancelled')
     expect(english?.text).toContain('17:00')
     const [polish] = await awaitEmails(b.email, 'Odwołane: Trening Żaków')
-    expect(polish?.text).toContain('jest odwołane')
+    expect(polish?.text).toContain('jest odwołany')
     // Club content (the activity name, the reason) stays as the club wrote it in both.
     expect(english?.text).toContain('Ulewa')
     expect(polish?.text).toContain('Ulewa')
