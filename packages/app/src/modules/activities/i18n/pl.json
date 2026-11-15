@@ -446,6 +446,7 @@
   "activities.occurrences.calendar.errors.load": "Nie udało się wczytać kalendarza.",
   "activities.occurrences.calendar.loading": "Wczytywanie kalendarza…",
   "activities.occurrences.calendar.retry": "Spróbuj ponownie",
+  "activities.occurrences.calendar.scrollRegion": "Godziny kalendarza, przewijane",
   "activities.occurrences.cancel.confirm": "Odwołaj termin",
   "activities.occurrences.cancel.help": "Uczestnicy, opiekunowie i trenerzy z kontem dostaną powiadomienie w aplikacji, a każdy z adresem e-mail dostanie też wiadomość e-mail.",
   "activities.occurrences.cancel.reason": "Powód",

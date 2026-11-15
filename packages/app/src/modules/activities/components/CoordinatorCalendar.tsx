@@ -49,12 +49,43 @@ function calendarItemOf(entry: CalendarEntry, t: Translate): CalendarItem {
 
 type CalendarRead = { status: 'ok'; data: CalendarResponse } | { status: 'denied' }
 
+// The scroll containers of the installed grid: the hours of the week and day views, and the agenda list.
+const SCROLL_REGIONS = '.rbc-time-content, .rbc-agenda-content'
+
+/**
+ * Makes the installed grid's scroll containers keyboard-reachable (WCAG 2.1.1, axe `scrollable-region-focusable`,
+ * #248): a week without timed sessions has nothing focusable inside the hours, so the region itself takes focus and a
+ * name. react-big-calendar renders the containers without these attributes and replaces them when the view changes,
+ * so they are set again on every change of the subtree.
+ */
+function useFocusableScrollRegions(root: React.RefObject<HTMLElement | null>, label: string) {
+  React.useEffect(() => {
+    const container = root.current
+    if (!container) return
+    const mark = () => {
+      for (const region of container.querySelectorAll<HTMLElement>(SCROLL_REGIONS)) {
+        if (region.getAttribute('tabindex') !== '0') region.setAttribute('tabindex', '0')
+        if (region.getAttribute('role') !== 'region') region.setAttribute('role', 'region')
+        if (region.getAttribute('aria-label') !== label) region.setAttribute('aria-label', label)
+      }
+    }
+    mark()
+    const observer = new MutationObserver(mark)
+    observer.observe(container, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+    }
+  }, [root, label])
+}
+
 export function CoordinatorCalendar() {
   const t = useT()
   const locale = useLocale()
   const router = useRouter()
   const scopeVersion = useOrganizationScopeVersion()
   const sectionFieldId = React.useId()
+  const gridRef = React.useRef<HTMLDivElement>(null)
+  useFocusableScrollRegions(gridRef, t('activities.occurrences.calendar.scrollRegion'))
   const [view, setView] = React.useState<ScheduleViewMode>('week')
   const [range, setRange] = React.useState<ScheduleRange>(() => currentWeek(new Date(), locale))
   const [sectionId, setSectionId] = React.useState(ALL_SECTIONS)
@@ -143,17 +174,19 @@ export function CoordinatorCalendar() {
         </Select>
       </div>
       {notice}
-      <ScheduleView
-        items={items}
-        view={view}
-        range={range}
-        timezone={query.data?.status === 'ok' ? query.data.data.timeZone : undefined}
-        onRangeChange={setRange}
-        onViewChange={setView}
-        onItemClick={(item) => {
-          router.push(occurrenceHref(item.id))
-        }}
-      />
+      <div ref={gridRef} className="min-w-0">
+        <ScheduleView
+          items={items}
+          view={view}
+          range={range}
+          timezone={query.data?.status === 'ok' ? query.data.data.timeZone : undefined}
+          onRangeChange={setRange}
+          onViewChange={setView}
+          onItemClick={(item) => {
+            router.push(occurrenceHref(item.id))
+          }}
+        />
+      </div>
     </section>
   )
 }
