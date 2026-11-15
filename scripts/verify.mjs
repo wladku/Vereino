@@ -15,6 +15,7 @@ export const STEPS = [
   { name: 'ds:check', args: ['ds:check'] },
   { name: 'i18n:check-hardcoded', args: ['i18n:check-hardcoded', '--strict'] },
   { name: 'contracts:check', args: ['contracts:check'] },
+  { name: 'settings-prefixes:check', args: ['settings-prefixes:check'] },
   { name: 'lessons:check', args: ['lessons:check'] },
   { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
   { name: 'test', args: ['test'] },

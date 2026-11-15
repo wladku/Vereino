@@ -183,7 +183,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ── Public site ───────────────────────────────── */
 .public { max-width: 980px; margin: 0 auto; background: var(--background); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
 .public-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.public-head nav { display: flex; gap: 16px; }
+.public-head nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .public-head nav a { text-decoration: none; color: var(--muted-foreground); }
 .public-head nav a.active { color: var(--foreground); font-weight: 600; }
 .public-body { padding: 24px; }

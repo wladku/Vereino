@@ -5,7 +5,7 @@ export const metadata = {
   pageTitleKey: 'club_core.sections.title',
   pageGroup: 'Club',
   pageGroupKey: 'club_core.nav.group',
-  pageOrder: 20,
+  pageOrder: 10,
   icon: 'layers',
   breadcrumb: [{ label: 'Sections', labelKey: 'club_core.sections.title' }],
 }
