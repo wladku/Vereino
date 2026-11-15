@@ -41,6 +41,7 @@ import {
   rentalStatusVariant,
   runRentalAction,
   slotLabel,
+  useRentalTimeZone,
   type RentalAction,
   type RentalRow,
 } from './rentals-client'
@@ -62,7 +63,7 @@ export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'need
   )
 }
 
-function buildColumns(t: Translate, names: Map<string, string>): TableColumns<RentalRow> {
+function buildColumns(t: Translate, names: Map<string, string>, timeZone: string): TableColumns<RentalRow> {
   const empty = t('facilities.common.empty')
   return [
     {
@@ -73,7 +74,7 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Re
       cell: ({ row }) => (
         <span className="flex flex-col">
           <span className="font-medium whitespace-nowrap tabular-nums">
-            {slotLabel(row.original.startsAt, row.original.endsAt)}
+            {slotLabel(row.original.startsAt, row.original.endsAt, timeZone)}
           </span>
           <span className="text-muted-foreground text-xs">
             {t('facilities.rentals.units.label', { units: row.original.units, minutes: row.original.units * 90 })}
@@ -148,6 +149,7 @@ type ActionDialog = { kind: 'cancel' | 'move'; row: RentalRow } | null
 
 function RentalsList({ tab, onCreate }: { tab: RentalListTab; onCreate: () => void }) {
   const t = useT()
+  const timeZone = useRentalTimeZone()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
   const places = usePlaceOptions()
@@ -173,7 +175,7 @@ function RentalsList({ tab, onCreate }: { tab: RentalListTab; onCreate: () => vo
     await queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] })
   }, [queryClient])
 
-  const columns = React.useMemo(() => buildColumns(t, places.names), [t, places.names])
+  const columns = React.useMemo(() => buildColumns(t, places.names, timeZone), [t, places.names, timeZone])
   const filterDefs = React.useMemo<FilterDef[]>(
     () => [
       {
@@ -200,7 +202,7 @@ function RentalsList({ tab, onCreate }: { tab: RentalListTab; onCreate: () => vo
   const simpleAction = async (row: RentalRow, action: 'confirm' | 'noShow') => {
     const confirmed = await confirm({
       title: t(`facilities.rentals.${action}.title`),
-      text: t(`facilities.rentals.${action}.text`, { slot: slotLabel(row.startsAt, row.endsAt) }),
+      text: t(`facilities.rentals.${action}.text`, { slot: slotLabel(row.startsAt, row.endsAt, timeZone) }),
       confirmText: t(`facilities.rentals.actions.${action}`),
       cancelText: t('facilities.rentals.actions.back'),
       variant: action === 'noShow' ? 'destructive' : 'default',

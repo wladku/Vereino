@@ -10,6 +10,9 @@ import { listRentals, phoneRental, postRental, rentalPitch } from '../_fixtures/
 // quote with the amount and the deadlines, and saves it; cancelling a rental less than 24 h before its start states
 // in the dialog that the charge is forfeited. B-24 reflows at 320 px in Polish too.
 test.describe.configure({ timeout: 300_000 })
+// The browser runs 11 or 12 hours behind the club zone (Europe/Warsaw): a dialog or a list that read wall times in
+// the browser's zone would save 08:00 typed in the dialog as an evening slot and label every slot hours off (#221 L3).
+test.use({ timezoneId: 'Pacific/Honolulu' })
 
 /** A bookable start within the next day (weekdays 08:00–14:30, weekends 09:00–19:00), at least 30 minutes away. */
 function soonStart(): string {
@@ -35,15 +38,11 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
   try {
     const admin = club.adminToken
     const setup = await rentalPitch(request, club)
+    const laterDate = nextWeekday(addDays(calendarDate(), 7), 'WE')
     const later = await postRental(
       request,
       admin,
-      phoneRental(
-        setup.pitch,
-        setup.neighbours,
-        zoneInstant(nextWeekday(addDays(calendarDate(), 7), 'WE'), '08:00'),
-        2,
-      ),
+      phoneRental(setup.pitch, setup.neighbours, zoneInstant(laterDate, '08:00'), 2),
     )
     expect(later.status, JSON.stringify(later.body)).toBe(201)
     const soon = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, soonStart()))
@@ -65,6 +64,8 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     const table = page.getByTestId('facilities-rentals-table')
     await expect(table).toContainText('KS Sąsiedzi')
     await expect(page.getByTestId(`facilities-rental-actions-${String(soon.body?.id)}`)).toBeVisible()
+    // The slot is labelled in the club zone, not the browser's.
+    await expect(table).toContainText(`${laterDate} 08:00–`)
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
     await page.setViewportSize({ width: 320, height: 800 })
     await expectNoPageOverflow(page)
@@ -99,7 +100,8 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     const dialog = page.getByTestId('facilities-rental-dialog')
     await expect(dialog).toBeVisible()
     // The week's first bookable slot may be over already; a rental starts in the future, so pick next week's Thursday.
-    await dialog.getByTestId('facilities-rental-date').fill(nextWeekday(addDays(calendarDate(), 7), 'TH'))
+    const enteredDate = nextWeekday(addDays(calendarDate(), 7), 'TH')
+    await dialog.getByTestId('facilities-rental-date').fill(enteredDate)
     await dialog.getByTestId('facilities-rental-time').fill('08:00')
     await dialog.getByTestId('facilities-rental-renter-type').getByText('Unregistered').click()
     await dialog.getByTestId('facilities-rental-renter-name').fill('Drużyna Firmowa')
@@ -118,6 +120,8 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     )
     expect(entered).toMatchObject({ renterType: 'unregistered', status: 'requested', contactPhone: '600 000 002' })
     expect(entered?.regulationsAcceptedAt).not.toBeNull()
+    // 08:00 typed in the dialog is 08:00 in the club zone.
+    expect(Date.parse(String(entered?.startsAt))).toBe(Date.parse(zoneInstant(enteredDate, '08:00')))
 
     // B-24 in Polish (the longer locale) reflows at 320 px.
     await page.setViewportSize({ width: 320, height: 800 })

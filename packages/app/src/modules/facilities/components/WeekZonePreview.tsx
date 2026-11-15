@@ -17,10 +17,11 @@ import { errorMessage, zoneLabel, type ZoneRuleRow } from './facilities-client'
 import {
   RENTALS_API,
   RENTALS_KEY,
-  localDateOf,
-  localDayStart,
-  localTimeOf,
+  clubDateOf,
+  clubDayStart,
+  clubTimeOf,
   rentalStatusLabel,
+  useRentalTimeZone,
   type RentalRow,
 } from './rentals-client'
 import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
@@ -72,11 +73,11 @@ export function ZoneLegend() {
   )
 }
 
-/** The rentals of a week grouped by their local start date, in start order. */
-export function rentalsByDate(rentals: readonly RentalRow[]): Map<string, RentalRow[]> {
+/** The rentals of a week grouped by their club-zone start date, in start order. */
+export function rentalsByDate(rentals: readonly RentalRow[], timeZone: string): Map<string, RentalRow[]> {
   const byDate = new Map<string, RentalRow[]>()
   for (const rental of [...rentals].sort((a, b) => a.startsAt.localeCompare(b.startsAt))) {
-    const date = localDateOf(rental.startsAt)
+    const date = clubDateOf(rental.startsAt, timeZone)
     const list = byDate.get(date) ?? []
     list.push(rental)
     byDate.set(date, list)
@@ -85,18 +86,18 @@ export function rentalsByDate(rentals: readonly RentalRow[]): Map<string, Rental
 }
 
 /** The active rentals of a place in a week (up to 200, the list maximum); idle without a place. */
-function useWeekRentals(placeId: string | null, dates: readonly string[], enabled: boolean) {
+function useWeekRentals(placeId: string | null, dates: readonly string[], enabled: boolean, timeZone: string) {
   const first = dates[0] ?? ''
   const last = dates[6] ?? ''
   return useQuery({
-    queryKey: [RENTALS_KEY, 'week', placeId, first],
+    queryKey: [RENTALS_KEY, 'week', placeId, first, timeZone],
     enabled: enabled && Boolean(placeId) && Boolean(first),
     queryFn: () =>
       fetchCrudList<RentalRow>(RENTALS_API, {
         placeId,
         tab: 'active',
-        endsAfter: localDayStart(first),
-        startsBefore: localDayStart(addDays(last, 1)),
+        endsAfter: clubDayStart(first, timeZone),
+        startsBefore: clubDayStart(addDays(last, 1), timeZone),
         pageSize: 200,
         sortField: 'startsAt',
         sortDir: 'asc',
@@ -106,7 +107,7 @@ function useWeekRentals(placeId: string | null, dates: readonly string[], enable
 
 export type NewRentalSlot = { date: string; time: string }
 
-function RentalBlock({ rental }: { rental: RentalRow }) {
+function RentalBlock({ rental, timeZone }: { rental: RentalRow; timeZone: string }) {
   const t = useT()
   return (
     <li
@@ -114,7 +115,7 @@ function RentalBlock({ rental }: { rental: RentalRow }) {
       data-testid={`facilities-calendar-rental-${rental.id}`}
     >
       <span className="font-medium tabular-nums">
-        {localTimeOf(rental.startsAt)}–{localTimeOf(rental.endsAt)}
+        {clubTimeOf(rental.startsAt, timeZone)}–{clubTimeOf(rental.endsAt, timeZone)}
       </span>
       <span className="flex flex-wrap items-center gap-1">
         <StatusBadge variant="info">{t('facilities.calendar.rentals.booked')}</StatusBadge>
@@ -145,12 +146,13 @@ export function WeekZonePreview({
   const t = useT()
   const headingId = React.useId()
   const timeZone = useClubTimeZone()
+  const rentalZone = useRentalTimeZone()
   const today = useClubToday()
   const [anchor, setAnchor] = React.useState(today)
   const rules = React.useMemo(() => previewRules(rows), [rows])
   const dates = React.useMemo(() => weekDates(anchor), [anchor])
-  const rentals = useWeekRentals(placeId, dates, rentalsEnabled)
-  const byDate = React.useMemo(() => rentalsByDate(rentals.data?.items ?? []), [rentals.data])
+  const rentals = useWeekRentals(placeId, dates, rentalsEnabled, rentalZone)
+  const byDate = React.useMemo(() => rentalsByDate(rentals.data?.items ?? [], rentalZone), [rentals.data, rentalZone])
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border p-4" data-testid={testId}>
@@ -257,7 +259,7 @@ export function WeekZonePreview({
                   <h4 className="text-xs font-medium">{t('facilities.calendar.rentals.title')}</h4>
                   <ul className="flex flex-col gap-1">
                     {dayRentals.map((rental) => (
-                      <RentalBlock key={rental.id} rental={rental} />
+                      <RentalBlock key={rental.id} rental={rental} timeZone={rentalZone} />
                     ))}
                   </ul>
                 </div>

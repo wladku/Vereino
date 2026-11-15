@@ -5,7 +5,7 @@
 import * as React from 'react'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, instantLabel, minorToAmount } from './facilities-client'
-import { localTimeOf, type RentalQuote } from './rentals-client'
+import { clubTimeOf, useRentalTimeZone, type RentalQuote } from './rentals-client'
 
 export function QuotePanel({
   ready,
@@ -23,6 +23,7 @@ export function QuotePanel({
   testId?: string
 }) {
   const t = useT()
+  const timeZone = useRentalTimeZone()
   const headingId = React.useId()
   let body: React.ReactNode
   if (!ready) {
@@ -52,7 +53,7 @@ export function QuotePanel({
         <div className="flex flex-col">
           <dt className="text-muted-foreground">{t('facilities.rentals.quote.endsAt')}</dt>
           <dd className="tabular-nums" data-testid={`${testId}-ends-at`}>
-            {localTimeOf(quote.endsAt) || empty}
+            {clubTimeOf(quote.endsAt, timeZone) || empty}
           </dd>
         </div>
         <div className="flex flex-col">

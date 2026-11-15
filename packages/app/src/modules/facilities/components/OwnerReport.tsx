@@ -21,7 +21,7 @@ import { ownerReportEmpty, presetPeriod, shiftPeriod, type OwnerReport as Report
 import { ZONES } from '../lib/zones'
 import { PlaceSelect } from './FacilitiesControls'
 import { codedMessage, usePlaceOptions, zoneLabel, type TableColumns, type Translate } from './facilities-client'
-import { rentalStatusLabel, rentalStatusVariant, slotLabel } from './rentals-client'
+import { rentalStatusLabel, rentalStatusVariant, slotLabel, useRentalTimeZone } from './rentals-client'
 import { useClubToday } from '@vereino/ui'
 
 type PeriodKind = 'month' | 'quarter'
@@ -41,7 +41,7 @@ function formatMoney(minor: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100)
 }
 
-function buildColumns(t: Translate, currency: string, locale: string): TableColumns<RentalRow> {
+function buildColumns(t: Translate, currency: string, locale: string, timeZone: string): TableColumns<RentalRow> {
   return [
     {
       id: 'slot',
@@ -49,7 +49,9 @@ function buildColumns(t: Translate, currency: string, locale: string): TableColu
       enableSorting: false,
       meta: { priority: 1 },
       cell: ({ row }) => (
-        <span className="whitespace-nowrap tabular-nums">{slotLabel(row.original.start, row.original.end)}</span>
+        <span className="whitespace-nowrap tabular-nums">
+          {slotLabel(row.original.start, row.original.end, timeZone)}
+        </span>
       ),
     },
     {
@@ -162,6 +164,7 @@ export function OwnerReport() {
   const t = useT()
   const today = useClubToday()
   const locale = useLocale()
+  const timeZone = useRentalTimeZone()
   const scopeVersion = useOrganizationScopeVersion()
   const places = usePlaceOptions()
   const [placeId, setPlaceId] = React.useState('')
@@ -174,7 +177,10 @@ export function OwnerReport() {
     enabled: chosenPlace !== '',
     queryFn: () => readApiResultOrThrow<Report>(reportUrl({ placeId: chosenPlace, ...period })),
   })
-  const columns = React.useMemo(() => buildColumns(t, data?.currency ?? 'PLN', locale), [t, data?.currency, locale])
+  const columns = React.useMemo(
+    () => buildColumns(t, data?.currency ?? 'PLN', locale, timeZone),
+    [t, data?.currency, locale, timeZone],
+  )
   const periodLabel = t('facilities.reports.owner.periodRange', { from: period.from, to: period.to })
 
   const filters = (
