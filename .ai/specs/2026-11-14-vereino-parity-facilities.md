@@ -88,7 +88,7 @@ Who has it: the facility attendant, the club administrator, coaches and coordina
 
 ## Non-goals
 
-- The panel sidebar, the six facility menu items, the tab shells and routing of B-26 and B-27, menu count badges, the member "More" list, the attendant's landing page, the public header (Club · Sections · Facilities · Sign in) and the Polish and English names: the navigation spec. This spec supplies the tab contents and the count source (`GET /api/facilities/rentals/requests`, field `total`).
+- The panel sidebar, the six facility menu items, the tab shells and routing of B-26 and B-27, menu count badges, the member "More" list, the attendant's landing page, the public header (Club · Sections · Facilities · Events · Sign in) and the Polish and English names: the navigation spec. This spec supplies the tab contents and the count source (`GET /api/facilities/rentals/requests`, field `total`).
 - Registering `payments.chargeService`, the charge's payer and payee columns, the rentals perspective of B-21 and the charge page: the payments spec. This spec states what `facilities` passes, shows and expects.
 - Notices to guardians and participants about a moved or flagged session, the consumer of `activities.occurrence.updated`, and the coordinator's "needs reschedule" page: the groups and activities spec. This spec tells staff only.
 - The "add institution" link beside the place owner picker and the other empty-picker hints: the people life cycle and data entry spec.

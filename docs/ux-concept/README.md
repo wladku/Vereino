@@ -119,6 +119,7 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 #### F-11 Guest explores the club; administrator configures publication (UC-18, UC-19) — J-008
 - **Guest path:** P-01 → "Basen" tile → P-02: description, groups (age, days, times, place), terms, membership fee, instructor (with consent), materials, contact.
 - **Administrator path:** B-03 Publication → turns off "Prices" → save → P-02 without the prices block (the API does not return it). B-05 section → "Public page" tab → description, terms, contact, materials, "Public section" ✓.
+- **Events:** P-01 → "Events" in the menu → P-06: upcoming matches, tournaments and camps of public groups with a section filter, the last 60 days below. B-03 "Events menu" off → the menu item and P-06 disappear. Events are no longer listed on P-01 or P-02.
 - **Branches:** page disabled → P-01 "The club does not publish a page"; non-public section → 404; instructor without consent → "Section instructors".
 
 #### F-12 Municipality report (UC-20)
@@ -146,6 +147,7 @@ flowchart LR
   subgraph PUB[Public /p — no sign-in]
     P01[P-01 Club page] --> P02[P-02 Section]
     P01 --> P03[P-03 Facilities]
+    P01 --> P06[P-06 Events]
     P03 --> P04[P-04 Facility calendar + request]
     P04 -.email.-> P05[P-05 Request confirmation]
   end
@@ -240,6 +242,7 @@ flowchart LR
 | P-03 | `/p/[clubSlug]/places` | Club facilities | public | 5 |
 | P-04 | `/p/[clubSlug]/places/[placeSlug]` | Facility calendar + request | public | 5 |
 | P-05 | `/p/[clubSlug]/requests/verify/[token]` | Request confirmation | token | 5 |
+| P-06 | `/p/[clubSlug]/events` | Events | public | 2 |
 
 Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/backend/communication/cases` is the "cases only" perspective of B-18; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. `/backend/facilities/maintenance` (REQ-022, Could) has no screen here — deferred.
 
@@ -389,7 +392,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-03 Publication — `/backend/club/publication`
 - **Goal:** decide what the club shows publicly (REQ-025, Q-024).
-- **Features:** enable the club page; blocks: description and schedule, terms, prices, instructors, materials, contact, facility calendar, online requests — each with a description of its effect; public page preview.
+- **Features:** enable the club page; blocks: description and schedule, terms, prices, instructors, materials, contact, events menu, facility calendar, online requests — each with a description of its effect; public page preview.
 - **Components:** `CrudForm` with toggles, "Preview" link.
 - **States:** loading, error, success, conflict.
 - **Validation:** "Online requests" require "Facility calendar"; the page requires a public club slug.
@@ -701,6 +704,14 @@ Common rules (they apply to every screen and are not repeated):
 - **States:** loading — "Confirming your request…"; success — "The request is awaiting administrator approval until …"; error — 410 "Link expired — submit the request again", 409 "The slot was taken in the meantime".
 - **Validation:** n/a.
 - **API:** `POST /api/facilities/public/requests/verify/{token}`.
+
+#### P-06 Events — `/p/[clubSlug]/events`
+- **Goal:** one place for the club's matches, tournaments and camps, without mixing them into the section pages (REQ-025).
+- **Features:** its own item in the public menu (Club, Sections, Facilities, Events); upcoming one-off events of public groups, soonest first, then the last 60 days; section filter chips; each event with the section logo, date and start, place (external venue with a map link), section and type; the organiser's notes. The item and the page exist only while the club keeps "Events menu" on in B-03.
+- **Components:** public page header, chips, cards, badges.
+- **States:** loading; empty — "No events planned" (upcoming), past list hidden when empty; error; disabled — "The club does not publish events" with a link to the club page.
+- **Validation:** n/a.
+- **API:** `GET /api/club_core/public/{clubSlug}/events?section=`.
 
 ---
 
