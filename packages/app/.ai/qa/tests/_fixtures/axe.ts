@@ -34,13 +34,15 @@ const PLATFORM_BASELINE: {
   {
     rule: 'label-content-name-mismatch',
     // The back link (`data-testid="appshell-…"`) and the main-sidebar brand link of `AppShell.tsx` (`aria-label="Go to
-    // dashboard"` while its visible text is the brand name; first scanned on the `groups` pages, #30).
+    // dashboard"`, in pl `"Przejdź do pulpitu"`, while its visible text is the brand name; first scanned on the `groups`
+    // pages, #30; the pl label since #256).
     // Since #94 also the date-range trigger of the schedule family's `ScheduleToolbar` (`aria-label="Date range"` while
     // its visible text is the range).
     owner: 'AppShell back link and brand link; ScheduleToolbar date-range trigger',
     matches: (node) =>
       node.html.includes('data-testid="appshell-') ||
-      (node.html.includes('aria-label="Go to dashboard"') && node.html.includes('href="/backend"')) ||
+      ((node.html.includes('aria-label="Go to dashboard"') || node.html.includes('aria-label="Przejdź do pulpitu"')) &&
+        node.html.includes('href="/backend"')) ||
       node.html.includes('data-slot="date-range-picker-tr'),
   },
   {
