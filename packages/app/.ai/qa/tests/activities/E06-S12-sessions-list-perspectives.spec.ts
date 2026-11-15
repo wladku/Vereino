@@ -78,7 +78,8 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
       start: '19:00',
       end: '20:00',
     })
-    await startNow(request, club, started)
+    // Kept inside today's club-zone date: a session across midnight sits in the grid's all-day row (#248).
+    await startNow(request, club, started, { sameDay: true })
 
     page.setDefaultTimeout(30_000)
     await signInBrowser(page, request, club, coordinator.userId, coordinator.email)
@@ -140,6 +141,20 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     await expect(startedEvent).toBeVisible()
     await prepareForAccessibilityScan(page)
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
+
+    // A week without sessions (the week before: every session is today or later) keeps its hours reachable by
+    // keyboard: the scroll region takes focus and has a name (WCAG 2.1.1, axe `scrollable-region-focusable`, #248).
+    await calendar.getByRole('button', { name: /^(Previous|Poprzedni)$/ }).click()
+    await expect(page.getByTestId('occurrences-calendar-empty')).toBeVisible()
+    await expect(calendar.locator('.rbc-event')).toHaveCount(0)
+    const hours = calendar.getByRole('region', {
+      name: /^(Calendar hours, scrollable|Godziny kalendarza, przewijane)$/,
+    })
+    await expect(hours).toHaveAttribute('tabindex', '0')
+    await hours.focus()
+    await expect(hours).toBeFocused()
+    expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
+    await calendar.getByRole('button', { name: /^(Next|Następny)$/ }).click()
     await startedEvent.click()
     await expect(page).toHaveURL(new RegExp(`/backend/activities/occurrences/${started}$`))
 

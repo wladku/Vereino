@@ -11,6 +11,8 @@ import {
   listOccurrences,
   moveOccurrence,
   nextWeekday,
+  zoneDate,
+  zoneInstant,
   type OccurrenceItem,
   type WeekdayCode,
 } from './activities'
@@ -682,29 +684,46 @@ export const START_NOW_WINDOWS: ReadonlyArray<{ startMinutes: number; endMinutes
 ]
 
 /**
- * Moves a session (as the club administrator) so it has started — the check-off opens at the start; the session keeps
- * its date, so the roster stays the same. Returns the new session version.
+ * The `START_NOW_WINDOWS` as instants, each cut to the club-zone day of `now` when `sameDay` is set (a window cut to
+ * less than 15 minutes is dropped). Near midnight the first window would otherwise cross into the next day, and a
+ * calendar grid draws such a session in its all-day row, or in another week late on a Saturday (#248).
  */
-export async function startNow(request: APIRequestContext, club: Club, occurrenceId: string): Promise<string> {
+export function startNowWindows(now: number, sameDay: boolean): { startAt: string; endAt: string }[] {
+  const today = zoneDate(new Date(now).toISOString())
+  const dayStart = Date.parse(zoneInstant(today, '00:00'))
+  const dayEnd = Date.parse(zoneInstant(addDays(today, 1), '00:00')) - 60_000
+  const windows: { startAt: string; endAt: string }[] = []
+  for (const window of START_NOW_WINDOWS) {
+    let start = now + window.startMinutes * 60_000
+    let end = now + window.endMinutes * 60_000
+    if (sameDay) {
+      start = Math.max(start, dayStart)
+      end = Math.min(end, dayEnd)
+      if (end - start < 15 * 60_000) continue
+    }
+    windows.push({ startAt: new Date(start).toISOString(), endAt: new Date(end).toISOString() })
+  }
+  return windows
+}
+
+/**
+ * Moves a session (as the club administrator) so it has started — the check-off opens at the start; the session keeps
+ * its date, so the roster stays the same. With `sameDay` the session also starts and ends on today's club-zone date,
+ * whatever the hour (#248). Returns the new session version.
+ */
+export async function startNow(
+  request: APIRequestContext,
+  club: Club,
+  occurrenceId: string,
+  options: { sameDay?: boolean } = {},
+): Promise<string> {
   const current = await getOccurrence(request, club.adminToken, occurrenceId)
   expect(current.status, `GET /api/activities/occurrences/${occurrenceId}`).toBe(200)
-  const now = Date.now()
   const refused: string[] = []
-  for (const window of START_NOW_WINDOWS) {
-    const moved = await moveOccurrence(
-      request,
-      club.adminToken,
-      occurrenceId,
-      {
-        startAt: new Date(now + window.startMinutes * 60_000).toISOString(),
-        endAt: new Date(now + window.endMinutes * 60_000).toISOString(),
-      },
-      current.body?.updatedAt,
-    )
+  for (const window of startNowWindows(Date.now(), options.sameDay ?? false)) {
+    const moved = await moveOccurrence(request, club.adminToken, occurrenceId, window, current.body?.updatedAt)
     if (moved.status === 200) return String(moved.body?.updatedAt)
-    refused.push(
-      `${String(window.startMinutes)}..${String(window.endMinutes)}: ${String(moved.status)} ${JSON.stringify(moved.body)}`,
-    )
+    refused.push(`${window.startAt}..${window.endAt}: ${String(moved.status)} ${JSON.stringify(moved.body)}`)
     if (moved.status !== 409 || !Array.isArray((moved.body as { conflicts?: unknown } | null)?.conflicts)) break
   }
   throw new Error(`[test] could not start session ${occurrenceId} in any window: ${refused.join('; ')}`)
