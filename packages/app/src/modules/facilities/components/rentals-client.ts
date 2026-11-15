@@ -1,6 +1,6 @@
 // Client-side helpers of the staff rentals (facilities spec B-23, B-24; #122): the row and quote types as the API
-// returns them, the live quote (debounced, nothing is saved), the rental status actions with the lock token, local
-// date and time handling of the browser, and the reading of the occupancy conflicts a refusal or a quote carries.
+// returns them, the live quote (debounced, nothing is saved), the rental status actions with the lock token, date and
+// time handling in the club zone, and the reading of the occupancy conflicts a refusal or a quote carries.
 // Authorization stays on the routes and commands.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -12,9 +12,11 @@ import {
 } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
-import { errorCodeOf } from '@vereino/core'
+import { errorCodeOf, isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
+import { browserTimeZone, useClubTimeZone } from '@vereino/ui'
 import { MOVABLE_RENTAL_STATUSES, type RentalStatus } from '../lib/rentals'
-import { instantLabel, type Translate } from './facilities-client'
+import { timeOf, zoneWallTime } from './club-places/places-client'
+import type { Translate } from './facilities-client'
 
 export const RENTALS_API = 'facilities/rentals'
 export const RENTALS_URL = '/api/facilities/rentals'
@@ -108,38 +110,65 @@ export function rentalStatusLabel(t: Translate, status: string): string {
   return t(`facilities.rentals.status.${status}`)
 }
 
-// --- Local date and time (the browser's zone; the club zone is not exposed to the client) ---
+// --- Club date and time (#221 L3) ---
+// A rental's date and wall times are the club's (the quote and the zones are read in the club zone on the server), so
+// the dialogs, the week and the labels read and write them in the club zone the page provides (#231), whatever zone
+// the browser is in.
 
-const pad = (value: number) => String(value).padStart(2, '0')
-
-/** `YYYY-MM-DD` of an instant in the browser's zone; '' when there is none. */
-export function localDateOf(iso: string | null | undefined): string {
-  return instantLabel(iso).slice(0, 10)
+/** The club's IANA zone for rental wall times: the page's club zone, the browser's while none or an unknown one. */
+export function useRentalTimeZone(): string {
+  const timeZone = useClubTimeZone()
+  return React.useMemo(() => knownZoneOr(timeZone, browserTimeZone()), [timeZone])
 }
 
-/** `HH:MM` of an instant in the browser's zone; '' when there is none. */
-export function localTimeOf(iso: string | null | undefined): string {
-  return instantLabel(iso).slice(11, 16)
+/** `timeZone` when the runtime knows it, otherwise `fallback`. */
+export function knownZoneOr(timeZone: string | null, fallback: string): string {
+  if (!timeZone) return fallback
+  try {
+    new Intl.DateTimeFormat('en', { timeZone })
+    return timeZone
+  } catch {
+    return fallback
+  }
 }
 
-/** A local date and wall time as an ISO instant (UTC offset), or null when either is missing or invalid. */
-export function localInstant(date: string, time: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null
-  const value = new Date(`${date}T${time}`)
-  return Number.isNaN(value.getTime()) ? null : value.toISOString()
+/** The club-zone date and wall time of an instant; null when there is none. */
+function wallOf(iso: string | null | undefined, timeZone: string): { date: string; time: string } | null {
+  if (!iso) return null
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return null
+  const wall = zoneWallTime(at, timeZone)
+  return { date: wall.date, time: timeOf(wall.minutes) }
 }
 
-/** The local midnight starting `date` as an ISO instant. */
-export function localDayStart(date: string): string {
-  return new Date(`${date}T00:00`).toISOString()
+/** `YYYY-MM-DD` of an instant in the club zone; '' when there is none. */
+export function clubDateOf(iso: string | null | undefined, timeZone: string): string {
+  return wallOf(iso, timeZone)?.date ?? ''
 }
 
-/** "2027-01-05 17:00–20:00" — a slot in the browser's zone. */
-export function slotLabel(startsAt: string, endsAt: string): string {
-  const startDate = localDateOf(startsAt)
-  const endDate = localDateOf(endsAt)
-  const end = endDate && endDate !== startDate ? `${endDate} ${localTimeOf(endsAt)}` : localTimeOf(endsAt)
-  return `${startDate} ${localTimeOf(startsAt)}–${end}`
+/** `HH:MM` of an instant in the club zone; '' when there is none. */
+export function clubTimeOf(iso: string | null | undefined, timeZone: string): string {
+  return wallOf(iso, timeZone)?.time ?? ''
+}
+
+/** A club-zone date and wall time as an ISO instant, or null when either is missing or invalid. */
+export function clubInstant(date: string, time: string, timeZone: string): string | null {
+  if (!isCalendarDate(date) || !/^\d{2}:\d{2}$/.test(time) || !isLocalTime(time)) return null
+  return zonedInstant(date, time, timeZone).toISOString()
+}
+
+/** The club-zone midnight starting `date` as an ISO instant. */
+export function clubDayStart(date: string, timeZone: string): string {
+  return zonedInstant(date, '00:00', timeZone).toISOString()
+}
+
+/** "2027-01-05 17:00–20:00" — a slot in the club zone. */
+export function slotLabel(startsAt: string, endsAt: string, timeZone: string): string {
+  const startDate = clubDateOf(startsAt, timeZone)
+  const endDate = clubDateOf(endsAt, timeZone)
+  const endTime = clubTimeOf(endsAt, timeZone)
+  const end = endDate && endDate !== startDate ? `${endDate} ${endTime}` : endTime
+  return `${startDate} ${clubTimeOf(startsAt, timeZone)}–${end}`
 }
 
 /** True when `now` is past the free cancellation deadline: the cancellation is late and the charge is forfeited. */
@@ -147,11 +176,6 @@ export function cancellationIsLate(deadline: string | null, now: Date): boolean 
   if (!deadline) return false
   const time = new Date(deadline).getTime()
   return !Number.isNaN(time) && now.getTime() > time
-}
-
-export function nowLocalTime(): string {
-  const now = new Date()
-  return `${pad(now.getHours())}:${pad(now.getMinutes())}`
 }
 
 // --- Quote ---
@@ -214,10 +238,10 @@ export function issueOfError(error: unknown): QuoteIssue | null {
 }
 
 /** "Session 2027-01-05 17:00–18:30" — one conflict in words. */
-export function conflictLabel(t: Translate, conflict: RentalConflict): string {
+export function conflictLabel(t: Translate, conflict: RentalConflict, timeZone: string): string {
   return t('facilities.rentals.conflict.item', {
     kind: t(`facilities.rentals.conflict.kind.${conflict.kind}`),
-    slot: slotLabel(conflict.start, conflict.end),
+    slot: slotLabel(conflict.start, conflict.end, timeZone),
   })
 }
 

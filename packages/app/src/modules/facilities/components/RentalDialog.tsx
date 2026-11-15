@@ -34,10 +34,11 @@ import {
   RENTALS_URL,
   conflictLabel,
   issueOfError,
-  localInstant,
+  clubInstant,
   searchInstitutions,
   searchPersons,
   useRentalQuote,
+  useRentalTimeZone,
   type QuoteInput,
   type QuoteIssue,
   type RenterChoice,
@@ -67,7 +68,11 @@ const UNIT_CHOICES = Array.from(
 type StaffVia = (typeof STAFF_REQUESTED_VIA)[number]
 
 /** Issue messages grouped by field, with their conflicts listed. */
-export function issuesByField(t: Translate, issues: readonly QuoteIssue[]): Map<RentalField | 'form', IssueMessage[]> {
+export function issuesByField(
+  t: Translate,
+  issues: readonly QuoteIssue[],
+  timeZone: string,
+): Map<RentalField | 'form', IssueMessage[]> {
   const byField = new Map<RentalField | 'form', IssueMessage[]>()
   for (const issue of issues) {
     const field = FIELD_OF_ISSUE[issue.code] ?? 'form'
@@ -75,7 +80,7 @@ export function issuesByField(t: Translate, issues: readonly QuoteIssue[]): Map<
     list.push({
       code: issue.code,
       text: codedMessage({ code: issue.code }, t) ?? t('facilities.rentals.errors.save'),
-      conflicts: (issue.conflicts ?? []).map((conflict) => conflictLabel(t, conflict)),
+      conflicts: (issue.conflicts ?? []).map((conflict) => conflictLabel(t, conflict, timeZone)),
     })
     byField.set(field, list)
   }
@@ -125,6 +130,7 @@ export function RentalDialog({
 }) {
   const t = useT()
   const today = useClubToday()
+  const timeZone = useRentalTimeZone()
   const ids = React.useId()
   const [placeId, setPlaceId] = React.useState(preset?.placeId ?? '')
   const [date, setDate] = React.useState(preset?.date ?? today)
@@ -146,7 +152,7 @@ export function RentalDialog({
   const [missing, setMissing] = React.useState<Set<RentalField>>(new Set())
   const found = React.useRef(new Map<string, RenterChoice>())
 
-  const startsAt = localInstant(date, time)
+  const startsAt = clubInstant(date, time, timeZone)
   const quoteInput: QuoteInput | null =
     placeId && category && startsAt
       ? {
@@ -160,7 +166,7 @@ export function RentalDialog({
       : null
   const quote = useRentalQuote(quoteInput)
   const quoteIssues = quoteInput ? (quote.data?.issues ?? []) : []
-  const issues = issuesByField(t, saveIssues.length > 0 ? saveIssues : quoteIssues)
+  const issues = issuesByField(t, saveIssues.length > 0 ? saveIssues : quoteIssues, timeZone)
 
   const resetSaveIssues = () => {
     setSaveIssues([])

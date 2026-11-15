@@ -30,13 +30,14 @@ import { QuotePanel } from './RentalQuotePanel'
 import { codedMessage, errorMessage, instantLabel, minorToAmount, type Translate } from './facilities-client'
 import {
   cancellationIsLate,
+  clubDateOf,
+  clubInstant,
+  clubTimeOf,
   issueOfError,
-  localDateOf,
-  localInstant,
-  localTimeOf,
   runRentalAction,
   slotLabel,
   useRentalQuote,
+  useRentalTimeZone,
   type QuoteInput,
   type QuoteIssue,
   type RentalRow,
@@ -71,11 +72,12 @@ async function refusal(
 
 function RentalSummary({ row, placeName }: { row: RentalRow; placeName: string }) {
   const t = useT()
+  const timeZone = useRentalTimeZone()
   return (
     <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
       <div className="flex flex-col">
         <dt className="text-muted-foreground">{t('facilities.rentals.columns.slot')}</dt>
-        <dd className="tabular-nums">{slotLabel(row.startsAt, row.endsAt)}</dd>
+        <dd className="tabular-nums">{slotLabel(row.startsAt, row.endsAt, timeZone)}</dd>
       </div>
       <div className="flex flex-col">
         <dt className="text-muted-foreground">{t('facilities.fields.place')}</dt>
@@ -245,12 +247,13 @@ export function MoveRentalDialog({
   const t = useT()
   const ids = React.useId()
   const [placeId, setPlaceId] = React.useState(row.placeId)
-  const [date, setDate] = React.useState(() => localDateOf(row.startsAt))
-  const [time, setTime] = React.useState(() => localTimeOf(row.startsAt))
+  const timeZone = useRentalTimeZone()
+  const [date, setDate] = React.useState(() => clubDateOf(row.startsAt, timeZone))
+  const [time, setTime] = React.useState(() => clubTimeOf(row.startsAt, timeZone))
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
   const [saveIssues, setSaveIssues] = React.useState<QuoteIssue[]>([])
-  const startsAt = localInstant(date, time)
+  const startsAt = clubInstant(date, time, timeZone)
   const unchanged = startsAt === new Date(row.startsAt).toISOString() && placeId === row.placeId
 
   const quoteInput: QuoteInput | null =
@@ -266,7 +269,11 @@ export function MoveRentalDialog({
         }
       : null
   const quote = useRentalQuote(quoteInput)
-  const issues = issuesByField(t, saveIssues.length > 0 ? saveIssues : quoteInput ? (quote.data?.issues ?? []) : [])
+  const issues = issuesByField(
+    t,
+    saveIssues.length > 0 ? saveIssues : quoteInput ? (quote.data?.issues ?? []) : [],
+    timeZone,
+  )
 
   const close = () => {
     onOpenChange(false)
