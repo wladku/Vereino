@@ -90,7 +90,7 @@ test('ISSUE-139 a coach cancels from the phone, the coordinator is told in the a
     await page.goto(`/club/occurrences/${firstId}?as=coach`)
     await expect(page.getByTestId('club-session-title')).toHaveText('Trening sobotni')
     await expect(page.getByTestId('club-session-coach')).toContainText(
-      /The session will not take place|Zajęcia się nie odbędą/,
+      /The session will not take place|Termin się nie odbędzie/,
     )
     const cancelled = await cancelInDialog(page, firstId, 'Pitch closed')
     expect(cancelled).toMatchObject({ status: 'cancelled', actingRole: 'coach' })
@@ -153,7 +153,7 @@ test('ISSUE-139 a coach cancels from the phone, the coordinator is told in the a
     await signInBrowser(page, request, club, coordinator.userId, coordinator.email)
     await page.goto(`/club/messages/${threadId}`)
     await expect(page.getByTestId('thread-message-cancelled-by')).toHaveText(
-      /Cancelled by Marek Trener \(coach\): Pitch closed|Odwołane przez: Marek Trener \(trener\): Pitch closed/,
+      /Cancelled by Marek Trener \(coach\): Pitch closed|Odwołany przez: Marek Trener \(trener\): Pitch closed/,
     )
 
     // --- Krystyna also coaches Żaki: she cancels from M-05 in the coach role she acted in ---
@@ -165,7 +165,7 @@ test('ISSUE-139 a coach cancels from the phone, the coordinator is told in the a
     })
     await page.goto(`/club/occurrences/${secondId}/attendance`)
     await expect(page.getByTestId('club-attendance-cancel-section')).toContainText(
-      /The session will not take place|Zajęcia się nie odbędą/,
+      /The session will not take place|Termin się nie odbędzie/,
     )
     const violations = await scanInColorSchemes(
       page,

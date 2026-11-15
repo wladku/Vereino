@@ -148,7 +148,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     // Acting as a member (the default), the calendar is the ward's and offers no "New event".
     await expect(page.getByTestId('club-calendar-new-event')).toHaveCount(0)
     await page.locator('#club-switcher-context').click()
-    await page.getByRole('option', { name: /^(Coach|Trener)$/ }).click()
+    await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
     await page.getByTestId('club-calendar-new-event').click()
     await expect(page).toHaveURL(/\/club\/events\/new$/)
     await page.getByTestId('club-event-name').fill('Drugi turniej')

@@ -52,7 +52,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     const violationsByPage: Record<string, unknown> = {}
     for (const { path, shows } of [
       { path: '/backend/activities/activities', shows: 'Trening Żaków' },
-      { path: '/backend/activities/activities/create', shows: /New activity|Nowe zajęcia/ },
+      { path: '/backend/activities/activities/create', shows: /New activity|Nowa aktywność/ },
       { path: `/backend/activities/activities/${activityId}`, shows: 'Trening Żaków' },
       { path: '/backend/activities/occurrences', shows: 'Trening Żaków' },
       { path: `/backend/activities/occurrences/${session.id}`, shows: 'Trening Żaków' },
@@ -82,7 +82,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/backend/activities/activities')
-    await expect(page.getByRole('heading', { level: 1, name: /^Activities$|^Zajęcia$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^Activities$|^Aktywności$/ })).toBeVisible()
     await expect(page.getByText('Trening Żaków').first()).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
     await page.goto(`/backend/activities/occurrences/${session.id}`)
