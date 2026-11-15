@@ -203,7 +203,7 @@ test('TEST-U08 place regulations and photos: byte checks, the 10-photo limit und
 
     // A new place shows the hint instead of the files; 375 px reflows.
     await page.goto('/backend/club/places/create')
-    await expect(page.getByText(/Save the place first|Najpierw zapisz obiekt/)).toBeVisible()
+    await expect(page.getByText(/Save the place first|Najpierw zapisz miejsce/)).toBeVisible()
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto(`/backend/club/places/${orlik}/edit`)
     await expect(page.getByTestId('place-files-panel')).toBeVisible()

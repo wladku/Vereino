@@ -94,7 +94,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     const cells = page.getByTestId('place-name-cell')
     await expect(cells).toHaveCount(5)
     await expect(cells).toHaveText([
-      /^Boisko Wisły Liszki\s*(External|Zewnętrzny)$/,
+      /^Boisko Wisły Liszki\s*(External|Zewnętrzne)$/,
       /^Hala sportowa$/,
       /^Orlik$/,
       /^↳\s*Boisko piłkarskie$/,
@@ -135,7 +135,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     // A branch whose parent is elsewhere sorts by its own name ("piłkarskie" before "Wisły" in Polish order).
     await expect(cells).toHaveText([
       /^↳\s*Orlik ›\s*Boisko piłkarskie$/,
-      /^Boisko Wisły Liszki\s*(External|Zewnętrzny)$/,
+      /^Boisko Wisły Liszki\s*(External|Zewnętrzne)$/,
     ])
     await page.reload()
     await expect(cells).toHaveCount(2)
@@ -153,7 +153,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     // 375 px: the list stays usable and the page reflows.
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/club/places')
-    await expect(page.getByRole('heading', { level: 1, name: /^(Places|Obiekty)$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^(Places|Miejsca)$/ })).toBeVisible()
     await expectNoPageOverflow(page)
 
     // The empty state of a club without places offers "Add place".
@@ -163,7 +163,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
       await page.goto('/backend/club/places')
       await expect(page.getByTestId('places-empty')).toBeVisible()
       await expect(
-        page.getByTestId('places-empty').getByRole('link', { name: /^(Add place|Dodaj obiekt)$/ }),
+        page.getByTestId('places-empty').getByRole('link', { name: /^(Add place|Dodaj miejsce)$/ }),
       ).toBeVisible()
     } finally {
       await empty.cleanup()
