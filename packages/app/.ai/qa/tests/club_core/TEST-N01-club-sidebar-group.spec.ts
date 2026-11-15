@@ -3,9 +3,9 @@ import { assignRole, birthDateTurning, createClub, createStaff } from '../_fixtu
 import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 
 // TEST-N01, Club group part (navigation spec REQ-N01, DD-N01; issue #246): the test reads the sidebar itself, not
-// URLs. The administrator's main sidebar lists the Club group — Sections, Places, Institutions, Contracts, Settings,
-// Publication, in that order — after the chrome payload of `/api/auth/admin/nav` has replaced the layout's first
-// paint, and a Club page never opens the settings sidebar. A coordinator sees Sections only. Fails on `a312199`,
+// URLs. The administrator's main sidebar lists the Club group — Sections, Places, Institutions and contracts (Contracts
+// is its tab since #256, REQ-N02), Settings, Publication, in that order — after the chrome payload of
+// `/api/auth/admin/nav` has replaced the layout's first paint, and a Club page never opens the settings sidebar. A coordinator sees Sections only. Fails on `a312199`,
 // where `pageContext: 'settings'` on Publication made `/backend/club` a settings prefix and hid the group.
 test.describe.configure({ timeout: 300_000 })
 
@@ -13,7 +13,6 @@ const CLUB_ITEMS = [
   '/backend/club/sections',
   '/backend/club/places',
   '/backend/club/institutions',
-  '/backend/club/contracts',
   '/backend/club/settings',
   '/backend/club/publication',
 ]
@@ -51,7 +50,7 @@ test('TEST-N01 the Club group is in the main sidebar for the administrator and t
       validFrom: '2020-01-01',
     })
 
-    // The administrator on the dashboard: the six Club items in the mockup's order.
+    // The administrator on the dashboard: the five Club items in the mockup's order.
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     let links = await clubGroupLinks(page, '/backend')
     await expect(links).toHaveCount(CLUB_ITEMS.length)
