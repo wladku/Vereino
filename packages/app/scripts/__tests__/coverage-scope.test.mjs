@@ -13,6 +13,7 @@ const COVERED_GLOBS = [
   { cwd: APP_ROOT, glob: 'scripts/vereino-*.mjs' },
   { cwd: APP_ROOT, glob: 'scripts/check-vereino-contracts.mjs' },
   { cwd: APP_ROOT, glob: 'scripts/check-settings-prefixes.mjs' },
+  { cwd: APP_ROOT, glob: 'scripts/check-glossary.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/verify.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/setup.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/check-spec-changelogs.mjs' },
@@ -23,7 +24,7 @@ const COVERED_GLOBS = [
 
 test('every file under the 100 % rule is loaded by the test run', async () => {
   const files = COVERED_GLOBS.flatMap(({ cwd, glob }) => fs.globSync(glob, { cwd }).map((file) => path.join(cwd, file)))
-  assert.ok(files.length >= 9, `expected the tooling files, found ${String(files.length)}`)
+  assert.ok(files.length >= 10, `expected the tooling files, found ${String(files.length)}`)
   for (const file of files) await import(pathToFileURL(file).href)
 })
 
@@ -34,6 +35,7 @@ test('the coverage globs match the test:scripts script', () => {
     'scripts/vereino-*.mjs',
     'scripts/check-vereino-contracts.mjs',
     'scripts/check-settings-prefixes.mjs',
+    'scripts/check-glossary.mjs',
     '../../scripts/verify.mjs',
     '../../scripts/setup.mjs',
     '../../scripts/check-spec-changelogs.mjs',
