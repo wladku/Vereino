@@ -5,7 +5,7 @@ export const metadata = {
   pageTitleKey: 'club_core.contracts.title',
   pageGroup: 'Club',
   pageGroupKey: 'club_core.nav.group',
-  pageOrder: 45,
+  pageOrder: 40,
   icon: 'file-text',
   breadcrumb: [{ label: 'Contracts', labelKey: 'club_core.contracts.title' }],
 }
