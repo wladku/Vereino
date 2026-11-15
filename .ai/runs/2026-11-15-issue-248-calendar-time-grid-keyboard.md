@@ -14,6 +14,8 @@
 5. Test determinism: `startNowWindows(now, sameDay)` in `_fixtures/attendance.ts`; `startNow(…, { sameDay: true })` cuts each window to today's club-zone date (drops windows under 15 min). Opt-in, so the other callers keep their behaviour. E06-S12 uses it.
 6. Regression oracle independent of the clock: E06-S12 now also opens the week before (always empty in this test), checks that the hours region is named, has `tabindex="0"` and takes focus, and runs the axe scan there.
 7. Lesson `integration-tests-must-not-depend-on-the-clock` extended with the midnight shape and the `sameDay` rule.
+8. Opened PR #314 (ready; `review`, `bug`, `accessibility`, `needs-qa`, `priority-low`, `risk-low`); lock moved from #248 to the PR.
+9. Independent review (fresh subagent, given the diff, not this log): approve, no defects. Nit 1 fixed: the agenda list got its own name (`activities.occurrences.calendar.agendaRegion`, "Session list, scrollable") instead of "Calendar hours". Nits 2–3 (a `sameDay` window clamped at 23:59 has already ended when run between 23:59:00 and 23:59:59; before about 02:15 the fallback windows drop out) left as is: test-only, harmless because the check-off has no end, and the single first window cannot collide with this spec's own sessions.
 
 ## Decisions
 
@@ -37,7 +39,8 @@
 - Negative control, same command with the hook call temporarily removed → fails on both attempts at the new check:
   `Error: expect(locator).toHaveAttribute(expected) failed … getByRole('region', { name: /^(Calendar hours, scrollable|Godziny kalendarza, przewijane)$/ }) … Error: element(s) not found`.
   One earlier negative attempt hung after `queue:worker --all` and hit the 40-minute background limit (its log file had been removed by a temp-dir cleanup); its orphaned server tree (pid 389412) was stopped and the run repeated.
-- `yarn verify` → first run failed at `format:check` (`E06-S12-sessions-list-perspectives.spec.ts is not formatted`); formatted with prettier, `yarn verify --from format:check` → all 9 remaining steps passed; a final full `yarn verify` → all steps passed.
+- After the review fix: E06-S12 `1 passed (1.6m)`, full `yarn verify` → all 14 steps passed.
+- `yarn verify` (before review) → first run failed at `format:check` (`E06-S12-sessions-list-perspectives.spec.ts is not formatted`); formatted with prettier, `yarn verify --from format:check` → all 9 remaining steps passed; a final full `yarn verify` → all steps passed.
 
 ## Open problems / next steps
 

@@ -440,6 +440,7 @@
   "activities.occurrences.actions.back": "Back to sessions",
   "activities.occurrences.actions.cancel": "Cancel session",
   "activities.occurrences.actions.move": "Move",
+  "activities.occurrences.calendar.agendaRegion": "Session list, scrollable",
   "activities.occurrences.calendar.allSections": "All sections",
   "activities.occurrences.calendar.denied": "You have no sections to show in the calendar.",
   "activities.occurrences.calendar.empty": "No sessions in this period.",
