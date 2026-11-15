@@ -3,11 +3,11 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['payments.bank.import'],
-  pageTitle: 'Bank statement',
+  pageTitle: 'Bank statements',
   pageTitleKey: 'payments.bank.title',
   pageGroup: 'Payments',
   pageGroupKey: 'payments.nav.group',
   pageOrder: 25,
   icon: 'landmark',
-  breadcrumb: [{ label: 'Bank statement', labelKey: 'payments.bank.title' }],
+  breadcrumb: [{ label: 'Bank statements', labelKey: 'payments.bank.title' }],
 }

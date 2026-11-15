@@ -15,7 +15,7 @@ test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const MORE = /^(More|Więcej)$/
-const SIGN_OUT = /^(Sign out|Wyloguj się)$/
+const SIGN_OUT = /^(Sign out|Wyloguj)$/
 const ADMIN_PANEL = /^(Admin panel|Panel administracyjny)$/
 
 async function pick(page: Page, switcher: 'context' | 'ward', option: string | RegExp): Promise<void> {
@@ -186,11 +186,11 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     )
     // A coach also gets "My sessions" next to the member tiles (E06-S15 #97); acting as a coach leaves only that tile.
     await expect(page.getByTestId('club-tile-coach')).toBeVisible()
-    await pick(page, 'context', /^(Coach|Trener)$/)
+    await pick(page, 'context', /^(as coach|jako trener)$/)
     await expect(coachTile).toHaveCount(0)
     const myTile = page.getByTestId('club-tile-coach')
     await expect(
-      myTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje zajęcia dziś i jutro/ }),
+      myTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje terminy dziś i jutro/ }),
     ).toBeVisible()
     const coachSession = myTile.getByTestId('club-today-coach-session').filter({ hasText: 'Trening dodatkowy' })
     await expect(coachSession.getByRole('link', { name: /Trening dodatkowy/ })).toHaveAttribute(

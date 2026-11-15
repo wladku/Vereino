@@ -104,10 +104,10 @@ test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that ke
     await expect(dialog).toContainText(
       /The unit is credited to: Marek Trener|Jednostka zostanie przypisana: Marek Trener/,
     )
-    const running = /The session is still running or has not started|Zajęcia jeszcze trwają albo się nie zaczęły/
+    const running = /The session is still running or has not started|Termin jeszcze trwa albo się nie zaczął/
     if (endAt && new Date(endAt).getTime() > Date.now()) await expect(dialog).toContainText(running)
     else await expect(dialog).not.toContainText(running)
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
 
     // 409: the conflict bar; the list refreshes and the coach's marks stay; nothing was closed.
     await expect(page.getByTestId('record-conflict-banner')).toBeVisible()
@@ -120,9 +120,9 @@ test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that ke
     await page.getByTestId('club-attendance-close').click()
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText(/3 people without|Osoby bez zaznaczonej obecności: 3/)
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
     await expect(page).toHaveURL(/\/club$/)
-    await expect(page.getByText(/Session closed — 11 present|Zajęcia zamknięte — obecni: 11/).first()).toBeVisible()
+    await expect(page.getByText(/Session closed — 11 present|Termin zamknięty — obecni: 11/).first()).toBeVisible()
     const closed = await readAttendanceList(request, coachToken, sessionId)
     expect(closed.body?.occurrence?.status).toBe('done')
     for (const personId of extra) {
@@ -152,7 +152,7 @@ test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that ke
     await signInBrowser(page, request, club, family.academyCoordinator.userId, family.academyCoordinator.email)
     await page.goto(`/club/occurrences/${emptySessionId}/attendance`)
     await expect(page.getByTestId('club-attendance-empty')).toContainText(
-      /The group has no members on the session date|Grupa nie ma członków w dniu zajęć/,
+      /The group has no members on the session date|Grupa nie ma członków w dniu terminu/,
     )
     await page.getByTestId('club-attendance-roster-link').click()
     await expect(page).toHaveURL(new RegExp(`/backend/groups/groups/${empty}$`))

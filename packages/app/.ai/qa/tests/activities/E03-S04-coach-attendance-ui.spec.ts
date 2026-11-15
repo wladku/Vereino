@@ -89,7 +89,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.goto('/club/calendar')
     // The acting context is the header's role-context switcher (E06-S19 #101).
     await page.locator('#club-switcher-context').click()
-    await page.getByRole('option', { name: /^(Coach|Trener)$/ }).click()
+    await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
     // `startNow` moves the times only: the session keeps tomorrow's date, which is next week on a Sunday.
     await showCalendarWeekOf(page, tomorrow)
     const item = page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })
@@ -152,7 +152,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.getByTestId('club-attendance-close').click()
     const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
     await expect(page).toHaveURL(/\/club$/)
     await page.goto(`/club/occurrences/${sessionId}/attendance`)
     await expect(page.getByTestId('club-attendance-done')).toBeVisible()

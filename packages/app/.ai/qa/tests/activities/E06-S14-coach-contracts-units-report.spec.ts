@@ -337,7 +337,7 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     )
     await page.getByTestId('coach-units-month').fill('2020-01')
     await expect(page.getByTestId('coach-units-empty')).toHaveText(
-      /No closed sessions this month|Brak zamkniętych zajęć w tym miesiącu/,
+      /No closed sessions this month|Brak zamkniętych terminów w tym miesiącu/,
     )
 
     // --- My units on the phone: Marek's own row, no amount, both locales and both modes ---
@@ -375,7 +375,7 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     await expect(page.getByTestId('club-units-balance')).toHaveText('1')
     await page.getByTestId('club-units-month').waitFor()
     await page.getByRole('button', { name: 'Poprzedni miesiąc' }).click()
-    await expect(page.getByTestId('club-units-empty')).toHaveText('Brak zamkniętych zajęć w tym miesiącu')
+    await expect(page.getByTestId('club-units-empty')).toHaveText('Brak zamkniętych terminów w tym miesiącu')
   } finally {
     await club.cleanup()
   }

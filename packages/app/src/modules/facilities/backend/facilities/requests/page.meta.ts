@@ -2,11 +2,11 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['facilities.view', 'facilities.rentals.approve'],
-  pageTitle: 'Booking requests',
+  pageTitle: 'Requests awaiting approval',
   pageTitleKey: 'facilities.requests.title',
   pageGroup: 'Facilities',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 16,
   icon: 'inbox',
-  breadcrumb: [{ label: 'Booking requests', labelKey: 'facilities.requests.title' }],
+  breadcrumb: [{ label: 'Requests awaiting approval', labelKey: 'facilities.requests.title' }],
 }

@@ -64,7 +64,7 @@ test('ISSUE-199 coach_may_cancel off hides "Cancel session" from the coach and r
     )
     expect(forged.status, JSON.stringify(forged.body)).toBe(403)
     expect(forged.body?.code).toBe('coach_cancel_disabled')
-    expect(forged.body?.error).toMatch(/Coaches may cancel sessions|Trenerzy mogą odwoływać zajęcia/)
+    expect(forged.body?.error).toMatch(/Coaches may cancel sessions|Trenerzy mogą odwoływać terminy/)
     const still = await readCalendarItem(request, family.coach.token, sessionId, 'as=coach')
     expect(still.body?.occurrence.status).toBe('planned')
 
