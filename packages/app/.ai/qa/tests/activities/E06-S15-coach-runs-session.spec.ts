@@ -15,7 +15,7 @@ import { createGuardianship } from '../_fixtures/people'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const NOT_YOURS = /This is not your session|To nie są Twoje zajęcia/
+const NOT_YOURS = /This is not your session|To nie jest Twój termin/
 const ADMIN_PANEL = /^(Admin panel|Panel administracyjny)$/
 
 async function openMore(page: Page): Promise<void> {
@@ -76,7 +76,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     )
     const coachTile = page.getByTestId('club-tile-coach')
     await expect(
-      coachTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje zajęcia dziś i jutro/ }),
+      coachTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje terminy dziś i jutro/ }),
     ).toBeVisible()
     const coachRow = coachTile.getByTestId('club-today-coach-session').filter({ hasText: 'Trening dodatkowy' })
     await expect(coachRow).toBeVisible()
@@ -118,7 +118,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     await page.getByTestId('club-session-cancel').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(
-      /Participants, guardians and the coaches will be notified|Uczestnicy, opiekunowie i trenerzy dostaną powiadomienie/,
+      /Participants, guardians and the coaches will be notified|Uczestnicy, opiekunowie i prowadzący dostaną powiadomienie/,
     )
     await dialog.getByTestId('club-session-cancel-reason').fill('ab')
     await dialog.getByTestId('club-session-cancel-confirm').click()
@@ -142,7 +142,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
     // coordinator; Marek, who cancelled, is not counted.
     expect(body.notified).toBe(6)
     await expect(
-      page.getByText(/Session canceled — people notified: 6|Zajęcia odwołane — powiadomione osoby: 6/).first(),
+      page.getByText(/Session canceled — people notified: 6|Termin odwołany — powiadomione osoby: 6/).first(),
     ).toBeVisible()
     await expect(page.getByTestId('club-session-cancelled')).toContainText('Pitch closed')
     await expect(page.getByTestId('club-session-cancel')).toHaveCount(0)

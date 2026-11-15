@@ -20,7 +20,7 @@ test.use({ timezoneId: CLUB_ZONE })
 const ABSENT = /^(Absent|Nieobecny)$/
 const PENDING = /Awaiting guardian confirmation|Czeka na potwierdzenie opiekuna/
 const REPORT_ABSENCE = /^(Report absence|Zgłoś nieobecność)/
-const WITHDRAW_ABSENCE = /^(Withdraw the absence|Wycofaj zgłoszenie nieobecności)/
+const WITHDRAW_ABSENCE = /^(Withdraw the absence|Cofnij nieobecność)/
 const ATTENDING = /^(Attending|Będzie)/
 const NOT_ATTENDING = /^(Not attending|Nie będzie)/
 const TRY_AGAIN = /^(Try again|Spróbuj ponownie)$/
@@ -34,7 +34,7 @@ function nextSessionText(date: string, time: string, section: string): RegExp {
   const day = (locale: string) =>
     new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
   return new RegExp(
-    `Next session: ${escape(`${day('en')} ${time} ${section}`)}|Najbliższe zajęcia: ${escape(`${day('pl')} ${time} ${section}`)}`,
+    `Next session: ${escape(`${day('en')} ${time} ${section}`)}|Najbliższy termin: ${escape(`${day('pl')} ${time} ${section}`)}`,
   )
 }
 

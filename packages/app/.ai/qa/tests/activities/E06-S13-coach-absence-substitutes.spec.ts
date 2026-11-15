@@ -277,7 +277,7 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     expect(assigned.status()).toBe(200)
     expect(((await assigned.json()) as AssignBody).kind).toBe('substitute_assigned')
     await expect(
-      page.getByText(/Bartek Zastępca will lead the session|Bartek Zastępca poprowadzi zajęcia/).first(),
+      page.getByText(/Bartek Zastępca will lead the session|Bartek Zastępca poprowadzi termin/).first(),
     ).toBeVisible()
 
     // Bartek is notified and sees the session as the coach, with "(substitution)" for Marek.

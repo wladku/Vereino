@@ -104,7 +104,7 @@ test('E07-S01 fees, discounts, coaches and payments, and Generate period with it
     await expect(page.getByRole('cell', { name: 'Żaki' }).first()).toBeVisible()
 
     // The tabs of B-20.
-    for (const name of [/^Fees$|^Składki$/, /^Discounts$|^Zniżki$/, /Coaches and payments|Trenerzy i płatności/]) {
+    for (const name of [/^Fees$|^Cenniki$/, /^Discounts$|^Zniżki$/, /Coaches and payments|Trenerzy i płatności/]) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
 

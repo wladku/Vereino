@@ -223,9 +223,9 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       // the link to the member thread; one per recipient.
       for (const address of recipients.pl) {
         const mail = (await awaitEmails(address, CANCELLED_PL)).at(0)
-        expect(mail?.text).toContain('jest odwołane.')
+        expect(mail?.text).toContain('jest odwołany.')
         // #139: the e-mail names who cancelled and in which role (R01).
-        expect(mail?.text).toContain('Odwołane przez:')
+        expect(mail?.text).toContain('Odwołany przez:')
         expect(mail?.text).toContain('(koordynator).')
         // The capture joins the rendered text with single spaces.
         expect(mail?.text).toContain(`Powód: ${REASON}`)

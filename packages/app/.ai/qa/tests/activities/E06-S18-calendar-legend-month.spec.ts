@@ -117,7 +117,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
       const entry = legend.locator(`[data-section-id="${sectionId}"]`)
       await expect(entry.locator('[data-slot="chart-legend-dot"]')).toHaveAttribute('data-color', colour)
       colours.push(colour)
-      await expect(item.getByTestId('calendar-item-coach')).toHaveText(new RegExp(`^(Coach|Trener): ${coach}$`))
+      await expect(item.getByTestId('calendar-item-coach')).toHaveText(new RegExp(`^(Coach|Prowadzący): ${coach}$`))
     }
     expect(new Set(colours).size).toBe(2)
     // The other family's child is not on the guardian's cards (R15): the cards name the guardian's ward only.
@@ -127,7 +127,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await page.getByTestId('club-calendar-next').click()
     await expect(page.getByTestId('calendar-item')).toHaveCount(0)
     await expect(page.getByTestId('calendar-empty')).toHaveText(
-      /^(No sessions this week\.|Brak zajęć w tym tygodniu\.)$/,
+      /^(No sessions this week\.|Brak terminów w tym tygodniu\.)$/,
     )
     await expect(page.getByTestId('calendar-legend')).toHaveCount(0)
     const emptyWeekLabel = String(await page.getByTestId('club-calendar-range').textContent())

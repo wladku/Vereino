@@ -122,7 +122,7 @@ type WizardInput = {
  */
 async function fillActivityWizard(page: Page, input: WizardInput): Promise<void> {
   await page.goto('/backend/activities/activities/create')
-  await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowe zajęcia$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowa aktywność$/ })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await chooseCrudOption(page, 'groupId', input.group)
   await page.locator('[data-crud-field-id="name"] input').fill(input.name)
@@ -164,12 +164,12 @@ async function addToRoster(page: Page, person: { lastName: string; fullName: str
   ).toBeVisible()
 }
 
-/** Opens the member calendar as a coach on the week of `date` (`/club/calendar`, the header's "Acting as" → "Coach"). */
+/** Opens the member calendar as a coach on the week of `date` (`/club/calendar`, the header's "Context" → "as coach"). */
 async function openCoachCalendar(page: Page, date: string): Promise<void> {
   await page.goto('/club/calendar')
   // The acting context is the header's role-context switcher (E06-S19 #101).
   await page.locator('#club-switcher-context').click()
-  await page.getByRole('option', { name: /^(Coach|Trener)$/ }).click()
+  await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
   await showCalendarWeekOf(page, date)
 }
 
@@ -610,7 +610,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await page.goto(`/club/occurrences/${tuesdaySessionId}`)
       await expect(page.getByTestId('club-session-title')).toHaveText(TRAINING)
       await expect(page.getByTestId('club-session-closed')).toHaveText(
-        /Declarations closed: the session has started\.|Deklaracje zamknięte: zajęcia już się rozpoczęły\./,
+        /Declarations closed: the session has started\.|Deklaracje zamknięte: termin już się rozpoczął./,
       )
       await expect(page.getByRole('button', { name: /Report absence|Zgłoś nieobecność/ })).toHaveCount(0)
       const late = await declare(request, kasiaToken, {
@@ -712,7 +712,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await page.getByTestId('club-attendance-close').click()
       const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
       await expect(dialog).toBeVisible()
-      await dialog.getByRole('button', { name: /^(Close session|Zamknij zajęcia)$/ }).click()
+      await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
       // A closed session returns to Today (E06-S17); the list is read-only from then on.
       await expect(page).toHaveURL(/\/club$/)
       await page.goto(attendanceUrl)
@@ -738,7 +738,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       // The page shows its own forbidden state, not the load error: the read opts out of the platform's 403 throw
       // (`OWN_FORBIDDEN_STATE`; lesson `apifetch-403-throws-before-page-branch`).
       await expect(page.getByTestId('club-attendance-missing')).toContainText(
-        /This is not your session|To nie są Twoje zajęcia/,
+        /This is not your session|To nie jest Twój termin/,
       )
       await expect(
         page.getByText(/attendance list could not be loaded|Nie udało się wczytać listy obecności/),

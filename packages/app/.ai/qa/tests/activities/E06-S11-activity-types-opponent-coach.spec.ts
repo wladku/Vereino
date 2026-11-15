@@ -17,7 +17,7 @@ import { addMembership } from '../_fixtures/groups'
 // Issue #93 (E06-S11; README B-14, B-15, M-04, flow F-04; club spec REQ-005, REQ-020, REQ-027): the activity wizard
 // offers the types that fit the group's kind (no match or sparring for a class group, whose training reads "Classes"),
 // a match or a sparring takes an opponent, and the coach picker lists only persons with an active coach or assistant
-// role, plus "No coach". The session page of the staff (B-15) and of a guardian (M-04) shows the opponent and the
+// role, plus "— no coach —". The session page of the staff (B-15) and of a guardian (M-04) shows the opponent and the
 // invited teams of a tournament. A forged match on a class group is still refused by the API.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
@@ -179,20 +179,20 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     // The pool coordinator: a class group gets classes, tournament, camp and other — no match or sparring.
     await signInBrowser(page, request, club, family.poolCoordinator.userId, family.poolCoordinator.email)
     await page.goto('/backend/activities/activities/create')
-    await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowe zajęcia$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowa aktywność$/ })).toBeVisible()
     await page.waitForLoadState('networkidle')
     await chooseCrudOption(page, 'groupId', /^Basen — początkujący$/)
-    await expect.poll(() => typeOptions(page)).toEqual(['Classes', 'Tournament', 'Camp', 'Other'])
+    await expect.poll(() => typeOptions(page)).toEqual(['Classes', 'Tournament', 'Camp', 'Event'])
     await expect(page.locator('[data-crud-field-id="opponentExternalTeamId"]')).toHaveCount(0)
     await expectNoPageOverflow(page)
 
     // The academy coordinator: a team gets every type; a match shows the opponent; the coach picker lists coaches only.
     await signInBrowser(page, request, club, family.academyCoordinator.userId, family.academyCoordinator.email)
     await page.goto('/backend/activities/activities/create')
-    await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowe zajęcia$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowa aktywność$/ })).toBeVisible()
     await page.waitForLoadState('networkidle')
     await chooseCrudOption(page, 'groupId', /^Żaki$/)
-    await expect.poll(() => typeOptions(page)).toEqual(['Training', 'Match', 'Sparring', 'Tournament', 'Camp', 'Other'])
+    await expect.poll(() => typeOptions(page)).toEqual(['Training', 'Match', 'Friendly', 'Tournament', 'Camp', 'Event'])
     await page.locator('[data-crud-field-id="name"] input').fill('Mecz z Polonią')
     await page.getByTestId('activities-type-select').click()
     await page.getByRole('option', { name: /^Match$/ }).click()
@@ -205,8 +205,8 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     // "Ko" would find the coordinator Krystyna Koordynator and the Kowalski family in the person directory.
     await coach.fill('Ko')
     await expect(page.getByRole('option')).toHaveCount(0)
-    await coach.fill('No')
-    await expect(page.getByRole('option', { name: /^No coach$/ })).toBeVisible()
+    await coach.fill('no')
+    await expect(page.getByRole('option', { name: /^— no coach —$/ })).toBeVisible()
     await pickComboboxOption(page, coach, 'Trener', /^Marek Trener$/, 'Marek Trener')
 
     const matchDay = addDays(today, 12)
@@ -229,7 +229,7 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
       startsOn: matchDay,
     })
 
-    // Changing the type away from a match hides the opponent, and the save sends none: "No coach" clears the coach.
+    // Changing the type away from a match hides the opponent, and the save sends none: "— no coach —" clears the coach.
     const friendly = await createActivity(request, admin, {
       groupId: family.zaki,
       name: 'Sparing kontrolny',
@@ -244,10 +244,10 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     await page.goto(`/backend/activities/activities/${friendly.id}`)
     await expect(page.locator('[data-crud-field-id="opponentExternalTeamId"]')).toBeVisible()
     await page.getByTestId('activities-type-select').click()
-    await page.getByRole('option', { name: /^Other$/ }).click()
+    await page.getByRole('option', { name: /^Event$/ }).click()
     await expect(page.locator('[data-crud-field-id="opponentExternalTeamId"]')).toHaveCount(0)
     const coachOnRecord = page.locator('[data-crud-field-id="coachPersonId"] input[role="combobox"]')
-    await pickComboboxOption(page, coachOnRecord, 'No', /^No coach$/, 'No coach')
+    await pickComboboxOption(page, coachOnRecord, 'no', /^— no coach —$/, '— no coach —')
     await page
       .getByRole('button', { name: /^Save$|^Zapisz$/ })
       .first()

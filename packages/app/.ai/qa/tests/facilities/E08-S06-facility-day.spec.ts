@@ -238,7 +238,7 @@ test('E08-S06 facility day: open, groups, incident with 422, close; log, inciden
     await page.goto(`/club/facility?place=${setup.pitch}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dziś na obiekcie')
     await expect(page.getByTestId('club-facility-state')).toContainText(/Obiekt zamknięty \d{2}:\d{2}/)
-    await expect(page.getByTestId('club-facility-incident')).toHaveText('Zgłoś zdarzenie')
+    await expect(page.getByTestId('club-facility-incident')).toHaveText('Zgłoś incydent')
     await expectNoPageOverflow(page)
     // The browser logs the expected 422 of the short description as a failed resource; nothing else may reach it.
     expect(consoleErrors.filter((text) => !text.includes('status of 422'))).toEqual([])

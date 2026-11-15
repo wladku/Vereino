@@ -1,0 +1,10 @@
+{
+  "$comment": "Allow-list of scripts/check-glossary.mjs (navigation spec REQ-N11): Polish catalog values that may keep a retired term. Each entry names the key, the retired pattern exactly as the script lists it, and the reason. An entry that matches no value fails the check.",
+  "entries": [
+    {
+      "key": "activities.nav.group",
+      "pattern": "harmonogram",
+      "reason": "The group name belongs to phase 1 (E09-S01, #246): the activities pages move under the shared group key groups.nav.group (\"Zajęcia\"), which retires this key. Until then a second \"Zajęcia\" group would stand next to \"Grupy\"."
+    }
+  ]
+}
