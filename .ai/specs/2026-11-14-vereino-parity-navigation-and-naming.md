@@ -30,7 +30,7 @@ It is one of five specs of 2026-11-14. The other four cite two parts of this one
 
 The application has the mockup's screens but not its frame. This spec gives the three shells the mockup's shape and gives every thing one name:
 
-- **Panel.** Six sidebar groups in the mockup's order (Club, People, Classes, Communication, Finance, Facility) with the mockup's items. The Club group is visible again and holds Settings and Publication. Four pages become pages with tabs (B-07, B-18, B-26, B-27). Four menu items carry a count. The top bar links to the member interface. The dashboard greets the person and shows each role its widgets.
+- **Panel.** Six sidebar groups in the mockup's order (Club, People, Classes, Communication, Finance, Facility) with the mockup's items. The Club group is visible again and holds Settings and Publication. Five pages become pages with tabs (B-07, B-18, B-26, B-27, and B-28 with "Rented hours"). Four menu items carry a count. The top bar links to the member interface. The dashboard greets the person and shows each role its widgets.
 - **Member pages.** One bottom-bar rule on every page; a More list that reaches every member page; a default context that fits a coach-only person; a staff context for the coordinator; a landing page per role.
 - **Public pages and sign-in.** The header Club · Sections · Facilities · Events · Sign in on every public page, "Events" only when the club publishes them; the club's matches, tournaments and camps on their own page (P-06) instead of the club and section pages; the club's logo and name on the sign-in page.
 - **Names.** One glossary — mockup term ↔ application term ↔ catalog areas — applied to the seven module catalogs and kept by a check.
@@ -332,7 +332,8 @@ Public
 - **Alternatives considered:** one route with `?tab=` (DD-N02); injected member nav entries (DD-N06); a settings sidebar for Club (DD-N01).
 - **Compatibility:**
   - **Unchanged:** every route path, feature id, i18n key, API route and command id.
-  - **Additive:** `isParticipant` and the `facility_operator` value in `contexts` on `GET /api/people/me`; `club.nav` in the public frame; `?club=` on `/login`; `?tab=` aliases; the error code `publication_requests_need_calendar`; two role grants.
+  - **Additive:** `isParticipant` and the `facility_operator` value in `contexts` on `GET /api/people/me`; `club.nav` (with `events`) in the public frame; `?club=` on `/login`; `?tab=` aliases; the error code `publication_requests_need_calendar`; two role grants; the public route `GET /api/club_core/public/{clubSlug}/events` and the `activities.publicEvents` contribution; the `events` publication block.
+  - **Narrowing:** `GET /api/club_core/public/{clubSlug}` and `/sections/{sectionSlug}` no longer return `events[]` (the list moves to P-06). Only Vereino's own public pages read it, and they change in the same phase.
   - **Changed inside the repository:** the `memberNav` input and `MemberShellLabels` of `@vereino/ui` (all five callers change in the same pull request); page metadata; catalog values.
   - **One narrowing:** the publication rule (DD-N13), enforced only on change.
 
@@ -603,14 +604,14 @@ N/A — no entity, column or index changes. The spec changes page metadata, cata
 | Read model | Change | Owner |
 |---|---|---|
 | `GET /api/people/me` | `isParticipant: boolean` (additive); `contexts` may contain `facility_operator` | `people` |
-| Public frame `club` of every public response | `nav: { sections: boolean, facilities: boolean }` (additive) | `club_core`; `facilities` and `activities` pass it through as they pass `links` |
+| Public frame `club` of every public response | `nav: { sections: boolean, facilities: boolean, events: boolean }` (additive) | `club_core`; `facilities` and `activities` pass it through as they pass `links` |
 | `GET /api/club_core/public/{clubSlug}` and `/sections/{sectionSlug}` | `events[]` is no longer returned (the P-01 list moves to P-06); `club.nav.events`; group cards gain `ageCategory` for teams | `club_core` |
 | `GET /api/club_core/public/{clubSlug}/events?section=` (new) | `{ club, upcoming: [...], past: [...] }`, each event with `past`, `sectionLogo`, place and `mapUrl` for an external venue | `club_core` route, events through a new `activities.publicEvents` contribution |
 | `GET /api/communication/threads` (member) | no change: the tile reads it with the existing `as=member&unread=1&pageSize=1` and shows `total` and the first row | `communication` |
 
 ## API, Command, and Error Contracts
 
-No new route. Changed behaviour:
+One new route, `GET /api/club_core/public/{clubSlug}/events` (REQ-N13, owner decision of 2026-10-27). Changed behaviour:
 
 | Method / command | Path / ID | Auth and feature gate | Input | Success response / event | Errors and concurrency | Requirement IDs |
 |---|---|---|---|---|---|---|
@@ -619,7 +620,7 @@ No new route. Changed behaviour:
 | `PUT` | `/api/club_core/settings` (`publication`) | `club_core.publication.manage` | the publication blocks | saved | 422 `publication_requests_need_calendar` on `online_requests` when turned on without `places_calendar`; 409 on a stale `updatedAt` (unchanged) | REQ-N12 |
 | `GET` | `/api/club_core/public/{clubSlug}` (+ section) | none (public) | — | `club.nav` (with `events`), `ageCategory`; no `events[]` | 404 unchanged | REQ-N09, REQ-N13 |
 | `GET` (new) | `/api/club_core/public/{clubSlug}/events` | none (public); rate limit as the other public routes | `section` (slug, optional; unknown → all) | `{ club, upcoming, past }` | 404 `public_events_disabled` while the publication or the block is off; 404 unknown club | REQ-N13 |
-| `PUT` | `/api/club_core/settings` | `club_core.manage` | `publication.events` boolean (additive; default false) | 200 | unchanged | REQ-N13 |
+| `PUT` | `/api/club_core/settings` (`publication`) | `club_core.publication.manage`, as the other publication blocks | `publication.events` boolean (additive; default false) | saved | unchanged | REQ-N13 |
 | `GET` | `/api/facilities/public/…` (every public route, including request verification) | none | — | returns the `club` frame with `nav` whenever the club is resolved | unchanged | REQ-N09 |
 | `GET` | `/api/people/persons` | `people.view` | `role=facility_operator` | filtered list | 400 for an unknown role (unchanged) | REQ-N12 |
 | `GET` | `/api/club_core/contracts` | `club_core.contracts.manage` | optional `institutionId` | filtered list | 400 for a malformed id | REQ-N12 |
@@ -680,7 +681,8 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
   - `groups`, `activities`: the shared group key and orders; `people`, `communication`, `payments`, `facilities`: orders; menu labels and group names (the glossary's first table) in the seven catalogs;
   - `packages/app/src/modules.ts`: `overrides.nav.groupOrder` (V-N02);
   - `scripts/check-settings-prefixes.mjs` as a `yarn verify` step, with unit tests;
-  - menu label versus page title where they differ (V-N03).
+  - menu label versus page title where they differ (V-N03);
+  - People → Imports keeps its menu item until Phase 8 adds the "Import" button on B-09, so the page never loses its entry point.
 - **Independent slices / estimated commits:** (a) page metadata and group order; (b) the guard script; (c) the sidebar test — 3 commits.
 - **Requirements closed:** REQ-N01
 - **Tests:** TEST-N01, TEST-N02
@@ -757,7 +759,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 9 — Public events and member tiles
 
-- **Depends on:** none
+- **Depends on:** Phase 7 for the "Wydarzenia" header link (`PublicHeader`, `club.nav`); P-06 itself and the member tiles do not wait
 - **Deliverables:** the P-06, P-01, P-02, B-03, M-02 and M-10 rows of *Proposed Solution*; the `events` publication block (stored in the existing `publication` JSON, no migration); the route `GET /api/club_core/public/{clubSlug}/events`; the `activities.publicEvents` contribution; the "Wydarzenia" header link driven by `club.nav.events` (the header itself is phase 7).
 - **Independent slices / estimated commits:** (a) public pages; (b) member tiles — 2 commits.
 - **Requirements closed:** REQ-N13, REQ-N14
@@ -818,7 +820,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 - **Migrations:** none.
 - **Needs the owner's approval before it is built** (Ask First, `AGENTS.md`):
   1. **Role catalogue:** `dashboards.view` for `coordinator` and `facility_operator` (phase 6). Without approval the coordinator and the attendant keep no dashboard, and REQ-N04 closes for the administrator only.
-  2. **Contract changes, all additive:** `isParticipant` and the `facility_operator` context on `GET /api/people/me`; `club.nav` in the public frame; `?club=` on `/login` with the `vereino_club` cookie; the `institutionId` filter on the contracts list; the error codes `publication_requests_need_calendar` and (if missing) `role_requires_adult`.
+  2. **Contract changes, additive:** `isParticipant` and the `facility_operator` context on `GET /api/people/me`; `club.nav` (with `events`) in the public frame; `?club=` on `/login` with the `vereino_club` cookie; the `institutionId` filter on the contracts list; the error codes `publication_requests_need_calendar` and (if missing) `role_requires_adult`; the public route `GET /api/club_core/public/{clubSlug}/events` with the error code `public_events_disabled`, the `activities.publicEvents` contribution and the `events` publication block. **One narrowing:** the public club and section responses drop `events[]` (P-06 takes the list).
   3. **One narrowing:** the publication rule (DD-N13), enforced only when a flag changes.
   4. **Configuration and tooling:** `overrides.nav.groupOrder` in `modules.ts`; two new `yarn verify` steps (`check-settings-prefixes`, `check-glossary`).
   5. **`@vereino/ui` public API:** the `memberNav` input and `MemberShellLabels` change; `PublicHeader`, `useMemberNavFeatures` and the skeletons are added.
