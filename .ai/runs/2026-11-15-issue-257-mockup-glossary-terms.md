@@ -48,10 +48,14 @@ Catalog values of the seven Vereino modules follow the glossary (D-031 §2) and 
 - `yarn glossary:check` — `12 Polish catalog(s), 0 problem(s)` after the catalog edits.
 - Subagents: `npx jest src/modules/activities src/modules/groups src/modules/communication` 24 suites / 270 tests passed; `src/modules/club_core src/modules/people src/modules/payments` 31 suites / 557 passed; `src/modules/facilities` 15 suites / 146 passed.
 
+- `yarn verify` (first run) — generate, typecheck, typecheck:packages, typecheck:qa, lint passed; `format:check` failed: `packages/app/scripts/__tests__/check-glossary.test.mjs is not formatted (run yarn format)`. Fixed with `yarn format`; `yarn verify --from format:check` passed the remaining 11 steps (`test:scripts` coverage 100 % for `check-glossary.mjs`).
+- `yarn verify` (full, on the four commits) — `all 16 step(s) passed`.
+- `yarn test:integration:vereino --filter E06-S19` (member shell: context labels, "Wyloguj", "Moje terminy dziś i jutro") — `1 passed (2.3m)`.
+
 ## Open problems
 
 - **Native-reader review** (phase 3 exit gate, the oracle for glossary rules 1–2): not done by an agent; the owner reviews the Polish diff per module on the pull request.
-- **Integration specs with changed text expectations were not run** in this run (12 activities specs, J-002, J-003 and others); CI's integration job runs them. The E06-S11 coach picker now types `'no'` to find "— no coach —".
+- **Only E06-S19 of the integration specs with changed text expectations ran** here (the other 12 activities specs, J-002, J-003 and the rest run in CI); CI's integration job runs them. The E06-S11 coach picker now types `'no'` to find "— no coach —".
 - Places use the shared `club_core.common.active` ("Aktywna", feminine) next to the neuter "miejsce" in the list's status column; a separate key would be a new key (out of scope).
 - Group names (`*.nav.group`) and short menu labels remain phase 1 work (E09-S01); the allow-list entry for `activities.nav.group` must go with it.
 
