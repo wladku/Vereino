@@ -35,6 +35,18 @@
 - `yarn spec-changelogs:check`, `yarn lessons:check` → valid.
 - One commit instead of the issue's two slices: the `@vereino/ui` slice alone fails the app typecheck (`features` is required), and `AGENTS.md` forbids committing a failing typecheck.
 
+## Review round (PR #320)
+
+An independent review agent (read-only, given the diff and the requirements, not my conclusions) returned request-changes with no blockers. Applied:
+
+- **Major — race in E06-S19 and E09-S04:** the bar renders on the profile answer; the fourth tab only after the feature check. `expectBarTargets` now uses the retrying `toHaveCount(5)`. E09-S04 opens each page through `openSettled`, which waits for the frame's own feature-check response (the request body contains `activities.reports.view_own`) and two animation frames, and reads the tabs with `toHaveCount(n)`, so the negative checks cannot pass while the check is pending.
+- **Minor — two `aria-current="page"` marks on an order page:** a path a tab claims now marks no More entry; unit test and an E09-S04 assertion (`[aria-current="page"]` count 1).
+- **Minor — TEST-N06 people:** added the coach who also coordinates and guards a ward (Payments tab; More: Profile, My units, Facilities and booking, Orders, My groups' payments, Admin panel) and a maintenance planner (three tabs; More: Profile, Facilities and booking), each with every entry followed.
+- **Nits:** the hook's header comment now says "per full page load"; a comment documents why the module-level store cannot leak across users or requests.
+- Kept: the degraded bar keeps the Admin panel (recorded in the spec changelog entry).
+
+Results after the fixes: `yarn workspace @vereino/ui test` 100 %; lint error `no-confusing-void-expression` in the new `openSettled` fixed; `yarn test:integration:vereino --filter E09-S04` → `1 passed (2.2m)`; `--filter E06-S19` → `1 passed (2.4m)`; `yarn verify` → `[verify] all 15 step(s) passed`.
+
 ## Open problems and next steps
 
 - Spec N phase 4 exit gate is TEST-N06; the attendant's Admin panel entry and the landing are E09-S05.

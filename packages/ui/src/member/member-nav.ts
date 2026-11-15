@@ -199,17 +199,18 @@ export function memberNav(input: MemberNavInput): MemberNav {
     const claims = extra.href === CLUB_PAYMENTS_HREF ? [CLUB_PAYMENTS_HREF, CLUB_ORDERS_HREF] : [extra.href]
     tabs.push({ ...extra, current: claims.some((href) => under(pathname, href)) })
   }
+  // One current mark per page: a path a tab claims (an order under Payments) marks no More entry, and More is current on
+  // its pages, whatever the grants, unless a tab already claims the path.
+  const tabCurrent = tabs.some((tab) => tab.current)
+  const moreCurrent = !tabCurrent && MORE_PATHS.some((href) => under(pathname, href))
   const items: MemberNavItem[] = [
     { href: CLUB_PROFILE_HREF, label: labels.profile, current: PROFILE_PATHS.some((href) => under(pathname, href)) },
   ]
   for (const entry of MEMBER_MORE_DESTINATIONS) {
     if (!entry.available || !features || entry.href === extra?.href) continue
     if (!entry.features.some((feature) => features.includes(feature))) continue
-    items.push({ href: entry.href, label: labels[entry.label], current: under(pathname, entry.href) })
+    items.push({ href: entry.href, label: labels[entry.label], current: !tabCurrent && under(pathname, entry.href) })
   }
   if (hasStaffContext(contexts)) items.push({ href: BACKEND_HREF, label: labels.backend, current: false })
-  // More is current on its pages, whatever the grants, unless a tab already claims the path.
-  const tabCurrent = tabs.some((tab) => tab.current)
-  const moreCurrent = !tabCurrent && MORE_PATHS.some((href) => under(pathname, href))
   return { tabs, more: { label: labels.more, current: moreCurrent, items } }
 }

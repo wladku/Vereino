@@ -1,8 +1,8 @@
 // The granted member navigation features (navigation spec REQ-N05, REQ-N06, #258): one `POST /api/auth/feature-check`
-// for the fixed list `MEMBER_NAV_FEATURES`, shared by the five member frames for the whole browser session — the same
-// call `facilities`' places pages already make. The answer is cached in memory, so it lives until the next full page
-// load (sign-out is one: the logout form posts and redirects to `/login`); a focused tab asks again once the answer is
-// five minutes old. Until the first answer — pending, or after the check failed — the snapshot is `null` and the bar
+// for the fixed list `MEMBER_NAV_FEATURES`, shared by the five member frames — the same call `facilities`' places pages
+// already make. The answer is cached in memory, so client-side navigation between member pages reuses it; a full page
+// load (sign-out is one: the logout form posts and redirects to `/login`) asks again, and so does a focused tab once
+// the answer is five minutes old. Until the first answer — pending, or after the check failed — the snapshot is `null` and the bar
 // degrades to the three fixed tabs and More with Profile, with no error; a failed first check keeps no answer, so the
 // next page asks again, and a failed refresh keeps the last known answer.
 // Authorization stays on the routes: the answer only decides which entries to show.
@@ -90,6 +90,8 @@ export function featureCheckOver(call: MemberApiCall): MemberFeatureCheck {
   }
 }
 
+// Not tied to a user: it never outlives a sign-out (a full page load). On the server it is created but never loaded —
+// effects do not run there and the server snapshot is `null` — so no answer is shared across requests.
 let sharedStore: MemberNavFeaturesStore | null = null
 
 /** The one store of the browser session, created by the first frame that asks (the five frames pass the same client). */

@@ -206,14 +206,16 @@ test('marks Today, Calendar and Messages for their pages and the pages below the
   assert.deepEqual(currentOf('/club/calendarx'), [])
 })
 
-test('marks Payments for payments and orders, and the Orders entry on an order', () => {
+test('marks Payments for payments and orders, with one current mark per page', () => {
   const payer = { paymentsVisible: true, features: GUARDIAN }
   assert.deepEqual(currentOf('/club/payments/return', payer), [CLUB_PAYMENTS_HREF])
   assert.deepEqual(currentOf('/club/orders/c-1', payer), [CLUB_PAYMENTS_HREF])
   const orders = nav({ pathname: '/club/orders', ...payer })
-  assert.equal(orders.more.items.find((item) => item.href === CLUB_ORDERS_HREF).current, true)
-  // Without the Payments tab an order belongs to More.
+  assert.equal(orders.more.items.find((item) => item.href === CLUB_ORDERS_HREF).current, false)
+  // Without the Payments tab an order belongs to More and its entry.
   assert.deepEqual(currentOf('/club/orders', { features: GUARDIAN }), ['more'])
+  const unpaid = nav({ pathname: '/club/orders', features: GUARDIAN })
+  assert.equal(unpaid.more.items.find((item) => item.href === CLUB_ORDERS_HREF).current, true)
 })
 
 test('marks More for the profile, wards, facility, coach and cash pages, whatever the grants', () => {

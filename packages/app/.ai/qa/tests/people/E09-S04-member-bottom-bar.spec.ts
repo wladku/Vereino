@@ -1,16 +1,28 @@
 import { expect, test, type Page } from '@playwright/test'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { familyFor } from '../_fixtures/attendance'
-import { OPTIMISTIC_LOCK_HEADER, createClub } from '../_fixtures/club'
+import {
+  OPTIMISTIC_LOCK_HEADER,
+  assignRole,
+  birthDateTurning,
+  calendarDate,
+  createClub,
+  createStaff,
+  userRoles,
+} from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { signedInStaff } from '../_fixtures/groups'
+import { makeMaintainer } from '../_fixtures/maintenance'
+import { createGuardianship } from '../_fixtures/people'
 
 // Issue #258 (E09-S04; navigation spec REQ-N05, REQ-N06, TEST-N06, AC-N05, AC-N06): every `/club` page of the five
 // member modules shows the same bottom bar for the same person — Today · Calendar · Messages · a fourth tab (Payments
 // for an adult payer, otherwise Facilities with `facilities.view`, otherwise none) · More — and More lists every
 // member destination the person may open, each opening its page. While the feature check fails the bar degrades to
 // three tabs and More with Profile and Sign out, without an error, and the next page load asks again. Targets are at
-// least 48 × 48 px, and nothing scrolls sideways at 320 px, in light and dark.
+// least 48 × 48 px, and nothing scrolls sideways at 320 px, in light and dark. The people: the guardian (en and pl), a
+// 16-year-old participant, a coach without own payments, the same coach once they coordinate and guard a ward, a
+// maintenance planner, the facility attendant and an administrator who is a member too.
 test.describe.configure({ timeout: 420_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -24,11 +36,38 @@ const FACILITIES = /^(Facilities|Obiekty)$/
 
 type Bar = { tabs: string[]; more: string[] }
 
+/**
+ * Opens a member page and waits until the frame's own feature check has answered and rendered: the bar shows three
+ * tabs until then, so a bar read earlier could pass a negative check for the wrong reason. The places pages make a
+ * second feature check of their own; the frame's is the one that asks for `activities.reports.view_own`.
+ */
+async function openSettled(page: Page, path: string): Promise<void> {
+  const answered = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/auth/feature-check') &&
+      (response.request().postData() ?? '').includes('activities.reports.view_own'),
+  )
+  await page.goto(path)
+  await answered
+  // The store notifies React after the answer; two frames later the bar is rendered from it.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve()
+          })
+        })
+      }),
+  )
+}
+
 /** The bar's tab names and the More entries (links only; Sign out is a button), with More opened and closed again. */
-async function readBar(page: Page): Promise<Bar> {
+async function readBar(page: Page, tabCount: number): Promise<Bar> {
   const bar = page.getByTestId('club-bottom-bar')
-  await expect(bar).toBeVisible()
-  const tabs = (await bar.locator(':scope > div > a').allInnerTexts()).map((text) => text.trim())
+  const tabLinks = bar.locator(':scope > div > a')
+  await expect(tabLinks).toHaveCount(tabCount)
+  const tabs = (await tabLinks.allInnerTexts()).map((text) => text.trim())
   await bar.getByText(MORE).click()
   const more = page.getByTestId('club-more')
   await expect(more.getByRole('button', { name: SIGN_OUT })).toBeVisible()
@@ -38,10 +77,11 @@ async function readBar(page: Page): Promise<Bar> {
 }
 
 /** Every bar target and every More entry is at least 48 px high, and the bar targets 48 px wide. */
-async function expectTargets(page: Page): Promise<void> {
+async function expectTargets(page: Page, tabCount: number): Promise<void> {
   const bar = page.getByTestId('club-bottom-bar')
   const targets = bar.locator(':scope > div > a, :scope > div > details > summary')
-  for (let index = 0; index < (await targets.count()); index += 1) {
+  await expect(targets).toHaveCount(tabCount + 1)
+  for (let index = 0; index <= tabCount; index += 1) {
     const box = await targets.nth(index).boundingBox()
     expect(box?.width ?? 0, `bar target ${String(index)}`).toBeGreaterThanOrEqual(48)
     expect(box?.height ?? 0, `bar target ${String(index)}`).toBeGreaterThanOrEqual(48)
@@ -55,12 +95,12 @@ async function expectTargets(page: Page): Promise<void> {
   await bar.getByText(MORE).click()
 }
 
-/** The same bar on each of the pages; returns it. */
-async function expectSameBar(page: Page, paths: string[]): Promise<Bar> {
+/** The same bar, with `tabCount` tabs, on each of the pages once the feature check has answered; returns it. */
+async function expectSameBar(page: Page, tabCount: number, paths: string[]): Promise<Bar> {
   let first: Bar | null = null
   for (const path of paths) {
-    await page.goto(path)
-    const bar = await readBar(page)
+    await openSettled(page, path)
+    const bar = await readBar(page, tabCount)
     if (first) expect(bar, path).toEqual(first)
     else first = bar
   }
@@ -95,7 +135,7 @@ async function setMemberLocale(page: Page, locale: 'pl' | 'en'): Promise<void> {
     headers: { [OPTIMISTIC_LOCK_HEADER]: updatedAt },
   })
   expect(saved.status(), await saved.text()).toBe(200)
-  await page.goto('/club')
+  await openSettled(page, '/club')
   await expect(page.locator('html')).toHaveAttribute('lang', locale)
 }
 
@@ -126,7 +166,7 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     await signInBrowser(page, request, club, family.guardian.userId, family.guardian.email)
     for (const locale of ['en', 'pl'] as const) {
       await setMemberLocale(page, locale)
-      const guardianBar = await expectSameBar(page, [
+      const guardianBar = await expectSameBar(page, 4, [
         '/club',
         '/club/calendar',
         '/club/messages',
@@ -145,13 +185,15 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     }
     const bar = page.getByTestId('club-bottom-bar')
     // The current tab: Payments also on an order, Calendar on its page, More on the profile.
-    await page.goto('/club/orders')
+    // One current mark only: the Orders entry behind More is not marked while the Payments tab is.
+    await openSettled(page, '/club/orders')
     await expect(bar.getByRole('link', { name: PAYMENTS })).toHaveAttribute('aria-current', 'page')
-    await page.goto('/club/calendar')
+    await expect(page.locator('[aria-current="page"]')).toHaveCount(1)
+    await openSettled(page, '/club/calendar')
     await expect(bar.getByRole('link', { name: CALENDAR })).toHaveAttribute('aria-current', 'page')
-    await page.goto('/club/profile')
+    await openSettled(page, '/club/profile')
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
-    await expectTargets(page)
+    await expectTargets(page, 4)
     await followEveryEntry(page)
     await page.goto('/club')
     const violations = await scanInColorSchemes(
@@ -169,25 +211,24 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
 
     // The feature check fails: three tabs and More with Profile and Sign out, no error; the next page load asks again.
     await page.route('**/api/auth/feature-check', (route) => route.fulfill({ status: 500, body: '{}' }))
-    await page.goto('/club/messages')
-    expect(await readBar(page)).toEqual({ tabs: ['Dziś', 'Kalendarz', 'Wiadomości'], more: ['Profil'] })
+    await openSettled(page, '/club/messages')
+    expect(await readBar(page, 3)).toEqual({ tabs: ['Dziś', 'Kalendarz', 'Wiadomości'], more: ['Profil'] })
     // No error message (the empty alert is the Next.js route announcer).
     await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(0)
     await page.unroute('**/api/auth/feature-check')
-    await page.goto('/club/calendar')
+    await openSettled(page, '/club/calendar')
     await expect(bar.getByRole('link', { name: PAYMENTS })).toBeVisible()
 
     // --- The 16-year-old participant: three tabs, More with Profile only ---
     await signInBrowser(page, request, club, family.elder.userId, family.elder.email)
-    const minorBar = await expectSameBar(page, ['/club', '/club/calendar', '/club/messages', '/club/profile'])
-    expect(minorBar.tabs).toHaveLength(3)
+    const minorBar = await expectSameBar(page, 3, ['/club', '/club/calendar', '/club/messages', '/club/profile'])
     expect(minorBar.more).toHaveLength(1)
     await expect(bar.getByRole('link', { name: PAYMENTS })).toHaveCount(0)
-    await expectTargets(page)
+    await expectTargets(page, 3)
 
     // --- The coach without own payments: Facilities as the tab; My units and My groups' payments behind More ---
     await signInBrowser(page, request, club, family.coach.userId, family.coach.email)
-    const coachBar = await expectSameBar(page, [
+    const coachBar = await expectSameBar(page, 4, [
       '/club',
       '/club/calendar',
       '/club/messages',
@@ -195,7 +236,6 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
       '/club/coach/units',
       '/club/coach/payments',
     ])
-    expect(coachBar.tabs).toHaveLength(4)
     await expect(bar.getByRole('link', { name: FACILITIES })).toBeVisible()
     expect(coachBar.more).toEqual(expect.arrayContaining([expect.stringMatching(/^(My units|Moje jednostki)$/)]))
     expect(coachBar.more).toEqual(
@@ -203,9 +243,9 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     )
     expect(coachBar.more.some((entry) => /^(Facilities and booking|Obiekty i rezerwacje)$/.test(entry))).toBe(false)
     expect(coachBar.more).toHaveLength(3)
-    await page.goto('/club/places')
+    await openSettled(page, '/club/places')
     await expect(bar.getByRole('link', { name: FACILITIES })).toHaveAttribute('aria-current', 'page')
-    await expectTargets(page)
+    await expectTargets(page, 4)
     await followEveryEntry(page)
     Object.assign(
       violations,
@@ -223,31 +263,81 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 
+    // --- The same coach once they coordinate the academy and guard a ward: Payments as the tab, Facilities and
+    // booking, Orders and the admin panel behind More ---
+    await createGuardianship(request, club.adminToken, {
+      guardianPersonId: family.coach.personId,
+      wardPersonId: family.other.child.personId,
+      isPrimaryPayer: false,
+      consents: { regulations: true },
+      validFrom: calendarDate(-30),
+    })
+    await assignRole(request, club.adminToken, {
+      personId: family.coach.personId,
+      role: 'coordinator',
+      sectionId: family.academy,
+      validFrom: '2020-01-01',
+    })
+    await expect
+      .poll(() => userRoles(request, club, family.coach.userId), { timeout: 20_000 })
+      .toEqual(expect.arrayContaining(['vereino_coordinator', 'vereino_payer']))
+    await signInBrowser(page, request, club, family.coach.userId, family.coach.email)
+    const busyBar = await expectSameBar(page, 4, ['/club', '/club/payments', '/club/places'])
+    await expect(bar.getByRole('link', { name: PAYMENTS })).toBeVisible()
+    expect(busyBar.more).toEqual([
+      expect.stringMatching(/^(Profile|Profil)$/),
+      expect.stringMatching(/^(My units|Moje jednostki)$/),
+      expect.stringMatching(/^(Facilities and booking|Obiekty i rezerwacje)$/),
+      expect.stringMatching(/^(Orders \(e\.g\. kit\)|Zamówienia \(np\. stroje\))$/),
+      expect.stringMatching(/^(My groups' payments|Płatności moich grup)$/),
+      expect.stringMatching(/^(Admin panel|Panel administracyjny)$/),
+    ])
+    // The places belong to More while Payments is the tab.
+    await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
+    await followEveryEntry(page)
+
+    // --- A maintenance planner without other roles: three tabs; the places behind More ---
+    const plannerStaff = await createStaff(request, club, {
+      firstName: 'Marek',
+      lastName: 'Konserwator',
+      birthDate: birthDateTurning(40),
+    })
+    await makeMaintainer(request, club, plannerStaff, family.pitch)
+    await signInBrowser(page, request, club, plannerStaff.userId, plannerStaff.email)
+    const plannerBar = await expectSameBar(page, 3, ['/club', '/club/messages', '/club/places'])
+    expect(plannerBar.more).toEqual([
+      expect.stringMatching(/^(Profile|Profil)$/),
+      expect.stringMatching(/^(Facilities and booking|Obiekty i rezerwacje)$/),
+    ])
+    await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
+    await expectTargets(page, 3)
+    await followEveryEntry(page)
+
     // --- The facility attendant: Facilities as the tab; Today at the facility behind More ---
     await signInBrowser(page, request, club, attendant.userId, attendant.email)
-    const attendantBar = await expectSameBar(page, ['/club', '/club/messages', '/club/facility'])
+    const attendantBar = await expectSameBar(page, 4, ['/club', '/club/messages', '/club/facility'])
     await expect(bar.getByRole('link', { name: FACILITIES })).toBeVisible()
     expect(attendantBar.more).toEqual(
       expect.arrayContaining([expect.stringMatching(/^(Today at the facility|Dziś na obiekcie)$/)]),
     )
-    await page.goto('/club/facility')
+    await openSettled(page, '/club/facility')
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
     await followEveryEntry(page)
 
     // --- The administrator on the phone: Accept cash and the admin panel behind More ---
     await signInBrowser(page, request, club, administrator.userId, administrator.email)
-    const adminBar = await expectSameBar(page, ['/club', '/club/calendar', '/club/cash'])
+    const adminBar = await expectSameBar(page, 4, ['/club', '/club/calendar', '/club/cash'])
     expect(adminBar.more).toEqual(
       expect.arrayContaining([
         expect.stringMatching(/^(Accept cash|Przyjmij gotówkę)$/),
         expect.stringMatching(/^(Admin panel|Panel administracyjny)$/),
       ]),
     )
-    await page.goto('/club/cash')
+    await openSettled(page, '/club/cash')
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
     await expect(page.getByTestId('club-bottom-bar').getByRole('link', { name: TODAY })).toBeVisible()
     await expect(page.getByTestId('club-bottom-bar').getByRole('link', { name: MESSAGES })).toBeVisible()
-    await expectTargets(page)
+    await expectTargets(page, 4)
     await followEveryEntry(page)
     await page.goto('/club')
     await expectNoPageOverflow(page)
