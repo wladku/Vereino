@@ -27,7 +27,7 @@ test.describe.configure({ timeout: 420_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const MORE = /^(More|Więcej)$/
-const SIGN_OUT = /^(Sign out|Wyloguj się)$/
+const SIGN_OUT = /^(Sign out|Wyloguj)$/
 const TODAY = /^(Today|Dziś)$/
 const CALENDAR = /^(Calendar|Kalendarz)$/
 const MESSAGES = /^(Messages|Wiadomości)$/
