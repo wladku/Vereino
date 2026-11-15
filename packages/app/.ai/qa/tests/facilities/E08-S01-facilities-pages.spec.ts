@@ -10,6 +10,7 @@ import {
   postZoneRule,
   setOpeningHours,
 } from '../_fixtures/facilities'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #121 (E08-S01; README B-23, B-26): the facility pages of the club administrator. Every page has no critical
 // or serious axe violation outside the platform baseline and reflows at 320 px; in the facility calendar the
@@ -80,7 +81,7 @@ test('E08-S01 facility pages: accessibility, reflow, booking availability dialog
       await page.setViewportSize(viewport)
       await page.goto(path)
       await page.waitForLoadState('networkidle')
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toHaveCount(0)
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toHaveCount(0)
       const violations = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (violations.length > 0) violationsByPage[path] = violations
       await expectNoPageOverflow(page)

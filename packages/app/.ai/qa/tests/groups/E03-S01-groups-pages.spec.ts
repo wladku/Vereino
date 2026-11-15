@@ -4,6 +4,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { birthDateTurning, createClub, createPerson, createStaff } from '../_fixtures/club'
 import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, createSeason } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #30 pages (club spec UI table: `/backend/groups/groups` + `create`, `[id]`, tabs "Seasons" and "External
 // teams"): the list, a group created through the form, the group record with its roster at 375 px in dark mode, the
@@ -53,7 +54,7 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
       await page.setViewportSize(viewport)
       await page.goto(path)
       if (shows) await expect(page.getByText(shows).first()).toBeVisible()
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toHaveCount(0)
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toHaveCount(0)
       const violations = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (violations.length > 0) violationsByPage[path] = violations
       await expectNoPageOverflow(page)
@@ -66,9 +67,15 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
 
     // The list with its tabs.
     await page.goto('/backend/groups/groups')
-    await expect(page.getByRole('heading', { level: 1, name: /^Groups$|^Grupy$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('groups.club.wardGroups.title', { exact: true }) }),
+    ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Żaki' })).toBeVisible()
-    for (const name of [/^Groups$|^Grupy$/, /^Seasons$|^Sezony$/, /External teams|Drużyny zewnętrzne/]) {
+    for (const name of [
+      uiText('groups.club.wardGroups.title', { exact: true }),
+      uiText('groups.nav.tabs.seasons', { exact: true }),
+      uiText('groups.externalTeams.title'),
+    ]) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
@@ -78,13 +85,13 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
     // CrudForm labels are not bound to their inputs; its field containers carry `data-crud-field-id`.
     await page.locator('[data-crud-field-id="name"] input').fill('Basen — początkujący')
     await page.locator('[data-crud-field-id="kind"] [role="combobox"]').click()
-    await page.getByRole('option', { name: /Class group|Grupa zajęciowa/ }).click()
+    await page.getByRole('option', { name: uiText('groups.groups.kind.class_group') }).click()
     await page.locator('[data-crud-field-id="sectionId"] [role="combobox"]').click()
     await page.getByRole('option', { name: 'Akademia piłkarska' }).click()
     // The team fields are hidden for a class group.
     await expect(page.locator('[data-crud-field-id="league"]')).toHaveCount(0)
     await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
+      .getByRole('button', { name: uiText('groups.common.create', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/groups\/groups\/[0-9a-f-]{36}$/)
@@ -98,18 +105,20 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
     await expect(
       page.getByRole('button', { name: /End membership: Jan Kowalski|Zakończ członkostwo: Jan Kowalski/ }),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Add to group$|^Dodaj do grupy$/ })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: uiText('groups.memberships.actions.add', { exact: true }) }),
+    ).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
-    await page.getByRole('tab', { name: /^Details$|^Szczegóły$/ }).click()
+    await page.getByRole('tab', { name: uiText('groups.groups.tabs.details', { exact: true }) }).click()
     await expect(page.locator('[data-crud-field-id="league"]')).toBeVisible()
 
     // The seasons and external teams tabs.
     await page.goto('/backend/groups/groups')
-    await page.getByRole('tab', { name: /^Seasons$|^Sezony$/ }).click()
+    await page.getByRole('tab', { name: uiText('groups.nav.tabs.seasons', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/backend\/groups\/seasons$/)
     await expect(page.getByText('2026/2027')).toBeVisible()
     await page.goto('/backend/groups/external-teams')
-    await expect(page.getByRole('heading', { level: 1, name: /External teams|Drużyny zewnętrzne/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: uiText('groups.externalTeams.title') })).toBeVisible()
 
     // A member without groups.view gets the platform's permission-denied state and no group data.
     const member = await createStaff(request, club, {
@@ -120,7 +129,7 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
     await switchBrowserUser(page, request, club, member.userId, member.email)
     for (const path of ['/backend/groups/groups', `/backend/groups/groups/${team}`, '/backend/groups/seasons']) {
       await page.goto(path)
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
       await expect(page.getByText('Jan Kowalski')).toHaveCount(0)
     }
   } finally {

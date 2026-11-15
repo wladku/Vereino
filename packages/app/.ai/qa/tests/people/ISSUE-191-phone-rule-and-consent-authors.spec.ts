@@ -14,6 +14,7 @@ import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { csvFile, familiesCsv, importAction, importRows, previewImport } from '../_fixtures/imports'
 import { getMe, updateClubSettings } from '../_fixtures/members'
 import { createGuardianship, setConsents } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #191 (owner decisions of 2026-11-09; club spec DD-47, DD-48): the profile's phone rule (Polish or E.164) also
 // holds on the administrator's person form (422 `phone_invalid` with the field error, an unchanged stored value stays
@@ -126,7 +127,7 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     await page.locator('[data-crud-field-id="lastName"] input').fill('Bezcyfr')
     await page.locator('[data-crud-field-id="phone"] input').fill('abc')
     await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
+      .getByRole('button', { name: uiText('people.common.create', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/people\/persons\/create$/)
@@ -137,7 +138,9 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     await switchBrowserUser(page, request, club, ola.userId, ola.email)
     await page.goto('/club/profile')
     const guardian = page.getByTestId('club-profile-guardian').first()
-    await expect(guardian.getByTestId('club-consent-image')).toContainText(/Club administrator|Administrator klubu/)
+    await expect(guardian.getByTestId('club-consent-image')).toContainText(
+      uiText('people.persons.filterRoles.club_admin'),
+    )
     await expect(guardian.getByTestId('club-consent-trips')).toContainText('Kasia Rodzic')
     await expect(page.locator('body')).not.toContainText(`${admin.firstName} ${admin.lastName}`)
   } finally {

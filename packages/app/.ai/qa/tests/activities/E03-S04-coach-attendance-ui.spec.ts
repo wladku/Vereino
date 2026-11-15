@@ -13,6 +13,7 @@ import {
 } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #33 (E03-S04), club spec UI row `/club/occurrences/[id]/attendance`: the coach on a phone (375 px) reads the
 // list before the session — the summary of the kind and each child's expectation, no check-off yet — then, once the
@@ -23,9 +24,9 @@ import { signInBrowser } from '../_fixtures/club-structure'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const PRESENT = /^(Present|Obecny)$/
-const ABSENT = /^(Absent|Nieobecny)$/
-const LATE = /^(Late|Spóźniony)$/
+const PRESENT = uiText('activities.club.attendance.actual.present', { exact: true })
+const ABSENT = uiText('activities.club.attendance.actual.absent', { exact: true })
+const LATE = uiText('activities.club.attendance.actual.late', { exact: true })
 
 test('E03-S04 the coach on a phone: expectations before the start, check-off from the calendar, a conflict keeps the selections, save and close; axe in both schemes', async ({
   page,
@@ -72,7 +73,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await expect(page.getByRole('radio')).toHaveCount(0)
     const youngerBefore = page.getByTestId('club-attendance-row').filter({ hasText: family.younger.firstName })
     await expect(youngerBefore.getByTestId('club-attendance-expectation')).toHaveText(
-      /Absence reported|Zgłoszona nieobecność/,
+      uiText('activities.club.attendance.expectation.absent'),
     )
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
@@ -89,7 +90,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.goto('/club/calendar')
     // The acting context is the header's role-context switcher (E06-S19 #101).
     await page.locator('#club-switcher-context').click()
-    await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
+    await page.getByRole('option', { name: uiText('activities.club.nav.contextCoach', { exact: true }) }).click()
     // `startNow` moves the times only: the session keeps tomorrow's date, which is next week on a Sunday.
     await showCalendarWeekOf(page, tomorrow)
     const item = page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })
@@ -117,7 +118,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await expect(page.getByTestId('record-conflict-banner')).toBeVisible()
     // The list refreshed (the coordinator's mark shows as saved) and the coach's selections stayed.
     await expect(row(family.other.child.firstName).getByTestId('club-attendance-marked-by')).toContainText(
-      /coordinator|koordynator/,
+      uiText('activities.club.attendance.role.coordinator'),
     )
     await expect(row(family.younger.firstName).getByRole('radio', { name: ABSENT })).toBeChecked()
     await expect(row(family.elder.firstName).getByRole('radio', { name: LATE })).toBeChecked()
@@ -126,7 +127,9 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     // Saving again with the refreshed version succeeds; each row says who marked it.
     await page.getByTestId('club-attendance-save').click()
     await expect(page.getByTestId('club-attendance-announcement')).toHaveText(/Attendance saved|Obecność zapisana/)
-    await expect(row(family.elder.firstName).getByTestId('club-attendance-marked-by')).toContainText(/coach|trener/)
+    await expect(row(family.elder.firstName).getByTestId('club-attendance-marked-by')).toContainText(
+      uiText('activities.club.attendance.role.coach'),
+    )
     const stored = await readAttendanceList(request, coachToken, sessionId)
     expect(stored.status, JSON.stringify(stored.body)).toBe(200)
     expect(stored.body && rowOf(stored.body, family.elder.personId)).toMatchObject({
@@ -152,7 +155,7 @@ test('E03-S04 the coach on a phone: expectations before the start, check-off fro
     await page.getByTestId('club-attendance-close').click()
     const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
+    await dialog.getByRole('button', { name: uiText('activities.club.attendance.close', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/club$/)
     await page.goto(`/club/occurrences/${sessionId}/attendance`)
     await expect(page.getByTestId('club-attendance-done')).toBeVisible()

@@ -13,6 +13,7 @@ import { create as createStructure, signInBrowser, switchBrowserUser } from '../
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
 import { createGuardianship, setConsents } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #104 (E06-S22; README M-10): the profile lists a guardian's wards with their age, account, groups with sections
 // and the three consents with date and author; the ward page shows the groups; a ward with an account sees who their
@@ -194,7 +195,7 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     await expect(wards.nth(0).getByTestId('club-ward-group')).toHaveText('Orliki · Akademia piłkarska')
     await expect(wards.nth(0).getByTestId('club-consent-regulations')).toContainText('Kasia Rodzic')
     await expect(wards.nth(1).getByTestId('club-ward-group')).toHaveText('Basen — początkujący · Basen')
-    await expect(wards.nth(1)).toContainText(/Own account|Własne konto/)
+    await expect(wards.nth(1)).toContainText(uiText('people.club.wards.hasAccount'))
     const violations = await scanInColorSchemes(
       page,
       testInfo,
@@ -208,9 +209,9 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     await expectNoPageOverflow(page)
 
     // The phone error appears under the field and the typed value stays.
-    const phone = page.getByLabel(/^(Phone|Telefon)$/)
+    const phone = page.getByLabel(uiText('people.club.profile.fields.phone', { exact: true }))
     await phone.fill('abc')
-    await page.getByRole('button', { name: /Save profile|Zapisz profil/ }).click()
+    await page.getByRole('button', { name: uiText('people.club.profile.actions.save') }).click()
     await expect(phone).toHaveAttribute('aria-invalid', 'true')
     await expect(page.getByText(/Enter a Polish phone number|Podaj polski numer telefonu/)).toBeVisible()
     await expect(phone).toHaveValue('abc')
@@ -233,7 +234,9 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
     const guardians = page.getByTestId('club-profile-guardians')
     await expect(guardians).toContainText(/Kasia Rodzic, Tomek Rodzic/)
     await expect(guardians.getByTestId('club-profile-guardian')).toHaveCount(2)
-    await expect(guardians.getByTestId('club-consent-trips').first()).toContainText(/Given|Udzielona/)
+    await expect(guardians.getByTestId('club-consent-trips').first()).toContainText(
+      uiText('people.club.consents.granted'),
+    )
     await expect(guardians.getByRole('switch')).toHaveCount(0)
     await expect(page.getByRole('switch')).toHaveCount(0)
     await expect(page.getByTestId('club-profile-wards')).toHaveCount(0)

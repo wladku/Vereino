@@ -30,6 +30,7 @@ import {
   signInThroughForm,
 } from '../_fixtures/members'
 import { actionLogEntries, createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #27 (E02-S03; club spec phase 1 steps 4, 4a and 5): a guardian signs in and sees every ward in their language;
 // a ward from the club's threshold gets a limited account without payments. Every acceptance criterion of the issue
@@ -126,7 +127,7 @@ test('E02-S03 guardian account: the password-setup e-mail, the sign-in lands on 
     await page.getByRole('link', { name: new RegExp(`Jaś Dziecko${marker}`) }).click()
     await expect(page).toHaveURL(new RegExp(`/club/wards/${youngerId}$`))
     await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).toBeChecked()
-    await expect(page.getByRole('switch', { name: /Trips|Wyjazdy/ })).not.toBeChecked()
+    await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).not.toBeChecked()
   } finally {
     await club.cleanup()
   }
@@ -200,7 +201,7 @@ test('E02-S03 ward accounts: below the threshold 422; at the threshold an own ac
     await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()
     await expect(page.getByTestId('club-wards')).toHaveCount(0)
-    await expect(page.getByText(/Payments|Płatności/)).toHaveCount(0)
+    await expect(page.getByText(uiText('people.club.tiles.payments.title'))).toHaveCount(0)
     // `/club/payments` (#110): with the feature granted by hand she reaches the page, which refuses her (R10) and
     // shows no charge and no payment form.
     await page.goto('/club/payments')
@@ -364,7 +365,7 @@ test('E02-S03 adult participant without wards: member and payer roles, lands on 
     // No guardian consents for a person without wards.
     await page.getByTestId('club-tile-profile').click()
     await expect(page).toHaveURL(/\/club\/profile$/)
-    await expect(page.getByRole('heading', { level: 1, name: /Profile|Profil/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: uiText('people.club.nav.profile') })).toBeVisible()
     await expect(page.getByTestId('club-profile-consents')).toHaveCount(0)
   } finally {
     await club.cleanup()

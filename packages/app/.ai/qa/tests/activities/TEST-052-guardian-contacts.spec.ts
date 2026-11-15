@@ -5,6 +5,7 @@ import { bothSeries, familyFor, firstSession } from '../_fixtures/attendance'
 import { call, createClub, mercato } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { getMe, putMe } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #34 (E03-S05), club spec TEST-052 (REQ-037, DD-39) with foundation II TEST-G05 (P-27, P-28): guardian A
 // consented to share their contacts with coaches, guardian B did not. The coach of the children's group reads A's phone
@@ -185,7 +186,7 @@ test('TEST-052 the coach opens the contacts on the attendance list on a phone: n
     const before = mercato(['activities', 'contact-access-log', ...scope]) as { rows?: unknown[] }
     expect(before.rows).toEqual([])
 
-    await section.getByRole('button', { name: /Show guardians' contacts|Pokaż kontakty opiekunów/ }).click()
+    await section.getByRole('button', { name: uiText('activities.club.contacts.show') }).click()
     const contact = section.getByTestId('club-contact')
     await expect(contact).toHaveCount(1)
     await expect(contact).toContainText(family.guardian.email)
@@ -200,7 +201,7 @@ test('TEST-052 the coach opens the contacts on the attendance list on a phone: n
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
       await page.reload()
-      await section.getByRole('button', { name: /Show guardians' contacts|Pokaż kontakty opiekunów/ }).click()
+      await section.getByRole('button', { name: uiText('activities.club.contacts.show') }).click()
       await expect(section.getByTestId('club-contact')).toHaveCount(1)
       const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (found.length > 0) violations[`contacts (${colorScheme})`] = found

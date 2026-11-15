@@ -18,6 +18,7 @@ import { updateClubSettings } from '../_fixtures/members'
 import { uniqueAddress } from '../_fixtures/messaging'
 import { createGuardianship } from '../_fixtures/people'
 import { publish } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #192, the follow-ups of the #182 review (club spec REQ-017, TEST-017): a minor's own declaration through a link
 // shows that it waits for the guardian; an expired link's 410 names the request page of its session and the page's
@@ -115,7 +116,7 @@ test('ISSUE-192 declaration link follow-ups: pending state, expired-link target,
       expect(api.headers()['referrer-policy']).toBe('no-referrer')
       const card = guestPage.locator(`[data-testid="declaration-link-person"][data-person-id="${teen}"]`)
       await expect(card.getByTestId('declaration-link-pending')).toHaveText(
-        /Awaiting guardian confirmation|Czeka na potwierdzenie opiekuna/,
+        uiText('activities.club.declaration.pending'),
       )
 
       // "Request a new link" of an expired link opens the request page of its session.

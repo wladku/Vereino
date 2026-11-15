@@ -16,6 +16,7 @@ import { list, signInBrowser, signOutBrowser, switchBrowserUser } from '../_fixt
 import { acceptInvitation, capturedEmails, checkOwnPayments, getMe, signInThroughForm } from '../_fixtures/members'
 import { guardianships, persons } from '../_fixtures/people'
 import { getSettings, publicGet, type PublicSectionPage } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // J-001 (club spec *User Journeys*, phase 1) end to end on one fresh tenant, driven through the pages the way the club
 // administrator, the guardian and the ward use them — the phase 1 exit gate of epic #21. The API is used only for the
@@ -29,8 +30,8 @@ test.describe.configure({ timeout: 600_000 })
 
 const SECTIONS = ['Akademia piłkarska', 'Basen', 'Zumba', 'Szachy', 'Cheerleader'] as const
 const FAMILY_NAME = 'Nowak'
-const NO_COORDINATOR = /^No coordinator$|^Brak koordynatora$/
-const ACCESS_DENIED = /Access Denied|Brak dostępu/
+const NO_COORDINATOR = uiText('club_core.sections.noCoordinator', { exact: true })
+const ACCESS_DENIED = uiText('auth.accessDenied.title')
 const CONFLICT = /modified by someone else|zmodyfikowany przez/
 const POOL_PUBLIC = {
   description: 'Nauka pływania dla dzieci od 6 lat, w grupach według umiejętności.',
@@ -73,7 +74,7 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
 
 /** Picks a person in a `LookupSelect` (searched by last name) inside `scope`. */
 async function lookupPerson(scope: Locator, lastName: string, fullName: string): Promise<void> {
-  await scope.getByPlaceholder(/Search by last name|Szukaj po nazwisku/).fill(lastName)
+  await scope.getByPlaceholder(uiText('club_core.coordinators.fields.person.search')).fill(lastName)
   await scope.getByRole('option', { name: new RegExp(fullName) }).click()
   await expect(scope.getByRole('option', { name: new RegExp(fullName) })).toHaveAttribute('aria-selected', 'true')
 }
@@ -88,7 +89,7 @@ async function createPersonThroughForm(
   // The date of birth is a native date input (typed, not picked), so it takes the ISO value directly.
   await crudInput(page, 'birthDate').fill(person.birthDate)
   await page
-    .getByRole('button', { name: /^Create$|^Utwórz$/ })
+    .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
     .first()
     .click()
   // A created person opens on the guardianship tab, where F-01 continues (#84).
@@ -100,7 +101,7 @@ async function createPersonThroughForm(
 
 async function openAccountTab(page: Page, personId: string): Promise<void> {
   await page.goto(`/backend/people/persons/${personId}`)
-  await page.getByRole('tab', { name: /^Account$|^Konto$/ }).click()
+  await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
 }
 
 test('J-001 club structure and a family on a fresh tenant: settings, sections with coordinators, places, institution, family, accounts, guardian sign-in, errors; phase 1 exit gate', async ({
@@ -144,10 +145,10 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await crudInput(page, 'shortName').fill('Dev Academy')
       await crudInput(page, 'ownAccountMinAge').fill('13')
       await page
-        .getByRole('button', { name: /^Save settings$|^Zapisz ustawienia$/ })
+        .getByRole('button', { name: uiText('club_core.settings.save', { exact: true }) })
         .first()
         .click()
-      await expect(page.getByText(/Club settings saved|Ustawienia klubu zapisane/).first()).toBeVisible()
+      await expect(page.getByText(uiText('club_core.settings.flash.saved')).first()).toBeVisible()
       await expect
         .poll(async () => {
           const stored = await call<StoredSettings>(request, 'GET', '/api/club_core/settings', club.adminToken)
@@ -164,7 +165,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await checkCrudBox(publication, field)
       }
       await page
-        .getByRole('button', { name: /Save publication|Zapisz publikację/ })
+        .getByRole('button', { name: uiText('club_core.publication.save') })
         .first()
         .click()
       await expect
@@ -189,7 +190,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await page.goto('/backend/club/sections/create')
         await crudInput(page, 'name').fill(name)
         await page
-          .getByRole('button', { name: /^Create$|^Utwórz$/ })
+          .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
           .first()
           .click()
         await expect(page).toHaveURL(/\/backend\/club\/sections$/)
@@ -205,11 +206,11 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         ['Basen', 'Wrona', 'Ewa Wrona'],
       ] as const) {
         await page.goto(`/backend/club/sections/${String(sectionIds.get(section))}/edit?tab=coordinators`)
-        const panel = page.getByRole('region', { name: /^Coordinators$|^Koordynatorzy$/ })
+        const panel = page.getByRole('region', { name: uiText('club_core.coordinators.title', { exact: true }) })
         await expect(panel.getByText(NO_COORDINATOR)).toBeVisible()
         await lookupPerson(panel, lastName, fullName)
-        await panel.getByRole('button', { name: /Assign coordinator|Przypisz koordynatora/ }).click()
-        await expect(page.getByText(/Coordinator assigned|Koordynator przypisany/).first()).toBeVisible()
+        await panel.getByRole('button', { name: uiText('club_core.coordinators.actions.assign') }).click()
+        await expect(page.getByText(uiText('club_core.coordinators.flash.assigned')).first()).toBeVisible()
         await expect(panel.getByRole('listitem').filter({ hasText: fullName })).toBeVisible()
         await expect(panel.getByText(NO_COORDINATOR)).toHaveCount(0)
       }
@@ -247,9 +248,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       // the place form (the institution has no "owned places" field).
       await page.goto('/backend/club/institutions/create')
       await crudInput(page, 'name').fill('Gmina Testowo')
-      await chooseCrudOption(page, 'type', /^Municipality$|^Gmina$/)
+      await chooseCrudOption(page, 'type', uiText('club_core.institutions.type.municipality', { exact: true }))
       await page
-        .getByRole('button', { name: /^Create$|^Utwórz$/ })
+        .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
         .first()
         .click()
       await expect(page).toHaveURL(/\/backend\/club\/institutions$/)
@@ -264,12 +265,24 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         owner?: string
         external?: boolean
       }[] = [
-        { name: 'Orlik 2024', kind: /^Complex$|^Kompleks$/, owner: 'Gmina Testowo' },
-        { name: 'Boisko piłkarskie', kind: /^Pitch$|^Boisko$/, parent: 'Orlik 2024' },
-        { name: 'Boisko wielofunkcyjne', kind: /^Multi-purpose pitch$|^Boisko wielofunkcyjne$/, parent: 'Orlik 2024' },
-        { name: 'Zaplecze szatniowe', kind: /^Locker room$|^Szatnia$/, parent: 'Orlik 2024' },
-        { name: 'Hala sportowa', kind: /^Hall$|^Hala$/ },
-        { name: 'Basen odkryty', kind: /^Pool$|^Basen$/, external: true },
+        { name: 'Orlik 2024', kind: uiText('club_core.places.kind.complex', { exact: true }), owner: 'Gmina Testowo' },
+        {
+          name: 'Boisko piłkarskie',
+          kind: uiText('club_core.places.kind.pitch', { exact: true }),
+          parent: 'Orlik 2024',
+        },
+        {
+          name: 'Boisko wielofunkcyjne',
+          kind: uiText('club_core.places.kind.multi_pitch', { exact: true }),
+          parent: 'Orlik 2024',
+        },
+        {
+          name: 'Zaplecze szatniowe',
+          kind: uiText('club_core.places.kind.locker_room', { exact: true }),
+          parent: 'Orlik 2024',
+        },
+        { name: 'Hala sportowa', kind: uiText('club_core.places.kind.hall', { exact: true }) },
+        { name: 'Basen odkryty', kind: uiText('club_core.places.kind.pool', { exact: true }), external: true },
       ]
       for (const place of places) {
         await page.goto('/backend/club/places/create')
@@ -279,7 +292,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         if (place.owner) await chooseCrudOption(page, 'ownerInstitutionId', new RegExp(`^${place.owner}$`))
         if (place.external) await checkCrudBox(page, 'isExternal')
         await page
-          .getByRole('button', { name: /^Create$|^Utwórz$/ })
+          .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
           .first()
           .click()
         await expect(page).toHaveURL(/\/backend\/club\/places$/)
@@ -372,7 +385,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await crudInput(publicPanel, 'publicContactEmail').fill(POOL_PUBLIC.contactEmail)
       await crudInput(publicPanel, 'publicContactPhone').fill(POOL_PUBLIC.contactPhone)
       await publicPanel
-        .getByRole('button', { name: /Save public page|Zapisz stronę publiczną/ })
+        .getByRole('button', { name: uiText('club_core.sections.public.save') })
         .first()
         .click()
       await expect(page.getByTestId('section-public-link')).toBeVisible()
@@ -400,19 +413,19 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       // On Kasia's record, in the "Guardianship and consents" tab: the two children, primary payer, consents.
       await page.goto(`/backend/people/persons/${family.kasia.id}`)
       await page.getByRole('tab', { name: /Guardianship|Opieka/ }).click()
-      await page.getByRole('button', { name: /^Add a ward$|^Dodaj podopiecznego$/ }).click()
-      const link = page.getByRole('form', { name: /New ward of this person|Nowy podopieczny tej osoby/ })
+      await page.getByRole('button', { name: uiText('people.guardianships.add.ward', { exact: true }) }).click()
+      const link = page.getByRole('form', { name: uiText('people.guardianships.add.wardTitle') })
       for (const [ward, consents] of [
-        [family.jas, [/Club regulations|Regulamin klubu/, /Image|Wizerunek/]],
-        [family.ola, [/Club regulations|Regulamin klubu/]],
+        [family.jas, [uiText('people.guardianships.consents.regulations'), /Image|Wizerunek/]],
+        [family.ola, [uiText('people.guardianships.consents.regulations')]],
       ] as const) {
         await lookupPerson(link, FAMILY_NAME, `${ward.firstName} ${ward.lastName}`)
-        for (const name of [/Primary payer|Główny płatnik/, ...consents]) {
+        for (const name of [uiText('people.guardianships.primaryPayer'), ...consents]) {
           const box = link.getByRole('checkbox', { name })
           await box.click()
           await expect(box).toBeChecked()
         }
-        await link.getByRole('button', { name: /Add guardianship|Dodaj opiekę/ }).click()
+        await link.getByRole('button', { name: uiText('people.guardianships.actions.add') }).click()
         await expect(page.getByText(/guardianship has been added|Opieka została dodana/).first()).toBeVisible()
         await expect(page.getByRole('link', { name: `${ward.firstName} ${ward.lastName}` })).toBeVisible()
       }
@@ -447,12 +460,12 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
     await test.step('step 3: "Create account" for Kasia (member and payer, invitation), disabled for Jaś (13), Ola without payer', async () => {
       const createAccountThroughTab = async (personId: string, email: string): Promise<string> => {
         await openAccountTab(page, personId)
-        await page.getByLabel(/E-mail for the invitation|E-mail do zaproszenia/).fill(email)
-        await page.getByRole('button', { name: /Create account|Utwórz konto/ }).click()
+        await page.getByLabel(uiText('people.account.fields.email')).fill(email)
+        await page.getByRole('button', { name: uiText('people.account.actions.create') }).click()
         await expect(
           page.getByText(/account has been created and the invitation sent|Konto zostało utworzone/).first(),
         ).toBeVisible()
-        await expect(page.getByText(/^Account active$|^Konto aktywne$/)).toBeVisible()
+        await expect(page.getByText(uiText('people.account.active', { exact: true }))).toBeVisible()
         const userId = (await getPerson(request, club.adminToken, personId)).body?.userId
         expect(typeof userId).toBe('string')
         club.extraUserIds.push(String(userId))
@@ -469,7 +482,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await expect(
         page.getByText(/Below the account age threshold \(13\)|Poniżej progu wieku dla konta \(13\)/),
       ).toBeVisible()
-      await expect(page.getByRole('button', { name: /Create account|Utwórz konto/ })).toBeDisabled()
+      await expect(page.getByRole('button', { name: uiText('people.account.actions.create') })).toBeDisabled()
       expect((await getPerson(request, club.adminToken, family.jas.id)).body).toMatchObject({ hasAccount: false })
 
       // Ola (14) gets an account with the member role only: no payer, so no payments.
@@ -520,9 +533,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       // Jaś's profile with his consents.
       await wards.filter({ hasText: 'Jaś Nowak' }).click()
       await expect(page).toHaveURL(new RegExp(`/club/wards/${family.jas.id}$`))
-      await expect(page.getByText(/You are the primary payer|Jesteś głównym płatnikiem/)).toBeVisible()
+      await expect(page.getByText(uiText('people.club.ward.primaryPayer'))).toBeVisible()
       await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).toBeChecked()
-      await expect(page.getByRole('switch', { name: /Trips|Wyjazdy/ })).not.toBeChecked()
+      await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).not.toBeChecked()
     })
 
     await test.step('exit gate: /club in light and dark mode at 375 px', async () => {
@@ -550,7 +563,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await expect(page.getByRole('heading', { level: 1, name: /Hello, Ola|Cześć, Ola/ })).toBeVisible()
       await expect(page.getByTestId('club-tile-profile')).toBeVisible()
       await expect(page.getByTestId('club-wards')).toHaveCount(0)
-      await expect(page.getByText(/Payments|Płatności/)).toHaveCount(0)
+      await expect(page.getByText(uiText('club_core.settings.groups.payments'))).toHaveCount(0)
       // `/club/payments` exists since #110; without the payer feature a minor gets no payments screen and no charge.
       await page.goto('/club/payments')
       await expect(page.getByTestId('club-charge')).toHaveCount(0)
@@ -569,13 +582,13 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
 
       // Ewa's account with Kasia's address: 409 `email_taken`, shown to the administrator; no account is created.
       await openAccountTab(page, ewaId)
-      await page.getByLabel(/E-mail for the invitation|E-mail do zaproszenia/).fill(kasiaEmail)
+      await page.getByLabel(uiText('people.account.fields.email')).fill(kasiaEmail)
       const [answer] = await Promise.all([
         page.waitForResponse(
           (response) =>
             response.url().endsWith(`/api/people/persons/${ewaId}/account`) && response.request().method() === 'POST',
         ),
-        page.getByRole('button', { name: /Create account|Utwórz konto/ }).click(),
+        page.getByRole('button', { name: uiText('people.account.actions.create') }).click(),
       ])
       expect(answer.status()).toBe(409)
       expect(((await answer.json()) as { code?: string }).code).toBe('email_taken')
@@ -600,7 +613,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         (async () => {
           await crudInput(page, 'firstName').fill('Katarzyna')
           await page
-            .getByRole('button', { name: /^Save$|^Zapisz$/ })
+            .getByRole('button', { name: uiText('activities.club.attendance.save', { exact: true }) })
             .first()
             .click()
         })(),
@@ -651,7 +664,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       // Marek (coordinator) reads the people list (`people.view`) but may not add a person (`people.manage`).
       const password = await switchBrowserUser(page, request, club, marek.userId, marek.email)
       await page.goto('/backend/people/persons')
-      await expect(page.getByRole('heading', { level: 1, name: /^People$|^Osoby$/ })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { level: 1, name: uiText('people.persons.title', { exact: true }) }),
+      ).toBeVisible()
       await expect(page.getByText(ACCESS_DENIED)).toHaveCount(0)
       await page.goto('/backend/people/persons/create')
       await expect(page.getByText(ACCESS_DENIED).first()).toBeVisible()

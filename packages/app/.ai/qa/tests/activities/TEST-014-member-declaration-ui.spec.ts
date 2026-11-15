@@ -5,6 +5,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { declare, familyFor, oneOff, personOf, readCalendarItem } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #32, club spec TEST-014 (REQ-006, REQ-007; the guardian part — the coach's attendance list is #33): a guardian
 // on a phone (375 px) reaches a declaration in at most three taps — "Today" → the session → "Report absence" — and
@@ -14,8 +15,8 @@ import { signInBrowser } from '../_fixtures/club-structure'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const ABSENT = /^Absent$|^Nieobecny$/
-const ATTENDING = /^Attending$|^Będzie$/
+const ABSENT = uiText('activities.club.attendance.actual.absent', { exact: true })
+const ATTENDING = uiText('activities.club.actions.attending', { exact: true })
 
 test('TEST-014 a guardian on a phone: Today → session → report absence in three taps, approve a pending declaration, states, axe in both schemes', async ({
   page,
@@ -88,10 +89,10 @@ test('TEST-014 a guardian on a phone: Today → session → report absence in th
     const younger = page.getByTestId('club-session-person').filter({ hasText: family.younger.firstName })
     await expect(younger).toBeVisible()
     // A training is `absence_only`: only "Report absence" is offered.
-    await expect(younger.getByRole('button', { name: /Attending|Będzie/ })).toHaveCount(0)
+    await expect(younger.getByRole('button', { name: uiText('activities.club.actions.attending') })).toHaveCount(0)
 
     // Tap 3: "Report absence" for the 14-year-old; the status is announced and stored.
-    await younger.getByRole('button', { name: /Report absence|Zgłoś nieobecność/ }).click()
+    await younger.getByRole('button', { name: uiText('activities.club.actions.reportAbsence') }).click()
     await expect(younger.getByTestId('club-session-declaration')).toHaveText(ABSENT)
     await expect(page.getByTestId('club-session-announcement')).not.toBeEmpty()
     const stored = await readCalendarItem(request, guardianToken, training.session.id, 'as=guardian')
@@ -137,7 +138,7 @@ test('TEST-014 a guardian on a phone: Today → session → report absence in th
     await page.reload()
     await expect(page.getByText(/calendar could not be loaded|Nie udało się wczytać kalendarza/)).toBeVisible()
     await page.unroute('**/api/activities/calendar?*')
-    await page.getByRole('button', { name: /Try again|Spróbuj ponownie/ }).click()
+    await page.getByRole('button', { name: uiText('activities.club.actions.retry') }).click()
     await showCalendarWeekOf(page, tomorrow)
     await expect(page.getByTestId('calendar-item').first()).toBeVisible()
     expect(violations).toEqual({})

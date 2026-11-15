@@ -15,6 +15,7 @@ import {
 import { signInBrowser } from '../_fixtures/club-structure'
 import { getMe, putMe } from '../_fixtures/members'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-006 (club spec *Integration Coverage*; REQ-001, REQ-002; phase 1 step 5): the administrator's people list,
 // person record, guardianship and account, and the member pages `/club`, `/club/profile` and
@@ -93,10 +94,10 @@ test('TEST-006 the administrator: people list, person record with guardianship a
     await page.reload()
     await recordReady()
     await page.getByRole('tab', { name: /Guardianship|Opieka/ }).click()
-    await expect(page.getByText(/Primary payer|Główny płatnik/).first()).toBeVisible()
+    await expect(page.getByText(uiText('people.guardianships.primaryPayer')).first()).toBeVisible()
 
     // Version conflict: the record changes elsewhere while the form is open; saving shows the conflict bar.
-    await page.getByRole('tab', { name: /^Details$|^Dane$/ }).click()
+    await page.getByRole('tab', { name: uiText('people.persons.tabs.details', { exact: true }) }).click()
     const before = (await getPerson(request, club.adminToken, parentId)).body as { updatedAt?: string }
     const elsewhere = await call(request, 'PUT', '/api/people/persons', club.adminToken, {
       data: { id: parentId, phone: '+48 500 100 200' },
@@ -105,7 +106,7 @@ test('TEST-006 the administrator: people list, person record with guardianship a
     expect(elsewhere.status, JSON.stringify(elsewhere.body)).toBe(200)
     await page.locator('[data-crud-field-id="firstName"] input').fill('Helena')
     await page
-      .getByRole('button', { name: /^Save$|^Zapisz$/ })
+      .getByRole('button', { name: uiText('people.common.save', { exact: true }) })
       .first()
       .click()
     await expect(page.getByText(CONFLICT).first()).toBeVisible()
@@ -113,15 +114,15 @@ test('TEST-006 the administrator: people list, person record with guardianship a
 
     // The account tab, by keyboard: type the address, Tab to "Create account", press Enter.
     await page.goto(`/backend/people/persons/${parentId}`)
-    await page.getByRole('tab', { name: /^Account$|^Konto$/ }).click()
-    const address = page.getByLabel(/E-mail for the invitation|E-mail do zaproszenia/)
+    await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
+    const address = page.getByLabel(uiText('people.account.fields.email'))
     await address.fill(`lena-${uniqueSuffix()}@example.org`)
-    const createButton = page.getByRole('button', { name: /Create account|Utwórz konto/ })
+    const createButton = page.getByRole('button', { name: uiText('people.account.actions.create') })
     await expect(createButton).toBeEnabled()
     await address.press('Tab')
     await expect(createButton).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByText(/^Account active$|^Konto aktywne$/)).toBeVisible()
+    await expect(page.getByText(uiText('people.account.active', { exact: true }))).toBeVisible()
     const created = (await getPerson(request, club.adminToken, parentId)).body as { userId?: string }
     if (created.userId) club.extraUserIds.push(created.userId)
     await expectNoPageOverflow(page)
@@ -179,7 +180,7 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     await page.reload()
     await expect(page.getByText(/could not be loaded|Nie udało się wczytać/)).toBeVisible()
     await page.unroute('**/api/people/me')
-    await page.getByRole('button', { name: /Try again|Spróbuj ponownie/ }).click()
+    await page.getByRole('button', { name: uiText('people.club.actions.retry') }).click()
     await expect(page.getByRole('heading', { level: 1, name: /Monika/ })).toBeVisible()
 
     // Today: the calendar entry point's empty state, the profile entry point and the ward.
@@ -199,7 +200,7 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     await image.focus()
     await page.keyboard.press('Space')
     await expect(image).toBeChecked()
-    await page.getByRole('button', { name: /Save consents|Zapisz zgody/ }).focus()
+    await page.getByRole('button', { name: uiText('people.club.ward.actions.save') }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText(/consents have been saved|Zgody zostały zapisane/)).toBeVisible()
     await expect
@@ -217,13 +218,13 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     const elsewhere = await putMe(request, token, { phone: '+48 600 700 800' }, current)
     expect(elsewhere.status, JSON.stringify(elsewhere.body)).toBe(200)
     await page.getByRole('switch', { name: /coaches|trenerom/ }).click()
-    await page.getByRole('button', { name: /Save profile|Zapisz profil/ }).click()
+    await page.getByRole('button', { name: uiText('people.club.profile.actions.save') }).click()
     await expect(page.getByText(CONFLICT).first()).toBeVisible()
     expect((await getMe(request, token)).body?.person.consents.shareContactWithCoaches.granted).toBe(false)
     // After a reload the form starts from the stored values and the save goes through.
     await page.reload()
     await page.getByRole('switch', { name: /coaches|trenerom/ }).click()
-    await page.getByRole('button', { name: /Save profile|Zapisz profil/ }).click()
+    await page.getByRole('button', { name: uiText('people.club.profile.actions.save') }).click()
     await expect(page.getByText(/profile has been saved|Profil został zapisany/)).toBeVisible()
     await expect(page.getByText(/^Given on |^Udzielona /).first()).toBeVisible()
     expect((await getMe(request, token)).body?.person.consents.shareContactWithCoaches.granted).toBe(true)

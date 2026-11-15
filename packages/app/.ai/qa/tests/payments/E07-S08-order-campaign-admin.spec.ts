@@ -17,6 +17,7 @@ import {
   type CampaignBody,
 } from '../_fixtures/orders'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S08 (payments spec phase 4 step 9, REQ-032, the administrator's part of TEST-044; issue #115; B-30…B-32): the
 // Academy kit form with a set (shirt + shorts), single products with children's and adult sizes and one without a
@@ -319,10 +320,10 @@ test('E07-S08 kit order form, stages, price edits and the supplier summary', asy
     // The copy keeps both groups; "Select all" clears them.
     await page.getByTestId('order-campaign-groups-all').click()
     await page
-      .getByRole('button', { name: /^(Save draft|Zapisz szkic)$/ })
+      .getByRole('button', { name: uiText('payments.orders.actions.saveDraft', { exact: true }) })
       .first()
       .click()
-    await expect(page.getByText(/Select at least one group|Wybierz co najmniej jedną grupę/).first()).toBeVisible()
+    await expect(page.getByText(uiText('payments.orders.validation.groupsRequired')).first()).toBeVisible()
     await page.getByTestId('order-campaign-groups-all').click()
     await page.getByTestId('order-campaign-open').last().click()
     await expect(page.getByTestId('order-campaign-title')).toHaveText('Kurtki 2026')
@@ -335,11 +336,11 @@ test('E07-S08 kit order form, stages, price edits and the supplier summary', asy
     await page.getByTestId('order-campaign-next').click()
     await expect(page.getByText(/Children without an order: 2|Dzieci bez zamówienia: 2/)).toBeVisible()
     await page
-      .getByRole('button', { name: /^(Close orders|Zamknij zamówienia)$/ })
+      .getByRole('button', { name: uiText('payments.orders.next.close.action', { exact: true }) })
       .last()
       .click()
-    await expect(page.getByTestId('order-campaign-stage')).toContainText(/Closed|Zamknięte/)
-    await page.getByRole('tab', { name: /Supplier summary|Zestawienie dla dostawcy/ }).click()
+    await expect(page.getByTestId('order-campaign-stage')).toContainText(uiText('payments.orders.stage.closed'))
+    await page.getByRole('tab', { name: uiText('payments.orders.tabs.summary') }).click()
     await expect(page.getByTestId('order-campaign-summary-csv')).toBeVisible()
 
     await page.setViewportSize({ width: 375, height: 812 })

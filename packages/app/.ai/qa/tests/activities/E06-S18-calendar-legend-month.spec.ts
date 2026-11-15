@@ -4,6 +4,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { familyFor, sessionsOf } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // E06-S18 (#100, epic #82; README M-03; club spec REQ-006, UI row `/club/calendar` "week/month calendar"): a guardian
 // with a ward in the academy and the pool reads the calendar on a phone. The week shows a legend of both sections, and
@@ -103,7 +104,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(training).toHaveCount(1)
     await expect(poolClass).toHaveCount(1)
     const legend = page.getByTestId('calendar-legend')
-    await expect(legend).toHaveAccessibleName(/^(Sections|Sekcje)$/)
+    await expect(legend).toHaveAccessibleName(uiText('activities.club.calendar.sections', { exact: true }))
     await expect(legend.getByTestId('calendar-legend-section')).toHaveText([ACADEMY, POOL])
     const colours: string[] = []
     for (const [item, section, sectionId, coach] of [
@@ -127,12 +128,12 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await page.getByTestId('club-calendar-next').click()
     await expect(page.getByTestId('calendar-item')).toHaveCount(0)
     await expect(page.getByTestId('calendar-empty')).toHaveText(
-      /^(No sessions this week\.|Brak terminów w tym tygodniu\.)$/,
+      uiText('activities.club.calendar.emptyWeek', { exact: true }),
     )
     await expect(page.getByTestId('calendar-legend')).toHaveCount(0)
     const emptyWeekLabel = String(await page.getByTestId('club-calendar-range').textContent())
     const emptyNext = page.getByTestId('club-calendar-empty-next')
-    await expect(emptyNext).toHaveText(/^(Next week|Następny tydzień)$/)
+    await expect(emptyNext).toHaveText(uiText('activities.club.calendar.next', { exact: true }))
     await emptyNext.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByTestId('club-calendar-range')).not.toHaveText(emptyWeekLabel)
@@ -157,7 +158,9 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(
       page.getByTestId('calendar-item').filter({ hasText: TRAINING }).getByTestId('calendar-item-section'),
     ).toHaveText(ACADEMY)
-    await expect(page.getByTestId('club-calendar-next')).toHaveText(/^(Next month|Następny miesiąc)$/)
+    await expect(page.getByTestId('club-calendar-next')).toHaveText(
+      uiText('activities.club.calendar.nextMonth', { exact: true }),
+    )
     const monthLabel = String(await page.getByTestId('club-calendar-range').textContent())
     await page.getByTestId('club-calendar-next').click()
     await expect(page.getByTestId('club-calendar-range')).not.toHaveText(monthLabel)
@@ -185,7 +188,9 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(page.getByTestId('club-calendar-view-month')).toBeFocused()
     await page.keyboard.press('Space')
     await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByTestId('club-calendar-previous')).toHaveText(/^(Previous month|Poprzedni miesiąc)$/)
+    await expect(page.getByTestId('club-calendar-previous')).toHaveText(
+      uiText('activities.club.calendar.previousMonth', { exact: true }),
+    )
 
     // A link asking for 90 days: the API answers 400 `calendar_range_invalid`, the page reads the first 62 days instead
     // of failing, says so, and lists all three sessions with the legend.
@@ -230,7 +235,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await page.reload()
     await expect(page.getByText(/calendar could not be loaded|Nie udało się wczytać kalendarza/)).toBeVisible()
     await page.unroute('**/api/activities/calendar?*')
-    await page.getByRole('button', { name: /^(Try again|Spróbuj ponownie)$/ }).click()
+    await page.getByRole('button', { name: uiText('activities.club.actions.retry', { exact: true }) }).click()
     await expect(page.getByTestId('calendar-item')).toHaveCount(3)
 
     expect(violations).toEqual({})

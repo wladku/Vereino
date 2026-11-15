@@ -34,6 +34,7 @@ import {
   type SheetCell,
 } from '../_fixtures/imports'
 import { setUserFeatures } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // E03-S06 (issue #65; club spec REQ-036, AC-036, DD-38, D-026, phase 2 step 2, TEST-051 membership part): with `groups`
 // enabled, its `groups.membershipImporter` hook turns the import's group column into participant memberships — a name
@@ -338,9 +339,11 @@ test('E03-S06 import detail page: membership outcome per row and "Create members
     // The preview: the found group and the missing one.
     await page.goto(`/backend/people/imports/${preview.id}`)
     await ready()
-    await expect(page.getByTestId('people-import-row-2-membership')).toContainText(/Group found|Grupa znaleziona/)
+    await expect(page.getByTestId('people-import-row-2-membership')).toContainText(
+      uiText('people.imports.membership.group_found'),
+    )
     await expect(page.getByTestId('people-import-row-3-membership')).toContainText(
-      /No group with this name|Brak grupy o tej nazwie/,
+      uiText('people.imports.membership.group_not_found'),
     )
     Object.assign(violations, await scanInColorSchemes(page, testInfo, 'preview', ready, { platformBaseline: true }))
 
@@ -349,7 +352,9 @@ test('E03-S06 import detail page: membership outcome per row and "Create members
     expect(committed.status, JSON.stringify(committed.body)).toBe(200)
     await page.reload()
     await ready()
-    await expect(page.getByTestId('people-import-row-2-membership')).toContainText(/Added to the group|Dodano do grupy/)
+    await expect(page.getByTestId('people-import-row-2-membership')).toContainText(
+      uiText('people.imports.membership.membership_created'),
+    )
     await expect(page.getByTestId('people-import-memberships-waiting')).toContainText('1')
     await expect(page.getByTestId('people-import-create-memberships')).toBeVisible()
     // Each committed row links its participant to the person's record.
@@ -366,9 +371,11 @@ test('E03-S06 import detail page: membership outcome per row and "Create members
     await page.getByTestId('people-import-create-memberships').click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: /Create memberships|Utwórz członkostwa/ })
+      .getByRole('button', { name: uiText('people.imports.actions.createMemberships') })
       .click()
-    await expect(page.getByTestId('people-import-row-3-membership')).toContainText(/Added to the group|Dodano do grupy/)
+    await expect(page.getByTestId('people-import-row-3-membership')).toContainText(
+      uiText('people.imports.membership.membership_created'),
+    )
     await expect(page.getByTestId('people-import-create-memberships')).toHaveCount(0)
     await expect(page.getByTestId('people-import-summary-membershipsCreated')).toContainText('2')
     await expectNoPageOverflow(page)

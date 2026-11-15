@@ -9,6 +9,7 @@ import {
 import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { createClub, uniqueSuffix } from '../_fixtures/club'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-N03 (navigation spec REQ-N02, AC-N02, DD-N02; issue #256): B-07, B-18, B-26, B-27 and B-28 are pages with tabs.
 // From the dashboard each tab is two clicks away (the menu item, then the tab); the URL is the tab's own route while the
@@ -28,49 +29,58 @@ type TabbedPage = {
 const PAGES: TabbedPage[] = [
   {
     menu: /^Institutions and contracts$/,
-    title: /^(Institutions and contracts|Instytucje i umowy)$/,
+    title: uiText('club_core.institutions.page.title', { exact: true }),
     tabs: [
-      { name: /^(Institutions|Instytucje)$/, path: '/backend/club/institutions' },
-      { name: /^(Contracts|Umowy)$/, path: '/backend/club/contracts' },
+      { name: uiText('club_core.institutions.tabs.institutions', { exact: true }), path: '/backend/club/institutions' },
+      { name: uiText('club_core.contracts.title', { exact: true }), path: '/backend/club/contracts' },
     ],
     alias: { tab: 'contracts', path: '/backend/club/contracts' },
   },
   {
     menu: /^Threads and cases$/,
-    title: /^(Threads and cases|Wątki i sprawy)$/,
+    title: uiText('communication.threads.page.title', { exact: true }),
     tabs: [
-      { name: /^(All|Wszystkie)$/, path: '/backend/communication/threads' },
-      { name: /^(Cases|Sprawy)$/, path: '/backend/communication/cases' },
+      {
+        name: uiText('activities.occurrences.perspectives.all', { exact: true }),
+        path: '/backend/communication/threads',
+      },
+      { name: uiText('communication.cases.title', { exact: true }), path: '/backend/communication/cases' },
     ],
     alias: { tab: 'cases', path: '/backend/communication/cases' },
   },
   {
     menu: /^Zones and rates$/,
-    title: /^(Zones and rates|Strefy i cennik)$/,
+    title: uiText('facilities.rules.tabs.label', { exact: true }),
     tabs: [
-      { name: /^(Zones|Strefy)$/, path: '/backend/facilities/zones' },
-      { name: /^(Closures|Zamknięcia)$/, path: '/backend/facilities/closures' },
-      { name: /^(Rental rates|Cennik wynajmu)$/, path: '/backend/facilities/rates' },
+      { name: uiText('facilities.rules.tabs.zones', { exact: true }), path: '/backend/facilities/zones' },
+      { name: uiText('facilities.closures.title', { exact: true }), path: '/backend/facilities/closures' },
+      { name: uiText('facilities.rates.title', { exact: true }), path: '/backend/facilities/rates' },
     ],
     alias: { tab: 'rates', path: '/backend/facilities/rates' },
   },
   {
     menu: /^Log and incidents$/,
-    title: /^(Log and incidents|Dziennik i incydenty)$/,
+    title: uiText('facilities.records.tabs.label', { exact: true }),
     tabs: [
-      { name: /^(Log|Dziennik)$/, path: '/backend/facilities/logs' },
-      { name: /^(Incidents|Incydenty)$/, path: '/backend/facilities/incidents' },
-      { name: /^(Entry bans|Zakazy wstępu)$/, path: '/backend/facilities/bans' },
-      { name: /^(Maintenance|Konserwacja)$/, path: '/backend/facilities/maintenance' },
+      { name: uiText('facilities.records.tabs.logs', { exact: true }), path: '/backend/facilities/logs' },
+      { name: uiText('facilities.records.incidents.title', { exact: true }), path: '/backend/facilities/incidents' },
+      { name: uiText('facilities.records.bans.title', { exact: true }), path: '/backend/facilities/bans' },
+      {
+        name: uiText('facilities.closures.reason.maintenance', { exact: true }),
+        path: '/backend/facilities/maintenance',
+      },
     ],
     alias: { tab: 'maint', path: '/backend/facilities/maintenance' },
   },
   {
     menu: /^Municipality report$/,
-    title: /^(Municipality report|Raport dla gminy)$/,
+    title: uiText('facilities.reports.owner.title', { exact: true }),
     tabs: [
-      { name: /^(Municipality report|Raport dla gminy)$/, path: '/backend/facilities/reports/owner' },
-      { name: /^(Rented hours|Wynajmowane godziny)$/, path: '/backend/facilities/reports/rented-hours' },
+      { name: uiText('facilities.reports.owner.title', { exact: true }), path: '/backend/facilities/reports/owner' },
+      {
+        name: uiText('facilities.reports.rentedHours.title', { exact: true }),
+        path: '/backend/facilities/reports/rented-hours',
+      },
     ],
     alias: { tab: 'rented-hours', path: '/backend/facilities/reports/rented-hours' },
   },
@@ -145,7 +155,7 @@ test('TEST-N03 five admin pages with tabs: two clicks, tab routes, ?tab= aliases
         await expect(page).toHaveURL(new RegExp(`${tab.path}$`))
         await expect(strip.getByRole('tab', { name: tab.name })).toHaveAttribute('aria-selected', 'true')
         await expect(pageTitle(page)).toHaveText(tabbed.title)
-        await expect(page.getByText(/Access Denied|Brak dostępu/)).toHaveCount(0)
+        await expect(page.getByText(uiText('auth.accessDenied.title'))).toHaveCount(0)
       }
     }
 
@@ -204,12 +214,17 @@ test('TEST-N03 five admin pages with tabs: two clicks, tab routes, ?tab= aliases
     await page.goto('/backend/club/institutions')
     await chromeReady(page)
     await expect(pageTitle(page)).toHaveText(PAGES[0].title)
-    await expect(page.getByRole('heading', { level: 1, name: /^(Institutions|Instytucje)$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: uiText('club_core.institutions.tabs.institutions', { exact: true }),
+      }),
+    ).toBeVisible()
     await page.waitForLoadState('networkidle')
     await expect(page.getByRole('tablist')).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: /^(Contracts|Umowy)$/ })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: uiText('club_core.contracts.title', { exact: true }) })).toHaveCount(0)
     await page.goto('/backend/club/contracts')
-    await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+    await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
   } finally {
     if (limitedUserId) await deleteUserIfExists(request, club.superToken, limitedUserId)
     if (limitedRoleId) await deleteRoleIfExists(request, club.superToken, limitedRoleId)

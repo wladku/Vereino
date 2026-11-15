@@ -13,6 +13,7 @@ import {
   signedInStaff,
   updateGroup,
 } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #92 (E06-S10; club spec REQ-019, AC-019, TEST-030 age category part; README B-11, B-12): the club's PZPN age
 // category dictionary (`dictionaries`, seeded with the PZPN defaults) gives a team its category; the coordinator picks
@@ -182,7 +183,7 @@ test('E06-S10 a coordinator gives a team its PZPN age category; a class group re
     await pick(page, 'sectionId', 'Akademia piłkarska')
     await pick(page, 'ageCategoryEntryId', 'Orlik młodszy (U10)')
     await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
+      .getByRole('button', { name: uiText('groups.common.create', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/groups\/groups\/[0-9a-f-]{36}$/)
@@ -190,10 +191,10 @@ test('E06-S10 a coordinator gives a team its PZPN age category; a class group re
     expect((await getGroup(request, coordinatorToken, String(created))).body?.ageCategoryName).toBe(
       'Orlik młodszy (U10)',
     )
-    await page.getByRole('tab', { name: /^Details$|^Szczegóły$/ }).click()
+    await page.getByRole('tab', { name: uiText('groups.groups.tabs.details', { exact: true }) }).click()
     await expect(page.locator('[data-crud-field-id="ageCategoryEntryId"]')).toContainText('Orlik młodszy (U10)')
     await expectNoPageOverflow(page)
-    await pick(page, 'kind', /Class group|Grupa zajęciowa/)
+    await pick(page, 'kind', uiText('groups.groups.kind.class_group'))
     await expect(page.locator('[data-crud-field-id="ageCategoryEntryId"]')).toHaveCount(0)
   } finally {
     await club.cleanup()

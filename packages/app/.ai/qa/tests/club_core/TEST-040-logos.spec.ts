@@ -26,6 +26,7 @@ import {
   type PublicClubPage,
   type PublicSectionPage,
 } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-040 (club spec *Integration Coverage*, REQ-028, AC-028, glossary *Logo*; issue #29): a club without a logo and
 // two sections; the club logo is uploaded, one section gets its own logo and loses it again; an SVG (also one renamed
@@ -231,7 +232,7 @@ test('TEST-040 the club logo in the headers of /backend, /club and /p, and a sec
     await page.goto('/backend/club/settings')
     await expect(page.locator(`img[src*="${attachmentId}"]`).first()).toBeVisible()
     await expect(page.getByTestId('club-logo-image')).toBeVisible()
-    await expect(page.getByTestId('club-logo-source')).toHaveText(/Club logo|Logo klubu/)
+    await expect(page.getByTestId('club-logo-source')).toHaveText(uiText('club_core.logo.club.title'))
 
     // /club: the member header (the club administrator is linked to a person).
     await page.goto('/club')
@@ -240,13 +241,13 @@ test('TEST-040 the club logo in the headers of /backend, /club and /p, and a sec
 
     // A section logo uploaded through the edit page replaces the club logo for that section.
     await page.goto(`/backend/club/sections/${pool}/edit`)
-    await expect(page.getByTestId('section-logo-source')).toHaveText(/Club logo|Logo klubu/)
+    await expect(page.getByTestId('section-logo-source')).toHaveText(uiText('club_core.logo.club.title'))
     await page.getByTestId('section-logo').locator('input[type="file"]').setInputFiles({
       name: 'basen.png',
       mimeType: 'image/png',
       buffer: BLUE.buffer,
     })
-    await expect(page.getByTestId('section-logo-source')).toHaveText(/Section logo|Logo sekcji/)
+    await expect(page.getByTestId('section-logo-source')).toHaveText(uiText('club_core.logo.section.title'))
     const section = await call<{ items?: { logoAttachmentId: string | null }[] }>(
       request,
       'GET',

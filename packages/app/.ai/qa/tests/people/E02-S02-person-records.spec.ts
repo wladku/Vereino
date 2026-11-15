@@ -31,6 +31,7 @@ import {
   setConsents,
   updateGuardianship,
 } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #26 (E02-S02; club spec phase 1 step 3): one record per person with families, consents and roles. Every
 // acceptance criterion of the issue body and of its 2026-10-26 clarification has an assertion here; the PESEL
@@ -583,8 +584,8 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
 
     // List and search by last name.
     await page.goto('/backend/people/persons')
-    await expect(page.getByRole('heading', { level: 1, name: /People|Osoby/ })).toBeVisible()
-    await page.getByPlaceholder(/Search by first or last name|Szukaj po imieniu lub nazwisku/).fill(marker)
+    await expect(page.getByRole('heading', { level: 1, name: uiText('people.persons.title') })).toBeVisible()
+    await page.getByPlaceholder(uiText('people.persons.search')).fill(marker)
     await expect(page.getByRole('link', { name: new RegExp(marker) })).toBeVisible()
     const listOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(listOverflow).toBeLessThanOrEqual(0)
@@ -598,7 +599,7 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     // browser's own message, a real past date is saved.
     const birthDateInput = page.locator('[data-crud-field-id="birthDate"] input[type="date"]')
     await birthDateInput.fill(birthDateTurning(-1))
-    const create = page.getByRole('button', { name: /^Create$|^Utwórz$/ }).first()
+    const create = page.getByRole('button', { name: uiText('people.common.create', { exact: true }) }).first()
     await create.click()
     await expect(page).toHaveURL(/\/backend\/people\/persons\/create$/)
     expect(await birthDateInput.evaluate((input: HTMLInputElement) => input.validationMessage)).not.toBe('')
@@ -606,7 +607,12 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     await create.click()
     await expect(page).toHaveURL(/\/backend\/people\/persons\/[0-9a-f-]{36}\?tab=guardianship$/)
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`Kasia ${marker}`) })).toBeVisible()
-    for (const name of [/^Details$|^Dane$/, /Guardianship|Opieka/, /^Roles$|^Role$/, /^Account$|^Konto$/]) {
+    for (const name of [
+      uiText('people.persons.tabs.details', { exact: true }),
+      /Guardianship|Opieka/,
+      uiText('people.persons.columns.roles', { exact: true }),
+      uiText('people.account.title', { exact: true }),
+    ]) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
     const recordOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
@@ -623,14 +629,14 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     })
     await page.reload()
     await page.getByRole('tab', { name: /Guardianship|Opieka/ }).click()
-    await expect(page.getByText(/Primary payer|Główny płatnik/).first()).toBeVisible()
-    await expect(page.getByText(/Club regulations|Regulamin klubu/).first()).toBeVisible()
+    await expect(page.getByText(uiText('people.guardianships.primaryPayer')).first()).toBeVisible()
+    await expect(page.getByText(uiText('people.guardianships.consents.regulations')).first()).toBeVisible()
 
     // The account tab of a 9-year-old explains the age threshold and disables the button.
     await page.goto(`/backend/people/persons/${ward}`)
-    await page.getByRole('tab', { name: /^Account$|^Konto$/ }).click()
+    await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
     await expect(page.getByText(/Below the account age threshold|Poniżej progu wieku/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /Create account|Utwórz konto/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: uiText('people.account.actions.create') })).toBeDisabled()
 
     // A member without people.view gets the platform's permission-denied state and no person data.
     const member = await createStaff(request, club, {
@@ -640,10 +646,10 @@ test('E02-S02 person pages: list with last-name search, create, the record tabs 
     })
     await switchBrowserUser(page, request, club, member.userId, member.email)
     await page.goto('/backend/people/persons')
-    await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+    await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
     await expect(page.getByText(marker)).toHaveCount(0)
     await page.goto(`/backend/people/persons/${ward}`)
-    await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+    await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
     await expect(page.getByText(marker)).toHaveCount(0)
   } finally {
     await club.cleanup()

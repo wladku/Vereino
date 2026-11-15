@@ -16,6 +16,7 @@ import {
   threadVersion,
 } from '../_fixtures/communication'
 import { actionLogEntries } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-M09 (foundation III REQ-M09, AC-M09, J-M03; issue #36) and the club spec's TEST-016 (REQ-010, AC-010) in one
 // file, on the club spec's TEST-015 family (the academy group Żaki with Anna's wards, the coach Marek, the academy
@@ -349,7 +350,7 @@ test('TEST-M09 / TEST-016 case UI: mark as case by keyboard through its confirma
     await page.keyboard.press('Enter')
     const dialog = page.getByRole('alertdialog')
     await expect(dialog).toBeVisible()
-    const confirm = dialog.getByRole('button', { name: /^(Mark as case|Oznacz jako sprawę)$/ })
+    const confirm = dialog.getByRole('button', { name: uiText('communication.cases.actions.mark', { exact: true }) })
     await confirm.focus()
     await page.keyboard.press('Enter')
     const banner = page.getByTestId('thread-case-banner')

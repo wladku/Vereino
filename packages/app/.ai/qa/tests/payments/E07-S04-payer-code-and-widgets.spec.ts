@@ -25,6 +25,7 @@ import {
   recordPayment,
   type ChargeItem,
 } from '../_fixtures/payments'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S04 (issue #111; payments spec phase 4 step 5, REQ-012, REQ-030, TEST-021; README M-02, M-08, B-01):
 // - the club's bank account is a club setting (an NRB; anything else answers 422 `bank_account_invalid`);
@@ -37,8 +38,8 @@ import {
 //   answer 403 `payments_minor`.
 test.describe.configure({ timeout: 300_000 })
 
-const EVERYTHING_PAID = /Everything is paid|Wszystko opłacone/
-const PAYMENTS_TAB = /^(Payments|Płatności)$/
+const EVERYTHING_PAID = uiText('payments.club.tile.paid')
+const PAYMENTS_TAB = uiText('payments.club.nav.payments', { exact: true })
 const ACCOUNT = '61109010140000071219812874'
 const ACCOUNT_PRINTED = '61 1090 1014 0000 0712 1981 2874'
 const FEE = 34900
@@ -128,7 +129,9 @@ test('E07-S04 Today tile, M-08 payer code and transfer instructions, B-01 overdu
     await expect(overdueWidget.getByTestId('payments-widget-overdue-families')).toContainText('2')
     const withoutPayerWidget = page.getByTestId('payments-widget-withoutPayer')
     await expect(withoutPayerWidget.getByTestId('payments-widget-withoutPayer-count')).toHaveText('1')
-    await overdueWidget.getByRole('link', { name: /^(Open list|Otwórz listę)$/ }).click()
+    await overdueWidget
+      .getByRole('link', { name: uiText('payments.dashboard.widgets.openList', { exact: true }) })
+      .click()
     await expect(page).toHaveURL(/\/backend\/payments\/charges\?perspective=overdue$/)
     await expect(page.getByRole('tab', { selected: true })).toHaveText(/Overdue|Zaległe|Po terminie/)
 

@@ -16,6 +16,7 @@ import { create, signInBrowser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, getGroup, signedInStaff, updateGroup } from '../_fixtures/groups'
 import { getMe, putMe } from '../_fixtures/members'
 import { publicGet, publish, putSectionPublic, type PublicationBlock } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-037, the `groups` and `activities` blocks (club spec phase 2 step 9, REQ-025, AC-025, DD-28, DD-29; issue #91,
 // E06-S09): a public team with a Tuesday and Thursday 17:00 series and a non-public team with its own series and event.
@@ -292,19 +293,19 @@ test('TEST-037 public groups with their schedule, next sessions, instructor cons
     const token = await getAuthToken(request, club.tenant.email, password)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto(`/backend/groups/groups/${orliki}`)
-    await page.getByRole('tab', { name: /^Public page$|^Strona publiczna$/ }).click()
+    await page.getByRole('tab', { name: uiText('club_core.sections.actions.publicPage', { exact: true }) }).click()
     const ageTo = page.locator('[data-crud-field-id="ageTo"]')
     await page.locator('[data-crud-field-id="ageFrom"] input').fill('10')
     await ageTo.locator('input').fill('8')
     await page
-      .getByRole('button', { name: /^Save$|^Zapisz$/ })
+      .getByRole('button', { name: uiText('club_core.common.save', { exact: true }) })
       .first()
       .click()
     await expect(ageTo).toContainText(/cannot be lower|nie może być niższy/)
     expect((await getGroup(request, token, orliki)).body).toMatchObject({ ageFrom: 8, ageTo: 10 })
     await ageTo.locator('input').fill('12')
     await page
-      .getByRole('button', { name: /^Save$|^Zapisz$/ })
+      .getByRole('button', { name: uiText('club_core.common.save', { exact: true }) })
       .first()
       .click()
     await expect

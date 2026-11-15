@@ -25,6 +25,7 @@
     "contracts:check": "node scripts/check-vereino-contracts.mjs",
     "settings-prefixes:check": "node scripts/check-settings-prefixes.mjs",
     "glossary:check": "node scripts/check-glossary.mjs",
+    "qa-texts:check": "node scripts/vereino-ui-texts.mjs",
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "typecheck:qa": "tsc --noEmit -p .ai/qa/tests/tsconfig.json",
     "test": "jest --config jest.config.cjs",

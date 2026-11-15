@@ -5,6 +5,7 @@ import { familyFor, oneOff } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #101 (E06-S19; README 3.1 *Member `/club`*, M-02, M-03): every `/club` page has the bottom bar Today ·
 // Calendar · Messages · More with the current tab marked and 48 × 48 px targets; More offers Profile, the admin panel
@@ -14,9 +15,9 @@ import { createGuardianship } from '../_fixtures/people'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const MORE = /^(More|Więcej)$/
-const SIGN_OUT = /^(Sign out|Wyloguj)$/
-const ADMIN_PANEL = /^(Admin panel|Panel administracyjny)$/
+const MORE = uiText('people.club.nav.more', { exact: true })
+const SIGN_OUT = uiText('people.club.nav.signOut', { exact: true })
+const ADMIN_PANEL = uiText('people.club.nav.backend', { exact: true })
 
 async function pick(page: Page, switcher: 'context' | 'ward', option: string | RegExp): Promise<void> {
   await page.locator(`#club-switcher-${switcher}`).click()
@@ -84,8 +85,13 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     await page.goto('/club')
     const bar = page.getByTestId('club-bottom-bar')
     await expect(bar).toBeVisible()
-    await expect(bar.getByRole('link', { name: /^(Today|Dziś)$/ })).toHaveAttribute('aria-current', 'page')
-    await expect(bar.getByRole('link', { name: /^(Calendar|Kalendarz)$/ })).not.toHaveAttribute('aria-current', 'page')
+    await expect(bar.getByRole('link', { name: uiText('people.club.nav.today', { exact: true }) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(
+      bar.getByRole('link', { name: uiText('people.club.nav.calendar', { exact: true }) }),
+    ).not.toHaveAttribute('aria-current', 'page')
     await expectBarTargets(page)
     // No role-context switcher for a member who does not coach; the ward switcher for two wards.
     await expect(page.getByTestId('club-switcher-context')).toHaveCount(0)
@@ -97,7 +103,7 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     // More: Profile and Sign out, no admin panel for a member without staff roles.
     await bar.getByText(MORE).click()
     const more = page.getByTestId('club-more')
-    await expect(more.getByRole('link', { name: /^(Profile|Profil)$/ })).toBeVisible()
+    await expect(more.getByRole('link', { name: uiText('people.club.nav.profile', { exact: true }) })).toBeVisible()
     await expect(more.getByRole('button', { name: SIGN_OUT })).toBeVisible()
     await expect(more.getByRole('link', { name: ADMIN_PANEL })).toHaveCount(0)
     const moreBox = await more.getByRole('button', { name: SIGN_OUT }).boundingBox()
@@ -125,9 +131,12 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     await expect(tile.getByTestId('club-today-session').filter({ hasText: family.younger.firstName })).toHaveCount(0)
 
     // The choice follows into the calendar, reached through the bar, which marks Calendar current.
-    await bar.getByRole('link', { name: /^(Calendar|Kalendarz)$/ }).click()
+    await bar.getByRole('link', { name: uiText('people.club.nav.calendar', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/club\/calendar$/)
-    await expect(bar.getByRole('link', { name: /^(Calendar|Kalendarz)$/ })).toHaveAttribute('aria-current', 'page')
+    await expect(bar.getByRole('link', { name: uiText('people.club.nav.calendar', { exact: true }) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
     await expect(page.locator('#club-switcher-ward')).toContainText(family.elder.firstName)
     await showCalendarWeekOf(page, tomorrow)
     await expect(page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })).toBeVisible()
@@ -151,14 +160,17 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
 
     // Back to everyone: both classes again.
     await page.reload()
-    await pick(page, 'ward', /^(Everyone|Wszyscy)$/)
+    await pick(page, 'ward', uiText('people.club.nav.allWards', { exact: true }))
     await showCalendarWeekOf(page, tomorrow)
     await expect(page.getByTestId('calendar-item').filter({ hasText: 'Basen dodatkowy' })).toBeVisible()
 
     // The messages pages share the bar with Messages current.
-    await bar.getByRole('link', { name: /^(Messages|Wiadomości)$/ }).click()
+    await bar.getByRole('link', { name: uiText('people.club.nav.messages', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/club\/messages$/)
-    await expect(bar.getByRole('link', { name: /^(Messages|Wiadomości)$/ })).toHaveAttribute('aria-current', 'page')
+    await expect(bar.getByRole('link', { name: uiText('people.club.nav.messages', { exact: true }) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
     await expectBarTargets(page)
 
     // Sign out from More: the session ends, /login opens, and the back button does not reopen /club.
@@ -184,12 +196,10 @@ test('E06-S19 bottom bar, ward and role-context switchers, More without the admi
     )
     // A coach also gets "My sessions" next to the member tiles (E06-S15 #97); acting as a coach leaves only that tile.
     await expect(page.getByTestId('club-tile-coach')).toBeVisible()
-    await pick(page, 'context', /^(as coach|jako trener)$/)
+    await pick(page, 'context', uiText('people.club.nav.contextCoach', { exact: true }))
     await expect(coachTile).toHaveCount(0)
     const myTile = page.getByTestId('club-tile-coach')
-    await expect(
-      myTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje terminy dziś i jutro/ }),
-    ).toBeVisible()
+    await expect(myTile.getByRole('heading', { name: uiText('activities.club.today.coachSessions') })).toBeVisible()
     const coachSession = myTile.getByTestId('club-today-coach-session').filter({ hasText: 'Trening dodatkowy' })
     await expect(coachSession.getByRole('link', { name: /Trening dodatkowy/ })).toHaveAttribute(
       'href',

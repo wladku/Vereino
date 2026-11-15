@@ -4,6 +4,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes }
 import { birthDateTurning, calendarDate, createClub, createPerson } from '../_fixtures/club'
 import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, createSeason, listGroups, roster, signedInStaff } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #90 (E06-S08; README B-11, B-12): the groups list filters by section, kind, season and status inside the
 // record scope, keeps the filters and the perspective (All / Teams / Class groups) in the URL, and shows each group's
@@ -131,9 +132,9 @@ test('E06-S08 groups list: filters, perspectives in the URL, coaches and partici
     await page.goto('/backend/groups/groups')
     const navTabs = page.getByRole('tablist', { name: /Groups, seasons and external teams|Grupy, sezony/ })
     await expect(navTabs.getByRole('tab')).toHaveText([
-      /^Groups$|^Grupy$/,
-      /External teams|Drużyny zewnętrzne/,
-      /^Seasons$|^Sezony$/,
+      uiText('groups.club.wardGroups.title', { exact: true }),
+      uiText('groups.externalTeams.title'),
+      uiText('groups.nav.tabs.seasons', { exact: true }),
     ])
 
     // A section filter in the URL survives a reload; the counts and coaches are shown.
@@ -146,12 +147,12 @@ test('E06-S08 groups list: filters, perspectives in the URL, coaches and partici
     await expect(page.getByRole('link', { name: 'Basen — początkujący' })).toHaveCount(0)
 
     // The "Class groups" perspective: only class groups, and the URL keeps the section filter beside it.
-    await page.getByRole('tab', { name: /^Class groups$|^Grupy zajęciowe$/ }).click()
+    await page.getByRole('tab', { name: uiText('groups.groups.perspectives.class_group', { exact: true }) }).click()
     await expect(page).toHaveURL(new RegExp(`kind=class_group&sectionId=${academy}`))
     await expect(page.getByTestId('groups-empty-filtered')).toBeVisible()
-    await page.getByRole('button', { name: /^Clear filters$|^Wyczyść filtry$/ }).click()
+    await page.getByRole('button', { name: uiText('groups.groups.filters.clear', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/backend\/groups\/groups$/)
-    await page.getByRole('tab', { name: /^Class groups$|^Grupy zajęciowe$/ }).click()
+    await page.getByRole('tab', { name: uiText('groups.groups.perspectives.class_group', { exact: true }) }).click()
     await expect(page).toHaveURL(/\?kind=class_group$/)
     await expect(page.getByRole('link', { name: 'Basen — początkujący' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Orliki' })).toHaveCount(0)
@@ -190,7 +191,9 @@ test('E06-S08 groups list: filters, perspectives in the URL, coaches and partici
       await page.goto('/backend/groups/groups')
       await expect(page.getByTestId('groups-empty')).toBeVisible()
       await expect(
-        page.getByTestId('groups-empty').getByRole('link', { name: /^Add group$|^Dodaj grupę$/ }),
+        page
+          .getByTestId('groups-empty')
+          .getByRole('link', { name: uiText('groups.groups.actions.create', { exact: true }) }),
       ).toBeVisible()
     } finally {
       await empty.cleanup()

@@ -3,6 +3,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { birthDateTurning, createAccount, createClub, createPerson, uniqueSuffix } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { updateClubSettings } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-055 (club spec *Integration Coverage*), settings part (REQ-002, D-022): a 14-year-old's account under
 // `own_account_min_age` 16 and then 13 — 422 at 16, created at 13 — and the person record's "Create account" button,
@@ -31,18 +32,18 @@ test('TEST-055 settings part: a 14-year-old gets 422 at the default threshold 16
     const password = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     club.adminToken = await getAuthToken(request, club.tenant.email, password)
     await page.goto(`/backend/people/persons/${teenId}`)
-    await page.getByRole('tab', { name: /^Account$|^Konto$/ }).click()
+    await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
     await expect(page.getByText(/Below the account age threshold \(16\)|Poniżej progu wieku.*16/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /Create account|Utwórz konto/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: uiText('people.account.actions.create') })).toBeDisabled()
 
     // Lowered to 13: the same request creates the account; the button is enabled once an address is entered.
     const lowered = await updateClubSettings(request, club.adminToken, { ownAccountMinAge: 13 })
     expect(lowered.status, JSON.stringify(lowered.body)).toBe(200)
     await page.reload()
-    await page.getByRole('tab', { name: /^Account$|^Konto$/ }).click()
+    await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
     await expect(page.getByText(/Below the account age threshold|Poniżej progu wieku/)).toHaveCount(0)
-    await page.getByLabel(/E-mail for the invitation|E-mail do zaproszenia/).fill(email)
-    await expect(page.getByRole('button', { name: /Create account|Utwórz konto/ })).toBeEnabled()
+    await page.getByLabel(uiText('people.account.fields.email')).fill(email)
+    await expect(page.getByRole('button', { name: uiText('people.account.actions.create') })).toBeEnabled()
     const created = await createAccount(request, club.adminToken, teenId, email)
     expect(created.status, JSON.stringify(created.body)).toBe(201)
     club.extraUserIds.push(String(created.body?.userId))

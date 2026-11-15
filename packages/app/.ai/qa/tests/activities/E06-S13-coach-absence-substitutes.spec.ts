@@ -14,6 +14,7 @@ import { familyFor, readCalendarItem, saveAttendanceList, sessionsOf, startNow }
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub, type Club } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { signedInStaff } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #95 (E06-S13; README M-04, B-15, B-01, flow F-03 path A; club spec REQ-008, DD-12, TEST-010): Marek, the
 // assigned coach of a Żaki training tomorrow, reports an absence from his phone (375 px): the dialog, the toast and
@@ -156,7 +157,7 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     await expect(page.getByTestId('club-session-title')).toHaveText('Trening Żaków')
     await page.getByTestId('club-session-report-absence').click()
     const absenceDialog = page.getByTestId('club-absence-dialog')
-    await expect(absenceDialog).toContainText(/Needing a coach|Do obsadzenia/)
+    await expect(absenceDialog).toContainText(uiText('activities.occurrences.perspectives.unassigned'))
     const dialogViolations = await scanInColorSchemes(
       page,
       testInfo,
@@ -180,13 +181,7 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     )
     await page.getByTestId('club-absence-confirm').click()
     expect((await absenceAnswer).status()).toBe(200)
-    await expect(
-      page
-        .getByText(
-          /Absence reported — the coordinator has been notified|Zgłoszono nieobecność — koordynator dostał powiadomienie/,
-        )
-        .first(),
-    ).toBeVisible()
+    await expect(page.getByText(uiText('activities.substitutions.absence.done')).first()).toBeVisible()
     await expect(page.getByTestId('club-session-coach-needed')).toBeVisible()
     await expect(page.getByTestId('club-session-report-absence')).toHaveCount(0)
     await expectNoPageOverflow(page)
@@ -258,8 +253,10 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     await page.goto('/backend/activities/occurrences?perspective=unassigned')
     const row = page.getByRole('row').filter({ hasText: 'Trening Żaków' })
     await expect(row.getByTestId('occurrence-needs-coach')).toBeVisible()
-    await row.getByRole('button', { name: /Open actions|Otwórz akcje/ }).click()
-    await page.getByRole('menuitem', { name: /^(Assign substitute|Wskaż zastępcę)$/ }).click()
+    await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await page
+      .getByRole('menuitem', { name: uiText('activities.substitutions.assign.action', { exact: true }) })
+      .click()
     const assignDialog = page.getByTestId('assign-coach-dialog')
     const irena = assignDialog.getByTestId('assign-coach-option').and(page.locator('[data-busy="true"]'))
     await expect(irena).toHaveCount(1)
@@ -381,7 +378,7 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     const widget = page.getByTestId('activities-widget-unsettledSessions')
     await expect(widget.getByTestId('activities-widget-unsettledSessions-count')).toHaveText('1')
     await expect(widget.getByRole('link', { name: /Trening zapomniany/ })).toBeVisible()
-    await widget.getByRole('link', { name: /^(Open list|Otwórz listę)$/ }).click()
+    await widget.getByRole('link', { name: uiText('activities.dashboard.widgets.openList', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?perspective=unsettled$/)
     await expect(
       page.getByRole('row').filter({ hasText: 'Trening zapomniany' }).getByTestId('occurrence-unsettled'),

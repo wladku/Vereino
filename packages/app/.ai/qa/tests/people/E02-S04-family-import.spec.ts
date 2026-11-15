@@ -18,6 +18,7 @@ import {
 } from '../_fixtures/imports'
 import { setUserFeatures } from '../_fixtures/members'
 import { actionLogEntries } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // E02-S04 (issue #28; club spec REQ-036, DD-38, UI table `/backend/people/imports`): the import is the club
 // administrator's — `people.manage` without `people.pesel.view` is 403, a user with both features but no club
@@ -114,7 +115,10 @@ test('E02-S04 import pages: upload with the suggested mapping, preview, review q
 
     // The list page: empty history, the upload area.
     await page.goto('/backend/people/imports')
-    const listReady = () => expect(page.getByRole('heading', { level: 1, name: /^Imports$|^Importy$/ })).toBeVisible()
+    const listReady = () =>
+      expect(
+        page.getByRole('heading', { level: 1, name: uiText('people.imports.title', { exact: true }) }),
+      ).toBeVisible()
     await listReady()
     await expect(page.getByText(/No imports yet|Nie ma jeszcze importów/)).toBeVisible()
     Object.assign(violations, await scanInSchemes(page, testInfo, 'list', listReady))
@@ -149,8 +153,12 @@ test('E02-S04 import pages: upload with the suggested mapping, preview, review q
     const importId = page.url().split('/').at(-1) ?? ''
     const recordReady = () => expect(page.getByTestId('people-import-status')).toBeVisible()
     await recordReady()
-    await expect(page.getByTestId('people-import-row-6-classification')).toContainText(/Error|Błąd/)
-    await expect(page.getByTestId('people-import-row-5-classification')).toContainText(/To review|Do przejrzenia/)
+    await expect(page.getByTestId('people-import-row-6-classification')).toContainText(
+      uiText('people.imports.classifications.error'),
+    )
+    await expect(page.getByTestId('people-import-row-5-classification')).toContainText(
+      uiText('people.imports.classifications.review'),
+    )
     await expect(page.getByTestId('people-import-commit')).toBeDisabled()
     await expect(page.getByTestId('people-import-pending')).toBeVisible()
     Object.assign(violations, await scanInSchemes(page, testInfo, 'record', recordReady))
@@ -178,7 +186,7 @@ test('E02-S04 import pages: upload with the suggested mapping, preview, review q
     await commitButton.click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: /Commit the import|Zatwierdź import/ })
+      .getByRole('button', { name: uiText('people.imports.actions.commit') })
       .click()
     await expect(page.getByText(CONFLICT).first()).toBeVisible()
     expect(((await getImport(request, club.adminToken, importId)).body as ImportView).status).toBe('previewed')
@@ -187,9 +195,9 @@ test('E02-S04 import pages: upload with the suggested mapping, preview, review q
     await page.getByTestId('people-import-commit').click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: /Commit the import|Zatwierdź import/ })
+      .getByRole('button', { name: uiText('people.imports.actions.commit') })
       .click()
-    await expect(page.getByTestId('people-import-status')).toContainText(/Committed|Zatwierdzony/)
+    await expect(page.getByTestId('people-import-status')).toContainText(uiText('people.imports.status.committed'))
     // Ola, Anna, Zofia, Maria, Tomasz (all new in this club), and Jan with Ewa from the decided row.
     await expect(page.getByTestId('people-import-summary-created')).toContainText('7')
     await expect(page.getByTestId('people-import-commit')).toHaveCount(0)
@@ -198,7 +206,9 @@ test('E02-S04 import pages: upload with the suggested mapping, preview, review q
     // The history lists the import with who ran it.
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/people/imports')
-    await expect(page.getByTestId(`people-import-status-${importId}`)).toContainText(/Committed|Zatwierdzony/)
+    await expect(page.getByTestId(`people-import-status-${importId}`)).toContainText(
+      uiText('people.imports.status.committed'),
+    )
     expect(violations).toEqual({})
   } finally {
     await club.cleanup()

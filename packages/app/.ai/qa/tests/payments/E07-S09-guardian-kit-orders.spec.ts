@@ -22,6 +22,7 @@ import { postCampaign } from '../_fixtures/orders'
 import { getCharge, myCharges, recordPayment } from '../_fixtures/payments'
 import { createGuardianship } from '../_fixtures/people'
 import { publish } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S09 (payments spec phase 4 step 9, REQ-032, REQ-002, the guardian's part of TEST-044; issue #116; M-16, M-17,
 // M-19): Kasia guards Jaś (Żaki), Ada (Orliki) and Zosia (tennis, outside the campaign); Piotr, without an account,
@@ -376,9 +377,9 @@ test('E07-S09 a guardian orders kit in the app and from a personal link', async 
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/club/orders')
     const jasRow = page.locator('[data-testid="club-order-child"][data-child="Jaś"]')
-    await expect(jasRow).toContainText(/Paid|Opłacone/)
+    await expect(jasRow).toContainText(uiText('payments.club.paid'))
     const adaRow = page.locator('[data-testid="club-order-child"][data-child="Ada"]')
-    await expect(adaRow).toContainText(/Not ordered|Nie zamówiono/)
+    await expect(adaRow).toContainText(uiText('payments.orders.club.state.not_ordered'))
     await adaRow.getByRole('link').click()
     await expect(page.getByTestId('order-form')).toBeVisible()
     await expect(page.getByTestId('order-email')).toHaveValue(kasiaEmail)
@@ -387,7 +388,7 @@ test('E07-S09 a guardian orders kit in the app and from a personal link', async 
     await page.getByTestId(`order-product-${id('Spodenki')}`).click()
     await page.getByRole('option', { name: '116', exact: true }).click()
     await page.getByTestId(`order-product-${id('Getry')}`).click()
-    await page.getByRole('option', { name: /Not ordering|Nie zamawiam/ }).click()
+    await page.getByRole('option', { name: uiText('payments.orders.club.notOrdering') }).click()
     await page.getByTestId('order-print-number').fill('11')
     await expect(page.getByTestId('order-total')).toContainText('90')
     await expectNoPageOverflow(page)

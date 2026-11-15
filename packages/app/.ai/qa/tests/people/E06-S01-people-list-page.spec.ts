@@ -4,6 +4,7 @@ import { birthDateTurning, calendarDate, createClub, createPerson } from '../_fi
 import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // UX parity spec TEST-U04 (E06-S01 #83, J-U01): the people list in the browser — the perspective tabs, a section filter
 // and the search in the URL, restored on reload and stepped back with the browser's back button; the columns age,
@@ -51,23 +52,28 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
 
     // The plain list: axe clean, the columns, no overflow.
     await page.goto('/backend/people/persons')
-    const tabs = page.getByRole('tablist', { name: /People views|Widoki osób/ })
-    await expect(tabs.getByRole('tab', { name: /^All$|^Wszyscy$/ })).toHaveAttribute('aria-selected', 'true')
+    const tabs = page.getByRole('tablist', { name: uiText('people.persons.views.label') })
+    await expect(tabs.getByRole('tab', { name: uiText('people.persons.views.all', { exact: true }) })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     const janRow = rowOf('Kowalski Jan')
     await expect(janRow).toBeVisible()
     await expect(janRow).toContainText('Basen — początkujący')
     await expect(janRow).toContainText('Kowalska Kasia')
     await expect(janRow.getByRole('cell').nth(1)).toHaveText('9')
-    await expect(rowOf('Kowalska Kasia')).toContainText(/Guardian|Opiekun/)
+    await expect(rowOf('Kowalska Kasia')).toContainText(uiText('people.guardianships.fields.guardian'))
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 1280, height: 720 })
 
     // The Children perspective (keyboard: arrow keys move along the tablist) and a section filter in the URL.
-    await tabs.getByRole('tab', { name: /^All$|^Wszyscy$/ }).focus()
+    await tabs.getByRole('tab', { name: uiText('people.persons.views.all', { exact: true }) }).focus()
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
-    await expect(tabs.getByRole('tab', { name: /^Children$|^Dzieci$/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      tabs.getByRole('tab', { name: uiText('people.persons.views.children', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
     await expect(page).toHaveURL(/view=children/)
     await expect(rowOf('Lis Ola')).toBeVisible()
     await expect(rowOf('Kowalska Kasia')).toHaveCount(0)
@@ -76,7 +82,9 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
     await expect(rowOf('Kowalski Jan')).toBeVisible()
     await expect(rowOf('Lis Ola')).toHaveCount(0)
     await page.reload()
-    await expect(tabs.getByRole('tab', { name: /^Children$|^Dzieci$/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      tabs.getByRole('tab', { name: uiText('people.persons.views.children', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
     await expect(rowOf('Kowalski Jan')).toBeVisible()
     await expect(rowOf('Lis Ola')).toHaveCount(0)
     await page.goBack()
@@ -119,7 +127,9 @@ test('TEST-U04 people list: perspectives, filters and search in the URL, columns
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/backend/people/persons?view=staff')
-    await expect(tabs.getByRole('tab', { name: /^Staff$|^Kadra$/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      tabs.getByRole('tab', { name: uiText('people.persons.views.staff', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
     await expect(rowOf('Admin Ada')).toBeVisible()
     await expectNoPageOverflow(page)
     await testInfo.attach('people-list-375-dark', {

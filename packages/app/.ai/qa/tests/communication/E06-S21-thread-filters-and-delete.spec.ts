@@ -18,6 +18,7 @@ import {
 } from '../_fixtures/communication'
 import { addMembership } from '../_fixtures/groups'
 import { actionLogEntries } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // E06-S21 (#103; B-18, B-19; club spec REQ-009, REQ-010, R15; foundation III REQ-M05, REQ-M09, DD-M10, DD-M12) on the
 // TEST-015 family (the academy with the group Żaki and its weekly training, the pool with its group; the academy
@@ -379,10 +380,12 @@ test('E06-S21 UI: section filter and columns, delivery counts and recipients per
     await deleteOwn.focus()
     await page.keyboard.press('Enter')
     await expect(dialog).toBeVisible()
-    const confirm = dialog.getByRole('button', { name: /^(Delete message|Usuń wiadomość)$/ })
+    const confirm = dialog.getByRole('button', {
+      name: uiText('communication.message.actions.delete', { exact: true }),
+    })
     await confirm.focus()
     await page.keyboard.press('Enter')
-    await expect(own).toContainText(/This message was deleted\.|Ta wiadomość została usunięta\./)
+    await expect(own).toContainText(uiText('communication.message.deleted'))
     await expect(own.getByTestId('thread-message-body')).toHaveCount(0)
     await expect(own.getByTestId('thread-message-delete')).toHaveCount(0)
     await expect(page.getByTestId('thread-message-delete')).toHaveCount(2)

@@ -5,6 +5,7 @@ import { create as createStructure, signInBrowser } from '../_fixtures/club-stru
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 import { createFee, gatewayWebhook, generate, getCharge, periodFromNow } from '../_fixtures/payments'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S03 pages (issue #110; UX concept README M-08, M-09, flow F-07) on a phone (375 px) with the gateway test
 // adapter: the "Payments" tile leads to M-08; the guardian's four charges are selectable, the two charges of a ward
@@ -15,10 +16,10 @@ import { createFee, gatewayWebhook, generate, getCharge, periodFromNow } from '.
 // on M-08 and M-09 in light and dark mode, and no overflow.
 test.describe.configure({ timeout: 300_000 })
 
-const IN_PROGRESS = /Payment in progress|Płatność w toku/
-const RECEIVED = /Payment received|Płatność przyjęta/
-const INTERRUPTED = /Payment interrupted — the charges are still open|Płatność przerwana — należności są nadal otwarte/
-const NO_PAYER = /No payer — contact the club|Brak płatnika — skontaktuj się z klubem/
+const IN_PROGRESS = uiText('payments.club.return.inProgress.title')
+const RECEIVED = uiText('payments.club.return.received.title')
+const INTERRUPTED = uiText('payments.club.return.interrupted.title')
+const NO_PAYER = uiText('payments.club.charges.noPayer')
 
 /** Pays the selected charges through the test form; returns the gateway session id of the checkout. */
 async function payThroughTestForm(page: Page): Promise<string> {
