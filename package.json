@@ -57,6 +57,7 @@
     "format": "yarn workspace @vereino/app format",
     "format:check": "yarn workspace @vereino/app format:check",
     "contracts:check": "yarn workspace @vereino/app contracts:check",
+    "settings-prefixes:check": "yarn workspace @vereino/app settings-prefixes:check",
     "test:scripts": "yarn workspace @vereino/app test:scripts"
   },
   "resolutions": {
