@@ -32,7 +32,7 @@ The application has the mockup's screens but not its frame. This spec gives the 
 
 - **Panel.** Six sidebar groups in the mockup's order (Club, People, Classes, Communication, Finance, Facility) with the mockup's items. The Club group is visible again and holds Settings and Publication. Four pages become pages with tabs (B-07, B-18, B-26, B-27). Four menu items carry a count. The top bar links to the member interface. The dashboard greets the person and shows each role its widgets.
 - **Member pages.** One bottom-bar rule on every page; a More list that reaches every member page; a default context that fits a coach-only person; a staff context for the coordinator; a landing page per role.
-- **Public pages and sign-in.** The header Club · Sections · Facilities · Sign in on every public page; the club's logo and name on the sign-in page.
+- **Public pages and sign-in.** The header Club · Sections · Facilities · Events · Sign in on every public page, "Events" only when the club publishes them; the club's matches, tournaments and camps on their own page (P-06) instead of the club and section pages; the club's logo and name on the sign-in page.
 - **Names.** One glossary — mockup term ↔ application term ↔ catalog areas — applied to the seven module catalogs and kept by a check.
 - **Leftovers** of the club, people, communication and public screens that no other spec owns, plus loading skeletons and empty states.
 
@@ -74,11 +74,11 @@ Who has it: every role. The administrator cannot find where to enter the club's 
 - **REQ-N06** — More lists every member destination the person may open, so no member page is an orphan (D-029).
 - **REQ-N07** — A person who only coaches or coordinates starts in the staff context with no switcher. A person with both sides gets the switcher "as member / guardian" and "as coach" or "as coach / coordinator"; in the member context their calendar (M-03) lists the wards', their own and their coached sessions together, as Today already does. The staff context is the coordinator's context: it tells spec A's pages which staff scopes the person holds (shell only; those pages are spec A).
 - **REQ-N08** — Sign-in lands each role on its page: the attendant on `/club/facility`, an administrator without a member role on `/backend`, everyone else on `/club`.
-- **REQ-N09** — Every public page has the header Club · Sections · Facilities · Sign in.
+- **REQ-N09** — Every public page has the header Club · Sections · Facilities · Events · Sign in; "Facilities" only while the club publishes facility calendars and "Events" only while it publishes events.
 - **REQ-N10** — The sign-in page (M-01) shows the club's logo, name and tagline when the club is known, and Vereino's name otherwise; never the platform's.
 - **REQ-N11** — Every text of the application uses the terms of **Glossary (D-031 §2)**; a check in `yarn verify` keeps retired terms out.
 - **REQ-N12** — The panel screens B-02 to B-05, B-07, B-09 and B-10 get the mockup's remaining functions listed in *Proposed Solution* (the person record's Charges tab is spec C).
-- **REQ-N13** — The public club page (P-01) and section page (P-02) list one-off events, the past ones for 60 days; a team's group card names its category; a missing section answers with a way back to the club page.
+- **REQ-N13** — A guest finds the club's one-off events (matches, sparrings, tournaments, camps) of public groups on their own page P-06 `/p/[clubSlug]/events`: upcoming first, then the last 60 days, with a section filter; the club page (P-01) and section page (P-02) no longer list them. The administrator switches the Events menu and page on or off on B-03 (publication block `events`, default off). A team's group card names its category; a missing section answers with a way back to the club page (owner decision of 2026-10-27, confirmed 2026-11-15).
 - **REQ-N14** — The Messages tile of the member Today page (M-02) shows the unread count and the newest unread thread, or "No new messages"; a ward card on the profile (M-10) marks the primary payer.
 - **REQ-N15** — Member and public pages load with a skeleton in place of the content, and every empty list names the next action.
 - **REQ-N16** — `docs/ux-concept/README.md` §1, §3.1 and §3.2 say what D-029, D-030 and D-031 decided.
@@ -136,7 +136,7 @@ Who has it: every role. The administrator cannot find where to enter the club's 
 | B-07 | Contracts table columns From, Base, Per unit, Match (existing rate fields); each institution row links to its contracts tab filtered by institution, and back | `club_core/components/ContractsTable.tsx` |
 | B-09 | Role filter gains the facility attendant; header button "Import" opens `/backend/people/imports` | `people/lib/person-list-filters.ts:11` |
 | B-10 | Header "{age} · has an account" (`b.screenPerson.hasAccount`); without `people.pesel.view` the PESEL field is shown empty and disabled with the hint `b.screenPerson.peselHintOther` | `people/components/PersonRecord.tsx` |
-| P-01, P-02 | One-off events from 60 days back, past ones with the badge `p.eventsList.past`, the section logo on each row; on P-02 the section's own events; a team card adds `p.screenSectionPage.category`; a missing section shows `p.screenSectionPage.notFound` with the link `p.screenSectionPage.clubPage` | `club_core/components/public/PublicClasses.tsx:157-197`, the public catalogue of #91 |
+| P-06 (new), P-01, P-02, B-03 | P-06 `screenPublicEvents`: hero `p.screenEvents.title` / `subtitle`; section chips (`p.screenEvents.sectionFilter`, `all`); "Upcoming" (`p.screenEvents.upcoming`, soonest first, empty `p.screenEvents.noUpcoming`) and "Past (last 60 days)" (`p.screenEvents.past`, newest first, hidden when empty); each row with the section logo, date and start, place with a map link for an external venue, section and type; the block off → `p.screenEvents.notPublished` with the club page link. P-01 and P-02 drop the events list that #91 put on P-01. B-03 gains the toggle `b.screenPublication.events.label` / `desc`. A team card adds `p.screenSectionPage.category`; a missing section shows `p.screenSectionPage.notFound` with the link `p.screenSectionPage.clubPage` | `club_core/components/public/PublicClasses.tsx:157-197` (the list moves out), `club_core/components/PublicationForm.tsx`, the `activities.publicSchedule` provider of #91 |
 | M-02 | Messages tile: unread count, the subject of the newest unread thread as a link to it, `m.screenToday.noNew` when none | `communication/widgets/injection/club-messages/widget.client.tsx` |
 | M-10 | The ward card shows the "Primary payer" badge (`m.screenProfile.primaryPayer`) | `people/components/club/ClubProfilePage.tsx` |
 | Member and public pages | A skeleton replaces the text `LoadingMessage`; every empty list has an explanation and a next action | `@open-mercato/ui/primitives/skeleton` (used in `facilities/components/club-places/ClubPlacesPage.tsx:12`) |
@@ -248,7 +248,7 @@ One word names one thing. The left columns are the mockup's catalogs and are bin
 | More: coach units | (README 3.1: "My units") | My units | Moje jednostki | no change |
 | Panel → member link | Interfejs członkowski | Member interface | missing | app catalog `packages/app/src/i18n/*.json` |
 | Dashboard heading | Dzień dobry, {name}; "{date} · co wymaga dziś działania" | Hello, {name}; "{date} · what needs action today" | platform heading | app catalog |
-| Public header | Klub · Sekcje · Obiekty · Zaloguj | Club · Sections · Facilities · Sign in | missing | `club_core.public.*`, `facilities.public.*` |
+| Public header | Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj | Club · Sections · Facilities · Events · Sign in | missing | `club_core.public.*`, `facilities.public.*` |
 | Sign-in (M-01) | club logo and name; "Jedno konto dla rodzica, zawodnika i trenera"; "Zaloguj"; "Nie pamiętam hasła" | "One account for parents, players and coaches"; "Sign in"; "Forgot password" | Open Mercato logo and name; "Access your workspace" | app catalog overrides of `auth.login.*`, `appShell.productName` |
 
 ### Business rules
@@ -268,7 +268,7 @@ One word names one thing. The left columns are the mockup's catalogs and are bin
 | Settings-page guard | No Vereino backend page may declare `pageContext: 'settings'` while a non-settings static page shares its parent path | `scripts/check-settings-prefixes.mjs` over the generated route metadata | `yarn verify` fails and names both pages |
 | Publication rule | `online_requests` may be turned on only when `places_calendar` is on; turning `places_calendar` off turns `online_requests` off in the same save, after a confirmation | `club_core` settings command | 422 `publication_requests_need_calendar` on the field |
 | Coordinator must be an adult | The picker offers adults; the role-assignment command refuses a minor (V-N05 checks whether it already does) | `people` | 422 on the person field |
-| Public events window | One-off activities of public groups whose start is not older than 60 days, oldest first; an event whose end is before today carries the "past" badge | `activities` public catalogue (#91) | No events: the block is not rendered |
+| Public events (P-06) | One-off activities of public groups in public sections. "Upcoming": end today or later, soonest first. "Past": end before today and start not older than 60 days, newest first, with the "past" badge. Shown only while the publication is enabled **and** the block `events` is on (default off) | `activities` public provider `activities.publicEvents`; `club_core_club_settings.publication.events` | Block off: no "Events" menu item, P-06 shows "Klub nie publikuje wydarzeń", the API returns 404 `public_events_disabled`; no events: the empty text |
 | Retired term | A Polish catalog value containing a stem of the retired list — `wnios`, `zdarze`, `stawk… najmu`, `harmonogram` as a group name, `obiekt` in `club_core.places.*` — outside the allow-list file | `scripts/check-glossary.mjs` | `yarn verify` fails and names the key |
 
 ## Users, Permissions, and Scope
@@ -368,7 +368,7 @@ Public
 
 ### Journey J-N05 — A guest goes from the club page to sign-in
 
-1. A parent opens `/p/gwiazda/places`. The header shows the club's logo and name, then Klub · Sekcje · Obiekty · Zaloguj.
+1. A parent opens `/p/gwiazda/places`. The header shows the club's logo and name, then Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj ("Wydarzenia" only when the club publishes events).
 2. **Sekcje** goes to the sections block of the club page. **Zaloguj** opens `/login?club=gwiazda`.
 3. The sign-in page shows the club's logo, "KS Gwiazda" and "Jedno konto dla rodzica, zawodnika i trenera" above the form. After signing in once, the phone remembers the club for the next visit to `/login`.
 4. Failure: the slug is unknown or the club does not publish a page. The sign-in page shows Vereino's name and the form; no club data is read.
@@ -394,8 +394,10 @@ Closest installed references: `groups/components/GroupsNav.tsx` and `payments/co
 | `/club` (M-02) | Greeting title; context switcher; Messages tile | `GET /api/communication/threads?as=member&unread=1&pageSize=1` (existing filters) | `club-messages/widget.client.tsx` | tile, `StatusBadge` | loading skeleton, no unread ("Brak nowych wiadomości."), error + retry | REQ-N07, REQ-N14 |
 | `/club/profile` (M-10) | "Primary payer" badge on the ward card | `GET /api/people/me` | `ClubProfilePage.tsx` | `StatusBadge` | as today | REQ-N14 |
 | `/login` (M-01) | Club header above the platform form | `GET /api/club_core/public/{clubSlug}` | platform `auth/frontend/login.tsx` | app route wrapper + platform `LoginPage` | no club (Vereino name), unknown slug (same), loading (name placeholder) | REQ-N10 |
-| Every `/p/**` page | Header Klub · Sekcje · Obiekty · Zaloguj | `club.nav` of the public response | `PublicFrame.tsx` | `PublicHeader` of `@vereino/ui` | no facilities link when the calendar block is off; club unknown (title only) | REQ-N09 |
-| `/p/[clubSlug]`, `/sections/[sectionSlug]` (P-01, P-02) | Events list; category on team cards; 404 with a way back | `GET /api/club_core/public/{clubSlug}` (+ `/sections/{sectionSlug}`) | `PublicClasses.tsx` | cards, `StatusBadge` | no events (block absent), 404 | REQ-N13 |
+| Every `/p/**` page | Header Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj | `club.nav` of the public response | `PublicFrame.tsx` | `PublicHeader` of `@vereino/ui` | no facilities link when the calendar block is off; no events link when the events block is off; club unknown (title only) | REQ-N09 |
+| `/p/[clubSlug]/events` (P-06, new) | Upcoming and past events; section chips in `?section=` | `GET /api/club_core/public/{clubSlug}/events?section=` | new `club_core/frontend/p/[clubSlug]/events/page.tsx`; `PublicClasses.tsx` event card reused | chips, cards, `StatusBadge`, `EmptyState` | loading; no upcoming; past hidden when empty; block off; unknown section → all | REQ-N13 |
+| `/p/[clubSlug]`, `/sections/[sectionSlug]` (P-01, P-02) | No events list; category on team cards; 404 with a way back | `GET /api/club_core/public/{clubSlug}` (+ `/sections/{sectionSlug}`) | `PublicClasses.tsx` | cards | 404 | REQ-N13 |
+| `/backend/club/publication` (B-03) | Toggle "Menu Wydarzenia" among the blocks | `GET/PUT /api/club_core/settings` (`publication.events`) | `PublicationForm.tsx` | `Switch` with its description | — | REQ-N13 |
 
 ### UI architecture
 
@@ -505,7 +507,7 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 | Coordinator | `/club` in the staff context (daily work, spec A); panel: Club → People → Classes → Communication → Facility | panel: widgets 1, 2, 8 | sign-in → `/club` → session needing a coach → assign (spec A, 3 taps); More → Admin panel → dashboard |
 | Facility attendant | `/club/facility`; More; panel: Facility | panel: widget 8 | sign-in → `/club/facility` → "Open facility" (2 taps) |
 | Administrator | panel: Club → People → Classes → Communication → Finance → Facility; `/club` through "Interfejs członkowski" | widgets 1–9 | sign-in → dashboard → widget → queue (3 clicks) |
-| Guest | `/p/[clubSlug]`: Club · Sections · Facilities · Sign in | — | club page → Facilities → place (2 clicks) |
+| Guest | `/p/[clubSlug]`: Club · Sections · Facilities · Events (optional) · Sign in | — | club page → Facilities → place (2 clicks) |
 
 | Surface / widget | Empty state guidance and action | Responsive behavior | Keyboard / focus behavior |
 |---|---|---|---|
@@ -572,7 +574,7 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ ⚑ KS Gwiazda            Klub · Sekcje · Obiekty · Zaloguj  PL▾│
+│ ⚑ Gwiazda         Klub·Sekcje·Obiekty·Wydarzenia·Zaloguj PL▾ │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────┐
@@ -589,7 +591,7 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 └──────────────────────────────┘
 ```
 
-- **Behavior:** "Sekcje" links to `/p/{slug}#sections`. "Obiekty" is shown when `club.nav.facilities` is true. "Zaloguj" links to `/login?club={slug}`. The sign-in route reads the club by slug, or by the cookie `vereino_club` that a successful sign-in from a branded page sets (the public slug, one year, `SameSite=Lax`). The platform card's own logo and brand line are replaced by V-N03's seam.
+- **Behavior:** "Sekcje" links to `/p/{slug}#sections`. "Obiekty" is shown when `club.nav.facilities` is true. "Wydarzenia" links to `/p/{slug}/events` and is shown when `club.nav.events` is true. "Zaloguj" links to `/login?club={slug}`. The sign-in route reads the club by slug, or by the cookie `vereino_club` that a successful sign-in from a branded page sets (the public slug, one year, `SameSite=Lax`). The platform card's own logo and brand line are replaced by V-N03's seam.
 - **Responsive and accessibility:** the header is one `nav` landmark; the logo has the alt text of `m.screenLogin.logoAlt`.
 - **Localization:** `club_core.public.nav.*`, `facilities.public.nav.*` (same values), app catalog `auth.login.*` overrides and `vereino.login.tagline`.
 - **Design-system and theming:** existing public tokens; light and dark; the logo keeps its aspect ratio.
@@ -602,7 +604,8 @@ N/A — no entity, column or index changes. The spec changes page metadata, cata
 |---|---|---|
 | `GET /api/people/me` | `isParticipant: boolean` (additive); `contexts` may contain `facility_operator` | `people` |
 | Public frame `club` of every public response | `nav: { sections: boolean, facilities: boolean }` (additive) | `club_core`; `facilities` and `activities` pass it through as they pass `links` |
-| `GET /api/club_core/public/{clubSlug}` and `/sections/{sectionSlug}` | `events[]` gains past events of the last 60 days with `past: boolean` and `sectionLogo`; group cards gain `ageCategory` for teams | `club_core` (events through the existing `activities` contribution) |
+| `GET /api/club_core/public/{clubSlug}` and `/sections/{sectionSlug}` | `events[]` is no longer returned (the P-01 list moves to P-06); `club.nav.events`; group cards gain `ageCategory` for teams | `club_core` |
+| `GET /api/club_core/public/{clubSlug}/events?section=` (new) | `{ club, upcoming: [...], past: [...] }`, each event with `past`, `sectionLogo`, place and `mapUrl` for an external venue | `club_core` route, events through a new `activities.publicEvents` contribution |
 | `GET /api/communication/threads` (member) | no change: the tile reads it with the existing `as=member&unread=1&pageSize=1` and shows `total` and the first row | `communication` |
 
 ## API, Command, and Error Contracts
@@ -614,7 +617,9 @@ No new route. Changed behaviour:
 | `GET` | `/api/people/me` | auth + `people.self` | — | adds `isParticipant`; `contexts` with `facility_operator` | unchanged | REQ-N07, REQ-N08 |
 | `POST` (interceptor) | `/api/auth/login` → `people.member-landing` | — | the sign-in answer | `redirect` = `/club`, `/club/facility` or `/backend` | an explicit redirect is kept; any failure keeps the platform's answer | REQ-N08 |
 | `PUT` | `/api/club_core/settings` (`publication`) | `club_core.publication.manage` | the publication blocks | saved | 422 `publication_requests_need_calendar` on `online_requests` when turned on without `places_calendar`; 409 on a stale `updatedAt` (unchanged) | REQ-N12 |
-| `GET` | `/api/club_core/public/{clubSlug}` (+ section) | none (public) | — | `club.nav`, `events[]` with `past`, `ageCategory` | 404 unchanged | REQ-N09, REQ-N13 |
+| `GET` | `/api/club_core/public/{clubSlug}` (+ section) | none (public) | — | `club.nav` (with `events`), `ageCategory`; no `events[]` | 404 unchanged | REQ-N09, REQ-N13 |
+| `GET` (new) | `/api/club_core/public/{clubSlug}/events` | none (public); rate limit as the other public routes | `section` (slug, optional; unknown → all) | `{ club, upcoming, past }` | 404 `public_events_disabled` while the publication or the block is off; 404 unknown club | REQ-N13 |
+| `PUT` | `/api/club_core/settings` | `club_core.manage` | `publication.events` boolean (additive; default false) | 200 | unchanged | REQ-N13 |
 | `GET` | `/api/facilities/public/…` (every public route, including request verification) | none | — | returns the `club` frame with `nav` whenever the club is resolved | unchanged | REQ-N09 |
 | `GET` | `/api/people/persons` | `people.view` | `role=facility_operator` | filtered list | 400 for an unknown role (unchanged) | REQ-N12 |
 | `GET` | `/api/club_core/contracts` | `club_core.contracts.manage` | optional `institutionId` | filtered list | 400 for a malformed id | REQ-N12 |
@@ -653,7 +658,7 @@ N/A — no event, job or notification is added or changed. E-mail and notificati
 | TEST-N11 | unit | The five module prefixes of the member nav labels | Compare values per key in pl and en | Equal in all five | REQ-N05, REQ-N11 |
 | TEST-N12 | integration | A club with the calendar block off; a stored setting that already breaks the rule | Turn requests on; save the stored setting untouched; turn the calendar off with requests on | 422 `publication_requests_need_calendar`; the untouched save succeeds; both flags end off | REQ-N12 |
 | TEST-N13 | UI | Administrator; a section coordinator; a minor and an adult person; a facility attendant | Add a section with a coordinator; search the coordinator picker; open the section as its coordinator; save Details; filter people by the attendant role; open a person record with and without `people.pesel.view`; follow institution ↔ contracts links | The assignment exists; the minor is not offered and a forged request answers 422; the Coordinators tab is read-only; the save stays on the record; the filter lists the attendant; header shows age and account; the PESEL field is disabled with the hint | REQ-N12 |
-| TEST-N14 | integration + UI | A public section with a tournament 30 days ago, one 90 days ago and one next week; a team group with an age category | Open P-01 and P-02; open a missing section | Two events listed, the old one marked past, the 90-day one absent; the section page lists its own; the card names the category; the 404 offers "Strona klubu" | REQ-N13 |
+| TEST-N14 | integration + UI | A public section with a tournament 30 days ago, one 90 days ago and one next week, a second public section with a sparring; a non-public group with a match; a team group with an age category | Turn the events block on; open P-06, filter by the first section; open P-01 and P-02; turn the block off and reload; open a missing section | P-06 lists next week's tournament and the sparring under "Upcoming" and the 30-day one under "Past", never the 90-day one or the non-public match; the filter leaves the first section's two; P-01 and P-02 list no events; with the block off the header has no "Wydarzenia", P-06 shows "Klub nie publikuje wydarzeń" and the API answers 404 `public_events_disabled`; the card names the category; the 404 offers "Strona klubu" | REQ-N09, REQ-N13 |
 | TEST-N15 | UI | A guardian with two unread threads, then none; a ward whose primary payer she is | Open `/club` and `/club/profile` at 375 px | Tile: count 2 and the newest subject linking to the thread; then "Brak nowych wiadomości."; the ward card shows the badge | REQ-N14 |
 | TEST-N16 | UI | Slow responses (route delay) and empty fixtures | Open Today, Messages, Payments, Facilities, a public page | A skeleton, never the text "Loading…"; each empty list shows its sentence and action; `aria-busy` while loading | REQ-N15 |
 
@@ -753,7 +758,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 ### Phase 9 — Public events and member tiles
 
 - **Depends on:** none
-- **Deliverables:** the P-01, P-02, M-02 and M-10 rows of *Proposed Solution*.
+- **Deliverables:** the P-06, P-01, P-02, B-03, M-02 and M-10 rows of *Proposed Solution*; the `events` publication block (stored in the existing `publication` JSON, no migration); the route `GET /api/club_core/public/{clubSlug}/events`; the `activities.publicEvents` contribution; the "Wydarzenia" header link driven by `club.nav.events` (the header itself is phase 7).
 - **Independent slices / estimated commits:** (a) public pages; (b) member tiles — 2 commits.
 - **Requirements closed:** REQ-N13, REQ-N14
 - **Tests:** TEST-N14, TEST-N15
@@ -792,7 +797,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 | REQ-N10 | J-N05; M-01 | app sign-in route, public lookup, app catalog | 7 | TEST-N09 | AC-N10 |
 | REQ-N11 | every screen | catalog values, glossary check | 3 | TEST-N10, TEST-N11 | AC-N11 |
 | REQ-N12 | B-03, B-04, B-05, B-07, B-09, B-10 | settings command, role assignments, persons list | 8 | TEST-N12, TEST-N13 | AC-N12 |
-| REQ-N13 | P-01, P-02 | public catalogue | 9 | TEST-N14 | AC-N13 |
+| REQ-N13 | P-06, P-01, P-02, B-03 | `GET /api/club_core/public/{clubSlug}/events`, `publication.events`, `activities.publicEvents` | 9 | TEST-N14 | AC-N13 |
 | REQ-N14 | M-02, M-10 | threads list (`unread=1`), profile | 9 | TEST-N15 | AC-N14 |
 | REQ-N15 | member and public pages | `member-skeleton` | 10 | TEST-N16 | AC-N15 |
 | REQ-N16 | README | — | 11 | — | AC-N16 |
@@ -852,11 +857,11 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 - [ ] **AC-N06** — At 375 px, in pl and en, light and dark: from More a guardian reaches Orders; a coach reaches My units, My groups' payments and (as tab or entry) Facilities; the attendant reaches Today at the facility; the administrator reaches Accept cash. No member page is reachable only by typing its URL.
 - [ ] **AC-N07** — At 375 px, in pl and en, light and dark: a coach-only person opens `/club` and the calendar and sees their sessions without choosing a context; no switcher is shown. A person who coordinates and has a ward sees the switcher with "jako trener / koordynator". A coach with a ward sees, in the member context, the ward's and the coached sessions in one calendar list.
 - [ ] **AC-N08** — After sign-in the attendant is on `/club/facility`, an administrator without a member side on `/backend`, every other linked person on `/club`; an explicit redirect is kept.
-- [ ] **AC-N09** — Every public page, including request verification, shows the header Klub · Sekcje · Obiekty · Zaloguj at 375 px in both locales; "Obiekty" only when the club publishes facility calendars.
+- [ ] **AC-N09** — Every public page, including request verification, shows the header Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj at 375 px in both locales; "Obiekty" only when the club publishes facility calendars, "Wydarzenia" only when it publishes events.
 - [ ] **AC-N10** — `/login?club=<slug>` of a published club shows its logo, its name and "Jedno konto dla rodzica, zawodnika i trenera"; `/login` without a known club shows Vereino's name. Neither shows "Open Mercato". Both at 375 px, in both locales, light and dark.
 - [ ] **AC-N11** — No Polish text of the application contains a retired term of the glossary; `yarn verify` fails when one is added. The menu, page titles, tabs and statuses read as in the mockup's catalogs.
 - [ ] **AC-N12** — The publication form refuses online requests without facility calendars. "Add section" can assign a coordinator; only adults are offered; the section's coordinator reads the Coordinators tab. People can be filtered by the attendant role; the person header shows age and account.
-- [ ] **AC-N13** — P-01 and P-02 list one-off events of the last 60 days and the future, past ones marked; a team card names its category; a missing section offers the club page.
+- [ ] **AC-N13** — With the events block on, P-06 lists the upcoming one-off events of public groups and those of the last 60 days, past ones marked, filtered by section, at 375 px in both locales; P-01 and P-02 list none; with the block off the menu item and the page are gone; a team card names its category; a missing section offers the club page.
 - [ ] **AC-N14** — At 375 px, in pl and en, light and dark: the Messages tile shows the unread count and the newest unread thread, or "Brak nowych wiadomości."; the primary payer's ward card carries the badge.
 - [ ] **AC-N15** — No member or public page shows a text loading message; each shows a skeleton and, when empty, a sentence with a next action.
 - [ ] **AC-N16** — `docs/ux-concept/README.md` §1, §3.1 and §3.2 agree with this spec and D-029 to D-031.

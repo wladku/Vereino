@@ -190,7 +190,7 @@
       settings: {
         name: 'LKS Gwiazda Ściejowice', short: 'Gwiazda', slug: 'gwiazda', tz: 'Europe/Warsaw', minAge: 13, phone: '600 000 000', logo: LOGO_CLUB,
         description: 'Klub sportowy z Ściejowic: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Liszki.',
-        publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true },
+        publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true, events: true },
         // Online payment fee (R13): the club pays it by default; the example operator fee is the ~PLN 2 per payment a parent named in an interview.
         coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 },
         // Defaults of D-022/D-026: a training only takes absences, matches and the other kinds take confirmations.
@@ -835,7 +835,7 @@
     { id: 'F-08', title: 'flow.F08.title', steps: [['wojtek', '/club/places', 'flow.F08.s1'], ['wojtek', '/club/places/pl-boisko?date=2026-11-14', 'flow.F08.s2'], ['anna', '/club/places/pl-salka?date=2026-11-13', 'flow.F08.s3']] },
     { id: 'F-09', title: 'flow.F09.title', steps: [['guest', '/p/gwiazda', 'flow.F09.s1'], ['guest', '/p/gwiazda/places', 'flow.F09.s2'], ['guest', '/p/gwiazda/places/orlik-boisko', 'flow.F09.s3'], ['guest', '/mail', 'flow.F09.s4'], ['aneta', '/backend/facilities/requests', 'flow.F09.s5']] },
     { id: 'F-10', title: 'flow.F10.title', steps: [['tomek', '/club/facility', 'flow.F10.s1'], ['tomek', '/backend/facilities/calendar', 'flow.F10.s2']] },
-    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/gwiazda/sections/basen', 'flow.F11.s1'], ['aneta', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/gwiazda/sections/basen', 'flow.F11.s3'], ['aneta', '/backend/club/sections/s-zumba/edit?tab=public', 'flow.F11.s4'], ['aneta', '/backend/club/sections', 'flow.F11.s5']] },
+    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/gwiazda/sections/basen', 'flow.F11.s1'], ['aneta', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/gwiazda/sections/basen', 'flow.F11.s3'], ['aneta', '/backend/club/sections/s-zumba/edit?tab=public', 'flow.F11.s4'], ['aneta', '/backend/club/sections', 'flow.F11.s5'], ['guest', '/p/gwiazda/events', 'flow.F11.s6']] },
     { id: 'F-12', title: 'flow.F12.title', steps: [['aneta', '/backend/facilities/reports/owner', 'flow.F12.s1']] },
     { id: 'F-13', title: 'flow.F13.title', steps: [['aneta', '/backend/payments/orders', 'flow.F13.s1'], ['aneta', '/backend/payments/orders/create', 'flow.F13.s2'], ['kasia', '/club/orders/oc-akad', 'flow.F13.s3'], ['guest', '/club/orders/oc-akad', 'flow.F13.s4'], ['guest', '/club/o/kit-robert', 'flow.F13.s5'], ['wojtek', '/club/coach/payments', 'flow.F13.s6'], ['beata', '/backend/payments/cash-custody', 'flow.F13.s7'], ['aneta', '/backend/payments/orders/oc-akad?view=supplier', 'flow.F13.s8'], ['wojtek', '/club/coach/payments', 'flow.F13.s9']] },
     { id: 'F-14', title: 'flow.F14.title', steps: [['aneta', '/backend/payments/fees', 'flow.F14.s1'], ['wojtek', '/club', 'flow.F14.s2'], ['wojtek', '/club/coach/payments?group=g-orlm&due=1', 'flow.F14.s3'], ['anna', '/club/coach/payments', 'flow.F14.s4'], ['beata', '/backend/payments/cash-custody', 'flow.F14.s5'], ['beata', '/backend', 'flow.F14.s6']] },
@@ -1315,7 +1315,7 @@
   function screenPublication(): string {
     const pub = db.settings.publication
     // Publication blocks: [setting key, label, description] — labels resolved at render time.
-    const rows: [string, string, string][] = ['description_schedule', 'conditions', 'prices', 'coaches', 'materials', 'contact', 'places_calendar', 'online_requests']
+    const rows: [string, string, string][] = ['description_schedule', 'conditions', 'prices', 'coaches', 'materials', 'contact', 'events', 'places_calendar', 'online_requests']
       .map((k) => [k, t(`b.screenPublication.${k}.label`), t(`b.screenPublication.${k}.desc`)])
     return `${pageHead(t('b.screenPublication.title'), t('b.screenPublication.subtitle'), link(esc(t('b.screenPublication.preview')), '/p/gwiazda', 'btn'))}
       <form class="form" data-form="publication" novalidate><div class="form-group">
@@ -1879,10 +1879,24 @@
   // Facility owner (municipality) name from the institutions register — club data, passed as a param into UI text.
   const facilityOwnerName = (): string => (db.institutions.find((i) => i.type === 'municipality') || { name: '' }).name
 
-  function eventsList(sectionId?: string): string {
-    const evs = db.activities.filter((a) => a.oneOff && (!sectionId || group(a.group).section === sectionId) && a.from >= addDays(TODAY, -60)).sort((a, b) => a.from.localeCompare(b.from))
+  function eventsList(sectionId: string | undefined, when: 'upcoming' | 'past'): string {
+    const evs = db.activities.filter((a) => a.oneOff && group(a.group).isPublic && section(group(a.group).section).isPublic && (!sectionId || group(a.group).section === sectionId) && (when === 'upcoming' ? a.to >= TODAY : a.to < TODAY && a.from >= addDays(TODAY, -60)))
+      .sort((a, b) => (when === 'upcoming' ? a.from.localeCompare(b.from) : b.from.localeCompare(a.from)))
     if (!evs.length) return ''
-    return `<div class="section-title">${esc(t('p.eventsList.title'))}</div><div class="stack">${evs.map((a) => { const past = a.to < TODAY; const g = group(a.group); return `<div class="card"><div class="row between"><div class="row" style="gap:10px">${logoBox(sectionLogo(section(g.section)), t('p.eventsList.sectionLogo', { name: section(g.section).name }), 36)}<div><div class="item-title">${esc(a.name)}</div><div class="small muted">${esc(t('p.eventsList.start', { date: dLong(a.from), time: a.start }))} · ${esc(placeName(db, a.place))} · ${esc(section(g.section).name)}</div></div></div>${past ? badge(t('p.eventsList.past'), 'neutral') : badge(typeLabel(a.type, g.kind), 'info')}</div>${a.info?.length ? `<ul class="small" style="margin:8px 0 0;padding-left:18px">${a.info.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` }).join('')}</div>`
+    return `<div class="stack">${evs.map((a) => { const past = a.to < TODAY; const g = group(a.group); const place = db.places.find((x) => x.id === a.place); return `<div class="card"><div class="row between"><div class="row" style="gap:10px">${logoBox(sectionLogo(section(g.section)), t('p.eventsList.sectionLogo', { name: section(g.section).name }), 36)}<div><div class="item-title">${esc(a.name)}</div><div class="small muted">${esc(t('p.eventsList.start', { date: dLong(a.from), time: a.start }))} · ${esc(placeName(db, a.place))}${place?.external ? ` · <a href="${esc(mapUrl(db, a.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a>` : ''} · ${esc(section(g.section).name)}</div></div></div>${past ? badge(t('p.eventsList.past'), 'neutral') : badge(typeLabel(a.type, g.kind), 'info')}</div>${a.info?.length ? `<ul class="small" style="margin:8px 0 0;padding-left:18px">${a.info.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` }).join('')}</div>`
+  }
+
+  function screenPublicEvents(q: URLSearchParams): string {
+    if (!pub().enabled || !pub().events) return empty(t('p.screenEvents.notPublished'), t('p.screenEvents.notPublishedText'), link(t('p.screenSectionPage.clubPage'), '/p/gwiazda'), 'ban')
+    const secs = db.sections.filter((s) => s.isPublic && s.active)
+    const current = secs.find((s) => s.slug === q.get('section'))
+    const chip = (label: string, href: string, on: boolean): string => `<a class="chip ${on ? 'on' : ''}" href="#${href}" ${on ? 'aria-current="true"' : ''}>${esc(label)}</a>`
+    const chips = `<div class="chips" role="group" aria-label="${esc(t('p.screenEvents.sectionFilter'))}" style="margin-bottom:12px">${chip(t('p.screenEvents.all'), '/p/gwiazda/events', !current)}${secs.map((s) => chip(s.name, `/p/gwiazda/events?section=${s.slug}`, s === current)).join('')}</div>`
+    const upcoming = eventsList(current?.id, 'upcoming')
+    const past = eventsList(current?.id, 'past')
+    return `<div class="hero"><h1>${esc(t('p.screenEvents.title'))}</h1><p>${esc(t('p.screenEvents.subtitle'))}</p></div>${chips}
+      <div class="section-title">${esc(t('p.screenEvents.upcoming'))}</div>${upcoming || `<p class="muted">${esc(t('p.screenEvents.noUpcoming'))}</p>`}
+      ${past ? `<div class="section-title">${esc(t('p.screenEvents.past'))}</div>${past}` : ''}`
   }
 
   function screenClubPage(): string {
@@ -1891,7 +1905,6 @@
     return `<div class="hero"><div class="row" style="gap:14px;align-items:center;margin-bottom:6px">${logoBox(db.settings.logo, t('p.screenClubPage.clubLogo'), 56)}<h1 style="margin:0">${esc(db.settings.name)}</h1></div><p>${esc(db.settings.description)}</p></div>
       <div class="section-title">${esc(t('p.screenClubPage.sections'))}</div>
       ${secs.length ? `<div class="grid3">${secs.map((s) => `<a class="card" href="#/p/gwiazda/sections/${s.slug}" style="text-decoration:none;display:block"><div class="row" style="gap:10px;margin-bottom:6px">${logoBox(sectionLogo(s), t('p.eventsList.sectionLogo', { name: s.name }), 40)}<h3 style="margin:0">${esc(s.name)}</h3></div><p class="muted small" style="margin:0 0 8px">${esc(s.short)}</p><span class="small">${esc(t('p.screenClubPage.groupsSeeClasses', { n: db.groups.filter((g) => g.section === s.id && g.isPublic).length }))}</span></a>`).join('')}</div>` : empty(t('p.screenClubPage.noSections'), '')}
-      ${pub().description_schedule ? eventsList() : ''}
       ${pub().places_calendar ? `<div class="section-title">${esc(t('p.screenClubPage.facilities'))}</div><div class="card"><div class="row between"><div><b>${esc(t('p.screenClubPage.placesTitle', { orlik: placeName(db, 'pl-orlik') }))}</b><div class="small muted">${esc(t(pub().online_requests ? 'p.screenClubPage.checkFreeOnline' : 'p.screenClubPage.checkFree'))}</div></div>${link(t('p.screenClubPage.placeCalendars'), '/p/gwiazda/places', 'btn primary')}</div></div>` : ''}`
   }
 
@@ -1917,7 +1930,6 @@
     return `<div class="crumbs small"><a href="#/p/gwiazda">${esc(db.settings.short)}</a> › ${esc(t('p.screenClubPage.sections'))} › ${esc(s.name)}</div>
       <div class="hero" style="margin-top:8px"><div class="row" style="gap:14px;align-items:center;margin-bottom:6px">${logoBox(sectionLogo(s), t('p.eventsList.sectionLogo', { name: s.name }), 56)}<h1 style="margin:0">${esc(s.name)}</h1></div>${P.description_schedule ? `<p>${esc(s.description)}</p>` : ''}</div>
       ${P.conditions && s.conditions ? `<div class="alert info"><strong>${esc(t('p.screenSectionPage.participation'))}</strong>${esc(s.conditions)}</div>` : ''}
-      ${P.description_schedule ? eventsList(s.id) : ''}
       <div class="section-title">${esc(t('p.screenSectionPage.classes'))}</div>${groups.length ? `<div class="grid2">${groups.map(card).join('')}</div>` : empty(t('p.screenSectionPage.noClasses'), t('p.screenSectionPage.noClassesText'))}
       ${P.materials && s.materials.length ? `<div class="section-title">${esc(t('p.screenSectionPage.materials'))}</div><ul class="list">${s.materials.map((m) => `<li>${icon('file-text')} <a href="#" data-action="todo" data-what="${esc(t('p.screenSectionPage.todoDownload'))}">${esc(m)}</a></li>`).join('')}</ul>` : ''}
       ${P.contact ? `<div class="section-title">${esc(t('common.contact'))}</div><div class="card"><b>${esc(s.contactName)}</b><div class="small">${esc(s.contactEmail)} · ${esc(s.contactPhone)}</div></div>` : ''}`
@@ -2414,6 +2426,7 @@
     R('/p/gwiazda/sections/:slug', 'P-02', 'route.P-02', 'public', ['GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}'], (p) => screenSectionPage(p), { persona: false, empty: ['route.P-02.emptyTitle', ''] }),
     R('/p/gwiazda/places', 'P-03', 'route.P-03', 'public', ['GET /api/facilities/public/{clubSlug}/places'], () => screenPublicPlaces(), { persona: false }),
     R('/p/gwiazda/places/:slug', 'P-04', 'route.P-04', 'public', ['GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule', 'POST …/places/{placeSlug}/requests'], (p, q) => screenPublicPlace(p, q), { persona: false, empty: ['route.P-04.emptyTitle', ''] }),
+    R('/p/gwiazda/events', 'P-06', 'route.P-06', 'public', ['GET /api/club_core/public/{clubSlug}/events?section='], (_p, q) => screenPublicEvents(q), { persona: false, empty: ['route.P-06.emptyTitle', ''] }),
     R('/p/gwiazda/requests/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
   ]
   // ACL features required by the pages (requireFeatures in page.meta.ts).
@@ -2477,7 +2490,7 @@
 
   function publicShell(route: RouteDef, content: string, path: string): string {
     return `<div class="public"><header class="public-head"><a href="#/p/gwiazda" style="text-decoration:none;font-weight:700;display:flex;gap:8px;align-items:center">${logoBox(db.settings.logo, t('shell.backendShell.clubLogo'), 32)}${esc(db.settings.name)}</a>
-      <nav aria-label="${esc(t('shell.publicShell.navLabel'))}"><a href="#/p/gwiazda" class="${path === '/p/gwiazda' ? 'active' : ''}">${esc(t('shell.publicShell.club'))}</a><a href="#/p/gwiazda/sections/akademia" class="${path.includes('/sections/') ? 'active' : ''}">${esc(t('shell.publicShell.sections'))}</a>${pub().places_calendar ? `<a href="#/p/gwiazda/places" class="${path.includes('/places') ? 'active' : ''}">${esc(t('shell.publicShell.facilities'))}</a>` : ''}<a href="#/login">${esc(t('shell.publicShell.signIn'))}</a></nav></header>
+      <nav aria-label="${esc(t('shell.publicShell.navLabel'))}"><a href="#/p/gwiazda" class="${path === '/p/gwiazda' ? 'active' : ''}">${esc(t('shell.publicShell.club'))}</a><a href="#/p/gwiazda/sections/akademia" class="${path.includes('/sections/') ? 'active' : ''}">${esc(t('shell.publicShell.sections'))}</a>${pub().places_calendar ? `<a href="#/p/gwiazda/places" class="${path.includes('/places') ? 'active' : ''}">${esc(t('shell.publicShell.facilities'))}</a>` : ''}${pub().events ? `<a href="#/p/gwiazda/events" class="${path.includes('/events') ? 'active' : ''}">${esc(t('shell.publicShell.events'))}</a>` : ''}<a href="#/login">${esc(t('shell.publicShell.signIn'))}</a></nav></header>
       <div class="public-body">${content}${apiFoot(route)}</div><footer class="public-foot"><span>${esc(t('shell.publicShell.footer', { club: db.settings.name, phone: db.settings.phone }))}</span><a href="#" data-action="todo" data-what="${esc(t('shell.publicShell.rulesTodo'))}">${esc(t('shell.publicShell.rules'))}</a><a href="#" data-action="todo" data-what="${esc(t('shell.publicShell.privacyTodo'))}">${esc(t('shell.publicShell.privacy'))}</a></footer></div>`
   }
 
@@ -3132,7 +3145,7 @@
       toast(t('form.settings.saved')); render()
     },
     publication: (fd) => {
-      const keys = ['enabled', 'description_schedule', 'conditions', 'prices', 'coaches', 'materials', 'contact', 'places_calendar', 'online_requests']
+      const keys = ['enabled', 'description_schedule', 'conditions', 'prices', 'coaches', 'materials', 'contact', 'events', 'places_calendar', 'online_requests']
       const next: Record<string, boolean> = Object.fromEntries(keys.map((k) => [k, !!fd.get(k)]))
       if (next.online_requests && !next.places_calendar) return { online_requests: t('form.publication.requestsNeedCalendar') }
       db.settings.publication = next; toast(t('form.publication.saved')); render()
