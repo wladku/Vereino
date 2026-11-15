@@ -114,6 +114,10 @@ test('E06-S06 dashboard widget: sections without a coordinator, empty, error and
     await expect(retry).toBeVisible()
     await expect(page.getByText(/^(The sections could not be loaded\.|Nie udało się wczytać sekcji\.)$/)).toBeVisible()
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    // The dashboard loads its layout twice and mounts the widget again: keep the failure until that settles, or the
+    // second load succeeds on its own and "Try again" is gone before the click.
+    await page.waitForLoadState('networkidle')
+    await expect(retry).toBeVisible()
     await page.unroute('**/api/club_core/sections?**')
     await retry.click()
     await expect(page.getByTestId('sections-without-coordinator-count')).toHaveText('2')

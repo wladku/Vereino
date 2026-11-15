@@ -97,7 +97,8 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 - 100 % line/branch/function coverage (MUST) for `src/modules/<vereino-id>/lib/**` (Jest thresholds in
   `packages/app/jest.config.cjs`), `packages/{core,db,ui}/src/**` (`node --test` thresholds) and tooling
   (`scripts/verify.mjs`, `eslint.vereino.mjs`, `packages/app/scripts/vereino-*.mjs`,
-  `check-vereino-contracts.mjs` via `yarn test:scripts`). Any lowered threshold, excluded file or coverage-ignore
+  `check-vereino-contracts.mjs`, `check-settings-prefixes.mjs` via `yarn test:scripts`). Any lowered threshold,
+  excluded file or coverage-ignore
   comment (other than the CLI entry-point guard) is a blocker; `coverage-scope.test.mjs` guards must stay.
 - Routes, commands, subscribers, workers, pages: integration tests in
   `packages/app/.ai/qa/tests/<module>/<TEST-ID>-<slug>.spec.ts`, not mocked unit tests; titles start with the test id.

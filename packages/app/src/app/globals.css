@@ -824,6 +824,12 @@ TODO: Fix that latter to have reference by the package names
   outline-offset: 2px;
 }
 
+/* The scroll regions the coordinator calendar makes focusable (#248); the ring sits inside the clipped grid. */
+.schedule-calendar .rbc-calendar :is(.rbc-time-content, .rbc-agenda-content):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 .schedule-calendar .rbc-calendar .rbc-today {
   background-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
