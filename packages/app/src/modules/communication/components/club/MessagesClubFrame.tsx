@@ -21,6 +21,7 @@ import {
   memberShellLabels,
   memberSwitchers,
   useMemberContext,
+  useMemberNavFeatures,
   type MemberLinkProps,
 } from '@vereino/ui'
 
@@ -31,6 +32,8 @@ export type MessagesProfile = {
   contexts: string[]
   locale: string
   club: { shortName: string | null; logoUrl: string | null }
+  /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
+  paymentsVisible: boolean
 }
 
 type ProfileLoad = { status: 'ok'; profile: MessagesProfile } | { status: 'not_linked' }
@@ -120,7 +123,11 @@ export function MessagesClubFrame({ children }: { children: (profile: MessagesPr
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.
   const labels = memberShellLabels(t, 'communication.club.nav')
   const [context, setContext] = useMemberContext(profile)
-  const nav = profile ? memberNav({ pathname, contexts: profile.contexts, labels }) : null
+  // The same bar on every member page: one feature check per session, shared by the five frames (#258).
+  const features = useMemberNavFeatures(apiCall)
+  const nav = profile
+    ? memberNav({ pathname, contexts: profile.contexts, labels, paymentsVisible: profile.paymentsVisible, features })
+    : null
   const switchers = profile ? memberSwitchers(profile, context, setContext, labels) : []
 
   return (

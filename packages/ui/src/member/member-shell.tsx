@@ -1,6 +1,7 @@
 // The frame of the member pages (club spec DD-05 *UI architecture*; foundation II P-23; README 3.1; E06-S19 #101): the
 // club's brand and the header switchers (role context, ward), the page body, and the bottom bar Today · Calendar ·
-// Messages · [fourth tab] · More, where More opens Profile, the admin panel for staff and Sign out. Framework-free:
+// Messages · [fourth tab] · More, where More opens Profile, the member destinations the person may open, the admin
+// panel for staff and Sign out (`memberNav`, #258). Framework-free:
 // the router's link component, the navigation (`memberNav`) and every string come in through props. More is a native
 // disclosure (`<details>`), so the shell holds no state; sign-out posts to the installed `auth` logout route, which
 // ends the session and redirects to `/login`; a page restored from the back-forward cache reloads, so Back after
