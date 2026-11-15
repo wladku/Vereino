@@ -138,7 +138,7 @@ test('TEST-028 public facility pages: P-01 link, P-03 cards, P-04 day list and m
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto(`/p/${slug}/places/${setup.placeSlug}?month=${setup.month}`)
     await expect(page.getByTestId(`public-schedule-day-${setup.day}`)).toContainText('Zajęte przez klub')
-    await expect(page.getByTestId(`public-schedule-day-${setup.day}`)).toContainText('Wniosek — oczekuje')
+    await expect(page.getByTestId(`public-schedule-day-${setup.day}`)).toContainText('Zgłoszone — oczekuje')
     await expect(page.getByTestId(`public-schedule-day-${setup.closedDay}`)).toContainText('Zamknięte')
     await setGuestLocale(page, 'en')
     // The browser logs every 404 below as a failed resource, so the console is checked before them.
