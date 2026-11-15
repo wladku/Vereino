@@ -1,8 +1,11 @@
-// The one navigation definition of the member pages (README 3.1 *Member `/club`*; E06-S19 #101): the bottom-bar tabs
-// Today · Calendar · Messages · [a fourth tab a later module grants] · More, the entries behind More (Profile, My units
-// for a coach (#96), the admin panel for staff) and which of them is current for a path. Framework-free: every label comes in through
-// `memberShellLabels`, which reads one fixed list of keys under the calling module's catalog prefix, so the three
-// member frames (`people`, `activities`, `communication`) share the definition and keep their own catalogs.
+// The one navigation definition of the member pages (README 3.1 *Member `/club`*; E06-S19 #101; navigation spec
+// REQ-N05, REQ-N06, #258): the bottom-bar tabs Today · Calendar · Messages · [a fourth tab by one rule] · More, the
+// entries behind More and which of them is current for a path. One table of member destinations (route, label key,
+// feature) drives the bar and More, and every one of the five member frames passes the same input — the profile's
+// contexts and `paymentsVisible`, and the granted features out of `MEMBER_NAV_FEATURES` — so the bar is the same on
+// every page. The table holds URLs and feature ids as strings: no module imports another. Framework-free: every label
+// comes in through `memberShellLabels`, which reads one fixed list of keys under the calling module's catalog prefix,
+// so the five frames share the definition and keep their own catalogs.
 
 export const CLUB_HOME_HREF = '/club'
 export const CLUB_CALENDAR_HREF = '/club/calendar'
@@ -10,6 +13,13 @@ export const CLUB_MESSAGES_HREF = '/club/messages'
 export const CLUB_PROFILE_HREF = '/club/profile'
 /** A coach's own row of the monthly coach units report (#96). */
 export const CLUB_MY_UNITS_HREF = '/club/coach/units'
+export const CLUB_PAYMENTS_HREF = '/club/payments'
+export const CLUB_PLACES_HREF = '/club/places'
+export const CLUB_GROUPS_HREF = '/club/groups'
+export const CLUB_FACILITY_TODAY_HREF = '/club/facility'
+export const CLUB_ORDERS_HREF = '/club/orders'
+export const CLUB_GROUP_PAYMENTS_HREF = '/club/coach/payments'
+export const CLUB_CASH_HREF = '/club/cash'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -19,9 +29,6 @@ export type MemberTabIcon = 'today' | 'calendar' | 'messages' | 'payments' | 'fa
 export type MemberNavItem = { href: string; label: string; current: boolean }
 export type MemberTab = MemberNavItem & { icon: MemberTabIcon }
 
-/** A fourth tab a later module grants (Payments in E07, Facilities in E08); `null` until one does. */
-export type MemberExtraTab = { href: string; label: string; icon: 'payments' | 'facilities' }
-
 export type MemberShellLabels = {
   nav: string
   today: string
@@ -30,11 +37,20 @@ export type MemberShellLabels = {
   more: string
   profile: string
   myUnits: string
+  payments: string
+  facilities: string
+  facilitiesMore: string
+  facilityToday: string
+  orders: string
+  groupPayments: string
+  acceptCash: string
+  groups: string
   backend: string
   signOut: string
   context: string
   contextMember: string
   contextCoach: string
+  contextCoachCoordinator: string
   ward: string
   allWards: string
   me: string
@@ -48,11 +64,20 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'more',
   'profile',
   'myUnits',
+  'payments',
+  'facilities',
+  'facilitiesMore',
+  'facilityToday',
+  'orders',
+  'groupPayments',
+  'acceptCash',
+  'groups',
   'backend',
   'signOut',
   'context',
   'contextMember',
   'contextCoach',
+  'contextCoachCoordinator',
   'ward',
   'allWards',
   'me',
@@ -76,10 +101,53 @@ export function hasStaffContext(contexts: readonly string[]): boolean {
   return contexts.some((context) => STAFF_CONTEXTS.includes(context))
 }
 
+/** A destination behind More, shown when the person holds any of its features. */
+export type MemberDestination = {
+  href: string
+  label: keyof MemberShellLabels
+  features: readonly string[]
+  /** `false` while the page behind it is not built: the entry stays hidden whatever the grants (V-N04). */
+  available: boolean
+}
+
+/** The fourth tab: Payments for an adult payer, otherwise Facilities, otherwise none. */
+const FACILITIES_TAB_FEATURE = 'facilities.view'
+
+/** The destinations behind More between Profile and the admin panel, in the order More lists them. */
+export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
+  { href: CLUB_MY_UNITS_HREF, label: 'myUnits', features: ['activities.reports.view_own'], available: true },
+  // The page (rosters for a coordinator, own groups for a coach) arrives with spec A (REQ-A11), which flips this.
+  { href: CLUB_GROUPS_HREF, label: 'groups', features: ['groups.view'], available: false },
+  // Listed only while Facilities is not the fourth tab (one entry per destination, A-N07).
+  {
+    href: CLUB_PLACES_HREF,
+    label: 'facilitiesMore',
+    features: [FACILITIES_TAB_FEATURE, 'facilities.maintenance.manage'],
+    available: true,
+  },
+  { href: CLUB_FACILITY_TODAY_HREF, label: 'facilityToday', features: ['facilities.log.write'], available: true },
+  { href: CLUB_ORDERS_HREF, label: 'orders', features: ['payments.orders.place'], available: true },
+  { href: CLUB_GROUP_PAYMENTS_HREF, label: 'groupPayments', features: ['payments.groups.view'], available: true },
+  { href: CLUB_CASH_HREF, label: 'acceptCash', features: ['payments.cash.record'], available: true },
+]
+
+/** The fixed feature list the frames check once per session (`useMemberNavFeatures`). */
+export const MEMBER_NAV_FEATURES: readonly string[] = [
+  ...new Set([
+    FACILITIES_TAB_FEATURE,
+    ...MEMBER_MORE_DESTINATIONS.filter((entry) => entry.available).flatMap((entry) => entry.features),
+  ]),
+]
+
 /** The path is the page itself or one below it. */
 function under(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
+
+/** Pages of the member area that belong to Profile in More: the profile and a ward's page. */
+const PROFILE_PATHS: readonly string[] = [CLUB_PROFILE_HREF, '/club/wards']
+/** Pages that belong to More whatever the grants: the profile pages and every More destination. */
+const MORE_PATHS: readonly string[] = [...PROFILE_PATHS, ...MEMBER_MORE_DESTINATIONS.map((entry) => entry.href)]
 
 export type MemberNav = {
   tabs: MemberTab[]
@@ -90,18 +158,34 @@ export type MemberNavInput = {
   pathname: string
   contexts: readonly string[]
   labels: MemberShellLabels
-  extraTab?: MemberExtraTab | null
+  /** The profile's `paymentsVisible`: the person holds `payments.view_own` and is an adult (payments R10). */
+  paymentsVisible?: boolean
+  /**
+   * The granted features out of `MEMBER_NAV_FEATURES`; `null` while the check is pending or after it failed — the bar
+   * then shows the three fixed tabs and More with Profile (degraded, no error).
+   */
+  features: readonly string[] | null
 }
 
-export function memberNav({ pathname, contexts, labels, extraTab = null }: MemberNavInput): MemberNav {
-  const profileCurrent = under(pathname, CLUB_PROFILE_HREF) || under(pathname, '/club/wards')
+function fourthTab({ labels, paymentsVisible, features }: MemberNavInput): Omit<MemberTab, 'current'> | null {
+  if (!features) return null
+  if (paymentsVisible) return { href: CLUB_PAYMENTS_HREF, label: labels.payments, icon: 'payments' }
+  if (features.includes(FACILITIES_TAB_FEATURE)) {
+    return { href: CLUB_PLACES_HREF, label: labels.facilities, icon: 'facilities' }
+  }
+  return null
+}
+
+export function memberNav(input: MemberNavInput): MemberNav {
+  const { pathname, contexts, labels, features } = input
+  const extra = fourthTab(input)
   const tabs: MemberTab[] = [
     { href: CLUB_HOME_HREF, label: labels.today, icon: 'today', current: pathname === CLUB_HOME_HREF },
     {
       href: CLUB_CALENDAR_HREF,
       label: labels.calendar,
       icon: 'calendar',
-      current: under(pathname, CLUB_CALENDAR_HREF) || under(pathname, '/club/occurrences'),
+      current: [CLUB_CALENDAR_HREF, '/club/occurrences', '/club/events'].some((href) => under(pathname, href)),
     },
     {
       href: CLUB_MESSAGES_HREF,
@@ -110,12 +194,23 @@ export function memberNav({ pathname, contexts, labels, extraTab = null }: Membe
       current: under(pathname, CLUB_MESSAGES_HREF),
     },
   ]
-  if (extraTab) tabs.push({ ...extraTab, current: under(pathname, extraTab.href) })
-  const items: MemberNavItem[] = [{ href: CLUB_PROFILE_HREF, label: labels.profile, current: profileCurrent }]
-  // Every role but the club administrator works from the phone (product rule of 2026-11-03): a coach reads their own
-  // units here.
-  const unitsCurrent = contexts.includes('coach') && under(pathname, CLUB_MY_UNITS_HREF)
-  if (contexts.includes('coach')) items.push({ href: CLUB_MY_UNITS_HREF, label: labels.myUnits, current: unitsCurrent })
+  if (extra) {
+    // An order belongs to Payments (a kit order is paid there).
+    const claims = extra.href === CLUB_PAYMENTS_HREF ? [CLUB_PAYMENTS_HREF, CLUB_ORDERS_HREF] : [extra.href]
+    tabs.push({ ...extra, current: claims.some((href) => under(pathname, href)) })
+  }
+  // One current mark per page: a path a tab claims (an order under Payments) marks no More entry, and More is current on
+  // its pages, whatever the grants, unless a tab already claims the path.
+  const tabCurrent = tabs.some((tab) => tab.current)
+  const moreCurrent = !tabCurrent && MORE_PATHS.some((href) => under(pathname, href))
+  const items: MemberNavItem[] = [
+    { href: CLUB_PROFILE_HREF, label: labels.profile, current: PROFILE_PATHS.some((href) => under(pathname, href)) },
+  ]
+  for (const entry of MEMBER_MORE_DESTINATIONS) {
+    if (!entry.available || !features || entry.href === extra?.href) continue
+    if (!entry.features.some((feature) => features.includes(feature))) continue
+    items.push({ href: entry.href, label: labels[entry.label], current: !tabCurrent && under(pathname, entry.href) })
+  }
   if (hasStaffContext(contexts)) items.push({ href: BACKEND_HREF, label: labels.backend, current: false })
-  return { tabs, more: { label: labels.more, current: profileCurrent || unitsCurrent, items } }
+  return { tabs, more: { label: labels.more, current: moreCurrent, items } }
 }

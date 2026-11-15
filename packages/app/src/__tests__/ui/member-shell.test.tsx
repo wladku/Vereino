@@ -12,7 +12,7 @@ const Link = (p: MemberLinkProps) => (
 )
 
 const labels = memberShellLabels((key) => key.split('.').at(-1) ?? key, 'people.club.nav')
-const nav = memberNav({ pathname: '/club', contexts: ['self'], labels })
+const nav = memberNav({ pathname: '/club', contexts: ['self'], labels, features: [] })
 
 function render(props: Partial<React.ComponentProps<typeof MemberShell>> = {}) {
   return renderToStaticMarkup(

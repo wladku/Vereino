@@ -5,13 +5,14 @@ import { test } from 'node:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemberShell } from '../member/member-shell.tsx'
-import { memberNav } from '../member/member-nav.ts'
+import { MEMBER_SHELL_LABEL_KEYS, memberNav } from '../member/member-nav.ts'
 
 const h = React.createElement
 const Link = (props) =>
   h('a', { href: props.href, className: props.className, 'aria-current': props['aria-current'] }, props.children)
 
-const labels = {
+const labels = Object.fromEntries(MEMBER_SHELL_LABEL_KEYS.map((key) => [key, key]))
+Object.assign(labels, {
   nav: 'Member area',
   today: 'Today',
   calendar: 'Calendar',
@@ -26,7 +27,9 @@ const labels = {
   ward: 'Showing',
   allWards: 'Everyone',
   me: 'Me',
-}
+  payments: 'Payments',
+  facilities: 'Facilities',
+})
 
 const render = (props) =>
   renderToStaticMarkup(
@@ -34,7 +37,7 @@ const render = (props) =>
       MemberShell,
       {
         brand: { name: 'KS Avocado' },
-        nav: memberNav({ pathname: '/club', contexts: ['self'], labels }),
+        nav: memberNav({ pathname: '/club', contexts: ['self'], labels, features: [] }),
         navLabel: 'Member area',
         signOutLabel: 'Sign out',
         Link,
@@ -82,31 +85,23 @@ test('More is a disclosure with Profile and Sign out posting to the auth logout 
 })
 
 test('marks More and Profile current on the profile and offers the admin panel to staff', () => {
-  const html = render({ nav: memberNav({ pathname: '/club/profile', contexts: ['self', 'coordinator'], labels }) })
+  const html = render({
+    nav: memberNav({ pathname: '/club/profile', contexts: ['self', 'coordinator'], labels, features: [] }),
+  })
   assert.match(html, /<summary class="[^"]*text-primary font-semibold" aria-current="page">/)
   assert.match(html, /<a href="\/club\/profile" class="[^"]*font-semibold" aria-current="page">Profile<\/a>/)
   assert.match(html, /<a href="\/backend" class="hover:bg-accent[^"]*">Admin panel<\/a>/)
 })
 
-test('renders a fourth tab a later module grants', () => {
-  const nav = memberNav({
-    pathname: '/club/payments',
-    contexts: [],
-    labels,
-    extraTab: { href: '/club/payments', label: 'Payments', icon: 'payments' },
-  })
+test('renders the fourth tab the grants call for', () => {
+  const nav = memberNav({ pathname: '/club/payments', contexts: [], labels, paymentsVisible: true, features: [] })
   const html = render({ nav })
   assert.match(
     html,
     /<a href="\/club\/payments" class="[^"]*text-primary font-semibold" aria-current="page"><svg[^>]*><.*?<\/svg><span>Payments<\/span><\/a>/,
   )
   const facilities = render({
-    nav: memberNav({
-      pathname: '/club',
-      contexts: [],
-      labels,
-      extraTab: { href: '/club/places', label: 'Facilities', icon: 'facilities' },
-    }),
+    nav: memberNav({ pathname: '/club', contexts: [], labels, features: ['facilities.view'] }),
   })
   assert.match(
     facilities,
