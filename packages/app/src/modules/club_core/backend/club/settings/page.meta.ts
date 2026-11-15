@@ -5,8 +5,7 @@ export const metadata = {
   pageTitleKey: 'club_core.settings.title',
   pageGroup: 'Club',
   pageGroupKey: 'club_core.nav.group',
-  pageOrder: 10,
+  pageOrder: 50,
   icon: 'settings',
-  pageContext: 'settings' as const,
   breadcrumb: [{ label: 'Club settings', labelKey: 'club_core.settings.title' }],
 }
