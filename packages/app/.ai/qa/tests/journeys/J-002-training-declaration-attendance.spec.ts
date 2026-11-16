@@ -131,9 +131,16 @@ async function fillActivityWizard(page: Page, input: WizardInput): Promise<void>
   await page.locator('[data-crud-field-id="name"] input').fill(input.name)
   await chooseCrudOption(page, 'placeId', input.place)
   const coach = page.locator('[data-crud-field-id="coachPersonId"] input[role="combobox"]')
-  await coach.fill(input.coach.lastName)
-  await page.getByRole('option', { name: input.coach.fullName }).click()
-  await expect(coach).toHaveValue(input.coach.fullName)
+  // The list is rendered again when the debounced search answers, which can detach the option under the click, so the
+  // pick is retried until the input holds the chosen name (as in E06-S11).
+  const choice = page.getByRole('option', { name: input.coach.fullName })
+  await expect(async () => {
+    if ((await coach.inputValue()) !== input.coach.fullName) {
+      if (!(await choice.isVisible())) await coach.fill(input.coach.lastName)
+      await choice.click({ timeout: 2_000 })
+    }
+    await expect(coach).toHaveValue(input.coach.fullName, { timeout: 2_000 })
+  }).toPass({ timeout: 30_000 })
   await page.locator('[data-crud-field-id="startsOn"] input').fill(input.startsOn)
   await page.locator('[data-crud-field-id="startTime"] input').fill(input.start)
   await page.locator('[data-crud-field-id="endTime"] input').fill(input.end)

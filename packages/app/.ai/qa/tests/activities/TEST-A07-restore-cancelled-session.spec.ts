@@ -146,7 +146,8 @@ test('TEST-A07 the administrator restores a cancelled future session; collisions
     await page.getByTestId('occurrence-restore-confirm').click()
     await expect(page.getByText(uiText('activities.occurrences.flash.restored', { exact: true }))).toBeVisible()
     await expect(page.getByTestId('occurrence-restore-button')).toHaveCount(0)
-    expect((await getOccurrence(request, admin, future)).body?.status).toBe('planned')
+    // signInBrowser ended the administrator's API token (lesson sign-in-browser-ends-the-api-token): check the page.
+    await expect(page.getByTestId('occurrence-cancelled')).toHaveCount(0)
   } finally {
     await club.cleanup()
   }
