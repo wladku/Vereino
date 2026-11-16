@@ -1,7 +1,7 @@
 # Vereino — people life cycle and data entry
 
 **Date**: 2026-11-14
-**Status**: Draft — written 2026-11-14 from the parity audit; waits for the owner's review
+**Status**: Ready for implementation — approved by the product owner on 2026-11-16 ([owner decisions on #255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561)): the thirteen Ask First items approved, Q-L01 and Q-L02 answered, Q-L03…Q-L21 confirmed, the audit gaps (c1)–(c11) fixed in this text. Cross-spec order: phases L1–L3 build behind spec N's phases 1–3; L4, L5, L7, L9 and L10 name what they need from specs A and C (both still `Draft`) under *Cross-spec dependencies*; L5 clears its cash blocker only after #118
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -56,7 +56,7 @@ The audit walked each role through a year in the club and each form through a fr
   - `packages/core/src/audience.ts:88-90` stops adding guardians at 18. `payments/lib/charge-plan.ts:83-88` keeps the guardian as payer whatever the ward's age. `people/services/scope-service.ts` keeps the adult among the guardian's wards.
   - So a parent keeps the calendar, the declarations and the charges of an adult, and receives none of the messages.
   - The consents `{ regulations, image, trips }` live only on the guardianship (`people/data/entities.ts:187`), so an adult participant has none.
-  - The job `people:sync-role-expiry` (`people/commands/jobs.ts:69`) only re-derives `auth` roles.
+  - The daily role sync (worker `people:sync-role-expiry`, command `people.persons.sync_roles` at `people/commands/jobs.ts:69`) only re-derives `auth` roles.
 - **Account age.** `people/commands/accounts.ts:76-85` enforces `own_account_min_age` when the administrator clicks. Nothing tells anyone that a child reached the age.
 - **New season.** `groups/data/entities.ts:25-36` holds a season (name, start, end), and a group has `season_id`. Nothing moves a group to the next season or ends the recurring activities (`activities_activities.ends_on`) and the fees (`payments_fees.valid_to`) together.
 - **Consents.** Withdrawing `regulations`, `image` or `trips` changes nothing: no module but `people` reads them. The consent text of DD-39 is a fixed i18n string; `club_core_club_settings` has no field for it.
@@ -113,27 +113,36 @@ Who has it: the club administrator first; then guardians and adult participants 
 - B-33 "Cash to settle" (issue #118) and the "Accept cash" dialog (spec C). REQ-L04 only reads the amount a coach holds.
 - A payer other than the adult after the 18th birthday (Q-L02), and a guardianship that continues after 18 by rule (Q-L03).
 - The treasurer role (held back, D-030, #245).
-- The dashboard frame and widget placement (spec N). This spec defines the content of two lists and leaves their slot to N.
+- The dashboard frame and widget placement (spec N). This spec defines two widgets (ids, feature, phase under *UI architecture*) and leaves their slot to N.
 
 ## Proposed Solution
 
 **Account (REQ-L01, REQ-L02).** `people` gains three commands next to `people.persons.create_account` (`people/commands/accounts.ts`): `people.persons.resend_invitation`, `people.persons.update_account` (login e-mail, blocked flag) and `people.persons.close_account`. They call the platform only through `foundation/services/accounts.ts`, which already wraps `auth.users.create`. The helper gains `accountState`, `resendInvitation`, `updateAccount` (the platform command `auth.users.update`: `email`, `isConfirmed`) and `closeAccount` (`auth.users.delete`). The "Account" tab of B-10 shows the state and the actions.
 
+The re-send uses the **V-L01 fallback** (owner decision 2026-11-16, [#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)): `authService.requestPasswordReset` and the platform's reset e-mail, a 60-minute link, with the tab saying "valid 60 minutes". The platform's invitation internals (`PasswordReset`, `InviteUserEmail`, `generateAuthToken` and the rest of V-L01) are imported only if `.ai/guides/framework-contracts.md` lists them; today it does not. If a later version of the guide lists them, the re-send switches to a 48-hour invitation link inside the same helper, with no change to the route. The first invitation (`people.persons.create_account`) is unchanged.
+
+**Closing an account (gap c6).** `closeAccount` deletes the platform user with `auth.users.delete`, which in the installed version (`@open-mercato/core/src/modules/auth/commands/users.ts`, the delete command) removes in one transaction the user's sessions, role links, user ACL, pending password-reset links and sidebar preferences, then hard-deletes the user; the platform's protected-role floor refuses to delete the tenant's last administrator, and `people` refuses earlier with 422 `last_club_admin`. Effects outside that command:
+
+- **Sessions:** gone with the user; an open browser tab fails its next request and lands on sign-in.
+- **API keys:** keys hold their own roles (`api_keys.roles_json`), not the user's identity, and no Vereino role grants `api_keys.*` (`packages/core/src/roles.ts`), so a member owns none; a key the person created as a technical administrator stays and names them only in `created_by`. Ephemeral session keys (`session_user_id`) expire on their own.
+- **Social identity links (D-027, `vereino_identity_links`, spec `2026-10-27-vereino-social-sign-in.md`, `Draft`):** once that table exists, `closeAccount` deletes the person's links in the same command, so a Google sign-in cannot reach a deleted user; until then there is nothing to delete.
+- **Why delete and not deactivate:** a closed account has no purpose left (Q-L09): the person has left and holds no role. Deactivation (`isConfirmed = false`) is the reversible **block** of REQ-L02, which keeps the user, its e-mail and its roles. The comment at `people/commands/accounts.ts:49` ("the platform's own, separately audited user deactivation") describes withdrawing access to a live account, which this spec offers as the block. Deleting frees the login e-mail for a later return (a returning person gets a new invitation) and leaves no dormant credential. The person keeps `user_id` = null; audit entries keep the old user id.
+
 **Leaving (REQ-L03, REQ-L04).** One command, `people.persons.depart`, takes the persons, the last day and the choices. `people` ends what it owns (role assignments, guardianships, accounts). Every other module registers an optional **departure contributor** under a DI token that `people` declares, the same direction as `groups.membershipContribution` (`people/services/membership-contribution.ts:11`, registered at `groups/di.ts`):
 
-| Contributor | Reports in the preview | Does on apply |
-|---|---|---|
-| `groups` | active and future memberships | ends them on the last day with the rule of "end on a chosen last day" that spec A defines (REQ-A03); a membership that has not started yet is removed under A's delete rule (`DELETE /api/groups/memberships`: only before the start or without attendance) |
-| `activities` | future planned sessions the person leads; activities whose default coach they are | sets the chosen coach or null from the day after the last day; writes a substitution entry per session |
-| `payments` | cash held; open charges as debtor or payer | nothing; cash held is a blocker, open charges are a warning |
-| `club_core` | open contracts with the person as party | sets `valid_to` to the last day |
-| `facilities` | place maintainer rows; future internal bookings made by the person | removes the maintainer rows; the bookings stay with their group |
+| Contributor | Reports in the preview | Does on apply | Undo (until the last day) | Emits after the commit |
+|---|---|---|---|---|
+| `groups` | active and future memberships | ends them on the last day with the rule of "end on a chosen last day" that spec A defines (REQ-A03). Until spec A's phase 2 lands it uses the existing `groups.memberships.end` rule (as phase L9 does), and a membership that has not started yet is **ended** with `valid_to` = the last day rather than removed; once A lands, such a membership is removed under A's delete rule (`DELETE /api/groups/memberships`: only before the start or without attendance; the route does not exist on `main`, whose `groups/api/memberships/route.ts` exports `GET`, `POST` and `PUT` only) | restores each membership's `valid_to` from the snapshot; re-creates a removed future membership with its id | `groups.membership.updated` per ended membership, `groups.membership.deleted` per removed one; the `groups` search and cache side effects of its own commands |
+| `activities` | future planned sessions the person leads; activities whose default coach they are | sets the chosen coach or null from the day after the last day; writes a substitution entry per session | restores `coach_person_id` on each session and the default coach on each activity **only where the value is still the one the departure wrote**, and deletes the substitution entries it wrote; a session changed since is reported and left alone | `activities.occurrence.coach_changed` or `activities.occurrence.coach_unassigned` per session, `activities.activity.updated` per activity |
+| `payments` | cash held; open charges as debtor or payer | nothing; cash held is a blocker, open charges are a warning | nothing to restore | nothing |
+| `club_core` | open contracts with the person as party | sets `valid_to` to the last day | restores each contract's `valid_to` | `club_core.contract.updated` per contract |
+| `facilities` | place maintainer rows; future internal bookings made by the person | removes the maintainer rows; the bookings stay with their group | re-inserts the removed maintainer rows with their ids | `facilities.place_maintainer.deleted` (on undo `…created`) per row |
 
-Contributors read and write with the caller's `EntityManager`, so the departure is one transaction. A missing module contributes nothing. A member, a guardian or a coach files a **departure request** from `/club/profile/leave`; the administrator opens it on the person record and runs the departure.
+Contributors read and write with the caller's `EntityManager`, so the departure is one transaction. A missing module contributes nothing. Because they write through `people`'s transaction rather than their own commands, the contract carries the side effects explicitly (gap c4): `apply` returns a snapshot and a list of changes; after the commit `people` calls each contributor's `afterCommit(changes, ctx)`, which emits the events of the last column through the module's own event bus and runs the cache invalidation and search reindex its commands would have run. A failure in `afterCommit` is logged and retried by the event bus; it never rolls the departure back. The command's undo (gap c3) calls each contributor's `undo(em, subject, snapshot)` in one transaction and then `afterCommit` with the reversed changes; it is refused with 409 `departure_undo_expired` once the last day has passed, because the life-cycle job then closes the accounts. A member, a guardian or a coach files a **departure request** from `/club/profile/leave`; the administrator opens it on the person record and runs the departure.
 
 **Erasure (REQ-L05).** `people.persons.anonymize` runs only on a person who has left, only for an administrator, only with a recorded request. It clears contact and identity data at once and keeps the name only while a payment is under the retention hold (DD-L07); the daily job finishes it. `people.persons.delete` soft-deletes a person without any history.
 
-**The 18th birthday and the account age (REQ-L06, REQ-L07).** A daily job `people:life-cycle` (the scheduler registration that `people:sync-role-expiry` uses) runs one idempotent command, `people.persons.life_cycle`, per club: notices 30 days before an 18th birthday; on the birthday the end of the guardianships, the consent carry-over and the event `people.person.came_of_age`; account-age notices; account closings of dated departures; the second step of erasures whose hold has lapsed.
+**The 18th birthday and the account age (REQ-L06, REQ-L07).** A daily job `people:life-cycle` runs one idempotent command, `people.persons.life_cycle`, per club. It is built like the role sync: `people:sync-role-expiry` is the worker (`people/workers/sync-role-expiry.ts`), the command it runs is `people.persons.sync_roles` (`people/commands/jobs.ts:69`), and the daily schedule is registered per organization through `registerModuleSchedule` in `people/services/club-setup.ts` (gap c8). The job does, per club: notices 30 days before an 18th birthday; on the birthday the end of the guardianships, the consent carry-over and the event `people.person.came_of_age`; account-age notices; account closings of dated departures; the second step of erasures whose hold has lapsed.
 
 **New season (REQ-L08).** On the Seasons tab of B-11 the wizard "Start a new season" builds a plan: a row per group with an action, and per recurring activity and fee whether it ends or is copied. `groups` previews and applies the plan; `activities` and `payments` register season contributors in the same optional-DI way.
 
@@ -166,7 +175,7 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 | Term / invariant | Precise meaning or rule | Source of truth | Failure behavior |
 |---|---|---|---|
 | Account state | `none` (no `user_id`), `invited` (user without a password who never signed in), `active`, `blocked` (`isConfirmed = false`) | platform `auth:user` through `foundation` (DD-L02) | A user outside the club's tenant and organization reads as `none` (fail closed, as `accountEmail` does) |
-| Invitation again | Ends the earlier links and sends a new 48-hour link to the login e-mail; allowed only in the state `invited`; at most 3 per account in 5 minutes | `people.persons.resend_invitation` | 409 `invitation_not_pending`; 429; `warning: invite_email_failed` when the e-mail fails |
+| Invitation again | Sends a new link to the login e-mail through the platform's password reset; earlier unused links stay valid until they expire, because `requestPasswordReset` adds a reset row without ending the others and ending them would need the internal `PasswordReset` entity (read 2026-11-16 in `auth/services/authService.ts`) (V-L01 fallback, approved 2026-11-16): valid 60 minutes, and the e-mail and the tab say so; allowed only in the state `invited`; at most 3 per account in 5 minutes (*Rate limits*) | `people.persons.resend_invitation` | 409 `invitation_not_pending`; 429; `warning: invite_email_failed` when the e-mail fails |
 | Login e-mail change | Changes the platform user's e-mail; in the state `invited` it also sends the invitation again; the person's contact e-mail changes only when it equalled the old login | `people.persons.update_account` | 409 `email_taken`; 409 on a stale version |
 | Blocked account | The user cannot sign in and their sessions end; roles and data stay; reversible | platform `isConfirmed` | 422 `last_club_admin` for the club's only active administrator; the same check on closing and on departure |
 | Departure | The dated end of a person's part in the club: memberships, role assignments, guardianships as ward, contracts, place assignments. A guardian's guardianships end when their ward leaves in the same departure | `people.persons.depart` | 409 `departure_blocked` with `details.blockers` |
@@ -211,13 +220,13 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 | Minor participant with an account (phone) | Sees who their guardians are (unchanged); no consents, no request | `self` | `people.self` |
 | Technical administrator | Creates the first club administrator while the club has none | The selected organization | the platform feature `auth.users.create` (V-L04) |
 
-`tenantId` and `organizationId` come from the authenticated context in every command and route; contributors receive them as arguments and never read system scope. The daily job takes its scope from the schedule registration, as `people:sync-role-expiry` does. No feature is checked by role name.
+`tenantId` and `organizationId` come from the authenticated context in every command and route; contributors receive them as arguments and never read system scope. The daily job takes its scope from the schedule registration (`registerModuleSchedule` in `people/services/club-setup.ts`), as the `people:sync-role-expiry` worker does for `people.persons.sync_roles`. No feature is checked by role name.
 
 ## Reuse and Ownership Map
 
 | Capability | Reuse / extend / app-own | Existing module or new module | Integration seam | Why |
 |---|---|---|---|---|
-| Invitation, login e-mail, blocking, closing | reuse | platform `auth` | `foundation/services/accounts.ts` (`auth.users.create`, `auth.users.update`, `auth.users.delete`; the invitation token and e-mail of `auth/api/users/resend-invite`, V-L01) | The platform owns users and links |
+| Invitation, login e-mail, blocking, closing | reuse | platform `auth` | `foundation/services/accounts.ts` (`auth.users.create`, `auth.users.update`, `auth.users.delete`; `authService.requestPasswordReset` and the reset e-mail for the re-send, V-L01 decided 2026-11-16) | The platform owns users and links |
 | Departure, erasure, life-cycle job | app-own | `people` | commands; scheduler | Owns persons, guardianships, assignments |
 | What each module ends on a departure | app-own, new contracts | `groups`, `activities`, `payments`, `club_core`, `facilities` provide; `people` consumes | DI tokens `people.departure.<module>` declared in `people/services/departure.ts`, read with `hasRegistration` | Same direction as `groups.membershipContribution` |
 | Notices (18, account age, departure, season) | reuse | `foundation` dispatch | `dispatch` with templates and idempotency keys, as `payments/commands/group-charges.ts:262` | In-app and e-mail in the person's language (MSG) |
@@ -225,7 +234,7 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 | Ending and copying activities and fees | app-own, new contracts | `activities`, `payments` provide; `groups` consumes | DI tokens `groups.season.<module>` declared in `groups/services/season-rollover.ts` | `groups` must not import them |
 | Consent texts | extend | `club_core` | `PUT /api/club_core/settings` | Club setting, like `rules_url` (#195) |
 | Consent flags on the attendance list | extend | `people` provides, `activities` consumes | the existing person directory contract (`people/services/person-directory.ts`), additive method | Already the seam for names and contacts |
-| Person photo, contract attachment | reuse | `attachments` | `createScoped` in the private partition, the upload checks of `club_core/api/uploads.ts` | Same as logos and place photos |
+| Person photo, contract attachment | reuse | `attachments` | the byte and size checks of `readCheckedUpload` in `club_core/api/uploads.ts` in the route; `createScoped` in the private partition from the command, as `club_core/commands/logos.ts`, `materials.ts` and `place-files.ts` call it | Same as logos and place photos |
 | Message edit | reuse | `communication` | existing `PATCH …/messages/{messageId}` | Only the surface is missing |
 | Empty-picker pattern | app-own | `@vereino/ui/admin` | React components; features from `people/components/useGrantedFeatures.ts` (moved to a shared hook) | Used by seven modules (AGENTS.md: shared when two or more reuse it) |
 
@@ -233,7 +242,7 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 
 ```text
 B-10 Account tab  -> POST /api/people/persons/{id}/account/invitation -> people.persons.resend_invitation
-                       -> foundation.resendInvitation -> platform PasswordReset + invitation e-mail
+                       -> foundation.resendInvitation -> platform authService.requestPasswordReset + reset e-mail (60 min)
 
 M-10 /club/profile/leave -> POST /api/people/me/departure-requests -> people_departure_requests
                               -> notice to administrators (foundation dispatch)
@@ -263,7 +272,7 @@ B-11 Seasons tab -> POST /api/groups/seasons/rollover/preview -> groups + groups
 ### Journey J-L01 — The invitation expired
 
 1. Kasia tells Aneta, the administrator, that her link no longer works. Aneta opens Kasia on B-10, tab Account. The state reads "Invited on 3 November — not signed in yet".
-2. Aneta clicks "Send the invitation again". The command ends the old link and sends a new one valid 48 hours. The tab shows "Sent again today".
+2. Aneta clicks "Send the invitation again". The command sends a new link valid 60 minutes (the V-L01 fallback); the tab says so. The tab shows "Sent again today".
 3. Kasia's address was mistyped: Aneta clicks "Change login e-mail", types the right one, saves. The invitation goes to the new address.
 4. Failures: the e-mail provider fails → a warning and the action stays available; Kasia has signed in meanwhile → 409 and the tab reloads as "Active"; a fourth attempt in five minutes → 429 with the wait time.
 
@@ -349,8 +358,8 @@ Closest installed references: `people/components/PersonRecord.tsx` (tabs synced 
 
 | Role | Navigation groups in order | Dashboard / injected widgets | Login-to-primary-task flow |
 |---|---|---|---|
-| Club administrator | People → People → person → tabs (no new sidebar item); Activities → Groups → Seasons → "Start a new season"; Club → Settings | Two list contents for spec N's dashboard frame: "Departure requests" (open, oldest first) and "People needing attention" (counts per filter of B-09) | Notice "Kasia asked to leave" → person, tab Leaving → Preview → Confirm: 3 clicks |
-| Section coordinator | Activities → Groups → Seasons (panel, configuration); daily work on the phone (spec A) | none | Groups → Seasons → "Start a new season": 3 clicks |
+| Club administrator | People → People → person → tabs (no new sidebar item); Classes / Zajęcia → Groups → Seasons → "Start a new season" (spec N's sidebar, `groups.nav.group`); Club → Settings | Two dashboard widgets (below): "Departure requests" and "People needing attention" | Notice "Kasia asked to leave" → person, tab Leaving → Preview → Confirm: 3 clicks |
+| Section coordinator | Classes / Zajęcia → Groups → Seasons (panel, configuration); daily work on the phone (spec A) | none | Classes → Groups → Seasons → "Start a new season": 3 clicks |
 | Guardian, participant, coach | Member "More" list (spec N) → Profile → "Leave the club" | none | Profile → "Leave the club" → Send: 3 taps |
 | Technical administrator | Banner → "First administrator" | none | 2 clicks |
 
@@ -361,6 +370,15 @@ Closest installed references: `people/components/PersonRecord.tsx` (tabs synced 
 | `/club/profile/leave` | Open request shown instead of the form | 375 px: one column, sticky submit above the bottom bar | Native date input; the checkbox list is a `fieldset` with a legend |
 | My consents | — | 375 px: each consent a row with its effect line beneath | The confirmation sheet traps focus and returns it to the checkbox |
 | Empty picker | See the pattern below | The hint wraps; the action is a full-width button under 640 px | The action is reachable by Tab right after the control; the dialog returns focus to the control |
+
+**Dashboard widgets (B-01, gap c7).** Two platform dashboard widgets in `people`, built like `people/widgets/dashboard/sections-without-coordinator` (`people.dashboard.sectionsWithoutCoordinator`). Spec N places them; its dashboard table ("who sees which widget") gains rows 10 and 11 in N's next change. This spec does not edit N, so until then this table is the source:
+
+| N row | Widget id (folder) | Content | Feature (with `dashboards.view`) | Administrator | Coordinator | Attendant | Phase | Empty state |
+|---|---|---|---|---|---|---|---|---|
+| 10 | `people.dashboard.departureRequests` (`people/widgets/dashboard/departure-requests`) | Open departure requests, oldest first, five rows: subject, requester, requested last day; each links to B-10 `?tab=leaving` | `people.manage` | yes | — | — | L4 | "No departure requests" |
+| 11 | `people.dashboard.peopleNeedingAttention` (`people/widgets/dashboard/people-needing-attention`) | One count per B-09 "Needs attention" filter (may get an account, turns 18 within 30 days, adult without contact, missing consents), each a link to B-09 with the filter | `people.manage` | yes | — | — | L8 (the "missing consents" count needs L7) | "Nobody needs attention" |
+
+Both read `people` APIs only (`GET /api/people/departure-requests?status=open&pageSize=5`, `GET /api/people/persons?attention=…&pageSize=1` per filter), cover loading, empty and error with retry, and are asserted in TEST-L05 and TEST-L10.
 
 ### The empty-picker pattern (REQ-L14)
 
@@ -502,10 +520,10 @@ Every route is a custom guarded command route with per-method `metadata` and `op
 | `POST` / `people.persons.resend_invitation` | `/api/people/persons/{id}/account/invitation` | auth + `people.accounts.manage`; `club_admin` grant | — | 200 `{ sentAt, warning? }`; audit entry | 404; 409 `invitation_not_pending`; 429; not undoable | REQ-L01 |
 | `PUT` / `people.persons.update_account` | `/api/people/persons/{id}/account` | same | `{ email?, blocked? }` | 200 with the new `account`; `people.person.account_updated` | 409 `email_taken`; 422 `last_club_admin`; 409 version | REQ-L02 |
 | `DELETE` / `people.persons.close_account` | `/api/people/persons/{id}/account` | same | — | 204; `user_id` cleared; `people.person.account_closed` | 422 `last_club_admin`; 409 `account_has_purpose` while an active role, guardianship or membership remains and the person has not left | REQ-L03 |
-| `GET`, `POST`, `DELETE` | `/api/people/me/departure-requests` (+ `/{id}`) | auth + `people.self` | `{ subjectPersonIds[], lastDay?, erasure, note? }` | 201 with the batch; `people.departure_request.created` | 403 subject outside `self` and wards; 409 `departure_request_exists`; 422 for a minor caller | REQ-L03 |
+| `GET`, `POST`, `DELETE` | `/api/people/me/departure-requests` (+ `/{id}`) | auth + `people.self` | `{ subjectPersonIds[], lastDay?, erasure, note? }` | 201 with the batch; `people.departure_request.created` | 403 subject outside `self` and wards; 409 `departure_request_exists`; 422 for a minor caller; 429 (*Rate limits*) | REQ-L03 |
 | `GET`, `POST`, `PUT` | `/api/people/departure-requests` | auth + `people.manage` | list filters; record `{ subjectPersonId, requesterKind, erasure, note }`; decline `{ id, reason }` | list; 201; 200 + notice to the requester | 409 version | REQ-L03, REQ-L05 |
 | `POST` | `/api/people/departures/preview` | auth + `people.manage` | `{ personIds[], lastDay }` | `{ persons: [{ id, ends[], warnings[], blockers[], choicesNeeded[] }], suggestedPersons[], previewToken }` | 422 `departure_date_in_past` | REQ-L03, REQ-L04 |
-| `POST` / `people.persons.depart` | `/api/people/departures` | same | `{ personIds[], lastDay, previewToken, handOver?: [{ groupId, toPersonId }] (a null `toPersonId` leaves the group's sessions unassigned), nextPayer?: [{ wardPersonId, guardianPersonId }], requestBatchId? }` | 200 summary; `people.person.departed` per person | 409 `departure_blocked`; 409 `departure_preview_stale`; 422 `departure_handover_required`, `departure_payer_required`; undoable only until the last day (it restores the `valid_to` values) | REQ-L03, REQ-L04 |
+| `POST` / `people.persons.depart` | `/api/people/departures` | same | `{ personIds[], lastDay, previewToken, handOver?: [{ groupId, toPersonId }] (a null `toPersonId` leaves the group's sessions unassigned), nextPayer?: [{ wardPersonId, guardianPersonId }], requestBatchId? }` | 200 summary; `people.person.departed` per person | 409 `departure_blocked`; 409 `departure_preview_stale`; 422 `departure_handover_required`, `departure_payer_required`; undoable only until the last day: the undo restores what `people` ended and calls each contributor's `undo` (hand-overs, default coaches, substitution entries, contract `valid_to`, maintainer rows); afterwards 409 `departure_undo_expired` | REQ-L03, REQ-L04 |
 | `POST` / `people.persons.return` | `/api/people/persons/{id}/return` | same | — | 200; `left_on` cleared | 409 `person_anonymized` | REQ-L03 |
 | `POST` / `people.persons.anonymize` | `/api/people/persons/{id}/anonymize` | auth + `people.persons.anonymize` | `{ requestId, confirmLastName }` | 200 `{ anonymizedAt, erasureHoldUntil }`; `people.person.anonymized` | 409 `anonymize_blocked` with the reasons; 422 `confirmation_mismatch`; not undoable | REQ-L05 |
 | `DELETE` / `people.persons.delete` | `/api/people/persons/{id}` | auth + `people.manage` | — | 204; `people.person.deleted` | 409 `person_in_use` with the reasons; undoable | REQ-L05 |
@@ -513,13 +531,13 @@ Every route is a custom guarded command route with per-method `metadata` and `op
 | `POST` | `/api/people/persons/{id}/consents` | auth + `people.manage` | same | same | same | REQ-L10 |
 | `POST`, `DELETE` | `/api/people/persons/{id}/photo` | auth + `people.manage` | multipart file | 200 / 204 | 422 `person_photo_format_unsupported`, `person_photo_too_large` | REQ-L12 |
 | `POST` / `people.persons.bootstrap_admin` (existing command, new route) | `/api/people/first-administrator` | auth + `auth.users.create` (V-L04) | `{ userId, firstName, lastName }` | 201 `{ personId }` | 409 `club_admin_exists`; 404 user outside the organization | REQ-L13 |
-| job / `people.persons.life_cycle` | scheduler `people:life-cycle`; CLI `mercato people life-cycle --tenant --org [--today] [--dry-run]` | job context | `{ today?, dryRun? }` (`--dry-run` prints the counts and writes nothing) | counts per rule; audit entry | idempotent; one person's failure is logged and retried next day | REQ-L06, REQ-L07, REQ-L03, REQ-L05 |
+| job / `people.persons.life_cycle` | scheduler `people:life-cycle`; CLI `mercato people life-cycle --tenant --org [--today] [--dry-run] [--register-schedule]` | job context | `{ today?, dryRun? }` (`--dry-run` prints the counts and writes nothing; `--register-schedule` registers the daily schedule after a real run, *Rollout*) | counts per rule; audit entry | idempotent; one person's failure is logged and retried next day | REQ-L06, REQ-L07, REQ-L03, REQ-L05 |
 | `PUT` | `/api/club_core/settings` (extended) | auth + `club_core.manage` | `consentTexts?: { <key>: string }` (an empty string restores the built-in text) | 200; the read returns `{ text, changedAt }` per key | 422 length | REQ-L10 |
 | `POST`, `GET`, `DELETE` | `/api/club_core/contracts/{id}/attachment` | auth + `club_core.contracts.manage` | multipart PDF | 200 / file / 204 | 422 `contract_attachment_format_unsupported`, `…_too_large` | REQ-L12 |
 | `POST` | `/api/groups/seasons/rollover/preview` | auth + `groups.manage` + section scope | the plan (see *Vocabulary*) | what will be created, changed and ended, per module; conflicts; `previewToken` | 403 for a group outside the scope; 422 plan errors | REQ-L08 |
 | `POST` / `groups.seasons.rollover` | `/api/groups/seasons/rollover` | same | the plan + `previewToken` + `announce: boolean` | 200 summary; `groups.season.rolled_over` | 409 `rollover_plan_stale`; 409 conflicts; not undoable (each created record is ended or deleted by its own command) | REQ-L08 |
 | `POST` / `groups.memberships.move` | `/api/groups/memberships/move` | auth + `groups.manage` + both groups in scope | `{ membershipId, toGroupId, date }` | 200 both memberships; the existing `groups.membership.*` events | 409 overlap; 409 version | REQ-L11 |
-| contract `DepartureContributor` | DI `people.departure.<module>` | called by `people` only | `preview(em, subject, lastDay)`, `apply(em, subject, lastDay, choices)`, `hasHistory(em, subject)`; `payments` also `retentionHoldUntil(em, subject)` | items, warnings, blockers | throws → the whole departure rolls back | REQ-L03…REQ-L05 |
+| contract `DepartureContributor` | DI `people.departure.<module>` | called by `people` only | `preview(em, subject, lastDay)`; `apply(em, subject, lastDay, choices)` → `{ snapshot, changes }`; `undo(em, subject, snapshot)` → `changes`; `afterCommit(changes, ctx)` (events, cache, search; table under *Proposed Solution*); `hasHistory(em, subject)`; `payments` also `retentionHoldUntil(em, subject)` | items, warnings, blockers | `preview`, `apply` or `undo` throws → the whole departure or undo rolls back; `afterCommit` failures are logged and retried, never rolled back | REQ-L03…REQ-L05 |
 | contract `SeasonContributor` | DI `groups.season.<module>` | called by `groups` only | `preview(em, plan)`, `apply(em, plan)` | items and conflicts | throws → the whole rollover rolls back | REQ-L08 |
 | `GET` | `/api/club_core/institutions/options` | auth + `club_core.view` | `search?` | `{ items: [{ id, name }] }`, names only, `no-store` | 401, 403 | REQ-L14 |
 | contract (additive) | `people` person directory: `consentFlags(personIds, ctx)` | `activities` | person ids of one session | `{ personId, image: boolean, trips: boolean }[]` from the active guardianship or the adult's own consents | absent `people` → no flags | REQ-L10 |
@@ -537,7 +555,7 @@ Reused without change: `PUT /api/people/role-assignments` and `POST …/{id}/end
 | `people.person.anonymized` | `people` | `people` search indexer; `facilities` subscriber | Search tokens removed; the person's contact snapshots on rentals cleared; `payments` keeps ids only and changes nothing | Each consumer idempotent; a failure retries and is reported |
 | `people.person.account_updated`, `people.person.account_closed` | `people` | none in 1.0 | Audit only | — |
 | `groups.season.rolled_over` | `groups` | `groups` subscriber when `announce` | One post per continued group thread through `communication.threads.create`: the new season and the first session | Key `groups:season:{seasonId}:{groupId}` |
-| scheduler `people:life-cycle` (daily, per club, registered like `people:sync-role-expiry`) | scheduler | `people.persons.life_cycle` | See below | Idempotent; counts in the audit entry; catches up missed days (rules compare dates with `<=`) |
+| scheduler `people:life-cycle` (daily, per club, registered through `registerModuleSchedule` in `people/services/club-setup.ts`, like the `people:sync-role-expiry` worker) | scheduler | `people.persons.life_cycle` | See below | Idempotent; counts in the audit entry; catches up missed days (rules compare dates with `<=`) |
 
 The life-cycle job, per club, on `today` in the club's time zone:
 
@@ -545,7 +563,7 @@ The life-cycle job, per club, on `today` in the club's time zone:
 2. **Birthday:** for each person aged 18 with a guardianship that started before the birthday and is still active: copy the consents, end the guardianships the day before the birthday, emit `people.person.came_of_age`, send `people.came_of_age`. The payer role is granted by the existing role sync.
 3. **Account age:** for each person without an account whose age reached `own_account_min_age` and who was not told: notice `people.account_age_reached` to the guardians and the administrators. Key `people:account-age:{personId}:{threshold}`.
 4. **Dated departures:** close the account of every person with `left_on` < today (Q-L09).
-5. **Erasure step two:** for each person with `erasure_hold_until` < today: clear the name and the hold date.
+5. **Erasure step two:** for each person with `erasure_hold_until` < today: clear the name and the hold date. Registered only once migration B (phase L6) has landed (phase L8, *Guard for step 5*).
 
 Templates are in a new `people/emails` folder (as `payments/emails`) and the `people` notification types, rendered in the recipient's language (MSG). No message contains a birth date, a PESEL or an amount.
 
@@ -568,6 +586,15 @@ Templates are in a new `people/emails` folder (as `payments/emails`) and the `pe
 - **The 18th birthday:** the guardian's read of the ward ends with the guardianship, on the server (`people/services/scope-service.ts` reads active guardianships), not only in the interface. Notices name the person and the date of the change, never the birth date.
 - **Sensitive data:** the request note and the decline reason are encrypted (`people/encryption.ts`); the photo and the contract PDF are in the private `attachments` partition and are read through scoped routes; a coordinator's basic read gains `leftOn` and nothing else; consent flags go to the coach of the session only, as two booleans.
 - **Abuse and failure modes:** the re-send is rate-limited per account (3 in 5 minutes) and per administrator; a login e-mail change cannot take an address used in the tenant; the last administrator cannot be blocked, closed or made to leave; anonymisation needs the typed last name; the departure and the rollover apply in one transaction or not at all; a member can file at most 5 departure requests in 24 hours (429).
+- **Rate limits (gap c5).** The route `metadata.rateLimit` in use today (`activities/api/declaration-links/route.ts:23`) is keyed per client IP, so it cannot count per account. Both limits use the installed limiter instead: the platform `RateLimiterService`, which `@open-mercato/core/bootstrap` registers in the container as `rateLimiterService`, consumed with `checkRateLimit(service, config, key, message)` from `@open-mercato/shared/lib/ratelimit/helpers` (the app's API dispatcher `packages/app/src/app/api/[...slug]/route.ts` already imports both). The route calls it before the command; no Vereino cache or table holds counters.
+
+  | Limit | Key | Config | When the limiter is absent or degraded |
+  |---|---|---|---|
+  | Re-send per account | `people_resend_invitation:{tenantId}:{personId}` | 3 points / 300 s | fails open, as the platform default; the command still refuses a non-pending account |
+  | Re-send per administrator | `people_resend_invitation_actor:{tenantId}:{userId}` | 20 points / 3600 s | fails open |
+  | Departure requests per member | `people_departure_request:{tenantId}:{callerPersonId}` | 5 points / 86400 s | fails open; the one-open-request index still bounds the rows |
+
+  A 429 carries `Retry-After`, which the Account tab and the phone page turn into "try again in N minutes". TEST-L01 and TEST-L05 run with the limiter enabled for the case that asserts the 429.
 
 ## Integration Coverage
 
@@ -575,16 +602,16 @@ Tests are self-contained (own tenant, users and records) and run with `yarn test
 
 | Test ID | Level | Setup / fixture | Actions | Assertions | Requirement IDs |
 |---|---|---|---|---|---|
-| TEST-L01 | integration + UI | a person with an invited account; one with an active account | open the Account tab; send again; send four times; make the e-mail fail | state shown; old link dead, new link works; 409 for the active account; 429; warning on failure | REQ-L01 |
+| TEST-L01 | integration + UI | a person with an invited account; one with an active account | open the Account tab; send again; send four times; make the e-mail fail | state shown; the new link works and sets a password; 409 for the active account; 429; warning on failure | REQ-L01 |
 | TEST-L02 | integration | invited and active accounts; a club with one administrator | change the login e-mail (free, taken); block and unblock; block the only administrator | the invitation follows the new address; 409 `email_taken`; a blocked user's session ends and sign-in is refused; 422 `last_club_admin` | REQ-L02 |
-| TEST-L03 | integration + UI | a guardian with an account, two wards in two groups, a second guardian without other wards | preview; confirm with a future last day; run the job with `--today` after it; return one child | every row has `valid_to`; accounts closed the next day; guardian scope empty; former perspective lists them; the return clears the date only | REQ-L03 |
+| TEST-L03 | integration + UI | a guardian with an account, two wards in two groups, a second guardian without other wards | preview; confirm with a future last day; undo it and confirm again; run the job with `--today` after it; try the undo then; return one child | every row has `valid_to`; `groups.membership.updated` emitted per ended membership after the commit; the undo restores every `valid_to` and the next confirm works; accounts closed the next day; the late undo answers 409 `departure_undo_expired`; guardian scope empty; former perspective lists them; the return clears the date only | REQ-L03 |
 | TEST-L04 | integration | a guardian who is the only guardian of a staying ward; a primary payer of a staying ward; the only administrator | depart each; change data between preview and apply; use a past date | 409 `departure_blocked` naming the ward; 422 `departure_payer_required`; 422 `last_club_admin`; 409 `departure_preview_stale`; 422 date; nothing changed | REQ-L03 |
-| TEST-L05 | UI (phone) | guardian, adult participant, coach, minor with an account | open `/club/profile/leave`; send; withdraw; the administrator declines with a reason; name another family's child through the API | the request shows on B-10; the reason shows on the phone; the minor has no link; 403; 409 for a second open request | REQ-L03 |
-| TEST-L06 | integration + UI | a coach with 6 future sessions in two groups, a default-coach activity, a contract, a maintainer row and cash held | preview; apply without a choice; settle the cash (fixture); hand one group over and leave one unassigned; a coordinator names a coach of another section | blocker with the amount; 422 `departure_handover_required`; sessions carry the new coach or null from the day after; substitution entries written; contract ended; maintainer row gone; 403 | REQ-L04 |
+| TEST-L05 | UI (phone) | guardian, adult participant, coach, minor with an account | open `/club/profile/leave`; send; withdraw; the administrator declines with a reason; name another family's child through the API | the request shows on B-10 and in the dashboard widget "Departure requests"; the reason shows on the phone; the minor has no link; 403; 409 for a second open request; with the limiter enabled, a sixth request in 24 hours answers 429 with `Retry-After` | REQ-L03 |
+| TEST-L06 | integration + UI | a coach with 6 future sessions in two groups, a default-coach activity, a contract, a maintainer row and cash held | preview; apply without a choice; settle the cash (fixture); hand one group over and leave one unassigned; a coordinator names a coach of another section | blocker with the amount; 422 `departure_handover_required`; sessions carry the new coach or null from the day after; substitution entries written; contract ended; maintainer row gone; `activities.occurrence.coach_changed` / `…coach_unassigned`, `club_core.contract.updated` and `facilities.place_maintainer.deleted` emitted after the commit; an undo before the last day restores coaches, default coach, contract and maintainer row and removes the substitution entries, and leaves alone a session whose coach was changed since; 403 | REQ-L04 |
 | TEST-L07 | integration | a former person with a payment this year; one without payments; a second tenant | anonymise without a request, with an open charge, with a wrong name, then correctly; run the job after the hold date; search by the old name; open a thread and an attendance list | 409 with reasons; 422; contact fields null at once; name kept with the hold, then cleared; no search hit; "Former member" on the screens; no undo; the other tenant untouched | REQ-L05 |
 | TEST-L08 | integration | a person without history; a person with one attendance | delete both; undo the first | 204 and `people.person.deleted`; 409 `person_in_use`; the undo restores | REQ-L05 |
 | TEST-L09 | integration | a ward 17 years and 335 days old with two guardians, consents given by one, an account, an open charge, a `pending_guardian` declaration; a ward without a birth date; a guardianship created after 18 | run the job at T−30 twice, then on the birthday twice; generate the next period; read the calendar and charges as the former guardian | one notice per recipient; guardianships end the day before; consents copied with author and date; the old charge keeps its payer, the new one names the adult; the declaration is final; the former guardian gets 403 and no ward; the later guardianship stays; the skipped person is listed | REQ-L06 |
-| TEST-L10 | integration + UI | a child one day under the threshold; a club that lowers the threshold | run the job on the day, and again; lower the threshold and run | one notice to guardians and administrators; B-09 "may get an account" lists the child; a new notice after the change only for the newly eligible | REQ-L07 |
+| TEST-L10 | integration + UI | a child one day under the threshold; a club that lowers the threshold | run the job on the day, and again; lower the threshold and run | one notice to guardians and administrators; B-09 "may get an account" lists the child; the dashboard widget "People needing attention" counts the child under that filter and links to it; a new notice after the change only for the newly eligible | REQ-L07 |
 | TEST-L11 | integration + UI (phone) | an adult participant; a guardian; a 17-year-old with an account; a coach of their group; a coordinator | the adult gives and withdraws each consent; the minor tries through the API; open the attendance read as the coach; read the person as the coordinator | stored with author and date; the effect line and the confirmation appear; 422 `consents_minor`; flags present for the coach; no consents in the coordinator's read | REQ-L10 |
 | TEST-L12 | integration + UI | a club with built-in texts and one given consent | change a consent text; open the profile; send 1001 characters | the phone shows the club's text; the earlier consent reads "given to an earlier wording" and stays valid; 422 | REQ-L10 |
 | TEST-L13 | integration + UI | a person with a role, a guardianship, a material, a thread with own and others' messages, a case | assign a role with an end date; edit its dates; end it on a future date; set a guardianship start date; type an external id used by another person; rename a material; edit a message in the panel and on the phone; edit in a case | each value stored and shown; 409 `person_external_id_taken`; "edited" mark; no edit on others' messages; 409 `case_immutable` | REQ-L12 |
@@ -594,18 +621,39 @@ Tests are self-contained (own tenant, users and records) and run with `yarn test
 | TEST-L17 | integration | a child in group A with declarations for future sessions and a generated monthly charge; group B with its own fee | move the child on the 15th; generate the same period again; generate the next period | A's future declarations gone, B's sessions undeclared; one charge for the month; the next month charges B's fee | REQ-L11 |
 | TEST-L18 | integration + UI | a new person; an administrator and a coordinator | follow the staff checklist; upload a photo and a contract PDF; upload an SVG renamed `.png` | each row turns done; the coordinator has no account or contract action; files stored privately; 422 on the fake image | REQ-L09, REQ-L12 |
 | TEST-L19 | unit | — | `people/lib/life-cycle-rules.ts`, `people/lib/departure-rules.ts`, `groups/lib/season-rollover.ts`, the account-state function in `@vereino/core` | 100 % line, branch and function coverage (AGENTS.md) | REQ-L01…REQ-L11 |
-| TEST-L20 | security | a second tenant; users without each feature | call every new route | fail closed: 403 or 404, no data of the other tenant, no contributor called | all |
+| TEST-L20 | security | a second tenant; users without each feature | call every new route of the phase (each phase that adds a route lists TEST-L20: L1, L3, L4, L6, L7, L9, L10) | fail closed: 403 or 404, no data of the other tenant, no contributor called | all |
 
 ## Implementation Phases
 
-Validation for each phase: `yarn verify`, the phase's integration tests, and for a phase with a migration the SQL review from `yarn db:generate` (no `yarn db:migrate` without approval). Each phase is one pull request and leaves a working app.
+Validation for each phase: `yarn verify`, the phase's integration tests, and for a phase with a migration the SQL review from `yarn db:generate`, shown in the phase's pull request before it is applied (owner decision 2026-11-16; no `yarn db:migrate` against a dev or real database). Each phase is one pull request and leaves a working app.
+
+Each phase maps to one story of epic #255: L1 → #303 (S01), L2 → #304 (S02), L3 → #305 (S03), L4 → #306 (S04), L5 → #307 (S05), L6 → #308 (S06), L7 → #309 (S07), L8 → #310 (S08), L9 → #311 (S09), L10 → #312 (S10).
+
+### Cross-spec dependencies (gaps c1, c2, c11)
+
+State on 2026-11-16: spec N (`2026-11-14-vereino-parity-navigation-and-naming.md`) is `Ready for implementation`, with its phase 2 (#256) and phase 3 (#257) landed and phase 1 landed only in part (#246: the Club group; `overrides.nav.groupOrder`, the shared `groups.nav.group` "Classes / Zajęcia" and the other menu labels are still open). Specs A (`…-parity-groups-and-activities.md`), C (`…-parity-payments.md`) and R (`…-parity-facilities.md`) are `Draft` and are being made Ready in parallel; this spec does not edit them. Where a phase needs one of them and it has not landed, the phase names the fallback it ships with.
+
+| Phase | Needs | What exactly | Without it |
+|---|---|---|---|
+| L1, L2, L3 | spec N phases 1–3 (D-031: N's sidebar, tabbed pages and glossary come before any other spec builds UI) | new texts in the glossary's words (N phase 3, landed); no new sidebar item: the first-administrator page (L3) is `navHidden` and reached from its banner, so N phase 1's remainder does not block them | — (may start now) |
+| L4 | spec A phase 2 (REQ-A03: end on a chosen last day; `DELETE /api/groups/memberships`) | the `groups` contributor's end and delete | the existing `groups.memberships.end`; a membership that has not started yet is ended with `valid_to` = the last day instead of removed |
+| L4 | spec C phase 5 (REQ-C06) | open charges of a staying ward without a payer get the next payer named at the departure | the next payer becomes primary payer on the day after the last day; existing open charges keep their payer until C's rule lands, and the preview says so |
+| L4 | spec N phase 6 (dashboard frame) | slot for `people.dashboard.departureRequests` (N's widget table, row 10) | the widget shows on the platform dashboard in the default order |
+| L5 | #118 (B-33 "Cash to settle", referenced by spec C) | clearing the cash blocker | the blocker is shown and cannot be cleared in the app; S05 is scheduled after #118 (owner decision 2026-11-16) |
+| L7 | spec A phase 7 (M-05 attendance surfaces) | A draws the `image` and `trips` flags on M-05 from `consentFlags` | the contract ships and is tested through the API (TEST-L11) |
+| L8 | spec N phase 6 | slot for `people.dashboard.peopleNeedingAttention` (N row 11) | as for L4 |
+| L9 | spec N phase 1 (remainder) | the "Classes / Zajęcia → Groups → Seasons" path | the wizard is reached from the existing Seasons tab of `GroupsNav`, under today's "Groups" sidebar group |
+| L9 | spec A phase 2 (REQ-A03) | the action `close` ends memberships on the old season's last day | the existing `groups.memberships.end` |
+| L10 | spec A phase 2 (roster "Move", a roster opened with a preselected person) | the entry points of `groups.memberships.move` and of the staff checklist's "Add to a group as coach" | the move route ships with its test (TEST-L17); the checklist row links to the group's roster without preselection |
+| L10 | spec C (the skip rule in charge generation, agreed on 2026-11-16) and spec C phase 5 (REQ-C07, the Charges tab on B-10) | the skip rule in `payments/lib/charge-plan.ts`; the tab order Details, Guardians, Roles, Account, Groups, Charges, Leaving in `PersonRecord.tsx` | the second of L10 and C phase 5 to land rebases on the first; neither changes the other's tab |
+| — | spec R | consumer of the picker pattern only (row 10 of the picker table) | — |
 
 ### Phase L1 — Account state, invitation again, login e-mail, block
 
-- **Depends on:** none
+- **Depends on:** spec N phases 1–3 (*Cross-spec dependencies*: no new sidebar item, so it may start now)
 - **Outcome:** J-L01 works end to end.
 - **Why this order / value delivered:** the smallest of the four decisions and the one administrators meet weekly.
-- **Deliverables:** step 1 runs V-L01 and V-L02; `foundation/services/accounts.ts` (`accountState`, `resendInvitation`, `updateAccount`, `closeAccount`); `people/commands/accounts.ts` (three commands); routes under `people/api/persons/[id]/account/`; `AccountPanel.tsx`; the pure account-state function in `packages/core`; error codes and i18n.
+- **Deliverables:** step 1 runs V-L02 (V-L01 is decided: the fallback); `foundation/services/accounts.ts` (`accountState`, `resendInvitation` on `requestPasswordReset`, `updateAccount`, `closeAccount` with the effects of *Closing an account*); the per-account and per-administrator limits through `rateLimiterService` (*Rate limits*); `people/commands/accounts.ts` (three commands); routes under `people/api/persons/[id]/account/`; `AccountPanel.tsx`; the pure account-state function in `packages/core`; error codes and i18n.
 - **Independent slices / estimated commits:** (a) foundation and core: 1; (b) commands and routes: 1; (c) the panel: 1.
 - **Requirements closed:** REQ-L01, REQ-L02
 - **Tests:** TEST-L01, TEST-L02, TEST-L19 (account state), TEST-L20 (these routes)
@@ -614,7 +662,7 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 
 ### Phase L2 — Fields the APIs already accept
 
-- **Depends on:** none
+- **Depends on:** spec N phases 1–3 (*Cross-spec dependencies*: forms only, may start now)
 - **Outcome:** role assignment dates and edit, guardianship start date, external id, material rename and message edit are usable.
 - **Why this order / value delivered:** no schema; removes five audit rows at once.
 - **Deliverables:** `RolesPanel.tsx`, `GuardianshipsPanel.tsx`, `PersonForm.tsx`, `club_core/components/SectionMaterialsPanel.tsx`, `communication/components/ThreadRecord.tsx` and the member thread page under `communication/components/club`.
@@ -626,34 +674,34 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 
 ### Phase L3 — Empty pickers and the first administrator
 
-- **Depends on:** none
+- **Depends on:** spec N phases 1–3 (*Cross-spec dependencies*: the first-administrator page is `navHidden`, so it may start now)
 - **Outcome:** J-L08 works end to end.
 - **Why this order / value delivered:** specs A, C, R and N consume the component, so it lands early.
 - **Deliverables:** `packages/ui/src/admin/picker-empty-hint.tsx` and `inline-create-dialog.tsx` with unit tests; the shared features hook; forms 1–6 of the picker table; the institutions options route; the seeded age category "Kids (U4–U5)" with its unit test; `people/backend/people/first-administrator/`, its route and the banner; a `yarn setup` note in `README.md`.
 - **Independent slices / estimated commits:** (a) the component: 1; (b) `club_core` and `people` forms: 1; (c) `groups` forms: 1; (d) the first administrator: 1.
 - **Requirements closed:** REQ-L13, REQ-L14
-- **Tests:** TEST-L14, TEST-L15
+- **Tests:** TEST-L14, TEST-L15, TEST-L20 (the institutions options route and `POST /api/people/first-administrator`)
 - **Validation:** as above; step 1 runs V-L04
 - **Exit gate:** the walk-through of TEST-L15 passes on a fresh tenant.
 
 ### Phase L4 — Leaving the club: members and guardians
 
-- **Depends on:** phase L1 (`closeAccount`)
+- **Depends on:** phase L1 (`closeAccount`). Cross-spec (*Cross-spec dependencies*): spec A phase 2 (REQ-A03) for the `groups` contributor, with the `groups.memberships.end` fallback until it lands; spec C phase 5 (REQ-C06) for the payer of open charges at the hand-over; spec N phase 6 for the widget's slot.
 - **Outcome:** J-L02 works end to end.
 - **Why this order / value delivered:** the common case; it builds the contributor seam the next phases reuse.
-- **Deliverables:** migration A (`people_persons.left_on`, `people_departure_requests`); `people/services/departure.ts` (contract and tokens); `people/lib/departure-rules.ts`; `people/commands/departures.ts`; the routes; the Leaving tab; `/club/profile/leave`; the `groups` contributor (`groups/di.ts`); the `activities` subscriber that drops undecided declarations; the perspective "Former" and the exclusion from pickers and audiences; the `BACKWARD_COMPATIBILITY.md` note.
-- **Independent slices / estimated commits:** (a) the migration and rules: 1; (b) command, preview and `groups`: 2; (c) the panel tab: 1; (d) the phone page and requests: 1.
+- **Deliverables:** migration A (`people_persons.left_on`, `people_departure_requests`; approved 2026-11-16); `people/services/departure.ts` (the contract with `preview`, `apply`, `undo`, `afterCommit`, `hasHistory`, and the tokens); `people/lib/departure-rules.ts`; `people/commands/departures.ts` with its undo; the routes, with the departure-request limit through `rateLimiterService`; the Leaving tab; `/club/profile/leave`; the `groups` contributor (`groups/di.ts`) with its undo and its `afterCommit` events; the `activities` subscriber that drops undecided declarations; the perspective "Former" and the exclusion from pickers and audiences, including `packages/core/src/audience.ts`; the dashboard widget `people.dashboard.departureRequests`; the `BACKWARD_COMPATIBILITY.md` note.
+- **Independent slices / estimated commits:** (a) the migration and rules: 1; (b) command, preview, undo and `groups`: 2; (c) the panel tab and the widget: 1; (d) the phone page and requests: 1.
 - **Requirements closed:** REQ-L03
-- **Tests:** TEST-L03, TEST-L04, TEST-L05, TEST-L19 (departure rules)
+- **Tests:** TEST-L03, TEST-L04, TEST-L05, TEST-L19 (departure rules), TEST-L20 (the departure, request and return routes)
 - **Validation:** as above
 - **Exit gate:** J-L02 in the browser; the phone page at 375 px, both locales, light and dark.
 
 ### Phase L5 — Leaving the club: coaches and staff
 
-- **Depends on:** phase L4. Resolving the cash blocker needs B-33 (issue #118, referenced by spec C); without it the blocker is shown and cannot be cleared in the application.
+- **Depends on:** phase L4 and #118. Resolving the cash blocker needs B-33 (issue #118, referenced by spec C); without it the blocker is shown and cannot be cleared in the application, so S05 (#307) is scheduled after #118 (owner decision 2026-11-16, Q-L05).
 - **Outcome:** J-L03 works end to end.
 - **Why this order / value delivered:** closes D-031 §8b for staff.
-- **Deliverables:** contributors in `activities` (sessions, default coach, substitution entries), `payments` (cash held, open charges, `retentionHoldUntil`), `club_core` (contracts) and `facilities` (maintainer rows); the hand-over controls on the Leaving tab.
+- **Deliverables:** contributors in `activities` (sessions, default coach, substitution entries), `payments` (cash held, open charges, `retentionHoldUntil`), `club_core` (contracts) and `facilities` (maintainer rows), each with its `undo` and its `afterCommit` events (table under *Proposed Solution*); the hand-over controls on the Leaving tab.
 - **Independent slices / estimated commits:** one per contributing module.
 - **Requirements closed:** REQ-L04
 - **Tests:** TEST-L06
@@ -662,34 +710,36 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 
 ### Phase L6 — Erasure and removal
 
-- **Depends on:** phases L4 and L5 (`hasHistory`, `retentionHoldUntil`); Q-L01 answered
+- **Depends on:** phases L4 and L5 (`hasHistory`, `retentionHoldUntil`). Q-L01 is answered (2026-11-16: keep the retention hold)
 - **Outcome:** J-L04 works end to end.
 - **Why this order / value delivered:** completes CM's deferred `people.persons.anonymize`.
-- **Deliverables:** migration B (`anonymized_at`, `erasure_hold_until`); the feature in `people/acl.ts`; `people.persons.anonymize` and `people.persons.delete`; the "Former member" label in `people/services/person-directory.ts`; the `facilities` subscriber; the Leaving tab actions; step 1 runs V-L03.
+- **Deliverables:** migration B (`anonymized_at`, `erasure_hold_until`; approved 2026-11-16); the feature in `people/acl.ts`, its grant in `people/setup.ts` and `yarn mercato auth sync-role-acls` (`BACKWARD_COMPATIBILITY.md` §4); `people.persons.anonymize` and `people.persons.delete`; the "Former member" label in `people/services/person-directory.ts`; the `facilities` subscriber; the Leaving tab actions; step 1 runs V-L03.
 - **Independent slices / estimated commits:** (a) commands: 2; (b) consumers and labels: 1; (c) UI: 1.
 - **Requirements closed:** REQ-L05
-- **Tests:** TEST-L07, TEST-L08
+- **Tests:** TEST-L07, TEST-L08, TEST-L20 (the anonymise and delete routes; a user with `people.manage` but without `people.persons.anonymize` gets 403)
 - **Validation:** as above
 - **Exit gate:** J-L04 in the browser; a database read of the person shows no contact value.
 
 ### Phase L7 — Consents: the adult's own, effects, texts
 
-- **Depends on:** none. The flags on M-05 are drawn by spec A; the contract ships here.
+- **Depends on:** none in this spec. Cross-spec: spec A phase 7 draws the flags on M-05; the contract ships here and is tested through the API until then.
 - **Outcome:** an adult manages their consents on the phone; texts are the club's.
 - **Why this order / value delivered:** phase L8 copies consents into the column this phase adds.
-- **Deliverables:** migration C (`people_persons.consents`, `club_core_club_settings.consent_texts`); `people.persons.set_own_consents`; `ClubProfilePage.tsx` and `ConsentList.tsx`; the effect lines; `ClubSettingsForm.tsx`; `consentFlags` in the person directory; the B-09 filter value "missing consents".
+- **Deliverables:** migration C (`people_persons.consents`, `club_core_club_settings.consent_texts`; approved 2026-11-16); `people.persons.set_own_consents`; `ClubProfilePage.tsx` and `ConsentList.tsx`; the effect lines; `ClubSettingsForm.tsx`; `consentFlags` in the person directory; the B-09 filter value "missing consents".
 - **Independent slices / estimated commits:** (a) own consents: 1; (b) texts: 1; (c) flags and filter: 1.
 - **Requirements closed:** REQ-L10
-- **Tests:** TEST-L11, TEST-L12
+- **Tests:** TEST-L11, TEST-L12, TEST-L20 (`/api/people/me/consents`, `/api/people/persons/{id}/consents`, the extended settings route)
 - **Validation:** as above
 - **Exit gate:** M-10 at 375 px, both locales, light and dark.
 
 ### Phase L8 — The 18th birthday and the account age
 
-- **Depends on:** phases L4 (job step 4), L6 (job step 5, optional) and L7; Q-L02 answered
+- **Depends on:** phases L4 (job step 4) and L7; L6 only for job step 5 (gap c9: the guard below). Q-L02 is answered (2026-11-16: guardianships end automatically on the 18th birthday and the adult pays new charges)
 - **Outcome:** J-L05 works end to end.
 - **Why this order / value delivered:** removes the contradiction between MSG and PAY.
-- **Deliverables:** `people/lib/life-cycle-rules.ts`; `people.persons.life_cycle`, its worker and schedule (`people/workers/`, `people/services/club-setup.ts`), the CLI command; the notices and e-mail templates; the `activities` subscriber for `people.person.came_of_age`; the B-09 "Needs attention" filter; the lines on M-10 and the ward page.
+- **Deliverables:** `people/lib/life-cycle-rules.ts`; `people.persons.life_cycle`, its worker and schedule (`people/workers/`, `registerModuleSchedule` in `people/services/club-setup.ts`), the CLI command with `--dry-run`; the notices and e-mail templates; the `activities` subscriber for `people.person.came_of_age`; the B-09 "Needs attention" filter; the dashboard widget `people.dashboard.peopleNeedingAttention`; the lines on M-10 and the ward page.
+- **Guard for step 5 (gap c9):** erasure step two reads `anonymized_at` and `erasure_hold_until`, which migration B (phase L6) adds. The step is a separate rule in `life-cycle-rules.ts` registered in the job's rule list only by phase L6's pull request; if L8 lands first, L8 ships steps 1–4 and the job's audit entry reports no step-5 count. Whichever of L6 and L8 lands second adds the registration and TEST-L07's job case.
+- **First run on existing data:** dry run, then the owner's explicit confirmation, then the real run (*Rollout*, approved 2026-11-16).
 - **Independent slices / estimated commits:** (a) rules and job: 2; (b) notices: 1; (c) surfaces: 1.
 - **Requirements closed:** REQ-L06, REQ-L07
 - **Tests:** TEST-L09, TEST-L10, TEST-L19 (life-cycle rules)
@@ -698,25 +748,25 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 
 ### Phase L9 — New season
 
-- **Depends on:** none (uses the activity and fee commands as they are; spec A's new activity fields are copied when present; the action `close` ends memberships with spec A's end on a chosen last day, REQ-A03, when it has landed, and with the existing `groups.memberships.end` otherwise)
+- **Depends on:** no other phase of this spec (uses the activity and fee commands as they are; spec A's new activity fields are copied when present). Cross-spec: the action `close` ends memberships with spec A's end on a chosen last day (REQ-A03, A phase 2) when it has landed, and with the existing `groups.memberships.end` otherwise; the sidebar path "Classes → Groups → Seasons" needs the rest of spec N phase 1, and until then the wizard is reached from the existing Seasons tab under "Groups"
 - **Outcome:** J-L06 works end to end.
 - **Why this order / value delivered:** needed once a year, before August; independent of the other phases.
-- **Deliverables:** `groups/services/season-rollover.ts` (contract), `groups/lib/season-rollover.ts`, `groups.seasons.rollover`, the two routes, the wizard page; contributors in `activities` and `payments`; the announcement subscriber.
+- **Deliverables:** `groups/services/season-rollover.ts` (contract), `groups/lib/season-rollover.ts`, `groups.seasons.rollover`, the two routes, the wizard page (`navHidden`, reached from the Seasons tab); contributors in `activities` and `payments`; the announcement subscriber.
 - **Independent slices / estimated commits:** (a) plan rules and `groups`: 2; (b) `activities`: 1; (c) `payments`: 1; (d) the wizard: 2.
 - **Requirements closed:** REQ-L08
-- **Tests:** TEST-L16, TEST-L19 (rollover rules)
+- **Tests:** TEST-L16, TEST-L19 (rollover rules), TEST-L20 (the two rollover routes; a coordinator outside the section gets 403)
 - **Validation:** as above
 - **Exit gate:** J-L06 in the browser as the administrator and as a coordinator.
 
 ### Phase L10 — Staff setup, group move, photo and contract file
 
-- **Depends on:** spec A (the roster screen that opens with a preselected person and offers "Move"); the generation rule is agreed with spec C
+- **Depends on:** spec A phase 2 (REQ-A03 and the roster screen that opens with a preselected person and offers "Move"); spec C for the generation skip rule (agreed, owner decision 2026-11-16) and C phase 5 for the Charges tab order on B-10 (*Cross-spec dependencies*)
 - **Outcome:** J-L07 works end to end; REQ-L11 holds.
 - **Why this order / value delivered:** the remaining data-entry rows; touches other specs' screens, so it lands after them.
-- **Deliverables:** migration D (`people_persons.photo_attachment_id`, `club_core_contracts.attachment_id`); the checklist on `RolesPanel.tsx` with the injection spot in `PersonRecord.tsx` (the file spec C's phase 5 also edits for the Charges tab) and the rows from `groups` and `club_core`; `groups.memberships.move`, built on spec A's membership end (REQ-A03); the skip rule in `payments/lib/charge-plan.ts`; the photo and attachment routes and controls.
+- **Deliverables:** migration D (`people_persons.photo_attachment_id`, `club_core_contracts.attachment_id`; approved 2026-11-16); the checklist on `RolesPanel.tsx` with the injection spot in `PersonRecord.tsx` (the file spec C's phase 5 also edits for the Charges tab) and the rows from `groups` and `club_core`; `groups.memberships.move`, built on spec A's membership end (REQ-A03); the skip rule in `payments/lib/charge-plan.ts`; the photo and attachment routes and controls.
 - **Independent slices / estimated commits:** (a) checklist: 1; (b) move and fee rule: 2; (c) files: 1.
 - **Requirements closed:** REQ-L09, REQ-L11, REQ-L12 (photo, contract attachment)
-- **Tests:** TEST-L17, TEST-L18
+- **Tests:** TEST-L17, TEST-L18, TEST-L20 (the move, photo and contract attachment routes)
 - **Validation:** as above
 - **Exit gate:** J-L07 in the browser; TEST-L17 green.
 
@@ -750,31 +800,34 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 | Subscribers in `activities` (`groups.membership.updated`, `people.person.came_of_age`) and `facilities` (`people.person.anonymized`) | REQ-L05, REQ-L06, REQ-L11 | adapted as `groups/subscribers/sync-member-roles.ts` | L4, L6, L8 | TEST-L07, TEST-L09, TEST-L17 | emitted-example |
 | Member page `/club/profile/leave` | REQ-L03 | adapted as `people/frontend/club/profile/page.tsx` | L4 | TEST-L05 | emitted-example |
 | Backend pages `first-administrator`, `seasons/rollover` | REQ-L08, REQ-L13 | adapted as `people/backend/people/persons/create/` and `people/backend/people/imports/[id]/` | L3, L9 | TEST-L15, TEST-L16 | emitted-example |
+| Dashboard widgets `people.dashboard.departureRequests`, `people.dashboard.peopleNeedingAttention` | REQ-L03, REQ-L06, REQ-L07 | adapted as `people/widgets/dashboard/sections-without-coordinator` | L4, L8 | TEST-L05, TEST-L10 | emitted-example |
 | Widget injection spot `vereino:people:person-record:staff-setup` | REQ-L09 | `umes.widget-injection`, `src/modules/example/widgets`; first Vereino spot on a person record | L10 | TEST-L18 | new in Vereino |
 
 ## Rollout, Migration, and Rollback
 
 Rollback follows S14.6: redeploy the previous release, never run `down()`. Every migration is additive and nullable or defaulted, so the previous release works on the new schema.
 
-**Needs the owner's approval before it is built** (AGENTS.md *Ask First*):
+**Ask First items (AGENTS.md) — all thirteen approved by the product owner on 2026-11-16** ([#255 owner decisions](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611), answering items (a)1–13 of the [audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561)). Each migration's SQL is shown in its pull request before it is applied.
 
-| Item | Phase | Kind |
-|---|---|---|
-| Migration A: `people_persons.left_on`; table `people_departure_requests` | L4 | migration, new entity |
-| Migration B: `people_persons.anonymized_at`, `erasure_hold_until` | L6 | migration |
-| Migration C: `people_persons.consents`; `club_core_club_settings.consent_texts` | L7 | migration (two modules, two files) |
-| Migration D: `people_persons.photo_attachment_id`; `club_core_contracts.attachment_id` | L10 | migration (two modules, two files) |
-| Feature id `people.persons.anonymize` | L6 | contract (ACL) |
-| DI contracts `people.departure.<module>` and `groups.season.<module>`; the additive `consentFlags` on the person directory | L4, L5, L7, L9 | contract (cross-module) |
-| Events `people.departure_request.created`, `people.person.departed`, `people.person.came_of_age`, `people.person.anonymized`, `people.person.account_updated`, `people.person.account_closed`, `groups.season.rolled_over`; first emission of `people.person.deleted` | L1, L4, L6, L8, L9 | contract (events) |
-| New routes of *API, Command, and Error Contracts*; the CLI command `people life-cycle`; the schedule `people:life-cycle` | all | contract (API, CLI, schedule) |
-| `GET /api/people/persons` hides former persons by default | L4 | behaviour change of an existing list |
-| The skip rule in the charge generation | L10 | behaviour change in `payments` (agreed with spec C) |
-| Ending guardianships at 18 on existing data | L8 | data change by a job (see below) |
+| # | Item | Phase (story) | Kind | Approval |
+|---|---|---|---|---|
+| 1 | Migration A: `people_persons.left_on` (index `organization_id`, `left_on`); table `people_departure_requests` (columns under *Data Models*, partial unique index on open requests) | L4 (#306) | migration, new entity | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 2 | Migration B: `people_persons.anonymized_at`, `erasure_hold_until` (partial index) | L6 (#308) | migration | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 3 | Migration C: `people_persons.consents`; `club_core_club_settings.consent_texts` | L7 (#309), used by L8 (#310) | migration (two modules, two files) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 4 | Migration D: `people_persons.photo_attachment_id`; `club_core_contracts.attachment_id` | L10 (#312) | migration (two modules, two files) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 5 | Feature id `people.persons.anonymize`, its grant in `setup.ts` and `yarn mercato auth sync-role-acls` (`BACKWARD_COMPATIBILITY.md` §4); the club administrator holds it through `people.*` | L6 (#308) | contract (ACL) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 6 | DI contracts `people.departure.<module>` (registered by `groups`, `activities`, `payments`, `club_core`, `facilities`) and `groups.season.<module>` (by `activities`, `payments`); the additive `consentFlags(personIds)` on the person directory | L4, L5, L6, L7, L9 | contract (cross-module) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 7 | Events `people.departure_request.created`, `people.person.departed`, `people.person.came_of_age`, `people.person.anonymized`, `people.person.account_updated`, `people.person.account_closed`, `groups.season.rolled_over`; first emission of `people.person.deleted` | L1, L4, L6, L8, L9 | contract (events) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 8 | New routes and error codes of *API, Command, and Error Contracts*, including `GET /api/club_core/institutions/options` readable with `club_core.view` (institution names shown to coordinators for the first time) and `POST /api/people/first-administrator` gated by `auth.users.create`; the CLI command `people life-cycle`; the schedule `people:life-cycle` | all | contract (API, CLI, schedule) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 9 | `GET /api/people/persons` hides former persons by default; pickers and audiences exclude them, including `packages/core/src/audience.ts` | L4 (#306) | behaviour change of an existing list | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 10 | The skip rule in the charge generation, so a moved child is charged once for the month | L10 (#312) | behaviour change in `payments`; spec C agrees | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 11 | Ending guardianships of wards already 18 or older on existing data: dry run first, then the owner's explicit confirmation, then the real run | L8 (#310) | data change by a job (see below) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 12 | The re-send uses the V-L01 fallback (`requestPasswordReset`, 60-minute link); deep imports of platform internals only if `.ai/guides/framework-contracts.md` lists them (`BACKWARD_COMPATIBILITY.md` §9) | L1 (#303) | reliance on a platform surface | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 13 | Seed change: the default age category "Kids (U4–U5)" for new clubs | L3 (#305) | seed | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
 
-No new module and no new dependency.
+No new module and no new dependency (the owner approved none; none is needed).
 
-- **First run of the life-cycle job (phase L8).** Existing clubs may hold guardianships of wards already over 18. The first run would end them all at once. The deployment therefore runs `mercato people life-cycle --tenant --org --dry-run` first, which prints the counts; the owner confirms; the first real run sends the "came of age" notice for those persons too.
+- **First run of the life-cycle job (phase L8, item 11).** Existing clubs may hold guardianships of wards already over 18. The first run would end them all at once. The deployment therefore runs `mercato people life-cycle --tenant --org --dry-run` first, which prints the counts; the owner confirms explicitly; only then does the first real run go, and it sends the "came of age" notice for those persons too. So that no scheduled run comes before the confirmation, phase L8 registers the daily schedule at setup only for new clubs (they have no such backlog); for an existing club the confirmed real run is `mercato people life-cycle --tenant --org --register-schedule`, which runs the job once and then registers the schedule with the same `registerModuleSchedule` call.
 - **Feature flags:** none. The job step for the 18th birthday is registered with phase L8; before it nothing changes for existing guardianships.
 - **Observability:** the job logs counts per rule and reports a failed person to telemetry (`people.life_cycle.failed`), as the role sync does.
 - **Rollback of data:** a departure can be undone until its last day; a guardianship ended by the job can be re-created by the administrator; an anonymisation cannot be reversed — the confirmation says so.
@@ -783,22 +836,24 @@ No new module and no new dependency.
 
 | Risk / tradeoff | Impact | Mitigation / detection | Residual risk |
 |---|---|---|---|
-| The invitation pieces of the platform are not a stable import | The re-send breaks on a platform upgrade | V-L01 in phase L1 step 1; fallback: the platform's password-reset request (60-minute link) with the text saying so; one helper holds the dependency | Low |
+| The invitation pieces of the platform are not a stable import | The re-send breaks on a platform upgrade | Decided 2026-11-16: the re-send uses the platform's password-reset request (60-minute link, `requestPasswordReset`) with the text saying so; no deep import unless `.ai/guides/framework-contracts.md` lists it; one helper holds the dependency | Low |
+| A re-sent link lasts 60 minutes, not 48 hours | A member who opens the e-mail late needs another re-send | The tab and the e-mail state the validity; "Forgot password" on M-01 works too | Accepted (owner, 2026-11-16) |
 | A contributor is missing or throws | A departure ends some records and not others | One transaction with the caller's `EntityManager`; TEST-L06; a missing module contributes nothing by design | Low |
 | The administrator leaves sessions unassigned and nobody picks them up | Sessions without a coach | They enter the "needing a coach" list and the coordinator's notice (spec A's "session without a coach at start") | Accepted |
 | The cash blocker cannot be cleared before #118 ships | A coach cannot be marked as gone | Phase L5 names the dependency; until then the administrator ends memberships one by one as today | Medium until #118 |
-| Guardianships end at 18 while the family still expects the parent to manage everything | Calls to the club on the birthday | Notices 30 days ahead to all three parties; Q-L02 open for the owner; the adult can get an account at once | Medium |
+| Guardianships end at 18 while the family still expects the parent to manage everything | Calls to the club on the birthday | Notices 30 days ahead to all three parties; Q-L02 decided by the owner on 2026-11-16 (they end automatically); a parent who keeps paying uses the adult's payer code; the adult can get an account at once | Medium |
 | An adult without an account or address after 18 | No one receives messages or charges | The administrator's "adult without contact" list and the T−30 notice | Low |
 | Erasure leaves old values in audit snapshots | Not a complete erasure | V-L03; snapshots are encrypted and readable only through the audit API by the administrator | Accepted until V-L03 |
-| The retention hold keeps a name for up to six years | A complaint that the name was not erased | The reply states the ground and the date; contact data is gone at once; Q-L01 | Low |
+| The retention hold keeps a name for up to six years | A complaint that the name was not erased | The reply states the ground and the date; contact data is gone at once; Q-L01 decided by the owner on 2026-11-16 (keep the hold, Polish five-year accounting retention) | Low |
 | The rollover copies an activity into a taken slot | A double booking | The preview runs the existing conflict check; any conflict stops the whole plan | Low |
-| The first job run ends many old guardianships | Surprise for families | The dry run and the owner's confirmation in *Rollout* | Low |
+| The first job run ends many old guardianships | Surprise for families | The dry run, the owner's explicit confirmation and `--register-schedule` in *Rollout* | Low |
+| Specs A and C land after the phases that use them | A phase ships with a fallback and a gap | *Cross-spec dependencies* names the fallback per phase; the second pull request to land removes it | Low |
 | Former persons disappear from the default People list | An administrator cannot find someone | The perspective "Former" and the search covering all perspectives when a name is typed | Low |
 | Phase L10 touches screens of specs A and C | Merge order | L10 is last and names both dependencies | Low |
 
 ## Acceptance Criteria
 
-- [ ] **AC-L01** — An administrator sees "invited", "active", "blocked" or no account on B-10 and re-sends a pending invitation; the earlier link stops working and the new one works for 48 hours. An active account answers 409 and a fourth attempt in five minutes 429.
+- [ ] **AC-L01** — An administrator sees "invited", "active", "blocked" or no account on B-10 and re-sends a pending invitation; the new link works for 60 minutes, which the tab and the e-mail state. An active account answers 409 and a fourth attempt in five minutes 429.
 - [ ] **AC-L02** — An administrator changes a login e-mail (409 when taken) and blocks an account, which ends its sessions and refuses sign-in until unblocked. The club's only administrator cannot be blocked, closed or made to leave.
 - [ ] **AC-L03** — A departure with a last day ends every membership, role assignment and guardianship of the chosen persons on that day, in one step or not at all, closes their accounts the next day, and moves them to "Former". A staying minor never ends up without a guardian, and a staying ward never without a primary payer when another guardian exists.
 - [ ] **AC-L04** — A guardian, an adult participant and a coach each send, see and withdraw a departure request on `/club/profile/leave` at 375 px, in Polish and English, in light and dark mode; a minor has no such link; a request for another family's child answers 403.
@@ -825,35 +880,37 @@ No new module and no new dependency.
 | Platform-native reuse and extension points were chosen before custom code | pass | Reuse and Ownership Map; DD-L01, DD-L03, DD-L09, DD-L10 |
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI and Interaction Contracts; phone criteria AC-L04, AC-L07, AC-L11, AC-L13 |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Phases L1…L10 |
-| Contracts of installed modules confirmed | fail for L1, L3, L6 until their first step | V-L01, V-L02, V-L03, V-L04, each with a fallback |
+| Contracts of installed modules confirmed | pass with checks at the first step of L1, L3, L6 | V-L01 decided by the owner (the fallback); V-L02, V-L03, V-L04 run as the first step of their phase, each with a fallback; the rate limiter and `auth.users.delete` read from the installed code (*Security → Rate limits*, *Closing an account*) |
+| Ask First items approved | pass | items 1–13 under *Rollout*, approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| Pre-implementation audit gaps closed | pass | [audit on #255](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561): (c1) *Cross-spec dependencies*, phases L1–L3; (c2) the `groups` contributor row, phase L4; (c3) the contributor table's undo column, the `DepartureContributor` contract, TEST-L03, TEST-L06; (c4) the "Emits after the commit" column and `afterCommit`; (c5) *Security → Rate limits*; (c6) *Proposed Solution → Closing an account*; (c7) *UI architecture → Dashboard widgets*; (c8) *UI architecture*, the life-cycle job paragraph, the *Reuse* row for files; (c9) phase L8 *Guard for step 5*; (c10) TEST-L20 in L3, L4, L6, L7, L9, L10; (c11) *Cross-spec dependencies* |
 
-Verdict: `Blocked — waits for the owner's review, the approval of the items listed in Rollout, and the answers to Q-L01 and Q-L02`.
+Verdict: `Ready for implementation` — the owner approved the thirteen Ask First items, answered Q-L01 and Q-L02 and confirmed Q-L03…Q-L21 on 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)). S01 (#303), S02 (#304), S03 (#305), S07 (#309) and S09 (#311) can start first; S05 (#307) waits for #118; phases that use spec A or C ship with the fallbacks of *Cross-spec dependencies* until those land.
 
 ## Resolved assumptions (autonomous defaults)
 
-None of these is an owner decision. Each is the option closest to the mockup or the more cautious one; the owner confirms or changes them at review.
+Confirmed as written by the product owner on 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)). Each is the option closest to the mockup or the more cautious one.
 
 | ID | Question | Chosen answer | Rationale | Confirmation |
 |---|---|---|---|---|
-| Q-L03 | May a guardianship continue after 18 (an adult under legal guardianship)? | No rule in 1.0. The job ends only guardianships that started before the birthday; one the administrator creates afterwards stays. Messaging still writes to the adult only | Rare; keeps one rule; the administrator has a manual path | — |
-| Q-L04 | Do the guardian's consents carry over at 18, or reset? | Carry over with author and date; the adult is told and can withdraw each | A consent given by a holder of parental responsibility stays valid until withdrawn; a reset would drop contact lists and trip consents in mid-season | — |
-| Q-L05 | Is cash held a hard blocker for a coach's departure? | Yes, with no "settled outside" override | Money must be accounted for in the system that recorded it; the override would hide a shortfall | — |
-| Q-L06 | Enrolment and camp sign-up (CM Q-027)? | No self-enrolment in 1.0. A camp or a holiday course of the club's own members is a group with its activity and fee; the coordinator fills the roster and guardians declare as usual. Non-members stay outside 1.0, as Q-027 says | The mockup has no enrolment screen; the existing group, activity and fee model covers a members' camp | — |
-| Q-L07 | Who may start a departure and an erasure? | A member asks from the phone; only the administrator decides | Irreversible or far-reaching; identity and grounds must be checked (DD-L06) | — |
-| Q-L08 | May the last day be in the past? | No: today or later | Backdating would rewrite attendance and fee history; a correction of one membership date is spec A's roster edit | — |
-| Q-L09 | Does the account of a person who left stay open? | It closes the day after the last day. A guardian whose wards stay does not "leave"; only their own memberships end | An account without any role or relation has no purpose | — |
-| Q-L10 | Where do former persons show? | Hidden from the default lists, pickers and audiences; listed under "Former"; "Return to the club" restores the person without memberships | Keeps lists short and history intact | — |
-| Q-L11 | Is a hand-over of a leaving coach's sessions announced to guardians? | No. Only a change of time, place or gathering is announced (D-031 §7) | A substitution is not announced today either | — |
-| Q-L12 | How far ahead is the 18th birthday announced? | 30 days, and again on the day | Time to create an account and to talk at home; one reminder, no series | — |
-| Q-L13 | Does a child get an account automatically at the account age? | No. The guardians and the administrator are told; the administrator creates it on request | The club decides who gets accounts (CM REQ-002: "may have") | — |
-| Q-L14 | Where does the coordinator run the season rollover? | In the panel | Configuration stays in the panel (D-031 §3); a table of groups does not fit a phone | — |
-| Q-L15 | Does a missing or withdrawn consent block anything? | No. It warns and flags (the effects table) | Blocking a child's training over a form is the club's decision, not the system's | — |
-| Q-L16 | Does changing a consent text withdraw given consents? | No. Earlier consents are marked "given to an earlier wording" | DD-L11 | — |
-| Q-L17 | Which fee does a moved child pay in the month of the move? | The fee of the group they were in on the period's reference day; no pro-rating | The generator already reads one day; clubs charge whole months | — |
-| Q-L18 | Who creates the first administrator? | The technical administrator, on a panel page, while the club has none | The command exists; the technical administrator must not become a club administrator by default | — |
-| Q-L19 | Is "Leaving" a seventh tab on B-10? | Yes, after the mockup's six, shown only with `people.manage` | D-031 §8 adds the function; the mockup's tabs keep their order | — |
-| Q-L20 | Can a departure be undone? | Yes, until its last day; afterwards "Return to the club" and new memberships | After the last day accounts are closed and notices sent | — |
-| Q-L21 | Is the name of an anonymised person replaced in stored message bodies? | No. Only the author and participant labels change; the text others wrote stays | Editing other people's messages is out of proportion; cases are immutable (CM) | — |
+| Q-L03 | May a guardianship continue after 18 (an adult under legal guardianship)? | No rule in 1.0. The job ends only guardianships that started before the birthday; one the administrator creates afterwards stays. Messaging still writes to the adult only | Rare; keeps one rule; the administrator has a manual path | confirmed 2026-11-16 |
+| Q-L04 | Do the guardian's consents carry over at 18, or reset? | Carry over with author and date; the adult is told and can withdraw each | A consent given by a holder of parental responsibility stays valid until withdrawn; a reset would drop contact lists and trip consents in mid-season | confirmed 2026-11-16 |
+| Q-L05 | Is cash held a hard blocker for a coach's departure? | Yes, with no "settled outside" override | Money must be accounted for in the system that recorded it; the override would hide a shortfall | confirmed 2026-11-16; S05 (#307) is scheduled after #118 |
+| Q-L06 | Enrolment and camp sign-up (CM Q-027)? | No self-enrolment in 1.0. A camp or a holiday course of the club's own members is a group with its activity and fee; the coordinator fills the roster and guardians declare as usual. Non-members stay outside 1.0, as Q-027 says | The mockup has no enrolment screen; the existing group, activity and fee model covers a members' camp | confirmed 2026-11-16 |
+| Q-L07 | Who may start a departure and an erasure? | A member asks from the phone; only the administrator decides | Irreversible or far-reaching; identity and grounds must be checked (DD-L06) | confirmed 2026-11-16 |
+| Q-L08 | May the last day be in the past? | No: today or later | Backdating would rewrite attendance and fee history; a correction of one membership date is spec A's roster edit | confirmed 2026-11-16; backdated corrections go through spec A's roster edit |
+| Q-L09 | Does the account of a person who left stay open? | It closes the day after the last day. A guardian whose wards stay does not "leave"; only their own memberships end | An account without any role or relation has no purpose | confirmed 2026-11-16 |
+| Q-L10 | Where do former persons show? | Hidden from the default lists, pickers and audiences; listed under "Former"; "Return to the club" restores the person without memberships | Keeps lists short and history intact | confirmed 2026-11-16 |
+| Q-L11 | Is a hand-over of a leaving coach's sessions announced to guardians? | No. Only a change of time, place or gathering is announced (D-031 §7) | A substitution is not announced today either | confirmed 2026-11-16 |
+| Q-L12 | How far ahead is the 18th birthday announced? | 30 days, and again on the day | Time to create an account and to talk at home; one reminder, no series | confirmed 2026-11-16 |
+| Q-L13 | Does a child get an account automatically at the account age? | No. The guardians and the administrator are told; the administrator creates it on request | The club decides who gets accounts (CM REQ-002: "may have") | confirmed 2026-11-16 |
+| Q-L14 | Where does the coordinator run the season rollover? | In the panel | Configuration stays in the panel (D-031 §3); a table of groups does not fit a phone | confirmed 2026-11-16 |
+| Q-L15 | Does a missing or withdrawn consent block anything? | No. It warns and flags (the effects table) | Blocking a child's training over a form is the club's decision, not the system's | confirmed 2026-11-16 |
+| Q-L16 | Does changing a consent text withdraw given consents? | No. Earlier consents are marked "given to an earlier wording" | DD-L11 | confirmed 2026-11-16 |
+| Q-L17 | Which fee does a moved child pay in the month of the move? | The fee of the group they were in on the period's reference day; no pro-rating | The generator already reads one day; clubs charge whole months | confirmed 2026-11-16 |
+| Q-L18 | Who creates the first administrator? | The technical administrator, on a panel page, while the club has none | The command exists; the technical administrator must not become a club administrator by default | confirmed 2026-11-16 |
+| Q-L19 | Is "Leaving" a seventh tab on B-10? | Yes, after the mockup's six, shown only with `people.manage` | D-031 §8 adds the function; the mockup's tabs keep their order | confirmed 2026-11-16 |
+| Q-L20 | Can a departure be undone? | Yes, until its last day, including the hand-overs, contracts and maintainer rows (each contributor's `undo`); afterwards "Return to the club" and new memberships | After the last day accounts are closed and notices sent | confirmed 2026-11-16 |
+| Q-L21 | Is the name of an anonymised person replaced in stored message bodies? | No. Only the author and participant labels change; the text others wrote stays | Editing other people's messages is out of proportion; cases are immutable (CM) | confirmed 2026-11-16 |
 
 ## Open Questions
 
@@ -861,9 +918,9 @@ Only what blocks a phase is listed. The V rows are contract checks with a fallba
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-L01 | Erasure: is the name kept until the end of the fifth calendar year after the last payment (DD-L07), or erased at once because the club keeps its accounting documents outside Vereino? | Władek Kuć (with the club's accountant) | yes, for phase L6 | pending; proposed default: keep the hold |
-| Q-L02 | The 18th birthday: do guardianships end automatically (DD-L08), making the adult the payer of new charges, or does a parent stay the payer until the family changes it? | Władek Kuć | yes, for phase L8 | pending; proposed default: they end automatically; a parent who keeps paying uses the adult's payer code or the adult's account |
-| V-L01 | Can `foundation` import the platform's invitation pieces (`PasswordReset`, `INVITE_TOKEN_TTL_MS`, `generateAuthToken`, `hashAuthToken`, `InviteUserEmail`, `getSecurityEmailBaseUrl`) in the installed version? | implementer, phase L1 step 1 | no | pending; fallback: `authService.requestPasswordReset` and the platform's reset e-mail (60-minute link), with the tab saying "valid 60 minutes" |
+| Q-L01 | Erasure: is the name kept until the end of the fifth calendar year after the last payment (DD-L07), or erased at once because the club keeps its accounting documents outside Vereino? | Władek Kuć (with the club's accountant) | no (resolved) | Resolved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)): keep the retention hold — the name stays until 31 December of the fifth year after the last payment, readable only with `people.manage`; contact data goes at once (DD-L07) |
+| Q-L02 | The 18th birthday: do guardianships end automatically (DD-L08), making the adult the payer of new charges, or does a parent stay the payer until the family changes it? | Władek Kuć | no (resolved) | Resolved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)): guardianships end automatically on the 18th birthday and the adult pays new charges (DD-L08); a parent who keeps paying uses the adult's payer code |
+| V-L01 | Can `foundation` import the platform's invitation pieces (`PasswordReset`, `INVITE_TOKEN_TTL_MS`, `generateAuthToken`, `hashAuthToken`, `InviteUserEmail`, `getSecurityEmailBaseUrl`) in the installed version? | Władek Kuć | no | Decided 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)): the fallback — `authService.requestPasswordReset` and the platform's reset e-mail (60-minute link), with the tab saying "valid 60 minutes"; deep imports only if `.ai/guides/framework-contracts.md` lists them (it does not on 2026-11-16) |
 | V-L02 | Does `isConfirmed = false` refuse sign-in by password and by Google (D-027) and end the sessions? Read on 2026-11-14: `auth.users.update` deletes the sessions on `isConfirmed = false` | implementer, phase L1 step 1 | no | pending; fallback: block by removing every `vereino_*` role and ending the sessions |
 | V-L03 | Can audit snapshots of one record be purged or redacted through an installed contract? | implementer, phase L6 step 1 | no | pending; fallback: the residual risk recorded under *Security* |
 | V-L04 | Does the platform's default administrator role hold `auth.users.create`, so it can gate the first-administrator page? | implementer, phase L3 step 1 | no | pending; fallback: gate on the feature the platform Users page uses |
