@@ -1180,5 +1180,6 @@
   "vector.api.errors.reindexFailed": "Vector reindex failed",
   "vector.api.errors.searchFailed": "Vector search failed",
   "vector.api.errors.updateFailed": "Failed to update vector settings.",
+  "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

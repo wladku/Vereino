@@ -2,7 +2,8 @@
 // `?club=` — the public header's "Sign in" link carries it — or, without one, the `vereino_club` cookie the sign-in
 // page wrote once such a slug resolved to a club that publishes its page. A malformed slug shows the neutral page,
 // like an unknown one. The cookie holds only the public slug (`Path=/`, one year, `SameSite=Lax`, `Secure` over
-// HTTPS); the page's client part writes it and deletes one that no longer resolves, so it is not `HttpOnly`.
+// HTTPS); the page's client part writes it and deletes one whose slug no longer resolves — also when the link names
+// that slug — so it is not `HttpOnly`.
 import { isPublicSlug } from './publication'
 
 export const SIGN_IN_CLUB_COOKIE = 'vereino_club'
@@ -19,6 +20,15 @@ export function signInClub(query: string | string[] | undefined, cookie: string 
     return typeof query === 'string' && isPublicSlug(query) ? { slug: query, source: 'query' } : null
   }
   return cookie !== undefined && isPublicSlug(cookie) ? { slug: cookie, source: 'cookie' } : null
+}
+
+/** The slug the cookie holds in a `Cookie` header or `document.cookie` string, if any. */
+export function rememberedClub(cookies: string): string | undefined {
+  for (const entry of cookies.split(';')) {
+    const [name, ...value] = entry.trim().split('=')
+    if (name === SIGN_IN_CLUB_COOKIE) return decodeURIComponent(value.join('='))
+  }
+  return undefined
 }
 
 const cookieAttributes = (maxAge: number, secure: boolean): string =>

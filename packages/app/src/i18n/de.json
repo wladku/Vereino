@@ -1180,5 +1180,6 @@
   "vector.api.errors.reindexFailed": "Vektor-Neuindizierung fehlgeschlagen",
   "vector.api.errors.searchFailed": "Vektorsuche fehlgeschlagen",
   "vector.api.errors.updateFailed": "Vektor-Einstellungen konnten nicht aktualisiert werden.",
+  "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

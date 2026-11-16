@@ -4,6 +4,7 @@ import {
   SIGN_IN_CLUB_COOKIE_MAX_AGE,
   forgetClubCookie,
   rememberClubCookie,
+  rememberedClub,
   signInClub,
 } from '../sign-in-club'
 
@@ -38,5 +39,12 @@ describe('sign-in club (navigation spec REQ-N10, DD-N10; #261)', () => {
   it('forgets the club with the same attributes and Max-Age=0', () => {
     expect(forgetClubCookie(true)).toBe('vereino_club=; Path=/; Max-Age=0; SameSite=Lax; Secure')
     expect(forgetClubCookie(false)).toBe('vereino_club=; Path=/; Max-Age=0; SameSite=Lax')
+  })
+
+  it('reads the remembered slug out of a cookie string', () => {
+    expect(rememberedClub('theme=dark; vereino_club=ks-avocado; om_login_tenant=t1')).toBe('ks-avocado')
+    expect(rememberedClub('vereino_club=a%2Db')).toBe('a-b')
+    expect(rememberedClub('theme=dark')).toBeUndefined()
+    expect(rememberedClub('')).toBeUndefined()
   })
 })

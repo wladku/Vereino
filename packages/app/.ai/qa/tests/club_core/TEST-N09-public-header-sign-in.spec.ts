@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { listOccurrences, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
-import { createClub, uniqueSuffix } from '../_fixtures/club'
+import { call, createClub, uniqueSuffix } from '../_fixtures/club'
 import { confirmationToken, requestForm, submitRequest } from '../_fixtures/facility-requests'
 import { publicPitch } from '../_fixtures/public-places'
 import { PUBLICATION_BLOCKS, publicGet, publish, putSectionPublic, putSettings } from '../_fixtures/publication'
@@ -44,7 +45,9 @@ async function expectHeader(
     const link = nav.getByTestId(`public-nav-${id}`)
     await expect(link).toHaveAttribute('href', href)
     await expect(link).toHaveText(uiText(`${prefix}.nav.${id}`, { exact: true }))
-    if (id === input.current) await expect(link).toHaveAttribute('aria-current', 'page')
+    // A section page belongs to the sections list: "Sections" marks its location, not the page itself.
+    if (id === input.current)
+      await expect(link).toHaveAttribute('aria-current', id === 'sections' ? 'location' : 'page')
     else await expect(link).not.toHaveAttribute('aria-current')
   }
   await expect(nav.getByTestId('public-nav-events')).toHaveCount(0)
@@ -80,7 +83,7 @@ test('TEST-N09 public header on every public page and the club on the sign-in pa
   const club = await createClub(request, 'test-n09')
   try {
     const slug = `n09-${uniqueSuffix()}`
-    const admin = club.adminToken
+    let admin = club.adminToken
     const setup = await publicPitch(request, club, slug)
     expect(
       (await putSectionPublic(request, admin, setup.academy, { isPublic: true, publicSlug: 'akademia' })).status,
@@ -216,6 +219,28 @@ test('TEST-N09 public header on every public page and the club on the sign-in pa
     await expect(page.getByTestId('sign-in-club-tagline')).toHaveText(uiText('vereino.login.tagline', { exact: true }))
     await expectNoPlatformName(page)
 
+    // After a sign-in through the form the cookie still names the club, and `/login` shows it again.
+    const password = `Vereino-${uniqueSuffix()}-Aa1!`
+    const reset = await call(request, 'PUT', '/api/auth/users', club.superToken, {
+      data: { id: club.adminUserId, password },
+    })
+    expect(reset.status, JSON.stringify(reset.body)).toBe(200)
+    await page.locator('#email').fill(club.tenant.email)
+    await page.locator('#password').fill(password)
+    await page.locator('form[data-auth-ready="1"] button[type="submit"]').click()
+    await expect(page).not.toHaveURL(/\/login/)
+    expect((await clubCookie(page))?.value).toBe(slug)
+    // A new password ends the user's API tokens (lesson `sign-in-browser-ends-the-api-token`).
+    admin = await getAuthToken(request, club.tenant.email, password)
+    const origin = new URL(page.url()).origin
+    // Sign out: leave the signed-in page first (lesson `leave-backend-page-before-clearing-cookies`), keep the cookie.
+    await page.goto('about:blank')
+    await page.context().clearCookies()
+    await page.context().addCookies([{ name: COOKIE, value: slug, url: origin }])
+    await setGuestLocale(page, 'pl')
+    await page.goto('/login')
+    await expect(page.getByTestId('sign-in-club-name')).toHaveText(clubName)
+
     // The logo file of the platform card is the Vereino mark.
     const mark = await page.request.get('/open-mercato.svg')
     expect(mark.ok()).toBe(true)
@@ -239,7 +264,8 @@ test('TEST-N09 public header on every public page and the club on the sign-in pa
     }
     expect(await clubCookie(page)).toBeUndefined()
 
-    // An unpublished slug reads the same as an unknown one and writes nothing; a remembered one is forgotten.
+    // An unpublished slug reads the same as an unknown one and writes nothing; a remembered one is forgotten — also
+    // when the link names it.
     await setGuestLocale(page, 'en')
     await page.goto(`/login?club=${slug}`)
     await expect(page.getByTestId('sign-in-club-name')).toHaveText(clubName)
@@ -248,6 +274,9 @@ test('TEST-N09 public header on every public page and the club on the sign-in pa
       publication: { enabled: false, blocks: Object.fromEntries(PUBLICATION_BLOCKS.map((block) => [block, false])) },
     })
     expect(unpublished.status, JSON.stringify(unpublished.body)).toBe(200)
+    await page.goto(`/login?club=${slug}`)
+    await expectNeutralSignIn(page)
+    await expect.poll(async () => await clubCookie(page)).toBeUndefined()
     await page.context().clearCookies()
     await setGuestLocale(page, 'en')
     await page.goto(`/login?club=${slug}`)

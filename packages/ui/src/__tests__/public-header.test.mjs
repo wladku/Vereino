@@ -53,6 +53,9 @@ test('the club: its initial and name linking to its page, the links in one label
   assert.doesNotMatch(html, /public-nav-events/)
   assert.match(html, /<a href="\/login\?club=ks-avocado" [^>]*data-testid="public-nav-signIn">signIn<\/a>/)
   assert.equal(html.match(/aria-current/g).length, 1)
+  const section = render({ pathname: '/p/ks-avocado/sections/football' })
+  assert.match(section, /aria-current="location" data-testid="public-nav-sections"/)
+  assert.equal(section.match(/aria-current/g).length, 1)
   assert.match(html, /<div class="order-2 min-\[480px\]:order-3"><span id="switcher">PL<\/span><\/div>/)
 })
 

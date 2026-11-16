@@ -34,6 +34,19 @@
 - Regression of the touched pages: `--filter E02-S05` → `3 passed (4.1m)`; `--filter TEST-040` → `2 passed (2.3m)`; `--filter E06-S07b` → `1 passed (1.6m)`; `--filter TEST-039` → `1 passed (1.8m)`.
 - Commits: header slice `feat(club_core): the club's menu on every public page (E09-S07a, #261)`; sign-in slice with this log.
 
+## Review round (PR #327)
+
+An independent review agent (read-only, given the diff and the requirements, not my conclusions) approved with no blockers or majors. Applied:
+
+- **Minor 1 — TEST-N09 skipped the "after a sign-in" step:** the test now signs in through the form, checks that `vereino_club` survived, signs out and opens `/login` again. The first run failed on the next admin API call (`Expected: 200, Received: 401`): a new password ends the user's API tokens (lesson `sign-in-browser-ends-the-api-token`); a fresh token is taken after the sign-in.
+- **Minor 2 — a stale cookie survived `?club=` naming the same slug:** the header now forgets the cookie whenever its slug (`rememberedClub(document.cookie)`, unit-tested) no longer resolves, whatever the source; TEST-N09 covers it.
+- **Minor 4 — `aria-current="page"` on "Sections" for a section page:** it is `location` now (`PublicNavCurrent`); `PublicLinkProps` allows `page | location`.
+- **Minor 5 — three copies of the header labels:** `src/__tests__/ui/public-nav-catalogs.test.ts` checks the three prefixes hold the same value per key in pl and en.
+- **Nits:** the loading placeholder is a `role="status"` with an sr-only `vereino.login.clubLoading` label; the `.vereino-login-body` rule names the platform markup it depends on.
+- **Kept — minor 3 (the full club page read for name and logo):** the spec names `GET /api/club_core/public/{clubSlug}` for this read; the rate limit and the 60 s shared cache are the public pages' own. A slim frame endpoint would be a new public contract (Ask First). The XHR's two 404 codes (`public_page_disabled` / `public_page_not_found`) are the existing public API; the rendered sign-in page is the same for both.
+
+Results after the fixes: `yarn workspace @vereino/ui test` 147 passed, 100 %; `yarn verify` → `[verify] all 17 step(s) passed`; `yarn test:integration:vereino --filter TEST-N09` → `1 passed (1.6m)` (after the token fix); eslint, `typecheck:qa` and `format:check` clean on the final test change.
+
 ## Open problems and next steps
 
 - The "Events" header link and P-06 come with E09-S09; skeletons on public pages with E09-S10.

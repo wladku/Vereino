@@ -1,6 +1,6 @@
 // The header of every public club page (navigation spec REQ-N09, mockup `publicShell`; E09-S07 #261): the club's logo
 // and name linking to its page, then Club · Sections · Facilities · Events · Sign in and the header's end (the language
-// switcher). One labelled `nav` landmark with `aria-current` on the current page's link; under 480 px the links sit on
+// switcher). One labelled `nav` landmark with `aria-current` on the current link (`publicNavLinks`); under 480 px the links sit on
 // a second row that scrolls sideways. A page that does not know its club yet (loading, an error, a missing page) shows
 // only its title. Framework-free and without state: the router's link component, the current path, the links' flags
 // (`publicNavLinks`) and every string come in through props.
@@ -11,8 +11,11 @@ import { publicClubHref, publicNavLinks, type PublicHeaderLabels, type PublicNav
 /** A club logo, or the initial of its name in its place (glossary *Logo*: never an empty image). */
 export type PublicHeaderLogo = { url: string | null; source: string; initial: string }
 
-/** The router's link component; it forwards `data-testid` to the anchor. */
-export type PublicLinkProps = MemberLinkProps & { 'data-testid'?: string }
+/** The router's link component; it forwards `aria-current` and `data-testid` to the anchor. */
+export type PublicLinkProps = Omit<MemberLinkProps, 'aria-current'> & {
+  'aria-current'?: 'page' | 'location'
+  'data-testid'?: string
+}
 
 export type PublicHeaderClub = { name: string; slug: string; logo: PublicHeaderLogo; nav: PublicNavFlags }
 
@@ -100,7 +103,7 @@ export function PublicHeader({ club, title, labels, pathname, Link, wide = false
                 <Link
                   href={link.href}
                   className={link.current ? NAV_CURRENT_CLASS : NAV_IDLE_CLASS}
-                  aria-current={link.current ? 'page' : undefined}
+                  aria-current={link.current || undefined}
                   data-testid={`public-nav-${link.id}`}
                 >
                   {link.label}

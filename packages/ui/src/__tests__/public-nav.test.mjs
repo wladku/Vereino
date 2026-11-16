@@ -10,7 +10,7 @@ const links = (pathname, nav = { facilities: false, events: false }, slug = 'ks-
 const current = (pathname, nav) =>
   links(pathname, nav)
     .filter((link) => link.current)
-    .map((link) => link.id)
+    .map((link) => `${link.id}:${link.current}`)
 
 test('hrefs of the club page and the club sign-in encode the slug', () => {
   assert.equal(publicClubHref('ks-avocado'), '/p/ks-avocado')
@@ -19,7 +19,7 @@ test('hrefs of the club page and the club sign-in encode the slug', () => {
 
 test('without the optional blocks: Club, Sections, Sign in', () => {
   assert.deepEqual(links('/p/ks-avocado'), [
-    { id: 'club', href: '/p/ks-avocado', label: 'label:club', current: true },
+    { id: 'club', href: '/p/ks-avocado', label: 'label:club', current: 'page' },
     { id: 'sections', href: '/p/ks-avocado#sections', label: 'label:sections', current: false },
     { id: 'signIn', href: '/login?club=ks-avocado', label: 'label:signIn', current: false },
   ])
@@ -43,13 +43,14 @@ test('Facilities and Events appear only while the club publishes them, in their 
   )
 })
 
-test('the current link follows the page; sign-in and other pages mark none', () => {
+test('the current link follows the page (a section page marks Sections as its location); others mark none', () => {
   const nav = { facilities: true, events: true }
-  assert.deepEqual(current('/p/ks-avocado/', nav), ['club'])
-  assert.deepEqual(current('/p/ks-avocado/sections/football', nav), ['sections'])
-  assert.deepEqual(current('/p/ks-avocado/places', nav), ['facilities'])
-  assert.deepEqual(current('/p/ks-avocado/places/hall/', nav), ['facilities'])
-  assert.deepEqual(current('/p/ks-avocado/events', nav), ['events'])
+  assert.deepEqual(current('/p/ks-avocado/', nav), ['club:page'])
+  assert.deepEqual(current('/p/ks-avocado/sections/football', nav), ['sections:location'])
+  assert.deepEqual(current('/p/ks-avocado/sections', nav), [])
+  assert.deepEqual(current('/p/ks-avocado/places', nav), ['facilities:page'])
+  assert.deepEqual(current('/p/ks-avocado/places/hall/', nav), ['facilities:page'])
+  assert.deepEqual(current('/p/ks-avocado/events', nav), ['events:page'])
   assert.deepEqual(current('/p/ks-avocado/s/0d4f', nav), [])
   assert.deepEqual(current('/p/ks-avocado/requests/verify/abc', nav), [])
   assert.deepEqual(current('/p/ks-avocado-two', nav), [])

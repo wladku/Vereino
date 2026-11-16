@@ -2,12 +2,12 @@
 // The club above the sign-in form (navigation spec REQ-N10, DD-N10; M-01, mockup `screenLogin`; E09-S07 #261): the
 // club's logo, its name and the tagline, read through the public club page `GET /api/club_core/public/{clubSlug}` —
 // name and logo only. A slug from the link that resolves is remembered in the `vereino_club` cookie; a remembered slug
-// that no longer resolves is forgotten. While the club loads a placeholder keeps the place; an unknown club, one that
-// does not publish its page and a failed read all show nothing here, so the page reads the same as without a club
-// (the platform card below carries Vereino's name).
+// that no longer resolves is forgotten, whether it came from the cookie or the link names it. While the club loads, a
+// placeholder keeps the place; an unknown club, one that does not publish its page and a failed read all show nothing
+// here, so the page reads the same as without a club (the platform card below carries Vereino's name).
 import * as React from 'react'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { forgetClubCookie, rememberClubCookie, type SignInClub } from '../lib/sign-in-club'
+import { forgetClubCookie, rememberClubCookie, rememberedClub, type SignInClub } from '../lib/sign-in-club'
 import { LogoMark } from './public/PublicFrame'
 import { usePublicClub } from './public/public-client'
 
@@ -25,14 +25,15 @@ function SignInClubBrand({ club }: { club: SignInClub }) {
 
   React.useEffect(() => {
     if (resolved && club.source === 'query') writeCookie((secure) => rememberClubCookie(club.slug, secure))
-    if (settled && club.source === 'cookie') writeCookie(forgetClubCookie)
+    if (settled && rememberedClub(document.cookie) === club.slug) writeCookie(forgetClubCookie)
   }, [resolved, settled, club])
 
   if (query.isPending) {
     return (
-      <div className="flex flex-col items-center gap-2" aria-busy="true" data-testid="sign-in-club-loading">
-        <span className="bg-muted size-16 animate-pulse rounded-md" />
-        <span className="bg-muted h-6 w-40 animate-pulse rounded" />
+      <div role="status" className="flex flex-col items-center gap-2" data-testid="sign-in-club-loading">
+        <span aria-hidden="true" className="bg-muted size-16 animate-pulse rounded-md" />
+        <span aria-hidden="true" className="bg-muted h-6 w-40 animate-pulse rounded" />
+        <span className="sr-only">{t('vereino.login.clubLoading')}</span>
       </div>
     )
   }
