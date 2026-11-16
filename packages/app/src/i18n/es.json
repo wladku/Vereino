@@ -50,7 +50,7 @@
   "appShell.goToDashboard": "Ir al panel",
   "appShell.moreActions": "Más acciones",
   "appShell.openMenu": "Abrir menú",
-  "appShell.productName": "Open Mercato",
+  "appShell.productName": "Vereino",
   "appShell.searchNavAria": "Buscar en la navegación",
   "appShell.searchNavClear": "Limpiar búsqueda",
   "appShell.searchNavPlaceholder": "Buscar...",
@@ -112,6 +112,9 @@
   "appShell.version": "Versión {{version}}",
   "audit_logs.banner.undo_failed": "Error al deshacer",
   "auth.email": "Correo electrónico",
+  "auth.login.brandName": "Vereino",
+  "auth.login.logoAlt": "Vereino",
+  "auth.login.subtitle": "Sign in to your account",
   "auth.manageAuthSettings": "Administra la configuración de autenticación.",
   "auth.password": "Contraseña",
   "auth.resetPassword": "Restablecer contraseña",
@@ -1176,5 +1179,7 @@
   "vector.api.errors.purgeFailed": "Error al purgar el índice vectorial",
   "vector.api.errors.reindexFailed": "Reindexación vectorial fallida",
   "vector.api.errors.searchFailed": "Búsqueda vectorial fallida",
-  "vector.api.errors.updateFailed": "No se pudieron actualizar la configuración vectorial."
+  "vector.api.errors.updateFailed": "No se pudieron actualizar la configuración vectorial.",
+  "vereino.login.clubLoading": "Loading the club…",
+  "vereino.login.tagline": "One account for parents, players and coaches"
 }
