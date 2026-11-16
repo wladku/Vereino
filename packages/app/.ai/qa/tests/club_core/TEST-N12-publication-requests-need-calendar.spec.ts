@@ -70,19 +70,33 @@ test('TEST-N12 online requests need the facility calendar, checked only when a f
     const password = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     token = await getAuthToken(request, club.tenant.email, password)
     club.adminToken = token
-    await page.goto('/backend/club/publication')
-    const form = page.locator('form')
-    await form
-      .locator(
-        '[data-crud-field-id="block_places_calendar"] button[role="checkbox"], [data-crud-field-id="block_places_calendar"] input[type="checkbox"]',
-      )
-      .first()
-      .click()
-    await page
-      .getByRole('button', { name: uiText('club_core.publication.save') })
-      .first()
-      .click()
+    const checkbox = (block: PublicationBlock) =>
+      page
+        .locator('form')
+        .locator(
+          `[data-crud-field-id="block_${block}"] button[role="checkbox"], [data-crud-field-id="block_${block}"] input[type="checkbox"]`,
+        )
+        .first()
+    const saveButton = page.getByRole('button', { name: uiText('club_core.publication.save') }).first()
     const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    const needCalendar = page.getByText(uiText('club_core.errors.publication_requests_need_calendar')).first()
+
+    // Cancelling the confirmation (Escape) saves nothing and says why.
+    await page.goto('/backend/club/publication')
+    await checkbox('places_calendar').click()
+    await saveButton.click()
+    await expect(dialog.getByText(uiText('club_core.publication.confirm.calendarOffText'))).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(needCalendar).toBeVisible()
+    expect((await getSettings(request, token)).publication.blocks).toMatchObject({
+      places_calendar: true,
+      online_requests: true,
+    })
+
+    // Confirming turns both off in one save.
+    await page.goto('/backend/club/publication')
+    await checkbox('places_calendar').click()
+    await saveButton.click()
     await expect(dialog.getByText(uiText('club_core.publication.confirm.calendarOffText'))).toBeVisible()
     await dialog
       .getByRole('button', { name: uiText('club_core.publication.confirm.calendarOffConfirm', { exact: true }) })
@@ -90,6 +104,13 @@ test('TEST-N12 online requests need the facility calendar, checked only when a f
     await expect
       .poll(async () => (await getSettings(request, token)).publication.blocks)
       .toMatchObject({ places_calendar: false, online_requests: false })
+
+    // The form refuses requests on without the calendar before it calls the API.
+    await page.goto('/backend/club/publication')
+    await checkbox('online_requests').click()
+    await saveButton.click()
+    await expect(needCalendar).toBeVisible()
+    expect((await getSettings(request, token)).publication.blocks.online_requests).toBe(false)
   } finally {
     await club.cleanup()
   }

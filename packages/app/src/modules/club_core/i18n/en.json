@@ -101,7 +101,7 @@
   "club_core.sections.fields.coordinator.help": "Optional: an adult who runs the section. You can also assign one later on the Coordinators tab.",
   "club_core.sections.confirm.delete": "Delete this section?",
   "club_core.sections.flash.created": "Section created",
-  "club_core.sections.flash.createdWithoutCoordinator": "Section created; the coordinator was not assigned. Try again below.",
+  "club_core.sections.flash.createdWithoutCoordinator": "Section created; the coordinator was not assigned ({reason}). Try again below.",
   "club_core.sections.flash.saved": "Section saved",
   "club_core.sections.flash.deleted": "Section deleted",
   "club_core.sections.errors.load": "Could not load the sections.",

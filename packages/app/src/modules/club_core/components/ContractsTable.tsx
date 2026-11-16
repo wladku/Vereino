@@ -102,6 +102,13 @@ export function ContractsTable() {
   const [page, setPage] = React.useState(1)
   const [filters, setFilters] = React.useState<FilterValues>({})
   const institutionId = useSearchParams().get('institutionId')
+  // Following an institution link (or "All contracts") starts the list from its first page (state adjusted during
+  // render, React's pattern for a value derived from a changed input).
+  const [pagedInstitution, setPagedInstitution] = React.useState(institutionId)
+  if (pagedInstitution !== institutionId) {
+    setPagedInstitution(institutionId)
+    setPage(1)
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['club_core-contracts', filters, page, scopeVersion, institutionId],

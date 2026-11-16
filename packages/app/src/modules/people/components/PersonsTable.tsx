@@ -36,9 +36,10 @@ import {
 } from '../lib/person-list-filters'
 import { PERSONS_HREF, errorMessage, type PersonListItemRow, type TableColumns, type Translate } from './client-helpers'
 
+import { useGrantedFeatures } from './useGrantedFeatures'
+
 /** The imports page (`people.manage` + `people.pesel.view`); the "Import" button of B-09 opens it (#262). */
 const IMPORTS_HREF = '/backend/people/imports'
-import { useGrantedFeatures } from './useGrantedFeatures'
 
 const PAGE_SIZE = 50
 

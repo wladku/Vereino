@@ -153,12 +153,14 @@ export function SectionCreateForm() {
             body: JSON.stringify({ personId: coordinatorId, role: 'coordinator', sectionId: id, validFrom: today }),
           })
           router.push(withFlash(LIST_HREF, t('club_core.sections.flash.created'), 'success'))
-        } catch {
-          // Partial success: the section exists; the Coordinators tab is where the assignment is retried.
+        } catch (cause: unknown) {
+          // Partial success: the section exists; the Coordinators tab is where the assignment is retried, and the
+          // warning carries the server's reason (e.g. `role_requires_adult`).
+          const reason = errorMessage(cause, t('club_core.coordinators.errors.assign'))
           router.push(
             withFlash(
               `${LIST_HREF}/${id}/edit?tab=coordinators`,
-              t('club_core.sections.flash.createdWithoutCoordinator'),
+              t('club_core.sections.flash.createdWithoutCoordinator', { reason }),
               'warning',
             ),
           )

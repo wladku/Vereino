@@ -33,6 +33,8 @@ test('TEST-N13 sections, contracts and people leftovers of the panel', async ({ 
       firstName: 'Kuba',
       lastName: 'Siatkowy',
       birthDate: birthDateTurning(15),
+      // A synthetic number with a valid check digit (engineering standards S5.9).
+      pesel: '85020300017',
     })
     const hall = await create(request, token, 'places', { name: 'Hala N13', kind: 'hall' })
     const attendant = await signedInStaff(request, club, {
@@ -202,7 +204,11 @@ test('TEST-N13 sections, contracts and people leftovers of the panel', async ({ 
       'people.roles.manage',
       'people.accounts.manage',
     ])
-    await switchBrowserUser(page, request, club, clerk.userId, clerk.email)
+    const clerkPassword = await switchBrowserUser(page, request, club, clerk.userId, clerk.email)
+    const clerkToken = await getAuthToken(request, clerk.email, clerkPassword)
+    const asClerk = await call(request, 'GET', `/api/people/persons/${kuba}`, clerkToken)
+    expect(asClerk.status, JSON.stringify(asClerk.body)).toBe(200)
+    expect(Object.keys(asClerk.body ?? {}).filter((key) => key.toLowerCase().includes('pesel'))).toEqual([])
     await page.goto(`/backend/people/persons/${kuba}`)
     const pesel = crudInput(page, 'pesel')
     await expect(pesel).toBeDisabled()

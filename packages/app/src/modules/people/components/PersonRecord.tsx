@@ -2,7 +2,8 @@
 // `/backend/people/persons/[id]` (club spec UI table; README B-10): the person record with the tabs "Details",
 // "Guardianship and consents", "Roles", "Account" and "Groups" (charges arrive with phase 4), addressable by
 // `?tab=details|guardianship|roles|account|groups` (#84). A coordinator reads the basic data only (`access: 'basic'`);
-// the PESEL value is there only with `people.pesel.view` (anyone else sees the field empty with a hint, #262); editing needs `people.manage`, roles `people.roles.manage`.
+// the PESEL value is there only with `people.pesel.view` (anyone else sees the field empty with a hint, #262); editing
+// needs `people.manage`, roles `people.roles.manage`.
 // The account tab shows the account status to every reader and "Create account" only with `people.accounts.manage`.
 // The "Groups" tab is the injection spot `vereino:people:person-record:groups`, filled by the `groups` module (so
 // `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The header

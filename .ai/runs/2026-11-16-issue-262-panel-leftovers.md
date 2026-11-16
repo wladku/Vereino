@@ -30,6 +30,20 @@
 - `yarn test:integration:vereino --filter TEST-N13` → `1 passed (2.7m)`.
 - `yarn test:integration:vereino --filter TEST-U07` (regression, coordinator panel) → `1 passed (2.3m)`.
 
+## Review round (PR #323)
+
+An independent review agent (read-only, given the diff and the requirements, not my conclusions) approved with no blockers. Applied:
+
+1. Cancelling the "turn off the calendar" confirmation returned normally, which CrudForm counts as a saved form (edits marked clean, unsaved-changes guard gone). It now throws a field error on `block_places_calendar`.
+2. The partial-success warning of "Add section" now carries the server's reason (`{reason}` in `club_core.sections.flash.createdWithoutCoordinator`).
+3. TEST-N13 seeds a PESEL for the minor and checks that the response to a user without `people.pesel.view` has no PESEL key at all. TEST-N12 covers the cancel path (Escape) and the client refusal of requests without the calendar.
+4. Nits: the contracts list returns to page 1 when the institution filter changes, `IMPORTS_HREF` moved below the imports, and two over-long comment lines were re-wrapped.
+
+Not applied: integration coverage of the partial-success path (it would need a birth date changed between the pick and the save), and pre-selecting the person after that redirect. Both are recorded here.
+
+- `yarn verify` → failed at `lint`: `react-hooks/set-state-in-effect` (the page reset in an effect) and `no-unnecessary-type-arguments` in TEST-N13. The reset is now adjusted during render. `yarn verify --from lint` → `[verify] all 13 step(s) passed`; the steps before lint had passed in the same run.
+- `yarn test:integration:vereino --filter TEST-N12` → `1 passed (1.8m)`; `--filter TEST-N13` → `1 passed (2.1m)`. One overlapping TEST-N13 run from an earlier chain failed with `[internal] yarn build failed`, because two builds shared `.mercato/next`. The run done on its own passed.
+
 ## Open problems / next steps
 
 - Review loop and UI QA on the PR (#262's PR).

@@ -1,9 +1,9 @@
 'use client'
 // `/backend/people/persons/create` and the "Details" tab of `/backend/people/persons/[id]` (club spec UI table, J-001
 // step 2): the person's own fields in a `CrudForm`. The PESEL value is shown — and sent — only to a user with
-// `people.pesel.view`; anyone else sees the field empty and disabled with a hint (#262); the e-mail, phone, notes and PESEL are stored encrypted. A created person opens on the
-// guardianship tab, where flow F-01 continues (#84). The date of birth is a native date
-// input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
+// `people.pesel.view`; anyone else sees the field empty and disabled with a hint (#262). The e-mail, phone, notes and
+// PESEL are stored encrypted. A created person opens on the guardianship tab, where flow F-01 continues (#84). The date
+// of birth is a native date input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'

@@ -165,7 +165,12 @@ export function PublicationForm() {
               text: t('club_core.publication.confirm.calendarOffText'),
               confirmText: t('club_core.publication.confirm.calendarOffConfirm'),
             })
-            if (!confirmed) return
+            if (!confirmed) {
+              // Nothing is saved: a thrown error keeps the form dirty and says why, where a plain return would
+              // count as a successful save and mark the edits clean.
+              const message = t('club_core.errors.publication_requests_need_calendar')
+              throw createCrudFormError(message, { [blockField('places_calendar')]: message })
+            }
             blocks.online_requests = false
           }
           const requestsField = blockField('online_requests')

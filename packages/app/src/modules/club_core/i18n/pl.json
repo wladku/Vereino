@@ -101,7 +101,7 @@
   "club_core.sections.fields.coordinator.help": "Opcjonalnie: osoba pełnoletnia, która prowadzi sekcję. Możesz ją też przypisać później w zakładce Koordynatorzy.",
   "club_core.sections.confirm.delete": "Usunąć tę sekcję?",
   "club_core.sections.flash.created": "Sekcja utworzona",
-  "club_core.sections.flash.createdWithoutCoordinator": "Sekcja utworzona; koordynator nie został przypisany. Spróbuj ponownie poniżej.",
+  "club_core.sections.flash.createdWithoutCoordinator": "Sekcja utworzona; koordynator nie został przypisany ({reason}). Spróbuj ponownie poniżej.",
   "club_core.sections.flash.saved": "Sekcja zapisana",
   "club_core.sections.flash.deleted": "Sekcja usunięta",
   "club_core.sections.errors.load": "Nie udało się wczytać sekcji.",
