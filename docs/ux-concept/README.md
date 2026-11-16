@@ -20,10 +20,10 @@ The subject is a **small multi-section club** (association), with a football aca
 | **Participant from the club's age threshold** ("Ola", 14) | player with her own account and a limited view; the threshold is a club setting, default 16 — the example club Dev Academy sets 13 so that Ola, 14, has an account (R10, D-022) | check the schedule without asking a parent; sign up for a match | Today, calendar, declaration (per policy), group messages — no payments (the guardian pays) | phone | knows the schedule from her parent |
 | **Adult participant** | zumba or pilates participant | schedule, cancellations, membership fee | same as a guardian, but for herself | phone | announcements in the group chat |
 | **Coach / instructor** ("Wojtek", "Piotr", "Anna") | runs 1–3 groups, often on a contract; paid "base + units" | know who will come; attendance in 30 s; substitution without arguing about money; one announcement to the group; book the pitch for a tournament without phoning | attendance list, closing a session, reporting an absence, cancellation, announcement + text for the group chat, facility calendar and booking, tournament, view of own units | phone | polls get lost in the chat; substitutions and bookings by phone |
-| **Section coordinator** ("Wojtek" — academy, "Aneta" — Basen) | responsible for the groups, schedule and coaches of one or more sections | a schedule without collisions; see sessions without a coach; quickly assign a substitute coach; one announcement to the whole section; a register of difficult cases; run the section page | groups and rosters, activity wizard, sessions "needing a coach" and "unsettled", substitutions, section coach units report, cases, section public content | desktop + phone | schedule in their head and in Excel; substitutions by phone |
+| **Section coordinator** ("Wojtek" — academy, "Aneta" — Basen) | responsible for the groups, schedule and coaches of one or more sections | a schedule without collisions; see sessions without a coach; quickly assign a substitute coach; one announcement to the whole section; a register of difficult cases; run the section page | groups and rosters, activity wizard, sessions "needing a coach" and "unsettled", substitutions, section coach units report, cases, section public content | phone for daily work (`/club` in the staff context: substitutes, cancellations, announcements — D-029); desktop for configuration (panel) | schedule in their head and in Excel; substitutions by phone |
 | **Club administrator** ("Aneta", may also act as treasurer) | runs the club after hours: people, roles, money, facility | know who is overdue without Excel; automatic charge generation and discounts; coach settlement and municipality report in one click; decide on external requests; control what the club publishes | person and family records, accounts, roles, fee schedules, discounts, charges, recording payments, approving requests, zones and rates, reports, publication settings | desktop | manual reminders; coach units and Orlik (municipal sports pitch complex) hours from memory |
-| **Treasurer** ("Beata") | responsible only for the club's money | know who is overdue and who holds cash; reconcile the bank statement and cash from coaches without Excel | charges, statements, cash, order campaigns, settlements with coaches — no access to person records, groups or facilities | desktop | cash from coaches "on trust", a notebook of payments |
-| **Facility attendant** ("Tomek") | opens and closes the Orlik, enforces the rules | know who is at the facility today; enter a booking after a phone call; keep the log and report an incident | Today at the facility, log, incident, rental by phone, `no_show` | phone at the facility | notebook, phone calls to the club |
+| **Treasurer** ("Beata") | responsible only for the club's money | know who is overdue and who holds cash; reconcile the bank statement and cash from coaches without Excel | charges, statements, cash, order campaigns, settlements with coaches — no access to person records, groups or facilities | role held back (D-030): until a real treasurer has checked it, the club administrator does this work in the panel | cash from coaches "on trust", a notebook of payments |
+| **Facility attendant** ("Tomek") | opens and closes the Orlik, enforces the rules | know who is at the facility today; enter a booking after a phone call; keep the log and report an incident | Today at the facility, log, incident, rental by phone, `no_show` | phone (`/club/facility`, D-029) | notebook, phone calls to the club |
 | **Guest — parent looking for activities** | someone from outside the club | see what sections and activities exist, for whom, when, at what price, who runs them; whom to contact | club page, section page, materials | phone / desktop | no single source of information about the club |
 | **External renter** (another club, school, company) | wants to rent the Orlik or the small hall | see free slots; submit a request without phoning; know whether it was accepted | public facility calendar, request, email confirmation, email with the decision | desktop / phone | calls the club, cannot see free hours |
 | **Technical administrator** | the person installing the instance | launch the club, modules and configuration | built-in Open Mercato pages | desktop | — |
@@ -144,7 +144,7 @@ Each flow: preconditions → main path (with screens) → branches and errors �
 
 ```mermaid
 flowchart LR
-  subgraph PUB[Public /p — no sign-in]
+  subgraph PUB[Public /p — header: Club · Sections · Facilities · Events · Sign in]
     P01[P-01 Club page] --> P02[P-02 Section]
     P01 --> P03[P-03 Facilities]
     P01 --> P06[P-06 Events]
@@ -152,27 +152,35 @@ flowchart LR
     P04 -.email.-> P05[P-05 Request confirmation]
   end
   subgraph MEM[Member /club — phone]
-    M01[M-01 Sign in] --> M02[M-02 Today]
-    M02 --> M03[M-03 Calendar] --> M04[M-04 Session]
-    M04 --> M05[M-05 Attendance list]
-    M02 --> M06[M-06 Messages] --> M07[M-07 Thread]
-    M02 --> M08[M-08 Payments] -.Stripe.-> M09[M-09 Payment result]
-    M02 --> M10[M-10 Profile and wards]
-    M02 --> M11[M-11 Facilities and booking]
-    M02 --> M12[M-12 Today at the facility]
+    M01[M-01 Sign in, club branding] -.landing.-> M02[M-02 Today]
+    M01 -.landing.-> M12[M-12 Today at the facility]
+    BAR[Bottom bar: Today · Calendar · Messages · Payments or Facilities · More]
+    BAR --> M02
+    BAR --> M03[M-03 Calendar] --> M04[M-04 Session] --> M05[M-05 Attendance list]
+    BAR --> M06[M-06 Messages] --> M07[M-07 Thread]
+    BAR --> M08[M-08 Payments] -.Stripe.-> M09[M-09 Payment result]
+    BAR --> MORE[More]
+    MORE --> M10[M-10 Profile and wards]
+    MORE --> M11[M-11 Facilities and booking]
+    MORE --> M12
+    MORE --> M16[M-16 Orders] --> M17[M-17 Order]
+    MORE --> M18[M-18 My groups' payments]
+    MORE --> M15[M-15 Accept cash]
     M13[M-13 Link request] -.email.-> M14[M-14 Declaration from link]
-    M08 --> M16[M-16 Orders] --> M17[M-17 Order] -.email.-> M19[M-19 Order from link]
-    M10 --> M15[M-15 Accept cash]
-    M10 --> M18[M-18 My groups' payments]
+    M17 -.email.-> M19[M-19 Order from link]
   end
-  subgraph BCK[Panel /backend — desktop]
-    B01[B-01 Dashboard] --> KLUB[Club: B-02 Settings, B-03 Publication, B-04/B-05 Sections, B-06 Places, B-07 Institutions and contracts]
+  subgraph BCK[Panel /backend — desktop sidebar]
+    B01[B-01 Dashboard] --> KLUB[Club: B-04/B-05 Sections, B-06 Places, B-07 Institutions and contracts, B-02 Settings, B-03 Publication]
     B01 --> LUDZIE[People: B-09 People, B-10 Person record]
-    B01 --> ZAJ[Classes: B-11/B-12 Groups, B-13/B-14 Activities, B-15 Sessions, B-16 Coach units report, B-17 Policies]
+    B01 --> ZAJ[Classes: B-11/B-12 Groups, B-13/B-14 Activities, B-15 Sessions, B-16 Coach units report, B-17 Declaration policies]
     B01 --> KOM[Communication: B-18 Threads and cases, B-19 Thread]
-    B01 --> FIN[Finance: B-20 Fees and discounts, B-21 Charges, B-22 Charge, B-29 Bank statements, B-30/B-31/B-32 Order campaigns, B-33 Cash to settle]
-    B01 --> OBJ[Facility: B-23 Calendar, B-24 Rentals, B-25 Requests, B-26 Zones/closures/rates, B-27 Log/incidents/bans, B-28 Municipality report]
+    B01 --> FIN[Finance: B-20 Fees and discounts, B-21/B-22 Charges, B-29 Bank statements, B-30/B-31/B-32 Order campaigns, B-33 Cash to settle]
+    B01 --> OBJ[Facility: B-23 Calendar, B-24 Rentals, B-25 Requests, B-26 Zones and rates, B-27 Log and incidents, B-28 Municipality report]
   end
+  M01 -.landing.-> B01
+  MORE -.Admin panel.-> B01
+  B01 -.Interfejs członkowski.-> M02
+  P01 -.Sign in.-> M01
   M14 -.-> M04
   P05 -.approval.-> B25
   M07 -.link.-> M13
@@ -180,13 +188,71 @@ flowchart LR
 
 ### 3.1 Navigation
 
-| Shell | Structure | Who sees it |
-|---|---|---|
-| **Member `/club`** | bottom bar: **Today · Calendar · Messages · Payments · More** (More: Profile, My units (coach), Facilities, Today at the facility, Orders, My groups' payments, Accept cash, Sign out); in the header a child switcher (guardian) and a role context switcher ("as guardian / as coach") — only when the person has more than one role | items filtered by ACL features: Payments — `payments.view_own` (adults only: guardian, adult participant; a minor participant does not have this item); Facilities — `facilities.view`; Today at the facility — `facilities.log.write` |
-| **Panel `/backend`** | side menu in groups: **Dashboard · Club** (Sections, Places, Institutions, Contracts, Settings, Publication) **· People** (People) **· Classes** (Groups, Activities, Sessions, Coach units report, Declaration policies) **· Communication** (Threads, Cases) **· Finance** (Fees and discounts, Charges, Bank statements, Order campaigns, Cash to settle) **· Facility** (Calendar, Rentals, Requests, Zones and rates, Log and incidents, Municipality report) | groups and items according to the pages' `requireFeatures`; the coordinator does not see Finance; the attendant sees only Facility |
-| **Public `/p/[klub]`** | header: **Club · Sections · Facilities**; footer: contact, rules, privacy policy (`/privacy` of the `content` module) | everyone; blocks according to the publication settings |
+This section follows *Menu structure* of [the navigation spec](../../.ai/specs/2026-11-14-vereino-parity-navigation-and-naming.md) (D-031 §1); where they differ, the spec wins.
 
-**Phone first (D29, 2026-11-03).** Every role except the club administrator — guardians, participants, coaches and instructors, coordinators, the treasurer and the attendant — does its work on the member pages under `/club` at phone width. The panel serves the administrator and adds a desk layout for coordinators; it never replaces a role's phone path. Screens in this concept that give a non-administrator task only a B- screen (for example the coach's cancellation, announcement and one-off event) are gaps to close, tracked in issues #97, #102, #139 and #140.
+**Panel sidebar (`/backend`).** Dashboard first, then six groups in this order. An item is shown when the user holds the page's feature; a group with no visible item is not rendered. A page that used to be a menu item of its own is now a tab of the item it belongs to; a strip with one visible tab is not rendered.
+
+| Group | # | Menu item | Route | Feature | Tabs | Count |
+|---|---|---|---|---|---|---|
+| Club | 1 | Sections | `/backend/club/sections` | `club_core.view` | — | — |
+| | 2 | Places | `/backend/club/places` | `club_core.manage` | — | — |
+| | 3 | Institutions and contracts | `/backend/club/institutions` | `club_core.manage` | Institutions · Contracts (`/backend/club/contracts`, `club_core.contracts.manage`) | — |
+| | 4 | Settings | `/backend/club/settings` | `club_core.manage` | — | — |
+| | 5 | Publication | `/backend/club/publication` | `club_core.manage`, `club_core.publication.manage` | — | — |
+| People | 1 | People | `/backend/people/persons` | `people.view` | — ("Import" header button → `/backend/people/imports`) | — |
+| Classes | 1 | Groups | `/backend/groups/groups` | `groups.view` | Groups · External teams · Seasons | — |
+| | 2 | Activities | `/backend/activities/activities` | `activities.view` | — | — |
+| | 3 | Sessions | `/backend/activities/occurrences` | `activities.view` | — (perspectives of B-15) | sessions needing a coach |
+| | 4 | Coach units report | `/backend/activities/reports/coach-units` | `activities.reports.view` | — | — |
+| | 5 | Declaration policies | `/backend/activities/policies` | `activities.view` | — | — |
+| Communication | 1 | Threads and cases | `/backend/communication/threads` | `communication.post` | All · Cases (`/backend/communication/cases`, `communication.cases.manage`) | — |
+| Finance | 1 | Fees and discounts | `/backend/payments/fees` | `payments.manage` | Fees · Discounts (`/backend/payments/discounts`) · Settings (`/backend/payments/settings`) | — |
+| | 2 | Charges | `/backend/payments/charges` | `payments.view` | — (perspectives of B-21) | — |
+| | 3 | Bank statements | `/backend/payments/bank` | `payments.bank.import` | — | transfers to decide |
+| | 4 | Order campaigns | `/backend/payments/orders` | `payments.orders.manage` | — | campaigns in progress |
+| | 5 | Cash to settle | `/backend/payments/cash-custody` | `payments.cash.settle` | — (#118) | people holding cash (#118) |
+| Facility | 1 | Calendar | `/backend/facilities/calendar` | `facilities.view` | — | — |
+| | 2 | Rentals | `/backend/facilities/rentals` | `facilities.rentals.manage` | — | — |
+| | 3 | Requests | `/backend/facilities/requests` | `facilities.view`, `facilities.rentals.approve` | — | requests awaiting approval |
+| | 4 | Zones and rates | `/backend/facilities/zones` | `facilities.view` | Zones · Closures (`/closures`) · Rental rates (`/rates`) | — |
+| | 5 | Log and incidents | `/backend/facilities/logs` | `facilities.log.write` | Log · Incidents (`/incidents`) · Bans (`/bans`, `facilities.incidents.manage`) · Maintenance (`/maintenance`, `facilities.maintenance.manage`) | — |
+| | 6 | Municipality report | `/backend/facilities/reports/owner` | `facilities.reports.view` | Municipality report · Rented hours (`/reports/rented-hours`) | — |
+
+Platform groups (media, integrations and the rest) follow the six. A coordinator sees Sections in Club and no Finance; an attendant sees only Facility. The top bar holds "Interfejs członkowski", the link to `/club`.
+
+**Member bottom bar and More (`/club`).** The same bar on every member page; an entry is shown when the person holds its feature. In the header: the child switcher (guardian) and the context switcher ("as guardian / as coach") — only when the person has more than one context; a coach-only person starts in the staff context.
+
+| Place | Entry | Route | Shown when |
+|---|---|---|---|
+| Tab 1 | Today | `/club` | always |
+| Tab 2 | Calendar | `/club/calendar` | always |
+| Tab 3 | Messages | `/club/messages` | always |
+| Tab 4 | Payments | `/club/payments` | `payments.view_own` and adult (a minor participant has no Payments tab) |
+| Tab 4 (otherwise) | Facilities | `/club/places` | `facilities.view` and no Payments tab |
+| Tab 5 | More | menu | always |
+| More | Profile | `/club/profile` | always |
+| More | My units | `/club/coach/units` | `activities.reports.view_own` |
+| More | Groups | `/club/groups` | `groups.view`; arrives with the groups and activities parity spec (REQ-A11) |
+| More | Facilities and booking | `/club/places` | (`facilities.view` or `facilities.maintenance.manage`) and Facilities is not tab 4 |
+| More | Today at the facility | `/club/facility` | `facilities.log.write` |
+| More | Orders (e.g. kit) | `/club/orders` | `payments.orders.place` |
+| More | My groups' payments | `/club/coach/payments` | `payments.groups.view` |
+| More | Accept cash | `/club/cash` | `payments.cash.record` |
+| More | Admin panel | `/backend` | grant `club_admin`, `coordinator` or `facility_operator` |
+| More | Sign out | `POST /api/auth/logout` | always |
+
+**Landing after sign-in** (only when the sign-in answered with the platform default; an explicit `redirect` is kept):
+
+| Person | Lands on |
+|---|---|
+| Account linked to no person | `/backend` with the notice |
+| Holds `facilities.log.write`; no ward, no participant membership; no `coach`, `coordinator` or `club_admin` grant | `/club/facility` |
+| Holds the `club_admin` grant; no ward, no participant membership, no `coach` grant | `/backend` |
+| Everyone else with `people.self` — guardian, participant, coach, coordinator, an administrator who is also a parent or a coach | `/club` |
+
+**Public header (`/p/[clubSlug]`).** Club · Sections · Facilities (when the facility calendar block is on) · Events (when the events block is on) · Sign in (`/login?club={slug}`); footer: contact, rules, privacy policy (`/privacy` of the `content` module). Blocks follow the publication settings (B-03).
+
+**Phone first ([D-029](../../.ai/specs/research/decisions/D-029-phone-first-for-every-role-but-the-administrator.md)).** Every role except the club administrator — guardians, participants, coaches and instructors, coordinators and the attendant — does its work on the member pages under `/club` at phone width. The panel serves the administrator and adds a desk layout for coordinators' configuration; it never replaces a role's phone path. The treasurer role is held back ([D-030](../../.ai/specs/research/decisions/D-030-unblock-held-back-work.md)): the administrator does the treasurer's work, and B-33 with its menu item waits for #118. Screens in this concept that give a non-administrator task only a B- screen (for example the coach's cancellation, announcement and one-off event) are gaps to close, tracked in issues #97, #102, #139 and #140.
 
 ### 3.2 Route index
 
@@ -216,14 +282,14 @@ flowchart LR
 | B-03 | `/backend/club/publication` | Publication | `club_core.publication.manage` | 1 |
 | B-04 / B-05 | `/backend/club/sections`, `…/[id]/edit` | Sections | `club_core.view` / `club_core.manage` | 1 |
 | B-06 | `/backend/club/places` | Places | `club_core.manage` | 1 |
-| B-07 | `/backend/club/institutions`, `/backend/club/contracts` | Institutions and contracts | `club_core.manage`, `club_core.contracts.manage` | 1–2 |
+| B-07 | `/backend/club/institutions` (tabs: Institutions, Contracts = `/backend/club/contracts`) | Institutions and contracts | `club_core.manage`, `club_core.contracts.manage` | 1–2 |
 | B-09 / B-10 | `/backend/people/persons`, `…/[id]` | People, person record | `people.view` / `people.manage` ("Create account": `people.accounts.manage`) | 1 |
 | B-11 / B-12 | `/backend/groups/groups` (tabs: Groups, External teams, Seasons), `…/[id]` | Groups | `groups.view` / `groups.manage` | 2 |
 | B-13 / B-14 | `/backend/activities/activities`, `…/create` | Activities, wizard | `activities.manage` | 2 |
 | B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
 | B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` (own row on the phone: `activities.reports.view_own`) | 2 |
 | B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
-| B-18 / B-19 | `/backend/communication/threads` ("cases only" perspective = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
+| B-18 / B-19 | `/backend/communication/threads` (tabs: All, Cases = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
 | B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
 | B-21 / B-22 | `/backend/payments/charges` (perspectives incl. Overdue), `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |
 | B-29 | `/backend/payments/bank` | Bank statements | `payments.bank.import` | 4 |
@@ -234,9 +300,9 @@ flowchart LR
 | B-23 | `/backend/facilities/calendar` | Facility calendar | `facilities.view` | 5 |
 | B-24 | `/backend/facilities/rentals` | Rentals | `facilities.rentals.manage` | 5 |
 | B-25 | `/backend/facilities/requests` | Requests awaiting approval | `facilities.rentals.approve` | 5 |
-| B-26 | `/backend/facilities/zones` (+ `/closures`, `/rates`) | Zones, closures, rates | `facilities.manage` | 5 |
-| B-27 | `/backend/facilities/logs` (+ `/incidents`, `/bans`; `/maintenance` — REQ-022 Could, deferred, no screen in this concept) | Log, incidents, bans | `facilities.log.write` / `facilities.incidents.manage` | 5 |
-| B-28 | `/backend/facilities/reports/owner` | Municipality report | `facilities.reports.view` | 5 |
+| B-26 | `/backend/facilities/zones` (tabs: Zones, Closures = `/closures`, Rental rates = `/rates`) | Zones and rates | `facilities.manage` | 5 |
+| B-27 | `/backend/facilities/logs` (tabs: Log, Incidents = `/incidents`, Bans = `/bans`, Maintenance = `/maintenance`) | Log and incidents | `facilities.log.write` / `facilities.incidents.manage` (Maintenance: `facilities.maintenance.manage`) | 5 |
+| B-28 | `/backend/facilities/reports/owner` (tabs: Municipality report, Rented hours = `/reports/rented-hours`) | Municipality report | `facilities.reports.view` | 5 |
 | P-01 | `/p/[clubSlug]` | Club page | public | 1–2 (+ blocks 4–5) |
 | P-02 | `/p/[clubSlug]/sections/[sectionSlug]` | Section page | public | 1–2 (+ blocks 4–5) |
 | P-03 | `/p/[clubSlug]/places` | Club facilities | public | 5 |
@@ -244,7 +310,7 @@ flowchart LR
 | P-05 | `/p/[clubSlug]/requests/verify/[token]` | Request confirmation | token | 5 |
 | P-06 | `/p/[clubSlug]/events` | Events | public | 2 |
 
-Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/backend/communication/cases` is the "cases only" perspective of B-18; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. `/backend/facilities/maintenance` (REQ-022, Could) has no screen here — deferred.
+Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. Pages with tabs (one menu item, one route per tab; a tab change navigates to the tab's route): B-07 Institutions and contracts — Institutions, Contracts (`/backend/club/contracts`); B-18 Threads and cases — All, Cases (`/backend/communication/cases`); B-26 Zones and rates — Zones, Closures (`/backend/facilities/closures`), Rental rates (`/backend/facilities/rates`); B-27 Log and incidents — Log, Incidents (`/backend/facilities/incidents`), Bans (`/backend/facilities/bans`), Maintenance (`/backend/facilities/maintenance`); B-28 Municipality report — Municipality report, Rented hours (`/backend/facilities/reports/rented-hours`). `/backend/people/imports` opens from the "Import" button of B-09.
 
 ---
 
@@ -262,11 +328,11 @@ Common rules (they apply to every screen and are not repeated):
 
 #### M-01 Sign in — `/login`
 - **Goal:** enter the app with one account for all roles (Q-001).
-- **Features:** email + password, "Forgot password" (`/reset`), remember this device.
-- **Components:** the installed `auth` page; after sign-in, redirect to `/club` (staff without a member role → `/backend`).
+- **Features:** club branding above the form — the club's logo, name and the tagline "One account for parents, players and coaches" when the club is known (`/login?club={slug}` from the public header, or the club remembered from an earlier visit), Vereino's name otherwise, never the platform's (REQ-N10); email + password, "Forgot password" (`/reset`), remember this device.
+- **Components:** the installed `auth` page under an app club header; after sign-in, the landing of §3.1: an explicit `redirect` is kept; otherwise the attendant only → `/club/facility`, the administrator with no ward, no participant membership and no coach grant → `/backend`, an account linked to no person → `/backend` with the notice, everyone else → `/club`.
 - **States:** loading — button with a spinner; error — "Incorrect email or password" (no distinction); success — redirect.
 - **Validation:** email required and valid; password required.
-- **API:** `auth` module sign-in (installed); `GET /api/people/me` after sign-in.
+- **API:** `auth` module sign-in (installed); `GET /api/club_core/public/{clubSlug}` for the club header; `GET /api/people/me` after sign-in.
 
 #### M-02 Today — `/club`
 - **Goal:** within 5 seconds, know what is happening today and tomorrow for me and my children, and respond.
@@ -384,18 +450,18 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-02 Club settings — `/backend/club/settings`
 - **Goal:** club details and operating parameters.
-- **Features:** short name, **club logo** (upload, replace, remove; preview in the header), time zone, currency, account age threshold (default 16, R10; range 13–18, decided in E06-S05 #87), public slug, contact phone.
-- **Components:** `CrudForm` (`pageContext: 'settings'`).
+- **Features:** club name, short name, **club logo** (upload, replace, remove; preview in the header), default language, time zone, currency, account age threshold (default 16, R10; range 13–18, decided in E06-S05 #87), declaration kind per activity type, online payment fee, sales document for orders, bank account. The public slug, the public description and the contact phone are on B-03.
+- **Components:** `CrudForm` on a regular page of the Club group (no settings sidebar).
 - **States:** loading, error, success ("Saved"), conflict.
-- **Validation:** slug `^[a-z0-9-]{3,40}$`, globally unique (409); threshold 13–18; phone; logo PNG/JPG/WebP up to 2 MB (SVG rejected, 422), square ≥ 256 px recommended.
+- **Validation:** threshold 13–18; logo PNG/JPG/WebP up to 2 MB (SVG rejected, 422), square ≥ 256 px recommended.
 - **API:** `GET/PUT /api/club_core/settings`.
 
 #### B-03 Publication — `/backend/club/publication`
 - **Goal:** decide what the club shows publicly (REQ-025, Q-024).
-- **Features:** enable the club page; blocks: description and schedule, terms, prices, instructors, materials, contact, events menu, facility calendar, online requests — each with a description of its effect; public page preview.
+- **Features:** enable the club page; public slug, public description and contact phone; blocks: description and schedule, terms, prices, instructors, materials, contact, events menu, facility calendar, online requests — each with a description of its effect; public page preview.
 - **Components:** `CrudForm` with toggles, "Preview" link.
 - **States:** loading, error, success, conflict.
-- **Validation:** "Online requests" require "Facility calendar"; the page requires a public club slug.
+- **Validation:** slug `^[a-z0-9-]{3,40}$`, globally unique (409); phone; "Online requests" require "Facility calendar" (field error); the page requires a public club slug.
 - **API:** `GET/PUT /api/club_core/settings` (`publication`).
 
 #### B-04 Sections — `/backend/club/sections`
@@ -424,6 +490,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-07 Institutions and contracts — `/backend/club/institutions`, `/backend/club/contracts`
 - **Goal:** contract parties and institutional payers; coach rates.
+- **Tabs:** Institutions (`/backend/club/institutions`) · Contracts (`/backend/club/contracts`, `club_core.contracts.manage`); one menu item, the header action belongs to the active tab; an institution row links to its contracts, filtered by institution.
 - **Features:** institutions (type, contact, bank account); contracts (party, kind, period, terms per kind: coach — the rates of the club's settlement model, `units_per_contract`: base, rate per unit, per match and per away trip; `fixed_base_adjusted`: base, session amount (subtracted for an own session another coach led, added for one led as a substitute) and amount per away trip; management agreement — days to pay, automatic expiry). A coach contract is with a person; the party and the kind are fixed once it exists (#96).
 - **Components:** `DataTable`, `CrudForm` with fields that depend on the kind.
 - **States:** standard.
@@ -504,7 +571,8 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-18 Threads and cases — `/backend/communication/threads`, `/backend/communication/cases`
 - **Goal:** overview of communication within the coordinator's scope; case register.
-- **Features:** scope and section filters, "cases only" perspective (`/backend/communication/cases`); new announcement to a section; "Mark as case" only with `communication.cases.manage`.
+- **Tabs:** All (`/backend/communication/threads`) · Cases (`/backend/communication/cases`, `communication.cases.manage`); one menu item.
+- **Features:** scope and section filters; new announcement to a section; "Mark as case" only with `communication.cases.manage`.
 - **Components:** `DataTable`, message component family.
 - **States:** standard.
 - **API:** `GET/POST /api/communication/threads`.
@@ -527,7 +595,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-21 Charges — `/backend/payments/charges`
 - **Goal:** who owes how much; generating a period; overdue charges.
-- **Features:** perspectives **All / Overdue / Without payer / Municipality (rentals) / Cash payments**; "Generate period" (with summary and progress); **"Accept cash"** (dialog like M-15); **"Import statement"** (B-29); export.
+- **Features:** perspectives in this order (payments parity spec, REQ-C03): **Membership fees / Overdue / Orders / Without payer / Rentals (municipality)** (only when the club has facilities or rental charges, DD-C02) **/ Cash payments / All / To refund** (only when not empty, DD-C10); filters Period and Payee; perspective and filters in the URL; sort: period descending, then due date; "Add charge"; "Generate period" (with summary and progress); **"Accept cash"** (dialog like M-15); **"Import statement"** (link to B-29); export.
 - **Components:** `DataTable`, generation dialog (`ProgressJob`), `StatusBadge`.
 - **States:** loading; empty — "No charges — generate a period"; error; success — "Created 142, skipped 0, without payer 2"; conflict — "Generation in progress" (409).
 - **Validation:** period `YYYY-MM`, no earlier than 12 months back.
@@ -605,16 +673,18 @@ Common rules (they apply to every screen and are not repeated):
 - **Validation:** rejection reason 5–500 characters; an amount adjustment requires a note.
 - **API:** `GET /api/facilities/rentals?status=pending_approval`; `POST /api/facilities/rentals/{id}/approve`; `POST /api/facilities/rentals/{id}/reject`.
 
-#### B-26 Zones, closures, rates — `/backend/facilities/zones`, `/closures`, `/rates`
+#### B-26 Zones and rates — `/backend/facilities/zones`, `/closures`, `/rates`
 - **Goal:** facility rules taken from the regulations.
+- **Tabs:** Zones (`/backend/facilities/zones`) · Closures (`/closures`) · Rental rates (`/rates`); one menu item.
 - **Features:** weekly zones (days, times, zone, priority, validity) with a week preview; closures (from–to, reason: snow, maintenance, municipal event, school); rates for 3 categories, winter season, lighting.
 - **Components:** `DataTable`, `CrudForm`, week preview.
 - **States:** standard; saving a closure shows "Marked to be moved: 3 sessions, 1 rental".
 - **Validation:** overlapping zones with equal priority → 409; from < to; prices ≥ 0; season `MM-DD`.
 - **API:** `/api/facilities/zone-rules`, `/closures`, `/rental-rates`.
 
-#### B-27 Log, incidents, bans — `/backend/facilities/logs`, `/incidents`, `/bans`
+#### B-27 Log and incidents — `/backend/facilities/logs`, `/incidents`, `/bans`, `/maintenance`
 - **Goal:** records and evidence (§6 of the regulations).
+- **Tabs:** Log (`/backend/facilities/logs`) · Incidents (`/incidents`) · Bans (`/bans`, `facilities.incidents.manage`) · Maintenance (`/maintenance`, `facilities.maintenance.manage`); one menu item.
 - **Features:** daily log; incidents (no deletion) linked to a case; bans (subject, period, reason, incident, issued by, revocation).
 - **Components:** `DataTable`, `CrudForm`, attachments.
 - **States:** standard.
@@ -623,6 +693,7 @@ Common rules (they apply to every screen and are not repeated):
 
 #### B-28 Municipality report — `/backend/facilities/reports/owner`
 - **Goal:** settlement of the management agreement (REQ-015).
+- **Tabs:** Municipality report (`/backend/facilities/reports/owner`) · Rented hours (`/reports/rented-hours`); one menu item.
 - **Features:** facility, period (month/quarter); hours by zone (including club time), rentals (count, value), payments to the municipality's account, incidents, maintenance; CSV export.
 - **Components:** KPI cards, `DataTable`.
 - **States:** loading; empty — "No data for this period"; error.
