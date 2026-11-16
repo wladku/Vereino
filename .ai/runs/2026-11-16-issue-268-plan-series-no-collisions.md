@@ -39,13 +39,12 @@ Phase 3 of the groups and activities parity spec: REQ-A04 (without the deadline 
 
 - `yarn verify`: first run failed at `lint` (4 errors in my code: two `String()` on strings in `ActivityForm.tsx`, a click handler on a `span` in `OccurrencesTable.tsx`) → fixed; `--from lint` failed at `ds:check` (`coach-units.ts:248:51 [arbitrary-tailwind]`, a labelled tuple type read as a Tailwind value) → plain tuple; `--from ds:check`: all 11 remaining steps passed (test 100 % coverage, build).
 - `yarn test:integration:vereino --filter TEST-A05`: first run failed at `toContainText(uiText('activities.fields.place.none', { exact: true }))` (the alert also holds the link text: `Received string: "The club has no bookable place of its own yet. Add a place before planning a series.Open Places"`) → non-exact match; rerun `1 passed (2.0m)`.
-- Integration, one id per run (): TEST-A05 1 passed; TEST-A06 1 passed; TEST-A07 first run failed at its last line ( → :  had ended the admin's API token, lesson ), checked on the page instead, rerun 1 passed; TEST-A08 1 passed; E03-S02 4 passed; E06-S11 1 passed; E06-S13 1 passed; E06-S14 1 passed; J-002 first run failed ( on the coach option, "element was detached from the DOM"), the pick now retries as E06-S11's  does, rerun 1 passed.
-- :  passed twice;  failed twice with  as the first test of the run on a cold server, no server error logged — the same known flake recorded in  (from #216); its path (event create, move, calendar read) is not changed here.
+- Integration, one id per run (`yarn test:integration:vereino --filter <ID>`): TEST-A05 1 passed; TEST-A06 1 passed; TEST-A07 first run failed at its last line (`expect((await getOccurrence(request, admin, future)).body?.status).toBe('planned')` → `Received: undefined`: `signInBrowser` had ended the admin's API token, lesson `sign-in-browser-ends-the-api-token`), checked on the page instead, rerun 1 passed; TEST-A08 1 passed; E03-S02 4 passed; E06-S11 1 passed; E06-S13 1 passed; E06-S14 1 passed; J-002 first run failed (`TimeoutError: locator.click: Timeout 30000ms exceeded` on the coach option, "element was detached from the DOM"), the pick now retries as E06-S11's `pickComboboxOption` does, rerun 1 passed.
+- `E06-S12`: `sessions-list-perspectives` passed twice; `calendar-moved-session` failed twice with `Test timeout of 20000ms exceeded` as the first test of the run on a cold server, no server error logged — the same known flake recorded in `.ai/runs/2026-11-07-pr-214-merge-ready.md` (from #216); its path (event create, move, calendar read) is not changed here.
 
 ## Open problems
 
--  keeps its 20 s default timeout and fails on a cold local server (pre-existing, not touched).
-
+- `E06-S12-calendar-moved-session` keeps its 20 s default timeout and fails on a cold local server (pre-existing, not touched).
 - The Polish CSV keeps amounts with a decimal point (`1730.00`); the spec asks only for headers and the separator.
 - The CSV headers of `GET /api/activities/reports/coach-units?format=csv` changed from fixed lowercase names to the locale's report headers (required by REQ-A06; documented in the route's OpenAPI).
 
