@@ -1,6 +1,6 @@
 'use client'
 // The chip rows of the facility calendar (facilities parity spec DD-R03, B-23; #276): a labelled group of chips whose
-// current chip carries `aria-current` and stays in view while the row scrolls sideways under 480 px; the seven day
+// current chip carries `aria-current` and stays in view while the row scrolls sideways below the `sm` breakpoint; the seven day
 // chips from today with "Other day" (a date field reaching any date) and the left and right arrow keys moving the
 // day; above them, with the "to be moved" filter on, how many flagged entries each of the seven days has.
 import * as React from 'react'
@@ -38,7 +38,7 @@ export function ChipRow({
     <div
       role="group"
       aria-label={label}
-      className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 min-[480px]:flex-wrap"
+      className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap"
       data-testid={testId}
     >
       {chips.map((chip) => {

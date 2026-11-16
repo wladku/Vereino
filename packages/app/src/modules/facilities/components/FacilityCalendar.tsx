@@ -436,7 +436,7 @@ function PlaceDay({
   if (!calendar && query.isFetching) {
     body = (
       <Skeleton
-        className="h-[560px] w-full"
+        className="h-96 w-full"
         aria-label={t('facilities.calendar.loading')}
         data-testid="facilities-calendar-loading"
       />
@@ -646,7 +646,7 @@ export function FacilityCalendar() {
   if (placeRows.isPending && !requestedPlace) {
     body = (
       <Skeleton
-        className="h-[560px] w-full"
+        className="h-96 w-full"
         aria-label={t('facilities.calendar.loading')}
         data-testid="facilities-calendar-loading"
       />
