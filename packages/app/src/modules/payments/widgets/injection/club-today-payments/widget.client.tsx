@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { formatZloty } from '../../../lib/charge-ledger'
 
 type Summary =
@@ -39,7 +40,7 @@ export default function ClubTodayPaymentsWidget() {
   })
   const muted = 'text-muted-foreground max-w-prose text-sm'
   if (summary.isPending) {
-    return <span className={muted}>{t('payments.club.tile.loading')}</span>
+    return <MemberSkeleton shape="rows" count={1} label={t('payments.club.tile.loading')} />
   }
   if (!summary.data) {
     return <span className={muted}>{t('payments.club.tile.description')}</span>
