@@ -2,10 +2,12 @@
 // club-zone calendar date, PESEL checks, role-assignment scope, the record scope of a person, the payer rule,
 // overlapping periods and the guardianship consents. Time is a parameter (engineering standards S3.5).
 import {
+  ageOn,
   endsBefore,
   grantConsent,
   isActiveAt,
   isAdultOn,
+  isCalendarDate,
   periodsOverlap,
   roleCatalogue,
   withdrawConsent,
@@ -68,6 +70,42 @@ export function roleScopeProblem(role: AssignableRole, records: RoleScopeRecords
   const extraSection = requires !== 'section' && !!records.sectionId
   const extraPlace = requires !== 'place' && !!records.placeId
   return extraSection || extraPlace ? 'unexpected' : null
+}
+
+/** The CLDR plural forms the people catalogs carry for counted text (en: one, other; pl: one, few, many). */
+export type PluralForm = 'one' | 'few' | 'many' | 'other'
+
+/**
+ * The age in the person record's header (README B-10, navigation spec REQ-N12; #262): completed years on the club's
+ * `today` and the locale's catalog plural form ("1 rok", "3 lata", "12 lat"); null without a valid birth date.
+ */
+export function personAge(
+  birthDate: string | null | undefined,
+  today: CalendarDate,
+  locale: string,
+): { years: number; form: PluralForm } | null {
+  if (!birthDate || !isCalendarDate(birthDate)) return null
+  const years = ageOn(birthDate, today)
+  const form = new Intl.PluralRules(locale).select(years)
+  return { years, form: form === 'one' || form === 'few' || form === 'many' ? form : 'other' }
+}
+
+/** The roles only an adult may hold (navigation spec REQ-N12, V-N05; #262): the section coordinator. */
+export const ADULT_ONLY_ROLES: readonly AssignableRole[] = ['coordinator']
+
+/**
+ * Why a person may not take a role: an adult-only role for someone under 18 on the day the role takes effect — the
+ * later of `validFrom` and `today`. A person without a birth date is not a known minor and passes.
+ */
+export function roleAgeProblem(input: {
+  role: AssignableRole
+  birthDate: CalendarDate | null | undefined
+  validFrom: CalendarDate
+  today: CalendarDate
+}): 'role_requires_adult' | null {
+  if (!ADULT_ONLY_ROLES.includes(input.role) || !input.birthDate) return null
+  const effective = input.validFrom > input.today ? input.validFrom : input.today
+  return isAdultOn(input.birthDate, effective) ? null : 'role_requires_adult'
 }
 
 export type AssignmentRecord = RoleAssignmentPeriod & {
