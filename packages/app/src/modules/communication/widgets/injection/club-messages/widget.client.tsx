@@ -2,7 +2,7 @@
 // The "Messages" tile of `/club` — Today (foundation III REQ-M10, DD-M13; README M-02; E06-S16 #98; navigation spec
 // REQ-N14, #263): the heading with an "All" link to the inbox, then the number of the member's conversations that have
 // an unread message and the subject of the newest one as a link to it (`GET /api/communication/threads?as=member&
-// unread=1&pageSize=1`, newest activity first), or "No new messages."; when the list could not be read the tile says so
+// unread=1&pageSize=1`, newest activity first), or "No new messages."; a one-row skeleton while it loads (REQ-N15); when the list could not be read the tile says so
 // and offers "Try again" while the "All" link keeps working.
 import * as React from 'react'
 import Link from 'next/link'
@@ -11,6 +11,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import {
   CLUB_MESSAGES_HREF,
   clubThreadHref,
@@ -57,6 +58,14 @@ export default function ClubMessagesTileWidget() {
                 <span className="sr-only"> ({t('communication.tile.open')})</span>
               </Link>
             </div>
+            {!unread && query.isFetching ? (
+              <MemberSkeleton
+                shape="rows"
+                count={1}
+                label={t('communication.club.loading')}
+                data-testid="club-tile-messages-loading"
+              />
+            ) : null}
             {unread && unread.count > 0 ? (
               <div className="flex flex-col gap-1">
                 <span data-testid="club-tile-messages-unread" data-count={String(unread.count)}>

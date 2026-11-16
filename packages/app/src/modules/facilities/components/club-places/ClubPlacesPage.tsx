@@ -10,9 +10,9 @@ import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
+import { MemberSkeleton } from '@vereino/ui'
 import { isBookablePlace, placeFamilyOf } from '../../lib/place-scope'
 import { CLUB_FACILITY_HREF, useFacilityFeatures } from '../club-facility/facility-client'
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
@@ -21,11 +21,15 @@ import {
   dayWindow,
   entriesOfDay,
   placeHref,
+  usePlacesFeatures,
   useStaffCalendar,
   type CalendarPlace,
   type StaffCalendar,
   type Translate,
 } from './places-client'
+
+/** The panel's form for a new facility (`club_core`, `club_core.manage`): the empty list's action. */
+const PANEL_PLACE_CREATE_HREF = '/backend/club/places/create'
 
 /** The place kinds `club_core` stores; another value is shown as it is. */
 const PLACE_KINDS = new Set(['complex', 'pitch', 'multi_pitch', 'hall', 'locker_room', 'pool', 'other'])
@@ -81,16 +85,17 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
   const window = React.useMemo(() => dayWindow(today, profile.club.timezone), [today, profile.club.timezone])
   const query = useStaffCalendar(window)
   const features = useFacilityFeatures()
+  const placesFeatures = usePlacesFeatures()
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
     body = (
-      <div className="flex flex-col gap-3" aria-busy="true" data-testid="club-places-loading">
-        <span className="sr-only">{t('facilities.places.loading')}</span>
-        {[0, 1, 2].map((index) => (
-          <Skeleton key={index} className="h-32 w-full" />
-        ))}
-      </div>
+      <MemberSkeleton
+        shape="tiles"
+        count={3}
+        label={t('facilities.places.loading')}
+        data-testid="club-places-loading"
+      />
     )
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (
@@ -111,9 +116,16 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
     )
   } else if (!query.data.places.some(isBookablePlace)) {
     body = (
-      <p className="text-muted-foreground" data-testid="club-places-empty">
-        {t('facilities.places.list.empty')}
-      </p>
+      <div className="flex flex-col items-start gap-2" data-testid="club-places-empty">
+        <p className="text-muted-foreground">{t('facilities.places.list.empty')}</p>
+        {placesFeatures.managePlaces ? (
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={PANEL_PLACE_CREATE_HREF} data-testid="club-places-empty-add">
+              {t('facilities.places.list.add')}
+            </Link>
+          </Button>
+        ) : null}
+      </div>
     )
   } else {
     const calendar = query.data
@@ -146,5 +158,5 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
 }
 
 export function ClubPlacesPage() {
-  return <FacilitiesClubFrame>{(profile) => <PlacesList profile={profile} />}</FacilitiesClubFrame>
+  return <FacilitiesClubFrame skeleton="tiles">{(profile) => <PlacesList profile={profile} />}</FacilitiesClubFrame>
 }

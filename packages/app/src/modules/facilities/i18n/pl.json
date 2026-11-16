@@ -407,6 +407,7 @@
   "facilities.places.nav.contextCoachCoordinator": "jako trener / koordynator",
   "facilities.places.list.intro": "Rezerwacja klubu jest ważna od razu, jeśli termin jest wolny. Zgłoszenia osób z zewnątrz akceptuje administrator.",
   "facilities.places.list.empty": "Klub nie ma jeszcze miejsc do rezerwacji.",
+  "facilities.places.list.add": "Dodaj obiekt",
   "facilities.places.list.open": "Otwórz {place}",
   "facilities.places.kind.session": "Zajęcia",
   "facilities.places.kind.booking": "Rezerwacja wewnętrzna",

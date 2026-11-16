@@ -8,10 +8,11 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import {
   clubHref,
@@ -136,9 +137,12 @@ function EventsBody({ page }: { page: PublicEventsPage }) {
           {t('club_core.public.events.upcoming')}
         </h2>
         {page.upcoming.length === 0 ? (
-          <p className="text-muted-foreground max-w-prose" data-testid="public-events-no-upcoming">
-            {t('club_core.public.events.noUpcoming')}
-          </p>
+          <div className="flex flex-col items-start gap-1" data-testid="public-events-no-upcoming">
+            <p className="text-muted-foreground max-w-prose">{t('club_core.public.events.noUpcoming')}</p>
+            <Link href={`${clubHref(page.club.slug)}#sections`} className={LINK_CLASS}>
+              {t('club_core.public.events.seeSections')}
+            </Link>
+          </div>
         ) : (
           <ul className="flex flex-col gap-3">
             {page.upcoming.map((event, index) => (
@@ -172,7 +176,7 @@ export function PublicEventsView({ clubSlug }: { clubSlug: string }) {
   if (!load && query.isFetching) {
     return (
       <PublicFrame club={null}>
-        <LoadingMessage label={t('club_core.public.loading')} />
+        <MemberSkeleton shape="rows" label={t('club_core.public.loading')} />
       </PublicFrame>
     )
   }

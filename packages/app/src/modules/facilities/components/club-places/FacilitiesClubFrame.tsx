@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -23,7 +23,9 @@ import {
   memberSwitchers,
   useMemberContext,
   useMemberNavFeatures,
+  MemberSkeleton,
   type MemberLinkProps,
+  type MemberSkeletonShape,
 } from '@vereino/ui'
 
 export type PlacesProfile = {
@@ -82,7 +84,14 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
   )
 }
 
-export function FacilitiesClubFrame({ children }: { children: (profile: PlacesProfile) => React.ReactNode }) {
+export function FacilitiesClubFrame({
+  children,
+  skeleton = 'rows',
+}: {
+  children: (profile: PlacesProfile) => React.ReactNode
+  /** The shape of the page's content while the profile loads (REQ-N15): `tiles` on the places list. */
+  skeleton?: MemberSkeletonShape
+}) {
   const t = useT()
   const pathname = usePathname()
   const query = useMemberProfile()
@@ -91,7 +100,7 @@ export function FacilitiesClubFrame({ children }: { children: (profile: PlacesPr
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('facilities.places.loading')} />
+    body = <MemberSkeleton shape={skeleton} label={t('facilities.places.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage

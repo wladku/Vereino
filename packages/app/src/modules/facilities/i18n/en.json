@@ -407,6 +407,7 @@
   "facilities.places.nav.contextCoachCoordinator": "as coach / coordinator",
   "facilities.places.list.intro": "A club booking is valid immediately if the slot is free. Requests from outside the club are approved by the administrator.",
   "facilities.places.list.empty": "The club has no places to book yet.",
+  "facilities.places.list.add": "Add a facility",
   "facilities.places.list.open": "Open {place}",
   "facilities.places.kind.session": "Session",
   "facilities.places.kind.booking": "Internal booking",

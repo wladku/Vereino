@@ -15,13 +15,13 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
@@ -218,7 +218,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     </Link>
   )
 
-  if (view.kind === 'loading') return <LoadingMessage label={t('activities.club.session.loading')} />
+  if (view.kind === 'loading') return <MemberSkeleton shape="rows" label={t('activities.club.session.loading')} />
   if (view.kind === 'error') {
     return (
       <ErrorMessage
