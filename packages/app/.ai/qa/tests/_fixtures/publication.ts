@@ -14,6 +14,7 @@ export const PUBLICATION_BLOCKS = [
   'contact',
   'places_calendar',
   'online_requests',
+  'events',
 ] as const
 
 export type PublicationBlock = (typeof PUBLICATION_BLOCKS)[number]

@@ -11,6 +11,7 @@ import {
   notOkResponse,
   publicErrorSchema,
   publicClubLinksSchema,
+  publicClubNavSchema,
   publicLogoSchema,
   publicRoute,
   publicSite,
@@ -44,6 +45,7 @@ const sectionPageSchema = z.object({
       .nullable()
       .describe('The club phone of the page footer, only with the `contact` block'),
     links: publicClubLinksSchema,
+    nav: publicClubNavSchema,
   }),
   section: z.object({ name: z.string(), slug: z.string(), logo: publicLogoSchema }),
   blocks: z

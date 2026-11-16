@@ -26,6 +26,8 @@ export type PlaceDirectoryEntry = {
   address: string | null
   geoLat: number | null
   geoLng: number | null
+  /** A venue outside the club's own places (an away match, a camp); the public events page links its map (#263). */
+  isExternal: boolean
 }
 
 /** A place as a selector shows it. */
@@ -197,7 +199,19 @@ export async function findPlaces(
   const rows = await em.find(
     Place,
     { id: { $in: unique }, ...scope, deletedAt: null },
-    { fields: ['id', 'name', 'parentPlaceId', 'capacityGroups', 'isActive', 'address', 'geoLat', 'geoLng'] },
+    {
+      fields: [
+        'id',
+        'name',
+        'parentPlaceId',
+        'capacityGroups',
+        'isActive',
+        'address',
+        'geoLat',
+        'geoLng',
+        'isExternal',
+      ],
+    },
   )
   return new Map(
     rows.map((row) => [
@@ -211,6 +225,7 @@ export async function findPlaces(
         address: row.address ?? null,
         geoLat: coordinate(row.geoLat),
         geoLng: coordinate(row.geoLng),
+        isExternal: row.isExternal,
       },
     ]),
   )
