@@ -3,7 +3,8 @@
 // the tiles "To pay", "Remaining and status" and "Payer and payee", the payments table (date, method, title or receipt,
 // received by, amount) with "Reverse" on a cash or transfer payment, and the actions "Record payment" (open or
 // partially paid) and "Cancel charge" (open and unpaid, with a required reason). Every action sends the charge's lock
-// token and refreshes the record afterwards.
+// token and refreshes the record afterwards. The payee line reads "to the club's account" or "to the account of
+// {owner}" — the owner institution of a rental charge, or "the facility owner" while the charge names none (#291).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,7 +16,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES } from '../lib/charge-ledger'
+import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES, payerDisplayName } from '../lib/charge-ledger'
 import type { ChargeStatus } from '../lib/payments-rules'
 import { ChargeStatusBadge, OverdueBadge } from './ChargesTable'
 import { ReasonDialog } from './ReasonDialog'
@@ -165,11 +166,16 @@ export function ChargeRecord({ id }: { id: string }) {
             {charge.payerMissing ? (
               <span className="text-status-warning-text font-medium">{t('payments.charges.payerMissing')}</span>
             ) : (
-              personName(charge.payer) || '—'
+              <span data-testid="charge-payer">{payerDisplayName(charge) || '—'}</span>
             )}
           </span>
-          <span>
-            {t('payments.ledger.tiles.payee')}: {t(`payments.charges.payee.${charge.payee ?? 'club'}`)}
+          <span data-testid="charge-payee">
+            {t('payments.ledger.tiles.payee')}:{' '}
+            {charge.payee === 'owner_institution'
+              ? t('payments.ledger.payee.owner', {
+                  owner: charge.payeeInstitution?.name ?? t('payments.ledger.payee.ownerUnknown'),
+                })
+              : t('payments.ledger.payee.club')}
           </span>
         </Tile>
       </div>

@@ -15,7 +15,10 @@ function freshEm(container: AwilixContainer): EntityManager {
   return container.resolve<EntityManager>('em').fork()
 }
 
-/** The club's charges with a payer that are still to pay (`open`, `partially_paid`), oldest first; optionally one payer's. */
+/**
+ * The club's charges with a payer that are still to pay (`open`, `partially_paid`), oldest first; optionally one
+ * payer's. A rental charge is paid to the facility owner's account, so the club never takes cash for it (#291).
+ */
 export function openPayableCharges(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -27,6 +30,7 @@ export function openPayableCharges(
     {
       ...scope,
       deletedAt: null,
+      sourceType: { $ne: 'rental' as const },
       status: { $in: [...OPEN_CHARGE_STATUSES] },
       payerPersonId: payerPersonId ?? { $ne: null },
     },

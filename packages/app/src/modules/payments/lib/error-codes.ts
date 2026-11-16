@@ -85,6 +85,9 @@ export const errorCodes = [
   { code: 'order_not_delivered', status: 409, messageKey: 'payments.errors.order_not_delivered' },
   { code: 'order_already_handed_over', status: 409, messageKey: 'payments.errors.order_already_handed_over' },
   { code: 'order_unpaid_confirm_required', status: 409, messageKey: 'payments.errors.order_unpaid_confirm_required' },
+  // The rental charge service `payments.chargeService` (payments parity spec Contract 5, #291).
+  { code: 'charge_payer_required', status: 422, messageKey: 'payments.errors.charge_payer_required' },
+  { code: 'charge_amount_invalid', status: 422, messageKey: 'payments.errors.charge_amount_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

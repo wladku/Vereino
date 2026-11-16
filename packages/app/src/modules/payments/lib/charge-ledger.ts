@@ -115,7 +115,7 @@ export function formatZloty(grosz: number): string {
 
 /**
  * The perspectives of the charge list (issue #109, Q1 default of 2026-11-06): membership fees (the default), all,
- * overdue, without payer, cash payments, orders and — only when `facilities` is enabled — rentals.
+ * overdue, without payer, cash payments, orders and — only when DD-C02 allows (#291) — rentals.
  */
 export const CHARGE_PERSPECTIVES = ['fees', 'all', 'overdue', 'payer_missing', 'cash', 'orders', 'rentals'] as const
 export type ChargePerspective = (typeof CHARGE_PERSPECTIVES)[number]
@@ -152,9 +152,90 @@ export function chargePerspectiveOf(value: string | null, shown: readonly Charge
   return shown.find((perspective) => perspective === value) ?? DEFAULT_CHARGE_PERSPECTIVE
 }
 
-/** The perspectives shown: rentals only when the `facilities` module is enabled. */
-export function visiblePerspectives(facilitiesEnabled: boolean): ChargePerspective[] {
-  return CHARGE_PERSPECTIVES.filter((perspective) => perspective !== 'rentals' || facilitiesEnabled)
+/** The perspectives shown: "Rentals (municipality)" only when the list response says so (DD-C02). */
+export function visiblePerspectives(rentalsShown: boolean): ChargePerspective[] {
+  return CHARGE_PERSPECTIVES.filter((perspective) => perspective !== 'rentals' || rentalsShown)
+}
+
+/**
+ * DD-C02 (payments parity spec, #291): "Rentals (municipality)" is shown when `facilities` registers its occupancy
+ * service in this deployment, or when the club has at least one live rental charge — so old charges stay reachable
+ * after `facilities` is disabled.
+ */
+export function rentalsPerspectiveShown(input: { facilitiesRegistered: boolean; liveRentalCharges: number }): boolean {
+  return input.facilitiesRegistered || input.liveRentalCharges > 0
+}
+
+// --- Charges of another module's source: the rental charge (facilities DD-19; payments parity DD-C01, #291) ---
+
+/** The largest rental charge in grosz: the largest rental amount `facilities` accepts (PLN 1 000 000). */
+export const MAX_SOURCE_CHARGE_AMOUNT = 100_000_000
+
+/** The longest typed-in renter's name stored as a payer label. */
+export const MAX_PAYER_LABEL_LENGTH = 200
+
+export type SourcePayer = {
+  payerInstitutionId: string | null
+  payerPersonId: string | null
+  payerLabel: string | null
+}
+
+/**
+ * The payer of a rental charge: the first that is present of the renter institution, the renter person and the
+ * typed-in name (trimmed, at most 200 characters). Only the chosen one is stored. Null when there is none — the
+ * service answers 422 `charge_payer_required`.
+ */
+export function sourcePayerOf(input: {
+  payerInstitutionId?: string | null
+  payerPersonId?: string | null
+  payerDisplayName?: string | null
+}): SourcePayer | null {
+  if (input.payerInstitutionId) {
+    return { payerInstitutionId: input.payerInstitutionId, payerPersonId: null, payerLabel: null }
+  }
+  if (input.payerPersonId) return { payerInstitutionId: null, payerPersonId: input.payerPersonId, payerLabel: null }
+  const label = input.payerDisplayName?.trim().slice(0, MAX_PAYER_LABEL_LENGTH).trim()
+  return label ? { payerInstitutionId: null, payerPersonId: null, payerLabel: label } : null
+}
+
+/** A rental charge's amount: whole grosz from 0 (a free rental) to `MAX_SOURCE_CHARGE_AMOUNT`. */
+export function sourceAmountValid(amount: number): boolean {
+  return Number.isSafeInteger(amount) && amount >= 0 && amount <= MAX_SOURCE_CHARGE_AMOUNT
+}
+
+/** A free rental has nothing to pay: its charge is born `paid`, every other one `open`. */
+export function sourceChargeStatus(amount: number): ChargeStatus {
+  return amount === 0 ? 'paid' : 'open'
+}
+
+/**
+ * What cancelling a rental (`cancelForSource`) does to its live charge: nothing when it is already cancelled or
+ * forfeited; the warning `charge_paid` (the charge stays as it is) when any payment was recorded on it, reversed or
+ * not; otherwise it is cancelled or forfeited. A free rental's charge (born `paid`, no payment) is cancelled too.
+ */
+export function sourceCancelDecision(input: {
+  status: ChargeStatus
+  hasPayments: boolean
+}): 'cancel' | 'charge_paid' | 'none' {
+  if (input.status === 'cancelled' || input.status === 'forfeited') return 'none'
+  return input.hasPayments || input.status === 'partially_paid' ? 'charge_paid' : 'cancel'
+}
+
+type NamedPayer = { firstName: string; lastName: string }
+
+/**
+ * The payer a charge shows, in the display order of a rental charge: the institution, then the person, then the
+ * typed-in name; null when none is known.
+ */
+export function payerDisplayName(charge: {
+  payerInstitution?: { name: string } | null
+  payer?: NamedPayer | null
+  payerLabel?: string | null
+}): string | null {
+  if (charge.payerInstitution?.name) return charge.payerInstitution.name
+  const person = [charge.payer?.firstName, charge.payer?.lastName].filter(Boolean).join(' ')
+  if (person) return person
+  return charge.payerLabel || null
 }
 
 // --- CSV export ---

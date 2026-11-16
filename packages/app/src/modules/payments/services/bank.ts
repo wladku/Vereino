@@ -50,13 +50,17 @@ async function openChargesOf(
     .filter((charge) => charge.remaining > 0)
 }
 
-/** The club's live charges with a payer that are still to pay, row-locked in id order (one payer's when given). */
+/**
+ * The club's live charges with a payer that are still to pay, row-locked in id order (one payer's when given). A
+ * rental charge is paid to the facility owner's account, so a transfer to the club never settles it (#291).
+ */
 export function lockOpenCharges(em: EntityManager, scope: PaymentsScope, payerPersonId?: string): Promise<Charge[]> {
   return em.find(
     Charge,
     {
       ...scope,
       deletedAt: null,
+      sourceType: { $ne: 'rental' as const },
       status: { $in: [...OPEN_CHARGE_STATUSES] },
       payerPersonId: payerPersonId ?? { $ne: null },
     },

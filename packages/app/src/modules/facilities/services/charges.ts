@@ -2,7 +2,8 @@
 // resolves it with `hasRegistration` and never imports `payments`. With it, a staff entry creates the rental's charge
 // payable to the place owner in the rental's own transaction and a cancellation cancels or forfeits it; without it a
 // rental carries only its amount and staff confirm it by hand. `payments` implements the contract (its spec points to
-// DD-19); until it registers the token every call here is a no-op.
+// DD-19) and registers the token since #291 (payments parity spec phase 1); without `payments` every call here is a
+// no-op.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { AwilixContainer } from 'awilix'
@@ -16,6 +17,8 @@ export type RentalChargeInput = {
   payeeInstitutionId: string | null
   payerInstitutionId?: string | null
   payerPersonId?: string | null
+  /** The typed-in name of an unregistered renter, the payer when neither id is given (payments parity DD-C01). */
+  payerDisplayName?: string | null
   amount: number
   dueDate: string
   description: string

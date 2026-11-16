@@ -1,4 +1,4 @@
-// At-rest encryption of `payments` (payments spec *Data Models* → `payments_charges.description`,
+// At-rest encryption of `payments` (payments spec *Data Models* → `payments_charges.description|payer_label`,
 // `payments_payments.reference`, `payments_orders.contact_email|contact_phone|notes`,
 // `payments_bank_transactions.counterparty_name|counterparty_account|title`; foundation spec P-09). None has an
 // equality lookup (a statement transfer is found again by its `tx_hash` fingerprint), so none carries a hash sibling,
@@ -13,6 +13,9 @@ export const PAYMENT_ENTITY_ID = 'payments:payment'
 export const ORDER_ENTITY_ID = 'payments:order'
 
 export const chargeDescription = encryptedField({ entityId: CHARGE_ENTITY_ID, field: 'description' })
+
+/** The typed-in name of an unregistered renter paying a rental charge (payments parity spec, #291). */
+export const chargePayerLabel = encryptedField({ entityId: CHARGE_ENTITY_ID, field: 'payer_label' })
 
 /** A transfer title may name the payer or the child (issue #109). */
 export const paymentReference = encryptedField({ entityId: PAYMENT_ENTITY_ID, field: 'reference' })
@@ -37,7 +40,7 @@ export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
     entityId: BANK_TRANSACTION_ENTITY_ID,
     fields: [bankCounterpartyName.mapEntry, bankCounterpartyAccount.mapEntry, bankTitle.mapEntry],
   },
-  { entityId: CHARGE_ENTITY_ID, fields: [chargeDescription.mapEntry] },
+  { entityId: CHARGE_ENTITY_ID, fields: [chargeDescription.mapEntry, chargePayerLabel.mapEntry] },
   { entityId: PAYMENT_ENTITY_ID, fields: [paymentReference.mapEntry] },
   {
     entityId: ORDER_ENTITY_ID,
