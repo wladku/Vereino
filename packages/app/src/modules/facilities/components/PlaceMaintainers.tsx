@@ -313,6 +313,7 @@ export function PlaceMaintainers() {
       <p className="text-muted-foreground text-sm">{t('facilities.maintenance.maintainers.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

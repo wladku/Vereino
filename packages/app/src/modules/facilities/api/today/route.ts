@@ -3,7 +3,9 @@
 // zone and the planned sessions and rentals on the place, its ancestors and descendants, each rental with whether a
 // no-show may be recorded now. Staff with `facilities.view` read every club place; the log itself only callers who
 // may write it (`facilities.log.write` and its grant), others get `log: null`. A facility attendant chooses among
-// the places of their grant only (#126; 403 for another place).
+// the places of their grant only (#126; 403 for another place). The facilities parity spec (#275, REQ-R13) adds each
+// entry's place, a session's group and coach, a rental's contact where the caller manages the rentals of the place
+// (DD-R18), and the incidents reported today on the place family — for the log's readers, who also report them.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
@@ -12,7 +14,7 @@ import { findActingRole } from '@vereino/core'
 import { LOG_KINDS } from '../../commands/logs'
 import { placeTarget } from '../../commands/shared'
 import { todayQuerySchema } from '../../data/validators'
-import { attendantPlaceIds } from '../../lib/place-scope'
+import { attendantPlaceIds, rentalPlaceIds } from '../../lib/place-scope'
 import { facilityToday } from '../../services/today'
 import { errorSchema } from '../shared'
 
@@ -52,11 +54,19 @@ const responseSchema = z.object({
       start: z.string(),
       end: z.string(),
       label: z.string().nullable().describe('The activity or the renter'),
+      placeName: z.string().nullable(),
+      groupName: z.string().nullable().describe('A session’s group'),
+      coachName: z.string().nullable().describe('A session’s coach'),
+      contactName: z.string().nullable().describe('A rental’s contact, where the caller manages its rentals'),
+      contactPhone: z.string().nullable().describe('A rental’s contact phone, where the caller manages its rentals'),
       status: z.string(),
       updatedAt: z.string().nullable().describe('A rental’s version: the lock token of its no-show'),
       canNoShow: z.boolean(),
     }),
   ),
+  incidents: z
+    .array(z.object({ id: z.uuid(), occurredAt: z.string(), kind: z.string(), photoCount: z.number() }))
+    .describe('Incidents reported today on the place family; empty for a caller who does not read the log'),
 })
 
 export async function GET(request: Request): Promise<Response> {
@@ -67,20 +77,30 @@ export async function GET(request: Request): Promise<Response> {
     const parsed = todayQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams))
     if (!parsed.success) return Response.json({ error: 'Invalid query', code: 'today_query_invalid' }, { status: 400 })
     const grants = await scopeContract.resolve(ctx)
-    const today = await facilityToday(ctx.container, scope, parsed.data.placeId, new Date(), attendantPlaceIds(grants))
+    const userId = ctx.auth?.sub
+    const rbac = ctx.container.resolve<RbacService>('rbacService')
+    const canManageRentals = !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.rentals.manage'], scope))
+    const today = await facilityToday(
+      ctx.container,
+      scope,
+      parsed.data.placeId,
+      new Date(),
+      attendantPlaceIds(grants),
+      rentalPlaceIds(grants, canManageRentals),
+    )
     if (today === 'forbidden') return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
     if (!today) return Response.json({ error: 'Not found' }, { status: 404 })
     // The log (its conditions and encrypted remarks) only for its writers, as `/api/facilities/logs` does: the feature
     // and a grant of the log's kinds covering the chosen place (an attendant who only maintains a place does not read
-    // its log); other staff with `facilities.view` read the day without it.
-    const userId = ctx.auth?.sub
-    const rbac = ctx.container.resolve<RbacService>('rbacService')
+    // its log); other staff with `facilities.view` read the day without it, and without its incidents.
     const logReader =
       !!today.place &&
       !!findActingRole(grants, LOG_KINDS, placeTarget({ id: today.place.id, ...scope, placeId: today.place.id })) &&
       !!userId &&
       (await rbac.userHasAllFeatures(userId, ['facilities.log.write'], scope))
-    return Response.json(logReader ? today : { ...today, log: null }, { headers: { 'cache-control': 'no-store' } })
+    return Response.json(logReader ? today : { ...today, log: null, incidents: [] }, {
+      headers: { 'cache-control': 'no-store' },
+    })
   } catch (error: unknown) {
     return errorResponse(error, 'facilities.today')
   }
@@ -93,7 +113,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read today at one place',
       description:
-        'The day in the club time zone at the named place (or the first place of the club): its log and the planned sessions and rentals on the place, its ancestors and descendants. A rental carries its version and `canNoShow` (after its start, while requested or confirmed). A facility attendant reads only the places of their assignments and their descendants.',
+        'The day in the club time zone at the named place (or the first place of the club): its log and the planned sessions and rentals on the place, its ancestors and descendants. A rental carries its version and `canNoShow` (after its start, while requested or confirmed). Every entry names its place; a session carries its group and coach; a rental its contact only where the caller holds `facilities.rentals.manage` over the place. The log’s readers also get the incidents reported today on the place family (kind, time, photo count). A facility attendant reads only the places of their assignments and their descendants.',
       query: todayQuerySchema,
       responses: [{ status: 200, description: 'Today at the place', schema: responseSchema }],
       errors: [
