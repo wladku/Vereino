@@ -137,6 +137,8 @@
   "club_core.places.columns.status": "Status",
   "club_core.places.actions.create": "Add place",
   "club_core.places.actions.back": "Back to places",
+  "club_core.places.links.calendar": "Facility calendar",
+  "club_core.places.links.zones": "Zones and rates",
   "club_core.places.create.title": "New place",
   "club_core.places.edit.title": "Edit place",
   "club_core.places.groups.place": "Place",

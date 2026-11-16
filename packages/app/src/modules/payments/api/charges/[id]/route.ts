@@ -1,7 +1,8 @@
 // `GET /api/payments/charges/{id}` — one charge with its payments (payments spec API table, REQ-011, REQ-012; B-22;
 // issue #109): the B-21 fields with the debtor's and payer's names, what was paid, what remains, the overdue marker
 // in the club's calendar, and every payment — date, method, title or receipt, who received it, amount, and whether
-// it was reversed; a rental charge adds its payer and payee institutions and the typed-in renter's name (#291).
+// it was reversed, and where it came from (`source`: "bank statement" for an imported transfer, #292); a rental charge
+// adds its payer and payee institutions and the typed-in renter's name (#291).
 // `updatedAt` is the lock token the payment, cancellation and reversal commands expect.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -12,7 +13,7 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { amountDueOf, isOverdue, paidTotal, remainingOf } from '../../../lib/charge-ledger'
+import { amountDueOf, isOverdue, paidTotal, paymentSourceOf, remainingOf } from '../../../lib/charge-ledger'
 import { clubClock, findInstitutions, findPersons } from '../../../services/directory'
 import { chargePayments, findCharge } from '../../../services/ledger'
 import { discountRuleNames } from '../../../services/read'
@@ -33,6 +34,9 @@ const paymentSchema = z.object({
   paidOn: z.string(),
   reference: z.string().nullable().describe('Transfer title or receipt; the reason of a reversing entry'),
   receivedBy: personSchema,
+  source: z
+    .enum(['manual', 'bank_statement', 'cash', 'online'])
+    .describe('Where the payment came from; `bank_statement` is a booked transfer of an imported statement (#292)'),
   reversesPaymentId: z.string().nullable(),
   reversed: z.boolean().describe('A reversing entry names this payment'),
   overpayment: z
@@ -125,6 +129,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         paidOn: calendarDate(row.paidOn),
         reference: row.reference ?? null,
         receivedBy: nameOf(row.recordedByPersonId),
+        source: paymentSourceOf(row),
         reversesPaymentId: row.reversesPaymentId ?? null,
         reversed: reversed.has(row.id),
         overpayment: row.isOverpayment,

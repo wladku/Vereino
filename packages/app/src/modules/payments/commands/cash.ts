@@ -10,7 +10,8 @@
 // advisory lock, so no number is issued twice. Like every `payments` write of phase 4 it needs the club
 // administrator's grant (D-030); the coach's path is `payments.cash.collect` (`commands/group-charges.ts`, E07-S10
 // #117), which shares `acceptCashOnCharges` and the confirmation. Money is never edited or deleted: the command is
-// not undoable, and a reversing entry (`payments.payments.reverse`) corrects.
+// not undoable, and a reversing entry (`payments.payments.reverse`) corrects. The optional `origin` names the screen the
+// dialog was opened from (payments parity DD-C03, #292) and goes to the audit context only.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -25,6 +26,7 @@ import type { CashReceivedParams } from '../emails/templates'
 import {
   allocateCash,
   cashRefusal,
+  type CashOrigin,
   nextReceiptNumber,
   receiptPrefix,
   receiptSequence,
@@ -61,6 +63,8 @@ export type CashRecordResult = PaymentsCommandResult<Payment, null> & {
   payments: CashPaymentLine[]
   /** The dispatch of the confirmation e-mail, or null (turned off, or the payer has no address). */
   dispatchId: string | null
+  /** The screen the dialog was opened from (DD-C03, #292); null when the client named none. */
+  origin: CashOrigin | null
   scope: { tenantId: string; organizationId: string }
 }
 
@@ -304,6 +308,7 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         paidOn: parsed.paidOn,
         payments: lines,
         dispatchId,
+        origin: parsed.origin ?? null,
         scope,
       }
     })
@@ -336,7 +341,11 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
           chargeStatus: line.chargeStatus,
         })),
       },
-      context: { receiptNumber: result.receiptNumber, notified: result.dispatchId !== null },
+      context: {
+        receiptNumber: result.receiptNumber,
+        notified: result.dispatchId !== null,
+        ...(result.origin ? { origin: result.origin } : {}),
+      },
     }),
 }
 

@@ -98,13 +98,14 @@ export type PayerWithDue = {
 
 /**
  * The payers with charges still to pay, each with the wards the charges are for and the total due, sorted by surname;
- * `search` (three letters or more) matches the payer's or a ward's name. The payer select of "Accept cash" (#114) and
- * of the statement's Assign (#113).
+ * `search` (three letters or more) matches the payer's or a ward's name; `personId` keeps only that payer (the
+ * preselection of B-22, #292). The payer select of "Accept cash" (#114) and of the statement's Assign (#113).
  */
 export async function payersWithDue(
   container: AwilixContainer,
   scope: PaymentsScope,
   search?: string,
+  personId?: string,
 ): Promise<PayerWithDue[]> {
   const charges = await openPayableCharges(container, scope)
   const paid = await paidTotals(
@@ -120,11 +121,11 @@ export async function payersWithDue(
     })),
   )
   const matching = search ? await searchPersonIds(container, scope, search) : null
-  const filtered = matching
-    ? summaries.filter(
-        (summary) => matching.has(summary.payerPersonId) || summary.wardIds.some((id) => matching.has(id)),
-      )
-    : summaries
+  const filtered = summaries.filter(
+    (summary) =>
+      (!personId || summary.payerPersonId === personId) &&
+      (!matching || matching.has(summary.payerPersonId) || summary.wardIds.some((id) => matching.has(id))),
+  )
   const persons = await findPersons(
     container,
     scope,

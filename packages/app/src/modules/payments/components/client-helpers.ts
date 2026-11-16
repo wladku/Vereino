@@ -4,6 +4,7 @@ import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
+import type { PaymentSource } from '../lib/charge-ledger'
 
 export type Translate = ReturnType<typeof useT>
 
@@ -14,6 +15,7 @@ export const FEES_HREF = '/backend/payments/fees'
 export const DISCOUNTS_HREF = '/backend/payments/discounts'
 export const PAYMENT_SETTINGS_HREF = '/backend/payments/settings'
 export const CHARGES_HREF = '/backend/payments/charges'
+export const BANK_HREF = '/backend/payments/bank'
 
 export function chargeHref(id: string): string {
   return `${CHARGES_HREF}/${encodeURIComponent(id)}`
@@ -88,6 +90,8 @@ export type PaymentRow = {
   paidOn: string
   reference: string | null
   receivedBy: PersonName | null
+  /** Where the payment came from; "bank statement" is read as its receiver on B-22 (#292). */
+  source: PaymentSource
   reversesPaymentId: string | null
   reversed: boolean
   createdAt: string

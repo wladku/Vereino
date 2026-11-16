@@ -4,6 +4,7 @@
 // Skipped and All, each with its count. Each transfer shows the day, the amount, the sender and title, the payer with
 // their code, the charges it pays (oldest first) and why it was matched; its actions are Confirm, Change or Assign,
 // Skip, Restore (a skipped one) and Undo (a recorded one). The import history lists the latest imports with counts.
+// "Accept cash" in the head opens the shared cash dialog (payments parity DD-C03, #292).
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
@@ -21,6 +22,7 @@ import {
   type BankAction,
   type BankPerspective,
 } from '../../lib/bank-matching'
+import { AcceptCashButton } from '../AcceptCashButton'
 import { errorMessage, formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
 import { BankAssignDialog, BankSkipDialog } from './BankDecisionDialogs'
 import { BankImportPanel } from './BankImportPanel'
@@ -224,6 +226,7 @@ export function BankStatementPage() {
             titleHeadingLevel={1}
             entityId="payments:bank_transaction"
             extensionTableId="payments.bank_transactions"
+            actions={<AcceptCashButton origin="bank" onDone={refresh} />}
             columns={columns}
             data={transfers.data?.items ?? []}
             isLoading={transfers.isLoading}

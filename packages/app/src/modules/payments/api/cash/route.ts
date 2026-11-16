@@ -1,7 +1,8 @@
 // `/api/payments/cash` — "Accept cash" (payments spec API table → `payments.cash.record`; REQ-031, TEST-043; M-15,
 // B-21; issue #114):
 // - `POST` accepts cash for selected charges of one payer: one `KP/YYYY/MM/NNN` receipt, the amount paid oldest first,
-//   an e-mail confirmation to the payer unless `notify` is false;
+//   an e-mail confirmation to the payer unless `notify` is false; the optional `origin` (B-21, B-22, B-29, …; DD-C03,
+//   #292) goes to the audit context;
 // - `GET` is "Received by me today": the receipts the caller issued today in the club's calendar, with the total to hand
 //   over to the treasurer (reversed payments count for nothing).
 import { z } from 'zod'
@@ -154,7 +155,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Accept cash for selected charges of one payer',
       description:
-        'Issues one `KP/YYYY/MM/NNN` receipt, spreads the amount over the selected charges oldest first (a lower amount leaves the newest partially paid) and queues an e-mail confirmation to the payer unless `notify` is false.',
+        'Issues one `KP/YYYY/MM/NNN` receipt, spreads the amount over the selected charges oldest first (a lower amount leaves the newest partially paid) and queues an e-mail confirmation to the payer unless `notify` is false. The optional `origin` (the screen the dialog was opened from) is kept in the audit context.',
       requestBody: { contentType: 'application/json', schema: cashRecordSchema },
       responses: [{ status: 201, description: 'The receipt and the payments', schema: recordResponseSchema }],
       errors: [

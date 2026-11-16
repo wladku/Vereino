@@ -209,6 +209,9 @@ test('TEST-C01 a rental gets its charge payable to the owner; cancellation, the 
     await expect(page.getByTestId('charge-payer')).toHaveText('Piotr Najemca')
     await expect(page.getByTestId('charge-payee')).toContainText(uiText('payments.ledger.payee.ownerUnknown'))
     await expect(page.getByTestId('charge-payee')).not.toContainText(uiText('payments.ledger.payee.club'))
+    // Q-C16 (#292): no "Accept cash" on a rental charge, even with a person as payer; "Record payment" stays.
+    await expect(page.getByTestId('record-payment-open')).toBeVisible()
+    await expect(page.getByTestId('accept-cash-open')).toHaveCount(0)
   } finally {
     await other.cleanup()
     await club.cleanup()

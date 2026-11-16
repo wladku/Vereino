@@ -1188,6 +1188,24 @@
       "rule": "hardcoded-palette",
       "match": "text-blue-500/70",
       "reason": "Existing scaffold styling retained as a bounded migration baseline."
+    },
+    {
+      "file": "src/modules/facilities/components/day-axis/DayAxis.tsx",
+      "rule": "inline-style",
+      "match": "style=",
+      "reason": "Facilities parity spec DD-R01 (#276): the day axis is a recorded exception to the shared components; these style props carry only computed geometry (minutes to pixels, lanes), no colours."
+    },
+    {
+      "file": "src/modules/facilities/components/day-axis/DayAxis.tsx",
+      "rule": "inline-style",
+      "match": "style=",
+      "reason": "Facilities parity spec DD-R01 (#276): the day axis is a recorded exception to the shared components; these style props carry only computed geometry (minutes to pixels, lanes), no colours."
+    },
+    {
+      "file": "src/modules/facilities/components/day-axis/DayAxis.tsx",
+      "rule": "inline-style",
+      "match": "style=",
+      "reason": "Facilities parity spec DD-R01 (#276): the day axis is a recorded exception to the shared components; these style props carry only computed geometry (minutes to pixels, lanes), no colours."
     }
   ]
 }

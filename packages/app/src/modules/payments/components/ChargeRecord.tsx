@@ -5,6 +5,8 @@
 // partially paid) and "Cancel charge" (open and unpaid, with a required reason). Every action sends the charge's lock
 // token and refreshes the record afterwards. The payee line reads "to the club's account" or "to the account of
 // {owner}" — the owner institution of a rental charge, or "the facility owner" while the charge names none (#291).
+// "Accept cash" opens the shared cash dialog with the charge's payer chosen, for an open charge whose payer is a person
+// and never for a rental charge (Q-C16); "Received by" reads "bank statement" for an imported transfer (#292).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES, payerDisplayName } from '../lib/charge-ledger'
 import type { ChargeStatus } from '../lib/payments-rules'
+import { AcceptCashButton } from './AcceptCashButton'
 import { ChargeStatusBadge, OverdueBadge } from './ChargesTable'
 import { ReasonDialog } from './ReasonDialog'
 import { RecordPaymentDialog } from './RecordPaymentDialog'
@@ -81,6 +84,9 @@ export function ChargeRecord({ id }: { id: string }) {
   const charge = load.charge
   const status = (charge.status ?? 'open') as ChargeStatus
   const canRecord = OPEN_CHARGE_STATUSES.includes(status) && charge.remaining > 0
+  // A rental charge is paid to the facility owner's account, never in cash to the club (Q-C16, #291).
+  const cashPayerId =
+    canRecord && charge.sourceType !== 'rental' && !charge.payerMissing ? (charge.payerPersonId ?? null) : null
   const canCancel = status === 'open' && charge.paid === 0
   const lockHeader = () => buildOptimisticLockHeader(charge.updatedAt)
 
@@ -105,6 +111,7 @@ export function ChargeRecord({ id }: { id: string }) {
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
+          {cashPayerId ? <AcceptCashButton origin="charge" payerPersonId={cashPayerId} onDone={refresh} /> : null}
           {canRecord ? (
             <Button
               type="button"
@@ -217,7 +224,11 @@ export function ChargeRecord({ id }: { id: string }) {
                       </span>
                     </TableCell>
                     <TableCell className="break-words">{payment.reference ?? '—'}</TableCell>
-                    <TableCell>{personName(payment.receivedBy) || '—'}</TableCell>
+                    <TableCell data-testid="charge-payment-received-by">
+                      {payment.source === 'bank_statement'
+                        ? t('payments.ledger.payments.bankStatement')
+                        : personName(payment.receivedBy) || '—'}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{formatMoney(payment.amount, locale)}</TableCell>
                     <TableCell className="text-right">
                       {reversible(payment) ? (
