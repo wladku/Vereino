@@ -23,7 +23,7 @@ import {
   PAYEES,
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
-import { MAX_CASH_CHARGES } from '../lib/cash'
+import { CASH_ORIGINS, MAX_CASH_CHARGES } from '../lib/cash'
 import { BANK_FORMATS } from '../lib/bank-statement'
 import { BANK_SKIP_REASONS, BANK_TRANSACTION_STATUSES, MAX_SKIP_NOTE_LENGTH } from '../lib/bank-matching'
 import {
@@ -152,7 +152,7 @@ export function flagSet(value: string | undefined): boolean {
 
 export const chargeListQuerySchema = z.object({
   ...listQueryBase,
-  sortField: z.enum(['dueDate', 'createdAt', 'updatedAt']).optional(),
+  sortField: z.enum(['periodLabel', 'dueDate', 'createdAt', 'updatedAt']).optional(),
   /** The `period_label`: `YYYY-MM` or `one_off`. */
   period: z.string().trim().max(20).optional(),
   payerMissing: flagSchema.optional(),
@@ -199,6 +199,10 @@ export const cashRecordSchema = z
     amount: z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)'),
     paidOn: calendarDateSchema.describe('The day the cash was received; not in the future'),
     notify: z.boolean().default(true).describe('E-mail the payer a confirmation with the receipt number'),
+    origin: z
+      .enum(CASH_ORIGINS)
+      .optional()
+      .describe('The screen the dialog was opened from (DD-C03); kept in the audit context, changes nothing else'),
   })
   .strict()
 
@@ -249,6 +253,8 @@ export const cashChargesQuerySchema = z.object({ payerPersonId: z.uuid() })
 
 export const cashPayersQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
+  /** One payer by id, for a dialog opened with the payer chosen (B-22, DD-C03; #292). */
+  personId: z.uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 })

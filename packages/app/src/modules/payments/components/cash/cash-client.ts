@@ -3,6 +3,7 @@
 // write. Authorization stays on the routes and the command.
 import { useQuery } from '@tanstack/react-query'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import type { CashOrigin } from '../../lib/cash'
 
 type PersonName = { firstName: string; lastName: string }
 
@@ -54,6 +55,8 @@ export type CashInput = {
   amount: number
   paidOn: string
   notify: boolean
+  /** The screen the dialog was opened from (DD-C03, #292); kept in the audit context. */
+  origin?: CashOrigin
 }
 
 /** Every cash query starts with this key, so one invalidation refreshes payers, charges and today's list. */
@@ -61,10 +64,11 @@ export const CASH_QUERY_KEY = 'payments-cash'
 
 const PAYER_PAGE_SIZE = 20
 
-export function useCashPayers(search: string) {
+export function useCashPayers(search: string, enabled = true) {
   const term = search.trim()
   return useQuery({
     queryKey: [CASH_QUERY_KEY, 'payers', term],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams({ pageSize: String(PAYER_PAGE_SIZE) })
       if (term) params.set('search', term)
@@ -72,6 +76,20 @@ export function useCashPayers(search: string) {
         `/api/payments/cash/payers?${params.toString()}`,
       )
       return call.result ?? { items: [], total: 0 }
+    },
+  })
+}
+
+/** One payer by id for a dialog opened with the payer chosen (B-22, #292); null while off or when nothing is due. */
+export function useCashPayer(personId: string | null) {
+  return useQuery({
+    queryKey: [CASH_QUERY_KEY, 'payer', personId],
+    enabled: personId !== null,
+    queryFn: async () => {
+      const call = await apiCallOrThrow<{ items: CashPayer[] }>(
+        `/api/payments/cash/payers?personId=${encodeURIComponent(personId ?? '')}`,
+      )
+      return call.result?.items[0] ?? null
     },
   })
 }

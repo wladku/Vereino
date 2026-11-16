@@ -1,7 +1,8 @@
 // `GET /api/payments/cash/payers?search=` (issue #114, the owner's default of 2026-11-07: the payer select of
 // "Accept cash", M-15 and B-21): the payers with charges still to pay, each with the wards the charges are for and the
 // total due, sorted by surname; `search` (three letters or more) matches the payer's or a ward's name through the
-// people directory's name tokens.
+// people directory's name tokens. `personId` answers that one payer, or none when they have nothing to pay — the
+// preselection of a dialog opened with the payer chosen (B-22; payments parity DD-C03, #292).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -49,7 +50,7 @@ export async function GET(request: Request): Promise<Response> {
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
     })
-    const named = await payersWithDue(ctx.container, scope, query.search)
+    const named = await payersWithDue(ctx.container, scope, query.search, query.personId)
     const start = (query.page - 1) * query.pageSize
     return Response.json({
       items: named.slice(start, start + query.pageSize),
@@ -70,7 +71,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Payers with charges still to pay',
       description:
-        "Each payer with the wards their charges are for and the total due, sorted by surname. `search` (three letters or more) matches the payer's or a ward's name; a shorter term filters nothing.",
+        "Each payer with the wards their charges are for and the total due, sorted by surname. `search` (three letters or more) matches the payer's or a ward's name; a shorter term filters nothing. `personId` narrows the answer to that payer: one item, or none when they have nothing to pay.",
       query: cashPayersQuerySchema,
       responses: [{ status: 200, description: 'The payers', schema: responseSchema }],
       errors: [

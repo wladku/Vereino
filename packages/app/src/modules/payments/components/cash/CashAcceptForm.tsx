@@ -4,6 +4,9 @@
 // their charges as checkboxes with what remains and the overdue marker (all selected), the amount (the selected sum;
 // a lower amount pays the oldest first), the date (today, never later) and "Send the payer an e-mail confirmation"
 // (on). After saving, the toast "Received X in cash from … — receipt KP/…" and a fresh form for the next payer.
+// One form for every screen (payments parity DD-C03, #292): `payerPersonId` opens it with that payer chosen (B-22) and
+// the focus on the amount, `chargeIds` ticks only those charges (a B-32 order row), and `origin` names the screen in
+// the audit context.
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -15,10 +18,12 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz } from '../client-helpers'
+import { cashSelection, type CashOrigin } from '../../lib/cash'
 import {
   CASH_QUERY_KEY,
   recordCash,
   useCashCharges,
+  useCashPayer,
   useCashPayers,
   type CashPayer,
   type CashRecorded,
@@ -30,9 +35,23 @@ function wardsLabel(payer: CashPayer): string {
 }
 
 export function CashAcceptForm({
+  origin,
+  payerPersonId,
+  chargeIds,
+  focusOnOpen = false,
+  formRef,
   onDone,
   onCancel,
 }: {
+  origin: CashOrigin
+  /** Opens the form with this payer chosen, when they have something to pay. */
+  payerPersonId?: string
+  /** Ticks only these of the chosen payer's charges. */
+  chargeIds?: readonly string[]
+  /** Moves the focus to the payer search, or to the amount once a chosen payer loads (the dialog, not the phone). */
+  focusOnOpen?: boolean
+  /** The form element, so the dialog can submit it on Ctrl/Cmd+Enter. */
+  formRef?: React.Ref<HTMLFormElement>
   onDone?: (recorded: CashRecorded) => void | Promise<void>
   onCancel?: () => void
 }) {
@@ -48,11 +67,18 @@ export function CashAcceptForm({
     problem: React.useId(),
     charges: React.useId(),
   }
+  const searchRef = React.useRef<HTMLInputElement>(null)
+  const amountRef = React.useRef<HTMLInputElement>(null)
   const [search, setSearch] = React.useState('')
-  const [payer, setPayer] = React.useState<CashPayer | null>(null)
-  // The payer's charges arrive selected: the state holds the ones unticked. The amount follows the selection until the
-  // collector types one (null = the selected sum).
-  const [unticked, setUnticked] = React.useState<string[]>([])
+  // The opening screen's payer holds until the collector changes the payer or the cash is saved.
+  const [preset, setPreset] = React.useState(Boolean(payerPersonId))
+  const presetPayer = useCashPayer(preset && payerPersonId ? payerPersonId : null)
+  const [chosen, setChosen] = React.useState<CashPayer | null>(null)
+  const payer = chosen ?? (preset ? (presetPayer.data ?? null) : null)
+  const presetLoading = preset && presetPayer.isLoading
+  // The payer's charges arrive selected (or only the screen's ones): the state holds the ones the collector flipped.
+  // The amount follows the selection until the collector types one (null = the selected sum).
+  const [toggled, setToggled] = React.useState<string[]>([])
   const [typedAmount, setTypedAmount] = React.useState<string | null>(null)
   const [paidOn, setPaidOn] = React.useState(today)
   const [notify, setNotify] = React.useState(true)
@@ -60,13 +86,19 @@ export function CashAcceptForm({
   const [problem, setProblem] = React.useState<string | null>(null)
   const [invalid, setInvalid] = React.useState<'amount' | 'date' | 'charges' | null>(null)
 
-  const payers = useCashPayers(search)
+  const payers = useCashPayers(search, payer === null && !presetLoading)
   const charges = useCashCharges(payer?.payerPersonId ?? null)
   const items = React.useMemo(() => charges.data?.items ?? [], [charges.data])
+  const only = preset && chosen === null && chargeIds ? chargeIds : null
 
   const selected = React.useMemo(
-    () => items.filter((item) => !unticked.includes(item.id)).map((item) => item.id),
-    [items, unticked],
+    () =>
+      cashSelection(
+        items.map((item) => item.id),
+        only,
+        toggled,
+      ),
+    [items, only, toggled],
   )
   const selectedSum = React.useMemo(
     () => items.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.remaining, 0),
@@ -74,9 +106,17 @@ export function CashAcceptForm({
   )
   const amount = typedAmount ?? (selectedSum > 0 ? fromGrosz(selectedSum) : '')
 
+  const payerId = payer?.payerPersonId ?? null
+  React.useEffect(() => {
+    if (!focusOnOpen || presetLoading) return
+    if (payerId === null) searchRef.current?.focus()
+    else if (preset && chosen === null) amountRef.current?.focus()
+  }, [focusOnOpen, presetLoading, payerId, preset, chosen])
+
   const reset = () => {
-    setPayer(null)
-    setUnticked([])
+    setChosen(null)
+    setPreset(false)
+    setToggled([])
     setTypedAmount(null)
     setPaidOn(clubToday(new Date(), timeZone))
     setNotify(true)
@@ -85,7 +125,7 @@ export function CashAcceptForm({
   }
 
   const submit = async () => {
-    if (!payer) return
+    if (!payer || pending) return
     if (selected.length === 0) {
       setInvalid('charges')
       setProblem(t('payments.cash.chargesRequired'))
@@ -107,7 +147,7 @@ export function CashAcceptForm({
     setInvalid(null)
     try {
       const recorded = await recordCash(
-        { payerPersonId: payer.payerPersonId, chargeIds: selected, amount: grosz, paidOn, notify },
+        { payerPersonId: payer.payerPersonId, chargeIds: selected, amount: grosz, paidOn, notify, origin },
         t('payments.cash.error'),
       )
       flash(
@@ -129,6 +169,14 @@ export function CashAcceptForm({
     }
   }
 
+  if (presetLoading) {
+    return (
+      <p className="text-muted-foreground text-sm" role="status" data-testid="cash-payer-loading">
+        {t('payments.cash.loading')}
+      </p>
+    )
+  }
+
   if (!payer) {
     const list = payers.data?.items ?? []
     return (
@@ -136,6 +184,7 @@ export function CashAcceptForm({
         <div className="flex flex-col gap-2">
           <Label htmlFor={ids.search}>{t('payments.cash.payer')}</Label>
           <Input
+            ref={searchRef}
             id={ids.search}
             type="search"
             data-testid="cash-payer-search"
@@ -167,7 +216,8 @@ export function CashAcceptForm({
                   data-testid="cash-payer-option"
                   className="hover:bg-muted focus-visible:ring-ring flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left focus-visible:ring-2 focus-visible:outline-none"
                   onClick={() => {
-                    setPayer(item)
+                    setChosen(item)
+                    setToggled([])
                     setProblem(null)
                   }}
                 >
@@ -198,6 +248,7 @@ export function CashAcceptForm({
 
   return (
     <form
+      ref={formRef}
       className="flex flex-col gap-4"
       data-testid="cash-form"
       onSubmit={(event) => {
@@ -255,9 +306,11 @@ export function CashAcceptForm({
                   className="mt-0.5"
                   checked={selected.includes(item.id)}
                   disabled={pending}
-                  onCheckedChange={(value) => {
-                    setUnticked((current) =>
-                      value === true ? current.filter((chargeId) => chargeId !== item.id) : [...current, item.id],
+                  onCheckedChange={() => {
+                    setToggled((current) =>
+                      current.includes(item.id)
+                        ? current.filter((chargeId) => chargeId !== item.id)
+                        : [...current, item.id],
                     )
                     setTypedAmount(null)
                   }}
@@ -286,6 +339,7 @@ export function CashAcceptForm({
         <div className="flex flex-col gap-2">
           <Label htmlFor={ids.amount}>{t('payments.ledger.record.amount')}</Label>
           <Input
+            ref={amountRef}
             id={ids.amount}
             inputMode="decimal"
             data-testid="cash-amount"
