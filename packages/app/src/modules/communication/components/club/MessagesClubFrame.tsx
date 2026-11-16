@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -22,7 +22,9 @@ import {
   memberSwitchers,
   useMemberContext,
   useMemberNavFeatures,
+  MemberSkeleton,
   type MemberLinkProps,
+  type MemberSkeletonShape,
 } from '@vereino/ui'
 
 export type MessagesProfile = {
@@ -84,7 +86,14 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
   )
 }
 
-export function MessagesClubFrame({ children }: { children: (profile: MessagesProfile) => React.ReactNode }) {
+export function MessagesClubFrame({
+  children,
+  skeleton = 'rows',
+}: {
+  children: (profile: MessagesProfile) => React.ReactNode
+  /** The shape of the page's content while the profile loads (REQ-N15): `fields` on a form. */
+  skeleton?: MemberSkeletonShape
+}) {
   const t = useT()
   const pathname = usePathname()
   const query = useMemberProfile()
@@ -93,7 +102,7 @@ export function MessagesClubFrame({ children }: { children: (profile: MessagesPr
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('communication.club.loading')} />
+    body = <MemberSkeleton shape={skeleton} label={t('communication.club.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage

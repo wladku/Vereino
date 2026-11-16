@@ -10,7 +10,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -32,6 +32,7 @@ import { ThreadComposer, type PostedThread } from '../ThreadComposer'
 import { useCanPost } from '../useCanPost'
 import { MessagesClubFrame, type MessagesProfile } from './MessagesClubFrame'
 import { hasStaff, useDirectOptions } from './useDirectOptions'
+import { MemberSkeleton } from '@vereino/ui'
 
 class InboxLoadError extends Error {}
 
@@ -50,10 +51,22 @@ function useInbox(wardId: string | null) {
 }
 
 /** "Write to the coach", offered only when a household member takes part in a group with staff today. */
-function WriteAction() {
+/** "Write to the coach" when the household has staff to write to: a button in the header, a link under an empty inbox. */
+function WriteAction({ link = false }: { link?: boolean }) {
   const t = useT()
   const options = useDirectOptions()
   if (!options.data?.some(hasStaff)) return null
+  if (link) {
+    return (
+      <Link
+        href={CLUB_MESSAGE_NEW_HREF}
+        className="text-primary inline-flex min-h-11 items-center text-sm underline"
+        data-testid="club-messages-empty-write"
+      >
+        {t('communication.direct.action')}
+      </Link>
+    )
+  }
   return (
     <Button asChild className="min-h-11 self-start">
       <Link href={CLUB_MESSAGE_NEW_HREF} data-testid="club-messages-write">
@@ -169,7 +182,7 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
   const ward = wards.find((entry) => entry.personId === wardId) ?? null
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('communication.club.loading')} />
+    body = <MemberSkeleton shape="rows" label={t('communication.club.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage
@@ -183,9 +196,12 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
     )
   } else if (query.data.items.length === 0) {
     body = (
-      <p className="text-muted-foreground" data-testid="club-messages-empty">
-        {ward ? t('communication.club.wards.empty', { name: ward.firstName }) : t('communication.club.empty')}
-      </p>
+      <div className="flex flex-col items-start gap-2" data-testid="club-messages-empty">
+        <p className="text-muted-foreground">
+          {ward ? t('communication.club.wards.empty', { name: ward.firstName }) : t('communication.club.empty')}
+        </p>
+        <WriteAction link />
+      </div>
     )
   } else {
     body = (

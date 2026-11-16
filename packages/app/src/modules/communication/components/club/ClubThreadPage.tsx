@@ -8,7 +8,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -18,6 +18,7 @@ import { MessageList, ReplyBox } from '../ThreadMessages'
 import { CaseBanner, ShareTextPanel, postReply, useMarkRead, useThread } from '../ThreadRecord'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
 import { MessagesClubFrame } from './MessagesClubFrame'
+import { MemberSkeleton } from '@vereino/ui'
 
 export const UNREAD_COUNT_QUERY_KEY = ['communication-unread-count'] as const
 
@@ -61,7 +62,7 @@ function Thread({ id }: { id: string }) {
       {t('communication.club.back')}
     </Link>
   )
-  if (!query.data && query.isFetching) return <LoadingMessage label={t('communication.club.loading')} />
+  if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('communication.club.loading')} />
   if (!query.data) {
     return (
       <ErrorMessage
