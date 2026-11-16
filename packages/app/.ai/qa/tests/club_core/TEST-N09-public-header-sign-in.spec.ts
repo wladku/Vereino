@@ -10,7 +10,7 @@ import { uiText } from '../_fixtures/ui-text'
 
 // TEST-N09 (navigation spec REQ-N09, REQ-N10, AC-N09, AC-N10; E09-S07 #261): every public page — club, section,
 // session, facilities list, facility calendar and the request confirmation — starts with the header Club · Sections ·
-// Facilities · Sign in ("Facilities" only with the calendar block; "Events" waits for P-06), and every link works. The
+// Facilities · Sign in ("Facilities" only with the calendar block; "Events" only with the events block, covered by TEST-N14), and every link works. The
 // sign-in page shows the club of `?club=` (logo, name, tagline), remembers it in the `vereino_club` cookie for the
 // next `/login`, shows the neutral page for an unknown and an unpublished slug alike, and never says "Open Mercato".
 test.describe.configure({ timeout: 300_000 })

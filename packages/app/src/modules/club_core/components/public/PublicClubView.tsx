@@ -1,17 +1,16 @@
 'use client'
 // `/p/[clubSlug]` — the public club page (club spec UI table, J-008, REQ-025; #29): the club's name, logo and
 // description, its contact with the `contact` block, a tile for each public section with the section's effective
-// logo, short description and number of public groups (`groups.publicCatalog`, #89), and the upcoming one-off events
-// of the public groups (`activities.publicSchedule`, #91), and a "Facilities" link to the club's public facility
-// calendars when the club publishes them (`facilities.publicPlaces`, P-01 → P-03, #124). States: loading, error with
-// retry, 404 (nothing about any club) and "the club does not publish a page".
+// logo, short description and number of public groups (`groups.publicCatalog`, #89), and a "Facilities" link to the
+// club's public facility calendars when the club publishes them (`facilities.publicPlaces`, P-01 → P-03, #124). The
+// one-off events moved to their own page P-06 (#263). States: loading, error with retry, 404 (nothing about any club)
+// and "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { phoneHref, pluralForm } from '../../lib/public-page'
-import { PublicEvents } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { sectionHref, usePublicClub } from './public-client'
 
@@ -66,7 +65,6 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
   }
 
   const { club, sections, blocks } = load.page
-  const events = blocks.schedule?.events ?? []
   const groupCounts = blocks.groups?.counts ?? {}
   const places = blocks.places
   return (
@@ -144,7 +142,6 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
           </Link>
         </section>
       ) : null}
-      {events.length > 0 ? <PublicEvents clubSlug={club.slug} events={events} /> : null}
       {club.contact ? (
         <section className="flex flex-col gap-2" aria-labelledby="public-club-contact-title">
           <h2 id="public-club-contact-title" className="text-lg font-semibold">

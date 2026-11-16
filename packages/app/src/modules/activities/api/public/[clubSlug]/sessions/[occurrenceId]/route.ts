@@ -56,7 +56,7 @@ const pageSchema = z.object({
     nav: z
       .object({ facilities: z.boolean(), events: z.boolean() })
       .describe(
-        'Which optional links the public header shows: `facilities` while the club publishes its facility calendars, `events` while it publishes events (false until P-06)',
+        'Which optional links the public header shows: `facilities` while the club publishes its facility calendars, `events` while it publishes its events page (P-06, #263)',
       ),
   }),
   session: z.object({

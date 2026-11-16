@@ -149,12 +149,26 @@ export function PublicFrame({
   )
 }
 
-/** The page body of a missing page or a club that does not publish one: no club data, a way back to nothing but home. */
-export function PublicNotice({ title, message, testId }: { title: string; message: string; testId: string }) {
+/**
+ * The page body of a missing page or a club that does not publish one: no club data; `action` is a way back (the club
+ * page from a missing section or from P-06 with the events off, #263).
+ */
+export function PublicNotice({
+  title,
+  message,
+  testId,
+  action,
+}: {
+  title: string
+  message: string
+  testId: string
+  action?: React.ReactNode
+}) {
   return (
     <section className="flex flex-col gap-2" data-testid={testId}>
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="text-muted-foreground max-w-prose">{message}</p>
+      {action}
     </section>
   )
 }

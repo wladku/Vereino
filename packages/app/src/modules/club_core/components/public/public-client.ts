@@ -2,7 +2,7 @@
 // table, DD-23; #29): the response shapes of `GET /api/club_core/public/…`, their queries and the load result, which
 // tells a missing page (404 `public_page_not_found`) from a club that does not publish one (404
 // `public_page_disabled`) and from a failed request. The provider blocks (#91): `groups` (`groups.publicCatalog`) and
-// `schedule` (`activities.publicSchedule`: the groups' schedule on a section page, the upcoming events on the club page);
+// `schedule` (`activities.publicSchedule`: the groups' schedule on a section page); the Events page P-06 (#263);
 // `prices` (`payments.publicPrices`, #112: each public group's fees and sibling discount on a section page).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -27,7 +27,36 @@ export type PublicSession = {
   cancelled: boolean
 }
 
-export type PublicEvent = PublicSession & { name: string; type: string; section: { name: string; slug: string } }
+/** An event of the public Events page P-06 (#263). */
+export type PublicEvent = {
+  name: string
+  type: string
+  date: string
+  endDate: string
+  startTime: string
+  endTime: string
+  place: string | null
+  mapUrl: string | null
+  cancelled: boolean
+  past: boolean
+  section: { name: string; slug: string }
+  sectionLogo: PublicLogo
+}
+
+export type PublicEventsPage = {
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
+  sections: { name: string; slug: string }[]
+  section: string | null
+  upcoming: PublicEvent[]
+  past: PublicEvent[]
+}
 
 export type PublicClubPage = {
   club: {
@@ -41,7 +70,6 @@ export type PublicClubPage = {
   }
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
   blocks: {
-    schedule?: { events: PublicEvent[] }
     /** The number of public groups per public section slug (`groups.publicCatalog`, #89). */
     groups?: { counts: Record<string, number> }
     /** The club's places with a public calendar and their list (`facilities.publicPlaces`, #124; P-01 → P-03). */
@@ -59,6 +87,8 @@ export type PublicGroupCard = {
   ageFrom: number | null
   ageTo: number | null
   level: string | null
+  /** A team's age category ("category U-11", #263); null otherwise. */
+  ageCategory: string | null
   conditions?: string | null
   /** A null name: the instructor did not consent (the card says "Section coach"). */
   instructors?: { name: string | null }[]
@@ -120,11 +150,17 @@ export const clubHref = (clubSlug: string): string => `/p/${encodeURIComponent(c
 export const sectionHref = (clubSlug: string, sectionSlug: string): string =>
   `${clubHref(clubSlug)}/sections/${encodeURIComponent(sectionSlug)}`
 
+/** P-06, optionally filtered to one section (`?section=`, #263). */
+export const eventsHref = (clubSlug: string, sectionSlug?: string | null): string =>
+  `${clubHref(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`
+
 async function loadPublic<T>(url: string): Promise<PublicLoad<T>> {
   const call = await apiCall<T & { code?: string }>(url)
   if (call.ok && call.result) return { status: 'ok', page: call.result }
   if (call.status === 404)
-    return call.result?.code === 'public_page_disabled' ? { status: 'disabled' } : { status: 'not_found' }
+    return call.result?.code === 'public_page_disabled' || call.result?.code === 'public_events_disabled'
+      ? { status: 'disabled' }
+      : { status: 'not_found' }
   throw new Error(`[internal] public page request failed with ${String(call.status)}`)
 }
 
@@ -142,6 +178,18 @@ export function usePublicSection(clubSlug: string, sectionSlug: string) {
     queryFn: () =>
       loadPublic<PublicSectionPage>(
         `/api/club_core/public/${encodeURIComponent(clubSlug)}/sections/${encodeURIComponent(sectionSlug)}`,
+      ),
+    retry: false,
+  })
+}
+
+/** P-06 (#263): `disabled` while the club does not publish its page or its events. */
+export function usePublicEvents(clubSlug: string, sectionSlug: string | null) {
+  return useQuery({
+    queryKey: ['club_core-public-events', clubSlug, sectionSlug],
+    queryFn: () =>
+      loadPublic<PublicEventsPage>(
+        `/api/club_core/public/${encodeURIComponent(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`,
       ),
     retry: false,
   })
