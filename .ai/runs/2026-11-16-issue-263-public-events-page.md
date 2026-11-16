@@ -36,7 +36,10 @@
 - `jest` on the changed libs → first run failed `error-codes.test.ts` (the new code missing from the expected table); fixed. Then 308 passed; `public-events.ts`, `public-schedule.ts`, `publication.ts`, `public-catalog.ts` at 100 % statements/branches/functions/lines.
 - `yarn verify` → `[verify] all 17 step(s) passed`.
 - `yarn test:integration:vereino --filter TEST-N14` → run 1 failed: `ageCategoryOptions` returned `{"status":200,"items":[]}` (a new club has no dictionary until `seedAgeCategories`); run 2 failed: `{"code":"event_type_not_allowed"}` 422 for a sparring through `/api/activities/events` (that route takes tournaments and other events only; matches and sparrings are activities with an opponent). Run 3: `1 passed (2.6m)`.
-- `yarn test:integration:vereino --filter TEST-N15` → see below.
+- `yarn test:integration:vereino --filter TEST-N15` → two attempts stopped before any test with `Could not find a working container runtime strategy` (Docker not answering; left alone, a background job waited until `docker info` answered). Then run 1 failed only on axe: `label-content-name-mismatch` (serious, 1 node) on `/club` in every locale and scheme — the "All" link had `aria-label` "Open the messages"; the visible text now stays in the name with an `sr-only` suffix. Run 2: `1 passed (2.3m)`.
+
+- Regression: `--filter TEST-037` → `2 passed (2.7m)`; `--filter TEST-M10` → `1 passed (2.1m)`; `--filter E06-S16` → run 1 failed (`getByTestId('club-tile-messages-error')` not found: the test aborted the old `/api/communication/threads/unread-count` URL, which the tile no longer reads); the route now aborts `**/api/communication/threads?*`; run 2 `1 passed (2.2m)`.
+- Final `yarn verify` after the last changes → `[verify] all 17 step(s) passed`.
 
 ## Open problems
 

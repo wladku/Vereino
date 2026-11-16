@@ -85,13 +85,14 @@ test('E06-S16 a guardian declares from Today: next session, per-tile retry, repo
     await calendarTile.getByRole('button', { name: TRY_AGAIN }).click()
     await expect(calendarTile.getByTestId('club-today-empty')).toBeVisible()
 
-    // The unread count fails: the messages tile says so and offers "Try again"; the calendar tile is unaffected.
-    await page.route('**/api/communication/threads/unread-count', (route) => route.abort())
+    // The unread threads read fails (the tile reads `threads?as=member&unread=1` since #263): the messages tile says so
+    // and offers "Try again"; the calendar tile is unaffected.
+    await page.route('**/api/communication/threads?*', (route) => route.abort())
     await page.reload()
     const messagesError = page.getByTestId('club-tile-messages-error')
     await expect(messagesError).toBeVisible()
     await expect(calendarTile.getByTestId('club-today-empty')).toBeVisible()
-    await page.unroute('**/api/communication/threads/unread-count')
+    await page.unroute('**/api/communication/threads?*')
     await messagesError.getByRole('button', { name: TRY_AGAIN }).click()
     await expect(messagesError).toHaveCount(0)
 

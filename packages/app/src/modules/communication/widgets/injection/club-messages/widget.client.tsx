@@ -52,13 +52,9 @@ export default function ClubMessagesTileWidget() {
               <h2 id="club-today-messages" className="font-semibold">
                 {t('communication.tile.title')}
               </h2>
-              <Link
-                href={CLUB_MESSAGES_HREF}
-                className={`${LINK_CLASS} text-sm`}
-                aria-label={t('communication.tile.open')}
-                data-testid="club-tile-messages"
-              >
+              <Link href={CLUB_MESSAGES_HREF} className={`${LINK_CLASS} text-sm`} data-testid="club-tile-messages">
                 {t('communication.tile.all')}
+                <span className="sr-only"> ({t('communication.tile.open')})</span>
               </Link>
             </div>
             {unread && unread.count > 0 ? (
