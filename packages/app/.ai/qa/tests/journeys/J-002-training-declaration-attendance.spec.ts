@@ -145,11 +145,14 @@ async function fillActivityWizard(page: Page, input: WizardInput): Promise<void>
   await page.getByTestId('activities-recurrence-until').fill(input.until)
 }
 
-/** Creates the filled-in activity and returns its id from the record page the form redirects to. */
+/**
+ * Creates the previewed activity ("Create" is enabled once the last preview found no collision, #268) and returns its id
+ * from the sessions list scoped to it, where the form redirects.
+ */
 async function saveActivityWizard(page: Page): Promise<string> {
   await page.getByRole('button', { name: CREATE }).first().click()
-  await expect(page).toHaveURL(/\/backend\/activities\/activities\/[0-9a-f-]{36}$/)
-  return page.url().split('/').pop() as string
+  await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?activity=[0-9a-f-]{36}$/)
+  return new URL(page.url()).searchParams.get('activity') as string
 }
 
 /** Adds a person to the roster of the open group record (`RosterPanel`) with a role. */
@@ -325,7 +328,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
     await test.step('step 1: the coordinator creates "Żaki training" in the wizard; the preview shows the first sessions and a place conflict before saving', async () => {
       await signIn(page, request, club, coordinator)
       await fillActivityWizard(page, {
-        group: /^Żaki$/,
+        group: /^Żaki \(/,
         name: TRAINING,
         place: new RegExp(`^Orlik 2024 › ${PITCH}$`),
         coach: { lastName: 'Lis', fullName: 'Marek Lis' },
@@ -355,7 +358,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await expect(previewTable.getByText(CONFLICT_STATUS)).toHaveCount(0)
 
       trainingId = await saveActivityWizard(page)
-      await expect(page.getByRole('heading', { level: 1, name: TRAINING })).toBeVisible()
+      await expect(page.getByTestId('occurrences-scope').getByRole('heading', { level: 1 })).toContainText(TRAINING)
       const stored = await getActivity(request, admin, trainingId)
       expect(stored.status, JSON.stringify(stored.body)).toBe(200)
       expect(stored.body).toMatchObject({
@@ -457,7 +460,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
         .poll(async () => (await listGroups(request, ewaToken, '&isActive=true')).items.map((group) => group.id))
         .toContain(poolGroupId)
       await fillActivityWizard(page, {
-        group: new RegExp(`^${POOL_GROUP}$`),
+        group: new RegExp(`^${POOL_GROUP} \\(`),
         name: CLASS,
         place: new RegExp(`^${POOL_PLACE}$`),
         coach: { lastName: 'Fala', fullName: 'Irena Fala' },

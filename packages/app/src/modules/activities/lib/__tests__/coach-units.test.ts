@@ -1,7 +1,10 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  COACH_UNITS_CSV_COLUMNS,
   coachUnitsCsv,
+  coachUnitsCsvHeaders,
   countCoachUnits,
+  csvSeparatorFor,
   groszToDecimal,
   monthRange,
   ownCoachOf,
@@ -168,6 +171,54 @@ describe('the CSV export', () => {
     )
     expect(coachUnitsCsv([{ ...row, coach: 'Marek', amount: 5 }], false)).toBe(
       'coach,planned,given,taken,balance,matches,trips\r\nMarek,2,1,0,1,0,1\r\n',
+    )
+  })
+
+  it('picks the separator of the locale: `;` where decimals take a comma, else `,` (REQ-A06)', () => {
+    expect(csvSeparatorFor('pl')).toBe(';')
+    expect(csvSeparatorFor('de')).toBe(';')
+    expect(csvSeparatorFor('en')).toBe(',')
+  })
+
+  it('takes the headers from the report columns in the user language, with English fallbacks', () => {
+    const seen: string[] = []
+    const headers = coachUnitsCsvHeaders((key, fallback) => {
+      seen.push(key)
+      return key.endsWith('.coach') ? 'Trener' : fallback
+    })
+    expect(headers).toEqual({
+      coach: 'Trener',
+      planned: 'Planned',
+      given: 'Handed over',
+      taken: 'Taken over',
+      balance: 'Balance',
+      matches: 'Matches',
+      trips: 'Away trips',
+      amount: 'Amount',
+    })
+    expect(seen).toContain('activities.reports.coachUnits.columns.handedOver')
+    expect(Object.keys(headers)).toEqual(Object.keys(COACH_UNITS_CSV_COLUMNS))
+  })
+
+  it('writes the localized headers with the `;` separator, quoting fields that hold it', () => {
+    const row = { planned: 2, handedOver: 1, takenOver: 0, balance: 1, matches: 0, trips: 1 }
+    const headers = { ...COACH_UNITS_CSV_COLUMNS, coach: 'Trener', planned: 'Zaplanowane', amount: 'Kwota; zł' }
+    expect(
+      coachUnitsCsv(
+        [
+          { ...row, coach: 'Kowalski, Jan', amount: 181000 },
+          { ...row, coach: 'Nowak; Anna', amount: null },
+        ],
+        true,
+        { headers, separator: ';' },
+      ),
+    ).toBe(
+      'Trener;Zaplanowane;given;taken;balance;matches;trips;"Kwota; zł"\r\n' +
+        'Kowalski, Jan;2;1;0;1;0;1;1810.00\r\n' +
+        '"Nowak; Anna";2;1;0;1;0;1;\r\n',
+    )
+    expect(coachUnitsCsv([{ ...row, coach: 'Marek', amount: 5 }], false, { separator: ';' })).toBe(
+      'coach;planned;given;taken;balance;matches;trips\r\nMarek;2;1;0;1;0;1\r\n',
     )
   })
 })

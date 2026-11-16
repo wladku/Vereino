@@ -90,6 +90,8 @@ export type NameMaps = {
   sections: Map<string, string>
   places: Map<string, string>
   persons: Map<string, string>
+  /** The kind of each group (`team` / `class_group`), so a class group's training reads "Classes" (#268). */
+  groupKinds: Map<string, string>
 }
 
 /** The display names of the referenced groups, sections, places and persons. */
@@ -107,6 +109,7 @@ export async function nameMaps(
   ])
   return {
     groups: new Map([...groups.values()].map((entry) => [entry.id, entry.name])),
+    groupKinds: new Map([...groups.values()].map((entry) => [entry.id, entry.kind])),
     sections: new Map([...sections.values()].map((entry) => [entry.id, entry.name])),
     places: new Map([...places.values()].map((entry) => [entry.id, entry.name])),
     persons: new Map([...persons.values()].map((entry) => [entry.id, `${entry.firstName} ${entry.lastName}`])),

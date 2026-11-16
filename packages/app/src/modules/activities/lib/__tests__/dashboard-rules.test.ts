@@ -35,10 +35,10 @@ describe('sessions widget queries', () => {
   it('opens the matching B-15 perspective', () => {
     expect(WIDGET_PERSPECTIVE).toEqual({ sessionsNeedingCoach: 'unassigned', unsettledSessions: 'unsettled' })
     expect(sessionsWidgetListHref('sessionsNeedingCoach', '/backend/activities/occurrences')).toBe(
-      '/backend/activities/occurrences?perspective=unassigned',
+      '/backend/activities/occurrences?view=unassigned',
     )
     expect(sessionsWidgetListHref('unsettledSessions', '/backend/activities/occurrences')).toBe(
-      '/backend/activities/occurrences?perspective=unsettled',
+      '/backend/activities/occurrences?view=unsettled',
     )
   })
 })

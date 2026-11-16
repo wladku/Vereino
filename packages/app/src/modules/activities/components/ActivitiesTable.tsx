@@ -1,13 +1,17 @@
 'use client'
-// `/backend/activities/activities` (club spec UI table, REQ-005): the activities in the caller's record scope — a
-// coordinator's sections, the whole club for the administrator — with group, section, type, schedule, place, coach and
-// status; server filters search, section, group, type and status. The add action for `activities.manage`, the one-off
-// event action for `activities.events.create`; each row opens the activity record.
+// `/backend/activities/activities` (club spec UI table, REQ-005; README B-13): the activities in the caller's record
+// scope — a coordinator's sections, the whole club for the administrator — with group, section, type (a badge; a class
+// group's training reads "Classes"), the rule with its last day, place, coach and status; server filters search,
+// section, group (prefilled from `?groupId=`), type and status. The add action for `activities.manage`, the one-off
+// event action for `activities.events.create`; each row opens the activity record and its "Sessions" button the
+// sessions list scoped to the activity (REQ-A04 of the groups and activities parity spec, #268). An empty list explains
+// itself and offers "New activity".
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
+import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
@@ -15,14 +19,16 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { ACTIVITY_TYPES } from '../lib/activities-rules'
+import { ACTIVITY_TYPES, typeLabelKey, type ActivityType } from '../lib/activities-rules'
+import { perspectiveHref } from '../lib/occurrence-list'
 import {
   ACTIVITIES_HREF,
   EVENTS_CREATE_HREF,
+  OCCURRENCES_HREF,
   activityHref,
   errorMessage,
   groupOptions,
-  scheduleSummary,
+  ruleSummary,
   sectionOptions,
   tolerant,
   typeLabel,
@@ -67,14 +73,26 @@ function buildColumns(t: Translate): TableColumns<ActivityRow> {
       header: t('activities.activities.columns.type'),
       enableSorting: false,
       meta: { priority: 4 },
-      cell: ({ row }) => typeLabel(t, row.original.type),
+      cell: ({ row }) =>
+        row.original.type ? (
+          <StatusBadge variant="neutral">
+            {t(
+              typeLabelKey(
+                row.original.type as ActivityType,
+                row.original.groupKind === 'class_group' ? 'class_group' : null,
+              ),
+            )}
+          </StatusBadge>
+        ) : (
+          typeLabel(t, null)
+        ),
     },
     {
       id: 'schedule',
       header: t('activities.activities.columns.schedule'),
       enableSorting: false,
       meta: { priority: 3 },
-      cell: ({ row }) => scheduleSummary(t, row.original),
+      cell: ({ row }) => ruleSummary(t, row.original),
     },
     {
       accessorKey: 'placeName',
@@ -101,6 +119,26 @@ function buildColumns(t: Translate): TableColumns<ActivityRow> {
         </StatusBadge>
       ),
     },
+    {
+      id: 'sessions',
+      header: () => <span className="sr-only">{t('activities.activities.columns.sessions')}</span>,
+      enableSorting: false,
+      meta: { priority: 2 },
+      cell: ({ row }) => (
+        <Button asChild size="sm" variant="outline">
+          <Link
+            href={perspectiveHref(OCCURRENCES_HREF, 'all', row.original.id)}
+            aria-label={t('activities.activities.actions.sessionsOf', { name: row.original.name ?? '' })}
+            data-testid="activity-sessions-button"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            {t('activities.activities.actions.sessions')}
+          </Link>
+        </Button>
+      ),
+    },
   ]
 }
 
@@ -121,8 +159,13 @@ export function ActivitiesTable() {
   const router = useRouter()
   const features = useActivitiesFeatures()
   const scopeVersion = useOrganizationScopeVersion()
+  const searchParams = useSearchParams()
   const [search, setSearch] = React.useState('')
-  const [filters, setFilters] = React.useState<FilterValues>({})
+  // The group record's "Activities" link opens the list filtered to its group (`?groupId=`).
+  const [filters, setFilters] = React.useState<FilterValues>(() => {
+    const groupId = searchParams.get('groupId')
+    return groupId ? { groupId } : {}
+  })
   const [page, setPage] = React.useState(1)
 
   const { data, isLoading, error } = useQuery({
@@ -172,62 +215,87 @@ export function ActivitiesTable() {
     [t],
   )
 
+  const filtered = search !== '' || Object.keys(filterParams(filters)).length > 0
+  const groupId = typeof filters.groupId === 'string' ? filters.groupId : ''
+  const createHref = ACTIVITIES_HREF + '/create' + (groupId ? '?groupId=' + encodeURIComponent(groupId) : '')
+
   return (
-    <DataTable<ActivityRow>
-      title={t('activities.activities.title')}
-      titleHeadingLevel={1}
-      entityId="activities:activity"
-      extensionTableId="activities.activities"
-      actions={
-        features.manage || features.createEvents ? (
-          <div className="flex flex-wrap gap-2">
-            {features.createEvents ? (
-              <Button asChild variant="outline">
-                <Link href={EVENTS_CREATE_HREF}>{t('activities.activities.actions.createEvent')}</Link>
-              </Button>
-            ) : null}
-            {features.manage ? (
-              <Button asChild>
-                <Link href={`${ACTIVITIES_HREF}/create`}>{t('activities.activities.actions.create')}</Link>
-              </Button>
-            ) : null}
+    <div className="flex min-w-0 flex-col gap-2">
+      <p className="text-muted-foreground text-sm" data-testid="activities-subtitle">
+        {t('activities.activities.subtitle')}
+      </p>
+      <DataTable<ActivityRow>
+        title={t('activities.activities.title')}
+        titleHeadingLevel={1}
+        entityId="activities:activity"
+        extensionTableId="activities.activities"
+        actions={
+          features.manage || features.createEvents ? (
+            <div className="flex flex-wrap gap-2">
+              {features.createEvents ? (
+                <Button asChild variant="outline">
+                  <Link href={EVENTS_CREATE_HREF}>{t('activities.activities.actions.createEvent')}</Link>
+                </Button>
+              ) : null}
+              {features.manage ? (
+                <Button asChild>
+                  <Link href={createHref}>{t('activities.activities.actions.create')}</Link>
+                </Button>
+              ) : null}
+            </div>
+          ) : null
+        }
+        columns={columns}
+        data={data?.items ?? []}
+        isLoading={isLoading}
+        error={error ? errorMessage(error, t('activities.activities.errors.load')) : null}
+        emptyState={
+          <div data-testid="activities-empty">
+            <EmptyState
+              title={t(filtered ? 'activities.activities.emptyFiltered.title' : 'activities.activities.empty.title')}
+              description={t(
+                filtered ? 'activities.activities.emptyFiltered.text' : 'activities.activities.empty.text',
+              )}
+              actions={
+                features.manage ? (
+                  <Button asChild>
+                    <Link href={createHref}>{t('activities.activities.actions.create')}</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
           </div>
-        ) : null
-      }
-      columns={columns}
-      data={data?.items ?? []}
-      isLoading={isLoading}
-      error={error ? errorMessage(error, t('activities.activities.errors.load')) : null}
-      emptyState={<p className="text-muted-foreground text-sm">{t('activities.activities.empty')}</p>}
-      searchValue={search}
-      searchPlaceholder={t('activities.activities.search')}
-      onSearchChange={(value: string) => {
-        setSearch(value)
-        setPage(1)
-      }}
-      filters={filterDefs}
-      filterValues={filters}
-      onFiltersApply={(values: FilterValues) => {
-        setFilters(values)
-        setPage(1)
-      }}
-      onFiltersClear={() => {
-        setFilters({})
-        setPage(1)
-      }}
-      rowActions={(row: ActivityRow) => (
-        <RowActions items={[{ id: 'open', label: t('activities.common.open'), href: activityHref(row.id) }]} />
-      )}
-      onRowClick={(row: ActivityRow) => {
-        router.push(activityHref(row.id))
-      }}
-      pagination={{
-        page,
-        pageSize: PAGE_SIZE,
-        total: data?.total ?? 0,
-        totalPages: data?.totalPages ?? 0,
-        onPageChange: setPage,
-      }}
-    />
+        }
+        searchValue={search}
+        searchPlaceholder={t('activities.activities.search')}
+        onSearchChange={(value: string) => {
+          setSearch(value)
+          setPage(1)
+        }}
+        filters={filterDefs}
+        filterValues={filters}
+        onFiltersApply={(values: FilterValues) => {
+          setFilters(values)
+          setPage(1)
+        }}
+        onFiltersClear={() => {
+          setFilters({})
+          setPage(1)
+        }}
+        rowActions={(row: ActivityRow) => (
+          <RowActions items={[{ id: 'open', label: t('activities.common.open'), href: activityHref(row.id) }]} />
+        )}
+        onRowClick={(row: ActivityRow) => {
+          router.push(activityHref(row.id))
+        }}
+        pagination={{
+          page,
+          pageSize: PAGE_SIZE,
+          total: data?.total ?? 0,
+          totalPages: data?.totalPages ?? 0,
+          onPageChange: setPage,
+        }}
+      />
+    </div>
   )
 }

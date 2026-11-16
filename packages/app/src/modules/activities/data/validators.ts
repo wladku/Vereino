@@ -135,6 +135,14 @@ export const occurrenceCancelSchema = z
   })
   .strict()
 
+/** Restoring a cancelled session (REQ-A05): the administrator's reason, 3–500 characters once trimmed. */
+export const occurrenceRestoreSchema = z
+  .object({
+    id: z.uuid(),
+    reason: z.string().trim().min(3).max(500),
+  })
+  .strict()
+
 /** `POST /api/activities/occurrences/{id}/absence` (E06-S13 #95): the assigned coach's optional reason. */
 export const occurrenceAbsenceSchema = z
   .object({
