@@ -34,6 +34,8 @@ export type MessagesProfile = {
   club: { shortName: string | null; logoUrl: string | null }
   /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
   paymentsVisible: boolean
+  /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
+  isParticipant?: boolean
 }
 
 type ProfileLoad = { status: 'ok'; profile: MessagesProfile } | { status: 'not_linked' }

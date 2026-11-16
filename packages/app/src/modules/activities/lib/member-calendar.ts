@@ -51,3 +51,20 @@ export function calendarRangeRetry(window: DateWindow, status: number, code: unk
   const trimmed = trimCalendarRange(window)
   return trimmed.from === window.from && trimmed.to === window.to ? null : trimmed
 }
+
+/** A session of the member calendar with the perspective (`as`) it was read in, and so opens in. */
+export type PerspectiveEntry<T, P extends string> = { entry: T; as: P }
+
+/**
+ * The one list of the member context (spec N, *Business rules* → calendar in the member context): the reads of each
+ * perspective merged by start time. A session found by more than one read appears once, in the perspective of the
+ * later list — the coach's, so a shared session opens with `?as=coach`.
+ */
+export function mergeCalendarEntries<T extends { occurrence: { id: string; startAt: string } }, P extends string>(
+  lists: readonly (readonly PerspectiveEntry<T, P>[])[],
+): PerspectiveEntry<T, P>[] {
+  const byId = new Map<string, PerspectiveEntry<T, P>>()
+  for (const list of lists) for (const item of list) byId.set(item.entry.occurrence.id, item)
+  const startOf = (item: PerspectiveEntry<T, P>) => Date.parse(item.entry.occurrence.startAt)
+  return [...byId.values()].sort((a, b) => startOf(a) - startOf(b))
+}

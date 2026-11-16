@@ -2,7 +2,8 @@
 // linked to the session's user, their active wards with the guardianship consents, their active staff roles, the acting
 // contexts of the role-context switcher, the resolved interface locale (DD-34), the club's short name (club content)
 // and whether the payments tile may be shown (R10). The wards come from the `guardian` grant of the scope provider
-// (`scopeContract.resolve`), so the view never names a person outside the caller's scope. E06-S22 (#104) adds each
+// (`scopeContract.resolve`), so the view never names a person outside the caller's scope. Spec N (REQ-N07, #259) adds
+// `isParticipant`, which with the wards is the member side of the acting context. E06-S22 (#104) adds each
 // ward's age on the club day, the name of each consent's last author, and — under the `self` grant, the member's own
 // guardianships — the member's active guardians with the consents they gave (read-only for the ward).
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -26,6 +27,7 @@ import {
 } from '../lib/member-rules'
 import { consentsView, parseStoredConsents, type ConsentsView, type GuardianRelation } from '../lib/people-rules'
 import { clubLogoUrl, clubSettings, clubToday, type ClubScope } from './club-clock'
+import { membershipContribution } from './membership-contribution'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './payments-gate'
 
 function iso(value: Date | string | null | undefined): string | null {
@@ -97,6 +99,8 @@ export type MemberProfile = {
   club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
   /** R10: false for a minor, a user without `payments.view_own` or without a person. */
   paymentsVisible: boolean
+  /** An active participant membership today (spec N, REQ-N07); always false without `groups`. */
+  isParticipant: boolean
 }
 
 export function memberPersonView(person: Person): MemberPersonView {
@@ -302,6 +306,10 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   const locale = memberLocale([person.preferredLocale, settings.defaultLocale, requestLocale], supported, defaultLocale)
   const gate = ctx.container.resolve<PaymentsGate>(PEOPLE_PAYMENTS_GATE)
   const payments = await gate.check({ ...scope, userId })
+  const contribution = membershipContribution(ctx.container)
+  const isParticipant = contribution
+    ? await contribution.isActiveParticipant(em, { ...scope, personId: person.id }, today)
+    : false
   return {
     person: memberPersonView(person),
     wards,
@@ -316,5 +324,6 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
       logoUrl: await clubLogoUrl(ctx.container, scope),
     },
     paymentsVisible: payments.access === 'allowed',
+    isParticipant,
   }
 }

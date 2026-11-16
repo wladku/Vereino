@@ -122,7 +122,9 @@ test('E02-S03 guardian account: the password-setup e-mail, the sign-in lands on 
     page.setDefaultTimeout(30_000)
     await signInThroughForm(page, email, password)
     await expect(page).toHaveURL(/\/club$/)
-    await expect(page.getByRole('heading', { level: 1, name: /Hello, Kasia|Cześć, Kasia/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Kasia' } }) }),
+    ).toBeVisible()
     await expect(page.getByTestId('club-ward')).toHaveCount(2)
     await page.getByRole('link', { name: new RegExp(`Jaś Dziecko${marker}`) }).click()
     await expect(page).toHaveURL(new RegExp(`/club/wards/${youngerId}$`))
@@ -197,7 +199,9 @@ test('E02-S03 ward accounts: below the threshold 422; at the threshold an own ac
     const coachTileRead = page.waitForResponse((response) => response.url().includes('/api/payments/group-charges'))
     await page.goto('/club')
     expect((await coachTileRead).status()).toBe(403)
-    await expect(page.getByRole('heading', { level: 1, name: /Hello, Zuzia|Cześć, Zuzia/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Zuzia' } }) }),
+    ).toBeVisible()
     await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()
     await expect(page.getByTestId('club-wards')).toHaveCount(0)
@@ -358,7 +362,9 @@ test('E02-S03 adult participant without wards: member and payer roles, lands on 
     page.setDefaultTimeout(30_000)
     await signInThroughForm(page, email, password)
     await expect(page).toHaveURL(/\/club$/)
-    await expect(page.getByRole('heading', { level: 1, name: /Hello, Kasia|Cześć, Kasia/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Kasia' } }) }),
+    ).toBeVisible()
     await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()
     await expect(page.getByTestId('club-wards')).toHaveCount(0)
