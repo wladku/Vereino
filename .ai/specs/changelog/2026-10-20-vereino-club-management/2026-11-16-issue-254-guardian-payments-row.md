@@ -1,0 +1,1 @@
+| 2026-11-16 | Epic #254 (Q-C03, owner decision 2026-11-16): the row Guardian of *Users, Permissions, and Scope* — "payments (one list of charges for the whole club)" — is narrowed by DD-C06 of `2026-11-14-vereino-parity-payments.md`: a guardian sees the charges they pay; a guardian who is not the ward's payer sees who pays ("{child}: paid by {first name}") and no amounts |
