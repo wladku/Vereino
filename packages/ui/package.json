@@ -8,6 +8,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./organization-scope-seed": "./src/admin/organization-scope-seed.ts",
     "./emails": "./src/emails/index.ts"
   },
   "imports": {

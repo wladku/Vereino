@@ -14,6 +14,11 @@ import { SettingsButton } from '@open-mercato/ui/backend/SettingsButton'
 import { useBackendChrome } from '@open-mercato/ui/backend/BackendChromeProvider'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { AiAssistantShellIntegration } from '@/components/AiAssistantShellIntegration'
+import { organizationScopeSeed } from '@vereino/ui/organization-scope-seed'
+
+// Before the first render: the page starts at the scope of its cookies, so its lists load once instead of again when the
+// organization switcher answers (lesson `admin-lists-load-once-scope-seed`).
+if (typeof document !== 'undefined') organizationScopeSeed.seed(document.cookie)
 
 const LazyAiChatHeaderButton = dynamic(
   () => import('@open-mercato/ai-assistant/frontend').then((module) => module.AiChatHeaderButton),
