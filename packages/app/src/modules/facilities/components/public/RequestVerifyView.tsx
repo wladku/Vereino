@@ -11,6 +11,7 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { PublicFacilitiesFrame } from './PublicFacilitiesFrame'
 import {
   formatAmount,
@@ -21,7 +22,6 @@ import {
   type RequestSummary,
   type VerifyOutcome,
 } from './public-client'
-import { MemberSkeleton } from '@vereino/ui'
 
 function BackToPlaces({ clubSlug }: { clubSlug: string }) {
   const t = useT()

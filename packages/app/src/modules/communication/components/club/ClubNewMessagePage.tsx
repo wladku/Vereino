@@ -19,6 +19,7 @@ import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import {
   CLUB_MESSAGES_HREF,
   OWN_FORBIDDEN_STATE,
@@ -30,7 +31,6 @@ import { BODY_MAX, SUBJECT_MAX } from '../../lib/thread-rules'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
 import { MessagesClubFrame } from './MessagesClubFrame'
 import { hasStaff, useDirectOptions } from './useDirectOptions'
-import { MemberSkeleton } from '@vereino/ui'
 
 type Recipient = { key: string; groupId: string; to: 'coaches' | 'coordinator'; label: string; names: string }
 

@@ -11,8 +11,8 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { clubHref, phoneHref, type PublicPlacesView } from './public-client'
 import { MemberSkeleton } from '@vereino/ui'
+import { clubHref, phoneHref, type PublicPlacesView } from './public-client'
 
 type FrameClub = PublicPlacesView['club']
 

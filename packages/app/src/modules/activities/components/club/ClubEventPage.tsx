@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
+import { MemberSkeleton } from '@vereino/ui'
 import { EVENT_TYPES } from '../../lib/activities-rules'
 import {
   EVENT_NAME_MAX,
@@ -41,7 +42,6 @@ import { ConflictList } from '../ConflictList'
 import { OWN_FORBIDDEN_STATE, externalTeamOptions, type ScheduleConflict } from '../client-helpers'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CALENDAR_QUERY_KEY, CLUB_CALENDAR_HREF, sessionHref, type ClubProfile, type Translate } from './club-client'
-import { MemberSkeleton } from '@vereino/ui'
 
 export const EVENT_OPTIONS_QUERY_KEY = ['activities-event-options'] as const
 

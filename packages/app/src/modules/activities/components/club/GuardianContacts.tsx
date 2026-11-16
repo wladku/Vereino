@@ -8,8 +8,8 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { fullName, useGuardianContacts, type GuardianContact } from './club-client'
 import { MemberSkeleton } from '@vereino/ui'
+import { fullName, useGuardianContacts, type GuardianContact } from './club-client'
 
 function ContactItem({ contact }: { contact: GuardianContact }) {
   const t = useT()

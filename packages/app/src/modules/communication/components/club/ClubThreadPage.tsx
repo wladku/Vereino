@@ -12,13 +12,13 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { emailDeliverySummary } from '../../lib/member-inbox'
 import { CLUB_MESSAGES_HREF, scopeLabel, type ThreadMessageItem, type Translate } from '../client-helpers'
 import { MessageList, ReplyBox } from '../ThreadMessages'
 import { CaseBanner, ShareTextPanel, postReply, useMarkRead, useThread } from '../ThreadRecord'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
 import { MessagesClubFrame } from './MessagesClubFrame'
-import { MemberSkeleton } from '@vereino/ui'
 
 export const UNREAD_COUNT_QUERY_KEY = ['communication-unread-count'] as const
 

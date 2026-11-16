@@ -17,6 +17,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { memberComposerKinds } from '../../lib/member-inbox'
 import {
   CLUB_MESSAGE_NEW_HREF,
@@ -32,7 +33,6 @@ import { ThreadComposer, type PostedThread } from '../ThreadComposer'
 import { useCanPost } from '../useCanPost'
 import { MessagesClubFrame, type MessagesProfile } from './MessagesClubFrame'
 import { hasStaff, useDirectOptions } from './useDirectOptions'
-import { MemberSkeleton } from '@vereino/ui'
 
 class InboxLoadError extends Error {}
 
