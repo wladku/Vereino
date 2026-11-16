@@ -5,12 +5,15 @@
 // `PUT /api/club_core/settings` (`publication` needs `club_core.publication.manage`) with the settings lock token.
 // Blocks of modules that do not exist yet are stored and take effect when the module arrives (prices, instructors,
 // places calendar, online requests). Since #87 the public address is always shown, and "Preview" is disabled with its
-// reason while the page is off or has no slug.
+// reason while the page is off or has no slug. Since #262 (navigation spec REQ-N12, DD-N13) online requests need the
+// facility calendar: turning requests on without it is refused on the field, and turning the calendar off asks first
+// and turns requests off in the same save.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
@@ -20,6 +23,8 @@ import {
   PUBLIC_LINK_MAX_LENGTH,
   clubPagePreview,
   isPublicLinkUrl,
+  publicationRequestsProblem,
+  turnsCalendarOffWithRequests,
   type Publication,
 } from '../lib/publication'
 import { errorMessage, textOrNull } from './client-helpers'
@@ -45,6 +50,7 @@ const LINK_FIELDS = ['rulesUrl', 'privacyPolicyUrl'] as const
 export function PublicationForm() {
   const t = useT()
   const queryClient = useQueryClient()
+  const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const { data: settings, error } = useQuery({
     queryKey: ['club_core-settings'],
     queryFn: () => readApiResultOrThrow<SettingsResponse>(SETTINGS_API),
@@ -151,7 +157,22 @@ export function PublicationForm() {
           }
           const blocks = Object.fromEntries(
             PUBLICATION_BLOCKS.map((block) => [block, values[blockField(block)] === true]),
-          )
+          ) as Publication['blocks']
+          const next: Publication = { enabled: values.enabled === true, blocks }
+          if (turnsCalendarOffWithRequests(settings.publication, next)) {
+            const confirmed = await confirm({
+              title: t('club_core.publication.confirm.calendarOff'),
+              text: t('club_core.publication.confirm.calendarOffText'),
+              confirmText: t('club_core.publication.confirm.calendarOffConfirm'),
+            })
+            if (!confirmed) return
+            blocks.online_requests = false
+          }
+          const requestsField = blockField('online_requests')
+          if (publicationRequestsProblem(settings.publication, next)) {
+            const message = t('club_core.errors.publication_requests_need_calendar')
+            throw createCrudFormError(message, { [requestsField]: message })
+          }
           await apiCallOrThrow(
             SETTINGS_API,
             {
@@ -162,11 +183,17 @@ export function PublicationForm() {
                 publicDescription: textOrNull(values.publicDescription),
                 contactPhone: textOrNull(values.contactPhone),
                 ...links,
-                publication: { enabled: values.enabled === true, blocks },
+                publication: next,
               }),
             },
             { errorMessage: t('club_core.publication.errors.save') },
-          )
+          ).catch((cause: unknown) => {
+            // The API names the block (`online_requests`); the form's field is `block_online_requests`.
+            const fieldErrors = (cause as { fieldErrors?: Record<string, string> } | null)?.fieldErrors
+            const message = fieldErrors?.online_requests
+            if (message) throw createCrudFormError(message, { [requestsField]: message })
+            throw cause
+          })
           flash(t('club_core.publication.flash.saved'), 'success')
           await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
         }}
@@ -208,6 +235,7 @@ export function PublicationForm() {
           )}
         </p>
       </div>
+      {ConfirmDialogElement}
     </div>
   )
 }

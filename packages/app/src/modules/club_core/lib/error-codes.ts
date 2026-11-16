@@ -27,6 +27,12 @@ export const errorCodes = [
   // Publication (#29): the club's slug is globally unique, a section's slug unique in the club.
   { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
+  // Online booking requests need the facility calendar (navigation spec REQ-N12, DD-N13; #262).
+  {
+    code: 'publication_requests_need_calendar',
+    status: 422,
+    messageKey: 'club_core.errors.publication_requests_need_calendar',
+  },
   { code: 'section_public_slug_required', status: 422, messageKey: 'club_core.errors.section_public_slug_required' },
   // A place with a public calendar needs its own slug, unique among the club's live places (#124).
   { code: 'place_public_slug_required', status: 422, messageKey: 'club_core.errors.place_public_slug_required' },

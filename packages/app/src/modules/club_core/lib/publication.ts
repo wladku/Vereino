@@ -137,6 +137,27 @@ export function clubPublicationProblem(input: {
   return input.publication.enabled && !input.publicSlug ? 'publication_slug_required' : null
 }
 
+/**
+ * Why a publication update is refused by the rule "online requests need the facility calendar" (navigation spec
+ * REQ-N12, DD-N13; mockup `form.publication.requestsNeedCalendar`): online requests on while the facility calendar is
+ * off. Checked only when either flag changes, so a stored combination that breaks the rule keeps loading and saving.
+ */
+export function publicationRequestsProblem(
+  before: Publication,
+  after: Publication,
+): 'publication_requests_need_calendar' | null {
+  const changed =
+    before.blocks.places_calendar !== after.blocks.places_calendar ||
+    before.blocks.online_requests !== after.blocks.online_requests
+  if (!changed) return null
+  return after.blocks.online_requests && !after.blocks.places_calendar ? 'publication_requests_need_calendar' : null
+}
+
+/** True when an update turns the facility calendar off while it keeps online requests on (the form asks first). */
+export function turnsCalendarOffWithRequests(before: Publication, after: Publication): boolean {
+  return before.blocks.places_calendar && !after.blocks.places_calendar && after.blocks.online_requests
+}
+
 /** Why a section's public fields cannot be saved: a public section needs its own slug (glossary *Section*). */
 export function sectionPublicationProblem(input: {
   isPublic: boolean

@@ -15,7 +15,9 @@ import {
   publishedBlocks,
   resolvePublication,
   placePublicationProblem,
+  publicationRequestsProblem,
   sectionPublicationProblem,
+  turnsCalendarOffWithRequests,
   type Publication,
 } from '../publication'
 
@@ -166,5 +168,39 @@ describe('club page preview (#87)', () => {
       href: null,
       disabledReason: 'slug_missing',
     })
+  })
+})
+
+describe('publication rule: online requests need the facility calendar (REQ-N12, DD-N13)', () => {
+  const withBlocks = (blocks: Partial<Publication['blocks']>): Publication => ({
+    enabled: true,
+    blocks: { ...allOff, ...blocks },
+  })
+  const calendarOff = withBlocks({})
+  const both = withBlocks({ places_calendar: true, online_requests: true })
+  const broken = withBlocks({ online_requests: true })
+
+  it('refuses turning requests on while the calendar is off', () => {
+    expect(publicationRequestsProblem(calendarOff, broken)).toBe('publication_requests_need_calendar')
+  })
+
+  it('refuses turning the calendar off while requests stay on', () => {
+    expect(publicationRequestsProblem(both, broken)).toBe('publication_requests_need_calendar')
+  })
+
+  it('accepts a stored combination that breaks the rule when neither flag changes', () => {
+    expect(publicationRequestsProblem(broken, { ...broken, enabled: false })).toBeNull()
+  })
+
+  it('accepts requests with the calendar, and both turned off together', () => {
+    expect(publicationRequestsProblem(calendarOff, both)).toBeNull()
+    expect(publicationRequestsProblem(both, calendarOff)).toBeNull()
+  })
+
+  it('asks before the calendar goes off with requests still on', () => {
+    expect(turnsCalendarOffWithRequests(both, broken)).toBe(true)
+    expect(turnsCalendarOffWithRequests(both, calendarOff)).toBe(false)
+    expect(turnsCalendarOffWithRequests(broken, broken)).toBe(false)
+    expect(turnsCalendarOffWithRequests(both, both)).toBe(false)
   })
 })
