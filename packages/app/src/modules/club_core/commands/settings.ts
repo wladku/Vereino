@@ -2,7 +2,8 @@
 // settings by the club administrator. `execute` creates the row on the first update, row-locks it and authorizes
 // through `authorizeScoped` inside one write transaction; undo restores the previous values after `authorizeReplay`
 // re-checks the current scope. Since #29 it also writes the club's public slug, description, phone and publication
-// (and since #195 the rules and privacy-policy URLs of the page footer)
+// (and since #195 the rules and privacy-policy URLs of the page footer; since #262 online requests need the facility
+// calendar, checked only when either flag changes — 422 on the field)
 // (glossary *Publication*): a page switched on needs the slug (422), and a slug another club holds answers 409 from
 // the unique index — no lookup across clubs runs here. The logo has its own commands (`commands/logos.ts`).
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -19,7 +20,13 @@ import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
-import { applyPublicationPatch, clubPublicationProblem, resolvePublication, type Publication } from '../lib/publication'
+import {
+  applyPublicationPatch,
+  clubPublicationProblem,
+  publicationRequestsProblem,
+  resolvePublication,
+  type Publication,
+} from '../lib/publication'
 import {
   applyClubSettingsPatch,
   clubSettingsRuleProblem,
@@ -99,16 +106,25 @@ type PublicPatch = {
   publication?: Parameters<typeof applyPublicationPatch>[1]
 }
 
+type PublicSettingsProblem =
+  { code: 'publication_slug_required' } | { code: 'publication_requests_need_calendar'; field: 'online_requests' }
+
 /** Writes the public page settings a patch names; returns the problem that refuses the result, if any. */
-function writePublicSettings(row: ClubSettings, patch: PublicPatch): 'publication_slug_required' | null {
+function writePublicSettings(row: ClubSettings, patch: PublicPatch): PublicSettingsProblem | null {
   if (patch.publicSlug !== undefined) row.publicSlug = patch.publicSlug
   if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
   if (patch.contactPhone !== undefined) row.contactPhone = patch.contactPhone
   if (patch.rulesUrl !== undefined) row.rulesUrl = patch.rulesUrl
   if (patch.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = patch.privacyPolicyUrl
-  const publication = applyPublicationPatch(resolvePublication(row.publication), patch.publication)
+  const current = resolvePublication(row.publication)
+  const publication = applyPublicationPatch(current, patch.publication)
   row.publication = publication
-  return clubPublicationProblem({ publication, publicSlug: row.publicSlug ?? null })
+  // Online requests need the facility calendar (navigation spec REQ-N12), checked only when either flag changes (DD-N13).
+  if (publicationRequestsProblem(current, publication)) {
+    return { code: 'publication_requests_need_calendar', field: 'online_requests' }
+  }
+  const slugProblem = clubPublicationProblem({ publication, publicSlug: row.publicSlug ?? null })
+  return slugProblem ? { code: slugProblem } : null
 }
 
 function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
@@ -225,7 +241,9 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
                 normalizeBankAccount(bankAccount) ?? (await throwFieldError('bank_account_invalid', 'bankAccount'))
             }
             const problem = writePublicSettings(row, patch)
-            if (problem) await clubCoreErrors.throw(problem)
+            if (problem?.code === 'publication_requests_need_calendar')
+              await throwFieldError(problem.code, problem.field)
+            if (problem) await clubCoreErrors.throw(problem.code)
             result = {
               settings: row,
               values,

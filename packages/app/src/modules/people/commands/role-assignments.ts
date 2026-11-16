@@ -4,7 +4,8 @@
 // an account is stored and its role is granted when the account is created. A second assignment of the same role
 // and section (or place) whose period overlaps an existing one is refused with 409 `role_assignment_duplicate` (#26);
 // the check runs under the person's row lock, so concurrent saves for one person are serialized. A facility
-// attendant (`facility_operator`, #126) names a live place of the club (422 `role_place_invalid`).
+// attendant (`facility_operator`, #126) names a live place of the club (422 `role_place_invalid`). A coordinator is an
+// adult (422 `role_requires_adult`, navigation spec REQ-N12, #262).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -16,9 +17,9 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { isInvertedPeriod, type ActingRole } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { RoleAssignment } from '../data/entities'
+import { Person, RoleAssignment } from '../data/entities'
 import { roleAssignmentCreateSchema, roleAssignmentEndSchema, roleAssignmentUpdateSchema } from '../data/validators'
-import { firstOverlapping, roleScopeProblem } from '../lib/people-rules'
+import { firstOverlapping, roleAgeProblem, roleScopeProblem } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
 import { isClubPlace } from '../services/place-scope'
 import {
@@ -58,6 +59,30 @@ async function assertRoleScope(ctx: CommandRuntimeContext, em: EntityManager, ke
   if (key.placeId && !(await isClubPlace(ctx.container, em, scope, key.placeId))) {
     const error = await peopleErrors.create('role_place_invalid', { field: 'placeId' })
     error.body = { ...error.body, fieldErrors: { placeId: String(error.body.error ?? 'role_place_invalid') } }
+    throw error
+  }
+}
+
+/**
+ * 422 `role_requires_adult` on `personId` when the role is adult-only and the person is under 18 on the day it takes
+ * effect (navigation spec REQ-N12, V-N05; #262). Runs on create and when an update changes the role.
+ */
+async function assertRoleAge(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  key: AssignmentKey,
+  validFrom: string,
+): Promise<void> {
+  const scope = { tenantId: key.tenantId, organizationId: key.organizationId }
+  const person = await em.findOne(
+    Person,
+    { id: key.personId, ...scope, deletedAt: null },
+    { fields: ['id', 'birthDate'] },
+  )
+  const today = await clubToday(ctx.container, scope)
+  if (roleAgeProblem({ role: key.role, birthDate: person?.birthDate ?? null, validFrom, today })) {
+    const error = await peopleErrors.create('role_requires_adult', { field: 'personId' })
+    error.body = { ...error.body, fieldErrors: { personId: String(error.body.error ?? 'role_requires_adult') } }
     throw error
   }
 }
@@ -204,6 +229,7 @@ const createRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
         placeId: parsed.placeId ?? null,
       }
       await assertRoleScope(ctx, em, key)
+      await assertRoleAge(ctx, em, key, parsed.validFrom)
       await assertNoDuplicate(em, key, { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null }, null)
       const row = em.create(RoleAssignment, {
         id,
@@ -260,6 +286,7 @@ const updateRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleA
       const key: AssignmentKey = { ...scope, personId: row.personId, role, sectionId, placeId }
       await assertRoleScope(ctx, em, key)
       await lockPerson(em, scope, row.personId)
+      if (role !== row.role) await assertRoleAge(ctx, em, key, validFrom)
       await assertNoDuplicate(em, key, { validFrom, validTo }, row.id)
       row.role = role
       row.sectionId = sectionId

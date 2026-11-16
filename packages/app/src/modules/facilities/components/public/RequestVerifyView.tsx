@@ -4,6 +4,8 @@
 // React's strict mode, which runs an effect twice — and shows "Awaiting the administrator's approval until …" with the
 // request's summary (the place, the slot in the club's time zone, the units and the indicative amount), "Link expired"
 // for a used, unknown or expired link (410) and "The slot was taken" (409), each with a link back to the club's places.
+// Once the link is confirmed the frame shows the club's public header from the answer (#261); before that, and for a
+// link that no longer works, the page title alone.
 // The token is never rendered or logged; the server sends this path with `Referrer-Policy: no-referrer`.
 import * as React from 'react'
 import Link from 'next/link'
@@ -148,7 +150,7 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
   }
 
   return (
-    <PublicFacilitiesFrame club={null}>
+    <PublicFacilitiesFrame club={outcome?.status === 'ok' ? outcome.summary.club : null}>
       <section className="flex flex-col gap-4" aria-labelledby="public-verify-title" aria-busy={!outcome}>
         <h1 id="public-verify-title" className="text-2xl font-semibold">
           {t('facilities.public.verify.title')}

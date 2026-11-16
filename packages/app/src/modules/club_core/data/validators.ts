@@ -312,6 +312,8 @@ export const contractListQuerySchema = z.object({
   sortField: z.enum(['validFrom', 'validTo', 'kind', 'createdAt', 'updatedAt']).optional(),
   kind: z.enum(CONTRACT_KINDS).optional(),
   partyId: z.uuid().optional(),
+  /** The contracts of one institution (navigation spec REQ-N12, B-07; #262); a malformed id answers 400. */
+  institutionId: z.uuid().optional(),
 })
 
 export type ContractCreateInput = z.output<typeof contractCreateSchema>

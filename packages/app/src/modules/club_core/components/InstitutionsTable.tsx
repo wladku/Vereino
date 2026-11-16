@@ -1,6 +1,7 @@
 'use client'
 // `/backend/club/institutions` (club spec UI table): institutions the club works with. Since #87 (README B-07) the list
-// shows the bank account in its printed NRB form and filters by type.
+// shows the bank account in its printed NRB form and filters by type. Navigation spec REQ-N12 (B-07; #262): each row
+// links to the institution's contracts (`/backend/club/contracts?institutionId=`).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -23,6 +24,8 @@ import { errorMessage, type TableColumns, type Translate } from './client-helper
 import type { InstitutionRow } from './places-shared'
 
 const LIST_HREF = '/backend/club/institutions'
+const contractsHref = (institutionId: string) =>
+  `/backend/club/contracts?institutionId=${encodeURIComponent(institutionId)}`
 const PAGE_SIZE = 50
 
 function buildColumns(t: Translate): TableColumns<InstitutionRow> {
@@ -60,6 +63,25 @@ function buildColumns(t: Translate): TableColumns<InstitutionRow> {
         ) : (
           dash
         ),
+    },
+    {
+      id: 'contracts',
+      header: t('club_core.institutions.columns.contracts'),
+      enableSorting: false,
+      meta: { priority: 2 },
+      cell: ({ row }) => (
+        <Link
+          className="whitespace-nowrap underline underline-offset-4"
+          href={contractsHref(row.original.id)}
+          onClick={(event) => {
+            // The row itself opens the institution; this link opens its contracts.
+            event.stopPropagation()
+          }}
+          data-testid={`institution-contracts-${row.original.id}`}
+        >
+          {t('club_core.institutions.actions.contracts')}
+        </Link>
+      ),
     },
   ]
 }
@@ -159,6 +181,7 @@ export function InstitutionsTable() {
           <RowActions
             items={[
               { id: 'edit', label: t('club_core.common.edit'), href: `${LIST_HREF}/${row.id}/edit` },
+              { id: 'contracts', label: t('club_core.institutions.actions.contracts'), href: contractsHref(row.id) },
               {
                 id: 'delete',
                 label: t('club_core.common.delete'),
