@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { raiseCrudError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { emitOrganizationScopeChanged } from '@open-mercato/shared/lib/frontend/organizationEvents'
+import { organizationScopeSeed } from '@vereino/ui/organization-scope-seed'
 import { OrganizationSelect, type OrganizationTreeNode } from '@open-mercato/core/modules/directory/components/OrganizationSelect'
 import { TenantSelect, type TenantRecord } from '@open-mercato/core/modules/directory/components/TenantSelect'
 import { Building2, Check, ChevronDown, Settings2 } from 'lucide-react'
@@ -287,7 +288,7 @@ export default function OrganizationSwitcher({ compact }: OrganizationSwitcherEx
         ) {
           persistSelection(resolvedTenantId, fallbackSelected, { refresh: false })
         } else {
-          emitOrganizationScopeChanged({ organizationId: fallbackSelected, tenantId: resolvedTenantId ?? null })
+          organizationScopeSeed.announce({ organizationId: fallbackSelected, tenantId: resolvedTenantId ?? null })
         }
       } else {
         if (
@@ -298,7 +299,7 @@ export default function OrganizationSwitcher({ compact }: OrganizationSwitcherEx
         ) {
           persistSelection(resolvedTenantId, null, { refresh: false })
         } else {
-          emitOrganizationScopeChanged({ organizationId: null, tenantId: resolvedTenantId ?? null })
+          organizationScopeSeed.announce({ organizationId: null, tenantId: resolvedTenantId ?? null })
         }
       }
       if (options?.refreshAfter) {
