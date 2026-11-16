@@ -15,6 +15,7 @@ import {
   MAINTENANCE_STATUSES,
 } from '../lib/maintenance'
 import { RENTER_CATEGORIES } from '../lib/rates'
+import { RENTER_SEARCH_MAX, RENTER_SEARCH_MIN } from '../lib/renters'
 import {
   APPROVAL_NOTE_MAX_LENGTH,
   REJECT_REASON_MAX_LENGTH,
@@ -443,6 +444,12 @@ export const calendarQuerySchema = z.object({
   placeId: z.uuid().optional(),
   from: instantSchema,
   to: instantSchema,
+})
+
+/** `GET /api/facilities/renters` (facilities parity spec DD-R07, #277): a term of 2–80 characters and a place. */
+export const renterSearchQuerySchema = z.object({
+  search: z.string().trim().min(RENTER_SEARCH_MIN).max(RENTER_SEARCH_MAX),
+  placeId: z.uuid().optional(),
 })
 
 // --- Maintenance (REQ-022, DD-36; #128) ---

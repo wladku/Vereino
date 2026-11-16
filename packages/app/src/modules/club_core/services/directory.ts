@@ -4,6 +4,7 @@
 // `activities` reads places — their names, capacity and the place tree its conflict check projects (#31).
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Institution, Place, Section } from '../data/entities'
 import { loadPlaceParents } from '../data/queries'
@@ -14,6 +15,9 @@ export type ClubDirectoryScope = { tenantId: string; organizationId: string }
 export type SectionDirectoryEntry = { id: string; name: string; isActive: boolean }
 
 export type InstitutionDirectoryEntry = { id: string; name: string }
+
+/** An institution a renter search finds: its name and type only (facilities parity spec DD-R07, #277). */
+export type InstitutionSearchEntry = { id: string; name: string; type: string }
 
 export type PlaceDirectoryEntry = {
   id: string
@@ -87,6 +91,17 @@ export type ClubCoreDirectory = {
     ids: readonly string[],
     em?: EntityManager,
   ): Promise<Map<string, InstitutionDirectoryEntry>>
+  /**
+   * The live institutions of the organization whose name contains `query` (case-insensitive), by name, at most
+   * `limit` (1–50): the renter search of the facilities slot dialog (facilities parity spec DD-R07, #277). Name and
+   * type only; the contacts stay encrypted here.
+   */
+  searchInstitutions(
+    scope: ClubDirectoryScope,
+    query: string,
+    limit: number,
+    em?: EntityManager,
+  ): Promise<InstitutionSearchEntry[]>
   /** The live places of the organization among `ids`, by id (names, parent, capacity; contacts stay encrypted). */
   findPlaces(
     scope: ClubDirectoryScope,
@@ -164,6 +179,26 @@ export async function findInstitutions(
     { fields: ['id', 'name'] },
   )
   return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name }]))
+}
+
+/** The most institutions one search returns. */
+export const INSTITUTION_SEARCH_MAX = 50
+
+export async function searchInstitutions(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  query: string,
+  limit: number,
+): Promise<InstitutionSearchEntry[]> {
+  const term = query.trim()
+  const size = Math.min(Math.max(Math.trunc(limit), 0), INSTITUTION_SEARCH_MAX)
+  if (!term || size === 0) return []
+  const rows = await em.find(
+    Institution,
+    { ...scope, deletedAt: null, name: { $ilike: `%${escapeLikePattern(term)}%` } },
+    { fields: ['id', 'name', 'type'], orderBy: { name: 'asc', id: 'asc' }, limit: size },
+  )
+  return rows.map((row) => ({ id: row.id, name: row.name, type: row.type }))
 }
 
 /** A stored decimal coordinate (the driver returns a string) as a number, or null. */
@@ -329,6 +364,7 @@ export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDir
     lockSectionForShare: (scope, sectionId, em) => lockSectionForShare(em, scope, sectionId),
     listSections: (scope, sectionIds, em) => listSections(em ?? getEm().fork(), scope, sectionIds),
     findInstitutions: (scope, ids, em) => findInstitutions(em ?? getEm().fork(), scope, ids),
+    searchInstitutions: (scope, query, limit, em) => searchInstitutions(em ?? getEm().fork(), scope, query, limit),
     findPlaces: (scope, ids, em) => findPlaces(em ?? getEm().fork(), scope, ids),
     placeFamily: (scope, placeId, em) => placeFamily(em ?? getEm().fork(), scope, placeId),
     placeOptions: (scope, em) => placeOptions(em ?? getEm().fork(), scope),

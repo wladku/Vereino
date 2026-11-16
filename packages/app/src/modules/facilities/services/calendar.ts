@@ -194,6 +194,55 @@ export async function calendarEntries(
   return entries.sort((a, b) => a.start.getTime() - b.start.getTime() || a.id.localeCompare(b.id))
 }
 
+/** A conflicting entry with the label staff see (the shape of the internal booking's 409 list). */
+export type LabelledConflict = {
+  kind: 'session' | 'rental' | 'booking' | 'closure' | 'maintenance'
+  id: string
+  placeId?: string
+  start: string
+  end: string
+  label: string | null
+}
+
+/** "Purpose · Booker" for a booking or a maintenance window with a known planner, the entry's label otherwise. */
+export function staffEntryLabel(entry: Pick<CalendarEntry, 'label' | 'bookedByName'>): string | null {
+  return entry.bookedByName && entry.label ? `${entry.label} · ${entry.bookedByName}` : entry.label
+}
+
+/**
+ * The conflicts of a refused rental with their places and the labels staff see (facilities parity spec, the
+ * `facilities.rentals.create` row: "409 `rental_conflict` carries `conflicts[]` labelled for staff", #277), read with
+ * the caller's EntityManager over the place family and the conflicts' span. A conflict the read no longer finds keeps
+ * its times and has no label.
+ */
+export async function labelConflicts(
+  container: AwilixContainer,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  placeId: string,
+  conflicts: ReadonlyArray<{ kind: LabelledConflict['kind']; id: string; start: string; end: string }>,
+  now: Date,
+): Promise<LabelledConflict[]> {
+  if (conflicts.length === 0) return []
+  const start = new Date(Math.min(...conflicts.map((conflict) => Date.parse(conflict.start))))
+  const end = new Date(Math.max(...conflicts.map((conflict) => Date.parse(conflict.end))))
+  const placeIds = await placeFamilyIds(container, scope, placeId, em)
+  const entries = new Map(
+    (await calendarEntries(container, em, scope, placeIds, { start, end }, now)).map((entry) => [entry.id, entry]),
+  )
+  return conflicts.map((conflict) => {
+    const entry = entries.get(conflict.id)
+    return {
+      kind: conflict.kind,
+      id: conflict.id,
+      start: conflict.start,
+      end: conflict.end,
+      ...(entry ? { placeId: entry.placeId } : {}),
+      label: entry ? staffEntryLabel(entry) : null,
+    }
+  })
+}
+
 /** A place as the calendar shows it; the place facts of the cards and the axis (#275). */
 export type CalendarPlace = {
   id: string

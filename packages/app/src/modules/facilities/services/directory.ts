@@ -14,6 +14,7 @@ import type {
 } from '../../activities/services/place-sessions'
 import type {
   ClubCoreDirectory,
+  InstitutionSearchEntry,
   PlaceDirectoryEntry,
   PlaceFamily,
   PlaceOption,
@@ -181,6 +182,38 @@ export async function institutionNames(
 ): Promise<Map<string, string>> {
   const found = await directory(container).findInstitutions(scope, ids, em)
   return new Map([...found.values()].map((entry) => [entry.id, entry.name]))
+}
+
+/** The live institutions of the club whose name contains `query`, by name: name and type only (DD-R07, #277). */
+export function searchInstitutions(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  query: string,
+  limit: number,
+): Promise<InstitutionSearchEntry[]> {
+  return directory(container).searchInstitutions(scope, query, limit)
+}
+
+/**
+ * The live persons of the club whose first or last name matches every word of `query` (words of three characters or
+ * more, through the people register's search index), by name, at most `limit`: the renter search of a caller with
+ * `people.view` (DD-R07, #277). Empty when no word is long enough for the index.
+ */
+export async function searchPersons(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  query: string,
+  limit: number,
+): Promise<Array<{ id: string; name: string }>> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  const people = container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY)
+  const ids = await people.searchPersonIds(scope, query)
+  if (!ids || ids.size === 0) return []
+  const found = await people.findPersons(scope, [...ids])
+  return [...found.values()]
+    .map((entry) => ({ id: entry.id, name: `${entry.firstName} ${entry.lastName}`.trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+    .slice(0, limit)
 }
 
 /** The full names of live persons of the club among `ids`, by id (a rental's renter, #122). */
