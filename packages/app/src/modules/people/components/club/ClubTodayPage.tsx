@@ -96,5 +96,5 @@ function Today({ profile }: { profile: MemberProfile }) {
 }
 
 export function ClubTodayPage() {
-  return <ClubFrame>{(profile) => <Today profile={profile} />}</ClubFrame>
+  return <ClubFrame skeleton="tiles">{(profile) => <Today profile={profile} />}</ClubFrame>
 }

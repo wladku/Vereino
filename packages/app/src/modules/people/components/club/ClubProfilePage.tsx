@@ -412,7 +412,7 @@ function PasswordSection() {
 export function ClubProfilePage() {
   // Keyed by the lock token: a saved or reloaded profile starts the form from the stored values.
   return (
-    <ClubFrame>
+    <ClubFrame skeleton="fields">
       {(profile) => (
         <div className="flex flex-col gap-6">
           <ProfileForm key={profile.person.updatedAt ?? profile.person.id} profile={profile} />
