@@ -29,10 +29,10 @@ export const KIND_TAGS: TagMap<CalendarEntryKind> = {
   rental: 'warning',
   request: 'neutral',
   closure: 'error',
-  maintenance: 'brand',
+  maintenance: 'pink',
 }
 
-const ZONE_TAGS: TagMap<Zone> = {
+export const ZONE_TAGS: TagMap<Zone> = {
   public_free: 'success',
   club_training: 'info',
   reservable_paid: 'warning',

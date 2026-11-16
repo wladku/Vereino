@@ -9,6 +9,8 @@ topics: ["tag", "axe", "color-contrast", "design-tokens", "accessibility"]
 
 **Context**: #121's week preview marked the `reservable_paid` zone with `<Tag variant="brand">`. The E08-S01 axe scan of `/backend/facilities/calendar` reported `color-contrast` (serious): `text-brand-violet` (#bc9aff) on `bg-brand-violet/10` (#f8f5ff) is 2.11:1 against the 4.5:1 required for 12 px text.
 
+It recurred in #276: `KIND_TAGS.maintenance` in `facilities/components/club-places/PlaceTimeline.tsx` was `brand`, and the day axis of B-23 reused it for its blocks; TEST-R03's axe scan failed with the same 2.11:1. Maintenance now uses `pink` (status tokens), and the rule is promoted to `AGENTS.md` → Never.
+
 **Problem**: `@open-mercato/ui` 0.9.0 `Tag` builds `brand` from the raw brand color with opacity, unlike the `success`, `info`, `warning`, `error` and `neutral` variants, which use the `status-*-text` tokens tuned for contrast. Nothing in typecheck or lint catches it; only the axe scan does.
 
 **Rule**: In Vereino pages use the status variants of `Tag`/`StatusBadge` for labels; do not use `brand` for text. Scan every new admin page with `scanBlockingViolations` before shipping.
