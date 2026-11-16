@@ -191,6 +191,19 @@ export function usePlaceOptions() {
   }, [data, isPending, isError, refetch])
 }
 
+/** The place rows with their facts (kind, leaf, external, capacity, online requests), for the calendar's chips (#276). */
+export function usePlaceRows() {
+  return useQuery({
+    queryKey: ['facilities-place-rows'],
+    staleTime: 60 * 1000,
+    retry: false,
+    queryFn: async (): Promise<PlaceOptionRow[]> => {
+      const data = await readApiResultOrThrow<{ items?: PlaceOptionRow[] }>(PLACE_OPTIONS_URL)
+      return data.items ?? []
+    },
+  })
+}
+
 export function placeLabel(t: Translate, names: Map<string, string>, placeId: string | null | undefined): string {
   if (!placeId) return t('facilities.common.empty')
   return names.get(placeId) ?? t('facilities.common.unknownPlace')
@@ -217,7 +230,13 @@ export function usePlaceZoneRules(placeId: string | null, source?: ZoneSource) {
 
 // --- Features ---
 
-const FEATURES = ['facilities.manage', 'facilities.rentals.manage'] as const
+const FEATURES = [
+  'facilities.manage',
+  'facilities.rentals.manage',
+  'facilities.rentals.approve',
+  'facilities.maintenance.manage',
+  'club_core.manage',
+] as const
 
 function grants(granted: readonly string[], feature: string): boolean {
   return granted.some(
@@ -249,6 +268,18 @@ export function useFacilitiesManage(): boolean {
 /** Whether the signed-in user may enter and manage rentals (`facilities.rentals.manage`, wildcard-aware). */
 export function useRentalsManage(): boolean {
   return grants(useGrantedFeatures(), 'facilities.rentals.manage')
+}
+
+/** The features the facility calendar's actions depend on (#276), wildcard-aware. */
+export function useCalendarFeatures() {
+  const granted = useGrantedFeatures()
+  return {
+    manage: grants(granted, 'facilities.manage'),
+    rentals: grants(granted, 'facilities.rentals.manage'),
+    approve: grants(granted, 'facilities.rentals.approve'),
+    maintenance: grants(granted, 'facilities.maintenance.manage'),
+    places: grants(granted, 'club_core.manage'),
+  }
 }
 
 // --- Coded API errors ---

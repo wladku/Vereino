@@ -123,7 +123,8 @@ export function freeOpenHours(input: FreeHoursInput): number[] {
   const overlaps = (span: Span, hour: number) => span.from < hour + HOUR && span.to > hour
   return axisHours(input.bounds).filter((hour) => {
     if (input.date === input.today && hour < input.nowMinutes) return false
-    const open = input.opening === null || input.opening.some((window) => window.from <= hour && window.to >= hour + HOUR)
+    const open =
+      input.opening === null || input.opening.some((window) => window.from <= hour && window.to >= hour + HOUR)
     if (!open) return false
     if (input.zones.some((zone) => zone.zone === 'closed' && overlaps(zone, hour))) return false
     return !input.entries.some((entry) => overlaps(entry, hour))

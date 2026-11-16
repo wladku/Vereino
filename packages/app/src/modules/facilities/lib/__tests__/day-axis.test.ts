@@ -29,7 +29,10 @@ describe('axisBounds', () => {
   })
 
   it('widens by whole hours to a 06:00 opening and an entry ending at 23:00', () => {
-    expect(axisBounds([span('06:00', '22:00')], [span('21:30', '23:00')])).toEqual({ from: at('06:00'), to: at('23:00') })
+    expect(axisBounds([span('06:00', '22:00')], [span('21:30', '23:00')])).toEqual({
+      from: at('06:00'),
+      to: at('23:00'),
+    })
     expect(axisBounds(null, [span('06:30', '07:15'), span('22:10', '22:40')])).toEqual({
       from: at('06:00'),
       to: at('23:00'),
