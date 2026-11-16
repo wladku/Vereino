@@ -102,6 +102,8 @@ export type ChargePaymentItem = {
   paidOn: string
   reference: string | null
   receivedBy: { firstName: string; lastName: string } | null
+  /** Where the payment came from (#292): `manual`, `bank_statement`, `cash` or `online`. */
+  source?: string
   reversesPaymentId: string | null
   reversed: boolean
   overpayment?: boolean

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ADULT_AGE, accountAgePolicy, ageOn, isAdultOn } from '../account-policy.ts'
+import { ADULT_AGE, accountAgePolicy, accountState, ageOn, isAdultOn } from '../account-policy.ts'
 
 test('ageOn counts completed years', () => {
   assert.equal(ageOn('2011-10-27', '2026-10-26'), 14)
@@ -35,4 +35,14 @@ test('accountAgePolicy compares the age with the threshold (TEST-F04 policy part
 test('accountAgePolicy rejects an invalid threshold', () => {
   assert.throws(() => accountAgePolicy({ birthDate: '2010-10-27', threshold: -1, today: '2026-10-27' }), RangeError)
   assert.throws(() => accountAgePolicy({ birthDate: '2010-10-27', threshold: 1.5, today: '2026-10-27' }), RangeError)
+})
+
+test('accountState reads none, blocked, invited and active from the platform user (DD-L02, TEST-L19)', () => {
+  const signedIn = new Date('2026-11-01T10:00:00Z')
+  assert.equal(accountState(null), 'none')
+  assert.equal(accountState({ hasPassword: true, lastSignInAt: signedIn, isConfirmed: false }), 'blocked')
+  assert.equal(accountState({ hasPassword: false, lastSignInAt: null, isConfirmed: false }), 'blocked')
+  assert.equal(accountState({ hasPassword: false, lastSignInAt: null, isConfirmed: true }), 'invited')
+  assert.equal(accountState({ hasPassword: true, lastSignInAt: null, isConfirmed: true }), 'active')
+  assert.equal(accountState({ hasPassword: false, lastSignInAt: signedIn, isConfirmed: true }), 'active')
 })

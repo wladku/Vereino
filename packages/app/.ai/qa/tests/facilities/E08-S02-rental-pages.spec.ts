@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addDays, mondayOf, nextWeekday, weekdayOf, zoneDate, zoneInstant } from '../_fixtures/activities'
+import { addDays, nextWeekday, weekdayOf, zoneDate, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { listRentals, phoneRental, postRental, rentalPitch } from '../_fixtures/facilities'
@@ -45,7 +45,8 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
       phoneRental(setup.pitch, setup.neighbours, zoneInstant(laterDate, '08:00'), 2),
     )
     expect(later.status, JSON.stringify(later.body)).toBe(201)
-    const soon = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, soonStart()))
+    const soonAt = soonStart()
+    const soon = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, soonAt))
     expect(soon.status, JSON.stringify(soon.body)).toBe(201)
 
     const login = await page.request.post('/api/auth/login', {
@@ -71,14 +72,12 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 1280, height: 800 })
 
-    // Given a saved rental, it appears on B-23 as a booked block (the calendar shows the current week; a rental
-    // starting within the next day falls into it unless today is Sunday).
-    const soonDate = zoneDate(String(soon.body?.endsAt))
-    if (soonDate <= addDays(mondayOf(calendarDate()), 6)) {
-      await page.goto('/backend/facilities/calendar')
-      await expect(page.getByTestId(`facilities-calendar-rental-${String(soon.body?.id)}`)).toBeVisible()
-      await page.goto('/backend/facilities/rentals')
-    }
+    // Given a saved rental, it appears on the day axis of B-23 and in "Wpisy dnia" (#276).
+    const soonDate = zoneDate(soonAt)
+    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${soonDate}`)
+    await expect(page.getByTestId(`facilities-axis-entry-${String(soon.body?.id)}`)).toBeVisible()
+    await expect(page.getByTestId(`facilities-day-entry-${String(soon.body?.id)}`)).toContainText('KS Sąsiedzi')
+    await page.goto('/backend/facilities/rentals')
 
     // Given a cancellation under 24 h before, the dialog states that the charge is forfeited.
     await page
@@ -93,14 +92,13 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expect(cancelDialog).toBeHidden()
     await expect.poll(async () => (await listRentals(request, admin, '&status=cancelled_late')).length).toBe(1)
 
-    // B-23: "New rental" from a bookable slot, the live quote, save.
-    await page.goto('/backend/facilities/calendar')
+    // B-23: "New rental" from a free hour of next week's Thursday on the day axis, the live quote, save.
+    const enteredDate = nextWeekday(addDays(calendarDate(), 7), 'TH')
+    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${enteredDate}`)
     await page.waitForLoadState('networkidle')
-    await page.locator('[data-testid^="facilities-calendar-new-rental-"]').first().click()
+    await page.locator('[data-testid^="facilities-axis-hour-"]').first().click()
     const dialog = page.getByTestId('facilities-rental-dialog')
     await expect(dialog).toBeVisible()
-    // The week's first bookable slot may be over already; a rental starts in the future, so pick next week's Thursday.
-    const enteredDate = nextWeekday(addDays(calendarDate(), 7), 'TH')
     await dialog.getByTestId('facilities-rental-date').fill(enteredDate)
     await dialog.getByTestId('facilities-rental-time').fill('08:00')
     await dialog.getByTestId('facilities-rental-renter-type').getByText('Unregistered').click()

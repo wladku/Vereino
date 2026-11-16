@@ -1,4 +1,10 @@
 {
+  "foundation.account.invitation.body": "Klub ponownie wysłał Ci zaproszenie. Kliknij poniższy link, aby ustawić hasło. Link wygaśnie za 60 minut.",
+  "foundation.account.invitation.cta": "Ustaw hasło",
+  "foundation.account.invitation.hint": "Jeśli nie spodziewasz się tego zaproszenia, możesz zignorować tę wiadomość.",
+  "foundation.account.invitation.preview": "Załóż swoje konto",
+  "foundation.account.invitation.subject": "Twoje zaproszenie — wysłane ponownie",
+  "foundation.account.invitation.title": "Twoje zaproszenie — wysłane ponownie",
   "foundation.email.action": "Otwórz w Vereino",
   "foundation.email.footer": "Tę wiadomość wysłał {club} za pośrednictwem Vereino.",
   "foundation.email.preferences": "Zarządzaj ustawieniami e-maili",

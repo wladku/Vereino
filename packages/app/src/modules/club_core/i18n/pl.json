@@ -137,6 +137,8 @@
   "club_core.places.columns.status": "Status",
   "club_core.places.actions.create": "Dodaj miejsce",
   "club_core.places.actions.back": "Wróć do miejsc",
+  "club_core.places.links.calendar": "Kalendarz obiektu",
+  "club_core.places.links.zones": "Strefy i cennik",
   "club_core.places.create.title": "Nowe miejsce",
   "club_core.places.edit.title": "Edycja miejsca",
   "club_core.places.groups.place": "Miejsce",

@@ -114,10 +114,10 @@ export function formatZloty(grosz: number): string {
 // --- B-21 perspectives ---
 
 /**
- * The perspectives of the charge list (issue #109, Q1 default of 2026-11-06): membership fees (the default), all,
- * overdue, without payer, cash payments, orders and — only when DD-C02 allows (#291) — rentals.
+ * The perspectives of the charge list in the mockup's order (payments parity Q-C02, #292): membership fees (the
+ * default), overdue, orders, without payer, rentals — only when DD-C02 allows (#291) —, cash payments and all.
  */
-export const CHARGE_PERSPECTIVES = ['fees', 'all', 'overdue', 'payer_missing', 'cash', 'orders', 'rentals'] as const
+export const CHARGE_PERSPECTIVES = ['fees', 'overdue', 'orders', 'payer_missing', 'rentals', 'cash', 'all'] as const
 export type ChargePerspective = (typeof CHARGE_PERSPECTIVES)[number]
 
 export const DEFAULT_CHARGE_PERSPECTIVE: ChargePerspective = 'fees'
@@ -155,6 +155,65 @@ export function chargePerspectiveOf(value: string | null, shown: readonly Charge
 /** The perspectives shown: "Rentals (municipality)" only when the list response says so (DD-C02). */
 export function visiblePerspectives(rentalsShown: boolean): ChargePerspective[] {
   return CHARGE_PERSPECTIVES.filter((perspective) => perspective !== 'rentals' || rentalsShown)
+}
+
+/** The B-21 list's state as its URL carries it (payments parity REQ-C03, #292; precedent DD-U03). */
+export type ChargeListUrlState = {
+  perspective: ChargePerspective
+  period: string
+  payee: Payee | ''
+  search: string
+  page: number
+}
+
+/**
+ * The B-21 state from the URL's query: any known perspective (a link may open "Rentals (municipality)" before the
+ * list says whether it is shown), the period, a known payee, the search and the page; unknown or blank values fall
+ * back to the defaults.
+ */
+export function readChargeListUrl(get: (key: string) => string | null): ChargeListUrlState {
+  const payee = get('payee') ?? ''
+  const page = Number(get('page'))
+  return {
+    perspective: chargePerspectiveOf(get('perspective'), CHARGE_PERSPECTIVES),
+    period: get('period')?.trim() ?? '',
+    payee: (PAYEES as readonly string[]).includes(payee) ? (payee as Payee) : '',
+    search: get('search') ?? '',
+    page: Number.isInteger(page) && page > 1 ? page : 1,
+  }
+}
+
+/** The URL query of a B-21 state without the defaults; `?perspective=` keeps the B-01 widgets' links working. */
+export function chargeListUrlParams(state: ChargeListUrlState): Record<string, string> {
+  const params: Record<string, string> = {}
+  if (state.perspective !== DEFAULT_CHARGE_PERSPECTIVE) params.perspective = state.perspective
+  if (state.period.trim()) params.period = state.period.trim()
+  if (state.payee) params.payee = state.payee
+  if (state.search.trim()) params.search = state.search
+  if (state.page > 1) params.page = String(state.page)
+  return params
+}
+
+/** Statuses whose remaining amount B-21 shows as "—": nothing is left to pay or nothing is owed any more. */
+export const SETTLED_CHARGE_STATUSES = ['paid', 'cancelled', 'forfeited'] as const
+
+/** Whether B-21 shows the remaining amount of a charge in this status (REQ-C03); "—" otherwise. */
+export function remainingShown(status: string | null | undefined): boolean {
+  return !(SETTLED_CHARGE_STATUSES as readonly string[]).includes(status ?? '')
+}
+
+/** Where a payment came from (payments parity API table, `source`; B-22 "Received by", #292). */
+export type PaymentSource = 'manual' | 'bank_statement' | 'cash' | 'online'
+
+/**
+ * The source of a payment: a booked transfer of an imported statement, an online payment, cash, or a transfer
+ * recorded by hand. The statement's Undo carries its transaction, so its reversing entry reads "bank statement" too.
+ */
+export function paymentSourceOf(payment: { method: string; bankTransactionId?: string | null }): PaymentSource {
+  if (payment.bankTransactionId) return 'bank_statement'
+  if (payment.method === 'online') return 'online'
+  if (payment.method === 'cash') return 'cash'
+  return 'manual'
 }
 
 /**

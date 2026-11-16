@@ -154,6 +154,22 @@ export const createAccountSchema = z
   })
   .strict()
 
+/** `people.persons.resend_invitation` and `people.persons.close_account` (#303): the person only. */
+export const personAccountSchema = z.object({ id: z.uuid() }).strict()
+
+/** `people.persons.update_account` (#303): a new login e-mail and/or the block flag, at least one of them. */
+export const updateAccountSchema = z
+  .object({
+    id: z.uuid(),
+    email: emailSchema.optional(),
+    blocked: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => value.email !== undefined || value.blocked !== undefined, {
+    message: 'email or blocked is required',
+    path: ['email'],
+  })
+
 /** Input of the job command; `today` is accepted only from the CLI and the worker (no HTTP route). */
 export const syncRolesJobSchema = z.object({ today: calendarDateSchema.optional() }).strict()
 

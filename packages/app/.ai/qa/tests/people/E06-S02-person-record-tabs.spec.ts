@@ -121,7 +121,7 @@ test('E06-S02 the person record: Groups tab with history and scope, ?tab= links,
     await expect(page.getByRole('tab', { name: /Guardianship|Opieka/ })).toHaveAttribute('aria-selected', 'true')
     const kasiaId = new URL(page.url()).pathname.split('/').pop() as string
 
-    // A person with an account: "Account active" and the login e-mail (not the contact e-mail).
+    // A person with an account: "Invited" (not signed in yet, #303) and the login e-mail (not the contact e-mail).
     const loginEmail = `kasia-login-${uniqueSuffix()}@example.org`
     const account = await createAccount(request, token, kasiaId, loginEmail)
     expect(account.status, JSON.stringify(account.body)).toBe(201)
@@ -129,7 +129,7 @@ test('E06-S02 the person record: Groups tab with history and scope, ?tab= links,
     const detail = await call<PersonBody>(request, 'GET', `/api/people/persons/${kasiaId}`, token)
     expect(detail.body?.accountEmail).toBe(loginEmail)
     await page.goto(`/backend/people/persons/${kasiaId}?tab=account`)
-    await expect(page.getByText(uiText('people.account.active', { exact: true }))).toBeVisible()
+    await expect(page.getByText(uiText('people.account.state.invited', { exact: true }))).toBeVisible()
     await expect(page.getByText(`Login: ${loginEmail}`)).toBeVisible()
     await expect(page.getByRole('button', { name: uiText('people.account.actions.create') })).toHaveCount(0)
 

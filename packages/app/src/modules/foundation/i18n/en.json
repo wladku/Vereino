@@ -1,4 +1,10 @@
 {
+  "foundation.account.invitation.body": "Your club sent your invitation again. Click the link below to set your password. This link will expire in 60 minutes.",
+  "foundation.account.invitation.cta": "Set up your password",
+  "foundation.account.invitation.hint": "If you did not expect this invitation, you can safely ignore this e-mail.",
+  "foundation.account.invitation.preview": "Set up your account",
+  "foundation.account.invitation.subject": "Your invitation, sent again",
+  "foundation.account.invitation.title": "Your invitation, sent again",
   "foundation.email.action": "Open in Vereino",
   "foundation.email.footer": "This message was sent by {club} through Vereino.",
   "foundation.email.preferences": "Manage your e-mail preferences",

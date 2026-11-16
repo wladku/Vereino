@@ -11,6 +11,20 @@ const events = [
     entity: 'person',
     category: 'lifecycle',
   },
+  // People life-cycle spec phase L1 (#303): the login e-mail or the block of the person's account changed; the
+  // account was closed (the platform user deleted). Ids only.
+  {
+    id: 'people.person.account_updated',
+    label: "Person's account updated",
+    entity: 'person',
+    category: 'lifecycle',
+  },
+  {
+    id: 'people.person.account_closed',
+    label: "Person's account closed",
+    entity: 'person',
+    category: 'lifecycle',
+  },
   {
     id: 'people.role_assignment.created',
     label: 'Role assignment created',

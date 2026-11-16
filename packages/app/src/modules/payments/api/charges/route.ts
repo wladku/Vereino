@@ -5,7 +5,7 @@
 // payer's name (`search`, through the people directory's hashed name tokens — three letters or more). The list adds
 // the debtor's and payer's names, the payer and payee institutions of a rental charge (#291), the discount rule's
 // name, what was paid, what remains and the overdue marker; `meta.rentalsPerspective` says whether B-21 shows
-// "Rentals (municipality)" (DD-C02).
+// "Rentals (municipality)" (DD-C02). Without a sort the newest period comes first, then the due date (Contract 3, #292).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -153,7 +153,16 @@ export const { metadata, GET } = makeCrudRoute({
       'created_at',
       'updated_at',
     ],
-    sortFieldMap: { dueDate: 'due_date', createdAt: 'created_at', updatedAt: 'updated_at' },
+    sortFieldMap: {
+      periodLabel: 'period_label',
+      dueDate: 'due_date',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+    // Contract 3 of the payments parity spec (approved 2026-11-16, #292): the newest period first, then the due date;
+    // a client may still pass its own sort.
+    defaultSort: { field: 'periodLabel', dir: 'desc' },
+    tiebreakSortField: 'dueDate',
     // A full export would skip `buildFilters` and with it the record scope.
     export: { enabled: false },
     disableListCache: true,

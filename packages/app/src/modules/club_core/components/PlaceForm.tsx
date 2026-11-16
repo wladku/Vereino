@@ -7,6 +7,7 @@
 // P-04, DD-29; #124); a public schedule without an address (422) and an address another place uses (409) show at the
 // address field.
 import * as React from 'react'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   CrudForm,
@@ -398,6 +399,30 @@ export function PlaceCreateForm() {
   )
 }
 
+/**
+ * The links of a saved place to its facility calendar and to the zones and rates (facilities parity spec B-06,
+ * REQ-R03; #276). Addresses only: the facilities pages check their own features.
+ */
+function PlaceFacilityLinks({ id, t }: { id: string; t: Translate }) {
+  return (
+    <>
+      <Button asChild variant="outline">
+        <Link
+          href={`/backend/facilities/calendar?place=${encodeURIComponent(id)}`}
+          data-testid="club-core-place-calendar-link"
+        >
+          {t('club_core.places.links.calendar')}
+        </Link>
+      </Button>
+      <Button asChild variant="outline">
+        <Link href="/backend/facilities/zones" data-testid="club-core-place-zones-link">
+          {t('club_core.places.links.zones')}
+        </Link>
+      </Button>
+    </>
+  )
+}
+
 export function PlaceEditForm({ id }: { id: string }) {
   const t = useT()
   const { fields, groups } = usePlaceFields(t, id)
@@ -435,6 +460,7 @@ export function PlaceEditForm({ id }: { id: string }) {
       loadingMessage={t('club_core.places.loading')}
       initialValues={{ ...toFormValues(place), id }}
       submitLabel={t('club_core.common.save')}
+      extraActions={<PlaceFacilityLinks id={id} t={t} />}
       successRedirect={withFlash(LIST_HREF, t('club_core.places.flash.saved'), 'success')}
       deleteRedirect={withFlash(LIST_HREF, t('club_core.places.flash.deleted'), 'success')}
       onSubmit={async (values) => {
