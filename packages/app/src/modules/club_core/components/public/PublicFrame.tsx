@@ -1,15 +1,18 @@
 'use client'
-// The frame of the public club pages (club spec UI table `/p/[clubSlug]`, DD-23; #29): the club logo and name in the
-// header (a link to the club page), the language switcher for guests, the page body and the footer with the club name,
-// its published phone (E06-S07, #89) and the club's rules and privacy-policy links (#195). Personal data never appears
-// here; the club and section names are the club's own content and stay in its language.
+// The frame of the public club pages (club spec UI table `/p/[clubSlug]`, DD-23; #29): the public header of
+// `@vereino/ui` (the club logo and name linking to the club page, Club · Sections · Facilities · Events · Sign in and the
+// language switcher; navigation spec REQ-N09, #261), the page body and the footer with the club name, its published
+// phone (E06-S07, #89) and the club's rules and privacy-policy links (#195). Personal data never appears here; the club
+// and section names are the club's own content and stay in its language.
 import * as React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { PublicHeader, type PublicHeaderLabels } from '@vereino/ui'
 import { phoneHref } from '../../lib/public-page'
-import { clubHref, type PublicClubContact, type PublicClubLinks, type PublicLogo } from './public-client'
+import type { PublicClubContact, PublicClubLinks, PublicClubNav, PublicLogo } from './public-client'
 
 /** A logo, or the initial of the name in its place (glossary *Logo*: never an empty image). Decorative: the name is next to it. */
 export function LogoMark({ logo, size = 'md' }: { logo: PublicLogo; size?: 'md' | 'lg' }) {
@@ -100,33 +103,46 @@ export function PublicFooter({ club }: { club: { name: string; contact: PublicCl
   )
 }
 
+/** The strings of the public header (`club_core.public.nav.*`). */
+export function usePublicHeaderLabels(): PublicHeaderLabels {
+  const t = useT()
+  return {
+    nav: t('club_core.public.nav.label'),
+    club: t('club_core.public.nav.club'),
+    sections: t('club_core.public.nav.sections'),
+    facilities: t('club_core.public.nav.facilities'),
+    events: t('club_core.public.nav.events'),
+    signIn: t('club_core.public.nav.signIn'),
+  }
+}
+
 export function PublicFrame({
   club,
   children,
 }: {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks } | null
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  } | null
   children: React.ReactNode
 }) {
   const t = useT()
+  const labels = usePublicHeaderLabels()
+  const pathname = usePathname()
   return (
     <div className="bg-background text-foreground min-h-svh">
-      <header className="bg-card border-b">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          {club ? (
-            <Link
-              href={clubHref(club.slug)}
-              className="text-foreground flex min-h-11 items-center gap-3 rounded-md font-semibold"
-              data-testid="public-club-link"
-            >
-              <LogoMark logo={club.logo} />
-              <span>{club.name}</span>
-            </Link>
-          ) : (
-            <span className="text-muted-foreground text-sm">{t('club_core.public.title')}</span>
-          )}
-          <LanguageSwitcher />
-        </div>
-      </header>
+      <PublicHeader
+        club={club}
+        title={t('club_core.public.title')}
+        labels={labels}
+        pathname={pathname}
+        Link={Link}
+        headerEnd={<LanguageSwitcher />}
+      />
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
       {club ? <PublicFooter club={club} /> : null}
     </div>

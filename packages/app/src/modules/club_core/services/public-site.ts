@@ -17,11 +17,13 @@ import { effectiveLogo, nameInitial, type LogoSource } from '../lib/files'
 import {
   clubContact,
   clubLinks,
+  clubNav,
   isMaterialPublished,
   providerMayContribute,
   sectionBlocks,
   type ClubCoreSectionBlocks,
   type PublicClubLinks,
+  type PublicClubNav,
 } from '../lib/public-page'
 import { PLACE_FILE_ASSIGNMENT, PLACE_FILE_OWNER_ENTITY } from '../lib/files'
 import {
@@ -53,6 +55,7 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    nav: PublicClubNav
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
@@ -64,7 +67,14 @@ export type PublicClubPage = {
 export type PublicClubContact = { phone: string } | null
 
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: ClubCoreSectionBlocks & Record<string, unknown>
 }
@@ -84,7 +94,14 @@ export type PublicFileRef = {
 export type PublicClubFrame = {
   tenantId: string
   organizationId: string
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
   /** Every block the club publishes (e.g. `online_requests` for the public places, #124). */
   publishedBlocks: readonly PublicationBlock[]
 }
@@ -127,6 +144,12 @@ export type ClubCorePublicSite = {
    * III DD-M14). The same lookup and the same `not_found` / `disabled` answers as the club page.
    */
   clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
+  /**
+   * The header of the public pages of a club whose tenant and organization are already trusted — a sessionless page
+   * whose token record named the club (the request confirmation of `facilities`, #261). No slug lookup: the settings
+   * row is read inside that scope; `not_found` without a public slug, `disabled` while the page is off.
+   */
+  clubFrameForScope(scope: { tenantId: string; organizationId: string }): Promise<PublicSiteResult<PublicClubFrame>>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
@@ -250,6 +273,11 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     return clubLinks(club.settings.rulesUrl ?? null, club.settings.privacyPolicyUrl ?? null)
   }
 
+  /** Which optional links the public header shows (#261). */
+  function navOf(club: FoundClub): PublicClubNav {
+    return clubNav(club.publication)
+  }
+
   /** Section logo ?? club logo ?? the initial of the club name (glossary *Logo*). */
   function sectionLogoOf(club: FoundClub, section: Section, clubLogo: PublicLogo): PublicLogo {
     const logo = effectiveLogo({
@@ -311,7 +339,14 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     return {
       tenantId: club.tenantId,
       organizationId: club.organizationId,
-      club: { name, slug: club.slug, logo: clubLogoOf(club, name), contact: contactOf(club), links: linksOf(club) },
+      club: {
+        name,
+        slug: club.slug,
+        logo: clubLogoOf(club, name),
+        contact: contactOf(club),
+        links: linksOf(club),
+        nav: navOf(club),
+      },
       publishedBlocks: publishedBlocks(club.publication),
     }
   }
@@ -414,6 +449,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             logo: clubLogo,
             contact: contactOf(club),
             links: linksOf(club),
+            nav: navOf(club),
           },
           sections: sections.map((section) => ({
             name: section.name,
@@ -465,7 +501,14 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return {
         status: 'ok',
         value: {
-          club: { name, slug: club.slug, logo: clubLogo, contact: contactOf(club), links: linksOf(club) },
+          club: {
+            name,
+            slug: club.slug,
+            logo: clubLogo,
+            contact: contactOf(club),
+            links: linksOf(club),
+            nav: navOf(club),
+          },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
           blocks: { ...extra, ...own },
         },
@@ -477,6 +520,27 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       const found = await findClub(db, clubSlug)
       if (found.status !== 'ok') return found
       return { status: 'ok', value: await frameOf(db, found.value) }
+    },
+
+    async clubFrameForScope(scope) {
+      const db = em()
+      const settings = await db.findOne(ClubSettings, {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        deletedAt: null,
+      })
+      const slug = settings?.publicSlug
+      if (!settings || !slug) return NOT_FOUND
+      const publication = resolvePublication(settings.publication)
+      if (!publication.enabled) return DISABLED
+      const club: FoundClub = {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        slug,
+        settings,
+        publication,
+      }
+      return { status: 'ok', value: await frameOf(db, club) }
     },
 
     async publicPlaces(clubSlug) {

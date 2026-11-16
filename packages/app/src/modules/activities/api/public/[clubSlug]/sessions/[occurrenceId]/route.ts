@@ -53,6 +53,11 @@ const pageSchema = z.object({
     links: z
       .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
       .describe("The club's rules and privacy policy in the page footer; null while not set"),
+    nav: z
+      .object({ facilities: z.boolean(), events: z.boolean() })
+      .describe(
+        'Which optional links the public header shows: `facilities` while the club publishes its facility calendars, `events` while it publishes events (false until P-06)',
+      ),
   }),
   session: z.object({
     activityName: z.string(),

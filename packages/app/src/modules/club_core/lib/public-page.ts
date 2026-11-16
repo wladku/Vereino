@@ -102,6 +102,17 @@ export function clubLinks(rulesUrl: string | null, privacyPolicyUrl: string | nu
   return { rules: publishedLink(rulesUrl), privacyPolicy: publishedLink(privacyPolicyUrl) }
 }
 
+/**
+ * Which optional links the public header shows (navigation spec REQ-N09; E09-S07 #261): "Facilities" while the club
+ * publishes its facility calendars (`places_calendar`); "Events" while it publishes events — that block comes with
+ * P-06 (E09-S09), so it is false until then.
+ */
+export type PublicClubNav = { facilities: boolean; events: boolean }
+
+export function clubNav(publication: Publication): PublicClubNav {
+  return { facilities: isBlockPublished(publication, 'places_calendar'), events: false }
+}
+
 /** A material a guest may download: public, of a public section, with the `materials` block on. */
 export function isMaterialPublished(publication: Publication, material: Pick<SectionMaterialRow, 'isPublic'>): boolean {
   return isBlockPublished(publication, 'materials') && material.isPublic

@@ -3,6 +3,7 @@ import {
   CLUB_CORE_BLOCK_KEYS,
   clubContact,
   clubLinks,
+  clubNav,
   isMaterialPublished,
   phoneHref,
   pluralForm,
@@ -120,6 +121,18 @@ describe('section blocks of club_core', () => {
       rules: null,
       privacyPolicy: 'https://club.example/privacy',
     })
+  })
+
+  it('shows the Facilities header link only while the places calendar is published; Events waits for P-06 (#261)', () => {
+    expect(clubNav({ ...everything, blocks: { ...everything.blocks, places_calendar: true } })).toEqual({
+      facilities: true,
+      events: false,
+    })
+    expect(clubNav({ ...everything, blocks: { ...everything.blocks, places_calendar: false } })).toEqual({
+      facilities: false,
+      events: false,
+    })
+    expect(clubNav(DEFAULT_PUBLICATION)).toEqual({ facilities: false, events: false })
   })
 
   it('publishes a material only when it is public and the materials block is on', () => {

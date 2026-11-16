@@ -1,42 +1,21 @@
 'use client'
-// The frame of the public facility pages (P-03, P-04; #124), the same header and footer as the public club pages of
-// `club_core` (`PublicFrame`, which another module may not import at runtime, S4.3): the club logo and name linking
-// to the club page, the language switcher, the page body and a footer with the club name, its published phone and the
+// The frame of the public facility pages (P-03, P-04, P-05; #124), the same frame as the public club pages of
+// `club_core` (`PublicFrame`, which another module may not import at runtime, S4.3): the public header of `@vereino/ui`
+// (the club logo and name linking to the club page, Club · Sections · Facilities · Events · Sign in and the language
+// switcher; navigation spec REQ-N09, #261), the page body and a footer with the club name, its published phone and the
 // club's rules and privacy-policy links (#195).
 // Also the notices of a page with nothing to show and the loading and error states with retry.
 import * as React from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { clubHref, phoneHref, type PublicPlacesView } from './public-client'
+import { PublicHeader } from '@vereino/ui'
+import { phoneHref, type PublicPlacesView } from './public-client'
 
 type FrameClub = PublicPlacesView['club']
-
-function LogoMark({ logo }: { logo: FrameClub['logo'] }) {
-  if (logo.url) {
-    return (
-      <Image
-        src={logo.url}
-        alt=""
-        width={40}
-        height={40}
-        unoptimized
-        className="bg-muted size-10 shrink-0 rounded-md object-contain"
-      />
-    )
-  }
-  return (
-    <span
-      aria-hidden="true"
-      className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md text-lg font-semibold"
-    >
-      {logo.initial}
-    </span>
-  )
-}
 
 export function PublicFacilitiesFrame({
   club,
@@ -49,26 +28,26 @@ export function PublicFacilitiesFrame({
   children: React.ReactNode
 }) {
   const t = useT()
+  const pathname = usePathname()
   const width = wide ? 'max-w-5xl' : 'max-w-3xl'
   return (
     <div className="bg-background text-foreground min-h-svh">
-      <header className="bg-card border-b">
-        <div className={`mx-auto flex ${width} flex-wrap items-center justify-between gap-3 px-4 py-3`}>
-          {club ? (
-            <Link
-              href={clubHref(club.slug)}
-              className="text-foreground flex min-h-11 items-center gap-3 rounded-md font-semibold"
-              data-testid="public-club-link"
-            >
-              <LogoMark logo={club.logo} />
-              <span>{club.name}</span>
-            </Link>
-          ) : (
-            <span className="text-muted-foreground text-sm">{t('facilities.public.title')}</span>
-          )}
-          <LanguageSwitcher />
-        </div>
-      </header>
+      <PublicHeader
+        club={club}
+        title={t('facilities.public.title')}
+        labels={{
+          nav: t('facilities.public.nav.label'),
+          club: t('facilities.public.nav.club'),
+          sections: t('facilities.public.nav.sections'),
+          facilities: t('facilities.public.nav.facilities'),
+          events: t('facilities.public.nav.events'),
+          signIn: t('facilities.public.nav.signIn'),
+        }}
+        pathname={pathname}
+        Link={Link}
+        wide={wide}
+        headerEnd={<LanguageSwitcher />}
+      />
       <main className={`mx-auto flex ${width} flex-col gap-6 px-4 py-6`}>{children}</main>
       {club ? (
         <footer className="bg-card border-t" data-testid="public-footer">
