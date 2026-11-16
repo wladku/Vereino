@@ -25,7 +25,14 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { addCalendarDays, calendarDateInZone } from '@vereino/core'
-import { badgeVariant, formatClockTime, formatTimeRange, memberSideScope, useMemberContext } from '@vereino/ui'
+import {
+  badgeVariant,
+  formatClockTime,
+  formatTimeRange,
+  memberSideScope,
+  MemberSkeleton,
+  useMemberContext,
+} from '@vereino/ui'
 import {
   declarationButtons,
   savedDeclarationKey,
@@ -154,7 +161,7 @@ function CoachTile({
 }) {
   const t = useT()
   let body: React.ReactNode
-  if (loading) body = <p className="text-muted-foreground text-sm">{t('activities.club.today.loading')}</p>
+  if (loading) body = <MemberSkeleton shape="rows" count={2} label={t('activities.club.today.loading')} />
   else if (failed) {
     body = (
       <div className="flex flex-col items-start gap-2">
@@ -361,7 +368,14 @@ export default function ClubTodayTilesWidget({
 
   let calendarBody: React.ReactNode
   if (!query.data && query.isFetching) {
-    calendarBody = <p className="text-muted-foreground text-sm">{t('activities.club.today.loading')}</p>
+    calendarBody = (
+      <MemberSkeleton
+        shape="rows"
+        count={2}
+        label={t('activities.club.today.loading')}
+        data-testid="club-today-loading"
+      />
+    )
   } else if (!query.data) {
     calendarBody = (
       <div className="flex flex-col items-start gap-2" data-testid="club-today-error">

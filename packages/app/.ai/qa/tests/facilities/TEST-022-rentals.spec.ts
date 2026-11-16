@@ -49,10 +49,11 @@ test('TEST-022 rentals: quote, save, list, and the refusals with their codes', a
     expect(municipal.body).toMatchObject({ amount: 18_000, appliedCategory: 'municipal_club_winter_lighting' })
 
     // Given a free bookable slot, when the administrator saves a 2-unit rental, then it is listed with the amount and
-    // the dates; without `payments`' charge service there is no charge (DD-19).
+    // the dates; `payments`' charge service writes its charge in the same transaction (DD-19, #291; TEST-C01).
     const created = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, startsAt, 2))
     expect(created.status, JSON.stringify(created.body)).toBe(201)
-    expect(created.body).toMatchObject({ status: 'requested', amount: 50_000, chargeId: null })
+    expect(created.body).toMatchObject({ status: 'requested', amount: 50_000 })
+    expect(created.body?.chargeId).toEqual(expect.any(String))
     const active = await listRentals(request, admin, '&tab=active')
     expect(active).toHaveLength(1)
     expect(active[0]).toMatchObject({

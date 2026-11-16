@@ -6,7 +6,11 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { calendarDateInZone, type CalendarDate } from '@vereino/core'
-import type { ClubCoreDirectory, SectionDirectoryEntry } from '../../club_core/services/directory'
+import type {
+  ClubCoreDirectory,
+  InstitutionDirectoryEntry,
+  SectionDirectoryEntry,
+} from '../../club_core/services/directory'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type {
   ActivitiesScheduleDirectory,
@@ -62,6 +66,16 @@ export function findSections(
   em?: EntityManager,
 ): Promise<Map<string, SectionDirectoryEntry>> {
   return clubDirectory(container).findSections(scope, ids, em)
+}
+
+/** The live institutions of the club among `ids` by id, names only (a rental charge's payer and payee, #291). */
+export function findInstitutions(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, InstitutionDirectoryEntry>> {
+  return clubDirectory(container).findInstitutions(scope, ids, em)
 }
 
 export function findGroups(

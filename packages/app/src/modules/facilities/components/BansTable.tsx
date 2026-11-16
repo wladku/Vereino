@@ -524,6 +524,7 @@ function BansList({ tab, onCreate }: { tab: BanListTab; onCreate: () => void }) 
     <div className="flex flex-col gap-6">
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

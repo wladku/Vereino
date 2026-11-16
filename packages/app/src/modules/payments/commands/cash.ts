@@ -3,13 +3,14 @@
 // amount pays them oldest first (a lower amount leaves the newest partially paid), one `KP/YYYY/MM/NNN` receipt number
 // is issued for the whole acceptance, and the payer gets an e-mail confirmation unless the collector turns it off.
 //
-// Refusals: 422 `cash_charges_invalid` (a charge unknown in the club or of another payer), 409 `charge_not_payable`
-// (cancelled, forfeited), 409 `charge_already_paid`, 422 `cash_exceeds_selected` (more than remains on the selection),
-// 422 `payment_date_in_future`. The selected charges are row-locked in id order, so concurrent payments never over-pay
-// them; the receipt numbering takes the club's advisory lock, so no number is issued twice. Like every `payments`
-// write of phase 4 it needs the club administrator's grant (D-030); the coach's path is `payments.cash.collect`
-// (`commands/group-charges.ts`, E07-S10 #117), which shares `acceptCashOnCharges` and the confirmation. Money is
-// never edited or deleted: the command is not undoable, and a reversing entry (`payments.payments.reverse`) corrects.
+// Refusals: 422 `cash_charges_invalid` (a charge unknown in the club, of another payer or of a rental — paid to the
+// facility owner, #291), 409 `charge_not_payable` (cancelled, forfeited), 409 `charge_already_paid`, 422
+// `cash_exceeds_selected` (more than remains on the selection), 422 `payment_date_in_future`. The selected charges
+// are row-locked in id order, so concurrent payments never over-pay them; the receipt numbering takes the club's
+// advisory lock, so no number is issued twice. Like every `payments` write of phase 4 it needs the club
+// administrator's grant (D-030); the coach's path is `payments.cash.collect` (`commands/group-charges.ts`, E07-S10
+// #117), which shares `acceptCashOnCharges` and the confirmation. Money is never edited or deleted: the command is
+// not undoable, and a reversing entry (`payments.payments.reverse`) corrects.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -267,7 +268,8 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
       )
       if (
         charges.length !== parsed.chargeIds.length ||
-        charges.some((charge) => charge.payerPersonId !== parsed.payerPersonId)
+        // A rental charge is paid to the facility owner's account, never in cash to the club (#291).
+        charges.some((charge) => charge.payerPersonId !== parsed.payerPersonId || charge.sourceType === 'rental')
       ) {
         await paymentsErrors.throw('cash_charges_invalid')
       }

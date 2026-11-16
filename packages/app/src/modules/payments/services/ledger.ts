@@ -1,12 +1,17 @@
 // Reads of the charge ledger for the `payments` routes (issue #109; foundation spec REQ-F16: routes reach the ORM only
 // through services): one charge with its description decrypted, its payments with their titles decrypted, the paid
-// totals of listed charges and the charges with an unreversed payment of a method.
+// totals of listed charges, the charges with an unreversed payment of a method and whether the rentals perspective is
+// shown (DD-C02, #291).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Charge, Payment } from '../data/entities'
 import { chargeIdsWithPayment } from '../data/queries'
+import { rentalsPerspectiveShown } from '../lib/charge-ledger'
 import type { PaymentsScope } from './directory'
+
+/** `facilities`' occupancy service: registered whenever `facilities` is enabled (`facilities/di.ts`). */
+const FACILITIES_OCCUPANCY_SERVICE = 'facilities.occupancyService'
 
 function freshEm(container: AwilixContainer): EntityManager {
   return container.resolve<EntityManager>('em').fork()
@@ -70,4 +75,21 @@ export async function chargeDescriptions(
     scope,
   )
   return new Map(rows.map((row) => [row.id, row.description]))
+}
+
+/**
+ * DD-C02: whether B-21 shows "Rentals (municipality)" — `facilities` is enabled in this deployment, or the club has a
+ * live rental charge (one count, only when `facilities` is not registered).
+ */
+export async function rentalsPerspective(container: AwilixContainer, scope: PaymentsScope): Promise<boolean> {
+  const facilitiesRegistered = container.hasRegistration(FACILITIES_OCCUPANCY_SERVICE)
+  const liveRentalCharges = facilitiesRegistered
+    ? 0
+    : await freshEm(container).count(Charge, {
+        ...scope,
+        sourceType: 'rental',
+        status: { $ne: 'cancelled' as const },
+        deletedAt: null,
+      })
+  return rentalsPerspectiveShown({ facilitiesRegistered, liveRentalCharges })
 }

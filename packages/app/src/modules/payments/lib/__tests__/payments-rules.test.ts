@@ -105,6 +105,8 @@ describe('payments vocabularies', () => {
       order_not_delivered: 409,
       order_already_handed_over: 409,
       order_unpaid_confirm_required: 409,
+      charge_payer_required: 422,
+      charge_amount_invalid: 422,
     })
   })
 })

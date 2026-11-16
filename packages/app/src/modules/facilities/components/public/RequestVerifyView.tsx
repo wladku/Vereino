@@ -9,10 +9,11 @@
 // The token is never rendered or logged; the server sends this path with `Referrer-Policy: no-referrer`.
 import * as React from 'react'
 import Link from 'next/link'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { PublicFacilitiesFrame } from './PublicFacilitiesFrame'
 import {
   formatAmount,
@@ -104,7 +105,7 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
 
   let body: React.ReactNode
   if (!outcome) {
-    body = <LoadingMessage label={t('facilities.public.verify.loading')} />
+    body = <MemberSkeleton shape="rows" label={t('facilities.public.verify.loading')} />
   } else if (outcome.status === 'ok') {
     const until = zonedInstantLabel(outcome.summary.holdExpiresAt, outcome.summary.timeZone, locale)
     body = (

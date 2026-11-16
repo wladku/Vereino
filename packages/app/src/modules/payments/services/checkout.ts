@@ -116,8 +116,15 @@ export async function payerOf(ctx: CommandRuntimeContext): Promise<Payer> {
   return { scope, personId, wardIds }
 }
 
-/** True when the payer sees the charge: they pay it, or it is their own or their ward's charge without a payer. */
-export function chargeVisibleTo(payer: Payer, charge: Pick<Charge, 'payerPersonId' | 'payerMissing' | 'personId'>) {
+/**
+ * True when the payer sees the charge: they pay it, or it is their own or their ward's charge without a payer. A
+ * rental charge is paid to the facility owner's account, so no payer sees it (403 `checkout_charge_forbidden`, #291).
+ */
+export function chargeVisibleTo(
+  payer: Payer,
+  charge: Pick<Charge, 'sourceType' | 'payerPersonId' | 'payerMissing' | 'personId'>,
+) {
+  if (charge.sourceType === 'rental') return false
   if (charge.payerPersonId === payer.personId) return true
   return charge.payerMissing && !!charge.personId && [payer.personId, ...payer.wardIds].includes(charge.personId)
 }

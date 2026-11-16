@@ -23,7 +23,7 @@ import {
   placeLabel,
   saveError,
   textOrNull,
-  tolerantPlaceOptions,
+  loadPlaceOptions,
   usePlaceOptions,
   type RateRow,
   type Translate,
@@ -55,7 +55,7 @@ function useRateFields(t: Translate, editing: boolean) {
             label: t('facilities.fields.place'),
             type: 'select',
             required: true,
-            loadOptions: tolerantPlaceOptions,
+            loadOptions: loadPlaceOptions,
           },
       editing
         ? { id: 'categoryLabel', label: t('facilities.rates.fields.category'), type: 'text', readOnly: true }

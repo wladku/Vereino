@@ -21,6 +21,14 @@ import {
   visiblePerspectives,
   chargePerspectiveOf,
   chargesPerspectiveHref,
+  MAX_PAYER_LABEL_LENGTH,
+  MAX_SOURCE_CHARGE_AMOUNT,
+  payerDisplayName,
+  rentalsPerspectiveShown,
+  sourceAmountValid,
+  sourceCancelDecision,
+  sourceChargeStatus,
+  sourcePayerOf,
 } from '../charge-ledger'
 
 describe('charge ledger vocabularies', () => {
@@ -120,9 +128,79 @@ describe('perspectives', () => {
     expect(perspectiveQuery('rentals')).toEqual({ sourceType: 'rental' })
   })
 
-  it('shows rentals only when facilities is enabled', () => {
+  it('shows rentals only when DD-C02 allows', () => {
     expect(visiblePerspectives(false)).not.toContain('rentals')
     expect(visiblePerspectives(true)).toEqual([...CHARGE_PERSPECTIVES])
+  })
+
+  it('allows rentals with facilities registered or with a live rental charge (DD-C02)', () => {
+    expect(rentalsPerspectiveShown({ facilitiesRegistered: true, liveRentalCharges: 0 })).toBe(true)
+    expect(rentalsPerspectiveShown({ facilitiesRegistered: false, liveRentalCharges: 2 })).toBe(true)
+    expect(rentalsPerspectiveShown({ facilitiesRegistered: false, liveRentalCharges: 0 })).toBe(false)
+  })
+})
+
+describe('rental charges (DD-19, DD-C01)', () => {
+  const institution = '11111111-1111-4111-8111-111111111111'
+  const person = '22222222-2222-4222-8222-222222222222'
+
+  it('takes the payer in the order institution, person, typed-in name', () => {
+    expect(sourcePayerOf({ payerInstitutionId: institution, payerPersonId: person, payerDisplayName: 'X' })).toEqual({
+      payerInstitutionId: institution,
+      payerPersonId: null,
+      payerLabel: null,
+    })
+    expect(sourcePayerOf({ payerInstitutionId: null, payerPersonId: person, payerDisplayName: 'X' })).toEqual({
+      payerInstitutionId: null,
+      payerPersonId: person,
+      payerLabel: null,
+    })
+    expect(sourcePayerOf({ payerDisplayName: '  Jan Wynajmujący  ' })).toEqual({
+      payerInstitutionId: null,
+      payerPersonId: null,
+      payerLabel: 'Jan Wynajmujący',
+    })
+    expect(sourcePayerOf({ payerDisplayName: 'a'.repeat(250) })?.payerLabel).toHaveLength(MAX_PAYER_LABEL_LENGTH)
+  })
+
+  it('has no payer without an id or a name', () => {
+    expect(sourcePayerOf({})).toBeNull()
+    expect(sourcePayerOf({ payerInstitutionId: null, payerPersonId: null, payerDisplayName: '   ' })).toBeNull()
+    expect(sourcePayerOf({ payerDisplayName: null })).toBeNull()
+  })
+
+  it('accepts whole grosz from a free rental up to the facilities maximum', () => {
+    expect(sourceAmountValid(0)).toBe(true)
+    expect(sourceAmountValid(50_000)).toBe(true)
+    expect(sourceAmountValid(MAX_SOURCE_CHARGE_AMOUNT)).toBe(true)
+    expect(sourceAmountValid(MAX_SOURCE_CHARGE_AMOUNT + 1)).toBe(false)
+    expect(sourceAmountValid(-1)).toBe(false)
+    expect(sourceAmountValid(1.5)).toBe(false)
+    expect(sourceAmountValid(Number.NaN)).toBe(false)
+  })
+
+  it('creates a free rental charge paid and every other one open', () => {
+    expect(sourceChargeStatus(0)).toBe('paid')
+    expect(sourceChargeStatus(1)).toBe('open')
+  })
+
+  it('cancels a charge without payments, keeps a paid one and skips a closed one', () => {
+    expect(sourceCancelDecision({ status: 'open', hasPayments: false })).toBe('cancel')
+    expect(sourceCancelDecision({ status: 'paid', hasPayments: false })).toBe('cancel')
+    expect(sourceCancelDecision({ status: 'open', hasPayments: true })).toBe('charge_paid')
+    expect(sourceCancelDecision({ status: 'partially_paid', hasPayments: false })).toBe('charge_paid')
+    expect(sourceCancelDecision({ status: 'paid', hasPayments: true })).toBe('charge_paid')
+    expect(sourceCancelDecision({ status: 'cancelled', hasPayments: false })).toBe('none')
+    expect(sourceCancelDecision({ status: 'forfeited', hasPayments: true })).toBe('none')
+  })
+
+  it('shows the payer institution, then the person, then the typed-in name', () => {
+    const payer = { firstName: 'Anna', lastName: 'Nowak' }
+    expect(payerDisplayName({ payerInstitution: { name: 'KS Sąsiedzi' }, payer, payerLabel: 'X' })).toBe('KS Sąsiedzi')
+    expect(payerDisplayName({ payerInstitution: null, payer, payerLabel: 'X' })).toBe('Anna Nowak')
+    expect(payerDisplayName({ payer: { firstName: '', lastName: '' }, payerLabel: 'Jan' })).toBe('Jan')
+    expect(payerDisplayName({ payerInstitution: { name: '' }, payerLabel: '' })).toBeNull()
+    expect(payerDisplayName({})).toBeNull()
   })
 })
 

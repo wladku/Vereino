@@ -11,7 +11,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert } from '@open-mercato/ui/primitives/alert'
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
+import { MemberSkeleton } from '@vereino/ui'
 import { EVENT_TYPES } from '../../lib/activities-rules'
 import {
   EVENT_NAME_MAX,
@@ -443,7 +444,7 @@ function NewEvent({ profile, t }: { profile: ClubProfile; t: Translate }) {
   const query = useEventOptions()
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('activities.club.event.loading')} />
+    body = <MemberSkeleton shape="fields" label={t('activities.club.event.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage
@@ -482,5 +483,7 @@ function NewEvent({ profile, t }: { profile: ClubProfile; t: Translate }) {
 
 export function ClubEventPage() {
   const t = useT()
-  return <ActivitiesClubFrame>{(profile) => <NewEvent profile={profile} t={t} />}</ActivitiesClubFrame>
+  return (
+    <ActivitiesClubFrame skeleton="fields">{(profile) => <NewEvent profile={profile} t={t} />}</ActivitiesClubFrame>
+  )
 }

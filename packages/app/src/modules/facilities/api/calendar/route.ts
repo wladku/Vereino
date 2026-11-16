@@ -4,14 +4,16 @@
 // its ancestors and descendants, with the names staff see; without it, every live active place with the entries on
 // it. Staff with `facilities.view` read the whole club; a maintainer holding only `facilities.maintenance.manage`
 // reads the places assigned to them, without renter, person or group names (#128, DD-36, TEST-050; 403 for another
-// place). A facility attendant reads the places of their grant with names (#126; 403 for another place).
+// place). A facility attendant reads the places of their grant with names (#126; 403 for another place). The facilities
+// parity spec (#275) adds the place facts and, per entry, the place name, the group and coach of a session, the status of
+// a rental and its contact — the contact only where the caller manages the rentals of the place (DD-R18).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
 import { calendarQuerySchema } from '../../data/validators'
 import { calendarWindowProblem } from '../../lib/internal-bookings'
-import { attendantPlaceIds } from '../../lib/place-scope'
+import { attendantPlaceIds, rentalPlaceIds } from '../../lib/place-scope'
 import { staffCalendar } from '../../services/calendar'
 import { errorSchema } from '../shared'
 
@@ -27,7 +29,20 @@ const responseSchema = z.object({
     canPlan: z.boolean(),
     planPlaceIds: z.array(z.string()).nullable().describe('The places the caller may plan maintenance on; null = all'),
   }),
-  places: z.array(z.object({ id: z.uuid(), name: z.string(), parentName: z.string().nullable(), isLeaf: z.boolean() })),
+  places: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      parentId: z.uuid().nullable(),
+      parentName: z.string().nullable(),
+      isLeaf: z.boolean(),
+      kind: z.string().nullable().describe('Null for an inactive place'),
+      surface: z.string().nullable(),
+      isExternal: z.boolean(),
+      capacityGroups: z.number(),
+      acceptsOnlineRequests: z.boolean(),
+    }),
+  ),
   days: z.array(
     z.object({
       date: z.string(),
@@ -46,8 +61,17 @@ const responseSchema = z.object({
       start: z.string(),
       end: z.string(),
       label: z.string().nullable().describe('Activity, renter, booking purpose or closure reason'),
+      placeName: z.string().nullable().describe('The name of the entry’s place; null for a redacted reader'),
       needsReschedule: z.boolean(),
       groupId: z.string().nullable(),
+      groupName: z.string().nullable().describe('A session’s group'),
+      coachName: z.string().nullable().describe('A session’s coach'),
+      status: z.string().nullable().describe('A rental’s or a request’s status'),
+      contact: z
+        .object({ name: z.string().nullable(), phone: z.string().nullable() })
+        .nullable()
+        .describe('A rental’s or a request’s contact, only where the caller manages the rentals of the place'),
+      canOpen: z.boolean().describe('A rental or a request in the caller’s rental scope'),
       sectionId: z.string().nullable(),
       bookedByName: z.string().nullable(),
       own: z.boolean(),
@@ -77,6 +101,8 @@ export async function GET(request: Request): Promise<Response> {
     const rbac = ctx.container.resolve<RbacService>('rbacService')
     const canView = !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.view'], scope))
     const canPlan = !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.maintenance.manage'], scope))
+    const canManageRentals =
+      canView && !!userId && (await rbac.userHasAllFeatures(userId, ['facilities.rentals.manage'], scope))
     if (!canView && !canPlan) return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
     const grants = await scopeContract.resolve(ctx)
     const clubWide = grants.some((grant) => grant.kind === 'club_admin')
@@ -92,6 +118,7 @@ export async function GET(request: Request): Promise<Response> {
         canPlan: canPlan && (clubWide || maintained.length > 0),
         planPlaceIds: clubWide ? null : maintained,
         placeIds: canView ? attendantPlaceIds(grants) : null,
+        rentalPlaceIds: rentalPlaceIds(grants, canManageRentals),
       },
     )
     if (calendar === 'forbidden') return Response.json({ error: 'Forbidden', code: 'scope_denied' }, { status: 403 })
@@ -109,7 +136,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read the occupancy of the club places',
       description:
-        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking, closure and planned maintenance window on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller. A caller with `facilities.maintenance.manage` but without `facilities.view` (a place maintainer) reads only the places assigned to them, and every entry except maintenance without its label, names or group (`maintenance.redacted`). A facility attendant reads only the places of their assignments and their descendants.',
+        'With `placeId`: the place’s days in the window (opening windows and zones) and every session, rental, pending request, internal booking, closure and planned maintenance window on the place, its ancestors and descendants, with names. Without it: every live active place and the entries on it. `from`–`to` spans at most 31 days. Internal bookings carry `own` and `canCancel` for the caller. Every entry names its place; a session carries its group and coach, a rental and a request their status, and — only where the caller holds `facilities.rentals.manage` over the place — the contact and `canOpen`. A caller with `facilities.maintenance.manage` but without `facilities.view` (a place maintainer) reads only the places assigned to them, and every entry except maintenance without its label, names, group, status or contact (`maintenance.redacted`). A facility attendant reads only the places of their assignments and their descendants.',
       query: calendarQuerySchema,
       responses: [{ status: 200, description: 'The calendar', schema: responseSchema }],
       errors: [

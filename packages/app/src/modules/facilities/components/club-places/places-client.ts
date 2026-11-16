@@ -54,7 +54,19 @@ export const ENTRY_KINDS: readonly CalendarEntryKind[] = [
   'maintenance',
 ]
 
-export type CalendarPlace = { id: string; name: string; parentName: string | null; isLeaf: boolean }
+export type CalendarPlace = {
+  id: string
+  name: string
+  parentId: string | null
+  parentName: string | null
+  isLeaf: boolean
+  /** The place facts of the cards (#275); `kind` is null for an inactive place. */
+  kind: string | null
+  surface: string | null
+  isExternal: boolean
+  capacityGroups: number
+  acceptsOnlineRequests: boolean
+}
 export type CalendarDay = {
   date: string
   opening: Array<{ from: string; to: string }> | null
@@ -67,8 +79,15 @@ export type CalendarEntry = {
   start: string
   end: string
   label: string | null
+  /** The entry's place, a session's group and coach, a rental's status and contact (#275; the contact by DD-R18). */
+  placeName?: string | null
   needsReschedule: boolean
   groupId: string | null
+  groupName?: string | null
+  coachName?: string | null
+  status?: string | null
+  contact?: { name: string | null; phone: string | null } | null
+  canOpen?: boolean
   sectionId: string | null
   bookedByName: string | null
   own: boolean
@@ -362,7 +381,7 @@ export async function externalTeams(): Promise<Array<{ value: string; label: str
   }))
 }
 
-const FEATURES = ['facilities.bookings.create', 'activities.events.create'] as const
+const FEATURES = ['facilities.bookings.create', 'activities.events.create', 'club_core.manage'] as const
 
 function grants(granted: readonly string[], feature: string): boolean {
   return granted.some(
@@ -370,8 +389,11 @@ function grants(granted: readonly string[], feature: string): boolean {
   )
 }
 
-/** Whether the signed-in user may book (`facilities.bookings.create`) and create a group's event. */
-export function usePlacesFeatures(): { book: boolean; groupEvents: boolean } {
+/**
+ * Whether the signed-in user may book (`facilities.bookings.create`), create a group's event and add a facility in the
+ * panel (`club_core.manage`, the empty list's action).
+ */
+export function usePlacesFeatures(): { book: boolean; groupEvents: boolean; managePlaces: boolean } {
   const query = useQuery({
     queryKey: ['feature-check', ...FEATURES],
     staleTime: 5 * 60 * 1000,
@@ -388,6 +410,7 @@ export function usePlacesFeatures(): { book: boolean; groupEvents: boolean } {
   return {
     book: grants(granted, 'facilities.bookings.create'),
     groupEvents: grants(granted, 'activities.events.create'),
+    managePlaces: grants(granted, 'club_core.manage'),
   }
 }
 

@@ -21,7 +21,7 @@ import {
   placeLabel,
   saveError,
   textOrNull,
-  tolerantPlaceOptions,
+  loadPlaceOptions,
   usePlaceOptions,
   zoneLabel,
   type Translate,
@@ -49,7 +49,7 @@ function useZoneFields(t: Translate, editing: boolean) {
             label: t('facilities.fields.place'),
             type: 'select',
             required: true,
-            loadOptions: tolerantPlaceOptions,
+            loadOptions: loadPlaceOptions,
           },
       {
         id: 'weekdays',

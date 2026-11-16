@@ -187,6 +187,7 @@ export function OwnerReport() {
     <div className="flex flex-wrap items-end gap-3">
       <PlaceSelect
         options={places.options}
+        status={places}
         value={chosenPlace}
         onChange={setPlaceId}
         disabled={places.options.length === 0}

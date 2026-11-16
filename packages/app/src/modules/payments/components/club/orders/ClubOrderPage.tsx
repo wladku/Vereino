@@ -7,7 +7,7 @@
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
@@ -15,6 +15,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
 import { OrderFormSection } from './OrderFormSection'
 import { appEndpoints, clubOrderHref, orderFormQueryKey, type OrderForm } from './order-client'
@@ -86,7 +87,7 @@ function SignedOut({ campaignId, clubSlug }: { campaignId: string; clubSlug: str
         </div>
       </header>
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6" data-testid="order-signed-out">
-        {card.isLoading ? <LoadingMessage label={t('payments.orders.club.loading')} /> : null}
+        {card.isLoading ? <MemberSkeleton shape="rows" count={2} label={t('payments.orders.club.loading')} /> : null}
         {campaign ? (
           <section className="flex flex-col gap-2" data-testid="order-card">
             <h1 className="text-2xl font-semibold">{campaign.name}</h1>
@@ -195,12 +196,12 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
   if (query.isLoading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <LoadingMessage label={t('payments.orders.club.loading')} />
+        <MemberSkeleton shape="fields" label={t('payments.orders.club.loading')} />
       </main>
     )
   }
   return (
-    <PaymentsClubFrame>
+    <PaymentsClubFrame skeleton="fields">
       {() => {
         if (query.data?.status === 'not_found') {
           return (

@@ -1285,6 +1285,57 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "payee_institution_id": {
+          "name": "payee_institution_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "payer_institution_id": {
+          "name": "payer_institution_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "payer_label": {
+          "name": "payer_label",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "payer_missing": {
           "name": "payer_missing",
           "type": "boolean",
@@ -1490,6 +1541,27 @@
           "composite": true,
           "constraint": false,
           "keyName": "payments_charges_org_person_idx",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "keyName": "payments_charges_org_rental_unique",
+          "primary": false,
+          "unique": false,
+          "expression": "create unique index \"payments_charges_org_rental_unique\" on \"payments_charges\" (\"organization_id\", \"source_id\") where source_type = 'rental' and status <> 'cancelled' and deleted_at is null"
+        },
+        {
+          "columnNames": [
+            "organization_id",
+            "source_type",
+            "source_id"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "payments_charges_org_source_idx",
           "primary": false,
           "unique": false
         },

@@ -7,7 +7,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -21,7 +21,9 @@ import {
   memberSwitchers,
   useMemberContext,
   useMemberNavFeatures,
+  MemberSkeleton,
   type MemberLinkProps,
+  type MemberSkeletonShape,
 } from '@vereino/ui'
 import { BACKEND_HREF, useClubProfile, type ClubProfile } from './club-client'
 
@@ -55,7 +57,14 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
   )
 }
 
-export function ActivitiesClubFrame({ children }: { children: (profile: ClubProfile) => React.ReactNode }) {
+export function ActivitiesClubFrame({
+  children,
+  skeleton = 'rows',
+}: {
+  children: (profile: ClubProfile) => React.ReactNode
+  /** The shape of the page's content while the profile loads (REQ-N15): `fields` on a form. */
+  skeleton?: MemberSkeletonShape
+}) {
   const t = useT()
   const pathname = usePathname()
   const query = useClubProfile()
@@ -64,7 +73,7 @@ export function ActivitiesClubFrame({ children }: { children: (profile: ClubProf
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('activities.club.loading')} />
+    body = <MemberSkeleton shape={skeleton} label={t('activities.club.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage

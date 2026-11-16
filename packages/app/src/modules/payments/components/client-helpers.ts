@@ -58,6 +58,11 @@ export type ChargeRow = {
   payerPersonId: string | null
   payer?: PersonName | null
   payerMissing: boolean
+  payerInstitutionId?: string | null
+  payerInstitution?: { id: string; name: string } | null
+  payeeInstitutionId?: string | null
+  payeeInstitution?: { id: string; name: string } | null
+  payerLabel?: string | null
   periodLabel: string | null
   description: string | null
   amount: number

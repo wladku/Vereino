@@ -3,7 +3,8 @@
 // through this DI service. The caller passes the place family (the place, its ancestors and descendants) and has
 // authorized its own record; nothing here checks a grant. The rented-hours report (#129) also reads the done sessions
 // with their group's name, which `activities` resolves through `groups.directory` (`facilities` does not require
-// `groups`).
+// `groups`); the planned sessions carry the group's name and section and the coach for the facility calendar and
+// "Today at the facility" (facilities parity spec REQ-R13, #275).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Activity, Occurrence } from '../data/entities'
@@ -23,6 +24,11 @@ export type PlaceSessionEntry = {
   activityId: string
   groupId: string
   activityName: string | null
+  /** The group's name and section, or null when the group is gone (facilities parity spec, #275). */
+  groupName: string | null
+  sectionId: string | null
+  /** The session's coach, or null when none is set (#275). */
+  coachPersonId: string | null
 }
 
 /** A done session as the rented-hours report counts it (facilities REQ-038, #129): place, times, group and coach. */
@@ -88,9 +94,19 @@ export type ActivitiesPlaceSessions = {
   ): Promise<string[]>
 }
 
-const SESSION_FIELDS = ['id', 'placeId', 'startAt', 'endAt', 'needsReschedule', 'activityId', 'groupId'] as const
+const SESSION_FIELDS = [
+  'id',
+  'placeId',
+  'startAt',
+  'endAt',
+  'needsReschedule',
+  'activityId',
+  'groupId',
+  'coachPersonId',
+] as const
 
 export async function plannedSessions(
+  container: AwilixContainer,
   em: EntityManager,
   scope: ActivitiesScope,
   placeIds: readonly string[],
@@ -109,7 +125,7 @@ export async function plannedSessions(
     },
     { fields: [...SESSION_FIELDS], orderBy: { startAt: 'asc' }, limit: 2000 },
   )
-  return withActivityNames(em, scope, rows)
+  return withNames(container, em, scope, rows)
 }
 
 export async function doneSessionTimes(
@@ -190,6 +206,7 @@ export async function doneSessionsForReport(
 }
 
 export async function sessionsByIds(
+  container: AwilixContainer,
   em: EntityManager,
   scope: ActivitiesScope,
   ids: readonly string[],
@@ -200,10 +217,11 @@ export async function sessionsByIds(
     { ...scope, deletedAt: null, status: 'planned', id: { $in: [...new Set(ids)] } },
     { fields: [...SESSION_FIELDS], orderBy: { startAt: 'asc' } },
   )
-  return withActivityNames(em, scope, rows)
+  return withNames(container, em, scope, rows)
 }
 
-async function withActivityNames(
+async function withNames(
+  container: AwilixContainer,
   em: EntityManager,
   scope: ActivitiesScope,
   rows: ReadonlyArray<Pick<Occurrence, (typeof SESSION_FIELDS)[number]>>,
@@ -214,6 +232,7 @@ async function withActivityNames(
       ? await em.find(Activity, { ...scope, id: { $in: activityIds } }, { fields: ['id', 'name'] })
       : []
   const names = new Map(activities.map((row) => [row.id, row.name]))
+  const groups = await findGroups(container, scope, [...new Set(rows.map((row) => row.groupId))], em)
   return rows.map((row) => ({
     id: row.id,
     placeId: row.placeId,
@@ -223,6 +242,9 @@ async function withActivityNames(
     activityId: row.activityId,
     groupId: row.groupId,
     activityName: names.get(row.activityId) ?? null,
+    groupName: groups.get(row.groupId)?.name ?? null,
+    sectionId: groups.get(row.groupId)?.sectionId ?? null,
+    coachPersonId: row.coachPersonId ?? null,
   }))
 }
 
@@ -241,12 +263,13 @@ export async function flagForReschedule(
 
 export function createPlaceSessions(getEm: () => EntityManager, container: AwilixContainer): ActivitiesPlaceSessions {
   return {
-    plannedSessions: (scope, placeIds, window, em) => plannedSessions(em ?? getEm().fork(), scope, placeIds, window),
+    plannedSessions: (scope, placeIds, window, em) =>
+      plannedSessions(container, em ?? getEm().fork(), scope, placeIds, window),
     doneSessionTimes: (scope, placeIds, window, em) => doneSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
     clubSessionTimes: (scope, placeIds, window, em) => clubSessionTimes(em ?? getEm().fork(), scope, placeIds, window),
     doneSessionsForReport: (scope, placeIds, window, em) =>
       doneSessionsForReport(container, em ?? getEm().fork(), scope, placeIds, window),
-    sessionsByIds: (scope, ids, em) => sessionsByIds(em ?? getEm().fork(), scope, ids),
+    sessionsByIds: (scope, ids, em) => sessionsByIds(container, em ?? getEm().fork(), scope, ids),
     flagForReschedule: (scope, placeIds, window) => flagForReschedule(getEm().fork(), scope, placeIds, window),
   }
 }

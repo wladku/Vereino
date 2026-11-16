@@ -231,6 +231,7 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
             payeeInstitutionId: null,
             payerInstitutionId: row.renterType === 'institution' ? row.renterId : null,
             payerPersonId: row.renterType === 'person' ? row.renterId : null,
+            payerDisplayName: row.renterType === 'unregistered' ? name : null,
             amount: row.amount,
             dueDate: calendarDateInZone(row.paymentDeadline ?? row.startsAt, timeZone),
             description: name,

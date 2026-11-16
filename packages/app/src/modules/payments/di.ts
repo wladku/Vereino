@@ -11,6 +11,7 @@ import {
   orderReminderTemplate,
 } from './emails/templates'
 import { ORDER_LINK_TTL_MS } from './lib/orders'
+import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-service'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
@@ -36,8 +37,12 @@ export function checkoutProviderKey(): string {
  * (`until_expiry`, at most 120 days, a link ends with the orders deadline) — the single DD-35 lookup of that table.
  * The order copy and the personal link e-mails (`payments.order_copy`, `payments.order_link`) are registered with the
  * other templates, and so is the coach's overdue reminder (`payments.charge_reminder`, REQ-033, #117).
+ *
+ * `payments.chargeService` (payments parity spec REQ-C01, DD-C01, #291): the rental charge service `facilities`
+ * resolves with `hasRegistration` (facilities DD-19). It is stateless: every call writes through the caller's `em`.
  */
 const orderLinks = createTokenLinkService(OrderLink, { use: 'until_expiry', ttlMs: ORDER_LINK_TTL_MS })
+const chargeService = createChargeService()
 
 export function register(container: AppContainer) {
   registerEmailTemplate(container, cashReceivedTemplate)
@@ -47,6 +52,7 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, chargeReminderTemplate)
   container.register({
     [PAYMENTS_ORDER_LINKS]: asValue(orderLinks),
+    [PAYMENTS_CHARGE_SERVICE]: asValue(chargeService),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
   })
   // The gateway registries live on `globalThis`, so registering again for every container replaces the same entry.

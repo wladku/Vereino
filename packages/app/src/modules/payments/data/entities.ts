@@ -113,6 +113,17 @@ export class DiscountRule extends ScopedEntityBase {
 @Index({ name: 'payments_charges_org_status_due_idx', properties: ['organizationId', 'status', 'dueDate'] })
 @Index({ name: 'payments_charges_org_generation_idx', properties: ['organizationId', 'generationId'] })
 @Index({ name: 'payments_charges_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+// Migration A2 (payments parity spec, #291): the lookup of `payments.chargeService` by source, and one live rental
+// charge per rental. Both are built `CONCURRENTLY` by a hand-split, non-transactional migration.
+@Index({
+  name: 'payments_charges_org_source_idx',
+  properties: ['organizationId', 'sourceType', 'sourceId'],
+})
+@Index({
+  name: 'payments_charges_org_rental_unique',
+  expression:
+    'create unique index "payments_charges_org_rental_unique" on "payments_charges" ("organization_id", "source_id") where source_type = \'rental\' and status <> \'cancelled\' and deleted_at is null',
+})
 @Index({
   name: 'payments_charges_org_fee_person_period_unique',
   expression:
@@ -133,6 +144,9 @@ export class Charge extends ScopedEntityBase {
     | 'generationId'
     | 'cancelledAt'
     | 'cancelReason'
+    | 'payerInstitutionId'
+    | 'payeeInstitutionId'
+    | 'payerLabel'
 
   @Property({ name: 'source_type', type: 'text' })
   sourceType!: ChargeSourceType
@@ -150,6 +164,18 @@ export class Charge extends ScopedEntityBase {
 
   @Property({ name: 'payer_missing', type: 'boolean', default: false })
   payerMissing: boolean = false
+
+  /** The renter institution paying a `rental` charge (a `club_core` institution id, never a relation; #291). */
+  @Property({ name: 'payer_institution_id', type: 'uuid', nullable: true })
+  payerInstitutionId?: string | null
+
+  /** The institution receiving a `rental` charge (`payee = owner_institution`); null reads "the facility owner". */
+  @Property({ name: 'payee_institution_id', type: 'uuid', nullable: true })
+  payeeInstitutionId?: string | null
+
+  /** The typed-in name of an unregistered renter paying a `rental` charge; encrypted, at most 200 characters. */
+  @Property({ name: 'payer_label', type: 'text', nullable: true })
+  payerLabel?: string | null
 
   /** `YYYY-MM` for monthly and per-session fees, `one_off` for one-off fees. */
   @Property({ name: 'period_label', type: 'text', nullable: true })

@@ -77,6 +77,8 @@ async function ownCharges(container: AwilixContainer, payer: Payer) {
     {
       ...payer.scope,
       deletedAt: null,
+      // A rental charge is paid to the facility owner, not to the club (#291).
+      sourceType: { $ne: 'rental' as const },
       status: { $ne: 'cancelled' as const },
       $or: [{ payerPersonId: payer.personId }, { personId: payer.personId }],
     },
@@ -109,11 +111,15 @@ export type TransferInstructions = {
   payerCode: string
 }
 
-/** True when the caller pays at least one live charge (only a payer gets a payer code and transfer instructions). */
+/**
+ * True when the caller pays at least one live charge to the club (only a payer gets a payer code and transfer
+ * instructions); a rental charge goes to the facility owner and does not count (#291).
+ */
 export async function isPayer(container: AwilixContainer, payer: Payer): Promise<boolean> {
   const count = await freshEm(container).count(Charge, {
     ...payer.scope,
     deletedAt: null,
+    sourceType: { $ne: 'rental' as const },
     status: { $ne: 'cancelled' as const },
     payerPersonId: payer.personId,
   })
