@@ -1,7 +1,9 @@
 'use client'
-// The "Messages" tile of `/club` — Today (foundation III REQ-M10, DD-M13; README M-02; E06-S16 #98): a link to the
-// inbox with the number of the member's conversations that have an unread message; no badge at zero, and when the
-// count could not be read the tile says so and offers "Try again" while the link keeps working.
+// The "Messages" tile of `/club` — Today (foundation III REQ-M10, DD-M13; README M-02; E06-S16 #98; navigation spec
+// REQ-N14, #263): the heading with an "All" link to the inbox, then the number of the member's conversations that have
+// an unread message and the subject of the newest one as a link to it (`GET /api/communication/threads?as=member&
+// unread=1&pageSize=1`, newest activity first), or "No new messages."; when the list could not be read the tile says so
+// and offers "Try again" while the "All" link keeps working.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -9,48 +11,79 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import {
+  CLUB_MESSAGES_HREF,
+  clubThreadHref,
+  type ThreadList,
+  type ThreadListItem,
+} from '../../../components/client-helpers'
 
-const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
-const LINK_CLASS =
-  'hover:bg-accent focus-visible:shadow-focus -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
+const TILE_CLASS = 'bg-card flex h-full flex-col gap-3 rounded-lg border p-4'
+const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4'
 
 /** The same key the member thread page invalidates after it marks a thread read. */
 const UNREAD_COUNT_QUERY_KEY = ['communication-unread-count'] as const
 
-class UnreadCountLoadError extends Error {}
+const UNREAD_URL = '/api/communication/threads?as=member&unread=1&pageSize=1'
+
+class UnreadLoadError extends Error {}
+
+type Unread = { count: number; newest: ThreadListItem | null }
 
 export default function ClubMessagesTileWidget() {
   const t = useT()
   const query = useQuery({
     queryKey: UNREAD_COUNT_QUERY_KEY,
-    // One retry: a failed count shows its error and "Try again" within seconds, not after the default three.
+    // One retry: a failed read shows its error and "Try again" within seconds, not after the default three.
     retry: 1,
-    queryFn: async () => {
-      const call = await apiCall<{ count: number }>('/api/communication/threads/unread-count')
-      if (!call.ok || typeof call.result?.count !== 'number') throw new UnreadCountLoadError(String(call.status))
-      return call.result.count
+    queryFn: async (): Promise<Unread> => {
+      const call = await apiCall<ThreadList>(UNREAD_URL)
+      if (!call.ok || typeof call.result?.total !== 'number') throw new UnreadLoadError(String(call.status))
+      return { count: call.result.total, newest: call.result.items[0] ?? null }
     },
   })
-  const count = query.data ?? null
+  const unread = query.data ?? null
   return (
     <section aria-labelledby="club-today-messages" className="flex flex-col gap-3">
-      <h2 id="club-today-messages" className="sr-only">
-        {t('communication.tile.title')}
-      </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <li>
           <div className={TILE_CLASS}>
-            <Link href="/club/messages" className={LINK_CLASS} data-testid="club-tile-messages">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold">{t('communication.tile.title')}</span>
-                {count && count > 0 ? (
-                  <span data-testid="club-tile-messages-unread" data-count={String(count)}>
-                    <StatusBadge variant="info">{t('communication.tile.unread', { count: String(count) })}</StatusBadge>
-                  </span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="club-today-messages" className="font-semibold">
+                {t('communication.tile.title')}
+              </h2>
+              <Link
+                href={CLUB_MESSAGES_HREF}
+                className={`${LINK_CLASS} text-sm`}
+                aria-label={t('communication.tile.open')}
+                data-testid="club-tile-messages"
+              >
+                {t('communication.tile.all')}
+              </Link>
+            </div>
+            {unread && unread.count > 0 ? (
+              <div className="flex flex-col gap-1">
+                <span data-testid="club-tile-messages-unread" data-count={String(unread.count)}>
+                  <StatusBadge variant="info">
+                    {t('communication.tile.unread', { count: String(unread.count) })}
+                  </StatusBadge>
+                </span>
+                {unread.newest ? (
+                  <Link
+                    href={clubThreadHref(unread.newest.id)}
+                    className={`${LINK_CLASS} font-medium break-words`}
+                    data-testid="club-tile-messages-newest"
+                  >
+                    {unread.newest.subject}
+                  </Link>
                 ) : null}
-              </span>
-              <span className="text-muted-foreground max-w-prose text-sm">{t('communication.tile.description')}</span>
-            </Link>
+              </div>
+            ) : null}
+            {unread && unread.count === 0 ? (
+              <p className="text-muted-foreground text-sm" data-testid="club-tile-messages-none">
+                {t('communication.tile.noNew')}
+              </p>
+            ) : null}
             {query.isError && !query.isFetching ? (
               <div className="flex flex-col items-start gap-2" data-testid="club-tile-messages-error">
                 <p className="text-sm">{t('communication.tile.error')}</p>
