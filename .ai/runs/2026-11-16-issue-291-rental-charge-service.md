@@ -54,3 +54,4 @@
 - Migrations A1 and A2 must be applied by the owner after reviewing their SQL in the PR (never `db:migrate` here).
 
 - `yarn verify` (full, after the fixes) → `[verify] all 17 step(s) passed`.
+- `yarn test:integration:vereino --filter TEST-C01` on the committed code (after the lint fixes) → `1 passed (3.0m)`.
