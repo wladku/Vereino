@@ -9,9 +9,10 @@
 // "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { PublicClasses } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { phoneHref } from '../../lib/public-page'
@@ -27,6 +28,9 @@ function Block({ id, title, children }: { id: string; title: string; children: R
     </section>
   )
 }
+
+/** The next step under an empty list (REQ-N15). */
+const EMPTY_ACTION_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6'
 
 /** "Club › Sections › {name}" (E06-S07, #89): the way back to the club page and to its section tiles. */
 function Breadcrumb({ page }: { page: PublicSectionPage }) {
@@ -66,7 +70,7 @@ function Breadcrumb({ page }: { page: PublicSectionPage }) {
 function SectionBody({ page }: { page: PublicSectionPage }) {
   const t = useT()
   const locale = useLocale()
-  const { section, blocks } = page
+  const { club, section, blocks } = page
   const contact = blocks.contact
   return (
     <>
@@ -85,7 +89,22 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
         </div>
       </section>
       <Block id="classes" title={t('club_core.public.classes.title')}>
-        <PublicClasses groups={blocks.groups} schedule={blocks.schedule} prices={blocks.prices} />
+        <PublicClasses
+          groups={blocks.groups}
+          schedule={blocks.schedule}
+          prices={blocks.prices}
+          emptyAction={
+            contact ? (
+              <a href="#public-block-contact" className={EMPTY_ACTION_CLASS}>
+                {t('club_core.public.askSection')}
+              </a>
+            ) : (
+              <Link href={`${clubHref(club.slug)}#sections`} className={EMPTY_ACTION_CLASS}>
+                {t('club_core.public.events.seeSections')}
+              </Link>
+            )
+          }
+        />
       </Block>
       {blocks.conditions ? (
         <Block id="conditions" title={t('club_core.public.conditions.title')}>
@@ -158,7 +177,7 @@ export function PublicSectionView({ clubSlug, sectionSlug }: { clubSlug: string;
   if (!load && query.isFetching) {
     return (
       <PublicFrame club={null}>
-        <LoadingMessage label={t('club_core.public.loading')} />
+        <MemberSkeleton shape="rows" label={t('club_core.public.loading')} />
       </PublicFrame>
     )
   }
