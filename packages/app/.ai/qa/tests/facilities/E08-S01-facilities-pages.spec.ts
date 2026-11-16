@@ -129,7 +129,9 @@ test('E08-S01 facility pages: accessibility, reflow, booking availability dialog
     await page.setViewportSize({ width: 375, height: 800 })
     await page.context().addCookies([{ name: 'locale', value: 'pl', url: new URL(page.url()).origin }])
     await page.goto('/backend/facilities/calendar')
-    await expect(page.getByTestId('facilities-weekly-availability')).toBeVisible()
+    // The place has bookable windows now, so the availability card opens folded.
+    await expect(page.getByTestId('facilities-availability-card')).toBeVisible()
+    await expect(page.getByTestId('facilities-availability-card')).not.toHaveAttribute('open', '')
     await expect(page.getByTestId('facilities-availability-open')).not.toHaveText(/Set booking availability/)
     await expectNoPageOverflow(page)
     expect(consoleErrors).toEqual([])
