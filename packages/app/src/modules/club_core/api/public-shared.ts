@@ -27,10 +27,12 @@ export const publicClubLinksSchema = z
   .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
   .describe("The club's rules and privacy policy in the page footer; null while not set")
 
-/** The menu links of the public header (navigation spec REQ-N13, #263): `events` with the club's `events` block. */
+/** The optional links of the public header (#261). */
 export const publicClubNavSchema = z
-  .object({ events: z.boolean() })
-  .describe('Which links the public header shows: `events` while the club publishes its events page')
+  .object({ facilities: z.boolean(), events: z.boolean() })
+  .describe(
+    'Which optional links the public header shows: `facilities` while the club publishes its facility calendars, `events` while it publishes its events page (P-06, #263)',
+  )
 
 export const publicLogoSchema = z.object({
   url: z.string().nullable().describe('The logo image; null shows `initial`'),

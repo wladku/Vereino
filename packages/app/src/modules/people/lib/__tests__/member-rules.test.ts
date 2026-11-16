@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   BACKEND_HOME,
+  FACILITY_HOME,
   MEMBER_HOME,
   SELF_CONSENT_KINDS,
   applySelfConsent,
@@ -103,8 +104,9 @@ describe('memberContexts', () => {
         { kind: 'self', ids: ['p1'] },
         { kind: 'coordinator', ids: ['s1'] },
         { kind: 'coach', ids: ['g1'] },
+        { kind: 'facility_operator', ids: ['pl1'] },
       ]),
-    ).toEqual(['self', 'guardian', 'coach', 'coordinator', 'club_admin'])
+    ).toEqual(['self', 'guardian', 'coach', 'coordinator', 'club_admin', 'facility_operator'])
   })
 
   it('ignores the marker and job grants and an empty scope', () => {
@@ -114,24 +116,64 @@ describe('memberContexts', () => {
 })
 
 describe('memberLanding', () => {
+  const base = {
+    redirect: BACKEND_HOME,
+    linked: true,
+    selfFeature: true,
+    memberSide: false,
+    grants: ['self'],
+    facilityLogFeature: false,
+  }
+  const landing = (input: Partial<typeof base> & { grants?: string[] }) => memberLanding({ ...base, ...input })
+
   it('sends a linked member with people.self to /club', () => {
-    expect(memberLanding({ redirect: BACKEND_HOME, linked: true, selfFeature: true })).toEqual({
+    expect(landing({ memberSide: true, grants: ['self', 'guardian'] })).toEqual({
       redirect: MEMBER_HOME,
       notice: false,
     })
+    expect(landing({})).toEqual({ redirect: MEMBER_HOME, notice: false })
+  })
+
+  it('sends a coach and a coordinator without a member side to /club', () => {
+    expect(landing({ grants: ['self', 'coach'] })?.redirect).toBe(MEMBER_HOME)
+    expect(landing({ grants: ['self', 'coordinator'] })?.redirect).toBe(MEMBER_HOME)
+  })
+
+  it('sends the attendant without a member side and without a staff grant to /club/facility', () => {
+    expect(landing({ grants: ['self', 'facility_operator'], facilityLogFeature: true })).toEqual({
+      redirect: FACILITY_HOME,
+      notice: false,
+    })
+    expect(landing({ grants: ['self'], facilityLogFeature: true, selfFeature: false })?.redirect).toBe(FACILITY_HOME)
+  })
+
+  it('keeps the attendant with a member side or a staff grant on /club', () => {
+    expect(landing({ memberSide: true, facilityLogFeature: true })?.redirect).toBe(MEMBER_HOME)
+    for (const staff of ['coach', 'coordinator']) {
+      expect(landing({ grants: ['self', staff], facilityLogFeature: true })?.redirect).toBe(MEMBER_HOME)
+    }
+    expect(landing({ grants: ['self', 'club_admin'], facilityLogFeature: true })?.redirect).toBe(BACKEND_HOME)
+  })
+
+  it('sends an administrator without a member side who does not coach to /backend', () => {
+    expect(landing({ grants: ['self', 'club_admin'] })).toEqual({ redirect: BACKEND_HOME, notice: false })
+    expect(landing({ grants: ['club_admin', 'coordinator'] })?.redirect).toBe(BACKEND_HOME)
+  })
+
+  it('sends an administrator who is a parent or a coach to /club', () => {
+    expect(landing({ grants: ['self', 'club_admin', 'guardian'], memberSide: true })?.redirect).toBe(MEMBER_HOME)
+    expect(landing({ grants: ['self', 'club_admin', 'coach'] })?.redirect).toBe(MEMBER_HOME)
   })
 
   it('keeps an unlinked account on /backend with the notice', () => {
-    expect(memberLanding({ redirect: BACKEND_HOME, linked: false, selfFeature: true })).toEqual({
-      redirect: BACKEND_HOME,
-      notice: true,
-    })
+    expect(landing({ linked: false })).toEqual({ redirect: BACKEND_HOME, notice: true })
   })
 
   it('keeps the platform answer for a linked user without people.self and for an explicit redirect', () => {
-    expect(memberLanding({ redirect: BACKEND_HOME, linked: true, selfFeature: false })).toBeNull()
-    expect(memberLanding({ redirect: '/backend/people/persons', linked: true, selfFeature: true })).toBeNull()
-    expect(memberLanding({ redirect: undefined, linked: false, selfFeature: false })).toBeNull()
+    expect(landing({ selfFeature: false })).toBeNull()
+    expect(landing({ redirect: '/backend/people/persons' })).toBeNull()
+    expect(landing({ redirect: '/club/messages/t-1', facilityLogFeature: true })).toBeNull()
+    expect(landing({ redirect: undefined, linked: false, selfFeature: false })).toBeNull()
   })
 })
 

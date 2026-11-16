@@ -1,6 +1,7 @@
-// The sign-in landing of `people` (club spec *UI architecture* → redirect after sign-in; #27), used by the
-// `people.member-landing` API interceptor on `POST /api/auth/login`: the person link of the signed-in user and the
-// `people.self` feature decide between `/club` and `/backend` (DD-06: never a role name).
+// The sign-in landing of `people` (club spec *UI architecture* → redirect after sign-in; #27; spec N, REQ-N08), used by
+// the `people.member-landing` API interceptor on `POST /api/auth/login`: the person link of the signed-in user, their
+// member side (a ward or an active participant membership), their grants and the features `people.self` and
+// `facilities.log.write` decide between `/club`, `/club/facility` and `/backend` (DD-06, DD-N09: never a role name).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
@@ -8,6 +9,9 @@ import { verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { Person } from '../data/entities'
 import { memberLanding, withNotice } from '../lib/member-rules'
+import { clubToday } from './club-clock'
+import { membershipContribution } from './membership-contribution'
+import { createPeopleScopeService } from './scope-service'
 
 type SessionClaims = { userId: string; tenantId: string; organizationId: string }
 
@@ -21,10 +25,33 @@ function claimsOf(token: unknown): SessionClaims | null {
   return userId && tenantId && organizationId ? { userId, tenantId, organizationId } : null
 }
 
+type LandingFacts = { selfFeature: boolean; facilityLogFeature: boolean; memberSide: boolean; grants: string[] }
+
+/** The features, grants and member side (a ward, else an active participant membership) of a linked person. */
+async function personFacts(
+  em: EntityManager,
+  container: AwilixContainer,
+  userId: string,
+  subject: { tenantId: string; organizationId: string; personId: string },
+): Promise<LandingFacts> {
+  const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+  const rbac = container.resolve<RbacService>('rbacService')
+  const selfFeature = await rbac.userHasAllFeatures(userId, ['people.self'], scope)
+  const facilityLogFeature = await rbac.userHasAllFeatures(userId, ['facilities.log.write'], scope)
+  const grants = await createPeopleScopeService(container).grantsForPerson(subject)
+  const hasWard = grants.some((grant) => grant.kind === 'guardian' && (grant.ids?.length ?? 0) > 0)
+  // Without `groups` the member side is the wards only (spec N, *Business rules* → member side).
+  const contribution = hasWard ? null : membershipContribution(container)
+  const isParticipant = contribution
+    ? await contribution.isActiveParticipant(em.fork(), subject, await clubToday(container, scope))
+    : false
+  return { selfFeature, facilityLogFeature, memberSide: hasWard || isParticipant, grants: grants.map((g) => g.kind) }
+}
+
 /**
- * The redirect a successful sign-in answer should carry instead of its own, or null to keep it: `/club` for a user
- * linked to a person of their organization who holds `people.self`; `/backend` with the "not linked" notice for a
- * user linked to no person. Only the platform default (`/backend`) is replaced.
+ * The redirect a successful sign-in answer should carry instead of its own, or null to keep it (`memberLanding`):
+ * `/club/facility`, `/backend` or `/club` for a user linked to a person of their organization; `/backend` with the
+ * "not linked" notice for a user linked to no person. Only the platform default (`/backend`) is replaced.
  */
 export async function memberLandingRedirect(
   em: EntityManager,
@@ -38,10 +65,15 @@ export async function memberLandingRedirect(
   const person = await em
     .fork()
     .findOne(Person, { userId: claims.userId, ...scope, deletedAt: null }, { fields: ['id'] })
-  const selfFeature = person
-    ? await container.resolve<RbacService>('rbacService').userHasAllFeatures(claims.userId, ['people.self'], scope)
-    : false
-  const landing = memberLanding({ redirect: body.redirect, linked: person !== null, selfFeature })
+  const facts = person ? await personFacts(em, container, claims.userId, { ...scope, personId: person.id }) : null
+  const landing = memberLanding({
+    redirect: body.redirect,
+    linked: person !== null,
+    selfFeature: facts?.selfFeature ?? false,
+    memberSide: facts?.memberSide ?? false,
+    grants: facts?.grants ?? [],
+    facilityLogFeature: facts?.facilityLogFeature ?? false,
+  })
   if (!landing) return null
   if (!landing.notice) return landing.redirect
   const { translate } = await resolveTranslations()

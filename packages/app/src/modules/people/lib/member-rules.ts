@@ -104,8 +104,18 @@ export function memberLocale(
   return fallback
 }
 
-/** The acting contexts the role-context switcher offers, in a fixed order (REQ-001). */
-const CONTEXT_ORDER: readonly (GrantKind & ActingRole)[] = ['self', 'guardian', 'coach', 'coordinator', 'club_admin']
+/**
+ * The acting contexts of `GET /api/people/me`, in a fixed order (REQ-001); `facility_operator` names the facility
+ * attendant (spec N, REQ-N08).
+ */
+const CONTEXT_ORDER: readonly (GrantKind & ActingRole)[] = [
+  'self',
+  'guardian',
+  'coach',
+  'coordinator',
+  'club_admin',
+  'facility_operator',
+]
 
 /** The acting contexts of a scope: the provider grant kinds it holds, `self` first. */
 export function memberContexts(scope: Scope): ActingRole[] {
@@ -113,8 +123,9 @@ export function memberContexts(scope: Scope): ActingRole[] {
   return CONTEXT_ORDER.filter((kind) => kinds.has(kind))
 }
 
-/** The member interface and the admin panel entry (club spec *UI architecture* → redirect after sign-in). */
+/** The member interface, the attendant's day and the admin panel entry (spec N, *Menu structure* → landing). */
 export const MEMBER_HOME = '/club'
+export const FACILITY_HOME = '/club/facility'
 export const BACKEND_HOME = '/backend'
 
 export type LandingInput = {
@@ -124,16 +135,29 @@ export type LandingInput = {
   readonly linked: boolean
   /** The user holds `people.self`. */
   readonly selfFeature: boolean
+  /** The person has a member side: a ward or an active participant membership today. */
+  readonly memberSide: boolean
+  /** The grant kinds of the person's scope. */
+  readonly grants: readonly string[]
+  /** The user holds `facilities.log.write` (the facility attendant's day). */
+  readonly facilityLogFeature: boolean
 }
 
 /**
- * Where a sign-in lands (club spec *UI architecture*): a user linked to a person with `people.self` goes to `/club`;
- * a user linked to no person stays on `/backend` with a notice and never reaches anyone's data. An explicit redirect
- * the user asked for is kept. Null keeps the platform's answer.
+ * Where a sign-in lands (spec N, REQ-N08; DD-N09: grants and features, never a role name): the attendant with no
+ * member side and no staff grant on `/club/facility`; an administrator with no member side who does not coach on
+ * `/backend`; everyone else with `people.self` on `/club`. A user linked to no person stays on `/backend` with a notice
+ * and never reaches anyone's data. An explicit redirect the user asked for is kept. Null keeps the platform's answer.
  */
 export function memberLanding(input: LandingInput): { redirect: string; notice: boolean } | null {
   if (input.redirect !== BACKEND_HOME) return null
   if (!input.linked) return { redirect: BACKEND_HOME, notice: true }
+  const holds = (kind: string) => input.grants.includes(kind)
+  if (!input.memberSide) {
+    const staff = holds('coach') || holds('coordinator') || holds('club_admin')
+    if (input.facilityLogFeature && !staff) return { redirect: FACILITY_HOME, notice: false }
+    if (holds('club_admin') && !holds('coach')) return { redirect: BACKEND_HOME, notice: false }
+  }
   if (input.selfFeature) return { redirect: MEMBER_HOME, notice: false }
   return null
 }

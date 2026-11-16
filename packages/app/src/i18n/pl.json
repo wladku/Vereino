@@ -50,7 +50,7 @@
   "appShell.goToDashboard": "Przejdź do pulpitu",
   "appShell.moreActions": "Więcej akcji",
   "appShell.openMenu": "Otwórz menu",
-  "appShell.productName": "Open Mercato",
+  "appShell.productName": "Vereino",
   "appShell.searchNavAria": "Szukaj w nawigacji",
   "appShell.searchNavClear": "Wyczyść wyszukiwanie",
   "appShell.searchNavPlaceholder": "Szukaj...",
@@ -112,6 +112,9 @@
   "appShell.version": "Wersja {{version}}",
   "audit_logs.banner.undo_failed": "Nie udało się cofnąć",
   "auth.email": "Email",
+  "auth.login.brandName": "Vereino",
+  "auth.login.logoAlt": "Vereino",
+  "auth.login.subtitle": "Zaloguj się na swoje konto",
   "auth.manageAuthSettings": "Zarządzaj ustawieniami uwierzytelniania.",
   "auth.password": "Hasło",
   "auth.resetPassword": "Resetuj hasło",
@@ -1176,5 +1179,7 @@
   "vector.api.errors.purgeFailed": "Czyszczenie indeksu wektorowego nie powiodło się",
   "vector.api.errors.reindexFailed": "Ponowne indeksowanie wektorowe nie powiodło się",
   "vector.api.errors.searchFailed": "Wyszukiwanie wektorowe nie powiodło się",
-  "vector.api.errors.updateFailed": "Nie udało się zaktualizować ustawień wektorowych."
+  "vector.api.errors.updateFailed": "Nie udało się zaktualizować ustawień wektorowych.",
+  "vereino.login.clubLoading": "Wczytywanie klubu…",
+  "vereino.login.tagline": "Jedno konto dla rodzica, zawodnika i trenera"
 }
