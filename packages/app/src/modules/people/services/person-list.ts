@@ -95,7 +95,7 @@ export async function resolvePlanPersonIds(
       : new Set<string>()
     sets.push(union(assigned, coaching))
   }
-  if (plan.role === 'club_admin' || plan.role === 'coordinator') {
+  if (plan.role === 'club_admin' || plan.role === 'coordinator' || plan.role === 'facility_operator') {
     sets.push(await assignedPersonIds(em, scope, today, { roles: [plan.role] }))
   } else if (plan.role === 'coach') {
     const assigned = await assignedPersonIds(em, scope, today, { roles: ['coach'] })

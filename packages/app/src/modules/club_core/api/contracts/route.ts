@@ -1,7 +1,7 @@
 // `/api/club_core/contracts` — the club's contracts (club spec API table, DD-09, REQ-021; README B-07; #96): the
 // list is the club administrator's, with a coach's rates decrypted by the query engine and the party's name added;
-// `?kind=` and `?partyId=` filter it. Create, update and delete run the `club_core` commands (an overlapping active
-// contract of the same kind for the party → 409 `contract_overlap`).
+// `?kind=`, `?partyId=` and `?institutionId=` (#262) filter it. Create, update and delete run the `club_core` commands
+// (an overlapping active contract of the same kind for the party → 409 `contract_overlap`).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -91,7 +91,11 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       const business: Where = {}
       if (query.kind) business.kind = query.kind
       if (query.partyId) business.party_id = query.partyId
-      return { $and: [scopeWhere(scope, STRUCTURE_READ_KINDS, STRUCTURE_COLUMNS), business] } as Where
+      // The B-07 link from an institution row (#262): its own contracts, with `partyId` still applying on top.
+      const institution: Where = query.institutionId ? { party_type: 'institution', party_id: query.institutionId } : {}
+      return {
+        $and: [scopeWhere(scope, STRUCTURE_READ_KINDS, STRUCTURE_COLUMNS), business, institution],
+      } as Where
     },
     transformItem: contractListItem,
   },

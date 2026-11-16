@@ -2,10 +2,11 @@
 // `/backend/people/persons/[id]` (club spec UI table; README B-10): the person record with the tabs "Details",
 // "Guardianship and consents", "Roles", "Account" and "Groups" (charges arrive with phase 4), addressable by
 // `?tab=details|guardianship|roles|account|groups` (#84). A coordinator reads the basic data only (`access: 'basic'`);
-// the PESEL field is there only with `people.pesel.view`; editing needs `people.manage`, roles `people.roles.manage`.
+// the PESEL value is there only with `people.pesel.view` (anyone else sees the field empty with a hint, #262); editing needs `people.manage`, roles `people.roles.manage`.
 // The account tab shows the account status to every reader and "Create account" only with `people.accounts.manage`.
 // The "Groups" tab is the injection spot `vereino:people:person-record:groups`, filled by the `groups` module (so
-// `people` never imports `groups`); it is shown only when a widget the user may see is registered there.
+// `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The header
+// shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262).
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -14,8 +15,10 @@ import { InjectionSpot, useInjectionWidgets } from '@open-mercato/ui/backend/inj
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { useClubToday } from '@vereino/ui'
+import { personAge } from '../lib/people-rules'
 import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { PersonDetailsForm } from './PersonForm'
@@ -54,7 +57,10 @@ function ReadOnlyDetails({ person, t }: { person: PersonDetail; t: Translate }) 
   ]
   if (person.access === 'full') {
     rows.push([t('people.persons.fields.email'), person.email], [t('people.persons.fields.phone'), person.phone])
-    if ('pesel' in person) rows.push([t('people.persons.fields.pesel'), person.pesel])
+    rows.push([
+      t('people.persons.fields.pesel'),
+      'pesel' in person ? person.pesel : t('people.persons.fields.pesel.hintOther'),
+    ])
     rows.push([t('people.persons.fields.notes'), person.notes])
   }
   return (
@@ -77,8 +83,18 @@ function ReadOnlyDetails({ person, t }: { person: PersonDetail; t: Translate }) 
   )
 }
 
+/** "12 lat · ma konto": the age (when the birth date is known) and "has an account" (when it has one). */
+function headerSubtitle(person: PersonDetail, age: ReturnType<typeof personAge>, t: Translate): string {
+  const parts: string[] = []
+  if (age) parts.push(t(`people.persons.record.age.${age.form}`, { count: age.years }))
+  if (person.hasAccount) parts.push(t('people.persons.record.hasAccount'))
+  return parts.join(' · ')
+}
+
 export function PersonRecord({ id }: { id: string }) {
   const t = useT()
+  const locale = useLocale()
+  const today = useClubToday()
   const features = useGrantedFeatures()
   const router = useRouter()
   const pathname = usePathname()
@@ -134,7 +150,9 @@ export function PersonRecord({ id }: { id: string }) {
           <h1 className="text-2xl font-semibold break-words">
             {personName(person) || t('people.persons.record.title')}
           </h1>
-          <span className="text-muted-foreground text-sm">{t('people.persons.record.title')}</span>
+          <span className="text-muted-foreground text-sm" data-testid="person-record-subtitle">
+            {headerSubtitle(person, personAge(person.birthDate, today, locale), t) || t('people.persons.record.title')}
+          </span>
         </div>
         <StatusBadge variant={person.hasAccount ? 'success' : 'neutral'}>
           {person.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
