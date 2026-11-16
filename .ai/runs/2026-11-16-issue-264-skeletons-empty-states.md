@@ -29,10 +29,11 @@
 - `yarn qa-texts:check` → `169 test file(s), 92 hardcoded UI text(s) left, 0 problem(s)`.
 - `yarn test:integration:vereino --filter TEST-N16` → run 1: `1 passed (4.0m)`.
 - Regression `--filter E06-S14` (its `club-units-empty` assertion compared the whole text, which now includes the calendar link; rewritten to `uiText` plus the link): run 1 stopped before any test with `SyntaxError: Identifier 'empty' has already been declared. (381:10)` and `Error: No tests found.` (the runner still exited 0); variable renamed, run 2: `1 passed (2.4m)`.
+- Regression `--filter TEST-M13` (inbox and direct empty states) → `1 passed (2.4m)`.
 
 ## Open problems
 
-- None known yet.
+- None. The PR leaves the inbox's "Write to the coach" twice on an empty inbox (header button and the empty-state link); reviewers may prefer only one.
 
 ## Next steps
 
