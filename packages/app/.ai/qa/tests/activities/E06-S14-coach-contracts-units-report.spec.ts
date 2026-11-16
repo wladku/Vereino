@@ -7,6 +7,7 @@ import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub, type Club } fro
 import { signInBrowser } from '../_fixtures/club-structure'
 import { signedInStaff } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #96 (E06-S14; README B-07, B-16, More → My units; club spec REQ-008, REQ-021, AC-008, AC-021, TEST-013): this
 // month Marek leads one Żaki training, hands a second one over to Bartek (a substitution, R04) and leads an away
@@ -325,10 +326,14 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     club.adminToken = await getAuthToken(request, club.tenant.email, adminPassword)
     await page.goto('/backend/activities/reports/coach-units')
-    await expect(page.getByTestId('coach-units-model')).toContainText(/units per contract|jednostki według umowy/)
+    await expect(page.getByTestId('coach-units-model')).toContainText(
+      uiText('activities.reports.coachUnits.models.units_per_contract'),
+    )
     const marekRow = page.getByRole('row').filter({ hasText: 'Marek Trener' })
     await expect(marekRow).toContainText(/1[\s  ,.]?730/)
-    await expect(page.getByRole('row').filter({ hasText: 'Bartek Zastępca' })).toContainText(/No contract|Brak umowy/)
+    await expect(page.getByRole('row').filter({ hasText: 'Bartek Zastępca' })).toContainText(
+      uiText('activities.reports.coachUnits.noContract'),
+    )
     await marekRow.getByTestId('coach-units-sessions').locator('summary').click()
     await expect(marekRow.getByTestId('coach-units-sessions')).toContainText('Mecz wyjazdowy')
     await expect(page.getByTestId('coach-units-export')).toHaveAttribute(
@@ -336,9 +341,7 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
       new RegExp(`month=${month}.*format=csv`),
     )
     await page.getByTestId('coach-units-month').fill('2020-01')
-    await expect(page.getByTestId('coach-units-empty')).toHaveText(
-      /No closed sessions this month|Brak zamkniętych terminów w tym miesiącu/,
-    )
+    await expect(page.getByTestId('coach-units-empty')).toHaveText(uiText('activities.reports.coachUnits.empty'))
 
     // --- My units on the phone: Marek's own row, no amount, both locales and both modes ---
     await page.setViewportSize({ width: 375, height: 812 })

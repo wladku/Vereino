@@ -5,6 +5,7 @@ import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { addMembership } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #215 (follow-up of #199; club spec DD-37, README B-15): the backend sessions reads say whether the caller may
 // cancel each session (`mayCancel`, from the cancel command's own `cancelRoleOf`). With `coach_may_cancel` off,
@@ -14,8 +15,8 @@ import { updateClubSettings } from '../_fixtures/members'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const CANCEL_ITEM = /^(Cancel session|Odwołaj termin)$/
-const OPEN_ACTIONS = /Open actions|Otwórz akcje/
+const CANCEL_ITEM = uiText('activities.club.session.cancel', { exact: true })
+const OPEN_ACTIONS = uiText('ui.rowActions.openActions')
 
 test('ISSUE-215 coach_may_cancel off hides "Cancel" on the backend sessions pages for a session reached only as a coach', async ({
   page,
@@ -95,7 +96,7 @@ test('ISSUE-215 coach_may_cancel off hides "Cancel" on the backend sessions page
     await page.goto('/backend/activities/occurrences')
     const poolRow = page.getByRole('row').filter({ hasText: 'Zajęcia na basenie' })
     await poolRow.getByRole('button', { name: OPEN_ACTIONS }).click()
-    await expect(page.getByRole('menuitem', { name: /^(Open|Otwórz)$/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: uiText('activities.common.open', { exact: true }) })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: CANCEL_ITEM })).toHaveCount(0)
     await page.keyboard.press('Escape')
     const academyRow = page.getByRole('row').filter({ hasText: 'Trening akademii' })

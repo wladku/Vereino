@@ -4,6 +4,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes }
 import { OPTIMISTIC_LOCK_HEADER, call, createClub } from '../_fixtures/club'
 import { create, signInBrowser } from '../_fixtures/club-structure'
 import { SVG_AS_PNG, pdf, png, upload } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #86 slice (b) (E06-S04; UX parity spec REQ-U03, J-U03, TEST-U08 files part, TEST-U09 form part, AC-U05): a
 // place keeps its regulations text, one regulations PDF and up to 10 photos. Uploads are checked by their bytes (an
@@ -194,7 +195,7 @@ test('TEST-U08 place regulations and photos: byte checks, the 10-photo limit und
         (response) => response.url().includes('/api/club_core/places') && response.request().method() === 'PUT',
       ),
       page
-        .getByRole('button', { name: /^(Save|Zapisz)$/ })
+        .getByRole('button', { name: uiText('club_core.common.save', { exact: true }) })
         .first()
         .click(),
     ])

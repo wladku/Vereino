@@ -5,6 +5,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { calendarDate, createClub, type Club } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { signedInStaff } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #94 (E06-S12; README B-15; club spec REQ-006, the UI row of `/backend/activities/occurrences`; foundation II
 // REQ-G06, AC-G06): the sessions list opens on 7 days back through 14 days ahead; a coordinator cancels a future
@@ -93,13 +94,17 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     expect(params.get('to')).toBe(addDays(today, 14))
     await expect(page.getByRole('row').filter({ hasText: 'Trening jutro' })).toBeVisible()
     await expect(page.getByText('Trening za miesiąc')).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: /^(All|Wszystkie)$/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('tab', { name: uiText('activities.occurrences.perspectives.all', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
 
     // Cancel from the row: no reason, then a two-character reason, are refused; a real reason cancels the session.
     const cancelRow = page.getByRole('row').filter({ hasText: 'Trening do odwołania' })
-    await cancelRow.getByRole('button', { name: /Open actions|Otwórz akcje/ }).click()
-    await expect(page.getByRole('menuitem', { name: /^(Attendance list|Lista obecności)$/ })).toHaveCount(0)
-    await page.getByRole('menuitem', { name: /^(Cancel session|Odwołaj termin)$/ }).click()
+    await cancelRow.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await expect(
+      page.getByRole('menuitem', { name: uiText('activities.club.attendance.pageTitle', { exact: true }) }),
+    ).toHaveCount(0)
+    await page.getByRole('menuitem', { name: uiText('activities.club.session.cancel', { exact: true }) }).click()
     const confirm = page.getByTestId('occurrence-cancel-confirm')
     await confirm.click()
     const problem = page.getByTestId('occurrence-cancel-problem')
@@ -112,25 +117,29 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     await page.getByTestId('occurrence-cancel-reason').fill('Boisko zamknięte')
     await confirm.click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(cancelRow.getByText(/^(Cancelled|Odwołany)$/)).toBeVisible()
+    await expect(cancelRow.getByText(uiText('activities.occurrences.status.cancelled', { exact: true }))).toBeVisible()
     expect((await getOccurrence(request, club.adminToken, toCancel)).body).toMatchObject({
       status: 'cancelled',
       cancelReason: 'Boisko zamknięte',
     })
 
     // The Canceled perspective lists it with its reason, and only cancelled sessions.
-    await page.getByRole('tab', { name: /^(Canceled|Odwołane)$/ }).click()
+    await page
+      .getByRole('tab', { name: uiText('activities.occurrences.perspectives.cancelled', { exact: true }) })
+      .click()
     await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?perspective=cancelled$/)
     const cancelledRow = page.getByRole('row').filter({ hasText: 'Trening do odwołania' })
     await expect(cancelledRow).toContainText('Boisko zamknięte')
     await expect(page.getByText('Trening jutro')).toHaveCount(0)
 
     // A started session offers the attendance list instead of Cancel.
-    await page.getByRole('tab', { name: /^(All|Wszystkie)$/ }).click()
+    await page.getByRole('tab', { name: uiText('activities.occurrences.perspectives.all', { exact: true }) }).click()
     const startedRow = page.getByRole('row').filter({ hasText: 'Trening rozpoczęty' })
-    await startedRow.getByRole('button', { name: /Open actions|Otwórz akcje/ }).click()
-    await expect(page.getByRole('menuitem', { name: /^(Cancel session|Odwołaj termin)$/ })).toHaveCount(0)
-    await page.getByRole('menuitem', { name: /^(Attendance list|Lista obecności)$/ }).click()
+    await startedRow.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await expect(
+      page.getByRole('menuitem', { name: uiText('activities.club.session.cancel', { exact: true }) }),
+    ).toHaveCount(0)
+    await page.getByRole('menuitem', { name: uiText('activities.club.attendance.pageTitle', { exact: true }) }).click()
     await expect(page).toHaveURL(new RegExp(`/club/occurrences/${started}/attendance$`))
 
     // The Calendar perspective: the week grid of the coordinator's sections; a session opens its record.
@@ -144,17 +153,17 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
 
     // A week without sessions (the week before: every session is today or later) keeps its hours reachable by
     // keyboard: the scroll region takes focus and has a name (WCAG 2.1.1, axe `scrollable-region-focusable`, #248).
-    await calendar.getByRole('button', { name: /^(Previous|Poprzedni)$/ }).click()
+    await calendar.getByRole('button', { name: uiText('schedule.range.prev', { exact: true }) }).click()
     await expect(page.getByTestId('occurrences-calendar-empty')).toBeVisible()
     await expect(calendar.locator('.rbc-event')).toHaveCount(0)
     const hours = calendar.getByRole('region', {
-      name: /^(Calendar hours, scrollable|Godziny kalendarza, przewijane)$/,
+      name: uiText('activities.occurrences.calendar.scrollRegion', { exact: true }),
     })
     await expect(hours).toHaveAttribute('tabindex', '0')
     await hours.focus()
     await expect(hours).toBeFocused()
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
-    await calendar.getByRole('button', { name: /^(Next|Następny)$/ }).click()
+    await calendar.getByRole('button', { name: uiText('schedule.range.next', { exact: true }) }).click()
     await startedEvent.click()
     await expect(page).toHaveURL(new RegExp(`/backend/activities/occurrences/${started}$`))
 
@@ -172,7 +181,9 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     // The list at 375 px does not overflow the page.
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/activities/occurrences')
-    await expect(page.getByRole('heading', { level: 1, name: /^(Sessions|Terminy)$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('activities.activities.record.sessions', { exact: true }) }),
+    ).toBeVisible()
     await expectNoPageOverflow(page)
   } finally {
     await club.cleanup()

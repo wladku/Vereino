@@ -20,6 +20,7 @@ import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
 import { runProbe, uniqueAddress } from '../_fixtures/messaging'
 import { createGuardianship } from '../_fixtures/people'
 import { publicGet, publish } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // J-003 (club spec *User Journeys*, phase 3) steps 1, 2, 4 and 5, end to end on one fresh tenant — the phase 3 exit gate
 // of epic #23. Step 3 (the "send me a link" form and the personal link) and step 5's second error (a link request for
@@ -310,7 +311,7 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
         await expect(guestPage.getByTestId('public-session-when')).toContainText(
           String(Number(String(session.occurrenceDate).slice(8, 10))),
         )
-        await expect(guestPage.getByTestId('public-session-when')).toContainText(/Tuesday|wtorek/)
+        await expect(guestPage.getByTestId('public-session-when')).toContainText(uiText('activities.weekdays.long.TU'))
         await expect(guestPage.getByTestId('public-session-status')).toHaveAttribute('data-status', 'cancelled')
         // No names, no roster, no reason.
         const body = guestPage.locator('body')
@@ -344,7 +345,7 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       await page.locator('[data-crud-field-id="subject"] input').fill(ANNOUNCEMENT_SUBJECT)
       await page.locator('[data-crud-field-id="body"] textarea').fill(ANNOUNCEMENT_BODY)
       await page
-        .getByRole('button', { name: /^(Send|Wyślij)$/ })
+        .getByRole('button', { name: uiText('communication.direct.send', { exact: true }) })
         .first()
         .click()
       await expect(page).toHaveURL(/\/backend\/communication\/threads\/[0-9a-f-]{36}$/)
@@ -364,9 +365,7 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       await expect(page.getByTestId('club-thread')).toHaveCount(2)
       await page.getByTestId('club-thread').filter({ hasText: ANNOUNCEMENT_SUBJECT }).click()
       await expect(page.getByTestId('club-thread-subject')).toHaveText(ANNOUNCEMENT_SUBJECT)
-      await expect(
-        page.getByText(/Your reply reaches the club staff only\.|Twoja odpowiedź trafi tylko do kadry klubu\./),
-      ).toBeVisible()
+      await expect(page.getByText(uiText('communication.reply.memberHint'))).toBeVisible()
       await page.getByTestId('thread-reply-body').fill(PARENT_REPLY)
       await page.getByTestId('thread-reply-send').click()
       await expect(page.getByTestId('thread-message-body').filter({ hasText: PARENT_REPLY })).toBeVisible()
@@ -430,7 +429,7 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
             response.url().endsWith(`/api/communication/threads/${groupThreadId}/case`) &&
             response.request().method() === 'POST',
         ),
-        dialog.getByRole('button', { name: /^(Mark as case|Oznacz jako sprawę)$/ }).click(),
+        dialog.getByRole('button', { name: uiText('communication.cases.actions.mark', { exact: true }) }).click(),
       ])
       expect(marked.status()).toBe(200)
       // R01: marked in the coordinator role.
@@ -530,7 +529,7 @@ test('J-003 cancellation and announcement on a fresh tenant, without the REQ-017
       const failedRow = list.locator('[data-testid="delivery-row"][data-status="failed"]')
       await expect(failedRow).toHaveCount(1)
       await expect(failedRow).toContainText('Tomasz Wiśniewski')
-      await expect(failedRow).toContainText(/Not delivered|Niedoręczone/)
+      await expect(failedRow).toContainText(uiText('communication.deliveries.status.failed'))
       // Step 5's second error (a link request for an unknown e-mail) belongs to REQ-017 and is not walked.
     })
 

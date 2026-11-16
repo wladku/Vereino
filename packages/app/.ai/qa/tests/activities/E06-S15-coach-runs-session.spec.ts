@@ -5,6 +5,7 @@ import { familyFor, oneOff, readCalendarItem, sessionsOf } from '../_fixtures/at
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #97 (E06-S15; README M-02, M-04, F-05; club spec REQ-007, REQ-009, TEST-014): a coach finds their sessions on
 // Today and runs one from the phone (375 px). Marek coaches Żaki and is also the guardian of a child in Żaki: Today
@@ -16,12 +17,12 @@ test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const NOT_YOURS = /This is not your session|To nie jest Twój termin/
-const ADMIN_PANEL = /^(Admin panel|Panel administracyjny)$/
+const ADMIN_PANEL = uiText('activities.club.nav.backend', { exact: true })
 
 async function openMore(page: Page): Promise<void> {
   await page
     .getByTestId('club-bottom-bar')
-    .getByText(/^(More|Więcej)$/)
+    .getByText(uiText('activities.club.nav.more', { exact: true }))
     .click()
 }
 
@@ -75,9 +76,7 @@ test('E06-S15 the coach runs a session from the phone: Today, attendance list, c
       new RegExp(family.other.child.firstName),
     )
     const coachTile = page.getByTestId('club-tile-coach')
-    await expect(
-      coachTile.getByRole('heading', { name: /My sessions today and tomorrow|Moje terminy dziś i jutro/ }),
-    ).toBeVisible()
+    await expect(coachTile.getByRole('heading', { name: uiText('activities.club.today.coachSessions') })).toBeVisible()
     const coachRow = coachTile.getByTestId('club-today-coach-session').filter({ hasText: 'Trening dodatkowy' })
     await expect(coachRow).toBeVisible()
     // Tap 1 → 2: "Attendance list" opens M-05.

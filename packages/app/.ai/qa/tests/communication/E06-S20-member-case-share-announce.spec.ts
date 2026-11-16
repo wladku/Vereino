@@ -15,6 +15,7 @@ import {
   threadVersion,
   type ThreadDetail,
 } from '../_fixtures/communication'
+import { uiText } from '../_fixtures/ui-text'
 
 // E06-S20 (#102; README M-06, M-07, F-05; club spec REQ-009, REQ-010; foundation III `AudiencePicker`,
 // `DeliveryStatusList`) on the TEST-008 family: Anna guards Hania (Żaki and the pool group) and Kuba (Żaki); Marek
@@ -145,9 +146,7 @@ test('E06-S20 member inbox on the phone: case mark and banner, ward filter, copy
     await caseItem.click()
     await expect(page.getByTestId('club-thread-subject')).toHaveText('Czepki')
     await expect(page.getByTestId('club-thread-case')).toBeVisible()
-    await expect(page.getByTestId('thread-case-banner')).toContainText(
-      /Case — messages cannot be deleted or edited|Sprawa — wiadomości nie można usuwać ani edytować/,
-    )
+    await expect(page.getByTestId('thread-case-banner')).toContainText(uiText('communication.cases.banner.title'))
     await expect(page.getByTestId('thread-share')).toHaveCount(0)
     await expect(page.getByTestId('club-message-email')).toHaveCount(0)
     await scan('/club/messages/[threadId] (case)', async () => {
@@ -197,7 +196,7 @@ test('E06-S20 member inbox on the phone: case mark and banner, ward filter, copy
     const created = page.waitForResponse(
       (response) => response.url().endsWith('/api/communication/threads') && response.request().method() === 'POST',
     )
-    await dialog.getByRole('button', { name: /^(Send|Wyślij)$/ }).click()
+    await dialog.getByRole('button', { name: uiText('communication.direct.send', { exact: true }) }).click()
     const response = await created
     expect(response.status()).toBe(201)
     const body = (await response.json()) as { threadId: string; recipientCount: number }

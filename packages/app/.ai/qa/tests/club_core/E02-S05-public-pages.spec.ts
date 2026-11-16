@@ -4,6 +4,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { assignRole, birthDateTurning, createClub, createStaff, expectRoles, uniqueSuffix } from '../_fixtures/club'
 import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { getSettings, pdf, png, publish, putSectionPublic, putSettings, upload } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // E02-S05 (issue #29; club spec UI rows `/p/[clubSlug]`, `/p/[clubSlug]/sections/[sectionSlug]`,
 // `/backend/club/publication` and the "Public page" group; S7.4): the public pages without a session — the club page
@@ -202,7 +203,7 @@ test('E02-S05 the publication page and the coordinator’s section page: save, r
       .first()
       .click()
     await page
-      .getByRole('button', { name: /Save publication|Zapisz publikację/ })
+      .getByRole('button', { name: uiText('club_core.publication.save') })
       .first()
       .click()
     await expect
@@ -263,7 +264,7 @@ test('E02-S05 the publication page and the coordinator’s section page: save, r
       .first()
       .click()
     await panel
-      .getByRole('button', { name: /Save public page|Zapisz stronę publiczną/ })
+      .getByRole('button', { name: uiText('club_core.sections.public.save') })
       .first()
       .click()
     await expect(page.getByTestId('section-public-link')).toBeVisible()

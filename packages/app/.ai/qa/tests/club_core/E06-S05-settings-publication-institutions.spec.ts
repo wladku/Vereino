@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { OPTIMISTIC_LOCK_HEADER, call, createClub } from '../_fixtures/club'
 import { create, getOne, list, signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #87 (E06-S05) acceptance criteria: the time zone is a known IANA zone (422 otherwise), the account age
 // threshold is 13–18 (Q1; 422 with a field error otherwise), the club name is editable (Q2: the platform
@@ -64,7 +65,7 @@ test('E06-S05 institutions: NRB bank accounts, 422 for 25 digits, and a type fil
     })
     expect(short.status, JSON.stringify(short.body)).toBe(422)
     expect(short.body).toMatchObject({ code: 'bank_account_invalid' })
-    expect(short.body?.error).toMatch(/Account number must have 26 digits|Numer rachunku musi mieć 26 cyfr/)
+    expect(short.body?.error).toMatch(uiText('club_core.errors.bank_account_invalid'))
     expect(short.body?.fieldErrors?.bankAccount).toBeTruthy()
 
     const schoolId = await create(request, club.adminToken, 'institutions', {

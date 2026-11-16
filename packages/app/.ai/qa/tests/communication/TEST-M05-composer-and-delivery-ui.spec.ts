@@ -5,6 +5,7 @@ import { createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { audienceTargets, previewAudience, settledDeliveries } from '../_fixtures/communication'
 import { runProbe } from '../_fixtures/messaging'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-M05 (foundation III REQ-M05, AC-M05; P-32): the composer's `AudiencePicker` offers a coach only the group,
 // activity and session kinds and only his groups, the coordinator also her sections and the administrator also the
@@ -123,7 +124,7 @@ test('TEST-M05 composer and delivery status: kinds and targets by grant, live co
     await expect(list.getByTestId('delivery-row').first()).toBeVisible()
     await expect(list.locator('[data-testid="delivery-row"][data-status="failed"]')).toHaveCount(1)
     await expect(list.locator('[data-testid="delivery-row"][data-status="failed"]')).toContainText(
-      /Not delivered|Niedoręczone/,
+      uiText('communication.deliveries.status.failed'),
     )
     await expect(list.locator('[data-testid="delivery-row"][data-status="sent"]')).toHaveCount(5)
     const problemsOnly = page.getByTestId('delivery-problems-only')

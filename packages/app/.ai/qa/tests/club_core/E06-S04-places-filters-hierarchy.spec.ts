@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { call, createClub } from '../_fixtures/club'
 import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #86 (E06-S04; README B-06; UX parity spec REQ-U03, TEST-U08 and TEST-U09 list part, AC-U05 list part): the
 // places list filters by kind, parent and active state; each row carries the owner institution's name and the parent's
@@ -119,15 +120,15 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     // The overlay is an inline panel (not a dialog); each filter is a block with its label and a select.
     await page
       .locator('div.space-y-2')
-      .filter({ has: page.getByText(/^(Kind|Rodzaj)$/) })
+      .filter({ has: page.getByText(uiText('club_core.contracts.columns.kind', { exact: true })) })
       .filter({ has: page.getByRole('combobox') })
       .last()
       .getByRole('combobox')
       .first()
       .click()
-    await page.getByRole('option', { name: /^(Pitch|Boisko)$/ }).click()
+    await page.getByRole('option', { name: uiText('club_core.places.kind.pitch', { exact: true }) }).click()
     await page
-      .getByRole('button', { name: /^(Apply|Zastosuj)$/ })
+      .getByRole('button', { name: uiText('search.settings.actions.apply', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/club\/places\?kind=pitch$/)
@@ -146,14 +147,16 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     await expect(cells).toHaveText([/^↳\s*Orlik ›\s*Zaplecze szatniowe$/])
     await page.goto('/backend/club/places?kind=pool')
     await expect(page.getByTestId('places-empty-filtered')).toBeVisible()
-    await page.getByRole('button', { name: /^(Clear filters|Wyczyść filtry)$/ }).click()
+    await page.getByRole('button', { name: uiText('club_core.places.filters.clear', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/backend\/club\/places$/)
     await expect(cells).toHaveCount(5)
 
     // 375 px: the list stays usable and the page reflows.
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/club/places')
-    await expect(page.getByRole('heading', { level: 1, name: /^(Places|Miejsca)$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('club_core.places.title', { exact: true }) }),
+    ).toBeVisible()
     await expectNoPageOverflow(page)
 
     // The empty state of a club without places offers "Add place".
@@ -163,7 +166,9 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
       await page.goto('/backend/club/places')
       await expect(page.getByTestId('places-empty')).toBeVisible()
       await expect(
-        page.getByTestId('places-empty').getByRole('link', { name: /^(Add place|Dodaj miejsce)$/ }),
+        page
+          .getByTestId('places-empty')
+          .getByRole('link', { name: uiText('club_core.places.actions.create', { exact: true }) }),
       ).toBeVisible()
     } finally {
       await empty.cleanup()

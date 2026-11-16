@@ -17,6 +17,7 @@ export const STEPS = [
   { name: 'contracts:check', args: ['contracts:check'] },
   { name: 'settings-prefixes:check', args: ['settings-prefixes:check'] },
   { name: 'glossary:check', args: ['glossary:check'] },
+  { name: 'qa-texts:check', args: ['qa-texts:check'] },
   { name: 'lessons:check', args: ['lessons:check'] },
   { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
   { name: 'test', args: ['test'] },

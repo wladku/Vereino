@@ -10,6 +10,7 @@ import {
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { assignRole, calendarDate, call, createClub, uniqueSuffix } from '../_fixtures/club'
 import { create, signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // E06-S06 (issue #88; README B-01, note 4): the dashboard widget "Sections without a coordinator" counts the active
 // sections without an active coordinator and lists them, each linking to the section's Coordinators tab; it shows its
@@ -90,7 +91,9 @@ test('E06-S06 dashboard widget: sections without a coordinator, empty, error and
     )
     await expect(widget.getByRole('link', { name: 'Zumba' })).toHaveCount(0)
     await expect(widget.getByRole('link', { name: 'Cheerleader' })).toHaveCount(0)
-    await expect(page.getByText(/^(Sections without a coordinator|Sekcje bez koordynatora)$/)).toBeVisible()
+    await expect(
+      page.getByText(uiText('people.dashboard.widgets.sectionsWithoutCoordinator.title', { exact: true })),
+    ).toBeVisible()
     const violations = await scanInColorSchemes(
       page,
       testInfo,
@@ -110,9 +113,11 @@ test('E06-S06 dashboard widget: sections without a coordinator, empty, error and
       route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
     )
     await page.goto('/backend')
-    const retry = page.getByRole('button', { name: /^(Try again|Spróbuj ponownie)$/ })
+    const retry = page.getByRole('button', { name: uiText('people.club.actions.retry', { exact: true }) })
     await expect(retry).toBeVisible()
-    await expect(page.getByText(/^(The sections could not be loaded\.|Nie udało się wczytać sekcji\.)$/)).toBeVisible()
+    await expect(
+      page.getByText(uiText('people.dashboard.widgets.sectionsWithoutCoordinator.error', { exact: true })),
+    ).toBeVisible()
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     // The dashboard loads its layout twice and mounts the widget again: keep the failure until that settles, or the
     // second load succeeds on its own and "Try again" is gone before the click.
@@ -133,7 +138,9 @@ test('E06-S06 dashboard widget: sections without a coordinator, empty, error and
     }
     await page.reload()
     await expect(page.getByTestId('sections-without-coordinator-count')).toHaveText('0')
-    await expect(page.getByText(/^(Every section has a coordinator\.|Każda sekcja ma koordynatora\.)$/)).toBeVisible()
+    await expect(
+      page.getByText(uiText('people.dashboard.widgets.sectionsWithoutCoordinator.empty', { exact: true })),
+    ).toBeVisible()
 
     // 375 px: the widget reflows without horizontal overflow.
     await page.setViewportSize({ width: 375, height: 812 })

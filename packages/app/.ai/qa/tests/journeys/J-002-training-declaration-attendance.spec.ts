@@ -33,6 +33,7 @@ import { create as createStructure, signInBrowser, switchBrowserUser } from '../
 import { addMembership, createGroup, listGroups, roster, signedInStaff } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
 import { createGuardianship, persons } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // J-002 (club spec *User Journeys*, phases 2–3) without the substitution steps, end to end on one fresh tenant — the
 // phase 2 exit gate of epic #22. Step 4 (Marek's absence, the "needing a coach" list, the coordinator assigning Bartek)
@@ -59,11 +60,11 @@ const PITCH = 'Boisko piłkarskie'
 const POOL_PLACE = 'Pływalnia miejska'
 const HORIZON_DAYS = 16 * 7
 
-const CREATE = /^Create$|^Utwórz$/
-const CONFLICT_STATUS = /^Conflict$|^Kolizja$/
-const ADD_TO_GROUP = /^Add to group$|^Dodaj do grupy$/
-const PRESENT = /^(Present|Obecny)$/
-const LATE = /^(Late|Spóźniony)$/
+const CREATE = uiText('activities.common.create', { exact: true })
+const CONFLICT_STATUS = uiText('activities.preview.status.conflict', { exact: true })
+const ADD_TO_GROUP = uiText('groups.memberships.actions.add', { exact: true })
+const PRESENT = uiText('activities.club.attendance.actual.present', { exact: true })
+const LATE = uiText('activities.club.attendance.actual.late', { exact: true })
 
 type Account = { personId: string; userId: string; email: string }
 
@@ -90,7 +91,7 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
 
 /** Picks a person in a `LookupSelect` (searched by last name) inside `scope`, as in the J-001 test. */
 async function lookupPerson(scope: Locator, lastName: string, fullName: string): Promise<void> {
-  await scope.getByPlaceholder(/Search by last name|Szukaj po nazwisku/).fill(lastName)
+  await scope.getByPlaceholder(uiText('club_core.coordinators.fields.person.search')).fill(lastName)
   await scope.getByRole('option', { name: new RegExp(fullName) }).click()
   await expect(scope.getByRole('option', { name: new RegExp(fullName) })).toHaveAttribute('aria-selected', 'true')
 }
@@ -122,7 +123,9 @@ type WizardInput = {
  */
 async function fillActivityWizard(page: Page, input: WizardInput): Promise<void> {
   await page.goto('/backend/activities/activities/create')
-  await expect(page.getByRole('heading', { level: 1, name: /^New activity$|^Nowa aktywność$/ })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: uiText('activities.activities.actions.create', { exact: true }) }),
+  ).toBeVisible()
   await page.waitForLoadState('networkidle')
   await chooseCrudOption(page, 'groupId', input.group)
   await page.locator('[data-crud-field-id="name"] input').fill(input.name)
@@ -158,7 +161,7 @@ async function addToRoster(page: Page, person: { lastName: string; fullName: str
   await form.getByRole('button', { name: ADD_TO_GROUP }).click()
   await expect(
     page
-      .getByRole('list', { name: /Members of the group|Członkowie grupy/ })
+      .getByRole('list', { name: uiText('groups.memberships.list') })
       .getByRole('listitem')
       .filter({ hasText: person.fullName }),
   ).toBeVisible()
@@ -169,7 +172,7 @@ async function openCoachCalendar(page: Page, date: string): Promise<void> {
   await page.goto('/club/calendar')
   // The acting context is the header's role-context switcher (E06-S19 #101).
   await page.locator('#club-switcher-context').click()
-  await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
+  await page.getByRole('option', { name: uiText('activities.club.nav.contextCoach', { exact: true }) }).click()
   await showCalendarWeekOf(page, date)
 }
 
@@ -424,7 +427,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       const ewaToken = await signIn(page, request, club, ewa)
       await page.goto('/backend/groups/groups/create')
       await page.locator('[data-crud-field-id="name"] input').fill(POOL_GROUP)
-      await chooseCrudOption(page, 'kind', /Class group|Grupa zajęciowa/)
+      await chooseCrudOption(page, 'kind', uiText('groups.groups.kind.class_group'))
       await chooseCrudOption(page, 'sectionId', /^Basen$/)
       await page.getByRole('button', { name: CREATE }).first().click()
       await expect(page).toHaveURL(/\/backend\/groups\/groups\/[0-9a-f-]{36}$/)
@@ -432,8 +435,16 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       poolGroupId = page.url().split('/').pop() as string
 
       // The roster: the instructor (a class group's coach) and Jaś, who is now in groups of both sections.
-      await addToRoster(page, { lastName: 'Fala', fullName: 'Irena Fala' }, /^Instructor$|^Instruktor$/)
-      await addToRoster(page, { lastName: 'Nowak', fullName: 'Jaś Nowak' }, /^Participant$|^Uczestnik$/)
+      await addToRoster(
+        page,
+        { lastName: 'Fala', fullName: 'Irena Fala' },
+        uiText('groups.memberships.role.class_group.coach', { exact: true }),
+      )
+      await addToRoster(
+        page,
+        { lastName: 'Nowak', fullName: 'Jaś Nowak' },
+        uiText('groups.memberships.role.participant', { exact: true }),
+      )
       const members = await roster(request, admin, poolGroupId)
       expect(members.status).toBe(200)
       expect(
@@ -543,7 +554,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await expect(own).toContainText(/Your guardian confirms your answer|Twój opiekun potwierdza/)
       await own.getByRole('button', { name: /^(Attending|Będzie) — Ola$/ }).click()
       await expect(own.getByTestId('club-session-declaration')).toHaveText(
-        /^(Awaiting guardian confirmation|Czeka na potwierdzenie opiekuna)$/,
+        uiText('activities.club.declaration.pending', { exact: true }),
       )
 
       const stored = await readCalendarItem(request, olaToken, matchSession.id, 'as=self')
@@ -591,7 +602,9 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
         .getByTestId('club-session-decision')
         .getByRole('button', { name: /^(Approve|Zatwierdź) — Ola$/ })
         .click()
-      await expect(ward.getByTestId('club-session-declaration')).toHaveText(/^(Attending|Będzie)$/)
+      await expect(ward.getByTestId('club-session-declaration')).toHaveText(
+        uiText('activities.club.actions.attending', { exact: true }),
+      )
       await expect(ward.getByTestId('club-session-decision')).toHaveCount(0)
       const decided = await readCalendarItem(request, kasiaToken, matchSession.id, `as=guardian&personId=${olaId}`)
       expect(personOf(decided.body as never, olaId).declaration).toMatchObject({
@@ -612,7 +625,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await expect(page.getByTestId('club-session-closed')).toHaveText(
         /Declarations closed: the session has started\.|Deklaracje zamknięte: termin już się rozpoczął./,
       )
-      await expect(page.getByRole('button', { name: /Report absence|Zgłoś nieobecność/ })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: uiText('activities.club.actions.reportAbsence') })).toHaveCount(0)
       const late = await declare(request, kasiaToken, {
         occurrenceId: tuesdaySessionId,
         personId: jasId,
@@ -643,7 +656,9 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       )
       await expect(page.getByTestId('club-attendance-not-started')).toHaveCount(0)
       await expect(page.getByTestId('club-attendance-row')).toHaveCount(1)
-      await expect(row(page).getByTestId('club-attendance-expectation')).toHaveText(/^(Expected|Oczekiwany)$/)
+      await expect(row(page).getByTestId('club-attendance-expectation')).toHaveText(
+        uiText('activities.club.attendance.expectation.expected', { exact: true }),
+      )
       await row(page).getByRole('radio', { name: PRESENT }).click()
 
       // At the same time the academy's coordinator checks off the same list on another device and saves first.
@@ -674,14 +689,18 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       ])
       expect(refused.status()).toBe(409)
       await expect(page.getByTestId('record-conflict-banner')).toBeVisible()
-      await expect(row(page).getByTestId('club-attendance-marked-by')).toContainText(/coordinator|koordynator/)
+      await expect(row(page).getByTestId('club-attendance-marked-by')).toContainText(
+        uiText('activities.club.attendance.role.coordinator'),
+      )
       await expect(row(page).getByRole('radio', { name: PRESENT })).toBeChecked()
 
       // Saving again with the refreshed version succeeds; the row says Marek marked it as the coach.
       await page.getByTestId('club-attendance-save').click()
       await expect(page.getByTestId('club-attendance-announcement')).toHaveText(/Attendance saved|Obecność zapisana/)
       await expect(row(page).getByTestId('club-attendance-marked-by')).toContainText('Marek Lis')
-      await expect(row(page).getByTestId('club-attendance-marked-by')).toContainText(/coach|trener/)
+      await expect(row(page).getByTestId('club-attendance-marked-by')).toContainText(
+        uiText('activities.club.attendance.role.coach'),
+      )
       const stored = await readAttendanceList(request, admin, tuesdaySessionId)
       expect(stored.status, JSON.stringify(stored.body)).toBe(200)
       expect(stored.body && rowOf(stored.body, jasId)).toMatchObject({
@@ -712,7 +731,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await page.getByTestId('club-attendance-close').click()
       const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
       await expect(dialog).toBeVisible()
-      await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
+      await dialog.getByRole('button', { name: uiText('activities.club.attendance.close', { exact: true }) }).click()
       // A closed session returns to Today (E06-S17); the list is read-only from then on.
       await expect(page).toHaveURL(/\/club$/)
       await page.goto(attendanceUrl)

@@ -6,6 +6,7 @@ import { create as createStructure, signInBrowser, switchBrowserUser } from '../
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 import { createDiscountRule, listCharges, periodFromNow } from '../_fixtures/payments'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S01 pages (issue #108; UX concept README B-20, B-21, flow F-07): the "Fees", "Discounts" and "Coaches and
 // payments" tabs of B-20 and B-21 Charges — no new critical or serious axe violation outside the platform baseline
@@ -71,13 +72,13 @@ test('E07-S01 fees, discounts, coaches and payments, and Generate period with it
       { path: '/backend/payments/fees/create' },
       { path: '/backend/payments/discounts', shows: 'Rodzeństwo 30%' },
       { path: '/backend/payments/discounts/create' },
-      { path: '/backend/payments/settings', shows: /Coaches and payments|Trenerzy i płatności/ },
+      { path: '/backend/payments/settings', shows: uiText('payments.nav.tabs.settings') },
       { path: '/backend/payments/charges', shows: /No charges|Brak należności/ },
     ]) {
       await page.setViewportSize({ width: 1280, height: 720 })
       await page.goto(path)
       if (shows) await expect(page.getByText(shows).first()).toBeVisible()
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toHaveCount(0)
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toHaveCount(0)
       const violations = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (violations.length > 0) violationsByPage[path] = violations
       await expectNoPageOverflow(page)
@@ -97,14 +98,18 @@ test('E07-S01 fees, discounts, coaches and payments, and Generate period with it
     await groupOption.click()
     await page.locator('[data-crud-field-id="amount"] input').fill('150')
     await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
+      .getByRole('button', { name: uiText('payments.common.create', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/payments\/fees$/)
     await expect(page.getByRole('cell', { name: 'Żaki' }).first()).toBeVisible()
 
     // The tabs of B-20.
-    for (const name of [/^Fees$|^Cenniki$/, /^Discounts$|^Zniżki$/, /Coaches and payments|Trenerzy i płatności/]) {
+    for (const name of [
+      uiText('payments.nav.tabs.fees', { exact: true }),
+      uiText('payments.discounts.title', { exact: true }),
+      uiText('payments.nav.tabs.settings'),
+    ]) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
 
@@ -140,7 +145,7 @@ test('E07-S01 fees, discounts, coaches and payments, and Generate period with it
     await switchBrowserUser(page, request, club, member.userId, member.email)
     for (const path of ['/backend/payments/fees', '/backend/payments/charges']) {
       await page.goto(path)
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
     }
   } finally {
     await club.cleanup()

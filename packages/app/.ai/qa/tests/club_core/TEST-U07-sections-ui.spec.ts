@@ -5,6 +5,7 @@ import { assignRole, birthDateTurning, createClub, createStaff, expectRoles, uni
 import { create, getOne, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { createGroup } from '../_fixtures/groups'
 import { publish, putSectionPublic } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-U07 (UX parity spec REQ-U02, J-U02, AC-U03, AC-U04; issue #85): the sections list shows the Groups and Public
 // columns; Deactivate goes through a confirmation and a refused deactivation lists the active groups; the section
@@ -47,12 +48,12 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
     await expect(page.getByTestId(`section-groups-${pool}`)).toHaveText('2')
     await expect(page.getByTestId(`section-groups-${chess}`)).toHaveText('0')
     const poolRow = page.getByRole('row').filter({ hasText: 'Basen' })
-    await expect(poolRow.getByText(/^(Yes|Tak)$/)).toBeVisible()
+    await expect(poolRow.getByText(uiText('club_core.places.public.yes', { exact: true }))).toBeVisible()
     await expect(
       page
         .getByRole('row')
         .filter({ hasText: 'Szachy' })
-        .getByText(/^(No|Nie)$/),
+        .getByText(uiText('club_core.places.public.no', { exact: true })),
     ).toBeVisible()
     Object.assign(
       violations,
@@ -68,11 +69,11 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
     )
 
     // Deactivate the pool: confirm, then the 409 dialog lists both groups; the section stays active.
-    await poolRow.getByRole('button', { name: /Open actions|Otwórz akcje/ }).click()
-    await page.getByRole('menuitem', { name: /^(Deactivate|Dezaktywuj)$/ }).click()
+    await poolRow.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await page.getByRole('menuitem', { name: uiText('club_core.sections.actions.deactivate', { exact: true }) }).click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: /^(Deactivate|Dezaktywuj)$/ })
+      .getByRole('button', { name: uiText('club_core.sections.actions.deactivate', { exact: true }) })
       .click()
     const dialog = page.getByTestId('section-in-use-dialog')
     await expect(dialog).toBeVisible()
@@ -84,25 +85,24 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
 
     // Deactivating the section without groups succeeds.
     const chessRow = page.getByRole('row').filter({ hasText: 'Szachy' })
-    await chessRow.getByRole('button', { name: /Open actions|Otwórz akcje/ }).click()
-    await page.getByRole('menuitem', { name: /^(Deactivate|Dezaktywuj)$/ }).click()
+    await chessRow.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await page.getByRole('menuitem', { name: uiText('club_core.sections.actions.deactivate', { exact: true }) }).click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: /^(Deactivate|Dezaktywuj)$/ })
+      .getByRole('button', { name: uiText('club_core.sections.actions.deactivate', { exact: true }) })
       .click()
-    await expect(chessRow.getByText(/^(Inactive|Nieaktywna)$/)).toBeVisible()
+    await expect(chessRow.getByText(uiText('club_core.common.inactive', { exact: true }))).toBeVisible()
 
     // `?tab=coordinators` opens the Coordinators tab; an assignment with an end date shows it.
     await page.goto(`/backend/club/sections/${pool}/edit?tab=coordinators`)
-    await expect(page.getByRole('tab', { name: /^(Coordinators|Koordynatorzy)$/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    const panel = page.getByRole('region', { name: /^Coordinators$|^Koordynatorzy$/ })
-    await panel.getByPlaceholder(/Search by last name|Szukaj po nazwisku/).fill('Wrona')
+    await expect(
+      page.getByRole('tab', { name: uiText('club_core.coordinators.title', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
+    const panel = page.getByRole('region', { name: uiText('club_core.coordinators.title', { exact: true }) })
+    await panel.getByPlaceholder(uiText('club_core.coordinators.fields.person.search')).fill('Wrona')
     await panel.getByRole('option', { name: /Ewa Wrona/ }).click()
     await panel.getByTestId('section-coordinator-valid-to').fill('2030-06-30')
-    await panel.getByRole('button', { name: /Assign coordinator|Przypisz koordynatora/ }).click()
+    await panel.getByRole('button', { name: uiText('club_core.coordinators.actions.assign') }).click()
     await expect(panel.getByRole('listitem').filter({ hasText: 'Ewa Wrona' })).toContainText('2030-06-30')
     Object.assign(
       violations,
@@ -111,16 +111,15 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
         testInfo,
         'section page (coordinators tab)',
         async () => {
-          await expect(page.getByRole('tab', { name: /^(Coordinators|Koordynatorzy)$/ })).toHaveAttribute(
-            'aria-selected',
-            'true',
-          )
+          await expect(
+            page.getByRole('tab', { name: uiText('club_core.coordinators.title', { exact: true }) }),
+          ).toHaveAttribute('aria-selected', 'true')
         },
         { platformBaseline: true },
       ),
     )
     // Switching tabs updates the URL.
-    await page.getByRole('tab', { name: /^(Public page|Strona publiczna)$/ }).click()
+    await page.getByRole('tab', { name: uiText('club_core.sections.actions.publicPage', { exact: true }) }).click()
     await expect(page).toHaveURL(/tab=public/)
 
     // The section's coordinator sets the short description; the club page tile shows it.
@@ -133,27 +132,25 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
     await expectRoles(request, club, marek.userId, ['vereino_coordinator', 'vereino_member'])
     await switchBrowserUser(page, request, club, marek.userId, marek.email)
     await page.goto(`/backend/club/sections/${pool}/edit?tab=public`)
-    await expect(page.getByRole('tab', { name: /^(Public page|Strona publiczna)$/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+    await expect(
+      page.getByRole('tab', { name: uiText('club_core.sections.actions.publicPage', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
     const publicPanel = page.getByTestId('section-public-panel')
     await publicPanel.locator('[data-crud-field-id="shortDescription"] textarea').fill('Nauka pływania od 6 lat.')
     await publicPanel
-      .getByRole('button', { name: /Save public page|Zapisz stronę publiczną/ })
+      .getByRole('button', { name: uiText('club_core.sections.public.save') })
       .first()
       .click()
-    await expect(page.getByText(/Public page saved|Strona publiczna zapisana/).first()).toBeVisible()
+    await expect(page.getByText(uiText('club_core.sections.public.flash.saved')).first()).toBeVisible()
     await page.goto(`/p/${slug}`)
     await expect(page.getByTestId('public-section-basen-short')).toHaveText('Nauka pływania od 6 lat.')
 
     // 375 px: the section page's tabs and the list stay usable, and the pages reflow at 320 px.
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto(`/backend/club/sections/${pool}/edit?tab=public`)
-    await expect(page.getByRole('tab', { name: /^(Public page|Strona publiczna)$/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+    await expect(
+      page.getByRole('tab', { name: uiText('club_core.sections.actions.publicPage', { exact: true }) }),
+    ).toHaveAttribute('aria-selected', 'true')
     Object.assign(
       violations,
       await scanInColorSchemes(
@@ -169,7 +166,9 @@ test('TEST-U07 sections list, deactivation dialog, tabs, coordinator end date, s
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/club/sections')
-    await expect(page.getByRole('heading', { level: 1, name: /^(Sections|Sekcje)$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('club_core.public.sections.title', { exact: true }) }),
+    ).toBeVisible()
     await expectNoPageOverflow(page)
 
     expect(violations).toEqual({})

@@ -6,6 +6,7 @@ import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { addMembership } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #199 (club spec DD-37; README M-04, M-05): the club setting `coach_may_cancel` (yes by default). Under the
 // default, Marek, the coach of Żaki, is offered "Cancel session" (the #139 behaviour). Once the administrator turns the
@@ -64,7 +65,7 @@ test('ISSUE-199 coach_may_cancel off hides "Cancel session" from the coach and r
     )
     expect(forged.status, JSON.stringify(forged.body)).toBe(403)
     expect(forged.body?.code).toBe('coach_cancel_disabled')
-    expect(forged.body?.error).toMatch(/Coaches may cancel sessions|Trenerzy mogą odwoływać terminy/)
+    expect(forged.body?.error).toMatch(uiText('club_core.settings.fields.coachMayCancel'))
     const still = await readCalendarItem(request, family.coach.token, sessionId, 'as=coach')
     expect(still.body?.occurrence.status).toBe('planned')
 

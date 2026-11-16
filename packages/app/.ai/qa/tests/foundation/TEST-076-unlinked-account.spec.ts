@@ -18,6 +18,7 @@ import {
 } from '../_fixtures/club'
 import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
 import { postGroup } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-076 (#76): an account that passes the feature check but is not linked to a person of the club gets 403
 // `scope_unlinked` with a message naming the fix (en + pl) — on a create command, on an update of a record that exists
@@ -171,7 +172,7 @@ test('TEST-076 an account with no linked club person gets 403 scope_unlinked; a 
       await page.locator('[data-crud-field-id="firstName"] input').fill('Nowa')
       await page.locator('[data-crud-field-id="lastName"] input').fill(marker)
       await page
-        .getByRole('button', { name: /^Create$|^Utwórz$/ })
+        .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
         .first()
         .click()
       await expect(page.getByText(message).first()).toBeVisible()

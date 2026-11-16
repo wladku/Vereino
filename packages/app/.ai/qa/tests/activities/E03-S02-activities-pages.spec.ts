@@ -10,6 +10,7 @@ import {
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, createClub, createStaff } from '../_fixtures/club'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #31 pages (club spec UI table: `/backend/activities/activities` + `create`, `[id]`, `/backend/activities/
 // occurrences` + `[id]`, `/backend/activities/events/create`): every page renders its content with no critical or
@@ -52,7 +53,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     const violationsByPage: Record<string, unknown> = {}
     for (const { path, shows } of [
       { path: '/backend/activities/activities', shows: 'Trening Żaków' },
-      { path: '/backend/activities/activities/create', shows: /New activity|Nowa aktywność/ },
+      { path: '/backend/activities/activities/create', shows: uiText('activities.activities.actions.create') },
       { path: `/backend/activities/activities/${activityId}`, shows: 'Trening Żaków' },
       { path: '/backend/activities/occurrences', shows: 'Trening Żaków' },
       { path: `/backend/activities/occurrences/${session.id}`, shows: 'Trening Żaków' },
@@ -61,7 +62,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
       await page.setViewportSize(viewport)
       await page.goto(path)
       await expect(page.getByText(shows).first()).toBeVisible()
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toHaveCount(0)
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toHaveCount(0)
       const violations = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
       if (violations.length > 0) violationsByPage[path] = violations
       await expectNoPageOverflow(page)
@@ -69,7 +70,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     // The activity record lists its sessions on the "Sessions" tab.
     await page.setViewportSize(viewport)
     await page.goto(`/backend/activities/activities/${activityId}`)
-    await page.getByRole('tab', { name: /^Sessions$|^Terminy$/ }).click()
+    await page.getByRole('tab', { name: uiText('activities.activities.record.sessions', { exact: true }) }).click()
     const sessionsTable = page.getByTestId('activities-sessions-table')
     await expect(sessionsTable).toBeVisible()
     await expect(sessionsTable.getByText('17:00–18:30').first()).toBeVisible()
@@ -82,7 +83,9 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/backend/activities/activities')
-    await expect(page.getByRole('heading', { level: 1, name: /^Activities$|^Aktywności$/ })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: uiText('activities.activities.title', { exact: true }) }),
+    ).toBeVisible()
     await expect(page.getByText('Trening Żaków').first()).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
     await page.goto(`/backend/activities/occurrences/${session.id}`)
@@ -111,12 +114,14 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     const summary = page.getByTestId('activities-preview-summary')
     await expect(summary).toBeVisible()
     const previewTable = page.getByTestId('activities-preview-table')
-    await expect(previewTable.getByText(/^Conflict$|^Kolizja$/).first()).toBeVisible()
+    await expect(
+      previewTable.getByText(uiText('activities.preview.status.conflict', { exact: true })).first(),
+    ).toBeVisible()
     await expect(previewTable.getByText('Trening Żaków').first()).toBeVisible()
-    await expect(previewTable.getByText(/^Free$|^Wolne$/)).toHaveCount(0)
+    await expect(previewTable.getByText(uiText('activities.preview.status.free', { exact: true }))).toHaveCount(0)
     // Saving anyway is refused; the conflict list is shown above the form and nothing is created.
     await page
-      .getByRole('button', { name: /^Create$|^Utwórz$/ })
+      .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
       .first()
       .click()
     const conflicts = page.getByTestId('activities-conflicts')
@@ -153,7 +158,7 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
       `/backend/activities/occurrences/${session.id}`,
     ]) {
       await page.goto(path)
-      await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+      await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
       await expect(page.getByText('Trening Żaków')).toHaveCount(0)
     }
   } finally {

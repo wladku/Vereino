@@ -16,6 +16,7 @@ import { calendarDate, createClub, uniqueSuffix } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { awaitEmails, shareText } from '../_fixtures/communication'
 import { publicGet, publish } from '../_fixtures/publication'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #136 (club spec DD-43; messaging spec DD-M14): a session carries an optional gathering time. The activity holds
 // the default in minutes before the start, each session its own offset; a moved session keeps the offset, a series
@@ -209,7 +210,7 @@ test('ISSUE-136 gathering time: default and override, kept on a move, 422 when f
     await expect(minutes).toHaveValue('20')
     await minutes.fill('25')
     await page
-      .getByRole('button', { name: /^Save$|^Zapisz$/ })
+      .getByRole('button', { name: uiText('activities.club.attendance.save', { exact: true }) })
       .first()
       .click()
     await expect.poll(async () => (await getActivity(request, admin, series.id)).body?.gatheringMinutesBefore).toBe(25)
@@ -220,7 +221,7 @@ test('ISSUE-136 gathering time: default and override, kept on a move, 422 when f
     const gathering = page.locator('[data-crud-field-id="gatheringTime"] input')
     await expect(gathering).toHaveValue('09:15')
     await gathering.fill('09:00')
-    await page.getByRole('button', { name: /^Move session$|^Przenieś termin$/ }).click()
+    await page.getByRole('button', { name: uiText('activities.occurrences.move.submit', { exact: true }) }).click()
     await expect
       .poll(async () => (await getOccurrence(request, admin, matchSession.id)).body?.gatheringMinutesBefore)
       .toBe(60)

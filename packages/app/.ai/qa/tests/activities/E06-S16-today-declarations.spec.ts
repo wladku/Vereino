@@ -5,6 +5,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { createPolicy, declare, familyFor, oneOff, personOf, readCalendarItem, startNow } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #98, E06-S16 (club spec `/club` *Behavior*, README M-02; REQ-006, REQ-007, TEST-014): a guardian on a phone
 // declares straight from Today. With nothing today or tomorrow the calendar tile names the next session; a failed
@@ -17,13 +18,13 @@ import { signInBrowser } from '../_fixtures/club-structure'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: CLUB_ZONE })
 
-const ABSENT = /^(Absent|Nieobecny)$/
-const PENDING = /Awaiting guardian confirmation|Czeka na potwierdzenie opiekuna/
+const ABSENT = uiText('activities.club.attendance.actual.absent', { exact: true })
+const PENDING = uiText('activities.club.declaration.pending')
 const REPORT_ABSENCE = /^(Report absence|Zgłoś nieobecność)/
 const WITHDRAW_ABSENCE = /^(Withdraw the absence|Cofnij nieobecność)/
 const ATTENDING = /^(Attending|Będzie)/
 const NOT_ATTENDING = /^(Not attending|Nie będzie)/
-const TRY_AGAIN = /^(Try again|Spróbuj ponownie)$/
+const TRY_AGAIN = uiText('activities.club.actions.retry', { exact: true })
 
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -72,7 +73,7 @@ test('E06-S16 a guardian declares from Today: next session, per-tile retry, repo
     await page.goto('/club')
     const calendarTile = page.getByTestId('club-tile-calendar')
     await expect(calendarTile.getByTestId('club-today-empty')).toHaveText(nextSessionText(later, '16:00', 'Basen'))
-    await expect(calendarTile.getByRole('link', { name: /Open the calendar|Otwórz kalendarz/ })).toBeVisible()
+    await expect(calendarTile.getByRole('link', { name: uiText('activities.club.today.openCalendar') })).toBeVisible()
 
     // The calendar read fails: its tile offers "Try again", the messages tile still works; the retry recovers.
     await page.route('**/api/activities/calendar?*', (route) => route.abort())
@@ -180,7 +181,7 @@ test('E06-S16 a guardian declares from Today: next session, per-tile retry, repo
     await page.reload()
     const closedMatch = card(page, 'Mecz kontrolny')
     await expect(closedMatch.getByTestId('club-today-notice')).toHaveAttribute('data-notice', 'closed')
-    await expect(closedMatch.getByTestId('club-today-notice')).toHaveText(/Declarations closed|Deklaracje zamknięte/)
+    await expect(closedMatch.getByTestId('club-today-notice')).toHaveText(uiText('activities.club.today.closed'))
     const closedYounger = closedMatch.getByTestId('club-today-person').filter({ hasText: family.younger.firstName })
     await expect(closedYounger.getByRole('button', { name: ATTENDING })).toBeDisabled()
     await expect(closedYounger.getByRole('button', { name: NOT_ATTENDING })).toBeDisabled()

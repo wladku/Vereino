@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { OPTIMISTIC_LOCK_HEADER, birthDateTurning, call, createClub, createStaff } from '../_fixtures/club'
 import { checkBookablePlace, create, getOne, list, signInBrowser, update } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #25 (E02-S01) acceptance criteria: the DD-37 defaults on a fresh tenant, each editable; the leaf rule for
 // a complex with children; two clubs on two tenants do not see each other's sections; a user without the
@@ -163,10 +164,10 @@ test('E02-S01 a user without club_core.manage gets "Access denied" and no club d
 
     // UI: the settings page renders the platform's permission-denied state without club data.
     await page.goto('/backend/club/settings')
-    await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+    await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
     await expect(page.getByText(marker)).toHaveCount(0)
     await page.goto('/backend/club/sections')
-    await expect(page.getByText(/Access Denied|Brak dostępu/)).toBeVisible()
+    await expect(page.getByText(uiText('auth.accessDenied.title'))).toBeVisible()
     await expect(page.getByText(marker)).toHaveCount(0)
   } finally {
     await club.cleanup()

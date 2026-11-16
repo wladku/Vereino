@@ -6,6 +6,7 @@ import { calendarItems, familyFor } from '../_fixtures/attendance'
 import { calendarDate, call, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #140 (club spec REQ-027, AC-027, TEST-034; *UI architecture* "New event"): a coach creates a one-off event for
 // their own group from the phone (375 px). Marek, the Żaki coach, opens "New event" from the coach tile of Today; the
@@ -148,7 +149,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     // Acting as a member (the default), the calendar is the ward's and offers no "New event".
     await expect(page.getByTestId('club-calendar-new-event')).toHaveCount(0)
     await page.locator('#club-switcher-context').click()
-    await page.getByRole('option', { name: /^(as coach|jako trener)$/ }).click()
+    await page.getByRole('option', { name: uiText('activities.club.nav.contextCoach', { exact: true }) }).click()
     await page.getByTestId('club-calendar-new-event').click()
     await expect(page).toHaveURL(/\/club\/events\/new$/)
     await page.getByTestId('club-event-name').fill('Drugi turniej')

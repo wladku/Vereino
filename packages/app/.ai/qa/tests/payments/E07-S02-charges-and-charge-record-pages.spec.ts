@@ -6,6 +6,7 @@ import { create as createStructure, signInBrowser } from '../_fixtures/club-stru
 import { addMembership, createGroup } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 import { chargeOf, createFee, generate, getCharge, listCharges, periodFromNow } from '../_fixtures/payments'
+import { uiText } from '../_fixtures/ui-text'
 
 // E07-S02 pages (issue #109; UX concept README B-21, B-22): the B-21 perspectives (Membership fees by default, Overdue
 // lists only charges still to pay past their due date), the B-22 record of a PLN 150 charge — PLN 100 in cash shows
@@ -14,8 +15,8 @@ import { chargeOf, createFee, generate, getCharge, listCharges, periodFromNow } 
 // violation outside the platform baseline and no overflow on either page; 375 px in dark mode.
 test.describe.configure({ timeout: 300_000 })
 
-const PARTIAL_TOAST = /Recorded — charge partially paid|Zaksięgowano — należność częściowo opłacona/
-const PAID_TOAST = /Charge paid|Należność opłacona/
+const PARTIAL_TOAST = uiText('payments.ledger.record.donePartial')
+const PAID_TOAST = uiText('payments.ledger.record.donePaid')
 
 test('E07-S02 charges by perspective, record payment, reverse and cancel with a reason', async ({
   page,
@@ -72,9 +73,11 @@ test('E07-S02 charges by perspective, record payment, reverse and cancel with a 
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto('/backend/payments/charges')
-    await expect(page.getByRole('tab', { name: /^Membership fees$|^Składki$/ })).toHaveAttribute('data-state', 'active')
+    await expect(
+      page.getByRole('tab', { name: uiText('payments.charges.perspectives.fees', { exact: true }) }),
+    ).toHaveAttribute('data-state', 'active')
     await expect(page.getByTestId('charge-open')).toHaveCount(2)
-    await page.getByRole('tab', { name: /^Overdue$|^Zaległe$/ }).click()
+    await page.getByRole('tab', { name: uiText('payments.charges.perspectives.overdue', { exact: true }) }).click()
     await expect(page.getByTestId('charge-open')).toHaveCount(1)
     await expect(page.getByTestId('charge-overdue')).toHaveCount(1)
     const listViolations = await scanBlockingViolations(page, testInfo, { platformBaseline: true })

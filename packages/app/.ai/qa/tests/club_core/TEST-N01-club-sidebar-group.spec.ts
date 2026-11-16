@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { assignRole, birthDateTurning, createClub, createStaff } from '../_fixtures/club'
 import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-N01, Club group part (navigation spec REQ-N01, DD-N01; issue #246): the test reads the sidebar itself, not
 // URLs. The administrator's main sidebar lists the Club group — Sections, Places, Institutions and contracts (Contracts
@@ -24,7 +25,7 @@ async function clubGroupLinks(page: Page, path: string) {
   const group = page
     .getByTestId('sidebar')
     .locator('[data-sidebar-group="true"]')
-    .filter({ has: page.getByRole('button', { name: /^(Club|Klub)$/ }) })
+    .filter({ has: page.getByRole('button', { name: uiText('club_core.institutions.type.club', { exact: true }) }) })
   await expect(group).toHaveCount(1)
   return group.locator('a[href^="/backend/club"]')
 }

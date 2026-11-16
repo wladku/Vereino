@@ -5,6 +5,7 @@ import { expectNoPageOverflow } from '../_fixtures/axe'
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub, type Club } from '../_fixtures/club'
 import { getOne, signInBrowser } from '../_fixtures/club-structure'
 import type { CodedError } from '../_fixtures/facilities'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #129 (E08-S09), facilities spec REQ-038, TEST-053, AC-038: the hours the club uses on a place it rents from its
 // owner. The municipal pool is flagged `rented_by_club`; the pitch is not. Last month the pool group holds 8 sessions of
@@ -218,7 +219,7 @@ test('TEST-053 rented-hours report: done sessions on rented places per month, gr
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/backend/facilities/reports/rented-hours')
     await expect(page.getByTestId('rented-hours-report')).toBeVisible({ timeout: 60_000 })
-    await page.getByRole('button', { name: /Previous period|Poprzedni okres/ }).click()
+    await page.getByRole('button', { name: uiText('facilities.reports.owner.previous') }).click()
     await expect(page.getByTestId('rented-hours-totals')).toContainText('Pływalnia miejska', { timeout: 30_000 })
     await expect(page.getByTestId('rented-hours-totals')).toContainText(/13\s?h/)
     await expect(page.getByTestId('rented-hours-rows')).toContainText('Marek Trener')

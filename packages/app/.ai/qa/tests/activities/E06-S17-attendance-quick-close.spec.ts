@@ -15,6 +15,7 @@ import {
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { createGroup } from '../_fixtures/groups'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #99 (E06-S17; README M-05, flow F-03 path B; REQ-007, REQ-008; R11): on a phone (375 px) the coach fills the
 // list with "All declared present" (11 "yes" declarations; the three others stay unmarked), the close confirmation says
@@ -25,7 +26,7 @@ import { createGroup } from '../_fixtures/groups'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const PRESENT = /^(Present|Obecny)$/
+const PRESENT = uiText('activities.club.attendance.actual.present', { exact: true })
 
 test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that keeps the marks, the closed toast and Today; the empty list links the coordinator to the roster', async ({
   page,
@@ -107,7 +108,7 @@ test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that ke
     const running = /The session is still running or has not started|Termin jeszcze trwa albo się nie zaczął/
     if (endAt && new Date(endAt).getTime() > Date.now()) await expect(dialog).toContainText(running)
     else await expect(dialog).not.toContainText(running)
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
+    await dialog.getByRole('button', { name: uiText('activities.club.attendance.close', { exact: true }) }).click()
 
     // 409: the conflict bar; the list refreshes and the coach's marks stay; nothing was closed.
     await expect(page.getByTestId('record-conflict-banner')).toBeVisible()
@@ -120,7 +121,7 @@ test('E06-S17 all declared present, the close summary, Ctrl+Enter, a 409 that ke
     await page.getByTestId('club-attendance-close').click()
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText(/3 people without|Osoby bez zaznaczonej obecności: 3/)
-    await dialog.getByRole('button', { name: /^(Close session|Zamknij termin)$/ }).click()
+    await dialog.getByRole('button', { name: uiText('activities.club.attendance.close', { exact: true }) }).click()
     await expect(page).toHaveURL(/\/club$/)
     await expect(page.getByText(/Session closed — 11 present|Termin zamknięty — obecni: 11/).first()).toBeVisible()
     const closed = await readAttendanceList(request, coachToken, sessionId)
