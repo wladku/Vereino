@@ -219,6 +219,7 @@ test('E02-S05 the publication page and the coordinator’s section page: save, r
           contact: true,
           places_calendar: false,
           online_requests: false,
+          events: false,
         },
       })
     expect((await getSettings(request, club.adminToken)).publicSlug).toBe(slug)

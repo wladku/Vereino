@@ -11,6 +11,7 @@ import notificationTypes from './notifications'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
+import { ACTIVITIES_PUBLIC_EVENTS, createPublicEvents } from './services/public-events'
 import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
@@ -32,8 +33,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * worker finds it, and the in-app types are added to the platform's registry for the worker process too (see
  * `communication/di.ts`).
  *
- * `activities.publicSchedule` (club spec DD-28, DD-29; #91): the public groups' schedule on a section's public page and
- * the upcoming one-off events on the club page, which `club_core` reads with `hasRegistration`.
+ * `activities.publicSchedule` (club spec DD-28, DD-29; #91): the public groups' schedule on a section's public page;
+ * `activities.publicEvents` (navigation spec REQ-N13, #263): the one-off events of public groups on the public Events
+ * page P-06. `club_core` reads both with `hasRegistration`.
  *
  * `activities.placeSessions` (facilities spec DD-20, #121): the planned sessions on places in a window and the
  * reschedule flag a closure sets on them, for `facilities`.
@@ -63,5 +65,6 @@ export function register(container: AppContainer) {
       .proxy(),
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),
     [ACTIVITIES_PUBLIC_SCHEDULE]: asFunction(() => createPublicSchedule(container)).scoped(),
+    [ACTIVITIES_PUBLIC_EVENTS]: asFunction(() => createPublicEvents(container)).scoped(),
   })
 }

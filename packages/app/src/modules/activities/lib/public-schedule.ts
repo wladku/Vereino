@@ -1,16 +1,13 @@
-// The `activities.publicSchedule` blocks of the public club pages (club spec DD-28, DD-29, REQ-025; #91). On a section
-// page: for each public group, its regular days and times with the place (from the active series) and its next three
-// sessions, a cancelled one marked as cancelled. On the club page: the upcoming one-off events of the public groups of
-// the public sections (name, date, times, place, section, type). Pure: the service passes the rows, the place and
-// section names and the club zone; no participant, roster or coach ever enters these blocks.
+// The `activities.publicSchedule` block of a public section page (club spec DD-28, DD-29, REQ-025; #91): for each
+// public group, its regular days and times with the place (from the active series) and its next three sessions, a
+// cancelled one marked as cancelled. The club's one-off events moved to their own page P-06 (`public-events.ts`, #263).
+// Pure: the service passes the rows, the place names and the club zone; no participant, roster or coach ever enters
+// this block.
 import { Recurrence, WEEKDAYS, type CalendarDate, type Weekday } from '@vereino/core'
 import { localDateTime } from './activities-rules'
 
 /** How many next sessions a group card shows (README P-02). */
 export const UPCOMING_SESSIONS = 3
-
-/** How many upcoming events the club page lists. */
-export const UPCOMING_EVENTS = 10
 
 /** A series of a public group as the service reads it. */
 export type PublicSeriesRow = {
@@ -111,37 +108,4 @@ export function publicScheduleBlock(
     if (own.length > 0 || upcoming.length > 0) groups.push({ groupId, series: own, upcoming })
   }
   return groups.length > 0 ? { groups } : null
-}
-
-/** A one-off event as the service reads it: the activity and its section. */
-export type PublicEventRow = { id: string; name: string; type: string; sectionId: string }
-
-export type PublicEvent = PublicSession & {
-  name: string
-  type: string
-  section: { name: string; slug: string }
-}
-
-export type PublicEventsBlock = { events: PublicEvent[] }
-
-/**
- * The events block of the club page, or null without an upcoming event. `sessions` are the events' sessions in start
- * order (one each); an event of a section missing from `sections` (not public) is left out.
- */
-export function publicEventsBlock(
-  events: readonly PublicEventRow[],
-  sessions: readonly PublicSessionRow[],
-  sections: ReadonlyMap<string, { name: string; slug: string }>,
-  places: ReadonlyMap<string, string>,
-  timeZone: string,
-): PublicEventsBlock | null {
-  const byId = new Map(events.map((event) => [event.id, event]))
-  const items: PublicEvent[] = []
-  for (const session of sessions) {
-    const event = byId.get(session.activityId)
-    const section = event ? sections.get(event.sectionId) : undefined
-    if (!event || !section || items.length >= UPCOMING_EVENTS) continue
-    items.push({ ...publicSession(session, places, timeZone), name: event.name, type: event.type, section })
-  }
-  return items.length > 0 ? { events: items } : null
 }

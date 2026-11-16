@@ -24,6 +24,7 @@ const everything: Publication = {
     contact: true,
     places_calendar: true,
     online_requests: true,
+    events: true,
   },
 }
 

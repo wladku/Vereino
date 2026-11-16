@@ -4,7 +4,8 @@
 // upcoming sessions with cancellations), `payments` (phase 4: fees) and `facilities` (phase 5: the places calendar).
 // `club_core` never imports them: it resolves a token only when `hasRegistration` finds it, calls a provider only when
 // the club publishes the provider's block, and leaves a failing provider's block out of the page. A provider module
-// implements `PublicBlockProvider` (`import type` from this file) and registers it in its own `di.ts`.
+// implements `PublicBlockProvider` (`import type` from this file) and registers it in its own `di.ts`. The Events page
+// P-06 has its own contribution, `PublicEventsProvider` (#263), on the same terms.
 import type { PublicationBlock } from '../lib/publication'
 
 /** Optional provider tokens, in page order (DD-28). */
@@ -45,4 +46,36 @@ export type PublicBlockProvider = {
   sectionBlock?(ctx: PublicSectionBlockContext): Promise<unknown>
   /** The provider's block on the club page; null leaves it out. */
   clubBlock?(ctx: PublicClubBlockContext): Promise<unknown>
+}
+
+/**
+ * The optional contribution of the public Events page P-06 (navigation spec REQ-N13; #263), registered by `activities`.
+ * `club_core` resolves it with `hasRegistration`, only for a club that publishes its page and the `events` block, and
+ * passes the public sections the page shows (all of them, or the one `?section=` names); without the registration the
+ * page lists no events.
+ */
+export const PUBLIC_EVENTS_PROVIDER_TOKEN = 'activities.publicEvents' as const
+
+/** A one-off event as a guest sees it; `club_core` adds the section's name and logo from `sectionSlug`. */
+export type PublicEventEntry = {
+  name: string
+  /** The activity type (`match`, `sparring`, `tournament`, `camp`, …). */
+  type: string
+  /** Club-zone start and end dates and `HH:mm` times. */
+  date: string
+  endDate: string
+  startTime: string
+  endTime: string
+  place: string | null
+  /** A map link, only for an external venue. */
+  mapUrl: string | null
+  cancelled: boolean
+  /** Ended before today ("Past (last 60 days)"). */
+  past: boolean
+  sectionSlug: string
+}
+
+export type PublicEventsProvider = {
+  /** "Upcoming" soonest first and "Past" newest first, of the public groups of `ctx.sections` only. */
+  events(ctx: PublicClubBlockContext): Promise<{ upcoming: PublicEventEntry[]; past: PublicEventEntry[] }>
 }

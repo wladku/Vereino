@@ -4,19 +4,16 @@
 // regular days and times with the place and its next sessions (`activities.publicSchedule`, a cancelled one struck
 // through and labelled), requirements and instructors — "First L." with consent, else "Section coach" (team) or
 // "Section instructor" (class group) — and the membership fee with the sibling discount (`payments.publicPrices`, #112,
-// mock-up "Membership fee: 120 zł / month · siblings −30%"); on the club page, the upcoming one-off events. Only what the API sends is shown:
-// a block the club switched off never reaches the browser. Dates are formatted in the reader's locale; they are already
-// club-zone dates.
+// mock-up "Membership fee: 120 zł / month · siblings −30%"); a team names its age category (#263). The club's one-off
+// events have their own page P-06 (`PublicEventsView.tsx`). Only what the API sends is shown: a block the club switched
+// off never reaches the browser. Dates are formatted in the reader's locale; they are already club-zone dates.
 import * as React from 'react'
-import Link from 'next/link'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   formatPublicAmount,
   formatPublicDate,
-  sectionHref,
   weekdayLabel,
-  type PublicEvent,
   type PublicGroupCard,
   type PublicGroupPrices,
   type PublicGroupSchedule,
@@ -84,6 +81,11 @@ function GroupCard({
         <h3 className="text-base font-semibold">{card.name}</h3>
         <div className="flex flex-wrap gap-1">
           {age ? <StatusBadge variant="info">{age}</StatusBadge> : null}
+          {card.ageCategory ? (
+            <StatusBadge variant="info">
+              {t('club_core.public.classes.category', { category: card.ageCategory })}
+            </StatusBadge>
+          ) : null}
           {card.level ? <StatusBadge variant="neutral">{card.level}</StatusBadge> : null}
         </div>
       </div>
@@ -155,44 +157,5 @@ export function PublicClasses({
         <GroupCard key={card.id} card={card} schedule={byGroup.get(card.id)} prices={pricesByGroup.get(card.id)} />
       ))}
     </ul>
-  )
-}
-
-/** The club page's upcoming one-off events (P-01). */
-export function PublicEvents({ clubSlug, events }: { clubSlug: string; events: PublicEvent[] }) {
-  const t = useT()
-  const locale = useLocale()
-  return (
-    <section className="flex flex-col gap-3" aria-labelledby="public-events-title" data-testid="public-events">
-      <h2 id="public-events-title" className="text-lg font-semibold">
-        {t('club_core.public.events.title')}
-      </h2>
-      <ul className="flex flex-col gap-3">
-        {events.map((event, index) => (
-          <li key={index} className="bg-card flex flex-col gap-1 rounded-lg border p-4" data-testid="public-event">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <h3 className="text-base font-semibold">{event.cancelled ? <s>{event.name}</s> : event.name}</h3>
-              <StatusBadge variant={event.cancelled ? 'neutral' : 'info'}>
-                {event.cancelled
-                  ? t('club_core.public.classes.cancelled')
-                  : t(`club_core.public.events.type.${event.type}`)}
-              </StatusBadge>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              {t('club_core.public.events.when', {
-                date: formatPublicDate(event.date, locale),
-                start: event.startTime,
-                end: event.endTime,
-              })}
-              {event.place ? ` · ${event.place}` : ''}
-              {' · '}
-              <Link className="underline underline-offset-4" href={sectionHref(clubSlug, event.section.slug)}>
-                {event.section.name}
-              </Link>
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }

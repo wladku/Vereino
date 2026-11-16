@@ -8,8 +8,8 @@
 // used instead of `CrudForm`, whose labels are not associated with their inputs (lesson
 // `platform-crudform-labels-axe-baseline`) and which cannot show each consent's date next to its switch.
 // E06-S22 (#104; README M-10): a phone that is neither Polish nor E.164 is refused with 422 `phone_invalid`, shown under
-// the field; below the form, a guardian's "Wards and consents" (each ward's age, account, groups with sections — the
-// `groups` widget on the `vereino:club:ward:groups` spot — and the three consents with date and author), a ward's
+// the field; below the form, a guardian's "Wards and consents" (each ward's age, account, the "Primary payer" badge
+// (#263), groups with sections — the `groups` widget on the `vereino:club:ward:groups` spot — and the three consents with date and author), a ward's
 // "My guardians" with the consents read-only (R10: consents and payments stay with the guardian), and the link to the
 // platform's change-password page.
 import * as React from 'react'
@@ -316,6 +316,11 @@ function WardEntry({ ward, timeZone }: { ward: MemberWard; timeZone: string }) {
           <StatusBadge variant="neutral">
             {t(ward.hasAccount ? 'people.club.wards.hasAccount' : 'people.club.profile.wards.noAccount')}
           </StatusBadge>
+          {ward.guardianship.isPrimaryPayer ? (
+            <span data-testid="club-profile-ward-primary-payer">
+              <StatusBadge variant="info">{t('people.guardianships.primaryPayer')}</StatusBadge>
+            </span>
+          ) : null}
         </span>
       </div>
       <InjectionSpot spotId="vereino:club:ward:groups" context={{ personId: ward.personId, variant: 'compact' }} />
