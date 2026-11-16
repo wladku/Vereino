@@ -18,7 +18,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
 import { linkRequestOpen } from '../../lib/declaration-links'
 
 type PublicSession = {
@@ -126,9 +126,7 @@ export function DeclarationLinkRequestView() {
   if (query.isPending) {
     return (
       <Frame clubName={null}>
-        <p role="status" className="text-muted-foreground">
-          {t('activities.linkRequest.loading')}
-        </p>
+        <MemberSkeleton shape="fields" count={2} label={t('activities.linkRequest.loading')} />
       </Frame>
     )
   }

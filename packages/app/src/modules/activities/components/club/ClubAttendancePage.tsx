@@ -19,14 +19,14 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { CLUB_HOME_HREF, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { CLUB_HOME_HREF, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
 import {
   closesEarly,
   declaredPresentFill,
@@ -160,7 +160,7 @@ function Attendance({ id, selfPersonId }: { id: string; selfPersonId: string }) 
   const t = useT()
   const query = useAttendanceList(id)
 
-  if (!query.data && query.isFetching) return <LoadingMessage label={t('activities.club.attendance.loading')} />
+  if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('activities.club.attendance.loading')} />
   if (!query.data) {
     return (
       <ErrorMessage
