@@ -27,6 +27,12 @@
 - `yarn workspace @vereino/ui test` → first run 2 failures in `member-nav.test.mjs` (the attendant's More now ends with the admin panel: `actual: ['/club/profile', '/club/facility', '/backend']`); expectations updated. Rerun: `pass 142, fail 0`, 100 % lines/branches/functions.
 - `npx jest src/modules/people/lib/__tests__/member-rules.test.ts src/modules/activities/lib/__tests__/member-calendar.test.ts` → 39 passed; coverage of `member-rules.ts` and `member-calendar.ts` 100 %.
 - `yarn typecheck` → first run failed on missing `.mercato/generated/*` (fresh worktree); after `yarn generate` it passed.
+- `yarn typecheck:packages` → failed: `Type 'undefined' is not assignable to type 'MemberRoleContext'` (`roles[0]` under `noUncheckedIndexedAccess`); `memberRoles` now returns a non-empty tuple.
+- `yarn qa-texts:check` → J-001 and E02-S03 have fewer hardcoded texts; baseline lowered to 11 and 3.
+- `yarn lint` → `React Hook "useLocale" may be executed more than once` in the new spec (a test helper named like a hook); renamed `switchLocale`. The Playwright HTML report under `.ai/qa/test-results` is linted too; it is removed before `yarn verify`.
+- `yarn test:integration:vereino --filter E09-S05` → first run failed: `POST /api/people/guardianships {"error":"Unauthorized"}` (401) — resetting the administrator's password ended `club.adminToken` (lesson `sign-in-browser-ends-the-api-token`); the test now uses the token of the administrator's sign-in answer. Rerun: `1 passed (2.3m)`.
+- `yarn verify` → `[verify] all 17 step(s) passed`.
+- Regression runs, one id each: E03-S04 `1 passed (2.3m)`, ISSUE-140 `1 passed (1.8m)`, J-002 `1 passed (2.7m)`, E09-S04 `1 passed (4.4m)`, E06-S19 `1 passed (2.4m)`, J-001 `1 flaky` (first attempt timed out in step 1 waiting for the place form option `Gmina Testowo`, unrelated to this change; the retry passed, including the greeting checks), E02-S03 `7 passed (5.6m)`, TEST-047 `2 passed (2.5m)`.
 
 ## Open problems
 
