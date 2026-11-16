@@ -19,7 +19,7 @@ import {
   errorMessage,
   saveError,
   textOrNull,
-  tolerantPlaceOptions,
+  loadPlaceOptions,
   type ClosureRow,
   type FlaggedCounts,
   type Translate,
@@ -42,7 +42,7 @@ function useClosureFields(t: Translate) {
         label: t('facilities.fields.place'),
         type: 'select',
         required: true,
-        loadOptions: tolerantPlaceOptions,
+        loadOptions: loadPlaceOptions,
         description: t('facilities.closures.fields.place.help'),
       },
       {

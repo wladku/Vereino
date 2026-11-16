@@ -34,9 +34,16 @@ export type PlaceDirectoryEntry = {
 export type PlaceOption = {
   id: string
   name: string
+  parentId: string | null
   parentName: string | null
+  /** The place kind (`pitch`, `hall`, …) and its surface, as the facilities cards show them (#275). */
+  kind: string
+  surface: string | null
   capacityGroups: number
   isLeaf: boolean
+  /** A venue outside the club's own places; never bookable (facilities parity spec, #275). */
+  isExternal: boolean
+  acceptsOnlineRequests: boolean
 }
 
 /** Who a rental of a place is paid to (facilities spec DD-19, J-007 step 4): the owner institution and its account. */
@@ -245,7 +252,20 @@ export async function placeOptions(em: EntityManager, scope: ClubDirectoryScope)
   const rows = await em.find(
     Place,
     { ...scope, deletedAt: null },
-    { fields: ['id', 'name', 'parentPlaceId', 'capacityGroups', 'isActive'], orderBy: { name: 'asc' } },
+    {
+      fields: [
+        'id',
+        'name',
+        'parentPlaceId',
+        'kind',
+        'surface',
+        'capacityGroups',
+        'isActive',
+        'isExternal',
+        'acceptsOnlineRequests',
+      ],
+      orderBy: { name: 'asc' },
+    },
   )
   const names = new Map(rows.map((row) => [row.id, row.name]))
   const parents = new Set(rows.flatMap((row) => (row.parentPlaceId ? [row.parentPlaceId] : [])))
@@ -254,9 +274,14 @@ export async function placeOptions(em: EntityManager, scope: ClubDirectoryScope)
     .map((row) => ({
       id: row.id,
       name: row.name,
+      parentId: row.parentPlaceId ?? null,
       parentName: row.parentPlaceId ? (names.get(row.parentPlaceId) ?? null) : null,
+      kind: row.kind,
+      surface: row.surface ?? null,
       capacityGroups: row.capacityGroups,
       isLeaf: !parents.has(row.id),
+      isExternal: row.isExternal,
+      acceptsOnlineRequests: row.acceptsOnlineRequests,
     }))
 }
 
