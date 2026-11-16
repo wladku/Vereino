@@ -137,43 +137,58 @@ export function amountToMinor(value: unknown): number | null {
 
 // --- Places ---
 
-type PlaceOptionRow = { id: string; name: string; parentName: string | null; isLeaf: boolean }
+/** The option source of every facilities place picker, inside the caller's facilities scope (DD-R06, #275). */
+export const PLACE_OPTIONS_URL = '/api/facilities/options/places'
+
+/** One item of `GET /api/facilities/options/places`. */
+export type PlaceOptionRow = {
+  id: string
+  name: string
+  parentId: string | null
+  parentName: string | null
+  kind: string
+  surface: string | null
+  isLeaf: boolean
+  isExternal: boolean
+  capacityGroups: number
+  acceptsOnlineRequests: boolean
+}
 
 export type PlaceOptions = { options: CrudFieldOption[]; names: Map<string, string> }
 
-/** The active places of the club (`GET /api/club_core/options/places`), labelled "Parent › Name". */
+/**
+ * The places the caller may pick (`GET /api/facilities/options/places`), labelled "Parent › Name". A refused or failed
+ * read throws, so the picker shows the error instead of an empty list (#275).
+ */
 export async function loadPlaceOptions(): Promise<CrudFieldOption[]> {
-  const data = await readApiResultOrThrow<{ items?: PlaceOptionRow[] }>('/api/club_core/options/places')
+  const data = await readApiResultOrThrow<{ items?: PlaceOptionRow[] }>(PLACE_OPTIONS_URL)
   return (data.items ?? [])
     .map((item) => ({ value: item.id, label: item.parentName ? `${item.parentName} › ${item.name}` : item.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-/** An option loader that answers an empty list when the source is not readable (the field then shows no options). */
-export async function tolerantPlaceOptions(): Promise<CrudFieldOption[]> {
-  try {
-    return await loadPlaceOptions()
-  } catch {
-    return []
-  }
-}
+/** What a place picker shows besides its options: still loading, or a failed read with its retry (#275). */
+export type PlaceOptionsStatus = { isLoading: boolean; isError: boolean; retry: () => void }
 
-/** The place options and an id → label map for the lists. */
+/** The place options, an id → label map for the lists, and the read's status for the picker. */
 export function usePlaceOptions() {
   const query = useQuery({
     queryKey: ['facilities-place-options'],
     staleTime: 60 * 1000,
-    queryFn: tolerantPlaceOptions,
+    retry: false,
+    queryFn: loadPlaceOptions,
   })
-  const data = query.data
+  const { data, isPending, isError, refetch } = query
   return React.useMemo(() => {
     const options = data ?? []
     return {
       options,
       names: new Map(options.map((option) => [option.value, option.label])),
-      isLoading: data === undefined,
+      isLoading: isPending,
+      isError,
+      retry: () => void refetch(),
     }
-  }, [data])
+  }, [data, isPending, isError, refetch])
 }
 
 export function placeLabel(t: Translate, names: Map<string, string>, placeId: string | null | undefined): string {

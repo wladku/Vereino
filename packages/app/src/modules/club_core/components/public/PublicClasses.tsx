@@ -140,14 +140,22 @@ export function PublicClasses({
   groups,
   schedule,
   prices,
+  emptyAction,
 }: {
   groups: { items: PublicGroupCard[] } | undefined
   schedule: { groups: PublicGroupSchedule[] } | undefined
   prices: { groups: PublicGroupPrices[] } | undefined
+  /** The next step under "no classes yet" (REQ-N15): the section's contact or the club page. */
+  emptyAction?: React.ReactNode
 }) {
   const t = useT()
   if (!groups || groups.items.length === 0) {
-    return <p className="text-muted-foreground max-w-prose">{t('club_core.public.classes.empty')}</p>
+    return (
+      <div className="flex flex-col items-start gap-1" data-testid="public-classes-empty">
+        <p className="text-muted-foreground max-w-prose">{t('club_core.public.classes.empty')}</p>
+        {emptyAction}
+      </div>
+    )
   }
   const byGroup = new Map((schedule?.groups ?? []).map((item) => [item.groupId, item]))
   const pricesByGroup = new Map((prices?.groups ?? []).map((item) => [item.groupId, item]))

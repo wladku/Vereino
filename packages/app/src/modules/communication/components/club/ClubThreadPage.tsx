@@ -8,10 +8,11 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { emailDeliverySummary } from '../../lib/member-inbox'
 import { CLUB_MESSAGES_HREF, scopeLabel, type ThreadMessageItem, type Translate } from '../client-helpers'
 import { MessageList, ReplyBox } from '../ThreadMessages'
@@ -61,7 +62,7 @@ function Thread({ id }: { id: string }) {
       {t('communication.club.back')}
     </Link>
   )
-  if (!query.data && query.isFetching) return <LoadingMessage label={t('communication.club.loading')} />
+  if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('communication.club.loading')} />
   if (!query.data) {
     return (
       <ErrorMessage

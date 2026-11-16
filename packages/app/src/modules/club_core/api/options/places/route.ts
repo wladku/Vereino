@@ -27,9 +27,14 @@ const OPTION_READ_OPTIONS: ScopeMatchOptions = { clubWideKinds: ['coordinator'] 
 const optionSchema = z.object({
   id: z.uuid(),
   name: z.string(),
+  parentId: z.uuid().nullable(),
   parentName: z.string().nullable(),
+  kind: z.string(),
+  surface: z.string().nullable(),
   capacityGroups: z.number(),
   isLeaf: z.boolean(),
+  isExternal: z.boolean(),
+  acceptsOnlineRequests: z.boolean(),
 })
 
 export async function GET(request: Request): Promise<Response> {
@@ -57,7 +62,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the places for a selector',
       description:
-        'The live active places of the club with the name of their parent, their capacity in groups and whether they are a leaf. Readable by every coordinator and the club administrator.',
+        'The live active places of the club with their parent, kind, surface, capacity in groups, whether they are a leaf or external and whether they accept online requests. Readable by every coordinator and the club administrator.',
       responses: [
         {
           status: 200,

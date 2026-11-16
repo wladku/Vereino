@@ -4,10 +4,11 @@
 // coach asks — each read is recorded — with the children each guardian is responsible for. A guardian who withdrew the
 // consent is gone from the next read.
 import * as React from 'react'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { fullName, useGuardianContacts, type GuardianContact } from './club-client'
 
 function ContactItem({ contact }: { contact: GuardianContact }) {
@@ -68,7 +69,7 @@ export function GuardianContacts({ occurrenceId }: { occurrenceId: string }) {
       </div>
     )
   } else if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('activities.club.contacts.loading')} />
+    body = <MemberSkeleton shape="rows" label={t('activities.club.contacts.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage

@@ -6,12 +6,13 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import type { ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
@@ -43,7 +44,7 @@ function Campaigns() {
       return call.result.items
     },
   })
-  if (query.isLoading) return <LoadingMessage label={t('payments.orders.club.loading')} />
+  if (query.isLoading) return <MemberSkeleton shape="tiles" label={t('payments.orders.club.loading')} />
   if (query.isError || !query.data) {
     return (
       <ErrorMessage
@@ -117,5 +118,5 @@ function Campaigns() {
 }
 
 export function ClubOrdersPage() {
-  return <PaymentsClubFrame>{() => <Campaigns />}</PaymentsClubFrame>
+  return <PaymentsClubFrame skeleton="tiles">{() => <Campaigns />}</PaymentsClubFrame>
 }

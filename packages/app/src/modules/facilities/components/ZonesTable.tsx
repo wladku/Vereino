@@ -183,6 +183,7 @@ export function ZonesTable() {
       <p className="text-muted-foreground text-sm">{t('facilities.zones.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

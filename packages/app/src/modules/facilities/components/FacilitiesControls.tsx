@@ -4,11 +4,13 @@
 // outside `DataTable` (lesson `empty-datatable-axe-at-375`).
 import * as React from 'react'
 import type { CrudCustomFieldRenderProps, CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS } from '@vereino/core'
+import type { PlaceOptionsStatus } from './facilities-client'
 
 /** The value of the "all places" entry (a Radix select item cannot have an empty value). */
 export const ALL_PLACES = 'all'
@@ -20,6 +22,7 @@ export function PlaceSelect({
   allowAll,
   disabled,
   testId,
+  status,
 }: {
   options: CrudFieldOption[]
   value: string
@@ -27,14 +30,36 @@ export function PlaceSelect({
   allowAll?: boolean
   disabled?: boolean
   testId?: string
+  /** The read of the options: a failed read is shown with a retry, an empty list says so (#275). */
+  status?: PlaceOptionsStatus
 }) {
   const t = useT()
   const id = React.useId()
+  const hintId = `${id}-hint`
+  let hint: React.ReactNode = null
+  if (status?.isError) {
+    hint = (
+      <Alert status="error" id={hintId} data-testid={testId ? `${testId}-error` : undefined}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span>{t('facilities.fields.place.loadError')}</span>
+          <Button type="button" variant="outline" size="sm" onClick={status.retry}>
+            {t('facilities.places.retry')}
+          </Button>
+        </div>
+      </Alert>
+    )
+  } else if (status && !status.isLoading && options.length === 0) {
+    hint = (
+      <p id={hintId} className="text-muted-foreground text-sm" data-testid={testId ? `${testId}-empty` : undefined}>
+        {t('facilities.fields.place.none')}
+      </p>
+    )
+  }
   return (
     <div className="flex flex-col gap-1 sm:w-80">
       <Label htmlFor={id}>{t('facilities.fields.place')}</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger id={id} data-testid={testId}>
+        <SelectTrigger id={id} data-testid={testId} aria-describedby={hint ? hintId : undefined}>
           <SelectValue placeholder={t('facilities.fields.place.choose')} />
         </SelectTrigger>
         <SelectContent>
@@ -46,6 +71,7 @@ export function PlaceSelect({
           ))}
         </SelectContent>
       </Select>
+      {hint}
     </div>
   )
 }

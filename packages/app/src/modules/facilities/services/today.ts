@@ -3,15 +3,19 @@
 // log (with its version, the lock token of its update) and the planned sessions and the rentals on the place, its
 // ancestors and descendants: each with its label (activity or renter) and, for a rental, its status, its version and
 // whether a no-show may be recorded now (after the start, while `requested` or `confirmed`). A facility attendant
-// chooses among the places of their grant only (#126). Encrypted columns are read with `findWithDecryption`.
+// chooses among the places of their grant only (#126). Encrypted columns are read with `findWithDecryption`. The
+// facilities parity spec (#275, REQ-R13) adds each entry's place name, a session's group and coach, a rental's contact
+// where the caller manages the rentals of the place (DD-R18), and the incidents reported today on the place family.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { addDays, calendarDateInZone, zonedInstant, type CalendarDate } from '@vereino/core'
-import { FacilityLog, Rental } from '../data/entities'
+import { FacilityLog, Incident, IncidentPhoto, Rental } from '../data/entities'
+import type { IncidentKind } from '../lib/incidents'
 import type { GroupPresent } from '../lib/logs'
+import { inPlaces } from '../lib/place-scope'
 import type { RentalStatus } from '../lib/rentals'
-import { clubTimeZone, placeOptions, plannedSessions, type FacilitiesScope } from './directory'
+import { clubTimeZone, findPlaces, personNames, placeOptions, plannedSessions, type FacilitiesScope } from './directory'
 import { placeFamilyIds } from './occupancy'
 
 /** The rentals the attendant's day lists: the ones that hold the slot, and the ones already marked no-show or done. */
@@ -39,11 +43,21 @@ export type TodayEntry = {
   end: string
   /** The activity or the renter. */
   label: string | null
+  /** The entry's place, a session's group and coach (#275). */
+  placeName: string | null
+  groupName: string | null
+  coachName: string | null
+  /** A rental's contact, only where the caller manages the rentals of the place (DD-R18, #275). */
+  contactName: string | null
+  contactPhone: string | null
   status: RentalStatus | 'planned'
   /** A rental's version, the lock token of its no-show. */
   updatedAt: string | null
   canNoShow: boolean
 }
+
+/** An incident reported today on the place family (#275): no description, no persons. */
+export type TodayIncident = { id: string; occurredAt: string; kind: IncidentKind; photoCount: number }
 
 export type Today = {
   timeZone: string
@@ -52,11 +66,13 @@ export type Today = {
   place: { id: string; name: string } | null
   log: TodayLog | null
   entries: TodayEntry[]
+  incidents: TodayIncident[]
 }
 
 /**
  * Null when `placeId` names no live place of the club; `forbidden` when it names a place outside `visiblePlaceIds` (the
- * attendant's places; null = every place).
+ * attendant's places; null = every place). A rental's contact is returned only on `rentalPlaceIds` (null = every place;
+ * DD-R18).
  */
 export async function facilityToday(
   container: AwilixContainer,
@@ -64,6 +80,7 @@ export async function facilityToday(
   placeId: string | undefined,
   now: Date,
   visiblePlaceIds: readonly string[] | null = null,
+  rentalPlaceIds: readonly string[] | null = [],
 ): Promise<Today | null | 'forbidden'> {
   const em = container.resolve<EntityManager>('em').fork()
   const timeZone = await clubTimeZone(container, scope)
@@ -76,7 +93,7 @@ export async function facilityToday(
   const places = options.map((option) => ({ id: option.id, name: option.name, parentName: option.parentName }))
   const chosen = placeId ? options.find((option) => option.id === placeId) : options[0]
   if (placeId && !chosen) return null
-  if (!chosen) return { timeZone, date, places, place: null, log: null, entries: [] }
+  if (!chosen) return { timeZone, date, places, place: null, log: null, entries: [], incidents: [] }
 
   const window = {
     start: zonedInstant(date, '00:00', timeZone),
@@ -106,6 +123,28 @@ export async function facilityToday(
     scope,
   )
   const log = logs[0] ?? null
+  const incidents = await em.find(
+    Incident,
+    { ...scope, deletedAt: null, placeId: { $in: familyIds }, occurredAt: { $gte: window.start, $lt: window.end } },
+    { fields: ['id', 'occurredAt', 'kind'], orderBy: { occurredAt: 'asc', id: 'asc' } },
+  )
+  const photos =
+    incidents.length > 0
+      ? await em.find(
+          IncidentPhoto,
+          { ...scope, deletedAt: null, incidentId: { $in: incidents.map((row) => row.id) } },
+          { fields: ['id', 'incidentId'] },
+        )
+      : []
+  const placeNames = new Map(all.map((option) => [option.id, option.name]))
+  const unnamed = familyIds.filter((id) => !placeNames.has(id))
+  for (const [id, place] of await findPlaces(container, scope, unnamed, em)) placeNames.set(id, place.name)
+  const coaches = await personNames(
+    container,
+    scope,
+    sessions.flatMap((row) => (row.coachPersonId ? [row.coachPersonId] : [])),
+    em,
+  )
   const entries: TodayEntry[] = [
     ...sessions.map((row) => ({
       kind: 'session' as const,
@@ -114,6 +153,11 @@ export async function facilityToday(
       start: row.startAt.toISOString(),
       end: row.endAt.toISOString(),
       label: row.activityName,
+      placeName: placeNames.get(row.placeId) ?? null,
+      groupName: row.groupName,
+      coachName: row.coachPersonId ? (coaches.get(row.coachPersonId) ?? null) : null,
+      contactName: null,
+      contactPhone: null,
       status: 'planned' as const,
       updatedAt: null,
       canNoShow: false,
@@ -125,6 +169,11 @@ export async function facilityToday(
       start: row.startsAt.toISOString(),
       end: row.endsAt.toISOString(),
       label: row.renterDisplayName,
+      placeName: placeNames.get(row.placeId) ?? null,
+      groupName: null,
+      coachName: null,
+      contactName: inPlaces(rentalPlaceIds, row.placeId) ? (row.contactName ?? null) : null,
+      contactPhone: inPlaces(rentalPlaceIds, row.placeId) ? (row.contactPhone ?? null) : null,
       status: row.status,
       updatedAt: row.updatedAt.toISOString(),
       canNoShow: NO_SHOW_FROM.includes(row.status) && row.startsAt.getTime() <= now.getTime(),
@@ -148,5 +197,11 @@ export async function facilityToday(
         }
       : null,
     entries,
+    incidents: incidents.map((row) => ({
+      id: row.id,
+      occurredAt: row.occurredAt.toISOString(),
+      kind: row.kind,
+      photoCount: photos.filter((photo) => photo.incidentId === row.id).length,
+    })),
   }
 }

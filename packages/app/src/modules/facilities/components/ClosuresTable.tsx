@@ -160,6 +160,7 @@ export function ClosuresTable() {
       <p className="text-muted-foreground text-sm">{t('facilities.closures.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

@@ -7,6 +7,7 @@
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import type { MemberLinkProps } from '#tsx/member/member-shell'
+import { MemberSkeleton } from '#tsx/member/member-skeleton'
 
 export type TokenPageState = 'loading' | 'ok' | 'expired' | 'not_found' | 'error'
 
@@ -64,11 +65,7 @@ function Body(props: TokenPageShellProps) {
   const { labels } = props
   switch (props.state) {
     case 'loading':
-      return (
-        <p role="status" className="text-muted-foreground" data-testid="token-page-loading">
-          {labels.loading}
-        </p>
-      )
+      return <MemberSkeleton shape="rows" count={3} label={labels.loading} data-testid="token-page-loading" />
     case 'expired':
       return (
         <Problem

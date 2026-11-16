@@ -8,11 +8,11 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { formatZloty } from '../../lib/charge-ledger'
 import {
   RETURN_POLL_INTERVAL_MS,
@@ -80,7 +80,7 @@ function Result({ checkoutId }: { checkoutId: string }) {
     if (received) void queryClient.invalidateQueries({ queryKey: MY_CHARGES_QUERY_KEY })
   }, [received, queryClient])
 
-  if (!data) return <LoadingMessage label={t('payments.club.return.loading')} />
+  if (!data) return <MemberSkeleton shape="rows" label={t('payments.club.return.loading')} />
   if (data.kind === 'forbidden') {
     return (
       <>

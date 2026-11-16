@@ -8,11 +8,11 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { PublicHeader } from '@vereino/ui'
+import { MemberSkeleton, PublicHeader } from '@vereino/ui'
 import { phoneHref, type PublicPlacesView } from './public-client'
 
 type FrameClub = PublicPlacesView['club']
@@ -130,7 +130,7 @@ export function PublicFacilitiesLoading() {
   const t = useT()
   return (
     <PublicFacilitiesFrame club={null}>
-      <LoadingMessage label={t('facilities.public.loading')} />
+      <MemberSkeleton shape="rows" label={t('facilities.public.loading')} />
     </PublicFacilitiesFrame>
   )
 }

@@ -8,7 +8,7 @@
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
@@ -32,7 +32,7 @@ import {
   type CoachChild,
   type GroupChargesView,
 } from './coach-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, useClubTimeZone, useClubToday, MemberSkeleton } from '@vereino/ui'
 
 function statusBadge(charge: CoachCharge, t: Translate) {
   if (charge.overdue) return <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge>
@@ -550,7 +550,7 @@ function CoachPayments() {
   const [due, setDue] = React.useState(false)
   const query = useGroupCharges(groupId, due)
 
-  if (!query.data && query.isFetching) return <LoadingMessage label={t('payments.coach.loading')} />
+  if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('payments.coach.loading')} />
   if (!query.data) {
     return (
       <ErrorMessage

@@ -19,10 +19,9 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { addDays, calendarDateInZone, isCalendarDate, isLocalTime } from '@vereino/core'
-import { formatDayHeading } from '@vereino/ui'
+import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
 import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
 import { flashFlagged } from '../maintenance-client'
 import { BookDialog } from './BookDialog'
@@ -48,17 +47,6 @@ import {
   zonedLocalValue,
   type CalendarEntry,
 } from './places-client'
-
-function TimelineSkeleton({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col gap-2" aria-busy="true" data-testid="club-place-loading">
-      <span className="sr-only">{label}</span>
-      {[0, 1, 2, 3, 4].map((index) => (
-        <Skeleton key={index} className="h-16 w-full" />
-      ))}
-    </div>
-  )
-}
 
 function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: string }) {
   const t = useT()
@@ -162,7 +150,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
 
   let body: React.ReactNode
   if (!calendar && query.isFetching) {
-    body = <TimelineSkeleton label={t('facilities.places.loading')} />
+    body = <MemberSkeleton shape="rows" label={t('facilities.places.loading')} data-testid="club-place-loading" />
   } else if (!calendar && calendarErrorStatus(query.error) === 403) {
     body = (
       <Alert status="warning" data-testid="club-place-denied">

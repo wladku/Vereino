@@ -378,7 +378,12 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     await expect(page.getByTestId('club-units-balance')).toHaveText('1')
     await page.getByTestId('club-units-month').waitFor()
     await page.getByRole('button', { name: 'Poprzedni miesiąc' }).click()
-    await expect(page.getByTestId('club-units-empty')).toHaveText('Brak zamkniętych terminów w tym miesiącu')
+    const unitsEmpty = page.getByTestId('club-units-empty')
+    await expect(unitsEmpty).toContainText(uiText('activities.reports.coachUnits.empty'))
+    await expect(unitsEmpty.getByRole('link', { name: uiText('activities.club.today.openCalendar') })).toHaveAttribute(
+      'href',
+      '/club/calendar',
+    )
   } finally {
     await club.cleanup()
   }

@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -26,7 +26,9 @@ import {
   memberSwitchers,
   useMemberContext,
   useMemberNavFeatures,
+  MemberSkeleton,
   type MemberLinkProps,
+  type MemberSkeletonShape,
 } from '@vereino/ui'
 
 export const CLUB_PAYMENTS_HREF = '/club/payments'
@@ -91,9 +93,12 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
 export function PaymentsClubFrame({
   children,
   payerOnly = true,
+  skeleton = 'rows',
 }: {
   children: (profile: PaymentsProfile) => React.ReactNode
   payerOnly?: boolean
+  /** The shape of the page's content while the profile loads (REQ-N15): `fields` on a form, `tiles` on cards. */
+  skeleton?: MemberSkeletonShape
 }) {
   const t = useT()
   const pathname = usePathname()
@@ -103,7 +108,7 @@ export function PaymentsClubFrame({
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('payments.club.loading')} />
+    body = <MemberSkeleton shape={skeleton} label={t('payments.club.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage

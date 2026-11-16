@@ -447,6 +447,7 @@ export function IncidentsTable() {
       <p className="text-muted-foreground text-sm">{t('facilities.records.incidents.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

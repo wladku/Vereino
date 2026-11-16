@@ -341,6 +341,7 @@ export function LogsTable() {
       <p className="text-muted-foreground text-sm">{t('facilities.records.logs.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

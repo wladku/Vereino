@@ -9,7 +9,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -19,6 +19,7 @@ import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import {
   CLUB_MESSAGES_HREF,
   OWN_FORBIDDEN_STATE,
@@ -98,9 +99,12 @@ function Composer({ options }: { options: DirectOption[] }) {
 
   if (subjects.length === 0) {
     return (
-      <p className="text-muted-foreground" data-testid="club-direct-empty">
-        {t('communication.direct.empty')}
-      </p>
+      <div className="flex flex-col items-start gap-2" data-testid="club-direct-empty">
+        <p className="text-muted-foreground">{t('communication.direct.empty')}</p>
+        <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+          {t('communication.club.back')}
+        </Link>
+      </div>
     )
   }
 
@@ -246,7 +250,7 @@ function NewMessage() {
   const query = useDirectOptions()
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('communication.direct.loading')} />
+    body = <MemberSkeleton shape="fields" label={t('communication.direct.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage
@@ -273,5 +277,5 @@ function NewMessage() {
 }
 
 export function ClubNewMessagePage() {
-  return <MessagesClubFrame>{() => <NewMessage />}</MessagesClubFrame>
+  return <MessagesClubFrame skeleton="fields">{() => <NewMessage />}</MessagesClubFrame>
 }

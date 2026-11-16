@@ -169,6 +169,7 @@ export function RatesTable() {
       <p className="text-muted-foreground text-sm">{t('facilities.rates.description')}</p>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId}
         allowAll
         onChange={(next) => {

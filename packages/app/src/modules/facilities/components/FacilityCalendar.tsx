@@ -297,6 +297,7 @@ export function FacilityCalendar() {
       </div>
       <PlaceSelect
         options={places.options}
+        status={places}
         value={placeId ?? ''}
         onChange={(next) => {
           setChosenPlace(next)
