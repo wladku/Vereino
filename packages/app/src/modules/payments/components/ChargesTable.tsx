@@ -1,9 +1,10 @@
 'use client'
 // `/backend/payments/charges` — B-21 Charges (UX concept README B-21, flow F-07; payments spec REQ-011, REQ-012;
 // issues #108, #109): the club's charges by perspective — membership fees (the default), all, overdue, without payer,
-// cash payments, orders (and rentals once `facilities` is enabled) — searchable by surname and exportable to CSV. Each
-// row shows the charge and its period, the payer (or "Without payer"), the amount with the discount, what remains,
-// the due date with the overdue marker, the payee and the status, and opens the charge (B-22). "Generate period"
+// cash payments, orders and "Rentals (municipality)" when the list response allows it (DD-C02, #291) — filtered by
+// period and payee, searchable by surname and exportable to CSV. Each row shows the charge and its period, the payer
+// (an institution, a person or a renter's name; or "Without payer"), the amount with the discount, what remains, the
+// due date with the overdue marker, the payee and the status, and opens the charge (B-22). "Generate period"
 // creates all charges of a month at once and shows the summary. "Accept cash" (#114) takes cash for a payer's selected
 // charges with a numbered receipt.
 import * as React from 'react'
@@ -19,7 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
+  PAYEES,
   chargePerspectiveOf,
+  payerDisplayName,
   perspectiveQuery,
   toCsv,
   visiblePerspectives,
@@ -41,9 +44,6 @@ import {
 const PAGE_SIZE = 50
 const EXPORT_PAGE_SIZE = 100
 const EXPORT_MAX_PAGES = 50
-
-/** `facilities` is not part of this deployment yet; its rentals perspective appears with it (payments spec D-028). */
-const FACILITIES_ENABLED = false
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
   open: 'info',
@@ -74,9 +74,13 @@ function periodLabel(row: ChargeRow, t: Translate): string {
   return row.periodLabel === 'one_off' ? t('payments.fees.period.one_off') : (row.periodLabel ?? '')
 }
 
-function payeeLabel(payee: string | null, t: Translate): string {
-  return t(`payments.charges.payee.${payee ?? 'club'}`)
+/** The payee: the club, or the owner institution's name when the charge names one, else "Municipality". */
+function payeeLabel(row: Pick<ChargeRow, 'payee' | 'payeeInstitution'>, t: Translate): string {
+  if (row.payee === 'owner_institution' && row.payeeInstitution?.name) return row.payeeInstitution.name
+  return t(`payments.charges.payee.${row.payee ?? 'club'}`)
 }
+
+type ChargeList = Awaited<ReturnType<typeof fetchCrudList<ChargeRow>>> & { meta?: { rentalsPerspective?: boolean } }
 
 function buildColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
   const dash = <span className="text-muted-foreground">—</span>
@@ -125,7 +129,7 @@ function buildColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
             {t('payments.charges.payerMissing')}
           </span>
         ) : (
-          personName(row.original.payer) || dash
+          payerDisplayName(row.original) || dash
         ),
     },
     {
@@ -169,7 +173,7 @@ function buildColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
       header: t('payments.charges.columns.payee'),
       enableSorting: false,
       meta: { priority: 5 },
-      cell: ({ row }) => payeeLabel(row.original.payee, t),
+      cell: ({ row }) => payeeLabel(row.original, t),
     },
     {
       accessorKey: 'status',
@@ -203,14 +207,14 @@ function csvRows(rows: readonly ChargeRow[], t: Translate): (string | number | n
       personName(row.person),
       row.description,
       periodLabel(row, t),
-      row.payerMissing ? t('payments.charges.payerMissing') : personName(row.payer),
+      row.payerMissing ? t('payments.charges.payerMissing') : (payerDisplayName(row) ?? ''),
       money(row.amount),
       money(row.discountAmount),
       money(row.amountDue),
       money(row.remaining ?? 0),
       row.dueDate,
       row.overdue ? t('payments.common.yes') : '',
-      payeeLabel(row.payee, t),
+      payeeLabel(row, t),
       row.status ? t(`payments.charges.status.${row.status}`) : '',
     ]),
   ]
@@ -235,9 +239,10 @@ export function ChargesTable() {
   const searchParams = useSearchParams()
   // A B-01 widget opens the list in its perspective (`?perspective=overdue`, #111); later tab changes stay local.
   const [perspective, setPerspective] = React.useState<ChargePerspective>(() =>
-    chargePerspectiveOf(searchParams.get('perspective'), visiblePerspectives(FACILITIES_ENABLED)),
+    chargePerspectiveOf(searchParams.get('perspective'), visiblePerspectives(true)),
   )
   const [period, setPeriod] = React.useState('')
+  const [payee, setPayee] = React.useState('')
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
   const [generating, setGenerating] = React.useState(false)
@@ -249,12 +254,13 @@ export function ChargesTable() {
     () => ({
       ...perspectiveQuery(perspective),
       ...(period ? { period } : {}),
+      ...(payee ? { payee } : {}),
       ...(search.trim() ? { search: search.trim() } : {}),
     }),
-    [perspective, period, search],
+    [perspective, period, payee, search],
   )
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ChargeList>({
     queryKey: ['payments-charges', filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ChargeRow>('payments/charges', {
@@ -267,6 +273,9 @@ export function ChargesTable() {
   })
 
   const columns = React.useMemo(() => buildColumns(t, locale), [t, locale])
+
+  // DD-C02: the response says whether the club shows "Rentals (municipality)"; a link that opens it keeps its tab.
+  const perspectives = visiblePerspectives(data?.meta?.rentalsPerspective === true || perspective === 'rentals')
 
   const exportCsv = async () => {
     setExporting(true)
@@ -317,7 +326,7 @@ export function ChargesTable() {
       >
         <div className="overflow-x-auto">
           <TabsList aria-label={t('payments.charges.perspectives.label')}>
-            {visiblePerspectives(FACILITIES_ENABLED).map((value) => (
+            {perspectives.map((value) => (
               <TabsTrigger key={value} value={value}>
                 {t(`payments.charges.perspectives.${value}`)}
               </TabsTrigger>
@@ -377,14 +386,26 @@ export function ChargesTable() {
                 label: t('payments.charges.filters.period'),
                 type: 'text',
               },
+              {
+                id: 'payee',
+                label: t('payments.charges.filters.payee'),
+                type: 'select',
+                options: PAYEES.map((value) => ({ value, label: t(`payments.charges.payee.${value}`) })),
+              },
             ]}
-            filterValues={{ period }}
+            filterValues={{ period, payee }}
             onFiltersApply={(values: Record<string, unknown>) => {
               setPeriod(typeof values.period === 'string' ? values.period.trim() : '')
+              setPayee(
+                typeof values.payee === 'string' && (PAYEES as readonly string[]).includes(values.payee)
+                  ? values.payee
+                  : '',
+              )
               setPage(1)
             }}
             onFiltersClear={() => {
               setPeriod('')
+              setPayee('')
               setPage(1)
             }}
             columns={columns}

@@ -27,6 +27,11 @@ export type ChargeItem = {
   person?: { firstName: string; lastName: string } | null
   payerPersonId: string | null
   payerMissing: boolean
+  sourceType?: string | null
+  payee?: string | null
+  payerInstitution?: { id: string; name: string } | null
+  payeeInstitution?: { id: string; name: string } | null
+  payerLabel?: string | null
   periodLabel: string | null
   description: string | null
   amount: number
@@ -319,6 +324,59 @@ export function undoInProbe(
       )
     }
     return JSON.parse(last) as UndoProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
+}
+
+const CHARGE_SERVICE_PROBE = path.join(
+  APP_ROOT,
+  '.ai',
+  'qa',
+  'tests',
+  '_fixtures',
+  'payments-charge-service-probe',
+  'probe.mjs',
+)
+
+export type ChargeServiceProbeResult = {
+  noPayer: { status: number | null; code: string | null } | null
+  noPayerRows: number
+  chargeId: string
+  againChargeId: string
+  rows: number
+  status: string | null
+  labelStoredPlain: boolean
+  labelStored: boolean
+  events: { insideTransaction: number; beforeAfterCommit: number; afterCommit: number; afterSecondCreate: number }
+  statusOf: Record<string, string>
+}
+
+/**
+ * Calls `payments.chargeService` directly in a probe process as `userId` of the club (#291): a rental without a payer,
+ * a rental of a typed-in renter created twice, and `statusOf` with the given ids. The probe gets its own private queue
+ * directory.
+ */
+export function chargeServiceInProbe(
+  scope: { tenantId: string; organizationId: string },
+  input: { userId: string; statusOf: string[] },
+): ChargeServiceProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [CHARGE_SERVICE_PROBE, JSON.stringify({ ...scope, ...input })], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the payments charge service probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as ChargeServiceProbeResult
   } finally {
     fs.rmSync(queueDir, { recursive: true, force: true })
   }

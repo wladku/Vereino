@@ -3,8 +3,10 @@
 // the source type, the payee, `overdue=1` (`open` or `partially_paid` past the due date in the club's calendar), a
 // payment method that was not reversed (`paymentMethod=cash`, the "Cash payments" perspective) and the debtor's or
 // payer's name (`search`, through the people directory's hashed name tokens — three letters or more). The list adds
-// the debtor's and payer's names, the discount rule's name, what was paid, what remains and the overdue marker.
-import type { z } from 'zod'
+// the debtor's and payer's names, the payer and payee institutions of a rental charge (#291), the discount rule's
+// name, what was paid, what remains and the overdue marker; `meta.rentalsPerspective` says whether B-21 shows
+// "Rentals (municipality)" (DD-C02).
+import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
 import type { Where } from '@open-mercato/shared/lib/query/types'
@@ -13,8 +15,8 @@ import { scopeContract } from '@/modules/foundation'
 import { Charge } from '../../data/entities'
 import { chargeListQuerySchema, flagSet } from '../../data/validators'
 import { OPEN_CHARGE_STATUSES, amountDueOf, isOverdue, remainingOf } from '../../lib/charge-ledger'
-import { clubClock, findPersons, searchPersonIds } from '../../services/directory'
-import { chargesPaidBy, paidTotals } from '../../services/ledger'
+import { clubClock, findInstitutions, findPersons, searchPersonIds } from '../../services/directory'
+import { chargesPaidBy, paidTotals, rentalsPerspective } from '../../services/ledger'
 import { discountRuleNames } from '../../services/read'
 import {
   CHARGE_ENTITY_ID,
@@ -35,14 +37,20 @@ const NO_CHARGE_ID = '00000000-0000-0000-0000-000000000000'
  * Adds the debtor's and the payer's names, the discount rule's name (deleted rules keep their name), what was paid,
  * what remains and the overdue marker in the club's calendar.
  */
-async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
+async function attachNames(payload: { items?: unknown[]; meta?: unknown }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as ChargeListItem[]
   const scope = listScope(ctx)
-  if (items.length === 0 || !scope) return
+  if (!scope) return
+  payload.meta = { rentalsPerspective: await rentalsPerspective(ctx.container, scope) }
+  if (items.length === 0) return
   const personIds = items.flatMap((item) => [item.personId, item.payerPersonId]).filter((id): id is string => !!id)
+  const institutionIds = items
+    .flatMap((item) => [item.payerInstitutionId, item.payeeInstitutionId])
+    .filter((id): id is string => !!id)
   const ruleIds = items.flatMap((item) => (item.discountRuleId ? [item.discountRuleId] : []))
-  const [persons, ruleNames, paid, clock] = await Promise.all([
+  const [persons, institutions, ruleNames, paid, clock] = await Promise.all([
     findPersons(ctx.container, scope, personIds),
+    findInstitutions(ctx.container, scope, institutionIds),
     discountRuleNames(ctx.container, scope, ruleIds),
     paidTotals(
       ctx.container,
@@ -58,6 +66,8 @@ async function attachNames(payload: { items?: unknown[] }, ctx: CrudCtx): Promis
   for (const item of items) {
     item.person = nameOf(item.personId)
     item.payer = nameOf(item.payerPersonId)
+    item.payerInstitution = item.payerInstitutionId ? (institutions.get(item.payerInstitutionId) ?? null) : null
+    item.payeeInstitution = item.payeeInstitutionId ? (institutions.get(item.payeeInstitutionId) ?? null) : null
     item.discountRuleName = item.discountRuleId ? (ruleNames.get(item.discountRuleId) ?? null) : null
     item.paid = paid.get(item.id) ?? 0
     item.remaining = item.status === 'cancelled' ? 0 : remainingOf(amountDueOf(item), item.paid)
@@ -125,6 +135,9 @@ export const { metadata, GET } = makeCrudRoute({
       'person_id',
       'payer_person_id',
       'payer_missing',
+      'payer_institution_id',
+      'payee_institution_id',
+      'payer_label',
       'period_label',
       'description',
       'amount',
@@ -163,5 +176,13 @@ export const openApi = buildOpenApi({
   resourceName: 'Charge',
   pluralName: 'Charges',
   querySchema: chargeListQuerySchema,
-  listResponseSchema: createPagedListResponseSchema(chargeListItemSchema),
+  listResponseSchema: createPagedListResponseSchema(chargeListItemSchema).extend({
+    meta: z
+      .object({
+        rentalsPerspective: z
+          .boolean()
+          .describe('DD-C02: show "Rentals (municipality)" — `facilities` is enabled or a live rental charge exists'),
+      })
+      .optional(),
+  }),
 })

@@ -1,7 +1,8 @@
 // `GET /api/payments/charges/{id}` — one charge with its payments (payments spec API table, REQ-011, REQ-012; B-22;
 // issue #109): the B-21 fields with the debtor's and payer's names, what was paid, what remains, the overdue marker
 // in the club's calendar, and every payment — date, method, title or receipt, who received it, amount, and whether
-// it was reversed. `updatedAt` is the lock token the payment, cancellation and reversal commands expect.
+// it was reversed; a rental charge adds its payer and payee institutions and the typed-in renter's name (#291).
+// `updatedAt` is the lock token the payment, cancellation and reversal commands expect.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -12,7 +13,7 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { amountDueOf, isOverdue, paidTotal, remainingOf } from '../../../lib/charge-ledger'
-import { clubClock, findPersons } from '../../../services/directory'
+import { clubClock, findInstitutions, findPersons } from '../../../services/directory'
 import { chargePayments, findCharge } from '../../../services/ledger'
 import { discountRuleNames } from '../../../services/read'
 import { PAYMENTS_READ_KINDS, chargeListItemSchema, errorSchema } from '../../shared'
@@ -69,8 +70,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const personIds = [charge.personId, charge.payerPersonId, ...payments.map((row) => row.recordedByPersonId)].filter(
       (value): value is string => !!value,
     )
-    const [persons, ruleNames, clock] = await Promise.all([
+    const institutionIds = [charge.payerInstitutionId, charge.payeeInstitutionId].filter(
+      (value): value is string => !!value,
+    )
+    const [persons, institutions, ruleNames, clock] = await Promise.all([
       findPersons(ctx.container, scope, personIds),
+      findInstitutions(ctx.container, scope, institutionIds),
       discountRuleNames(ctx.container, scope, charge.discountRuleId ? [charge.discountRuleId] : []),
       clubClock(ctx.container, scope),
     ])
@@ -91,6 +96,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       payerPersonId: charge.payerPersonId ?? null,
       payer: nameOf(charge.payerPersonId),
       payerMissing: charge.payerMissing,
+      payerInstitutionId: charge.payerInstitutionId ?? null,
+      payerInstitution: charge.payerInstitutionId ? (institutions.get(charge.payerInstitutionId) ?? null) : null,
+      payeeInstitutionId: charge.payeeInstitutionId ?? null,
+      payeeInstitution: charge.payeeInstitutionId ? (institutions.get(charge.payeeInstitutionId) ?? null) : null,
+      payerLabel: charge.payerLabel ?? null,
       periodLabel: charge.periodLabel ?? null,
       description: charge.description,
       amount: charge.amount,
@@ -134,7 +144,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read one charge with its payments',
       description:
-        'The charge with the debtor and payer names, what was paid (reversing entries included), what remains, the overdue marker and its payments, oldest first. `updatedAt` is the lock token of the payment, cancellation and reversal commands.',
+        'The charge with the debtor and payer names (for a rental charge the payer and payee institutions and the typed-in renter), what was paid (reversing entries included), what remains, the overdue marker and its payments, oldest first. `updatedAt` is the lock token of the payment, cancellation and reversal commands.',
       responses: [{ status: 200, description: 'The charge', schema: detailSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

@@ -190,6 +190,9 @@ export function chargeListItem(row: Row) {
     personId: text(row.person_id),
     payerPersonId: text(row.payer_person_id),
     payerMissing: bool(row.payer_missing),
+    payerInstitutionId: text(row.payer_institution_id),
+    payeeInstitutionId: text(row.payee_institution_id),
+    payerLabel: text(row.payer_label),
     periodLabel: text(row.period_label),
     description: text(row.description),
     amount,
@@ -208,14 +211,20 @@ export function chargeListItem(row: Row) {
 
 type PersonName = { firstName: string; lastName: string }
 
+type InstitutionName = { id: string; name: string }
+
 export type ChargeListItem = ReturnType<typeof chargeListItem> & {
   person?: PersonName | null
   payer?: PersonName | null
+  payerInstitution?: InstitutionName | null
+  payeeInstitution?: InstitutionName | null
   discountRuleName?: string | null
   paid?: number
   remaining?: number
   overdue?: boolean
 }
+
+const institutionNameSchema = z.object({ id: z.uuid(), name: z.string() })
 
 export const chargeListItemSchema = z.object({
   id: z.uuid(),
@@ -226,6 +235,14 @@ export const chargeListItemSchema = z.object({
   payerPersonId: z.string().nullable(),
   payer: z.object({ firstName: z.string(), lastName: z.string() }).nullable().optional(),
   payerMissing: z.boolean(),
+  payerInstitutionId: z.string().nullable().describe('The renter institution paying a `rental` charge'),
+  payerInstitution: institutionNameSchema.nullable().optional(),
+  payeeInstitutionId: z
+    .string()
+    .nullable()
+    .describe('The institution receiving a `rental` charge; null reads "the facility owner"'),
+  payeeInstitution: institutionNameSchema.nullable().optional(),
+  payerLabel: z.string().nullable().describe('The typed-in name of an unregistered renter paying a `rental` charge'),
   periodLabel: z.string().nullable().describe('`YYYY-MM`, or `one_off`'),
   description: z.string().nullable(),
   amount: z.number().int().describe('Grosz, before the discount'),

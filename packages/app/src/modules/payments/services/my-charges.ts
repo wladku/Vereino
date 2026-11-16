@@ -69,10 +69,17 @@ export function checkoutSummary(row: Checkout): CheckoutSummary {
   }
 }
 
+/**
+ * A rental charge is paid to the facility owner's account, never through the club (payments parity spec, #291): no
+ * payer page lists it and the checkout refuses it.
+ */
+const NOT_RENTAL = { $ne: 'rental' as const }
+
 function visibleWhere(payer: Payer) {
   return {
     ...payer.scope,
     deletedAt: null,
+    sourceType: NOT_RENTAL,
     status: { $ne: 'cancelled' as const },
     $or: [
       { payerPersonId: payer.personId },
@@ -128,7 +135,7 @@ export async function myPaymentHistory(container: AwilixContainer, payer: Payer)
   const rows = await findWithDecryption(
     freshEm(container),
     Charge,
-    { ...payer.scope, deletedAt: null, status: 'paid' as const, payerPersonId: payer.personId },
+    { ...payer.scope, deletedAt: null, sourceType: NOT_RENTAL, status: 'paid' as const, payerPersonId: payer.personId },
     { orderBy: { dueDate: 'desc', id: 'desc' }, limit: PAYMENT_HISTORY_LIMIT },
     payer.scope,
   )

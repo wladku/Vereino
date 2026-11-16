@@ -3,9 +3,9 @@
 // `from`–`to`. Figures: the scheduled hours of each zone (the zone rules of those places), the club time — `planned`
 // and `done` sessions and confirmed internal bookings, clipped to the period and split by the zone they fell in —, the
 // rentals that start in the period and were billable (count, value, the table), the payments to the owner's account,
-// the incidents that occurred and the maintenance tasks done in the period. `payments` reports no rental charges yet
-// (DD-19: `payments.chargeService` is not registered), so the payments figure always comes from the rental register —
-// the confirmed and done rentals — and the report says so. Encrypted columns are read with `findWithDecryption`.
+// the incidents that occurred and the maintenance tasks done in the period. `payments` writes rental charges since #291
+// (DD-19), but this report does not read them yet (the facilities parity spec, E11-S11), so the payments figure still
+// comes from the rental register — the confirmed and done rentals — and the report says so. Encrypted columns are read with `findWithDecryption`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
