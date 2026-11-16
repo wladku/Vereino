@@ -13,6 +13,9 @@ import {
   isRejectedPhone,
   isValidPhone,
   personScope,
+  ADULT_ONLY_ROLES,
+  personAge,
+  roleAgeProblem,
   roleScopeProblem,
   sectionCoordinators,
   type AssignmentRecord,
@@ -89,6 +92,54 @@ describe('isValidPhone', () => {
     expect(isValidPhone('+0600700800')).toBe(false)
     expect(isValidPhone('+123456')).toBe(false)
     expect(isValidPhone('+1234567890123456')).toBe(false)
+  })
+})
+
+describe('personAge (README B-10, #262)', () => {
+  const today = '2026-11-16'
+  it('counts completed years with the Polish plural forms', () => {
+    expect(personAge('2025-11-16', today, 'pl')).toEqual({ years: 1, form: 'one' })
+    expect(personAge('2023-11-16', today, 'pl')).toEqual({ years: 3, form: 'few' })
+    expect(personAge('2014-11-17', today, 'pl')).toEqual({ years: 11, form: 'many' })
+  })
+
+  it('uses one and other in English, other for zero', () => {
+    expect(personAge('2025-11-16', today, 'en')).toEqual({ years: 1, form: 'one' })
+    expect(personAge('2016-01-01', today, 'en')).toEqual({ years: 10, form: 'other' })
+    expect(personAge('2026-01-01', today, 'en')).toEqual({ years: 0, form: 'other' })
+  })
+
+  it('is null without a valid birth date', () => {
+    expect(personAge(null, today, 'pl')).toBeNull()
+    expect(personAge(undefined, today, 'pl')).toBeNull()
+    expect(personAge('not-a-date', today, 'pl')).toBeNull()
+  })
+})
+
+describe('roleAgeProblem (navigation spec REQ-N12, V-N05)', () => {
+  const today = '2026-11-16'
+  it('lists the coordinator as the only adult-only role', () => {
+    expect(ADULT_ONLY_ROLES).toEqual(['coordinator'])
+  })
+
+  it('refuses a minor coordinator and accepts an adult one', () => {
+    expect(roleAgeProblem({ role: 'coordinator', birthDate: '2010-05-01', validFrom: today, today })).toBe(
+      'role_requires_adult',
+    )
+    expect(roleAgeProblem({ role: 'coordinator', birthDate: '2008-11-16', validFrom: today, today })).toBeNull()
+  })
+
+  it('judges the age on the later of the start and today', () => {
+    // 18 on 2026-12-01: a role from that day is accepted, a backdated one is judged today.
+    expect(roleAgeProblem({ role: 'coordinator', birthDate: '2008-12-01', validFrom: '2026-12-01', today })).toBeNull()
+    expect(roleAgeProblem({ role: 'coordinator', birthDate: '2008-12-01', validFrom: '2026-01-01', today })).toBe(
+      'role_requires_adult',
+    )
+  })
+
+  it('accepts other roles and a person without a birth date', () => {
+    expect(roleAgeProblem({ role: 'coach', birthDate: '2010-05-01', validFrom: today, today })).toBeNull()
+    expect(roleAgeProblem({ role: 'coordinator', birthDate: null, validFrom: today, today })).toBeNull()
   })
 })
 
@@ -261,6 +312,7 @@ describe('people error codes', () => {
       ['role_scope_required', 422],
       ['role_scope_unexpected', 422],
       ['role_place_invalid', 422],
+      ['role_requires_adult', 422],
       ['guardianship_self', 422],
       ['guardianship_primary_payer_conflict', 409],
       ['guardianship_ended', 409],

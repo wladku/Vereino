@@ -35,6 +35,22 @@ export const COACH_TERMS_BY_MODEL: Readonly<Record<CoachSettlementModel, readonl
   fixed_base_adjusted: ['baseMonthly', 'sessionAmount', 'tripAmount'],
 }
 
+/** The three rate columns of the contracts list (mockup B-07: Base, Per unit, Match), in grosz or null. */
+export type ContractRateColumns = { base: number | null; perUnit: number | null; match: number | null }
+
+/**
+ * The rate columns of a coach contract (navigation spec REQ-N12, B-07; #262), read from the stored rates of either
+ * model: Base is the monthly base, Per unit the unit rate (`units_per_contract`) or the session amount
+ * (`fixed_base_adjusted`), Match the match rate. Travel and trip amounts stay on the contract's own page.
+ */
+export function contractRateColumns(terms: CoachTerms | null | undefined): ContractRateColumns {
+  return {
+    base: terms?.baseMonthly ?? null,
+    perUnit: terms?.unitRate ?? terms?.sessionAmount ?? null,
+    match: terms?.matchRate ?? null,
+  }
+}
+
 /** The highest rate a form accepts: 1 000 000 zł in grosz. */
 export const MAX_RATE_GROSZ = 100_000_000
 
