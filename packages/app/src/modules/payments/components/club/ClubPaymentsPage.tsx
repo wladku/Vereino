@@ -10,7 +10,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
@@ -22,6 +22,7 @@ import {
 } from '@open-mercato/shared/modules/payment_gateways/client'
 import type { EmbeddedPaymentGatewayClientSession } from '@open-mercato/shared/modules/payment_gateways/types'
 import { formatBankAccount } from '@vereino/core'
+import { MemberSkeleton } from '@vereino/ui'
 import { formatZloty } from '../../lib/charge-ledger'
 import { CLUB_PAYMENTS_HREF, PaymentsClubFrame } from './PaymentsClubFrame'
 
@@ -320,7 +321,7 @@ function Payments() {
     setStarted(call.result)
   }
 
-  if (!charges.data && charges.isFetching) return <LoadingMessage label={t('payments.club.loading')} />
+  if (!charges.data && charges.isFetching) return <MemberSkeleton shape="rows" label={t('payments.club.loading')} />
   if (!charges.data) {
     return (
       <ErrorMessage

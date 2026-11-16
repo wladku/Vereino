@@ -5,8 +5,9 @@
 // month; "No closed sessions this month" when the coach closed none; a warning counts the month's sessions still
 // waiting for their attendance list. Reached from More → My units.
 import * as React from 'react'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -15,7 +16,7 @@ import { shiftMonth } from '../../lib/coach-units'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { CoachUnitsSessions, coachUnitsUrl, type CoachUnitsReportData } from '../coach-units-client'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
-import { monthOf, useClubToday } from '@vereino/ui'
+import { CLUB_CALENDAR_HREF, MemberSkeleton, monthOf, useClubToday } from '@vereino/ui'
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
 
@@ -61,7 +62,7 @@ function MyUnits({ t }: { t: Translate }) {
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <LoadingMessage label={t('activities.club.units.loading')} />
+    body = <MemberSkeleton shape="rows" label={t('activities.club.units.loading')} />
   } else if (!query.data) {
     body = (
       <ErrorMessage
@@ -77,9 +78,12 @@ function MyUnits({ t }: { t: Translate }) {
     body = <Alert status="warning">{t('activities.club.units.forbidden')}</Alert>
   } else if (!row) {
     body = (
-      <p className="text-muted-foreground" data-testid="club-units-empty">
-        {t('activities.reports.coachUnits.empty')}
-      </p>
+      <div className="flex flex-col items-start gap-2" data-testid="club-units-empty">
+        <p className="text-muted-foreground">{t('activities.reports.coachUnits.empty')}</p>
+        <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+          {t('activities.club.today.openCalendar')}
+        </Link>
+      </div>
     )
   } else {
     body = (

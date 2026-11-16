@@ -18,10 +18,9 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading } from '@vereino/ui'
+import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
 import { HEADCOUNT_MAX } from '../../lib/logs'
 import { FacilitiesClubFrame } from '../club-places/FacilitiesClubFrame'
 import { KIND_TAGS } from '../club-places/PlaceTimeline'
@@ -46,17 +45,6 @@ import {
 
 type Notice = { status: 'success' | 'warning' | 'error'; text: string }
 type DialogKind = 'open' | 'close' | 'incident'
-
-function DaySkeleton({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col gap-3" aria-busy="true" data-testid="club-facility-loading">
-      <span className="sr-only">{label}</span>
-      {[0, 1, 2].map((index) => (
-        <Skeleton key={index} className="h-28 w-full" />
-      ))}
-    </div>
-  )
-}
 
 function EntryCard({
   entry,
@@ -331,7 +319,14 @@ function FacilityDay() {
 
   let body: React.ReactNode
   if (!today && query.isFetching) {
-    body = <DaySkeleton label={t('facilities.facility.loading')} />
+    body = (
+      <MemberSkeleton
+        shape="rows"
+        count={3}
+        label={t('facilities.facility.loading')}
+        data-testid="club-facility-loading"
+      />
+    )
   } else if (!today) {
     body = (
       <ErrorMessage

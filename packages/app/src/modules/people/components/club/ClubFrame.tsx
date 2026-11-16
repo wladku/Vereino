@@ -10,13 +10,14 @@ import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { RecordConflictBanner } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   MemberShell,
+  MemberSkeleton,
   memberContextStore,
   memberNav,
   memberShellLabels,
@@ -24,6 +25,7 @@ import {
   useMemberContext,
   useMemberNavFeatures,
   type MemberLinkProps,
+  type MemberSkeletonShape,
 } from '@vereino/ui'
 import { BACKEND_HREF, useMemberProfile, type MemberProfile } from './member-client'
 
@@ -55,7 +57,14 @@ function MemberLink({ href, className, children, 'aria-current': ariaCurrent }: 
   )
 }
 
-export function ClubFrame({ children }: { children: (profile: MemberProfile) => React.ReactNode }) {
+export function ClubFrame({
+  children,
+  skeleton = 'rows',
+}: {
+  children: (profile: MemberProfile) => React.ReactNode
+  /** The shape of the page's content while the profile loads (REQ-N15): `tiles` on Today, `fields` on a form. */
+  skeleton?: MemberSkeletonShape
+}) {
   const t = useT()
   const pathname = usePathname()
   const query = useMemberProfile()
@@ -65,7 +74,7 @@ export function ClubFrame({ children }: { children: (profile: MemberProfile) => 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
     // The first load and a retry after an error both show the loading state.
-    body = <LoadingMessage label={t('people.club.loading')} />
+    body = <MemberSkeleton shape={skeleton} label={t('people.club.loading')} data-testid="club-loading" />
   } else if (!query.data) {
     body = (
       <ErrorMessage

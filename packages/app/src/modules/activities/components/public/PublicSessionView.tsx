@@ -12,13 +12,13 @@ import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { PublicHeader, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { MemberSkeleton, PublicHeader, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { linkRequestOpen, linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
@@ -157,7 +157,7 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
   if (!load && query.isFetching) {
     return (
       <Frame>
-        <LoadingMessage label={t('activities.publicSession.loading')} />
+        <MemberSkeleton shape="rows" label={t('activities.publicSession.loading')} />
       </Frame>
     )
   }

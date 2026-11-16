@@ -7,9 +7,10 @@
 // and "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSkeleton } from '@vereino/ui'
 import { phoneHref, pluralForm } from '../../lib/public-page'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { sectionHref, usePublicClub } from './public-client'
@@ -23,7 +24,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
   if (!load && query.isFetching) {
     return (
       <PublicFrame club={null}>
-        <LoadingMessage label={t('club_core.public.loading')} />
+        <MemberSkeleton shape="rows" label={t('club_core.public.loading')} />
       </PublicFrame>
     )
   }
@@ -87,9 +88,14 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
           {t('club_core.public.sections.title')}
         </h2>
         {sections.length === 0 ? (
-          <p className="text-muted-foreground max-w-prose" data-testid="public-sections-empty">
-            {t('club_core.public.sections.empty')}
-          </p>
+          <div className="flex flex-col items-start gap-1" data-testid="public-sections-empty">
+            <p className="text-muted-foreground max-w-prose">{t('club_core.public.sections.empty')}</p>
+            {club.contact ? (
+              <a href="#contact" className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6">
+                {t('club_core.public.askClub')}
+              </a>
+            ) : null}
+          </div>
         ) : (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="public-sections">
             {sections.map((section) => (
@@ -143,7 +149,7 @@ export function PublicClubView({ clubSlug }: { clubSlug: string }) {
         </section>
       ) : null}
       {club.contact ? (
-        <section className="flex flex-col gap-2" aria-labelledby="public-club-contact-title">
+        <section id="contact" className="flex scroll-mt-4 flex-col gap-2" aria-labelledby="public-club-contact-title">
           <h2 id="public-club-contact-title" className="text-lg font-semibold">
             {t('club_core.public.contact.title')}
           </h2>
