@@ -4,6 +4,7 @@
 // and organization its slug lookup found; every query here carries that scope. Only live, active groups marked
 // `is_public` appear; requirements need the `conditions` block, instructors the `coaches` block, and an instructor's
 // name that person's `publish_name_consent_at` (read through `people.personDirectory`). No roster, no participant.
+// A team's card names its age category (the `dictionaries` label, #263).
 // On the club page (E06-S07, #89) the same block counts the public groups of each public section for its tile.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
@@ -19,6 +20,7 @@ import {
   type PublicCatalogBlock,
   type PublicGroupCountsBlock,
 } from '../lib/public-catalog'
+import { ageCategoryNames } from './age-categories'
 import { clubToday } from './club-clock'
 import { publicNames } from './directory'
 import { rosterSummaries } from './groups-read'
@@ -39,11 +41,26 @@ export function createPublicCatalog(container: AwilixContainer): PublicBlockProv
         Group,
         { ...scope, sectionId: ctx.sectionId, isPublic: true, isActive: true, deletedAt: null },
         {
-          fields: ['id', 'name', 'kind', 'publicDescription', 'publicConditions', 'ageFrom', 'ageTo', 'levelLabel'],
+          fields: [
+            'id',
+            'name',
+            'kind',
+            'publicDescription',
+            'publicConditions',
+            'ageFrom',
+            'ageTo',
+            'levelLabel',
+            'ageCategoryEntryId',
+          ],
           orderBy: { name: 'asc', id: 'asc' },
         },
       )
       if (rows.length === 0) return null
+      const categories = await ageCategoryNames(
+        container,
+        scope,
+        rows.flatMap((row) => (row.kind === 'team' && row.ageCategoryEntryId ? [row.ageCategoryEntryId] : [])),
+      )
       const coaches = ctx.publishedBlocks.includes('coaches')
       const coachIds = new Map<string, string[]>()
       let names = new Map<string, string>()
@@ -68,6 +85,7 @@ export function createPublicCatalog(container: AwilixContainer): PublicBlockProv
           ageFrom: row.ageFrom ?? null,
           ageTo: row.ageTo ?? null,
           levelLabel: row.levelLabel ?? null,
+          ageCategory: row.ageCategoryEntryId ? (categories.get(row.ageCategoryEntryId) ?? null) : null,
         })),
         { conditions: ctx.publishedBlocks.includes('conditions'), coaches },
         coachIds,

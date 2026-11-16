@@ -2,14 +2,23 @@
 // The frame of the public club pages (club spec UI table `/p/[clubSlug]`, DD-23; #29): the club logo and name in the
 // header (a link to the club page), the language switcher for guests, the page body and the footer with the club name,
 // its published phone (E06-S07, #89) and the club's rules and privacy-policy links (#195). Personal data never appears
-// here; the club and section names are the club's own content and stay in its language.
+// here; the club and section names are the club's own content and stay in its language. The header links P-06
+// "Events" while the club publishes the `events` block (`club.nav.events`, #263); the full public header follows with
+// E09-S07 (#261).
 import * as React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { phoneHref } from '../../lib/public-page'
-import { clubHref, type PublicClubContact, type PublicClubLinks, type PublicLogo } from './public-client'
+import {
+  clubHref,
+  eventsHref,
+  type PublicClubContact,
+  type PublicClubLinks,
+  type PublicClubNav,
+  type PublicLogo,
+} from './public-client'
 
 /** A logo, or the initial of the name in its place (glossary *Logo*: never an empty image). Decorative: the name is next to it. */
 export function LogoMark({ logo, size = 'md' }: { logo: PublicLogo; size?: 'md' | 'lg' }) {
@@ -104,7 +113,14 @@ export function PublicFrame({
   club,
   children,
 }: {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks } | null
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  } | null
   children: React.ReactNode
 }) {
   const t = useT()
@@ -124,7 +140,20 @@ export function PublicFrame({
           ) : (
             <span className="text-muted-foreground text-sm">{t('club_core.public.title')}</span>
           )}
-          <LanguageSwitcher />
+          <div className="flex flex-wrap items-center gap-3">
+            {club?.nav.events ? (
+              <nav aria-label={t('club_core.public.nav.label')}>
+                <Link
+                  href={eventsHref(club.slug)}
+                  className="text-foreground inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium underline-offset-4 hover:underline"
+                  data-testid="public-nav-events"
+                >
+                  {t('club_core.public.nav.events')}
+                </Link>
+              </nav>
+            ) : null}
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
@@ -133,12 +162,26 @@ export function PublicFrame({
   )
 }
 
-/** The page body of a missing page or a club that does not publish one: no club data, a way back to nothing but home. */
-export function PublicNotice({ title, message, testId }: { title: string; message: string; testId: string }) {
+/**
+ * The page body of a missing page or a club that does not publish one: no club data; `action` is a way back (the club
+ * page from a missing section or from P-06 with the events off, #263).
+ */
+export function PublicNotice({
+  title,
+  message,
+  testId,
+  action,
+}: {
+  title: string
+  message: string
+  testId: string
+  action?: React.ReactNode
+}) {
   return (
     <section className="flex flex-col gap-2" data-testid={testId}>
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="text-muted-foreground max-w-prose">{message}</p>
+      {action}
     </section>
   )
 }

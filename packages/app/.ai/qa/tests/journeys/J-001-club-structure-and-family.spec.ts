@@ -181,6 +181,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
             contact: true,
             places_calendar: false,
             online_requests: false,
+            events: false,
           },
         })
       expect((await getSettings(request, club.adminToken)).publicSlug).toBe(slug)
