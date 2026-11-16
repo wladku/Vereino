@@ -26,7 +26,7 @@ export function dayEntryText(t: Translate, entry: CalendarEntry, redacted = fals
       return t('facilities.axis.entry.request', { renter: label })
     case 'closure':
       return t('facilities.axis.entry.closure', { note: label })
-    default:
+    case 'maintenance':
       return entry.bookedByName
         ? t('facilities.places.entry.maintenance', { kind: label, planner: entry.bookedByName })
         : label

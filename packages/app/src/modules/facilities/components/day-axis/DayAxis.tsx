@@ -154,6 +154,7 @@ export function DayAxis({
       ) : null}
       <div
         role="region"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a horizontally scrolling region must be keyboard-focusable (WCAG 2.1.1, axe `scrollable-region-focusable` with four parallel entries at 375 px)
         tabIndex={0}
         aria-label={t('facilities.axis.label', { from: timeOf(bounds.from), to: timeOf(bounds.to) })}
         className="focus-visible:ring-ring max-w-full overflow-x-auto rounded-md border focus-visible:ring-2 focus-visible:outline-none"

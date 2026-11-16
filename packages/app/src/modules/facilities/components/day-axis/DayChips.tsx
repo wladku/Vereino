@@ -32,14 +32,13 @@ export function ChipRow({
 }) {
   const currentRef = React.useRef<HTMLButtonElement | null>(null)
   React.useEffect(() => {
-    currentRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+    currentRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [current])
   return (
     <div
       role="group"
       aria-label={label}
       className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 min-[480px]:flex-wrap"
-      onKeyDown={onKeyDown}
       data-testid={testId}
     >
       {chips.map((chip) => {
@@ -56,6 +55,7 @@ export function ChipRow({
             onClick={() => {
               onSelect(chip.value)
             }}
+            onKeyDown={onKeyDown}
             data-testid={`${testId}-${chip.value}`}
           >
             {chip.label}
