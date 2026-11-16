@@ -25,7 +25,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { addCalendarDays, calendarDateInZone } from '@vereino/core'
-import { badgeVariant, formatClockTime, formatTimeRange, memberCalendarScope, useMemberContext } from '@vereino/ui'
+import { badgeVariant, formatClockTime, formatTimeRange, memberSideScope, useMemberContext } from '@vereino/ui'
 import {
   declarationButtons,
   savedDeclarationKey,
@@ -61,6 +61,7 @@ export type ClubTodayContext = {
     person?: { id: string }
     wards?: { personId: string; firstName: string; lastName: string }[]
     contexts?: string[]
+    isParticipant?: boolean
     club?: { timezone?: string }
   }
 }
@@ -293,15 +294,18 @@ export default function ClubTodayTilesWidget({
   const timeZone = context.profile?.club?.timezone ?? 'Europe/Warsaw'
   const person = context.profile?.person
   const profile = person
-    ? { person, wards: context.profile?.wards ?? [], contexts: context.profile?.contexts ?? [] }
+    ? {
+        person,
+        wards: context.profile?.wards ?? [],
+        contexts: context.profile?.contexts ?? [],
+        isParticipant: context.profile?.isParticipant ?? false,
+      }
     : null
   const [selection] = useMemberContext(profile)
   const coaches = profile?.contexts.includes('coach') ?? false
-  // Acting as a coach, the member tiles step aside; otherwise the coach tile is added to them.
+  // In the staff context the member tiles step aside; otherwise the coach tile is added to them.
   const actingAsMember = selection.role === 'member'
-  const scope = profile
-    ? memberCalendarScope(profile, { ...selection, role: 'member' })
-    : { as: 'self' as const, personId: null }
+  const scope = profile ? memberSideScope(profile, selection) : { as: 'self' as const, personId: null }
   const guardian = scope.as === 'guardian'
   const today = calendarDateInZone(new Date(), timeZone)
   const tomorrow = addCalendarDays(today, 1)

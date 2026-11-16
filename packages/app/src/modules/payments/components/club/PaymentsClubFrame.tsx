@@ -37,6 +37,8 @@ export type PaymentsProfile = {
   contexts: string[]
   locale: string
   paymentsVisible: boolean
+  /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
+  isParticipant?: boolean
   club: { shortName: string | null; timezone: string; logoUrl: string | null }
 }
 

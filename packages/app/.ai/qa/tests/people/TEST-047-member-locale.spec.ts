@@ -135,7 +135,7 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
     await page.context().setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
     await signInThroughForm(page, b.email, bPassword)
     await expect(page).toHaveURL(/\/club$/)
-    await expect(page.getByRole('heading', { level: 1, name: 'Cześć, Bogna' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Dzień dobry, Bogna' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'pl')
     await expect(page.getByTestId('club-name')).toHaveText(CLUB_NAME)
     const bBirth =
