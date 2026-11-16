@@ -14,6 +14,7 @@ import { signInBrowser } from '../_fixtures/club-structure'
 import { signedInStaff } from '../_fixtures/groups'
 import { makeMaintainer } from '../_fixtures/maintenance'
 import { createGuardianship } from '../_fixtures/people'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #258 (E09-S04; navigation spec REQ-N05, REQ-N06, TEST-N06, AC-N05, AC-N06): every `/club` page of the five
 // member modules shows the same bottom bar for the same person — Today · Calendar · Messages · a fourth tab (Payments
@@ -26,13 +27,13 @@ import { createGuardianship } from '../_fixtures/people'
 test.describe.configure({ timeout: 420_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const MORE = /^(More|Więcej)$/
-const SIGN_OUT = /^(Sign out|Wyloguj)$/
-const TODAY = /^(Today|Dziś)$/
-const CALENDAR = /^(Calendar|Kalendarz)$/
-const MESSAGES = /^(Messages|Wiadomości)$/
-const PAYMENTS = /^(Payments|Płatności)$/
-const FACILITIES = /^(Facilities|Obiekty)$/
+const MORE = uiText('people.club.nav.more', { exact: true })
+const SIGN_OUT = uiText('people.club.nav.signOut', { exact: true })
+const TODAY = uiText('people.club.nav.today', { exact: true })
+const CALENDAR = uiText('people.club.nav.calendar', { exact: true })
+const MESSAGES = uiText('people.club.nav.messages', { exact: true })
+const PAYMENTS = uiText('people.club.nav.payments', { exact: true })
+const FACILITIES = uiText('people.club.nav.facilities', { exact: true })
 
 type Bar = { tabs: string[]; more: string[] }
 
@@ -237,11 +238,15 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
       '/club/coach/payments',
     ])
     await expect(bar.getByRole('link', { name: FACILITIES })).toBeVisible()
-    expect(coachBar.more).toEqual(expect.arrayContaining([expect.stringMatching(/^(My units|Moje jednostki)$/)]))
     expect(coachBar.more).toEqual(
-      expect.arrayContaining([expect.stringMatching(/^(My groups' payments|Płatności moich grup)$/)]),
+      expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.myUnits', { exact: true }))]),
     )
-    expect(coachBar.more.some((entry) => /^(Facilities and booking|Obiekty i rezerwacje)$/.test(entry))).toBe(false)
+    expect(coachBar.more).toEqual(
+      expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.groupPayments', { exact: true }))]),
+    )
+    expect(coachBar.more.some((entry) => uiText('people.club.nav.facilitiesMore', { exact: true }).test(entry))).toBe(
+      false,
+    )
     expect(coachBar.more).toHaveLength(3)
     await openSettled(page, '/club/places')
     await expect(bar.getByRole('link', { name: FACILITIES })).toHaveAttribute('aria-current', 'page')
@@ -285,12 +290,12 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     const busyBar = await expectSameBar(page, 4, ['/club', '/club/payments', '/club/places'])
     await expect(bar.getByRole('link', { name: PAYMENTS })).toBeVisible()
     expect(busyBar.more).toEqual([
-      expect.stringMatching(/^(Profile|Profil)$/),
-      expect.stringMatching(/^(My units|Moje jednostki)$/),
-      expect.stringMatching(/^(Facilities and booking|Obiekty i rezerwacje)$/),
-      expect.stringMatching(/^(Orders \(e\.g\. kit\)|Zamówienia \(np\. stroje\))$/),
-      expect.stringMatching(/^(My groups' payments|Płatności moich grup)$/),
-      expect.stringMatching(/^(Admin panel|Panel administracyjny)$/),
+      expect.stringMatching(uiText('people.club.nav.profile', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.myUnits', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.facilitiesMore', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.orders', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.groupPayments', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.backend', { exact: true })),
     ])
     // The places belong to More while Payments is the tab.
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
@@ -306,8 +311,8 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     await signInBrowser(page, request, club, plannerStaff.userId, plannerStaff.email)
     const plannerBar = await expectSameBar(page, 3, ['/club', '/club/messages', '/club/places'])
     expect(plannerBar.more).toEqual([
-      expect.stringMatching(/^(Profile|Profil)$/),
-      expect.stringMatching(/^(Facilities and booking|Obiekty i rezerwacje)$/),
+      expect.stringMatching(uiText('people.club.nav.profile', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.facilitiesMore', { exact: true })),
     ])
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
     await expectTargets(page, 3)
@@ -318,7 +323,7 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     const attendantBar = await expectSameBar(page, 4, ['/club', '/club/messages', '/club/facility'])
     await expect(bar.getByRole('link', { name: FACILITIES })).toBeVisible()
     expect(attendantBar.more).toEqual(
-      expect.arrayContaining([expect.stringMatching(/^(Today at the facility|Dziś na obiekcie)$/)]),
+      expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.facilityToday', { exact: true }))]),
     )
     await openSettled(page, '/club/facility')
     await expect(bar.locator('summary')).toHaveAttribute('aria-current', 'page')
@@ -329,8 +334,8 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     const adminBar = await expectSameBar(page, 4, ['/club', '/club/calendar', '/club/cash'])
     expect(adminBar.more).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/^(Accept cash|Przyjmij gotówkę)$/),
-        expect.stringMatching(/^(Admin panel|Panel administracyjny)$/),
+        expect.stringMatching(uiText('people.club.nav.acceptCash', { exact: true })),
+        expect.stringMatching(uiText('people.club.nav.backend', { exact: true })),
       ]),
     )
     await openSettled(page, '/club/cash')
