@@ -41,7 +41,7 @@ const TONES: Record<string, string> = {
   error: 'border-status-error-border bg-status-error-bg text-status-error-text',
   info: 'border-status-info-border bg-status-info-bg text-status-info-text',
   neutral: 'border-status-neutral-border bg-status-neutral-bg text-status-neutral-text',
-  brand: 'border-brand-violet/30 bg-brand-violet/10 text-brand-violet',
+  pink: 'border-status-pink-border bg-status-pink-bg text-status-pink-text',
 }
 
 /** A second cue besides the colour: a dashed request, a double closure, a dotted maintenance window. */
