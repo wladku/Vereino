@@ -1,45 +1,56 @@
 'use client'
-// `/backend/facilities/rentals` — "Rentals" (facilities spec B-24; E08-S02 #122): the external rentals of the club's
-// places with the tabs Active (requested and confirmed, the default) / Awaiting approval / All, filters for the place,
-// the status (All) and "to be moved", and per row the slot, place, renter with contact, how it was taken, the amount
-// and the status. A requested rental is confirmed, cancelled, moved or recorded as a no-show from its row; a confirmed
-// one is cancelled, moved or recorded as a no-show. "New rental" opens the rental dialog. Everything here needs
-// `facilities.rentals.manage`.
+// `/backend/facilities/rentals?status=&view=&place=&page=` — "Rentals" (facilities spec B-24; E08-S02 #122; facilities
+// parity spec REQ-R04, #279): the external rentals of the club's places with the tabs Active (requested and confirmed,
+// the default) / Awaiting approval / All and the perspectives "To be moved" and "Unpaid after the deadline", all kept in
+// the address (precedent DD-U03) so a reload or a shared link restores them. Each row shows the slot, the place, the
+// renter with contact and phone, how it was taken, the amount with its payee and charge state, and the status; it
+// opens the rental page. "Confirm payment" and "Cancel" are buttons on the row, a pending request links to the
+// decision queue (B-25), Move and No-show sit in the row menu. "New rental" opens the rental dialog. Everything here
+// needs `facilities.rentals.manage`.
 import * as React from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
 import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActions'
-import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
-import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { errorCodeOf } from '@vereino/core'
-import { RENTAL_STATUSES } from '../lib/rentals'
-import { ListEmptyState } from './FacilitiesControls'
-import { CancelRentalDialog, MoveRentalDialog } from './RentalActionDialogs'
-import { RentalDialog } from './RentalDialog'
 import {
-  codedMessage,
-  errorMessage,
+  RENTAL_LIST_STATUSES,
+  RENTAL_VIEWS,
+  readRentalListUrl,
+  rentalListQuery,
+  rentalListUrlParams,
+  type RentalListStatus,
+  type RentalListUrlState,
+} from '../lib/rental-record'
+import { ListEmptyState } from './FacilitiesControls'
+import { RentalDialog } from './RentalDialog'
+import { useRentalActions } from './RentalRowActions'
+import {
   minorToAmount,
   placeLabel,
   usePlaceOptions,
+  errorMessage,
   type TableColumns,
   type Translate,
 } from './facilities-client'
 import {
+  REQUESTS_HREF,
   RENTALS_API,
   RENTALS_KEY,
+  VISIBLE_RENTAL_ACTIONS,
+  chargeStateVariant,
+  payeeLabel,
   rentalActions,
+  rentalHref,
   rentalStatusLabel,
   rentalStatusVariant,
-  runRentalAction,
   slotLabel,
   useRentalTimeZone,
   type RentalAction,
@@ -48,8 +59,12 @@ import {
 
 const PAGE_SIZE = 50
 
-export const RENTAL_LIST_TABS = ['active', 'awaiting_approval', 'all'] as const
-export type RentalListTab = (typeof RENTAL_LIST_TABS)[number]
+/** The catalog key of a tab (the API and the catalog name the pending tab `awaiting_approval`). */
+const TAB_KEYS: Record<RentalListStatus, string> = {
+  active: 'active',
+  pending_approval: 'awaiting_approval',
+  all: 'all',
+}
 
 /** The status badge and the "to be moved" flag of a rental. */
 export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'needsReschedule'>; t: Translate }) {
@@ -63,7 +78,29 @@ export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'need
   )
 }
 
-function buildColumns(t: Translate, names: Map<string, string>, timeZone: string): TableColumns<RentalRow> {
+/** The amount with its payee and, when the rental has a charge, the charge state. */
+export function RentalAmount({ row, t }: { row: RentalRow; t: Translate }) {
+  return (
+    <span className="flex flex-col items-start gap-1">
+      <span className="tabular-nums">
+        {row.amount === null ? t('facilities.common.empty') : minorToAmount(row.amount)}
+      </span>
+      <span className="text-muted-foreground text-xs">{payeeLabel(t, row.payee)}</span>
+      {row.chargeState !== 'none' ? (
+        <StatusBadge variant={chargeStateVariant(row.chargeState)}>
+          {t(`facilities.rentals.chargeState.${row.chargeState}`)}
+        </StatusBadge>
+      ) : null}
+    </span>
+  )
+}
+
+function buildColumns(
+  t: Translate,
+  names: Map<string, string>,
+  timeZone: string,
+  buttons: (row: RentalRow) => React.ReactNode,
+): TableColumns<RentalRow> {
   const empty = t('facilities.common.empty')
   return [
     {
@@ -95,12 +132,20 @@ function buildColumns(t: Translate, names: Map<string, string>, timeZone: string
       enableSorting: false,
       meta: { priority: 1 },
       cell: ({ row }) => {
-        const contact = [row.original.contactName, row.original.contactPhone, row.original.contactEmail]
-          .filter(Boolean)
-          .join(' · ')
+        const contact = [row.original.contactName, row.original.contactPhone].filter(Boolean).join(' · ')
         return (
           <span className="flex flex-col">
-            <span className="font-medium">{row.original.renterDisplayName ?? empty}</span>
+            {/* A link, so the rental opens from the keyboard too (the row click is a mouse shortcut). */}
+            <Link
+              href={rentalHref(row.original.id)}
+              className="font-medium underline-offset-2 hover:underline"
+              data-testid={`facilities-rental-open-${row.original.id}`}
+              onClick={(event) => {
+                event.stopPropagation()
+              }}
+            >
+              {row.original.renterDisplayName ?? empty}
+            </Link>
             {contact ? <span className="text-muted-foreground text-xs">{contact}</span> : null}
           </span>
         )
@@ -119,11 +164,7 @@ function buildColumns(t: Translate, names: Map<string, string>, timeZone: string
       header: t('facilities.rentals.columns.amount'),
       enableSorting: false,
       meta: { priority: 3 },
-      cell: ({ row }) => (
-        <span className="tabular-nums">
-          {row.original.amount === null ? empty : minorToAmount(row.original.amount)}
-        </span>
-      ),
+      cell: ({ row }) => <RentalAmount row={row.original} t={t} />,
     },
     {
       id: 'status',
@@ -132,265 +173,249 @@ function buildColumns(t: Translate, names: Map<string, string>, timeZone: string
       meta: { priority: 1 },
       cell: ({ row }) => <RentalBadges row={row.original} t={t} />,
     },
+    {
+      id: 'buttons',
+      header: t('facilities.rentals.columns.actions'),
+      enableSorting: false,
+      meta: { priority: 2 },
+      cell: ({ row }) => buttons(row.original),
+    },
   ]
 }
 
-function filterParams(values: FilterValues, tab: RentalListTab): Record<string, string> {
-  const params: Record<string, string> = {}
-  const placeId: unknown = values.placeId
-  if (typeof placeId === 'string' && placeId) params.placeId = placeId
-  const status: unknown = values.status
-  if (tab === 'all' && typeof status === 'string' && status) params.status = status
-  if (values.needsReschedule === true) params.needsReschedule = 'true'
-  return params
-}
-
-type ActionDialog = { kind: 'cancel' | 'move'; row: RentalRow } | null
-
-function RentalsList({ tab, onCreate }: { tab: RentalListTab; onCreate: () => void }) {
+export function RentalsTable() {
   const t = useT()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const timeZone = useRentalTimeZone()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
   const places = usePlaceOptions()
-  const { confirm, ConfirmDialogElement } = useConfirmDialog()
-  const [filters, setFilters] = React.useState<FilterValues>({})
-  const [page, setPage] = React.useState(1)
-  const [dialog, setDialog] = React.useState<ActionDialog>(null)
+  const state = React.useMemo(() => readRentalListUrl((key) => searchParams.get(key)), [searchParams])
+  const navigate = React.useCallback(
+    (change: Partial<RentalListUrlState>) => {
+      const query = new URLSearchParams(rentalListUrlParams({ ...state, page: 1, ...change })).toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    },
+    [pathname, router, state],
+  )
+  const [createOpen, setCreateOpen] = React.useState(false)
+  // A new key per opening starts the dialog fresh.
+  const [createKey, setCreateKey] = React.useState(0)
 
+  const query = rentalListQuery(state)
   const { data, isLoading, error } = useQuery({
-    queryKey: [RENTALS_KEY, 'list', tab, filters, page, scopeVersion],
+    queryKey: [RENTALS_KEY, 'list', query, state.page, scopeVersion],
     queryFn: () =>
       fetchCrudList<RentalRow>(RENTALS_API, {
-        page,
+        page: state.page,
         pageSize: PAGE_SIZE,
         sortField: 'startsAt',
-        sortDir: tab === 'all' ? 'desc' : 'asc',
-        ...(tab === 'all' ? {} : { tab }),
-        ...filterParams(filters, tab),
+        sortDir: state.status === 'all' ? 'desc' : 'asc',
+        ...query,
       }),
   })
 
   const refresh = React.useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] })
   }, [queryClient])
+  const actions = useRentalActions({ places, onDone: refresh })
 
-  const columns = React.useMemo(() => buildColumns(t, places.names, timeZone), [t, places.names, timeZone])
-  const filterDefs = React.useMemo<FilterDef[]>(
-    () => [
-      {
-        id: 'placeId',
-        label: t('facilities.fields.place'),
-        type: 'select',
-        options: places.options,
-      },
-      ...(tab === 'all'
-        ? [
-            {
-              id: 'status',
-              label: t('facilities.rentals.columns.status'),
-              type: 'select',
-              options: RENTAL_STATUSES.map((value) => ({ value, label: rentalStatusLabel(t, value) })),
-            } satisfies FilterDef,
-          ]
-        : []),
-      { id: 'needsReschedule', label: t('facilities.rentals.filters.needsReschedule'), type: 'checkbox' },
-    ],
-    [t, tab, places.options],
-  )
-
-  const simpleAction = async (row: RentalRow, action: 'confirm' | 'noShow') => {
-    const confirmed = await confirm({
-      title: t(`facilities.rentals.${action}.title`),
-      text: t(`facilities.rentals.${action}.text`, { slot: slotLabel(row.startsAt, row.endsAt, timeZone) }),
-      confirmText: t(`facilities.rentals.actions.${action}`),
-      cancelText: t('facilities.rentals.actions.back'),
-      variant: action === 'noShow' ? 'destructive' : 'default',
-    })
-    if (!confirmed) return
-    const fallback = t(`facilities.rentals.errors.${action}`)
-    try {
-      await runRentalAction(row, action, {}, fallback)
-      flash(t(`facilities.rentals.flash.${action}`), 'success')
-    } catch (err: unknown) {
-      if (!surfaceRecordConflict(err, t, { onRefresh: () => void refresh() })) {
-        flash(
-          errorCodeOf(err) === 'invalid_transition'
-            ? t('facilities.rentals.errors.invalid_transition')
-            : (codedMessage(err, t) ?? errorMessage(err, fallback)),
-          'error',
+  const buttons = React.useCallback(
+    (row: RentalRow) => {
+      if (row.status === 'pending_approval') {
+        return (
+          <Button asChild size="sm" variant="outline">
+            <Link
+              href={REQUESTS_HREF}
+              data-testid={`facilities-rental-decision-${row.id}`}
+              onClick={(event) => {
+                event.stopPropagation()
+              }}
+            >
+              {t('facilities.rentals.list.decision')}
+            </Link>
+          </Button>
         )
       }
-    }
-    await refresh()
-  }
+      const visible = rentalActions(row.status).filter((action) => VISIBLE_RENTAL_ACTIONS.includes(action))
+      if (visible.length === 0) return null
+      return (
+        <span className="flex flex-wrap gap-2">
+          {visible.map((action) => (
+            <Button
+              key={action}
+              type="button"
+              size="sm"
+              variant={action === 'cancel' ? 'destructive-outline' : 'outline'}
+              data-testid={`facilities-rental-${action}-${row.id}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                actions.run(row, action)
+              }}
+            >
+              {t(`facilities.rentals.list.${action}`)}
+            </Button>
+          ))}
+        </span>
+      )
+    },
+    [actions, t],
+  )
 
-  const actionItem = (row: RentalRow, action: RentalAction): RowActionItem => {
-    const label = t(`facilities.rentals.actions.${action}`)
-    if (action === 'cancel' || action === 'move') {
-      return {
-        id: action,
-        label,
-        destructive: action === 'cancel',
-        onSelect: () => {
-          setDialog({ kind: action, row })
-        },
-      }
-    }
-    return {
-      id: action,
-      label,
-      destructive: action === 'noShow',
-      onSelect: () => {
-        void simpleAction(row, action)
-      },
-    }
-  }
+  const columns = React.useMemo(
+    () => buildColumns(t, places.names, timeZone, buttons),
+    [t, places.names, timeZone, buttons],
+  )
+  const filterDefs = React.useMemo<FilterDef[]>(
+    () => [{ id: 'placeId', label: t('facilities.fields.place'), type: 'select', options: places.options }],
+    [t, places.options],
+  )
+
+  const menuItem = (row: RentalRow, action: RentalAction): RowActionItem => ({
+    id: action,
+    label: t(`facilities.rentals.actions.${action}`),
+    destructive: action === 'noShow',
+    onSelect: () => {
+      actions.run(row, action)
+    },
+  })
 
   const createAction = (
-    <Button type="button" data-testid="facilities-rentals-create" onClick={onCreate}>
+    <Button
+      type="button"
+      data-testid="facilities-rentals-create"
+      onClick={() => {
+        setCreateKey((current) => current + 1)
+        setCreateOpen(true)
+      }}
+    >
       {t('facilities.rentals.actions.create')}
     </Button>
   )
-  const filtered = Object.keys(filterParams(filters, tab)).length > 0
+  const filtered = Boolean(state.view || state.placeId)
   const empty = !isLoading && !error && (data?.items.length ?? 0) === 0
 
   return (
-    <div className="flex flex-col gap-6">
-      {empty ? (
-        <ListEmptyState
-          title={t('facilities.rentals.title')}
-          message={t(`facilities.rentals.empty.${tab}`)}
-          actions={createAction}
-          testId={`facilities-rentals-empty-${tab}`}
-          onClearFilters={
-            filtered
-              ? () => {
-                  setFilters({})
-                  setPage(1)
-                }
-              : undefined
-          }
-        />
-      ) : (
-        <div className="relative max-w-full min-w-0 overflow-x-auto" data-testid="facilities-rentals-table">
-          {/* The table and its footer scroll inside this region at 320 px (the Polish footer line is wider). */}
-          <DataTable<RentalRow>
-            title={t('facilities.rentals.title')}
-            titleHeadingLevel={1}
-            entityId="facilities:rental"
-            extensionTableId="facilities.rentals"
-            actions={createAction}
-            columns={columns}
-            data={data?.items ?? []}
-            isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.rentals.errors.load')) : null}
-            filters={filterDefs}
-            filterValues={filters}
-            onFiltersApply={(values: FilterValues) => {
-              setFilters(values)
-              setPage(1)
-            }}
-            onFiltersClear={() => {
-              setFilters({})
-              setPage(1)
-            }}
-            rowActions={(row: RentalRow) => {
-              const items = rentalActions(row.status).map((action) => actionItem(row, action))
-              return items.length > 0 ? (
-                <span data-testid={`facilities-rental-actions-${row.id}`}>
-                  <RowActions items={items} />
-                </span>
-              ) : null
-            }}
-            pagination={{
-              page,
-              pageSize: PAGE_SIZE,
-              total: data?.total ?? 0,
-              totalPages: data?.totalPages ?? 0,
-              onPageChange: setPage,
-            }}
-          />
-        </div>
-      )}
-      {dialog?.kind === 'cancel' ? (
-        <CancelRentalDialog
-          key={`cancel-${dialog.row.id}`}
-          row={dialog.row}
-          placeName={placeLabel(t, places.names, dialog.row.placeId)}
-          open
-          onOpenChange={(open) => {
-            if (!open) setDialog(null)
-          }}
-          onDone={refresh}
-        />
-      ) : null}
-      {dialog?.kind === 'move' ? (
-        <MoveRentalDialog
-          key={`move-${dialog.row.id}`}
-          row={dialog.row}
-          placeName={placeLabel(t, places.names, dialog.row.placeId)}
-          places={places.options}
-          open
-          onOpenChange={(open) => {
-            if (!open) setDialog(null)
-          }}
-          onDone={refresh}
-        />
-      ) : null}
-      {ConfirmDialogElement}
-    </div>
-  )
-}
-
-export function RentalsTable() {
-  const t = useT()
-  const queryClient = useQueryClient()
-  const places = usePlaceOptions()
-  const [tab, setTab] = React.useState<RentalListTab>('active')
-  const [createOpen, setCreateOpen] = React.useState(false)
-  // A new key per opening starts the dialog fresh.
-  const [createKey, setCreateKey] = React.useState(0)
-
-  return (
-    <>
+    <div className="flex flex-col gap-4">
       <Tabs
-        value={tab}
+        value={state.status}
+        variant="underline"
         onValueChange={(value: string) => {
-          setTab(RENTAL_LIST_TABS.find((entry) => entry === value) ?? 'active')
+          navigate({ status: RENTAL_LIST_STATUSES.find((entry) => entry === value) ?? 'active' })
         }}
       >
         {/* The platform tabs primitives drop `data-testid`; the wrapper carries it, and tests pick a tab by role. */}
         <div className="overflow-x-auto" data-testid="facilities-rentals-tabs">
           <TabsList aria-label={t('facilities.rentals.tabs.label')}>
-            {RENTAL_LIST_TABS.map((value) => (
+            {RENTAL_LIST_STATUSES.map((value) => (
               <TabsTrigger key={value} value={value}>
-                {t(`facilities.rentals.tabs.${value}`)}
+                {t(`facilities.rentals.tabs.${TAB_KEYS[value]}`)}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
-        <TabsContent value={tab} className="pt-4">
-          <RentalsList
-            key={tab}
-            tab={tab}
-            onCreate={() => {
-              setCreateKey((current) => current + 1)
-              setCreateOpen(true)
-            }}
-          />
+        <TabsContent value={state.status} className="flex flex-col gap-4 pt-4">
+          <div
+            role="group"
+            aria-label={t('facilities.rentals.views.label')}
+            className="flex flex-wrap items-center gap-2"
+            data-testid="facilities-rentals-views"
+          >
+            <span className="text-muted-foreground text-sm">{t('facilities.rentals.views.label')}</span>
+            {RENTAL_VIEWS.map((view) => (
+              <Button
+                key={view}
+                type="button"
+                size="sm"
+                variant={state.view === view ? 'default' : 'outline'}
+                aria-pressed={state.view === view}
+                data-testid={`facilities-rentals-view-${view}`}
+                onClick={() => {
+                  navigate({ view: state.view === view ? '' : view })
+                }}
+              >
+                {t(`facilities.rentals.views.${view}`)}
+              </Button>
+            ))}
+          </div>
+          {empty ? (
+            <ListEmptyState
+              title={t('facilities.rentals.emptyTitle')}
+              message={
+                state.view
+                  ? t(`facilities.rentals.views.empty.${state.view}`)
+                  : t(`facilities.rentals.empty.${TAB_KEYS[state.status]}`)
+              }
+              actions={createAction}
+              testId={`facilities-rentals-empty-${state.status}`}
+              onClearFilters={
+                filtered
+                  ? () => {
+                      navigate({ view: '', placeId: '' })
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <div className="relative max-w-full min-w-0 overflow-x-auto" data-testid="facilities-rentals-table">
+              {/* The table and its footer scroll inside this region at 320 px (the Polish footer line is wider). */}
+              <DataTable<RentalRow>
+                title={t('facilities.rentals.title')}
+                titleHeadingLevel={1}
+                entityId="facilities:rental"
+                extensionTableId="facilities.rentals"
+                actions={createAction}
+                columns={columns}
+                data={data?.items ?? []}
+                isLoading={isLoading}
+                error={error ? errorMessage(error, t('facilities.rentals.errors.load')) : null}
+                filters={filterDefs}
+                filterValues={{ placeId: state.placeId }}
+                onFiltersApply={(values: FilterValues) => {
+                  const placeId: unknown = values.placeId
+                  navigate({ placeId: typeof placeId === 'string' ? placeId : '' })
+                }}
+                onFiltersClear={() => {
+                  navigate({ placeId: '' })
+                }}
+                onRowClick={(row: RentalRow) => {
+                  router.push(rentalHref(row.id))
+                }}
+                rowActions={(row: RentalRow) => {
+                  const items = rentalActions(row.status)
+                    .filter((action) => !VISIBLE_RENTAL_ACTIONS.includes(action))
+                    .map((action) => menuItem(row, action))
+                  return items.length > 0 ? (
+                    <span data-testid={`facilities-rental-actions-${row.id}`}>
+                      <RowActions items={items} />
+                    </span>
+                  ) : null
+                }}
+                pagination={{
+                  page: state.page,
+                  pageSize: PAGE_SIZE,
+                  total: data?.total ?? 0,
+                  totalPages: data?.totalPages ?? 0,
+                  onPageChange: (page: number) => {
+                    navigate({ page })
+                  },
+                }}
+              />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
+      {actions.element}
       <RentalDialog
         key={createKey}
         open={createOpen}
         onOpenChange={setCreateOpen}
         places={places.options}
         preset={{ placeId: places.options.length === 1 ? (places.options[0]?.value ?? null) : null }}
-        onSaved={async () => {
-          await queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] })
-        }}
+        onSaved={refresh}
       />
-    </>
+    </div>
   )
 }

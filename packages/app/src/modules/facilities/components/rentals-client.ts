@@ -14,6 +14,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import { errorCodeOf, isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
 import { browserTimeZone, useClubTimeZone } from '@vereino/ui'
+import type { RentalChargeState } from '../lib/rental-record'
 import { MOVABLE_RENTAL_STATUSES, type RentalStatus } from '../lib/rentals'
 import { timeOf, zoneWallTime } from './club-places/places-client'
 import type { Translate } from './facilities-client'
@@ -24,6 +25,14 @@ export const RENTAL_QUOTE_URL = '/api/facilities/rentals/quote'
 
 /** The query key prefix of every rental read, invalidated after a write. */
 export const RENTALS_KEY = 'facilities-rentals'
+
+/** B-24 and the rental page (#279). */
+export const RENTALS_HREF = '/backend/facilities/rentals'
+export const REQUESTS_HREF = '/backend/facilities/requests'
+
+export function rentalHref(id: string): string {
+  return `${RENTALS_HREF}/${encodeURIComponent(id)}`
+}
 
 /** One row of `GET /api/facilities/rentals`. */
 export type RentalRow = {
@@ -48,10 +57,15 @@ export type RentalRow = {
   paymentDeadline: string | null
   regulationsAcceptedAt: string | null
   regulationsAcceptedVia: string | null
+  emailVerifiedAt: string | null
+  decisionReason: string | null
   needsReschedule: boolean
   notes: string | null
   createdAt: string | null
   updatedAt: string | null
+  /** The owner institution the rental is paid to; null = the club's own account (#279). */
+  payee: { institutionId: string; name: string } | null
+  chargeState: RentalChargeState
 }
 
 export type ConflictKind = 'session' | 'rental' | 'closure' | 'maintenance'
@@ -86,6 +100,38 @@ export type RentalAction = 'confirm' | 'cancel' | 'move' | 'noShow'
 export function rentalActions(status: RentalStatus): RentalAction[] {
   if (!MOVABLE_RENTAL_STATUSES.includes(status)) return []
   return status === 'requested' ? ['confirm', 'cancel', 'move', 'noShow'] : ['cancel', 'move', 'noShow']
+}
+
+/** B-24 shows "Confirm payment" and "Cancel" as buttons; Move and No-show stay in the row menu (#279). */
+export const VISIBLE_RENTAL_ACTIONS: readonly RentalAction[] = ['confirm', 'cancel']
+
+const CHARGE_STATE_VARIANTS: Record<RentalChargeState, StatusBadgeVariant> = {
+  none: 'neutral',
+  open: 'warning',
+  partially_paid: 'warning',
+  paid: 'success',
+  cancelled: 'neutral',
+  forfeited: 'error',
+}
+
+export function chargeStateVariant(state: RentalChargeState): StatusBadgeVariant {
+  return CHARGE_STATE_VARIANTS[state]
+}
+
+/** "to: Gmina Przykładowo" or "to the club's account" (glossary *Payee of a rental*). */
+export function payeeLabel(t: Translate, payee: RentalRow['payee']): string {
+  return payee ? t('facilities.rentals.payee.owner', { name: payee.name }) : t('facilities.rentals.payee.club')
+}
+
+/** `PUT /api/facilities/rentals` body of a correction (#279). */
+export type RentalCorrection = {
+  contactName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  purpose: string | null
+  notes: string | null
+  renterType?: 'institution' | 'person'
+  renterId?: string
 }
 
 const STATUS_VARIANTS: Partial<Record<RentalStatus, StatusBadgeVariant>> = {
