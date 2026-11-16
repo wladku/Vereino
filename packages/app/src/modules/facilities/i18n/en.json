@@ -407,6 +407,7 @@
   "facilities.places.nav.contextCoachCoordinator": "as coach / coordinator",
   "facilities.places.list.intro": "Today’s occupancy of every club facility. Open a facility to see its day and book a free slot.",
   "facilities.places.list.empty": "The club has no active facilities yet.",
+  "facilities.places.list.add": "Add a facility",
   "facilities.places.list.free": "Nothing is booked today.",
   "facilities.places.list.count": "Blocks today: {count}",
   "facilities.places.list.more": "And {count} more",
