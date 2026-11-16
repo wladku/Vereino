@@ -302,9 +302,10 @@ export default function ClubTodayTilesWidget({
       }
     : null
   const [selection] = useMemberContext(profile)
-  const coaches = profile?.contexts.includes('coach') ?? false
   // In the staff context the member tiles step aside; otherwise the coach tile is added to them.
   const actingAsMember = selection.role === 'member'
+  // A coach, and anyone acting in the staff context (a coordinator too), gets the coach scope (spec N, staff scopes).
+  const coaches = (profile?.contexts.includes('coach') ?? false) || !actingAsMember
   const scope = profile ? memberSideScope(profile, selection) : { as: 'self' as const, personId: null }
   const guardian = scope.as === 'guardian'
   const today = calendarDateInZone(new Date(), timeZone)

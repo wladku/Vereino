@@ -97,6 +97,7 @@ test('E09-S05 the staff context for a coach-only person, the switcher for a coac
     const violations: Record<string, unknown> = {}
 
     // --- TEST-N08: the landing of each role and the profile facts ---
+    const kept = '/club/messages/00000000-0000-4000-8000-000000000000'
     const coachPassword = await newPassword(page, club.superToken, family.coach.userId)
     expect((await signIn(page, family.coach.email, coachPassword)).redirect).toBe('/club')
     const guardianPassword = await newPassword(page, club.superToken, family.guardian.userId)
@@ -105,7 +106,6 @@ test('E09-S05 the staff context for a coach-only person, the switcher for a coac
     const attendantPassword = await newPassword(page, club.superToken, attendant.userId)
     const attendantLanding = await signIn(page, attendant.email, attendantPassword)
     expect(attendantLanding.redirect).toBe('/club/facility')
-    const kept = '/club/messages/00000000-0000-4000-8000-000000000000'
     expect((await signIn(page, attendant.email, attendantPassword, kept)).redirect).toBe(kept)
     const attendantMe = await getMe(request, attendantLanding.token)
     expect(attendantMe.status).toBe(200)
@@ -115,6 +115,12 @@ test('E09-S05 the staff context for a coach-only person, the switcher for a coac
     const elderMe = await getMe(request, family.elder.token)
     expect(elderMe.body?.isParticipant).toBe(true)
     expect(elderMe.body?.wards).toEqual([])
+    // The participant, and a coordinator who does not coach, land on `/club`; a member's explicit redirect is kept.
+    const elderPassword = await newPassword(page, club.superToken, family.elder.userId)
+    expect((await signIn(page, family.elder.email, elderPassword)).redirect).toBe('/club')
+    expect((await signIn(page, family.guardian.email, guardianPassword, kept)).redirect).toBe(kept)
+    const coordinatorPassword = await newPassword(page, club.superToken, family.poolCoordinator.userId)
+    expect((await signIn(page, family.poolCoordinator.email, coordinatorPassword)).redirect).toBe('/club')
 
     // The administrator with no ward, no membership and no coach grant lands on the panel; once a parent, on `/club`.
     const adminEmail = club.tenant.email

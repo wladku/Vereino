@@ -123,8 +123,9 @@ function Calendar({ profile }: { profile: ClubProfile }) {
   const coachQuery = useMemberCalendar(coaching ? { as: 'coach', from: shown.from, to: shown.to } : null)
   const reads = [memberScope ? memberQuery : null, coaching ? coachQuery : null].filter((read) => read !== null)
   const answered = reads.filter((read) => read.data)
-  const failed = reads.filter((read) => !read.data && !read.isFetching)
-  const loading = answered.length === 0 && failed.length < reads.length
+  const failed = reads.filter((read) => !read.data && read.isError)
+  // Until every read has settled the page shows loading, so a half list never offers "Next week" by mistake.
+  const loading = reads.some((read) => !read.data && !read.isError)
   const retry = () => {
     for (const read of failed) void read.refetch()
   }

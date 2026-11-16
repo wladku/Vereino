@@ -41,3 +41,15 @@
 ## Next steps
 
 - Spec A phase 8 (the coordinator on the phone) can read `memberStaffScopes`.
+
+## Review round (PR #325)
+
+An independent review agent (read-only, given the diff and the requirements, not my conclusions) returned approve with follow-ups, no blockers. Applied:
+
+- Today in the staff context asks for the coach scope too, so a coordinator who does not coach is not left with an empty Today (spec N, "Staff scopes").
+- The calendar shows loading until every read has settled (no half list that offers "Next week"), and counts a read as failed only on `isError`.
+- E09-S05 also checks the participant's and a non-coaching coordinator's landing (`/club`) and a member's explicit redirect.
+
+Not applied: the ordering assertion of the integration test (the merge sort is covered by the `mergeCalendarEntries` unit test); a shared session in the merged list carrying the coach's item, which drops the ward's declaration buttons on M-03 for that session — this is what the spec says ("opens with `?as=coach`"), raised for the owner on the PR.
+
+After the fixes: `yarn verify` → all 17 steps passed; `yarn test:integration:vereino --filter E09-S05` → `1 passed (2.6m)`.
