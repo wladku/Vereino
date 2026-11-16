@@ -50,7 +50,7 @@
   "appShell.goToDashboard": "Zum Dashboard",
   "appShell.moreActions": "Weitere Aktionen",
   "appShell.openMenu": "Menü öffnen",
-  "appShell.productName": "Open Mercato",
+  "appShell.productName": "Vereino",
   "appShell.searchNavAria": "Navigation durchsuchen",
   "appShell.searchNavClear": "Suche zurücksetzen",
   "appShell.searchNavPlaceholder": "Suchen...",
@@ -112,6 +112,9 @@
   "appShell.version": "Version {{version}}",
   "audit_logs.banner.undo_failed": "Rückgängig machen fehlgeschlagen",
   "auth.email": "E-Mail",
+  "auth.login.brandName": "Vereino",
+  "auth.login.logoAlt": "Vereino",
+  "auth.login.subtitle": "Sign in to your account",
   "auth.manageAuthSettings": "Verwalte die Authentifizierungseinstellungen.",
   "auth.password": "Passwort",
   "auth.resetPassword": "Passwort zurücksetzen",
@@ -1176,5 +1179,7 @@
   "vector.api.errors.purgeFailed": "Vektor-Index-Bereinigung fehlgeschlagen",
   "vector.api.errors.reindexFailed": "Vektor-Neuindizierung fehlgeschlagen",
   "vector.api.errors.searchFailed": "Vektorsuche fehlgeschlagen",
-  "vector.api.errors.updateFailed": "Vektor-Einstellungen konnten nicht aktualisiert werden."
+  "vector.api.errors.updateFailed": "Vektor-Einstellungen konnten nicht aktualisiert werden.",
+  "vereino.login.clubLoading": "Loading the club…",
+  "vereino.login.tagline": "One account for parents, players and coaches"
 }

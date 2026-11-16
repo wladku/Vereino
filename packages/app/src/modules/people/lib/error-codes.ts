@@ -14,6 +14,8 @@ export const errorCodes = [
   { code: 'role_scope_unexpected', status: 422, messageKey: 'people.errors.role_scope_unexpected' },
   // #126: a facility attendant's place that is not a live place of the club (field error on `placeId`).
   { code: 'role_place_invalid', status: 422, messageKey: 'people.errors.role_place_invalid' },
+  // Navigation spec REQ-N12, V-N05 (#262): a section coordinator is an adult (field error on `personId`).
+  { code: 'role_requires_adult', status: 422, messageKey: 'people.errors.role_requires_adult' },
   { code: 'guardianship_self', status: 422, messageKey: 'people.errors.guardianship_self' },
   {
     code: 'guardianship_primary_payer_conflict',

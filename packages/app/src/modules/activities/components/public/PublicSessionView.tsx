@@ -5,29 +5,34 @@
 // roster or a count. A planned session that has not started also offers "Send me a link" (`/club/link`, REQ-017, M-13)
 // for a guardian without an account — after the start a request sends nothing, so the page does not offer it (#192).
 // Like every public club page it ends with a footer holding the club name, its published phone (E06-S07, #89) and the
-// club's rules and privacy-policy links (#195). States: loading, error with retry, 404 without any detail.
+// club's rules and privacy-policy links (#195), and starts with the public header of `@vereino/ui` (Club · Sections ·
+// Facilities · Events · Sign in; navigation spec REQ-N09, #261). States: loading, error with retry, 404 without any
+// detail.
 import * as React from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import { MemberSkeleton, PublicHeader, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
 import { linkRequestOpen, linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
   /**
    * `contact` is the club phone, null while the club does not publish the `contact` block; `links` are the club's rules
-   * and privacy policy, each null while not set (#195).
+   * and privacy policy, each null while not set (#195); `nav` says which optional header links the club publishes (#261).
    */
   club: {
     name: string
     slug: string
+    logo: { url: string | null; source: 'section' | 'club' | 'initial'; initial: string }
     contact: { phone: string } | null
     links: { rules: string | null; privacyPolicy: string | null }
+    nav: { facilities: boolean; events: boolean }
   }
   session: {
     activityName: string
@@ -117,26 +122,26 @@ function Footer({ club }: { club: PublicSessionPage['club'] }) {
   )
 }
 
-function Frame({
-  clubName,
-  club = null,
-  children,
-}: {
-  clubName: string | null
-  club?: PublicSessionPage['club'] | null
-  children: React.ReactNode
-}) {
+function Frame({ club = null, children }: { club?: PublicSessionPage['club'] | null; children: React.ReactNode }) {
   const t = useT()
+  const pathname = usePathname()
   return (
     <div className="bg-background text-foreground min-h-svh">
-      <header className="bg-card border-b">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <span className="font-semibold" data-testid="public-session-club">
-            {clubName ?? t('activities.publicSession.title')}
-          </span>
-          <LanguageSwitcher />
-        </div>
-      </header>
+      <PublicHeader
+        club={club}
+        title={t('activities.publicSession.title')}
+        labels={{
+          nav: t('activities.publicSession.nav.label'),
+          club: t('activities.publicSession.nav.club'),
+          sections: t('activities.publicSession.nav.sections'),
+          facilities: t('activities.publicSession.nav.facilities'),
+          events: t('activities.publicSession.nav.events'),
+          signIn: t('activities.publicSession.nav.signIn'),
+        }}
+        pathname={pathname}
+        Link={Link}
+        headerEnd={<LanguageSwitcher />}
+      />
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
       {club ? <Footer club={club} /> : null}
     </div>
@@ -151,14 +156,14 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
 
   if (!load && query.isFetching) {
     return (
-      <Frame clubName={null}>
-        <LoadingMessage label={t('activities.publicSession.loading')} />
+      <Frame>
+        <MemberSkeleton shape="rows" label={t('activities.publicSession.loading')} />
       </Frame>
     )
   }
   if (!load) {
     return (
-      <Frame clubName={null}>
+      <Frame>
         <ErrorMessage
           label={t('activities.publicSession.errors.load')}
           action={
@@ -172,7 +177,7 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
   }
   if (load.status === 'not_found') {
     return (
-      <Frame clubName={null}>
+      <Frame>
         <section className="flex flex-col gap-2" data-testid="public-session-not-found">
           <h1 className="text-2xl font-semibold">{t('activities.publicSession.notFound.title')}</h1>
           <p className="text-muted-foreground max-w-prose">{t('activities.publicSession.notFound.message')}</p>
@@ -186,7 +191,7 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
   const end = new Date(session.endAt)
   const cancelled = session.status === 'cancelled'
   return (
-    <Frame clubName={club.name} club={club}>
+    <Frame club={club}>
       <section className="flex flex-col gap-3" aria-labelledby="public-session-title" data-testid="public-session">
         <h1 id="public-session-title" className="text-2xl font-semibold" data-testid="public-session-activity">
           {session.activityName}

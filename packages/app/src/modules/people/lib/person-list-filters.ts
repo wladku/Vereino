@@ -7,8 +7,18 @@ import { ADULT_AGE, assertCalendarDate, isCalendarDate, type CalendarDate } from
 export const PERSON_LIST_VIEWS = ['all', 'staff', 'children', 'no_account'] as const
 export type PersonListView = (typeof PERSON_LIST_VIEWS)[number]
 
-/** The roles the list filters by: the assignable roles, a guardian (has wards) and a participant (a membership). */
-export const PERSON_FILTER_ROLES = ['club_admin', 'coordinator', 'coach', 'guardian', 'participant'] as const
+/**
+ * The roles the list filters by: the assignable roles (the facility attendant `facility_operator` since #262,
+ * navigation spec REQ-N12), a guardian (has wards) and a participant (a membership).
+ */
+export const PERSON_FILTER_ROLES = [
+  'club_admin',
+  'coordinator',
+  'coach',
+  'facility_operator',
+  'guardian',
+  'participant',
+] as const
 export type PersonFilterRole = (typeof PERSON_FILTER_ROLES)[number]
 
 /** Above this many candidate ids the list refuses with 422 `people_filter_too_broad` instead of loading them. */

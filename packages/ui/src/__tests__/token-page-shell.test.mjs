@@ -24,12 +24,13 @@ const render = (props, children = null) =>
     h(TokenPageShell, { labels, requestLinkHref: '/club/link', Link, onRetry: () => {}, ...props }, children),
   )
 
-test('loading: the generic title and an announced loading line', () => {
+test('loading: the generic title and a row skeleton with an announced status line', () => {
   const html = render({ state: 'loading' })
   assert.match(html, /^<div class="bg-background text-foreground min-h-svh"><header class="bg-card border-b">/)
   assert.match(html, /<span class="font-semibold" data-testid="token-page-club">Attendance<\/span>/)
   assert.match(html, /<main [^>]*data-testid="token-page" data-state="loading">/)
-  assert.match(html, /<p role="status"[^>]*data-testid="token-page-loading">Loading…<\/p>/)
+  assert.match(html, /<div aria-busy="true" data-testid="token-page-loading" data-skeleton="rows">/)
+  assert.match(html, /<span role="status" class="sr-only">Loading…<\/span>/)
 })
 
 test('expired and not found: their copy and the link to request a new one', () => {

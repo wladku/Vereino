@@ -5,21 +5,26 @@
 // those three; the section's own fields and its coordinators stay with the club administrator. UX parity spec REQ-U02
 // (B-05): the edit page is split into the tabs Details / Coordinators / Public page, addressable by
 // `?tab=details|coordinators|public`; deactivation moved to the list's row action, which a 409 with the section's
-// active groups can refuse (also on delete here).
+// active groups can refuse (also on delete here). Navigation spec REQ-N12 (B-04, B-05; #262): "Add section" offers an
+// optional adult coordinator — the section is created first, then the role assignment, and a failed assignment lands
+// on the new section's Coordinators tab with a warning; the section's coordinator reads the Coordinators tab; saving
+// Details stays on the record.
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
+import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useClubToday } from '@vereino/ui'
 import { effectiveLogo, nameInitial, staffLogoUrl } from '../lib/files'
 import { textOrNull, errorMessage, type Translate } from './client-helpers'
 import { LogoPanel } from './LogoPanel'
-import { SectionCoordinators } from './SectionCoordinators'
+import { CoordinatorPicker, SectionCoordinators } from './SectionCoordinators'
 import { SectionInUseDialog } from './SectionInUseDialog'
 import { SectionMaterialsPanel } from './SectionMaterialsPanel'
 import { SectionPublicPanel } from './SectionPublicPanel'
@@ -39,6 +44,8 @@ type SectionFormValues = {
   id?: string
   name: string
   description: string
+  /** "Add section" only: the optional coordinator, assigned after the section is created (#262). */
+  coordinatorId?: string | null
   updatedAt?: string | null
 }
 
@@ -91,7 +98,34 @@ function tabFrom(value: string | null, allowed: readonly SectionTab[]): SectionT
 
 export function SectionCreateForm() {
   const t = useT()
-  const { fields, groups } = useSectionFields(t, 80)
+  const router = useRouter()
+  const today = useClubToday()
+  const section = useSectionFields(t, 80)
+  const fields = React.useMemo<CrudField[]>(
+    () => [
+      ...section.fields,
+      {
+        id: 'coordinatorId',
+        label: t('club_core.sections.fields.coordinator'),
+        type: 'custom',
+        description: t('club_core.sections.fields.coordinator.help'),
+        component: ({ value, disabled, setValue }) => (
+          <CoordinatorPicker
+            value={typeof value === 'string' && value ? value : null}
+            onChange={(next) => {
+              setValue(next)
+            }}
+            disabled={disabled}
+          />
+        ),
+      },
+    ],
+    [section.fields, t],
+  )
+  const groups = React.useMemo<CrudFormGroup[]>(
+    () => section.groups.map((group) => ({ ...group, fields: [...(group.fields ?? []), 'coordinatorId'] })),
+    [section.groups],
+  )
   return (
     <CrudForm<SectionFormValues>
       title={t('club_core.sections.create.title')}
@@ -101,11 +135,36 @@ export function SectionCreateForm() {
       entityId={ENTITY_ID}
       fields={fields}
       groups={groups}
-      initialValues={{ name: '', description: '' }}
+      initialValues={{ name: '', description: '', coordinatorId: null }}
       submitLabel={t('club_core.common.create')}
-      successRedirect={withFlash(LIST_HREF, t('club_core.sections.flash.created'), 'success')}
       onSubmit={async (values) => {
-        await createCrud('club_core/sections', payload(values))
+        const created = await createCrud<{ id?: string }>('club_core/sections', payload(values))
+        const id = created.result?.id
+        const coordinatorId =
+          typeof values.coordinatorId === 'string' && values.coordinatorId ? values.coordinatorId : null
+        if (!id || !coordinatorId) {
+          router.push(withFlash(LIST_HREF, t('club_core.sections.flash.created'), 'success'))
+          return
+        }
+        try {
+          await apiCallOrThrow('/api/people/role-assignments', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ personId: coordinatorId, role: 'coordinator', sectionId: id, validFrom: today }),
+          })
+          router.push(withFlash(LIST_HREF, t('club_core.sections.flash.created'), 'success'))
+        } catch (cause: unknown) {
+          // Partial success: the section exists; the Coordinators tab is where the assignment is retried, and the
+          // warning carries the server's reason (e.g. `role_requires_adult`).
+          const reason = errorMessage(cause, t('club_core.coordinators.errors.assign'))
+          router.push(
+            withFlash(
+              `${LIST_HREF}/${id}/edit?tab=coordinators`,
+              t('club_core.sections.flash.createdWithoutCoordinator', { reason }),
+              'warning',
+            ),
+          )
+        }
       }}
     />
   )
@@ -137,7 +196,10 @@ export function SectionEditForm({ id }: { id: string }) {
   }, [query])
 
   const allowedTabs = React.useMemo<SectionTab[]>(
-    () => SECTION_TABS.filter((tab) => (tab === 'coordinators' ? canManage : tab === 'public' ? canEditContent : true)),
+    () =>
+      SECTION_TABS.filter((tab) =>
+        tab === 'coordinators' ? canManage || canEditContent : tab === 'public' ? canEditContent : true,
+      ),
     [canManage, canEditContent],
   )
   const tab = tabFrom(searchParams.get('tab'), allowedTabs)
@@ -199,10 +261,12 @@ export function SectionEditForm({ id }: { id: string }) {
                 updatedAt: section?.updatedAt ?? null,
               }}
               submitLabel={t('club_core.common.save')}
-              successRedirect={withFlash(LIST_HREF, t('club_core.sections.flash.saved'), 'success')}
               deleteRedirect={withFlash(LIST_HREF, t('club_core.sections.flash.deleted'), 'success')}
               onSubmit={async (values) => {
+                // Saving Details stays on the record (#262): the refetch brings the new name and lock token.
                 await updateCrud('club_core/sections', { id, ...payload(values) })
+                flash(t('club_core.sections.flash.saved'), 'success')
+                await refetch()
               }}
               onDelete={async () => {
                 try {
@@ -231,9 +295,9 @@ export function SectionEditForm({ id }: { id: string }) {
             />
           ) : null}
         </TabsContent>
-        {canManage ? (
+        {canManage || canEditContent ? (
           <TabsContent value="coordinators" className="pt-4">
-            {section ? <SectionCoordinators section={section} onChanged={refetch} /> : null}
+            {section ? <SectionCoordinators section={section} onChanged={refetch} readOnly={!canManage} /> : null}
           </TabsContent>
         ) : null}
         {canEditContent ? (

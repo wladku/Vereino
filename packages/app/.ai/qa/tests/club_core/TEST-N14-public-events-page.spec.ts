@@ -32,7 +32,7 @@ type EventItem = {
   sectionLogo: { source: string }
 }
 type EventsPage = {
-  club: { slug: string; nav: { events: boolean } }
+  club: { slug: string; nav: { facilities: boolean; events: boolean } }
   sections: { name: string; slug: string }[]
   section: string | null
   upcoming: EventItem[]
@@ -130,7 +130,7 @@ test('TEST-N14 public events page: upcoming and past of public groups, section f
     expect(off.status).toBe(404)
     expect(off.body).toMatchObject({ code: 'public_events_disabled' })
     const clubOff = await publicGet(request, `/api/club_core/public/${slug}`)
-    expect((clubOff.body as { club: { nav: unknown } }).club.nav).toEqual({ events: false })
+    expect((clubOff.body as { club: { nav: unknown } }).club.nav).toEqual({ facilities: false, events: false })
     expect((await publicGet(request, '/api/club_core/public/no-such-club-n14/events')).body).toMatchObject({
       code: 'public_page_not_found',
     })
@@ -140,7 +140,7 @@ test('TEST-N14 public events page: upcoming and past of public groups, section f
     const all = await publicGet(request, `/api/club_core/public/${slug}/events`)
     expect(all.status, JSON.stringify(all.body)).toBe(200)
     const page1 = all.body as unknown as EventsPage
-    expect(page1.club.nav).toEqual({ events: true })
+    expect(page1.club.nav).toEqual({ facilities: false, events: true })
     expect(page1.section).toBeNull()
     expect(page1.sections.map((section) => section.slug)).toEqual(['basen', 'pilka'])
     expect(page1.upcoming.map((item) => item.name)).toEqual(['Turniej halowy', 'Sparing z Delfinem'])

@@ -4,7 +4,8 @@
 // perspectives All / Staff / Children / Without account are an app-owned tablist above the table (DD-U03); the
 // filters section, group, role, account and age, the first- or last-name search and the page live in the URL, so a
 // reload restores the view and the back button steps through it. Columns: name, age, roles, groups (from the `groups`
-// enricher), account and guardians. The add action for `people.manage`.
+// enricher), account and guardians. The add action for `people.manage`; since #262 (navigation spec REQ-N12) the role
+// filter includes the facility attendant and an "Import" button opens the imports page.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -34,7 +35,11 @@ import {
   type PersonListView,
 } from '../lib/person-list-filters'
 import { PERSONS_HREF, errorMessage, type PersonListItemRow, type TableColumns, type Translate } from './client-helpers'
+
 import { useGrantedFeatures } from './useGrantedFeatures'
+
+/** The imports page (`people.manage` + `people.pesel.view`); the "Import" button of B-09 opens it (#262). */
+const IMPORTS_HREF = '/backend/people/imports'
 
 const PAGE_SIZE = 50
 
@@ -318,9 +323,17 @@ export function PersonsTable() {
             extensionTableId="people.persons"
             actions={
               canManage ? (
-                <Button asChild>
-                  <Link href={`${PERSONS_HREF}/create`}>{t('people.persons.actions.create')}</Link>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {/* The imports page needs both features (its page meta); since #262 this is its entry point. */}
+                  {features['people.pesel.view'] ? (
+                    <Button asChild variant="outline">
+                      <Link href={IMPORTS_HREF}>{t('people.persons.actions.import')}</Link>
+                    </Button>
+                  ) : null}
+                  <Button asChild>
+                    <Link href={`${PERSONS_HREF}/create`}>{t('people.persons.actions.create')}</Link>
+                  </Button>
+                </div>
               ) : null
             }
             columns={columns}

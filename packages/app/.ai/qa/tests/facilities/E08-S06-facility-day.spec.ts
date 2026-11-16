@@ -215,6 +215,9 @@ test('E08-S06 facility day: open, groups, incident with 422, close; log, inciden
     await expect(banTable).toContainText('FC Zakazani')
     await expect(banTable).toContainText('Zniszczenie siatki')
     await expect(banTable).toContainText('Ada Admin')
+    // The list loads again once the organization switcher answers and redraws its rows: a row menu opened before that
+    // is detached under the click, so let the page settle first.
+    await page.waitForLoadState('networkidle')
     await page
       .getByTestId(`facilities-ban-actions-${String(ban.body?.id)}`)
       .getByRole('button')

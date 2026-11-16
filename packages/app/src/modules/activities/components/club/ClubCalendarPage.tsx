@@ -18,7 +18,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
+import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -31,7 +31,7 @@ import {
   type CalendarDate,
   type DateWindow,
 } from '@vereino/core'
-import { CalendarList, memberCalendarScopes, useMemberContext, type MemberLinkProps } from '@vereino/ui'
+import { CalendarList, memberCalendarScopes, useMemberContext, MemberSkeleton, type MemberLinkProps } from '@vereino/ui'
 import {
   CALENDAR_VIEWS,
   calendarViewWindow,
@@ -187,7 +187,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
   const viewLabels = VIEW_LABELS[view]
 
   let content: React.ReactNode
-  if (loading) content = <LoadingMessage label={t('activities.club.calendar.loading')} />
+  if (loading) content = <MemberSkeleton shape="rows" label={t('activities.club.calendar.loading')} />
   else if (answered.length === 0)
     content = (
       <ErrorMessage

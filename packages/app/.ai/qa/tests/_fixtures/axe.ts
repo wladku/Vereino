@@ -13,7 +13,8 @@ type ScannedNode = { html: string; target: unknown[] }
 // renders each field's <label> without `htmlFor` and its controls without an accessible name, and the
 // backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
 // its text, and its breadcrumb puts an aria-label on the role-less current-page span; the schedule family
-// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text.
+// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text;
+// `LookupSelect` points its search combobox at a listbox it has not rendered yet.
 // Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
 const PLATFORM_BASELINE: {
@@ -57,6 +58,15 @@ const PLATFORM_BASELINE: {
   // calendar of `/backend/activities/occurrences`, #94).
   { rule: 'aria-required-children', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
   { rule: 'aria-required-parent', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
+  // `LookupSelect`'s search input is a `role="combobox"` whose `aria-controls` names its listbox and whose
+  // `aria-expanded` is true while it searches, but the listbox renders only once there are results or a typed query:
+  // with no candidates and an empty query the reference points at nothing (first scanned on "Add section" with its
+  // coordinator picker, `/backend/club/sections/create`, #262).
+  {
+    rule: 'aria-valid-attr-value',
+    owner: 'LookupSelect search combobox',
+    matches: (node) => node.html.includes('role="combobox"') && node.html.includes('aria-autocomplete="list"'),
+  },
 ]
 
 // Whether a scanned node sits inside an AppShell sidebar group (`[data-sidebar-group]`) of the current page.

@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
+import { MemberSkeleton } from '@vereino/ui'
 import type { MemberGroupRow } from '../../../lib/member-groups'
 
 /** The spot context `people`'s member pages pass: the ward (or member) person and the layout. */
@@ -45,7 +46,7 @@ export default function ClubWardGroupsWidget({
 
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
-    body = <p className="text-muted-foreground text-sm">{t('groups.club.wardGroups.loading')}</p>
+    body = <MemberSkeleton shape="rows" count={section ? 2 : 1} label={t('groups.club.wardGroups.loading')} />
   } else if (!query.data) {
     body = <p className="text-muted-foreground text-sm">{t('groups.club.wardGroups.error')}</p>
   } else if (rows.length === 0) {
