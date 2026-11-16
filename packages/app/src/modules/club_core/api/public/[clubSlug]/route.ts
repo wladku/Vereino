@@ -10,6 +10,7 @@ import {
   notOkResponse,
   publicErrorSchema,
   publicClubLinksSchema,
+  publicClubNavSchema,
   publicLogoSchema,
   publicRoute,
   publicSite,
@@ -38,6 +39,7 @@ const clubPageSchema = z.object({
     logo: publicLogoSchema,
     contact: z.object({ phone: z.string() }).nullable().describe('Only with the `contact` block'),
     links: publicClubLinksSchema,
+    nav: publicClubNavSchema,
   }),
   sections: z.array(
     z.object({

@@ -5,7 +5,8 @@
 // (or inactive, deleted, without a slug, or of another club) and a file that is not published all answer the same
 // `not_found`; a club whose page is off answers `disabled` and nothing else about it. The public places (#124) need the
 // `places_calendar` block too (`disabled` without it) and `is_public_schedule` on an active, live place with a slug
-// (DD-29); a place's photos and regulations PDF are served under its public slug.
+// (DD-29); a place's photos and regulations PDF are served under its public slug. The Events page P-06 (#263) needs the
+// `events` block (`disabled` without it) and reads its lists from the optional `activities.publicEvents` contribution.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
@@ -33,9 +34,12 @@ import {
 } from '../lib/publication'
 import {
   PUBLIC_BLOCK_PROVIDER_TOKENS,
+  PUBLIC_EVENTS_PROVIDER_TOKEN,
   type PublicBlockContext,
   type PublicBlockProvider,
   type PublicClubBlockContext,
+  type PublicEventEntry,
+  type PublicEventsProvider,
   type PublicSectionBlockContext,
 } from './public-blocks'
 
@@ -53,18 +57,32 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    nav: PublicClubNav
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
-  /** Blocks of optional providers (upcoming events #91, the places calendar in phase 5); absent while none contributes. */
+  /** Blocks of optional providers (group counts, the places link); absent while none contributes. Events: P-06 (#263). */
   blocks: Record<string, unknown>
 }
 
 /** The club's own contact in the page footer: the club phone, only with the `contact` block (E06-S07, #89). */
 export type PublicClubContact = { phone: string } | null
 
+/**
+ * Which menu links of the public header exist (navigation spec REQ-N09, REQ-N13): `events` while the club publishes the
+ * `events` block (P-06, #263). The header itself follows with E09-S07 (#261).
+ */
+export type PublicClubNav = { events: boolean }
+
 export type PublicSectionPage = {
-  club: { name: string; slug: string; logo: PublicLogo; contact: PublicClubContact; links: PublicClubLinks }
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
   section: { name: string; slug: string; logo: PublicLogo }
   blocks: ClubCoreSectionBlocks & Record<string, unknown>
 }
@@ -113,6 +131,31 @@ export type PublicPlaceDetail = PublicPlace & {
   regulationsUrl: string | null
 }
 
+/** An event of P-06 (#263): the `activities.publicEvents` entry with its public section's name and logo. */
+export type PublicEvent = Omit<PublicEventEntry, 'sectionSlug'> & {
+  section: { name: string; slug: string }
+  sectionLogo: PublicLogo
+}
+
+/**
+ * The public Events page P-06 (navigation spec REQ-N13; #263): the club header, the public sections for the filter
+ * chips, the section the page is filtered to (null: all; an unknown slug shows all) and the two lists.
+ */
+export type PublicEventsPage = {
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
+  sections: { name: string; slug: string }[]
+  section: string | null
+  upcoming: PublicEvent[]
+  past: PublicEvent[]
+}
+
 export type PublicPlacesPage = { frame: PublicClubFrame; places: PublicPlace[] }
 
 export type PublicPlacePage = { frame: PublicClubFrame; place: PublicPlaceDetail }
@@ -120,6 +163,11 @@ export type PublicPlacePage = { frame: PublicClubFrame; place: PublicPlaceDetail
 export type ClubCorePublicSite = {
   clubPage(clubSlug: string): Promise<PublicSiteResult<PublicClubPage>>
   sectionPage(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicSectionPage>>
+  /**
+   * The Events page P-06 (#263), optionally filtered to one public section: `disabled` while the club does not publish
+   * its page or the `events` block, `not_found` for an unknown club.
+   */
+  publicEvents(clubSlug: string, sectionSlug: string | null): Promise<PublicSiteResult<PublicEventsPage>>
   clubLogo(clubSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
    * The club behind a public slug — its trusted tenant and organization and the header of its public pages — for a
@@ -248,6 +296,42 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
   /** The footer links of every public page: the club's rules and privacy policy, each only when set (#195). */
   function linksOf(club: FoundClub): PublicClubLinks {
     return clubLinks(club.settings.rulesUrl ?? null, club.settings.privacyPolicyUrl ?? null)
+  }
+
+  /** The menu links of the public header: "Events" only with the `events` block (#263). */
+  function navOf(club: FoundClub): PublicClubNav {
+    return { events: club.publication.blocks.events }
+  }
+
+  /** The club's public sections: active, `is_public`, with a slug, by name. */
+  function publicSections(db: EntityManager, club: FoundClub): Promise<Section[]> {
+    return db.find(
+      Section,
+      {
+        tenantId: club.tenantId,
+        organizationId: club.organizationId,
+        isPublic: true,
+        isActive: true,
+        deletedAt: null,
+        publicSlug: { $ne: null },
+      },
+      { orderBy: { name: 'asc' } },
+    )
+  }
+
+  /** The `activities.publicEvents` lists; none without the registration, and none (logged) when it fails. */
+  async function eventLists(
+    context: PublicClubBlockContext,
+  ): Promise<{ upcoming: PublicEventEntry[]; past: PublicEventEntry[] }> {
+    if (context.sections.length === 0 || !container.hasRegistration(PUBLIC_EVENTS_PROVIDER_TOKEN)) {
+      return { upcoming: [], past: [] }
+    }
+    try {
+      return await container.resolve<PublicEventsProvider>(PUBLIC_EVENTS_PROVIDER_TOKEN).events(context)
+    } catch (error: unknown) {
+      logger.warn('The public events contribution failed; the page lists no events', { err: error })
+      return { upcoming: [], past: [] }
+    }
   }
 
   /** Section logo ?? club logo ?? the initial of the club name (glossary *Logo*). */
@@ -383,18 +467,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       const club = found.value
       const name = await clubName(db, club)
       const clubLogo = clubLogoOf(club, name)
-      const sections = await db.find(
-        Section,
-        {
-          tenantId: club.tenantId,
-          organizationId: club.organizationId,
-          isPublic: true,
-          isActive: true,
-          deletedAt: null,
-          publicSlug: { $ne: null },
-        },
-        { orderBy: { name: 'asc' } },
-      )
+      const sections = await publicSections(db, club)
       const context: PublicClubBlockContext = {
         ...blockContext(club),
         sections: sections.map((section) => ({
@@ -414,6 +487,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             logo: clubLogo,
             contact: contactOf(club),
             links: linksOf(club),
+            nav: navOf(club),
           },
           sections: sections.map((section) => ({
             name: section.name,
@@ -465,9 +539,63 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return {
         status: 'ok',
         value: {
-          club: { name, slug: club.slug, logo: clubLogo, contact: contactOf(club), links: linksOf(club) },
+          club: {
+            name,
+            slug: club.slug,
+            logo: clubLogo,
+            contact: contactOf(club),
+            links: linksOf(club),
+            nav: navOf(club),
+          },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
           blocks: { ...extra, ...own },
+        },
+      }
+    },
+
+    async publicEvents(clubSlug, sectionSlug) {
+      const db = em()
+      const found = await findClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const club = found.value
+      if (!club.publication.blocks.events) return DISABLED
+      const name = await clubName(db, club)
+      const clubLogo = clubLogoOf(club, name)
+      const sections = await publicSections(db, club)
+      const selected = sections.find((section) => section.publicSlug === sectionSlug) ?? null
+      const shown = selected ? [selected] : sections
+      const lists = await eventLists({
+        ...blockContext(club),
+        sections: shown.map((section) => ({
+          id: section.id,
+          name: section.name,
+          slug: section.publicSlug as string,
+        })),
+      })
+      const bySlug = new Map(shown.map((section) => [section.publicSlug as string, section]))
+      const decorate = (entries: readonly PublicEventEntry[]): PublicEvent[] =>
+        entries.flatMap(({ sectionSlug: slug, ...entry }) => {
+          const section = bySlug.get(slug)
+          if (!section) return []
+          return [
+            { ...entry, section: { name: section.name, slug }, sectionLogo: sectionLogoOf(club, section, clubLogo) },
+          ]
+        })
+      return {
+        status: 'ok',
+        value: {
+          club: {
+            name,
+            slug: club.slug,
+            logo: clubLogo,
+            contact: contactOf(club),
+            links: linksOf(club),
+            nav: navOf(club),
+          },
+          sections: sections.map((section) => ({ name: section.name, slug: section.publicSlug as string })),
+          section: selected ? (selected.publicSlug as string) : null,
+          upcoming: decorate(lists.upcoming),
+          past: decorate(lists.past),
         },
       }
     },

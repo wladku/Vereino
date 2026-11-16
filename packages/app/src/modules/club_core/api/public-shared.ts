@@ -27,6 +27,11 @@ export const publicClubLinksSchema = z
   .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
   .describe("The club's rules and privacy policy in the page footer; null while not set")
 
+/** The menu links of the public header (navigation spec REQ-N13, #263): `events` with the club's `events` block. */
+export const publicClubNavSchema = z
+  .object({ events: z.boolean() })
+  .describe('Which links the public header shows: `events` while the club publishes its events page')
+
 export const publicLogoSchema = z.object({
   url: z.string().nullable().describe('The logo image; null shows `initial`'),
   source: z.enum(['section', 'club', 'initial']),

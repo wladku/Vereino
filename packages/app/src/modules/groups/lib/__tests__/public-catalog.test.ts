@@ -10,6 +10,7 @@ const swimming: PublicGroupRow = {
   ageFrom: 6,
   ageTo: 9,
   levelLabel: 'początkujący',
+  ageCategory: 'U-9',
 }
 const advanced: PublicGroupRow = {
   id: 'g2',
@@ -20,6 +21,7 @@ const advanced: PublicGroupRow = {
   ageFrom: 10,
   ageTo: null,
   levelLabel: null,
+  ageCategory: 'U-11',
 }
 
 describe('publicCatalogBlock', () => {
@@ -39,6 +41,7 @@ describe('publicCatalogBlock', () => {
           ageFrom: 6,
           ageTo: 9,
           level: 'początkujący',
+          ageCategory: null,
         },
         {
           id: 'g2',
@@ -48,6 +51,7 @@ describe('publicCatalogBlock', () => {
           ageFrom: 10,
           ageTo: null,
           level: null,
+          ageCategory: 'U-11',
         },
       ],
     })
