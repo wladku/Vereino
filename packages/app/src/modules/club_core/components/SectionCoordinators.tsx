@@ -2,7 +2,9 @@
 // The coordinators panel of the section edit page (club spec UI table, J-001 step 1). Coordinators are `people` role
 // assignments (`coordinator` + `section_id`): the panel reads them from the section's `people` enrichment and writes
 // them through the existing `/api/people/role-assignments` routes — `club_core` imports nothing of `people`. An
-// assignment may carry an end date ("until", the route's `validTo`; UX parity spec REQ-U02).
+// assignment may carry an end date ("until", the route's `validTo`; UX parity spec REQ-U02). Navigation spec REQ-N12
+// (#262): the picker lists adults only (`ageFrom=18`; the command refuses a minor with 422 `role_requires_adult`), and
+// the section's coordinator sees the panel read-only — the list without the assign and end actions.
 import * as React from 'react'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -26,7 +28,57 @@ import { useClubToday } from '@vereino/ui'
 
 type PersonItem = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
-export function SectionCoordinators({ section, onChanged }: { section: SectionRow; onChanged: () => Promise<void> }) {
+/** The coordinator candidates of a search: adults only (`ageFrom=18`), by last name, 20 at a time. */
+export async function fetchCoordinatorCandidates(query: string): Promise<LookupSelectItem[]> {
+  const params = new URLSearchParams({ pageSize: '20', ageFrom: '18' })
+  if (query.trim()) params.set('lastName', query.trim())
+  const data = await readApiResultOrThrow<{ items?: PersonItem[] }>(`/api/people/persons?${params.toString()}`)
+  return (data.items ?? []).map((person) => ({
+    id: person.id,
+    title: coordinatorName(person),
+    subtitle: person.birthDate,
+  }))
+}
+
+/** The adult person picker of a coordinator (the panel below and "Add section"). */
+export function CoordinatorPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string | null
+  onChange: (value: string | null) => void
+  disabled?: boolean
+}) {
+  const t = useT()
+  return (
+    <LookupSelect
+      value={value}
+      onChange={onChange}
+      fetchItems={fetchCoordinatorCandidates}
+      minQuery={0}
+      placeholder={t('club_core.coordinators.fields.person.placeholder')}
+      searchPlaceholder={t('club_core.coordinators.fields.person.search')}
+      emptyLabel={t('club_core.coordinators.fields.person.empty')}
+      loadingLabel={t('club_core.common.loading')}
+      clearLabel={t('club_core.common.clear')}
+      selectLabel={t('club_core.common.select')}
+      selectedLabel={t('club_core.common.selected')}
+      disabled={disabled}
+    />
+  )
+}
+
+export function SectionCoordinators({
+  section,
+  onChanged,
+  readOnly = false,
+}: {
+  section: SectionRow
+  onChanged: () => Promise<void>
+  /** The section's coordinator reads the list; only the club administrator assigns and ends (#262). */
+  readOnly?: boolean
+}) {
   const t = useT()
   const today = useClubToday()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
@@ -35,17 +87,6 @@ export function SectionCoordinators({ section, onChanged }: { section: SectionRo
   const [validTo, setValidTo] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const enrichment = section._people
-
-  const fetchPersons = React.useCallback(async (query: string): Promise<LookupSelectItem[]> => {
-    const params = new URLSearchParams({ pageSize: '20' })
-    if (query.trim()) params.set('lastName', query.trim())
-    const data = await readApiResultOrThrow<{ items?: PersonItem[] }>(`/api/people/persons?${params.toString()}`)
-    return (data.items ?? []).map((person) => ({
-      id: person.id,
-      title: coordinatorName(person),
-      subtitle: person.birthDate,
-    }))
-  }, [])
 
   const assign = async () => {
     if (!personId) return
@@ -137,75 +178,66 @@ export function SectionCoordinators({ section, onChanged }: { section: SectionRo
                       {coordinator.validTo ? ` – ${coordinator.validTo}` : ''}
                     </span>
                   </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
-                      void end(coordinator)
-                    }}
-                  >
-                    {t('club_core.coordinators.actions.end')}
-                  </Button>
+                  {readOnly ? null : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        void end(coordinator)
+                      }}
+                    >
+                      {t('club_core.coordinators.actions.end')}
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
           )}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex flex-1 flex-col gap-1">
-              <Label>{t('club_core.coordinators.fields.person')}</Label>
-              <LookupSelect
-                value={personId}
-                onChange={setPersonId}
-                fetchItems={fetchPersons}
-                minQuery={0}
-                placeholder={t('club_core.coordinators.fields.person.placeholder')}
-                searchPlaceholder={t('club_core.coordinators.fields.person.search')}
-                emptyLabel={t('club_core.coordinators.fields.person.empty')}
-                loadingLabel={t('club_core.common.loading')}
-                clearLabel={t('club_core.common.clear')}
-                selectLabel={t('club_core.common.select')}
-                selectedLabel={t('club_core.common.selected')}
-                disabled={busy}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="club-core-coordinator-from">{t('club_core.coordinators.fields.validFrom')}</Label>
-              <Input
-                id="club-core-coordinator-from"
-                type="date"
-                value={validFrom}
-                onChange={(event) => {
-                  setValidFrom(event.target.value)
+          {readOnly ? null : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex flex-1 flex-col gap-1">
+                <Label>{t('club_core.coordinators.fields.person')}</Label>
+                <CoordinatorPicker value={personId} onChange={setPersonId} disabled={busy} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="club-core-coordinator-from">{t('club_core.coordinators.fields.validFrom')}</Label>
+                <Input
+                  id="club-core-coordinator-from"
+                  type="date"
+                  value={validFrom}
+                  onChange={(event) => {
+                    setValidFrom(event.target.value)
+                  }}
+                  disabled={busy}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="club-core-coordinator-to">{t('club_core.coordinators.fields.validTo')}</Label>
+                <Input
+                  id="club-core-coordinator-to"
+                  type="date"
+                  value={validTo}
+                  min={validFrom || undefined}
+                  onChange={(event) => {
+                    setValidTo(event.target.value)
+                  }}
+                  disabled={busy}
+                  data-testid="section-coordinator-valid-to"
+                />
+              </div>
+              <Button
+                type="button"
+                disabled={busy || !personId || !validFrom}
+                onClick={() => {
+                  void assign()
                 }}
-                disabled={busy}
-              />
+              >
+                {t('club_core.coordinators.actions.assign')}
+              </Button>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="club-core-coordinator-to">{t('club_core.coordinators.fields.validTo')}</Label>
-              <Input
-                id="club-core-coordinator-to"
-                type="date"
-                value={validTo}
-                min={validFrom || undefined}
-                onChange={(event) => {
-                  setValidTo(event.target.value)
-                }}
-                disabled={busy}
-                data-testid="section-coordinator-valid-to"
-              />
-            </div>
-            <Button
-              type="button"
-              disabled={busy || !personId || !validFrom}
-              onClick={() => {
-                void assign()
-              }}
-            >
-              {t('club_core.coordinators.actions.assign')}
-            </Button>
-          </div>
+          )}
         </>
       )}
       {ConfirmDialogElement}

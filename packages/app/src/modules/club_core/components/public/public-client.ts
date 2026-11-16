@@ -15,6 +15,9 @@ export type PublicClubContact = { phone: string } | null
 /** The club's rules and privacy policy in the page footer; each null while the club has not set it (#195). */
 export type PublicClubLinks = { rules: string | null; privacyPolicy: string | null }
 
+/** Which optional links the public header shows: Facilities and Events, each while the club publishes it (#261). */
+export type PublicClubNav = { facilities: boolean; events: boolean }
+
 /** A session or event as a guest sees it: a club-zone date and `HH:mm` times. */
 export type PublicSession = {
   date: string
@@ -23,9 +26,6 @@ export type PublicSession = {
   place: string | null
   cancelled: boolean
 }
-
-/** Which menu links of the public header exist: `events` with the club's `events` block (#263). */
-export type PublicClubNav = { events: boolean }
 
 /** An event of the public Events page P-06 (#263). */
 export type PublicEvent = {
