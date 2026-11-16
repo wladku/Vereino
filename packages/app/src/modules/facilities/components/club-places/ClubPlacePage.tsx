@@ -150,9 +150,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
 
   let body: React.ReactNode
   if (!calendar && query.isFetching) {
-    body = (
-      <MemberSkeleton shape="rows" label={t('facilities.places.loading')} data-testid="club-place-loading" />
-    )
+    body = <MemberSkeleton shape="rows" label={t('facilities.places.loading')} data-testid="club-place-loading" />
   } else if (!calendar && calendarErrorStatus(query.error) === 403) {
     body = (
       <Alert status="warning" data-testid="club-place-denied">

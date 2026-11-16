@@ -483,5 +483,7 @@ function NewEvent({ profile, t }: { profile: ClubProfile; t: Translate }) {
 
 export function ClubEventPage() {
   const t = useT()
-  return <ActivitiesClubFrame skeleton="fields">{(profile) => <NewEvent profile={profile} t={t} />}</ActivitiesClubFrame>
+  return (
+    <ActivitiesClubFrame skeleton="fields">{(profile) => <NewEvent profile={profile} t={t} />}</ActivitiesClubFrame>
+  )
 }

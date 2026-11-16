@@ -93,7 +93,12 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
   let body: React.ReactNode
   if (!query.data && query.isFetching) {
     body = (
-      <MemberSkeleton shape="tiles" count={3} label={t('facilities.places.loading')} data-testid="club-places-loading" />
+      <MemberSkeleton
+        shape="tiles"
+        count={3}
+        label={t('facilities.places.loading')}
+        data-testid="club-places-loading"
+      />
     )
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (

@@ -160,7 +160,8 @@ function Attendance({ id, selfPersonId }: { id: string; selfPersonId: string }) 
   const t = useT()
   const query = useAttendanceList(id)
 
-  if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('activities.club.attendance.loading')} />
+  if (!query.data && query.isFetching)
+    return <MemberSkeleton shape="rows" label={t('activities.club.attendance.loading')} />
   if (!query.data) {
     return (
       <ErrorMessage
