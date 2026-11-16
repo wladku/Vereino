@@ -6,10 +6,12 @@
 // (an institution, a person or a renter's name; or "Without payer"), the amount with the discount, what remains, the
 // due date with the overdue marker, the payee and the status, and opens the charge (B-22). "Generate period"
 // creates all charges of a month at once and shows the summary. "Accept cash" (#114) takes cash for a payer's selected
-// charges with a numbered receipt.
+// charges with a numbered receipt; "Import statement" opens B-29. The perspectives follow the mockup's order, the
+// perspective, filters, search and page live in the URL (restored on reload; precedent DD-U03), rows come in the list's
+// default order — the newest period first, then the due date — and Remaining reads "—" once nothing is owed (#292).
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -21,16 +23,20 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
   PAYEES,
-  chargePerspectiveOf,
+  chargeListUrlParams,
   payerDisplayName,
   perspectiveQuery,
+  readChargeListUrl,
+  remainingShown,
   toCsv,
   visiblePerspectives,
+  type ChargeListUrlState,
   type ChargePerspective,
 } from '../lib/charge-ledger'
-import { AcceptCashDialog } from './AcceptCashDialog'
+import { AcceptCashButton } from './AcceptCashButton'
 import { GeneratePeriodDialog } from './GeneratePeriodDialog'
 import {
+  BANK_HREF,
   chargeHref,
   errorMessage,
   formatMoney,
@@ -154,7 +160,8 @@ function buildColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
       header: t('payments.charges.columns.remaining'),
       enableSorting: false,
       meta: { priority: 2 },
-      cell: ({ row }) => formatMoney(row.original.remaining ?? 0, locale),
+      cell: ({ row }) =>
+        remainingShown(row.original.status) ? formatMoney(row.original.remaining ?? 0, locale) : dash,
     },
     {
       accessorKey: 'dueDate',
@@ -211,7 +218,7 @@ function csvRows(rows: readonly ChargeRow[], t: Translate): (string | number | n
       money(row.amount),
       money(row.discountAmount),
       money(row.amountDue),
-      money(row.remaining ?? 0),
+      remainingShown(row.status) ? money(row.remaining ?? 0) : '',
       row.dueDate,
       row.overdue ? t('payments.common.yes') : '',
       payeeLabel(row, t),
@@ -234,19 +241,29 @@ export function ChargesTable() {
   const t = useT()
   const locale = useLocale()
   const router = useRouter()
+  const pathname = usePathname()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
   const searchParams = useSearchParams()
-  // A B-01 widget opens the list in its perspective (`?perspective=overdue`, #111); later tab changes stay local.
-  const [perspective, setPerspective] = React.useState<ChargePerspective>(() =>
-    chargePerspectiveOf(searchParams.get('perspective'), visiblePerspectives(true)),
+  // The URL holds the perspective, the filters, the search and the page, so a reload or a shared link restores them;
+  // a B-01 widget's `?perspective=overdue` link (#111) is the same state. Changes replace the URL without a reload.
+  const state = React.useMemo(() => readChargeListUrl((key) => searchParams.get(key)), [searchParams])
+  const { perspective, period, payee, page } = state
+  // The search box is local while typing; the URL follows it. A search changed from outside is adopted during render.
+  const [search, setSearch] = React.useState(state.search)
+  const [urlSearch, setUrlSearch] = React.useState(state.search)
+  if (urlSearch !== state.search) {
+    setUrlSearch(state.search)
+    setSearch(state.search)
+  }
+  const navigate = React.useCallback(
+    (change: Partial<ChargeListUrlState>) => {
+      const query = new URLSearchParams(chargeListUrlParams({ ...state, page: 1, ...change })).toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    },
+    [pathname, router, state],
   )
-  const [period, setPeriod] = React.useState('')
-  const [payee, setPayee] = React.useState('')
-  const [search, setSearch] = React.useState('')
-  const [page, setPage] = React.useState(1)
   const [generating, setGenerating] = React.useState(false)
-  const [acceptingCash, setAcceptingCash] = React.useState(false)
   const [exporting, setExporting] = React.useState(false)
   const [summary, setSummary] = React.useState<GenerationSummary | null>(null)
 
@@ -255,21 +272,14 @@ export function ChargesTable() {
       ...perspectiveQuery(perspective),
       ...(period ? { period } : {}),
       ...(payee ? { payee } : {}),
-      ...(search.trim() ? { search: search.trim() } : {}),
+      ...(state.search.trim() ? { search: state.search.trim() } : {}),
     }),
-    [perspective, period, payee, search],
+    [perspective, period, payee, state.search],
   )
 
   const { data, isLoading, error } = useQuery<ChargeList>({
     queryKey: ['payments-charges', filters, page, scopeVersion],
-    queryFn: () =>
-      fetchCrudList<ChargeRow>('payments/charges', {
-        page,
-        pageSize: PAGE_SIZE,
-        sortField: 'dueDate',
-        sortDir: 'asc',
-        ...filters,
-      }),
+    queryFn: () => fetchCrudList<ChargeRow>('payments/charges', { page, pageSize: PAGE_SIZE, ...filters }),
   })
 
   const columns = React.useMemo(() => buildColumns(t, locale), [t, locale])
@@ -285,8 +295,6 @@ export function ChargesTable() {
         const batch = await fetchCrudList<ChargeRow>('payments/charges', {
           page: next,
           pageSize: EXPORT_PAGE_SIZE,
-          sortField: 'dueDate',
-          sortDir: 'asc',
           ...filters,
         })
         rows.push(...batch.items)
@@ -320,8 +328,7 @@ export function ChargesTable() {
         value={perspective}
         variant="underline"
         onValueChange={(value: string) => {
-          setPerspective(value as ChargePerspective)
-          setPage(1)
+          navigate({ perspective: value as ChargePerspective })
         }}
       >
         <div className="overflow-x-auto">
@@ -353,15 +360,16 @@ export function ChargesTable() {
                 >
                   {exporting ? t('payments.charges.export.pending') : t('payments.charges.export.action')}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  data-testid="accept-cash-open"
-                  onClick={() => {
-                    setAcceptingCash(true)
+                <AcceptCashButton
+                  origin="charges"
+                  onDone={async () => {
+                    await queryClient.invalidateQueries({ queryKey: ['payments-charges'] })
                   }}
-                >
-                  {t('payments.cash.action')}
+                />
+                <Button asChild variant="outline">
+                  <Link href={BANK_HREF} data-testid="charges-import-statement">
+                    {t('payments.charges.actions.importStatement')}
+                  </Link>
                 </Button>
                 <Button
                   type="button"
@@ -377,7 +385,8 @@ export function ChargesTable() {
             searchValue={search}
             onSearchChange={(value: string) => {
               setSearch(value)
-              setPage(1)
+              setUrlSearch(value)
+              navigate({ search: value })
             }}
             searchPlaceholder={t('payments.charges.search')}
             filters={[
@@ -395,18 +404,16 @@ export function ChargesTable() {
             ]}
             filterValues={{ period, payee }}
             onFiltersApply={(values: Record<string, unknown>) => {
-              setPeriod(typeof values.period === 'string' ? values.period.trim() : '')
-              setPayee(
-                typeof values.payee === 'string' && (PAYEES as readonly string[]).includes(values.payee)
-                  ? values.payee
-                  : '',
-              )
-              setPage(1)
+              navigate({
+                period: typeof values.period === 'string' ? values.period.trim() : '',
+                payee:
+                  typeof values.payee === 'string' && (PAYEES as readonly string[]).includes(values.payee)
+                    ? (values.payee as ChargeListUrlState['payee'])
+                    : '',
+              })
             }}
             onFiltersClear={() => {
-              setPeriod('')
-              setPayee('')
-              setPage(1)
+              navigate({ period: '', payee: '' })
             }}
             columns={columns}
             data={data?.items ?? []}
@@ -421,25 +428,19 @@ export function ChargesTable() {
               pageSize: PAGE_SIZE,
               total: data?.total ?? 0,
               totalPages: data?.totalPages ?? 0,
-              onPageChange: setPage,
+              onPageChange: (next: number) => {
+                navigate({ page: next })
+              },
             }}
           />
         </TabsContent>
       </Tabs>
-      <AcceptCashDialog
-        open={acceptingCash}
-        onOpenChange={setAcceptingCash}
-        onDone={async () => {
-          await queryClient.invalidateQueries({ queryKey: ['payments-charges'] })
-        }}
-      />
       <GeneratePeriodDialog
         open={generating}
         onOpenChange={setGenerating}
         onGenerated={async (result) => {
           setSummary(result)
-          setPeriod(result.period)
-          setPage(1)
+          navigate({ period: result.period })
           flash(t('payments.charges.generate.done'), 'success')
           await queryClient.invalidateQueries({ queryKey: ['payments-charges'] })
         }}

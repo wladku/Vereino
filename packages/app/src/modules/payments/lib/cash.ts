@@ -8,6 +8,25 @@ import type { ChargeStatus } from './payments-rules'
 /** At most this many charges in one acceptance (a family's open charges fit easily). */
 export const MAX_CASH_CHARGES = 50
 
+/**
+ * The screen "Accept cash" was opened from (payments parity DD-C03, REQ-C02; #292), kept in the audit context of
+ * `payments.cash.record`: B-21, B-22, B-29, a B-32 order row, the B-01 widget and the phone page M-15.
+ */
+export const CASH_ORIGINS = ['charges', 'charge', 'bank', 'order_campaign', 'dashboard', 'phone'] as const
+export type CashOrigin = (typeof CASH_ORIGINS)[number]
+
+/**
+ * The charges ticked in the cash form: every charge of the payer, or only `only` when the opening screen names
+ * charges (a B-32 order row), with the ones the collector flipped (`toggled`) turned the other way.
+ */
+export function cashSelection(
+  chargeIds: readonly string[],
+  only: readonly string[] | null,
+  toggled: readonly string[],
+): string[] {
+  return chargeIds.filter((id) => (only === null || only.includes(id)) !== toggled.includes(id))
+}
+
 /** A selected charge as the allocation needs it: its due date, when it was created and what remains of it. */
 export type CashCharge = {
   id: string

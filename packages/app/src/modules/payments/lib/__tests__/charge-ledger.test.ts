@@ -21,6 +21,11 @@ import {
   visiblePerspectives,
   chargePerspectiveOf,
   chargesPerspectiveHref,
+  chargeListUrlParams,
+  paymentSourceOf,
+  readChargeListUrl,
+  remainingShown,
+  SETTLED_CHARGE_STATUSES,
   MAX_PAYER_LABEL_LENGTH,
   MAX_SOURCE_CHARGE_AMOUNT,
   payerDisplayName,
@@ -133,6 +138,11 @@ describe('perspectives', () => {
     expect(visiblePerspectives(true)).toEqual([...CHARGE_PERSPECTIVES])
   })
 
+  it("lists the perspectives in the mockup's order (Q-C02, #292)", () => {
+    expect(visiblePerspectives(true)).toEqual(['fees', 'overdue', 'orders', 'payer_missing', 'rentals', 'cash', 'all'])
+    expect(visiblePerspectives(false)).toEqual(['fees', 'overdue', 'orders', 'payer_missing', 'cash', 'all'])
+  })
+
   it('allows rentals with facilities registered or with a live rental charge (DD-C02)', () => {
     expect(rentalsPerspectiveShown({ facilitiesRegistered: true, liveRentalCharges: 0 })).toBe(true)
     expect(rentalsPerspectiveShown({ facilitiesRegistered: false, liveRentalCharges: 2 })).toBe(true)
@@ -241,5 +251,75 @@ describe('CSV', () => {
       ]),
     ).toBe('Name;Amount\r\n"Nowak; Anna";150')
     expect(toCsv([['a', 'b']], ',')).toBe('a,b')
+  })
+})
+
+describe('B-21 URL state (REQ-C03, #292)', () => {
+  const read = (query: string) => {
+    const params = new URLSearchParams(query)
+    return readChargeListUrl((key) => params.get(key))
+  }
+
+  it('reads the defaults from an empty query', () => {
+    expect(read('')).toEqual({ perspective: 'fees', period: '', payee: '', search: '', page: 1 })
+  })
+
+  it('reads the perspective, the filters, the search and the page', () => {
+    expect(read('perspective=overdue&period=%202026-10%20&payee=club&search=Nowak&page=3')).toEqual({
+      perspective: 'overdue',
+      period: '2026-10',
+      payee: 'club',
+      search: 'Nowak',
+      page: 3,
+    })
+    // A link may open rentals before the list says whether the tab is shown.
+    expect(read('perspective=rentals').perspective).toBe('rentals')
+  })
+
+  it('falls back on unknown or invalid values', () => {
+    expect(read('perspective=refunds&payee=bank&page=0')).toEqual({
+      perspective: 'fees',
+      period: '',
+      payee: '',
+      search: '',
+      page: 1,
+    })
+    expect(read('page=2.5').page).toBe(1)
+  })
+
+  it('writes the query without the defaults', () => {
+    expect(chargeListUrlParams({ perspective: 'fees', period: ' ', payee: '', search: '  ', page: 1 })).toEqual({})
+    expect(
+      chargeListUrlParams({
+        perspective: 'overdue',
+        period: '2026-10',
+        payee: 'owner_institution',
+        search: 'Kow',
+        page: 2,
+      }),
+    ).toEqual({ perspective: 'overdue', period: '2026-10', payee: 'owner_institution', search: 'Kow', page: '2' })
+  })
+
+  it('round-trips a state through the URL', () => {
+    const state = { perspective: 'cash' as const, period: 'one_off', payee: 'club' as const, search: 'Ola', page: 4 }
+    expect(read(new URLSearchParams(chargeListUrlParams(state)).toString())).toEqual(state)
+  })
+})
+
+describe('B-21 remaining and B-22 payment source (REQ-C03, #292)', () => {
+  it('shows "—" for settled statuses only', () => {
+    expect(SETTLED_CHARGE_STATUSES).toEqual(['paid', 'cancelled', 'forfeited'])
+    for (const status of SETTLED_CHARGE_STATUSES) expect(remainingShown(status)).toBe(false)
+    expect(remainingShown('open')).toBe(true)
+    expect(remainingShown('partially_paid')).toBe(true)
+    expect(remainingShown(null)).toBe(true)
+    expect(remainingShown(undefined)).toBe(true)
+  })
+
+  it('names where a payment came from', () => {
+    expect(paymentSourceOf({ method: 'transfer', bankTransactionId: 'tx' })).toBe('bank_statement')
+    expect(paymentSourceOf({ method: 'online' })).toBe('online')
+    expect(paymentSourceOf({ method: 'cash', bankTransactionId: null })).toBe('cash')
+    expect(paymentSourceOf({ method: 'transfer' })).toBe('manual')
   })
 })

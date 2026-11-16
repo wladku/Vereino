@@ -18,7 +18,7 @@ export function ClubCashPage() {
             <h1 className="text-xl font-semibold">{t('payments.cash.title')}</h1>
             <p className="text-muted-foreground text-sm">{t('payments.cash.help')}</p>
           </div>
-          <CashAcceptForm />
+          <CashAcceptForm origin="phone" />
           <CashTodayList />
         </div>
       )}

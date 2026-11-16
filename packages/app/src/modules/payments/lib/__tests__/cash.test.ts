@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  CASH_ORIGINS,
   MAX_CASH_CHARGES,
   allocateCash,
+  cashSelection,
   cashRefusal,
   nextReceiptNumber,
   oldestFirst,
@@ -179,5 +181,21 @@ describe('receiptSummaries', () => {
       total: 16000,
     })
     expect(receiptSummaries([], new Set(), new Map())).toEqual({ items: [], total: 0 })
+  })
+})
+
+describe('cash form preselection (DD-C03, #292)', () => {
+  it('names the screens the form opens from', () => {
+    expect(CASH_ORIGINS).toEqual(['charges', 'charge', 'bank', 'order_campaign', 'dashboard', 'phone'])
+  })
+
+  it('ticks every charge of the payer unless the screen names some', () => {
+    expect(cashSelection(['a', 'b', 'c'], null, [])).toEqual(['a', 'b', 'c'])
+    expect(cashSelection(['a', 'b', 'c'], ['b'], [])).toEqual(['b'])
+  })
+
+  it('flips the charges the collector toggled', () => {
+    expect(cashSelection(['a', 'b', 'c'], null, ['b'])).toEqual(['a', 'c'])
+    expect(cashSelection(['a', 'b', 'c'], ['b'], ['b', 'c'])).toEqual(['c'])
   })
 })
