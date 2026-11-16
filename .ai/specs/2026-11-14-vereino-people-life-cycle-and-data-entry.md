@@ -853,7 +853,7 @@ No new module and no new dependency (the owner approved none; none is needed).
 
 ## Acceptance Criteria
 
-- [ ] **AC-L01** — An administrator sees "invited", "active", "blocked" or no account on B-10 and re-sends a pending invitation; the new link works for 60 minutes, which the tab and the e-mail state. An active account answers 409 and a fourth attempt in five minutes 429.
+- [x] **AC-L01** — An administrator sees "invited", "active", "blocked" or no account on B-10 and re-sends a pending invitation; the new link works for 60 minutes, which the tab and the e-mail state. An active account answers 409 and a fourth attempt in five minutes 429.
 - [ ] **AC-L02** — An administrator changes a login e-mail (409 when taken) and blocks an account, which ends its sessions and refuses sign-in until unblocked. The club's only administrator cannot be blocked, closed or made to leave.
 - [ ] **AC-L03** — A departure with a last day ends every membership, role assignment and guardianship of the chosen persons on that day, in one step or not at all, closes their accounts the next day, and moves them to "Former". A staying minor never ends up without a guardian, and a staying ward never without a primary payer when another guardian exists.
 - [ ] **AC-L04** — A guardian, an adult participant and a coach each send, see and withdraw a departure request on `/club/profile/leave` at 375 px, in Polish and English, in light and dark mode; a minor has no such link; a request for another family's child answers 403.

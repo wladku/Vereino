@@ -2,7 +2,8 @@
 // administrator creates the account of a person: the age policy with the club's `own_account_min_age`, then the
 // platform account and invitation through the foundation's `createAccount` with the person's desired roles, then
 // `people_persons.user_id`, then `people.person.account_created`.
-import { registerCommand, type CommandHandler } from '@open-mercato/shared/lib/commands'
+import type { EntityManager } from '@mikro-orm/postgresql'
+import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { emitCrudSideEffects } from '@open-mercato/shared/lib/commands/helpers'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -11,12 +12,21 @@ import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { LockMode } from '@mikro-orm/core'
 import { accountAgePolicy, type ActingRole } from '@vereino/core'
-import { authorizeScoped, createAccount } from '@/modules/foundation'
+import {
+  accountView,
+  authorizeScoped,
+  closeAccount,
+  createAccount,
+  resendInvitation,
+  updateAccount,
+  type AccountView,
+} from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Person } from '../data/entities'
-import { createAccountSchema } from '../data/validators'
+import { createAccountSchema, personAccountSchema, updateAccountSchema } from '../data/validators'
 import { emitPeopleEvent } from '../events'
 import { calendarDateInZone } from '../lib/people-rules'
+import { assertAccountWithoutPurpose, assertNotLastClubAdmin } from '../services/account-guards'
 import { clubSettings } from '../services/club-clock'
 import { desiredRolesForPerson } from '../services/role-sync'
 import { inWriteTransaction, loadPersonLocked, personEvents, personIndexer, personTarget } from './shared'
@@ -163,3 +173,301 @@ const createAccountCommand: CommandHandler<Record<string, unknown>, CreateAccoun
 }
 
 registerCommand(createAccountCommand)
+
+// People life-cycle spec phase L1 (REQ-L01, REQ-L02, DD-L01; #303): the re-send, the login e-mail and block, and the
+// closing of an account. Each is gated by `people.accounts.manage` on its route and by the `club_admin` grant here,
+// and reaches the platform only through the foundation's account helpers.
+
+type AccountTarget = {
+  personId: string
+  tenantId: string
+  organizationId: string
+  userId: string
+  account: AccountView
+  actingRole: ActingRole
+}
+
+/** The person under its row lock, in the caller's scope with the `club_admin` grant, and its account (404 without). */
+async function authorizeAccountTarget(
+  rawInput: Record<string, unknown>,
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  options: { schema: typeof personAccountSchema | typeof updateAccountSchema; lock: 'updated_at' | 'none' },
+) {
+  const authorized = await authorizeScoped(
+    {
+      input: options.schema,
+      resourceKind: RESOURCE_KIND,
+      allowedKinds: ['club_admin'],
+      loadTarget: (parsed, txEm, lock) => loadPersonLocked(txEm, ctx, parsed.id, lock),
+      resolveTarget: (_parsed, entity) => personTarget(entity as Person),
+      lock: options.lock,
+    },
+    rawInput,
+    ctx,
+    em,
+  )
+  const person = authorized.entity as Person
+  const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+  const account = await accountView(ctx.container, scope, person.userId)
+  if (!person.userId || account.state === 'none') return peopleErrors.throw('account_not_found')
+  const target: AccountTarget = {
+    personId: person.id,
+    ...scope,
+    userId: person.userId,
+    account,
+    actingRole: authorized.actingRole,
+  }
+  return { target, person, parsed: authorized.parsed }
+}
+
+/** Today in the club's time zone. */
+async function clubToday(ctx: CommandRuntimeContext, scope: { tenantId: string; organizationId: string }) {
+  const settings = await clubSettings(ctx.container, { tenantId: scope.tenantId, organizationId: scope.organizationId })
+  return calendarDateInZone(new Date(), settings.timezone)
+}
+
+export type ResendInvitationCommandResult = {
+  personId: string
+  tenantId: string
+  organizationId: string
+  userId: string
+  sentAt: string
+  warning?: 'invite_email_failed'
+  actingRole: ActingRole
+}
+
+/**
+ * `people.persons.resend_invitation`: only while the account is `invited` (409 `invitation_not_pending` otherwise).
+ * Not undoable: the e-mail is sent. The per-account and per-administrator limits are applied by the route.
+ */
+const resendInvitationCommand: CommandHandler<Record<string, unknown>, ResendInvitationCommandResult> = {
+  id: 'people.persons.resend_invitation',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const target = await inWriteTransaction(ctx, 'people.persons.resend_invitation.check', async (em) => {
+      const { target } = await authorizeAccountTarget(rawInput, ctx, em, { schema: personAccountSchema, lock: 'none' })
+      if (target.account.state !== 'invited') return peopleErrors.throw('invitation_not_pending')
+      return target
+    })
+    const sent = await resendInvitation(ctx, target, target.userId)
+    return {
+      personId: target.personId,
+      tenantId: target.tenantId,
+      organizationId: target.organizationId,
+      userId: target.userId,
+      sentAt: sent.sentAt,
+      ...(sent.warning ? { warning: sent.warning } : {}),
+      actingRole: target.actingRole,
+    }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.persons.resend_invitation', 'Send the invitation again'),
+      resourceKind: RESOURCE_KIND,
+      resourceId: result.personId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      relatedResourceKind: 'auth.user',
+      relatedResourceId: result.userId,
+      context: { actingRole: result.actingRole, inviteEmailFailed: result.warning === 'invite_email_failed' },
+    }
+  },
+}
+
+export type UpdateAccountCommandResult = {
+  personId: string
+  tenantId: string
+  organizationId: string
+  userId: string
+  account: AccountView
+  updatedAt: string
+  emailChanged: boolean
+  blocked?: boolean
+  warning?: 'invite_email_failed'
+  actingRole: ActingRole
+}
+
+/**
+ * `people.persons.update_account`: a new login e-mail (409 `email_taken`; the contact e-mail follows only when it
+ * equalled the old login; an invited account gets the invitation again at the new address) and/or the block flag (the
+ * club's last active administrator cannot be blocked, 422 `last_club_admin`). The person's version is checked (409)
+ * and advanced. Not undoable through this command: the reverse change is another update.
+ */
+const updateAccountCommand: CommandHandler<Record<string, unknown>, UpdateAccountCommandResult> = {
+  id: 'people.persons.update_account',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const prepared = await inWriteTransaction(ctx, 'people.persons.update_account.check', async (em) => {
+      const { target, person, parsed } = await authorizeAccountTarget(rawInput, ctx, em, {
+        schema: updateAccountSchema,
+        lock: 'updated_at',
+      })
+      const input = parsed as { email?: string; blocked?: boolean }
+      if (input.blocked === true && target.account.state !== 'blocked') {
+        await assertNotLastClubAdmin(em, ctx.container, target, target.personId, await clubToday(ctx, target))
+      }
+      const oldLogin = target.account.email?.trim().toLowerCase() ?? null
+      const newLogin = input.email?.trim()
+      const emailChanged = newLogin !== undefined && newLogin.toLowerCase() !== oldLogin
+      const contactFollows = emailChanged && (person.email?.trim().toLowerCase() ?? null) === oldLogin
+      return {
+        target,
+        email: emailChanged ? newLogin : undefined,
+        blocked: input.blocked,
+        contactFollows,
+      }
+    })
+    const { target } = prepared
+
+    await updateAccount(ctx, target.userId, { email: prepared.email, blocked: prepared.blocked })
+
+    const updated = await inWriteTransaction(ctx, 'people.persons.update_account.person', async (em) => {
+      const person = await findOneWithDecryption(
+        em,
+        Person,
+        { id: target.personId, tenantId: target.tenantId, organizationId: target.organizationId, deletedAt: null },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+        { tenantId: target.tenantId, organizationId: target.organizationId },
+      )
+      if (!person) return peopleErrors.throw('account_not_found')
+      if (prepared.contactFollows && prepared.email) person.email = prepared.email
+      person.updatedAt = new Date()
+      return person
+    })
+
+    // An invited account follows its new address at once (J-L01 step 3); a failed e-mail is a warning only.
+    const resent =
+      prepared.email && target.account.state === 'invited' && prepared.blocked !== true
+        ? await resendInvitation(ctx, target, target.userId)
+        : null
+    const account = await accountView(ctx.container, target, target.userId)
+
+    await emitCrudSideEffects({
+      dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),
+      action: 'updated',
+      entity: updated,
+      identifiers: { id: updated.id, tenantId: updated.tenantId, organizationId: updated.organizationId },
+      events: personEvents,
+      indexer: personIndexer,
+    })
+    await emitPeopleEvent(
+      'people.person.account_updated',
+      { id: updated.id, tenantId: updated.tenantId, organizationId: updated.organizationId, userId: target.userId },
+      { persistent: true, tenantId: updated.tenantId, organizationId: updated.organizationId },
+    )
+    return {
+      personId: target.personId,
+      tenantId: target.tenantId,
+      organizationId: target.organizationId,
+      userId: target.userId,
+      account,
+      updatedAt: updated.updatedAt.toISOString(),
+      emailChanged: prepared.email !== undefined,
+      ...(prepared.blocked !== undefined ? { blocked: prepared.blocked } : {}),
+      ...(resent?.warning ? { warning: resent.warning } : {}),
+      actingRole: target.actingRole,
+    }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.persons.update_account', "Change a person's account"),
+      resourceKind: RESOURCE_KIND,
+      resourceId: result.personId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      relatedResourceKind: 'auth.user',
+      relatedResourceId: result.userId,
+      context: {
+        actingRole: result.actingRole,
+        emailChanged: result.emailChanged,
+        ...(result.blocked !== undefined ? { blocked: result.blocked } : {}),
+        inviteEmailFailed: result.warning === 'invite_email_failed',
+      },
+    }
+  },
+}
+
+export type CloseAccountCommandResult = {
+  personId: string
+  tenantId: string
+  organizationId: string
+  userId: string
+  actingRole: ActingRole
+}
+
+/**
+ * `people.persons.close_account`: deletes the platform user (`auth.users.delete`) and clears `user_id`. Refused for
+ * the club's last active administrator (422 `last_club_admin`) and while an active role, guardianship or membership
+ * remains (409 `account_has_purpose`). Not undoable: the platform user, its sessions and links are gone.
+ */
+const closeAccountCommand: CommandHandler<Record<string, unknown>, CloseAccountCommandResult> = {
+  id: 'people.persons.close_account',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const target = await inWriteTransaction(ctx, 'people.persons.close_account.check', async (em) => {
+      const { target } = await authorizeAccountTarget(rawInput, ctx, em, { schema: personAccountSchema, lock: 'none' })
+      const today = await clubToday(ctx, target)
+      await assertNotLastClubAdmin(em, ctx.container, target, target.personId, today)
+      await assertAccountWithoutPurpose(em, ctx.container, target, target.personId, today)
+      return target
+    })
+
+    await closeAccount(ctx, target.userId)
+
+    const unlinked = await inWriteTransaction(ctx, 'people.persons.close_account.unlink', async (em) => {
+      const person = await findOneWithDecryption(
+        em,
+        Person,
+        { id: target.personId, tenantId: target.tenantId, organizationId: target.organizationId, deletedAt: null },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+        { tenantId: target.tenantId, organizationId: target.organizationId },
+      )
+      if (!person) return null
+      if (person.userId === target.userId) person.userId = null
+      person.updatedAt = new Date()
+      return person
+    })
+    if (unlinked) {
+      await emitCrudSideEffects({
+        dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),
+        action: 'updated',
+        entity: unlinked,
+        identifiers: { id: unlinked.id, tenantId: unlinked.tenantId, organizationId: unlinked.organizationId },
+        events: personEvents,
+        indexer: personIndexer,
+      })
+    }
+    await emitPeopleEvent(
+      'people.person.account_closed',
+      { id: target.personId, tenantId: target.tenantId, organizationId: target.organizationId, userId: target.userId },
+      { persistent: true, tenantId: target.tenantId, organizationId: target.organizationId },
+    )
+    return {
+      personId: target.personId,
+      tenantId: target.tenantId,
+      organizationId: target.organizationId,
+      userId: target.userId,
+      actingRole: target.actingRole,
+    }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.persons.close_account', "Close a person's account"),
+      resourceKind: RESOURCE_KIND,
+      resourceId: result.personId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      relatedResourceKind: 'auth.user',
+      relatedResourceId: result.userId,
+      context: { actingRole: result.actingRole },
+    }
+  },
+}
+
+registerCommand(resendInvitationCommand)
+registerCommand(updateAccountCommand)
+registerCommand(closeAccountCommand)
