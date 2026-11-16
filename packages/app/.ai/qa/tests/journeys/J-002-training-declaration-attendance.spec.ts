@@ -167,12 +167,12 @@ async function addToRoster(page: Page, person: { lastName: string; fullName: str
   ).toBeVisible()
 }
 
-/** Opens the member calendar as a coach on the week of `date` (`/club/calendar`, the header's "Context" → "as coach"). */
+/** Opens the member calendar of a coach-only person on the week of `date` (`/club/calendar`, the staff context). */
 async function openCoachCalendar(page: Page, date: string): Promise<void> {
   await page.goto('/club/calendar')
-  // The acting context is the header's role-context switcher (E06-S19 #101).
-  await page.locator('#club-switcher-context').click()
-  await page.getByRole('option', { name: uiText('activities.club.nav.contextCoach', { exact: true }) }).click()
+  // A coach-only person acts in the staff context, with no role-context switcher (spec N, REQ-N07).
+  await expect(page.getByTestId('club-calendar-toolbar')).toBeVisible()
+  await expect(page.getByTestId('club-switcher-context')).toHaveCount(0)
   await showCalendarWeekOf(page, date)
 }
 

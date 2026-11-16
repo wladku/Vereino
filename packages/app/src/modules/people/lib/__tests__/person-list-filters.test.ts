@@ -33,7 +33,14 @@ function inRange(birthDate: string, range: ReturnType<typeof birthDateRange>): b
 describe('constants', () => {
   it('lists the perspectives, roles and URL filters of B-09', () => {
     expect(PERSON_LIST_VIEWS).toEqual(['all', 'staff', 'children', 'no_account'])
-    expect(PERSON_FILTER_ROLES).toEqual(['club_admin', 'coordinator', 'coach', 'guardian', 'participant'])
+    expect(PERSON_FILTER_ROLES).toEqual([
+      'club_admin',
+      'coordinator',
+      'coach',
+      'facility_operator',
+      'guardian',
+      'participant',
+    ])
     expect(PERSON_LIST_FILTER_KEYS).toEqual(['sectionId', 'groupId', 'role', 'hasAccount', 'ageFrom', 'ageTo'])
     expect(PERSON_FILTER_ID_LIMIT).toBe(10_000)
   })

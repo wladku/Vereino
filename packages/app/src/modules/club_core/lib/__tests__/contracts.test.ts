@@ -3,6 +3,7 @@ import {
   COACH_TERMS_BY_MODEL,
   MAX_RATE_GROSZ,
   coachTermsForModel,
+  contractRateColumns,
   contractOn,
   missingCoachTerms,
   overlappingContract,
@@ -54,5 +55,28 @@ describe('contract periods (#96, README B-07)', () => {
     expect(contractOn([january, open], '2026-02-01')).toBe(open)
     expect(contractOn([january, open], '2030-05-05')).toBe(open)
     expect(contractOn([january], '2025-12-31')).toBeNull()
+  })
+})
+
+describe('contract rate columns (navigation spec REQ-N12, B-07)', () => {
+  it('reads Base, Per unit and Match of the units model', () => {
+    expect(contractRateColumns({ baseMonthly: 150000, unitRate: 8000, matchRate: 12000, travelRate: 5000 })).toEqual({
+      base: 150000,
+      perUnit: 8000,
+      match: 12000,
+    })
+  })
+
+  it('takes the session amount as Per unit of the fixed-base model', () => {
+    expect(contractRateColumns({ baseMonthly: 200000, sessionAmount: 9000, tripAmount: 4000 })).toEqual({
+      base: 200000,
+      perUnit: 9000,
+      match: null,
+    })
+  })
+
+  it('is empty without rates', () => {
+    expect(contractRateColumns(null)).toEqual({ base: null, perUnit: null, match: null })
+    expect(contractRateColumns(undefined)).toEqual({ base: null, perUnit: null, match: null })
   })
 })

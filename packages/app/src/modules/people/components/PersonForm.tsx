@@ -1,9 +1,9 @@
 'use client'
 // `/backend/people/persons/create` and the "Details" tab of `/backend/people/persons/[id]` (club spec UI table, J-001
-// step 2): the person's own fields in a `CrudForm`. The PESEL field is shown — and sent — only to a user with
-// `people.pesel.view`; the e-mail, phone, notes and PESEL are stored encrypted. A created person opens on the
-// guardianship tab, where flow F-01 continues (#84). The date of birth is a native date
-// input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
+// step 2): the person's own fields in a `CrudForm`. The PESEL value is shown — and sent — only to a user with
+// `people.pesel.view`; anyone else sees the field empty and disabled with a hint (#262). The e-mail, phone, notes and
+// PESEL are stored encrypted. A created person opens on the guardianship tab, where flow F-01 continues (#84). The date
+// of birth is a native date input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -79,15 +79,16 @@ function usePersonFields(t: Translate, withPesel: boolean) {
         description: t('people.persons.fields.notes.help'),
       },
     ]
-    if (withPesel) {
-      list.push({
-        id: 'pesel',
-        label: t('people.persons.fields.pesel'),
-        type: 'text',
-        maxLength: 11,
-        description: t('people.persons.fields.pesel.help'),
-      })
-    }
+    // Without `people.pesel.view` the field stays in place, empty and disabled with the hint (navigation spec
+    // REQ-N12, B-10; #262): no value, no "has a PESEL" flag, and the request never carries it.
+    list.push({
+      id: 'pesel',
+      label: t('people.persons.fields.pesel'),
+      type: 'text',
+      maxLength: 11,
+      description: withPesel ? t('people.persons.fields.pesel.help') : t('people.persons.fields.pesel.hintOther'),
+      ...(withPesel ? {} : { disabled: true }),
+    })
     return list
   }, [t, withPesel, today])
   const groups = React.useMemo<CrudFormGroup[]>(
@@ -96,12 +97,12 @@ function usePersonFields(t: Translate, withPesel: boolean) {
         id: 'details',
         title: t('people.persons.groups.details'),
         column: 1,
-        fields: ['firstName', 'lastName', 'birthDate', 'preferredLocale', ...(withPesel ? ['pesel'] : [])],
+        fields: ['firstName', 'lastName', 'birthDate', 'preferredLocale', 'pesel'],
       },
       { id: 'contact', title: t('people.persons.groups.contact'), column: 2, fields: ['email', 'phone'] },
       { id: 'internal', title: t('people.persons.groups.internal'), column: 2, fields: ['notes'] },
     ],
-    [t, withPesel],
+    [t],
   )
   return { fields, groups }
 }
@@ -197,7 +198,7 @@ export function PersonDetailsForm({
         preferredLocale: person.preferredLocale ?? '',
         email: person.email ?? '',
         phone: person.phone ?? '',
-        pesel: person.pesel ?? '',
+        pesel: withPesel ? (person.pesel ?? '') : '',
         notes: person.notes ?? '',
         updatedAt: person.updatedAt,
       }}

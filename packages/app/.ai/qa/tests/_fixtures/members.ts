@@ -59,6 +59,7 @@ export type MemberProfile = {
   locale: string
   club: { shortName: string | null; defaultLocale: string; timezone: string }
   paymentsVisible: boolean
+  isParticipant: boolean
   code?: string
 }
 

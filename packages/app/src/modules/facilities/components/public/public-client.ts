@@ -232,6 +232,8 @@ export type RequestSummary = {
   amount: number | null
   currency: string
   holdExpiresAt: string
+  /** The header of the club's public pages; null while the club publishes no page (#261). */
+  club: PublicPlacesView['club'] | null
 }
 
 export type VerifyOutcome =

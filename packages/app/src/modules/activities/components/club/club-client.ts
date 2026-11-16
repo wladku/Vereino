@@ -57,6 +57,8 @@ export type ClubProfile = {
   club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
   /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
   paymentsVisible: boolean
+  /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
+  isParticipant?: boolean
 }
 
 export type ClubProfileLoad = { status: 'ok'; profile: ClubProfile } | { status: 'not_linked' }

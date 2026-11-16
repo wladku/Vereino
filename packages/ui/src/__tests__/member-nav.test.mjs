@@ -91,13 +91,14 @@ test('builds Today, Calendar, Messages and More with Profile for a member withou
 })
 
 test('degrades to three tabs and More with Profile while the feature check is pending or failed', () => {
-  for (const contexts of [['self'], ['coach'], ['facility_operator']]) {
+  for (const contexts of [['self'], ['coach']]) {
     const result = nav({ contexts, paymentsVisible: true, features: null })
     assert.deepEqual(tabsOf(result), ['/club', '/club/calendar', '/club/messages'])
     assert.deepEqual(moreOf(result), [CLUB_PROFILE_HREF])
   }
   // The admin panel comes from the profile's contexts, not from the check.
   assert.deepEqual(moreOf(nav({ contexts: ['club_admin'], features: null })), [CLUB_PROFILE_HREF, BACKEND_HREF])
+  assert.deepEqual(moreOf(nav({ contexts: ['facility_operator'], features: null })), [CLUB_PROFILE_HREF, BACKEND_HREF])
 })
 
 test('a guardian (adult payer) gets Payments as the fourth tab and Orders behind More', () => {
@@ -150,10 +151,10 @@ test('a coach who pays too gets Payments as the tab and Facilities and booking b
   assert.equal(result.more.items[2].label, 't:people.club.nav.facilitiesMore')
 })
 
-test('the attendant gets Facilities as the tab and Today at the facility behind More', () => {
+test('the attendant gets Facilities as the tab, Today at the facility and the admin panel behind More', () => {
   const result = nav({ contexts: ['facility_operator'], features: ATTENDANT })
   assert.equal(result.tabs.at(-1).href, CLUB_PLACES_HREF)
-  assert.deepEqual(moreOf(result), [CLUB_PROFILE_HREF, CLUB_FACILITY_TODAY_HREF])
+  assert.deepEqual(moreOf(result), [CLUB_PROFILE_HREF, CLUB_FACILITY_TODAY_HREF, BACKEND_HREF])
   assert.equal(result.more.items[1].label, 't:people.club.nav.facilityToday')
 })
 
@@ -183,7 +184,7 @@ test('the administrator gets every built entry in the table order, Accept cash a
 })
 
 test('offers the admin panel to a staff context only, never to a coach (E06-S15 #97)', () => {
-  for (const context of ['club_admin', 'coordinator']) {
+  for (const context of ['club_admin', 'coordinator', 'facility_operator']) {
     assert.deepEqual(nav({ contexts: ['self', context] }).more.items.at(-1), {
       href: BACKEND_HREF,
       label: 't:people.club.nav.backend',
@@ -193,6 +194,7 @@ test('offers the admin panel to a staff context only, never to a coach (E06-S15 
   assert.equal(hasStaffContext(['self', 'guardian']), false)
   assert.equal(hasStaffContext(['self', 'coach']), false)
   assert.equal(hasStaffContext(['coach', 'coordinator']), true)
+  assert.equal(hasStaffContext(['self', 'facility_operator']), true)
   assert.equal(moreOf(nav({ contexts: ['self', 'coach'], features: COACH })).includes(BACKEND_HREF), false)
 })
 

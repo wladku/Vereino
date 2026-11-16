@@ -1,9 +1,11 @@
 // API interceptors of `people` (UMES; `.ai/guides/extensions.md` → API Interceptors).
 //
-// `people.member-landing` (club spec *UI architecture* → redirect after sign-in; #27): after a successful
-// `POST /api/auth/login` whose answer is the platform default `/backend`, a user linked to a person of their
-// organization who holds `people.self` lands on `/club`; a user linked to no person stays on `/backend` with a notice
-// ("not linked to a person — contact the club") and never reaches anyone's data. An explicit `redirect` is kept. The
+// `people.member-landing` (club spec *UI architecture* → redirect after sign-in; #27; spec N, REQ-N08): after a
+// successful `POST /api/auth/login` whose answer is the platform default `/backend`, the facility attendant without a
+// member side lands on `/club/facility`, an administrator without a member side who does not coach stays on
+// `/backend`, and everyone else linked to a person who holds `people.self` lands on `/club`; a user linked to no person
+// stays on `/backend` with a notice ("not linked to a person — contact the club") and never reaches anyone's data
+// (`memberLanding`). An explicit `redirect` is kept. The
 // interceptor only rewrites the `redirect` key and never blocks a sign-in: any failure keeps the platform's answer.
 import type { ApiInterceptor } from '@open-mercato/shared/lib/crud/api-interceptor'
 import { createLogger } from '@open-mercato/shared/lib/logger'
