@@ -15,6 +15,8 @@ export type PublicGroupRow = {
   ageFrom: number | null
   ageTo: number | null
   levelLabel: string | null
+  /** A team's age category label (`dictionaries`, #92); null for a class group or without one. */
+  ageCategory: string | null
 }
 
 /** An instructor of a card: the consented public name, or null (the page says "Section coach"). */
@@ -28,6 +30,8 @@ export type PublicGroupCard = {
   ageFrom: number | null
   ageTo: number | null
   level: string | null
+  /** A team's age category (P-02 "category U-11", navigation spec REQ-N13, #263); null otherwise. */
+  ageCategory: string | null
   /** Only with the `conditions` block. */
   conditions?: string | null
   /** Only with the `coaches` block; never a name without consent. */
@@ -60,6 +64,7 @@ export function publicCatalogBlock(
         ageFrom: row.ageFrom,
         ageTo: row.ageTo,
         level: filled(row.levelLabel),
+        ageCategory: row.kind === 'team' ? filled(row.ageCategory) : null,
       }
       if (blocks.conditions) card.conditions = filled(row.publicConditions)
       if (blocks.coaches) {

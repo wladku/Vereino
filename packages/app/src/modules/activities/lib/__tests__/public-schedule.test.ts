@@ -1,8 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import {
-  UPCOMING_EVENTS,
   UPCOMING_SESSIONS,
-  publicEventsBlock,
   publicScheduleBlock,
   publicSession,
   seriesWeekdays,
@@ -113,58 +111,5 @@ describe('publicScheduleBlock', () => {
     expect(block?.groups.map((item) => item.groupId)).toEqual(['g1'])
     expect(block?.groups[0].series).toEqual([])
     expect(publicScheduleBlock(['g2'], [series({})], [], places, ZONE)).toBeNull()
-  })
-})
-
-describe('publicEventsBlock', () => {
-  const sections = new Map([['s1', { name: 'Basen', slug: 'basen' }]])
-
-  it('lists the upcoming events of public sections with their date, place, section and type', () => {
-    const block = publicEventsBlock(
-      [
-        { id: 'e1', name: 'Zawody', type: 'tournament', sectionId: 's1' },
-        { id: 'e2', name: 'Ukryte', type: 'other', sectionId: 's-private' },
-      ],
-      [
-        session('2026-11-14', { activityId: 'e1' }),
-        session('2026-11-15', { activityId: 'e2' }),
-        session('2026-11-16', { activityId: 'gone' }),
-      ],
-      sections,
-      places,
-      ZONE,
-    )
-    expect(block).toEqual({
-      events: [
-        {
-          name: 'Zawody',
-          type: 'tournament',
-          section: { name: 'Basen', slug: 'basen' },
-          date: '2026-11-14',
-          startTime: '17:00',
-          endTime: '18:00',
-          place: 'Pływalnia miejska',
-          cancelled: false,
-        },
-      ],
-    })
-  })
-
-  it('caps the list and is null without events', () => {
-    const many = Array.from({ length: UPCOMING_EVENTS + 2 }, (_, index) => ({
-      id: `e${String(index)}`,
-      name: `Event ${String(index)}`,
-      type: 'other',
-      sectionId: 's1',
-    }))
-    const block = publicEventsBlock(
-      many,
-      many.map((event) => session('2026-11-14', { activityId: event.id })),
-      sections,
-      places,
-      ZONE,
-    )
-    expect(block?.events).toHaveLength(UPCOMING_EVENTS)
-    expect(publicEventsBlock([], [], sections, places, ZONE)).toBeNull()
   })
 })

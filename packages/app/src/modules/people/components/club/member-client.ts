@@ -77,6 +77,8 @@ export type MemberProfile = {
   locale: string
   club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
   paymentsVisible: boolean
+  /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
+  isParticipant?: boolean
 }
 
 export type MemberProfileLoad = { status: 'ok'; profile: MemberProfile } | { status: 'not_linked' }

@@ -1,7 +1,8 @@
 // Publication of the club page (club spec glossary *Publication*, DD-23, DD-28, DD-29; REQ-025): the club's
 // `publication` setting — the page switch and one switch per block, every one off by default — and the public slugs
 // of the club and its sections. Pure: the stored jsonb is passed in; an invalid stored value falls back to "nothing
-// published", so a damaged setting never publishes a block.
+// published", so a damaged setting never publishes a block. The `events` block (navigation spec REQ-N13, #263) switches
+// the public Events page P-06 and its menu item; a value stored before it existed reads as off.
 import { z } from 'zod'
 
 /** The blocks a club enables (glossary *Publication*: terms = `conditions`, instructors = `coaches`). */
@@ -14,6 +15,7 @@ export const PUBLICATION_BLOCKS = [
   'contact',
   'places_calendar',
   'online_requests',
+  'events',
 ] as const
 export type PublicationBlock = (typeof PUBLICATION_BLOCKS)[number]
 
@@ -32,6 +34,7 @@ export const DEFAULT_PUBLICATION: Readonly<Publication> = {
     contact: false,
     places_calendar: false,
     online_requests: false,
+    events: false,
   },
 }
 
