@@ -3,6 +3,7 @@ import {
   CLUB_CORE_BLOCK_KEYS,
   clubContact,
   clubLinks,
+  clubNav,
   isMaterialPublished,
   phoneHref,
   pluralForm,
@@ -24,6 +25,7 @@ const everything: Publication = {
     contact: true,
     places_calendar: true,
     online_requests: true,
+    events: true,
   },
 }
 
@@ -120,6 +122,18 @@ describe('section blocks of club_core', () => {
       rules: null,
       privacyPolicy: 'https://club.example/privacy',
     })
+  })
+
+  it('shows Facilities only with the places calendar and Events only with the events block (#261, #263)', () => {
+    expect(clubNav({ ...everything, blocks: { ...everything.blocks, places_calendar: true, events: false } })).toEqual({
+      facilities: true,
+      events: false,
+    })
+    expect(clubNav({ ...everything, blocks: { ...everything.blocks, places_calendar: false, events: true } })).toEqual({
+      facilities: false,
+      events: true,
+    })
+    expect(clubNav(DEFAULT_PUBLICATION)).toEqual({ facilities: false, events: false })
   })
 
   it('publishes a material only when it is public and the materials block is on', () => {

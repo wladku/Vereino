@@ -5,6 +5,7 @@ import {
   calendarRangeRetry,
   calendarViewWindow,
   isCalendarView,
+  mergeCalendarEntries,
   requestedCalendarRange,
   shiftCalendarAnchor,
   windowContains,
@@ -80,5 +81,36 @@ describe('the retry after a refused range', () => {
     expect(calendarRangeRetry(tooLong, 403, 'calendar_range_invalid')).toBeNull()
     expect(calendarRangeRetry(tooLong, 500, undefined)).toBeNull()
     expect(calendarRangeRetry({ from: '2026-11-02', to: '2026-11-08' }, 400, 'calendar_range_invalid')).toBeNull()
+  })
+})
+
+// Spec N (REQ-N07, TEST-N07): the member context lists the member side and the coached sessions in one list.
+describe('mergeCalendarEntries', () => {
+  const entry = (id: string, startAt: string) => ({ occurrence: { id, startAt } })
+  const ward = entry('s-ward', '2026-11-17T16:00:00.000Z')
+  const shared = entry('s-shared', '2026-11-17T15:00:00.000Z')
+  const coached = entry('s-coached', '2026-11-16T17:30:00.000Z')
+
+  it('merges the lists by start time and shows a shared session once, in the later perspective', () => {
+    const merged = mergeCalendarEntries([
+      [
+        { entry: ward, as: 'guardian' },
+        { entry: shared, as: 'guardian' },
+      ],
+      [
+        { entry: shared, as: 'coach' },
+        { entry: coached, as: 'coach' },
+      ],
+    ])
+    expect(merged.map((item) => [item.entry.occurrence.id, item.as])).toEqual([
+      ['s-coached', 'coach'],
+      ['s-shared', 'coach'],
+      ['s-ward', 'guardian'],
+    ])
+  })
+
+  it('keeps one list as it is and an empty input empty', () => {
+    expect(mergeCalendarEntries([[{ entry: ward, as: 'self' }]])).toEqual([{ entry: ward, as: 'self' }])
+    expect(mergeCalendarEntries([[], []])).toEqual([])
   })
 })

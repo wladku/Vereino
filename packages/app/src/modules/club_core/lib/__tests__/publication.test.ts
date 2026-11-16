@@ -34,6 +34,7 @@ describe('publication blocks', () => {
       'contact',
       'places_calendar',
       'online_requests',
+      'events',
     ])
     expect(DEFAULT_PUBLICATION.enabled).toBe(false)
     expect(Object.values(allOff).every((value) => !value)).toBe(true)

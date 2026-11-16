@@ -57,6 +57,8 @@ export const errorCodes = [
   // club answer the same 404; a club that does not publish its page answers its own 404.
   { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
   { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
+  // The Events page P-06 (navigation spec REQ-N13, #263) while the club does not publish its page or the `events` block.
+  { code: 'public_events_disabled', status: 404, messageKey: 'club_core.errors.public_events_disabled' },
 ] as const satisfies ErrorCodeTable
 
 export type ClubCoreErrorCode = (typeof errorCodes)[number]['code']

@@ -181,6 +181,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
             contact: true,
             places_calendar: false,
             online_requests: false,
+            events: false,
           },
         })
       expect((await getSettings(request, club.adminToken)).publicSlug).toBe(slug)
@@ -505,7 +506,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
 
       await signInThroughForm(page, kasiaEmail, password)
       await expect(page).toHaveURL(/\/club$/)
-      await expect(page.getByRole('heading', { level: 1, name: /Hello, Kasia|Cześć, Kasia/ })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Kasia' } }) }),
+      ).toBeVisible()
       const wards = page.getByTestId('club-ward')
       await expect(wards).toHaveCount(2)
       await expect(wards.filter({ hasText: 'Jaś Nowak' })).toContainText(/Consents: 2 of 3|Zgody: 2 z 3/)
@@ -560,7 +563,9 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await signOutBrowser(page)
       await signInThroughForm(page, olaEmail, password)
       await expect(page).toHaveURL(/\/club$/)
-      await expect(page.getByRole('heading', { level: 1, name: /Hello, Ola|Cześć, Ola/ })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Ola' } }) }),
+      ).toBeVisible()
       await expect(page.getByTestId('club-tile-profile')).toBeVisible()
       await expect(page.getByTestId('club-wards')).toHaveCount(0)
       await expect(page.getByText(uiText('club_core.settings.groups.payments'))).toHaveCount(0)

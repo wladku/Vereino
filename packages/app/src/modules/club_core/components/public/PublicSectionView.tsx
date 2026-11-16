@@ -5,7 +5,8 @@
 // its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Each card's fee
 // and sibling discount come from `payments.publicPrices` (#112); without public groups the classes area says that no classes are published.
 // A breadcrumb "Club › Sections › {name}" leads back to the club page (E06-S07, #89).
-// Headings: h1 section, h2 blocks. States: loading, error with retry, 404 and "the club does not publish a page".
+// Headings: h1 section, h2 blocks. States: loading, error with retry, 404 with a link back to the club page (#263) and
+// "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
@@ -179,9 +180,18 @@ export function PublicSectionView({ clubSlug, sectionSlug }: { clubSlug: string;
     return (
       <PublicFrame club={null}>
         <PublicNotice
-          title={t('club_core.public.notFound.title')}
-          message={t('club_core.public.notFound.message')}
+          title={t('club_core.public.sectionNotFound.title')}
+          message={t('club_core.public.sectionNotFound.message')}
           testId="public-not-found"
+          action={
+            <Link
+              href={clubHref(clubSlug)}
+              className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+              data-testid="public-club-page-link"
+            >
+              {t('club_core.public.clubPage')}
+            </Link>
+          }
         />
       </PublicFrame>
     )

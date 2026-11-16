@@ -2,7 +2,8 @@
 // of *API, Command, and Error Contracts*, P-05; REQ-024, DD-35, DD-44; #125): the confirmation page posts the token
 // from the e-mail in the body — never in this path, so access logs never carry it. No session: the token record names
 // the club (one lookup by its hash). Answers the request's summary while it waits for the administrator; 410 for an
-// unknown, used or expired link, 409 `slot_unavailable` when the slot was taken in the meantime.
+// unknown, used or expired link, 409 `slot_unavailable` when the slot was taken in the meantime. The answer carries
+// the club's public header (`club`, #261), read inside the scope the token named.
 import { z } from 'zod'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
@@ -11,7 +12,7 @@ import { errorResponse } from '@/modules/foundation'
 import type { VerifyRequestResult } from '../../../../commands/requests'
 import { requestVerifySchema } from '../../../../data/validators'
 import { requestSummary } from '../../../../services/request-queue'
-import { publicErrorSchema } from '../../../public-shared'
+import { publicClubSchema, publicErrorSchema } from '../../../public-shared'
 
 export const metadata = {
   POST: {
@@ -57,6 +58,9 @@ const requestSummarySchema = z.object({
   amount: z.number().int().nullable().describe('Indicative, minor units; null without a rate'),
   currency: z.string(),
   holdExpiresAt: z.string().describe('The administrator decides until then'),
+  club: publicClubSchema
+    .nullable()
+    .describe("The header of the club's public pages (the club the token named); null while it publishes no page"),
 })
 
 export const openApi: OpenApiRouteDoc = {

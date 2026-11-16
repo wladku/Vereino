@@ -21,7 +21,7 @@ import { uiText } from '../_fixtures/ui-text'
 // TEST-037, the `groups` and `activities` blocks (club spec phase 2 step 9, REQ-025, AC-025, DD-28, DD-29; issue #91,
 // E06-S09): a public team with a Tuesday and Thursday 17:00 series and a non-public team with its own series and event.
 // The section page carries a card per public group with its age, days, time, place and next three sessions (a
-// cancelled one marked), and the club page the upcoming one-off events of public groups only. The instructor is
+// cancelled one marked); the club page lists no one-off events (they moved to P-06, TEST-N14, #263). The instructor is
 // "Section coach" without consent — the API carries no name — and "First L." once the coach gives the consent through
 // `PUT /api/people/me`; with the `coaches` block off no instructor is sent at all; with `description_schedule` off
 // neither block is sent. An age range 10–8 answers 422 on `ageTo`. The browser renders both pages at 375 px with no
@@ -36,6 +36,7 @@ type GroupCard = {
   ageFrom: number | null
   ageTo: number | null
   level: string | null
+  ageCategory: string | null
   description: string | null
   conditions?: string | null
   instructors?: { name: string | null }[]
@@ -50,7 +51,7 @@ type SectionBlocks = {
     }[]
   }
 }
-type ClubBlocks = { schedule?: { events: (Session & { name: string; type: string; section: { slug: string } })[] } }
+type ClubBlocks = Record<string, unknown>
 
 const ALL_BLOCKS: PublicationBlock[] = ['description_schedule', 'conditions', 'coaches', 'contact']
 
@@ -173,6 +174,7 @@ test('TEST-037 public groups with their schedule, next sessions, instructor cons
         ageFrom: 8,
         ageTo: 10,
         level: 'początkujący',
+        ageCategory: null,
         conditions: 'Strój kąpielowy i czepek.',
         instructors: [{ name: null }],
       },
@@ -190,23 +192,11 @@ test('TEST-037 public groups with their schedule, next sessions, instructor cons
     expect(first.json).not.toContain('Trenerski')
     expect(first.json).not.toContain(coach.personId)
 
-    // The club page: the public group's event only, with date, place, section and type.
+    // The club page lists no events: they moved to the Events page P-06 (TEST-N14, #263).
     const clubPage = await publicGet(request, `/api/club_core/public/${slug}`)
     expect(clubPage.status).toBe(200)
-    const events = (clubPage.body as { blocks: ClubBlocks }).blocks.schedule?.events
-    expect(events).toEqual([
-      {
-        name: 'Zawody Orlików',
-        type: 'tournament',
-        section: { name: 'Basen', slug: 'basen' },
-        date: saturday,
-        startTime: '09:00',
-        endTime: '13:00',
-        place: 'Pływalnia miejska',
-        cancelled: false,
-      },
-    ])
-    expect(JSON.stringify(clubPage.body)).not.toContain('Żak')
+    expect((clubPage.body as { blocks: ClubBlocks }).blocks).not.toHaveProperty('schedule')
+    expect(JSON.stringify(clubPage.body)).not.toContain('Zawody')
 
     // The coach gives the consent in their profile: the card shows "Marek T.", never the full last name.
     const me = await getMe(request, coach.token)
@@ -237,12 +227,8 @@ test('TEST-037 public groups with their schedule, next sessions, instructor cons
     const sectionViolations = await scanBlockingViolations(page, testInfo, {})
     await setGuestLocale(page, 'pl')
     await page.goto(`/p/${slug}`)
-    await expect(page.getByTestId('public-events').getByRole('heading', { level: 2 })).toHaveText(
-      'Nadchodzące wydarzenia',
-    )
-    await expect(page.getByTestId('public-event')).toHaveCount(1)
-    await expect(page.getByTestId('public-event')).toContainText('Zawody Orlików')
-    await expect(page.getByTestId('public-event')).toContainText('Turniej')
+    await expect(page.getByTestId('public-club-name')).toBeVisible()
+    await expect(page.getByTestId('public-event')).toHaveCount(0)
     await expectNoPageOverflow(page)
     const clubViolations = await scanBlockingViolations(page, testInfo, {})
     expect({ section: sectionViolations, club: clubViolations }).toEqual({ section: [], club: [] })

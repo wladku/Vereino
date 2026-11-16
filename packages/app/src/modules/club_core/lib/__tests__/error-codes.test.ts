@@ -60,6 +60,7 @@ describe('club_core error codes', () => {
       { code: 'contract_terms_invalid', status: 422, messageKey: 'club_core.errors.contract_terms_invalid' },
       { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
       { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
+      { code: 'public_events_disabled', status: 404, messageKey: 'club_core.errors.public_events_disabled' },
     ])
   })
 })
