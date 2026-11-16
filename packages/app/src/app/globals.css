@@ -706,6 +706,12 @@ TODO: Fix that latter to have reference by the package names
   }
 }
 
+/* The sign-in page (M-01, #261): the platform card fills the space below the club header instead of a whole screen. */
+.vereino-login-body > div {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
 .schedule-calendar .rbc-calendar {
   height: 40rem;
   font-family: var(--font-sans);
