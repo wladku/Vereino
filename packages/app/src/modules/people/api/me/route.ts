@@ -134,7 +134,11 @@ const memberProfileSchema = z.object({
     )
     .describe("The member's own active guardians and the consents they gave (read-only for the member)"),
   roles: z.array(z.object({ role: z.string(), sectionId: z.string().nullable() })),
-  contexts: z.array(z.string()).describe('Acting contexts of the role-context switcher (self, guardian, …)'),
+  contexts: z
+    .array(z.string())
+    .describe(
+      'Acting contexts of the signed-in person (self, guardian, coach, coordinator, club_admin, facility_operator)',
+    ),
   locale: z.string().describe('The resolved interface locale: preferred → club default → request → en'),
   club: z.object({
     shortName: z.string().nullable(),
@@ -143,6 +147,7 @@ const memberProfileSchema = z.object({
     logoUrl: z.string().nullable().describe('The club logo (#29); null shows the club name only'),
   }),
   paymentsVisible: z.boolean().describe('False for a minor (R10) and without payments.view_own'),
+  isParticipant: z.boolean().describe('An active participant membership today; false without the groups module'),
 })
 
 export const openApi: OpenApiRouteDoc = {
@@ -152,7 +157,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read own profile, wards and consents',
       description:
-        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, the active staff roles, the acting contexts and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
+        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, the active staff roles, the acting contexts, whether the person is an active participant and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
       responses: [{ status: 200, description: 'The member profile', schema: memberProfileSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

@@ -9,7 +9,10 @@
 // #100): the week is the default, the month is a list of the days that have sessions — no grid, so it reads at 375 px.
 // The toolbar moves by whole weeks or months, and an empty week or month offers the next one. A link may open a range
 // (`?from=&to=`); a range the API refuses as longer than 62 days is read again trimmed, with a notice. The declaration
-// result is announced through an `aria-live` region. Acting as a coach, the heading carries "New event" (#140).
+// result is announced through an `aria-live` region. Acting in the staff context, the heading carries "New event"
+// (#140). In the member context a person who coaches sees the member side and the coached sessions in one list by
+// start time, a shared session once and opened as the coach; when one of the two reads fails, the other list shows with
+// a retry line (spec N, REQ-N07).
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -28,11 +31,12 @@ import {
   type CalendarDate,
   type DateWindow,
 } from '@vereino/core'
-import { CalendarList, memberCalendarScope, useMemberContext, type MemberLinkProps } from '@vereino/ui'
+import { CalendarList, memberCalendarScopes, useMemberContext, type MemberLinkProps } from '@vereino/ui'
 import {
   CALENDAR_VIEWS,
   calendarViewWindow,
   isCalendarView,
+  mergeCalendarEntries,
   requestedCalendarRange,
   shiftCalendarAnchor,
   windowContains,
@@ -97,7 +101,9 @@ function Calendar({ profile }: { profile: ClubProfile }) {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const [selection] = useMemberContext(profile)
-  const { as, personId } = memberCalendarScope(profile, selection)
+  const scopes = memberCalendarScopes(profile, selection)
+  const memberScope = scopes.find((scope) => scope.as !== 'coach') ?? null
+  const coaching = scopes.some((scope) => scope.as === 'coach')
   const [view, setView] = React.useState<CalendarView>('week')
   // A date in the shown week or month; null follows today.
   const [anchor, setAnchor] = React.useState<CalendarDate | null>(null)
@@ -111,15 +117,26 @@ function Calendar({ profile }: { profile: ClubProfile }) {
   const today = calendarDateInZone(new Date(), timeZone)
   const shown = linkRange ?? calendarViewWindow(view, anchor ?? today)
   const isCurrent = linkRange === null && windowContains(shown, today)
-  const query = useMemberCalendar({
-    as,
-    from: shown.from,
-    to: shown.to,
-    personId,
-  })
+  const memberQuery = useMemberCalendar(
+    memberScope ? { as: memberScope.as, from: shown.from, to: shown.to, personId: memberScope.personId } : null,
+  )
+  const coachQuery = useMemberCalendar(coaching ? { as: 'coach', from: shown.from, to: shown.to } : null)
+  const reads = [memberScope ? memberQuery : null, coaching ? coachQuery : null].filter((read) => read !== null)
+  const answered = reads.filter((read) => read.data)
+  const failed = reads.filter((read) => !read.data && read.isError)
+  // Until every read has settled the page shows loading, so a half list never offers "Next week" by mistake.
+  const loading = reads.some((read) => !read.data && !read.isError)
+  const retry = () => {
+    for (const read of failed) void read.refetch()
+  }
+  const memberAs = memberScope?.as ?? null
   const items = React.useMemo(
-    () => (query.data?.items ?? []).map((entry) => toCalendarItem(entry, as, t)),
-    [query.data, as, t],
+    () =>
+      mergeCalendarEntries([
+        memberAs ? (memberQuery.data?.items ?? []).map((entry) => ({ entry, as: memberAs })) : [],
+        coaching ? (coachQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coach' as const })) : [],
+      ]).map(({ entry, as }) => toCalendarItem(entry, as, t)),
+    [memberQuery.data, coachQuery.data, memberAs, coaching, t],
   )
   const days = React.useMemo(() => groupCalendarItemsByDay(items, timeZone), [items, timeZone])
 
@@ -127,7 +144,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     const action = parseActionId(id)
     if (!action) return
     setBusyItemId(itemId)
-    const shownDeclaration = query.data?.items
+    const shownDeclaration = memberQuery.data?.items
       .find((entry) => entry.occurrence.id === itemId)
       ?.persons.find((person) => person.personId === action.personId)?.declaration
     try {
@@ -163,19 +180,20 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     setView(value)
   }
 
-  // The range the API served: after a refused range, the trimmed one.
-  const served = query.data?.trimmed ? { from: query.data.from, to: query.data.to } : shown
+  // The range the API served: after a refused range, the trimmed one (both reads trim alike).
+  const servedBy = answered[0]?.data
+  const served = servedBy?.trimmed ? { from: servedBy.from, to: servedBy.to } : shown
   const label = rangeLabel(locale, linkRange ? 'link' : view, served)
   const viewLabels = VIEW_LABELS[view]
 
   let content: React.ReactNode
-  if (!query.data && query.isFetching) content = <LoadingMessage label={t('activities.club.calendar.loading')} />
-  else if (!query.data)
+  if (loading) content = <LoadingMessage label={t('activities.club.calendar.loading')} />
+  else if (answered.length === 0)
     content = (
       <ErrorMessage
         label={t('activities.club.errors.calendar')}
         action={
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
+          <Button type="button" variant="outline" className="min-h-11" onClick={retry}>
             {t('activities.club.actions.retry')}
           </Button>
         }
@@ -220,7 +238,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('activities.club.calendar.title')}</h1>
-        {as === 'coach' ? (
+        {selection.role === 'staff' ? (
           <Button asChild className="min-h-11">
             <Link href={newEventHref()} data-testid="club-calendar-new-event">
               {t('activities.club.event.new')}
@@ -289,7 +307,17 @@ function Calendar({ profile }: { profile: ClubProfile }) {
       <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="club-calendar-range">
         {label}
       </p>
-      {query.data?.trimmed ? (
+      {answered.length > 0 && failed.length > 0 ? (
+        <Alert status="warning" data-testid="club-calendar-partial">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="max-w-prose">{t('activities.club.calendar.partial')}</p>
+            <Button type="button" variant="outline" className="min-h-11" onClick={retry}>
+              {t('activities.club.actions.retry')}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+      {servedBy?.trimmed ? (
         <Alert status="information" data-testid="club-calendar-trimmed">
           <p className="max-w-prose">{t('activities.club.calendar.trimmed', { days: CALENDAR_RANGE_MAX_DAYS })}</p>
         </Alert>
