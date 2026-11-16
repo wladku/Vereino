@@ -3,6 +3,7 @@
 // options, so a list and a detail agree by construction (foundation spec P-03).
 import { z } from 'zod'
 import type { ActingRole, GrantKind, ScopeColumnMap, ScopeMatchOptions } from '@vereino/core'
+import type { AccountView } from '@/modules/foundation'
 import type { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { GUARDIAN_RELATIONS, consentsView, parseStoredConsents, type ConsentsView } from '../lib/people-rules'
 
@@ -70,6 +71,8 @@ export type PersonView = PersonBasicView & {
   userId: string | null
   /** The login e-mail of the person's account (#84); null without an account. */
   accountEmail: string | null
+  /** The account state read from the platform user (people life-cycle spec REQ-L01, DD-L02; #303). */
+  account: AccountView
   pesel?: string | null
   externalId?: string | null
   /** The person's own consents as a guardian (#27): the instant each was given, null when not given. */
@@ -91,7 +94,7 @@ export function personBasicView(person: Person): PersonBasicView {
   }
 }
 
-export function personView(person: Person, options: { withPesel: boolean; accountEmail?: string | null }): PersonView {
+export function personView(person: Person, options: { withPesel: boolean; account?: AccountView }): PersonView {
   return {
     ...personBasicView(person),
     access: 'full',
@@ -99,7 +102,8 @@ export function personView(person: Person, options: { withPesel: boolean; accoun
     phone: person.phone ?? null,
     notes: person.notes ?? null,
     userId: person.userId ?? null,
-    accountEmail: options.accountEmail ?? null,
+    accountEmail: options.account?.email ?? null,
+    account: options.account ?? { state: 'none', email: null, invitedAt: null, lastSignInAt: null },
     // The import identifier (#28) is an identifier like the PESEL: returned only with `people.pesel.view`.
     ...(options.withPesel ? { pesel: person.pesel ?? null, externalId: person.externalId ?? null } : {}),
     shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
@@ -218,6 +222,15 @@ export const personViewSchema = z.object({
   notes: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
   accountEmail: z.string().nullable().optional().describe("Full view only: the login e-mail of the person's account"),
+  account: z
+    .object({
+      state: z.enum(['none', 'invited', 'active', 'blocked']),
+      email: z.string().nullable(),
+      invitedAt: z.string().nullable(),
+      lastSignInAt: z.string().nullable(),
+    })
+    .optional()
+    .describe('Full view only: the account state read from the platform user (#303)'),
   pesel: z.string().nullable().optional(),
   externalId: z.string().nullable().optional(),
   shareContactWithCoachesAt: z.string().nullable().optional().describe('Full view only'),

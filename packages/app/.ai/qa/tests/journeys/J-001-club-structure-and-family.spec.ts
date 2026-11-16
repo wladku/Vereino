@@ -466,7 +466,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await expect(
           page.getByText(/account has been created and the invitation sent|Konto zostało utworzone/).first(),
         ).toBeVisible()
-        await expect(page.getByText(uiText('people.account.active', { exact: true }))).toBeVisible()
+        await expect(page.getByText(uiText('people.account.state.invited', { exact: true }))).toBeVisible()
         const userId = (await getPerson(request, club.adminToken, personId)).body?.userId
         expect(typeof userId).toBe('string')
         club.extraUserIds.push(String(userId))

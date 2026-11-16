@@ -6,6 +6,13 @@ export const errorCodes = [
   { code: 'account_age_below_threshold', status: 422, messageKey: 'people.errors.account_age_below_threshold' },
   { code: 'account_birth_date_required', status: 422, messageKey: 'people.errors.account_birth_date_required' },
   { code: 'account_exists', status: 409, messageKey: 'people.errors.account_exists' },
+  // People life-cycle spec phase L1 (REQ-L01, REQ-L02; #303): an account action on a person without an account in the
+  // club, a re-send to an account that is not invited, the club's last active administrator, and closing an account
+  // while an active role, guardianship or membership remains.
+  { code: 'account_not_found', status: 404, messageKey: 'people.errors.account_not_found' },
+  { code: 'invitation_not_pending', status: 409, messageKey: 'people.errors.invitation_not_pending' },
+  { code: 'last_club_admin', status: 422, messageKey: 'people.errors.last_club_admin' },
+  { code: 'account_has_purpose', status: 409, messageKey: 'people.errors.account_has_purpose' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
   // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.

@@ -48,7 +48,17 @@ export type PersonDetail = PersonListRow & {
   userId?: string | null
   /** The login e-mail of the person's account (full view, #84). */
   accountEmail?: string | null
+  /** The account state read from the platform user (full view, #303). */
+  account?: PersonAccount
   pesel?: string | null
+}
+
+/** `account` of the full person view (people life-cycle spec REQ-L01, DD-L02). */
+export type PersonAccount = {
+  state: 'none' | 'invited' | 'active' | 'blocked'
+  email: string | null
+  invitedAt: string | null
+  lastSignInAt: string | null
 }
 
 /** The tabs of the person record and their `?tab=` values (README B-10; #84). */

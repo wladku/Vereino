@@ -35,3 +35,24 @@ export function accountAgePolicy(input: AccountAgePolicyInput): AccountAgeDecisi
   }
   return ageOn(input.birthDate, input.today) >= input.threshold ? 'ok' : 'below_threshold'
 }
+
+/** The state of a person's account (people life-cycle spec DD-L02): read from the platform user, never stored. */
+export type AccountState = 'none' | 'invited' | 'active' | 'blocked'
+
+/** The facts of the platform user the state is read from; null when the person has no user in the club's scope. */
+export type AccountStateInput = {
+  readonly hasPassword: boolean
+  readonly lastSignInAt: Date | null
+  readonly isConfirmed: boolean
+} | null
+
+/**
+ * `blocked` while the user is not confirmed (the reversible block of REQ-L02); `invited` while it has no password and
+ * never signed in; `active` otherwise — a Google sign-in without a password counts as signed in (D-027).
+ */
+export function accountState(user: AccountStateInput): AccountState {
+  if (!user) return 'none'
+  if (!user.isConfirmed) return 'blocked'
+  if (!user.hasPassword && !user.lastSignInAt) return 'invited'
+  return 'active'
+}

@@ -4,7 +4,7 @@
 // `?tab=details|guardianship|roles|account|groups` (#84). A coordinator reads the basic data only (`access: 'basic'`);
 // the PESEL value is there only with `people.pesel.view` (anyone else sees the field empty with a hint, #262); editing
 // needs `people.manage`, roles `people.roles.manage`.
-// The account tab shows the account status to every reader and "Create account" only with `people.accounts.manage`.
+// The account tab shows the account state to every reader and its actions only with `people.accounts.manage` (#303).
 // The "Groups" tab is the injection spot `vereino:people:person-record:groups`, filled by the `groups` module (so
 // `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The header
 // shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262).
@@ -136,7 +136,7 @@ export function PersonRecord({ id }: { id: string }) {
 
   const person = load.person
   const canEdit = features['people.manage'] && person.access === 'full'
-  const canCreateAccount = features['people.accounts.manage'] && person.access === 'full'
+  const canManageAccount = features['people.accounts.manage'] && person.access === 'full'
   const allowedTabs = PERSON_RECORD_TABS.filter((value) => value !== 'groups' || hasGroupsTab)
   const tab = tabFrom(searchParams.get('tab'), allowedTabs)
   const selectTab = (value: string) => {
@@ -189,7 +189,7 @@ export function PersonRecord({ id }: { id: string }) {
           />
         </TabsContent>
         <TabsContent value="account" className="pt-4">
-          <AccountPanel person={person} canCreate={canCreateAccount} onChanged={refetch} />
+          <AccountPanel person={person} canManage={canManageAccount} onChanged={refetch} />
         </TabsContent>
         {hasGroupsTab ? (
           <TabsContent value="groups" className="pt-4">
