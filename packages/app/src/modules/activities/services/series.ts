@@ -12,6 +12,7 @@ import { type Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
 import type { SessionChanges } from '../commands/shared'
 import { lastSessionDay, ruleYieldsSessions } from '../lib/activities-rules'
+import type { SeriesSessionMove, SessionFacts } from '../lib/session-change'
 import type { ActivitiesScope } from './directory'
 import {
   assertNoConflicts,
@@ -55,12 +56,28 @@ export async function assertSeriesShape(
   if (!yields || (last !== null && last < clock.today)) await activitiesErrors.throw('activity_no_sessions')
 }
 
-/** Re-plans the activity's sessions from `clock.today` to the horizon and moves `generated_until`. */
+function sessionFacts(row: Occurrence): SessionFacts {
+  return {
+    status: row.status,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    placeId: row.placeId,
+    venueName: row.venueName ?? null,
+    venueAddress: row.venueAddress ?? null,
+    gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+  }
+}
+
+/**
+ * Re-plans the activity's sessions from `clock.today` to the horizon and moves `generated_until`. `moves`, when given,
+ * collects each existing session it changed with its facts before and after (the series notice, REQ-A09).
+ */
 export async function replanSeries(
   ctx: CommandRuntimeContext,
   em: EntityManager,
   activity: Activity,
   clock: Clock,
+  moves?: SeriesSessionMove[],
 ): Promise<SessionChanges> {
   const scope: ActivitiesScope = { tenantId: activity.tenantId, organizationId: activity.organizationId }
   await lockSchedule(em, activity.organizationId)
@@ -123,6 +140,7 @@ export async function replanSeries(
         (row.gatheringMinutesBefore ?? null) === gatheringMinutesBefore &&
         (row.confirmByMinutesBefore ?? null) === confirmByMinutesBefore
       if (unchanged) continue
+      const before = sessionFacts(row)
       row.startAt = occurrence.startAt
       row.endAt = occurrence.endAt
       row.placeId = activity.defaultPlaceId
@@ -134,6 +152,7 @@ export async function replanSeries(
       row.needsReschedule = false
       row.updatedAt = now
       changes.updatedIds.push(row.id)
+      moves?.push({ occurrenceDate: row.occurrenceDate, before, after: sessionFacts(row) })
       continue
     }
     const id = randomUUID()

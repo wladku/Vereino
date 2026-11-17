@@ -29,22 +29,24 @@ import {
 export type CancellationActor = { personId: string | null; actingRole: string | null }
 
 /**
- * The people a session's cancellation concerns, as on its date: the roster, the coach, the minors' guardians and, for
- * a coach's cancellation, the section's coordinators without the canceller.
+ * The people a session notice concerns, as on `onDate` (the session's date by default): the roster, the coach, the
+ * minors' guardians and, for a coach's change, the section's coordinators without the actor. A cancellation and a moved
+ * session (REQ-A09, #271, on the session's new date) share it.
  */
-async function cancellationAudience(
+export async function sessionAudience(
   container: AwilixContainer,
   scope: ActivitiesScope,
   occurrence: Occurrence,
   actor: CancellationActor,
+  onDate: string = occurrence.occurrenceDate,
 ) {
-  const roster = await rosterOn(container, scope, occurrence.groupId, occurrence.occurrenceDate)
+  const roster = await rosterOn(container, scope, occurrence.groupId, onDate)
   const participantIds = roster.filter((member) => member.role === 'participant').map((member) => member.personId)
   const [persons, guardiansByWard, coordinatorIds] = await Promise.all([
     findPersons(container, scope, participantIds),
-    activeGuardians(container, scope, participantIds, occurrence.occurrenceDate),
+    activeGuardians(container, scope, participantIds, onDate),
     actor.actingRole === 'coach'
-      ? sectionCoordinatorIdsOn(container, scope, occurrence.sectionId, occurrence.occurrenceDate)
+      ? sectionCoordinatorIdsOn(container, scope, occurrence.sectionId, onDate)
       : Promise.resolve([]),
   ])
   return {
@@ -52,7 +54,7 @@ async function cancellationAudience(
     coachPersonId: occurrence.coachPersonId ?? null,
     birthDates: new Map([...persons.values()].map((person) => [person.id, person.birthDate])),
     guardiansByWard,
-    onDate: occurrence.occurrenceDate,
+    onDate,
     coordinatorIds: cancellationCoordinatorIds(actor.actingRole, coordinatorIds, actor.personId),
   }
 }
@@ -70,7 +72,7 @@ export async function countCancellationNotified(
   const em = container.resolve<EntityManager>('em').fork()
   const occurrence = await em.findOne(Occurrence, { id: occurrenceId, ...scope, deletedAt: null })
   if (!occurrence || occurrence.status !== 'cancelled') return 0
-  return cancellationNotifiedCount(await cancellationAudience(container, scope, occurrence, actor), actor.personId)
+  return cancellationNotifiedCount(await sessionAudience(container, scope, occurrence, actor), actor.personId)
 }
 
 /** The notice body that names the canceller, per acting role (`CANCELLING_ROLES`). */
@@ -90,7 +92,7 @@ export async function notifyOccurrenceCancelled(
   const occurrence = await em.findOne(Occurrence, { id: event.occurrenceId, ...scope, deletedAt: null })
   if (!occurrence || occurrence.status !== 'cancelled') return []
   const activity = await em.findOne(Activity, { id: occurrence.activityId, ...scope }, { fields: ['id', 'name'] })
-  const audience = await cancellationAudience(container, scope, occurrence, event.actor)
+  const audience = await sessionAudience(container, scope, occurrence, event.actor)
   const userIds = await findUserIds(container, scope, cancellationPersonIds(audience))
   const recipientUserIds = cancellationRecipients({
     ...audience,

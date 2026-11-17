@@ -79,6 +79,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     category: 'activities',
     actions: [],
   },
+  // REQ-A09 (#271): a session moved, was restored, or a series' future sessions moved — the cancellation's audience is
+  // told in the app; `communication` posts in the thread and sends the e-mail. The title and body keys vary per case.
+  {
+    type: 'activities.occurrence_moved',
+    module: 'activities',
+    channels: ['in_app'],
+    titleKey: 'activities.notifications.occurrenceMoved.title',
+    bodyKey: 'activities.notifications.occurrenceMoved.body',
+    icon: 'calendar-clock',
+    severity: 'warning',
+    category: 'activities',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

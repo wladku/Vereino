@@ -18,6 +18,7 @@ import { Activity, Occurrence } from '../data/entities'
 import { activityCreateSchema, activityDeleteSchema, activityUpdateSchema } from '../data/validators'
 import type { ActivityType } from '../lib/activities-rules'
 import { awayByDefault, chooseLocation, storedVenue, type TypedVenue } from '../lib/venue'
+import { scheduleChangeOf, type SeriesRule, type SeriesSessionMove } from '../lib/session-change'
 import { clubClock } from '../services/directory'
 import { assertSeriesShape, replanSeries, restoreSessions, storedRule, type Clock } from '../services/series'
 import {
@@ -30,6 +31,7 @@ import {
   inWriteTransaction,
   lookupGroup,
   scheduleTarget,
+  selfPersonId,
   trustedTenantId,
   type ActivitiesCommandResult,
   type SessionChanges,
@@ -70,6 +72,26 @@ export type ActivitySnapshot = {
 }
 
 export type ActivityCommandResult = ActivitiesCommandResult<Activity, ActivitySnapshot> & { changes: SessionChanges }
+
+/** The `scheduleChange` of `activities.activity.updated` (REQ-A09, DD-A08): what a series edit moved. */
+export type ScheduleChange = NonNullable<ReturnType<typeof scheduleChangeOf>>
+
+/** The rule of a series as its notice names it. */
+function seriesRuleOf(row: {
+  defaultStartTime: string
+  defaultEndTime: string
+  defaultPlaceId: string | null
+  venueName?: string | null
+  gatheringMinutesBefore?: number | null
+}): SeriesRule {
+  return {
+    startTime: row.defaultStartTime,
+    endTime: row.defaultEndTime,
+    placeId: row.defaultPlaceId,
+    venueName: row.venueName ?? null,
+    gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+  }
+}
 
 export function activitySnapshot(row: Activity): ActivitySnapshot {
   return {
@@ -178,7 +200,7 @@ async function authorizeActivityReplay(
   ctx: CommandRuntimeContext,
   id: string | null | undefined,
   includeDeleted = false,
-): Promise<{ row: Activity; scope: Scope }> {
+): Promise<{ row: Activity; scope: Scope; actingRole: string }> {
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] activity replay needs the replay transaction and the id')
   const authorized = await authorizeScoped(
@@ -188,16 +210,39 @@ async function authorizeActivityReplay(
     em,
     { mode: 'replay' },
   )
-  return { row: authorized.entity as Activity, scope: authorized.scope }
+  return { row: authorized.entity as Activity, scope: authorized.scope, actingRole: authorized.actingRole }
+}
+
+/** Who changed a series: the event names them for the series notice (REQ-A09). */
+type SeriesNotice = {
+  scheduleChange: ScheduleChange | null
+  actorUserId: string | null
+  actorPersonId: string | null
+  actingRole: string
 }
 
 async function emitActivityEffects(
   row: Activity,
   action: 'created' | 'updated' | 'deleted',
   changes: SessionChanges,
+  notice?: SeriesNotice,
 ): Promise<void> {
   const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
-  await emitAfterCommit(`activities.activity.${action}`, scope, { id: row.id })
+  // REQ-A09, #271: a series edit that moved future sessions carries `scheduleChange`, who made it and the version it
+  // wrote (the notices' key); without `scheduleChange` the event is silent for families.
+  await emitAfterCommit(`activities.activity.${action}`, scope, {
+    id: row.id,
+    ...(notice?.scheduleChange
+      ? {
+          groupId: row.groupId,
+          scheduleChange: notice.scheduleChange,
+          actorUserId: notice.actorUserId,
+          actorPersonId: notice.actorPersonId,
+          actingRole: notice.actingRole,
+          updatedAt: row.updatedAt.toISOString(),
+        }
+      : {}),
+  })
   if (hasSessionChanges(changes)) {
     await emitAfterCommit('activities.occurrence.generated', scope, { id: row.id, ...changes })
   }
@@ -388,14 +433,31 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       if (patch.isActive !== undefined) row.isActive = patch.isActive
       if (patch.isAway !== undefined) row.isAway = patch.isAway
       row.updatedAt = new Date()
+      const moves: SeriesSessionMove[] = []
       const changes =
         seriesKey(row) !== beforeKey
-          ? await replanSeries(ctx, em, row, clock)
+          ? await replanSeries(ctx, em, row, clock, moves)
           : { createdIds: [], updatedIds: [], removedIds: [] }
-      return { entity: row, actingRole: authorized.actingRole, before, changes }
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        changes,
+        scheduleChange: scheduleChangeOf(
+          moves,
+          { before: seriesRuleOf(before), after: seriesRuleOf(row) },
+          row.updatedAt,
+        ),
+        actorPersonId: selfPersonId(authorized.scope),
+      }
     })
-    await emitActivityEffects(result.entity, 'updated', result.changes)
-    return result
+    await emitActivityEffects(result.entity, 'updated', result.changes, {
+      scheduleChange: result.scheduleChange,
+      actorUserId: ctx.auth?.sub ?? null,
+      actorPersonId: result.actorPersonId,
+      actingRole: result.actingRole,
+    })
+    return { entity: result.entity, actingRole: result.actingRole, before: result.before, changes: result.changes }
   },
   buildLog: ({ result }) =>
     activitiesLog({
@@ -416,13 +478,21 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as ActivitySnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing activity snapshot for undo')
-    const { row } = await authorizeActivityReplay(ctx, before.id)
+    const { row, scope, actingRole } = await authorizeActivityReplay(ctx, before.id)
     const em = ctx.transactionalEm as EntityManager
     const clock = await clubClock(ctx.container, { tenantId: row.tenantId, organizationId: row.organizationId })
+    const rules = { before: seriesRuleOf(activitySnapshot(row)), after: seriesRuleOf(before) }
     restoreActivity(row, before)
     row.updatedAt = new Date()
-    const changes = await replanSeries(ctx, em, row, clock)
-    await emitActivityEffects(row, 'updated', changes)
+    const moves: SeriesSessionMove[] = []
+    const changes = await replanSeries(ctx, em, row, clock, moves)
+    // The undo of a series edit moves the sessions back, so it is announced like the edit.
+    await emitActivityEffects(row, 'updated', changes, {
+      scheduleChange: scheduleChangeOf(moves, rules, row.updatedAt),
+      actorUserId: ctx.auth?.sub ?? null,
+      actorPersonId: selfPersonId(scope),
+      actingRole,
+    })
   },
 }
 
