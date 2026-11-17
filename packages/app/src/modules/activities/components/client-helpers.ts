@@ -5,7 +5,8 @@ import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
-import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { useQuery } from '@tanstack/react-query'
+import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Recurrence, WEEKDAYS, errorCodeOf, type Weekday } from '@vereino/core'
 import type { GroupKindLike } from '../lib/activities-rules'
@@ -25,6 +26,8 @@ export type TableColumns<T extends object> = DataTableProps<T>['columns']
 export const ACTIVITIES_HREF = '/backend/activities/activities'
 export const OCCURRENCES_HREF = '/backend/activities/occurrences'
 export const EVENTS_CREATE_HREF = '/backend/activities/events/create'
+/** The club's places (`club_core`), linked from the wizard when the club has no bookable place (#268). */
+export const PLACES_HREF = '/backend/club/places'
 
 export const activityHref = (id: string) => `${ACTIVITIES_HREF}/${encodeURIComponent(id)}`
 export const occurrenceHref = (id: string) => `${OCCURRENCES_HREF}/${encodeURIComponent(id)}`
@@ -35,6 +38,8 @@ export type ActivityRow = {
   sectionName?: string | null
   groupId: string | null
   groupName?: string | null
+  /** The group's kind (`team` / `class_group`); a class group's training reads "Classes" (#268). */
+  groupKind?: string | null
   name: string | null
   type: string | null
   placeId: string | null
@@ -51,6 +56,8 @@ export type ActivityRow = {
   generatedUntil: string | null
   /** The default gathering time of the sessions in minutes before the start (DD-43). */
   gatheringMinutesBefore: number | null
+  /** The default declaration deadline of the sessions in minutes before the start (REQ-A07). */
+  confirmByMinutesBefore?: number | null
   description: string | null
   isActive: boolean
   /** An away trip (#96). */
@@ -76,6 +83,10 @@ export type OccurrenceRow = {
   /** The session's gathering instant (DD-43), or null. */
   gatheringAt: string | null
   gatheringMinutesBefore: number | null
+  /** The session's declaration deadline (REQ-A07), or null; it has effect only for a `confirm` kind. */
+  confirmBy?: string | null
+  /** True from the deadline until the start (DD-A02). */
+  deadlinePassed?: boolean
   placeId: string | null
   placeName?: string | null
   coachPersonId: string | null
@@ -113,6 +124,12 @@ export type OccurrenceDetail = OccurrenceRow & {
   activityRecurring: boolean
   substitutions: SubstitutionHistoryEntry[]
   actingRole: string
+  /** The place's address and coordinates for the map link (#268). */
+  placeAddress?: string | null
+  placeGeoLat?: number | null
+  placeGeoLng?: number | null
+  /** The caller may restore the cancelled session (the club administrator, before its end; #268). */
+  mayRestore?: boolean
 }
 
 /** One entry of the 409 `conflicts` list and of a preview item's `conflicts`. */
@@ -151,9 +168,15 @@ export type PreviewResult = {
   providerFailed: boolean
 }
 
-type GroupOptionRow = { id: string; name: string | null; kind?: string | null; isActive?: boolean }
+type GroupOptionRow = {
+  id: string
+  name: string | null
+  kind?: string | null
+  isActive?: boolean
+  sectionName?: string | null
+}
 type NamedRow = { id: string; name: string | null }
-type PlaceOptionRow = { id: string; name: string; parentName: string | null; isLeaf: boolean }
+type PlaceOptionRow = { id: string; name: string; parentName: string | null; isLeaf: boolean; isExternal?: boolean }
 type ExternalTeamOptionRow = { id: string; name: string | null; clubName: string | null }
 type PersonOptionRow = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
@@ -263,6 +286,20 @@ export function scheduleSummary(
     : t('activities.schedule.weekly', { days, time: times })
 }
 
+/**
+ * The rule column of the activities list (B-13, #268): the schedule and, for a series, its last day —
+ * "Tue, Thu 17:00–18:30 · until 2027-06-30".
+ */
+export function ruleSummary(
+  t: Translate,
+  row: Pick<ActivityRow, 'recurrenceRule' | 'startsOn' | 'endsOn' | 'startTime' | 'endTime'>,
+): string {
+  const schedule = scheduleSummary(t, row)
+  return row.recurrenceRule && row.endsOn
+    ? schedule + ' · ' + t('activities.schedule.until', { date: row.endsOn })
+    : schedule
+}
+
 // --- Option sources ---
 
 /** The groups of the caller's scope (`GET /api/groups/groups`), active ones only for a new activity. */
@@ -276,7 +313,10 @@ export async function groupOptions(activeOnly: boolean): Promise<CrudFieldOption
   return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
 }
 
-/** The group options with each group's kind (`team` / `class_group`), which decides the activity types (#93). */
+/**
+ * The group options with each group's kind (`team` / `class_group`), which decides the activity types (#93), labelled
+ * "Name (Section)" (README B-14, #268).
+ */
 export async function groupKindOptions(
   activeOnly: boolean,
 ): Promise<{ options: CrudFieldOption[]; kinds: Record<string, GroupKindLike> }> {
@@ -290,7 +330,13 @@ export async function groupKindOptions(
   for (const item of data.items) {
     if (item.kind === 'team' || item.kind === 'class_group') kinds[item.id] = item.kind
   }
-  return { options: data.items.map((item) => ({ value: item.id, label: item.name ?? item.id })), kinds }
+  return {
+    options: data.items.map((item) => {
+      const name = item.name ?? item.id
+      return { value: item.id, label: item.sectionName ? `${name} (${item.sectionName})` : name }
+    }),
+    kinds,
+  }
 }
 
 export async function sectionOptions(): Promise<CrudFieldOption[]> {
@@ -298,11 +344,14 @@ export async function sectionOptions(): Promise<CrudFieldOption[]> {
   return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
 }
 
-/** Bookable places only (sessions point to a leaf), labelled "Parent › Name". */
-export async function placeOptions(): Promise<CrudFieldOption[]> {
+/**
+ * Bookable places only (sessions point to a leaf), labelled "Parent › Name". `ownOnly` leaves out the venues outside the
+ * club (the activity wizard, #268: a series is planned on the club's own places).
+ */
+export async function placeOptions(options: { ownOnly?: boolean } = {}): Promise<CrudFieldOption[]> {
   const data = await readApiResultOrThrow<{ items?: PlaceOptionRow[] }>('/api/club_core/options/places')
   return (data.items ?? [])
-    .filter((item) => item.isLeaf)
+    .filter((item) => item.isLeaf && !(options.ownOnly && item.isExternal))
     .map((item) => ({ value: item.id, label: item.parentName ? `${item.parentName} › ${item.name}` : item.name }))
     .sort((a, b) => a.label.localeCompare(b.label))
 }
@@ -328,6 +377,39 @@ export async function personOptions(query?: string): Promise<CrudFieldOption[]> 
 }
 
 /** The option value the coach picker uses for "No coach"; the request body sends `null` for it. */
+/** The club's declaration kind per activity type (`GET /api/activities/events/options`, D-026). */
+export type DeclarationKinds = Record<string, 'absence_only' | 'confirm'>
+
+export const DECLARATION_KINDS_QUERY_KEY = ['activities-declaration-kinds']
+
+/** The club's declaration kinds for the forms' deadline field (REQ-A07); null while loading or when unreadable. */
+export function useDeclarationKinds(): DeclarationKinds | null {
+  const query = useQuery({
+    queryKey: DECLARATION_KINDS_QUERY_KEY,
+    queryFn: async (): Promise<DeclarationKinds | null> => {
+      const call = await apiCall<{ declarationKinds?: DeclarationKinds }>(
+        '/api/activities/events/options',
+        OWN_FORBIDDEN_STATE,
+      )
+      return call.ok ? (call.result?.declarationKinds ?? null) : null
+    },
+    staleTime: 60_000,
+  })
+  return query.data ?? null
+}
+
+/**
+ * Whether a form offers the declaration deadline for an activity type (REQ-A07): only a `confirm` kind takes one;
+ * while the kinds are unknown the field stays offered, since the server ignores it for any other kind.
+ */
+export function takesDeadline(kinds: DeclarationKinds | null, type: unknown): boolean {
+  if (!kinds || typeof type !== 'string' || !type) return true
+  return kinds[type] !== 'absence_only'
+}
+
+/** The largest deadline offset the forms take, in hours (14 days, REQ-A07). */
+export const MAX_CONFIRM_BY_HOURS = 336
+
 export const NO_COACH = 'none'
 
 type CoachOptionRow = { id: string; name: string }
@@ -381,13 +463,17 @@ const FIELD_OF_CODE = new Map<string, string>([
   ['recurrence_invalid', 'recurrence'],
   ['activity_no_sessions', 'recurrence'],
   ['activity_times_inverted', 'endTime'],
-  ['activity_dates_inverted', 'endsOn'],
+  ['activity_dates_inverted', 'until'],
   ['activity_type_requires_team', 'type'],
   ['event_type_not_allowed', 'type'],
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
   ['occurrence_gathering_after_start', 'gatheringTime'],
   ['occurrence_gathering_too_early', 'gatheringTime'],
+  // REQ-A07: the move dialog's deadline fields (the series and event forms show the message above the form).
+  ['occurrence_confirm_by_after_start', 'confirmByDate'],
+  ['occurrence_confirm_by_too_early', 'confirmByDate'],
+  ['occurrence_confirm_by_in_past', 'confirmByDate'],
 ])
 
 /** The `field` an `activities_reference_invalid` names, as a form field id. */
@@ -459,4 +545,23 @@ const POLICY_FIELD_OF_CODE = new Map<string, string>([
 export function policyFieldOfError(error: unknown): string | null {
   const code = errorCodeOf(error)
   return (code ? POLICY_FIELD_OF_CODE.get(code) : undefined) ?? fieldOfError(error)
+}
+
+// --- Declaration policies list columns (REQ-A06, B-17) ---
+
+/** The policy's scope kind: "Club", "Group", "Activity type" or "Away trip" (the list's "Scope" column). */
+export function policyScopeKindLabel(t: Translate, scope: string | null | undefined): string {
+  return scope ? t(`activities.policies.scope.${scope}`) : t('activities.common.empty')
+}
+
+/** What the policy applies to: the group name or the activity type; a dash for the club and away trips. */
+export function policyTargetLabel(t: Translate, row: Pick<PolicyRow, 'scope' | 'groupName' | 'activityType'>): string {
+  if (row.scope === 'group') return row.groupName ?? t('activities.common.empty')
+  if (row.scope === 'activity_type') return typeLabel(t, row.activityType)
+  return t('activities.common.empty')
+}
+
+/** The confirmation limit as "24 h", or a dash without one. */
+export function policyTimeoutLabel(t: Translate, hours: number | null | undefined): string {
+  return typeof hours === 'number' ? t('activities.policies.hours', { count: hours }) : t('activities.common.empty')
 }

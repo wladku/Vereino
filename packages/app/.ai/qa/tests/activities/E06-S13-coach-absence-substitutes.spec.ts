@@ -379,7 +379,7 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     await expect(widget.getByTestId('activities-widget-unsettledSessions-count')).toHaveText('1')
     await expect(widget.getByRole('link', { name: /Trening zapomniany/ })).toBeVisible()
     await widget.getByRole('link', { name: uiText('activities.dashboard.widgets.openList', { exact: true }) }).click()
-    await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?perspective=unsettled$/)
+    await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?view=unsettled$/)
     await expect(
       page.getByRole('row').filter({ hasText: 'Trening zapomniany' }).getByTestId('occurrence-unsettled'),
     ).toBeVisible()

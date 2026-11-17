@@ -127,7 +127,7 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     await page
       .getByRole('tab', { name: uiText('activities.occurrences.perspectives.cancelled', { exact: true }) })
       .click()
-    await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?perspective=cancelled$/)
+    await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?view=cancelled$/)
     const cancelledRow = page.getByRole('row').filter({ hasText: 'Trening do odwołania' })
     await expect(cancelledRow).toContainText('Boisko zamknięte')
     await expect(page.getByText('Trening jutro')).toHaveCount(0)

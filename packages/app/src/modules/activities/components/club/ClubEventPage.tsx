@@ -39,13 +39,24 @@ import {
   type EventPlaceOption,
 } from '../../lib/member-event'
 import { ConflictList } from '../ConflictList'
-import { OWN_FORBIDDEN_STATE, externalTeamOptions, type ScheduleConflict } from '../client-helpers'
+import {
+  OWN_FORBIDDEN_STATE,
+  externalTeamOptions,
+  takesDeadline,
+  type DeclarationKinds,
+  type ScheduleConflict,
+} from '../client-helpers'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CALENDAR_QUERY_KEY, CLUB_CALENDAR_HREF, sessionHref, type ClubProfile, type Translate } from './club-client'
 
 export const EVENT_OPTIONS_QUERY_KEY = ['activities-event-options'] as const
 
-type EventOptions = { groups: EventGroupOption[]; places: EventPlaceOption[] }
+type EventOptions = {
+  groups: EventGroupOption[]
+  places: EventPlaceOption[]
+  /** The club's declaration kind per activity type (REQ-A07): the deadline is offered for a `confirm` kind. */
+  declarationKinds?: DeclarationKinds
+}
 type TeamOption = { value: string; label: string }
 
 function useEventOptions() {
@@ -115,12 +126,14 @@ export function ClubEventForm({
     endTime: '',
     invitedExternalTeamIds: [],
     description: '',
+    confirmByHours: '',
   }))
   const [problems, setProblems] = React.useState<Partial<Record<EventDraftField, string>>>({})
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [pending, setPending] = React.useState(false)
   const teams = useTeamOptions(draft.type === 'tournament')
+  const deadlineShown = takesDeadline(options.declarationKinds ?? null, draft.type)
 
   if (groups.length === 0) {
     return (
@@ -146,6 +159,7 @@ export function ClubEventForm({
     date: `${id}-date`,
     startTime: `${id}-start`,
     endTime: `${id}-end`,
+    confirmByHours: `${id}-confirm-by`,
   }
   const showProblems = (next: Partial<Record<EventDraftField, string>>) => {
     setProblems(next)
@@ -171,7 +185,7 @@ export function ClubEventForm({
       call = await apiCall<CreateAnswer>('/api/activities/events', {
         method: 'POST',
         headers: { ...(OWN_FORBIDDEN_STATE.headers as Record<string, string>), 'content-type': 'application/json' },
-        body: JSON.stringify(eventRequestBody(draft, timeZone)),
+        body: JSON.stringify(eventRequestBody(draft, timeZone, deadlineShown)),
       })
     } catch {
       setPending(false)
@@ -372,6 +386,31 @@ export function ClubEventForm({
           </div>
         </div>
         <p className="text-muted-foreground text-sm">{t('activities.club.event.zone', { zone: timeZone })}</p>
+        {/* REQ-A07: the declaration deadline, for a type of a `confirm` kind. */}
+        {deadlineShown ? (
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${id}-confirm-by`}>{t('activities.fields.confirmByHoursBefore')}</Label>
+            <Input
+              id={`${id}-confirm-by`}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={336}
+              className="min-h-11"
+              value={draft.confirmByHours ?? ''}
+              aria-invalid={invalid('confirmByHours')}
+              aria-describedby={[`${id}-confirm-by-help`, describedBy('confirmByHours')].filter(Boolean).join(' ')}
+              onChange={(event) => {
+                update('confirmByHours', event.target.value)
+              }}
+              data-testid="club-event-confirm-by"
+            />
+            <p id={`${id}-confirm-by-help`} className="text-muted-foreground text-sm">
+              {t('activities.fields.confirmByHoursBefore.help')}
+            </p>
+            <FieldProblem id={`${id}-confirmByHours-problem`} text={problems.confirmByHours} />
+          </div>
+        ) : null}
       </fieldset>
       {draft.type === 'tournament' && teamList.length > 0 ? (
         <fieldset className="flex flex-col gap-2" data-testid="club-event-teams">

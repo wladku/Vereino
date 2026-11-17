@@ -6,7 +6,7 @@
 import * as React from 'react'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { KIND_TAGS } from '../club-places/PlaceTimeline'
+import { KIND_TAGS } from './tags'
 import { entryLabel, entryRange, type CalendarEntry, type Translate } from '../club-places/places-client'
 
 /** What an entry is, as the axis block and the list name it; a redacted reader sees only what occupies the slot. */
@@ -40,6 +40,7 @@ export function DayEntries({
   redacted = false,
   filtered = false,
   actionOf,
+  onOpen,
 }: {
   entries: readonly CalendarEntry[]
   timeZone: string
@@ -49,6 +50,8 @@ export function DayEntries({
   /** The "to be moved" filter is on: the empty text says so. */
   filtered?: boolean
   actionOf?: (entry: CalendarEntry) => React.ReactNode
+  /** When set, an entry's text is a button opening its details (M-11). */
+  onOpen?: (entry: CalendarEntry) => void
 }) {
   const t = useT()
   const headingId = React.useId()
@@ -65,6 +68,14 @@ export function DayEntries({
         <ul className="flex flex-col divide-y rounded-md border">
           {entries.map((entry) => {
             const status = (entry.kind === 'rental' || entry.kind === 'request') && entry.status && !redacted
+            const text = (
+              <>
+                <span className="font-medium tabular-nums">{entryRange(entry, timeZone)}</span>
+                {' · '}
+                {dayEntryText(t, entry, redacted)}
+                {status ? ` · ${t(`facilities.rentals.status.${entry.status as string}`)}` : null}
+              </>
+            )
             return (
               <li
                 key={`${entry.kind}:${entry.id}`}
@@ -73,12 +84,20 @@ export function DayEntries({
                 data-kind={entry.kind}
               >
                 <div className="flex min-w-0 flex-col gap-1">
-                  <p className="text-sm break-words">
-                    <span className="font-medium tabular-nums">{entryRange(entry, timeZone)}</span>
-                    {' · '}
-                    {dayEntryText(t, entry, redacted)}
-                    {status ? ` · ${t(`facilities.rentals.status.${entry.status as string}`)}` : null}
-                  </p>
+                  {onOpen ? (
+                    <button
+                      type="button"
+                      className="hover:bg-muted focus-visible:ring-ring -mx-1 min-h-11 rounded-md px-1 text-start text-sm break-words underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                      onClick={() => {
+                        onOpen(entry)
+                      }}
+                      data-testid={`facilities-day-entry-open-details-${entry.id}`}
+                    >
+                      {text}
+                    </button>
+                  ) : (
+                    <p className="text-sm break-words">{text}</p>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag variant={KIND_TAGS[entry.kind]}>{t(`facilities.places.kind.${entry.kind}`)}</Tag>
                     {entry.needsReschedule ? (

@@ -4,18 +4,22 @@ import {
   CANCEL_REASON_MIN_LENGTH,
   NEEDING_COACH_DAYS_AHEAD,
   OCCURRENCE_PERSPECTIVES,
+  activityOfParams,
   coachBadge,
   coachRowAction,
   defaultSessionWindow,
   isCancelReasonValid,
   localCalendarDate,
+  mayMoveRow,
   perspectiveHref,
   perspectiveOf,
   perspectiveQuery,
   perspectiveStatus,
   perspectiveWindow,
   scheduleRangeWindow,
+  sessionInlineActions,
   sessionRowActions,
+  viewOfParams,
 } from '../occurrence-list'
 
 // E06-S12 (#94): the sessions list's perspectives, default window, row actions, cancellation reason and the calendar
@@ -23,7 +27,8 @@ import {
 // in does not matter.
 describe('sessions list perspectives', () => {
   it('knows All, Needing a coach, Unsettled, Canceled and Calendar and reads anything else as All', () => {
-    expect(OCCURRENCE_PERSPECTIVES).toEqual(['all', 'unassigned', 'unsettled', 'cancelled', 'calendar'])
+    expect(OCCURRENCE_PERSPECTIVES).toEqual(['all', 'unassigned', 'reschedule', 'unsettled', 'cancelled', 'calendar'])
+    expect(perspectiveOf('reschedule')).toBe('reschedule')
     expect(perspectiveOf('cancelled')).toBe('cancelled')
     expect(perspectiveOf('calendar')).toBe('calendar')
     expect(perspectiveOf('all')).toBe('all')
@@ -34,14 +39,34 @@ describe('sessions list perspectives', () => {
     expect(perspectiveOf(undefined)).toBe('all')
   })
 
-  it('keeps the bare path for All and names the other perspectives in the query', () => {
+  it('keeps the bare path for All and names the other views and the activity in the query (#268)', () => {
     expect(perspectiveHref('/backend/activities/occurrences', 'all')).toBe('/backend/activities/occurrences')
     expect(perspectiveHref('/backend/activities/occurrences', 'cancelled')).toBe(
-      '/backend/activities/occurrences?perspective=cancelled',
+      '/backend/activities/occurrences?view=cancelled',
     )
     expect(perspectiveHref('/backend/activities/occurrences', 'calendar')).toBe(
-      '/backend/activities/occurrences?perspective=calendar',
+      '/backend/activities/occurrences?view=calendar',
     )
+    expect(perspectiveHref('/backend/activities/occurrences', 'all', 'a1')).toBe(
+      '/backend/activities/occurrences?activity=a1',
+    )
+    expect(perspectiveHref('/backend/activities/occurrences', 'reschedule', 'a1')).toBe(
+      '/backend/activities/occurrences?view=reschedule&activity=a1',
+    )
+    expect(perspectiveHref('/backend/activities/occurrences', 'unassigned', null)).toBe(
+      '/backend/activities/occurrences?view=unassigned',
+    )
+  })
+
+  it('reads ?view= first and ?perspective= as its alias (DD-A11), and the ?activity= scope', () => {
+    expect(viewOfParams(new URLSearchParams('view=unassigned'))).toBe('unassigned')
+    expect(viewOfParams(new URLSearchParams('perspective=unassigned'))).toBe('unassigned')
+    expect(viewOfParams(new URLSearchParams('view=reschedule&perspective=cancelled'))).toBe('reschedule')
+    expect(viewOfParams(new URLSearchParams('view=nonsense'))).toBe('all')
+    expect(viewOfParams(new URLSearchParams(''))).toBe('all')
+    expect(activityOfParams(new URLSearchParams('activity=a1'))).toBe('a1')
+    expect(activityOfParams(new URLSearchParams('activity=%20'))).toBeNull()
+    expect(activityOfParams(new URLSearchParams(''))).toBeNull()
   })
 
   it('pins the cancelled status for Canceled only', () => {
@@ -55,6 +80,7 @@ describe('sessions list perspective queries and windows (E06-S13)', () => {
   it('pins unassigned=1, unsettled=1 or the cancelled status, and nothing for All and Calendar', () => {
     expect(perspectiveQuery('unassigned')).toEqual({ unassigned: '1' })
     expect(perspectiveQuery('unsettled')).toEqual({ unsettled: '1' })
+    expect(perspectiveQuery('reschedule')).toEqual({ status: 'planned', needsReschedule: 'true' })
     expect(perspectiveQuery('cancelled')).toEqual({ status: 'cancelled' })
     expect(perspectiveQuery('all')).toEqual({})
     expect(perspectiveQuery('calendar')).toEqual({})
@@ -64,6 +90,7 @@ describe('sessions list perspective queries and windows (E06-S13)', () => {
     expect(NEEDING_COACH_DAYS_AHEAD).toBe(14)
     expect(perspectiveWindow('unassigned', '2026-12-25')).toEqual({ from: '2026-12-25', to: '2027-01-08' })
     expect(perspectiveWindow('unsettled', '2026-11-04')).toBeNull()
+    expect(perspectiveWindow('reschedule', '2026-11-04')).toBeNull()
     expect(perspectiveWindow('all', '2026-11-04')).toEqual({ from: '2026-10-28', to: '2026-11-18' })
     expect(perspectiveWindow('cancelled', '2026-11-04')).toEqual({ from: '2026-10-28', to: '2026-11-18' })
   })
@@ -161,5 +188,47 @@ describe('coordinator calendar range', () => {
       from: '2026-01-01',
       to: '2026-03-03',
     })
+  })
+})
+
+describe('inline row actions (#268)', () => {
+  const now = new Date('2026-11-16T12:00:00Z')
+  const future = { status: 'planned', startAt: '2026-11-17T16:00:00Z', mayCancel: true }
+
+  it('offers Move for a planned session and a planner only', () => {
+    expect(mayMoveRow({ status: 'planned' }, true)).toBe(true)
+    expect(mayMoveRow({ status: 'planned' }, false)).toBe(false)
+    expect(mayMoveRow({ status: 'cancelled' }, true)).toBe(false)
+  })
+
+  it('orders the coach action, Move, then Cancel or Attendance list', () => {
+    const features = { manage: true, coach: true }
+    expect(sessionInlineActions({ ...future, coachPersonId: null }, now, features)).toEqual([
+      'assign',
+      'move',
+      'cancel',
+    ])
+    expect(sessionInlineActions({ ...future, coachPersonId: 'p1' }, now, features)).toEqual([
+      'change',
+      'move',
+      'cancel',
+    ])
+    expect(
+      sessionInlineActions(
+        { status: 'planned', startAt: '2026-11-15T16:00:00Z', coachPersonId: 'p1', mayCancel: true },
+        now,
+        features,
+      ),
+    ).toEqual(['change', 'move', 'attendance'])
+    expect(
+      sessionInlineActions(
+        { status: 'cancelled', startAt: '2026-11-17T16:00:00Z', coachPersonId: null },
+        now,
+        features,
+      ),
+    ).toEqual([])
+    expect(sessionInlineActions({ ...future, coachPersonId: null }, now, { manage: false, coach: true })).toEqual([
+      'cancel',
+    ])
   })
 })

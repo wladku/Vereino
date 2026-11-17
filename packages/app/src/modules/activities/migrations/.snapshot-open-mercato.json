@@ -8,6 +8,23 @@
       "name": "activities_activities",
       "schema": "public",
       "columns": {
+        "confirm_by_minutes_before": {
+          "name": "confirm_by_minutes_before",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamptz(6)",
@@ -1640,6 +1657,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "uuid"
+        },
+        "confirm_by_minutes_before": {
+          "name": "confirm_by_minutes_before",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",

@@ -1,24 +1,51 @@
 // The sessions list `/backend/activities/occurrences` (README B-15; club spec UI table, REQ-006; E06-S12, #94): the
-// perspectives All / Needing a coach / Unsettled / Canceled / Calendar in the URL (`?perspective=`, E06-S13 #95 added
-// the two coach perspectives), the default window of each (7 days back through 14 days ahead; from today for 14 days
-// for "Needing a coach"; none for "Unsettled"), the row actions a session offers (Cancel for a future planned session,
+// views Upcoming ("all") / Needing a coach / Needs a new time / Unsettled / Canceled / Calendar in the URL (`?view=`,
+// DD-A11 of the groups and activities parity spec, #268; `?perspective=` stays accepted for links already sent; E06-S13
+// #95 added the two coach views), the scope to one activity (`?activity=`), the default window of each (7 days back
+// through 14 days ahead; from today for 14 days for "Needing a coach"; none for "Unsettled" and "Needs a new time"), the
+// row actions a session offers (Cancel for a future planned session,
 // Attendance list for a started one, Assign substitute / Change coach for a planned one), the coach badges, the
 // cancellation reason rule and the date range the coordinator's calendar reads for the shown grid. Pure: the page
 // passes "today" and "now".
 import { addCalendarDays, trimCalendarRange, type CalendarDate, type DateWindow } from '@vereino/core'
 
-export const OCCURRENCE_PERSPECTIVES = ['all', 'unassigned', 'unsettled', 'cancelled', 'calendar'] as const
+export const OCCURRENCE_PERSPECTIVES = [
+  'all',
+  'unassigned',
+  'reschedule',
+  'unsettled',
+  'cancelled',
+  'calendar',
+] as const
 
 export type OccurrencePerspective = (typeof OCCURRENCE_PERSPECTIVES)[number]
 
-/** The perspective a `?perspective=` value names; anything else is "All". */
+/** The view a `?view=` (or the older `?perspective=`) value names; anything else is "all" (labelled "Upcoming"). */
 export function perspectiveOf(value: string | null | undefined): OccurrencePerspective {
   return (OCCURRENCE_PERSPECTIVES as readonly string[]).includes(value ?? '') ? (value as OccurrencePerspective) : 'all'
 }
 
-/** The list URL of a perspective ("All" keeps the bare path). */
-export function perspectiveHref(path: string, perspective: OccurrencePerspective): string {
-  return perspective === 'all' ? path : `${path}?perspective=${perspective}`
+/** The search parameters of the list URL. */
+type ListParams = { get(name: string): string | null }
+
+/** The view of the list URL: `?view=` first, then the alias `?perspective=` (DD-A11). */
+export function viewOfParams(params: ListParams): OccurrencePerspective {
+  return perspectiveOf(params.get('view') ?? params.get('perspective'))
+}
+
+/** The activity the list URL scopes the sessions to (`?activity=`), or null. */
+export function activityOfParams(params: ListParams): string | null {
+  const value = params.get('activity')?.trim()
+  return value ? value : null
+}
+
+/** The list URL of a view ("all" keeps the bare path), optionally scoped to one activity. */
+export function perspectiveHref(path: string, perspective: OccurrencePerspective, activityId?: string | null): string {
+  const query = new URLSearchParams()
+  if (perspective !== 'all') query.set('view', perspective)
+  if (activityId) query.set('activity', activityId)
+  const suffix = query.toString()
+  return suffix ? `${path}?${suffix}` : path
 }
 
 /** The status a list perspective pins (Canceled lists cancelled sessions only). */
@@ -27,11 +54,12 @@ export function perspectiveStatus(perspective: OccurrencePerspective): 'cancelle
 }
 
 /**
- * The list query a perspective pins: Canceled its status, "Needing a coach" `unassigned=1` (planned, no coach),
- * "Unsettled" `unsettled=1` (planned, ended 24 hours ago or more).
+ * The list query a view pins: Canceled its status, "Needing a coach" `unassigned=1` (planned, no coach), "Needs a new
+ * time" planned sessions with `needs_reschedule`, "Unsettled" `unsettled=1` (planned, ended 24 hours ago or more).
  */
 export function perspectiveQuery(perspective: OccurrencePerspective): Record<string, string> {
   if (perspective === 'unassigned') return { unassigned: '1' }
+  if (perspective === 'reschedule') return { status: 'planned', needsReschedule: 'true' }
   if (perspective === 'unsettled') return { unsettled: '1' }
   const status = perspectiveStatus(perspective)
   return status ? { status } : {}
@@ -41,11 +69,12 @@ export function perspectiveQuery(perspective: OccurrencePerspective): Record<str
 export const NEEDING_COACH_DAYS_AHEAD = 14
 
 /**
- * The slot-date window a perspective opens with: from today for 14 days for "Needing a coach", none for "Unsettled"
- * (an unsettled session stays listed until it is closed), 7 days back through 14 days ahead otherwise.
+ * The slot-date window a view opens with: from today for 14 days for "Needing a coach", none for "Unsettled" (an
+ * unsettled session stays listed until it is closed) and "Needs a new time" (a flagged session stays listed until it is
+ * moved or cancelled), 7 days back through 14 days ahead otherwise.
  */
 export function perspectiveWindow(perspective: OccurrencePerspective, today: CalendarDate): DateWindow | null {
-  if (perspective === 'unsettled') return null
+  if (perspective === 'unsettled' || perspective === 'reschedule') return null
   if (perspective === 'unassigned') return { from: today, to: addCalendarDays(today, NEEDING_COACH_DAYS_AHEAD) }
   return defaultSessionWindow(today)
 }
@@ -100,6 +129,30 @@ export function coachRowAction(
 ): 'assign' | 'change' | null {
   if (!canManage || row.status !== 'planned') return null
   return row.coachPersonId ? 'change' : 'assign'
+}
+
+/** "Move" for a planned session and a planner (`activities.manage`; the move command refuses other statuses). */
+export function mayMoveRow(row: { status: string | null }, canManage: boolean): boolean {
+  return canManage && row.status === 'planned'
+}
+
+export type SessionInlineAction = 'assign' | 'change' | 'move' | SessionRowAction
+
+/**
+ * The buttons of one list row in the order B-15 shows them (#268): Assign substitute (the row's primary action) or
+ * Change coach, Move, then Cancel or Attendance list. The same items fill the row menu under 1024 px.
+ */
+export function sessionInlineActions(
+  row: { status: string | null; startAt: string | null; coachPersonId: string | null; mayCancel?: boolean },
+  now: Date,
+  features: { manage: boolean; coach: boolean },
+): SessionInlineAction[] {
+  const actions: SessionInlineAction[] = []
+  const coach = coachRowAction(row, features.manage)
+  if (coach) actions.push(coach)
+  if (mayMoveRow(row, features.manage)) actions.push('move')
+  actions.push(...sessionRowActions(row, now, features.coach))
+  return actions
 }
 
 /**

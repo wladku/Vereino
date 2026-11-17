@@ -1,0 +1,206 @@
+import { expect, test } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
+import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
+import { calendarDate, createClub } from '../_fixtures/club'
+import { signInBrowser } from '../_fixtures/club-structure'
+import {
+  phoneRental,
+  postInternalBooking,
+  postRental,
+  rentalPitch,
+  runRequestProbe,
+  staffCalendar,
+} from '../_fixtures/facilities'
+import { addMembership, signedInStaff } from '../_fixtures/groups'
+import { getMe, putMe } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
+
+// Issue #278 (E11-S04), facilities parity spec phase 4, TEST-R12 (REQ-R12, J-R03, AC-R08): the member day page M-11 on
+// the day axis. Wojtek, the Żaki coach, opens Boisko A at 375 px, picks Saturday and taps 09:00: the slot dialog opens
+// at once on "For a group (event)" with 09:00–10:30 and the staff line; he saves a tournament, which is on the axis and
+// in "Wpisy dnia" after a reload, and a tap on it opens the details sheet. A rental of KS Sąsiedzi shows the renter's
+// name but no phone number (DD-R18). His own general booking is cancelled after a confirmation. Four parallel entries
+// scroll sideways inside the axis, never the page. English and Polish, light and dark.
+test.describe.configure({ timeout: 360_000 })
+test.use({ timezoneId: 'Europe/Warsaw' })
+
+test('TEST-R12 member day page: one tap books a tournament, details sheet, rental without contact, cancel, four lanes', async ({
+  page,
+  request,
+}, testInfo) => {
+  const club = await createClub(request, 'test-r12-day')
+  try {
+    const admin = club.adminToken
+    const setup = await rentalPitch(request, club)
+    const pitch = setup.pitch
+    const today = calendarDate()
+    // A Saturday among the seven day chips when it is not today (09:00 must still lie ahead).
+    const saturday = nextWeekday(addDays(today, 1), 'SA')
+    const inChips = saturday < addDays(today, 7)
+
+    // Saturday (open 09:00–20:30): a rental of KS Sąsiedzi 15:00–16:30; four held requests side by side from 17:00.
+    const rental = await postRental(
+      request,
+      admin,
+      phoneRental(pitch, setup.neighbours, zoneInstant(saturday, '15:00')),
+    )
+    expect(rental.status, JSON.stringify(rental.body)).toBe(201)
+    const rentalId = String(rental.body?.id)
+    for (const start of ['17:00', '17:15', '17:30', '17:45']) {
+      runRequestProbe(club, {
+        op: 'seed',
+        placeId: pitch,
+        startsAt: zoneInstant(saturday, start),
+        endsAt: zoneInstant(saturday, '18:30'),
+      })
+    }
+
+    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    await addMembership(request, admin, {
+      groupId: setup.zaki,
+      personId: coach.personId,
+      role: 'coach',
+      validFrom: addDays(today, -30),
+    })
+    const own = await postInternalBooking(request, coach.token, {
+      placeId: pitch,
+      startsAt: zoneInstant(saturday, '19:00'),
+      endsAt: zoneInstant(saturday, '20:00'),
+      sectionId: setup.academy,
+      purpose: 'Szkolenie bramkarzy',
+    })
+    expect(own.status, JSON.stringify(own.body)).toBe(201)
+    const ownId = String(own.body?.id)
+
+    // Signing in the browser sets a new password, so the coach's API calls below use a fresh token.
+    const password = await signInBrowser(page, request, club, coach.userId, coach.email)
+    const coachToken = await getAuthToken(request, coach.email, password)
+    const me = await getMe(request, coachToken)
+    const polish = await putMe(request, coachToken, { preferredLocale: 'pl' }, me.body?.person.updatedAt)
+    expect(polish.status, JSON.stringify(polish.body)).toBe(200)
+
+    const consoleErrors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    page.setDefaultTimeout(30_000)
+    await prepareForAccessibilityScan(page)
+    await page.setViewportSize({ width: 375, height: 812 })
+
+    // The day page: the name, the long date with the capacity, the hint; Saturday from the chips or "Other day".
+    await page.goto(`/club/places/${pitch}`)
+    await expect(page.getByTestId('club-place-title')).toHaveText('Boisko A')
+    await expect(page.getByTestId('club-place-day-heading')).toContainText(
+      uiText('facilities.calendar.capacity.one', { params: { n: 1 } }),
+    )
+    await expect(page.getByTestId('club-place-hint')).toHaveText(uiText('facilities.places.clickHint', { exact: true }))
+    if (inChips) await page.getByTestId(`facilities-calendar-day-${saturday}`).click()
+    else await page.getByTestId('facilities-calendar-other-day').fill(saturday)
+    await expect(page).toHaveURL(new RegExp(`date=${saturday}`))
+
+    // Four parallel requests: four lanes inside the axis, which scrolls sideways; the page does not.
+    const lanes = page.locator('[data-testid^="facilities-axis-entry-"][data-kind="request"]')
+    await expect(lanes).toHaveCount(4)
+    await expect(lanes.first()).toHaveAttribute('data-lanes', '4')
+    const axisScroll = page.getByTestId('facilities-axis-scroll')
+    expect(await axisScroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
+      0,
+    )
+
+    // One tap on 09:00: the dialog at once, "For a group (event)", 09:00–10:30, the staff line; a tournament saved.
+    const dialog = page.getByTestId('facilities-slot-dialog')
+    await page.getByTestId('facilities-axis-hour-09:00').click()
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('facilities-slot-kind')).toContainText(
+      uiText('facilities.slot.kind.group', { exact: true }),
+    )
+    await expect(dialog.getByTestId('facilities-slot-start')).toHaveValue('09:00')
+    await expect(dialog.getByTestId('facilities-slot-end')).toHaveValue('10:30')
+    await expect(dialog.getByTestId('facilities-slot-zone')).toContainText(uiText('facilities.slot.staffImmediate'))
+    await expectNoPageOverflow(page)
+    await page.setViewportSize({ width: 375, height: 812 })
+    // The member bottom bar never covers the dialog's buttons.
+    const submit = dialog.getByTestId('facilities-slot-submit')
+    await expect(submit).toBeInViewport()
+    expect(
+      await submit.evaluate((button) => {
+        const box = button.getBoundingClientRect()
+        const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+        return top !== null && button.contains(top)
+      }),
+    ).toBe(true)
+    await dialog.getByTestId('facilities-slot-name').fill('Turniej o Puchar Gwiazdy')
+    await submit.click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByText(uiText('facilities.slot.saved.group')).first()).toBeVisible()
+
+    // After a reload the tournament is on the axis and in "Wpisy dnia"; a tap on its block opens the details sheet.
+    await page.reload()
+    const tournamentLine = page
+      .locator('[data-testid^="facilities-day-entry-"][data-kind="session"]')
+      .filter({ hasText: 'Turniej o Puchar Gwiazdy' })
+    await expect(tournamentLine).toHaveCount(1)
+    await expect(tournamentLine).toContainText('09:00–10:30')
+    const tournamentBlock = page
+      .locator('[data-testid^="facilities-axis-entry-"][data-kind="session"]')
+      .filter({ hasText: 'Turniej o Puchar Gwiazdy' })
+    await tournamentBlock.click()
+    const details = page.getByTestId('club-place-entry-details')
+    await expect(details).toBeVisible()
+    await expect(details).toContainText('Turniej o Puchar Gwiazdy')
+    await expect(details.getByTestId('club-place-entry-details-time')).toContainText('09:00–10:30')
+    await expect(details.getByTestId('club-place-entry-details-place')).toHaveText('Boisko A')
+    await expect(details.getByTestId('club-place-entry-details-group')).toHaveText('Żaki')
+    await page.keyboard.press('Escape')
+    await expect(details).toBeHidden()
+
+    // The rental: the renter's name and status, no contact and no phone number for a coach (DD-R18).
+    await page.getByTestId(`facilities-day-entry-open-details-${rentalId}`).click()
+    await expect(details).toBeVisible()
+    await expect(details).toContainText('KS Sąsiedzi')
+    await expect(details.getByTestId('club-place-entry-details-status')).not.toBeEmpty()
+    await expect(details.getByTestId('club-place-entry-details-contact')).toHaveCount(0)
+    await expect(details.getByTestId('club-place-entry-details-open-rental')).toHaveCount(0)
+    await expect(details).not.toContainText('600 000 001')
+    await expect(details.locator('a[href^="tel:"]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(page.locator('body')).not.toContainText('600 000 001')
+
+    // His own general booking: the details offer "Cancel"; a confirmation first, then the entry leaves the axis.
+    await page.getByTestId(`facilities-day-entry-open-details-${ownId}`).click()
+    await details.getByTestId('club-place-entry-details-cancel').click()
+    await expect(details).toBeHidden()
+    await expect(page.getByTestId(`facilities-axis-entry-${ownId}`)).toBeVisible()
+    await page.getByRole('button', { name: uiText('facilities.places.cancel.confirm', { exact: true }) }).click()
+    await expect(page.getByTestId(`facilities-axis-entry-${ownId}`)).toHaveCount(0)
+    await expect(page.getByTestId(`facilities-day-entry-${ownId}`)).toHaveCount(0)
+    const day = await staffCalendar(
+      request,
+      coachToken,
+      `placeId=${pitch}&from=${zoneInstant(saturday, '00:00')}&to=${zoneInstant(addDays(saturday, 1), '00:00')}`,
+    )
+    expect((day.body?.entries ?? []).filter((entry) => entry.kind === 'booking')).toEqual([])
+
+    // Light and dark, Polish then English, at 375 px.
+    const ready = async () => {
+      await expect(page.getByTestId('facilities-day-axis')).toBeVisible()
+    }
+    expect(await scanInColorSchemes(page, testInfo, '/club/places/[placeId] (pl)', ready)).toEqual({})
+    const now = await getMe(request, coachToken)
+    const english = await putMe(request, coachToken, { preferredLocale: 'en' }, now.body?.person.updatedAt)
+    expect(english.status, JSON.stringify(english.body)).toBe(200)
+    await page.goto(`/club/places/${pitch}?date=${saturday}`)
+    await expect(page.getByTestId('facilities-day-entries')).toContainText('Entries for the day')
+    expect(await scanInColorSchemes(page, testInfo, '/club/places/[placeId] (en)', ready)).toEqual({})
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.getByTestId('facilities-axis-hour-11:00').click()
+    await expect(dialog.getByTestId('facilities-slot-kind')).toContainText('For a group (event)')
+    await page.keyboard.press('Escape')
+    await expectNoPageOverflow(page)
+    expect(consoleErrors).toEqual([])
+  } finally {
+    await club.cleanup()
+  }
+})

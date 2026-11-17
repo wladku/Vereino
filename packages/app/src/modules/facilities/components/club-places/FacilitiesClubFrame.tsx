@@ -16,6 +16,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useLocaleLocked, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   BACKEND_HREF,
+  ClubTimeZoneProvider,
   MemberShell,
   memberContextStore,
   memberNav,
@@ -126,7 +127,12 @@ export function FacilitiesClubFrame({
       </Alert>
     )
   } else {
-    body = children(query.data.profile)
+    // The slot dialog reads and writes club-zone wall times (`useClubTimeZone`), as on the backend pages.
+    body = (
+      <ClubTimeZoneProvider timeZone={query.data.profile.club.timezone}>
+        {children(query.data.profile)}
+      </ClubTimeZoneProvider>
+    )
   }
 
   // The navigation and the switchers appear once the profile is loaded; a user linked to no person sees none of it.

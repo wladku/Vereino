@@ -4,14 +4,15 @@
 // Month (previous / next and a month field) and section filters; columns Coach, Planned, Handed over, Taken over,
 // Balance, Matches, Away trips and — for the club administrator — Amount in the club's settlement model, which the
 // header names, with a "No contract" or "Incomplete contract" badge instead of an amount; each row opens its "n
-// sessions" list; a warning links the month's unsettled sessions to "Sessions → Unsettled"; "Export CSV" downloads
-// the same rows. The empty state is "No closed sessions this month".
+// sessions" list; a warning names the month's unsettled sessions, explains that they do not count until the coach
+// closes the attendance list and links them to "Sessions → Unsettled"; "Export CSV" downloads the same rows with the
+// headers in the user's language and the locale's separator (REQ-A06). The empty state is "No closed sessions this month".
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
-import { Alert } from '@open-mercato/ui/primitives/alert'
+import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
@@ -176,12 +177,13 @@ export function CoachUnitsReport() {
       ) : null}
       {data && data.unsettledCount > 0 ? (
         <Alert status="warning" data-testid="coach-units-unsettled">
-          <span>
-            {t('activities.reports.coachUnits.unsettled', { count: data.unsettledCount })}{' '}
+          <AlertTitle>{t('activities.reports.coachUnits.unsettled', { count: data.unsettledCount })}</AlertTitle>
+          <AlertDescription>
+            {t('activities.reports.coachUnits.unsettledText')}{' '}
             <Link className="underline" href={perspectiveHref('/backend/activities/occurrences', 'unsettled')}>
               {t('activities.reports.coachUnits.unsettledLink')}
             </Link>
-          </span>
+          </AlertDescription>
         </Alert>
       ) : null}
       <DataTable<CoachUnitsRow>

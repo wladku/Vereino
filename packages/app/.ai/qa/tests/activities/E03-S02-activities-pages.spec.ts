@@ -119,14 +119,11 @@ test('E03-S02 activities pages: lists, forms and records pass axe and reflow; th
     ).toBeVisible()
     await expect(previewTable.getByText('Trening Żaków').first()).toBeVisible()
     await expect(previewTable.getByText(uiText('activities.preview.status.free', { exact: true }))).toHaveCount(0)
-    // Saving anyway is refused; the conflict list is shown above the form and nothing is created.
-    await page
-      .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
-      .first()
-      .click()
-    const conflicts = page.getByTestId('activities-conflicts')
-    await expect(conflicts).toBeVisible()
-    await expect(conflicts.getByRole('link', { name: 'Trening Żaków' }).first()).toBeVisible()
+    // "Create" stays disabled while the preview shows conflicts (#268, REQ-A04): nothing can be saved into a collision.
+    await expect(page.getByTestId('activities-create-submit')).toBeDisabled()
+    await expect(page.getByTestId('activities-create-hint')).toHaveText(
+      uiText('activities.activities.create.resolveConflicts', { exact: true }),
+    )
     await expect(page).toHaveURL(/\/backend\/activities\/activities\/create$/)
 
     // Cancelling a session through its page: a reason of at least 3 characters is required, then the session shows as cancelled.

@@ -50,6 +50,7 @@ import {
   declarationLabel,
   declarationState,
   declareAttendance,
+  deadlineNotes,
   errorText,
   newEventHref,
   sessionHref,
@@ -60,6 +61,7 @@ import {
   type MemberPerspective,
 } from '../../../components/club/club-client'
 import { needsCoach } from '../../../lib/activities-rules'
+import { formatDeadline } from '../../../lib/confirm-by'
 import { unsettledEntries } from '../../../lib/substitutions'
 
 /** The slice of `people`'s member profile the Today page passes as the spot context. */
@@ -432,6 +434,16 @@ export default function ClubTodayTilesWidget({
                   <span className="text-muted-foreground text-xs">{occurrence.placeName}</span>
                 ) : null}
               </Link>
+              {/* REQ-A07 (M-02): "Confirm by …", then "Deadline passed …" with the hint to write to the coach. */}
+              {deadlineNotes(entry, scope.as, t, (at) => formatDeadline(at, locale, timeZone)).map((note) => (
+                <p
+                  key={note.id}
+                  className={note.tone === 'warning' ? 'px-2 text-sm font-semibold' : 'px-2 text-sm'}
+                  data-testid={`club-today-${note.id}`}
+                >
+                  {note.text}
+                </p>
+              ))}
               {notice ? (
                 <span className="px-2" data-testid="club-today-notice" data-notice={notice.kind}>
                   <StatusBadge variant={notice.kind === 'cancelled' ? 'error' : 'neutral'}>

@@ -1,8 +1,9 @@
 'use client'
 // `/backend/activities/policies` (club spec UI table, REQ-007; #32): the club's declaration policies — who declares
-// for a minor with an account per scope (club, group, away trip, activity type), the confirmation limit and the default
-// after it. Read with `activities.view`; add, edit and delete for `activities.manage`. What is declared per activity
-// type (absence only or confirmation) is the club setting edited on `/backend/club/settings` (D-026).
+// for a minor with an account per scope (club, group, away trip, activity type), with the scope and what it applies to
+// (the group or the activity type) in two columns (REQ-A06), the confirmation limit as "24 h" and the default after
+// it. Read with `activities.view`; add, edit and delete for `activities.manage`. What is declared per activity type
+// (absence only or confirmation) is the club setting edited on `/backend/club/settings` (D-026).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -26,7 +27,9 @@ import {
   declarationModeLabel,
   errorMessage,
   policyEditHref,
-  policyScopeLabel,
+  policyScopeKindLabel,
+  policyTargetLabel,
+  policyTimeoutLabel,
   timeoutDefaultLabel,
   type PolicyRow,
   type TableColumns,
@@ -38,14 +41,20 @@ const PAGE_SIZE = 50
 const API_PATH = 'activities/attendance-policies'
 
 function buildColumns(t: Translate): TableColumns<PolicyRow> {
-  const dash = <span className="text-muted-foreground">—</span>
   return [
     {
       id: 'scope',
       header: t('activities.policies.columns.scope'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="font-medium">{policyScopeLabel(t, row.original)}</span>,
+      cell: ({ row }) => <span className="font-medium">{policyScopeKindLabel(t, row.original.scope)}</span>,
+    },
+    {
+      id: 'target',
+      header: t('activities.policies.columns.target'),
+      enableSorting: false,
+      meta: { priority: 1 },
+      cell: ({ row }) => policyTargetLabel(t, row.original),
     },
     {
       accessorKey: 'minorDeclarationMode',
@@ -59,7 +68,9 @@ function buildColumns(t: Translate): TableColumns<PolicyRow> {
       header: t('activities.policies.columns.timeout'),
       enableSorting: false,
       meta: { priority: 3 },
-      cell: ({ row }) => row.original.confirmTimeoutHours ?? dash,
+      cell: ({ row }) => (
+        <span className="tabular-nums">{policyTimeoutLabel(t, row.original.confirmTimeoutHours)}</span>
+      ),
     },
     {
       accessorKey: 'defaultAfterTimeout',

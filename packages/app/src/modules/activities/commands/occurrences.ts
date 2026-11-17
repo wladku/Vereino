@@ -7,7 +7,8 @@
 //   `invalid_transition`) — also by a coach of the session's group; `activities.occurrence.cancelled` after commit
 //   sends the in-app notice (`subscribers/notify-occurrence-cancelled.ts`). Where the club setting `coach_may_cancel`
 //   is off (#199), a coach cancels only through a coordinator or administrator grant they also hold; otherwise 403
-//   `coach_cancel_disabled`.
+//   `coach_cancel_disabled`;
+// - restoring a cancelled session that has not ended (`cancelled → planned`) — by the club administrator only (#268).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
@@ -15,11 +16,12 @@ import type { AwilixContainer } from 'awilix'
 import { findActingRole, type ActingRole, type GrantKind, type Scope } from '@vereino/core'
 import { assertTransition, authorizeScoped, type TargetLock } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
-import { Occurrence } from '../data/entities'
+import { Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
-import { occurrenceCancelSchema, occurrenceUpdateSchema } from '../data/validators'
+import { occurrenceCancelSchema, occurrenceRestoreSchema, occurrenceUpdateSchema } from '../data/validators'
 import { permittedCancelRole, sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
-import { coachMayCancel } from '../services/directory'
+import { attendanceSettings, coachMayCancel } from '../services/directory'
+import { nextConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringOffset } from '../lib/gathering'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
@@ -52,6 +54,8 @@ export type OccurrenceSnapshot = {
   isDetached: boolean
   needsReschedule: boolean
   gatheringMinutesBefore?: number | null
+  /** Absent in a snapshot written before REQ-A07 (#269): no deadline. */
+  confirmByMinutesBefore?: number | null
 }
 
 export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot>
@@ -72,6 +76,7 @@ export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
     isDetached: row.isDetached,
     needsReschedule: row.needsReschedule,
     gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+    confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
   }
 }
 
@@ -86,6 +91,7 @@ function restoreOccurrence(row: Occurrence, before: OccurrenceSnapshot): void {
   row.needsReschedule = before.needsReschedule
   // A snapshot written before DD-43 has no gathering field: no gathering time.
   row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
+  row.confirmByMinutesBefore = before.confirmByMinutesBefore ?? null
 }
 
 function loadOccurrence(ctx: CommandRuntimeContext) {
@@ -123,6 +129,14 @@ async function authorizeOccurrenceReplay(
     mode: 'replay',
   })
   return authorized.entity as Occurrence
+}
+
+/** Whether the session's declaration kind is `confirm` (the club setting for its activity type, D-026). */
+async function confirmKind(ctx: CommandRuntimeContext, em: EntityManager, row: Occurrence): Promise<boolean> {
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  const activity = await em.findOne(Activity, { id: row.activityId, ...scope }, { fields: ['id', 'type'] })
+  const settings = await attendanceSettings(ctx.container, scope)
+  return (settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm') === 'confirm'
 }
 
 /** The session's place tree and coach must stay free for its (new) time — 409 with the list otherwise. */
@@ -177,12 +191,25 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         if (!offset.ok) return activitiesErrors.throw(offset.code)
         gatheringMinutesBefore = offset.minutes
       }
+      // REQ-A07, DD-A01: the deadline keeps its offset too, but a move that puts a deadline with effect (a `confirm`
+      // kind) in the past must send `confirmBy` — a new instant or null.
+      const moved = startAt.getTime() !== row.startAt.getTime()
+      const confirmBy = nextConfirmByMinutes({
+        startAt,
+        moved,
+        current: row.confirmByMinutesBefore ?? null,
+        submitted: patch.confirmBy,
+        applies: moved && (await confirmKind(ctx, em, row)),
+        now: new Date(),
+      })
+      if (!confirmBy.ok) return activitiesErrors.throw(confirmBy.code)
       const before = occurrenceSnapshot(row)
       row.startAt = startAt
       row.endAt = endAt
       if (patch.placeId !== undefined) row.placeId = patch.placeId
       if (patch.coachPersonId !== undefined) row.coachPersonId = patch.coachPersonId
       row.gatheringMinutesBefore = gatheringMinutesBefore
+      row.confirmByMinutesBefore = confirmBy.minutes
       row.isDetached = true
       row.needsReschedule = false
       row.updatedAt = new Date()
@@ -342,5 +369,83 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
   },
 }
 
+/** Only the club administrator restores a cancelled session (club spec glossary *Session*; Q-A20). */
+const RESTORE_KINDS: readonly GrantKind[] = ['club_admin']
+
+/**
+ * `activities.occurrences.restore` (REQ-A05 of the groups and activities parity spec, #268): a cancelled session
+ * becomes `planned` again with the administrator's reason (3–500 characters, kept in the audit log), only while its end
+ * is in the future (409 `occurrence_already_ended`), and only when the place tree and the coach are still free (409 with
+ * the list). Another status answers 409 `occurrence_not_cancelled`. The notice of a restore arrives with E10-S06.
+ */
+const restoreOccurrenceCommand: CommandHandler<
+  Record<string, unknown>,
+  OccurrenceCommandResult & { reason: string }
+> = {
+  id: 'activities.occurrences.restore',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'activities.occurrences.restore', async (em) => {
+      const authorized = await authorizeScoped(
+        occurrenceSpec(ctx, occurrenceRestoreSchema, RESTORE_KINDS),
+        rawInput,
+        ctx,
+        em,
+      )
+      const row = authorized.entity as Occurrence
+      if (row.status !== 'cancelled') {
+        return activitiesErrors.throw('occurrence_not_cancelled', { status: row.status })
+      }
+      if (row.endAt.getTime() <= Date.now()) {
+        return activitiesErrors.throw('occurrence_already_ended', { endAt: row.endAt.toISOString() })
+      }
+      await assertTransition(sessionTransitions, row.status, 'planned')
+      const before = occurrenceSnapshot(row)
+      row.status = 'planned'
+      row.cancelReason = null
+      row.updatedAt = new Date()
+      await assertSessionFits(ctx, em, row)
+      return { entity: row, actingRole: authorized.actingRole, before, reason: authorized.parsed.reason }
+    })
+    const row = result.entity
+    await emitAfterCommit(
+      'activities.occurrence.updated',
+      { tenantId: row.tenantId, organizationId: row.organizationId },
+      { id: row.id, activityId: row.activityId },
+    )
+    return result
+  },
+  buildLog: ({ result }) =>
+    activitiesLog({
+      result,
+      resourceKind: OCCURRENCE_RESOURCE_KIND,
+      labelKey: 'activities.audit.occurrences.restore',
+      fallback: 'Restore a session',
+      after: occurrenceSnapshot(result.entity),
+      parent: { resourceKind: 'activities.activity', resourceId: result.entity.activityId },
+      context: { reason: result.reason },
+    }),
+  async authorizeReplay({ ctx, logEntry }) {
+    await authorizeOccurrenceReplay(ctx, logEntry.resourceId, RESTORE_KINDS)
+  },
+  async undo({ ctx, logEntry }) {
+    const before = logEntry.snapshotBefore as OccurrenceSnapshot | null | undefined
+    if (!before?.id) throw new Error('[internal] missing session snapshot for undo')
+    const row = await authorizeOccurrenceReplay(ctx, before.id, RESTORE_KINDS)
+    const em = ctx.transactionalEm as EntityManager
+    // The undo cancels the session again, so nothing on the schedule has to be checked.
+    restoreOccurrence(row, before)
+    row.updatedAt = new Date()
+    await em.flush()
+    await emitAfterCommit(
+      'activities.occurrence.updated',
+      { tenantId: row.tenantId, organizationId: row.organizationId },
+      { id: row.id, activityId: row.activityId },
+    )
+  },
+}
+
 registerCommand(updateOccurrenceCommand)
 registerCommand(cancelOccurrenceCommand)
+registerCommand(restoreOccurrenceCommand)

@@ -8,43 +8,36 @@
 // `activities.coach` the record links to the session's attendance list on the member side (#33). E06-S13 #95: the coach
 // row shows "Needs a coach" or "{substitute} (substitute for {coach})"; with `activities.manage` a planned session gets
 // "Assign substitute" / "Change coach" (the substitute dialog), and the substitution history is listed, oldest first.
+// #268 (REQ-A05): the place shows its address and a map link, and the club administrator restores a cancelled session
+// that has not ended (`mayRestore`) with a reason.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { CrudForm, type CrudField } from '@open-mercato/ui/backend/CrudForm'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
-import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
-import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
+import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { AssignCoachDialog } from './AssignCoachDialog'
 import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
-import { ConflictList } from './ConflictList'
+import { MoveOccurrenceForm } from './MoveOccurrenceDialog'
 import { OccurrenceBadges, OccurrenceCoach } from './OccurrencesTable'
+import { RestoreOccurrenceDialog } from './RestoreOccurrenceDialog'
+import { placeLine, placeMapHref } from '../lib/venue'
 import { attendanceHref } from './club/club-client'
 import {
   OWN_FORBIDDEN_STATE,
   OCCURRENCES_HREF,
   activityHref,
   dateLabel,
-  errorMessage,
-  fieldOfError,
   instantDate,
   instantTime,
-  placeOptions,
-  scheduleConflictsOf,
   timeRangeOfInstants,
-  toInstant,
-  tolerant,
   typeLabel,
   type OccurrenceDetail,
-  type ScheduleConflict,
   type Translate,
 } from './client-helpers'
-import { dateField, timeField } from '@vereino/ui'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
 
 type OccurrenceLoad =
@@ -53,28 +46,33 @@ type OccurrenceLoad =
   | { status: 'denied' }
   | { status: 'unlinked' }
 
-type MoveValues = Record<string, unknown> & {
-  date?: string
-  startTime?: string
-  endTime?: string
-  /** The gathering wall time on the session's date (DD-43); empty = none. */
-  gatheringTime?: string
-  placeId?: string
-  updatedAt?: string | null
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/** Whole calendar days between two `YYYY-MM-DD` dates (a session of a weekend tournament spans several). */
-function daysBetween(from: string, to: string): number {
-  const start = Date.parse(`${from}T00:00:00Z`)
-  const end = Date.parse(`${to}T00:00:00Z`)
-  return Number.isNaN(start) || Number.isNaN(end) ? 0 : Math.round((end - start) / DAY_MS)
-}
-
-function addDays(date: string, days: number): string {
-  const value = new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS)
-  return value.toISOString().slice(0, 10)
+/** The place with its address and a map link (#268, REQ-A05; glossary *Map link*). */
+function PlaceValue({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate }) {
+  const location = {
+    name: occurrence.placeName ?? null,
+    address: occurrence.placeAddress ?? null,
+    geoLat: occurrence.placeGeoLat ?? null,
+    geoLng: occurrence.placeGeoLng ?? null,
+  }
+  const line = placeLine(location)
+  if (!line) return null
+  const href = placeMapHref(location)
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2" data-testid="occurrence-place">
+      <span>{line}</span>
+      {href ? (
+        <a
+          className="text-primary text-xs underline underline-offset-4"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="occurrence-place-map"
+        >
+          {t('activities.occurrences.place.map', { place: occurrence.placeName ?? line })}
+        </a>
+      ) : null}
+    </span>
+  )
 }
 
 function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate }) {
@@ -96,7 +94,18 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
       ? ([[t('activities.gathering.label'), instantTime(occurrence.gatheringAt)]] as Array<[string, React.ReactNode]>)
       : []),
     [t('activities.occurrences.fields.time'), timeRangeOfInstants(occurrence.startAt, occurrence.endAt)],
-    [t('activities.fields.place'), occurrence.placeName],
+    // REQ-A07: the declaration deadline, when the session has one ("Deadline passed" once it passed).
+    ...(occurrence.confirmBy
+      ? ([
+          [
+            occurrence.deadlinePassed ? t('activities.deadline.over') : t('activities.deadline.label'),
+            <span key="deadline" data-testid="occurrence-deadline">
+              {`${dateLabel(t, instantDate(occurrence.confirmBy))} ${instantTime(occurrence.confirmBy)}`}
+            </span>,
+          ],
+        ] as Array<[string, React.ReactNode]>)
+      : []),
+    [t('activities.fields.place'), <PlaceValue key="place" occurrence={occurrence} t={t} />],
     [
       t('activities.fields.coach'),
       <span key="coach" className="flex flex-col gap-1" data-testid="occurrence-coach">
@@ -187,135 +196,13 @@ function SubstitutionHistory({ occurrence, t }: { occurrence: OccurrenceDetail; 
   )
 }
 
-function MoveForm({
-  occurrence,
-  onDone,
-  onCancel,
-}: {
-  occurrence: OccurrenceDetail
-  onDone: () => Promise<void>
-  onCancel: () => void
-}) {
-  const t = useT()
-  const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
-  const fields = React.useMemo<CrudField[]>(
-    () => [
-      dateField('date', t('activities.occurrences.fields.date'), { required: true }),
-      timeField('startTime', t('activities.fields.startTime'), { required: true, layout: 'half' }),
-      timeField('endTime', t('activities.fields.endTime'), { required: true, layout: 'half' }),
-      timeField('gatheringTime', t('activities.gathering.label'), {
-        layout: 'half',
-        description: t('activities.occurrences.fields.gathering.help'),
-      }),
-      {
-        id: 'placeId',
-        label: t('activities.fields.place'),
-        type: 'select',
-        loadOptions: tolerant(placeOptions),
-        required: true,
-      },
-    ],
-    [t],
-  )
-  const initialValues = React.useMemo<MoveValues>(
-    () => ({
-      id: occurrence.id,
-      date: instantDate(occurrence.startAt),
-      startTime: instantTime(occurrence.startAt),
-      endTime: instantTime(occurrence.endAt),
-      gatheringTime: instantTime(occurrence.gatheringAt),
-      placeId: occurrence.placeId ?? '',
-      updatedAt: occurrence.updatedAt,
-    }),
-    [occurrence],
-  )
-  // The end keeps the session's span in days, so a moved weekend tournament still ends on its last day.
-  const spanDays = daysBetween(instantDate(occurrence.startAt), instantDate(occurrence.endAt))
-
-  return (
-    <section
-      className="bg-card flex flex-col gap-3 rounded-lg border p-4"
-      aria-label={t('activities.occurrences.move.title')}
-      data-testid="occurrence-move-form"
-    >
-      <h2 className="text-lg font-semibold">{t('activities.occurrences.move.title')}</h2>
-      <p className="text-muted-foreground text-sm">{t('activities.occurrences.move.help')}</p>
-      {conflicts ? <ConflictList conflicts={conflicts} /> : null}
-      <CrudForm<MoveValues>
-        embedded
-        fields={fields}
-        initialValues={initialValues}
-        submitLabel={t('activities.occurrences.move.submit')}
-        extraActions={
-          <Button type="button" variant="outline" onClick={onCancel}>
-            {t('activities.common.cancel')}
-          </Button>
-        }
-        onSubmit={async (values) => {
-          const date = typeof values.date === 'string' ? values.date : ''
-          const startAt = toInstant(date, values.startTime)
-          const endAt = date ? toInstant(addDays(date, spanDays), values.endTime) : null
-          if (!startAt || !endAt) {
-            const message = t('activities.form.errors.required')
-            throw createCrudFormError(message, {
-              ...(startAt ? {} : { date: message, startTime: message }),
-              ...(endAt ? {} : { endTime: message }),
-            })
-          }
-          // DD-43: an untouched gathering time is not sent, so a moved session keeps its offset; a changed one is set on
-          // the session's (new) date, and a cleared one removes it.
-          const gatheringTime = typeof values.gatheringTime === 'string' ? values.gatheringTime : ''
-          const gatheringChanged = gatheringTime !== initialValues.gatheringTime
-          const gatheringAt = gatheringTime ? toInstant(date, gatheringTime) : null
-          if (gatheringChanged && gatheringTime && !gatheringAt) {
-            const message = t('activities.form.errors.invalid')
-            throw createCrudFormError(message, { gatheringTime: message })
-          }
-          try {
-            await apiCallOrThrow(
-              `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}`,
-              {
-                method: 'PATCH',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({
-                  startAt,
-                  endAt,
-                  placeId: values.placeId,
-                  ...(gatheringChanged ? { gatheringAt } : {}),
-                }),
-              },
-              { errorMessage: t('activities.occurrences.errors.move') },
-            )
-          } catch (error: unknown) {
-            const found = scheduleConflictsOf(error)
-            if (found) {
-              setConflicts(found)
-              throw createCrudFormError(errorMessage(error, t('activities.conflicts.title')))
-            }
-            const field = fieldOfError(error)
-            if (field) {
-              const message = errorMessage(error, t('activities.form.errors.invalid'))
-              throw createCrudFormError(message, { [field]: message })
-            }
-            // Cancelled or done meanwhile: show the session as it is now (the form reports the message).
-            if (errorCodeOf(error) === 'occurrence_not_planned') void onDone()
-            throw error
-          }
-          setConflicts(null)
-          flash(t('activities.occurrences.flash.moved'), 'success')
-          await onDone()
-        }}
-      />
-    </section>
-  )
-}
-
 export function OccurrenceRecord({ id }: { id: string }) {
   const t = useT()
   const features = useActivitiesFeatures()
   const [moving, setMoving] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
   const [staffing, setStaffing] = React.useState(false)
+  const [restoring, setRestoring] = React.useState(false)
   const query = useQuery({
     queryKey: ['activities-occurrence', id],
     queryFn: async (): Promise<OccurrenceLoad> => {
@@ -358,6 +245,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const canCancel = features.coach && planned && occurrence.mayCancel === true
   // The coach's attendance list (#33) lives on the member side; it reads and saves through the same record scope.
   const canOpenAttendance = features.coach && occurrence.status !== 'cancelled'
+  const canRestore = features.manage && occurrence.mayRestore === true
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -377,7 +265,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
           </span>
           <OccurrenceBadges row={occurrence} t={t} />
         </div>
-        {canMove || canCancel || canOpenAttendance || canStaff ? (
+        {canMove || canCancel || canOpenAttendance || canStaff || canRestore ? (
           <div className="flex flex-wrap items-center gap-2">
             {canOpenAttendance ? (
               <Button asChild variant="outline" size="sm">
@@ -417,6 +305,18 @@ export function OccurrenceRecord({ id }: { id: string }) {
                 {t('activities.occurrences.actions.move')}
               </Button>
             ) : null}
+            {canRestore ? (
+              <Button
+                type="button"
+                size="sm"
+                data-testid="occurrence-restore-button"
+                onClick={() => {
+                  setRestoring(true)
+                }}
+              >
+                {t('activities.occurrences.actions.restore')}
+              </Button>
+            ) : null}
             {canCancel ? (
               <Button
                 type="button"
@@ -454,16 +354,33 @@ export function OccurrenceRecord({ id }: { id: string }) {
       <Details occurrence={occurrence} t={t} />
       <SubstitutionHistory occurrence={occurrence} t={t} />
       {canMove && moving ? (
-        <MoveForm
+        <section
+          className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+          aria-label={t('activities.occurrences.move.title')}
+          data-testid="occurrence-move-form"
+        >
+          <h2 className="text-lg font-semibold">{t('activities.occurrences.move.title')}</h2>
+          <p className="text-muted-foreground text-sm">{t('activities.occurrences.move.help')}</p>
+          <MoveOccurrenceForm
+            key={occurrence.updatedAt ?? occurrence.id}
+            occurrence={occurrence}
+            onCancel={() => {
+              setMoving(false)
+            }}
+            onDone={async () => {
+              setMoving(false)
+              await refetch()
+            }}
+          />
+        </section>
+      ) : null}
+      {canRestore ? (
+        <RestoreOccurrenceDialog
           key={occurrence.updatedAt ?? occurrence.id}
           occurrence={occurrence}
-          onCancel={() => {
-            setMoving(false)
-          }}
-          onDone={async () => {
-            setMoving(false)
-            await refetch()
-          }}
+          open={restoring}
+          onOpenChange={setRestoring}
+          onDone={refetch}
         />
       ) : null}
       {canStaff && staffing ? (

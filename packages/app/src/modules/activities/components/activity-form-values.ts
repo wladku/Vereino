@@ -1,12 +1,13 @@
 // The values of the activity form and the request body built from them (`POST|PUT /api/activities/activities`, `POST
 // …/preview`). The recurrence fields (one-off or weekly; weekdays, every n weeks, end, exception dates) become the
 // stored rule text through `Recurrence.toText` of `@vereino/core`, and an existing rule is read back with
-// `Recurrence.parse`. A one-off activity sends `recurrenceRule: null` and no end date. Only a match or a sparring
-// sends an opponent (#93), and "No coach" sends `coachPersonId: null`.
+// `Recurrence.parse`. A one-off activity sends `recurrenceRule: null` and no end date. The series end is entered once
+// (#268, REQ-A04): the rule's "Last day" is also the activity's `endsOn`. Only a match or a sparring sends an opponent
+// (#93), "No coach" sends `coachPersonId: null`, and a tournament sends its invited teams (#268).
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
 import { takesOpponent } from '../lib/activities-rules'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
-import { NO_COACH, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
+import { MAX_CONFIRM_BY_HOURS, NO_COACH, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
 
 export type RepeatMode = 'once' | 'weekly'
 export type EndMode = 'none' | 'until' | 'count'
@@ -18,6 +19,8 @@ export type ActivityFormValues = Record<string, unknown> & {
   placeId?: string
   coachPersonId?: string
   opponentExternalTeamId?: string
+  /** The invited external teams of a tournament (#268). */
+  invitedExternalTeamIds?: string[]
   /** Derived from the type: the opponent field is shown (a match or a sparring). Never sent. */
   takesOpponent?: boolean
   description?: string
@@ -31,6 +34,10 @@ export type ActivityFormValues = Record<string, unknown> & {
   endTime?: string
   /** The default gathering time in minutes before the start (DD-43); empty = none. */
   gatheringMinutesBefore?: string | number | null
+  /** The default declaration deadline in hours before the start (REQ-A07); empty = none. */
+  confirmByHoursBefore?: string | number | null
+  /** Derived: the type's declaration kind is `confirm`, so the deadline field is shown and sent (REQ-A07). */
+  takesDeadline?: boolean
   byDay?: string[]
   interval?: string
   endMode?: EndMode
@@ -48,12 +55,15 @@ export type ActivityBody = {
   placeId: string
   coachPersonId: string | null
   opponentExternalTeamId: string | null
+  /** Sent for a tournament only, so an edit of another one-off event keeps its invited teams. */
+  invitedExternalTeamIds?: string[]
   recurrenceRule: string | null
   startsOn: string
   endsOn: string | null
   startTime: string
   endTime: string
   gatheringMinutesBefore: number | null
+  confirmByMinutesBefore: number | null
   description: string | null
   isActive: boolean
   isAway: boolean
@@ -77,6 +87,7 @@ export function activityToFormValues(activity: ActivityDetail | null, today: str
     placeId: activity?.placeId ?? '',
     coachPersonId: activity?.coachPersonId ?? '',
     opponentExternalTeamId: activity?.opponentExternalTeamId ?? '',
+    invitedExternalTeamIds: [...(activity?.invitedExternalTeamIds ?? [])],
     takesOpponent: takesOpponent(activity?.type),
     description: activity?.description ?? '',
     isActive: activity?.isActive ?? true,
@@ -90,6 +101,11 @@ export function activityToFormValues(activity: ActivityDetail | null, today: str
       activity?.gatheringMinutesBefore !== null && activity?.gatheringMinutesBefore !== undefined
         ? String(activity.gatheringMinutesBefore)
         : '',
+    // Whole hours; a deadline set through the API in minutes reads rounded up to the next hour.
+    confirmByHoursBefore: activity?.confirmByMinutesBefore
+      ? String(Math.ceil(activity.confirmByMinutesBefore / 60))
+      : '',
+    takesDeadline: true,
     byDay: [],
     interval: '1',
     endMode: 'none',
@@ -106,8 +122,9 @@ export function activityToFormValues(activity: ActivityDetail | null, today: str
     ...base,
     byDay: [...rule.byDay],
     interval: String(rule.interval),
-    endMode: rule.until ? 'until' : rule.count !== null ? 'count' : 'none',
-    until: rule.until ?? '',
+    // One "Last day" (#268): an activity whose end was kept only in `endsOn` reads it back as the rule's last day.
+    endMode: rule.until || (rule.count === null && activity.endsOn) ? 'until' : rule.count !== null ? 'count' : 'none',
+    until: rule.until ?? (rule.count === null ? (activity.endsOn ?? '') : ''),
     count: rule.count !== null ? String(rule.count) : '',
     exdates: [...rule.exdates],
   }
@@ -155,6 +172,18 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
   if (gatheringText && gatheringMinutesBefore === null) {
     fieldErrors.gatheringMinutesBefore = t('activities.form.errors.gathering')
   }
+  // REQ-A07: a type that is not of a `confirm` kind takes no deadline, so a hidden field sends none.
+  const confirmByHours = values.confirmByHoursBefore
+  const confirmByText =
+    values.takesDeadline === false
+      ? ''
+      : typeof confirmByHours === 'number'
+        ? String(confirmByHours)
+        : str(confirmByHours).trim()
+  const confirmByHoursBefore = confirmByText ? positiveInt(confirmByText, MAX_CONFIRM_BY_HOURS) : null
+  if (confirmByText && confirmByHoursBefore === null) {
+    fieldErrors.confirmByHoursBefore = t('activities.form.errors.confirmBy')
+  }
   const weekly = values.repeat !== 'once'
   let rule: string | null = null
   if (weekly) {
@@ -174,12 +203,16 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
       placeId: str(values.placeId),
       coachPersonId: values.coachPersonId === NO_COACH ? null : textOrNull(values.coachPersonId),
       opponentExternalTeamId: takesOpponent(values.type) ? textOrNull(values.opponentExternalTeamId) : null,
+      ...(values.type === 'tournament'
+        ? { invitedExternalTeamIds: [...new Set((values.invitedExternalTeamIds ?? []).filter(Boolean))] }
+        : {}),
       recurrenceRule: rule,
       startsOn: str(values.startsOn),
-      endsOn: weekly ? textOrNull(values.endsOn) : null,
+      endsOn: weekly && values.endMode === 'until' ? textOrNull(values.until) : null,
       startTime: str(values.startTime),
       endTime: str(values.endTime),
       gatheringMinutesBefore,
+      confirmByMinutesBefore: confirmByHoursBefore === null ? null : confirmByHoursBefore * 60,
       description: textOrNull(values.description),
       isActive: values.isActive !== false,
       isAway: values.isAway === true,

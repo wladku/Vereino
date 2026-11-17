@@ -7,7 +7,9 @@ import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
 import { eventGroupOptions, eventPlaceOptions } from '../../../lib/member-event'
-import { findSections, listGroupsAmong, placeOptions } from '../../../services/directory'
+import { attendanceSettings, findSections, listGroupsAmong, placeOptions } from '../../../services/directory'
+import { ACTIVITY_TYPES } from '../../../lib/activities-rules'
+import { DECLARATION_KINDS } from '../../../lib/policy'
 import { errorSchema } from '../../shared'
 
 export const metadata = {
@@ -24,6 +26,11 @@ const responseSchema = z.object({
     }),
   ),
   places: z.array(z.object({ id: z.uuid(), label: z.string() })),
+  declarationKinds: z
+    .record(z.enum(ACTIVITY_TYPES), z.enum(DECLARATION_KINDS))
+    .describe(
+      'The club setting per activity type (D-026); the forms offer the declaration deadline only for a `confirm` kind (REQ-A07).',
+    ),
 })
 
 export async function GET(request: Request): Promise<Response> {
@@ -33,9 +40,10 @@ export async function GET(request: Request): Promise<Response> {
     if (!ctx || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const grants = await scopeContract.resolve(ctx)
     const groupIds = grants.flatMap((grant) => (grant.kind === 'coach' ? [...(grant.ids ?? [])] : []))
-    const [groups, places] = await Promise.all([
+    const [groups, places, settings] = await Promise.all([
       listGroupsAmong(ctx.container, scope, groupIds),
       placeOptions(ctx.container, scope),
+      attendanceSettings(ctx.container, scope),
     ])
     const sections = await findSections(
       ctx.container,
@@ -44,7 +52,11 @@ export async function GET(request: Request): Promise<Response> {
     )
     const sectionNames = new Map([...sections.values()].map((section) => [section.id, section.name]))
     return Response.json(
-      { groups: eventGroupOptions(groups, sectionNames), places: eventPlaceOptions(places) },
+      {
+        groups: eventGroupOptions(groups, sectionNames),
+        places: eventPlaceOptions(places),
+        declarationKinds: settings.declarationKinds,
+      },
       { headers: { 'cache-control': 'no-store' } },
     )
   } catch (error: unknown) {
@@ -59,7 +71,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the groups and places of the coach’s event form',
       description:
-        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place"). Names and the group kind only.',
+        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place"). Names and the group kind only, and the club’s declaration kind per activity type (REQ-A07).',
       responses: [{ status: 200, description: 'The options', schema: responseSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

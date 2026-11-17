@@ -2,7 +2,8 @@
 // The session cancellation dialog (club spec glossary *Session cancellation*, REQ-009; E06-S12 #94), shared by the
 // session record and the "Cancel" row action of the sessions list: a reason of at least 3 characters is required, the
 // request sends the session's lock token, a stale token surfaces the conflict, and a session that was cancelled or
-// done meanwhile (409 `invalid_transition`) closes the dialog and refreshes the caller.
+// done meanwhile (409 `invalid_transition`) closes the dialog and refreshes the caller. The dialog names the session it
+// cancels and the toast how many people were told (`notified` of the answer; #268, REQ-A05).
 import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -22,9 +23,15 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { CANCEL_REASON_MAX_LENGTH, isCancelReasonValid } from '../lib/occurrence-list'
-import { errorMessage } from './client-helpers'
+import { dateLabel, errorMessage, instantDate, timeRangeOfInstants } from './client-helpers'
 
-export type CancellableOccurrence = { id: string; updatedAt: string | null }
+export type CancellableOccurrence = {
+  id: string
+  updatedAt: string | null
+  activityName?: string | null
+  startAt?: string | null
+  endAt?: string | null
+}
 
 export function CancelOccurrenceDialog({
   occurrence,
@@ -55,8 +62,8 @@ export function CancelOccurrenceDialog({
     setProblem(null)
     setReasonInvalid(false)
     try {
-      await withScopedApiRequestHeaders(buildOptimisticLockHeader(occurrence.updatedAt), () =>
-        apiCallOrThrow(
+      const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(occurrence.updatedAt), () =>
+        apiCallOrThrow<{ notified?: number }>(
           `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}/cancel`,
           {
             method: 'POST',
@@ -66,7 +73,7 @@ export function CancelOccurrenceDialog({
           { errorMessage: t('activities.occurrences.errors.cancel') },
         ),
       )
-      flash(t('activities.occurrences.flash.cancelled'), 'success')
+      flash(t('activities.occurrences.flash.cancelledNotified', { count: call.result?.notified ?? 0 }), 'success')
       setReason('')
       onOpenChange(false)
       await onDone()
@@ -98,7 +105,18 @@ export function CancelOccurrenceDialog({
       >
         <DialogHeader>
           <DialogTitle>{t('activities.occurrences.cancel.title')}</DialogTitle>
-          <DialogDescription>{t('activities.occurrences.cancel.help')}</DialogDescription>
+          <DialogDescription>
+            {occurrence.startAt ? (
+              <span className="text-foreground block font-medium" data-testid="occurrence-cancel-session">
+                {t('activities.occurrences.move.session', {
+                  activity: occurrence.activityName ?? t('activities.common.empty'),
+                  date: dateLabel(t, instantDate(occurrence.startAt)),
+                  time: timeRangeOfInstants(occurrence.startAt, occurrence.endAt),
+                })}
+              </span>
+            ) : null}
+            {t('activities.occurrences.cancel.help')}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           <Label htmlFor={reasonId}>{t('activities.occurrences.cancel.reason')}</Label>

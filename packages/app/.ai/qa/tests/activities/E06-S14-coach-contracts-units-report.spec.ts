@@ -15,8 +15,8 @@ import { uiText } from '../_fixtures/ui-text'
 // matches 1 / trips 1 and Bartek taken over 1 / balance 1. The administrator records Marek's coach contract (a second,
 // overlapping one answers 409; a coach contract with an institution 422) and reads the amount in both settlement
 // models; the academy coordinator reads her section without amounts; a coach reads only their own row, also with
-// another section asked for. The CSV carries the AC columns. In the browser the administrator sees the model, the
-// amount, "No contract" and "No closed sessions this month" for an empty month; Marek opens More → My units on the
+// another section asked for. The CSV carries the AC columns, headed in the user's language (English here; TEST-A08
+// covers Polish and its `;`). In the browser the administrator sees the model, the amount, "No contract" and "No closed sessions this month" for an empty month; Marek opens More → My units on the
 // phone (375 px, English and Polish, light and dark) and sees his row without an amount.
 test.describe.configure({ timeout: 600_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
@@ -51,13 +51,33 @@ async function report(request: APIRequestContext, token: string, query: string) 
   return call<Report>(request, 'GET', `/api/activities/reports/coach-units?${query}`, token)
 }
 
+/** The CSV as an English user reads it (the headers and the separator follow the locale, REQ-A06). */
 async function csv(request: APIRequestContext, token: string, query: string): Promise<string> {
   const response = await request.get(`/api/activities/reports/coach-units?${query}&format=csv`, {
-    headers: { authorization: `Bearer ${token}` },
+    headers: { authorization: `Bearer ${token}`, cookie: 'locale=en' },
   })
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('text/csv')
   return response.text()
+}
+
+/** The CSV header cells: the report's column headers (coach … trips, then amount when `withAmount`). */
+function expectCsvHeader(line: string | undefined, withAmount: boolean) {
+  const expected = [
+    uiText('activities.reports.coachUnits.columns.coach', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.planned', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.handedOver', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.takenOver', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.balance', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.matches', { exact: true }),
+    uiText('activities.reports.coachUnits.columns.trips', { exact: true }),
+    ...(withAmount ? [uiText('activities.reports.coachUnits.columns.amount', { exact: true })] : []),
+  ]
+  const cells = (line ?? '').split(',')
+  expect(cells, line).toHaveLength(expected.length)
+  cells.forEach((cell, index) => {
+    expect(cell).toMatch(expected[index])
+  })
 }
 
 const rowOf = (body: Report | null, personId: string): ReportRow | undefined =>
@@ -245,7 +265,7 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     ])
     expect(rowOf(admin.body, family.instructor.personId)).toMatchObject({ planned: 1, balance: 1 })
     const adminCsv = await csv(request, club.adminToken, `month=${month}`)
-    expect(adminCsv.split('\r\n')[0]).toBe('coach,planned,given,taken,balance,matches,trips,amount')
+    expectCsvHeader(adminCsv.split('\r\n')[0], true)
     expect(adminCsv).toContain('\r\nMarek Trener,2,1,0,1,1,1,1730.00\r\n')
     expect(adminCsv).toContain('\r\nBartek Zastępca,0,0,1,1,0,0,\r\n')
     const invalidMonth = await report(request, club.adminToken, 'month=2026-13')
@@ -258,9 +278,7 @@ test('E06-S14 coach contracts, the monthly coach units report with amounts and C
     expect(coordinator.body?.withAmounts).toBe(false)
     expect(coordinator.body?.items?.map((row) => row.personId).sort()).toEqual([marek.personId, bartek.personId].sort())
     expect(rowOf(coordinator.body, marek.personId)).not.toHaveProperty('amount')
-    expect((await csv(request, family.academyCoordinator.token, `month=${month}`)).split('\r\n')[0]).toBe(
-      'coach,planned,given,taken,balance,matches,trips',
-    )
+    expectCsvHeader((await csv(request, family.academyCoordinator.token, `month=${month}`)).split('\r\n')[0], false)
     const otherSection = await report(
       request,
       family.academyCoordinator.token,

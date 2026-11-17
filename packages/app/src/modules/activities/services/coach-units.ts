@@ -24,6 +24,7 @@ import {
   priceCoachRow,
   type CoachSessionRole,
   type CoachSettlementModel,
+  type CoachUnitsCsvOptions,
   type ContractState,
   type ReportSession,
 } from '../lib/coach-units'
@@ -297,10 +298,11 @@ export async function readCoachUnits(
   }
 }
 
-/** The report as CSV; the amount column only when the report carries amounts. */
-export function coachUnitsReportCsv(report: CoachUnitsReport): string {
+/** The report as CSV; the amount column only when the report carries amounts; headers and separator per `options`. */
+export function coachUnitsReportCsv(report: CoachUnitsReport, options?: CoachUnitsCsvOptions): string {
   return coachUnitsCsv(
     report.items.map((row) => ({ ...row, coach: row.coachName ?? row.personId, amount: row.amount ?? null })),
     report.withAmounts,
+    options,
   )
 }

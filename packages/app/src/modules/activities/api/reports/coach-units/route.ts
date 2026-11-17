@@ -2,11 +2,14 @@
 // phone's "My units"; #96): the month's coach units per coach — planned, handed over, taken over, balance, matches,
 // away trips, the sessions behind them and, for the club administrator, the amount in the club's settlement model —
 // as JSON or (`format=csv`) as a CSV file. The gate is `activities.reports.view` or `activities.reports.view_own`,
-// checked with the record scope in `services/coach-units.ts`.
+// checked with the record scope in `services/coach-units.ts`. The CSV headers are in the user's language and its
+// separator is the locale's (`;` for Polish, `,` for English), both from the request's locale (REQ-A06).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
+import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
 import { coachUnitsQuerySchema } from '../../../data/validators'
+import { coachUnitsCsvHeaders, csvSeparatorFor } from '../../../lib/coach-units'
 import { coachUnitsReportCsv, readCoachUnits } from '../../../services/coach-units'
 import { errorSchema } from '../../shared'
 
@@ -22,7 +25,12 @@ export async function GET(request: Request): Promise<Response> {
     const query = coachUnitsQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams))
     const report = await readCoachUnits(ctx, scope, query)
     if (query.format === 'csv') {
-      return new Response(coachUnitsReportCsv(report), {
+      const { locale, translate } = await resolveTranslations()
+      const csv = coachUnitsReportCsv(report, {
+        headers: coachUnitsCsvHeaders(translate),
+        separator: csvSeparatorFor(locale),
+      })
+      return new Response(csv, {
         headers: {
           'content-type': 'text/csv; charset=utf-8',
           'content-disposition': `attachment; filename="coach-units-${report.month}.csv"`,
@@ -74,7 +82,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'The month’s coach units per coach, as JSON or CSV',
       description:
-        'Counts the `done` sessions of `month` (`YYYY-MM`): a unit is one `training` session, owed to whoever led it. With `activities.reports.view` the club administrator reads every section (or `sectionId`) and a coordinator their sections; with `activities.reports.view_own` (or `mine=1`) the caller reads only their own row. Amounts in the club’s `coach_settlement_model` only with `club_core.contracts.manage`. `format=csv` answers a CSV file with the columns coach, planned, given, taken, balance, matches, trips (and amount). Errors: 400 `report_month_invalid`, 403 `scope_denied`, `scope_unlinked`.',
+        'Counts the `done` sessions of `month` (`YYYY-MM`): a unit is one `training` session, owed to whoever led it. With `activities.reports.view` the club administrator reads every section (or `sectionId`) and a coordinator their sections; with `activities.reports.view_own` (or `mine=1`) the caller reads only their own row. Amounts in the club’s `coach_settlement_model` only with `club_core.contracts.manage`. `format=csv` answers a UTF-8 CSV file with the columns coach, planned, given (handed over), taken (taken over), balance, matches, trips (and amount); the headers are in the user’s language and the separator is the locale’s (`;` where decimals take a comma, e.g. Polish; `,` otherwise, e.g. English). Errors: 400 `report_month_invalid`, 403 `scope_denied`, `scope_unlinked`.',
       query: coachUnitsQuerySchema,
       responses: [
         {
