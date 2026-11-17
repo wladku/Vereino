@@ -14,7 +14,7 @@ import {
 } from '../_fixtures/activities'
 import { birthDateTurning, calendarDate, createClub, createPerson, createStaff, signInAs } from '../_fixtures/club'
 import { awaitEmails, emailsTo, getThread, listThreads, settledDeliveries } from '../_fixtures/communication'
-import { addMembership } from '../_fixtures/groups'
+import { addMembership, signedInStaff } from '../_fixtures/groups'
 import { updateClubSettings } from '../_fixtures/members'
 import { runProbe } from '../_fixtures/messaging'
 import { actionLogEntries, createGuardianship } from '../_fixtures/people'
@@ -69,11 +69,8 @@ test('TEST-A13 a moved session is announced once in the thread, in the app and b
       lastName: 'Dorosła',
       birthDate: birthDateTurning(19),
     })
-    const coach = await createStaff(request, club, {
-      firstName: 'Marek',
-      lastName: 'Trener',
-      birthDate: birthDateTurning(40),
-    })
+    // A coach with the coach role (`activities.coach`), so they may move the one-off event of their group (DD-A05).
+    const coach = await signedInStaff(request, club, { firstName: 'Marek', lastName: 'Trener', role: 'coach' })
     const secondCoach = await createStaff(request, club, {
       firstName: 'Tomasz',
       lastName: 'Zastępca',
@@ -102,7 +99,7 @@ test('TEST-A13 a moved session is announced once in the thread, in the app and b
     const tokens = {
       guardian: await signInAs(request, club, guardian.userId, guardian.email),
       adult: await signInAs(request, club, adult.userId, adult.email),
-      coach: await signInAs(request, club, coach.userId, coach.email),
+      coach: coach.token,
     }
     const movedNotices = (token: string, id = session.id) =>
       readNotifications(request, token, `&type=activities.occurrence_moved&sourceEntityId=${id}`)
