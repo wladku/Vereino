@@ -146,6 +146,38 @@ describe('eventRequestBody', () => {
   })
 })
 
+describe('the declaration deadline of the phone form (REQ-A07)', () => {
+  it('sends whole hours as minutes when the type takes a deadline', () => {
+    expect(eventRequestBody({ ...draft, confirmByHours: ' 48 ' }, 'Europe/Warsaw')).toMatchObject({
+      confirmByMinutesBefore: 2880,
+    })
+  })
+
+  it('sends no deadline when it is empty, invalid or the type takes none', () => {
+    expect(eventRequestBody({ ...draft, confirmByHours: '' }, 'Europe/Warsaw')).not.toHaveProperty(
+      'confirmByMinutesBefore',
+    )
+    expect(eventRequestBody(draft, 'Europe/Warsaw')).not.toHaveProperty('confirmByMinutesBefore')
+    expect(eventRequestBody({ ...draft, confirmByHours: '24' }, 'Europe/Warsaw', false)).not.toHaveProperty(
+      'confirmByMinutesBefore',
+    )
+  })
+
+  it('reports hours outside 1–336 or not whole as invalid', () => {
+    expect(eventDraftProblems({ ...draft, confirmByHours: '0' })).toEqual({ confirmByHours: 'invalid' })
+    expect(eventDraftProblems({ ...draft, confirmByHours: '337' })).toEqual({ confirmByHours: 'invalid' })
+    expect(eventDraftProblems({ ...draft, confirmByHours: '1.5' })).toEqual({ confirmByHours: 'invalid' })
+    expect(eventDraftProblems({ ...draft, confirmByHours: '336' })).toEqual({})
+    expect(eventDraftProblems({ ...draft, confirmByHours: '  ' })).toEqual({})
+  })
+
+  it('points the deadline refusals at the field', () => {
+    expect(eventFieldOfError('occurrence_confirm_by_in_past')).toBe('confirmByHours')
+    expect(eventFieldOfError('occurrence_confirm_by_after_start')).toBe('confirmByHours')
+    expect(eventFieldOfError('occurrence_confirm_by_too_early')).toBe('confirmByHours')
+  })
+})
+
 describe('eventFieldOfError', () => {
   it('points a coded refusal at its field', () => {
     expect(eventFieldOfError('activity_type_requires_team')).toBe('type')

@@ -250,3 +250,21 @@ test('renders nothing for an item without a gathering time (no placeholder)', ()
     /calendar-item-gathering|Gathering/,
   )
 })
+
+test('renders the notes of an item in order, a warning one in bold (REQ-A07)', () => {
+  const html = render({
+    days: days(
+      item({
+        notes: [
+          { id: 'deadline', text: 'Confirm by Thu 13.11, 12:00' },
+          { id: 'hint', text: 'Write to the coach.', tone: 'warning' },
+        ],
+      }),
+    ),
+  })
+  assert.match(
+    html,
+    /<p class="text-sm" data-testid="calendar-item-note-deadline">Confirm by Thu 13.11, 12:00<\/p><p class="text-sm font-semibold" data-testid="calendar-item-note-hint">Write to the coach.<\/p>/,
+  )
+  assert.doesNotMatch(render({ days: days(item()) }), /calendar-item-note/)
+})

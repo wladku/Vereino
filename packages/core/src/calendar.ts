@@ -31,6 +31,13 @@ export type CalendarItemAction = {
   readonly disabled?: boolean
 }
 
+/** A line under an item's details; `warning` emphasises it (a deadline that passed). */
+export type CalendarItemNote = {
+  readonly id: string
+  readonly text: string
+  readonly tone?: 'default' | 'warning'
+}
+
 export type CalendarItem = {
   readonly id: string
   readonly title: string
@@ -49,6 +56,11 @@ export type CalendarItem = {
   readonly coach?: string | null
   /** A second line under the title — the wards the item concerns, … */
   readonly subtitle?: string | null
+  /**
+   * Short lines the module words in full under the details — the declaration deadline ("Confirm by Thu 13.11, 12:00",
+   * groups and activities parity spec REQ-A07) or its passing with the hint to write to the coach.
+   */
+  readonly notes?: readonly CalendarItemNote[]
   readonly href?: string | null
   readonly badges?: readonly CalendarItemBadge[]
   readonly actions?: readonly CalendarItemAction[]

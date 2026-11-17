@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
+import { MAX_CONFIRM_BY_MINUTES } from '../lib/confirm-by'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import { SUBSTITUTION_REASON_MAX } from '../lib/substitutions'
 import {
@@ -27,6 +28,8 @@ const booleanQuery = z.enum(['true', 'false']).optional()
 const flagQuery = z.enum(['1', 'true', '0', 'false']).optional()
 /** The default gathering time of a series or event in minutes before the start (DD-43); null clears it. */
 const gatheringMinutesSchema = z.number().int().min(1).max(MAX_GATHERING_MINUTES).nullable().optional()
+/** The default declaration deadline of a series or event in minutes before the start (REQ-A07); null clears it. */
+const confirmByMinutesSchema = z.number().int().min(1).max(MAX_CONFIRM_BY_MINUTES).nullable().optional()
 
 const listQueryBase = {
   page: z.coerce.number().int().min(1).default(1),
@@ -53,6 +56,7 @@ const activityShape = {
   startTime: localTimeSchema,
   endTime: localTimeSchema,
   gatheringMinutesBefore: gatheringMinutesSchema,
+  confirmByMinutesBefore: confirmByMinutesSchema,
   description: optionalText(4000),
   isActive: z.boolean().optional(),
   /** An away trip (#96). */
@@ -78,6 +82,7 @@ export const activityUpdateSchema = z
     startTime: localTimeSchema.optional(),
     endTime: localTimeSchema.optional(),
     gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
     description: optionalText(4000),
     isActive: z.boolean().optional(),
     isAway: z.boolean().optional(),
@@ -111,6 +116,7 @@ export const eventCreateSchema = z
     coachPersonId: z.uuid().nullable().optional(),
     invitedExternalTeamIds: externalTeamIds.optional(),
     gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
     description: optionalText(4000),
   })
   .strict()
@@ -125,6 +131,11 @@ export const occurrenceUpdateSchema = z
     coachPersonId: z.uuid().nullable().optional(),
     /** The session's own gathering instant (DD-43; 422 at or after the start); null removes it. */
     gatheringAt: instantSchema.nullable().optional(),
+    /**
+     * The session's own declaration deadline (REQ-A07; 422 at or after the start, over 14 days before it, or in the
+     * past); null removes it. Omitted, a moved session keeps its offset.
+     */
+    confirmBy: instantSchema.nullable().optional(),
   })
   .strict()
 

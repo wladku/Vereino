@@ -23,9 +23,12 @@ import {
   occurrenceHref,
   placeOptions,
   scheduleConflictsOf,
+  takesDeadline,
   textOrNull,
   toInstant,
   tolerant,
+  useDeclarationKinds,
+  MAX_CONFIRM_BY_HOURS,
   type ScheduleConflict,
 } from './client-helpers'
 import { dateField, timeField, useClubToday } from '@vereino/ui'
@@ -40,7 +43,17 @@ type EventValues = Record<string, unknown> & {
   endDate?: string
   endTime?: string
   invitedExternalTeamIds?: string[]
+  /** The declaration deadline in hours before the start (REQ-A07); empty = none. */
+  confirmByHoursBefore?: string | number
   description?: string
+}
+
+/** The deadline offset in minutes from the hours field, null when empty, or 'invalid' (whole hours 1–336, REQ-A07). */
+function deadlineMinutes(value: unknown): number | null | 'invalid' {
+  const text = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : ''
+  if (!text) return null
+  const hours = Number(text)
+  return Number.isInteger(hours) && hours >= 1 && hours <= MAX_CONFIRM_BY_HOURS ? hours * 60 : 'invalid'
 }
 
 export function EventCreateForm() {
@@ -48,6 +61,9 @@ export function EventCreateForm() {
   const today = useClubToday()
   const router = useRouter()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
+  const declarationKinds = useDeclarationKinds()
+  // REQ-A07: the deadline is offered when an event type of a `confirm` kind exists, and sent only for such a type.
+  const showDeadline = EVENT_TYPES.some((type) => takesDeadline(declarationKinds, type))
   const fields = React.useMemo<CrudField[]>(
     () => [
       {
@@ -78,6 +94,17 @@ export function EventCreateForm() {
       timeField('startTime', t('activities.fields.startTime'), { required: true, layout: 'half' }),
       dateField('endDate', t('activities.events.fields.endDate'), { required: true, layout: 'half' }),
       timeField('endTime', t('activities.fields.endTime'), { required: true, layout: 'half' }),
+      ...(showDeadline
+        ? [
+            {
+              id: 'confirmByHoursBefore',
+              label: t('activities.fields.confirmByHoursBefore'),
+              type: 'number',
+              layout: 'half',
+              description: t('activities.fields.confirmByHoursBefore.help'),
+            } satisfies CrudField,
+          ]
+        : []),
       {
         id: 'invitedExternalTeamIds',
         label: t('activities.events.fields.invitedTeams'),
@@ -88,7 +115,7 @@ export function EventCreateForm() {
       },
       { id: 'description', label: t('activities.fields.description'), type: 'textarea', maxLength: 4000 },
     ],
-    [t],
+    [t, showDeadline],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -102,7 +129,7 @@ export function EventCreateForm() {
         id: 'when',
         title: t('activities.events.groups.when'),
         column: 2,
-        fields: ['startDate', 'startTime', 'endDate', 'endTime'],
+        fields: ['startDate', 'startTime', 'endDate', 'endTime', 'confirmByHoursBefore'],
       },
       {
         id: 'teams',
@@ -124,6 +151,7 @@ export function EventCreateForm() {
       endDate: today,
       endTime: '',
       invitedExternalTeamIds: [],
+      confirmByHoursBefore: '',
       description: '',
     }
   }, [today])
@@ -149,6 +177,13 @@ export function EventCreateForm() {
             ...(endsAt ? {} : { endDate: message, endTime: message }),
           })
         }
+        const confirmByMinutesBefore = takesDeadline(declarationKinds, values.type)
+          ? deadlineMinutes(values.confirmByHoursBefore)
+          : null
+        if (confirmByMinutesBefore === 'invalid') {
+          const message = t('activities.form.errors.confirmBy')
+          throw createCrudFormError(message, { confirmByHoursBefore: message })
+        }
         const teams = Array.isArray(values.invitedExternalTeamIds)
           ? values.invitedExternalTeamIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
           : []
@@ -166,6 +201,7 @@ export function EventCreateForm() {
                 startsAt,
                 endsAt,
                 invitedExternalTeamIds: teams,
+                confirmByMinutesBefore,
                 description: textOrNull(values.description),
               }),
             },

@@ -16,6 +16,7 @@ import {
 import { findActingRole } from '@vereino/core'
 import { cancelRoleOf, type OccurrenceCommandResult } from '../../../commands/occurrences'
 import { occurrenceUpdateSchema } from '../../../data/validators'
+import { confirmByIso, deadlinePassed } from '../../../lib/confirm-by'
 import { gatheringIso } from '../../../lib/gathering'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
 import { findPlaces } from '../../../services/directory'
@@ -127,6 +128,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       endAt: row.endAt.toISOString(),
       gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
       gatheringAt: gatheringIso(row.startAt, row.gatheringMinutesBefore),
+      confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
+      confirmBy: confirmByIso(row.startAt, row.confirmByMinutesBefore),
+      deadlinePassed: deadlinePassed(row.startAt, row.confirmByMinutesBefore, new Date()),
       placeId: row.placeId,
       placeName: names.places.get(row.placeId) ?? null,
       placeAddress: place?.address ?? null,
@@ -208,7 +212,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 422,
           description:
-            '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`, `occurrence_gathering_after_start`, `occurrence_gathering_too_early`',
+            '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`, `occurrence_gathering_after_start`, `occurrence_gathering_too_early`, `occurrence_confirm_by_after_start`, `occurrence_confirm_by_too_early`, `occurrence_confirm_by_in_past` (also a move whose kept deadline falls in the past without `confirmBy`)',
           schema: errorSchema,
         },
       ],

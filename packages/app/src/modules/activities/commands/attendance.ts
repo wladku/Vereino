@@ -48,6 +48,7 @@ import {
   type TimeoutDefault,
 } from '../lib/policy'
 import { attendanceSettings, findPersons, rosterOn } from '../services/directory'
+import { confirmByIso, deadlineRefuses } from '../lib/confirm-by'
 import {
   activitiesLog,
   emitAfterCommit,
@@ -265,6 +266,21 @@ export async function writeDeclaration(
   const kind = settings.declarationKinds[activity.type] ?? 'confirm'
   if (!declaredAllowedForKind(kind, parsed.declared)) {
     await activitiesErrors.throw('declaration_kind_absence_only', { kind })
+  }
+  // REQ-A07, DD-A02: after the deadline of a `confirm` session the participant and the guardian are refused in both
+  // directions (the app and the personal link alike); staff still record a declaration.
+  if (
+    deadlineRefuses({
+      kind,
+      actingRole,
+      startAt: occurrence.startAt,
+      minutesBefore: occurrence.confirmByMinutesBefore,
+      now,
+    })
+  ) {
+    await activitiesErrors.throw('declaration_deadline_passed', {
+      confirmBy: confirmByIso(occurrence.startAt, occurrence.confirmByMinutesBefore),
+    })
   }
   let isMinor = false
   if (actingRole === 'self') {

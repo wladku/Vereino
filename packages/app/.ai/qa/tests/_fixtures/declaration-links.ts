@@ -74,6 +74,21 @@ export async function startSession(occurrenceId: string): Promise<void> {
 }
 
 /**
+ * Puts a session's declaration deadline one minute into the past by its stored offset (REQ-A07): the deadline a test
+ * cannot wait for. The session must start within 14 days.
+ */
+export async function passDeadline(occurrenceId: string): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `update activities_occurrences
+          set confirm_by_minutes_before = ceil(extract(epoch from (start_at - now())) / 60)::int + 1
+        where id = $1`,
+      [occurrenceId],
+    )
+  })
+}
+
+/**
  * The stored audit rows of a record (`action_logs` is encrypted at rest, so only the plain columns are compared): who
  * acted, whether an undo token and a command payload were kept.
  */

@@ -7,7 +7,7 @@
 import { Recurrence, WEEKDAYS, type Weekday } from '@vereino/core'
 import { takesOpponent } from '../lib/activities-rules'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
-import { NO_COACH, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
+import { MAX_CONFIRM_BY_HOURS, NO_COACH, textOrNull, type ActivityDetail, type Translate } from './client-helpers'
 
 export type RepeatMode = 'once' | 'weekly'
 export type EndMode = 'none' | 'until' | 'count'
@@ -34,6 +34,10 @@ export type ActivityFormValues = Record<string, unknown> & {
   endTime?: string
   /** The default gathering time in minutes before the start (DD-43); empty = none. */
   gatheringMinutesBefore?: string | number | null
+  /** The default declaration deadline in hours before the start (REQ-A07); empty = none. */
+  confirmByHoursBefore?: string | number | null
+  /** Derived: the type's declaration kind is `confirm`, so the deadline field is shown and sent (REQ-A07). */
+  takesDeadline?: boolean
   byDay?: string[]
   interval?: string
   endMode?: EndMode
@@ -59,6 +63,7 @@ export type ActivityBody = {
   startTime: string
   endTime: string
   gatheringMinutesBefore: number | null
+  confirmByMinutesBefore: number | null
   description: string | null
   isActive: boolean
   isAway: boolean
@@ -96,6 +101,11 @@ export function activityToFormValues(activity: ActivityDetail | null, today: str
       activity?.gatheringMinutesBefore !== null && activity?.gatheringMinutesBefore !== undefined
         ? String(activity.gatheringMinutesBefore)
         : '',
+    // Whole hours; a deadline set through the API in minutes reads rounded up to the next hour.
+    confirmByHoursBefore: activity?.confirmByMinutesBefore
+      ? String(Math.ceil(activity.confirmByMinutesBefore / 60))
+      : '',
+    takesDeadline: true,
     byDay: [],
     interval: '1',
     endMode: 'none',
@@ -162,6 +172,18 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
   if (gatheringText && gatheringMinutesBefore === null) {
     fieldErrors.gatheringMinutesBefore = t('activities.form.errors.gathering')
   }
+  // REQ-A07: a type that is not of a `confirm` kind takes no deadline, so a hidden field sends none.
+  const confirmByHours = values.confirmByHoursBefore
+  const confirmByText =
+    values.takesDeadline === false
+      ? ''
+      : typeof confirmByHours === 'number'
+        ? String(confirmByHours)
+        : str(confirmByHours).trim()
+  const confirmByHoursBefore = confirmByText ? positiveInt(confirmByText, MAX_CONFIRM_BY_HOURS) : null
+  if (confirmByText && confirmByHoursBefore === null) {
+    fieldErrors.confirmByHoursBefore = t('activities.form.errors.confirmBy')
+  }
   const weekly = values.repeat !== 'once'
   let rule: string | null = null
   if (weekly) {
@@ -190,6 +212,7 @@ export function buildActivityBody(values: ActivityFormValues, t: Translate): Act
       startTime: str(values.startTime),
       endTime: str(values.endTime),
       gatheringMinutesBefore,
+      confirmByMinutesBefore: confirmByHoursBefore === null ? null : confirmByHoursBefore * 60,
       description: textOrNull(values.description),
       isActive: values.isActive !== false,
       isAway: values.isAway === true,
