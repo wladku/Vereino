@@ -162,9 +162,22 @@ export function memberLanding(input: LandingInput): { redirect: string; notice: 
   return null
 }
 
-/** `path` with the platform's same-origin flash parameters (`flash`, `type=info`). */
-export function withNotice(path: string, message: string): string {
-  return `${path}?${new URLSearchParams({ flash: message, type: 'info' }).toString()}`
+/**
+ * The query parameter and value that make the `people.injection.not-linked-notice` banner say the account is linked to
+ * no person (#352). Not the platform `?flash=`: its 3-second toast is read by whichever of its two hosts runs first, so
+ * after the client-side sign-in redirect it was often lost.
+ */
+export const NOTICE_PARAM = 'notice'
+export const NOT_LINKED_NOTICE = 'person-not-linked'
+
+/** `path` with the "not linked to a person" notice parameter. */
+export function withNotice(path: string): string {
+  return `${path}?${new URLSearchParams({ [NOTICE_PARAM]: NOT_LINKED_NOTICE }).toString()}`
+}
+
+/** Whether a query string carries the "not linked to a person" notice. */
+export function hasNotLinkedNotice(search: { get(name: string): string | null } | null): boolean {
+  return search?.get(NOTICE_PARAM) === NOT_LINKED_NOTICE
 }
 
 /**

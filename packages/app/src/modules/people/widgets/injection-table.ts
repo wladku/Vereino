@@ -2,10 +2,14 @@ import type { ModuleInjectionTable } from '@open-mercato/shared/modules/widgets/
 
 /**
  * `people` injection table (people life-cycle spec REQ-L13; #305): the "First administrator" banner on top of every
- * backend page while the club has no administrator, for a user with `auth.users.create`.
+ * backend page while the club has no administrator, for a user with `auth.users.create`; the "not linked to a person"
+ * notice after the sign-in of an account linked to no person (#27, #352).
  */
 export const injectionTable: ModuleInjectionTable = {
-  'backend:layout:top': [{ widgetId: 'people.injection.first-administrator-banner', priority: 100 }],
+  'backend:layout:top': [
+    { widgetId: 'people.injection.not-linked-notice', priority: 110 },
+    { widgetId: 'people.injection.first-administrator-banner', priority: 100 },
+  ],
 }
 
 export default injectionTable
