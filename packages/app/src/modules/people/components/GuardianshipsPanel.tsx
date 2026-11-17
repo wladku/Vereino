@@ -40,7 +40,16 @@ import {
   type PersonListRow,
   type Translate,
 } from './client-helpers'
-import { useClubToday } from '@vereino/ui'
+import {
+  InlineCreateDialog,
+  PickerEmptyHint,
+  pickerEmptyState,
+  useClubToday,
+  type PickerEmptyState,
+  type PickerOption,
+} from '@vereino/ui'
+import { createCrud } from '@open-mercato/ui/backend/utils/crud'
+import { splitPersonName } from '../lib/person-name'
 
 type ConsentFlags = Record<ConsentKind, boolean>
 
@@ -313,11 +322,14 @@ function AddGuardianship({
   busy,
   onAdd,
   onClose,
+  canCreatePerson,
   t,
 }: {
   personId: string
   role: AddRole
   linkedIds: ReadonlySet<string>
+  /** `people.manage`: the empty search offers the in-place create; without it, who can add the person. */
+  canCreatePerson: boolean
   busy: boolean
   onAdd: (body: Record<string, unknown>) => Promise<boolean>
   onClose: () => void
@@ -329,18 +341,49 @@ function AddGuardianship({
   const [isPrimaryPayer, setIsPrimaryPayer] = React.useState(false)
   const [consents, setConsents] = React.useState<ConsentFlags>(NO_CONSENTS)
   const [validFrom, setValidFrom] = React.useState(today)
+  // An empty person search offers "Add '{term}'" in place (people life-cycle spec REQ-L14, picker row 3): the new
+  // person is created with four fields and selected.
+  const [empty, setEmpty] = React.useState<{ state: PickerEmptyState; term: string } | null>(null)
+  const [creating, setCreating] = React.useState<{ term: string | null } | null>(null)
+  const [created, setCreated] = React.useState<PickerOption | null>(null)
+  const lookupControls = React.useRef<{ setQuery: (value: string) => void } | null>(null)
+  const createdLastName = React.useRef('')
 
   const fetchPersons = React.useCallback(
     async (query: string): Promise<LookupSelectItem[]> => {
       const params = new URLSearchParams({ pageSize: '20' })
       if (query.trim()) params.set('lastName', query.trim())
       const data = await readApiResultOrThrow<{ items?: PersonListRow[] }>(`/api/people/persons?${params.toString()}`)
-      return (data.items ?? [])
+      const items = (data.items ?? [])
         .filter((person) => person.id !== personId && !linkedIds.has(person.id))
         .map((person) => ({ id: person.id, title: personName(person), subtitle: person.birthDate }))
+      const state = pickerEmptyState(items.length, query)
+      setEmpty(state ? { state, term: query.trim() } : null)
+      return items
     },
     [personId, linkedIds],
   )
+
+  const createPerson = async (values: Record<string, string>): Promise<PickerOption> => {
+    const call = await createCrud<{ id?: string }>('people/persons', {
+      firstName: values.firstName,
+      lastName: values.lastName,
+      ...(values.birthDate ? { birthDate: values.birthDate } : {}),
+      ...(values.email ? { email: values.email } : {}),
+    })
+    const id = call.result?.id
+    if (!id) throw new Error(t('people.picker.person.createFailed'))
+    createdLastName.current = values.lastName
+    return { value: id, label: [values.firstName, values.lastName].join(' ') }
+  }
+
+  const selectCreated = (option: PickerOption) => {
+    setCreated(option)
+    setOtherId(option.value)
+    setEmpty(null)
+    // The search shows the new person, so the lookup marks it as the choice.
+    lookupControls.current?.setQuery(createdLastName.current)
+  }
 
   const submit = async () => {
     if (!otherId) return
@@ -391,6 +434,68 @@ function AddGuardianship({
             selectLabel={t('people.common.select')}
             selectedLabel={t('people.common.selected')}
             disabled={busy}
+            onReady={(controls) => {
+              lookupControls.current = controls
+            }}
+            selectedHintLabel={(id) => (created?.value === id ? created.label : id)}
+          />
+          {empty && !otherId ? (
+            <PickerEmptyHint
+              state={empty.state}
+              term={empty.term}
+              canCreate={canCreatePerson}
+              create={{ kind: 'inline' }}
+              labels={{
+                none: t('people.picker.person.none'),
+                noMatch: t('people.picker.person.noMatch'),
+                add: t('people.picker.person.add'),
+                addTerm: (term) => t('people.picker.person.addTerm', { term }),
+                askAdmin: t('people.picker.askAdmin'),
+              }}
+              onCreate={(term) => {
+                setCreating({ term })
+              }}
+              testId="people-guardianship-person-hint"
+            />
+          ) : null}
+          <InlineCreateDialog
+            id="people-guardianship-person-create"
+            open={creating !== null}
+            onOpenChange={(open) => {
+              if (!open) setCreating(null)
+            }}
+            title={t('people.picker.person.createTitle')}
+            description={t('people.picker.person.createHelp')}
+            fields={[
+              {
+                id: 'firstName',
+                label: t('people.persons.fields.firstName'),
+                type: 'text',
+                required: true,
+                maxLength: 200,
+              },
+              {
+                id: 'lastName',
+                label: t('people.persons.fields.lastName'),
+                type: 'text',
+                required: true,
+                maxLength: 200,
+              },
+              { id: 'birthDate', label: t('people.persons.fields.birthDate'), type: 'date' },
+              { id: 'email', label: t('people.persons.fields.email'), type: 'email', maxLength: 320 },
+            ]}
+            initialValues={splitPersonName(creating?.term)}
+            labels={{
+              submit: t('people.picker.dialog.submit'),
+              saving: t('people.picker.dialog.saving'),
+              cancel: t('people.common.cancel'),
+              close: t('people.picker.dialog.close'),
+              required: t('people.picker.dialog.required'),
+            }}
+            onCreate={createPerson}
+            onCreated={selectCreated}
+            describeError={(error) => ({ message: errorMessage(error, t('people.picker.person.createFailed')) })}
+            testId="people-guardianship-person-create"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -612,6 +717,7 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
           onClose={() => {
             setAdding(null)
           }}
+          canCreatePerson={canManage}
           t={t}
         />
       ) : null}

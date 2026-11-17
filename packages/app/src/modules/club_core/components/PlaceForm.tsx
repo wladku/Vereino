@@ -25,11 +25,13 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { pickerSelectField } from '@vereino/ui'
 import { PLACE_KINDS, type PlaceContact } from '../lib/places'
 import { OpeningHoursEditor, openingHoursDrafts, openingHoursPayload } from './OpeningHoursEditor'
 import { enumOptions, errorMessage, numberOrNull, textOrNull, type Translate } from './client-helpers'
 import { PlaceFilesPanel } from './PlaceFilesPanel'
-import type { InstitutionRow, PlaceRow } from './places-shared'
+import { institutionPicker, usePickerFeatures } from './pickers'
+import type { PlaceRow } from './places-shared'
 
 const LIST_HREF = '/backend/club/places'
 const ENTITY_ID = 'club_core:place'
@@ -158,20 +160,9 @@ async function placeOptions(t: Translate, excludeId?: string): Promise<CrudField
   ]
 }
 
-async function institutionOptions(t: Translate): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<InstitutionRow>('club_core/institutions', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-  })
-  return [
-    { value: NONE, label: t('club_core.places.noOwner') },
-    ...data.items.map((item) => ({ value: item.id, label: item.name ?? item.id })),
-  ]
-}
-
 function usePlaceFields(t: Translate, placeId?: string) {
   const clubSlug = useClubSlug()
+  const canCreateInstitution = usePickerFeatures()['club_core.manage']
   const PublicAddress = React.useMemo(() => publicAddressField(clubSlug), [clubSlug])
   const fields = React.useMemo<CrudField[]>(
     () => [
@@ -195,12 +186,12 @@ function usePlaceFields(t: Translate, placeId?: string) {
       { id: 'geoLat', label: t('club_core.places.fields.geoLat'), type: 'number', layout: 'half' },
       { id: 'geoLng', label: t('club_core.places.fields.geoLng'), type: 'number', layout: 'half' },
       { id: 'description', label: t('club_core.places.fields.description'), type: 'textarea' },
-      {
-        id: 'ownerInstitutionId',
-        label: t('club_core.places.fields.owner'),
-        type: 'select',
-        loadOptions: () => institutionOptions(t),
-      },
+      // People life-cycle spec REQ-L14, picker row 1: an empty owner select offers "Add an institution" in place.
+      pickerSelectField(
+        'ownerInstitutionId',
+        t('club_core.places.fields.owner'),
+        institutionPicker(t, canCreateInstitution, t('club_core.places.noOwner')),
+      ),
       { id: 'managedByClub', label: t('club_core.places.fields.managedByClub'), type: 'checkbox' },
       {
         id: 'isExternal',
@@ -269,7 +260,7 @@ function usePlaceFields(t: Translate, placeId?: string) {
         description: t('club_core.places.public.fields.acceptsOnlineRequests.help'),
       },
     ],
-    [t, placeId, PublicAddress],
+    [t, placeId, PublicAddress, canCreateInstitution],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
