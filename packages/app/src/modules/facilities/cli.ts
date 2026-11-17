@@ -17,7 +17,8 @@ function readOptions(argv: string[], names: readonly string[]): Record<string, s
 /**
  * `facilities rental-lifecycle --tenant <id> --org <id> [--now <ISO instant>]` (facilities spec DD-46): runs the
  * 15-minute rental lifecycle now — the same command the `facilities:rental-lifecycle` job dispatches — and prints its
- * counts. `--now` evaluates the ends as of another instant (an operator catching up; the integration tests' clock).
+ * counts (`done`, `expired`) and the changed ids. `--now` evaluates the ends and the payment deadlines as of another
+ * instant (an operator catching up; the integration tests' clock).
  */
 const rentalLifecycle: ModuleCli = {
   command: 'rental-lifecycle',
@@ -36,7 +37,8 @@ const rentalLifecycle: ModuleCli = {
       input: now ? { now } : {},
       ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }),
     })
-    process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts, changedIds: result.changedIds })}\n`)
+    const { now: at, counts, changedIds, expiredIds } = result
+    process.stdout.write(`${JSON.stringify({ now: at, ...counts, changedIds, expiredIds })}\n`)
   },
 }
 

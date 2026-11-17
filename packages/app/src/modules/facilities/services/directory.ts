@@ -1,12 +1,13 @@
 // The records of the modules `facilities` requires (facilities spec *Architecture*: `facilities` → `activities`,
 // `club_core`, `people`), read through their DI services, never through their entities: places, the place tree, the
-// institutions and the inherited opening hours (`clubCoreDirectory`, `clubCorePlaces`), the club time zone
+// institutions and the inherited opening hours (`clubCoreDirectory`, `clubCorePlaces`), the rental terms of the
+// management agreement with a place's owner (`clubCoreContracts`, #284), the club time zone
 // (`clubCoreSettings`), persons' names (`people.personDirectory`) and the planned sessions on places with the
 // reschedule flag (`activities.placeSessions`). Every required module is enabled
 // with `facilities`, so a missing registration is a deployment error and fails closed.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import type { OpeningHours } from '@vereino/core'
+import type { CalendarDate, OpeningHours } from '@vereino/core'
 import type {
   ActivitiesPlaceSessions,
   DoneSessionReportEntry,
@@ -14,6 +15,7 @@ import type {
 } from '../../activities/services/place-sessions'
 import type {
   ClubCoreDirectory,
+  InstitutionSearchEntry,
   PlaceDirectoryEntry,
   PlaceFamily,
   PlaceOption,
@@ -21,6 +23,8 @@ import type {
   RentedPlace,
   SectionDirectoryEntry,
 } from '../../club_core/services/directory'
+import type { FacilityAgreement } from '../../club_core/lib/contracts'
+import type { ClubCoreContracts } from '../../club_core/services/contracts'
 import type { ClubCorePlacesService } from '../../club_core/services/places'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type { PersonDirectory } from '../../people/services/person-directory'
@@ -29,6 +33,7 @@ import type { PersonDirectory } from '../../people/services/person-directory'
 const CLUB_CORE_DIRECTORY = 'clubCoreDirectory'
 const CLUB_CORE_PLACES = 'clubCorePlaces'
 const CLUB_CORE_SETTINGS = 'clubCoreSettings'
+const CLUB_CORE_CONTRACTS = 'clubCoreContracts'
 const ACTIVITIES_PLACE_SESSIONS = 'activities.placeSessions'
 const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory'
 
@@ -183,6 +188,38 @@ export async function institutionNames(
   return new Map([...found.values()].map((entry) => [entry.id, entry.name]))
 }
 
+/** The live institutions of the club whose name contains `query`, by name: name and type only (DD-R07, #277). */
+export function searchInstitutions(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  query: string,
+  limit: number,
+): Promise<InstitutionSearchEntry[]> {
+  return directory(container).searchInstitutions(scope, query, limit)
+}
+
+/**
+ * The live persons of the club whose first or last name matches every word of `query` (words of three characters or
+ * more, through the people register's search index), by name, at most `limit`: the renter search of a caller with
+ * `people.view` (DD-R07, #277). Empty when no word is long enough for the index.
+ */
+export async function searchPersons(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  query: string,
+  limit: number,
+): Promise<Array<{ id: string; name: string }>> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  const people = container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY)
+  const ids = await people.searchPersonIds(scope, query)
+  if (!ids || ids.size === 0) return []
+  const found = await people.findPersons(scope, [...ids])
+  return [...found.values()]
+    .map((entry) => ({ id: entry.id, name: `${entry.firstName} ${entry.lastName}`.trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+    .slice(0, limit)
+}
+
 /** The full names of live persons of the club among `ids`, by id (a rental's renter, #122). */
 export async function personNames(
   container: AwilixContainer,
@@ -203,6 +240,21 @@ export function placePayee(
   em?: EntityManager,
 ): Promise<PlacePayee | null> {
   return directory(container).placePayee(scope, placeId, em)
+}
+
+/**
+ * The rental terms of the management agreement with the owner institution in force on `on` (facilities parity spec
+ * DD-R10; #284), or null when the club has none with that owner.
+ */
+export function facilityAgreement(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  institutionId: string,
+  on: CalendarDate,
+  em?: EntityManager,
+): Promise<FacilityAgreement | null> {
+  assertRegistered(container, CLUB_CORE_CONTRACTS)
+  return container.resolve<ClubCoreContracts>(CLUB_CORE_CONTRACTS).facilityAgreement(scope, institutionId, on, em)
 }
 
 /** The club values the request e-mails need: the time zone, the currency, the default language and the own account. */

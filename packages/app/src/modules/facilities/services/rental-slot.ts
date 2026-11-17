@@ -3,10 +3,12 @@
 // move. In order: the units, the rate of the place for the renter category on the date, a closure or the opening
 // hours (`place_closed`), a planned maintenance window (`maintenance_scheduled`, #128), the zone (`zone_not_reservable`), the other occupancy (`rental_conflict`) and the renter's
 // entry ban (`entry_ban_active`). The commands throw the first issue; the quote lists them all next to the amount and
-// the deadlines. Every read uses the caller's EntityManager, so under the occupancy lock (DD-43) the result stands
+// the deadlines. The payment deadline follows the management agreement with the place's owner in force on the day of
+// entry (facilities parity spec DD-R10, REQ-R07; #284), else the 3-day default. Every read uses the caller's EntityManager, so under the occupancy lock (DD-43) the result stands
 // until the commit.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
+import { calendarDateInZone, type CalendarDate } from '@vereino/core'
 import { EntryBan, RentalRate, ZoneRule } from '../data/entities'
 import { rentalRateShapeOf } from '../commands/rental-rates'
 import { zoneRuleShapeOf } from '../commands/zone-rules'
@@ -15,16 +17,18 @@ import {
   banActiveOn,
   localSlotOf,
   occupancyConflictCode,
+  paymentDeadlineDays,
   quoteRental,
   rentalEnd,
   slotReservable,
   slotWithinOpeningHours,
   unitsAllowed,
   type OccupancyEntry,
+  type RentalAgreementTerms,
   type RenterType,
 } from '../lib/rentals'
 import { dayZoneSegments } from '../lib/zones'
-import { clubTimeZone, openingHours, type FacilitiesScope } from './directory'
+import { clubTimeZone, facilityAgreement, openingHours, placePayee, type FacilitiesScope } from './directory'
 import { occupancyEntries, placeFamilyIds } from './occupancy'
 
 export type RentalIssueCode =
@@ -93,6 +97,22 @@ export async function renterBanned(
   )
 }
 
+/**
+ * The rental terms a rental of the place follows (DD-R10): those of the management agreement in force on `on` with the
+ * place's payee institution (the nearest owner up the place tree); null when the place has no owner or the club no
+ * agreement with it in force that day.
+ */
+export async function rentalAgreement(
+  container: AwilixContainer,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  placeId: string,
+  on: CalendarDate,
+): Promise<RentalAgreementTerms | null> {
+  const payee = await placePayee(container, scope, placeId, em)
+  return payee ? facilityAgreement(container, scope, payee.institutionId, on, em) : null
+}
+
 /** Every issue of the slot plus the quote (amount and deadlines); the units issue stops the occupancy checks. */
 export async function assessRentalSlot(
   container: AwilixContainer,
@@ -112,7 +132,8 @@ export async function assessRentalSlot(
   const rates = await em.find(RentalRate, { ...scope, deletedAt: null, placeId: input.placeId })
   const rate = quoteRate(rates.map(rentalRateShapeOf), input.placeId, input.renterCategory, slot.date)
   if (!rate) issues.push({ code: 'rental_rate_missing' })
-  const quote = quoteRental(input.startsAt, units, rate?.pricePer90 ?? 0, now)
+  const agreement = await rentalAgreement(container, em, scope, input.placeId, calendarDateInZone(now, timeZone))
+  const quote = quoteRental(input.startsAt, units, rate?.pricePer90 ?? 0, now, paymentDeadlineDays(agreement))
 
   if (unitsOk) {
     const entries = await occupancyEntries(

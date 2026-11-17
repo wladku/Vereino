@@ -8,8 +8,8 @@
 // `facilities.manage`. "Wpisy dnia" gives each entry its action (own booking → cancel, rental → the rentals, request →
 // the decision, closure → the closures, maintenance → the task dialog); "To be moved" limits the axis and the list to
 // flagged entries and counts them per chip day. Rentals and requests are drawn for every reader with `facilities.view`;
-// the contact stays with the rental scope (DD-R18). A free hour opens the "New rental" dialog for
-// `facilities.rentals.manage` until the slot dialog arrives (E11-S03).
+// the contact stays with the rental scope (DD-R18). A free hour opens the slot dialog (E11-S03, #277) with the kinds
+// the user may save (DD-R04); without any kind the hours are not buttons.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -28,10 +28,12 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS, addDays, isCalendarDate } from '@vereino/core'
 import { browserTimeZone, clubToday, formatDayHeading, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { bookableWindowsByDay, chipDates, CHIP_DAYS } from '../lib/day-axis'
+import { closingAfter, zoneAtMinute } from '../lib/slot'
 import { isBookablePlace } from '../lib/place-scope'
 import { AvailabilityDialog, type BulkResult } from './AvailabilityDialog'
 import { MaintenanceTaskDialog } from './MaintenanceTaskDialog'
-import { RentalDialog, type RentalDialogPreset } from './RentalDialog'
+import { SlotDialog, type SlotPreset } from './slot/SlotDialog'
+import { useSlotKinds } from './slot/slot-client'
 import {
   CALENDAR_HREF,
   CLOSURES_HREF,
@@ -58,6 +60,8 @@ import {
   entriesOfDay,
   entryLabel,
   entryRange,
+  minutesOf,
+  timeOf,
   useStaffCalendar,
   zoneWallTime,
   zonedLocalInstant,
@@ -240,8 +244,9 @@ function PlaceDay({
   const [busyDay, setBusyDay] = React.useState<number | null>(null)
   const [result, setResult] = React.useState<BulkResult | null>(null)
   const [dialogKey, setDialogKey] = React.useState(0)
-  const [rentalPreset, setRentalPreset] = React.useState<RentalDialogPreset | null>(null)
-  const [rentalKey, setRentalKey] = React.useState(0)
+  const slotKinds = useSlotKinds()
+  const [slotPreset, setSlotPreset] = React.useState<SlotPreset | null>(null)
+  const [slotKey, setSlotKey] = React.useState(0)
   const [task, setTask] = React.useState<{ row: MaintenanceTaskRow; placeName: string; key: number } | null>(null)
   const filterId = React.useId()
 
@@ -266,7 +271,7 @@ function PlaceDay({
   const dayEntries = calendar ? entriesOfDay(calendar.entries, date, timeZone) : []
   const entries = toMove ? dayEntries.filter((entry) => entry.needsReschedule) : dayEntries
   const redacted = calendar?.maintenance?.redacted === true
-  const canBook = features.rentals && !redacted
+  const canBook = slotKinds.kinds.length > 0 && !redacted
   const flagged = React.useMemo(() => {
     if (!toMove || !calendar || !inChips) return null
     return new Map(
@@ -484,8 +489,24 @@ function PlaceDay({
           redacted={redacted}
           canBook={canBook}
           onBookHour={(time) => {
-            setRentalKey((current) => current + 1)
-            setRentalPreset({ placeId, date, time })
+            const minute = minutesOf(time)
+            const opening = day?.opening?.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) }))
+            const zones = (day?.zones ?? []).map((zone) => ({
+              from: minutesOf(zone.from),
+              to: minutesOf(zone.to),
+              zone: zone.zone,
+            }))
+            const closing = closingAfter(opening ?? null, minute)
+            setSlotKey((current) => current + 1)
+            setSlotPreset({
+              placeId,
+              placeName: name,
+              date,
+              time,
+              zone: zoneAtMinute(zones, minute),
+              closing: closing === null ? null : timeOf(closing),
+              heldRequests: dayEntries.filter((entry) => entry.kind === 'request'),
+            })
           }}
         />
         <DayEntries
@@ -579,15 +600,17 @@ function PlaceDay({
           }}
         />
       ) : null}
-      {canBook && rentalPreset ? (
-        <RentalDialog
-          key={rentalKey}
+      {canBook && slotPreset ? (
+        <SlotDialog
+          key={slotKey}
           open
           onOpenChange={(open) => {
-            if (!open) setRentalPreset(null)
+            if (!open) setSlotPreset(null)
           }}
+          kinds={slotKinds.kinds}
+          groups={slotKinds.groups}
+          preset={slotPreset}
           places={placeOptions.options}
-          preset={rentalPreset}
           onSaved={async () => {
             await Promise.all([queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] }), refreshCalendar()])
           }}

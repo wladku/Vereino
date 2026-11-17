@@ -5,8 +5,8 @@
 // the address (precedent DD-U03) so a reload or a shared link restores them. Each row shows the slot, the place, the
 // renter with contact and phone, how it was taken, the amount with its payee and charge state, and the status; it
 // opens the rental page. "Confirm payment" and "Cancel" are buttons on the row, a pending request links to the
-// decision queue (B-25), Move and No-show sit in the row menu. "New rental" opens the rental dialog. Everything here
-// needs `facilities.rentals.manage`.
+// decision queue (B-25), Move and No-show sit in the row menu. "New rental" opens the slot dialog with the rental kind
+// and no preset slot (#277, DD-R05). Everything here needs `facilities.rentals.manage`.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -30,8 +30,8 @@ import {
   type RentalListUrlState,
 } from '../lib/rental-record'
 import { ListEmptyState } from './FacilitiesControls'
-import { RentalDialog } from './RentalDialog'
 import { useRentalActions } from './RentalRowActions'
+import { SlotDialog } from './slot/SlotDialog'
 import {
   minorToAmount,
   placeLabel,
@@ -408,12 +408,15 @@ export function RentalsTable() {
         </TabsContent>
       </Tabs>
       {actions.element}
-      <RentalDialog
+      {/* B-24 "New rental" is the slot dialog with the rental kind and no preset slot (DD-R05). */}
+      <SlotDialog
         key={createKey}
         open={createOpen}
         onOpenChange={setCreateOpen}
+        kinds={['rental']}
+        groups={[]}
+        preset={null}
         places={places.options}
-        preset={{ placeId: places.options.length === 1 ? (places.options[0]?.value ?? null) : null }}
         onSaved={refresh}
       />
     </div>

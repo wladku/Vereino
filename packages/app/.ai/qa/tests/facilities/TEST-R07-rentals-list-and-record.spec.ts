@@ -10,7 +10,7 @@ import { uiText } from '../_fixtures/ui-text'
 // Issue #279 (E11-S05), facilities parity spec REQ-R04, REQ-R05, AC-R03, TEST-R07: given rentals in every status — one
 // flagged by a closure, one unpaid past its deadline, one pending request — the administrator walks the B-24 tabs and
 // perspectives and reloads: the address keeps tab and view; "Decide" on the pending row opens B-25; a row opens the
-// rental page with every saved field. A purpose entered in the "New rental" dialog is on the rental page and is
+// rental page with every saved field. A purpose entered in the slot dialog (#277) is on the rental page and is
 // corrected there; "Confirm payment" and "Cancel" from the page update it.
 test.describe.configure({ timeout: 400_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
@@ -138,14 +138,10 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
     await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${thursday}`)
     await page.waitForLoadState('networkidle')
     await page.locator('[data-testid^="facilities-axis-hour-"]').first().click()
-    const dialog = page.getByTestId('facilities-rental-dialog')
+    const dialog = page.getByTestId('facilities-slot-dialog')
     await expect(dialog).toBeVisible()
-    await dialog.getByTestId('facilities-rental-date').fill(thursday)
-    await dialog.getByTestId('facilities-rental-time').fill('08:00')
-    await dialog
-      .getByTestId('facilities-rental-renter-type')
-      .getByText(uiText('facilities.rentals.renterType.unregistered', { exact: true }))
-      .click()
+    await dialog.getByTestId('facilities-slot-start').fill('08:00')
+    await dialog.getByTestId('facilities-slot-renter-mode').click()
     await dialog.getByTestId('facilities-rental-renter-name').fill('Drużyna Celowa')
     await dialog.getByTestId('facilities-rental-category').click()
     await page
@@ -153,7 +149,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
       .click()
     await dialog.getByTestId('facilities-rental-contact-phone').fill('600 000 008')
     await dialog.getByTestId('facilities-rental-purpose').fill('Turniej szóstek')
-    await dialog.getByTestId('facilities-rental-save').click()
+    await dialog.getByTestId('facilities-slot-submit').click()
     await expect(dialog).toBeHidden()
     const entered = (await listRentals(request, admin, '&tab=active')).find(
       (rental) => rental.renterDisplayName === 'Drużyna Celowa',
