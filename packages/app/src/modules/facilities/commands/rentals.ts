@@ -43,6 +43,7 @@ import {
   startAllowed,
   type RentalStatus,
 } from '../lib/rentals'
+import { labelConflicts } from '../services/calendar'
 import { chargeService } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
 import { assessRentalSlot, renterBanned, type RentalIssue } from '../services/rental-slot'
@@ -121,10 +122,24 @@ const ISSUE_FIELDS: Record<RentalIssue['code'], string> = {
   entry_ban_active: 'renterId',
 }
 
-async function throwFirstIssue(issues: readonly RentalIssue[]): Promise<void> {
+/**
+ * Throws the first issue at its field; its conflicts carry their places and the labels staff see (the activity, the
+ * renter, the booking's purpose, the closure reason — facilities parity spec, #277), as the internal booking's do.
+ */
+async function throwFirstIssue(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  placeId: string,
+  issues: readonly RentalIssue[],
+  now: Date,
+): Promise<void> {
   const first = issues.at(0)
   if (!first) return
-  await throwFieldError(first.code, ISSUE_FIELDS[first.code], first.conflicts ? { conflicts: first.conflicts } : {})
+  const conflicts = first.conflicts
+    ? await labelConflicts(ctx.container, em, scope, placeId, first.conflicts, now)
+    : null
+  await throwFieldError(first.code, ISSUE_FIELDS[first.code], conflicts ? { conflicts } : {})
 }
 
 type RentalCreateParsed = z.output<typeof rentalCreateSchema>
@@ -200,7 +215,7 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
         },
         now,
       )
-      await throwFirstIssue(assessment.issues)
+      await throwFirstIssue(ctx, em, scope, parsed.placeId, assessment.issues, now)
       const row = em.create(Rental, {
         id,
         ...scope,
@@ -406,7 +421,14 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
         now,
       )
       // The amount stays as agreed, so a missing rate on the new date does not block the move.
-      await throwFirstIssue(assessment.issues.filter((issue) => issue.code !== 'rental_rate_missing'))
+      await throwFirstIssue(
+        ctx,
+        em,
+        scope,
+        placeId,
+        assessment.issues.filter((issue) => issue.code !== 'rental_rate_missing'),
+        now,
+      )
       row.placeId = placeId
       row.startsAt = startsAt
       row.endsAt = assessment.endsAt
