@@ -1,6 +1,6 @@
 // Pure rules of the groups list (E06-S08 #90; README B-11): the list state kept in the page URL — the perspective
-// (All / Teams / Class groups, which is the kind filter) and the section, season, age category (#92) and status
-// filters — and the
+// (All / Teams / Class groups, which is the kind filter) and the section, season, age category (#92), status and
+// public (#266) filters — and the
 // list-time roster summary of each group (its coaches and its number of active participants). Nothing here reads the
 // database or the clock.
 import { COACHING_ROLES, GROUP_KINDS, type GroupKind, type MembershipRole } from './groups-rules'
@@ -12,11 +12,12 @@ export type GroupListState = {
   readonly seasonId?: string
   readonly ageCategoryEntryId?: string
   readonly isActive?: 'true' | 'false'
+  readonly isPublic?: 'true' | 'false'
   readonly search?: string
 }
 
 /** The keys of the state, in the order a URL writes them. */
-const STATE_KEYS = ['kind', 'sectionId', 'seasonId', 'ageCategoryEntryId', 'isActive', 'search'] as const
+const STATE_KEYS = ['kind', 'sectionId', 'seasonId', 'ageCategoryEntryId', 'isActive', 'isPublic', 'search'] as const
 
 const MAX_TEXT = 200
 
@@ -41,6 +42,7 @@ function text(value: string | null): string | undefined {
 export function parseGroupListState(query: { get(key: string): string | null }): GroupListState {
   const kind = query.get('kind')
   const isActive = query.get('isActive')
+  const isPublic = query.get('isPublic')
   const state: { -readonly [key in keyof GroupListState]: GroupListState[key] } = {}
   if (kind && isKind(kind)) state.kind = kind
   const sectionId = text(query.get('sectionId'))
@@ -50,6 +52,7 @@ export function parseGroupListState(query: { get(key: string): string | null }):
   const ageCategoryEntryId = text(query.get('ageCategoryEntryId'))
   if (ageCategoryEntryId) state.ageCategoryEntryId = ageCategoryEntryId
   if (isActive === 'true' || isActive === 'false') state.isActive = isActive
+  if (isPublic === 'true' || isPublic === 'false') state.isPublic = isPublic
   const search = text(query.get('search'))
   if (search) state.search = search
   return state
@@ -80,6 +83,17 @@ export function withPerspective(state: GroupListState, perspective: GroupPerspec
 /** Whether any filter or search narrows the list (the empty state then offers "Clear filters", not "Add group"). */
 export function hasGroupFilters(state: GroupListState): boolean {
   return STATE_KEYS.some((key) => Boolean(state[key]))
+}
+
+/**
+ * The "Category / level" cell of a group (parity spec REQ-A01, #266): a team's age category, else its level — the only
+ * one a class group has; null when neither is set.
+ */
+export function categoryOrLevel(group: {
+  readonly ageCategoryName?: string | null
+  readonly levelLabel?: string | null
+}): string | null {
+  return group.ageCategoryName || group.levelLabel || null
 }
 
 /** An active membership of a listed group, as the roster summary reads it. */

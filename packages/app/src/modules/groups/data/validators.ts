@@ -73,6 +73,7 @@ export const groupListQuerySchema = z.object({
   seasonId: z.uuid().optional(),
   ageCategoryEntryId: z.uuid().optional(),
   isActive: booleanQuery,
+  isPublic: booleanQuery,
 })
 
 // --- Memberships ---

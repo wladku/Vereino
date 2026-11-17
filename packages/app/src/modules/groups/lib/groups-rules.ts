@@ -65,6 +65,14 @@ export function disallowedTeamFields(kind: GroupKind, values: TeamFieldValues): 
   })
 }
 
+/**
+ * Whether a kind change needs the match guard (parity spec REQ-A02, #266): only a `team` that becomes a `class_group`
+ * can strand matches and sparrings, which a class group may not have.
+ */
+export function needsMatchGuard(from: GroupKind, to: GroupKind): boolean {
+  return from === 'team' && to === 'class_group'
+}
+
 /** The key of the club dictionary (`dictionaries` module) that holds the age categories of `team` groups. */
 export const AGE_CATEGORY_DICTIONARY_KEY = 'groups.age_categories'
 
