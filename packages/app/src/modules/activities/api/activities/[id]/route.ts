@@ -63,6 +63,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       endTime: row.defaultEndTime.slice(0, 5),
       generatedUntil: row.generatedUntil ?? null,
       gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+      confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
       description: row.description ?? null,
       isActive: row.isActive,
       isAway: row.isAway,

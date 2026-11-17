@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { createLogger } from '@open-mercato/shared/lib/logger'
-import { addCalendarDays, type CalendarDate, type Recipient, type Scope } from '@vereino/core'
+import { addCalendarDays, calendarDateInZone, type CalendarDate, type Recipient, type Scope } from '@vereino/core'
 import {
   contactResolver,
   foundationErrors,
@@ -33,6 +33,7 @@ import {
   reminderOwners,
 } from '../lib/declaration-links'
 import { declarationWindow, type Declared, type DeclarationStatus } from '../lib/policy'
+import { MAX_CONFIRM_BY_MINUTES, confirmByAt, reminderDue } from '../lib/confirm-by'
 import type { OccurrenceStatus } from '../lib/activities-rules'
 import {
   activeGuardians,
@@ -345,7 +346,8 @@ export async function readDeclarationLink(
 export type ReminderCounts = { processed: number; skipped: number; failed: number }
 
 /**
- * Sends the reminder link for tomorrow's planned sessions of a `confirm` kind (a training is `absence_only`: silence
+ * Sends the reminder link for the planned sessions of a `confirm` kind due tonight — tomorrow's sessions, or for a
+ * session with a deadline the one whose deadline falls tomorrow (REQ-A07; none after the deadline) (a training is `absence_only`: silence
  * means "expected", D-022) to the guardians of every participant without a declaration, or to the participant without
  * a guardian. One link per person and session: the dispatch key makes a rerun send nothing twice. A failure of one
  * session is counted and left to the next run.
@@ -359,14 +361,25 @@ export async function sendDeclarationReminders(
   const { today } = await clubClock(container, scope, now)
   const tomorrow = addCalendarDays(today, 1)
   const em = container.resolve<EntityManager>('em').fork()
-  const sessions = await em.find(Occurrence, {
+  // A deadline lies at most 14 days before the start, so the sessions due tonight start within 15 days.
+  const candidates = await em.find(Occurrence, {
     ...scope,
     deletedAt: null,
     status: 'planned',
-    occurrenceDate: tomorrow,
+    occurrenceDate: { $gte: tomorrow, $lte: addCalendarDays(tomorrow, Math.ceil(MAX_CONFIRM_BY_MINUTES / 1440)) },
     startAt: { $gt: now },
   })
   const settings = await attendanceSettings(container, scope)
+  const sessions = candidates.filter((occurrence) => {
+    const deadline = confirmByAt(occurrence.startAt, occurrence.confirmByMinutesBefore)
+    return reminderDue({
+      occurrenceDate: occurrence.occurrenceDate,
+      deadline,
+      deadlineDate: deadline ? calendarDateInZone(deadline, settings.timeZone) : null,
+      tomorrow,
+      now,
+    })
+  })
   for (const occurrence of sessions) {
     try {
       const facts = await sessionFacts(container, scope, occurrence, em)

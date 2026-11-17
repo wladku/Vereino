@@ -14,6 +14,7 @@ import {
   DECLARATION_STATUSES,
   DECLARED_VALUES,
 } from '../lib/policy'
+import { confirmByIso, deadlinePassed } from '../lib/confirm-by'
 import { gatheringIso } from '../lib/gathering'
 import { activityLabels, nameMaps } from '../services/read'
 import { substituteForOf } from '../services/substitutions'
@@ -87,6 +88,7 @@ export function activityListItem(row: Row) {
     endTime: wallTime(row.default_end_time),
     generatedUntil: calendarDate(row.generated_until),
     gatheringMinutesBefore: integer(row.gathering_minutes_before),
+    confirmByMinutesBefore: integer(row.confirm_by_minutes_before),
     description: text(row.description),
     isActive: bool(row.is_active),
     isAway: bool(row.is_away),
@@ -109,6 +111,17 @@ function occurrenceGathering(startAt: unknown, minutes: unknown): string | null 
   return start ? gatheringIso(new Date(start), integer(minutes)) : null
 }
 
+/** The declaration deadline of a list row (REQ-A07): the instant, and whether it has passed before the start. */
+function occurrenceDeadline(startAt: unknown, minutes: unknown, now: Date) {
+  const start = iso(startAt)
+  if (!start) return { confirmBy: null, deadlinePassed: false }
+  const startDate = new Date(start)
+  return {
+    confirmBy: confirmByIso(startDate, integer(minutes)),
+    deadlinePassed: deadlinePassed(startDate, integer(minutes), now),
+  }
+}
+
 export function occurrenceListItem(row: Row) {
   return {
     id: String(row.id),
@@ -120,6 +133,8 @@ export function occurrenceListItem(row: Row) {
     endAt: iso(row.end_at),
     gatheringMinutesBefore: integer(row.gathering_minutes_before),
     gatheringAt: occurrenceGathering(row.start_at, row.gathering_minutes_before),
+    confirmByMinutesBefore: integer(row.confirm_by_minutes_before),
+    ...occurrenceDeadline(row.start_at, row.confirm_by_minutes_before, new Date()),
     placeId: text(row.place_id),
     coachPersonId: text(row.coach_person_id),
     status: text(row.status),
@@ -275,6 +290,11 @@ export const activityListItemSchema = z.object({
     .int()
     .nullable()
     .describe('The default gathering time in minutes before the start.'),
+  confirmByMinutesBefore: z
+    .number()
+    .int()
+    .nullable()
+    .describe('The default declaration deadline in minutes before the start (REQ-A07); only for a `confirm` kind.'),
   description: z.string().nullable(),
   isActive: z.boolean(),
   isAway: z.boolean().describe('An away trip: its sessions count as trips in the coach units report (#96).'),
@@ -295,6 +315,14 @@ export const occurrenceListItemSchema = z.object({
   endAt: z.string().nullable(),
   gatheringMinutesBefore: z.number().int().nullable(),
   gatheringAt: z.string().nullable().describe('The gathering instant (start minus the offset), or null.'),
+  confirmByMinutesBefore: z.number().int().nullable(),
+  confirmBy: z
+    .string()
+    .nullable()
+    .describe(
+      'The declaration deadline (start minus the offset, REQ-A07), or null. In the member reads it is null unless the session is of a `confirm` kind.',
+    ),
+  deadlinePassed: z.boolean().describe('True from the deadline until the start (DD-A02).'),
   placeId: z.string().nullable(),
   placeName: z.string().nullable().optional(),
   coachPersonId: z.string().nullable(),
@@ -422,15 +450,21 @@ const calendarPersonSchema = z.object({
 })
 
 export const calendarEntrySchema = z.object({
-  occurrence: occurrenceListItemSchema.omit({ createdAt: true, gatheringMinutesBefore: true }).extend({
-    sectionName: z.string().nullable(),
-    placeAddress: z.string().nullable(),
-    placeGeoLat: z.number().nullable(),
-    placeGeoLng: z.number().nullable(),
-    opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
-    invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
-    updatedAt: z.string(),
-  }),
+  occurrence: occurrenceListItemSchema
+    .omit({
+      createdAt: true,
+      gatheringMinutesBefore: true,
+      confirmByMinutesBefore: true,
+    })
+    .extend({
+      sectionName: z.string().nullable(),
+      placeAddress: z.string().nullable(),
+      placeGeoLat: z.number().nullable(),
+      placeGeoLng: z.number().nullable(),
+      opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
+      invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
+      updatedAt: z.string(),
+    }),
   declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),
   declarationsOpen: z.boolean().describe('False once the session started, was cancelled or is done'),
   persons: z.array(calendarPersonSchema).describe('The caller (as=self) or the concerned wards (as=guardian)'),
@@ -462,6 +496,10 @@ export const attendanceListSchema = z.object({
   occurrence: calendarEntrySchema.shape.occurrence,
   declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),
   summary: calendarEntrySchema.shape.summary.unwrap(),
+  unansweredCount: z
+    .number()
+    .int()
+    .describe('`confirm`: the participants who have not answered (REQ-A07); listed first once the deadline is reached'),
   checkOff: z
     .enum(['open', 'not_started', 'not_planned'])
     .describe('`open` from the start until the session is closed; `not_planned` when cancelled or done'),

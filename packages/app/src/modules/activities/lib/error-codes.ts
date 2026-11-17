@@ -34,6 +34,23 @@ export const errorCodes = [
     status: 422,
     messageKey: 'activities.errors.occurrence_gathering_too_early',
   },
+  // The declaration deadline of a session (REQ-A07, #269).
+  {
+    code: 'occurrence_confirm_by_after_start',
+    status: 422,
+    messageKey: 'activities.errors.occurrence_confirm_by_after_start',
+  },
+  {
+    code: 'occurrence_confirm_by_too_early',
+    status: 422,
+    messageKey: 'activities.errors.occurrence_confirm_by_too_early',
+  },
+  {
+    code: 'occurrence_confirm_by_in_past',
+    status: 422,
+    messageKey: 'activities.errors.occurrence_confirm_by_in_past',
+  },
+  { code: 'declaration_deadline_passed', status: 409, messageKey: 'activities.errors.declaration_deadline_passed' },
   // Declarations and policies (#32; club spec glossary *Declaration*, *Declaration policy*; D-026).
   { code: 'declaration_closed', status: 409, messageKey: 'activities.errors.declaration_closed' },
   { code: 'declaration_kind_absence_only', status: 422, messageKey: 'activities.errors.declaration_kind_absence_only' },

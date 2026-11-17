@@ -16,11 +16,12 @@ import type { AwilixContainer } from 'awilix'
 import { findActingRole, type ActingRole, type GrantKind, type Scope } from '@vereino/core'
 import { assertTransition, authorizeScoped, type TargetLock } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
-import { Occurrence } from '../data/entities'
+import { Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
 import { occurrenceCancelSchema, occurrenceRestoreSchema, occurrenceUpdateSchema } from '../data/validators'
 import { permittedCancelRole, sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
-import { coachMayCancel } from '../services/directory'
+import { attendanceSettings, coachMayCancel } from '../services/directory'
+import { nextConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringOffset } from '../lib/gathering'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
@@ -53,6 +54,8 @@ export type OccurrenceSnapshot = {
   isDetached: boolean
   needsReschedule: boolean
   gatheringMinutesBefore?: number | null
+  /** Absent in a snapshot written before REQ-A07 (#269): no deadline. */
+  confirmByMinutesBefore?: number | null
 }
 
 export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot>
@@ -73,6 +76,7 @@ export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
     isDetached: row.isDetached,
     needsReschedule: row.needsReschedule,
     gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+    confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
   }
 }
 
@@ -87,6 +91,7 @@ function restoreOccurrence(row: Occurrence, before: OccurrenceSnapshot): void {
   row.needsReschedule = before.needsReschedule
   // A snapshot written before DD-43 has no gathering field: no gathering time.
   row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
+  row.confirmByMinutesBefore = before.confirmByMinutesBefore ?? null
 }
 
 function loadOccurrence(ctx: CommandRuntimeContext) {
@@ -124,6 +129,14 @@ async function authorizeOccurrenceReplay(
     mode: 'replay',
   })
   return authorized.entity as Occurrence
+}
+
+/** Whether the session's declaration kind is `confirm` (the club setting for its activity type, D-026). */
+async function confirmKind(ctx: CommandRuntimeContext, em: EntityManager, row: Occurrence): Promise<boolean> {
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  const activity = await em.findOne(Activity, { id: row.activityId, ...scope }, { fields: ['id', 'type'] })
+  const settings = await attendanceSettings(ctx.container, scope)
+  return (settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm') === 'confirm'
 }
 
 /** The session's place tree and coach must stay free for its (new) time — 409 with the list otherwise. */
@@ -178,12 +191,25 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         if (!offset.ok) return activitiesErrors.throw(offset.code)
         gatheringMinutesBefore = offset.minutes
       }
+      // REQ-A07, DD-A01: the deadline keeps its offset too, but a move that puts a deadline with effect (a `confirm`
+      // kind) in the past must send `confirmBy` — a new instant or null.
+      const moved = startAt.getTime() !== row.startAt.getTime()
+      const confirmBy = nextConfirmByMinutes({
+        startAt,
+        moved,
+        current: row.confirmByMinutesBefore ?? null,
+        submitted: patch.confirmBy,
+        applies: moved && (await confirmKind(ctx, em, row)),
+        now: new Date(),
+      })
+      if (!confirmBy.ok) return activitiesErrors.throw(confirmBy.code)
       const before = occurrenceSnapshot(row)
       row.startAt = startAt
       row.endAt = endAt
       if (patch.placeId !== undefined) row.placeId = patch.placeId
       if (patch.coachPersonId !== undefined) row.coachPersonId = patch.coachPersonId
       row.gatheringMinutesBefore = gatheringMinutesBefore
+      row.confirmByMinutesBefore = confirmBy.minutes
       row.isDetached = true
       row.needsReschedule = false
       row.updatedAt = new Date()
