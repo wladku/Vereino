@@ -6,7 +6,6 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
-import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { Person } from '../data/entities'
 import { memberLanding, withNotice } from '../lib/member-rules'
 import { clubToday } from './club-clock'
@@ -75,11 +74,5 @@ export async function memberLandingRedirect(
     facilityLogFeature: facts?.facilityLogFeature ?? false,
   })
   if (!landing) return null
-  if (!landing.notice) return landing.redirect
-  const { translate } = await resolveTranslations()
-  const notice = translate(
-    'people.club.notLinked.notice',
-    'Your account is not linked to a person of the club, so the member area is not available. Contact the club if you need it.',
-  )
-  return withNotice(landing.redirect, notice)
+  return landing.notice ? withNotice(landing.redirect) : landing.redirect
 }

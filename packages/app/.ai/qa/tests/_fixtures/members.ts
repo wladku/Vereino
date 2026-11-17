@@ -170,11 +170,17 @@ export async function hasFeatures(request: APIRequestContext, token: string, fea
   return result.body?.ok === true
 }
 
-/** Signs in through the real `/login` form and waits until the app has left the sign-in page. */
+/**
+ * Signs in through the real `/login` form and waits until the app has left the sign-in page. It types only into the
+ * hydrated form (`data-auth-ready="1"`): before that the submit button is disabled and `Enter` submits nothing, so the
+ * page stayed on `/login` under CI load (#352).
+ */
 export async function signInThroughForm(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login')
-  await page.locator('input[name="email"]').fill(email)
-  await page.locator('input[name="password"]').fill(password)
-  await page.locator('input[name="password"]').press('Enter')
+  const form = page.locator('form[data-auth-ready="1"]')
+  await expect(form).toBeVisible()
+  await form.locator('input[name="email"]').fill(email)
+  await form.locator('input[name="password"]').fill(password)
+  await form.locator('input[name="password"]').press('Enter')
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 })
 }
