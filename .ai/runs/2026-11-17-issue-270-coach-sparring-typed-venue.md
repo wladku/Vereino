@@ -35,6 +35,9 @@ See the PR diff.
 - `npx jest src/modules/activities/lib --coverage` — 20 suites, 245 tests passed; `venue.ts`, `session-edit.ts`, `member-event.ts`, `activities-rules.ts`, `public-schedule.ts`, `public-events.ts` at 100 %.
 - `yarn typecheck`, `yarn typecheck:qa` — exit 0.
 - `yarn contracts:check`, `glossary:check`, `qa-texts:check`, `spec-changelogs:check` — 0 problems.
+- `yarn test:integration:vereino --filter TEST-A11` — first run: `[internal] yarn build failed` (`MoveOccurrenceDialog.tsx(38,3): error TS2344 … Type '"venue"' is not assignable to type 'keyof OccurrenceRow'` — the `venue` field had gone into `ActivityRow` only); after adding it to `OccurrenceRow`: 1 passed (1.8m).
+- `yarn test:integration:vereino --filter TEST-A12` — 1 passed (2.2m).
+- `yarn verify` — all 17 steps passed (`yarn test`: 93 suites, 1310 tests).
 
 ## Open problems
 
