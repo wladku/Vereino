@@ -13,6 +13,8 @@ export const errorCodes = [
   { code: 'group_section_inactive', status: 422, messageKey: 'groups.errors.group_section_inactive' },
   { code: 'group_age_range_inverted', status: 422, messageKey: 'groups.errors.group_age_range_inverted' },
   { code: 'group_has_memberships', status: 409, messageKey: 'groups.errors.group_has_memberships' },
+  { code: 'group_has_matches', status: 409, messageKey: 'groups.errors.group_has_matches' },
+  { code: 'group_usage_failed', status: 503, messageKey: 'groups.errors.group_usage_failed' },
   { code: 'membership_overlap', status: 409, messageKey: 'groups.errors.membership_overlap' },
   { code: 'season_dates_inverted', status: 422, messageKey: 'groups.errors.season_dates_inverted' },
   { code: 'season_name_taken', status: 409, messageKey: 'groups.errors.season_name_taken' },

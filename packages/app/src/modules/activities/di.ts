@@ -10,6 +10,7 @@ import { DECLARATION_LINK_TTL_MS } from './lib/declaration-links'
 import notificationTypes from './notifications'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
+import { ACTIVITIES_GROUP_USAGE, groupUsage } from './services/group-usage'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
 import { ACTIVITIES_PUBLIC_EVENTS, createPublicEvents } from './services/public-events'
 import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
@@ -39,6 +40,10 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  *
  * `activities.placeSessions` (facilities spec DD-20, #121): the planned sessions on places in a window and the
  * reschedule flag a closure sets on them, for `facilities`.
+ *
+ * `activities.groupUsage` (groups and activities parity spec REQ-A02, #266): the number of a group's matches, which
+ * `groups` reads with `hasRegistration` before a team becomes a class group (`groups/services/group-usage.ts`).
+ * Stateless: it reads with the caller's EntityManager inside the command's transaction.
  */
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
@@ -50,6 +55,7 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, declarationLinkTemplate)
   container.register({
     [ACTIVITIES_DECLARATION_LINKS]: asValue(declarationLinks),
+    [ACTIVITIES_GROUP_USAGE]: asValue(groupUsage),
     [audienceProviderToken('activity')]: asValue(activityAudienceProvider),
     [audienceProviderToken('occurrence')]: asValue(occurrenceAudienceProvider),
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.

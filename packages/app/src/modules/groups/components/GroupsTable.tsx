@@ -1,10 +1,12 @@
 'use client'
 // `/backend/groups/groups` (club spec UI table, REQ-004; README B-11, E06-S08 #90): the groups of both kinds in the
 // caller's record scope — a coach's groups, a coordinator's sections, the whole club for the administrator — with
-// section, age category (#92), season, coaches, active participants and status. The perspectives All / Teams / Class
-// groups and the section, kind, season, age category and status filters live in the URL (`?kind=…&sectionId=…`), so a filtered list is shareable
+// section, kind badge, "Category / level" (the age category, or a class group's level), season, coaches, active
+// participants, status and public visibility (parity spec REQ-A01, #266). The perspectives All / Teams / Class groups
+// and the section, kind, season, age category, status and public filters live in the URL (`?kind=…&sectionId=…`), so a filtered list is shareable
 // and survives a reload and the back button; the server applies them inside the record scope. The add action and the
-// delete row action for `groups.manage` (a group with memberships answers 409: deactivate it).
+// delete row action for `groups.manage` (a group with memberships answers 409: deactivate it); the "Activities" row
+// action opens the activities list filtered to the group, for those who read activities.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -26,6 +28,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
   GROUP_PERSPECTIVES,
+  categoryOrLevel,
   groupListQuery,
   hasGroupFilters,
   parseGroupListState,
@@ -40,6 +43,7 @@ import {
   GROUPS_HREF,
   ageCategoryOptions,
   errorMessage,
+  groupActivitiesHref,
   kindLabel,
   personName,
   seasonOptions,
@@ -49,7 +53,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
-import { useCanManageGroups } from './useCanManageGroups'
+import { useCanManageGroups, useHasFeature } from './useCanManageGroups'
 
 const PAGE_SIZE = 50
 
@@ -79,14 +83,18 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       header: t('groups.groups.columns.kind'),
       enableSorting: false,
       meta: { priority: 5 },
-      cell: ({ row }) => kindLabel(t, row.original.kind),
+      cell: ({ row }) => (
+        <StatusBadge variant={row.original.kind === 'team' ? 'info' : 'neutral'}>
+          {kindLabel(t, row.original.kind)}
+        </StatusBadge>
+      ),
     },
     {
-      accessorKey: 'ageCategoryName',
-      header: t('groups.groups.columns.ageCategory'),
+      id: 'categoryLevel',
+      header: t('groups.groups.columns.categoryLevel'),
       enableSorting: false,
       meta: { priority: 8 },
-      cell: ({ row }) => row.original.ageCategoryName ?? dash,
+      cell: ({ row }) => categoryOrLevel(row.original) ?? dash,
     },
     {
       id: 'coaches',
@@ -127,6 +135,17 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
         </StatusBadge>
       ),
     },
+    {
+      accessorKey: 'isPublic',
+      header: t('groups.groups.columns.public'),
+      enableSorting: false,
+      meta: { priority: 9 },
+      cell: ({ row }) => (
+        <StatusBadge variant={row.original.isPublic ? 'success' : 'neutral'}>
+          {row.original.isPublic ? t('groups.common.yes') : t('groups.common.no')}
+        </StatusBadge>
+      ),
+    },
   ]
 }
 
@@ -138,13 +157,14 @@ function filterValuesOf(state: GroupListState): FilterValues {
   if (state.seasonId) values.seasonId = state.seasonId
   if (state.ageCategoryEntryId) values.ageCategoryEntryId = state.ageCategoryEntryId
   if (state.isActive) values.isActive = state.isActive
+  if (state.isPublic) values.isPublic = state.isPublic
   return values
 }
 
 /** The list state of applied filter values, keeping the search; invalid values are dropped as in a URL. */
 function stateOf(values: FilterValues, search: string | undefined): GroupListState {
   const query = new URLSearchParams()
-  for (const key of ['sectionId', 'kind', 'seasonId', 'ageCategoryEntryId', 'isActive'] as const) {
+  for (const key of ['sectionId', 'kind', 'seasonId', 'ageCategoryEntryId', 'isActive', 'isPublic'] as const) {
     const value: unknown = values[key]
     if (typeof value === 'string' && value) query.set(key, value)
   }
@@ -159,6 +179,7 @@ function GroupsList() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const canManage = useCanManageGroups()
+  const canViewActivities = useHasFeature('activities.view')
   const scopeVersion = useOrganizationScopeVersion()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const state = React.useMemo(() => parseGroupListState(searchParams), [searchParams])
@@ -225,6 +246,15 @@ function GroupsList() {
         options: [
           { value: 'true', label: t('groups.common.active') },
           { value: 'false', label: t('groups.common.inactive') },
+        ],
+      },
+      {
+        id: 'isPublic',
+        label: t('groups.groups.filters.public'),
+        type: 'select',
+        options: [
+          { value: 'true', label: t('groups.common.yes') },
+          { value: 'false', label: t('groups.common.no') },
         ],
       },
     ],
@@ -295,8 +325,14 @@ function GroupsList() {
           </div>
           <TabsContent value={perspective} className="pt-4">
             <DataTable<GroupListRow>
-              title={t('groups.groups.title')}
-              titleHeadingLevel={1}
+              title={
+                <div className="flex flex-col gap-0.5">
+                  <h1 className="text-base font-semibold">{t('groups.groups.title')}</h1>
+                  <p className="text-muted-foreground text-sm font-normal" data-testid="groups-subtitle">
+                    {t('groups.groups.subtitle')}
+                  </p>
+                </div>
+              }
               entityId="groups:group"
               extensionTableId="groups.groups"
               actions={addGroup}
@@ -323,6 +359,15 @@ function GroupsList() {
                 <RowActions
                   items={[
                     { id: 'open', label: t('groups.common.open'), href: `${GROUPS_HREF}/${row.id}` },
+                    ...(canViewActivities
+                      ? [
+                          {
+                            id: 'activities',
+                            label: t('groups.groups.actions.activities'),
+                            href: groupActivitiesHref(row.id),
+                          },
+                        ]
+                      : []),
                     ...(canManage
                       ? [
                           {
