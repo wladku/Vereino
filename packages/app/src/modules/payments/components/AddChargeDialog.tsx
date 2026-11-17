@@ -23,6 +23,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { addCalendarDays } from '@vereino/core'
 import { useClubToday } from '@vereino/ui'
 import { MAX_MANUAL_DESCRIPTION_LENGTH, MIN_MANUAL_DESCRIPTION_LENGTH, manualDueRange } from '../lib/manual-charges'
+import { MAX_AMOUNT } from '../lib/payments-rules'
 import { errorCode, errorMessage, personName, toGrosz } from './client-helpers'
 
 type CreateResult = { chargeId?: string; payerMissing?: boolean }
@@ -79,7 +80,7 @@ export function AddChargeDialog({
     if (text.length < MIN_MANUAL_DESCRIPTION_LENGTH || text.length > MAX_MANUAL_DESCRIPTION_LENGTH) {
       return ['description', t('payments.manual.descriptionInvalid')]
     }
-    if (grosz === null || grosz <= 0) return ['amount', t('payments.ledger.record.amountInvalid')]
+    if (grosz === null || grosz <= 0 || grosz > MAX_AMOUNT) return ['amount', t('payments.manual.amountInvalid')]
     if (!dueDate) return ['dueDate', t('payments.manual.dueDateRequired')]
     return null
   }

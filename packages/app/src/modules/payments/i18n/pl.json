@@ -850,5 +850,6 @@
   "payments.assignPayer.done": "Przypisano płatnika",
   "payments.assignPayer.error": "Nie udało się przypisać płatnika.",
   "payments.personCharges.title": "Należności",
-  "payments.personCharges.empty": "Brak należności"
+  "payments.personCharges.empty": "Brak należności",
+  "payments.manual.amountInvalid": "Podaj kwotę od 0,01 do 100 000 zł."
 }

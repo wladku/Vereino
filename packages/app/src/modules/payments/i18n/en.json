@@ -850,5 +850,6 @@
   "payments.assignPayer.done": "Payer assigned",
   "payments.assignPayer.error": "The payer could not be assigned.",
   "payments.personCharges.title": "Charges",
-  "payments.personCharges.empty": "No charges"
+  "payments.personCharges.empty": "No charges",
+  "payments.manual.amountInvalid": "Enter an amount from 0.01 to 100 000 zł."
 }

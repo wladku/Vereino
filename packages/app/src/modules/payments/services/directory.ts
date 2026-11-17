@@ -213,17 +213,25 @@ export async function payerFactsOf(
   today: CalendarDate,
   em?: EntityManager,
 ): Promise<PayerFacts | null> {
-  const [persons, guardians, payers] = await Promise.all([
-    findPersons(container, scope, [personId], em),
+  const [guardians, payers] = await Promise.all([
     activeGuardians(container, scope, [personId], today, em),
     primaryPayers(container, scope, [personId], today, em),
   ])
+  const guardianIds = guardians.get(personId) ?? []
+  const primaryPayerId = payers.get(personId) ?? null
+  // Only live persons count: a guardian whose person record was deleted pays nothing.
+  const persons = await findPersons(
+    container,
+    scope,
+    [personId, ...guardianIds, ...(primaryPayerId ? [primaryPayerId] : [])],
+    em,
+  )
   const debtor = persons.get(personId)
   if (!debtor) return null
   return {
     debtorId: personId,
-    guardianIds: guardians.get(personId) ?? [],
-    primaryPayerId: payers.get(personId) ?? null,
+    guardianIds: guardianIds.filter((id) => persons.has(id)),
+    primaryPayerId: primaryPayerId && persons.has(primaryPayerId) ? primaryPayerId : null,
     debtorBirthDate: debtor.birthDate,
     today,
   }
