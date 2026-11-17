@@ -24,9 +24,9 @@
 - `yarn generate`: pass. `yarn typecheck`: pass.
 - `jest club_core/lib/__tests__/contracts.test.ts facilities/lib/__tests__/rentals.test.ts --coverage`: 30 passed, 100 % lines/branches/functions on both files.
 - `yarn test:integration:vereino --filter TEST-R09`: run 1 failed on the test — `{"error":"Validation failed","details":[{"code":"unrecognized_keys","keys":["contactName","contactPhone","requestedVia","regulationsAccepted"]...` (the quote takes only the slot fields); run 2 failed on the test — `expect(run.expiredIds).toEqual([expiringId])` received `[]`, because the test had moved the pitch to the second owner (no agreement) before the lifecycle run; the test now runs the lifecycle while the first owner owns the pitch. Run 3: 1 passed (2.2m).
-- `yarn verify`: see the PR.
+- `yarn verify`: all 17 steps passed. PR #343 then conflicted with #342 (E11-S03) on one import line of `facilities/commands/rentals.ts`; merged `origin/main` into the branch (real conflict, both imports kept), then `yarn verify` 17/17 passed and TEST-R09 1 passed (1.5m) again.
 
 ## Open problems / next steps
 
 - #221 L4: existing clubs get the `facilities:rental-lifecycle` schedule only when setup re-runs; expiry runs only where the schedule exists.
-- Next: review and UI QA (`needs-qa`).
+- PR #343 (ready; `review`, `feature`, `needs-qa`, `priority-high`, `risk-high`). Next: review and UI QA.
