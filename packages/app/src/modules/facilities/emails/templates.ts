@@ -325,6 +325,56 @@ export const maintenanceDueTemplate = defineEmailTemplate<MaintenanceDueParams>(
   link: () => '/backend/facilities/maintenance',
 })
 
+// --- The entry ban request (DD-R12, J-R08; #282) ---
+
+export const BAN_REQUEST_TEMPLATE = 'facilities.entry_ban_requested'
+
+const banRequestParams = z
+  .object({
+    incidentId: z.uuid(),
+    placeName: z.string().max(200),
+  })
+  .strict()
+
+export type BanRequestParams = z.output<typeof banRequestParams>
+
+/** The panel's Incidents tab, where the administrator issues the ban (B-27). */
+export const BAN_REQUESTS_HREF = '/backend/facilities/incidents'
+
+function banRequestCopy(t: TranslateWithFallbackFn, params: BanRequestParams) {
+  const values = { place: params.placeName }
+  return {
+    subject: t('facilities.email.banRequest.subject', 'Entry ban request — {place}', values),
+    lead: t(
+      'facilities.email.banRequest.lead',
+      'An incident reported at {place} asks for an entry ban. Open the incidents to decide.',
+      values,
+    ),
+  }
+}
+
+/**
+ * `facilities.entry_ban_requested`: to the club administrators, in-app (the generic keys of the notification type of
+ * the same id, DD-M07) and by e-mail. It names the place only — no renter contact, no incident description.
+ */
+export const banRequestTemplate = defineEmailTemplate<BanRequestParams>({
+  id: BAN_REQUEST_TEMPLATE,
+  notificationType: 'facilities.entry_ban_requested',
+  optOut: 'never',
+  params: banRequestParams,
+  subject: (t, params) => banRequestCopy(t, params).subject,
+  body: (t, params) => {
+    const copy = banRequestCopy(t, params)
+    return paragraphs(copy.subject, [copy.lead])
+  },
+  text: (t, params) => {
+    const copy = banRequestCopy(t, params)
+    return plainText(copy.subject, [copy.lead])
+  },
+  actionLabel: (t) => t('facilities.email.banRequest.action', 'Open incidents'),
+  link: () => BAN_REQUESTS_HREF,
+})
+
 export const requestEmailTemplates = [
   requestVerificationTemplate,
   requestApprovedTemplate,

@@ -6,8 +6,11 @@
 // amount, the category, the units, the payment and free-cancellation deadlines, the payee, the charge state) and
 // History (how it was taken, rules accepted, e-mail confirmed, the decision's reason; the audit entries open from the
 // form's version history). The actions are those of the list (Confirm payment, Cancel, Move, No-show). A stale save opens
-// the shared conflict dialog (`CrudForm` optimistic lock), a closed rental answers 409 `rental_closed`. Reused by the
-// attendant's phone page (E11-S08).
+// the shared conflict dialog (`CrudForm` optimistic lock), a closed rental answers 409 `rental_closed`. The `phone`
+// variant is the attendant's `/club/facility/rentals/[id]` (E11-S08, #282): the same read and actions, the contact,
+// purpose and notes only (assigning a register record needs the register, which the attendant cannot read), no version
+// history and no "Decide" link (both are the administrator's), and for a rental with a charge its charge state and no
+// "Confirm payment": the administrator records the payment (DD-R09).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,6 +26,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CORRECTABLE_RENTAL_STATUSES } from '../lib/rental-record'
 import { UNPAID_EXPIRY_REASON } from '../lib/rentals'
 import { RentalBadges } from './RentalsTable'
+import { facilityHref } from './club-facility/facility-client'
 import { useRentalActions } from './RentalRowActions'
 import { minorToAmount, placeLabel, usePlaceOptions, type Translate } from './facilities-client'
 import {
@@ -211,7 +215,8 @@ function instantLabel(iso: string | null, timeZone: string, empty: string): stri
   return iso ? `${clubDateOf(iso, timeZone)} ${clubTimeOf(iso, timeZone)}` : empty
 }
 
-export function RentalRecord({ id }: { id: string }) {
+export function RentalRecord({ id, variant = 'panel' }: { id: string; variant?: 'panel' | 'phone' }) {
+  const phone = variant === 'phone'
   const t = useT()
   const timeZone = useRentalTimeZone()
   const queryClient = useQueryClient()
@@ -233,7 +238,7 @@ export function RentalRecord({ id }: { id: string }) {
   const load = query.data
   const rental = load?.status === 'ok' ? load.rental : null
   const withContact = rental ? CORRECTABLE_RENTAL_STATUSES.includes(rental.status) : false
-  const withRenter = withContact && rental?.renterType === 'unregistered'
+  const withRenter = !phone && withContact && rental?.renterType === 'unregistered'
   const form = useCorrectionForm(t, withContact, withRenter)
 
   if (query.isLoading) return <LoadingMessage label={t('facilities.rentals.record.loading')} />
@@ -243,7 +248,7 @@ export function RentalRecord({ id }: { id: string }) {
     return (
       <RecordNotFoundState
         label={t('facilities.rentals.record.errors.notFound')}
-        backHref={RENTALS_HREF}
+        backHref={phone ? facilityHref(null, 'rentals') : RENTALS_HREF}
         backLabel={t('facilities.rentals.record.back')}
       />
     )
@@ -251,7 +256,8 @@ export function RentalRecord({ id }: { id: string }) {
 
   const empty = t('facilities.common.empty')
   const placeName = placeLabel(t, places.names, rental.placeId)
-  const available = rentalActions(rental.status)
+  const awaitsPayment = phone && rental.chargeId !== null
+  const available = rentalActions(rental.status).filter((action) => !(awaitsPayment && action === 'confirm'))
   return (
     <div className="flex flex-col gap-4" data-testid="facilities-rental-record">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -265,7 +271,7 @@ export function RentalRecord({ id }: { id: string }) {
           <RentalBadges row={rental} t={t} />
         </div>
         <div className="flex flex-wrap gap-2" data-testid="facilities-rental-record-actions">
-          {rental.status === 'pending_approval' ? (
+          {rental.status === 'pending_approval' && !phone ? (
             <Button asChild size="sm" variant="outline">
               <Link href={REQUESTS_HREF}>{t('facilities.rentals.list.decision')}</Link>
             </Button>
@@ -289,6 +295,11 @@ export function RentalRecord({ id }: { id: string }) {
         </div>
       </header>
 
+      {awaitsPayment && rental.status === 'requested' ? (
+        <p className="text-muted-foreground text-sm" role="note" data-testid="facilities-rental-record-awaits-payment">
+          {t('facilities.facility.rental.awaitsPayment')}
+        </p>
+      ) : null}
       {withContact ? null : (
         <p className="text-muted-foreground text-sm" role="note" data-testid="facilities-rental-record-closed">
           {t('facilities.rentals.record.closedNotice')}
@@ -312,7 +323,7 @@ export function RentalRecord({ id }: { id: string }) {
               entityId="facilities:rental"
               fields={form.fields}
               groups={form.groups}
-              versionHistory={{ resourceKind: 'facilities.rental', resourceId: rental.id }}
+              versionHistory={phone ? undefined : { resourceKind: 'facilities.rental', resourceId: rental.id }}
               initialValues={{
                 id: rental.id,
                 updatedAt: rental.updatedAt,
