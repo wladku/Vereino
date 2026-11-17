@@ -108,7 +108,8 @@ test('E08-S06 facility day: open, groups, incident with 422, close; log, inciden
     if (rentalId) {
       const card = page.getByTestId(`club-facility-entry-${rentalId}`)
       await expect(card).toContainText('KS Sąsiedzi')
-      await expect(card.getByTestId('club-facility-entry-no-show')).toHaveCount(0)
+      // "No-show" is offered on every rental that holds its slot, also before the start (#282, AC-R09).
+      await expect(card.getByTestId('club-facility-entry-no-show')).toBeVisible()
       await card.getByTestId('club-facility-entry-headcount').fill('12')
       await card.getByTestId('club-facility-entry-supervisor').click()
       const saved = page.waitForResponse(
