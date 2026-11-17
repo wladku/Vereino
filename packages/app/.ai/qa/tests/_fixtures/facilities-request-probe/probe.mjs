@@ -1,11 +1,14 @@
 // The facilities request probe (TEST-033, #123): a QA-only process that boots the app the way the `mercato` CLI does and
 // stands in for the online request flow of E08-S05, which is not built yet — it stores an external request that holds
 // its slot (`pending_approval` with a valid `hold_expires_at`) through the ORM, so the platform encrypts its renter and
-// contact fields as the real command will, and reads a request's status back.
+// contact fields as the real command will, and reads a request's status back. TEST-R13 (#282) also stores a rental
+// entered by phone (`requested`) on any time of today, which the rental command refuses once the start has passed.
 //
 // Usage (cwd = packages/app): node .ai/qa/tests/_fixtures/facilities-request-probe/probe.mjs '<json>'
 //   input: { tenantId, organizationId, op: 'seed', placeId, startsAt, endsAt, holdHours } → `{ id }`
 //          { tenantId, organizationId, op: 'status', id } → `{ status, decidedAt }`
+//          { tenantId, organizationId, op: 'rental', placeId, startsAt, endsAt, renterId, renterDisplayName,
+//            contactName, contactPhone } → `{ id }` (an institution's `requested` phone rental, 150 zł)
 //   the last stdout line is the JSON result.
 import { randomUUID } from 'node:crypto'
 
@@ -47,6 +50,32 @@ if (input.op === 'seed') {
     status: 'pending_approval',
     usedAt: now,
     holdExpiresAt: new Date(now.getTime() + Number(input.holdHours ?? 48) * 3_600_000),
+  })
+  em.persist(row)
+  await em.flush()
+  result = { id: row.id }
+} else if (input.op === 'rental') {
+  const now = new Date()
+  const row = em.create(Rental, {
+    id: randomUUID(),
+    ...scope,
+    createdAt: now,
+    updatedAt: now,
+    placeId: input.placeId,
+    renterType: 'institution',
+    renterId: input.renterId,
+    renterDisplayName: input.renterDisplayName,
+    renterCategory: 'external_commercial',
+    contactName: input.contactName,
+    contactPhone: input.contactPhone,
+    requestedVia: 'phone',
+    startsAt: new Date(input.startsAt),
+    endsAt: new Date(input.endsAt),
+    units: 1,
+    amount: 15_000,
+    status: 'requested',
+    regulationsAcceptedAt: now,
+    regulationsAcceptedVia: 'phone',
   })
   em.persist(row)
   await em.flush()
