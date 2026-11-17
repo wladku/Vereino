@@ -30,6 +30,10 @@ export type ScheduleOccurrenceEntry = {
   endAt: Date
   /** The gathering instant before the start (club spec DD-43), or null. */
   gatheringAt: Date | null
+  /** The club place, or null at a typed venue (REQ-A08); the moved-session notice names it (REQ-A09, #271). */
+  placeId?: string | null
+  /** The typed venue's name, or null at a club place. */
+  venueName?: string | null
   status: OccurrenceStatus
   cancelReason: string | null
   updatedAt: Date
@@ -111,6 +115,8 @@ async function occurrenceEntries(
     startAt: row.startAt,
     endAt: row.endAt,
     gatheringAt: gatheringAt(row.startAt, row.gatheringMinutesBefore),
+    placeId: row.placeId,
+    venueName: row.venueName ?? null,
     status: row.status,
     cancelReason: row.cancelReason ?? null,
     updatedAt: row.updatedAt,

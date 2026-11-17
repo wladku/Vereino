@@ -21,7 +21,7 @@ import {
 } from '../lib/thread-rules'
 import { shareTextService } from './directory'
 import { listAudienceTargets, resolveAudienceTarget, type AudienceTargetOption } from './targets'
-import { threadSubject, type Viewer } from './threads'
+import { sessionLastMoved, threadSubject, type Viewer } from './threads'
 
 /**
  * Asserts the author may post to the audience (403 `scope_denied` otherwise) and returns its target. An account not
@@ -74,7 +74,8 @@ export type ShareText = { text: string; url: string }
 
 /**
  * The share text (DD-M14): for a session, `activities.shareText` with the public session page (the author must be
- * allowed to post to the session); for a thread the reader sees, its subject with the member thread link (sign-in).
+ * allowed to post to the session) — naming the new time, place and gathering when the session thread last announced a
+ * move (REQ-A09, #271); for a thread the reader sees, its subject with the member thread link (sign-in).
  */
 export async function shareText(
   viewer: Viewer,
@@ -83,7 +84,8 @@ export async function shareText(
   if (target.occurrenceId) {
     await authorizeAudience(viewer, { kind: 'occurrence', ids: [target.occurrenceId] })
     const service = shareTextService(viewer.container)
-    const text = service ? await service.forOccurrence(viewer.scope, target.occurrenceId) : null
+    const moved = await sessionLastMoved(viewer, target.occurrenceId)
+    const text = service ? await service.forOccurrence(viewer.scope, target.occurrenceId, { moved }) : null
     if (!text) return communicationErrors.throw('share_text_unavailable')
     return text
   }

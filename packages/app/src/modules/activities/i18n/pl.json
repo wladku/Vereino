@@ -649,6 +649,8 @@
   "activities.shareText.cancelledWithGathering": "{activity}, {date} {time} (zbiórka {gathering}) — odwołane. Szczegóły: {url}",
   "activities.shareText.planned": "{activity}, {date} {time} — szczegóły: {url}",
   "activities.shareText.plannedWithGathering": "{activity}, {date} {time} (zbiórka {gathering}) — szczegóły: {url}",
+  "activities.shareText.moved": "{activity} — nowy termin: {date} {time}, {place}. Szczegóły: {url}",
+  "activities.shareText.movedWithGathering": "{activity} — nowy termin: {date} {time} (zbiórka {gathering}), {place}. Szczegóły: {url}",
   "activities.substitutions.absence.action": "Zgłoś nieobecność",
   "activities.substitutions.absence.done": "Zgłoszono nieobecność — koordynator dostał powiadomienie",
   "activities.substitutions.absence.intro": "{session}. Termin trafi na listę „Do obsadzenia”, a koordynator sekcji dostanie powiadomienie.",

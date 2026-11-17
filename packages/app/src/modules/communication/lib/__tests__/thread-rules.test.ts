@@ -74,8 +74,8 @@ function contact(personId: string, overrides: Partial<AudienceContact> = {}): Au
 describe('vocabulary', () => {
   it('declares the scopes, message kinds, audiences and staff reasons of the spec', () => {
     expect(THREAD_SCOPE_TYPES).toEqual(['club', 'section', 'group', 'activity', 'occurrence', 'direct'])
-    expect(MESSAGE_KINDS).toEqual(['message', 'revision', 'tombstone', 'cancellation'])
-    expect(ORIGINAL_MESSAGE_KINDS).toEqual(['message', 'cancellation'])
+    expect(MESSAGE_KINDS).toEqual(['message', 'revision', 'tombstone', 'cancellation', 'reschedule'])
+    expect(ORIGINAL_MESSAGE_KINDS).toEqual(['message', 'cancellation', 'reschedule'])
     expect(MESSAGE_AUDIENCES).toEqual(['all', 'staff'])
     expect(STAFF_PARTICIPANT_REASONS).toEqual(['author', 'coach', 'staff'])
     expect(COMPOSER_KINDS).toEqual(['club', 'section', 'group', 'activity', 'occurrence'])
@@ -354,12 +354,27 @@ describe('append-only history (DD-M10)', () => {
       }),
     ])
     expect(views).toEqual([
-      expect.objectContaining({ id: 'c1', authorPersonId: 'piotr', actingRole: 'coach', system: true }),
+      expect.objectContaining({
+        id: 'c1',
+        kind: 'cancellation',
+        authorPersonId: 'piotr',
+        actingRole: 'coach',
+        system: true,
+      }),
     ])
     expect(isOriginalMessage({ kind: 'cancellation' })).toBe(true)
     expect(isOriginalMessage({ kind: 'revision' })).toBe(false)
     expect(isSystemMessage({ kind: 'message', authorPersonId: null })).toBe(true)
     expect(isSystemMessage({ kind: 'message', authorPersonId: 'a' })).toBe(false)
+  })
+
+  it('shows a moved-session notice as a system message of its own kind (REQ-A09, #271)', () => {
+    const views = latestMessages([
+      row({ id: 'm1', kind: 'reschedule', authorPersonId: 'ewa', createdAt: at('2026-11-02T10:00:00Z') }),
+    ])
+    expect(views).toEqual([expect.objectContaining({ id: 'm1', kind: 'reschedule', system: true })])
+    expect(isOriginalMessage({ kind: 'reschedule' })).toBe(true)
+    expect(isSystemMessage({ kind: 'reschedule', authorPersonId: 'ewa' })).toBe(true)
   })
 
   it('orders rows of the same instant by id', () => {

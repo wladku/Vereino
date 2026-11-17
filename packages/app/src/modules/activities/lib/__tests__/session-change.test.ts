@@ -128,6 +128,8 @@ describe('the series change notice (DD-A08)', () => {
 
   it('is null when no session changed in a way that is announced', () => {
     expect(scheduleChangeOf([], rules, NOW)).toBeNull()
-    expect(scheduleChangeOf([{ occurrenceDate: '2026-11-18', before: session(), after: session() }], rules, NOW)).toBeNull()
+    expect(
+      scheduleChangeOf([{ occurrenceDate: '2026-11-18', before: session(), after: session() }], rules, NOW),
+    ).toBeNull()
   })
 })

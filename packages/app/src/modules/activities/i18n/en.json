@@ -649,6 +649,8 @@
   "activities.shareText.cancelledWithGathering": "{activity}, {date} {time} (gathering {gathering}) is cancelled — details: {url}",
   "activities.shareText.planned": "{activity}, {date} {time} — details: {url}",
   "activities.shareText.plannedWithGathering": "{activity}, {date} {time} (gathering {gathering}) — details: {url}",
+  "activities.shareText.moved": "{activity} moved: {date} {time}, {place} — details: {url}",
+  "activities.shareText.movedWithGathering": "{activity} moved: {date} {time} (gathering {gathering}), {place} — details: {url}",
   "activities.substitutions.absence.action": "Report absence",
   "activities.substitutions.absence.done": "Absence reported — the coordinator has been notified",
   "activities.substitutions.absence.intro": "{session}. The session goes to the “Needing a coach” list and the section coordinator is notified.",

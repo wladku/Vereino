@@ -179,11 +179,7 @@ export async function notifySessionMoved(
 }
 
 /** "17:00–18:30 (gathering 16:30), Boisko piłkarskie": a series rule in the club's language. */
-function ruleLabels(
-  rules: SeriesRule[],
-  names: ReadonlyMap<string, string>,
-  locale: string,
-): Promise<string[]> {
+function ruleLabels(rules: SeriesRule[], names: ReadonlyMap<string, string>, locale: string): Promise<string[]> {
   return renderLocalized(locale, (t) =>
     rules.map((rule) => {
       const values = {
