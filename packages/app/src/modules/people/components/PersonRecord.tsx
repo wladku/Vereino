@@ -1,12 +1,14 @@
 'use client'
 // `/backend/people/persons/[id]` (club spec UI table; README B-10): the person record with the tabs "Details",
-// "Guardianship and consents", "Roles", "Account" and "Groups" (charges arrive with phase 4), addressable by
-// `?tab=details|guardianship|roles|account|groups` (#84). A coordinator reads the basic data only (`access: 'basic'`);
+// "Guardianship and consents", "Roles", "Account", "Groups" and "Charges", addressable by
+// `?tab=details|guardianship|roles|account|groups|charges` (#84, #295). A coordinator reads the basic data only (`access: 'basic'`);
 // the PESEL value is there only with `people.pesel.view` (anyone else sees the field empty with a hint, #262); editing
 // needs `people.manage`, roles `people.roles.manage`.
 // The account tab shows the account state to every reader and its actions only with `people.accounts.manage` (#303).
 // The "Groups" tab is the injection spot `vereino:people:person-record:groups`, filled by the `groups` module (so
-// `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The header
+// `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The "Charges"
+// tab is the spot `vereino:people:person-record:charges`, filled the same way by `payments` (payments parity spec DD-C05,
+// #295): absent without `payments.view` or without the `payments` module. The header
 // shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262).
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -37,6 +39,8 @@ import { useGrantedFeatures } from './useGrantedFeatures'
 
 /** The injection spot of the "Groups" tab (`groups/widgets/injection-table.ts`). */
 const GROUPS_SPOT_ID = 'vereino:people:person-record:groups'
+/** The injection spot of the "Charges" tab (`payments/widgets/injection-table.ts`). */
+const CHARGES_SPOT_ID = 'vereino:people:person-record:charges'
 
 /** The tab of `?tab=` when it is shown, else Details (always shown). */
 function tabFrom(value: string | null, allowed: readonly PersonRecordTab[]): PersonRecordTab {
@@ -102,6 +106,8 @@ export function PersonRecord({ id }: { id: string }) {
   const searchParams = useSearchParams()
   const groupsSpot = useInjectionWidgets(GROUPS_SPOT_ID)
   const hasGroupsTab = groupsSpot.widgets.length > 0
+  const chargesSpot = useInjectionWidgets(CHARGES_SPOT_ID)
+  const hasChargesTab = chargesSpot.widgets.length > 0
   const query = useQuery({
     queryKey: ['people-person', id],
     queryFn: async (): Promise<PersonLoad> => {
@@ -137,7 +143,9 @@ export function PersonRecord({ id }: { id: string }) {
   const person = load.person
   const canEdit = features['people.manage'] && person.access === 'full'
   const canManageAccount = features['people.accounts.manage'] && person.access === 'full'
-  const allowedTabs = PERSON_RECORD_TABS.filter((value) => value !== 'groups' || hasGroupsTab)
+  const allowedTabs = PERSON_RECORD_TABS.filter(
+    (value) => (value !== 'groups' || hasGroupsTab) && (value !== 'charges' || hasChargesTab),
+  )
   const tab = tabFrom(searchParams.get('tab'), allowedTabs)
   const selectTab = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -167,6 +175,7 @@ export function PersonRecord({ id }: { id: string }) {
             <TabsTrigger value="roles">{t('people.persons.tabs.roles')}</TabsTrigger>
             <TabsTrigger value="account">{t('people.persons.tabs.account')}</TabsTrigger>
             {hasGroupsTab ? <TabsTrigger value="groups">{t('people.persons.tabs.groups')}</TabsTrigger> : null}
+            {hasChargesTab ? <TabsTrigger value="charges">{t('people.persons.tabs.charges')}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="details" className="pt-4">
@@ -194,6 +203,11 @@ export function PersonRecord({ id }: { id: string }) {
         {hasGroupsTab ? (
           <TabsContent value="groups" className="pt-4">
             <InjectionSpot spotId={GROUPS_SPOT_ID} context={{ personId: person.id }} />
+          </TabsContent>
+        ) : null}
+        {hasChargesTab ? (
+          <TabsContent value="charges" className="pt-4">
+            <InjectionSpot spotId={CHARGES_SPOT_ID} context={{ personId: person.id }} />
           </TabsContent>
         ) : null}
       </Tabs>
