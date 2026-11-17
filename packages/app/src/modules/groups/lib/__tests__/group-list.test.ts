@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   GROUP_PERSPECTIVES,
+  categoryOrLevel,
   groupListQuery,
   hasGroupFilters,
   parseGroupListState,
@@ -16,7 +17,7 @@ const CATEGORY = '5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d'
 describe('parseGroupListState', () => {
   it('reads every filter of a groups URL', () => {
     const query = new URLSearchParams(
-      `kind=class_group&sectionId=${SECTION}&seasonId=${SEASON}&ageCategoryEntryId=${CATEGORY}&isActive=false&search=%20Basen%20`,
+      `kind=class_group&sectionId=${SECTION}&seasonId=${SEASON}&ageCategoryEntryId=${CATEGORY}&isActive=false&isPublic=true&search=%20Basen%20`,
     )
     expect(parseGroupListState(query)).toEqual({
       kind: 'class_group',
@@ -24,6 +25,7 @@ describe('parseGroupListState', () => {
       seasonId: SEASON,
       ageCategoryEntryId: CATEGORY,
       isActive: 'false',
+      isPublic: 'true',
       search: 'Basen',
     })
     expect(parseGroupListState(new URLSearchParams('kind=team&isActive=true'))).toEqual({
@@ -33,7 +35,7 @@ describe('parseGroupListState', () => {
   })
 
   it('drops unknown kinds and statuses, blank and over-long values', () => {
-    const query = new URLSearchParams(`kind=club&isActive=yes&sectionId=%20%20&search=${'x'.repeat(201)}`)
+    const query = new URLSearchParams(`kind=club&isActive=yes&isPublic=1&sectionId=%20%20&search=${'x'.repeat(201)}`)
     expect(parseGroupListState(query)).toEqual({})
     expect(parseGroupListState(new URLSearchParams(''))).toEqual({})
   })
@@ -45,6 +47,9 @@ describe('groupListQuery', () => {
       `kind=team&sectionId=${SECTION}&isActive=true&search=Orliki`,
     )
     expect(groupListQuery({ seasonId: SEASON })).toBe(`seasonId=${SEASON}`)
+    expect(groupListQuery({ search: 'Basen', isPublic: 'false', isActive: 'true' })).toBe(
+      'isActive=true&isPublic=false&search=Basen',
+    )
     expect(groupListQuery({ isActive: 'true', ageCategoryEntryId: CATEGORY, kind: 'team' })).toBe(
       `kind=team&ageCategoryEntryId=${CATEGORY}&isActive=true`,
     )
@@ -82,7 +87,17 @@ describe('hasGroupFilters', () => {
     expect(hasGroupFilters({ kind: 'team' })).toBe(true)
     expect(hasGroupFilters({ search: 'Basen' })).toBe(true)
     expect(hasGroupFilters({ isActive: 'false' })).toBe(true)
+    expect(hasGroupFilters({ isPublic: 'true' })).toBe(true)
     expect(hasGroupFilters({ ageCategoryEntryId: CATEGORY })).toBe(true)
+  })
+})
+
+describe('categoryOrLevel', () => {
+  it("shows a team's age category, else the level, else nothing", () => {
+    expect(categoryOrLevel({ ageCategoryName: 'Orlik (U10–U11)', levelLabel: 'zaawansowani' })).toBe('Orlik (U10–U11)')
+    expect(categoryOrLevel({ ageCategoryName: null, levelLabel: 'początkujący' })).toBe('początkujący')
+    expect(categoryOrLevel({ ageCategoryName: '', levelLabel: '' })).toBeNull()
+    expect(categoryOrLevel({})).toBeNull()
   })
 })
 

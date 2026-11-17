@@ -1,8 +1,13 @@
 // Helpers of the `groups` integration tests (club spec phase 2 step 2, TEST-030; issue #30): groups, memberships,
 // seasons and external teams created through the API, and staff signed in with a coordinator or coach role — every
 // record is created through the API like every other fixture.
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
 import {
+  APP_ROOT,
   OPTIMISTIC_LOCK_HEADER,
   assignRole,
   birthDateTurning,
@@ -26,6 +31,7 @@ export type GroupItem = {
   seasonName?: string | null
   isActive: boolean
   isPublic?: boolean
+  levelLabel?: string | null
   ageFrom?: number | null
   ageTo?: number | null
   updatedAt: string | null
@@ -222,4 +228,43 @@ export async function signedInStaff(
     .toContain(`vereino_${input.role}`)
   const token = await signInAs(request, club, staff.userId, staff.email)
   return { personId: staff.personId, userId: staff.userId, email: staff.email, token }
+}
+
+const GROUP_USAGE_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'groups-usage-probe', 'probe.mjs')
+
+export type GroupUsageProbeResult = {
+  hidden: boolean
+  ok: boolean
+  kind: string | null
+  status: number | null
+  code: string | null
+}
+
+/**
+ * Changes a group's kind through `groups.groups.update` in a probe process whose container does not register
+ * `activities.groupUsage` (TEST-A02, #266), as `userId` of the club. The probe gets its own private queue directory.
+ */
+export function updateKindWithoutGroupUsage(
+  scope: { tenantId: string; organizationId: string },
+  input: { userId: string; groupId: string; kind: string; lockToken: string | null | undefined },
+): GroupUsageProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [GROUP_USAGE_PROBE, JSON.stringify({ ...scope, ...input })], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the groups usage probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as GroupUsageProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
 }
