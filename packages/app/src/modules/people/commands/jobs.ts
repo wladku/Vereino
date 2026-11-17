@@ -10,12 +10,15 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { isActiveAt, type ActingRole } from '@vereino/core'
-import { authorizeScoped } from '@/modules/foundation'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
+import { authorizeScoped, foundationErrors, trustedScopeOf } from '@/modules/foundation'
+import { peopleErrors } from '../api/errors'
 import { Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
 import { bootstrapAdminSchema, importPurgeJobSchema, syncRolesJobSchema } from '../data/validators'
 import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
+import { activeClubAdministrator, isOrganizationUser } from '../services/first-administrator'
 import {
   syncAllPersonRoles,
   syncPersonRolesInTransaction,
@@ -109,27 +112,63 @@ export type BootstrapAdminResult = OrganizationTarget & {
   roleSync: PersonRoleSyncOutcome
 }
 
+/** The platform feature that lets a technical administrator create the club's first administrator (V-L04). */
+export const FIRST_ADMINISTRATOR_FEATURE = 'auth.users.create'
+
 /**
- * `people.persons.bootstrap_admin` — the club's first administrator (CLI `people bootstrap-admin`): links an
- * existing user of the organization to a person with an active `club_admin` assignment and syncs the user's roles.
- * Idempotent: a user already linked keeps the person and gets an assignment only when none is active. Not undoable
- * (an operator action outside the UI).
+ * Authorizes `people.persons.bootstrap_admin`: a job context (the CLI) by its `system_job` grant, or a session (the
+ * panel page `/backend/people/first-administrator`, REQ-L13) by the platform feature `auth.users.create` in the
+ * session's tenant and organization — the technical administrator holds no club grant yet. A session caller acts
+ * only while the club has no administrator and only for a user of the organization.
+ */
+async function authorizeBootstrap(
+  ctx: CommandRuntimeContext,
+  rawInput: unknown,
+): Promise<{ target: OrganizationTarget; parsed: Record<string, unknown>; session: boolean }> {
+  if (!ctx.auth) {
+    const job = await authorizeJob(ctx, 'people.persons.bootstrap_admin.authorize', bootstrapAdminSchema, rawInput)
+    return { ...job, session: false }
+  }
+  const scope = trustedScopeOf(ctx)
+  const rbac = ctx.container.resolve<RbacService>('rbacService')
+  const allowed = scope !== null && (await rbac.userHasAllFeatures(ctx.auth.sub, [FIRST_ADMINISTRATOR_FEATURE], scope))
+  if (!scope || !allowed) return foundationErrors.throw('scope_denied')
+  return {
+    target: { ...scope, actingRole: 'system' },
+    parsed: bootstrapAdminSchema.parse(rawInput),
+    session: true,
+  }
+}
+
+/**
+ * `people.persons.bootstrap_admin` — the club's first administrator (CLI `people bootstrap-admin`; the panel's
+ * `POST /api/people/first-administrator`, REQ-L13): links an existing user of the organization to a person with an
+ * active `club_admin` assignment and syncs the user's roles. From the CLI it is idempotent: a user already linked
+ * keeps the person and gets an assignment only when none is active. From the panel it refuses with 409
+ * `club_admin_exists` (naming the administrator) once the club has one, and with 404 `user_not_in_organization` for a
+ * user outside the organization. Not undoable (it creates the club's first access).
  */
 const bootstrapAdminCommand: CommandHandler<Record<string, unknown>, BootstrapAdminResult> = {
   id: 'people.persons.bootstrap_admin',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    const { target, parsed } = await authorizeJob(
-      ctx,
-      'people.persons.bootstrap_admin.authorize',
-      bootstrapAdminSchema,
-      rawInput,
-    )
+    const { target, parsed, session } = await authorizeBootstrap(ctx, rawInput)
     const input = bootstrapAdminSchema.parse(parsed)
     const scope = { tenantId: target.tenantId, organizationId: target.organizationId }
     const today = await clubToday(ctx.container, scope)
     const validFrom = input.validFrom ?? today
     return inWriteTransaction(ctx, 'people.persons.bootstrap_admin', async (em) => {
+      if (session) {
+        // Read inside the write transaction, so two concurrent first-administrator calls cannot both pass.
+        const existing = await activeClubAdministrator(em, scope, today)
+        if (existing) {
+          return peopleErrors.throw('club_admin_exists', {
+            administrator: existing.name,
+            administratorPersonId: existing.personId,
+          })
+        }
+        if (!(await isOrganizationUser(em, scope, input.userId))) return peopleErrors.throw('user_not_in_organization')
+      }
       let person = await em.findOne(Person, { ...scope, userId: input.userId, deletedAt: null })
       const created = !person
       if (!person) {
