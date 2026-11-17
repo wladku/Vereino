@@ -3,6 +3,7 @@ import {
   SUBSTITUTION_KINDS,
   SUBSTITUTION_REASON_MAX,
   UNSETTLED_AFTER_HOURS,
+  UNSTAFFED_WARNING_HOURS,
   absenceProblem,
   assignmentKind,
   canReportAbsence,
@@ -13,6 +14,9 @@ import {
   substituteOptions,
   unsettledCutoff,
   unsettledEntries,
+  unstaffedWarningDue,
+  unstaffedWarningRecipients,
+  unstaffedWarningWindow,
 } from '../substitutions'
 
 // E06-S13 (#95): the substitution rules — whose session it is, the kind of an assignment, when the assigned coach may
@@ -142,5 +146,42 @@ describe('substitute options', () => {
 
   it('offers everyone for a session without a coach', () => {
     expect(substituteOptions(candidates, [], null).map((option) => option.id)).toEqual(['bartek', 'marek', 'piotr'])
+  })
+})
+
+describe('the unstaffed warning (E10-S07, REQ-A14)', () => {
+  const session = (overrides: Partial<{ status: string; coachPersonId: string | null; startAt: Date }> = {}) => ({
+    status: 'planned',
+    coachPersonId: null,
+    startAt: new Date('2026-11-06T13:30:00Z'),
+    ...overrides,
+  })
+
+  it('looks two hours ahead', () => {
+    expect(UNSTAFFED_WARNING_HOURS).toBe(2)
+    expect(unstaffedWarningWindow(NOW)).toEqual({ after: NOW, until: new Date('2026-11-06T14:00:00Z') })
+  })
+
+  it('is due for a planned session without a coach starting within two hours', () => {
+    expect(unstaffedWarningDue(session(), NOW)).toBe(true)
+    expect(unstaffedWarningDue(session({ startAt: new Date('2026-11-06T14:00:00Z') }), NOW)).toBe(true)
+  })
+
+  it('is not due too early, after the start, with a coach or for a session that is not planned', () => {
+    expect(unstaffedWarningDue(session({ startAt: new Date('2026-11-06T14:00:01Z') }), NOW)).toBe(false)
+    expect(unstaffedWarningDue(session({ startAt: NOW }), NOW)).toBe(false)
+    expect(unstaffedWarningDue(session({ coachPersonId: 'c' }), NOW)).toBe(false)
+    expect(unstaffedWarningDue(session({ status: 'cancelled' }), NOW)).toBe(false)
+  })
+
+  it("warns the coordinators and the group's coaches and assistants, each once", () => {
+    const roster = [
+      { personId: 'p1', role: 'participant' },
+      { personId: 'a1', role: 'assistant' },
+      { personId: 'c1', role: 'coach' },
+      { personId: 'k1', role: 'coach' },
+    ]
+    expect(unstaffedWarningRecipients(['k1', 'k2'], roster)).toEqual(['a1', 'c1', 'k1', 'k2'])
+    expect(unstaffedWarningRecipients([], [])).toEqual([])
   })
 })

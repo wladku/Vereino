@@ -152,7 +152,12 @@ test('ISSUE-192 declaration link follow-ups: pending state, expired-link target,
     const scope = ['--tenant', club.tenant.tenantId, '--org', orgId]
     const setUp = mercato(['activities', 'set-up-club', ...scope])
     expect(setUp).toMatchObject({
-      schedules: { generateOccurrences: true, expireGuardianConfirmations: true, sendDeclarationReminders: true },
+      schedules: {
+        generateOccurrences: true,
+        expireGuardianConfirmations: true,
+        sendDeclarationReminders: true,
+        warnUnassignedSessions: true,
+      },
     })
     expect(await remindersSchedules(orgId)).toEqual([
       expect.objectContaining({ schedule_value: '0 18 * * *', is_enabled: true }),

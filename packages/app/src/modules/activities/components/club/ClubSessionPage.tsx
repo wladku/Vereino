@@ -8,8 +8,10 @@
 // reads it as the coach (E06-S15 #97): the coach of its group or its assigned coach gets "Running the session"
 // (attendance list, cancellation); a coach of another group sees "This is not your session" and none of its data; a
 // coach who is also a guardian gets the declarations and the coach block together on a ward's session. The coach row
-// marks "Needs a coach" and "(substitution)", and the assigned coach reports an absence from the coach block (E06-S13
-// #95).
+// marks "Needs a coach" and "substitute: {name}", and the assigned coach reports an absence from the coach block
+// (E06-S13 #95). E10-S07 (#272, REQ-A13, REQ-A15): the type badge and the section's dot under the title, the score of
+// a match or sparring, and in the coach block "Take the session", "Message the group", the score form and the
+// substitution history.
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -27,7 +29,9 @@ import { coachBadge } from '../../lib/occurrence-list'
 import { formatDeadline } from '../../lib/confirm-by'
 import { placeMapHref } from '../../lib/venue'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
+import { clubFirstScore } from '../../lib/score'
 import { CoachSessionBlock } from './CoachSessionBlock'
+import { SessionCardFacts } from './SessionCardFacts'
 import {
   CALENDAR_QUERY_KEY,
   CLUB_CALENDAR_HREF,
@@ -153,7 +157,7 @@ function PersonDeclaration({
   )
 }
 
-/** The coach of the session with "Needs a coach" or "(substitution)" (README M-04, E06-S13 #95). */
+/** The coach of the session with "Needs a coach" or "substitute: {name}" (README M-04, E06-S13 #95, REQ-A13). */
 function CoachName({ occurrence }: { occurrence: CalendarEntry['occurrence'] }) {
   const t = useT()
   const badge = coachBadge(occurrence)
@@ -164,16 +168,14 @@ function CoachName({ occurrence }: { occurrence: CalendarEntry['occurrence'] }) 
       </span>
     )
   }
-  return (
-    <span className="flex flex-wrap items-center gap-1">
-      <span>{occurrence.coachName ?? t('activities.common.empty')}</span>
-      {badge === 'substitution' ? (
-        <span className="text-muted-foreground text-xs" data-testid="club-session-substitution">
-          {t('activities.substitutions.substitution')}
-        </span>
-      ) : null}
-    </span>
-  )
+  if (badge === 'substitution' && occurrence.coachName) {
+    return (
+      <span data-testid="club-session-substitution">
+        {t('activities.club.session.substituteCoach', { name: occurrence.coachName })}
+      </span>
+    )
+  }
+  return <span>{occurrence.coachName ?? t('activities.common.empty')}</span>
 }
 
 function Session({ profile, id }: { profile: ClubProfile; id: string }) {
@@ -321,6 +323,16 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     ],
     [t('activities.club.session.coach'), <CoachName key="coach" occurrence={occurrence} />],
   ]
+  // REQ-A15: the score of a match or sparring, for everyone who reads the session.
+  if (occurrence.score) {
+    rows.push([
+      t('activities.score.label'),
+      <span key="score" className="flex flex-col gap-1" data-testid="club-session-score">
+        <span className="text-lg font-semibold">{clubFirstScore(occurrence.score, occurrence.isAway === true)}</span>
+        {occurrence.score.note ? <span className="text-muted-foreground text-sm">{occurrence.score.note}</span> : null}
+      </span>,
+    ])
+  }
   if (occurrence.opponentName) {
     rows.push([
       t('activities.club.session.opponent'),
@@ -347,6 +359,12 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
         <h1 className="text-2xl font-semibold" data-testid="club-session-title">
           {occurrence.activityName ?? t('activities.club.session.untitled')}
         </h1>
+        {/* REQ-A13 (M-04): the type, the section's dot, the map of an away venue and the substitute. */}
+        <SessionCardFacts
+          occurrence={occurrence}
+          showMap={false}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+        />
         <div className="flex flex-wrap gap-2">
           <StatusBadge variant="neutral">{t(`activities.club.kind.${entry.declarationKind}`)}</StatusBadge>
           {occurrence.status !== 'planned' ? (
@@ -378,6 +396,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
       {coachEntry ? (
         <CoachSessionBlock
           entry={coachEntry}
+          timeZone={entry.timeZone}
           selfPersonId={profile.person.id}
           absenceLabel={[
             occurrence.activityName ?? t('activities.club.session.untitled'),

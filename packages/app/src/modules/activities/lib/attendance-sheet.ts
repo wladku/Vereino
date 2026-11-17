@@ -1,7 +1,8 @@
 // The coach's attendance list in one tap (E06-S17 #99; README M-05, flow F-03 path B; REQ-007, REQ-008; R11): the
 // quick fill "All declared present", what closing records (an unmarked person is recorded `absent`, so the actual
 // attendance is always complete), the close summary and the present count of a closed list. Pure and framework-free;
-// the page keeps the coach's selections and the server keeps authorization and the session version.
+// the page keeps the coach's selections and the server keeps authorization and the session version. E10-S07 (#272,
+// REQ-A14): the quick fill follows the declaration kind, so a training (`absence_only`) fills the expected persons.
 
 export type SheetActual = 'present' | 'absent' | 'late'
 
@@ -26,6 +27,25 @@ export function declaredYes(row: SheetRow): boolean {
 /** "All declared present": the persons declared "yes" who have no mark yet; everyone else stays as they are. */
 export function declaredPresentFill<R extends SheetRow>(rows: readonly R[], current: CurrentMark<R>): string[] {
   return rows.filter((row) => declaredYes(row) && current(row) === null).map((row) => row.personId)
+}
+
+/** A reported absence that counts: a final "no" (a pending or rejected one leaves the person expected). */
+export function declaredNo(row: SheetRow): boolean {
+  return row.declared === 'no' && row.declarationStatus === 'final'
+}
+
+/**
+ * The quick fill by declaration kind (REQ-A14, M-05): on a `confirm` session the persons with a final "yes" and no
+ * mark; on an `absence_only` session (a training) everyone without a final "no" and no mark, so the coach closes a
+ * training in two taps and the reported absences are recorded `absent` by the close.
+ */
+export function quickFill<R extends SheetRow>(
+  kind: 'confirm' | 'absence_only',
+  rows: readonly R[],
+  current: CurrentMark<R>,
+): string[] {
+  if (kind === 'confirm') return declaredPresentFill(rows, current)
+  return rows.filter((row) => !declaredNo(row) && current(row) === null).map((row) => row.personId)
 }
 
 /** The persons without a mark; closing records them `absent` (R11). */

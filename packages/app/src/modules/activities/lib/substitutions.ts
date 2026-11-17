@@ -2,6 +2,7 @@
 // path A; E06-S13 #95): the kinds of a substitution entry, who a substitute stands in for, when the assigned coach may
 // still report an absence, the coaches the substitute dialog offers with the session that keeps each one busy, and the
 // "unsettled" predicate (a planned session 24 hours after its end, club spec *Events* row). Pure: callers pass "now".
+// E10-S07 (#272, REQ-A14): when a session without a coach is warned about, and to whom.
 
 export const SUBSTITUTION_KINDS = ['absence_reported', 'substitute_assigned', 'coach_restored'] as const
 
@@ -133,4 +134,35 @@ export function substituteOptions(
           : null,
       }
     })
+}
+
+/** The warning before an unstaffed session goes this many hours before its start (parity spec Q-A19, REQ-A14). */
+export const UNSTAFFED_WARNING_HOURS = 2
+
+/** The starts a warning run looks at: from now (exclusive) to two hours ahead (inclusive). */
+export function unstaffedWarningWindow(now: Date): { after: Date; until: Date } {
+  return { after: now, until: new Date(now.getTime() + UNSTAFFED_WARNING_HOURS * 3_600_000) }
+}
+
+/** A planned session without a coach that starts within the next two hours is warned about (once, by the job). */
+export function unstaffedWarningDue(
+  occurrence: { status: string; coachPersonId?: string | null; startAt: Date },
+  now: Date,
+): boolean {
+  if (occurrence.status !== 'planned' || occurrence.coachPersonId) return false
+  const { after, until } = unstaffedWarningWindow(now)
+  const start = occurrence.startAt.getTime()
+  return start > after.getTime() && start <= until.getTime()
+}
+
+/**
+ * Who is warned: the section's coordinators and the group's coaches and assistants on the session date, each once,
+ * sorted (the job's audience, REQ-A14).
+ */
+export function unstaffedWarningRecipients(
+  coordinatorIds: readonly string[],
+  roster: readonly { personId: string; role: string }[],
+): string[] {
+  const leaders = roster.filter((member) => member.role === 'coach' || member.role === 'assistant')
+  return [...new Set([...coordinatorIds, ...leaders.map((member) => member.personId)])].sort()
 }

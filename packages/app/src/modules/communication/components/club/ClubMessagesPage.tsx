@@ -8,7 +8,7 @@
 // the household has a group with staff today (REQ-M12, DD-M18). States: loading, error with retry, empty. Phone-first.
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton } from '@vereino/ui'
-import { memberComposerKinds } from '../../lib/member-inbox'
+import { composePreset, memberComposerKinds } from '../../lib/member-inbox'
 import {
   CLUB_MESSAGE_NEW_HREF,
   clubThreadHref,
@@ -137,7 +137,10 @@ function NewAnnouncement() {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [open, setOpen] = React.useState(false)
+  // `?compose=occurrence:<id>` (#272): "Message the group" on a session page opens the composer addressed to it.
+  const compose = useSearchParams().get('compose')
+  const preset = React.useMemo(() => composePreset(compose), [compose])
+  const [open, setOpen] = React.useState(preset !== null)
   const onPosted = React.useCallback(
     (posted: PostedThread) => {
       flash(t('communication.club.compose.sent', { count: String(posted.recipientCount) }), 'success')
@@ -165,7 +168,14 @@ function NewAnnouncement() {
             <DialogTitle>{t('communication.threads.create.title')}</DialogTitle>
             <DialogDescription>{t('communication.club.compose.help')}</DialogDescription>
           </DialogHeader>
-          {open ? <ThreadComposer embedded selectKinds={memberComposerKinds} onPosted={onPosted} /> : null}
+          {open ? (
+            <ThreadComposer
+              embedded
+              selectKinds={memberComposerKinds}
+              onPosted={onPosted}
+              initialAudience={preset ?? undefined}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

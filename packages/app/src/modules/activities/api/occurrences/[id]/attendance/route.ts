@@ -72,7 +72,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Check off actual attendance and optionally close the session',
       description:
-        'Saves `present`, `absent` or `late` (or `null` to clear) for persons on the list, from the session’s start until it is closed; `complete: true` also closes the session (`done`). Send the session version (`updatedAt`) in the platform optimistic-lock header (required). Answers with the refreshed list.',
+        'Saves `present`, `absent` or `late` (or `null` to clear) for persons on the list, from 30 minutes before the session’s start until it is closed; `complete: true` also closes the session (`done`). Send the session version (`updatedAt`) in the platform optimistic-lock header (required). Answers with the refreshed list.',
       requestBody: { contentType: 'application/json', schema: attendanceMarkBodySchema },
       responses: [{ status: 200, description: 'The refreshed attendance list', schema: attendanceListSchema }],
       errors: [
@@ -86,7 +86,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 409,
           description:
-            '`occurrence_not_planned` (cancelled or done), `attendance_not_started`, `optimistic_lock_conflict` (a stale session version)',
+            '`occurrence_not_planned` (cancelled or done), `attendance_not_started` (earlier than 30 minutes before the start), `optimistic_lock_conflict` (a stale session version)',
           schema: errorSchema,
         },
         { status: 422, description: '`attendance_person_not_listed`', schema: errorSchema },

@@ -1,11 +1,13 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   closesEarly,
+  declaredNo,
   declaredPresentFill,
   declaredYes,
   groupRosterHref,
   isCloseShortcut,
   presentCount,
+  quickFill,
   seesRosterLink,
   sheetEntries,
   unmarkedPersonIds,
@@ -46,6 +48,40 @@ describe('declaredPresentFill (All declared present)', () => {
   it('skips a "yes" already marked, saved or selected', () => {
     const rows = [yes('saved', { actual: 'late' }), yes('selected'), yes('cleared', { actual: 'absent' }), yes('free')]
     expect(declaredPresentFill(rows, currentOf({ selected: 'absent', cleared: null }))).toEqual(['cleared', 'free'])
+  })
+})
+
+describe('declaredNo', () => {
+  it('counts only a final "no"', () => {
+    expect(declaredNo(row('a', { declared: 'no', declarationStatus: 'final' }))).toBe(true)
+    expect(declaredNo(row('a', { declared: 'no', declarationStatus: 'pending_guardian' }))).toBe(false)
+    expect(declaredNo(yes('a'))).toBe(false)
+    expect(declaredNo(row('a'))).toBe(false)
+  })
+})
+
+describe('quickFill (by declaration kind)', () => {
+  it('fills the final "yes" declarations on a confirm session', () => {
+    const rows = [yes('y'), row('u'), row('n', { declared: 'no', declarationStatus: 'final' })]
+    expect(quickFill('confirm', rows, currentOf({}))).toEqual(['y'])
+  })
+
+  it('fills the 8 expected of a training with 10 participants and 2 reported absences', () => {
+    const expected = Array.from({ length: 8 }, (_, i) => row(`e${String(i)}`))
+    const absent = [
+      row('a1', { declared: 'no', declarationStatus: 'final' }),
+      row('a2', { declared: 'no', declarationStatus: 'final' }),
+    ]
+    expect(quickFill('absence_only', [...expected, ...absent], currentOf({}))).toEqual(expected.map((r) => r.personId))
+  })
+
+  it('keeps a pending "no" expected and skips a marked person on a training', () => {
+    const rows = [
+      row('pending', { declared: 'no', declarationStatus: 'pending_guardian' }),
+      row('marked', { actual: 'late' }),
+      row('selected'),
+    ]
+    expect(quickFill('absence_only', rows, currentOf({ selected: 'absent' }))).toEqual(['pending'])
   })
 })
 

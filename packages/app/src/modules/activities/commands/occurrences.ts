@@ -64,6 +64,10 @@ export type OccurrenceSnapshot = {
   gatheringMinutesBefore?: number | null
   /** Absent in a snapshot written before REQ-A07 (#269): no deadline. */
   confirmByMinutesBefore?: number | null
+  /** Absent in a snapshot written before REQ-A15 (#272): no score. */
+  scoreHome?: number | null
+  scoreAway?: number | null
+  resultNote?: string | null
 }
 
 export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot> & {
@@ -90,6 +94,9 @@ export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
     needsReschedule: row.needsReschedule,
     gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
     confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
+    scoreHome: row.scoreHome ?? null,
+    scoreAway: row.scoreAway ?? null,
+    resultNote: row.resultNote ?? null,
   }
 }
 
@@ -107,6 +114,9 @@ function restoreOccurrence(row: Occurrence, before: OccurrenceSnapshot): void {
   // A snapshot written before DD-43 has no gathering field: no gathering time.
   row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
   row.confirmByMinutesBefore = before.confirmByMinutesBefore ?? null
+  row.scoreHome = before.scoreHome ?? null
+  row.scoreAway = before.scoreAway ?? null
+  row.resultNote = before.resultNote ?? null
 }
 
 function loadOccurrence(ctx: CommandRuntimeContext) {
