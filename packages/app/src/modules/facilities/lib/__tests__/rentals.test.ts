@@ -2,6 +2,8 @@ import { describe, expect, it } from '@jest/globals'
 import {
   DEFAULT_PAYMENT_DEADLINE_DAYS,
   ENTRY_BAN_SUBJECT_TYPES,
+  EXPIRING_CHARGE_STATES,
+  UNPAID_EXPIRY_REASON,
   MOVABLE_RENTAL_STATUSES,
   OCCUPYING_RENTAL_STATUSES,
   RENTAL_STATUSES,
@@ -10,11 +12,14 @@ import {
   banActiveOn,
   cancellationDeadline,
   cancellationOutcome,
+  expiresUnpaid,
+  expiryApplies,
   localSlotOf,
   noShowAllowed,
   occupancyConflictCode,
   overlappingEntries,
   paymentDeadline,
+  paymentDeadlineDays,
   quoteRental,
   rentalAmount,
   rentalEnd,
@@ -24,6 +29,7 @@ import {
   startAllowed,
   unitsAllowed,
   type OccupancyEntry,
+  type UnpaidRentalShape,
 } from '../rentals'
 import type { ZoneSegment } from '../zones'
 
@@ -106,6 +112,58 @@ describe('units, amount and deadlines (R05)', () => {
       cancellationDeadline: cancellationDeadline(START),
       paymentDeadline: paymentDeadline(START, now),
     })
+    expect(quoteRental(START, 2, 15_000, now, 5).paymentDeadline.toISOString()).toBe('2026-11-06T18:30:00.000Z')
+  })
+})
+
+describe('the management agreement terms (facilities parity DD-R10, DD-R11; #284)', () => {
+  const now = new Date('2026-11-01T10:00:00Z')
+
+  it('takes the payment days from the agreement: 0, 5, unset and no agreement', () => {
+    const zero = { paymentDeadlineDays: 0, autoExpireUnpaid: false }
+    const five = { paymentDeadlineDays: 5, autoExpireUnpaid: true }
+    const unset = { paymentDeadlineDays: null, autoExpireUnpaid: true }
+    expect(paymentDeadlineDays(zero)).toBe(0)
+    expect(paymentDeadlineDays(five)).toBe(5)
+    expect(paymentDeadlineDays(unset)).toBe(3)
+    expect(paymentDeadlineDays(null)).toBe(3)
+    expect(paymentDeadline(START, now, paymentDeadlineDays(zero)).toISOString()).toBe(START.toISOString())
+    expect(paymentDeadline(START, now, paymentDeadlineDays(five)).toISOString()).toBe('2026-11-06T18:30:00.000Z')
+    expect(paymentDeadline(START, now, paymentDeadlineDays(null)).toISOString()).toBe('2026-11-08T18:30:00.000Z')
+  })
+
+  const expiring = { paymentDeadlineDays: 5, autoExpireUnpaid: true }
+  const rental: UnpaidRentalShape = {
+    status: 'requested',
+    startsAt: START,
+    paymentDeadline: new Date('2026-11-06T18:30:00Z'),
+    cancellationDeadline: cancellationDeadline(START),
+  }
+  const after = new Date('2026-11-07T00:00:00Z')
+
+  it('lets a rental expire only when the agreement turns expiry on and the deadline precedes free cancellation', () => {
+    expect(expiryApplies(rental, expiring)).toBe(true)
+    expect(expiryApplies(rental, { ...expiring, autoExpireUnpaid: false })).toBe(false)
+    expect(expiryApplies(rental, null)).toBe(false)
+    expect(expiryApplies({ ...rental, paymentDeadline: null }, expiring)).toBe(false)
+    // A 0-day deadline (the start) lies after the free cancellation deadline: no expiry.
+    expect(expiryApplies({ ...rental, paymentDeadline: START }, expiring)).toBe(false)
+    expect(expiryApplies({ ...rental, paymentDeadline: cancellationDeadline(START) }, expiring)).toBe(false)
+    // A row without a stored cancellation deadline reads it from the start.
+    expect(expiryApplies({ ...rental, cancellationDeadline: null }, expiring)).toBe(true)
+  })
+
+  it('expires an unpaid requested rental past its deadline with no charge or an open one', () => {
+    expect(UNPAID_EXPIRY_REASON).toBe('unpaid_after_deadline')
+    expect(EXPIRING_CHARGE_STATES).toEqual(['none', 'open'])
+    expect(expiresUnpaid(rental, 'none', expiring, after)).toBe(true)
+    expect(expiresUnpaid(rental, 'open', expiring, after)).toBe(true)
+    expect(expiresUnpaid(rental, 'partially_paid', expiring, after)).toBe(false)
+    expect(expiresUnpaid(rental, 'paid', expiring, after)).toBe(false)
+    expect(expiresUnpaid(rental, 'none', null, after)).toBe(false)
+    expect(expiresUnpaid({ ...rental, status: 'confirmed' }, 'none', expiring, after)).toBe(false)
+    expect(expiresUnpaid({ ...rental, paymentDeadline: null }, 'none', expiring, after)).toBe(false)
+    expect(expiresUnpaid(rental, 'none', expiring, rental.paymentDeadline as Date)).toBe(false)
   })
 })
 

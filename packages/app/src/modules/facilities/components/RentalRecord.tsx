@@ -21,6 +21,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CORRECTABLE_RENTAL_STATUSES } from '../lib/rental-record'
+import { UNPAID_EXPIRY_REASON } from '../lib/rentals'
 import { RentalBadges } from './RentalsTable'
 import { useRentalActions } from './RentalRowActions'
 import { minorToAmount, placeLabel, usePlaceOptions, type Translate } from './facilities-client'
@@ -372,7 +373,11 @@ export function RentalRecord({ id }: { id: string }) {
             <Fact label={t('facilities.rentals.record.fields.emailVerified')}>
               {rental.emailVerifiedAt ? instantLabel(rental.emailVerifiedAt, timeZone, empty) : empty}
             </Fact>
-            <Fact label={t('facilities.rentals.record.fields.decision')}>{rental.decisionReason ?? empty}</Fact>
+            <Fact label={t('facilities.rentals.record.fields.decision')}>
+              {rental.decisionReason === UNPAID_EXPIRY_REASON
+                ? t('facilities.rentals.record.unpaidAfterDeadline')
+                : (rental.decisionReason ?? empty)}
+            </Fact>
           </Section>
         </div>
       </div>
