@@ -42,6 +42,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     linkHref: '/backend/facilities/maintenance',
     actions: [],
   },
+  {
+    // #282 (DD-R12, J-R08): an incident asks for an entry ban; the club administrators decide on the Incidents tab.
+    type: 'facilities.entry_ban_requested',
+    module: 'facilities',
+    channels: ['in_app'],
+    titleKey: 'facilities.notifications.banRequest.title',
+    bodyKey: 'facilities.notifications.banRequest.body',
+    icon: 'shield-alert',
+    severity: 'warning',
+    category: 'facilities',
+    linkHref: '/backend/facilities/incidents',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

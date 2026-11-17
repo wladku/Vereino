@@ -448,8 +448,8 @@ test("E02-S03 an account linked to no person lands on the admin panel with a not
 
     page.setDefaultTimeout(30_000)
     await signInThroughForm(page, email, password)
-    await expect(page).toHaveURL(/\/backend/)
-    await expect(page.getByText(/not linked to a person|nie jest powiązane z osobą/).first()).toBeVisible()
+    await expect(page).toHaveURL(/\/backend\?notice=person-not-linked/)
+    await expect(page.getByTestId('people-not-linked-notice')).toContainText(uiText('people.club.notLinked.notice'))
     await page.goto('/club')
     await expect(page.getByTestId('club-not-linked')).toBeVisible()
     await expect(page.getByRole('link', { name: /Go to the admin panel|Przejdź do panelu/ })).toBeVisible()

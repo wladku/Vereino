@@ -7,6 +7,7 @@ import {
   applySelfConsent,
   consentAuthorIds,
   consentAuthorRole,
+  hasNotLinkedNotice,
   memberContexts,
   memberLanding,
   memberLocale,
@@ -178,10 +179,17 @@ describe('memberLanding', () => {
 })
 
 describe('withNotice', () => {
-  it('adds the encoded flash message with the info type', () => {
-    expect(withNotice('/backend', 'Not linked — contact the club')).toBe(
-      '/backend?flash=Not+linked+%E2%80%94+contact+the+club&type=info',
-    )
+  it('adds the not-linked notice parameter, never the platform flash', () => {
+    expect(withNotice('/backend')).toBe('/backend?notice=person-not-linked')
+  })
+})
+
+describe('hasNotLinkedNotice', () => {
+  it('is true only for the not-linked notice parameter', () => {
+    expect(hasNotLinkedNotice(new URLSearchParams('notice=person-not-linked'))).toBe(true)
+    expect(hasNotLinkedNotice(new URLSearchParams('notice=other'))).toBe(false)
+    expect(hasNotLinkedNotice(new URLSearchParams(''))).toBe(false)
+    expect(hasNotLinkedNotice(null)).toBe(false)
   })
 })
 
