@@ -8,10 +8,12 @@ import {
   assignmentKind,
   canReportAbsence,
   isUnsettled,
+  leadsGroup,
   originalCoach,
   reasonOrNull,
   substituteFor,
   substituteOptions,
+  takeOverProblem,
   unsettledCutoff,
   unsettledEntries,
   unstaffedWarningDue,
@@ -183,5 +185,32 @@ describe('the unstaffed warning (E10-S07, REQ-A14)', () => {
     ]
     expect(unstaffedWarningRecipients(['k1', 'k2'], roster)).toEqual(['a1', 'c1', 'k1', 'k2'])
     expect(unstaffedWarningRecipients([], [])).toEqual([])
+  })
+})
+
+describe('taking over (E10-S07, REQ-A14)', () => {
+  const later = new Date('2026-11-06T14:00:00Z')
+
+  it('allows a planned session without a coach until it ends', () => {
+    expect(takeOverProblem({ status: 'planned', coachPersonId: null, endAt: later }, NOW)).toBeNull()
+    expect(takeOverProblem({ status: 'planned', endAt: later }, NOW)).toBeNull()
+  })
+
+  it('refuses a session that is not planned, has ended or has a coach', () => {
+    expect(takeOverProblem({ status: 'done', coachPersonId: null, endAt: later }, NOW)).toBe('not_planned')
+    expect(takeOverProblem({ status: 'planned', coachPersonId: null, endAt: NOW }, NOW)).toBe('ended')
+    expect(takeOverProblem({ status: 'planned', coachPersonId: 'c', endAt: later }, NOW)).toBe('has_coach')
+  })
+
+  it('needs a coach or assistant membership on the session date', () => {
+    const roster = [
+      { personId: 'p', role: 'participant' },
+      { personId: 'a', role: 'assistant' },
+      { personId: 'c', role: 'coach' },
+    ]
+    expect(leadsGroup(roster, 'a')).toBe(true)
+    expect(leadsGroup(roster, 'c')).toBe(true)
+    expect(leadsGroup(roster, 'p')).toBe(false)
+    expect(leadsGroup(roster, 'x')).toBe(false)
   })
 })

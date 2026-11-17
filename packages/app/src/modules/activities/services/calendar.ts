@@ -56,6 +56,7 @@ import {
 import { activityLabels, activityTeams, nameMaps } from './read'
 import { substituteForOf, substitutionHistory, type SubstituteFor, type SubstitutionHistoryItem } from './substitutions'
 import { scoreView, showsScore, type ScoreView } from '../lib/score'
+import { takeOverProblem } from '../lib/substitutions'
 
 export type CalendarDeclarationView = {
   attendanceId: string
@@ -622,9 +623,10 @@ export async function readCalendarItem(
         mayEditSession(grants, row, Boolean((await activityOf(em, scope, occurrence.activityId))?.recurrenceRule)),
       // The command's own check: a planned session without a coach, and a coach grant on its group.
       mayTakeOver:
-        occurrence.status === 'planned' &&
-        occurrence.coachPersonId === null &&
-        findActingRole(grants, TAKE_OVER_KINDS, scheduleTarget(row, row.id)) !== null,
+        takeOverProblem(
+          { status: occurrence.status, coachPersonId: occurrence.coachPersonId, endAt: new Date(occurrence.endAt) },
+          now,
+        ) === null && findActingRole(grants, TAKE_OVER_KINDS, scheduleTarget(row, row.id)) !== null,
       mayScore: showsScore(occurrence.activityType, occurrence, now),
       substitutions: await substitutionHistory(ctx.container, scope, row.id),
     }

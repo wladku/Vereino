@@ -63,12 +63,16 @@ export const openApi: OpenApiRouteDoc = {
         'The caller — a coach or assistant of the session’s group — becomes the session’s coach. Records a `substitute_assigned` substitution entry (`coach_restored` when the session’s own coach takes it back) and sends the coach-changed notices. The session row is locked, so of two concurrent callers the second gets `occurrence_has_coach`; no body and no version are needed.',
       responses: [{ status: 200, description: 'The session with its new coach', schema: responseSchema }],
       errors: [
-        { status: 403, description: 'scope_denied (not a coach or assistant of the group)', schema: errorSchema },
+        {
+          status: 403,
+          description: 'scope_denied (not a coach or assistant of the group, today and on the session date)',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
         {
           status: 409,
           description:
-            '`occurrence_has_coach` (someone leads it already), `occurrence_coach_conflict` with `conflicts` (the caller is busy at that time), `occurrence_not_planned`',
+            '`occurrence_has_coach` (someone leads it already), `occurrence_already_ended`, `occurrence_coach_conflict` with `conflicts` (the caller is busy at that time), `occurrence_not_planned`',
           schema: conflictErrorSchema,
         },
       ],

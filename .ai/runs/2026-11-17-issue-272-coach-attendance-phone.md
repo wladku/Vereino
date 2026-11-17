@@ -85,6 +85,21 @@
   format:check FAIL (`TEST-A19-…spec.ts`, `TEST-A21-…spec.ts` not formatted), `yarn format`. `yarn verify --from
   format:check`: all 12 remaining steps pass (test 47s, test:scripts 14s, build 132s).
 
+## Review (PR #361)
+
+An independent review agent read the diff `b15dfbf0..69ec9787`. It found no high-severity problem and three low-to-medium
+edge cases:
+1. A take-over had no time limit, so a past, never-closed session could be claimed for the units report. Fixed:
+   `lib/substitutions.ts` `takeOverProblem` refuses an ended session (409 `occurrence_already_ended`), and
+   `mayTakeOver` follows it.
+2. The take-over relied on today's grant only. Fixed: `leadsGroup` requires a coach or assistant membership on the
+   session's date (403 `scope_denied`).
+3. The 30-minute window also lets the list be closed before the start. Kept: the close dialog already warns "has not
+   started", and AC-A15 closes the training inside the window.
+
+After the fixes: `npx jest …/substitutions.test.ts` 18 passed, `substitutions.ts` 100 %; `yarn verify` — all 17
+steps passed in one run; `yarn test:integration:vereino --filter TEST-A20` — 1 passed (4.6m).
+
 ## Open problems
 
 - The run was killed once (exit 137). Afterwards a stale `index.lock` of this worktree
@@ -97,4 +112,4 @@
 
 ## Next steps
 
-Commit, push, open the PR (`Closes #272`), review loop, UI evidence; phase 8 (E10-S08) builds on this.
+PR #361 is ready for the owner's review and the merge train; phase 8 (E10-S08) builds on this.

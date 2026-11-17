@@ -136,6 +136,29 @@ export function substituteOptions(
     })
 }
 
+export type TakeOverProblem = 'not_planned' | 'ended' | 'has_coach'
+
+/**
+ * Why a session cannot be taken over (REQ-A14), or null: it is not planned (409 `occurrence_not_planned`), it has
+ * already ended (409 `occurrence_already_ended`: a past session is not claimed afterwards for the units report), or
+ * someone leads it (409 `occurrence_has_coach`). A running session may still be taken.
+ */
+export function takeOverProblem(
+  occurrence: { status: string; coachPersonId?: string | null; endAt: Date },
+  now: Date,
+): TakeOverProblem | null {
+  if (occurrence.status !== 'planned') return 'not_planned'
+  if (occurrence.endAt.getTime() <= now.getTime()) return 'ended'
+  return occurrence.coachPersonId ? 'has_coach' : null
+}
+
+/** The person leads the group on the session date: an active `coach` or `assistant` membership in its roster. */
+export function leadsGroup(roster: readonly { personId: string; role: string }[], personId: string): boolean {
+  return roster.some(
+    (member) => member.personId === personId && (member.role === 'coach' || member.role === 'assistant'),
+  )
+}
+
 /** The warning before an unstaffed session goes this many hours before its start (parity spec Q-A19, REQ-A14). */
 export const UNSTAFFED_WARNING_HOURS = 2
 
