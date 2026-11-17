@@ -1,15 +1,70 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   COACH_TERMS_BY_MODEL,
+  FACILITY_TERM_FIELDS,
+  MAX_PAYMENT_DEADLINE_DAYS,
   MAX_RATE_GROSZ,
   coachTermsForModel,
   contractRateColumns,
   contractOn,
+  facilityAgreementOf,
+  invalidFacilityTerm,
   missingCoachTerms,
   overlappingContract,
   parseCoachTerms,
+  parseContractTerms,
+  parseFacilityTerms,
   partyAllowed,
 } from '../contracts'
+
+describe('management agreement terms (facilities parity DD-R10; #284)', () => {
+  it('reads the stored rental terms, dropping anything invalid', () => {
+    expect(FACILITY_TERM_FIELDS).toEqual(['paymentDeadlineDays', 'autoExpireUnpaid'])
+    expect(MAX_PAYMENT_DEADLINE_DAYS).toBe(60)
+    expect(parseFacilityTerms('{"paymentDeadlineDays":5,"autoExpireUnpaid":true,"x":1}')).toEqual({
+      paymentDeadlineDays: 5,
+      autoExpireUnpaid: true,
+    })
+    expect(parseFacilityTerms({ paymentDeadlineDays: 0, autoExpireUnpaid: false })).toEqual({
+      paymentDeadlineDays: 0,
+      autoExpireUnpaid: false,
+    })
+    expect(parseFacilityTerms({ paymentDeadlineDays: 61, autoExpireUnpaid: 'yes' })).toEqual({})
+    expect(parseFacilityTerms({ paymentDeadlineDays: -1 })).toEqual({})
+    expect(parseFacilityTerms({ paymentDeadlineDays: 2.5 })).toEqual({})
+    expect(parseFacilityTerms({ paymentDeadlineDays: '5' })).toEqual({})
+    expect(parseFacilityTerms('not json')).toEqual({})
+    expect(parseFacilityTerms('[1]')).toEqual({})
+    expect(parseFacilityTerms(null)).toEqual({})
+  })
+
+  it('names the first invalid term of a write, or null', () => {
+    expect(invalidFacilityTerm({ paymentDeadlineDays: 61 })).toBe('paymentDeadlineDays')
+    expect(invalidFacilityTerm({ paymentDeadlineDays: -1 })).toBe('paymentDeadlineDays')
+    expect(invalidFacilityTerm({ paymentDeadlineDays: 1.5, autoExpireUnpaid: 'x' })).toBe('paymentDeadlineDays')
+    expect(invalidFacilityTerm({ autoExpireUnpaid: 'x' })).toBe('autoExpireUnpaid')
+    expect(invalidFacilityTerm({ paymentDeadlineDays: 60, autoExpireUnpaid: true })).toBeNull()
+    expect(invalidFacilityTerm({ paymentDeadlineDays: 0 })).toBeNull()
+    expect(invalidFacilityTerm({ paymentDeadlineDays: null, autoExpireUnpaid: null })).toBeNull()
+    expect(invalidFacilityTerm({})).toBeNull()
+  })
+
+  it('reads the terms by the contract kind', () => {
+    const stored = '{"paymentDeadlineDays":5,"baseMonthly":100}'
+    expect(parseContractTerms('facility_management', stored)).toEqual({ paymentDeadlineDays: 5 })
+    expect(parseContractTerms('coach', stored)).toEqual({ baseMonthly: 100 })
+    expect(parseContractTerms('coach', null)).toBeNull()
+    expect(parseContractTerms(null, undefined)).toBeNull()
+  })
+
+  it('makes the unset agreement terms explicit', () => {
+    expect(facilityAgreementOf({})).toEqual({ paymentDeadlineDays: null, autoExpireUnpaid: false })
+    expect(facilityAgreementOf({ paymentDeadlineDays: 5, autoExpireUnpaid: true })).toEqual({
+      paymentDeadlineDays: 5,
+      autoExpireUnpaid: true,
+    })
+  })
+})
 
 describe('coach contract terms (#96, R14)', () => {
   it('reads the stored rates, dropping anything that is not a whole, non-negative grosz amount', () => {

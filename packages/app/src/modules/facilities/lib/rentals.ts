@@ -1,7 +1,9 @@
 // Pure rules of the external rentals (facilities spec glossary *Booking (external rental)*, *Rental statuses*,
 // *Slot occupancy*; REQ-013, R05, DD-46; #122): 90-minute units (1–4 for a staff entry), free cancellation up to 24 h
-// before the start, a payment deadline N days before the start, the amount from the rate, the status table, and the
-// checks a rental makes against the zones, the opening hours and the occupancy of its place. Nothing here reads the
+// before the start, a payment deadline N days before the start (N from the management agreement with the place's
+// owner, facilities parity spec DD-R10; #284), the automatic expiry of an unpaid rental (DD-R11), the amount from the
+// rate, the status table, and the checks a rental makes against the zones, the opening hours and the occupancy of its
+// place. Nothing here reads the
 // database or the clock (S3.5): `now` and the club time zone are parameters.
 import {
   defineTransitions,
@@ -86,11 +88,64 @@ export const MAX_RENTAL_UNITS = 4
 export const FREE_CANCELLATION_HOURS = 24
 
 /**
- * Days before the start the rental is to be paid (§3 sec. 3). The management agreement that names N
- * (`club_core_contracts`, kind `facility_management`) is not built yet and the pilot club's rules are open (Q04, D30),
- * so the example club's default applies.
+ * Days before the start the rental is to be paid (§3 sec. 3) when the management agreement with the place's owner sets
+ * none, or the club has no agreement with that owner (Q04, D30: the example club's default).
  */
 export const DEFAULT_PAYMENT_DEADLINE_DAYS = 3
+
+/**
+ * The rental terms of the management agreement a rental follows (`clubCoreContracts.facilityAgreement`, DD-R10): the
+ * days before the start its payment is due (null: the default) and whether it expires unpaid; null without an agreement.
+ */
+export type RentalAgreementTerms = { readonly paymentDeadlineDays: number | null; readonly autoExpireUnpaid: boolean }
+
+/** The days before the start a rental under `agreement` is to be paid: the agreement's, else the default 3. */
+export function paymentDeadlineDays(agreement: RentalAgreementTerms | null): number {
+  return agreement?.paymentDeadlineDays ?? DEFAULT_PAYMENT_DEADLINE_DAYS
+}
+
+/** The reason an automatically expired rental carries (DD-R11). */
+export const UNPAID_EXPIRY_REASON = 'unpaid_after_deadline'
+
+/**
+ * The charge states in which an unpaid rental may expire: no charge or an untouched one. A partly paid charge keeps
+ * the rental on the unpaid list, because the money it holds is not given back by a cancellation (DD-R11).
+ */
+export const EXPIRING_CHARGE_STATES: readonly string[] = ['none', 'open']
+
+/** A rental as the expiry rule reads it. */
+export type UnpaidRentalShape = {
+  readonly status: RentalStatus
+  readonly startsAt: Date
+  readonly paymentDeadline: Date | null
+  readonly cancellationDeadline: Date | null
+}
+
+/**
+ * True when the agreement lets the rental expire unpaid at all: it turns automatic expiry on and the payment deadline
+ * lies before the free cancellation deadline (an expiry after it would cancel for free what is already late).
+ */
+export function expiryApplies(rental: UnpaidRentalShape, agreement: RentalAgreementTerms | null): boolean {
+  if (!agreement?.autoExpireUnpaid || !rental.paymentDeadline) return false
+  const freeUntil = rental.cancellationDeadline ?? cancellationDeadline(rental.startsAt)
+  return rental.paymentDeadline.getTime() < freeUntil.getTime()
+}
+
+/**
+ * True when the lifecycle run at `now` moves the rental to `cancelled_free` (DD-R11, glossary *Automatic expiry*): it
+ * is `requested`, its payment deadline has passed, its charge state is `none` or `open`, and the agreement in force at
+ * its entry lets it expire.
+ */
+export function expiresUnpaid(
+  rental: UnpaidRentalShape,
+  chargeState: string,
+  agreement: RentalAgreementTerms | null,
+  now: Date,
+): boolean {
+  if (rental.status !== 'requested' || !rental.paymentDeadline) return false
+  if (rental.paymentDeadline.getTime() >= now.getTime()) return false
+  return EXPIRING_CHARGE_STATES.includes(chargeState) && expiryApplies(rental, agreement)
+}
 
 const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
@@ -242,11 +297,17 @@ export type RentalQuote = {
   readonly paymentDeadline: Date
 }
 
-export function quoteRental(startsAt: Date, units: number, pricePer90: number, now: Date): RentalQuote {
+export function quoteRental(
+  startsAt: Date,
+  units: number,
+  pricePer90: number,
+  now: Date,
+  deadlineDays: number = DEFAULT_PAYMENT_DEADLINE_DAYS,
+): RentalQuote {
   return {
     endsAt: rentalEnd(startsAt, units),
     amount: rentalAmount(pricePer90, units),
     cancellationDeadline: cancellationDeadline(startsAt),
-    paymentDeadline: paymentDeadline(startsAt, now),
+    paymentDeadline: paymentDeadline(startsAt, now, deadlineDays),
   }
 }

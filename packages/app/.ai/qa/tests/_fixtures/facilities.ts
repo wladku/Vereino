@@ -349,7 +349,13 @@ export function phoneRental(placeId: string, renterId: string, startsAt: string,
   }
 }
 
-export type LifecycleResult = { now: string; done: number; changedIds: string[] }
+export type LifecycleResult = {
+  now: string
+  done: number
+  expired: number
+  changedIds: string[]
+  expiredIds: string[]
+}
 
 /** Runs `yarn mercato facilities rental-lifecycle` for the club as of `nowIso` (DD-46). */
 export function runRentalLifecycle(club: Club, nowIso: string): LifecycleResult {

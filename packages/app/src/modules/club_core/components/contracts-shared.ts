@@ -1,7 +1,7 @@
 // Client-side shapes and money helpers of the contracts screens (`/backend/club/contracts`, README B-07, #96).
-import type { CoachTermField } from '../lib/contracts'
+import type { CoachTermField, FacilityTerms } from '../lib/contracts'
 
-/** A row of `GET /api/club_core/contracts` (rates in grosz). */
+/** A row of `GET /api/club_core/contracts` (a coach's rates in grosz, or a management agreement's rental terms). */
 export type ContractRow = {
   id: string
   partyType: string | null
@@ -10,7 +10,7 @@ export type ContractRow = {
   kind: string | null
   validFrom: string | null
   validTo: string | null
-  terms: Partial<Record<CoachTermField, number>> | null
+  terms: (Partial<Record<CoachTermField, number>> & FacilityTerms) | null
   createdAt: string | null
   updatedAt: string | null
 }

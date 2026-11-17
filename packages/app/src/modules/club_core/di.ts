@@ -33,7 +33,9 @@ export const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite' as const
 
 /**
  * DI token of the contracts read side (#96): `settlement(scope)` — the club's coach settlement model and currency — and
- * `coachContracts(scope, personIds, from, to)`, the coach contracts with their rates, for the coach units report.
+ * `coachContracts(scope, personIds, from, to)`, the coach contracts with their rates, for the coach units report — and
+ * `facilityAgreement(scope, institutionId, on, em?)`, the rental terms of the management agreement with a place's owner
+ * in force on a day, for `facilities` (#284).
  */
 export const CLUB_CORE_CONTRACTS = 'clubCoreContracts' as const
 

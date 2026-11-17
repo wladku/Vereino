@@ -1,6 +1,8 @@
 // `club_core.contracts.create|update|delete` (club spec *Data Models* → `club_core_contracts`, DD-09, REQ-021; README
 // B-07; #96). The club administrator records who the club has a contract with, of which kind and for which period; a
-// coach contract is with a person and carries every rate of the club's settlement model (R14), stored encrypted.
+// coach contract is with a person and carries every rate of the club's settlement model (R14), stored encrypted; a
+// management agreement (`facility_management`) may carry the rental terms of the owner's places — the payment days and
+// the automatic expiry (facilities parity spec DD-R10; #284), stored the same way.
 // Active contracts of one kind for one party never overlap (409 `contract_overlap`), checked under a per-party lock.
 // The party and the kind are fixed once a contract exists. Delete is a soft delete; an undo that would bring back an
 // overlap is refused the same way.
@@ -19,13 +21,15 @@ import {
 } from '../data/validators'
 import {
   coachTermsForModel,
+  invalidFacilityTerm,
   missingCoachTerms,
   overlappingContract,
-  parseCoachTerms,
+  parseContractTerms,
   partyAllowed,
   type CoachTerms,
   type ContractKind,
   type ContractPartyType,
+  type FacilityTerms,
 } from '../lib/contracts'
 import { liveContractsOf, partyNames } from '../services/contracts'
 import { readClubSettings } from '../services/settings'
@@ -59,7 +63,7 @@ export type ContractSnapshot = {
   kind: string
   validFrom: string
   validTo: string | null
-  terms: CoachTerms | null
+  terms: CoachTerms | FacilityTerms | null
 }
 
 export type ContractCommandResult = StructureCommandResult<Contract, ContractSnapshot>
@@ -76,7 +80,7 @@ export function contractSnapshot(row: Contract): ContractSnapshot {
     kind: row.kind,
     validFrom: row.validFrom,
     validTo: row.validTo ?? null,
-    terms: row.terms ? parseCoachTerms(row.terms) : null,
+    terms: row.terms ? parseContractTerms(row.kind, row.terms) : null,
   }
 }
 
@@ -102,11 +106,28 @@ async function assertParty(ctx: CommandRuntimeContext, em: EntityManager, scope:
   if (!names.has(input.partyId)) await throwFieldError('contract_party_invalid', 'partyId')
 }
 
+type TermsInput = CoachTerms & { paymentDeadlineDays?: number | null; autoExpireUnpaid?: boolean | null }
+
+/**
+ * The rental terms a management agreement stores (DD-R10): the payment days (a whole number 0–60) and the expiry
+ * flag, each only when sent; 422 `contract_terms_invalid` at the first invalid one. No term at all stores nothing.
+ */
+async function storedFacilityTerms(terms: TermsInput): Promise<string | null> {
+  const invalid = invalidFacilityTerm(terms)
+  if (invalid) await throwFieldError('contract_terms_invalid', invalid)
+  const kept: FacilityTerms = {}
+  if (typeof terms.paymentDeadlineDays === 'number') kept.paymentDeadlineDays = terms.paymentDeadlineDays
+  if (typeof terms.autoExpireUnpaid === 'boolean') kept.autoExpireUnpaid = terms.autoExpireUnpaid
+  return Object.keys(kept).length > 0 ? JSON.stringify(kept) : null
+}
+
 /**
  * The terms a contract stores, as JSON text: a coach contract keeps only its club model's rates and must carry each
- * of them (422 `contract_terms_invalid` on the first missing one); every other kind stores none.
+ * of them (422 `contract_terms_invalid` on the first missing one); a management agreement keeps its rental terms;
+ * every other kind stores none.
  */
-async function storedTerms(em: EntityManager, scope: Scope, kind: string, terms: CoachTerms): Promise<string | null> {
+async function storedTerms(em: EntityManager, scope: Scope, kind: string, terms: TermsInput): Promise<string | null> {
+  if ((kind as ContractKind) === 'facility_management') return storedFacilityTerms(terms)
   if ((kind as ContractKind) !== 'coach') return null
   const { values } = await readClubSettings(em, scope)
   const missing = missingCoachTerms(terms, values.coachSettlementModel)

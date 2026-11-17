@@ -1158,6 +1158,7 @@
   "facilities.rentals.record.fields.regulationsAccepted": "Regulamin zaakceptowany",
   "facilities.rentals.record.fields.emailVerified": "E-mail potwierdzony",
   "facilities.rentals.record.fields.decision": "Uzasadnienie decyzji",
+  "facilities.rentals.record.unpaidAfterDeadline": "Odwołano automatycznie: brak wpłaty w terminie",
   "facilities.rentals.record.renterRecord.label": "Najemca z rejestru",
   "facilities.rentals.record.renterRecord.help": "Powiąż najemcę spoza rejestru z instytucją lub osobą; jej nazwa zastąpi wpisaną.",
   "facilities.rentals.record.renterRecord.keep": "Zostaw jak wpisano",

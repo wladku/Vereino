@@ -2,7 +2,13 @@
 // organization ids (`.strict()` rejects them); `null` clears a nullable field.
 import { z } from 'zod'
 import { isCalendarDate, isInvertedPeriod } from '@vereino/core'
-import { CONTRACT_KINDS, CONTRACT_PARTY_TYPES, MAX_RATE_GROSZ, type CoachTermField } from '../lib/contracts'
+import {
+  CONTRACT_KINDS,
+  CONTRACT_PARTY_TYPES,
+  MAX_RATE_GROSZ,
+  type CoachTermField,
+  type FacilityTermField,
+} from '../lib/contracts'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
 import { PLACE_FILE_KINDS } from '../lib/files'
 import { publicLinkUrlSchema, publicSlugSchema, publicationPatchSchema } from '../lib/publication'
@@ -274,8 +280,10 @@ function refineValidity(value: { validFrom: string; validTo?: string | null }, c
 const rateSchema = z.number().int().min(0).max(MAX_RATE_GROSZ)
 
 /**
- * A contract's terms: a coach's rates in grosz. Every rate is optional here; the command keeps the club model's rates
- * and requires each of them (422 `contract_terms_invalid`), and stores no terms for the other kinds.
+ * A contract's terms: a coach's rates in grosz, or the rental terms of a management agreement (facilities parity spec
+ * DD-R10; #284). Every term is optional here; the command keeps the club model's rates for a coach and requires each of
+ * them, checks the payment days of a management agreement (a whole number 0–60) — both 422 `contract_terms_invalid` at
+ * the field — and stores no terms for the other kinds.
  */
 export const contractTermsSchema = z
   .object({
@@ -285,7 +293,9 @@ export const contractTermsSchema = z
     travelRate: rateSchema.optional(),
     sessionAmount: rateSchema.optional(),
     tripAmount: rateSchema.optional(),
-  } satisfies Record<CoachTermField, z.ZodType>)
+    paymentDeadlineDays: z.number().nullable().optional(),
+    autoExpireUnpaid: z.boolean().nullable().optional(),
+  } satisfies Record<CoachTermField | FacilityTermField, z.ZodType>)
   .strict()
 
 export const contractCreateSchema = z

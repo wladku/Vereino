@@ -1,8 +1,9 @@
 'use client'
 // `/backend/club/contracts/create` and `/backend/club/contracts/[id]/edit` (club spec UI table; README B-07; #96): a
 // contract with a person or an institution for a period. A coach contract is always with a person and carries the
-// rates of the club's current settlement model (entered in złoty, sent in grosz); the party and the kind are fixed once
-// the contract exists.
+// rates of the club's current settlement model (entered in złoty, sent in grosz); a management agreement carries the
+// rental terms of the owner's places, "Warunki wynajmu" (facilities parity spec DD-R10, REQ-R07; #284). The party and
+// the kind are fixed once the contract exists.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -19,6 +20,8 @@ import {
   COACH_TERMS_BY_MODEL,
   CONTRACT_KINDS,
   CONTRACT_PARTY_TYPES,
+  FACILITY_TERM_FIELDS,
+  MAX_PAYMENT_DEADLINE_DAYS,
   type CoachSettlementModel,
   type CoachTermField,
 } from '../lib/contracts'
@@ -28,6 +31,7 @@ import { groszToZloty, zlotyToGrosz, type ContractRow } from './contracts-shared
 const LIST_HREF = '/backend/club/contracts'
 const ENTITY_ID = 'club_core:contract'
 const RATES_GROUP = 'rates'
+const RENTAL_TERMS_GROUP = 'rentalTerms'
 
 type ContractFormValues = Record<string, unknown> & { updatedAt?: string | null }
 
@@ -187,6 +191,39 @@ function ratesGroup(model: CoachSettlementModel, t: Translate): CrudFormGroup {
   }
 }
 
+function rentalTermFields(t: Translate): CrudField[] {
+  return [
+    {
+      id: 'paymentDeadlineDays',
+      label: t('club_core.contracts.fields.paymentDeadlineDays'),
+      type: 'number',
+      layout: 'half',
+      description: t('club_core.contracts.fields.paymentDeadlineDays.help', { max: MAX_PAYMENT_DEADLINE_DAYS }),
+    },
+    {
+      id: 'autoExpireUnpaid',
+      label: t('club_core.contracts.fields.autoExpireUnpaid'),
+      type: 'checkbox',
+      description: t('club_core.contracts.fields.autoExpireUnpaid.help'),
+    },
+  ]
+}
+
+function rentalTermsGroup(t: Translate): CrudFormGroup {
+  return {
+    id: RENTAL_TERMS_GROUP,
+    title: t('club_core.contracts.groups.rentalTerms'),
+    description: t('club_core.contracts.groups.rentalTerms.help'),
+    column: 2,
+    fields: [...FACILITY_TERM_FIELDS],
+  }
+}
+
+/** The groups a contract of `kind` hides: the coach rates and the rental terms belong to one kind each. */
+function hiddenGroupsFor(kind: unknown): string[] {
+  return [...(kind === 'coach' ? [] : [RATES_GROUP]), ...(kind === 'facility_management' ? [] : [RENTAL_TERMS_GROUP])]
+}
+
 function periodFields(t: Translate): CrudField[] {
   return [
     dateField('validFrom', t('club_core.contracts.fields.validFrom'), { required: true, layout: 'half' }),
@@ -206,7 +243,8 @@ function termsPayload(
   kind: unknown,
   model: CoachSettlementModel,
   t: Translate,
-): Record<string, number> | null {
+): Record<string, number | boolean> | null {
+  if (kind === 'facility_management') return rentalTermsPayload(values, t)
   if (kind !== 'coach') return null
   const terms: Record<string, number> = {}
   const fieldErrors: Record<string, string> = {}
@@ -221,12 +259,41 @@ function termsPayload(
   return terms
 }
 
+/**
+ * The rental terms of a management agreement: the payment days when entered (a whole number 0–60, else the save stops
+ * next to the field) and the expiry flag; null when neither is set, so the facilities defaults apply.
+ */
+function rentalTermsPayload(values: ContractFormValues, t: Translate): Record<string, number | boolean> | null {
+  const terms: Record<string, number | boolean> = {}
+  const raw = values.paymentDeadlineDays
+  const text = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw.trim() : ''
+  if (text !== '') {
+    const days = Number(text)
+    if (!/^\d+$/.test(text) || days > MAX_PAYMENT_DEADLINE_DAYS) {
+      const message = t('club_core.contracts.errors.paymentDeadlineDays', { max: MAX_PAYMENT_DEADLINE_DAYS })
+      throw createCrudFormError(message, { paymentDeadlineDays: message })
+    }
+    terms.paymentDeadlineDays = days
+  }
+  if (values.autoExpireUnpaid === true) terms.autoExpireUnpaid = true
+  return Object.keys(terms).length > 0 ? terms : null
+}
+
 function periodPayload(values: ContractFormValues) {
   return { validFrom: textOrNull(values.validFrom), validTo: textOrNull(values.validTo) }
 }
 
+function rentalTermValues(row: ContractRow | null): { paymentDeadlineDays: string; autoExpireUnpaid: boolean } {
+  const terms = row?.kind === 'facility_management' ? (row.terms ?? {}) : {}
+  const days = terms.paymentDeadlineDays
+  return {
+    paymentDeadlineDays: typeof days === 'number' ? String(days) : '',
+    autoExpireUnpaid: terms.autoExpireUnpaid === true,
+  }
+}
+
 function rateValues(row: ContractRow | null): Record<CoachTermField, string> {
-  const terms = row?.terms ?? {}
+  const terms = row?.kind === 'coach' ? (row.terms ?? {}) : {}
   return {
     baseMonthly: groszToZloty(terms.baseMonthly),
     unitRate: groszToZloty(terms.unitRate),
@@ -280,6 +347,7 @@ export function ContractCreateForm() {
       },
       ...periodFields(t),
       ...(model.data ? rateFields(model.data, t) : []),
+      ...rentalTermFields(t),
     ],
     [t, model.data],
   )
@@ -292,6 +360,7 @@ export function ContractCreateForm() {
         fields: ['kind', 'partyType', 'partyId', 'validFrom', 'validTo'],
       },
       ...(model.data ? [ratesGroup(model.data, t)] : []),
+      rentalTermsGroup(t),
     ],
     [t, model.data],
   )
@@ -307,7 +376,7 @@ export function ContractCreateForm() {
       entityId={ENTITY_ID}
       fields={fields}
       groups={groups}
-      hiddenGroupIds={kind === 'coach' ? [] : [RATES_GROUP]}
+      hiddenGroupIds={hiddenGroupsFor(kind)}
       isLoading={model.isLoading}
       loadingMessage={t('club_core.common.loading')}
       initialValues={{
@@ -318,6 +387,7 @@ export function ContractCreateForm() {
         validFrom: '',
         validTo: '',
         ...rateValues(null),
+        ...rentalTermValues(null),
       }}
       submitLabel={t('club_core.common.create')}
       successRedirect={withFlash(LIST_HREF, t('club_core.contracts.flash.created'), 'success')}
@@ -347,7 +417,6 @@ export function ContractEditForm({ id }: { id: string }) {
     },
   })
   const row = query.data ?? null
-  const isCoach = row?.kind === 'coach'
 
   const fields = React.useMemo<CrudField[]>(
     () => [
@@ -361,6 +430,7 @@ export function ContractEditForm({ id }: { id: string }) {
       },
       ...periodFields(t),
       ...(model.data ? rateFields(model.data, t) : []),
+      ...rentalTermFields(t),
     ],
     [t, model.data],
   )
@@ -373,6 +443,7 @@ export function ContractEditForm({ id }: { id: string }) {
         fields: ['kindLabel', 'partyLabel', 'validFrom', 'validTo'],
       },
       ...(model.data ? [ratesGroup(model.data, t)] : []),
+      rentalTermsGroup(t),
     ],
     [t, model.data],
   )
@@ -399,7 +470,7 @@ export function ContractEditForm({ id }: { id: string }) {
       entityId={ENTITY_ID}
       fields={fields}
       groups={groups}
-      hiddenGroupIds={isCoach ? [] : [RATES_GROUP]}
+      hiddenGroupIds={hiddenGroupsFor(row?.kind)}
       isLoading={query.isLoading || model.isLoading}
       loadingMessage={t('club_core.contracts.loading')}
       initialValues={{
@@ -409,6 +480,7 @@ export function ContractEditForm({ id }: { id: string }) {
         validFrom: row?.validFrom ?? '',
         validTo: row?.validTo ?? '',
         ...rateValues(row),
+        ...rentalTermValues(row),
         updatedAt: row?.updatedAt ?? null,
       }}
       submitLabel={t('club_core.common.save')}

@@ -1,6 +1,8 @@
 // The contracts read side (club spec DD-09, *Data Models* → `club_core_contracts`; #96), registered in DI as
 // `clubCoreContracts`: the coach units report of `activities` reads the coach contracts that overlap a month, with
-// their rates decrypted and the club's settlement model (R14). The contract commands use `liveContractsOf` and
+// their rates decrypted and the club's settlement model (R14); `facilities` reads the rental terms of the management
+// agreement with a place's owner (`facilityAgreement`, facilities parity spec DD-R10, REQ-R07; #284). The contract
+// commands use `liveContractsOf` and
 // `partyName` here too. A person party is checked through the optional `people.personDirectory` (`people` requires
 // `club_core`, so `club_core` imports nothing of it and resolves the service by name with `hasRegistration`).
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -8,7 +10,16 @@ import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { CalendarDate } from '@vereino/core'
 import { Contract } from '../data/entities'
-import { parseCoachTerms, type CoachSettlementModel, type CoachTerms, type ContractPartyType } from '../lib/contracts'
+import {
+  contractOn,
+  facilityAgreementOf,
+  parseCoachTerms,
+  parseFacilityTerms,
+  type CoachSettlementModel,
+  type CoachTerms,
+  type ContractPartyType,
+  type FacilityAgreement,
+} from '../lib/contracts'
 import { findInstitutions } from './directory'
 import { readClubSettings } from './settings'
 
@@ -36,6 +47,16 @@ export type ClubCoreContracts = {
     from: CalendarDate,
     to: CalendarDate,
   ): Promise<Map<string, CoachContractEntry[]>>
+  /**
+   * The rental terms of the management agreement (`facility_management`) with the institution in force on `on`, or
+   * null when there is none; an agreement without terms answers the defaults (no days, no expiry).
+   */
+  facilityAgreement(
+    scope: ContractScope,
+    institutionId: string,
+    on: CalendarDate,
+    em?: EntityManager,
+  ): Promise<FacilityAgreement | null>
 }
 
 /** The DI token of `people`'s person directory, resolved only when registered. */
@@ -130,6 +151,32 @@ export async function coachContracts(
   return byPerson
 }
 
+export async function facilityAgreement(
+  em: EntityManager,
+  scope: ContractScope,
+  institutionId: string,
+  on: CalendarDate,
+): Promise<FacilityAgreement | null> {
+  const rows = await findWithDecryption(
+    em,
+    Contract,
+    {
+      ...scope,
+      kind: 'facility_management',
+      partyType: 'institution',
+      partyId: institutionId,
+      deletedAt: null,
+      validFrom: { $lte: on },
+      $or: [{ validTo: null }, { validTo: { $gte: on } }],
+    },
+    { orderBy: { validFrom: 'asc', id: 'asc' } },
+    scope,
+  )
+  const periods = rows.map((row) => ({ id: row.id, validFrom: row.validFrom, validTo: row.validTo ?? null, row }))
+  const found = contractOn(periods, on)
+  return found ? facilityAgreementOf(parseFacilityTerms(found.row.terms ?? null)) : null
+}
+
 export function createClubCoreContracts(getEm: () => EntityManager): ClubCoreContracts {
   return {
     async settlement(scope) {
@@ -137,5 +184,7 @@ export function createClubCoreContracts(getEm: () => EntityManager): ClubCoreCon
       return { model: values.coachSettlementModel, currency: values.currency }
     },
     coachContracts: (scope, personIds, from, to) => coachContracts(getEm().fork(), scope, personIds, from, to),
+    facilityAgreement: (scope, institutionId, on, em) =>
+      facilityAgreement(em ?? getEm().fork(), scope, institutionId, on),
   }
 }

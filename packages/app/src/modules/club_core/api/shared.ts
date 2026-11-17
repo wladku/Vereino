@@ -2,7 +2,7 @@
 // serializers and OpenAPI schemas. Lists filter with `scopeWhere` (foundation spec P-03).
 import { z } from 'zod'
 import { readOpeningHours, type GrantKind, type ScopeColumnMap } from '@vereino/core'
-import { parseCoachTerms } from '../lib/contracts'
+import { parseContractTerms } from '../lib/contracts'
 import { decimalOrNull, parsePlaceContacts } from '../lib/places'
 
 /** Sections are read by the club administrator and by the coordinators of each section (`section_ids`). */
@@ -129,7 +129,7 @@ export function contractListItem(row: Row) {
     kind: text(row.kind),
     validFrom: day(row.valid_from),
     validTo: day(row.valid_to),
-    terms: terms ? parseCoachTerms(terms) : null,
+    terms: terms ? parseContractTerms(text(row.kind), terms) : null,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -243,9 +243,11 @@ export const contractListItemSchema = z.object({
   validFrom: z.string().nullable(),
   validTo: z.string().nullable(),
   terms: z
-    .record(z.string(), z.number())
+    .record(z.string(), z.union([z.number(), z.boolean()]))
     .nullable()
-    .describe("A coach contract's rates in grosz (the club model's fields); null for the other kinds"),
+    .describe(
+      "A coach contract's rates in grosz (the club model's fields), or a management agreement's rental terms (`paymentDeadlineDays`, `autoExpireUnpaid`); null for the other kinds",
+    ),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   partyName: z.string().nullable().optional().describe("The person's or institution's name; null when unknown"),
