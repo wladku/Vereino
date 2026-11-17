@@ -350,6 +350,8 @@ export function RosterPanel({
             error={listQuery.error ? errorMessage(listQuery.error, t('groups.memberships.errors.load')) : null}
             emptyState={emptyState}
             rowActions={canManage ? rowActions : undefined}
+            // The query time ("… in 326ms") cannot shrink and widens the page past 320 px in Polish (WCAG 1.4.10).
+            showQueryTime={false}
             pagination={{
               page,
               pageSize: PAGE_SIZE,
