@@ -103,7 +103,7 @@ test('E06-S02 the person record: Groups tab with history and scope, ?tab= links,
     await page.getByRole('tab', { name: uiText('people.account.title', { exact: true }) }).click()
     await expect(page).toHaveURL(new RegExp(`/backend/people/persons/${child}\\?tab=account$`))
     // An unknown tab falls back to Details.
-    await page.goto(`/backend/people/persons/${child}?tab=charges`)
+    await page.goto(`/backend/people/persons/${child}?tab=unknown`)
     await expect(
       page.getByRole('tab', { name: uiText('people.persons.tabs.details', { exact: true }) }),
     ).toHaveAttribute('aria-selected', 'true')

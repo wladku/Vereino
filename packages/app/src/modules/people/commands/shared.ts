@@ -175,12 +175,19 @@ export const roleAssignmentEvents: CrudEventsConfig<RoleAssignment> = {
   buildPayload: (ctx) => ({ ...idsOnly(ctx), personId: ctx.entity.personId }),
 }
 
-/** `people.guardianship.created|updated|deleted`; carries the guardian id (the payer rule). */
+/**
+ * `people.guardianship.created|updated|deleted`; carries the guardian id (the payer rule) and the ward id (payments
+ * parity spec Contract 6, #295: `payments` assigns a new primary payer to the ward's charges without a payer).
+ */
 export const guardianshipEvents: CrudEventsConfig<Guardianship> = {
   module: 'people',
   entity: 'guardianship',
   persistent: true,
-  buildPayload: (ctx) => ({ ...idsOnly(ctx), guardianPersonId: ctx.entity.guardianPersonId }),
+  buildPayload: (ctx) => ({
+    ...idsOnly(ctx),
+    guardianPersonId: ctx.entity.guardianPersonId,
+    wardPersonId: ctx.entity.wardPersonId,
+  }),
 }
 
 /**

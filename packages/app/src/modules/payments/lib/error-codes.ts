@@ -88,6 +88,10 @@ export const errorCodes = [
   // The rental charge service `payments.chargeService` (payments parity spec Contract 5, #291).
   { code: 'charge_payer_required', status: 422, messageKey: 'payments.errors.charge_payer_required' },
   { code: 'charge_amount_invalid', status: 422, messageKey: 'payments.errors.charge_amount_invalid' },
+  // The manual charge and assigning a payer (payments parity spec Contract 5, #295).
+  { code: 'charge_payer_already_set', status: 409, messageKey: 'payments.errors.charge_payer_already_set' },
+  { code: 'charge_payer_not_eligible', status: 422, messageKey: 'payments.errors.charge_payer_not_eligible' },
+  { code: 'charge_due_date_out_of_range', status: 422, messageKey: 'payments.errors.charge_due_date_out_of_range' },
 ] as const satisfies ErrorCodeTable
 
 export type PaymentsErrorCode = (typeof errorCodes)[number]['code']

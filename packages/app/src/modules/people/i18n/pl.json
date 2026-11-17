@@ -519,5 +519,6 @@
   "people.errors.account_not_found": "Ta osoba nie ma konta.",
   "people.errors.invitation_not_pending": "Zaproszenie nie oczekuje już na przyjęcie: osoba już się zalogowała.",
   "people.errors.invitation_rate_limited": "Wysłano zbyt wiele zaproszeń. Spróbuj później.",
-  "people.errors.last_club_admin": "Nie można zablokować ani zamknąć konta ostatniego aktywnego administratora klubu."
+  "people.errors.last_club_admin": "Nie można zablokować ani zamknąć konta ostatniego aktywnego administratora klubu.",
+  "people.persons.tabs.charges": "Należności"
 }

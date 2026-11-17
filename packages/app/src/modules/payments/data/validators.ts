@@ -43,6 +43,7 @@ import {
   SIZE_MAX,
 } from '../lib/order-campaigns'
 import { CONTACT_PHONE_MAX, ORDER_NOTES_MAX, PRINT_NAME_MAX } from '../lib/orders'
+import { MAX_MANUAL_DESCRIPTION_LENGTH, MIN_MANUAL_DESCRIPTION_LENGTH } from '../lib/manual-charges'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const amountSchema = z.number().int().min(1).max(MAX_AMOUNT).describe('Grosz (minor units of PLN)')
@@ -158,6 +159,8 @@ export const chargeListQuerySchema = z.object({
   payerMissing: flagSchema.optional(),
   personId: z.uuid().optional(),
   payerPersonId: z.uuid().optional(),
+  /** Charges the person owes or pays (the person record's "Charges" tab, #295). */
+  involvesPersonId: z.uuid().optional(),
   /** One status or several, comma-separated. */
   status: z.string().trim().max(80).optional(),
   generationId: z.uuid().optional(),
@@ -261,6 +264,31 @@ export const cashPayersQuerySchema = z.object({
 
 /** `payments.charges.cancel`: the charge `id` with a required reason. */
 export const chargeCancelSchema = z.object({ id: z.uuid(), reason: reasonSchema }).strict()
+
+/**
+ * `payments.charges.create_manual` (#295, DD-C12): a charge entered by hand for the debtor `personId` — a description of
+ * 3–200 characters, 1 grosz to PLN 100 000, a due date from 12 months back to 12 months ahead (checked in the command
+ * against the club's today) and optionally the payer; without one the *Payer* rule applies.
+ */
+export const chargeManualCreateSchema = z
+  .object({
+    personId: z.uuid().describe('The debtor'),
+    description: z.string().trim().min(MIN_MANUAL_DESCRIPTION_LENGTH).max(MAX_MANUAL_DESCRIPTION_LENGTH),
+    amount: amountSchema,
+    dueDate: calendarDateSchema.describe("From 12 months before to 12 months after the club's today"),
+    payerPersonId: z
+      .uuid()
+      .nullable()
+      .optional()
+      .describe("An active guardian of the debtor, or the adult debtor; omitted: the debtor's primary payer"),
+  })
+  .strict()
+
+/** `payments.charges.assign_payer` from B-22: the charge `id` (the route's path parameter) and the new payer. */
+export const chargeAssignPayerSchema = z.object({ id: z.uuid(), payerPersonId: z.uuid() }).strict()
+
+/** `payments.charges.assign_payer` run by the guardianship subscriber: the ward whose primary payer is assigned. */
+export const chargeAssignWardPayerSchema = z.object({ wardPersonId: z.uuid() }).strict()
 
 /** `payments.payments.reverse`: the payment `id` with a required reason. */
 export const paymentReverseSchema = z.object({ id: z.uuid(), reason: reasonSchema }).strict()

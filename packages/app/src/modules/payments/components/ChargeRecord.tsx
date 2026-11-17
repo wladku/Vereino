@@ -7,6 +7,7 @@
 // {owner}" — the owner institution of a rental charge, or "the facility owner" while the charge names none (#291).
 // "Accept cash" opens the shared cash dialog with the charge's payer chosen, for an open charge whose payer is a person
 // and never for a rental charge (Q-C16); "Received by" reads "bank statement" for an imported transfer (#292).
+// A charge without a payer shows "No payer" with "Assign payer" and a link to the debtor's guardianship tab (#295).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -21,10 +22,18 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES, payerDisplayName } from '../lib/charge-ledger'
 import type { ChargeStatus } from '../lib/payments-rules'
 import { AcceptCashButton } from './AcceptCashButton'
+import { AssignPayerDialog } from './AssignPayerDialog'
 import { ChargeStatusBadge, OverdueBadge } from './ChargesTable'
 import { ReasonDialog } from './ReasonDialog'
 import { RecordPaymentDialog } from './RecordPaymentDialog'
-import { CHARGES_HREF, formatMoney, personName, type ChargeDetail, type PaymentRow } from './client-helpers'
+import {
+  CHARGES_HREF,
+  formatMoney,
+  personGuardianshipHref,
+  personName,
+  type ChargeDetail,
+  type PaymentRow,
+} from './client-helpers'
 
 type ChargeLoad = { status: 'ok'; charge: ChargeDetail } | { status: 'not_found' } | { status: 'denied' }
 
@@ -50,6 +59,7 @@ export function ChargeRecord({ id }: { id: string }) {
   const locale = useLocale()
   const queryClient = useQueryClient()
   const [recording, setRecording] = React.useState(false)
+  const [assigning, setAssigning] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
   const [reversing, setReversing] = React.useState<PaymentRow | null>(null)
   const query = useQuery({
@@ -171,11 +181,36 @@ export function ChargeRecord({ id }: { id: string }) {
           <span>
             {t('payments.ledger.tiles.payer')}:{' '}
             {charge.payerMissing ? (
-              <span className="text-status-warning-text font-medium">{t('payments.charges.payerMissing')}</span>
+              <span className="text-status-warning-text font-medium" data-testid="charge-payer-missing">
+                {t('payments.charges.payerMissing')}
+              </span>
             ) : (
               <span data-testid="charge-payer">{payerDisplayName(charge) || '—'}</span>
             )}
           </span>
+          {charge.payerMissing && OPEN_CHARGE_STATUSES.includes(status) ? (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Button
+                type="button"
+                size="sm"
+                data-testid="assign-payer-open"
+                onClick={() => {
+                  setAssigning(true)
+                }}
+              >
+                {t('payments.assignPayer.action')}
+              </Button>
+              {charge.personId ? (
+                <Link
+                  href={personGuardianshipHref(charge.personId)}
+                  className="text-sm underline underline-offset-2"
+                  data-testid="charge-guardianship-link"
+                >
+                  {t('payments.assignPayer.guardianshipTab')}
+                </Link>
+              ) : null}
+            </span>
+          ) : null}
           <span data-testid="charge-payee">
             {t('payments.ledger.tiles.payee')}:{' '}
             {charge.payee === 'owner_institution'
@@ -253,6 +288,9 @@ export function ChargeRecord({ id }: { id: string }) {
         )}
       </section>
 
+      {assigning ? (
+        <AssignPayerDialog charge={charge} open={assigning} onOpenChange={setAssigning} onDone={refresh} />
+      ) : null}
       {recording ? (
         <RecordPaymentDialog charge={charge} open={recording} onOpenChange={setRecording} onDone={refresh} />
       ) : null}
