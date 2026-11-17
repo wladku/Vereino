@@ -3,6 +3,7 @@ import {
   PAYER_CODE_ALPHABET,
   generatePayerCode,
   isPayerCode,
+  otherPayersOf,
   overdueSummary,
   ownPaymentsSummary,
   type OwnCharge,
@@ -94,6 +95,51 @@ describe('ownPaymentsSummary', () => {
     expect(ownPaymentsSummary(ME, [charge({ payerPersonId: GUARDIAN, personId: WARD })], '2026-11-08')).toEqual({
       state: 'paid',
     })
+  })
+
+  it('says who pays instead of "Everything is paid" when another guardian pays a ward (DD-C06)', () => {
+    const others = [{ wardFirstName: 'Jaś', payerFirstName: 'Kasia' }]
+    expect(ownPaymentsSummary(ME, [], '2026-11-08', others)).toEqual({
+      state: 'other_pays',
+      payerFirstName: 'Kasia',
+      otherPayers: others,
+    })
+    expect(ownPaymentsSummary(ME, [charge({ status: 'paid', remaining: 0 })], '2026-11-08', others)).toMatchObject({
+      state: 'other_pays',
+    })
+  })
+
+  it('keeps what is due and the guardian-pays state ahead of another payer', () => {
+    const others = [{ wardFirstName: 'Jaś', payerFirstName: 'Kasia' }]
+    expect(ownPaymentsSummary(ME, [charge()], '2026-11-08', others)).toMatchObject({ state: 'due' })
+    expect(ownPaymentsSummary(ME, [charge({ payerPersonId: GUARDIAN, personId: ME })], '2026-11-08', others)).toEqual({
+      state: 'guardian_pays',
+    })
+  })
+})
+
+describe('otherPayersOf (DD-C06)', () => {
+  const names = new Map([
+    ['jas', 'Jaś'],
+    ['ala', 'Ala'],
+    ['kasia', 'Kasia'],
+    ['me', 'Basia'],
+  ])
+
+  it('lists the wards another person pays, by the ward’s first name, first names only', () => {
+    const payers = new Map([
+      ['jas', 'kasia'],
+      ['ala', 'kasia'],
+      ['own', ME],
+    ])
+    expect(otherPayersOf(ME, ['jas', 'ala', 'own', 'none', 'jas'], payers, names)).toEqual([
+      { wardFirstName: 'Ala', payerFirstName: 'Kasia' },
+      { wardFirstName: 'Jaś', payerFirstName: 'Kasia' },
+    ])
+  })
+
+  it('falls back to an empty name when a person is not found', () => {
+    expect(otherPayersOf(ME, ['x'], new Map([['x', 'y']]), names)).toEqual([{ wardFirstName: '', payerFirstName: '' }])
   })
 })
 
