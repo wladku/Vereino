@@ -72,9 +72,12 @@ export type AgeCategorySeed = { readonly value: string; readonly label: string }
 
 /**
  * The PZPN (Polish Football Association) age categories the club's age category dictionary starts with (club spec
- * REQ-019, #92), youngest first. Labels are the PZPN names with their age groups; the club administrator edits them.
+ * REQ-019, #92), youngest first, preceded by the academy's youngest group "Kids" (ages 4–5, the mockup's `g-kids`;
+ * people life-cycle spec phase L3, approved on #255). Labels are the names with their age groups; the club
+ * administrator edits them. Seeded only for a new club: an existing club adds "Kids" in place from the group form.
  */
 export const PZPN_AGE_CATEGORIES: readonly AgeCategorySeed[] = [
+  { value: 'kids', label: 'Kids (U4–U5)' },
   { value: 'skrzat', label: 'Skrzat (U6–U7)' },
   { value: 'zak', label: 'Żak (U8–U9)' },
   { value: 'orlik', label: 'Orlik (U10–U11)' },

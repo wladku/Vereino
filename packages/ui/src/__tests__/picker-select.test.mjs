@@ -256,7 +256,9 @@ test('the CrudForm field passes the value, the label, the error and the setter',
     required: true,
     description: 'Who owns the place',
     layout: 'half',
+    visibleWhen: { field: 'kind', equals: 'team' },
   })
+  assert.deepEqual(field.visibleWhen, { field: 'kind', equals: 'team' })
   assert.deepEqual(
     {
       id: field.id,

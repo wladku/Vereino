@@ -180,6 +180,7 @@ export type PickerCrudField = {
   required?: boolean
   description?: React.ReactNode
   layout?: 'full' | 'half' | 'third'
+  visibleWhen?: { field: string; equals: string | number | boolean }
   rendersOwnError: true
   component: (props: PickerFieldRenderProps) => React.ReactNode
 }
@@ -191,6 +192,7 @@ export type PickerFieldOptions = Omit<
   labels: Omit<PickerSelectLabels, 'label'>
   description?: React.ReactNode
   layout?: 'full' | 'half' | 'third'
+  visibleWhen?: { field: string; equals: string | number | boolean }
 }
 
 /**
@@ -198,7 +200,7 @@ export type PickerFieldOptions = Omit<
  * the platform `CrudCustomField`.
  */
 export function pickerSelectField(id: string, label: string, options: PickerFieldOptions): PickerCrudField {
-  const { description, layout, labels, ...picker } = options
+  const { description, layout, visibleWhen, labels, ...picker } = options
   return {
     id,
     label,
@@ -206,6 +208,7 @@ export function pickerSelectField(id: string, label: string, options: PickerFiel
     required: picker.required,
     description,
     layout,
+    visibleWhen,
     rendersOwnError: true,
     component: ({ value, setValue, disabled, error }) => (
       <PickerSelect
