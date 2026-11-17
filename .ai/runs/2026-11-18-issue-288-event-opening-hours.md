@@ -33,7 +33,7 @@
 - `packages/app/src/modules/activities/lib/member-event.ts`, `lib/__tests__/member-event.test.ts`, `components/client-helpers.ts`, `components/club/ClubEventPage.tsx`
 - `packages/app/src/modules/facilities/components/slot/ClubBodies.tsx`
 - `packages/app/.ai/qa/tests/facilities/TEST-R19-event-opening-hours.spec.ts` (new)
-- `.ai/specs/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-288-phase-14.md`
+- `BACKWARD_COMPATIBILITY.md` (§2 narrowed guarantee), `.ai/specs/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-288-phase-14.md`
 - this log
 
 ## Commands and results
