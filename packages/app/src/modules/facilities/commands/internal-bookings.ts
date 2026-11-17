@@ -23,7 +23,7 @@ import {
   type InternalBookingStatus,
 } from '../lib/internal-bookings'
 import { localSlotOf, rentalTransitions, slotWithinOpeningHours } from '../lib/rentals'
-import { calendarEntries, type CalendarEntry } from '../services/calendar'
+import { calendarEntries, staffEntryLabel, type CalendarEntry } from '../services/calendar'
 import { clubTimeZone, findSections, openingHours, sessionsByIds } from '../services/directory'
 import { placeFamilyIds } from '../services/occupancy'
 import {
@@ -101,7 +101,7 @@ function conflictView(entry: CalendarEntry): BookingConflictView {
     placeId: entry.placeId,
     start: entry.start.toISOString(),
     end: entry.end.toISOString(),
-    label: entry.bookedByName && entry.label ? `${entry.label} · ${entry.bookedByName}` : entry.label,
+    label: staffEntryLabel(entry),
   }
 }
 
