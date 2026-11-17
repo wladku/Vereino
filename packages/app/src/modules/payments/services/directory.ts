@@ -19,6 +19,7 @@ import type {
 } from '../../activities/services/schedule-directory'
 import type { GroupDirectory, GroupDirectoryEntry, RosterEntry } from '../../groups/services/group-directory'
 import type { PersonDirectory, PersonDirectoryEntry } from '../../people/services/person-directory'
+import type { PayerFacts } from '../lib/manual-charges'
 
 /** Tokens of the required modules' services (`activities/di.ts`, `groups/di.ts`, `people/di.ts`, `club_core/di.ts`). */
 const ACTIVITIES_SCHEDULE_DIRECTORY = 'activities.scheduleDirectory'
@@ -199,6 +200,41 @@ export function primaryPayers(
   em?: EntityManager,
 ): Promise<Map<string, string>> {
   return personDirectory(container).primaryPayers(scope, wardIds, date, em)
+}
+
+/**
+ * The facts the payer rules read for the debtor `personId` on `today`: their active guardians, their primary payer and
+ * their birth date. Null when the person is not a live person of the club.
+ */
+export async function payerFactsOf(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  personId: string,
+  today: CalendarDate,
+  em?: EntityManager,
+): Promise<PayerFacts | null> {
+  const [guardians, payers] = await Promise.all([
+    activeGuardians(container, scope, [personId], today, em),
+    primaryPayers(container, scope, [personId], today, em),
+  ])
+  const guardianIds = guardians.get(personId) ?? []
+  const primaryPayerId = payers.get(personId) ?? null
+  // Only live persons count: a guardian whose person record was deleted pays nothing.
+  const persons = await findPersons(
+    container,
+    scope,
+    [personId, ...guardianIds, ...(primaryPayerId ? [primaryPayerId] : [])],
+    em,
+  )
+  const debtor = persons.get(personId)
+  if (!debtor) return null
+  return {
+    debtorId: personId,
+    guardianIds: guardianIds.filter((id) => persons.has(id)),
+    primaryPayerId: primaryPayerId && persons.has(primaryPayerId) ? primaryPayerId : null,
+    debtorBirthDate: debtor.birthDate,
+    today,
+  }
 }
 
 /** The club's settings zone and today's date in it. */

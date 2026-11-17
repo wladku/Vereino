@@ -2,7 +2,8 @@
 // issue #109): the B-21 fields with the debtor's and payer's names, what was paid, what remains, the overdue marker
 // in the club's calendar, and every payment — date, method, title or receipt, who received it, amount, and whether
 // it was reversed, and where it came from (`source`: "bank statement" for an imported transfer, #292); a rental charge
-// adds its payer and payee institutions and the typed-in renter's name (#291).
+// adds its payer and payee institutions and the typed-in renter's name (#291). A charge without a payer lists who may
+// pay it (`payerOptions`: the debtor's active guardians, then the debtor when adult; B-22 "Assign payer", #295).
 // `updatedAt` is the lock token the payment, cancellation and reversal commands expect.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -14,7 +15,8 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { amountDueOf, isOverdue, paidTotal, paymentSourceOf, remainingOf } from '../../../lib/charge-ledger'
-import { clubClock, findInstitutions, findPersons } from '../../../services/directory'
+import { payerOptionIds } from '../../../lib/manual-charges'
+import { clubClock, findInstitutions, findPersons, payerFactsOf } from '../../../services/directory'
 import { chargePayments, findCharge } from '../../../services/ledger'
 import { discountRuleNames } from '../../../services/read'
 import { PAYMENTS_READ_KINDS, chargeListItemSchema, errorSchema } from '../../shared'
@@ -46,7 +48,12 @@ const paymentSchema = z.object({
   createdAt: z.string(),
 })
 
+const payerOptionSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() })
+
 const detailSchema = chargeListItemSchema.extend({
+  payerOptions: z
+    .array(payerOptionSchema)
+    .describe("Who may pay a charge without a payer: the debtor's active guardians, then the debtor when adult"),
   paid: z.number().int(),
   remaining: z.number().int(),
   overdue: z.boolean(),
@@ -71,17 +78,25 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       organizationId: charge.organizationId,
     })
     const payments = await chargePayments(ctx.container, scope, charge.id)
-    const personIds = [charge.personId, charge.payerPersonId, ...payments.map((row) => row.recordedByPersonId)].filter(
-      (value): value is string => !!value,
-    )
+    const clock = await clubClock(ctx.container, scope)
+    const facts =
+      charge.payerMissing && charge.personId
+        ? await payerFactsOf(ctx.container, scope, charge.personId, clock.today)
+        : null
+    const optionIds = facts ? payerOptionIds(facts) : []
+    const personIds = [
+      charge.personId,
+      charge.payerPersonId,
+      ...payments.map((row) => row.recordedByPersonId),
+      ...optionIds,
+    ].filter((value): value is string => !!value)
     const institutionIds = [charge.payerInstitutionId, charge.payeeInstitutionId].filter(
       (value): value is string => !!value,
     )
-    const [persons, institutions, ruleNames, clock] = await Promise.all([
+    const [persons, institutions, ruleNames] = await Promise.all([
       findPersons(ctx.container, scope, personIds),
       findInstitutions(ctx.container, scope, institutionIds),
       discountRuleNames(ctx.container, scope, charge.discountRuleId ? [charge.discountRuleId] : []),
-      clubClock(ctx.container, scope),
     ])
     const nameOf = (personId: string | null | undefined) => {
       const person = personId ? persons.get(personId) : undefined
@@ -105,6 +120,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       payeeInstitutionId: charge.payeeInstitutionId ?? null,
       payeeInstitution: charge.payeeInstitutionId ? (institutions.get(charge.payeeInstitutionId) ?? null) : null,
       payerLabel: charge.payerLabel ?? null,
+      payerOptions: optionIds.flatMap((personId) => {
+        const person = persons.get(personId)
+        return person ? [{ id: person.id, firstName: person.firstName, lastName: person.lastName }] : []
+      }),
       periodLabel: charge.periodLabel ?? null,
       description: charge.description,
       amount: charge.amount,
@@ -149,7 +168,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read one charge with its payments',
       description:
-        'The charge with the debtor and payer names (for a rental charge the payer and payee institutions and the typed-in renter), what was paid (reversing entries included), what remains, the overdue marker and its payments, oldest first. `updatedAt` is the lock token of the payment, cancellation and reversal commands.',
+        'The charge with the debtor and payer names (for a rental charge the payer and payee institutions and the typed-in renter; for a charge without a payer who may pay it, `payerOptions`), what was paid (reversing entries included), what remains, the overdue marker and its payments, oldest first. `updatedAt` is the lock token of the payment, cancellation and reversal commands.',
       responses: [{ status: 200, description: 'The charge', schema: detailSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

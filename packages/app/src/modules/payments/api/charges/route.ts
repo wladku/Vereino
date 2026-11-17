@@ -6,14 +6,19 @@
 // the debtor's and payer's names, the payer and payee institutions of a rental charge (#291), the discount rule's
 // name, what was paid, what remains and the overdue marker; `meta.rentalsPerspective` says whether B-21 shows
 // "Rentals (municipality)" (DD-C02). Without a sort the newest period comes first, then the due date (Contract 3, #292).
+// `involvesPersonId` keeps the charges the person owes or pays (the person record's "Charges" tab, #295).
+//
+// `POST /api/payments/charges` — `payments.charges.create_manual` (payments parity spec REQ-C06, DD-C12; B-21 and the
+// person record's "Add charge"; #295): a charge entered by hand, payable to the club; 201 `{ chargeId, payerMissing }`.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
 import type { Where } from '@open-mercato/shared/lib/query/types'
 import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
+import type { ManualChargeResult } from '../../commands/ledger'
 import { Charge } from '../../data/entities'
-import { chargeListQuerySchema, flagSet } from '../../data/validators'
+import { chargeListQuerySchema, chargeManualCreateSchema, flagSet } from '../../data/validators'
 import { OPEN_CHARGE_STATUSES, amountDueOf, isOverdue, remainingOf } from '../../lib/charge-ledger'
 import { clubClock, findInstitutions, findPersons, searchPersonIds } from '../../services/directory'
 import { chargesPaidBy, paidTotals, rentalsPerspective } from '../../services/ledger'
@@ -84,6 +89,11 @@ async function businessFilters(query: ChargeListQuery, ctx: CrudCtx): Promise<Wh
   if (query.payerMissing) business.payer_missing = flagSet(query.payerMissing)
   if (query.personId) business.person_id = query.personId
   if (query.payerPersonId) business.payer_person_id = query.payerPersonId
+  if (query.involvesPersonId) {
+    where.push({
+      $or: [{ person_id: query.involvesPersonId }, { payer_person_id: query.involvesPersonId }],
+    } as Where)
+  }
   if (query.status) {
     const statuses = query.status
       .split(',')
@@ -114,9 +124,17 @@ async function businessFilters(query: ChargeListQuery, ctx: CrudCtx): Promise<Wh
   return where
 }
 
-export const { metadata, GET } = makeCrudRoute({
+const rawBodySchema = z.object({}).loose()
+
+const createResponseSchema = z.object({
+  chargeId: z.uuid(),
+  payerMissing: z.boolean().describe('No payer was named and the *Payer* rule found none'),
+})
+
+export const { metadata, GET, POST } = makeCrudRoute({
   metadata: {
     GET: { requireAuth: true, requireFeatures: ['payments.view'] },
+    POST: { requireAuth: true, requireFeatures: ['payments.manage'] },
   },
   orm: {
     entity: Charge,
@@ -177,6 +195,18 @@ export const { metadata, GET } = makeCrudRoute({
   hooks: {
     afterList: attachNames,
   },
+  actions: {
+    create: {
+      commandId: 'payments.charges.create_manual',
+      schema: rawBodySchema,
+      mapInput: ({ parsed }) => parsed as Record<string, unknown>,
+      response: ({ result }) => {
+        const { entity } = result as ManualChargeResult
+        return { chargeId: entity.id, payerMissing: entity.payerMissing }
+      },
+      status: 201,
+    },
+  },
 })
 
 const buildOpenApi = createCrudOpenApiFactory({ defaultTag: 'Payments' })
@@ -194,4 +224,10 @@ export const openApi = buildOpenApi({
       })
       .optional(),
   }),
+  create: {
+    schema: chargeManualCreateSchema,
+    responseSchema: createResponseSchema,
+    description:
+      "Adds a charge by hand (`source_type = manual`), payable to the club: the debtor, a description of 3–200 characters, 1 grosz to PLN 100 000 and a due date from 12 months before to 12 months after the club's today. `payerPersonId` must be an active guardian of the debtor or the adult debtor; omitted, the payer is the debtor's primary payer, else the adult debtor, else the charge is created without a payer (`payerMissing: true`). Audited and never edited: a wrong charge is cancelled and created again. Errors: 400 invalid input, 403 `scope_denied`, 404 person, 422 `charge_due_date_out_of_range`, 422 `charge_payer_not_eligible`.",
+  },
 })
