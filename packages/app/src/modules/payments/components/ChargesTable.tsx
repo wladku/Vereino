@@ -9,6 +9,7 @@
 // charges with a numbered receipt; "Import statement" opens B-29. The perspectives follow the mockup's order, the
 // perspective, filters, search and page live in the URL (restored on reload; precedent DD-U03), rows come in the list's
 // default order — the newest period first, then the due date — and Remaining reads "—" once nothing is owed (#292).
+// "Add charge" enters a charge by hand (#295); the person record's "Charges" tab reuses the columns.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -34,6 +35,7 @@ import {
   type ChargePerspective,
 } from '../lib/charge-ledger'
 import { AcceptCashButton } from './AcceptCashButton'
+import { AddChargeDialog } from './AddChargeDialog'
 import { GeneratePeriodDialog } from './GeneratePeriodDialog'
 import {
   BANK_HREF,
@@ -88,7 +90,8 @@ function payeeLabel(row: Pick<ChargeRow, 'payee' | 'payeeInstitution'>, t: Trans
 
 type ChargeList = Awaited<ReturnType<typeof fetchCrudList<ChargeRow>>> & { meta?: { rentalsPerspective?: boolean } }
 
-function buildColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
+/** The B-21 columns; the person record's "Charges" tab shows the same (#295). */
+export function chargeColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
   const dash = <span className="text-muted-foreground">—</span>
   return [
     {
@@ -264,6 +267,7 @@ export function ChargesTable() {
     [pathname, router, state],
   )
   const [generating, setGenerating] = React.useState(false)
+  const [adding, setAdding] = React.useState(false)
   const [exporting, setExporting] = React.useState(false)
   const [summary, setSummary] = React.useState<GenerationSummary | null>(null)
 
@@ -282,7 +286,7 @@ export function ChargesTable() {
     queryFn: () => fetchCrudList<ChargeRow>('payments/charges', { page, pageSize: PAGE_SIZE, ...filters }),
   })
 
-  const columns = React.useMemo(() => buildColumns(t, locale), [t, locale])
+  const columns = React.useMemo(() => chargeColumns(t, locale), [t, locale])
 
   // DD-C02: the response says whether the club shows "Rentals (municipality)"; a link that opens it keeps its tab.
   const perspectives = visiblePerspectives(data?.meta?.rentalsPerspective === true || perspective === 'rentals')
@@ -373,6 +377,16 @@ export function ChargesTable() {
                 </Button>
                 <Button
                   type="button"
+                  variant="outline"
+                  data-testid="add-charge-open"
+                  onClick={() => {
+                    setAdding(true)
+                  }}
+                >
+                  {t('payments.manual.action')}
+                </Button>
+                <Button
+                  type="button"
                   data-testid="generate-period-open"
                   onClick={() => {
                     setGenerating(true)
@@ -435,6 +449,15 @@ export function ChargesTable() {
           />
         </TabsContent>
       </Tabs>
+      {adding ? (
+        <AddChargeDialog
+          open={adding}
+          onOpenChange={setAdding}
+          onCreated={async () => {
+            await queryClient.invalidateQueries({ queryKey: ['payments-charges'] })
+          }}
+        />
+      ) : null}
       <GeneratePeriodDialog
         open={generating}
         onOpenChange={setGenerating}

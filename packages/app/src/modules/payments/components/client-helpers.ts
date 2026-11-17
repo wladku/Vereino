@@ -21,6 +21,11 @@ export function chargeHref(id: string): string {
   return `${CHARGES_HREF}/${encodeURIComponent(id)}`
 }
 
+/** The guardianship tab of a person's record (B-10), where a primary payer is chosen (#295). */
+export function personGuardianshipHref(personId: string): string {
+  return `/backend/people/persons/${encodeURIComponent(personId)}?tab=guardianship`
+}
+
 export type FeeRow = {
   id: string
   name: string | null
@@ -97,7 +102,11 @@ export type PaymentRow = {
   createdAt: string
 }
 
+/** A person who may pay a charge without a payer (B-22 "Assign payer", #295). */
+export type PayerOption = { id: string; firstName: string; lastName: string }
+
 export type ChargeDetail = ChargeRow & {
+  payerOptions: PayerOption[]
   paid: number
   remaining: number
   overdue: boolean
