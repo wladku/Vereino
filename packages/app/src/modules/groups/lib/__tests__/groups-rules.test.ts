@@ -15,6 +15,7 @@ import {
   groupNameKey,
   isCoachingRole,
   matchGroupNames,
+  needsMatchGuard,
   periodStatus,
   rosterOrder,
   seasonDatesInverted,
@@ -28,6 +29,15 @@ describe('group kinds and membership roles', () => {
     expect(isCoachingRole('coach')).toBe(true)
     expect(isCoachingRole('assistant')).toBe(true)
     expect(isCoachingRole('participant')).toBe(false)
+  })
+})
+
+describe('needsMatchGuard', () => {
+  it('guards only a team that becomes a class group', () => {
+    expect(needsMatchGuard('team', 'class_group')).toBe(true)
+    expect(needsMatchGuard('team', 'team')).toBe(false)
+    expect(needsMatchGuard('class_group', 'team')).toBe(false)
+    expect(needsMatchGuard('class_group', 'class_group')).toBe(false)
   })
 })
 
@@ -133,6 +143,8 @@ describe('groups error codes', () => {
       ['group_section_inactive', 422],
       ['group_age_range_inverted', 422],
       ['group_has_memberships', 409],
+      ['group_has_matches', 409],
+      ['group_usage_failed', 503],
       ['membership_overlap', 409],
       ['season_dates_inverted', 422],
       ['season_name_taken', 409],

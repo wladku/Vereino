@@ -712,5 +712,6 @@
   "activities.reports.coachUnits.unsettled": "{count} unsettled sessions this month.",
   "activities.reports.coachUnits.unsettledLink": "Show unsettled sessions",
   "activities.reports.coachUnits.empty": "No closed sessions this month",
-  "activities.reports.coachUnits.errors.load": "Could not load the report."
+  "activities.reports.coachUnits.errors.load": "Could not load the report.",
+  "activities.common.loading": "Loading…"
 }

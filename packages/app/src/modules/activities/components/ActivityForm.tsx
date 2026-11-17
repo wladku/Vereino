@@ -7,7 +7,7 @@
 // class group gets no match or sparring and reads its training as "Classes"; a match or a sparring takes an opponent;
 // the coach picker lists only persons with an active coach or assistant role, plus "No coach".
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
@@ -282,7 +282,15 @@ export function ActivityCreateForm() {
   const coachSeed = React.useMemo<CrudFieldOption[]>(() => [], [])
   const today = useClubToday()
   const { fields, groups } = useActivityFields(t, { editing: false, coachSeed })
-  const initialValues = React.useMemo(() => activityToFormValues(null, today), [today])
+  // `?groupId=` (the group's "Activities" link, parity spec REQ-A02, #266) preselects the group.
+  const preselectedGroupId = useSearchParams().get('groupId')?.trim() || null
+  const initialValues = React.useMemo(
+    () => ({
+      ...activityToFormValues(null, today),
+      ...(preselectedGroupId ? { groupId: preselectedGroupId } : {}),
+    }),
+    [today, preselectedGroupId],
+  )
   return (
     <CrudForm<ActivityFormValues>
       title={t('activities.activities.create.title')}

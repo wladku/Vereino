@@ -2,12 +2,14 @@
 // `/backend/activities/activities` (club spec UI table, REQ-005): the activities in the caller's record scope — a
 // coordinator's sections, the whole club for the administrator — with group, section, type, schedule, place, coach and
 // status; server filters search, section, group, type and status. The add action for `activities.manage`, the one-off
-// event action for `activities.events.create`; each row opens the activity record.
+// event action for `activities.events.create`; each row opens the activity record. `?groupId=` (the "Activities" link
+// of a group, parity spec REQ-A02, #266) opens the list filtered to that group, and "New activity" then preselects it.
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
+import { LoadingMessage } from '@open-mercato/ui/backend/detail'
 import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
@@ -116,13 +118,14 @@ function filterParams(values: FilterValues): Record<string, string> {
   return params
 }
 
-export function ActivitiesTable() {
+function ActivitiesList({ initialGroupId }: { initialGroupId: string | null }) {
   const t = useT()
   const router = useRouter()
   const features = useActivitiesFeatures()
   const scopeVersion = useOrganizationScopeVersion()
   const [search, setSearch] = React.useState('')
-  const [filters, setFilters] = React.useState<FilterValues>({})
+  const [filters, setFilters] = React.useState<FilterValues>(() => (initialGroupId ? { groupId: initialGroupId } : {}))
+  const groupFilter = typeof filters.groupId === 'string' && filters.groupId ? filters.groupId : null
   const [page, setPage] = React.useState(1)
 
   const { data, isLoading, error } = useQuery({
@@ -188,7 +191,15 @@ export function ActivitiesTable() {
             ) : null}
             {features.manage ? (
               <Button asChild>
-                <Link href={`${ACTIVITIES_HREF}/create`}>{t('activities.activities.actions.create')}</Link>
+                <Link
+                  href={
+                    groupFilter
+                      ? `${ACTIVITIES_HREF}/create?groupId=${encodeURIComponent(groupFilter)}`
+                      : `${ACTIVITIES_HREF}/create`
+                  }
+                >
+                  {t('activities.activities.actions.create')}
+                </Link>
               </Button>
             ) : null}
           </div>
@@ -229,5 +240,21 @@ export function ActivitiesTable() {
         onPageChange: setPage,
       }}
     />
+  )
+}
+
+function ActivitiesFromUrl() {
+  const groupId = useSearchParams().get('groupId')?.trim() || null
+  // A new `?groupId=` (another group's link) starts a fresh list with that filter.
+  return <ActivitiesList key={groupId ?? ''} initialGroupId={groupId} />
+}
+
+export function ActivitiesTable() {
+  const t = useT()
+  // `useSearchParams` needs a Suspense boundary while the page prerenders.
+  return (
+    <React.Suspense fallback={<LoadingMessage label={t('activities.common.loading')} />}>
+      <ActivitiesFromUrl />
+    </React.Suspense>
   )
 }

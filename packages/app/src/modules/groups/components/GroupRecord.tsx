@@ -1,12 +1,18 @@
 'use client'
-// `/backend/groups/groups/[id]` (club spec UI table): the group record with the tabs "Roster" (memberships with their
-// history), "Details" and "Public page" (B-12, #91: the group's public fields, for those who edit the group). A coach reads the roster of their own group; a coordinator of the group's section and the
-// club administrator also edit the group and its roster (`groups.manage`). The server decides the scope: a group
-// outside it answers 403 and the page shows the permission-denied state.
+// `/backend/groups/groups/[id]` (club spec UI table): the group record with the tabs "Details", "Roster" (memberships
+// with their history) and "Public page" (B-12, #91: the group's public fields, for those who edit the group), in the
+// mockup's order under `?tab=details|roster|public`, default `roster` (parity spec REQ-A02, #266), so a reload or a
+// link keeps the tab. The header links to the group's activities (for `activities.view`) and, for a public group of a
+// public section, to its public preview. A coach reads the roster of their own group; a coordinator of the group's
+// section and the club administrator also edit the group and its roster (`groups.manage`). The server decides the
+// scope: a group outside it answers 403 and the page shows the permission-denied state.
 import * as React from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -14,8 +20,77 @@ import { errorCodeOf } from '@vereino/core'
 import { GroupDetailsForm } from './GroupForm'
 import { GroupPublicForm } from './GroupPublicForm'
 import { RosterPanel } from './RosterPanel'
-import { GROUPS_HREF, OWN_FORBIDDEN_STATE, kindLabel, type GroupDetail, type Translate } from './client-helpers'
-import { useCanManageGroups } from './useCanManageGroups'
+import {
+  GROUPS_HREF,
+  OWN_FORBIDDEN_STATE,
+  groupActivitiesHref,
+  kindLabel,
+  type GroupDetail,
+  type Translate,
+} from './client-helpers'
+import { useCanManageGroups, useHasFeature } from './useCanManageGroups'
+
+/** The record's tabs in the mockup's order (B-12). */
+const GROUP_RECORD_TABS = ['details', 'roster', 'public'] as const
+type GroupRecordTab = (typeof GROUP_RECORD_TABS)[number]
+
+/** The tab of `?tab=` when it is shown, else Roster (always shown). */
+function tabFrom(value: string | null, allowed: readonly GroupRecordTab[]): GroupRecordTab {
+  return allowed.find((tab) => tab === value) ?? 'roster'
+}
+
+type SectionSlugRow = { id: string; isPublic?: boolean; publicSlug?: string | null }
+
+/**
+ * The public page of the group's section (`/p/<club>/sections/<slug>`), which lists the public group, or null when the
+ * group or its section is not public or the caller cannot read the club's and the section's slugs (`club_core.view`).
+ */
+function usePublicPreviewHref(group: GroupDetail): string | null {
+  const sectionId = group.sectionId
+  const enabled = group.isPublic === true && Boolean(sectionId)
+  const query = useQuery({
+    queryKey: ['groups-public-preview', sectionId],
+    enabled,
+    retry: false,
+    queryFn: async (): Promise<string | null> => {
+      const [settings, sections] = await Promise.all([
+        apiCall<{ publicSlug?: string | null }>('/api/club_core/settings'),
+        apiCall<{ items?: SectionSlugRow[] }>(
+          `/api/club_core/sections?ids=${encodeURIComponent(String(sectionId))}&pageSize=1`,
+        ),
+      ])
+      const clubSlug = settings.ok ? settings.result?.publicSlug : null
+      const section = sections.ok ? sections.result?.items?.find((item) => item.id === sectionId) : undefined
+      if (!clubSlug || !section?.isPublic || !section.publicSlug) return null
+      return `/p/${encodeURIComponent(clubSlug)}/sections/${encodeURIComponent(section.publicSlug)}`
+    },
+  })
+  return enabled ? (query.data ?? null) : null
+}
+
+function RecordHeaderLinks({ group, t }: { group: GroupDetail; t: Translate }) {
+  const canViewActivities = useHasFeature('activities.view')
+  const previewHref = usePublicPreviewHref(group)
+  if (!canViewActivities && !previewHref) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canViewActivities ? (
+        <Button asChild variant="outline" size="sm">
+          <Link href={groupActivitiesHref(group.id)} data-testid="group-activities-link">
+            {t('groups.groups.actions.activities')}
+          </Link>
+        </Button>
+      ) : null}
+      {previewHref ? (
+        <Button asChild variant="outline" size="sm">
+          <a href={previewHref} target="_blank" rel="noreferrer" data-testid="group-public-preview-link">
+            {t('groups.groups.actions.publicPreview')}
+          </a>
+        </Button>
+      ) : null}
+    </div>
+  )
+}
 
 type GroupLoad =
   { status: 'ok'; group: GroupDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
@@ -26,6 +101,7 @@ function ReadOnlyDetails({ group, t }: { group: GroupDetail; t: Translate }) {
     [t('groups.groups.fields.kind'), kindLabel(t, group.kind)],
     [t('groups.groups.fields.section'), group.sectionName],
     [t('groups.groups.fields.description'), group.description],
+    [t('groups.groups.fields.levelLabel'), group.levelLabel],
   ]
   if (group.kind === 'team') {
     rows.push(
@@ -51,7 +127,9 @@ function ReadOnlyDetails({ group, t }: { group: GroupDetail; t: Translate }) {
 export function GroupRecord({ id }: { id: string }) {
   const t = useT()
   const canManage = useCanManageGroups()
-  const [tab, setTab] = React.useState('roster')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const query = useQuery({
     queryKey: ['groups-group', id],
     queryFn: async (): Promise<GroupLoad> => {
@@ -87,6 +165,13 @@ export function GroupRecord({ id }: { id: string }) {
   const group = load.group
   // A coach reads the group without `groups.manage`; the server refuses writes outside the caller's sections anyway.
   const canEdit = canManage
+  const allowedTabs = GROUP_RECORD_TABS.filter((value) => value !== 'public' || canEdit)
+  const tab = tabFrom(searchParams.get('tab'), allowedTabs)
+  const selectTab = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', value)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -96,23 +181,26 @@ export function GroupRecord({ id }: { id: string }) {
             {[kindLabel(t, group.kind), group.sectionName].filter(Boolean).join(' · ')}
           </span>
         </div>
-        <StatusBadge variant={group.isActive ? 'success' : 'neutral'}>
-          {group.isActive ? t('groups.common.active') : t('groups.common.inactive')}
-        </StatusBadge>
+        <div className="flex flex-wrap items-center gap-2">
+          <RecordHeaderLinks group={group} t={t} />
+          <StatusBadge variant={group.isActive ? 'success' : 'neutral'}>
+            {group.isActive ? t('groups.common.active') : t('groups.common.inactive')}
+          </StatusBadge>
+        </div>
       </header>
-      <Tabs value={tab} onValueChange={setTab} variant="underline">
+      <Tabs value={tab} onValueChange={selectTab} variant="underline">
         <div className="overflow-x-auto">
           <TabsList aria-label={t('groups.groups.tabs.label')}>
-            <TabsTrigger value="roster">{t('groups.groups.tabs.roster')}</TabsTrigger>
             <TabsTrigger value="details">{t('groups.groups.tabs.details')}</TabsTrigger>
+            <TabsTrigger value="roster">{t('groups.groups.tabs.roster')}</TabsTrigger>
             {canEdit ? <TabsTrigger value="public">{t('groups.groups.tabs.public')}</TabsTrigger> : null}
           </TabsList>
         </div>
-        <TabsContent value="roster" className="pt-4">
-          <RosterPanel groupId={group.id} groupKind={group.kind} canManage={canEdit} />
-        </TabsContent>
         <TabsContent value="details" className="pt-4">
           {canEdit ? <GroupDetailsForm group={group} onSaved={refetch} /> : <ReadOnlyDetails group={group} t={t} />}
+        </TabsContent>
+        <TabsContent value="roster" className="pt-4">
+          <RosterPanel groupId={group.id} groupKind={group.kind} canManage={canEdit} />
         </TabsContent>
         {canEdit ? (
           <TabsContent value="public" className="pt-4">

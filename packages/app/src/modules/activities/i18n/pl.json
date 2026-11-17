@@ -712,5 +712,6 @@
   "activities.reports.coachUnits.unsettled": "Nierozliczone terminy w tym miesiącu: {count}.",
   "activities.reports.coachUnits.unsettledLink": "Pokaż nierozliczone terminy",
   "activities.reports.coachUnits.empty": "Brak zamkniętych terminów w tym miesiącu",
-  "activities.reports.coachUnits.errors.load": "Nie udało się wczytać raportu."
+  "activities.reports.coachUnits.errors.load": "Nie udało się wczytać raportu.",
+  "activities.common.loading": "Wczytywanie…"
 }
