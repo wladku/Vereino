@@ -13,6 +13,10 @@ export const errorCodes = [
   { code: 'invitation_not_pending', status: 409, messageKey: 'people.errors.invitation_not_pending' },
   { code: 'last_club_admin', status: 422, messageKey: 'people.errors.last_club_admin' },
   { code: 'account_has_purpose', status: 409, messageKey: 'people.errors.account_has_purpose' },
+  // People life-cycle spec phase L3 (REQ-L13; #305): the panel's first administrator once the club has one (the
+  // response names it), and a user who is not a user of the organization.
+  { code: 'club_admin_exists', status: 409, messageKey: 'people.errors.club_admin_exists' },
+  { code: 'user_not_in_organization', status: 404, messageKey: 'people.errors.user_not_in_organization' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
   // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.

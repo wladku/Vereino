@@ -27,6 +27,15 @@ test.describe.configure({ timeout: 300_000 })
  */
 async function pick(page: Page, fieldId: string, option: string | RegExp): Promise<void> {
   await expect(async () => {
+    // The section, age category and season are native selects of the empty-picker pattern (REQ-L14).
+    const native = page.locator(`[data-crud-field-id="${fieldId}"] select`)
+    if ((await native.count()) > 0) {
+      const labels = await native.locator('option').allTextContents()
+      const label = labels.find((text) => (typeof option === 'string' ? text === option : option.test(text)))
+      expect(label).toBeDefined()
+      await native.selectOption({ label: String(label) }, { timeout: 2_000 })
+      return
+    }
     const combobox = page.locator(`[data-crud-field-id="${fieldId}"] [role="combobox"]`)
     if ((await combobox.getAttribute('aria-expanded')) !== 'true') await combobox.click()
     await page.getByRole('option', { name: option }).click({ timeout: 2_000 })
@@ -63,6 +72,7 @@ test('E06-S10 a coordinator gives a team its PZPN age category; a class group re
     const options = await ageCategoryOptions(request, coordinator.token)
     expect(options.status).toBe(200)
     expect(options.items.map((item) => item.label)).toEqual([
+      'Kids (U4–U5)',
       'Skrzat (U6–U7)',
       'Żak (U8–U9)',
       'Orlik (U10–U11)',
@@ -192,7 +202,9 @@ test('E06-S10 a coordinator gives a team its PZPN age category; a class group re
       'Orlik młodszy (U10)',
     )
     await page.getByRole('tab', { name: uiText('groups.groups.tabs.details', { exact: true }) }).click()
-    await expect(page.locator('[data-crud-field-id="ageCategoryEntryId"]')).toContainText('Orlik młodszy (U10)')
+    await expect(page.locator('[data-crud-field-id="ageCategoryEntryId"] select option:checked')).toHaveText(
+      'Orlik młodszy (U10)',
+    )
     await expectNoPageOverflow(page)
     await pick(page, 'kind', uiText('groups.groups.kind.class_group'))
     await expect(page.locator('[data-crud-field-id="ageCategoryEntryId"]')).toHaveCount(0)

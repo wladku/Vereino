@@ -115,6 +115,8 @@ The installer runs every manual step below. Before each step it checks whether t
 
 If a step fails, the installer stops and names it. Fix the problem and run the installer again.
 
+After `yarn setup` the club still has no club administrator. Sign in to the panel as the platform administrator: a banner says the club has no administrator and links to **First administrator** (`/backend/people/first-administrator`), where you pick a user of the organization and type their name. That user then sets up the club in the panel — places, institutions, people, sections and groups — without the command line; every empty list in a form says what is missing and how to add it. The command `yarn mercato people bootstrap-admin` does the same for scripts.
+
 ### Manual steps
 
 ```

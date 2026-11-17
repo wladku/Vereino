@@ -4,35 +4,26 @@
 // team, and the form clears them when the kind is a class group; the server refuses team fields on a class group with 422 anyway.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
+import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { GROUP_KINDS } from '../lib/groups-rules'
-import {
-  GROUPS_HREF,
-  ageCategoryOptions,
-  seasonOptions,
-  sectionOptions,
-  textOrNull,
-  type GroupDetail,
-  type Translate,
-} from './client-helpers'
+import { pickerSelectField } from '@vereino/ui'
+import { GROUPS_HREF, textOrNull, type GroupDetail, type Translate } from './client-helpers'
+import { ageCategoryPicker, seasonPicker, sectionPicker, useGroupsPickerFeatures } from './pickers'
 
 const ENTITY_ID = 'groups:group'
 const NONE = ''
 
 type GroupFormValues = Record<string, unknown> & { updatedAt?: string | null }
 
-async function ageCategoryOptionsWithNone(t: Translate): Promise<CrudFieldOption[]> {
-  return [{ value: NONE, label: t('groups.groups.fields.ageCategory.none') }, ...(await ageCategoryOptions())]
-}
-
-async function seasonOptionsWithNone(t: Translate): Promise<CrudFieldOption[]> {
-  return [{ value: NONE, label: t('groups.groups.fields.season.none') }, ...(await seasonOptions())]
-}
-
 function useGroupFields(t: Translate) {
+  // An empty picker says what is missing and offers a way on (people life-cycle spec REQ-L14, picker row 5).
+  const features = useGroupsPickerFeatures()
+  const canCreateSection = features['club_core.manage']
+  const canCreateCategory = features['dictionaries.manage']
+  const canCreateSeason = features['groups.manage']
   const fields = React.useMemo<CrudField[]>(
     () => [
       { id: 'name', label: t('groups.groups.fields.name'), type: 'text', required: true, maxLength: 200 },
@@ -44,23 +35,14 @@ function useGroupFields(t: Translate) {
         description: t('groups.groups.fields.kind.help'),
         required: true,
       },
-      {
-        id: 'sectionId',
-        label: t('groups.groups.fields.section'),
-        type: 'select',
-        loadOptions: () => sectionOptions(),
-        required: true,
-      },
+      pickerSelectField('sectionId', t('groups.groups.fields.section'), sectionPicker(t, canCreateSection)),
       { id: 'isActive', label: t('groups.groups.fields.isActive'), type: 'checkbox' },
       { id: 'description', label: t('groups.groups.fields.description'), type: 'textarea', maxLength: 4000 },
-      {
-        id: 'ageCategoryEntryId',
-        label: t('groups.groups.fields.ageCategory'),
-        type: 'select',
-        loadOptions: () => ageCategoryOptionsWithNone(t),
+      pickerSelectField('ageCategoryEntryId', t('groups.groups.fields.ageCategory'), {
+        ...ageCategoryPicker(t, canCreateCategory),
         description: t('groups.groups.fields.ageCategory.help'),
         visibleWhen: { field: 'kind', equals: 'team' },
-      },
+      }),
       {
         id: 'league',
         label: t('groups.groups.fields.league'),
@@ -68,15 +50,12 @@ function useGroupFields(t: Translate) {
         maxLength: 200,
         visibleWhen: { field: 'kind', equals: 'team' },
       },
-      {
-        id: 'seasonId',
-        label: t('groups.groups.fields.season'),
-        type: 'select',
-        loadOptions: () => seasonOptionsWithNone(t),
+      pickerSelectField('seasonId', t('groups.groups.fields.season'), {
+        ...seasonPicker(t, canCreateSeason),
         visibleWhen: { field: 'kind', equals: 'team' },
-      },
+      }),
     ],
-    [t],
+    [t, canCreateSection, canCreateCategory, canCreateSeason],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [

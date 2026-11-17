@@ -80,6 +80,17 @@ async function signIn(page: Page, request: APIRequestContext, club: Club, user: 
  * `platform-date-picker-and-crudform-redirects-in-tests`), so the opening is retried until the option shows.
  */
 async function chooseCrudOption(page: Page, field: string, option: RegExp): Promise<void> {
+  // A field of the empty-picker pattern (people life-cycle spec REQ-L14) is a native select: pick by its label.
+  const native = page.locator(`[data-crud-field-id="${field}"] select`)
+  if ((await native.count()) > 0) {
+    await expect(async () => {
+      const labels = await native.locator('option').allTextContents()
+      const label = labels.find((text) => option.test(text))
+      expect(label).toBeDefined()
+      await native.selectOption({ label: String(label) }, { timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    return
+  }
   const trigger = page.locator(`[data-crud-field-id="${field}"] [role="combobox"]`)
   const choice = page.getByRole('option', { name: option })
   await expect(async () => {
