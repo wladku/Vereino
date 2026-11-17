@@ -111,11 +111,15 @@ export type InlineCreateHandlersInput = {
 }
 
 type ChangeEvent = { readonly target: { readonly name: string; readonly value: string } }
-type SubmitEvent = { preventDefault: () => void }
+type SubmitEvent = { preventDefault: () => void; stopPropagation: () => void }
 
 export type InlineCreateHandlers = {
   onFieldChange: (event: ChangeEvent) => void
-  /** The form's submit: stops the page submit and starts `submit`. */
+  /**
+   * The form's submit: stops the page submit and starts `submit`. The dialog renders in a portal, but React bubbles
+   * its events through the component tree, so without `stopPropagation` the submit would also reach the `CrudForm`
+   * around the picker and save that record.
+   */
   onSubmit: (event: SubmitEvent) => void
   /** Validates, creates, selects the new option and closes; a failure stays in the dialog. */
   submit: () => Promise<void>
@@ -148,6 +152,7 @@ export function createInlineCreateHandlers(input: InlineCreateHandlersInput): In
     },
     onSubmit: (event) => {
       event.preventDefault()
+      event.stopPropagation()
       void submit()
     },
     submit,

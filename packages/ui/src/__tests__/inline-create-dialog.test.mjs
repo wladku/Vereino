@@ -109,7 +109,12 @@ function harness(stateOverrides = {}, onCreate = async (values) => ({ value: 'i-
 }
 
 const submitEvent = () => {
-  const event = { prevented: false, preventDefault: () => (event.prevented = true) }
+  const event = {
+    prevented: false,
+    stopped: false,
+    preventDefault: () => (event.prevented = true),
+    stopPropagation: () => (event.stopped = true),
+  }
   return event
 }
 
@@ -119,6 +124,8 @@ test('submit creates, hands the option to the picker and closes', async () => {
   handlers.onSubmit(event)
   await flush()
   assert.equal(event.prevented, true)
+  // The submit never reaches the form around the picker (React bubbles portal events through the tree).
+  assert.equal(event.stopped, true)
   assert.deepEqual(log, [
     ['dispatch', { type: 'submitting' }],
     ['created', { value: 'i-1', label: 'Gmina' }],
