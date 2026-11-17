@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
-import { OPTIMISTIC_LOCK_HEADER, birthDateTurning, call, calendarDate, createClub, createPerson, createStaff, signInAs } from '../_fixtures/club'
+import {
+  OPTIMISTIC_LOCK_HEADER,
+  birthDateTurning,
+  call,
+  calendarDate,
+  createClub,
+  createPerson,
+  createStaff,
+  signInAs,
+} from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { createGuardianship, getGuardianship, updateGuardianship } from '../_fixtures/people'
 import { getCharge, myCharges, recordPayment, type CodedBody } from '../_fixtures/payments'
@@ -32,7 +41,11 @@ test('TEST-C07 manual charges, assigning a payer by hand and from the guardiansh
       lastName: 'Wolny',
       birthDate: birthDateTurning(9),
     })
-    const ola = await createPerson(request, admin, { firstName: 'Ola', lastName: 'Kos', birthDate: birthDateTurning(10) })
+    const ola = await createPerson(request, admin, {
+      firstName: 'Ola',
+      lastName: 'Kos',
+      birthDate: birthDateTurning(10),
+    })
     const adam = await createPerson(request, admin, {
       firstName: 'Adam',
       lastName: 'Dorosły',
@@ -148,11 +161,17 @@ test('TEST-C07 manual charges, assigning a payer by hand and from the guardiansh
     expect(olaPaid.body).toMatchObject({ payerMissing: true })
     const olaOpenId = String(olaOpen.body?.chargeId)
     const olaPaidId = String(olaPaid.body?.chargeId)
-    const paid = await recordPayment(request, admin, olaPaidId, (await getCharge(request, admin, olaPaidId)).updatedAt, {
-      amount: 4000,
-      method: 'cash',
-      paidOn: calendarDate(),
-    })
+    const paid = await recordPayment(
+      request,
+      admin,
+      olaPaidId,
+      (await getCharge(request, admin, olaPaidId)).updatedAt,
+      {
+        amount: 4000,
+        method: 'cash',
+        paidOn: calendarDate(),
+      },
+    )
     expect(paid.status, JSON.stringify(paid.body)).toBe(201)
     const current = await getGuardianship(request, admin, piotrGuardianship)
     const marked = await updateGuardianship(

@@ -27,7 +27,7 @@ export default function PersonChargesWidget({
   const locale = useLocale()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const personId = context?.personId ?? null
+  const personId = context.personId ?? null
   const [page, setPage] = React.useState(1)
   const [adding, setAdding] = React.useState(false)
   const query = useQuery({

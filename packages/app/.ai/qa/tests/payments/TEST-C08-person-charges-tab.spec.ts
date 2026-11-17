@@ -28,7 +28,11 @@ test('TEST-C08 the person record shows the charges a person owes or pays and add
       lastName: 'Nowak',
       birthDate: birthDateTurning(38),
     })
-    const jas = await createPerson(request, admin, { firstName: 'Jaś', lastName: 'Nowak', birthDate: birthDateTurning(9) })
+    const jas = await createPerson(request, admin, {
+      firstName: 'Jaś',
+      lastName: 'Nowak',
+      birthDate: birthDateTurning(9),
+    })
     await createGuardianship(request, admin, {
       guardianPersonId: kasia,
       wardPersonId: jas,

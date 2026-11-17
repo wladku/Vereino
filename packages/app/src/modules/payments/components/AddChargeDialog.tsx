@@ -73,20 +73,26 @@ export function AddChargeDialog({
   const [problem, setProblem] = React.useState<string | null>(null)
   const [invalid, setInvalid] = React.useState<Field | null>(null)
 
-  const refuse = (field: Field, message: string) => {
-    setInvalid(field)
-    setProblem(message)
+  /** The first field the server would refuse, with its message; null when the form may be sent. */
+  const localRefusal = (text: string, grosz: number | null): [Field, string] | null => {
+    if (!debtorId) return ['person', t('payments.manual.personRequired')]
+    if (text.length < MIN_MANUAL_DESCRIPTION_LENGTH || text.length > MAX_MANUAL_DESCRIPTION_LENGTH) {
+      return ['description', t('payments.manual.descriptionInvalid')]
+    }
+    if (grosz === null || grosz <= 0) return ['amount', t('payments.ledger.record.amountInvalid')]
+    if (!dueDate) return ['dueDate', t('payments.manual.dueDateRequired')]
+    return null
   }
 
   const submit = async () => {
     const grosz = toGrosz(amount)
     const text = description.trim()
-    if (!debtorId) return refuse('person', t('payments.manual.personRequired'))
-    if (text.length < MIN_MANUAL_DESCRIPTION_LENGTH || text.length > MAX_MANUAL_DESCRIPTION_LENGTH) {
-      return refuse('description', t('payments.manual.descriptionInvalid'))
+    const refusal = localRefusal(text, grosz)
+    if (refusal) {
+      setInvalid(refusal[0])
+      setProblem(refusal[1])
+      return
     }
-    if (grosz === null || grosz <= 0) return refuse('amount', t('payments.ledger.record.amountInvalid'))
-    if (!dueDate) return refuse('dueDate', t('payments.manual.dueDateRequired'))
     setPending(true)
     setProblem(null)
     setInvalid(null)

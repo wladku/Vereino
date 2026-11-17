@@ -107,6 +107,9 @@ describe('payments vocabularies', () => {
       order_unpaid_confirm_required: 409,
       charge_payer_required: 422,
       charge_amount_invalid: 422,
+      charge_payer_already_set: 409,
+      charge_payer_not_eligible: 422,
+      charge_due_date_out_of_range: 422,
     })
   })
 })
