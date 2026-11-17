@@ -21,7 +21,7 @@ import {
   type Span,
 } from '../../lib/day-axis'
 import { ZONES } from '../../lib/zones'
-import { KIND_TAGS, ZONE_TAGS } from '../club-places/PlaceTimeline'
+import { KIND_TAGS, ZONE_TAGS } from './tags'
 import {
   ENTRY_KINDS,
   entryRange,
@@ -103,6 +103,11 @@ export type DayAxisProps = {
   /** Whether the free open hours are buttons. */
   canBook: boolean
   onBookHour?: (time: string) => void
+  /**
+   * A tap on a block (M-11): a pointer shortcut only — the blocks stay hidden from assistive technology, and "Wpisy
+   * dnia" gives every entry the same action as a button.
+   */
+  onEntry?: (entry: CalendarEntry) => void
 }
 
 export function DayAxis({
@@ -116,6 +121,7 @@ export function DayAxis({
   redacted = false,
   canBook,
   onBookHour,
+  onEntry,
 }: DayAxisProps) {
   const t = useT()
   const spanOf = React.useCallback(
@@ -206,9 +212,10 @@ export function DayAxis({
               )
             })}
             {laned.map(({ item, lane, lanes: groupLanes }) => (
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut of an aria-hidden block; the keyboard reaches the same action in "Wpisy dnia"
               <div
                 key={`${item.entry.kind}:${item.entry.id}`}
-                className={`absolute overflow-hidden rounded-md border p-1 text-xs leading-tight break-words ${TONES[KIND_TAGS[item.entry.kind]]} ${KIND_BORDERS[item.entry.kind]}`}
+                className={`absolute overflow-hidden rounded-md border p-1 text-xs leading-tight break-words ${onEntry ? 'pointer-events-auto cursor-pointer' : ''} ${TONES[KIND_TAGS[item.entry.kind]]} ${KIND_BORDERS[item.entry.kind]}`}
                 style={{
                   top: axisOffset(item.from, bounds) + 1,
                   height: Math.max(axisLength(item) - 2, 14),
@@ -219,6 +226,14 @@ export function DayAxis({
                 data-kind={item.entry.kind}
                 data-lane={lane}
                 data-lanes={groupLanes}
+                // Last: the design-system check reads an opening tag up to its first `>`, which an arrow would end.
+                onClick={
+                  onEntry
+                    ? () => {
+                        onEntry(item.entry)
+                      }
+                    : undefined
+                }
               >
                 <strong className="tabular-nums">{entryRange(item.entry, timeZone)}</strong>{' '}
                 {dayEntryText(t, item.entry, redacted)}

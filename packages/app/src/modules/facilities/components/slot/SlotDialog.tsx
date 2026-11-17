@@ -26,9 +26,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, useClubToday } from '@vereino/ui'
 import type { EventGroupOption } from '../../../activities/lib/member-event'
-import { defaultSlotEnd, overlappingRequests, rentalSlotEnd, type SlotKind } from '../../lib/slot'
+import {
+  closingAfter,
+  defaultSlotEnd,
+  overlappingRequests,
+  rentalSlotEnd,
+  zoneAtMinute,
+  type SlotKind,
+} from '../../lib/slot'
 import type { Zone } from '../../lib/zones'
-import { minutesOf, timeOf } from '../club-places/places-client'
+import { minutesOf, timeOf, type CalendarDay, type CalendarEntry } from '../club-places/places-client'
 import { FieldIssues, type IssueMessage } from '../rental-issues'
 import { clubInstant, useRentalTimeZone } from '../rentals-client'
 import { GeneralBody, GroupBody, type SlotText } from './ClubBodies'
@@ -48,6 +55,42 @@ export type SlotPreset = {
   closing: string | null
   /** The held external requests of the day on the place's family (a club booking supersedes the overlapping ones). */
   heldRequests: ReadonlyArray<{ start: string; end: string }>
+}
+
+/** The preset of a tapped hour of the day axis: its zone, the closing time after it and the day's held requests. */
+export function slotPresetAt({
+  placeId,
+  placeName,
+  date,
+  time,
+  day,
+  entries,
+}: {
+  placeId: string
+  placeName: string
+  date: string
+  time: string
+  day: CalendarDay | null
+  /** Every entry of the day on the place's family. */
+  entries: readonly CalendarEntry[]
+}): SlotPreset {
+  const minute = minutesOf(time)
+  const opening = day?.opening?.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) }))
+  const zones = (day?.zones ?? []).map((zone) => ({
+    from: minutesOf(zone.from),
+    to: minutesOf(zone.to),
+    zone: zone.zone,
+  }))
+  const closing = closingAfter(opening ?? null, minute)
+  return {
+    placeId,
+    placeName,
+    date,
+    time,
+    zone: zoneAtMinute(zones, minute),
+    closing: closing === null ? null : timeOf(closing),
+    heldRequests: entries.filter((entry) => entry.kind === 'request'),
+  }
 }
 
 const END_OF_DAY = 24 * 60
