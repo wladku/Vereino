@@ -54,8 +54,8 @@ async function rentalHistory(
   return rows.map((row) => ({
     renterType: row.renterType,
     renterId: row.renterId ?? null,
-    renterDisplayName: row.renterDisplayName ?? null,
-    renterCategory: row.renterCategory ?? null,
+    renterDisplayName: row.renterDisplayName,
+    renterCategory: row.renterCategory,
     contactName: row.contactName ?? null,
     contactPhone: row.contactPhone ?? null,
     contactEmail: row.contactEmail ?? null,

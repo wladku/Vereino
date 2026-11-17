@@ -161,6 +161,8 @@ export type RentalItem = {
   renterCategory: string
   contactName: string | null
   contactPhone: string | null
+  purpose?: string | null
+  notes?: string | null
   requestedVia: string
   startsAt: string
   endsAt: string

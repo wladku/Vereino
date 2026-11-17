@@ -24,7 +24,10 @@ const optionSchema = z.object({
   renterType: z.enum(RENTER_TYPES),
   renterId: z.uuid().nullable().describe('Null for a renter not in the register'),
   displayName: z.string(),
-  lastCategory: z.string().nullable().describe('The renter category of the renter’s last rental on the caller’s places'),
+  lastCategory: z
+    .string()
+    .nullable()
+    .describe('The renter category of the renter’s last rental on the caller’s places'),
   lastContact: z
     .object({ name: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable() })
     .nullable()
@@ -82,7 +85,11 @@ export const openApi: OpenApiRouteDoc = {
       query: renterSearchQuerySchema,
       responses: [{ status: 200, description: 'The renter options', schema: responseSchema }],
       errors: [
-        { status: 400, description: '`renter_search_invalid`: `search` shorter than 2 or longer than 80', schema: errorSchema },
+        {
+          status: 400,
+          description: '`renter_search_invalid`: `search` shorter than 2 or longer than 80',
+          schema: errorSchema,
+        },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
         {
           status: 403,

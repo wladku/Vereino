@@ -3,8 +3,8 @@
 // places with the tabs Active (requested and confirmed, the default) / Awaiting approval / All, filters for the place,
 // the status (All) and "to be moved", and per row the slot, place, renter with contact, how it was taken, the amount
 // and the status. A requested rental is confirmed, cancelled, moved or recorded as a no-show from its row; a confirmed
-// one is cancelled, moved or recorded as a no-show. "New rental" opens the rental dialog. Everything here needs
-// `facilities.rentals.manage`.
+// one is cancelled, moved or recorded as a no-show. "New rental" opens the slot dialog with the rental kind
+// and no preset slot (#277, DD-R05). Everything here needs `facilities.rentals.manage`.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
@@ -23,7 +23,7 @@ import { errorCodeOf } from '@vereino/core'
 import { RENTAL_STATUSES } from '../lib/rentals'
 import { ListEmptyState } from './FacilitiesControls'
 import { CancelRentalDialog, MoveRentalDialog } from './RentalActionDialogs'
-import { RentalDialog } from './RentalDialog'
+import { SlotDialog } from './slot/SlotDialog'
 import {
   codedMessage,
   errorMessage,
@@ -381,12 +381,15 @@ export function RentalsTable() {
           />
         </TabsContent>
       </Tabs>
-      <RentalDialog
+      {/* B-24 "New rental" is the slot dialog with the rental kind and no preset slot (DD-R05). */}
+      <SlotDialog
         key={createKey}
         open={createOpen}
         onOpenChange={setCreateOpen}
+        kinds={['rental']}
+        groups={[]}
+        preset={null}
         places={places.options}
-        preset={{ placeId: places.options.length === 1 ? (places.options[0]?.value ?? null) : null }}
         onSaved={async () => {
           await queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] })
         }}
