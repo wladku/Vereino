@@ -3,7 +3,9 @@
 // `payer_pays` mode, why a charge cannot be paid online, the grosz ↔ złoty boundary of the gateway, the outcome of a
 // provider status, how a captured checkout is spread over its charges (from the oldest; a share whose charge is no
 // longer open becomes an overpayment "to refund", Q-049), the M-09 state, why a refund is refused and which
-// checkouts the sweep expires. Time is a parameter (engineering standards S3.5); nothing here reads the database.
+// checkouts the sweep expires. Since the payments parity spec (DD-C07, #298) a `partially_paid` charge is paid online
+// for what remains: the checkout stores each charge's remainder as its share, and the fulfilment spreads by the shares.
+// Time is a parameter (engineering standards S3.5); nothing here reads the database.
 import type { ChargeStatus } from './payments-rules'
 
 /** The club setting `online_fee_mode` (R13, D-022): the club pays the commission, or the payer pays it on top. */
@@ -28,9 +30,9 @@ export function onlineFeeOf(amount: number, settings: OnlineFeeSettings): number
 
 export type CheckoutTotals = { amount: number; feeAmount: number; total: number }
 
-/** The checkout's amount (the charges' amounts due), its surcharge and what the payer pays. */
-export function checkoutTotals(amountsDue: readonly number[], settings: OnlineFeeSettings): CheckoutTotals {
-  const amount = amountsDue.reduce((sum, due) => sum + due, 0)
+/** The checkout's amount (the charges' shares — what remains on each), its surcharge and what the payer pays. */
+export function checkoutTotals(shares: readonly number[], settings: OnlineFeeSettings): CheckoutTotals {
+  const amount = shares.reduce((sum, share) => sum + share, 0)
   const feeAmount = onlineFeeOf(amount, settings)
   return { amount, feeAmount, total: amount + feeAmount }
 }
@@ -44,16 +46,33 @@ export type CheckoutCharge = {
 
 export type CheckoutRefusal = 'checkout_charge_forbidden' | 'payer_missing' | 'charge_not_open'
 
+/** The statuses paid online, for what remains on the charge (DD-C07). */
+export const ONLINE_PAYABLE_STATUSES: readonly ChargeStatus[] = ['open', 'partially_paid']
+
+/** True for a charge status that can be paid online (`open`, `partially_paid`). */
+export function isOnlinePayable(status: ChargeStatus): boolean {
+  return ONLINE_PAYABLE_STATUSES.includes(status)
+}
+
 /**
  * Why the charges cannot be paid online, or null: a charge the caller does not see is someone else's (403); a charge
- * without a payer cannot be paid online (422, "no payer — contact the club"); only `open` charges are paid online,
- * and only in full (409).
+ * without a payer cannot be paid online (422, "no payer — contact the club"); a `paid`, `cancelled` or `forfeited`
+ * charge answers 409 `charge_not_open` (the code is kept, Contract 2); `open` and `partially_paid` are paid for what
+ * remains (DD-C07).
  */
 export function checkoutRefusal(charges: readonly CheckoutCharge[]): CheckoutRefusal | null {
   if (charges.some((charge) => !charge.visible)) return 'checkout_charge_forbidden'
   if (charges.some((charge) => charge.payerMissing)) return 'payer_missing'
-  if (charges.some((charge) => charge.status !== 'open')) return 'charge_not_open'
+  if (charges.some((charge) => !isOnlinePayable(charge.status))) return 'charge_not_open'
   return null
+}
+
+/**
+ * Each charge's share of a new checkout, in the order of `chargeIds`: what remains on it now (never below zero). The
+ * shares are stored in `charge_amounts` and sum to the checkout's amount (DD-C07).
+ */
+export function checkoutShares(chargeIds: readonly string[], remaining: ReadonlyMap<string, number>): number[] {
+  return chargeIds.map((id) => Math.max(remaining.get(id) ?? 0, 0))
 }
 
 /** Grosz as the gateway's amount in złoty (S10.9: the only place the unit changes, DD-42). */
@@ -79,27 +98,27 @@ export function providerOutcome(status: string): ProviderOutcome {
   return 'pending'
 }
 
-/** A charge of a checkout at fulfilment, with what remains to pay on it now. */
+/** A charge of a checkout at fulfilment, with what remains to pay on it now and its stored share (null before #298). */
 export type FulfilmentCharge = {
   id: string
   dueDate: string
   status: ChargeStatus
   amountDue: number
   remaining: number
+  share: number | null
 }
 
 export type FulfilmentLine = { chargeId: string; amount: number; overpayment: boolean }
 
 export type FulfilmentPlan = { kind: 'book'; lines: FulfilmentLine[] } | { kind: 'amount_mismatch' }
 
-const PAYABLE: readonly ChargeStatus[] = ['open', 'partially_paid']
-
 /**
- * How a captured checkout is booked (DD-42). The amount received must equal the checkout's total (charges and
+ * How a captured checkout is booked (DD-42, DD-C07). The amount received must equal the checkout's total (charges and
  * surcharge), else nothing is booked and the checkout is flagged. The charges' amount is spread from the oldest
- * charge (due date, then id): each takes up to its amount due as its share; what a still-payable charge needs is a
- * payment of it, the rest of the share — the whole share of a charge paid or cancelled meanwhile — is an overpayment
- * of that charge flagged "to refund" (Q-049). Anything left after the last share is an overpayment of the last charge.
+ * charge (due date, then id): each takes up to its stored share — its amount due for a checkout without shares; what a
+ * still-payable charge needs is a payment of it, the rest of the share — the part above what remains after a payment
+ * made meanwhile, the whole share of a charge paid or cancelled meanwhile — is an overpayment of that charge flagged
+ * "to refund" (Q-049). Anything left after the last share is an overpayment of the last charge.
  */
 export function fulfilmentPlan(input: {
   amount: number
@@ -117,9 +136,9 @@ export function fulfilmentPlan(input: {
   let left = input.amount
   for (const [index, charge] of ordered.entries()) {
     const last = index === ordered.length - 1
-    const share = last ? left : Math.min(Math.max(charge.amountDue, 0), left)
+    const share = last ? left : Math.min(Math.max(charge.share ?? charge.amountDue, 0), left)
     left -= share
-    const paid = PAYABLE.includes(charge.status) ? Math.min(share, charge.remaining) : 0
+    const paid = isOnlinePayable(charge.status) ? Math.min(share, charge.remaining) : 0
     if (paid > 0) lines.push({ chargeId: charge.id, amount: paid, overpayment: false })
     if (share - paid > 0) lines.push({ chargeId: charge.id, amount: share - paid, overpayment: true })
   }

@@ -204,15 +204,27 @@ export type RefreshedCheckout = CodedBody & {
 }
 
 export type MyChargesResult = CodedBody & {
-  items?: { id: string; status: string; payable: boolean; payerMissing: boolean; remaining: number }[]
+  items?: {
+    id: string
+    status: string
+    payable: boolean
+    payerMissing: boolean
+    remaining: number
+    discountAmount?: number
+    discountName?: string | null
+  }[]
   total?: number
   checkouts?: { id: string; state: string }[]
   history?: { id: string; status: string; periodLabel: string | null }[]
   transfer?: { bankAccount: string | null; recipient: string | null; payerCode: string } | null
+  /** The wards another guardian pays: first names only (#298, DD-C06). */
+  otherPayers?: { wardFirstName: string; payerFirstName: string }[]
 }
 
 export type MyPaymentsSummary = CodedBody & {
-  state?: 'due' | 'paid' | 'guardian_pays'
+  state?: 'due' | 'paid' | 'guardian_pays' | 'other_pays'
+  payerFirstName?: string
+  otherPayers?: { wardFirstName: string; payerFirstName: string }[]
   openTotal?: number
   openCount?: number
   nearestDueDate?: string

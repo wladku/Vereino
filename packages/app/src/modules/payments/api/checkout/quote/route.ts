@@ -14,7 +14,7 @@ export const metadata = {
 }
 
 export const quoteSchema = z.object({
-  amount: z.number().int().describe("Grosz: the charges' amounts due"),
+  amount: z.number().int().describe('Grosz: what remains on the charges (DD-C07)'),
   feeAmount: z.number().int().describe('Grosz: the online fee line, > 0 only in `payer_pays` mode'),
   total: z.number().int().describe('Grosz: what the payer pays'),
   feeMode: z.enum(['club_pays', 'payer_pays']),
@@ -39,7 +39,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Quote an online payment of the selected charges',
       description:
-        'The amount, the online fee line of the club setting `online_fee_mode` and the total; saves nothing. Only `open` charges the caller pays.',
+        'The amount, the online fee line of the club setting `online_fee_mode` and the total; saves nothing. Only `open` and `partially_paid` charges the caller pays, for what remains on them.',
       requestBody: { contentType: 'application/json', schema: checkoutSchema },
       responses: [{ status: 200, description: 'The quote', schema: quoteSchema }],
       errors: [
@@ -49,7 +49,11 @@ export const openApi: OpenApiRouteDoc = {
           description: '`checkout_charge_forbidden` (someone else’s charge), `payments_minor`',
           schema: errorSchema,
         },
-        { status: 409, description: '`charge_not_open`', schema: errorSchema },
+        {
+          status: 409,
+          description: '`charge_not_open` (a `paid`, `cancelled` or `forfeited` charge)',
+          schema: errorSchema,
+        },
         { status: 422, description: '`payer_missing`', schema: errorSchema },
       ],
     },

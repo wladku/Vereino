@@ -1,14 +1,16 @@
 // Reads of the payer's own charges and checkouts (`GET /api/payments/my-charges`, M-08; `POST
 // /api/payments/checkouts/{id}/refresh`, M-09; payments spec API table, REQ-012; #110). The payer sees the charges
 // they pay, and their own or their wards' charges without a payer — shown, but not payable online ("no payer —
-// contact the club"). Cancelled charges are not listed. Since #111 the paid history (up to six) is read apart.
+// contact the club"). Cancelled charges are not listed. Since #111 the paid history (up to six) is read apart. Since
+// #298 (payments parity spec REQ-C10) each charge names its discount rule, a `partially_paid` charge is payable for
+// what remains (DD-C07), and the wards another guardian pays are named without amounts (DD-C06).
 // Routes reach the ORM only through services (REQ-F16).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { Charge, Checkout, Payment } from '../data/entities'
+import { Charge, Checkout, DiscountRule, Payment } from '../data/entities'
 import { amountDueOf, isOverdue, paidTotal, remainingOf } from '../lib/charge-ledger'
-import { returnState } from '../lib/checkout-rules'
+import { isOnlinePayable, returnState } from '../lib/checkout-rules'
 import { PAYMENT_HISTORY_LIMIT } from '../lib/payer-summary'
 import type { Payer } from './checkout'
 import { clubClock, findPersons } from './directory'
@@ -34,12 +36,14 @@ export type MyChargeItem = {
   amountDue: number
   /** The discount already deducted from `amountDue` (grosz). */
   discountAmount: number
+  /** The name of the discount rule that granted it, or null. */
+  discountName: string | null
   paid: number
   remaining: number
   status: string
   overdue: boolean
   payerMissing: boolean
-  /** True when the caller may select it for an online payment: an `open` charge they pay. */
+  /** True when the caller may select it for an online payment: an `open` or `partially_paid` charge they pay. */
   payable: boolean
 }
 
@@ -98,19 +102,24 @@ async function chargeItems(container: AwilixContainer, payer: Payer, rows: Charg
         { fields: ['id', 'chargeId', 'amount'] },
       )
     : []
-  const [persons, clock] = await Promise.all([
+  const ruleIds = [...new Set(rows.flatMap((row) => (row.discountRuleId ? [row.discountRuleId] : [])))]
+  const [persons, clock, rules] = await Promise.all([
     findPersons(
       container,
       payer.scope,
       rows.flatMap((row) => (row.personId ? [row.personId] : [])),
     ),
     clubClock(container, payer.scope),
+    // A rule deleted since still names the discount it granted.
+    ruleIds.length ? em.find(DiscountRule, { id: { $in: ruleIds }, ...payer.scope }, { fields: ['id', 'name'] }) : [],
   ])
+  const ruleNames = new Map(rules.map((rule) => [rule.id, rule.name]))
   return rows.map((row): MyChargeItem => {
     const amountDue = amountDueOf(row)
     const paid = paidTotal(payments.filter((payment) => payment.chargeId === row.id))
     const dueDate = calendarDate(row.dueDate)
     const person = row.personId ? persons.get(row.personId) : undefined
+    const remaining = remainingOf(amountDue, paid)
     return {
       id: row.id,
       description: row.description,
@@ -120,12 +129,14 @@ async function chargeItems(container: AwilixContainer, payer: Payer, rows: Charg
       dueDate,
       amountDue,
       discountAmount: row.discountAmount,
+      discountName: row.discountRuleId ? (ruleNames.get(row.discountRuleId) ?? null) : null,
       paid,
-      remaining: remainingOf(amountDue, paid),
+      remaining,
       status: row.status,
       overdue: isOverdue({ status: row.status, dueDate }, clock.today),
       payerMissing: row.payerMissing,
-      payable: row.status === 'open' && !row.payerMissing && row.payerPersonId === payer.personId,
+      payable:
+        isOnlinePayable(row.status) && remaining > 0 && !row.payerMissing && row.payerPersonId === payer.personId,
     }
   })
 }
