@@ -10,16 +10,20 @@
 //   and no unmark command exists;
 // - `communication.threads.mark_read` — no business state (not logged);
 // - `communication.threads.record_cancellation` — the session thread of a cancellation, run by the subscriber under
-//   the `system_job` source: the e-mail cannot be recalled.
+//   the `system_job` source: the e-mail cannot be recalled;
+// - `communication.threads.record_reschedule` — the session (or activity) thread of a moved, restored or re-planned
+//   session (REQ-A09, #271), run by the subscribers under the `system_job` source: the same.
 // Recipients come from the foundation's `resolveAudience` (P-29), delivery from its `dispatch` (P-30) with the
 // templates in `emails/`, enqueued in the command's transaction and published after the commit.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import type { z } from 'zod'
 import { cancellationCoordinatorIds, findActingRole, type AudienceSpec, type GrantKind } from '@vereino/core'
 import {
   authorizeScoped,
   contactResolver,
+  renderLocalized,
   type TargetLock,
   foundationErrors,
   resolveAudience,
@@ -44,6 +48,7 @@ import {
   directThreadSchema,
   messageDeleteSchema,
   messageReviseSchema,
+  rescheduleSchema,
   threadCreateSchema,
   threadMarkCaseSchema,
   threadReadSchema,
@@ -74,7 +79,8 @@ import {
   directParticipantRows,
   directWindowStart,
 } from '../lib/direct-rules'
-import { clubFacts, groupDirectory, personDirectory, scheduleDirectory } from '../services/directory'
+import { rescheduleLines, type ReschedulePoint, type RescheduleNotice } from '../lib/reschedule'
+import { clubCoreDirectory, clubFacts, groupDirectory, personDirectory, scheduleDirectory } from '../services/directory'
 import { resolveAudienceTarget, sessionLabel, type ResolvedTarget } from '../services/targets'
 import {
   communicationLog,
@@ -917,6 +923,265 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
   },
 }
 
+// --- communication.threads.record_reschedule (the subscribers `communication:session-moved`, `…:schedule-changed`) ---
+
+/** What a moved-session notice is about: its thread, its audience, the date its coordinators are read on, its texts. */
+type RescheduleSubject = {
+  scopeType: 'occurrence' | 'activity'
+  scopeId: string
+  sectionId: string
+  groupId: string
+  subject: string
+  activityName: string
+  onDate: string
+  notice: RescheduleNotice
+}
+
+const MINUTE_MS = 60_000
+
+/** The gathering instant `minutes` before `startAt`, or null without a gathering time. */
+function gatheringIsoOf(startAt: Date, minutes: number | null): string | null {
+  return minutes && minutes > 0 ? new Date(startAt.getTime() - minutes * MINUTE_MS).toISOString() : null
+}
+
+/**
+ * The session (still planned — a session cancelled meanwhile announces nothing) or the activity a notice is about, read
+ * through `activities.scheduleDirectory`, with the place names of `club_core`; null when there is nothing to announce.
+ */
+async function rescheduleSubject(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: CommunicationScope,
+  input: z.output<typeof rescheduleSchema>,
+  timeZone: string,
+): Promise<RescheduleSubject | null> {
+  const directory = scheduleDirectory(ctx.container)
+  if (!directory) return null
+  const places = async (ids: Array<string | null>) => {
+    const wanted = [...new Set(ids.filter((id): id is string => id !== null))]
+    const found = await clubCoreDirectory(ctx.container).findPlaces(scope, wanted, em)
+    return (placeId: string | null, venueName: string | null) =>
+      placeId ? (found.get(placeId)?.name ?? '') : (venueName ?? '')
+  }
+  if (input.activityId && input.scheduleChange) {
+    const activity = (await directory.findActivities(scope, [input.activityId], em)).get(input.activityId)
+    if (!activity) return null
+    const change = input.scheduleChange
+    const placeOf = await places([change.before.placeId, change.after.placeId])
+    const rule = (value: typeof change.before) => ({
+      startTime: value.startTime,
+      endTime: value.endTime,
+      gatheringMinutesBefore: value.gatheringMinutesBefore,
+      place: placeOf(value.placeId, value.venueName),
+    })
+    return {
+      scopeType: 'activity',
+      scopeId: activity.id,
+      sectionId: activity.sectionId,
+      groupId: activity.groupId,
+      subject: activity.name,
+      activityName: activity.name,
+      onDate: change.from,
+      notice: {
+        kind: 'series',
+        from: change.from,
+        movedCount: change.movedCount,
+        before: rule(change.before),
+        after: rule(change.after),
+      },
+    }
+  }
+  const occurrenceId = input.occurrenceId as string
+  const occurrence = (await directory.findOccurrences(scope, [occurrenceId], em)).get(occurrenceId)
+  const change = input.change
+  if (!occurrence || occurrence.status !== 'planned' || !change) return null
+  const placeOf = await places([change.before.placeId, occurrence.placeId ?? null])
+  const after: ReschedulePoint = {
+    startAt: occurrence.startAt.toISOString(),
+    endAt: occurrence.endAt.toISOString(),
+    gatheringAt: occurrence.gatheringAt?.toISOString() ?? null,
+    place: placeOf(occurrence.placeId ?? null, occurrence.venueName ?? null),
+  }
+  const before: ReschedulePoint = {
+    startAt: change.before.startAt,
+    endAt: change.before.endAt,
+    gatheringAt: gatheringIsoOf(new Date(change.before.startAt), change.before.gatheringMinutesBefore),
+    place: placeOf(change.before.placeId, change.before.venueName),
+  }
+  return {
+    scopeType: 'occurrence',
+    scopeId: occurrence.id,
+    sectionId: occurrence.sectionId,
+    groupId: occurrence.groupId,
+    subject: sessionLabel(occurrence.activityName, occurrence.startAt, timeZone),
+    activityName: occurrence.activityName ?? '',
+    onDate: occurrence.occurrenceDate,
+    notice: change.kinds.includes('restored') ? { kind: 'restored', after } : { kind: 'moved', before, after },
+  }
+}
+
+/**
+ * `communication.threads.record_reschedule` (groups and activities parity spec REQ-A09, DD-A07, DD-A08; D-031 §7;
+ * #271): the notice of a moved or restored session goes to its session thread (created on demand, locked as
+ * `record_cancellation` locks it), the notice of a series change to the activity's thread. The message (`reschedule`)
+ * is written whole in the club's language and names who made the change; the e-mail `communication.session_moved`
+ * reaches the audience — the session's (or the activity's) and, for a coach's change, the section's coordinators —
+ * never the actor, by e-mail only (the in-app notice is `activities.occurrence_moved`). Idempotent by the event key: a
+ * replayed or concurrent event adds nothing. Not undoable: a sent e-mail cannot be recalled.
+ */
+const recordRescheduleCommand: CommandHandler<Record<string, unknown>, CancellationResult | null> = {
+  id: 'communication.threads.record_reschedule',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'communication.threads.record_reschedule', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: rescheduleSchema,
+          resourceKind: THREAD_RESOURCE_KIND,
+          allowedKinds: ['system_job'],
+          resolveTarget: (_parsed, _entity, scope) => ({ id: scope.organizationId, ...scope }),
+          lock: 'none',
+          scopeSource: { job: true },
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const { parsed, tenantId, organizationId } = authorized
+      const scope = { tenantId, organizationId }
+      const { timeZone, defaultLocale } = await clubFacts(ctx.container, scope)
+      const target = await rescheduleSubject(ctx, em, scope, parsed, timeZone)
+      if (!target) return null
+      await lockOccurrenceThread(em, organizationId, target.scopeId)
+      let thread = await em.findOne(Thread, {
+        ...scope,
+        scopeType: target.scopeType,
+        scopeId: target.scopeId,
+        deletedAt: null,
+      })
+      const threadCreated = !thread
+      const now = new Date()
+      if (!thread) {
+        thread = em.create(Thread, {
+          id: randomUUID(),
+          ...scope,
+          scopeType: target.scopeType,
+          scopeId: target.scopeId,
+          sectionId: target.sectionId,
+          groupId: target.groupId,
+          subject: target.subject,
+          authorPersonId: null,
+          lastMessageAt: now,
+        })
+        em.persist(thread)
+        await em.flush()
+      }
+      const messageId = randomUUID()
+      const audience: AudienceSpec = { kind: target.scopeType, ids: [target.scopeId] }
+      const audienceCtx = { container: ctx.container, ...scope, scope: authorized.scope, em }
+      const resolved = await resolveAudience(audience, audienceCtx)
+      // As for a cancellation (#139): a coach's change also reaches the section's live coordinators, never the actor.
+      const actorPersonId = parsed.actorPersonId ?? null
+      const coordinatorIds = cancellationCoordinatorIds(
+        parsed.actingRole ?? null,
+        parsed.actingRole === 'coach'
+          ? await personDirectory(ctx.container).sectionCoordinatorIdsOn(scope, target.sectionId, target.onDate, em)
+          : [],
+        actorPersonId,
+      )
+      const coordinators =
+        coordinatorIds.length > 0
+          ? await resolveMembers(
+              coordinatorIds.map((personId) => ({ personId, reason: 'coach' as const })),
+              audienceCtx,
+            )
+          : null
+      const audienceRecipients = withExtraRecipients(resolved.recipients, coordinators?.recipients ?? [])
+      // E-mail only: the in-app notice is `activities.occurrence_moved`. The actor is left out by user and by person.
+      const recipients = emailOnlyRecipients(audienceRecipients, parsed.actorUserId ?? null).filter(
+        (recipient) => recipient.personId !== actorPersonId,
+      )
+      const actor = actorPersonId
+        ? (await personDirectory(ctx.container).findPersons(scope, [actorPersonId], em)).get(actorPersonId)
+        : undefined
+      const movedBy = actor ? cancelledByOf(actor, parsed.actingRole ?? null) : null
+      const body = await renderLocalized(
+        defaultLocale,
+        (t, locale) =>
+          rescheduleLines(t, target.notice, { activityName: target.activityName, locale, timeZone }, movedBy).lead,
+      )
+      const { dispatchId, created } = await dispatchService(ctx).enqueue(
+        em,
+        {
+          template: 'communication.session_moved',
+          params: {
+            threadId: thread.id,
+            activityName: target.activityName,
+            timeZone,
+            notice: target.notice,
+            ...(movedBy ? { movedByName: movedBy.name, movedByRole: movedBy.role } : {}),
+          },
+          recipients,
+          audience,
+          source: { module: 'communication', type: 'communication:thread_message', id: messageId },
+          // Keyed by the change event (DD-A09): a replayed event finds this dispatch and adds nothing.
+          idempotencyKey: `communication:reschedule:${parsed.eventKey}`,
+          actor: { userId: null, actingRole: 'system' },
+        },
+        { ...scope, scope: authorized.scope, em },
+      )
+      if (!created) {
+        return {
+          threadId: thread.id,
+          messageId,
+          dispatchId: null,
+          actingRole: 'system',
+          scope,
+          threadUpdatedAt: thread.updatedAt.toISOString(),
+          created: false,
+          threadCreated,
+        }
+      }
+      em.persist(
+        em.create(ThreadMessage, {
+          id: messageId,
+          ...scope,
+          threadId: thread.id,
+          kind: 'reschedule',
+          authorPersonId: movedBy ? actorPersonId : null,
+          actingRole: movedBy?.role ?? 'system',
+          audience: 'all',
+          body,
+          dispatchId,
+          recipientCount: recipients.filter((recipient) => recipient.channels.length > 0).length,
+        }),
+      )
+      thread.lastMessageAt = now
+      await em.flush()
+      await insertParticipants(em, scope, thread.id, participantRows(audienceRecipients, null))
+      return {
+        threadId: thread.id,
+        messageId,
+        dispatchId,
+        actingRole: 'system',
+        scope,
+        threadUpdatedAt: thread.updatedAt.toISOString(),
+        created: true,
+        threadCreated,
+      }
+    })
+    if (!result?.created) return result
+    await publishAfterCommit(ctx, result.dispatchId, result.scope)
+    if (result.threadCreated)
+      await emitAfterCommit('communication.thread.created', result.scope, { id: result.threadId })
+    await emitAfterCommit('communication.message.posted', result.scope, {
+      id: result.messageId,
+      threadId: result.threadId,
+    })
+    return result
+  },
+}
+
 registerCommand(createThreadCommand)
 registerCommand(startDirectCommand)
 registerCommand(replyCommand)
@@ -925,3 +1190,4 @@ registerCommand(changeMessageCommand('tombstone'))
 registerCommand(markCaseCommand)
 registerCommand(markReadCommand)
 registerCommand(recordCancellationCommand)
+registerCommand(recordRescheduleCommand)

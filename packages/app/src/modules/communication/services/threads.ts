@@ -39,6 +39,7 @@ import {
   excerpt,
   grantIds,
   householdOf,
+  NOTICE_MESSAGE_KINDS,
   ORIGINAL_MESSAGE_KINDS,
   isOriginalMessage,
   isSystemMessage,
@@ -53,6 +54,7 @@ import {
   pagedEnvelope,
   selfPersonId,
   type MessageAudience,
+  type MessageKind,
   type MessageRow,
   type ThreadScopeType,
 } from '../lib/thread-rules'
@@ -309,6 +311,8 @@ export type ThreadMessageItem = {
   editedAt: string | null
   deleted: boolean
   system: boolean
+  /** The original message's kind: a message, a cancellation notice or a moved-session notice (REQ-A09). */
+  kind: MessageKind
   recipientCount: number
   hasDeliveries: boolean
   /** The reader may delete the message now (B-19): its author or staff, not a case, not a system or deleted one. */
@@ -479,6 +483,7 @@ export async function threadDetail(viewer: Viewer, threadId: string): Promise<Th
         editedAt: view.editedAt?.toISOString() ?? null,
         deleted: view.deleted,
         system: view.system,
+        kind: view.kind,
         recipientCount: row?.recipientCount ?? 0,
         hasDeliveries: canSeeDeliveries && Boolean(row?.dispatchId),
         canDelete: mayDeleteMessage({
@@ -528,6 +533,26 @@ export async function threadDeliveries(
     { page: query.page, pageSize: query.pageSize, problemsOnly: query.problemsOnly },
     { ...viewer.scope, scope: viewer.grants },
   )
+}
+
+/**
+ * Whether the newest session notice in a session's thread is a move (REQ-A09, #271): the share text then names the new
+ * time, place and gathering. The caller has already authorized the session; only a yes or no leaves here.
+ */
+export async function sessionLastMoved(viewer: Viewer, occurrenceId: string): Promise<boolean> {
+  const em = emOf(viewer)
+  const thread = await em.findOne(
+    Thread,
+    { ...viewer.scope, scopeType: 'occurrence', scopeId: occurrenceId, deletedAt: null },
+    { fields: ['id'] },
+  )
+  if (!thread) return false
+  const notice = await em.findOne(
+    ThreadMessage,
+    { ...viewer.scope, threadId: thread.id, kind: { $in: [...NOTICE_MESSAGE_KINDS] } },
+    { orderBy: { createdAt: 'desc' }, fields: ['id', 'kind'] },
+  )
+  return notice?.kind === 'reschedule'
 }
 
 /** The subject of a thread the reader may open, for the thread share text (DD-M14). */

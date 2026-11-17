@@ -61,7 +61,7 @@ function useEditOptions() {
   })
 }
 
-type SaveAnswer = { code?: string; error?: string; conflicts?: unknown }
+type SaveAnswer = { code?: string; error?: string; conflicts?: unknown; notified?: number }
 
 const PROBLEM_KEYS: Record<SessionEditProblem, string> = {
   required: 'activities.club.event.problems.required',
@@ -178,7 +178,12 @@ function EditForm({ entry, timeZone, options }: { entry: CalendarEntry; timeZone
     if (call.ok) {
       await queryClient.invalidateQueries({ queryKey: [SESSION_QUERY_KEY] })
       await queryClient.invalidateQueries({ queryKey: [CALENDAR_QUERY_KEY] })
-      flash(t('activities.club.edit.saved'), 'success')
+      // REQ-A09: a move that is announced names how many people were told (J-A03 step 3).
+      const notified = typeof answer.notified === 'number' ? answer.notified : 0
+      flash(
+        notified > 0 ? t('activities.club.edit.savedNotified', { count: notified }) : t('activities.club.edit.saved'),
+        'success',
+      )
       router.push(sessionHref(occurrence.id, 'coach'))
       return
     }

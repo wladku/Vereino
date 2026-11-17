@@ -15,4 +15,6 @@ topics: ["audit-logs", "acting-role", "acl", "integration-tests"]
 - either grant the reader's role the tenant-wide view first — `setRoleAclFeatures(request, club.superToken, { roleId: club.tenant.roleId, features: ['audit_logs.view_self', 'audit_logs.undo_self', 'audit_logs.view_tenant'] })`, as E03-S01 does;
 - or assert the role from the command's response (`actingRole`).
 
+**Undo too** (TEST-A13, #271, 2026-11-17): the section coordinator's role holds no `audit_logs.undo_self` either, so `undoByToken` with the coordinator's token answers 403 `{"requiredFeatures":["audit_logs.undo_self"]}`. A test that needs an undo lets the club administrator make and undo the action (the administrator's role holds `undo_self`), or grants the feature first as above.
+
 **Applies to**: integration tests under `packages/app/.ai/qa/tests/` that read `actionLogEntries` / `actionLogs` for an action someone else performed.

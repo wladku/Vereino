@@ -26,6 +26,7 @@ import { attendanceSettings, coachMayCancel } from '../services/directory'
 import { nextConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringOffset } from '../lib/gathering'
 import { chooseLocation, storedVenue } from '../lib/venue'
+import { sessionChangeOf, type SessionChange, type SessionFacts } from '../lib/session-change'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
   COACH_KINDS,
@@ -65,7 +66,10 @@ export type OccurrenceSnapshot = {
   confirmByMinutesBefore?: number | null
 }
 
-export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot>
+export type OccurrenceCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot> & {
+  /** The announced change of a move or a restore (REQ-A09), null when nothing is announced. */
+  change?: SessionChange | null
+}
 
 export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
   return {
@@ -193,7 +197,7 @@ export function mayEditSession(
 async function authorizeSessionEditReplay(
   ctx: CommandRuntimeContext,
   id: string | null | undefined,
-): Promise<Occurrence> {
+): Promise<{ row: Occurrence; scope: Scope; actingRole: string }> {
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] session replay needs the replay transaction and the id')
   const authorized = await authorizeScoped(
@@ -205,7 +209,46 @@ async function authorizeSessionEditReplay(
   )
   const row = authorized.entity as Occurrence
   await assertCoachMayEdit(authorized.scope, row, await sessionActivity(em, row))
-  return row
+  return { row, scope: authorized.scope, actingRole: authorized.actingRole }
+}
+
+/** The facts of a session a notice compares (REQ-A09), read before a write changes them. */
+function sessionFacts(row: Occurrence): SessionFacts {
+  return {
+    status: row.status,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    placeId: row.placeId,
+    venueName: row.venueName ?? null,
+    venueAddress: row.venueAddress ?? null,
+    gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+  }
+}
+
+/**
+ * `activities.occurrence.updated` after commit (REQ-A09, #271): the ids, and for an announced change (a move, its undo,
+ * a restore) the `change` with the values before it, who made it and in which role, and the version it wrote — the
+ * key of the notices. An event without `change` (a coach or deadline change, the `needs_reschedule` flag) is silent.
+ */
+function emitSessionUpdated(
+  row: Occurrence,
+  change: SessionChange | null,
+  actor: { userId: string | null; personId: string | null; actingRole: string },
+): Promise<void> {
+  return emitAfterCommit(
+    'activities.occurrence.updated',
+    { tenantId: row.tenantId, organizationId: row.organizationId },
+    {
+      id: row.id,
+      activityId: row.activityId,
+      groupId: row.groupId,
+      ...(change ? { change } : {}),
+      actorUserId: actor.userId,
+      actorPersonId: actor.personId,
+      actingRole: actor.actingRole,
+      updatedAt: row.updatedAt.toISOString(),
+    },
+  )
 }
 
 /** The session's place tree and coach must stay free for its (new) time — 409 with the list otherwise. */
@@ -282,6 +325,7 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       })
       if (!confirmBy.ok) return activitiesErrors.throw(confirmBy.code)
       const before = occurrenceSnapshot(row)
+      const beforeFacts = sessionFacts(row)
       row.startAt = startAt
       row.endAt = endAt
       row.placeId = chosen.location.placeId
@@ -294,15 +338,21 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       row.needsReschedule = false
       row.updatedAt = new Date()
       await assertSessionFits(ctx, em, row)
-      return { entity: row, actingRole: authorized.actingRole, before }
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        change: sessionChangeOf(beforeFacts, sessionFacts(row), row.updatedAt),
+        actorPersonId: selfPersonId(authorized.scope),
+      }
     })
     const row = result.entity
-    await emitAfterCommit(
-      'activities.occurrence.updated',
-      { tenantId: row.tenantId, organizationId: row.organizationId },
-      { id: row.id, activityId: row.activityId },
-    )
-    return result
+    await emitSessionUpdated(row, result.change, {
+      userId: ctx.auth?.sub ?? null,
+      personId: result.actorPersonId,
+      actingRole: result.actingRole,
+    })
+    return { entity: row, actingRole: result.actingRole, before: result.before, change: result.change }
   },
   buildLog: ({ result }) =>
     activitiesLog({
@@ -319,17 +369,19 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as OccurrenceSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing session snapshot for undo')
-    const row = await authorizeSessionEditReplay(ctx, before.id)
+    const { row, scope, actingRole } = await authorizeSessionEditReplay(ctx, before.id)
     const em = ctx.transactionalEm as EntityManager
+    const beforeFacts = sessionFacts(row)
     restoreOccurrence(row, before)
     row.updatedAt = new Date()
     await assertSessionFits(ctx, em, row)
     await em.flush()
-    await emitAfterCommit(
-      'activities.occurrence.updated',
-      { tenantId: row.tenantId, organizationId: row.organizationId },
-      { id: row.id, activityId: row.activityId },
-    )
+    // A move back by undo is a move and is announced again (J-A03 step 5).
+    await emitSessionUpdated(row, sessionChangeOf(beforeFacts, sessionFacts(row), row.updatedAt), {
+      userId: ctx.auth?.sub ?? null,
+      personId: selfPersonId(scope),
+      actingRole,
+    })
   },
 }
 
@@ -456,7 +508,7 @@ const RESTORE_KINDS: readonly GrantKind[] = ['club_admin']
  * `activities.occurrences.restore` (REQ-A05 of the groups and activities parity spec, #268): a cancelled session
  * becomes `planned` again with the administrator's reason (3–500 characters, kept in the audit log), only while its end
  * is in the future (409 `occurrence_already_ended`), and only when the place tree and the coach are still free (409 with
- * the list). Another status answers 409 `occurrence_not_cancelled`. The notice of a restore arrives with E10-S06.
+ * the list). Another status answers 409 `occurrence_not_cancelled`. A restore is announced as a session change (#271).
  */
 const restoreOccurrenceCommand: CommandHandler<
   Record<string, unknown>,
@@ -482,19 +534,34 @@ const restoreOccurrenceCommand: CommandHandler<
       }
       await assertTransition(sessionTransitions, row.status, 'planned')
       const before = occurrenceSnapshot(row)
+      const beforeFacts = sessionFacts(row)
       row.status = 'planned'
       row.cancelReason = null
       row.updatedAt = new Date()
       await assertSessionFits(ctx, em, row)
-      return { entity: row, actingRole: authorized.actingRole, before, reason: authorized.parsed.reason }
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        reason: authorized.parsed.reason,
+        change: sessionChangeOf(beforeFacts, sessionFacts(row), row.updatedAt),
+        actorPersonId: selfPersonId(authorized.scope),
+      }
     })
     const row = result.entity
-    await emitAfterCommit(
-      'activities.occurrence.updated',
-      { tenantId: row.tenantId, organizationId: row.organizationId },
-      { id: row.id, activityId: row.activityId },
-    )
-    return result
+    // REQ-A09: a restore is announced — the session takes place after all (TEST-A07).
+    await emitSessionUpdated(row, result.change, {
+      userId: ctx.auth?.sub ?? null,
+      personId: result.actorPersonId,
+      actingRole: result.actingRole,
+    })
+    return {
+      entity: row,
+      actingRole: result.actingRole,
+      before: result.before,
+      reason: result.reason,
+      change: result.change,
+    }
   },
   buildLog: ({ result }) =>
     activitiesLog({

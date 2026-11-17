@@ -101,6 +101,11 @@ export const threadMessageSchema = z.object({
   editedAt: z.string().nullable(),
   deleted: z.boolean(),
   system: z.boolean(),
+  kind: z
+    .enum(['message', 'cancellation', 'reschedule'])
+    .describe(
+      '`cancellation`: the notice of a cancelled session; `reschedule`: the notice of a moved, restored or re-planned session, whose body is the whole notice (REQ-A09)',
+    ),
   recipientCount: z.number(),
   hasDeliveries: z.boolean(),
   canDelete: z

@@ -22,6 +22,8 @@ import { storedVenue } from '../../../lib/venue'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
 import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
+import { countMoveNotified } from '../../../services/session-notice'
+import { selfPersonId } from '../../../commands/shared'
 import {
   SCHEDULE_READ_KINDS,
   conflictErrorSchema,
@@ -39,6 +41,16 @@ export const metadata = {
 }
 
 const paramsSchema = z.object({ id: z.uuid() })
+
+const moveResponseSchema = updateResponseSchema.extend({
+  notified: z
+    .number()
+    .int()
+    .min(0)
+    .describe(
+      'How many people the move tells (in the app or by e-mail), without the person who moved it; 0 when nothing is announced (a coach or deadline change alone).',
+    ),
+})
 
 const detailSchema = occurrenceListItemSchema.extend({
   sectionName: z.string().nullable(),
@@ -175,11 +187,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       input: { ...(typeof body === 'object' && body !== null ? body : {}), id },
       ctx,
     })
+    // REQ-A09 (#271): the toast names how many people the move tells; the session is already moved, so a failed count
+    // answers 0 instead of turning the success into an error.
+    const scope = trustedScopeOf(ctx)
+    const notified =
+      scope && result.change
+        ? await countMoveNotified(ctx.container, scope, id, {
+            personId: selfPersonId(await scopeContract.resolve(ctx)),
+            actingRole: result.actingRole,
+          }).catch(() => 0)
+        : 0
     return Response.json({
       ok: true,
       id: result.entity.id,
       updatedAt: result.entity.updatedAt.toISOString(),
       actingRole: result.actingRole,
+      notified,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.occurrences.update')
@@ -203,9 +226,9 @@ export const openApi: OpenApiRouteDoc = {
     PATCH: {
       summary: 'Move or re-staff one session',
       description:
-        'Changes the instants, place or typed venue, coach, gathering time or deadline of one planned session and detaches it from its series, so a later series change leaves it as it is. A `placeId` replaces a typed venue and a `venue` a club place (REQ-A08); a venue only for the session of a one-off event. A coordinator or the club administrator edits any session in scope; a coach of the group only the session of a one-off event (DD-A05). Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        'Changes the instants, place or typed venue, coach, gathering time or deadline of one planned session and detaches it from its series, so a later series change leaves it as it is. A `placeId` replaces a typed venue and a `venue` a club place (REQ-A08); a venue only for the session of a one-off event. A coordinator or the club administrator edits any session in scope; a coach of the group only the session of a one-off event (DD-A05). A change of the time, the place or venue or the gathering time of a future session is announced in the app, in the session thread and by e-mail (REQ-A09); `notified` counts the people it tells, without the mover. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: occurrenceUpdateSchema.omit({ id: true }) },
-      responses: [{ status: 200, description: 'The moved session', schema: updateResponseSchema }],
+      responses: [{ status: 200, description: 'The moved session', schema: moveResponseSchema }],
       errors: [
         {
           status: 403,

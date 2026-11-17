@@ -25,10 +25,12 @@ export function shareTextPath(
 
 /**
  * The i18n key of the share text line for a session in `status` (a done session reads like a planned one); a session
- * with a gathering time names it (DD-43).
+ * with a gathering time names it (DD-43). A planned session whose thread last announced a move says it moved and names
+ * its place (REQ-A09, #271).
  */
-export function shareTextKey(status: OccurrenceStatus, hasGathering = false): string {
-  const base = status === 'cancelled' ? 'activities.shareText.cancelled' : 'activities.shareText.planned'
+export function shareTextKey(status: OccurrenceStatus, hasGathering = false, moved = false): string {
+  const kind = status === 'cancelled' ? 'cancelled' : moved && status === 'planned' ? 'moved' : 'planned'
+  const base = `activities.shareText.${kind}`
   return hasGathering ? `${base}WithGathering` : base
 }
 
