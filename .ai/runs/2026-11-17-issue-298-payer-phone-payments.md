@@ -26,6 +26,10 @@
 - `yarn generate`: pass. `yarn typecheck`: pass.
 - `yarn test:integration:vereino --filter TEST-C11`: run 1 failed on the test — `expect(locator).toContainText(expected) failed … unexpected value "Strój akademii 2026/27do 1.12Zamówienie — zamów dla dziecka"` (the card was right; the test passed an anchored `exact` pattern to `toContainText`); run 2: 1 passed (1.8m).
 
+- `yarn test:integration:vereino --filter E07-S03`: 1 passed (1.9m).
+- `yarn verify`: all 17 steps passed.
+- Lesson `qa-ui-texts-from-catalogs`: the anchored `exact` pattern in `toContainText` cost a run a second time (#279, #298), so the rule moved into `AGENTS.md` → Validation.
+
 ## Open problems / next steps
 
 - UI QA of M-08 in both locales, light and dark, at 375 px (exit gate), then tick AC-C10.
