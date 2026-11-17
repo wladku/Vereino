@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { FIELD_OF_ISSUE, FieldIssues, issuesByField } from './RentalDialog'
+import { FIELD_OF_ISSUE, FieldIssues, issuesByField } from './rental-issues'
 import { QuotePanel } from './RentalQuotePanel'
 import { codedMessage, errorMessage, instantLabel, minorToAmount, type Translate } from './facilities-client'
 import {

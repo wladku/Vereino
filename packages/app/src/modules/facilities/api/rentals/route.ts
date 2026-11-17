@@ -148,7 +148,7 @@ export const openApi = buildOpenApi({
     schema: rentalCreateSchema,
     responseSchema: createResponseSchema,
     description:
-      'Enters an external rental taken by phone, e-mail or in person (club administrator): 1–4 units of 90 minutes in a `reservable_paid` zone of the place, free of sessions, other rentals and closures, for a renter without an active entry ban; stored as `requested` with the amount from the rate and the payment and free-cancellation deadlines (with `payments`, the charge in the same transaction). Errors: 400 invalid input, 403 `scope_denied`, 409 `zone_not_reservable` / `rental_conflict` (with `conflicts`) / `place_closed` / `entry_ban_active`, 422 `rental_units_invalid` / `rental_rate_missing` / `rental_renter_invalid` / `facilities_reference_invalid`.',
+      'Enters an external rental taken by phone, e-mail or in person (club administrator): 1–4 units of 90 minutes in a `reservable_paid` zone of the place, free of sessions, other rentals and closures, for a renter without an active entry ban; stored as `requested` with the amount from the rate and the payment and free-cancellation deadlines (with `payments`, the charge in the same transaction). Errors: 400 invalid input, 403 `scope_denied`, 409 `zone_not_reservable` / `rental_conflict` (with `conflicts`, each with its place and the label staff see: the activity, the renter, the booking purpose and booker, the closure reason) / `place_closed` / `entry_ban_active`, 422 `rental_units_invalid` / `rental_rate_missing` / `rental_renter_invalid` / `facilities_reference_invalid`.',
   },
   update: {
     schema: rentalUpdateSchema,

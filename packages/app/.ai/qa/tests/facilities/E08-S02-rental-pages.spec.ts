@@ -89,16 +89,16 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expect(cancelDialog).toBeHidden()
     await expect.poll(async () => (await listRentals(request, admin, '&status=cancelled_late')).length).toBe(1)
 
-    // B-23: "New rental" from a free hour of next week's Thursday on the day axis, the live quote, save.
+    // B-23: a rental from a free hour of next week's Thursday on the day axis (the slot dialog, #277), the live
+    // quote, save.
     const enteredDate = nextWeekday(addDays(calendarDate(), 7), 'TH')
     await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${enteredDate}`)
     await page.waitForLoadState('networkidle')
     await page.locator('[data-testid^="facilities-axis-hour-"]').first().click()
-    const dialog = page.getByTestId('facilities-rental-dialog')
+    const dialog = page.getByTestId('facilities-slot-dialog')
     await expect(dialog).toBeVisible()
-    await dialog.getByTestId('facilities-rental-date').fill(enteredDate)
-    await dialog.getByTestId('facilities-rental-time').fill('08:00')
-    await dialog.getByTestId('facilities-rental-renter-type').getByText('Unregistered').click()
+    await dialog.getByTestId('facilities-slot-start').fill('08:00')
+    await dialog.getByTestId('facilities-slot-renter-mode').click()
     await dialog.getByTestId('facilities-rental-renter-name').fill('Drużyna Firmowa')
     await dialog.getByTestId('facilities-rental-category').click()
     await page.getByRole('option', { name: 'Municipal club', exact: true }).click()
@@ -108,7 +108,7 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expect(dialog.getByTestId('facilities-rental-quote-amount')).toContainText('180')
     await expect(dialog.getByTestId('facilities-rental-quote-payment-deadline')).not.toBeEmpty()
     await expect(dialog.getByTestId('facilities-rental-quote-cancellation-deadline')).not.toBeEmpty()
-    await dialog.getByTestId('facilities-rental-save').click()
+    await dialog.getByTestId('facilities-slot-submit').click()
     await expect(dialog).toBeHidden()
     const entered = (await listRentals(request, admin, '&tab=active')).find(
       (rental) => rental.renterDisplayName === 'Drużyna Firmowa',
