@@ -79,6 +79,9 @@ export type CalendarEntry = {
     startAt: string
     endAt: string
     gatheringAt?: string | null
+    /** The declaration deadline (REQ-A07); null unless the session is of a `confirm` kind with a deadline. */
+    confirmBy?: string | null
+    deadlinePassed?: boolean
     placeId: string
     placeName: string | null
     placeAddress: string | null
@@ -640,6 +643,7 @@ export type AttendanceList = CodedBody & {
   occurrence?: { id: string; status: string; updatedAt: string; startAt: string; coachPersonId: string | null }
   declarationKind?: 'absence_only' | 'confirm'
   summary?: CalendarSummary
+  unansweredCount?: number
   checkOff?: 'open' | 'not_started' | 'not_planned'
   actingRole?: string
   timeZone?: string

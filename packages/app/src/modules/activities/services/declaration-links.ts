@@ -33,7 +33,7 @@ import {
   reminderOwners,
 } from '../lib/declaration-links'
 import { declarationWindow, type Declared, type DeclarationStatus } from '../lib/policy'
-import { MAX_CONFIRM_BY_MINUTES, confirmByAt, reminderDue } from '../lib/confirm-by'
+import { MAX_CONFIRM_BY_MINUTES, confirmByAt, confirmByIso, reminderDue } from '../lib/confirm-by'
 import type { OccurrenceStatus } from '../lib/activities-rules'
 import {
   activeGuardians,
@@ -140,6 +140,9 @@ async function sendLinkEmail(container: AwilixContainer, mail: LinkEmail): Promi
             endAt: mail.occurrence.endAt.toISOString(),
             timeZone: mail.timeZone,
             reminder: mail.reminder,
+            confirmBy: mail.reminder
+              ? confirmByIso(mail.occurrence.startAt, mail.occurrence.confirmByMinutesBefore)
+              : null,
           },
           recipients: [recipient],
           source: { module: 'activities', type: 'activities:declaration_token', id: link.id },

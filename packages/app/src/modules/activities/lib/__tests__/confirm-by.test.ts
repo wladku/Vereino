@@ -8,12 +8,13 @@ import {
   deadlineReached,
   deadlineRefuses,
   effectiveConfirmByMinutes,
+  formatDeadline,
   listRank,
   nextConfirmByMinutes,
   reminderDue,
 } from '../confirm-by'
 
-// A match on Saturday 15.11 at 10:00 UTC with "confirm by Thursday 12:00" (1 day and 22 hours before).
+// A match on Sunday 15.11 at 10:00 UTC with "confirm by Friday 12:00" (1 day and 22 hours before).
 const START = new Date('2026-11-15T10:00:00Z')
 const OFFSET = 1440 + 22 * 60
 const DEADLINE = new Date('2026-11-13T12:00:00Z')
@@ -155,6 +156,13 @@ describe('a member declaration after the deadline', () => {
     expect(deadlineRefuses({ ...base, actingRole: 'coach' })).toBe(false)
     expect(deadlineRefuses({ ...base, actingRole: 'club_admin' })).toBe(false)
     expect(deadlineRefuses({ ...base, actingRole: 'guardian', kind: 'absence_only' })).toBe(false)
+  })
+})
+
+describe('the deadline as cards write it', () => {
+  it('names the weekday, the day and month and the club-zone time', () => {
+    expect(formatDeadline(DEADLINE, 'en-GB', 'Europe/Warsaw')).toBe('Fri 13.11, 13:00')
+    expect(formatDeadline(DEADLINE, 'pl', 'UTC')).toBe('pt. 13.11, 12:00')
   })
 })
 

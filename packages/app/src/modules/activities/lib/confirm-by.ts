@@ -50,6 +50,19 @@ export function listRank(expectation: string, unansweredFirst: boolean): number 
   return unansweredFirst && expectation === 'unanswered' ? 0 : 1
 }
 
+/**
+ * A deadline as the cards write it, in the club zone with a 24-hour clock: the short weekday, `dd.MM` and `HH:mm` —
+ * "Thu 13.11, 12:00" / "czw. 13.11, 12:00" (REQ-A07, M-02).
+ */
+export function formatDeadline(at: Date, locale: string, timeZone: string): string {
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(at)
+  const day = part({ day: '2-digit' })
+  const month = part({ month: '2-digit' })
+  const time = part({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return `${part({ weekday: 'short' })} ${day}.${month}, ${time}`
+}
+
 export type ConfirmByError =
   'occurrence_confirm_by_after_start' | 'occurrence_confirm_by_too_early' | 'occurrence_confirm_by_in_past'
 

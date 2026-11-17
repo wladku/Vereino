@@ -24,6 +24,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
+import { formatDeadline } from '../../lib/confirm-by'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CoachSessionBlock } from './CoachSessionBlock'
 import {
@@ -273,6 +274,22 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
         ] satisfies Array<[string, React.ReactNode]>)
       : []),
     [t('activities.club.session.time'), formatTimeRange(startsAt, new Date(occurrence.endAt), locale, entry.timeZone)],
+    // REQ-A07 (M-04): the declaration deadline of a `confirm` session, and once it passed, that it did.
+    ...(occurrence.confirmBy && occurrence.status === 'planned' && entry.declarationsOpen
+      ? ([
+          [
+            occurrence.deadlinePassed ? t('activities.deadline.over') : t('activities.deadline.label'),
+            <span
+              key="deadline"
+              className={occurrence.deadlinePassed ? 'font-semibold' : undefined}
+              data-testid="club-session-deadline"
+              data-passed={occurrence.deadlinePassed ? 'true' : 'false'}
+            >
+              {formatDeadline(new Date(occurrence.confirmBy), locale, entry.timeZone)}
+            </span>,
+          ],
+        ] satisfies Array<[string, React.ReactNode]>)
+      : []),
     [t('activities.club.session.group'), [occurrence.groupName, occurrence.sectionName].filter(Boolean).join(' · ')],
     [
       t('activities.club.session.place'),
@@ -379,6 +396,13 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
           <h2 id="club-session-declarations" className="text-lg font-semibold">
             {t('activities.club.session.declarations')}
           </h2>
+          {occurrence.deadlinePassed && entry.declarationsOpen ? (
+            <Alert status="information" data-testid="club-session-deadline-passed">
+              <p className="max-w-prose">
+                {t(as === 'self' ? 'activities.deadline.passedHintSelf' : 'activities.deadline.passedHint')}
+              </p>
+            </Alert>
+          ) : null}
           <ul className="flex flex-col gap-3">
             {entry.persons.map((person) => (
               <PersonDeclaration

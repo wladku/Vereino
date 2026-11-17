@@ -42,6 +42,7 @@ import {
   windowContains,
   type CalendarView,
 } from '../../lib/member-calendar'
+import { formatDeadline } from '../../lib/confirm-by'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import {
   CALENDAR_QUERY_KEY,
@@ -135,8 +136,8 @@ function Calendar({ profile }: { profile: ClubProfile }) {
       mergeCalendarEntries([
         memberAs ? (memberQuery.data?.items ?? []).map((entry) => ({ entry, as: memberAs })) : [],
         coaching ? (coachQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coach' as const })) : [],
-      ]).map(({ entry, as }) => toCalendarItem(entry, as, t)),
-    [memberQuery.data, coachQuery.data, memberAs, coaching, t],
+      ]).map(({ entry, as }) => toCalendarItem(entry, as, t, (at) => formatDeadline(at, locale, timeZone))),
+    [memberQuery.data, coachQuery.data, memberAs, coaching, t, locale, timeZone],
   )
   const days = React.useMemo(() => groupCalendarItemsByDay(items, timeZone), [items, timeZone])
 

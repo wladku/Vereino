@@ -38,6 +38,7 @@ import {
   unmarkedPersonIds,
 } from '../../lib/attendance-sheet'
 import { needsCoach } from '../../lib/activities-rules'
+import { formatDeadline } from '../../lib/confirm-by'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CancelSessionDialog } from './CoachSessionBlock'
 import { GuardianContacts } from './GuardianContacts'
@@ -370,6 +371,20 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
       <p className="text-base font-semibold" data-testid="club-attendance-summary">
         {summaryLine(t, list.summary)}
       </p>
+      {/* REQ-A07 (M-05): the deadline, and once it passed how many have not answered — listed first. */}
+      {occurrence.confirmBy && occurrence.status === 'planned' && list.checkOff === 'not_started' ? (
+        <p
+          className="text-sm"
+          data-testid="club-attendance-deadline"
+          data-passed={occurrence.deadlinePassed ? 'true' : 'false'}
+        >
+          {occurrence.deadlinePassed
+            ? t('activities.deadline.unansweredFirst', { count: list.unansweredCount ?? list.summary.unanswered })
+            : t('activities.deadline.confirmBy', {
+                at: formatDeadline(new Date(occurrence.confirmBy), locale, list.timeZone),
+              })}
+        </p>
+      ) : null}
       {occurrence.status === 'cancelled' ? (
         <Alert status="error" data-testid="club-attendance-cancelled">
           <p className="max-w-prose">

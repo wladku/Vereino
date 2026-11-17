@@ -1,13 +1,16 @@
 // The e-mail template of `activities` (foundation III P-31; club spec REQ-017, *Events, Jobs* row
 // `activities:send-declaration-reminders`): the personal declaration link, sent on request from `/club/link` and as the
-// evening reminder for tomorrow's sessions. `optOut: 'never'` (a requested link and a reminder of a session the person
-// takes part in). The raw token reaches the template only through the delivery's secret (`ctx.secrets.token`, DD-M04)
-// and becomes the button's link; it is never a param. On the dispatch worker's import graph, so it imports no `.tsx`
-// and nothing of `@vereino/ui` (lesson `worker-runtime-imports-and-notification-strategies`).
+// evening reminder for tomorrow's sessions, or for a session with a declaration deadline on the evening before the
+// deadline's day (REQ-A07), which then names the deadline. `optOut: 'never'` (a requested link and a reminder of a
+// session the person takes part in). The raw token reaches the template only through the delivery's secret
+// (`ctx.secrets.token`, DD-M04) and becomes the button's link; it is never a param. On the dispatch worker's import
+// graph, so it imports no `.tsx` and nothing of `@vereino/ui` (lesson
+// `worker-runtime-imports-and-notification-strategies`).
 import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { defineEmailTemplate } from '@/modules/foundation'
+import { formatDeadline } from '../lib/confirm-by'
 import { declarationLinkPath, sessionWhenLabel } from '../lib/declaration-links'
 
 const h = React.createElement
@@ -20,6 +23,8 @@ const declarationLinkParams = z
     endAt: z.iso.datetime(),
     timeZone: z.string().min(1).max(64),
     reminder: z.boolean(),
+    /** The declaration deadline a reminder names (REQ-A07); absent in deliveries queued before it. */
+    confirmBy: z.iso.datetime().nullable().optional(),
   })
   .strict()
 
@@ -28,6 +33,24 @@ export type DeclarationLinkParams = z.output<typeof declarationLinkParams>
 function lines(t: TranslateWithFallbackFn, params: DeclarationLinkParams, locale: string) {
   const when = sessionWhenLabel(new Date(params.startAt), new Date(params.endAt), locale, params.timeZone)
   const values = { activity: params.activityName, date: when.date, time: when.time }
+  if (params.reminder && params.confirmBy) {
+    const deadline = formatDeadline(new Date(params.confirmBy), locale, params.timeZone)
+    return {
+      subject: t('activities.email.declarationLink.deadlineSubject', 'Confirm by {deadline}: {activity}, {date}', {
+        ...values,
+        deadline,
+      }),
+      lead: t(
+        'activities.email.declarationLink.deadlineLead',
+        '{activity} on {date}, {time}. Please answer by {deadline}; after that only the coach can change the answer.',
+        { ...values, deadline },
+      ),
+      hint: t(
+        'activities.email.declarationLink.hint',
+        'Open the link to declare attendance without signing in. The link is personal — do not forward it; it works until the session ends.',
+      ),
+    }
+  }
   return {
     subject: params.reminder
       ? t(

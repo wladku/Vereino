@@ -163,7 +163,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 409,
           description:
-            'declaration_closed, occurrence_not_planned, optimistic_lock_conflict, declaration_deadline_passed (after the deadline of a `confirm` session, with `details.confirmBy`)',
+            'declaration_closed, occurrence_not_planned, optimistic_lock_conflict, declaration_deadline_passed (after the deadline of a `confirm` session, with `confirmBy` in the body)',
           schema: errorSchema,
         },
         { status: 422, description: 'declaration_kind_absence_only, declaration_not_participant', schema: errorSchema },
