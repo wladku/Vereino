@@ -100,9 +100,9 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
   await choice.click()
 }
 
-/** Picks a person in a `LookupSelect` (searched by last name) inside `scope`, as in the J-001 test. */
-async function lookupPerson(scope: Locator, lastName: string, fullName: string): Promise<void> {
-  await scope.getByPlaceholder(uiText('club_core.coordinators.fields.person.search')).fill(lastName)
+/** Picks a person in a `LookupSelect` (searched by last name) inside `scope`, as in the J-001 test; `search` is that picker's placeholder. */
+async function lookupPerson(scope: Locator, search: RegExp, lastName: string, fullName: string): Promise<void> {
+  await scope.getByPlaceholder(search).fill(lastName)
   await scope.getByRole('option', { name: new RegExp(fullName) }).click()
   await expect(scope.getByRole('option', { name: new RegExp(fullName) })).toHaveAttribute('aria-selected', 'true')
 }
@@ -176,7 +176,7 @@ async function saveActivityWizard(page: Page): Promise<string> {
 /** Adds a person to the roster of the open group record (`RosterPanel`) with a role. */
 async function addToRoster(page: Page, person: { lastName: string; fullName: string }, role: RegExp): Promise<void> {
   const form = page.getByRole('form', { name: ADD_TO_GROUP })
-  await lookupPerson(form, person.lastName, person.fullName)
+  await lookupPerson(form, uiText('groups.memberships.fields.person.search'), person.lastName, person.fullName)
   await form.locator('#groups-membership-role').click()
   await page.getByRole('option', { name: role }).click()
   await form.getByRole('button', { name: ADD_TO_GROUP }).click()
@@ -450,7 +450,10 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await page.locator('[data-crud-field-id="name"] input').fill(POOL_GROUP)
       await chooseCrudOption(page, 'kind', uiText('groups.groups.kind.class_group'))
       await chooseCrudOption(page, 'sectionId', /^Basen$/)
-      await page.getByRole('button', { name: CREATE }).first().click()
+      await page
+        .getByRole('button', { name: uiText('groups.common.create', { exact: true }) })
+        .first()
+        .click()
       await expect(page).toHaveURL(/\/backend\/groups\/groups\/[0-9a-f-]{36}$/)
       await expect(page.getByRole('heading', { level: 1, name: POOL_GROUP })).toBeVisible()
       poolGroupId = page.url().split('/').pop() as string

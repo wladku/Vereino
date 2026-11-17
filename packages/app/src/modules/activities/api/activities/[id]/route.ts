@@ -10,6 +10,7 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
+import { storedVenue } from '../../../lib/venue'
 import { findActivity, nameMaps } from '../../../services/read'
 import { SCHEDULE_READ_KINDS, activityListItemSchema, errorSchema } from '../../shared'
 
@@ -39,7 +40,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const names = await nameMaps(ctx.container, scope, {
       groupIds: [row.groupId],
       sectionIds: [row.sectionId],
-      placeIds: [row.defaultPlaceId],
+      placeIds: row.defaultPlaceId ? [row.defaultPlaceId] : [],
       personIds: row.defaultCoachPersonId ? [row.defaultCoachPersonId] : [],
     })
     return Response.json({
@@ -51,7 +52,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       name: row.name,
       type: row.type,
       placeId: row.defaultPlaceId,
-      placeName: names.places.get(row.defaultPlaceId) ?? null,
+      placeName: row.defaultPlaceId ? (names.places.get(row.defaultPlaceId) ?? null) : (row.venueName ?? null),
+      venue: storedVenue(row),
       coachPersonId: row.defaultCoachPersonId ?? null,
       coachName: row.defaultCoachPersonId ? (names.persons.get(row.defaultCoachPersonId) ?? null) : null,
       opponentExternalTeamId: row.opponentExternalTeamId ?? null,

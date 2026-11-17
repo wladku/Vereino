@@ -1,6 +1,6 @@
 // `/api/groups/groups` — groups of both kinds (club spec API table, REQ-004, TEST-030): the list is filtered by the
 // record scope (`scopeWhere`: the coach's groups, the coordinator's sections, the club administrator's club) and by
-// section, kind, season, age category (#92) and status, and adds the section, season and age category names, the
+// section, kind, season, age category (#92), status and public visibility (`isPublic`, #266), and adds the section, season and age category names, the
 // coaches and the number of active participants (E06-S08 #90); create, update and delete run the `groups` commands (a coordinator of another section
 // → 403, team fields on a class group → 422, a group with memberships → 409 on delete).
 import { z } from 'zod'
@@ -122,6 +122,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (query.seasonId) business.season_id = query.seasonId
       if (query.ageCategoryEntryId) business.age_category_entry_id = query.ageCategoryEntryId
       if (query.isActive) business.is_active = query.isActive === 'true'
+      if (query.isPublic) business.is_public = query.isPublic === 'true'
       return { $and: [scopeWhere(scope, GROUP_READ_KINDS, GROUP_LIST_COLUMNS), business] } as Where
     },
     transformItem: groupListItem,
@@ -170,7 +171,7 @@ export const openApi = buildOpenApi({
     schema: groupUpdateSchema,
     responseSchema: updateResponseSchema,
     description:
-      'Changes a group; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Moving it to another section needs the scope of both sections. The age range is checked on the merged values. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`, `group_age_range_inverted` (field `ageTo`).',
+      'Changes a group; send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Moving it to another section needs the scope of both sections. The age range is checked on the merged values. Errors: 403 `scope_denied`, 404, 409 `optimistic_lock_conflict`, 409 `group_has_matches` (a team with live `match` or `sparring` activities cannot become a `class_group`; `details.total`, field `kind`), 422 `group_team_fields_on_class_group`, `groups_reference_invalid`, `group_section_inactive`, `group_age_range_inverted` (field `ageTo`), 503 `group_usage_failed`.',
   },
   del: {
     schema: groupDeleteSchema,

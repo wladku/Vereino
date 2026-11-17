@@ -23,6 +23,11 @@ export const errorCodes = [
   { code: 'activity_no_sessions', status: 422, messageKey: 'activities.errors.activity_no_sessions' },
   { code: 'activities_reference_invalid', status: 422, messageKey: 'activities.errors.activities_reference_invalid' },
   { code: 'activity_group_inactive', status: 422, messageKey: 'activities.errors.activity_group_inactive' },
+  // A typed venue (REQ-A08, #270): a club place or a typed venue, exactly one; a venue only on a one-off activity.
+  { code: 'venue_or_place_required', status: 422, messageKey: 'activities.errors.venue_or_place_required' },
+  { code: 'venue_requires_one_off', status: 422, messageKey: 'activities.errors.venue_requires_one_off' },
+  // A coach edits only the sessions of one-off events of the groups they coach, never a session of a series (DD-A05).
+  { code: 'coach_edit_series_session', status: 403, messageKey: 'activities.errors.coach_edit_series_session' },
   // The gathering time of a session (DD-43, #136).
   {
     code: 'occurrence_gathering_after_start',

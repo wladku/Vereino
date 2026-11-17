@@ -50,6 +50,8 @@ export const { metadata, GET } = makeCrudRoute({
       'start_at',
       'end_at',
       'place_id',
+      'venue_name',
+      'venue_address',
       'coach_person_id',
       'status',
       'cancel_reason',

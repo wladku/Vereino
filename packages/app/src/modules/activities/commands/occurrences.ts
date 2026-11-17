@@ -2,7 +2,9 @@
 // cancellation*, *Session conflict*; DD-10; foundation II DD-G03, DD-G04; #31):
 // - moving or re-staffing one planned session detaches it from its series (`is_detached`), so a later series change
 //   never touches it; the move is refused when it overbooks the place tree or the coach (409 with the list) — by the
-//   coordinator of the session's section or the club administrator;
+//   coordinator of the session's section or the club administrator, and by a coach of the group for the session of a
+//   one-off event (REQ-A08, DD-A05; a session of a series answers 403 `coach_edit_series_session`). The session of a
+//   one-off event may move to a typed venue and back (422 `venue_requires_one_off` for a series session);
 // - cancelling a planned session with a reason (`planned → cancelled`; a cancelled or done session answers 409
 //   `invalid_transition`) — also by a coach of the session's group; `activities.occurrence.cancelled` after commit
 //   sends the in-app notice (`subscribers/notify-occurrence-cancelled.ts`). Where the club setting `coach_may_cancel`
@@ -23,6 +25,7 @@ import { permittedCancelRole, sessionTransitions, type OccurrenceStatus } from '
 import { attendanceSettings, coachMayCancel } from '../services/directory'
 import { nextConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringOffset } from '../lib/gathering'
+import { chooseLocation, storedVenue } from '../lib/venue'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import {
   COACH_KINDS,
@@ -47,7 +50,11 @@ export type OccurrenceSnapshot = {
   occurrenceDate: string
   startAt: string
   endAt: string
-  placeId: string
+  /** Null at a typed venue (REQ-A08). */
+  placeId: string | null
+  /** Absent in a snapshot written before REQ-A08 (#270): a club place, no venue. */
+  venueName?: string | null
+  venueAddress?: string | null
   coachPersonId: string | null
   status: OccurrenceStatus
   cancelReason: string | null
@@ -70,6 +77,8 @@ export function occurrenceSnapshot(row: Occurrence): OccurrenceSnapshot {
     startAt: row.startAt.toISOString(),
     endAt: row.endAt.toISOString(),
     placeId: row.placeId,
+    venueName: row.venueName ?? null,
+    venueAddress: row.venueAddress ?? null,
     coachPersonId: row.coachPersonId ?? null,
     status: row.status,
     cancelReason: row.cancelReason ?? null,
@@ -84,6 +93,8 @@ function restoreOccurrence(row: Occurrence, before: OccurrenceSnapshot): void {
   row.startAt = new Date(before.startAt)
   row.endAt = new Date(before.endAt)
   row.placeId = before.placeId
+  row.venueName = before.venueName ?? null
+  row.venueAddress = before.venueAddress ?? null
   row.coachPersonId = before.coachPersonId
   row.status = before.status
   row.cancelReason = before.cancelReason
@@ -131,12 +142,70 @@ async function authorizeOccurrenceReplay(
   return authorized.entity as Occurrence
 }
 
-/** Whether the session's declaration kind is `confirm` (the club setting for its activity type, D-026). */
-async function confirmKind(ctx: CommandRuntimeContext, em: EntityManager, row: Occurrence): Promise<boolean> {
+type SessionActivity = Pick<Activity, 'type' | 'recurrenceRule'>
+
+/** The session's activity: its type (the declaration kind) and whether it is a one-off event (no rule). */
+async function sessionActivity(em: EntityManager, row: Occurrence): Promise<SessionActivity> {
   const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
-  const activity = await em.findOne(Activity, { id: row.activityId, ...scope }, { fields: ['id', 'type'] })
-  const settings = await attendanceSettings(ctx.container, scope)
-  return (settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm') === 'confirm'
+  const activity = await em.findOne(
+    Activity,
+    { id: row.activityId, ...scope },
+    { fields: ['id', 'type', 'recurrenceRule'] },
+  )
+  return { type: activity?.type ?? 'other', recurrenceRule: activity?.recurrenceRule ?? null }
+}
+
+/** Whether the session's declaration kind is `confirm` (the club setting for its activity type, D-026). */
+async function confirmKind(ctx: CommandRuntimeContext, row: Occurrence, activity: SessionActivity): Promise<boolean> {
+  const settings = await attendanceSettings(ctx.container, {
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+  })
+  return (settings.declarationKinds[activity.type] ?? 'confirm') === 'confirm'
+}
+
+/**
+ * DD-A05: a caller who edits a session only as a coach of its group (no coordinator or administrator grant on it) edits
+ * the session of a one-off event, never one of a series — 403 `coach_edit_series_session`.
+ */
+async function assertCoachMayEdit(grants: Scope, row: Occurrence, activity: SessionActivity): Promise<void> {
+  if (!mayEditSession(grants, row, Boolean(activity.recurrenceRule))) {
+    await activitiesErrors.throw('coach_edit_series_session')
+  }
+}
+
+/**
+ * Whether `grants` may edit the session (DD-A05), as the update command decides it: a coordinator or the club
+ * administrator any session in scope, a coach of its group only the session of a one-off event. For the reads that
+ * offer "Edit" (M-04).
+ */
+export function mayEditSession(
+  grants: Scope,
+  row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
+  recurring: boolean,
+): boolean {
+  const target = scheduleTarget(row, row.id)
+  if (findActingRole(grants, PLAN_KINDS, target)) return true
+  return !recurring && findActingRole(grants, COACH_KINDS, target) !== null
+}
+
+/** The undo of a session edit is authorized like the edit: a coach only for the session of a one-off event. */
+async function authorizeSessionEditReplay(
+  ctx: CommandRuntimeContext,
+  id: string | null | undefined,
+): Promise<Occurrence> {
+  const em = ctx.transactionalEm
+  if (!em || !id) throw new Error('[internal] session replay needs the replay transaction and the id')
+  const authorized = await authorizeScoped(
+    occurrenceSpec(ctx, z.object({ id: z.uuid() }), COACH_KINDS),
+    { id },
+    ctx,
+    em,
+    { mode: 'replay' },
+  )
+  const row = authorized.entity as Occurrence
+  await assertCoachMayEdit(authorized.scope, row, await sessionActivity(em, row))
+  return row
 }
 
 /** The session's place tree and coach must stay free for its (new) time — 409 with the list otherwise. */
@@ -166,15 +235,24 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'activities.occurrences.update', async (em) => {
       const authorized = await authorizeScoped(
-        occurrenceSpec(ctx, occurrenceUpdateSchema, PLAN_KINDS),
+        occurrenceSpec(ctx, occurrenceUpdateSchema, COACH_KINDS),
         rawInput,
         ctx,
         em,
       )
       const row = authorized.entity as Occurrence
       const patch = authorized.parsed
+      const activity = await sessionActivity(em, row)
+      await assertCoachMayEdit(authorized.scope, row, activity)
       if (row.status !== 'planned') await activitiesErrors.throw('occurrence_not_planned', { status: row.status })
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      // REQ-A08: a submitted place or venue replaces the other; untouched, the session stays where it is.
+      const relocated = patch.placeId !== undefined || patch.venue !== undefined
+      const chosen = chooseLocation(
+        relocated ? { placeId: patch.placeId, venue: patch.venue } : { placeId: row.placeId, venue: storedVenue(row) },
+      )
+      if (!chosen.ok) return activitiesErrors.throw(chosen.code)
+      if (chosen.location.venue && activity.recurrenceRule) await activitiesErrors.throw('venue_requires_one_off')
       await assertReferences(ctx, em, scope, {
         placeId: patch.placeId !== undefined && patch.placeId !== row.placeId ? patch.placeId : undefined,
         coachPersonId:
@@ -199,14 +277,16 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         moved,
         current: row.confirmByMinutesBefore ?? null,
         submitted: patch.confirmBy,
-        applies: moved && (await confirmKind(ctx, em, row)),
+        applies: moved && (await confirmKind(ctx, row, activity)),
         now: new Date(),
       })
       if (!confirmBy.ok) return activitiesErrors.throw(confirmBy.code)
       const before = occurrenceSnapshot(row)
       row.startAt = startAt
       row.endAt = endAt
-      if (patch.placeId !== undefined) row.placeId = patch.placeId
+      row.placeId = chosen.location.placeId
+      row.venueName = chosen.location.venue?.name ?? null
+      row.venueAddress = chosen.location.venue?.address ?? null
       if (patch.coachPersonId !== undefined) row.coachPersonId = patch.coachPersonId
       row.gatheringMinutesBefore = gatheringMinutesBefore
       row.confirmByMinutesBefore = confirmBy.minutes
@@ -234,12 +314,12 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       parent: { resourceKind: 'activities.activity', resourceId: result.entity.activityId },
     }),
   async authorizeReplay({ ctx, logEntry }) {
-    await authorizeOccurrenceReplay(ctx, logEntry.resourceId, PLAN_KINDS)
+    await authorizeSessionEditReplay(ctx, logEntry.resourceId)
   },
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as OccurrenceSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing session snapshot for undo')
-    const row = await authorizeOccurrenceReplay(ctx, before.id, PLAN_KINDS)
+    const row = await authorizeSessionEditReplay(ctx, before.id)
     const em = ctx.transactionalEm as EntityManager
     restoreOccurrence(row, before)
     row.updatedAt = new Date()

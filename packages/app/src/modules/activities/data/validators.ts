@@ -9,6 +9,7 @@ import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import { MAX_CONFIRM_BY_MINUTES } from '../lib/confirm-by'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import { SUBSTITUTION_REASON_MAX } from '../lib/substitutions'
+import { VENUE_ADDRESS_MAX, VENUE_ADDRESS_MIN, VENUE_NAME_MAX, VENUE_NAME_MIN } from '../lib/venue'
 import {
   ACTUAL_ATTENDANCE,
   DECLARED_VALUES,
@@ -31,6 +32,17 @@ const gatheringMinutesSchema = z.number().int().min(1).max(MAX_GATHERING_MINUTES
 /** The default declaration deadline of a series or event in minutes before the start (REQ-A07); null clears it. */
 const confirmByMinutesSchema = z.number().int().min(1).max(MAX_CONFIRM_BY_MINUTES).nullable().optional()
 
+/**
+ * A venue typed in instead of a club place (REQ-A08, DD-A03): a public address, plain text. The commands answer 422
+ * `venue_or_place_required` for both a place and a venue or neither, `venue_requires_one_off` for a venue on a series.
+ */
+export const venueSchema = z
+  .object({
+    name: z.string().trim().min(VENUE_NAME_MIN).max(VENUE_NAME_MAX),
+    address: z.string().trim().min(VENUE_ADDRESS_MIN).max(VENUE_ADDRESS_MAX),
+  })
+  .strict()
+
 const listQueryBase = {
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
@@ -43,7 +55,9 @@ const activityShape = {
   groupId: z.uuid(),
   name: nameSchema,
   type: z.enum(ACTIVITY_TYPES),
-  placeId: z.uuid(),
+  /** A club place or, for a one-off activity only, a typed `venue` (REQ-A08) — exactly one. */
+  placeId: z.uuid().optional(),
+  venue: venueSchema.optional(),
   coachPersonId: z.uuid().nullable().optional(),
   opponentExternalTeamId: z.uuid().nullable().optional(),
   invitedExternalTeamIds: externalTeamIds.optional(),
@@ -71,7 +85,9 @@ export const activityUpdateSchema = z
     id: z.uuid(),
     name: nameSchema.optional(),
     type: z.enum(ACTIVITY_TYPES).optional(),
+    /** A club place replaces a typed venue and a typed venue a club place (REQ-A08); not both. */
     placeId: z.uuid().optional(),
+    venue: venueSchema.optional(),
     coachPersonId: z.uuid().nullable().optional(),
     opponentExternalTeamId: z.uuid().nullable().optional(),
     invitedExternalTeamIds: externalTeamIds.optional(),
@@ -104,17 +120,24 @@ export const activityListQuerySchema = z.object({
   isActive: booleanQuery,
 })
 
-/** A one-off event for one group (REQ-027): its instants may span several days (a weekend tournament). */
+/**
+ * A one-off event for one group (REQ-027): its instants may span several days (a weekend tournament). It takes place
+ * at a club place or a typed `venue` (REQ-A08), exactly one; `isAway` defaults to on with a venue (Q-A25).
+ */
 export const eventCreateSchema = z
   .object({
     groupId: z.uuid(),
     type: z.enum(ACTIVITY_TYPES),
     name: nameSchema,
-    placeId: z.uuid(),
+    placeId: z.uuid().optional(),
+    venue: venueSchema.optional(),
     startsAt: instantSchema,
     endsAt: instantSchema,
     coachPersonId: z.uuid().nullable().optional(),
+    /** The opponent of a `sparring` or a `match` (a `groups` external team). */
+    opponentExternalTeamId: z.uuid().nullable().optional(),
     invitedExternalTeamIds: externalTeamIds.optional(),
+    isAway: z.boolean().optional(),
     gatheringMinutesBefore: gatheringMinutesSchema,
     confirmByMinutesBefore: confirmByMinutesSchema,
     description: optionalText(4000),
@@ -127,7 +150,9 @@ export const occurrenceUpdateSchema = z
     id: z.uuid(),
     startAt: instantSchema.optional(),
     endAt: instantSchema.optional(),
+    /** A club place, or a typed `venue` for a session of a one-off activity (REQ-A08); either replaces the other. */
     placeId: z.uuid().optional(),
+    venue: venueSchema.optional(),
     coachPersonId: z.uuid().nullable().optional(),
     /** The session's own gathering instant (DD-43; 422 at or after the start); null removes it. */
     gatheringAt: instantSchema.nullable().optional(),

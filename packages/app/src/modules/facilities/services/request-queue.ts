@@ -5,14 +5,18 @@
 // - `requestQueue`: the B-25 queue and the B-01 widget — the confirmed requests whose hold is still valid, the soonest
 //   expiry first, with the requester's details (decrypted for the administrator), the indicative amount, the
 //   entry-ban hint and the entries that collide with the slot now (sessions, rentals, club bookings, closures and other
-//   held requests on the place, its ancestors and descendants), each with its kind and times only.
+//   held requests on the place, its ancestors and descendants), each with its kind, times and the label staff see.
+//   Since #280 (facilities parity spec phase 6, REQ-R08, B-25 cards): each item also carries the payee (the nearest
+//   owner institution up the place tree, null = the club), when the rules were accepted online and when the e-mail was
+//   confirmed.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { ClubCorePublicSite, PublicClubFrame } from '../../club_core/services/public-site'
 import { Rental } from '../data/entities'
 import { blockingHolds } from '../lib/requests'
-import { clubRequestSettings, findPlaces, type FacilitiesScope } from './directory'
+import { calendarEntries, staffEntryLabel } from './calendar'
+import { clubRequestSettings, findPlaces, placePayee, type FacilitiesScope } from './directory'
 import { occupancyEntries, placeFamilyIds } from './occupancy'
 
 export type RequestSummary = {
@@ -63,7 +67,11 @@ export type QueueConflict = {
   kind: 'session' | 'rental' | 'booking' | 'closure' | 'maintenance' | 'request'
   start: string
   end: string
+  /** What staff see of the entry (the activity, the renter, the purpose and booker…); null when it cannot be read. */
+  label: string | null
 }
+
+export type QueuePayee = { institutionId: string; name: string }
 
 export type QueueItem = {
   id: string
@@ -83,6 +91,10 @@ export type QueueItem = {
   holdExpiresAt: string
   entryBanMatch: boolean
   conflicts: QueueConflict[]
+  /** The owner institution the rental would be paid to; null = the club itself. */
+  payee: QueuePayee | null
+  regulationsAcceptedAt: string | null
+  emailVerifiedAt: string | null
 }
 
 export type RequestQueue = {
@@ -130,12 +142,27 @@ async function conflictsOf(
     now,
     row.id,
   )
+  // The labels staff see, read only when something collides (the read decrypts the window's rentals).
+  const labels = new Map<string, string | null>(
+    entries.length + holds.length === 0
+      ? []
+      : (await calendarEntries(container, em, scope, placeIds, window, now)).map((entry) => [
+          entry.id,
+          staffEntryLabel(entry),
+        ]),
+  )
   return [
-    ...entries.map((entry) => ({ kind: entry.kind, start: entry.start.toISOString(), end: entry.end.toISOString() })),
+    ...entries.map((entry) => ({
+      kind: entry.kind,
+      start: entry.start.toISOString(),
+      end: entry.end.toISOString(),
+      label: labels.get(entry.id) ?? null,
+    })),
     ...holds.map((hold) => ({
       kind: 'request' as const,
       start: hold.start.toISOString(),
       end: hold.end.toISOString(),
+      label: labels.get(hold.id) ?? null,
     })),
   ]
 }
@@ -162,7 +189,13 @@ export async function requestQueue(
     scope,
   )
   const settings = await clubRequestSettings(container, scope)
-  const places = await findPlaces(container, scope, [...new Set(rows.map((row) => row.placeId))], em)
+  const placeIds = [...new Set(rows.map((row) => row.placeId))]
+  const places = await findPlaces(container, scope, placeIds, em)
+  const payees = new Map<string, QueuePayee | null>()
+  for (const placeId of placeIds) {
+    const payee = await placePayee(container, scope, placeId, em)
+    payees.set(placeId, payee ? { institutionId: payee.institutionId, name: payee.name } : null)
+  }
   const items: QueueItem[] = []
   for (const row of rows) {
     items.push({
@@ -183,6 +216,9 @@ export async function requestQueue(
       holdExpiresAt: (row.holdExpiresAt as Date).toISOString(),
       entryBanMatch: row.entryBanMatch,
       conflicts: await conflictsOf(container, em, scope, row, now),
+      payee: payees.get(row.placeId) ?? null,
+      regulationsAcceptedAt: row.regulationsAcceptedAt?.toISOString() ?? null,
+      emailVerifiedAt: row.usedAt?.toISOString() ?? null,
     })
   }
   return {

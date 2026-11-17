@@ -94,6 +94,14 @@ export type ActivitiesPlaceSessions = {
   ): Promise<string[]>
 }
 
+/**
+ * Rows read by place (`place_id IN …`) or with `place_id IS NOT NULL`: a session at a typed venue (REQ-A08, `place_id`
+ * null) is in no place's schedule, so these reads never return one; the guard only narrows the type.
+ */
+function atPlace<T extends { placeId: string | null }>(rows: readonly T[]): Array<T & { placeId: string }> {
+  return rows.filter((row): row is T & { placeId: string } => row.placeId !== null)
+}
+
 const SESSION_FIELDS = [
   'id',
   'placeId',
@@ -169,7 +177,7 @@ export async function clubSessionTimes(
     },
     { fields: ['id', 'placeId', 'startAt', 'endAt'], orderBy: { startAt: 'asc' } },
   )
-  return rows.map((row) => ({ placeId: row.placeId, start: row.startAt, end: row.endAt }))
+  return atPlace(rows).map((row) => ({ placeId: row.placeId, start: row.startAt, end: row.endAt }))
 }
 
 export async function doneSessionsForReport(
@@ -195,7 +203,7 @@ export async function doneSessionsForReport(
     },
   )
   const groups = await findGroups(container, scope, [...new Set(rows.map((row) => row.groupId))], em)
-  return rows.map((row) => ({
+  return atPlace(rows).map((row) => ({
     placeId: row.placeId,
     start: row.startAt,
     end: row.endAt,
@@ -214,7 +222,7 @@ export async function sessionsByIds(
   if (ids.length === 0) return []
   const rows = await em.find(
     Occurrence,
-    { ...scope, deletedAt: null, status: 'planned', id: { $in: [...new Set(ids)] } },
+    { ...scope, deletedAt: null, status: 'planned', placeId: { $ne: null }, id: { $in: [...new Set(ids)] } },
     { fields: [...SESSION_FIELDS], orderBy: { startAt: 'asc' } },
   )
   return withNames(container, em, scope, rows)
@@ -233,7 +241,7 @@ async function withNames(
       : []
   const names = new Map(activities.map((row) => [row.id, row.name]))
   const groups = await findGroups(container, scope, [...new Set(rows.map((row) => row.groupId))], em)
-  return rows.map((row) => ({
+  return atPlace(rows).map((row) => ({
     id: row.id,
     placeId: row.placeId,
     startAt: row.startAt,

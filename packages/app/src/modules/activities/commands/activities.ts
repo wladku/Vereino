@@ -4,7 +4,9 @@
 // of the 16-week horizon; changing its rule, times, place, coach, dates or activity re-plans the future sessions and
 // leaves past, detached and pinned ones untouched. A conflict on the place tree beyond its capacity, or a coach booked
 // twice, refuses the whole write (409 with the list). An activity with history (a past, cancelled or done session) is
-// deactivated, not deleted (409 `activity_has_sessions`).
+// deactivated, not deleted (409 `activity_has_sessions`). A one-off activity may take place at a typed venue instead
+// of a club place (REQ-A08): a venue with a rule answers 422 `venue_requires_one_off`, both or neither 422
+// `venue_or_place_required`; a typed venue turns "away" on unless `isAway` says otherwise (Q-A25).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -15,6 +17,7 @@ import { activitiesErrors } from '../api/errors'
 import { Activity, Occurrence } from '../data/entities'
 import { activityCreateSchema, activityDeleteSchema, activityUpdateSchema } from '../data/validators'
 import type { ActivityType } from '../lib/activities-rules'
+import { awayByDefault, chooseLocation, storedVenue, type TypedVenue } from '../lib/venue'
 import { clubClock } from '../services/directory'
 import { assertSeriesShape, replanSeries, restoreSessions, storedRule, type Clock } from '../services/series'
 import {
@@ -42,7 +45,11 @@ export type ActivitySnapshot = {
   groupId: string
   name: string
   type: ActivityType
-  defaultPlaceId: string
+  /** Null at a typed venue (REQ-A08). */
+  defaultPlaceId: string | null
+  /** Absent in a snapshot written before REQ-A08 (#270): a club place, no venue. */
+  venueName?: string | null
+  venueAddress?: string | null
   defaultCoachPersonId: string | null
   opponentExternalTeamId: string | null
   invitedExternalTeamIds: string[]
@@ -74,6 +81,8 @@ export function activitySnapshot(row: Activity): ActivitySnapshot {
     name: row.name,
     type: row.type,
     defaultPlaceId: row.defaultPlaceId,
+    venueName: row.venueName ?? null,
+    venueAddress: row.venueAddress ?? null,
     defaultCoachPersonId: row.defaultCoachPersonId ?? null,
     opponentExternalTeamId: row.opponentExternalTeamId ?? null,
     invitedExternalTeamIds: [...row.invitedExternalTeamIds],
@@ -94,6 +103,8 @@ function restoreActivity(row: Activity, before: ActivitySnapshot): void {
   row.name = before.name
   row.type = before.type
   row.defaultPlaceId = before.defaultPlaceId
+  row.venueName = before.venueName ?? null
+  row.venueAddress = before.venueAddress ?? null
   row.defaultCoachPersonId = before.defaultCoachPersonId
   row.opponentExternalTeamId = before.opponentExternalTeamId
   row.invitedExternalTeamIds = [...before.invitedExternalTeamIds]
@@ -119,11 +130,27 @@ function seriesKey(row: Activity): string {
     normalizeLocalTime(row.defaultStartTime),
     normalizeLocalTime(row.defaultEndTime),
     row.defaultPlaceId,
+    row.venueName ?? null,
+    row.venueAddress ?? null,
     row.defaultCoachPersonId ?? null,
     row.gatheringMinutesBefore ?? null,
     row.confirmByMinutesBefore ?? null,
     row.isActive,
   ])
+}
+
+/**
+ * The location of an activity write (REQ-A08): a club place or a typed venue, exactly one (422
+ * `venue_or_place_required`), and a venue only without a rule (422 `venue_requires_one_off`).
+ */
+async function activityLocation(
+  input: { placeId?: string | null; venue?: TypedVenue | null },
+  ruleText: string | null,
+): Promise<{ placeId: string | null; venue: TypedVenue | null }> {
+  const chosen = chooseLocation(input)
+  if (!chosen.ok) return activitiesErrors.throw(chosen.code)
+  if (chosen.location.venue && ruleText) return activitiesErrors.throw('venue_requires_one_off')
+  return chosen.location
 }
 
 function loadActivity(ctx: CommandRuntimeContext, includeDeleted = false) {
@@ -218,10 +245,11 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
       const group = authorized.entity?.group ?? null
+      const location = await activityLocation(parsed, parsed.recurrenceRule ?? null)
       await assertReferences(ctx, em, scope, {
         group,
         type: parsed.type,
-        placeId: parsed.placeId,
+        placeId: location.placeId ?? undefined,
         coachPersonId: parsed.coachPersonId ?? null,
         externalTeamIds: [
           ...(parsed.invitedExternalTeamIds ?? []),
@@ -247,7 +275,9 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         groupId: parsed.groupId,
         name: parsed.name,
         type: parsed.type,
-        defaultPlaceId: parsed.placeId,
+        defaultPlaceId: location.placeId,
+        venueName: location.venue?.name ?? null,
+        venueAddress: location.venue?.address ?? null,
         defaultCoachPersonId: parsed.coachPersonId ?? null,
         opponentExternalTeamId: parsed.opponentExternalTeamId ?? null,
         invitedExternalTeamIds: [...new Set(parsed.invitedExternalTeamIds ?? [])],
@@ -260,7 +290,7 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: parsed.isActive ?? true,
-        isAway: parsed.isAway ?? false,
+        isAway: awayByDefault(location.venue, parsed.isAway),
       })
       em.persist(row)
       const changes = await replanSeries(ctx, em, row, clock)
@@ -310,6 +340,14 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         patch.type !== undefined || (patch.isActive === true && !row.isActive)
           ? await lookupGroup(ctx, row.groupId, em)
           : undefined
+      const ruleInput = patch.recurrenceRule !== undefined ? patch.recurrenceRule : (row.recurrenceRule ?? null)
+      // A submitted place or venue replaces the other; untouched, the activity stays where it is.
+      const location = await activityLocation(
+        patch.placeId !== undefined || patch.venue !== undefined
+          ? { placeId: patch.placeId, venue: patch.venue }
+          : { placeId: row.defaultPlaceId, venue: storedVenue(row) },
+        ruleInput,
+      )
       await assertReferences(ctx, em, scope, {
         group,
         type,
@@ -325,15 +363,16 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       })
       const clock = await clubClock(ctx.container, scope)
       const startsOn = patch.startsOn ?? row.startsOn
-      const ruleText = patch.recurrenceRule !== undefined ? patch.recurrenceRule : (row.recurrenceRule ?? null)
-      const { rule, text } = await storedRule(ruleText, patch.exdates, startsOn)
+      const { rule, text } = await storedRule(ruleInput, patch.exdates, startsOn)
       const endsOn = patch.endsOn !== undefined ? patch.endsOn : (row.endsOn ?? null)
       const startTime = patch.startTime ?? row.defaultStartTime
       const endTime = patch.endTime ?? row.defaultEndTime
       await assertSeriesShape({ startTime, endTime, startsOn, endsOn, rule }, clock)
       row.name = patch.name ?? row.name
       row.type = type
-      row.defaultPlaceId = patch.placeId ?? row.defaultPlaceId
+      row.defaultPlaceId = location.placeId
+      row.venueName = location.venue?.name ?? null
+      row.venueAddress = location.venue?.address ?? null
       if (patch.coachPersonId !== undefined) row.defaultCoachPersonId = patch.coachPersonId
       if (patch.opponentExternalTeamId !== undefined) row.opponentExternalTeamId = patch.opponentExternalTeamId
       if (patch.invitedExternalTeamIds !== undefined)

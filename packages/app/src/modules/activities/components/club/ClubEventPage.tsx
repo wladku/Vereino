@@ -1,8 +1,10 @@
 'use client'
 // `/club/events/new` — a coach creates a one-off event for their own group from the phone (club spec REQ-027, AC-027,
-// *UI architecture* "New event"; #140): the group (only the groups they coach), the type (tournament or other), the
-// name, the place (a bookable leaf), the date with its start and end in the club's time zone, the invited external
-// teams of a tournament and a note. The options come from `GET /api/activities/events/options`; `POST
+// *UI architecture* "New event"; #140; parity spec REQ-A08, J-A02, #270): the group (only the groups they coach), the
+// type (a sparring or a match for a team, a tournament or another event), the opponent of a sparring or a match, the
+// name, "Club place / Other address" — a bookable leaf, or a venue's name and address typed in, which ticks "away"
+// (Q-A25) — the date with its start, end and gathering time in the club's time zone, the deadline, the invited
+// external teams of a tournament and a note. The options come from `GET /api/activities/events/options`; `POST
 // /api/activities/events` creates the event and its session, and the page opens the session as the coach. A conflict
 // (409) lists the colliding entries in the page and saves nothing — there is no "save anyway"; 403 (a group the coach
 // does not coach) and the coded 422 refusals point at their field. The submit bar stays above the bottom navigation.
@@ -25,7 +27,8 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
 import { MemberSkeleton } from '@vereino/ui'
-import { EVENT_TYPES } from '../../lib/activities-rules'
+import { EVENT_TYPES, eventTypesForGroupKind, takesOpponent } from '../../lib/activities-rules'
+import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
 import {
   EVENT_NAME_MAX,
   EVENT_NOTE_MAX,
@@ -37,6 +40,7 @@ import {
   type EventDraftProblem,
   type EventGroupOption,
   type EventPlaceOption,
+  type VenueMode,
 } from '../../lib/member-event'
 import { ConflictList } from '../ConflictList'
 import {
@@ -70,7 +74,10 @@ function useEventOptions() {
   })
 }
 
-/** The external teams a tournament may invite (`/api/groups/external-teams`, readable by a coach); none on a failure. */
+/**
+ * The external teams a tournament may invite or a sparring or a match is played against (`/api/groups/external-teams`,
+ * readable by a coach); none on a failure.
+ */
 function useTeamOptions(enabled: boolean) {
   return useQuery({
     queryKey: ['activities-event-teams'],
@@ -121,6 +128,12 @@ export function ClubEventForm({
     type: 'tournament',
     name: '',
     placeId: known(places, proposed.placeId),
+    venueMode: 'place',
+    venueName: '',
+    venueAddress: '',
+    opponentExternalTeamId: '',
+    isAway: false,
+    gatheringTime: '',
     date: proposed.date && isCalendarDate(proposed.date) ? proposed.date : calendarDateInZone(new Date(), timeZone),
     startTime: '',
     endTime: '',
@@ -132,7 +145,10 @@ export function ClubEventForm({
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [pending, setPending] = React.useState(false)
-  const teams = useTeamOptions(draft.type === 'tournament')
+  const teams = useTeamOptions(draft.type === 'tournament' || takesOpponent(draft.type))
+  // REQ-A08: a sparring or a match only for a team; until a group is chosen every event type is listed.
+  const groupKind = groups.find((group) => group.id === draft.groupId)?.kind ?? null
+  const types = groupKind ? eventTypesForGroupKind(groupKind) : [...EVENT_TYPES]
   const deadlineShown = takesDeadline(options.declarationKinds ?? null, draft.type)
 
   if (groups.length === 0) {
@@ -148,16 +164,34 @@ export function ClubEventForm({
     setProblems((current) => ({ ...current, [key]: undefined }))
   }
 
+  const chooseGroup = (groupId: string) => {
+    const kind = groups.find((group) => group.id === groupId)?.kind
+    update('groupId', groupId)
+    // A type the newly chosen group does not take falls back to a tournament.
+    if (kind && !eventTypesForGroupKind(kind).some((type) => type === draft.type)) update('type', 'tournament')
+  }
+
+  // "Club place / Other address": another address ticks "away" (Q-A25); back to a club place unticks it.
+  const chooseVenueMode = (mode: VenueMode) => {
+    update('venueMode', mode)
+    update('isAway', mode === 'venue')
+    setProblems((current) => ({ ...current, placeId: undefined, venueName: undefined, venueAddress: undefined }))
+  }
+  const venueShown = draft.venueMode === 'venue'
+
   const describedBy = (field: EventDraftField) => (problems[field] ? `${id}-${field}-problem` : undefined)
   const invalid = (field: EventDraftField) => (problems[field] ? true : undefined)
   // The control each field's problem belongs to, in reading order; the first one with a problem takes the focus.
   const controlIds: Record<EventDraftField, string> = {
     groupId: `${id}-group`,
-    type: `${id}-type-${draft.type === 'other' ? 'other' : 'tournament'}`,
+    type: `${id}-type-${types.some((type) => type === draft.type) ? draft.type : types[0]}`,
     name: `${id}-name`,
     placeId: `${id}-place`,
+    venueName: `${id}-venue-name`,
+    venueAddress: `${id}-venue-address`,
     date: `${id}-date`,
     startTime: `${id}-start`,
+    gatheringTime: `${id}-gathering`,
     endTime: `${id}-end`,
     confirmByHours: `${id}-confirm-by`,
   }
@@ -240,7 +274,7 @@ export function ClubEventForm({
         <Select
           value={draft.groupId}
           onValueChange={(value) => {
-            update('groupId', value)
+            chooseGroup(value)
           }}
         >
           <SelectTrigger
@@ -276,7 +310,7 @@ export function ClubEventForm({
             update('type', value)
           }}
         >
-          {EVENT_TYPES.map((type) => (
+          {types.map((type) => (
             <label
               key={type}
               htmlFor={`${id}-type-${type}`}
@@ -290,6 +324,36 @@ export function ClubEventForm({
         </RadioGroup>
         <FieldProblem id={`${id}-type-problem`} text={problems.type} />
       </fieldset>
+      {takesOpponent(draft.type) ? (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${id}-opponent`}>{t('activities.fields.opponent')}</Label>
+          <Select
+            value={draft.opponentExternalTeamId ?? ''}
+            onValueChange={(value) => {
+              update('opponentExternalTeamId', value)
+            }}
+          >
+            <SelectTrigger
+              id={`${id}-opponent`}
+              className="min-h-11 w-full sm:w-96"
+              aria-describedby={`${id}-opponent-help`}
+              data-testid="club-event-opponent"
+            >
+              <SelectValue placeholder={t('activities.venue.opponent.placeholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {teamList.map((team) => (
+                <SelectItem key={team.value} value={team.value}>
+                  {team.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p id={`${id}-opponent-help`} className="text-muted-foreground text-sm">
+            {teamList.length > 0 ? t('activities.venue.opponent.help') : t('activities.venue.opponent.none')}
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-1">
         <Label htmlFor={`${id}-name`}>{t('activities.fields.name')}</Label>
         <Input
@@ -306,33 +370,115 @@ export function ClubEventForm({
         />
         <FieldProblem id={`${id}-name-problem`} text={problems.name} />
       </div>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${id}-place`}>{t('activities.fields.place')}</Label>
-        <Select
-          value={draft.placeId}
+      <fieldset className="flex flex-col gap-2">
+        <legend id={`${id}-venue-mode`} className="mb-1 text-sm font-medium">
+          {t('activities.venue.mode.label')}
+        </legend>
+        <RadioGroup
+          aria-labelledby={`${id}-venue-mode`}
+          className="flex flex-col gap-2 sm:flex-row"
+          value={draft.venueMode ?? 'place'}
           onValueChange={(value) => {
-            update('placeId', value)
+            chooseVenueMode(value === 'venue' ? 'venue' : 'place')
           }}
         >
-          <SelectTrigger
-            id={`${id}-place`}
-            className="min-h-11 w-full sm:w-96"
-            aria-invalid={invalid('placeId')}
-            aria-describedby={describedBy('placeId')}
-            data-testid="club-event-place"
+          {(['place', 'venue'] as const).map((mode) => (
+            <label
+              key={mode}
+              htmlFor={`${id}-venue-mode-${mode}`}
+              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2"
+              data-testid={`club-event-venue-mode-${mode}`}
+            >
+              <Radio id={`${id}-venue-mode-${mode}`} value={mode} />
+              <span className="text-sm font-medium">{t(`activities.venue.mode.${mode}`)}</span>
+            </label>
+          ))}
+        </RadioGroup>
+      </fieldset>
+      {venueShown ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${id}-venue-name`}>{t('activities.venue.name')}</Label>
+            <Input
+              id={`${id}-venue-name`}
+              className="min-h-11"
+              value={draft.venueName ?? ''}
+              maxLength={VENUE_NAME_MAX}
+              aria-invalid={invalid('venueName')}
+              aria-describedby={describedBy('venueName')}
+              onChange={(event) => {
+                update('venueName', event.target.value)
+              }}
+              data-testid="club-event-venue-name"
+            />
+            <FieldProblem id={`${id}-venueName-problem`} text={problems.venueName} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${id}-venue-address`}>{t('activities.venue.address')}</Label>
+            <Input
+              id={`${id}-venue-address`}
+              className="min-h-11"
+              value={draft.venueAddress ?? ''}
+              maxLength={VENUE_ADDRESS_MAX}
+              aria-invalid={invalid('venueAddress')}
+              aria-describedby={[`${id}-venue-address-help`, describedBy('venueAddress')].filter(Boolean).join(' ')}
+              onChange={(event) => {
+                update('venueAddress', event.target.value)
+              }}
+              data-testid="club-event-venue-address"
+            />
+            <p id={`${id}-venue-address-help`} className="text-muted-foreground text-sm">
+              {t('activities.venue.address.help')}
+            </p>
+            <FieldProblem id={`${id}-venueAddress-problem`} text={problems.venueAddress} />
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${id}-place`}>{t('activities.fields.place')}</Label>
+          <Select
+            value={draft.placeId}
+            onValueChange={(value) => {
+              update('placeId', value)
+            }}
           >
-            <SelectValue placeholder={t('activities.club.event.choosePlace')} />
-          </SelectTrigger>
-          <SelectContent>
-            {places.map((place) => (
-              <SelectItem key={place.id} value={place.id}>
-                {place.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FieldProblem id={`${id}-placeId-problem`} text={problems.placeId} />
-      </div>
+            <SelectTrigger
+              id={`${id}-place`}
+              className="min-h-11 w-full sm:w-96"
+              aria-invalid={invalid('placeId')}
+              aria-describedby={describedBy('placeId')}
+              data-testid="club-event-place"
+            >
+              <SelectValue placeholder={t('activities.club.event.choosePlace')} />
+            </SelectTrigger>
+            <SelectContent>
+              {places.map((place) => (
+                <SelectItem key={place.id} value={place.id}>
+                  {place.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldProblem id={`${id}-placeId-problem`} text={problems.placeId} />
+        </div>
+      )}
+      <label
+        htmlFor={`${id}-away`}
+        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2"
+        data-testid="club-event-away"
+      >
+        <Checkbox
+          id={`${id}-away`}
+          checked={draft.isAway === true}
+          onCheckedChange={(value) => {
+            update('isAway', value === true)
+          }}
+        />
+        <span className="flex flex-col">
+          <span className="text-sm font-medium">{t('activities.fields.isAway')}</span>
+          <span className="text-muted-foreground text-sm">{t('activities.venue.isAway.help')}</span>
+        </span>
+      </label>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{t('activities.events.groups.when')}</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -384,7 +530,26 @@ export function ClubEventForm({
             />
             <FieldProblem id={`${id}-endTime-problem`} text={problems.endTime} />
           </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${id}-gathering`}>{t('activities.gathering.label')}</Label>
+            <Input
+              id={`${id}-gathering`}
+              type="time"
+              className="min-h-11"
+              value={draft.gatheringTime ?? ''}
+              aria-invalid={invalid('gatheringTime')}
+              aria-describedby={[`${id}-gathering-help`, describedBy('gatheringTime')].filter(Boolean).join(' ')}
+              onChange={(event) => {
+                update('gatheringTime', event.target.value)
+              }}
+              data-testid="club-event-gathering"
+            />
+            <FieldProblem id={`${id}-gatheringTime-problem`} text={problems.gatheringTime} />
+          </div>
         </div>
+        <p id={`${id}-gathering-help`} className="text-muted-foreground text-sm">
+          {t('activities.venue.gathering.help')}
+        </p>
         <p className="text-muted-foreground text-sm">{t('activities.club.event.zone', { zone: timeZone })}</p>
         {/* REQ-A07: the declaration deadline, for a type of a `confirm` kind. */}
         {deadlineShown ? (

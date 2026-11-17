@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { placeLine, placeMapHref } from '../venue'
+import { awayByDefault, chooseLocation, placeLine, placeMapHref, storedVenue, venueLocation } from '../venue'
 
 // #268 (REQ-A05, glossary *Map link*): the session record's place line and map link.
 describe('placeMapHref', () => {
@@ -30,5 +30,50 @@ describe('placeLine', () => {
     expect(placeLine({ name: 'Hala', address: null })).toBe('Hala')
     expect(placeLine({ name: null, address: ' ul. Długa 2 ' })).toBe('ul. Długa 2')
     expect(placeLine({ name: ' ', address: null })).toBeNull()
+  })
+})
+
+// #270 (REQ-A08, DD-A03, Q-A25): a club place or a typed venue, its map link, and "away" by default.
+describe('chooseLocation', () => {
+  const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+
+  it('takes a club place or a typed venue', () => {
+    expect(chooseLocation({ placeId: 'p1' })).toEqual({ ok: true, location: { placeId: 'p1', venue: null } })
+    expect(chooseLocation({ placeId: null, venue })).toEqual({ ok: true, location: { placeId: null, venue } })
+  })
+
+  it('refuses both and neither', () => {
+    expect(chooseLocation({ placeId: 'p1', venue })).toEqual({ ok: false, code: 'venue_or_place_required' })
+    expect(chooseLocation({})).toEqual({ ok: false, code: 'venue_or_place_required' })
+    expect(chooseLocation({ placeId: null, venue: null })).toEqual({ ok: false, code: 'venue_or_place_required' })
+  })
+})
+
+describe('storedVenue and venueLocation', () => {
+  it('reads the venue columns, or null for a club place', () => {
+    expect(storedVenue({ venueName: 'Orlik', venueAddress: 'ul. Polna 3' })).toEqual({
+      name: 'Orlik',
+      address: 'ul. Polna 3',
+    })
+    expect(storedVenue({ venueName: 'Orlik', venueAddress: null })).toEqual({ name: 'Orlik', address: '' })
+    expect(storedVenue({ venueName: null, venueAddress: null })).toBeNull()
+    expect(storedVenue({})).toBeNull()
+  })
+
+  it('searches a typed venue on the map', () => {
+    const location = venueLocation({ name: 'Orlik', address: 'ul. Polna 3' })
+    expect(location).toEqual({ name: 'Orlik', address: 'ul. Polna 3', geoLat: null, geoLng: null })
+    expect(placeMapHref(location)).toBe('https://www.openstreetmap.org/search?query=Orlik%2C%20ul.%20Polna%203')
+    expect(placeLine(location)).toBe('Orlik, ul. Polna 3')
+  })
+})
+
+describe('awayByDefault', () => {
+  it('turns away on with a typed venue unless the user chose', () => {
+    const venue = { name: 'Orlik', address: 'ul. Polna 3' }
+    expect(awayByDefault(venue, undefined)).toBe(true)
+    expect(awayByDefault(venue, false)).toBe(false)
+    expect(awayByDefault(null, undefined)).toBe(false)
+    expect(awayByDefault(null, true)).toBe(true)
   })
 })

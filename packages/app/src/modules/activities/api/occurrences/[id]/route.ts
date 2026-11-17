@@ -18,6 +18,7 @@ import { cancelRoleOf, type OccurrenceCommandResult } from '../../../commands/oc
 import { occurrenceUpdateSchema } from '../../../data/validators'
 import { confirmByIso, deadlinePassed } from '../../../lib/confirm-by'
 import { gatheringIso } from '../../../lib/gathering'
+import { storedVenue } from '../../../lib/venue'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
 import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
@@ -31,7 +32,10 @@ import {
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['activities.view'] },
-  PATCH: { requireAuth: true, requireFeatures: ['activities.manage'] },
+  // DD-A05 (#270): every role that edits a session holds `activities.coach` (coach, coordinator, administrator); the
+  // command decides by the grants — a coordinator or administrator any session in scope, a coach only the session of
+  // a one-off event of a group they coach.
+  PATCH: { requireAuth: true, requireFeatures: ['activities.coach'] },
 }
 
 const paramsSchema = z.object({ id: z.uuid() })
@@ -88,7 +92,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       nameMaps(ctx.container, scope, {
         groupIds: [row.groupId],
         sectionIds: [row.sectionId],
-        placeIds: [row.placeId],
+        placeIds: row.placeId ? [row.placeId] : [],
         personIds: row.coachPersonId ? [row.coachPersonId] : [],
       }),
       activityLabels(ctx.container, scope, [row.activityId]),
@@ -96,9 +100,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       substituteForOf(ctx.container, scope, [{ id: row.id, coachPersonId: row.coachPersonId ?? null }]),
       substitutionHistory(ctx.container, scope, row.id),
       cancelRoleOf(ctx.container, grants, row),
-      findPlaces(ctx.container, scope, [row.placeId]),
+      findPlaces(ctx.container, scope, row.placeId ? [row.placeId] : []),
     ])
-    const place = places.get(row.placeId)
+    const place = row.placeId ? places.get(row.placeId) : undefined
     // Restore (#268): the club administrator only, a cancelled session that has not ended — the command's own checks.
     const mayRestore =
       row.status === 'cancelled' &&
@@ -132,8 +136,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       confirmBy: confirmByIso(row.startAt, row.confirmByMinutesBefore),
       deadlinePassed: deadlinePassed(row.startAt, row.confirmByMinutesBefore, new Date()),
       placeId: row.placeId,
-      placeName: names.places.get(row.placeId) ?? null,
-      placeAddress: place?.address ?? null,
+      // REQ-A08: a typed venue fills the place's name and address, so every reader shows where the session is.
+      placeName: row.placeId ? (names.places.get(row.placeId) ?? null) : (row.venueName ?? null),
+      venue: storedVenue(row),
+      placeAddress: row.placeId ? (place?.address ?? null) : (row.venueAddress ?? null),
       placeGeoLat: place?.geoLat ?? null,
       placeGeoLng: place?.geoLng ?? null,
       coachPersonId: row.coachPersonId ?? null,
@@ -197,11 +203,15 @@ export const openApi: OpenApiRouteDoc = {
     PATCH: {
       summary: 'Move or re-staff one session',
       description:
-        'Changes the instants, place or coach of one planned session and detaches it from its series, so a later series change leaves it as it is. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
+        'Changes the instants, place or typed venue, coach, gathering time or deadline of one planned session and detaches it from its series, so a later series change leaves it as it is. A `placeId` replaces a typed venue and a `venue` a club place (REQ-A08); a venue only for the session of a one-off event. A coordinator or the club administrator edits any session in scope; a coach of the group only the session of a one-off event (DD-A05). Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it).',
       requestBody: { contentType: 'application/json', schema: occurrenceUpdateSchema.omit({ id: true }) },
       responses: [{ status: 200, description: 'The moved session', schema: updateResponseSchema }],
       errors: [
-        { status: 403, description: 'scope_denied', schema: errorSchema },
+        {
+          status: 403,
+          description: '`scope_denied`; `coach_edit_series_session` for a coach on a session of a series',
+          schema: errorSchema,
+        },
         { status: 404, description: 'Not found', schema: errorSchema },
         {
           status: 409,
@@ -212,7 +222,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 422,
           description:
-            '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`, `occurrence_gathering_after_start`, `occurrence_gathering_too_early`, `occurrence_confirm_by_after_start`, `occurrence_confirm_by_too_early`, `occurrence_confirm_by_in_past` (also a move whose kept deadline falls in the past without `confirmBy`)',
+            '`activity_times_inverted`, `activities_reference_invalid`, `place_not_bookable`, `venue_or_place_required`, `venue_requires_one_off`, `occurrence_gathering_after_start`, `occurrence_gathering_too_early`, `occurrence_confirm_by_after_start`, `occurrence_confirm_by_too_early`, `occurrence_confirm_by_in_past` (also a move whose kept deadline falls in the past without `confirmBy`)',
           schema: errorSchema,
         },
       ],

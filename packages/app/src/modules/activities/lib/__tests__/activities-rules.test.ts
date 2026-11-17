@@ -4,6 +4,7 @@ import { errorCodes } from '../error-codes'
 import {
   ACTIVITY_TYPES,
   EVENT_TYPES,
+  eventTypesForGroupKind,
   HORIZON_WEEKS,
   OCCURRENCE_STATUSES,
   TEAM_ONLY_TYPES,
@@ -41,7 +42,9 @@ describe('activity types', () => {
   it('declares the types and keeps match and sparring for teams', () => {
     expect(ACTIVITY_TYPES).toEqual(['training', 'match', 'sparring', 'tournament', 'camp', 'other'])
     expect(TEAM_ONLY_TYPES).toEqual(['match', 'sparring'])
-    expect(EVENT_TYPES).toEqual(['tournament', 'other'])
+    expect(EVENT_TYPES).toEqual(['sparring', 'match', 'tournament', 'other'])
+    expect(eventTypesForGroupKind('team')).toEqual(['sparring', 'match', 'tournament', 'other'])
+    expect(eventTypesForGroupKind('class_group')).toEqual(['tournament', 'other'])
     expect(typeAllowedForGroup('sparring', 'team')).toBe(true)
     expect(typeAllowedForGroup('sparring', 'class_group')).toBe(false)
     expect(typeAllowedForGroup('match', 'class_group')).toBe(false)
@@ -170,6 +173,19 @@ describe('sessionConflicts', () => {
       { key: '2026-11-10', kind: 'place', conflictingIds: ['complex'] },
       { key: '2026-11-17', kind: 'coach', conflictingIds: ['hall'] },
     ])
+  })
+
+  it('checks only the coach at a typed venue, and a typed-venue session blocks no place (#270)', () => {
+    expect(
+      sessionConflicts({
+        candidates,
+        placeId: null,
+        capacity: 1,
+        relatedPlaceIds: [],
+        coachPersonId: 'marek',
+        existing: [...existing, { ...existing[0], id: 'away', placeId: null }],
+      }),
+    ).toEqual([{ key: '2026-11-17', kind: 'coach', conflictingIds: ['hall'] }])
   })
 
   it('respects the capacity, skips the coach check without a coach and adds external blocks', () => {

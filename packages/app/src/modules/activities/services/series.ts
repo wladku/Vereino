@@ -95,7 +95,8 @@ export async function replanSeries(
             existing !== null &&
             existing.row.startAt.getTime() === occurrence.startAt.getTime() &&
             existing.row.endAt.getTime() === occurrence.endAt.getTime() &&
-            existing.row.placeId === activity.defaultPlaceId,
+            existing.row.placeId === activity.defaultPlaceId &&
+            (existing.row.venueName ?? null) === (activity.venueName ?? null),
         })),
         placeId: activity.defaultPlaceId,
         coachPersonId,
@@ -116,6 +117,8 @@ export async function replanSeries(
         row.startAt.getTime() === occurrence.startAt.getTime() &&
         row.endAt.getTime() === occurrence.endAt.getTime() &&
         row.placeId === activity.defaultPlaceId &&
+        (row.venueName ?? null) === (activity.venueName ?? null) &&
+        (row.venueAddress ?? null) === (activity.venueAddress ?? null) &&
         (row.coachPersonId ?? null) === coachPersonId &&
         (row.gatheringMinutesBefore ?? null) === gatheringMinutesBefore &&
         (row.confirmByMinutesBefore ?? null) === confirmByMinutesBefore
@@ -123,6 +126,8 @@ export async function replanSeries(
       row.startAt = occurrence.startAt
       row.endAt = occurrence.endAt
       row.placeId = activity.defaultPlaceId
+      row.venueName = activity.venueName ?? null
+      row.venueAddress = activity.venueAddress ?? null
       row.coachPersonId = coachPersonId
       row.gatheringMinutesBefore = gatheringMinutesBefore
       row.confirmByMinutesBefore = confirmByMinutesBefore
@@ -143,6 +148,8 @@ export async function replanSeries(
         startAt: occurrence.startAt,
         endAt: occurrence.endAt,
         placeId: activity.defaultPlaceId,
+        venueName: activity.venueName ?? null,
+        venueAddress: activity.venueAddress ?? null,
         coachPersonId,
         gatheringMinutesBefore,
         confirmByMinutesBefore,

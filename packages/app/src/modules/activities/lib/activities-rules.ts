@@ -23,8 +23,11 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number]
 /** Types only a `team` group takes (club spec DD-03a). */
 export const TEAM_ONLY_TYPES: readonly ActivityType[] = ['match', 'sparring']
 
-/** Types a coach may create as a one-off event for their own group without the coordinator (REQ-027). */
-export const EVENT_TYPES: readonly ActivityType[] = ['tournament', 'other']
+/**
+ * Types a coach may create as a one-off event for their own group without the coordinator (REQ-027): a `sparring` or a
+ * `match` only for a team (REQ-A08, DD-A04); `training` and `camp` stay the coordinator's series.
+ */
+export const EVENT_TYPES: readonly ActivityType[] = ['sparring', 'match', 'tournament', 'other']
 
 export type GroupKindLike = 'team' | 'class_group'
 
@@ -36,6 +39,11 @@ export function typeAllowedForGroup(type: ActivityType, kind: GroupKindLike): bo
 /** The types the activity wizard offers for a group of `kind` (README B-14): no `match` or `sparring` for a class group. */
 export function typesForGroupKind(kind: GroupKindLike): ActivityType[] {
   return ACTIVITY_TYPES.filter((type) => typeAllowedForGroup(type, kind))
+}
+
+/** The event types the coach's form offers for a group of `kind` (REQ-A08): no `match` or `sparring` for a class group. */
+export function eventTypesForGroupKind(kind: GroupKindLike): ActivityType[] {
+  return EVENT_TYPES.filter((type) => typeAllowedForGroup(type, kind))
 }
 
 /** A `match` or `sparring` is played against an opponent (an external team, club spec *Activity*). */
@@ -159,7 +167,8 @@ export type CandidateSession = {
 /** A stored `planned` session that may block a candidate. */
 export type BlockingSession = {
   readonly id: string
-  readonly placeId: string
+  /** Null at a typed venue (REQ-A08): such a session blocks only its coach. */
+  readonly placeId: string | null
   readonly coachPersonId: string | null
   readonly startAt: Date
   readonly endAt: Date
@@ -170,8 +179,11 @@ export type ExternalBlock = { readonly id: string; readonly placeId: string; rea
 
 export type ConflictInput = {
   readonly candidates: readonly CandidateSession[]
-  /** The place every candidate uses, its capacity (`capacity_groups`) and its ancestors and descendants. */
-  readonly placeId: string
+  /**
+   * The place every candidate uses, its capacity (`capacity_groups`) and its ancestors and descendants; null at a typed
+   * venue (REQ-A08), which occupies no club place, so only the coach is checked.
+   */
+  readonly placeId: string | null
   readonly capacity: number
   readonly relatedPlaceIds: readonly string[]
   /** The coach every candidate uses, if any: a coach leads one session at a time. */
@@ -199,7 +211,7 @@ const COACH_RESOURCE = 'coach'
  * come; place conflicts are listed before coach conflicts, each in candidate order.
  */
 export function sessionConflicts(input: ConflictInput): SessionConflict[] {
-  const family = new Set([input.placeId, ...input.relatedPlaceIds])
+  const family = new Set<string | null>(input.placeId === null ? [] : [input.placeId, ...input.relatedPlaceIds])
   const toInterval = (id: string, resourceId: string, start: Date, end: Date): Interval => ({
     id,
     resourceId,

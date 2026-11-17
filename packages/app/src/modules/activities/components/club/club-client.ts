@@ -36,6 +36,11 @@ export function sessionHref(id: string, as: SessionPerspective, personId?: strin
   return `/club/occurrences/${encodeURIComponent(id)}?${params.toString()}`
 }
 
+/** The phone form that edits one session (`/club/occurrences/[id]/edit`, REQ-A08, #270). */
+export function sessionEditHref(id: string): string {
+  return `/club/occurrences/${encodeURIComponent(id)}/edit`
+}
+
 /**
  * The coach's "New event" form (#140); a caller may propose the date, the place or the group (the facility calendar's
  * "Book for group" of phase 5 opens it with a slot).
@@ -130,7 +135,10 @@ export type CalendarOccurrence = {
   confirmBy?: string | null
   /** True from the deadline until the start: members can no longer declare (DD-A02). */
   deadlinePassed?: boolean
-  placeId: string
+  /** Null at a typed venue (REQ-A08), whose name and address then fill `placeName` and `placeAddress`. */
+  placeId: string | null
+  /** The typed venue (REQ-A08), or null at a club place. */
+  venue?: { name: string; address: string } | null
   placeName: string | null
   placeAddress: string | null
   placeGeoLat: number | null
@@ -167,6 +175,8 @@ export type CalendarEntry = {
   calledUpChildren?: { personId: string; firstName: string; lastName: string }[]
   /** `as=coach` (#199): false when the club setting `coach_may_cancel` keeps this coach from cancelling. */
   mayCancel?: boolean
+  /** `as=coach` (#270, DD-A05): the caller may edit the planned session (a coach: only a one-off event's session). */
+  mayEdit?: boolean
 }
 
 export type CalendarResponse = { items: CalendarEntry[]; timeZone: string; from: string; to: string }
@@ -598,10 +608,4 @@ export function toCalendarItem(
     badges,
     actions,
   }
-}
-
-/** An OpenStreetMap link for a place with coordinates (D21: "an address without a map pin cost 30 minutes"). */
-export function mapHref(lat: number | null, lng: number | null): string | null {
-  if (lat === null || lng === null) return null
-  return `https://www.openstreetmap.org/?mlat=${String(lat)}&mlon=${String(lng)}#map=17/${String(lat)}/${String(lng)}`
 }

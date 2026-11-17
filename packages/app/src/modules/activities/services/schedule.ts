@@ -150,7 +150,8 @@ export type ConflictingSession = {
   activityId: string
   activityName: string | null
   groupId: string
-  placeId: string
+  /** Null for a session at a typed venue (REQ-A08), which collides through its coach only. */
+  placeId: string | null
   startAt: string
   endAt: string
 }
@@ -175,7 +176,8 @@ export type ConflictReport = {
 
 export type ConflictCheck = {
   candidates: readonly CandidateSession[]
-  placeId: string
+  /** Null at a typed venue (REQ-A08): no place tree and no occupancy provider, only the coach is checked. */
+  placeId: string | null
   coachPersonId: string | null
   /** Stored sessions that do not block: the ones the write replaces, moves or removes. */
   ignoreIds?: readonly string[]
@@ -194,9 +196,10 @@ export async function findConflicts(
   mode: 'save' | 'preview',
 ): Promise<ConflictReport> {
   if (check.candidates.length === 0) return { conflicts: [], providerFailed: false }
-  const family = await placeFamily(container, scope, check.placeId, em)
+  const family = check.placeId === null ? null : await placeFamily(container, scope, check.placeId, em)
   const relatedPlaceIds = family ? [...family.ancestorIds, ...family.descendantIds] : []
-  const placeIds = [check.placeId, ...relatedPlaceIds]
+  const placeIds = check.placeId === null ? [] : [check.placeId, ...relatedPlaceIds]
+  if (placeIds.length === 0 && !check.coachPersonId) return { conflicts: [], providerFailed: false }
   const start = new Date(Math.min(...check.candidates.map((candidate) => candidate.startAt.getTime())))
   const end = new Date(Math.max(...check.candidates.map((candidate) => candidate.endAt.getTime())))
   const ignore = [...new Set(check.ignoreIds ?? [])]
@@ -208,14 +211,17 @@ export async function findConflicts(
       status: 'planned',
       startAt: { $lt: end },
       endAt: { $gt: start },
-      $or: [{ placeId: { $in: placeIds } }, ...(check.coachPersonId ? [{ coachPersonId: check.coachPersonId }] : [])],
+      $or: [
+        ...(placeIds.length > 0 ? [{ placeId: { $in: placeIds } }] : []),
+        ...(check.coachPersonId ? [{ coachPersonId: check.coachPersonId }] : []),
+      ],
       ...(ignore.length > 0 ? { id: { $nin: ignore } } : {}),
     },
     { fields: ['id', 'activityId', 'groupId', 'placeId', 'coachPersonId', 'startAt', 'endAt'] },
   )
   let external: BlockingInterval[] = []
   let providerFailed = false
-  const provider = occupancyProvider(container)
+  const provider = placeIds.length > 0 ? occupancyProvider(container) : null
   if (provider) {
     try {
       external = await provider.blockingIntervals(placeIds, { start, end }, scope)
