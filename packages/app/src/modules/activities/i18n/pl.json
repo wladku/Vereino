@@ -353,6 +353,7 @@
   "activities.errors.occurrence_confirm_by_in_past": "Termin potwierdzenia już minął. Ustaw nowy albo go usuń.",
   "activities.errors.occurrence_not_planned": "Zmienić można tylko zaplanowany termin.",
   "activities.errors.occurrence_place_conflict": "Miejsce jest w tym czasie zajęte.",
+  "activities.errors.event_place_closed": "Miejsce jest wtedy nieczynne. Godziny otwarcia tego dnia: {hours}.",
   "activities.errors.public_session_not_found": "Ta strona nie istnieje lub nie jest już dostępna.",
   "activities.events.create.title": "Nowe wydarzenie jednorazowe",
   "activities.events.errors.create": "Nie udało się utworzyć wydarzenia.",

@@ -251,8 +251,10 @@ export function ClubEventForm({
       setError(t('activities.club.event.errors.create'))
       return
     }
-    const message = call.status === 422 && typeof answer.error === 'string' && answer.error ? answer.error : null
-    const field = call.status === 422 ? eventFieldOfError(code, answer.field) : null
+    // A 422, or the 409 outside the place's opening hours (REQ-R19), names its field and carries a translated message.
+    const fielded = call.status === 422 || code === 'event_place_closed'
+    const message = fielded && typeof answer.error === 'string' && answer.error ? answer.error : null
+    const field = fielded ? eventFieldOfError(code, answer.field) : null
     if (field) showProblems({ [field]: message ?? t('activities.club.event.problems.invalid') })
     setError(message ?? t('activities.club.event.errors.create'))
   }

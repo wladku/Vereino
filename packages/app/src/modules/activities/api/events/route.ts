@@ -2,7 +2,8 @@
 // TEST-034; parity spec REQ-A08, TEST-A11): a one-off `sparring` or `match` (a team only), `tournament` or `other`
 // event for one group at a club place or a typed venue, created by a coach of the group without the coordinator's
 // consent, or by the coordinator of its section or the club administrator. A group outside the caller's scope answers
-// 403; a conflict 409 with the list.
+// 403; a conflict 409 with the list; a club place outside its opening hours 409 `event_place_closed` with the day's
+// windows (facilities parity spec REQ-R19, #288).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -67,7 +68,8 @@ export const openApi: OpenApiRouteDoc = {
         { status: 404, description: 'Unknown place', schema: errorSchema },
         {
           status: 409,
-          description: '`occurrence_place_conflict` / `occurrence_coach_conflict` with `conflicts`',
+          description:
+            '`occurrence_place_conflict` / `occurrence_coach_conflict` with `conflicts`; `event_place_closed` (REQ-R19: a club place outside its opening hours that day, own or inherited) with `field: "startsAt"` and `opening: [{ from, to }]`, the day\'s windows (`[]` when closed all day). A typed venue is not checked.',
           schema: conflictErrorSchema,
         },
         {
