@@ -328,8 +328,18 @@ const endMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCo
       if (endRefused(row, validTo, today)) {
         await groupsErrors.throw('membership_not_started', { validFrom: row.validFrom })
       }
+      // A chosen last day may lie past the current one; like every other write it must not overlap another period.
+      const key = {
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        groupId: row.groupId,
+        personId: row.personId,
+        role: row.role,
+      }
+      await assertNoOverlap(em, key, { validFrom: row.validFrom, validTo }, row.id)
       row.validTo = validTo
       row.updatedAt = new Date()
+      await flushMembership(em)
       return { entity: row, actingRole: authorized.actingRole, before }
     })
     await emitGroupsSideEffects(ctx, result.entity, 'updated', membershipEvents)

@@ -257,8 +257,8 @@ export function RosterPanel({
       )
       flash(t('groups.memberships.flash.removed', { name }), 'success')
     } catch (error: unknown) {
-      if (errorCodeOf(error) === 'membership_in_use') {
-        // J-A01 step 5: a used membership is ended instead.
+      if (errorCodeOf(error) === 'membership_in_use' && rowStatus(row, today) === 'active') {
+        // J-A01 step 5: a used active membership is ended instead; an ended one keeps its last day.
         const endInstead = await confirm({
           title: t('groups.memberships.confirm.inUse.title'),
           text: t('groups.memberships.confirm.inUse.text', { name }),

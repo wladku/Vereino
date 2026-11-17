@@ -18,9 +18,9 @@ import { actionLogEntries } from '../_fixtures/people'
 // TEST-A03 (groups and activities parity spec REQ-A03, AC-A03; issue #267): a roster of 130 seeded memberships plus the
 // family fixture's Żaki is fully reachable page by page in each view (`status=active|upcoming|ended`,
 // `sortField=roster`) and each view's total equals the data; the roster order lists coaches first; ending an upcoming
-// membership answers 422 `membership_not_started`, ending on a chosen day saves `valid_to`; an edit into an overlap
-// answers 409 `membership_overlap`; Remove succeeds for an upcoming and an unused membership and answers 409
-// `membership_in_use` for one with attendance; an undo restores a removed row.
+// membership answers 422 `membership_not_started`, ending on a chosen day saves `valid_to` and an end into an overlap
+// answers 409 `membership_overlap`, as does an edit into an overlap; Remove succeeds for an upcoming and an unused
+// membership and answers 409 `membership_in_use` for one with attendance; an undo restores a removed row.
 test.describe.configure({ timeout: 300_000 })
 
 type Page = { items?: MembershipItem[]; total?: number; totalPages?: number }
@@ -156,6 +156,19 @@ test('TEST-A03 a roster of 130 memberships is fully reachable per view; end, edi
     expect(ended.status, JSON.stringify(ended.body)).toBe(200)
     unusedRow = await membershipOf(request, token, group, unused)
     expect(unusedRow?.validTo).toBe(addDays(today, 13))
+    // A chosen last day past a later membership of the same person and role → 409 `membership_overlap`, unchanged.
+    const rejoined = await addMembership(request, token, {
+      groupId: group,
+      personId: kasia,
+      role: 'participant',
+      validFrom: addDays(today, 20),
+    })
+    const overlapEnd = await endMembership(request, token, unused, unusedRow?.updatedAt, addDays(today, 25))
+    expect(overlapEnd.status, JSON.stringify(overlapEnd.body)).toBe(409)
+    expect(overlapEnd.body?.code).toBe('membership_overlap')
+    expect((await membershipOf(request, token, group, unused))?.validTo).toBe(addDays(today, 13))
+    const rejoinedRow = await membershipOf(request, token, group, rejoined)
+    expect((await removeMembership(request, token, rejoined, rejoinedRow?.updatedAt ?? null)).status).toBe(200)
 
     // Edit: the role and dates change; an edit into an overlap answers 409 `membership_overlap`.
     const edited = await call<{ updatedAt?: string; code?: string }>(request, 'PUT', '/api/groups/memberships', token, {
