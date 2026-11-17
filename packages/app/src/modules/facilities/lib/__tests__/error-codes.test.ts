@@ -26,6 +26,7 @@ describe('facilities error codes', () => {
       'rental_closed',
       'booking_period_invalid',
       'booking_start_past',
+      'booking_too_old',
       'booking_section_invalid',
       'entry_ban_period_invalid',
       'entry_ban_revoked',

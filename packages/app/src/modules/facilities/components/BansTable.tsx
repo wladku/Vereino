@@ -1,9 +1,11 @@
 'use client'
 // `/backend/facilities/bans` — the entry bans of the club's places (facilities spec B-27, *Data Models* →
 // `facilities_entry_bans`; REQ-016; E08-S06 #126): the tabs Active (the default) / Revoked / All, a place selector,
-// and per row the place, the banned institution or person, the period (open-ended = permanent), the reason, the
-// incident it follows, who issued it and when it was revoked. "New ban" opens the ban dialog (place, subject chosen
-// from the club's institutions or persons, from, to or permanent, reason, optional incident of that place); an active
+// and per row the banned institution or person, from, to or "indefinitely", the reason and who issued it (the mockup's
+// `screenLogs` columns, parity spec REQ-R10; #281), then the place, the incident it follows and its state. "Issue ban"
+// opens the ban dialog (place, subject chosen from the club's institutions or persons, from, to or permanent, reason,
+// optional incident of that place); the Incidents tab opens the same dialog filled from an incident that asks for a
+// ban (DD-R12), and the ban is saved with the incident's id. An active
 // ban is ended by "Revoke" after a confirmation (its version travels as the lock token; a ban revoked meanwhile
 // answers 409 `entry_ban_revoked`). A ban is never deleted. Everything here needs `facilities.incidents.manage`.
 import * as React from 'react'
@@ -70,13 +72,6 @@ type SubjectType = (typeof ENTRY_BAN_SUBJECT_TYPES)[number]
 /** The value of "no incident" (a Radix select item cannot have an empty value). */
 const NO_INCIDENT = 'none'
 
-function periodLabel(t: Translate, row: Pick<BanRow, 'startsOn' | 'endsOn'>): string {
-  const from = row.startsOn ?? t('facilities.common.empty')
-  return row.endsOn
-    ? t('facilities.records.bans.period.range', { from, to: row.endsOn })
-    : t('facilities.records.bans.period.permanent', { from })
-}
-
 function buildColumns(t: Translate): TableColumns<BanRow> {
   const empty = t('facilities.common.empty')
   return [
@@ -95,18 +90,22 @@ function buildColumns(t: Translate): TableColumns<BanRow> {
       ),
     },
     {
-      id: 'place',
-      header: t('facilities.fields.place'),
-      enableSorting: false,
-      meta: { priority: 2 },
-      cell: ({ row }) => row.original.placeName ?? t('facilities.common.unknownPlace'),
-    },
-    {
-      id: 'period',
-      header: t('facilities.records.bans.columns.period'),
+      id: 'startsOn',
+      header: t('facilities.fields.from'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="whitespace-nowrap tabular-nums">{periodLabel(t, row.original)}</span>,
+      cell: ({ row }) => <span className="whitespace-nowrap tabular-nums">{row.original.startsOn ?? empty}</span>,
+    },
+    {
+      id: 'endsOn',
+      header: t('facilities.fields.to'),
+      enableSorting: false,
+      meta: { priority: 2 },
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap tabular-nums">
+          {row.original.endsOn ?? t('facilities.records.bans.indefinite')}
+        </span>
+      ),
     },
     {
       id: 'reason',
@@ -116,18 +115,25 @@ function buildColumns(t: Translate): TableColumns<BanRow> {
       cell: ({ row }) => row.original.reason ?? '',
     },
     {
+      id: 'issuedBy',
+      header: t('facilities.records.bans.columns.issuedBy'),
+      enableSorting: false,
+      meta: { priority: 3 },
+      cell: ({ row }) => row.original.issuedByName ?? empty,
+    },
+    {
+      id: 'place',
+      header: t('facilities.fields.place'),
+      enableSorting: false,
+      meta: { priority: 4 },
+      cell: ({ row }) => row.original.placeName ?? t('facilities.common.unknownPlace'),
+    },
+    {
       id: 'incident',
       header: t('facilities.records.bans.fields.incident'),
       enableSorting: false,
       meta: { priority: 5 },
       cell: ({ row }) => (row.original.incidentId ? t('facilities.records.bans.incidentLinked') : empty),
-    },
-    {
-      id: 'issuedBy',
-      header: t('facilities.records.bans.columns.issuedBy'),
-      enableSorting: false,
-      meta: { priority: 4 },
-      cell: ({ row }) => row.original.issuedByName ?? empty,
     },
     {
       id: 'state',
@@ -175,31 +181,46 @@ const FIELD_OF_CODE: Partial<Record<string, BanField>> = {
   facilities_reference_invalid: 'subject',
 }
 
-function BanDialog({
+/** The ban form filled from an incident that asks for a ban (DD-R12): its place, the incident and a reason. */
+export type BanPrefill = { placeId: string; incidentId: string; incidentLabel: string; reason: string }
+
+export function BanDialog({
   open,
   onOpenChange,
   places,
   onSaved,
+  prefill,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   places: CrudFieldOption[]
   onSaved: () => Promise<void>
+  prefill?: BanPrefill
 }) {
   const t = useT()
   const today = useClubToday()
   const ids = React.useId()
-  const [placeId, setPlaceId] = React.useState(places.length === 1 ? (places[0]?.value ?? '') : '')
+  const [placeId, setPlaceId] = React.useState(
+    prefill?.placeId ?? (places.length === 1 ? (places[0]?.value ?? '') : ''),
+  )
   const [subjectType, setSubjectType] = React.useState<SubjectType>('institution')
   const [subjectId, setSubjectId] = React.useState<string | null>(null)
   const [startsOn, setStartsOn] = React.useState(today)
   const [endsOn, setEndsOn] = React.useState('')
-  const [reason, setReason] = React.useState('')
-  const [incidentId, setIncidentId] = React.useState(NO_INCIDENT)
+  const [reason, setReason] = React.useState(prefill?.reason.slice(0, REASON_MAX_LENGTH) ?? '')
+  const [incidentId, setIncidentId] = React.useState(prefill?.incidentId ?? NO_INCIDENT)
   const [pending, setPending] = React.useState(false)
   const [problems, setProblems] = React.useState<Partial<Record<BanField, string>>>({})
   const [problem, setProblem] = React.useState<string | null>(null)
   const incidents = usePlaceIncidents(placeId)
+  // The prefilled incident stays a choice even when it is older than the recent incidents listed.
+  const incidentOptions = React.useMemo(() => {
+    const listed = incidents.data ?? []
+    if (!prefill || prefill.placeId !== placeId || listed.some((option) => option.value === prefill.incidentId)) {
+      return listed
+    }
+    return [{ value: prefill.incidentId, label: prefill.incidentLabel }, ...listed]
+  }, [incidents.data, prefill, placeId])
 
   const fetchSubjects = React.useCallback(
     async (query: string): Promise<LookupSelectItem[]> => {
@@ -420,7 +441,7 @@ function BanDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NO_INCIDENT}>{t('facilities.records.bans.noIncident')}</SelectItem>
-                {(incidents.data ?? []).map((option) => (
+                {incidentOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

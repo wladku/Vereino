@@ -1,7 +1,7 @@
 'use client'
 // `/backend/facilities/rates` (facilities spec B-26; REQ-013; #121): the rental rates of the club's places — place,
-// renter category, price per 90 minutes in PLN, season and lighting, validity — with a place selector and a category
-// filter. Read with `facilities.view`; add, edit and delete for `facilities.manage`.
+// renter category, price per 90 minutes in PLN, season and lighting, validity (the mockup's `screenZones`, parity spec
+// REQ-R09; #281; the place links to its calendar) — with a place selector and a category filter. Read with `facilities.view`; add, edit and delete for `facilities.manage`.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,7 +19,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { RENTER_CATEGORIES } from '../lib/rates'
-import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
+import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
 import {
   RATES_API,
   RATES_HREF,
@@ -45,7 +45,9 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Ra
       header: t('facilities.fields.place'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="font-medium">{placeLabel(t, names, row.original.placeId)}</span>,
+      cell: ({ row }) => (
+        <PlaceCalendarLink placeId={row.original.placeId} label={placeLabel(t, names, row.original.placeId)} />
+      ),
     },
     {
       accessorKey: 'renterCategory',

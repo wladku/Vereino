@@ -38,6 +38,8 @@ export const errorCodes = [
   // `rental_conflict` with the list (club spec), a closure or the opening hours `place_closed`.
   { code: 'booking_period_invalid', status: 422, messageKey: 'facilities.errors.booking_period_invalid' },
   { code: 'booking_start_past', status: 422, messageKey: 'facilities.errors.booking_start_past' },
+  // A past club booking older than 92 days (DD-R17; #281).
+  { code: 'booking_too_old', status: 422, messageKey: 'facilities.errors.booking_too_old' },
   { code: 'booking_section_invalid', status: 422, messageKey: 'facilities.errors.booking_section_invalid' },
   // Entry bans (REQ-016).
   { code: 'entry_ban_period_invalid', status: 422, messageKey: 'facilities.errors.entry_ban_period_invalid' },

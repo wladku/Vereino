@@ -418,6 +418,8 @@ export const incidentListQuerySchema = z.object({
   sortField: z.enum(['occurredAt', 'createdAt', 'updatedAt']).optional(),
   placeId: z.uuid().optional(),
   kind: z.enum(INCIDENT_KINDS).optional(),
+  /** `open` = the incidents asking for an entry ban that no ban was issued from yet (B-27 "Ban request", DD-R12). */
+  banRequest: z.enum(['open']).optional(),
 })
 
 /** `GET /api/facilities/today` (M-12): one place, or the first place of the club when none is named. */

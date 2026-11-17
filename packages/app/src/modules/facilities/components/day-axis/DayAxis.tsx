@@ -102,6 +102,8 @@ export type DayAxisProps = {
   redacted?: boolean
   /** Whether the free open hours are buttons. */
   canBook: boolean
+  /** DD-R17: the earliest past day whose free hours are buttons too (the club administrator's past club booking). */
+  pastFrom?: string | null
   onBookHour?: (time: string) => void
   /**
    * A tap on a block (M-11): a pointer shortcut only — the blocks stay hidden from assistive technology, and "Wpisy
@@ -120,6 +122,7 @@ export function DayAxis({
   nowMinutes,
   redacted = false,
   canBook,
+  pastFrom = null,
   onBookHour,
   onEntry,
 }: DayAxisProps) {
@@ -147,7 +150,9 @@ export function DayAxis({
   const laned = layoutLanes(drawn)
   const lanes = maxLanes(laned)
   const closed = isClosedDay(opening)
-  const free = new Set(canBook ? freeOpenHours({ bounds, opening, zones, entries: busy, date, today, nowMinutes }) : [])
+  const free = new Set(
+    canBook ? freeOpenHours({ bounds, opening, zones, entries: busy, date, today, nowMinutes, pastFrom }) : [],
+  )
   const clip = (span: Span) => ({ from: Math.max(span.from, bounds.from), to: Math.min(span.to, bounds.to) })
 
   return (
