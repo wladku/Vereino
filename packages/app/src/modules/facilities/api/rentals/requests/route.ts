@@ -2,7 +2,9 @@
 // "Requests awaiting approval"; REQ-024; #125): the confirmed online requests whose 48-hour hold is still valid, the
 // soonest expiry first, for the club administrator (`facilities.rentals.approve`, the club-wide grant): the place, the
 // slot, the requester and their contact (decrypted), the category, the purpose, the indicative amount, the time to
-// expiry, the entry-ban hint and the entries colliding with the slot (kind and times only).
+// expiry, the entry-ban hint and the entries colliding with the slot (kind and times only). Since #280 (facilities
+// parity spec phase 6, REQ-R08, B-25 cards) each collision carries the label staff see, and each item the payee and
+// when the rules were accepted online and the e-mail was confirmed; `total` is the source of the menu count.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -44,6 +46,10 @@ const conflictSchema = z.object({
   kind: z.enum(['session', 'rental', 'booking', 'closure', 'maintenance', 'request']),
   start: z.string(),
   end: z.string(),
+  label: z
+    .string()
+    .nullable()
+    .describe('What staff see of the entry (activity, renter, purpose · booker); null if unreadable'),
 })
 
 const itemSchema = z.object({
@@ -64,11 +70,17 @@ const itemSchema = z.object({
   holdExpiresAt: z.string(),
   entryBanMatch: z.boolean().describe('The requester’s name matches a renter banned from the place (a hint only)'),
   conflicts: z.array(conflictSchema),
+  payee: z
+    .object({ institutionId: z.uuid(), name: z.string() })
+    .nullable()
+    .describe('The owner institution the rental would be paid to; null = the club itself'),
+  regulationsAcceptedAt: z.string().nullable().describe('When the requester accepted the rules online'),
+  emailVerifiedAt: z.string().nullable().describe('When the requester confirmed the e-mail address'),
 })
 
 const responseSchema = z.object({
   items: z.array(itemSchema),
-  total: z.number().int(),
+  total: z.number().int().describe('Every request awaiting a decision (the source of the menu count)'),
   page: z.number().int(),
   pageSize: z.number().int(),
   totalPages: z.number().int(),

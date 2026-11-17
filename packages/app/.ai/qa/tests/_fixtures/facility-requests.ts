@@ -91,7 +91,10 @@ export type QueueItem = {
   amount: number | null
   holdExpiresAt: string
   entryBanMatch: boolean
-  conflicts: Array<{ kind: string; start: string; end: string }>
+  conflicts: Array<{ kind: string; start: string; end: string; label: string | null }>
+  payee: { institutionId: string; name: string } | null
+  regulationsAcceptedAt: string | null
+  emailVerifiedAt: string | null
 }
 
 export type Queue = { items?: QueueItem[]; total?: number; code?: string; error?: string }
@@ -197,6 +200,15 @@ export async function expireRequestLink(id: string): Promise<void> {
       `update facilities_rentals set verification_expires_at = now() - interval '1 minute' where id = $1`,
       [id],
     )
+  })
+}
+
+/** Ends a request's 48-hour hold one minute ago (a card still on screen whose hold lapsed meanwhile, TEST-R10). */
+export async function lapseRequestHold(id: string): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(`update facilities_rentals set hold_expires_at = now() - interval '1 minute' where id = $1`, [
+      id,
+    ])
   })
 }
 

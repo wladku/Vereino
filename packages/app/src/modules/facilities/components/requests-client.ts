@@ -2,7 +2,7 @@
 // approval"; REQ-024; #125): the queue as `GET /api/facilities/rentals/requests` returns it, the approve and reject
 // calls with the request's lock token, the time to expiry and the slot in the club's time zone. Authorization stays on
 // the routes and commands (`facilities.rentals.approve`).
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
   apiCallOrThrow,
   readApiResultOrThrow,
@@ -39,7 +39,11 @@ export type RequestQueueItem = {
   amount: number | null
   holdExpiresAt: string
   entryBanMatch: boolean
-  conflicts: Array<{ kind: QueueConflictKind; start: string; end: string }>
+  conflicts: Array<{ kind: QueueConflictKind; start: string; end: string; label: string | null }>
+  /** The owner institution the rental would be paid to; null = the club itself (#280). */
+  payee: { institutionId: string; name: string } | null
+  regulationsAcceptedAt: string | null
+  emailVerifiedAt: string | null
 }
 
 export type RequestQueuePage = {
@@ -62,6 +66,25 @@ export function useRequestQueue(page: number, pageSize: number, extraKey: unknow
         `${REQUESTS_URL}?${new URLSearchParams({ page: String(page), pageSize: String(pageSize) }).toString()}`,
       ),
   })
+}
+
+/**
+ * The B-25 cards: the queue read page by page ("Load more", #280); `items` are the pages loaded so far, `total` is
+ * every request awaiting a decision.
+ */
+export function useRequestQueuePages(pageSize: number, extraKey: unknown[] = []) {
+  const query = useInfiniteQuery({
+    queryKey: [...REQUESTS_KEY, 'pages', pageSize, ...extraKey],
+    retry: false,
+    initialPageParam: 1,
+    getNextPageParam: (last: RequestQueuePage) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    queryFn: ({ pageParam }) =>
+      readApiResultOrThrow<RequestQueuePage>(
+        `${REQUESTS_URL}?${new URLSearchParams({ page: String(pageParam), pageSize: String(pageSize) }).toString()}`,
+      ),
+  })
+  const pages = query.data?.pages ?? []
+  return { ...query, items: pages.flatMap((page) => page.items), first: pages.at(0) ?? null }
 }
 
 /** The approval body (`requestApproveSchema` without the id). */
@@ -113,6 +136,14 @@ export function queueSlotLabel(startsAt: string, endsAt: string, timeZone: strin
   })
   const time = new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return `${day.format(new Date(startsAt))}, ${time.format(new Date(startsAt))}–${time.format(new Date(endsAt))}`
+}
+
+/** "Wed 18:40": when the hold of a request ends, in the club's time zone (the card's expiry badge, #280). */
+export function expiresAtLabel(holdExpiresAt: string, timeZone: string, locale: string): string {
+  const at = new Date(holdExpiresAt)
+  const day = new Intl.DateTimeFormat(locale, { timeZone, weekday: 'short' }).format(at)
+  const time = new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return `${day} ${time.format(at)}`
 }
 
 /** "12:00–13:00" of a conflict in the club's time zone (the same day as the request). */

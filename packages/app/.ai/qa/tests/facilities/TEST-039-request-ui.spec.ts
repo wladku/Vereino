@@ -126,26 +126,18 @@ test('TEST-039 request UI: P-04 dialog at 375 px, e-mail link to P-05, B-25 queu
     expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/backend/facilities/requests')
-    const table = page.getByTestId('facilities-requests-table')
-    await expect(table).toContainText(requester)
-    await expect(table).toContainText(email)
+    const card = page.getByTestId(`facilities-request-card-${id}`)
+    await expect(card).toContainText(requester)
+    await expect(card).toContainText(email)
     await expect(page.getByTestId(`facilities-request-expiry-${id}`)).toContainText(/\d+ h \d+ min/)
-    // The queue re-renders after its first fetch and can detach an open row menu; reopen it until the dialog shows.
     const approve = page.getByTestId('facilities-request-approve-dialog')
-    const approveItem = page.getByRole('menuitem', { name: 'Approve' })
-    await expect(async () => {
-      if (await approve.isVisible()) return
-      if (!(await approveItem.isVisible())) {
-        await page.getByTestId(`facilities-request-actions-${id}`).getByRole('button').click({ timeout: 2_000 })
-      }
-      await approveItem.click({ timeout: 2_000 })
-      await expect(approve).toBeVisible({ timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await page.getByTestId(`facilities-request-approve-${id}`).click()
+    await expect(approve).toBeVisible()
     await approve.getByTestId('facilities-request-renter-mode').getByText('New institution').click()
     await expect(approve.getByTestId('facilities-request-institution-name')).toHaveValue(requester)
     await approve.getByTestId('facilities-request-approve-confirm').click()
     await expect(approve).toBeHidden()
-    await expect(page.getByTestId(`facilities-request-actions-${id}`)).toHaveCount(0)
+    await expect(page.getByTestId(`facilities-request-card-${id}`)).toHaveCount(0)
     await expect
       .poll(async () => (await listRentals(request, admin, '&tab=active')).find((rental) => rental.id === id)?.status)
       .toBe('requested')
