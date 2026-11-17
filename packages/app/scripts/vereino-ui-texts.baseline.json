@@ -27,7 +27,7 @@
   ".ai/qa/tests/payments/E07-S08-order-campaign-admin.spec.ts": 1,
   ".ai/qa/tests/payments/TEST-042-bank-statement-import.spec.ts": 1,
   ".ai/qa/tests/people/E02-S02-person-records.spec.ts": 3,
-  ".ai/qa/tests/people/E02-S03-member-accounts.spec.ts": 3,
+  ".ai/qa/tests/people/E02-S03-member-accounts.spec.ts": 2,
   ".ai/qa/tests/people/E02-S04-family-import.spec.ts": 2,
   ".ai/qa/tests/people/E06-S02-person-record-tabs.spec.ts": 2,
   ".ai/qa/tests/people/E06-S22-profile-wards-guardians.spec.ts": 1,
