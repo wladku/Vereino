@@ -13,9 +13,9 @@ import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { dateField } from '@vereino/ui'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import { PickerEmptyHint, PickerSelect, dateField } from '@vereino/ui'
 import {
   COACH_TERMS_BY_MODEL,
   CONTRACT_KINDS,
@@ -27,6 +27,13 @@ import {
 } from '../lib/contracts'
 import { enumOptions, errorMessage, textOrNull, type Translate } from './client-helpers'
 import { groszToZloty, zlotyToGrosz, type ContractRow } from './contracts-shared'
+import {
+  PERSON_CREATE_HREF,
+  institutionPicker,
+  personHintLabels,
+  usePickerFeatures,
+  useSearchEmptyState,
+} from './pickers'
 
 const LIST_HREF = '/backend/club/contracts'
 const ENTITY_ID = 'club_core:contract'
@@ -38,7 +45,6 @@ type ContractFormValues = Record<string, unknown> & { updatedAt?: string | null 
 type SettingsResponse = { coachSettlementModel: CoachSettlementModel }
 
 type PersonRow = { id: string; firstName: string | null; lastName: string | null }
-type InstitutionOptionRow = { id: string; name: string | null }
 
 /** The club's current coach settlement model (`GET /api/club_core/settings`). */
 function useSettlementModel() {
@@ -108,63 +114,63 @@ type PartyPickerProps = {
   t: Translate
 }
 
-/** A person (searched as you type) or an institution of the club, per the chosen party type. */
+/**
+ * A person (searched as you type) or an institution of the club, per the chosen party type. An empty picker says what
+ * is missing (people life-cycle spec REQ-L14, picker row 2): the institution is created in place, the person on its
+ * own page through a link.
+ */
 function PartyPicker({ id, value, disabled, values, setValue, t }: PartyPickerProps) {
   const partyType = values?.partyType === 'institution' ? 'institution' : 'person'
   const current = typeof value === 'string' ? value : ''
   const previousType = React.useRef(partyType)
+  const features = usePickerFeatures()
+  const persons = useSearchEmptyState(personOptions)
   React.useEffect(() => {
     if (previousType.current === partyType) return
     previousType.current = partyType
     setValue('')
   }, [partyType, setValue])
-  const institutions = useQuery({
-    queryKey: ['club_core-contracts-institution-options'],
-    queryFn: async () => {
-      const data = await fetchCrudList<InstitutionOptionRow>('club_core/institutions', {
-        pageSize: 100,
-        sortField: 'name',
-        sortDir: 'asc',
-      })
-      return data.items.map((row) => ({ value: row.id, label: row.name ?? row.id }))
-    },
-    enabled: partyType === 'institution',
-  })
+  const canCreateInstitution = features['club_core.manage']
+  const institution = React.useMemo(() => institutionPicker(t, canCreateInstitution), [t, canCreateInstitution])
 
   if (partyType === 'person') {
     return (
-      <ComboboxInput
-        value={current}
-        onChange={(next) => {
-          setValue(next)
-        }}
-        placeholder={t('club_core.contracts.fields.person.placeholder')}
-        loadSuggestions={personOptions}
-        allowCustomValues={false}
-        clearable={false}
-        disabled={disabled}
-      />
+      <div className="flex flex-col gap-2">
+        <ComboboxInput
+          value={current}
+          onChange={(next) => {
+            setValue(next)
+          }}
+          placeholder={t('club_core.contracts.fields.person.placeholder')}
+          loadSuggestions={persons.tracked}
+          allowCustomValues={false}
+          clearable={false}
+          disabled={disabled}
+        />
+        {persons.empty && !current ? (
+          <PickerEmptyHint
+            state={persons.empty.term ? 'no-match' : 'none'}
+            term={persons.empty.term}
+            canCreate={features['people.manage']}
+            create={{ kind: 'link', href: PERSON_CREATE_HREF }}
+            labels={personHintLabels(t)}
+            testId="club_core-contract-person-hint"
+          />
+        ) : null}
+      </div>
     )
   }
   return (
-    <Select
+    <PickerSelect
+      {...institution}
+      id={id}
       value={current}
-      onValueChange={(next) => {
-        setValue(next)
-      }}
-      disabled={disabled || institutions.isLoading}
-    >
-      <SelectTrigger id={id} aria-label={t('club_core.contracts.fields.institution')}>
-        <SelectValue placeholder={t('club_core.contracts.fields.institution.placeholder')} />
-      </SelectTrigger>
-      <SelectContent>
-        {(institutions.data ?? []).map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      onChange={setValue}
+      labels={{ ...institution.labels, label: t('club_core.contracts.fields.institution') }}
+      required
+      disabled={disabled}
+      testId="club_core-contract-institution"
+    />
   )
 }
 

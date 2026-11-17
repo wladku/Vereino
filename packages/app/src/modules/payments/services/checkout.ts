@@ -3,7 +3,8 @@
 //
 // - who pays: the caller's own person, behind `people.paymentsGate` (403 `payments_minor` for a minor, R10), and the
 //   charges they see — the ones they pay, and their own or their wards' charges without a payer (shown disabled);
-// - the quote: the charges' amounts due and the `payer_pays` surcharge from the club settings (R13);
+// - the quote: what remains on each charge — `open` or `partially_paid` (DD-C07, #298) — and the `payer_pays`
+//   surcharge from the club settings (R13);
 // - the fulfilment `payments.checkouts.fulfil`: reads the provider state through `paymentGatewayService`, books the
 //   captured checkout once (row lock + the unique gateway index), from `failed` or `expired` too (late capture);
 // - the failure of an attempt (`payment_gateways.payment.failed|cancelled`) and the sweep `payments:reconcile-checkouts`.
@@ -32,6 +33,7 @@ import { amountDueOf, paidTotal, remainingOf, settledStatus } from '../lib/charg
 import {
   RECONCILE_WINDOW_MS,
   checkoutRefusal,
+  checkoutShares,
   checkoutTotals,
   fromGatewayAmount,
   fulfilmentPlan,
@@ -137,8 +139,9 @@ export async function onlineFeeSettings(container: AwilixContainer, scope: Payme
 }
 
 /**
- * The selected charges checked for online payment, with their totals; throws 403 `checkout_charge_forbidden` (an
- * unknown charge is someone else's too, so nothing leaks), 422 `payer_missing`, 409 `charge_not_open`.
+ * The selected charges checked for online payment, with each one's share (what remains on it, in the order of
+ * `chargeIds`) and their totals; throws 403 `checkout_charge_forbidden` (an unknown charge is someone else's too, so
+ * nothing leaks), 422 `payer_missing`, 409 `charge_not_open` (`paid`, `cancelled`, `forfeited`; DD-C07).
  */
 export async function checkedCharges(
   em: EntityManager,
@@ -146,7 +149,7 @@ export async function checkedCharges(
   payer: Payer,
   chargeIds: readonly string[],
   lock = false,
-): Promise<{ charges: Charge[]; totals: CheckoutTotals }> {
+): Promise<{ charges: Charge[]; shares: number[]; totals: CheckoutTotals }> {
   const charges = await em.find(
     Charge,
     { id: { $in: [...chargeIds] }, ...payer.scope, deletedAt: null },
@@ -164,11 +167,20 @@ export async function checkedCharges(
     }),
   )
   if (refusal) await paymentsErrors.throw(refusal)
-  const totals = checkoutTotals(
-    charges.map((charge) => amountDueOf(charge)),
-    await onlineFeeSettings(container, payer.scope),
+  const ledger = await em.find(
+    Payment,
+    { chargeId: { $in: [...chargeIds] }, ...payer.scope, isOverpayment: false, deletedAt: null },
+    { fields: ['id', 'chargeId', 'amount'] },
   )
-  return { charges, totals }
+  const remaining = new Map(
+    charges.map((charge) => [
+      charge.id,
+      remainingOf(amountDueOf(charge), paidTotal(ledger.filter((payment) => payment.chargeId === charge.id))),
+    ]),
+  )
+  const shares = checkoutShares(chargeIds, remaining)
+  const totals = checkoutTotals(shares, await onlineFeeSettings(container, payer.scope))
+  return { charges, shares, totals }
 }
 
 /** The quote of `POST /api/payments/checkout/quote`: the totals and the club's fee mode; saves nothing. */
@@ -227,6 +239,8 @@ async function bookCapture(
       deletedAt: null,
     })
     const paidOf = (chargeId: string) => paidTotal(ledger.filter((payment) => payment.chargeId === chargeId))
+    // Each charge's stored share (DD-C07); a checkout created before migration D has none and spreads by amount due.
+    const shareOf = (chargeId: string) => row.chargeAmounts?.[row.chargeIds.indexOf(chargeId)] ?? null
     const plan = fulfilmentPlan({
       amount: row.amount,
       feeAmount: row.feeAmount,
@@ -237,6 +251,7 @@ async function bookCapture(
         status: charge.status,
         amountDue: amountDueOf(charge),
         remaining: remainingOf(amountDueOf(charge), paidOf(charge.id)),
+        share: shareOf(charge.id),
       })),
     })
     const now = new Date()

@@ -2,14 +2,17 @@
 // the charges they pay and their own or their wards' charges without a payer (listed, `payable: false`), with what
 // was paid and what remains, the overdue marker in the club's calendar, and their recent checkouts; since #111 also the
 // paid history (up to six) and the transfer instructions with the club's account and the payer code (assigned on first
-// read). Behind the R10 gate: a minor with an account gets 403 `payments_minor` even with the feature (TEST-021).
+// read). Since #298 (payments parity spec REQ-C10) each charge names its discount rule, a `partially_paid` charge is
+// payable for what remains (DD-C07), and `otherPayers` names the wards another guardian pays — first names only, no
+// amounts (DD-C06). Behind the R10 gate: a minor with an account gets 403 `payments_minor` even with the feature
+// (TEST-021).
 import { z } from 'zod'
 import { buildQueryParams } from '@open-mercato/shared/lib/crud/query-params'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse } from '@/modules/foundation'
 import { payerOf } from '../../services/checkout'
 import { myCharges, myPaymentHistory } from '../../services/my-charges'
-import { transferInstructions } from '../../services/payer-overview'
+import { otherPayers, transferInstructions } from '../../services/payer-overview'
 import { checkoutSummarySchema, errorSchema } from '../shared'
 
 export const metadata = {
@@ -32,12 +35,15 @@ const itemSchema = z.object({
   dueDate: z.string(),
   amountDue: z.number().int().describe('Grosz'),
   discountAmount: z.number().int().describe('The discount already deducted from `amountDue`'),
+  discountName: z.string().nullable().describe('The name of the discount rule that granted the discount'),
   paid: z.number().int(),
   remaining: z.number().int(),
   status: z.string(),
   overdue: z.boolean().describe('`open` or `partially_paid` past the due date — a derived marker'),
   payerMissing: z.boolean().describe('No payer: shown disabled, "no payer — contact the club"'),
-  payable: z.boolean().describe('An `open` charge the caller pays: selectable for an online payment'),
+  payable: z
+    .boolean()
+    .describe('An `open` or `partially_paid` charge the caller pays: selectable for an online payment of what remains'),
 })
 
 const responseSchema = z.object({
@@ -56,6 +62,9 @@ const responseSchema = z.object({
     })
     .nullable()
     .describe('Transfer instructions; null for someone who pays no charge (#111)'),
+  otherPayers: z
+    .array(z.object({ wardFirstName: z.string(), payerFirstName: z.string() }))
+    .describe("The caller's wards whose primary payer is another person: first names only, no amounts (DD-C06)"),
 })
 
 export async function GET(request: Request): Promise<Response> {
@@ -65,10 +74,11 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url)
     const { page, pageSize } = querySchema.parse(buildQueryParams(url.searchParams))
     const payer = await payerOf(ctx)
-    const [{ items, total, checkouts }, history, transfer] = await Promise.all([
+    const [{ items, total, checkouts }, history, transfer, others] = await Promise.all([
       myCharges(ctx.container, payer, { page, pageSize }),
       myPaymentHistory(ctx.container, payer),
       transferInstructions(ctx.container, payer),
+      otherPayers(ctx.container, payer),
     ])
     return Response.json({
       items,
@@ -79,6 +89,7 @@ export async function GET(request: Request): Promise<Response> {
       checkouts,
       history,
       transfer,
+      otherPayers: others,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'payments.my_charges')
@@ -92,7 +103,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: "List the caller's own charges",
       description:
-        'The charges the caller pays, and their own or their wards’ charges without a payer (not payable online), by due date, with the recent checkouts, the paid history and the transfer instructions with the payer code. A minor gets 403 `payments_minor` (R10).',
+        'The charges the caller pays, and their own or their wards’ charges without a payer (not payable online), by due date, with the recent checkouts, the paid history, the transfer instructions with the payer code and the wards another guardian pays (first names only). A minor gets 403 `payments_minor` (R10).',
       query: querySchema,
       responses: [{ status: 200, description: 'The charges', schema: responseSchema }],
       errors: [

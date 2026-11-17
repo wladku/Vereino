@@ -4,44 +4,33 @@
 // encrypted) and notes.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CrudForm, type CrudField, type CrudFieldOption, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
+import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { createCrud, deleteCrud, fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { withFlash } from '@open-mercato/ui/backend/utils/flash'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { pickerSelectField } from '@vereino/ui'
 import { EXTERNAL_TEAMS_HREF, errorMessage, textOrNull, type ExternalTeamRow, type Translate } from './client-helpers'
+import { institutionPicker, useGroupsPickerFeatures } from './pickers'
 
 const ENTITY_ID = 'groups:external_team'
 const NONE = ''
 
 type ExternalTeamFormValues = Record<string, unknown> & { updatedAt?: string | null }
 
-type InstitutionOption = { id: string; name: string | null }
-
-/** The club's institutions (the club administrator reads them; a coordinator gets only "none"). */
-async function institutionOptions(t: Translate): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<InstitutionOption>('club_core/institutions', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-  }).catch(() => ({ items: [] as InstitutionOption[] }))
-  return [
-    { value: NONE, label: t('groups.externalTeams.fields.institution.none') },
-    ...data.items.map((item) => ({ value: item.id, label: item.name ?? item.id })),
-  ]
-}
-
 function useExternalTeamFields(t: Translate) {
+  // The institutions come from the names-only option source, so a coordinator picks one too; adding one stays the
+  // club administrator's (people life-cycle spec REQ-L14, picker row 6).
+  const canCreateInstitution = useGroupsPickerFeatures()['club_core.manage']
   const fields = React.useMemo<CrudField[]>(
     () => [
       { id: 'name', label: t('groups.externalTeams.fields.name'), type: 'text', required: true, maxLength: 200 },
       { id: 'clubName', label: t('groups.externalTeams.fields.clubName'), type: 'text', maxLength: 200 },
-      {
-        id: 'institutionId',
-        label: t('groups.externalTeams.fields.institution'),
-        type: 'select',
-        loadOptions: () => institutionOptions(t),
-      },
+      pickerSelectField(
+        'institutionId',
+        t('groups.externalTeams.fields.institution'),
+        institutionPicker(t, canCreateInstitution),
+      ),
       {
         id: 'contact',
         label: t('groups.externalTeams.fields.contact'),
@@ -51,7 +40,7 @@ function useExternalTeamFields(t: Translate) {
       },
       { id: 'notes', label: t('groups.externalTeams.fields.notes'), type: 'textarea', maxLength: 4000 },
     ],
-    [t],
+    [t, canCreateInstitution],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [

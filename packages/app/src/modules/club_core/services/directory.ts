@@ -102,6 +102,16 @@ export type ClubCoreDirectory = {
     limit: number,
     em?: EntityManager,
   ): Promise<InstitutionSearchEntry[]>
+  /**
+   * The live institutions of the organization by name, at most `INSTITUTION_OPTIONS_MAX`, optionally those whose name
+   * contains `search`: the names-only option source of `GET /api/club_core/institutions/options` (people life-cycle
+   * spec REQ-L14, picker row 6).
+   */
+  institutionOptions(
+    scope: ClubDirectoryScope,
+    search?: string,
+    em?: EntityManager,
+  ): Promise<InstitutionDirectoryEntry[]>
   /** The live places of the organization among `ids`, by id (names, parent, capacity; contacts stay encrypted). */
   findPlaces(
     scope: ClubDirectoryScope,
@@ -199,6 +209,22 @@ export async function searchInstitutions(
     { fields: ['id', 'name', 'type'], orderBy: { name: 'asc', id: 'asc' }, limit: size },
   )
   return rows.map((row) => ({ id: row.id, name: row.name, type: row.type }))
+}
+
+export const INSTITUTION_OPTIONS_MAX = 200
+
+export async function institutionOptions(
+  em: EntityManager,
+  scope: ClubDirectoryScope,
+  search?: string,
+): Promise<InstitutionDirectoryEntry[]> {
+  const term = search?.trim()
+  const rows = await em.find(
+    Institution,
+    { ...scope, deletedAt: null, ...(term ? { name: { $ilike: `%${escapeLikePattern(term)}%` } } : {}) },
+    { fields: ['id', 'name'], orderBy: { name: 'asc', id: 'asc' }, limit: INSTITUTION_OPTIONS_MAX },
+  )
+  return rows.map((row) => ({ id: row.id, name: row.name }))
 }
 
 /** A stored decimal coordinate (the driver returns a string) as a number, or null. */
@@ -365,6 +391,7 @@ export function createClubCoreDirectory(getEm: () => EntityManager): ClubCoreDir
     listSections: (scope, sectionIds, em) => listSections(em ?? getEm().fork(), scope, sectionIds),
     findInstitutions: (scope, ids, em) => findInstitutions(em ?? getEm().fork(), scope, ids),
     searchInstitutions: (scope, query, limit, em) => searchInstitutions(em ?? getEm().fork(), scope, query, limit),
+    institutionOptions: (scope, search, em) => institutionOptions(em ?? getEm().fork(), scope, search),
     findPlaces: (scope, ids, em) => findPlaces(em ?? getEm().fork(), scope, ids),
     placeFamily: (scope, placeId, em) => placeFamily(em ?? getEm().fork(), scope, placeId),
     placeOptions: (scope, em) => placeOptions(em ?? getEm().fork(), scope),

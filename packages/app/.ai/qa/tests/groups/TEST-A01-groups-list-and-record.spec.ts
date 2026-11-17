@@ -161,7 +161,7 @@ test('TEST-A01 groups list: Public filter and badge, Category / level; record ta
     // "Activities" opens the activities of the group; "New activity" preselects it.
     await page.getByTestId('group-activities-link').click()
     await expect(page).toHaveURL(new RegExp(`/backend/activities/activities\\?groupId=${team}$`))
-    await expect(page.getByRole('link', { name: 'Trening Orlików' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Trening Orlików', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Trening Młodzików' })).toHaveCount(0)
     await page.getByRole('link', { name: uiText('activities.activities.actions.create', { exact: true }) }).click()
     await expect(page).toHaveURL(new RegExp(`/backend/activities/activities/create\\?groupId=${team}$`))

@@ -9,6 +9,10 @@ export const errorCodes = [
   { code: 'occurrence_place_conflict', status: 409, messageKey: 'activities.errors.occurrence_place_conflict' },
   { code: 'occurrence_coach_conflict', status: 409, messageKey: 'activities.errors.occurrence_coach_conflict' },
   { code: 'occurrence_not_planned', status: 409, messageKey: 'activities.errors.occurrence_not_planned' },
+  // Restoring a cancelled session (REQ-A05 of the groups and activities parity spec, #268): only a cancelled session,
+  // and only while its end is in the future.
+  { code: 'occurrence_not_cancelled', status: 409, messageKey: 'activities.errors.occurrence_not_cancelled' },
+  { code: 'occurrence_already_ended', status: 409, messageKey: 'activities.errors.occurrence_already_ended' },
   // The club setting `coach_may_cancel` is off and the caller cancels only as a coach (#199, club spec DD-37).
   { code: 'coach_cancel_disabled', status: 403, messageKey: 'activities.errors.coach_cancel_disabled' },
   { code: 'activity_has_sessions', status: 409, messageKey: 'activities.errors.activity_has_sessions' },

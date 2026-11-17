@@ -1,6 +1,7 @@
 // `GET /api/payments/my-charges/summary` — the payer's Today tile on `/club` (M-02; payments spec REQ-012, REQ-002;
 // issue #111 E07-S04): `due` with the open total, the number of open charges, the nearest due date and whether it has
-// passed; `paid` when nothing is open; `guardian_pays` for an adult participant whose charges someone else pays.
+// passed; `paid` when nothing is open; `guardian_pays` for an adult participant whose charges someone else pays;
+// since #298 `other_pays` instead of `paid` when another guardian is a ward's primary payer (DD-C06, first names only).
 // Behind the R10 gate like every own-payments route: a minor gets 403 `payments_minor` (TEST-021).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -14,11 +15,16 @@ export const metadata = {
 }
 
 const responseSchema = z.object({
-  state: z.enum(['due', 'paid', 'guardian_pays']),
+  state: z.enum(['due', 'paid', 'guardian_pays', 'other_pays']),
   openTotal: z.number().int().optional().describe('Grosz still to pay (`due` only)'),
   openCount: z.number().int().optional(),
   nearestDueDate: z.string().optional().describe('The earliest due date of an open charge (`due` only)'),
   overdue: z.boolean().optional().describe('The nearest due date has passed in the club calendar'),
+  payerFirstName: z.string().optional().describe("The first other payer's first name (`other_pays` only)"),
+  otherPayers: z
+    .array(z.object({ wardFirstName: z.string(), payerFirstName: z.string() }))
+    .optional()
+    .describe('The wards another guardian pays, first names only (`other_pays` only, DD-C06)'),
 })
 
 export async function GET(request: Request): Promise<Response> {
@@ -39,7 +45,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: "Summarize the caller's open charges for the Today tile",
       description:
-        'What the caller still owes and the nearest due date, or that everything is paid, or that the guardian pays. A minor gets 403 `payments_minor` (R10).',
+        'What the caller still owes and the nearest due date, or that everything is paid, or that the guardian pays, or who pays a ward (first names only). A minor gets 403 `payments_minor` (R10).',
       responses: [{ status: 200, description: 'The summary', schema: responseSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

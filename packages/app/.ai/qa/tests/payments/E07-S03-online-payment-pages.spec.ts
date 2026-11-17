@@ -9,7 +9,8 @@ import { uiText } from '../_fixtures/ui-text'
 
 // E07-S03 pages (issue #110; UX concept README M-08, M-09, flow F-07) on a phone (375 px) with the gateway test
 // adapter: the "Payments" tile leads to M-08; the guardian's four charges are selectable, the two charges of a ward
-// without a payer are disabled with "No payer — contact the club". Three selected charges show the total, "Pay" opens
+// without a payer are disabled with "No payer — contact the club". Every payable charge is ticked on entry (#298);
+// unticking one leaves three, whose total shows with the fee line "0 zł — paid by the club"; "Pay" opens
 // the gateway's embedded form, confirming it goes to M-09, which shows "Payment in progress" until the webhook lands
 // and then "Payment received" by itself; the charges are paid. A payment cancelled at the provider shows "Payment
 // interrupted — the charges are still open". No new critical or serious axe violation outside the platform baseline
@@ -20,6 +21,7 @@ const IN_PROGRESS = uiText('payments.club.return.inProgress.title')
 const RECEIVED = uiText('payments.club.return.received.title')
 const INTERRUPTED = uiText('payments.club.return.interrupted.title')
 const NO_PAYER = uiText('payments.club.charges.noPayer')
+const FEE_CLUB = uiText('payments.club.quote.feeClub', { exact: true, params: { amount: '0 zł' } })
 
 /** Pays the selected charges through the test form; returns the gateway session id of the checkout. */
 async function payThroughTestForm(page: Page): Promise<string> {
@@ -120,15 +122,14 @@ test('E07-S03 M-08 selection and payment, M-09 in progress, received and interru
       await expect(page.getByTestId('club-charge').first()).toBeVisible()
     })
 
-    // Three charges selected: the total, then the embedded form, then M-09.
+    // All four ticked on entry (600 zł); unticking the fourth leaves three: the total, then the embedded form, then M-09.
+    for (const index of [0, 1, 2, 3]) await expect(payable.nth(index).getByRole('checkbox')).toBeChecked()
+    await expect(page.getByTestId('club-payments-quote-total')).toHaveText('600 zł')
+    await payable.nth(3).getByRole('checkbox').uncheck()
     const chargeIds: string[] = []
-    for (const index of [0, 1, 2]) {
-      const row = payable.nth(index)
-      chargeIds.push(String(await row.getAttribute('data-charge-id')))
-      await row.getByRole('checkbox').check()
-    }
+    for (const index of [0, 1, 2]) chargeIds.push(String(await payable.nth(index).getAttribute('data-charge-id')))
     await expect(page.getByTestId('club-payments-quote-total')).toHaveText('450 zł')
-    await expect(page.getByTestId('club-payments-quote-fee')).toHaveCount(0)
+    await expect(page.getByTestId('club-payments-quote-fee')).toHaveText(FEE_CLUB)
     const sessionId = await payThroughTestForm(page)
 
     // The webhook is delayed: "in progress"; when it lands the page switches to "received" by itself.
@@ -148,7 +149,7 @@ test('E07-S03 M-08 selection and payment, M-09 in progress, received and interru
     await expect(page.getByTestId('club-charge-paid')).toHaveCount(3)
     await expect(payable).toHaveCount(1)
     const lastId = String(await payable.first().getAttribute('data-charge-id'))
-    await payable.first().getByRole('checkbox').check()
+    await expect(payable.first().getByRole('checkbox')).toBeChecked()
     await expect(page.getByTestId('club-payments-quote-total')).toHaveText('150 zł')
     const cancelledSession = await payThroughTestForm(page)
     await gatewayWebhook(request, { sessionId: cancelledSession, status: 'cancelled' })
