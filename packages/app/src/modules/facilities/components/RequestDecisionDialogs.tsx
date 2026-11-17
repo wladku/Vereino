@@ -5,7 +5,9 @@
 // (e.g. the staff-only winter-lighting rate) and another amount, which needs a note. Reject takes a reason of 5–500
 // characters. Both send the request's lock token: a stale token surfaces the platform conflict, a request decided or
 // expired meanwhile (409 `invalid_transition`, `request_hold_expired`) closes the dialog and reloads the queue; a slot
-// that is no longer free or an entry ban (409) is shown in the dialog.
+// that is no longer free or an entry ban (409) is shown in the dialog. Since #280 (facilities parity spec phase 6,
+// REQ-R08) the approval dialog's first line names the place, the slot and the account the rental is paid to: the
+// owner institution, or the club when the place has none.
 import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -133,8 +135,9 @@ export function RequestWarnings({ item, timeZone }: { item: RequestQueueItem; ti
             <ul className="list-disc ps-4">
               {item.conflicts.map((conflict, index) => (
                 <li key={`${conflict.kind}-${conflict.start}-${String(index)}`}>
-                  {t('facilities.requests.conflicts.item', {
+                  {t('facilities.requests.card.conflictItem', {
                     kind: t(`facilities.requests.conflicts.kind.${conflict.kind}`),
+                    label: conflict.label ?? t('facilities.common.empty'),
                     time: queueTimeRange(conflict.start, conflict.end, timeZone, locale),
                   })}
                 </li>
@@ -184,6 +187,7 @@ export function ApproveRequestDialog({
   onDone: () => Promise<void>
 }) {
   const t = useT()
+  const locale = useLocale()
   const ids = React.useId()
   const [mode, setMode] = React.useState<RenterMode>('institution')
   const [renterId, setRenterId] = React.useState<string | null>(null)
@@ -295,9 +299,21 @@ export function ApproveRequestDialog({
       >
         <DialogHeader>
           <DialogTitle>{t('facilities.requests.approve.title')}</DialogTitle>
-          <DialogDescription>{t('facilities.requests.approve.help')}</DialogDescription>
+          <DialogDescription data-testid="facilities-request-approve-intro">
+            {item.payee
+              ? t('facilities.requests.approve.intro', {
+                  place: item.placeName || t('facilities.common.unknownPlace'),
+                  slot: queueSlotLabel(item.startsAt, item.endsAt, timeZone, locale),
+                  owner: item.payee.name,
+                })
+              : t('facilities.requests.approve.introClub', {
+                  place: item.placeName || t('facilities.common.unknownPlace'),
+                  slot: queueSlotLabel(item.startsAt, item.endsAt, timeZone, locale),
+                })}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
+          <p className="text-muted-foreground text-sm">{t('facilities.requests.approve.help')}</p>
           <RequestSummary item={item} timeZone={timeZone} currency={currency} />
           <RequestWarnings item={item} timeZone={timeZone} />
 
