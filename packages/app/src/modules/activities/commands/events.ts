@@ -1,10 +1,12 @@
-// `activities.events.create` (club spec glossary *One-off event*, REQ-027, phase 2 step 8, TEST-034): a coach creates
-// a `tournament` or `other` event for a group they coach — without the coordinator's consent — and so may the
+// `activities.events.create` (club spec glossary *One-off event*, REQ-027, phase 2 step 8, TEST-034; groups and
+// activities parity spec REQ-A08, DD-A03, DD-A04, TEST-A11): a coach creates a `sparring` or a `match` (for a team),
+// a `tournament` or an `other` event for a group they coach — without the coordinator's consent — and so may the
 // coordinator of the group's section or the club administrator. A group outside the caller's scope answers 403
-// `scope_denied`; `match` or `sparring` on a class group 422 `activity_type_requires_team`; any other type than
-// `tournament` / `other` 422 `event_type_not_allowed`; an overbooked place tree or coach 409. The event is a one-off
-// activity (no rule) with one session at the given instants; its coach is the given person or, for a coach, the
-// coach themself.
+// `scope_denied`; `match` or `sparring` on a class group 422 `activity_type_requires_team`; `training` or `camp` 422
+// `event_type_not_allowed`; both a place and a typed venue, or neither, 422 `venue_or_place_required`; an overbooked
+// place tree or coach 409 (a typed venue occupies no club place, so only the coach is checked). The event is a one-off
+// activity (no rule) with one session at the given instants; its coach is the given person or, for a coach, the coach
+// themself; a typed venue turns "away" on unless `isAway` says otherwise (Q-A25).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler } from '@open-mercato/shared/lib/commands'
@@ -16,6 +18,7 @@ import { lockSchedule } from '../data/queries'
 import { eventCreateSchema } from '../data/validators'
 import { EVENT_TYPES, localDateTime } from '../lib/activities-rules'
 import { confirmByAt } from '../lib/confirm-by'
+import { awayByDefault, chooseLocation } from '../lib/venue'
 import { clubClock } from '../services/directory'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import { activitySnapshot, ACTIVITY_RESOURCE_KIND, type ActivitySnapshot } from './activities'
@@ -65,12 +68,18 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           : authorized.actingRole === 'coach'
             ? selfPersonId(authorized.scope)
             : null
+      const chosen = chooseLocation({ placeId: parsed.placeId, venue: parsed.venue })
+      if (!chosen.ok) return activitiesErrors.throw(chosen.code)
+      const { placeId, venue } = chosen.location
       await assertReferences(ctx, em, scope, {
         group,
         type: parsed.type,
-        placeId: parsed.placeId,
+        placeId: placeId ?? undefined,
         coachPersonId,
-        externalTeamIds: parsed.invitedExternalTeamIds ?? [],
+        externalTeamIds: [
+          ...(parsed.invitedExternalTeamIds ?? []),
+          ...(parsed.opponentExternalTeamId ? [parsed.opponentExternalTeamId] : []),
+        ],
       })
       const activeGroup = group as NonNullable<typeof group>
       // `match` / `sparring` on a class group already answered 422 `activity_type_requires_team` above.
@@ -92,7 +101,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           ctx.container,
           em,
           scope,
-          { candidates: [{ key: occurrenceId, startAt, endAt }], placeId: parsed.placeId, coachPersonId },
+          { candidates: [{ key: occurrenceId, startAt, endAt }], placeId, coachPersonId },
           'save',
         ),
       )
@@ -103,8 +112,11 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
         groupId: activeGroup.id,
         name: parsed.name,
         type: parsed.type,
-        defaultPlaceId: parsed.placeId,
+        defaultPlaceId: placeId,
+        venueName: venue?.name ?? null,
+        venueAddress: venue?.address ?? null,
         defaultCoachPersonId: coachPersonId,
+        opponentExternalTeamId: parsed.opponentExternalTeamId ?? null,
         invitedExternalTeamIds: [...new Set(parsed.invitedExternalTeamIds ?? [])],
         recurrenceRule: null,
         startsOn: start.date,
@@ -115,6 +127,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
         confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: true,
+        isAway: awayByDefault(venue, parsed.isAway),
       })
       em.persist(row)
       em.persist(
@@ -127,7 +140,9 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           occurrenceDate: start.date,
           startAt,
           endAt,
-          placeId: parsed.placeId,
+          placeId,
+          venueName: venue?.name ?? null,
+          venueAddress: venue?.address ?? null,
           coachPersonId,
           gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
           confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,

@@ -5,6 +5,7 @@
 // this block.
 import { Recurrence, WEEKDAYS, type CalendarDate, type Weekday } from '@vereino/core'
 import { localDateTime } from './activities-rules'
+import type { TypedVenue } from './venue'
 
 /** How many next sessions a group card shows (README P-02). */
 export const UPCOMING_SESSIONS = 3
@@ -16,7 +17,8 @@ export type PublicSeriesRow = {
   recurrenceRule: string | null
   defaultStartTime: string
   defaultEndTime: string
-  defaultPlaceId: string
+  /** A series always has a club place; null only for a one-off at a typed venue (REQ-A08). */
+  defaultPlaceId: string | null
 }
 
 /** A session of a public group or event as the service reads it, with its instants. */
@@ -25,7 +27,10 @@ export type PublicSessionRow = {
   groupId: string
   startAt: Date
   endAt: Date
-  placeId: string
+  /** Null at a typed venue (REQ-A08). */
+  placeId: string | null
+  /** The typed venue of a one-off event (REQ-A08); absent or null at a club place. */
+  venue?: TypedVenue | null
   status: string
 }
 
@@ -56,6 +61,12 @@ export function seriesWeekdays(rule: string | null): Weekday[] {
   return WEEKDAYS.filter((day) => parsed.value.byDay.includes(day))
 }
 
+/** The name a guest sees for a session's location: its typed venue, else its club place; null when unknown. */
+export function sessionPlaceName(row: PublicSessionRow, places: ReadonlyMap<string, string>): string | null {
+  if (row.venue) return row.venue.name
+  return row.placeId ? (places.get(row.placeId) ?? null) : null
+}
+
 /** A session as a guest sees it: the club-zone date, times and place, and whether it is cancelled. */
 export function publicSession(
   row: PublicSessionRow,
@@ -68,7 +79,7 @@ export function publicSession(
     date: start.date,
     startTime: shortTime(start.time),
     endTime: shortTime(end.time),
-    place: places.get(row.placeId) ?? null,
+    place: sessionPlaceName(row, places),
     cancelled: row.status === 'cancelled',
   }
 }
@@ -97,7 +108,7 @@ export function publicScheduleBlock(
         weekdays: seriesWeekdays(row.recurrenceRule),
         startTime: shortTime(row.defaultStartTime),
         endTime: shortTime(row.defaultEndTime),
-        place: places.get(row.defaultPlaceId) ?? null,
+        place: row.defaultPlaceId ? (places.get(row.defaultPlaceId) ?? null) : null,
       }))
       .filter((row) => row.weekdays.length > 0)
       .sort(bySeriesOrder)

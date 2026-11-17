@@ -44,6 +44,8 @@ export type ActivityRow = {
   type: string | null
   placeId: string | null
   placeName?: string | null
+  /** The typed venue (REQ-A08), or null at a club place. */
+  venue?: { name: string; address: string } | null
   coachPersonId: string | null
   coachName?: string | null
   opponentExternalTeamId: string | null
@@ -89,6 +91,8 @@ export type OccurrenceRow = {
   deadlinePassed?: boolean
   placeId: string | null
   placeName?: string | null
+  /** The typed venue (REQ-A08), or null at a club place. */
+  venue?: { name: string; address: string } | null
   coachPersonId: string | null
   coachName?: string | null
   /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */

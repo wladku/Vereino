@@ -70,6 +70,18 @@ function uuidList(value: unknown): string[] {
   return []
 }
 
+/** The typed venue of a row (REQ-A08), or null for a row at a club place. */
+function venueOfRow(row: Row): { name: string; address: string } | null {
+  const name = text(row.venue_name)
+  return name ? { name, address: text(row.venue_address) ?? '' } : null
+}
+
+/** The response shape of a typed venue (REQ-A08, DD-A03). */
+export const venueResponseSchema = z
+  .object({ name: z.string(), address: z.string() })
+  .nullable()
+  .describe('The venue typed in instead of a club place (REQ-A08); null at a club place, and then `placeId` is set.')
+
 export function activityListItem(row: Row) {
   return {
     id: String(row.id),
@@ -78,6 +90,7 @@ export function activityListItem(row: Row) {
     name: text(row.name),
     type: text(row.type),
     placeId: text(row.default_place_id),
+    venue: venueOfRow(row),
     coachPersonId: text(row.default_coach_person_id),
     opponentExternalTeamId: text(row.opponent_external_team_id),
     invitedExternalTeamIds: uuidList(row.invited_external_team_ids),
@@ -136,6 +149,7 @@ export function occurrenceListItem(row: Row) {
     confirmByMinutesBefore: integer(row.confirm_by_minutes_before),
     ...occurrenceDeadline(row.start_at, row.confirm_by_minutes_before, new Date()),
     placeId: text(row.place_id),
+    venue: venueOfRow(row),
     coachPersonId: text(row.coach_person_id),
     status: text(row.status),
     cancelReason: text(row.cancel_reason),
@@ -178,7 +192,8 @@ export async function attachActivityNames(payload: { items?: unknown[] }, ctx: C
     item.groupName = item.groupId ? (names.groups.get(item.groupId) ?? null) : null
     item.groupKind = item.groupId ? (names.groupKinds.get(item.groupId) ?? null) : null
     item.sectionName = item.sectionId ? (names.sections.get(item.sectionId) ?? null) : null
-    item.placeName = item.placeId ? (names.places.get(item.placeId) ?? null) : null
+    // REQ-A08: a typed venue names itself.
+    item.placeName = item.placeId ? (names.places.get(item.placeId) ?? null) : (item.venue?.name ?? null)
     item.coachName = item.coachPersonId ? (names.persons.get(item.coachPersonId) ?? null) : null
   }
 }
@@ -229,7 +244,8 @@ export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx:
     item.activityName = activity?.name ?? null
     item.activityType = activity?.type ?? null
     item.groupName = item.groupId ? (names.groups.get(item.groupId) ?? null) : null
-    item.placeName = item.placeId ? (names.places.get(item.placeId) ?? null) : null
+    // REQ-A08: a typed venue names itself.
+    item.placeName = item.placeId ? (names.places.get(item.placeId) ?? null) : (item.venue?.name ?? null)
     item.coachName = item.coachPersonId ? (names.persons.get(item.coachPersonId) ?? null) : null
   }
 }
@@ -247,7 +263,7 @@ export const conflictSchema = z.object({
       activityId: z.uuid(),
       activityName: z.string().nullable(),
       groupId: z.uuid(),
-      placeId: z.uuid(),
+      placeId: z.uuid().nullable().describe('Null for a session at a typed venue (REQ-A08).'),
       startAt: z.string(),
       endAt: z.string(),
     }),
@@ -273,8 +289,9 @@ export const activityListItemSchema = z.object({
   groupKind: z.string().nullable().optional().describe('The kind of the group: `team` or `class_group` (#268).'),
   name: z.string().nullable(),
   type: z.string().nullable(),
-  placeId: z.string().nullable(),
+  placeId: z.string().nullable().describe('The club place; null at a typed venue (REQ-A08).'),
   placeName: z.string().nullable().optional(),
+  venue: venueResponseSchema,
   coachPersonId: z.string().nullable(),
   coachName: z.string().nullable().optional(),
   opponentExternalTeamId: z.string().nullable(),
@@ -323,8 +340,9 @@ export const occurrenceListItemSchema = z.object({
       'The declaration deadline (start minus the offset, REQ-A07), or null. In the member reads it is null unless the session is of a `confirm` kind.',
     ),
   deadlinePassed: z.boolean().describe('True from the deadline until the start (DD-A02).'),
-  placeId: z.string().nullable(),
+  placeId: z.string().nullable().describe('The club place; null at a typed venue (REQ-A08).'),
   placeName: z.string().nullable().optional(),
+  venue: venueResponseSchema,
   coachPersonId: z.string().nullable(),
   coachName: z.string().nullable().optional(),
   substituteForPersonId: z

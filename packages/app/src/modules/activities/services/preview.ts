@@ -10,6 +10,7 @@ import { activitiesErrors } from '../api/errors'
 import { PLAN_KINDS, assertReferences, groupTarget, scheduleTarget } from '../commands/shared'
 import type { activityPreviewSchema } from '../data/validators'
 import { horizonEnd } from '../lib/activities-rules'
+import { chooseLocation } from '../lib/venue'
 import { clubClock, findGroups } from './directory'
 import { findActivity } from './read'
 import {
@@ -49,10 +50,15 @@ export async function previewSeries(
       await activitiesErrors.throw('activities_reference_invalid', { field: 'groupId' })
     }
   }
+  // REQ-A08: the same location rule as the save — a club place or, without a rule, a typed venue.
+  const chosen = chooseLocation({ placeId: input.placeId, venue: input.venue })
+  if (!chosen.ok) return activitiesErrors.throw(chosen.code)
+  if (chosen.location.venue && input.recurrenceRule) await activitiesErrors.throw('venue_requires_one_off')
+  const placeId = chosen.location.placeId
   await assertReferences(ctx, em, scope, {
     group,
     type: input.type,
-    placeId: input.placeId,
+    placeId: placeId ?? undefined,
     coachPersonId: input.coachPersonId ?? null,
     externalTeamIds: [
       ...(input.invitedExternalTeamIds ?? []),
@@ -90,7 +96,7 @@ export async function previewSeries(
         startAt: occurrence.startAt,
         endAt: occurrence.endAt,
       })),
-      placeId: input.placeId,
+      placeId,
       coachPersonId: input.coachPersonId ?? null,
       ignoreIds: [
         ...plan.upsert.flatMap((entry) => (entry.existing ? [entry.existing.id] : [])),

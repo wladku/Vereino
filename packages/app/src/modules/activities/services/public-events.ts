@@ -10,6 +10,7 @@ import { calendarDateInZone } from '@vereino/core'
 import type { PublicClubBlockContext, PublicEventsProvider } from '../../club_core/services/public-blocks'
 import { Activity, Occurrence } from '../data/entities'
 import { pastEventsFrom, publicEventLists, type PublicEventPlace } from '../lib/public-events'
+import { storedVenue } from '../lib/venue'
 import { clubTimeZone, findPlaces, publicGroups } from './directory'
 
 export const ACTIVITIES_PUBLIC_EVENTS = 'activities.publicEvents' as const
@@ -57,13 +58,15 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
           deletedAt: null,
         },
         {
-          fields: ['id', 'activityId', 'groupId', 'startAt', 'endAt', 'placeId', 'status'],
+          fields: ['id', 'activityId', 'groupId', 'startAt', 'endAt', 'placeId', 'venueName', 'venueAddress', 'status'],
           orderBy: { startAt: 'asc', id: 'asc' },
           limit: SESSION_READ_LIMIT,
         },
       )
       if (sessions.length === 0) return NONE
-      const found = await findPlaces(container, scope, [...new Set(sessions.map((row) => row.placeId))])
+      const found = await findPlaces(container, scope, [
+        ...new Set(sessions.flatMap((row) => (row.placeId ? [row.placeId] : []))),
+      ])
       const places = new Map<string, PublicEventPlace>(
         [...found.values()].map((place) => [
           place.id,
@@ -84,6 +87,7 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
           startAt: row.startAt,
           endAt: row.endAt,
           placeId: row.placeId,
+          venue: storedVenue(row),
           status: row.status,
         })),
         new Map(ctx.sections.map((section) => [section.id, section.slug])),

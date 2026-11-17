@@ -1,5 +1,5 @@
 import { OptionalProps } from '@mikro-orm/core'
-import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
+import { Check, Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import {
   AppendOnlyEntityBase,
   ScopedEntityBase,
@@ -35,6 +35,14 @@ decorateAppendOnlyEntityBase({ PrimaryKey, Property })
  * step 9).
  */
 @Entity({ tableName: 'activities_activities' })
+@Check({
+  name: 'activities_activities_place_or_venue',
+  expression: '(default_place_id IS NOT NULL) <> (venue_name IS NOT NULL)',
+})
+@Check({
+  name: 'activities_activities_venue_address_with_name',
+  expression: 'venue_address IS NULL OR venue_name IS NOT NULL',
+})
 @Index({ name: 'activities_activities_org_group_active_idx', properties: ['organizationId', 'groupId', 'isActive'] })
 @Index({ name: 'activities_activities_org_section_idx', properties: ['organizationId', 'sectionId'] })
 @Index({ name: 'activities_activities_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
@@ -52,6 +60,8 @@ export class Activity extends ScopedEntityBase {
     | 'description'
     | 'isActive'
     | 'isAway'
+    | 'venueName'
+    | 'venueAddress'
 
   @Property({ name: 'section_id', type: 'uuid' })
   sectionId!: string
@@ -65,8 +75,20 @@ export class Activity extends ScopedEntityBase {
   @Property({ name: 'type', type: 'text' })
   type!: ActivityType
 
-  @Property({ name: 'default_place_id', type: 'uuid' })
-  defaultPlaceId!: string
+  /** The club place of its sessions; null only for a one-off event at a typed venue (REQ-A08, DD-A03). */
+  @Property({ name: 'default_place_id', type: 'uuid', nullable: true })
+  defaultPlaceId!: string | null
+
+  /**
+   * A typed venue outside the club's places (REQ-A08, DD-A03): its name (2–120 characters) and address (5–300). Only
+   * a one-off event carries one, exactly one of `default_place_id` and `venue_name` is set (check constraint), and it
+   * is never added to the club's places.
+   */
+  @Property({ name: 'venue_name', type: 'text', nullable: true })
+  venueName?: string | null
+
+  @Property({ name: 'venue_address', type: 'text', nullable: true })
+  venueAddress?: string | null
 
   @Property({ name: 'default_coach_person_id', type: 'uuid', nullable: true })
   defaultCoachPersonId?: string | null
@@ -133,6 +155,14 @@ export class Activity extends ScopedEntityBase {
  * join. The partial unique index keeps one live generated session per slot, so a retried generator creates nothing.
  */
 @Entity({ tableName: 'activities_occurrences' })
+@Check({
+  name: 'activities_occurrences_place_or_venue',
+  expression: '(place_id IS NOT NULL) <> (venue_name IS NOT NULL)',
+})
+@Check({
+  name: 'activities_occurrences_venue_address_with_name',
+  expression: 'venue_address IS NULL OR venue_name IS NOT NULL',
+})
 @Index({
   name: 'activities_occurrences_slot_unique',
   expression:
@@ -157,6 +187,8 @@ export class Occurrence extends ScopedEntityBase {
     | 'needsReschedule'
     | 'gatheringMinutesBefore'
     | 'confirmByMinutesBefore'
+    | 'venueName'
+    | 'venueAddress'
 
   @Property({ name: 'activity_id', type: 'uuid' })
   activityId!: string
@@ -177,8 +209,16 @@ export class Occurrence extends ScopedEntityBase {
   @Property({ name: 'end_at', type: Date })
   endAt!: Date
 
-  @Property({ name: 'place_id', type: 'uuid' })
-  placeId!: string
+  /** The club place; null only at a typed venue, which no place's schedule shows (REQ-A08). */
+  @Property({ name: 'place_id', type: 'uuid', nullable: true })
+  placeId!: string | null
+
+  /** The typed venue copied from its one-off activity (REQ-A08, DD-A03); exactly one of a place and a venue. */
+  @Property({ name: 'venue_name', type: 'text', nullable: true })
+  venueName?: string | null
+
+  @Property({ name: 'venue_address', type: 'text', nullable: true })
+  venueAddress?: string | null
 
   @Property({ name: 'coach_person_id', type: 'uuid', nullable: true })
   coachPersonId?: string | null

@@ -26,6 +26,7 @@ import type { CalendarItemPerspective, CalendarPerspective } from '../data/valid
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
 import { confirmByIso, deadlinePassed, effectiveConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringIso } from '../lib/gathering'
+import { storedVenue, type TypedVenue } from '../lib/venue'
 import {
   declarationOutcome,
   declarationSummary,
@@ -38,7 +39,7 @@ import {
   type DeclarationSummary,
 } from '../lib/policy'
 import { policyRows } from '../commands/attendance'
-import { cancelRoleOf } from '../commands/occurrences'
+import { cancelRoleOf, mayEditSession } from '../commands/occurrences'
 import {
   activeGuardians,
   attendanceSettings,
@@ -94,7 +95,10 @@ export type CalendarOccurrenceView = {
   confirmBy: string | null
   /** True from the deadline until the start: members can no longer declare (DD-A02). */
   deadlinePassed: boolean
-  placeId: string
+  /** The club place; null at a typed venue (REQ-A08), whose name and address then fill `placeName` and `placeAddress`. */
+  placeId: string | null
+  /** The typed venue (REQ-A08), or null at a club place. */
+  venue: TypedVenue | null
   placeName: string | null
   placeAddress: string | null
   placeGeoLat: number | null
@@ -127,6 +131,11 @@ export type CalendarEntry = {
   calledUpChildren?: { personId: string; firstName: string; lastName: string }[]
   /** `GET /calendar/{id}?as=coach` (#199): false when `coach_may_cancel` is off and the caller only coaches the session. */
   mayCancel?: boolean
+  /**
+   * `GET /calendar/{id}?as=coach` (#270, DD-A05): the caller may edit the planned session — as its coordinator or the
+   * club administrator, or as a coach of its group when it is the session of a one-off event.
+   */
+  mayEdit?: boolean
 }
 
 export type CalendarResult = {
@@ -188,7 +197,7 @@ async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, row
     nameMaps(ctx.container, scope, {
       groupIds: rows.map((row) => row.groupId),
       sectionIds: rows.map((row) => row.sectionId),
-      placeIds: rows.map((row) => row.placeId),
+      placeIds: rows.flatMap((row) => (row.placeId ? [row.placeId] : [])),
       personIds: rows.flatMap((row) => (row.coachPersonId ? [row.coachPersonId] : [])),
     }),
     activityLabels(ctx.container, scope, activityIds),
@@ -202,8 +211,13 @@ async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, row
   return { ...names, activities, teams, substitutions }
 }
 
-function placeDetails(ctx: CommandRuntimeContext, scope: ActivitiesScope, placeIds: string[]) {
-  return findPlaces(ctx.container, scope, placeIds)
+/** The club places of the sessions; a session at a typed venue (REQ-A08) has none. */
+function placeDetails(ctx: CommandRuntimeContext, scope: ActivitiesScope, placeIds: readonly (string | null)[]) {
+  return findPlaces(
+    ctx.container,
+    scope,
+    placeIds.filter((id): id is string => id !== null),
+  )
 }
 
 function occurrenceView(
@@ -216,7 +230,8 @@ function occurrenceView(
   const confirmByMinutes = effectiveConfirmByMinutes(kind, row.confirmByMinutesBefore)
   const activity = names.activities.get(row.activityId)
   const teams = names.teams.get(row.activityId)
-  const place = places.get(row.placeId)
+  const venue = storedVenue(row)
+  const place = row.placeId ? places.get(row.placeId) : undefined
   const substitution = names.substitutions.get(row.id)
   return {
     id: row.id,
@@ -234,8 +249,9 @@ function occurrenceView(
     confirmBy: confirmByIso(row.startAt, confirmByMinutes),
     deadlinePassed: deadlinePassed(row.startAt, confirmByMinutes, now),
     placeId: row.placeId,
-    placeName: place?.name ?? null,
-    placeAddress: place?.address ?? null,
+    venue,
+    placeName: venue?.name ?? place?.name ?? null,
+    placeAddress: venue?.address ?? place?.address ?? null,
     placeGeoLat: place?.geoLat ?? null,
     placeGeoLng: place?.geoLng ?? null,
     coachPersonId: row.coachPersonId ?? null,
@@ -575,7 +591,13 @@ export async function readCalendarItem(
     await assertStaffFeature(ctx, scope, 'activities.coach')
     item = (await staffCalendar(ctx, scope, grants, 'coach', window, timeZone, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
-    item = { ...item, mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null }
+    item = {
+      ...item,
+      mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null,
+      mayEdit:
+        item.occurrence.status === 'planned' &&
+        mayEditSession(grants, row, Boolean((await activityOf(em, scope, item.occurrence.activityId))?.recurrenceRule)),
+    }
   } else {
     const personIds = await memberPersons(grants, as, personId)
     item = (await memberCalendar(ctx, scope, as, personIds, window, timeZone, now, row.id)).at(0)

@@ -1,6 +1,9 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   EVENT_NAME_MAX,
+  gatheringMinutes,
+  locationProblems,
+  locationVenue,
   eventDraftProblems,
   eventFieldOfError,
   eventGroupOptions,
@@ -104,7 +107,7 @@ describe('eventDraftProblems', () => {
     expect(
       eventDraftProblems({
         ...draft,
-        type: 'sparring',
+        type: 'training',
         name: 'x'.repeat(EVENT_NAME_MAX + 1),
         date: '2026-02-30',
         startTime: '9',
@@ -197,5 +200,87 @@ describe('eventFieldOfError', () => {
   it('answers null without a code or for a code no field owns', () => {
     expect(eventFieldOfError(null)).toBeNull()
     expect(eventFieldOfError('scope_denied')).toBeNull()
+  })
+})
+
+// #270 (REQ-A08, Q-A25, DD-43): a typed venue, an opponent, "away" and a gathering time on the phone form.
+describe('the typed venue, opponent and gathering time of the phone form (REQ-A08)', () => {
+  const away: EventDraft = {
+    ...draft,
+    type: 'sparring',
+    placeId: '',
+    venueMode: 'venue',
+    venueName: ' Stadion Wisły Liszki ',
+    venueAddress: ' ul. Sportowa 1, Liszki ',
+    opponentExternalTeamId: 't-9',
+    isAway: true,
+    gatheringTime: '08:30',
+    confirmByHours: '48',
+  }
+
+  it('accepts a sparring at a typed venue and sends the venue, the opponent, away and the gathering time', () => {
+    expect(eventDraftProblems(away)).toEqual({})
+    const body = eventRequestBody(away, 'Europe/Warsaw')
+    expect(body).toMatchObject({
+      type: 'sparring',
+      venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' },
+      opponentExternalTeamId: 't-9',
+      isAway: true,
+      gatheringMinutesBefore: 30,
+      confirmByMinutesBefore: 2880,
+    })
+    expect(body).not.toHaveProperty('placeId')
+  })
+
+  it('sends no opponent for a tournament, and no away or gathering when they are not set', () => {
+    const body = eventRequestBody({ ...draft, opponentExternalTeamId: 't-9', gatheringTime: ' ' }, 'Europe/Warsaw')
+    expect(body).toMatchObject({ placeId: 'p-1' })
+    expect(body).not.toHaveProperty('opponentExternalTeamId')
+    expect(body).not.toHaveProperty('isAway')
+    expect(body).not.toHaveProperty('gatheringMinutesBefore')
+    expect(eventRequestBody({ ...away, opponentExternalTeamId: '' }, 'Europe/Warsaw')).not.toHaveProperty(
+      'opponentExternalTeamId',
+    )
+  })
+
+  it('checks the venue name and address against their limits', () => {
+    expect(eventDraftProblems({ ...away, venueName: ' ', venueAddress: undefined })).toEqual({
+      venueName: 'required',
+      venueAddress: 'required',
+    })
+    expect(eventDraftProblems({ ...away, venueName: 'X', venueAddress: 'ul.' })).toEqual({
+      venueName: 'invalid',
+      venueAddress: 'invalid',
+    })
+    expect(eventDraftProblems({ ...away, venueName: 'x'.repeat(121), venueAddress: 'x'.repeat(301) })).toEqual({
+      venueName: 'invalid',
+      venueAddress: 'invalid',
+    })
+  })
+
+  it('asks for a club place only in the place mode', () => {
+    expect(locationProblems({ venueMode: 'place', placeId: '' })).toEqual({ placeId: 'required' })
+    expect(locationProblems({ placeId: 'p-1' })).toEqual({})
+    expect(locationVenue({ venueMode: 'place', venueName: 'A', venueAddress: 'B' })).toBeNull()
+    expect(locationVenue({ venueMode: 'venue' })).toEqual({ name: '', address: '' })
+  })
+
+  it('turns a gathering wall time into minutes before the start', () => {
+    expect(gatheringMinutes(undefined, '09:00')).toBeNull()
+    expect(gatheringMinutes('', '09:00')).toBeNull()
+    expect(gatheringMinutes('08:15', '09:00')).toBe(45)
+    expect(gatheringMinutes('21:00', '09:00')).toBe('invalid')
+    expect(gatheringMinutes('09:00', '09:00')).toBe('invalid')
+    expect(gatheringMinutes('8', '09:00')).toBe('invalid')
+    expect(gatheringMinutes('08:00', '')).toBe('invalid')
+    expect(gatheringMinutes('00:00', '12:00')).toBe(720)
+    expect(gatheringMinutes('00:00', '12:01')).toBe('invalid')
+    expect(eventDraftProblems({ ...away, gatheringTime: '10:00' })).toEqual({ gatheringTime: 'invalid' })
+  })
+
+  it('points the venue and gathering refusals at their fields', () => {
+    expect(eventFieldOfError('venue_or_place_required')).toBe('placeId')
+    expect(eventFieldOfError('occurrence_gathering_after_start')).toBe('gatheringTime')
+    expect(eventFieldOfError('occurrence_gathering_too_early')).toBe('gatheringTime')
   })
 })

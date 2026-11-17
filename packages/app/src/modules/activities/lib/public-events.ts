@@ -7,6 +7,7 @@
 import { addCalendarDays, type CalendarDate } from '@vereino/core'
 import { localDateTime } from './activities-rules'
 import { shortTime, type PublicSessionRow } from './public-schedule'
+import { placeMapHref, venueLocation } from './venue'
 
 /** How far back "Past" reaches (README P-06, "Past (last 60 days)"). */
 export const PAST_EVENT_DAYS = 60
@@ -89,7 +90,9 @@ export function publicEventLists(
     const end = localDateTime(session.endAt, timeZone)
     const isPast = end.date < today
     if (isPast && start.date < from) continue
-    const place = places.get(session.placeId)
+    // REQ-A08: a typed venue is outside the club, so it always gets a map search by its name and address.
+    const venue = session.venue ?? null
+    const place = !venue && session.placeId ? places.get(session.placeId) : undefined
     const item: PublicEventItem = {
       name: event.name,
       type: event.type,
@@ -97,8 +100,8 @@ export function publicEventLists(
       endDate: end.date,
       startTime: shortTime(start.time),
       endTime: shortTime(end.time),
-      place: place?.name ?? null,
-      mapUrl: place ? publicMapUrl(place) : null,
+      place: venue?.name ?? place?.name ?? null,
+      mapUrl: venue ? placeMapHref(venueLocation(venue)) : place ? publicMapUrl(place) : null,
       cancelled: session.status === 'cancelled',
       past: isPast,
       sectionSlug,

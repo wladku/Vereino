@@ -10,6 +10,7 @@ import { calendarDateInZone } from '@vereino/core'
 import type { PublicBlockProvider, PublicSectionBlockContext } from '../../club_core/services/public-blocks'
 import { Activity, Occurrence } from '../data/entities'
 import { publicScheduleBlock, type PublicScheduleBlock, type PublicSessionRow } from '../lib/public-schedule'
+import { storedVenue } from '../lib/venue'
 import { clubTimeZone, findPlaces, publicGroups, type ActivitiesScope } from './directory'
 
 export const ACTIVITIES_PUBLIC_SCHEDULE = 'activities.publicSchedule' as const
@@ -40,7 +41,7 @@ async function futureSessions(
     Occurrence,
     { ...scope, activityId: { $in: [...activityIds] }, startAt: { $gte: now }, deletedAt: null },
     {
-      fields: ['id', 'activityId', 'groupId', 'startAt', 'endAt', 'placeId', 'status'],
+      fields: ['id', 'activityId', 'groupId', 'startAt', 'endAt', 'placeId', 'venueName', 'venueAddress', 'status'],
       orderBy: { startAt: 'asc', id: 'asc' },
       limit: SESSION_READ_LIMIT,
     },
@@ -51,6 +52,7 @@ async function futureSessions(
     startAt: row.startAt,
     endAt: row.endAt,
     placeId: row.placeId,
+    venue: storedVenue(row),
     status: row.status,
   }))
 }
@@ -91,10 +93,13 @@ export function createPublicSchedule(container: AwilixContainer): PublicBlockPro
         series.map((row) => row.id),
         now,
       )
-      const places = await placeNames(container, scope, [
-        ...series.map((row) => row.defaultPlaceId),
-        ...sessions.map((row) => row.placeId),
-      ])
+      const places = await placeNames(
+        container,
+        scope,
+        [...series.map((row) => row.defaultPlaceId), ...sessions.map((row) => row.placeId)].filter(
+          (id): id is string => id !== null,
+        ),
+      )
       return publicScheduleBlock(
         groupIds,
         series.map((row) => ({

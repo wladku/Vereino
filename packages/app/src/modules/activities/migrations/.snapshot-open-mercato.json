@@ -82,7 +82,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "unique": false,
           "length": null,
           "precision": null,
@@ -432,6 +432,40 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "venue_address": {
+          "name": "venue_address",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "venue_name": {
+          "name": "venue_name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         }
       },
       "indexes": [
@@ -480,7 +514,18 @@
           "unique": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "activities_activities_place_or_venue",
+          "expression": "(default_place_id IS NOT NULL) <> (venue_name IS NOT NULL)",
+          "definition": "check ((default_place_id IS NOT NULL) <> (venue_name IS NOT NULL))"
+        },
+        {
+          "name": "activities_activities_venue_address_with_name",
+          "expression": "venue_address IS NULL OR venue_name IS NOT NULL",
+          "definition": "check (venue_address IS NULL OR venue_name IS NOT NULL)"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null
@@ -1851,7 +1896,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "unique": false,
           "length": null,
           "precision": null,
@@ -1946,6 +1991,40 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "venue_address": {
+          "name": "venue_address",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "venue_name": {
+          "name": "venue_name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         }
       },
       "indexes": [
@@ -2039,7 +2118,18 @@
           "unique": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "activities_occurrences_place_or_venue",
+          "expression": "(place_id IS NOT NULL) <> (venue_name IS NOT NULL)",
+          "definition": "check ((place_id IS NOT NULL) <> (venue_name IS NOT NULL))"
+        },
+        {
+          "name": "activities_occurrences_venue_address_with_name",
+          "expression": "venue_address IS NULL OR venue_name IS NOT NULL",
+          "definition": "check (venue_address IS NULL OR venue_name IS NOT NULL)"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null
