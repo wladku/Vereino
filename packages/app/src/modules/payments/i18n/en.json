@@ -298,7 +298,7 @@
   "payments.audit.payments.refund": "Refund an online payment",
   "payments.errors.checkout_charge_forbidden": "This charge is not yours to pay.",
   "payments.errors.payer_missing": "This charge has no payer — contact the club.",
-  "payments.errors.charge_not_open": "Only open charges can be paid online, in full.",
+  "payments.errors.charge_not_open": "This charge is already paid or cancelled and cannot be paid online.",
   "payments.errors.gateway_unavailable": "The payment service is not available. Try again in a moment.",
   "payments.errors.payment_not_refundable": "Only an online payment can be refunded.",
   "payments.errors.refund_exceeds_remaining": "The refund exceeds what is left to refund.",

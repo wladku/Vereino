@@ -298,7 +298,7 @@
   "payments.audit.payments.refund": "Zwrot płatności online",
   "payments.errors.checkout_charge_forbidden": "Ta należność nie jest do opłacenia przez Ciebie.",
   "payments.errors.payer_missing": "Ta należność nie ma płatnika — skontaktuj się z klubem.",
-  "payments.errors.charge_not_open": "Online można opłacić tylko otwarte należności, w całości.",
+  "payments.errors.charge_not_open": "Ta należność jest już opłacona lub anulowana i nie można jej opłacić online.",
   "payments.errors.gateway_unavailable": "Serwis płatności jest niedostępny. Spróbuj ponownie za chwilę.",
   "payments.errors.payment_not_refundable": "Zwrócić można tylko płatność online.",
   "payments.errors.refund_exceeds_remaining": "Zwrot przekracza kwotę pozostałą do zwrotu.",
