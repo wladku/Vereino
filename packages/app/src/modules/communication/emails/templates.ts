@@ -1,4 +1,5 @@
-// The e-mail templates of `communication` (foundation III P-31, DD-M08, Q15 = B): every one is `optOut: 'never'`
+// The e-mail templates of `communication` (foundation III P-31, DD-M08, Q15 = B; REQ-A09 adds the moved session):
+// every one is `optOut: 'never'`
 // (announcements, replies and session changes must arrive), maps to an in-app type declared `channels: ['in_app']`,
 // renders club text through `clubText` (escaped, line breaks kept; R09) and links to the member thread
 // `/club/messages/[threadId]` (sign-in). Rendered by the foundation's dispatch worker in each recipient's language;
@@ -10,6 +11,7 @@ import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/tran
 import { CANCELLING_ROLES } from '@vereino/core'
 import { clubText, defineEmailTemplate } from '@/modules/foundation'
 import { clockLabel, preheaderOf, sessionWhenLabel } from '../lib/email-format'
+import { rescheduleLines } from '../lib/reschedule'
 import { memberThreadPath } from '../lib/thread-rules'
 
 const h = React.createElement
@@ -137,4 +139,82 @@ export const sessionCancelledTemplate = defineEmailTemplate<CancellationParams>(
   actionLabel: (t) => t('communication.email.openThread', 'Open the conversation'),
 })
 
-export const communicationEmailTemplates = [announcementTemplate, replyTemplate, sessionCancelledTemplate]
+const pointParams = z
+  .object({
+    startAt: z.iso.datetime(),
+    endAt: z.iso.datetime(),
+    gatheringAt: z.iso.datetime().nullable(),
+    place: z.string().max(300),
+  })
+  .strict()
+
+const ruleParams = z
+  .object({
+    startTime: z.string().min(1).max(8),
+    endTime: z.string().min(1).max(8),
+    gatheringMinutesBefore: z.number().int().nullable(),
+    place: z.string().max(300),
+  })
+  .strict()
+
+const movedParams = z
+  .object({
+    threadId: z.uuid(),
+    activityName: z.string().max(200),
+    timeZone: z.string().min(1).max(64),
+    notice: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('moved'), before: pointParams, after: pointParams }).strict(),
+      z.object({ kind: z.literal('restored'), after: pointParams }).strict(),
+      z
+        .object({
+          kind: z.literal('series'),
+          from: z.iso.date(),
+          movedCount: z.number().int().min(1),
+          before: ruleParams,
+          after: ruleParams,
+        })
+        .strict(),
+    ]),
+    /** Who made the change (R01); absent for a change that names nobody. */
+    movedByName: z.string().min(1).max(250).optional(),
+    movedByRole: z.enum(CANCELLING_ROLES).optional(),
+  })
+  .strict()
+
+type MovedParams = z.output<typeof movedParams>
+
+function movedLines(t: TranslateWithFallbackFn, params: MovedParams, locale: string) {
+  const actor = params.movedByName && params.movedByRole ? { name: params.movedByName, role: params.movedByRole } : null
+  return rescheduleLines(
+    t,
+    params.notice,
+    { activityName: params.activityName, locale, timeZone: params.timeZone },
+    actor,
+  )
+}
+
+/**
+ * `communication.session_moved`: the e-mail of a moved, restored or re-planned session (groups and activities parity
+ * spec REQ-A09, D-031 §7; #271) with the old and the new time, place and gathering time, in the recipient's language;
+ * non-opt-out like the cancellation (DD-M08). The in-app notice is `activities.occurrence_moved`.
+ */
+export const sessionMovedTemplate = defineEmailTemplate<MovedParams>({
+  id: 'communication.session_moved',
+  notificationType: 'communication.announcement',
+  optOut: 'never',
+  params: movedParams,
+  subject: (t, params, ctx) => movedLines(t, params, ctx.locale).subject,
+  preheader: (t, params, ctx) => movedLines(t, params, ctx.locale).lead,
+  body: (t, params, ctx) =>
+    h('div', null, h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, movedLines(t, params, ctx.locale).lead)),
+  text: (t, params, ctx) => movedLines(t, params, ctx.locale).lead,
+  link: (params) => memberThreadPath(params.threadId),
+  actionLabel: (t) => t('communication.email.openThread', 'Open the conversation'),
+})
+
+export const communicationEmailTemplates = [
+  announcementTemplate,
+  replyTemplate,
+  sessionCancelledTemplate,
+  sessionMovedTemplate,
+]

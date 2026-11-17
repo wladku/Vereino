@@ -183,8 +183,9 @@ export function MoveOccurrenceForm({
             const message = t('activities.occurrences.fields.confirmBy.incomplete')
             throw createCrudFormError(message, { confirmByDate: message, confirmByTime: message })
           }
+          let notified = 0
           try {
-            await apiCallOrThrow(
+            const call = await apiCallOrThrow<{ notified?: number }>(
               `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}`,
               {
                 method: 'PATCH',
@@ -200,6 +201,7 @@ export function MoveOccurrenceForm({
               },
               { errorMessage: t('activities.occurrences.errors.move') },
             )
+            notified = call.result?.notified ?? 0
           } catch (error: unknown) {
             const found = scheduleConflictsOf(error)
             if (found) {
@@ -216,7 +218,13 @@ export function MoveOccurrenceForm({
             throw error
           }
           setConflicts(null)
-          flash(t('activities.occurrences.flash.moved'), 'success')
+          // REQ-A09: the toast names how many people the move told (J-A03 step 3).
+          flash(
+            notified > 0
+              ? t('activities.occurrences.flash.movedNotified', { count: notified })
+              : t('activities.occurrences.flash.moved'),
+            'success',
+          )
           await onDone()
         }}
       />
