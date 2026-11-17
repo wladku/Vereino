@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { addDays, nextWeekday, weekdayOf, zoneInstant } from '../_fixtures/activities'
 import { prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
-import { heldRequest, requestForm } from '../_fixtures/facility-requests'
+import { confirmationToken, requestForm, submitRequest, verifyRequest } from '../_fixtures/facility-requests'
 import { listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
 import { publicPitch } from '../_fixtures/public-places'
 import { uiText } from '../_fixtures/ui-text'
@@ -73,11 +73,16 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
     expect(closure.body?.flagged?.rentals, JSON.stringify(closure.body)).toBe(1)
     // Entered within a day of its start, its payment deadline is the entry itself: unpaid past the deadline at once.
     const unpaid = await enter('Najemca Nieopłacony', soonStart())
-    const pending = await heldRequest(
-      slug,
-      setup.placeSlug,
-      requestForm(zoneInstant(friday, '08:00'), `r07-${club.tenant.organizationId.slice(0, 8)}@example.test`),
+    // A pending request: submitted and confirmed by e-mail, so it waits for the administrator (B-25).
+    const guest = `r07-${club.tenant.organizationId.slice(0, 8)}@example.test`
+    const submitted = await submitRequest(slug, setup.placeSlug, requestForm(zoneInstant(friday, '08:00'), guest))
+    expect(submitted.status, submitted.text).toBe(202)
+    const verified = await verifyRequest(await confirmationToken(guest))
+    expect(verified.status, verified.text).toBe(200)
+    const pending = (await listRentals(request, admin, '&tab=awaiting_approval')).find(
+      (rental) => rental.startsAt === new Date(zoneInstant(friday, '08:00')).toISOString(),
     )
+    if (!pending) throw new Error('[internal] the confirmed request is not awaiting approval')
     expect((await listRentals(request, admin, '&view=unpaid')).map((row) => row.id)).toEqual([unpaid])
 
     const login = await page.request.post('/api/auth/login', {
@@ -171,7 +176,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
       uiText('facilities.rentals.payee.club'),
     )
     await expect(page.getByTestId('facilities-rental-record-history')).toContainText(
-      uiText('facilities.rentals.requestedVia.phone', { exact: true }),
+      uiText('facilities.rentals.requestedVia.phone'),
     )
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
 
@@ -189,11 +194,11 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
       .getByRole('alertdialog')
       .getByRole('button', { name: uiText('facilities.rentals.actions.confirm', { exact: true }) })
       .click()
-    await expect(record).toContainText(uiText('facilities.rentals.status.confirmed', { exact: true }))
+    await expect(record.getByText(uiText('facilities.rentals.status.confirmed', { exact: true }))).toBeVisible()
     await expect(page.getByTestId('facilities-rental-record-confirm')).toHaveCount(0)
     await page.getByTestId('facilities-rental-record-cancel').click()
     await page.getByTestId('facilities-rental-cancel-confirm').click()
-    await expect(record).toContainText(uiText('facilities.rentals.status.cancelled_free', { exact: true }))
+    await expect(record.getByText(uiText('facilities.rentals.status.cancelled_free', { exact: true }))).toBeVisible()
     // A cancelled rental keeps only its notes editable.
     await expect(page.getByTestId('facilities-rental-record-closed')).toBeVisible()
     await expect(form.locator('[data-crud-field-id="purpose"]')).toHaveCount(0)

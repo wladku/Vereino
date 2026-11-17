@@ -21,9 +21,9 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CORRECTABLE_RENTAL_STATUSES } from '../lib/rental-record'
-import { RentalAmount, RentalBadges } from './RentalsTable'
+import { RentalBadges } from './RentalsTable'
 import { useRentalActions } from './RentalRowActions'
-import { placeLabel, usePlaceOptions, type Translate } from './facilities-client'
+import { minorToAmount, placeLabel, usePlaceOptions, type Translate } from './facilities-client'
 import {
   RENTALS_HREF,
   RENTALS_KEY,
@@ -335,7 +335,7 @@ export function RentalRecord({ id }: { id: string }) {
         <div className="flex flex-col gap-4">
           <Section title={t('facilities.rentals.record.sections.money')} testId="facilities-rental-record-money">
             <Fact label={t('facilities.rentals.columns.amount')}>
-              <RentalAmount row={rental} t={t} />
+              {rental.amount === null ? empty : minorToAmount(rental.amount)}
             </Fact>
             <Fact label={t('facilities.rentals.record.fields.category')}>
               {rental.renterCategory ? t(`facilities.rates.category.${rental.renterCategory}`) : empty}
