@@ -23,7 +23,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
 import { HEADCOUNT_MAX } from '../../lib/logs'
 import { FacilitiesClubFrame } from '../club-places/FacilitiesClubFrame'
-import { KIND_TAGS } from '../club-places/PlaceTimeline'
+import { KIND_TAGS } from '../day-axis/tags'
 import { CLUB_PLACES_HREF } from '../club-places/places-client'
 import { CloseFacilityDialog, IncidentDialog, OpenFacilityDialog, type DialogOutcome } from './FacilityDialogs'
 import {
