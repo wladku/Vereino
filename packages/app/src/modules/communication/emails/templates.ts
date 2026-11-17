@@ -11,7 +11,7 @@ import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/tran
 import { CANCELLING_ROLES } from '@vereino/core'
 import { clubText, defineEmailTemplate } from '@/modules/foundation'
 import { clockLabel, preheaderOf, sessionWhenLabel } from '../lib/email-format'
-import { rescheduleLines, type RescheduleNotice } from '../lib/reschedule'
+import { rescheduleLines } from '../lib/reschedule'
 import { memberThreadPath } from '../lib/thread-rules'
 
 const h = React.createElement
@@ -187,7 +187,7 @@ function movedLines(t: TranslateWithFallbackFn, params: MovedParams, locale: str
   const actor = params.movedByName && params.movedByRole ? { name: params.movedByName, role: params.movedByRole } : null
   return rescheduleLines(
     t,
-    params.notice as RescheduleNotice,
+    params.notice,
     { activityName: params.activityName, locale, timeZone: params.timeZone },
     actor,
   )

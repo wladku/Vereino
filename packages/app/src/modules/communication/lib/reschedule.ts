@@ -5,7 +5,6 @@
 // number of changed sessions and the new rule. The caller passes the translator of the language it writes in: the
 // club's for the thread message, the recipient's for the e-mail. Pure.
 import type { CancellingRole } from '@vereino/core'
-import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 
 /** Where and when a session takes place, as a notice names it (instants as ISO strings). */
 export type ReschedulePoint = { startAt: string; endAt: string; gatheringAt: string | null; place: string }
@@ -28,6 +27,9 @@ export type RescheduleActor = { name: string; role: CancellingRole }
 
 export type RescheduleContext = { activityName: string; locale: string; timeZone: string }
 
+/** A translator with a fallback text and values (the platform's `TranslateWithFallbackFn` fits it). */
+export type Translate = (key: string, fallback: string, values?: Record<string, string>) => string
+
 const KEY = 'communication.email.sessionMoved'
 
 /** "Tue 18.11" — the short weekday and the day and month of an instant, in `timeZone`. */
@@ -43,7 +45,7 @@ function clock(at: Date, locale: string, timeZone: string): string {
 }
 
 /** "Tue 18.11 17:00 (gathering 16:30), Boisko piłkarskie". */
-export function pointLabel(t: TranslateWithFallbackFn, point: ReschedulePoint, ctx: RescheduleContext): string {
+export function pointLabel(t: Translate, point: ReschedulePoint, ctx: RescheduleContext): string {
   const startAt = new Date(point.startAt)
   const values = {
     date: shortDateLabel(startAt, ctx.locale, ctx.timeZone),
@@ -57,7 +59,7 @@ export function pointLabel(t: TranslateWithFallbackFn, point: ReschedulePoint, c
 }
 
 /** "17:00–18:30 (gathering 30 min before), Boisko piłkarskie". */
-export function ruleLabel(t: TranslateWithFallbackFn, rule: RescheduleRule): string {
+export function ruleLabel(t: Translate, rule: RescheduleRule): string {
   const values = {
     time: `${rule.startTime.slice(0, 5)}–${rule.endTime.slice(0, 5)}`,
     gathering: String(rule.gatheringMinutesBefore ?? ''),
@@ -76,7 +78,7 @@ export function dayLabel(date: string): string {
 
 /** The subject and the one-line change of a notice, by whom when the actor is known. */
 export function rescheduleLines(
-  t: TranslateWithFallbackFn,
+  t: Translate,
   notice: RescheduleNotice,
   ctx: RescheduleContext,
   actor: RescheduleActor | null,

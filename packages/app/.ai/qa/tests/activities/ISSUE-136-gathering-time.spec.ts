@@ -234,7 +234,11 @@ test('ISSUE-136 gathering time: default and override, kept on a move, 422 when f
     const cancelledText = await shareText(request, admin, `occurrenceId=${matchSession.id}`)
     expect(cancelledText.body?.text).toContain('09:00')
     expect(cancelledText.body?.text).not.toContain('09:15')
-    const [mail] = await awaitEmails(family.guardian.email, 'Mecz z Polonią')
+    // The gathering change on B-15 was announced first (E10-S06, #271: the old and the new gathering time); the
+    // cancellation e-mail comes after it and names only the new one.
+    const [moveMail, mail] = await awaitEmails(family.guardian.email, 'Mecz z Polonią', 2)
+    expect(moveMail?.text).toContain('09:15')
+    expect(moveMail?.text).toContain('09:00')
     expect(mail?.text).toContain('09:00')
     expect(mail?.text).not.toContain('09:15')
 

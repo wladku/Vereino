@@ -1,12 +1,11 @@
 import { describe, expect, it } from '@jest/globals'
-import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { dayLabel, pointLabel, rescheduleLines, ruleLabel, shortDateLabel, type ReschedulePoint } from '../reschedule'
 
 // The fallback text with its values filled in; a role key falls back to the role id.
 const t = ((_key: string, fallback?: string, values?: Record<string, string | number>) =>
-  (fallback ?? '').replace(/\{(\w+)\}/g, (_match, name: string) =>
-    String(values?.[name] ?? ''),
-  )) as TranslateWithFallbackFn
+  (fallback ?? '').replace(/\{(\w+)\}/g, (_match, name: string) => String(values?.[name] ?? ''))) as Parameters<
+  typeof rescheduleLines
+>[0]
 
 const ctx = { activityName: 'Trening Żaków', locale: 'en', timeZone: 'Europe/Warsaw' }
 
