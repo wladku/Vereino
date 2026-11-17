@@ -58,6 +58,7 @@ describe('PZPN age categories', () => {
   it('seeds the PZPN categories youngest first under a dictionary key the dictionaries module accepts', () => {
     expect(AGE_CATEGORY_DICTIONARY_KEY).toMatch(/^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)*$/)
     expect(PZPN_AGE_CATEGORIES.map((category) => category.value)).toEqual([
+      'kids',
       'skrzat',
       'zak',
       'orlik',
@@ -68,6 +69,8 @@ describe('PZPN age categories', () => {
       'senior',
     ])
     expect(PZPN_AGE_CATEGORIES.find((category) => category.value === 'orlik')?.label).toBe('Orlik (U10–U11)')
+    // The academy's youngest group (people life-cycle spec phase L3): first, so new clubs list it youngest first.
+    expect(PZPN_AGE_CATEGORIES[0]).toEqual({ value: 'kids', label: 'Kids (U4–U5)' })
   })
 })
 

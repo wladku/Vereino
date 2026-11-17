@@ -86,8 +86,12 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
     await page.locator('[data-crud-field-id="name"] input').fill('Basen — początkujący')
     await page.locator('[data-crud-field-id="kind"] [role="combobox"]').click()
     await page.getByRole('option', { name: uiText('groups.groups.kind.class_group') }).click()
-    await page.locator('[data-crud-field-id="sectionId"] [role="combobox"]').click()
-    await page.getByRole('option', { name: 'Akademia piłkarska' }).click()
+    // The section is a native select of the empty-picker pattern (people life-cycle spec REQ-L14); its options load.
+    await expect(async () => {
+      await page
+        .locator('[data-crud-field-id="sectionId"] select')
+        .selectOption({ label: 'Akademia piłkarska' }, { timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
     // The team fields are hidden for a class group.
     await expect(page.locator('[data-crud-field-id="league"]')).toHaveCount(0)
     await page

@@ -310,6 +310,8 @@ describe('people error codes', () => {
       ['invitation_not_pending', 409],
       ['last_club_admin', 422],
       ['account_has_purpose', 409],
+      ['club_admin_exists', 409],
+      ['user_not_in_organization', 404],
       ['pesel_duplicate', 409],
       ['pesel_invalid', 422],
       ['phone_invalid', 422],
