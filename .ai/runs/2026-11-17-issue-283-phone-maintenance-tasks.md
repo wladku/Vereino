@@ -32,6 +32,7 @@
 - `yarn workspace @vereino/app jest src/modules/facilities/lib/__tests__/maintenance.test.ts`: 11 passed; coverage of `lib/maintenance.ts` 100/100/100/100.
 - `yarn test:integration:vereino --filter TEST-R15` run 1: failed at the second completion — `Expected: "maintenance_task_closed" Received: "invalid_transition"` (both attempts); every step before it passed (reminder links, list, window from the axis, completion with the next instance). Fixed as described under Decisions.
 - Run 2 (after the fix): `1 passed (4.0m)`.
+- `yarn verify` run 1: failed at `format:check` (TEST-R15 spec and `maintenance.test.ts` unformatted); `yarn format`, then `yarn verify --from format:check`: 12 steps passed; final full `yarn verify`: all 17 steps passed. Lint: 0 errors; the one warning in `lib/maintenance.ts` (line 61, `parseMaintenanceRecurrence`) predates this change.
 
 ## Open problems / next steps
 
