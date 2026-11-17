@@ -3,8 +3,10 @@
 // and the condition before, required), "Close facility" (the time, the condition after, required, and remarks) and
 // "Report incident" (the kind, the time, now by default, a description of 10–2000 characters with the hint not to
 // enter health data, the actions taken, the people involved and up to 5 photos, uploaded once the incident is saved,
-// #126). A coded refusal stays in the dialog next to the
-// form; a conflict (the log changed or was started meanwhile) closes it and the page reloads the day.
+// #126). The facilities parity spec (#282, J-R08) adds the party involved picked from today's rentals (its renter's
+// name goes into "people involved") and "Request an entry ban" (the action `entry_ban_requested`, which notifies the
+// club administrators). A coded refusal stays in the dialog next to the form; a conflict (the log changed or was
+// started meanwhile) closes it and the page reloads the day.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
@@ -36,6 +38,7 @@ import { LOG_TEXT_MAX_LENGTH } from '../../lib/logs'
 import {
   clubInstant,
   clubTimeNow,
+  entryTimes,
   reportIncident,
   saveLog,
   uploadIncidentPhoto,
@@ -44,8 +47,11 @@ import {
   type WriteResult,
 } from './facility-client'
 
-/** What a dialog reports to the page: the success message, or a conflict the page answers by reloading the day. */
-export type DialogOutcome = { kind: 'done'; message: string } | { kind: 'conflict'; message: string }
+/**
+ * What a dialog reports to the page: the success message (a warning when part of it failed, e.g. a photo upload), or a
+ * conflict the page answers by reloading the day.
+ */
+export type DialogOutcome = { kind: 'done'; message: string; warning?: boolean } | { kind: 'conflict'; message: string }
 
 type DialogProps = {
   today: FacilityToday
@@ -59,7 +65,12 @@ function useSubmit(onOutcome: DialogProps['onOutcome'], onOpenChange: DialogProp
   const t = useT()
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
-  const run = async (write: () => Promise<WriteResult>, success: () => string, fallbackKey: string) => {
+  const run = async (
+    write: () => Promise<WriteResult>,
+    success: () => string,
+    fallbackKey: string,
+    partlyFailed: () => boolean = () => false,
+  ) => {
     if (pending) return
     setPending(true)
     setProblem(null)
@@ -67,7 +78,7 @@ function useSubmit(onOutcome: DialogProps['onOutcome'], onOpenChange: DialogProp
       const result = await write()
       if (result.ok) {
         onOpenChange(false)
-        onOutcome({ kind: 'done', message: success() })
+        onOutcome({ kind: 'done', message: success(), warning: partlyFailed() })
       } else if (result.status === 409) {
         onOpenChange(false)
         onOutcome({ kind: 'conflict', message: writeErrorMessage(t, result, fallbackKey) })
@@ -383,6 +394,9 @@ export function CloseFacilityDialog({ today, open, onOpenChange, onOutcome }: Di
 /** The checkboxes of the actions taken (`none` is implied by an empty choice). */
 export const CHOOSABLE_ACTIONS = INCIDENT_ACTIONS.filter((action) => action !== 'none')
 
+/** The ban request has its own control in the attendant's dialog (J-R08, DD-R12). */
+const BAN_REQUEST: IncidentAction = 'entry_ban_requested'
+
 export function ActionChoices({
   idPrefix,
   legend,
@@ -390,6 +404,7 @@ export function ActionChoices({
   onChange,
   disabled,
   testIdPrefix,
+  exclude = [],
 }: {
   idPrefix: string
   legend: string
@@ -397,13 +412,15 @@ export function ActionChoices({
   onChange: (next: IncidentAction[]) => void
   disabled: boolean
   testIdPrefix: string
+  /** Actions the caller offers with a control of its own. */
+  exclude?: readonly IncidentAction[]
 }) {
   const t = useT()
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">{legend}</legend>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {CHOOSABLE_ACTIONS.map((action) => {
+        {CHOOSABLE_ACTIONS.filter((action) => !exclude.includes(action)).map((action) => {
           const id = `${idPrefix}-${action}`
           const checked = value.includes(action)
           return (
@@ -439,8 +456,23 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
   const [actions, setActions] = React.useState<IncidentAction[]>([])
   const [involved, setInvolved] = React.useState('')
   const [photos, setPhotos] = React.useState<File[]>([])
+  const [banRequested, setBanRequested] = React.useState(false)
+  const [rentalId, setRentalId] = React.useState('')
   const [kindMissing, setKindMissing] = React.useState(false)
   const { pending, problem, setProblem, run } = useSubmit(onOutcome, onOpenChange)
+  const rentals = today.entries.filter((entry) => entry.kind === 'rental' && entry.label)
+
+  /** A rental picked as the party involved adds its renter's name to "people involved" (J-R08). */
+  const pickRental = (id: string) => {
+    setRentalId(id)
+    const name = rentals.find((entry) => entry.id === id)?.label
+    if (!name) return
+    setInvolved((current) => {
+      const text = current.trim()
+      if (!text) return name
+      return text.includes(name) ? current : `${text}, ${name}`
+    })
+  }
 
   const submit = () => {
     const occurredAt = clubInstant(today.date, time, today.timeZone)
@@ -462,7 +494,7 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
           kind,
           description: description.trim(),
           involved: involved.trim() || null,
-          actionTaken: actions,
+          actionTaken: banRequested ? [...actions, BAN_REQUEST] : actions,
         })
         // The photos follow the saved incident; one that fails leaves the incident reported and is counted.
         const incidentId = reported.ok ? reported.answer.id : undefined
@@ -473,11 +505,14 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
         }
         return reported
       },
-      () =>
-        failedPhotos > 0
-          ? t('facilities.facility.incident.donePhotosFailed', { count: failedPhotos })
-          : t('facilities.facility.incident.done'),
+      () => {
+        if (failedPhotos > 0) return t('facilities.facility.incident.donePhotosFailed', { count: failedPhotos })
+        return banRequested
+          ? t('facilities.facility.incident.doneBanRequested')
+          : t('facilities.facility.incident.done')
+      },
       'facilities.facility.errors.incident',
+      () => failedPhotos > 0,
     )
   }
 
@@ -577,7 +612,33 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
             onChange={setActions}
             disabled={pending}
             testIdPrefix="club-facility-incident-action"
+            exclude={[BAN_REQUEST]}
           />
+          {rentals.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${ids}-rental`}>{t('facilities.facility.incident.rental')}</Label>
+              <Select value={rentalId} disabled={pending} onValueChange={pickRental}>
+                <SelectTrigger
+                  id={`${ids}-rental`}
+                  className="min-h-11"
+                  aria-describedby={`${ids}-rental-help`}
+                  data-testid="club-facility-incident-rental"
+                >
+                  <SelectValue placeholder={t('facilities.facility.incident.rental.choose')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {rentals.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id}>
+                      {`${entryTimes(entry, today.timeZone)} ${entry.label ?? ''}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p id={`${ids}-rental-help`} className="text-muted-foreground text-xs">
+                {t('facilities.facility.incident.rental.help')}
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${ids}-involved`}>{t('facilities.records.fields.involved')}</Label>
             <Textarea
@@ -594,6 +655,24 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
             />
             <p id={`${ids}-involved-help`} className="text-muted-foreground text-xs">
               {t('facilities.facility.incident.involvedHelp')}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 rounded-md border p-3">
+            <div className="flex min-h-11 items-center gap-2">
+              <Checkbox
+                id={`${ids}-ban`}
+                checked={banRequested}
+                disabled={pending}
+                aria-describedby={`${ids}-ban-help`}
+                data-testid="club-facility-incident-ban-request"
+                onCheckedChange={(next) => {
+                  setBanRequested(next === true)
+                }}
+              />
+              <Label htmlFor={`${ids}-ban`}>{t('facilities.facility.incident.banRequest')}</Label>
+            </div>
+            <p id={`${ids}-ban-help`} className="text-muted-foreground text-xs">
+              {t('facilities.facility.incident.banRequest.help')}
             </p>
           </div>
           <div className="flex flex-col gap-1">
