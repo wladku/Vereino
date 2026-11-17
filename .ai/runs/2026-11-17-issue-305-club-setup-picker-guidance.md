@@ -41,6 +41,7 @@ See the PR diff: `packages/ui/src/admin/{picker-empty-hint*,inline-create-dialog
 - `yarn test:integration:vereino --filter TEST-L15` (run 1): TEST-L20 and TEST-L14 passed; TEST-L15 failed `expect(locator).toHaveText(expected) failed … locator('[data-crud-field-id="ownerInstitutionId"] select option:checked') … element(s) not found` — the screenshot showed the place list: the dialog's submit had bubbled through the portal (React tree) into the place `CrudForm` and saved the place without its owner. Fixed in `InlineCreateDialog` (`stopPropagation`, unit-tested; aeeb3a3); lesson `dialog-form-inside-crudform-stops-submit`. Run 2: 3 passed (1.9m).
 - `--filter E06-S10`: pass. `--filter E03-S01`: pass. `--filter J-001`: pass. `--filter J-002`: pass.
 - `yarn verify`: all 17 steps passed.
+- `origin/main` gained #344 meanwhile; both added keys at the end of the people catalogs (conflict). Merged `origin/main` into the branch (19c55c6), keeping every key of both sides; after it `yarn verify` passed all 17 steps again and `--filter TEST-L15` 3 passed.
 - AC-L14 ticked in the spec (the TEST-L15 walk-through passes on a fresh tenant).
 - No screenshots attached by this run: the UI is proven by the browser integration specs; the PR carries `needs-qa` for a visual pass (both locales, 375 px, light and dark).
 
