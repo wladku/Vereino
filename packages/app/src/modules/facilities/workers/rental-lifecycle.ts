@@ -1,8 +1,10 @@
 // `facilities:rental-lifecycle` (facilities spec *Events, Jobs* row, DD-46; #122): every 15 minutes the confirmed
-// rentals whose end has passed become `done`, through `facilities.rentals.advance_lifecycle` (an `advanceWhere`
-// conditional UPDATE, so a retry changes nothing twice). The scheduler injects the registration's `tenantId` and
-// `organizationId`; the worker re-validates them and dispatches the job command with a session-less job context. The
-// "to clarify" list of unpaid rentals past their payment deadline waits for the management agreement (Q04).
+// rentals whose end has passed become `done`, and — where the management agreement with the place's owner turns it on —
+// the unpaid rentals past their payment deadline are cancelled free of charge (facilities parity spec DD-R11; #284),
+// through `facilities.rentals.advance_lifecycle` (`advanceWhere` conditional UPDATEs, so a retry changes nothing
+// twice). The scheduler injects the registration's `tenantId` and `organizationId`; the worker re-validates them and
+// dispatches the job command with a session-less job context. Unpaid rentals that do not expire stay on B-24's
+// "unpaid" list.
 import { z } from 'zod'
 import type { QueuedJob, WorkerMeta } from '@open-mercato/queue'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'

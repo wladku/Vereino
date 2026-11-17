@@ -1162,6 +1162,7 @@
   "facilities.rentals.record.fields.regulationsAccepted": "Rules accepted",
   "facilities.rentals.record.fields.emailVerified": "E-mail confirmed",
   "facilities.rentals.record.fields.decision": "Decision reason",
+  "facilities.rentals.record.unpaidAfterDeadline": "Cancelled automatically: not paid by the payment deadline",
   "facilities.rentals.record.renterRecord.label": "Renter in the register",
   "facilities.rentals.record.renterRecord.help": "Link an unregistered renter to an institution or a person; its name replaces the typed one.",
   "facilities.rentals.record.renterRecord.keep": "Keep as entered",

@@ -9,7 +9,10 @@
 // - confirm (`requested → confirmed`), cancel (free up to 24 h before, else late: the charge is forfeited), no-show
 //   and move (same checks for the new slot, the rental itself left out; keeps the status and the amount, clears the
 //   reschedule flag) go through the status table (409 `invalid_transition`) with the lock token;
-// - the lifecycle job closes the confirmed rentals whose end has passed (`confirmed → done`) with `advanceWhere`.
+// - the lifecycle job closes the confirmed rentals whose end has passed (`confirmed → done`) with `advanceWhere`, and —
+//   where the management agreement with the place's owner turns automatic expiry on — cancels free of charge the
+//   unpaid `requested` rentals whose payment deadline has passed (facilities parity spec DD-R11, REQ-R07; #284).
+// The payment deadline of an entry or a move follows that agreement (DD-R10), else 3 days.
 // The status commands are not undoable: the status only moves forward (DD-46); a wrong entry is cancelled. The one
 // undoable command is `facilities.rentals.update` (facilities parity spec DD-R08, REQ-R05; #279): it corrects the
 // contact, the purpose and the notes, and assigns a registered renter (institution or person, ban-checked) to an
@@ -20,6 +23,7 @@
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { createLogger } from '@open-mercato/shared/lib/logger'
 import { z } from 'zod'
 import { calendarDateInZone } from '@vereino/core'
 import { advanceWhere, assertInScope, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
@@ -37,15 +41,18 @@ import {
   cancellationDeadline,
   cancellationOutcome,
   MOVABLE_RENTAL_STATUSES,
+  expiresUnpaid,
   noShowAllowed,
-  paymentDeadline,
   rentalTransitions,
   startAllowed,
+  UNPAID_EXPIRY_REASON,
+  type RentalAgreementTerms,
   type RentalStatus,
 } from '../lib/rentals'
+import { rentalChargeState } from '../lib/rental-record'
 import { chargeService } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
-import { assessRentalSlot, renterBanned, type RentalIssue } from '../services/rental-slot'
+import { assessRentalSlot, rentalAgreement, renterBanned, type RentalIssue } from '../services/rental-slot'
 import {
   PLACE_KINDS,
   assertPlaces,
@@ -61,6 +68,8 @@ import {
 } from './shared'
 
 export const RENTAL_RESOURCE_KIND = 'facilities.rental'
+
+const lifecycleLogger = createLogger('facilities').child({ component: 'rental-lifecycle' })
 
 export type RentalSnapshot = {
   id: string
@@ -411,7 +420,7 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       row.startsAt = startsAt
       row.endsAt = assessment.endsAt
       row.cancellationDeadline = cancellationDeadline(startsAt)
-      row.paymentDeadline = paymentDeadline(startsAt, now)
+      row.paymentDeadline = assessment.paymentDeadline
       row.needsReschedule = false
       row.updatedAt = now
       return { entity: row, actingRole: authorized.actingRole, before }
@@ -603,47 +612,150 @@ const updateRentalCommand: CommandHandler<Record<string, unknown>, RentalUpdateR
 
 const lifecycleSchema = z.object({ now: z.iso.datetime({ offset: true }).optional() }).strict()
 
-export type LifecycleJobResult = { now: string; counts: { done: number }; changedIds: string[] }
+export type LifecycleJobResult = {
+  now: string
+  counts: { done: number; expired: number }
+  changedIds: string[]
+  /** The rentals cancelled free of charge as unpaid after their payment deadline (DD-R11). */
+  expiredIds: string[]
+}
+
+/**
+ * The unpaid `requested` rentals that expire at `at` (DD-R11): past their payment deadline, with no charge or an
+ * untouched one, under a management agreement — in force on the day each was entered — that turns expiry on. The
+ * agreement is read once per place and day.
+ */
+async function expiringRentals(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  at: Date,
+): Promise<Rental[]> {
+  const unpaid = await em.find(
+    Rental,
+    { ...scope, deletedAt: null, status: 'requested', paymentDeadline: { $lt: at } },
+    { orderBy: { id: 'asc' } },
+  )
+  if (unpaid.length === 0) return []
+  const charges = chargeService(ctx.container)
+  const chargeIds = unpaid.flatMap((row) => (row.chargeId ? [row.chargeId] : []))
+  const statuses = charges && chargeIds.length > 0 ? await charges.statusOf(chargeIds, ctx) : new Map<string, string>()
+  const timeZone = await clubTimeZone(ctx.container, scope)
+  const agreements = new Map<string, RentalAgreementTerms | null>()
+  const expiring: Rental[] = []
+  for (const row of unpaid) {
+    const enteredOn = calendarDateInZone(row.createdAt, timeZone)
+    const key = `${row.placeId}:${enteredOn}`
+    if (!agreements.has(key)) {
+      agreements.set(key, await rentalAgreement(ctx.container, em, scope, row.placeId, enteredOn))
+    }
+    const shape = {
+      status: row.status,
+      startsAt: row.startsAt,
+      paymentDeadline: row.paymentDeadline ?? null,
+      cancellationDeadline: row.cancellationDeadline ?? null,
+    }
+    if (expiresUnpaid(shape, rentalChargeState(row.chargeId, statuses), agreements.get(key) ?? null, at)) {
+      expiring.push(row)
+    }
+  }
+  return expiring
+}
 
 /**
  * `facilities.rentals.advance_lifecycle` (DD-46; the `facilities:rental-lifecycle` row of *Events, Jobs*): the
- * confirmed rentals whose end has passed become `done`. `now` comes from the operator CLI (`--now`); a worker never
- * sets it. Each move is one conditional update, so a retry changes nothing twice.
+ * confirmed rentals whose end has passed become `done`, and the unpaid rentals that expire (DD-R11) become
+ * `cancelled_free` with the reason `unpaid_after_deadline` and their open charge cancelled. `now` comes from the
+ * operator CLI (`--now`); a worker never sets it. Each move is one conditional update, so a retry changes nothing twice.
  */
 const advanceLifecycleCommand: CommandHandler<Record<string, unknown>, LifecycleJobResult> = {
   id: 'facilities.rentals.advance_lifecycle',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    const { scope, ids, now } = await inWriteTransaction(ctx, 'facilities.rentals.advance_lifecycle', async (em) => {
-      const authorized = await authorizeScoped(
-        {
-          input: lifecycleSchema,
-          resourceKind: 'facilities.organization',
-          allowedKinds: ['system_job'],
-          resolveTarget: (_parsed, _entity, trusted) => ({ id: trusted.organizationId, ...trusted }),
-          lock: 'none',
-          scopeSource: { job: true },
-        },
-        rawInput,
-        ctx,
-        em,
-      )
-      const at = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
-      const trusted = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const changed = await advanceWhere(em, Rental, {
-        transitions: rentalTransitions,
-        where: { ...trusted, deletedAt: null, endsAt: { $lte: at } },
-        from: 'confirmed',
-        to: 'done',
-        // `at` decides which rentals ended; the row itself changes now (the CLI's `--now` may be in the past).
-        set: { updatedAt: new Date() },
-      })
-      return { scope: trusted, ids: changed, now: at }
-    })
+    const afterCommit: Array<() => Promise<void>> = []
+    const { scope, ids, expired, now } = await inWriteTransaction(
+      ctx,
+      'facilities.rentals.advance_lifecycle',
+      async (em) => {
+        const authorized = await authorizeScoped(
+          {
+            input: lifecycleSchema,
+            resourceKind: 'facilities.organization',
+            allowedKinds: ['system_job'],
+            resolveTarget: (_parsed, _entity, trusted) => ({ id: trusted.organizationId, ...trusted }),
+            lock: 'none',
+            scopeSource: { job: true },
+          },
+          rawInput,
+          ctx,
+          em,
+        )
+        const at = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
+        const trusted = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+        const changed = await advanceWhere(em, Rental, {
+          transitions: rentalTransitions,
+          where: { ...trusted, deletedAt: null, endsAt: { $lte: at } },
+          from: 'confirmed',
+          to: 'done',
+          // `at` decides which rentals ended; the row itself changes now (the CLI's `--now` may be in the past).
+          set: { updatedAt: new Date() },
+        })
+        const charges = chargeService(ctx.container)
+        const expiredRows: Rental[] = []
+        for (const row of await expiringRentals(ctx, em, trusted, at)) {
+          // The charge first, under its row lock: a payment recorded since the read leaves it paid in part, and the
+          // rental then stays on the unpaid list instead of becoming free while money is held.
+          if (charges && row.chargeId) {
+            const outcome = await charges.cancelForSource(
+              em,
+              { sourceType: 'rental', sourceId: row.id, outcome: 'cancelled' },
+              ctx,
+            )
+            if (outcome.warning) continue
+            if (outcome.afterCommit) afterCommit.push(outcome.afterCommit)
+          }
+          const moved = await advanceWhere(em, Rental, {
+            transitions: rentalTransitions,
+            where: { ...trusted, id: row.id, deletedAt: null, paymentDeadline: { $lt: at } },
+            from: 'requested',
+            to: 'cancelled_free',
+            set: { updatedAt: new Date() },
+          })
+          if (moved.length === 1) expiredRows.push(row)
+        }
+        // The reason is an encrypted column, so it is written through the entity, not the conditional update.
+        for (const row of expiredRows) {
+          row.status = 'cancelled_free'
+          row.decisionReason = UNPAID_EXPIRY_REASON
+        }
+        await em.flush()
+        return {
+          scope: trusted,
+          ids: changed,
+          expired: expiredRows.map((row) => ({ id: row.id, placeId: row.placeId })),
+          now: at,
+        }
+      },
+    )
+    for (const effect of afterCommit) await effect()
     for (const id of ids) {
       await emitAfterCommit('facilities.rental.done', scope, { id })
     }
-    return { now: now.toISOString(), counts: { done: ids.length }, changedIds: ids }
+    for (const entry of expired) {
+      await emitAfterCommit('facilities.rental.cancelled', scope, { ...entry, reason: UNPAID_EXPIRY_REASON })
+    }
+    if (expired.length > 0) {
+      lifecycleLogger.info('facilities:rental-lifecycle cancelled unpaid rentals after their payment deadline', {
+        organizationId: scope.organizationId,
+        rentalIds: expired.map((entry) => entry.id),
+      })
+    }
+    return {
+      now: now.toISOString(),
+      counts: { done: ids.length, expired: expired.length },
+      changedIds: ids,
+      expiredIds: expired.map((entry) => entry.id),
+    }
   },
 }
 

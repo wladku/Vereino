@@ -1,6 +1,7 @@
 // Contracts (club spec *Data Models* → `club_core_contracts`, DD-09, REQ-021; README B-07; #96): who the club has a
-// contract with, of which kind, for which period, and — for a coach — the rates of the club's settlement model (R14).
-// Rates are whole grosz. Pure: the commands check a write with these rules, and the coach units report of
+// contract with, of which kind, for which period, and — for a coach — the rates of the club's settlement model (R14);
+// a management agreement (`facility_management`) carries the rental terms of the owner's places (facilities parity
+// spec DD-R10; #284). Rates are whole grosz. Pure: the commands check a write with these rules, and the coach units report of
 // `activities` picks the contract that prices a session with `contractOn`.
 import { periodsOverlap, type CalendarDate } from '@vereino/core'
 import type { COACH_SETTLEMENT_MODELS } from './settings'
@@ -58,23 +59,86 @@ function isRate(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_RATE_GROSZ
 }
 
-/** The coach rates stored in `terms` (decrypted JSON text); anything that is not a valid rate is dropped. */
-export function parseCoachTerms(value: unknown): CoachTerms {
+/**
+ * The rental terms a management agreement may carry (facilities parity spec DD-R10, REQ-R07; #284): the days before a
+ * rental's start its payment is due, and whether an unpaid rental expires automatically after that deadline. Both are
+ * optional; an agreement without them leaves the facilities defaults (3 days, no expiry).
+ */
+export const FACILITY_TERM_FIELDS = ['paymentDeadlineDays', 'autoExpireUnpaid'] as const
+export type FacilityTermField = (typeof FACILITY_TERM_FIELDS)[number]
+export type FacilityTerms = { paymentDeadlineDays?: number; autoExpireUnpaid?: boolean }
+
+/** The most days before the start a management agreement may set as the payment deadline. */
+export const MAX_PAYMENT_DEADLINE_DAYS = 60
+
+function isPaymentDeadlineDays(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_PAYMENT_DEADLINE_DAYS
+}
+
+/** The stored terms as an object: decrypted JSON text is parsed, anything that is not an object is null. */
+function termsObject(value: unknown): Record<string, unknown> | null {
   let parsed: unknown = value
   if (typeof value === 'string') {
     try {
       parsed = JSON.parse(value) as unknown
     } catch {
-      return {}
+      return null
     }
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  return parsed as Record<string, unknown>
+}
+
+/** The coach rates stored in `terms` (decrypted JSON text); anything that is not a valid rate is dropped. */
+export function parseCoachTerms(value: unknown): CoachTerms {
+  const parsed = termsObject(value)
   const terms: CoachTerms = {}
+  if (!parsed) return terms
   for (const field of COACH_TERM_FIELDS) {
-    const rate = (parsed as Record<string, unknown>)[field]
+    const rate = parsed[field]
     if (isRate(rate)) terms[field] = rate
   }
   return terms
+}
+
+/** The rental terms stored in a management agreement's `terms`; anything invalid is dropped (DD-R10). */
+export function parseFacilityTerms(value: unknown): FacilityTerms {
+  const parsed = termsObject(value)
+  const terms: FacilityTerms = {}
+  if (!parsed) return terms
+  if (isPaymentDeadlineDays(parsed.paymentDeadlineDays)) terms.paymentDeadlineDays = parsed.paymentDeadlineDays
+  if (typeof parsed.autoExpireUnpaid === 'boolean') terms.autoExpireUnpaid = parsed.autoExpireUnpaid
+  return terms
+}
+
+/**
+ * The first rental term a write sends with an invalid value (422 `contract_terms_invalid` at that field), or null: the
+ * payment days a whole number 0–60, the expiry a boolean; an absent term is valid.
+ */
+export function invalidFacilityTerm(terms: Readonly<Record<string, unknown>>): FacilityTermField | null {
+  const days = terms.paymentDeadlineDays
+  if (days !== undefined && days !== null && !isPaymentDeadlineDays(days)) return 'paymentDeadlineDays'
+  const expire = terms.autoExpireUnpaid
+  if (expire !== undefined && expire !== null && typeof expire !== 'boolean') return 'autoExpireUnpaid'
+  return null
+}
+
+/**
+ * The terms a contract of `kind` carries, read from the stored JSON (null when it stores none): the rental terms of a
+ * management agreement, otherwise the coach rates (the other kinds store no terms).
+ */
+export function parseContractTerms(kind: string | null, value: unknown): CoachTerms | FacilityTerms | null {
+  if (value === null || value === undefined) return null
+  if (kind === 'facility_management') return parseFacilityTerms(value)
+  return parseCoachTerms(value)
+}
+
+/** The rental terms of the management agreement a rental follows (`clubCoreContracts.facilityAgreement`). */
+export type FacilityAgreement = { paymentDeadlineDays: number | null; autoExpireUnpaid: boolean }
+
+/** The agreement's rental terms with the unset ones made explicit: no days (the facilities default) and no expiry. */
+export function facilityAgreementOf(terms: FacilityTerms): FacilityAgreement {
+  return { paymentDeadlineDays: terms.paymentDeadlineDays ?? null, autoExpireUnpaid: terms.autoExpireUnpaid ?? false }
 }
 
 /** The model's rates a contract lacks; empty when it can price a month in that model. */

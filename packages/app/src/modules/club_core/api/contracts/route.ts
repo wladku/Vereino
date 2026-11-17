@@ -137,7 +137,7 @@ export const openApi = buildOpenApi({
   create: {
     schema: contractCreateSchema,
     description:
-      "Creates a contract (club administrator). A `coach` contract names a person and carries every rate of the club's settlement model in grosz (`units_per_contract`: `baseMonthly`, `unitRate`, `matchRate`, `travelRate`; `fixed_base_adjusted`: `baseMonthly`, `sessionAmount`, `tripAmount`); the other kinds store no terms. Errors: 400 invalid input, 403 `scope_denied`, 409 `contract_overlap`, 422 `contract_party_invalid`, `contract_terms_invalid`, `validity_inverted`.",
+      "Creates a contract (club administrator). A `coach` contract names a person and carries every rate of the club's settlement model in grosz (`units_per_contract`: `baseMonthly`, `unitRate`, `matchRate`, `travelRate`; `fixed_base_adjusted`: `baseMonthly`, `sessionAmount`, `tripAmount`); a `facility_management` agreement may carry the rental terms of the owner's places, `paymentDeadlineDays` (a whole number 0–60) and `autoExpireUnpaid` (boolean); the other kinds store no terms. Errors: 400 invalid input, 403 `scope_denied`, 409 `contract_overlap`, 422 `contract_party_invalid`, `contract_terms_invalid`, `validity_inverted`.",
   },
   update: {
     schema: contractUpdateSchema,
