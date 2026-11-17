@@ -13,10 +13,12 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
+import { findActingRole } from '@vereino/core'
 import { cancelRoleOf, type OccurrenceCommandResult } from '../../../commands/occurrences'
 import { occurrenceUpdateSchema } from '../../../data/validators'
 import { gatheringIso } from '../../../lib/gathering'
 import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../../services/read'
+import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
 import {
   SCHEDULE_READ_KINDS,
@@ -56,6 +58,12 @@ const detailSchema = occurrenceListItemSchema.extend({
     )
     .describe('The substitution history, oldest first (E06-S13); entries are never edited.'),
   actingRole: z.string(),
+  placeAddress: z.string().nullable().describe("The address of the session's place (#268), or null."),
+  placeGeoLat: z.number().nullable(),
+  placeGeoLng: z.number().nullable(),
+  mayRestore: z
+    .boolean()
+    .describe('The caller may restore the cancelled session: the club administrator, while it has not ended (#268).'),
 })
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -75,7 +83,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       groupId: row.groupId,
       occurrenceId: row.id,
     })
-    const [names, activities, teams, substituted, substitutions, cancelRole] = await Promise.all([
+    const [names, activities, teams, substituted, substitutions, cancelRole, places] = await Promise.all([
       nameMaps(ctx.container, scope, {
         groupIds: [row.groupId],
         sectionIds: [row.sectionId],
@@ -87,7 +95,20 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       substituteForOf(ctx.container, scope, [{ id: row.id, coachPersonId: row.coachPersonId ?? null }]),
       substitutionHistory(ctx.container, scope, row.id),
       cancelRoleOf(ctx.container, grants, row),
+      findPlaces(ctx.container, scope, [row.placeId]),
     ])
+    const place = places.get(row.placeId)
+    // Restore (#268): the club administrator only, a cancelled session that has not ended — the command's own checks.
+    const mayRestore =
+      row.status === 'cancelled' &&
+      row.endAt.getTime() > Date.now() &&
+      findActingRole(grants, ['club_admin'], {
+        id: row.id,
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        sectionId: row.sectionId,
+        groupId: row.groupId,
+      }) !== null
     const substituteFor = substituted.get(row.id)
     const activity = activities.get(row.activityId)
     const activityTeam = teams.get(row.activityId)
@@ -108,6 +129,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       gatheringAt: gatheringIso(row.startAt, row.gatheringMinutesBefore),
       placeId: row.placeId,
       placeName: names.places.get(row.placeId) ?? null,
+      placeAddress: place?.address ?? null,
+      placeGeoLat: place?.geoLat ?? null,
+      placeGeoLng: place?.geoLng ?? null,
       coachPersonId: row.coachPersonId ?? null,
       coachName: row.coachPersonId ? (names.persons.get(row.coachPersonId) ?? null) : null,
       substituteForPersonId: substituteFor?.personId ?? null,
@@ -123,6 +147,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       substitutions,
       actingRole,
       mayCancel: cancelRole !== null,
+      mayRestore,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.occurrences.detail')

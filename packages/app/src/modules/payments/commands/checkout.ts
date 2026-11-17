@@ -1,8 +1,9 @@
 // The online checkout commands of phase 4 step 4 (payments spec API table → `payments.checkout.create`,
 // `payments.payments.refund`; DD-42, REQ-012, R13, Q-050; issue #110 E07-S03):
 //
-// - `payments.checkout.create`: the payer's selected open charges (403 someone else's, 422 `payer_missing`, 409
-//   `charge_not_open`; 403 `payments_minor` for a minor, R10) become a checkout with the `payer_pays` surcharge; the
+// - `payments.checkout.create`: the payer's selected `open` or `partially_paid` charges (403 someone else's, 422
+//   `payer_missing`, 409 `charge_not_open`; 403 `payments_minor` for a minor, R10) become a checkout of what remains
+//   on them, each charge's remainder stored as its share (DD-C07, #298), with the `payer_pays` surcharge; the
 //   charges are row-locked while it is written, then the gateway session is created outside the transaction, with the
 //   checkout id as the gateway `paymentId` and the checkout's own idempotency key. A gateway failure marks the
 //   checkout `failed` and answers 502 `gateway_unavailable`.
@@ -56,6 +57,7 @@ function checkoutSnapshot(row: Checkout) {
     organizationId: row.organizationId,
     payerPersonId: row.payerPersonId,
     chargeIds: row.chargeIds,
+    chargeAmounts: row.chargeAmounts ?? null,
     amount: row.amount,
     feeAmount: row.feeAmount,
     status: row.status,
@@ -70,7 +72,7 @@ const createCheckoutCommand: CommandHandler<Record<string, unknown>, CheckoutCre
     const payer = await payerOf(ctx)
     const box: { actingRole?: ActingRole } = {}
     const checkout = await inWriteTransaction(ctx, 'payments.checkout.create', async (em) => {
-      const { charges, totals } = await checkedCharges(em, ctx.container, payer, parsed.chargeIds, true)
+      const { charges, shares, totals } = await checkedCharges(em, ctx.container, payer, parsed.chargeIds, true)
       box.actingRole = charges.every((charge) => charge.personId === payer.personId) ? 'self' : 'guardian'
       const now = new Date()
       const id = randomUUID()
@@ -79,6 +81,7 @@ const createCheckoutCommand: CommandHandler<Record<string, unknown>, CheckoutCre
         ...payer.scope,
         payerPersonId: payer.personId,
         chargeIds: parsed.chargeIds,
+        chargeAmounts: shares,
         amount: totals.amount,
         feeAmount: totals.feeAmount,
         idempotencyKey: `payments-checkout-${id}`,

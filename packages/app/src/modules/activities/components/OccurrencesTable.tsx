@@ -2,23 +2,29 @@
 // `/backend/activities/occurrences` — "Sessions" (club spec UI table, REQ-005, REQ-006; README B-15; E06-S12 #94): the
 // sessions in the caller's record scope in date order, with server filters status, date range (slot dates), section,
 // group and "needs reschedule"; the date range starts at 7 days back through 14 days ahead and can be cleared. The
-// perspectives All / Needing a coach / Unsettled / Canceled / Calendar live in the URL (`?perspective=`): "Needing a
-// coach" lists planned sessions without a coach from today for 14 days, "Unsettled" planned sessions that ended 24
-// hours ago or more (E06-S13 #95), Canceled cancelled sessions with their reason, Calendar is the coordinator's week
-// grid (`CoordinatorCalendar`). The session status, "unsettled", "moved" (detached from its series) and "needs
-// reschedule" (a generated session over a conflict) are badges, and the coach column marks "Needs a coach" and
-// "(substitution)". Each row opens the session; with `activities.coach` a future planned session the caller may cancel
-// (`mayCancel`, #215) is cancelled from its row (reason required) and a started one opens its attendance list; with `activities.manage` a planned session gets
-// "Assign substitute" (no coach) or "Change coach". `ActivitySessions` is the same list for one activity (the
+// views Upcoming / Needing a coach / Needs a new time / Unsettled / Canceled / Calendar live in the URL (`?view=`;
+// `?perspective=` stays accepted, DD-A11 of the groups and activities parity spec, #268): "Needing a coach" lists
+// planned sessions without a coach from today for 14 days, "Needs a new time" planned sessions flagged
+// `needs_reschedule`, "Unsettled" planned sessions that ended 24 hours ago or more (E06-S13 #95), Canceled cancelled
+// sessions with their reason, Calendar is the coordinator's week grid (`CoordinatorCalendar`). `?activity=` scopes the
+// list to one activity under the header "Sessions of {activity}" with a link back to all sessions (#268). The session
+// status, "unsettled", "moved" (detached from its series) and "needs reschedule" are badges, and the coach column marks
+// "Needs a coach" and "(substitution)". Each row opens the session; its buttons — Assign substitute (the primary one)
+// or Change coach and Move with `activities.manage`, then Cancel for a future planned session the caller may cancel
+// (`mayCancel`, #215) or Attendance list for a started one with `activities.coach` — are inline from 1024 px and in
+// the row menu always. Each view has its own empty state. `ActivitySessions` is the same list for one activity (the
 // "Sessions" tab of its record).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
+import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
 import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActions'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
+import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -26,24 +32,29 @@ import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/u
 import { OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import {
   OCCURRENCE_PERSPECTIVES,
+  activityOfParams,
   coachBadge,
-  coachRowAction,
   localCalendarDate,
   perspectiveHref,
   perspectiveOf,
   perspectiveQuery,
   perspectiveWindow,
-  sessionRowActions,
+  sessionInlineActions,
+  viewOfParams,
   type OccurrencePerspective,
+  type SessionInlineAction,
 } from '../lib/occurrence-list'
 import { isUnsettled } from '../lib/substitutions'
 import { AssignCoachDialog } from './AssignCoachDialog'
 import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
 import { CoordinatorCalendar } from './CoordinatorCalendar'
+import { MoveOccurrenceDialog } from './MoveOccurrenceDialog'
 import { attendanceHref } from './club/club-client'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
 import {
+  ACTIVITIES_HREF,
   OCCURRENCES_HREF,
+  activityHref,
   dateLabel,
   errorMessage,
   groupOptions,
@@ -53,12 +64,22 @@ import {
   statusVariant,
   timeRangeOfInstants,
   tolerant,
+  type ActivityDetail,
   type OccurrenceRow,
   type TableColumns,
   type Translate,
 } from './client-helpers'
 
 const PAGE_SIZE = 50
+
+/** The label of each row action, inline and in the row menu. */
+const ACTION_LABELS: Record<SessionInlineAction, string> = {
+  assign: 'activities.substitutions.assign.action',
+  change: 'activities.substitutions.change.action',
+  move: 'activities.occurrences.actions.move',
+  cancel: 'activities.occurrences.actions.cancel',
+  attendance: 'activities.occurrences.actions.attendance',
+}
 
 /** The status badge, "unsettled" and the "moved" / "needs reschedule" flags of a session. */
 export function OccurrenceBadges({ row, t }: { row: OccurrenceRow; t: Translate }) {
@@ -214,14 +235,109 @@ function useOccurrenceRowActions(t: Translate) {
   )
 }
 
-/** The list of the All and Canceled perspectives. */
-function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspective, 'calendar'> }) {
+/** "Tue 2026-11-17, Żaki — training": how a row action names its session to a screen reader. */
+function sessionName(t: Translate, row: OccurrenceRow): string {
+  return [dateLabel(t, row.occurrenceDate), row.activityName].filter(Boolean).join(', ')
+}
+
+/** The row buttons from 1024 px (B-15, #268); "Assign substitute" is the row's primary button. */
+function InlineActions({
+  row,
+  actions,
+  onAction,
+  t,
+}: {
+  row: OccurrenceRow
+  actions: SessionInlineAction[]
+  onAction: (action: SessionInlineAction, row: OccurrenceRow) => void
+  t: Translate
+}) {
+  if (actions.length === 0) return null
+  const session = sessionName(t, row)
+  return (
+    // The row opens the session; a click on a button stays on the button (each one stops the click).
+    <span className="hidden flex-wrap items-center gap-1 lg:flex" data-testid="occurrence-inline-actions">
+      {actions.map((action) => {
+        const label = t(ACTION_LABELS[action])
+        const ariaLabel = t('activities.occurrences.actions.forSession', { action: label, session })
+        if (action === 'attendance') {
+          return (
+            <Button key={action} asChild size="sm" variant="outline">
+              <Link
+                href={attendanceHref(row.id)}
+                aria-label={ariaLabel}
+                data-testid="occurrence-inline-attendance"
+                onClick={(event) => {
+                  event.stopPropagation()
+                }}
+              >
+                {label}
+              </Link>
+            </Button>
+          )
+        }
+        return (
+          <Button
+            key={action}
+            type="button"
+            size="sm"
+            variant={action === 'assign' ? 'default' : action === 'cancel' ? 'destructive-outline' : 'outline'}
+            data-testid={`occurrence-inline-${action}`}
+            aria-label={ariaLabel}
+            onClick={(event) => {
+              event.stopPropagation()
+              onAction(action, row)
+            }}
+          >
+            {label}
+          </Button>
+        )
+      })}
+    </span>
+  )
+}
+
+/** The empty state of a view (README B-15, #268): what the empty view means and, for Upcoming, the next action. */
+function ViewEmptyState({
+  perspective,
+  canCreate,
+  t,
+}: {
+  perspective: Exclude<OccurrencePerspective, 'calendar'>
+  canCreate: boolean
+  t: Translate
+}) {
+  return (
+    <div data-testid={`occurrences-empty-${perspective}`}>
+      <EmptyState
+        title={t(`activities.occurrences.empty.${perspective}.title`)}
+        description={t(`activities.occurrences.empty.${perspective}.text`)}
+        actions={
+          perspective === 'all' && canCreate ? (
+            <Button asChild>
+              <Link href={`${ACTIVITIES_HREF}/create`}>{t('activities.activities.actions.create')}</Link>
+            </Button>
+          ) : undefined
+        }
+      />
+    </div>
+  )
+}
+
+/** The list of every view but Calendar, optionally scoped to one activity (`?activity=`). */
+function SessionsList({
+  perspective,
+  activityId,
+}: {
+  perspective: Exclude<OccurrencePerspective, 'calendar'>
+  activityId: string | null
+}) {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
   const scopeVersion = useOrganizationScopeVersion()
   const features = useActivitiesFeatures()
-  // The browser's today: the perspective's default window (none for "Unsettled"), clearable through the filters.
+  // The browser's today: the view's default window (none for "Unsettled" and "Needs a new time"), clearable.
   const [filters, setFilters] = React.useState<FilterValues>(() => {
     const window = perspectiveWindow(perspective, localCalendarDate(new Date()))
     return window ? { dates: window } : {}
@@ -229,10 +345,11 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
   const [page, setPage] = React.useState(1)
   const [cancelling, setCancelling] = React.useState<OccurrenceRow | null>(null)
   const [staffing, setStaffing] = React.useState<OccurrenceRow | null>(null)
+  const [moving, setMoving] = React.useState<OccurrenceRow | null>(null)
   const pinned = perspectiveQuery(perspective)
 
   const { data, isLoading, error, dataUpdatedAt } = useQuery({
-    queryKey: ['activities-occurrences', perspective, filters, page, scopeVersion],
+    queryKey: ['activities-occurrences', perspective, activityId, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<OccurrenceRow>('activities/occurrences', {
         page,
@@ -241,16 +358,44 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
         sortDir: 'asc',
         ...filterParams(filters),
         ...pinned,
+        ...(activityId ? { activityId } : {}),
       }),
   })
   // "Started" is judged at the moment the page was read, so the row actions match the rows shown.
   const readAt = React.useMemo(() => new Date(dataUpdatedAt), [dataUpdatedAt])
+  const can = React.useMemo(
+    () => ({ manage: features.manage, coach: features.coach }),
+    [features.manage, features.coach],
+  )
 
   const refresh = React.useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['activities-occurrences'] })
   }, [queryClient])
 
-  const columns = React.useMemo(() => buildColumns(t, true, perspective === 'cancelled'), [t, perspective])
+  const startAction = React.useCallback((action: SessionInlineAction, row: OccurrenceRow) => {
+    if (action === 'assign' || action === 'change') setStaffing(row)
+    else if (action === 'move') setMoving(row)
+    else if (action === 'cancel') setCancelling(row)
+  }, [])
+
+  const columns = React.useMemo(() => {
+    const base = buildColumns(t, !activityId, perspective === 'cancelled')
+    base.push({
+      id: 'actions',
+      header: () => <span className="sr-only">{t('activities.occurrences.columns.actions')}</span>,
+      enableSorting: false,
+      meta: { priority: 2 },
+      cell: ({ row }) => (
+        <InlineActions
+          row={row.original}
+          actions={sessionInlineActions(row.original, readAt, can)}
+          onAction={startAction}
+          t={t}
+        />
+      ),
+    })
+    return base
+  }, [t, activityId, perspective, readAt, can, startAction])
   const filterDefs = React.useMemo<FilterDef[]>(
     () => [
       ...(perspective === 'all'
@@ -276,44 +421,35 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
         type: 'select',
         loadOptions: tolerant(() => groupOptions(false)),
       },
-      { id: 'needsReschedule', label: t('activities.occurrences.filters.needsReschedule'), type: 'checkbox' },
+      ...(perspective === 'reschedule'
+        ? []
+        : [
+            {
+              id: 'needsReschedule',
+              label: t('activities.occurrences.filters.needsReschedule'),
+              type: 'checkbox',
+            } satisfies FilterDef,
+          ]),
     ],
     [t, perspective],
   )
 
+  // Below 1024 px the inline buttons are hidden; the row menu always lists every action.
   const rowActions = (row: OccurrenceRow) => {
     const items: RowActionItem[] = [{ id: 'open', label: t('activities.common.open'), href: occurrenceHref(row.id) }]
-    const coachAction = coachRowAction(row, features.manage)
-    if (coachAction) {
+    for (const action of sessionInlineActions(row, readAt, can)) {
+      if (action === 'attendance') {
+        items.push({ id: 'attendance', label: t(ACTION_LABELS.attendance), href: attendanceHref(row.id) })
+        continue
+      }
       items.push({
-        id: 'assign-coach',
-        label: t(
-          coachAction === 'assign'
-            ? 'activities.substitutions.assign.action'
-            : 'activities.substitutions.change.action',
-        ),
+        id: action === 'assign' || action === 'change' ? 'assign-coach' : action,
+        label: t(ACTION_LABELS[action]),
+        destructive: action === 'cancel',
         onSelect: () => {
-          setStaffing(row)
+          startAction(action, row)
         },
       })
-    }
-    for (const action of sessionRowActions(row, readAt, features.coach)) {
-      if (action === 'attendance') {
-        items.push({
-          id: 'attendance',
-          label: t('activities.occurrences.actions.attendance'),
-          href: attendanceHref(row.id),
-        })
-      } else {
-        items.push({
-          id: 'cancel',
-          label: t('activities.occurrences.actions.cancel'),
-          destructive: true,
-          onSelect: () => {
-            setCancelling(row)
-          },
-        })
-      }
     }
     return <RowActions items={items} />
   }
@@ -321,19 +457,15 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
   return (
     <>
       <DataTable<OccurrenceRow>
-        title={t('activities.occurrences.title')}
-        titleHeadingLevel={1}
+        title={activityId ? t('activities.occurrences.scope.listTitle') : t('activities.occurrences.title')}
+        titleHeadingLevel={activityId ? 2 : 1}
         entityId="activities:occurrence"
         extensionTableId="activities.occurrences"
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
         error={error ? errorMessage(error, t('activities.occurrences.errors.load')) : null}
-        emptyState={
-          <p className="text-muted-foreground text-sm" data-testid={`occurrences-empty-${perspective}`}>
-            {t(`activities.occurrences.empty.${perspective}`)}
-          </p>
-        }
+        emptyState={<ViewEmptyState perspective={perspective} canCreate={features.manage} t={t} />}
         filters={filterDefs}
         filterValues={filters}
         onFiltersApply={(values: FilterValues) => {
@@ -367,6 +499,17 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
           onDone={refresh}
         />
       ) : null}
+      {moving ? (
+        <MoveOccurrenceDialog
+          key={moving.id}
+          occurrence={moving}
+          open
+          onOpenChange={(open) => {
+            if (!open) setMoving(null)
+          }}
+          onDone={refresh}
+        />
+      ) : null}
       {staffing ? (
         <AssignCoachDialog
           key={staffing.id}
@@ -382,18 +525,50 @@ function SessionsList({ perspective }: { perspective: Exclude<OccurrencePerspect
   )
 }
 
+/** "Sessions of {activity}" with "All sessions" above a list scoped to one activity (`?activity=`, #268). */
+function ActivityScopeHeader({ activityId, perspective }: { activityId: string; perspective: OccurrencePerspective }) {
+  const t = useT()
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['activities-activity', activityId],
+    queryFn: () => readApiResultOrThrow<ActivityDetail>(`/api/activities/activities/${encodeURIComponent(activityId)}`),
+  })
+  const name = data?.name ?? (isLoading || error ? null : t('activities.common.empty'))
+  return (
+    <header
+      className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-center sm:justify-between"
+      data-testid="occurrences-scope"
+    >
+      <h1 className="text-2xl font-semibold break-words">
+        {name ? t('activities.occurrences.scope.title', { activity: name }) : t('activities.occurrences.title')}
+      </h1>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href={activityHref(activityId)}>{t('activities.occurrences.scope.openActivity')}</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href={perspectiveHref(OCCURRENCES_HREF, perspective)} data-testid="occurrences-scope-all">
+            {t('activities.occurrences.scope.all')}
+          </Link>
+        </Button>
+      </div>
+    </header>
+  )
+}
+
 export function OccurrencesTable() {
   const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const perspective = perspectiveOf(searchParams.get('perspective'))
+  const perspective = viewOfParams(searchParams)
+  const activityId = activityOfParams(searchParams)
   return (
     <Tabs
       value={perspective}
       onValueChange={(value: string) => {
-        if (value !== perspective) router.push(perspectiveHref(OCCURRENCES_HREF, perspectiveOf(value)))
+        if (value !== perspective) router.push(perspectiveHref(OCCURRENCES_HREF, perspectiveOf(value), activityId))
       }}
     >
+      {activityId ? <ActivityScopeHeader activityId={activityId} perspective={perspective} /> : null}
       <div className="overflow-x-auto">
         <TabsList aria-label={t('activities.occurrences.perspectives.label')}>
           {OCCURRENCE_PERSPECTIVES.map((value) => (
@@ -406,11 +581,11 @@ export function OccurrencesTable() {
       <TabsContent value={perspective} className="pt-4">
         {perspective === 'calendar' ? (
           <div className="flex min-w-0 flex-col gap-4">
-            <h1 className="text-2xl font-semibold">{t('activities.occurrences.title')}</h1>
+            {activityId ? null : <h1 className="text-2xl font-semibold">{t('activities.occurrences.title')}</h1>}
             <CoordinatorCalendar />
           </div>
         ) : (
-          <SessionsList key={perspective} perspective={perspective} />
+          <SessionsList key={`${perspective}:${activityId ?? ''}`} perspective={perspective} activityId={activityId} />
         )}
       </TabsContent>
     </Tabs>
@@ -446,6 +621,13 @@ export function ActivitySessions({ activityId }: { activityId: string }) {
         isLoading={isLoading}
         error={error ? errorMessage(error, t('activities.occurrences.errors.load')) : null}
         emptyState={<p className="text-muted-foreground text-sm">{t('activities.activities.record.sessionsEmpty')}</p>}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href={perspectiveHref(OCCURRENCES_HREF, 'all', activityId)} data-testid="activity-sessions-work">
+              {t('activities.activities.record.sessionsWork')}
+            </Link>
+          </Button>
+        }
         rowActions={rowActions}
         onRowClick={(row: OccurrenceRow) => {
           router.push(occurrenceHref(row.id))

@@ -207,10 +207,19 @@ export function groszToDecimal(grosz: number): string {
   return `${sign}${String(Math.floor(absolute / 100))}.${String(absolute % 100).padStart(2, '0')}`
 }
 
-/** One CSV field, quoted when it holds a separator, a quote or a line break; a formula prefix is neutralized. */
-function csvField(value: string): string {
+/** The CSV field separator: `,` or — in a locale whose decimal separator is a comma (REQ-A06) — `;`. */
+export type CsvSeparator = ',' | ';'
+
+/** `;` for a locale that writes decimals with a comma (`pl`, `de`, …), so a spreadsheet splits the columns; else `,`. */
+export function csvSeparatorFor(locale: string): CsvSeparator {
+  const parts = new Intl.NumberFormat(locale).formatToParts(1.5)
+  return parts.some((part) => part.type === 'decimal' && part.value === ',') ? ';' : ','
+}
+
+/** One CSV field, quoted when it holds the separator, a quote or a line break; a formula prefix is neutralized. */
+function csvField(value: string, separator: CsvSeparator): string {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
+  return safe.includes(separator) || /["\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 
 export type CsvRow = Pick<CoachUnitsRow, 'planned' | 'handedOver' | 'takenOver' | 'balance' | 'matches' | 'trips'> & {
@@ -218,24 +227,67 @@ export type CsvRow = Pick<CoachUnitsRow, 'planned' | 'handedOver' | 'takenOver' 
   amount: number | null
 }
 
+export type CoachUnitsCsvColumn = 'coach' | 'planned' | 'given' | 'taken' | 'balance' | 'matches' | 'trips' | 'amount'
+
+/** The CSV header texts per column. */
+export type CoachUnitsCsvHeaders = Record<CoachUnitsCsvColumn, string>
+
+/** The language-neutral headers (the CSV without a translator). */
+export const COACH_UNITS_CSV_COLUMNS: CoachUnitsCsvHeaders = {
+  coach: 'coach',
+  planned: 'planned',
+  given: 'given',
+  taken: 'taken',
+  balance: 'balance',
+  matches: 'matches',
+  trips: 'trips',
+  amount: 'amount',
+}
+
+/** Each CSV column's i18n key (the report's column header) and its English fallback. */
+const CSV_HEADER_KEYS: Record<CoachUnitsCsvColumn, readonly [string, string]> = {
+  coach: ['activities.reports.coachUnits.columns.coach', 'Coach'],
+  planned: ['activities.reports.coachUnits.columns.planned', 'Planned'],
+  given: ['activities.reports.coachUnits.columns.handedOver', 'Handed over'],
+  taken: ['activities.reports.coachUnits.columns.takenOver', 'Taken over'],
+  balance: ['activities.reports.coachUnits.columns.balance', 'Balance'],
+  matches: ['activities.reports.coachUnits.columns.matches', 'Matches'],
+  trips: ['activities.reports.coachUnits.columns.trips', 'Away trips'],
+  amount: ['activities.reports.coachUnits.columns.amount', 'Amount'],
+}
+
+/** The CSV headers in the user's language: the report's own column headers (REQ-A06). */
+export function coachUnitsCsvHeaders(translate: (key: string, fallback: string) => string): CoachUnitsCsvHeaders {
+  const entries = Object.entries(CSV_HEADER_KEYS).map(([column, [key, fallback]]) => [column, translate(key, fallback)])
+  return Object.fromEntries(entries) as CoachUnitsCsvHeaders
+}
+
+export type CoachUnitsCsvOptions = { headers?: CoachUnitsCsvHeaders; separator?: CsvSeparator }
+
 /**
  * The report as CSV (AC: columns coach, planned, given, taken, balance, matches, trips and — for a holder of
  * `club_core.contracts.manage` — amount; an empty amount for a coach without a complete contract). CRLF line ends.
+ * The headers and the separator follow the user's locale (REQ-A06); without options the headers are the
+ * language-neutral column names and the separator is `,`.
  */
-export function coachUnitsCsv(rows: readonly CsvRow[], withAmount: boolean): string {
+export function coachUnitsCsv(
+  rows: readonly CsvRow[],
+  withAmount: boolean,
+  { headers = COACH_UNITS_CSV_COLUMNS, separator = ',' }: CoachUnitsCsvOptions = {},
+): string {
   const header = [
-    'coach',
-    'planned',
-    'given',
-    'taken',
-    'balance',
-    'matches',
-    'trips',
-    ...(withAmount ? ['amount'] : []),
-  ]
+    headers.coach,
+    headers.planned,
+    headers.given,
+    headers.taken,
+    headers.balance,
+    headers.matches,
+    headers.trips,
+    ...(withAmount ? [headers.amount] : []),
+  ].map((value) => csvField(value, separator))
   const lines = rows.map((row) =>
     [
-      csvField(row.coach),
+      csvField(row.coach, separator),
       String(row.planned),
       String(row.handedOver),
       String(row.takenOver),
@@ -243,7 +295,7 @@ export function coachUnitsCsv(rows: readonly CsvRow[], withAmount: boolean): str
       String(row.matches),
       String(row.trips),
       ...(withAmount ? [row.amount === null ? '' : groszToDecimal(row.amount)] : []),
-    ].join(','),
+    ].join(separator),
   )
-  return [header.join(','), ...lines].join('\r\n') + '\r\n'
+  return [header.join(separator), ...lines].join('\r\n') + '\r\n'
 }

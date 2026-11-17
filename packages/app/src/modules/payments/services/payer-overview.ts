@@ -1,7 +1,8 @@
 // Phase 4 step 5 reads (payments spec *Domain Vocabulary* → Payer code; REQ-012, REQ-030; issue #111 E07-S04):
 // - the payer code `GW-XXXX` from `payments_payer_refs`, assigned on first use under the two unique indexes (a
 //   concurrent assignment for the same person wins and is read back; a code another payer holds is drawn again);
-// - the payer's Today summary (open total, nearest due date, "Everything is paid", "The guardian pays");
+// - the payer's Today summary (open total, nearest due date, "Everything is paid", "The guardian pays", and since
+//   #298 "{child}: paid by {first name}" when another guardian is a ward's primary payer, DD-C06);
 // - the transfer instructions of M-08: the club's account (`club_core`'s settings) and name, and the payer code;
 // - the B-01 widgets "Overdue" (remaining total, charges, families) and "Charges without a payer".
 // Routes reach the ORM only through services (REQ-F16).
@@ -11,9 +12,16 @@ import type { AwilixContainer } from 'awilix'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { Charge, PayerRef } from '../data/entities'
 import { OPEN_CHARGE_STATUSES, amountDueOf, remainingOf } from '../lib/charge-ledger'
-import { generatePayerCode, overdueSummary, ownPaymentsSummary, type OwnPaymentsSummary } from '../lib/payer-summary'
+import {
+  generatePayerCode,
+  otherPayersOf,
+  overdueSummary,
+  ownPaymentsSummary,
+  type OtherPayer,
+  type OwnPaymentsSummary,
+} from '../lib/payer-summary'
 import type { Payer } from './checkout'
-import { clubClock, type PaymentsScope } from './directory'
+import { clubClock, findPersons, primaryPayers, type PaymentsScope } from './directory'
 import { paidTotals } from './ledger'
 
 /** Draws before giving up: 32⁴ codes per club make a second collision in a row practically impossible. */
@@ -98,10 +106,46 @@ async function ownCharges(container: AwilixContainer, payer: Payer) {
   }))
 }
 
-/** The Today tile of `/club` (M-02): what the caller owes, or that everything is paid, or that the guardian pays. */
+/**
+ * The caller's wards whose primary payer today is another person and who have an `open` or `partially_paid` charge
+ * (DD-C06, `people.personDirectory.primaryPayers`): first names only — the other guardian's amounts and discounts
+ * never reach this caller (the charge read keeps only the ward ids).
+ */
+export async function otherPayers(container: AwilixContainer, payer: Payer): Promise<OtherPayer[]> {
+  if (payer.wardIds.length === 0) return []
+  const { today } = await clubClock(container, payer.scope)
+  const payers = await primaryPayers(container, payer.scope, payer.wardIds, today)
+  const others = [...payers.entries()].filter(([, payerId]) => payerId !== payer.personId)
+  if (others.length === 0) return []
+  const owingRows = await freshEm(container).find(
+    Charge,
+    {
+      ...payer.scope,
+      deletedAt: null,
+      sourceType: { $ne: 'rental' as const },
+      status: { $in: [...OPEN_CHARGE_STATUSES] },
+      personId: { $in: others.map(([wardId]) => wardId) },
+    },
+    { fields: ['id', 'personId'] },
+  )
+  const owing = new Set(owingRows.flatMap((row) => (row.personId ? [row.personId] : [])))
+  if (owing.size === 0) return []
+  const persons = await findPersons(container, payer.scope, others.flat())
+  const firstNames = new Map([...persons.entries()].map(([id, person]) => [id, person.firstName]))
+  return otherPayersOf(payer.personId, payer.wardIds, payers, owing, firstNames)
+}
+
+/**
+ * The Today tile of `/club` (M-02): what the caller owes, or that everything is paid, or that the guardian pays, or
+ * who pays a ward (DD-C06).
+ */
 export async function myPaymentsSummary(container: AwilixContainer, payer: Payer): Promise<OwnPaymentsSummary> {
-  const [charges, clock] = await Promise.all([ownCharges(container, payer), clubClock(container, payer.scope)])
-  return ownPaymentsSummary(payer.personId, charges, clock.today)
+  const [charges, clock, others] = await Promise.all([
+    ownCharges(container, payer),
+    clubClock(container, payer.scope),
+    otherPayers(container, payer),
+  ])
+  return ownPaymentsSummary(payer.personId, charges, clock.today, others)
 }
 
 export type TransferInstructions = {

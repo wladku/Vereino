@@ -5,11 +5,14 @@ import {
   RECONCILE_WINDOW_MS,
   RETURN_POLL_INTERVAL_MS,
   RETURN_POLL_WINDOW_MS,
+  ONLINE_PAYABLE_STATUSES,
   checkoutRefusal,
+  checkoutShares,
   checkoutTotals,
   fromGatewayAmount,
   fulfilmentPlan,
   isExpirable,
+  isOnlinePayable,
   onlineFeeOf,
   providerOutcome,
   refundRefusal,
@@ -67,8 +70,32 @@ describe('checkout refusal', () => {
     expect(checkoutRefusal([ok, { ...ok, payerMissing: true, status: 'paid' }])).toBe('payer_missing')
   })
 
-  it('refuses a charge that is not open', () => {
-    expect(checkoutRefusal([ok, { ...ok, status: 'partially_paid' }])).toBe('charge_not_open')
+  it('accepts a partially paid charge for what remains (DD-C07, Contract 2)', () => {
+    expect(checkoutRefusal([ok, { ...ok, status: 'partially_paid' }])).toBeNull()
+  })
+
+  it.each(['paid', 'cancelled', 'forfeited'] as const)('refuses a %s charge with charge_not_open', (status) => {
+    expect(checkoutRefusal([ok, { ...ok, status }])).toBe('charge_not_open')
+  })
+
+  it('names the statuses paid online', () => {
+    expect(ONLINE_PAYABLE_STATUSES).toEqual(['open', 'partially_paid'])
+    expect(isOnlinePayable('partially_paid')).toBe(true)
+    expect(isOnlinePayable('paid')).toBe(false)
+  })
+})
+
+describe('checkout shares (DD-C07)', () => {
+  it('takes what remains on each charge, in the order of the ids', () => {
+    const remaining = new Map([
+      ['a', 10_500],
+      ['b', 5_000],
+    ])
+    expect(checkoutShares(['b', 'a'], remaining)).toEqual([5_000, 10_500])
+  })
+
+  it('never goes below zero and treats an unknown charge as nothing', () => {
+    expect(checkoutShares(['a', 'x'], new Map([['a', -100]]))).toEqual([0, 0])
   })
 })
 
@@ -107,6 +134,7 @@ describe('fulfilment plan', () => {
     status: 'open',
     amountDue: 10_000,
     remaining: 10_000,
+    share: null,
     ...extra,
   })
 
@@ -164,6 +192,46 @@ describe('fulfilment plan', () => {
       lines: [
         { chargeId: 'a', amount: 4_000, overpayment: false },
         { chargeId: 'a', amount: 6_000, overpayment: true },
+      ],
+    })
+  })
+
+  it('books a partly paid charge for its stored share with no overpayment (TEST-C16)', () => {
+    const plan = fulfilmentPlan({
+      amount: 15_500,
+      feeAmount: 0,
+      received: 15_500,
+      charges: [
+        charge('a', '2026-10-10', { status: 'partially_paid', amountDue: 10_000, remaining: 5_000, share: 5_000 }),
+        charge('b', '2026-11-10', { amountDue: 10_500, remaining: 10_500, share: 10_500 }),
+      ],
+    })
+    expect(plan).toEqual({
+      kind: 'book',
+      lines: [
+        { chargeId: 'a', amount: 5_000, overpayment: false },
+        { chargeId: 'b', amount: 10_500, overpayment: false },
+      ],
+    })
+  })
+
+  it('turns the part of a share above what remains at fulfilment into an overpayment (TEST-C16)', () => {
+    // 50 zł remained at checkout; 20 zł in cash was recorded before the capture, so 30 zł remains.
+    const plan = fulfilmentPlan({
+      amount: 15_500,
+      feeAmount: 0,
+      received: 15_500,
+      charges: [
+        charge('a', '2026-10-10', { status: 'partially_paid', amountDue: 10_000, remaining: 3_000, share: 5_000 }),
+        charge('b', '2026-11-10', { amountDue: 10_500, remaining: 10_500, share: 10_500 }),
+      ],
+    })
+    expect(plan).toEqual({
+      kind: 'book',
+      lines: [
+        { chargeId: 'a', amount: 3_000, overpayment: false },
+        { chargeId: 'a', amount: 2_000, overpayment: true },
+        { chargeId: 'b', amount: 10_500, overpayment: false },
       ],
     })
   })

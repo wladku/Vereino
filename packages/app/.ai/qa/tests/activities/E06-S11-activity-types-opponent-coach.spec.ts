@@ -184,7 +184,7 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
       page.getByRole('heading', { level: 1, name: uiText('activities.activities.actions.create', { exact: true }) }),
     ).toBeVisible()
     await page.waitForLoadState('networkidle')
-    await chooseCrudOption(page, 'groupId', /^Basen — początkujący$/)
+    await chooseCrudOption(page, 'groupId', /^Basen — początkujący \(/)
     await expect.poll(() => typeOptions(page)).toEqual(['Classes', 'Tournament', 'Camp', 'Event'])
     await expect(page.locator('[data-crud-field-id="opponentExternalTeamId"]')).toHaveCount(0)
     await expectNoPageOverflow(page)
@@ -196,7 +196,7 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
       page.getByRole('heading', { level: 1, name: uiText('activities.activities.actions.create', { exact: true }) }),
     ).toBeVisible()
     await page.waitForLoadState('networkidle')
-    await chooseCrudOption(page, 'groupId', /^Żaki$/)
+    await chooseCrudOption(page, 'groupId', /^Żaki \(/)
     await expect.poll(() => typeOptions(page)).toEqual(['Training', 'Match', 'Friendly', 'Tournament', 'Camp', 'Event'])
     await page.locator('[data-crud-field-id="name"] input').fill('Mecz z Polonią')
     await page.getByTestId('activities-type-select').click()
@@ -219,12 +219,13 @@ test('E06-S11 types follow the group kind, a match takes an opponent, the coach 
     await page.locator('[data-crud-field-id="startsOn"] input').fill(matchDay)
     await page.locator('[data-crud-field-id="startTime"] input').fill('16:00')
     await page.locator('[data-crud-field-id="endTime"] input').fill('17:30')
-    await page
-      .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
-      .first()
-      .click()
-    await expect(page).toHaveURL(/\/backend\/activities\/activities\/[0-9a-f-]{36}$/)
-    const matchId = page.url().split('/').pop() as string
+    // "Create" waits for a preview without collisions (#268); saving opens the match's sessions.
+    await expect(page.getByTestId('activities-create-submit')).toBeDisabled()
+    await page.getByTestId('activities-preview-button').click()
+    await expect(page.getByTestId('activities-preview-clear')).toBeVisible()
+    await page.getByTestId('activities-create-submit').click()
+    await expect(page).toHaveURL(/\/backend\/activities\/occurrences\?activity=[0-9a-f-]{36}$/)
+    const matchId = new URL(page.url()).searchParams.get('activity') as string
     const saved = await getActivity(request, admin, matchId)
     expect(saved.body).toMatchObject({
       type: 'match',

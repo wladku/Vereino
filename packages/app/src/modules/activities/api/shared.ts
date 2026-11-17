@@ -97,6 +97,7 @@ export function activityListItem(row: Row) {
 
 export type ActivityListItem = ReturnType<typeof activityListItem> & {
   groupName?: string | null
+  groupKind?: string | null
   sectionName?: string | null
   placeName?: string | null
   coachName?: string | null
@@ -160,6 +161,7 @@ export async function attachActivityNames(payload: { items?: unknown[] }, ctx: C
   })
   for (const item of items) {
     item.groupName = item.groupId ? (names.groups.get(item.groupId) ?? null) : null
+    item.groupKind = item.groupId ? (names.groupKinds.get(item.groupId) ?? null) : null
     item.sectionName = item.sectionId ? (names.sections.get(item.sectionId) ?? null) : null
     item.placeName = item.placeId ? (names.places.get(item.placeId) ?? null) : null
     item.coachName = item.coachPersonId ? (names.persons.get(item.coachPersonId) ?? null) : null
@@ -253,6 +255,7 @@ export const activityListItemSchema = z.object({
   sectionName: z.string().nullable().optional(),
   groupId: z.string().nullable(),
   groupName: z.string().nullable().optional(),
+  groupKind: z.string().nullable().optional().describe('The kind of the group: `team` or `class_group` (#268).'),
   name: z.string().nullable(),
   type: z.string().nullable(),
   placeId: z.string().nullable(),

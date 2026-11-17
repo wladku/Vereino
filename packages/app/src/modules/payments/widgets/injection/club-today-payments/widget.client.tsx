@@ -1,7 +1,9 @@
 'use client'
 // The body of the "Payments" tile on `/club` — Today (README M-02; payments spec REQ-012, REQ-002; issue #111
 // E07-S04): the open total with the nearest due date and "Pay" (an overdue marker when that date has passed),
-// "Everything is paid", or "The guardian pays" for an adult participant whose charges someone else pays. It renders
+// "Everything is paid", or "The guardian pays" for an adult participant whose charges someone else pays; since #298
+// "{child}: paid by {first name}" for each ward another guardian pays, instead of a false "Everything is paid"
+// (DD-C06). It renders
 // inside `people`'s tile link to `/club/payments`, which `people` shows only when the R10 gate allows it, so a minor
 // never mounts it. A failed read falls back to the tile's plain description.
 import * as React from 'react'
@@ -16,6 +18,7 @@ type Summary =
   | { state: 'due'; openTotal: number; openCount: number; nearestDueDate: string; overdue: boolean }
   | { state: 'paid' }
   | { state: 'guardian_pays' }
+  | { state: 'other_pays'; payerFirstName: string; otherPayers: { wardFirstName: string; payerFirstName: string }[] }
 
 export const MY_PAYMENTS_SUMMARY_QUERY_KEY = ['payments-my-summary'] as const
 
@@ -57,6 +60,17 @@ export default function ClubTodayPaymentsWidget() {
     return (
       <span className={muted} data-testid="club-tile-payments-state" data-state="guardian_pays">
         {t('payments.club.tile.guardianPays')}
+      </span>
+    )
+  }
+  if (data.state === 'other_pays') {
+    return (
+      <span className="flex flex-col gap-1 text-sm" data-testid="club-tile-payments-state" data-state="other_pays">
+        {data.otherPayers.map((other) => (
+          <span key={`${other.wardFirstName}-${other.payerFirstName}`}>
+            {t('payments.club.tile.otherPays', { child: other.wardFirstName, name: other.payerFirstName })}
+          </span>
+        ))}
       </span>
     )
   }

@@ -68,6 +68,17 @@ async function checkCrudBox(scope: Page | Locator, field: string): Promise<void>
 }
 
 async function chooseCrudOption(page: Page, field: string, option: RegExp): Promise<void> {
+  // A field of the empty-picker pattern (people life-cycle spec REQ-L14) is a native select: pick by its label.
+  const native = page.locator(`[data-crud-field-id="${field}"] select`)
+  if ((await native.count()) > 0) {
+    await expect(async () => {
+      const labels = await native.locator('option').allTextContents()
+      const label = labels.find((text) => option.test(text))
+      expect(label).toBeDefined()
+      await native.selectOption({ label: String(label) }, { timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    return
+  }
   await page.locator(`[data-crud-field-id="${field}"] [role="combobox"]`).click()
   await page.getByRole('option', { name: option }).click()
 }

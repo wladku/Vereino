@@ -1,4 +1,4 @@
-import { OptionalProps } from '@mikro-orm/core'
+import { ArrayType, OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import {
   ScopedEntityBase,
@@ -324,7 +324,9 @@ export class Payment extends ScopedEntityBase {
  * An online checkout (payments spec *Data Models* → `payments_checkouts`, DD-42; #110): the open charges the payer
  * selected, their amount, the `payer_pays` surcharge (R13), the key sent to the gateway and its transaction. Its id is
  * the gateway `paymentId`, so a gateway event finds it without trusting event metadata. Completed only by the
- * fulfilment — from `failed` or `expired` too, when the provider captured late.
+ * fulfilment — from `failed` or `expired` too, when the provider captured late. Since the payments parity spec
+ * (DD-C07, #298) it holds `open` and `partially_paid` charges and stores each charge's share — what remained on it
+ * when the checkout was created — in `charge_amounts`.
  */
 @Entity({ tableName: 'payments_checkouts' })
 @Unique({ name: 'payments_checkouts_idempotency_key_unique', properties: ['idempotencyKey'] })
@@ -334,7 +336,13 @@ export class Payment extends ScopedEntityBase {
 @Index({ name: 'payments_checkouts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Checkout extends ScopedEntityBase {
   [OptionalProps]?:
-    ScopedEntityOptionalProps | 'feeAmount' | 'gatewayTransactionId' | 'status' | 'amountMismatch' | 'lastCheckedAt'
+    | ScopedEntityOptionalProps
+    | 'chargeAmounts'
+    | 'feeAmount'
+    | 'gatewayTransactionId'
+    | 'status'
+    | 'amountMismatch'
+    | 'lastCheckedAt'
 
   @Property({ name: 'payer_person_id', type: 'uuid' })
   payerPersonId!: string
@@ -342,9 +350,21 @@ export class Checkout extends ScopedEntityBase {
   @Property({ name: 'charge_ids', type: 'text[]', columnType: 'uuid[]' })
   chargeIds!: string[]
 
-  /** Grosz: the charges' amounts due. */
+  /** Grosz: what remained on the charges when the checkout was created (their amounts due before #298). */
   @Property({ name: 'amount', type: 'int' })
   amount!: number
+
+  /**
+   * Grosz: each charge's share, in the order of `charge_ids`, summing to `amount` (migration D, DD-C07). Null for a
+   * checkout created before #298, whose fulfilment spreads by the amounts due.
+   */
+  @Property({
+    name: 'charge_amounts',
+    type: new ArrayType((value) => Number(value)),
+    columnType: 'int[]',
+    nullable: true,
+  })
+  chargeAmounts?: number[] | null
 
   /** Grosz: the `payer_pays` surcharge, a separate line (R13). */
   @Property({ name: 'fee_amount', type: 'int', default: 0 })

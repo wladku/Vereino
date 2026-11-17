@@ -2,7 +2,9 @@
 // The "Preview" group of the activity form (club spec J-002 step 1, D02; foundation II J-G01): posts the same body as
 // the save to `POST /api/activities/activities/preview` (with `activityId` for an edit) and lists the sessions the
 // series would have in the 16-week horizon with their place and coach conflicts — before anything is saved. A rule the
-// server refuses (422) is shown here with its message; a failing occupancy provider only warns.
+// server refuses (422) is shown here with its message; a failing occupancy provider only warns. The result reports
+// to the create form whether the current values were previewed without a collision (#268, REQ-A04): "Create" waits for
+// it, and focus moves to the announced result heading.
 import * as React from 'react'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
@@ -66,7 +68,21 @@ function buildColumns(t: Translate): TableColumns<PreviewItem> {
   ]
 }
 
-export function PreviewPanel({ values, activityId }: { values: ActivityFormValues; activityId?: string }) {
+/**
+ * What the last preview says about the current values: none yet (or the values changed since), collisions, or clear —
+ * at least one session and no collision.
+ */
+export type PreviewGate = 'none' | 'conflicts' | 'clear'
+
+export function PreviewPanel({
+  values,
+  activityId,
+  onGate,
+}: {
+  values: ActivityFormValues
+  activityId?: string
+  onGate?: (gate: PreviewGate) => void
+}) {
   const t = useT()
   const [pending, setPending] = React.useState(false)
   const [result, setResult] = React.useState<PreviewResult | null>(null)
@@ -77,6 +93,12 @@ export function PreviewPanel({ values, activityId }: { values: ActivityFormValue
   const built = buildActivityBody(values, t)
   const currentKey = built.ok ? JSON.stringify(built.body) : null
   const stale = result !== null && previewedKey !== currentKey
+  const headingRef = React.useRef<HTMLParagraphElement>(null)
+  const gate: PreviewGate =
+    !result || stale ? 'none' : result.conflictCount > 0 || result.total === 0 ? 'conflicts' : 'clear'
+  React.useEffect(() => {
+    onGate?.(gate)
+  }, [gate, onGate])
 
   const preview = async () => {
     if (!built.ok) {
@@ -98,6 +120,8 @@ export function PreviewPanel({ values, activityId }: { values: ActivityFormValue
       )
       setResult(call.result)
       setPreviewedKey(currentKey)
+      // After Preview the focus moves to the announced result heading.
+      requestAnimationFrame(() => headingRef.current?.focus())
     } catch (error: unknown) {
       setResult(null)
       setProblem([errorMessage(error, t('activities.preview.errors.load'))])
@@ -136,13 +160,19 @@ export function PreviewPanel({ values, activityId }: { values: ActivityFormValue
       ) : null}
       {result ? (
         <div className="flex min-w-0 flex-col gap-3" aria-live="polite">
-          <p className="text-sm font-medium" data-testid="activities-preview-summary">
+          <p ref={headingRef} tabIndex={-1} className="text-sm font-medium" data-testid="activities-preview-summary">
             {t('activities.preview.summary', {
               count: result.total,
               until: result.horizonEnd,
               conflicts: result.conflictCount,
             })}
           </p>
+          {!stale && result.total > 0 && result.conflictCount === 0 ? (
+            <Alert status="success" data-testid="activities-preview-clear">
+              <AlertTitle>{t('activities.preview.clear.title')}</AlertTitle>
+              <AlertDescription>{t('activities.preview.clear.text')}</AlertDescription>
+            </Alert>
+          ) : null}
           {stale ? (
             <Alert status="information">
               <AlertDescription>{t('activities.preview.stale')}</AlertDescription>
