@@ -35,7 +35,16 @@ import {
 
 export type MovableOccurrence = Pick<
   OccurrenceRow,
-  'id' | 'startAt' | 'endAt' | 'gatheringAt' | 'placeId' | 'updatedAt' | 'activityName' | 'activityType' | 'confirmBy'
+  | 'id'
+  | 'startAt'
+  | 'endAt'
+  | 'gatheringAt'
+  | 'placeId'
+  | 'venue'
+  | 'updatedAt'
+  | 'activityName'
+  | 'activityType'
+  | 'confirmBy'
 >
 
 type MoveValues = Record<string, unknown> & {
@@ -102,12 +111,16 @@ export function MoveOccurrenceForm({
         id: 'placeId',
         label: t('activities.fields.place'),
         type: 'select',
-        // A session of an away match may sit at an external place, so the move offers every bookable leaf.
+        // A session of an away match may sit at an external place, so the move offers every bookable leaf. A session
+        // at a typed venue (REQ-A08) keeps it unless a club place is chosen here.
         loadOptions: tolerant(() => placeOptions()),
-        required: true,
+        required: !occurrence.venue,
+        ...(occurrence.venue
+          ? { description: t('activities.occurrences.move.venue', { venue: occurrence.venue.name }) }
+          : {}),
       },
     ],
-    [t, showDeadline],
+    [t, showDeadline, occurrence.venue],
   )
   const initialValues = React.useMemo<MoveValues>(
     () => ({
@@ -179,7 +192,8 @@ export function MoveOccurrenceForm({
                 body: JSON.stringify({
                   startAt,
                   endAt,
-                  placeId: values.placeId,
+                  // A place is sent when chosen; an empty one keeps a typed venue (REQ-A08).
+                  ...(values.placeId ? { placeId: values.placeId } : {}),
                   ...(gatheringChanged ? { gatheringAt } : {}),
                   ...(confirmByChanged ? { confirmBy } : {}),
                 }),

@@ -62,6 +62,16 @@ describe('publicSession', () => {
       cancelled: false,
     })
   })
+
+  it('names the typed venue of a session without a club place (#270)', () => {
+    const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+    expect(publicSession(session('2026-11-12', { placeId: null, venue }), places, ZONE)).toMatchObject({
+      place: 'Stadion Wisły Liszki',
+    })
+    expect(publicSession(session('2026-11-12', { placeId: null, venue: null }), places, ZONE)).toMatchObject({
+      place: null,
+    })
+  })
 })
 
 describe('publicScheduleBlock', () => {
@@ -71,7 +81,11 @@ describe('publicScheduleBlock', () => {
     )
     const block = publicScheduleBlock(
       ['g1'],
-      [series({}), series({ id: 'a2', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO', defaultPlaceId: 'gone' })],
+      [
+        series({}),
+        series({ id: 'a2', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO', defaultPlaceId: 'gone' }),
+        series({ id: 'a3', recurrenceRule: 'FREQ=WEEKLY;BYDAY=FR', defaultPlaceId: null }),
+      ],
       sessions,
       places,
       ZONE,
@@ -80,6 +94,7 @@ describe('publicScheduleBlock', () => {
     expect(block?.groups[0].series).toEqual([
       { weekdays: ['MO'], startTime: '17:00', endTime: '18:00', place: null },
       { weekdays: ['TU', 'TH'], startTime: '17:00', endTime: '18:00', place: 'Pływalnia miejska' },
+      { weekdays: ['FR'], startTime: '17:00', endTime: '18:00', place: null },
     ])
     expect(block?.groups[0].upcoming.map((item) => [item.date, item.cancelled])).toEqual([
       ['2026-11-10', false],

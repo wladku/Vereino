@@ -98,6 +98,9 @@ async function extendSeries(
           startAt: session.startAt,
           endAt: session.endAt,
           placeId: activity.defaultPlaceId,
+          // A series never carries a typed venue (REQ-A08, `venue_requires_one_off`); copied for completeness.
+          venueName: activity.venueName ?? null,
+          venueAddress: activity.venueAddress ?? null,
           coachPersonId,
           gatheringMinutesBefore: activity.gatheringMinutesBefore ?? null,
           confirmByMinutesBefore: activity.confirmByMinutesBefore ?? null,

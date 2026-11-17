@@ -150,7 +150,13 @@ export async function substitutionHistory(
 }
 
 /** A session that keeps a coach busy, with what the 409 conflict list names. */
-export type BusyCoachSession = BusySession & { activityId: string; groupId: string; placeId: string; endAt: Date }
+export type BusyCoachSession = BusySession & {
+  activityId: string
+  groupId: string
+  /** Null at a typed venue (REQ-A08). */
+  placeId: string | null
+  endAt: Date
+}
 
 /**
  * The planned sessions of `coachPersonIds` that overlap `occurrence` (other than itself), with their activity names —

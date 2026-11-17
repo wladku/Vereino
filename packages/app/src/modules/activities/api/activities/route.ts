@@ -55,6 +55,8 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'name',
       'type',
       'default_place_id',
+      'venue_name',
+      'venue_address',
       'default_coach_person_id',
       'opponent_external_team_id',
       'invited_external_team_ids',
@@ -152,7 +154,7 @@ export const openApi = buildOpenApi({
     schema: activityCreateSchema,
     responseSchema: z.object({ id: z.uuid(), sessionsCreated: z.number(), generatedUntil: z.string().nullable() }),
     description:
-      'Creates an activity of a group (the coordinator of its section or the club administrator) and generates its sessions for the 16-week horizon. `recurrenceRule` is the RRULE subset (`FREQ=WEEKLY;BYDAY=TU;UNTIL=20270630`); without it the activity is a one-off on `startsOn`. Errors: 403 `scope_denied`, 404 unknown place, 409 `occurrence_place_conflict` / `occurrence_coach_conflict` with `conflicts`, 422 `recurrence_unsupported`, `recurrence_invalid`, `activity_no_sessions`, `activity_type_requires_team`, `activity_times_inverted`, `activity_dates_inverted`, `activities_reference_invalid`, `activity_group_inactive`, `place_not_bookable`.',
+      'Creates an activity of a group (the coordinator of its section or the club administrator) and generates its sessions for the 16-week horizon. `recurrenceRule` is the RRULE subset (`FREQ=WEEKLY;BYDAY=TU;UNTIL=20270630`); without it the activity is a one-off on `startsOn`. It takes a club place (`placeId`) or, as a one-off only, a typed `venue` (REQ-A08). Errors: 403 `scope_denied`, 404 unknown place, 409 `occurrence_place_conflict` / `occurrence_coach_conflict` with `conflicts`, 422 `recurrence_unsupported`, `recurrence_invalid`, `activity_no_sessions`, `activity_type_requires_team`, `activity_times_inverted`, `activity_dates_inverted`, `activities_reference_invalid`, `activity_group_inactive`, `place_not_bookable`, `venue_or_place_required`, `venue_requires_one_off`.',
   },
   update: {
     schema: activityUpdateSchema,

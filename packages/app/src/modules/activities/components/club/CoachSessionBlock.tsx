@@ -28,7 +28,14 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib/activities-rules'
 import { errorCodeOf } from '@vereino/core'
 import { ReportAbsence } from './ReportAbsence'
-import { attendanceHref, cancelSession, errorText, summaryLine, type CalendarEntry } from './club-client'
+import {
+  attendanceHref,
+  cancelSession,
+  errorText,
+  sessionEditHref,
+  summaryLine,
+  type CalendarEntry,
+} from './club-client'
 
 /** The session a cancellation targets: its id and the version the page showed (the lock token). */
 export type CancellableSession = { id: string; updatedAt: string }
@@ -210,6 +217,14 @@ export function CoachSessionBlock({
           <Button asChild className="min-h-11">
             <Link href={attendanceHref(occurrence.id)} data-testid="club-session-attendance">
               {t('activities.club.session.attendanceList')}
+            </Link>
+          </Button>
+        ) : null}
+        {/* DD-A05 (#270): a coach edits the session of their own one-off event; the read says whether they may. */}
+        {entry.mayEdit === true && occurrence.status === 'planned' ? (
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={sessionEditHref(occurrence.id)} data-testid="club-session-edit">
+              {t('activities.club.session.edit')}
             </Link>
           </Button>
         ) : null}

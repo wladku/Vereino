@@ -104,6 +104,24 @@ describe('publicEventLists', () => {
     expect(lists.past[0]).toMatchObject({ past: true, cancelled: true })
   })
 
+  it('names a typed venue and searches it on the map (#270)', () => {
+    const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+    const lists = publicEventLists(
+      [event('away', 's1', 'sparring'), event('nowhere')],
+      [session('away', '2026-11-20', { placeId: null, venue }), session('nowhere', '2026-11-21', { placeId: null })],
+      sections,
+      places,
+      ZONE,
+      TODAY,
+    )
+    expect(lists.upcoming[0]).toMatchObject({
+      place: 'Stadion Wisły Liszki',
+      mapUrl:
+        'https://www.openstreetmap.org/search?query=Stadion%20Wis%C5%82y%20Liszki%2C%20ul.%20Sportowa%201%2C%20Liszki',
+    })
+    expect(lists.upcoming[1]).toMatchObject({ place: null, mapUrl: null })
+  })
+
   it('keeps a camp that started before today and ends later among the upcoming ones', () => {
     const lists = publicEventLists(
       [event('camp', 's1', 'camp')],

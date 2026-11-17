@@ -25,6 +25,7 @@ import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange, Membe
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
 import { formatDeadline } from '../../lib/confirm-by'
+import { placeMapHref } from '../../lib/venue'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CoachSessionBlock } from './CoachSessionBlock'
 import {
@@ -38,7 +39,6 @@ import {
   declareAttendance,
   errorText,
   fullName,
-  mapHref,
   useMemberSession,
   type CalendarEntry,
   type CalendarPerson,
@@ -259,7 +259,13 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   if (!entry) return null
   const { occurrence } = entry
   const startsAt = new Date(occurrence.startAt)
-  const map = mapHref(occurrence.placeGeoLat, occurrence.placeGeoLng)
+  // The pinned place, else an OpenStreetMap search by the name and the address — a typed venue's too (REQ-A08).
+  const map = placeMapHref({
+    name: occurrence.placeName,
+    address: occurrence.placeAddress,
+    geoLat: occurrence.placeGeoLat,
+    geoLng: occurrence.placeGeoLng,
+  })
   const rows: Array<[string, React.ReactNode]> = [
     [t('activities.club.session.date'), formatDayHeading(occurrence.occurrenceDate, locale)],
     // DD-43: the gathering time comes first, and a session without one shows no row.
