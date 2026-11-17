@@ -1,8 +1,8 @@
 ---
 title: "A coded error's details sit at the top of the body, next to code and error — not under `details`"
-modules: ['foundation', 'activities']
-areas: ['module-data', 'testing']
-topics: ['error-codes', 'api-errors', 'integration-tests', 'specs']
+modules: ["foundation", "activities"]
+areas: ["module-data", "testing"]
+topics: ["error-codes", "api-errors", "integration-tests", "specs"]
 ---
 
 # A coded error's details sit at the top of the body, next to code and error — not under `details`
