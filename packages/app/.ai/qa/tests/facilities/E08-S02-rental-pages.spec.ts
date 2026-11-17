@@ -79,12 +79,9 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     await expect(page.getByTestId(`facilities-day-entry-${String(soon.body?.id)}`)).toContainText('KS Sąsiedzi')
     await page.goto('/backend/facilities/rentals')
 
-    // Given a cancellation under 24 h before, the dialog states that the charge is forfeited.
-    await page
-      .getByTestId(`facilities-rental-actions-${String(soon.body?.id)}`)
-      .getByRole('button')
-      .click()
-    await page.getByRole('menuitem', { name: 'Cancel rental' }).click()
+    // Given a cancellation under 24 h before, the dialog states that the charge is forfeited ("Cancel" is a row
+    // button since #279).
+    await page.getByTestId(`facilities-rental-cancel-${String(soon.body?.id)}`).click()
     const cancelDialog = page.getByTestId('facilities-rental-cancel-dialog')
     await expect(cancelDialog).toBeVisible()
     await expect(cancelDialog.getByTestId('facilities-rental-cancel-forfeited')).toContainText(/forfeited/)

@@ -4,6 +4,7 @@
 // `facility_operator` grant through their `place_id` (#126).
 import { z } from 'zod'
 import type { ScopeColumnMap } from '@vereino/core'
+import { RENTAL_CHARGE_STATES, type RentalChargeState } from '../lib/rental-record'
 import { wallTimeOf } from '../lib/zones'
 
 /** The entity ids of the lists (query engine): `<module>:<snake_case of the ORM class>`. */
@@ -115,10 +116,15 @@ export function rentalListItem(row: Row) {
     paymentDeadline: iso(row.payment_deadline),
     regulationsAcceptedAt: iso(row.regulations_accepted_at),
     regulationsAcceptedVia: text(row.regulations_accepted_via),
+    emailVerifiedAt: iso(row.email_verified_at),
+    decisionReason: text(row.decision_reason),
     needsReschedule: bool(row.needs_reschedule),
     notes: text(row.notes),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
+    // Set by `afterList` (`rental-facts.ts`, #279).
+    payee: null as { institutionId: string; name: string } | null,
+    chargeState: 'none' as RentalChargeState,
   }
 }
 
@@ -215,10 +221,19 @@ export const rentalListItemSchema = z.object({
   paymentDeadline: z.string().nullable(),
   regulationsAcceptedAt: z.string().nullable(),
   regulationsAcceptedVia: z.string().nullable(),
+  emailVerifiedAt: z.string().nullable().describe('When an online requester confirmed the e-mail address'),
+  decisionReason: z.string().nullable().describe('The reason of a rejection or a cancellation'),
   needsReschedule: z.boolean(),
   notes: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+  payee: z
+    .object({ institutionId: z.uuid(), name: z.string() })
+    .nullable()
+    .describe('The owner institution the rental is paid to; null = the club itself'),
+  chargeState: z
+    .enum(RENTAL_CHARGE_STATES)
+    .describe('`none` without a charge (or without `payments`), else the charge status'),
 })
 
 export const entryBanListItemSchema = z.object({

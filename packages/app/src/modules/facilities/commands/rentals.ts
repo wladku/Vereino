@@ -10,9 +10,13 @@
 //   and move (same checks for the new slot, the rental itself left out; keeps the status and the amount, clears the
 //   reschedule flag) go through the status table (409 `invalid_transition`) with the lock token;
 // - the lifecycle job closes the confirmed rentals whose end has passed (`confirmed → done`) with `advanceWhere`.
-// Rental commands are not undoable: the status only moves forward (DD-46); a wrong entry is cancelled. Staff commands
-// run for the club administrator and, within their places, the facility attendant (`PLACE_KINDS`, #126): a create
-// or a move names a place of the caller's grant (403 `scope_denied` otherwise).
+// The status commands are not undoable: the status only moves forward (DD-46); a wrong entry is cancelled. The one
+// undoable command is `facilities.rentals.update` (facilities parity spec DD-R08, REQ-R05; #279): it corrects the
+// contact, the purpose and the notes, and assigns a registered renter (institution or person, ban-checked) to an
+// unregistered rental — while the rental is `requested` or `confirmed`; the notes also later (409 `rental_closed`).
+// Money and the slot never change here. Staff commands run for the club administrator and, within their places, the
+// facility attendant (`PLACE_KINDS`, #126): a create or a move names a place of the caller's grant (403
+// `scope_denied` otherwise).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -21,7 +25,14 @@ import { calendarDateInZone } from '@vereino/core'
 import { advanceWhere, assertInScope, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { Rental } from '../data/entities'
-import { rentalActionSchema, rentalCancelSchema, rentalCreateSchema, rentalMoveSchema } from '../data/validators'
+import {
+  rentalActionSchema,
+  rentalCancelSchema,
+  rentalCreateSchema,
+  rentalMoveSchema,
+  rentalUpdateSchema,
+} from '../data/validators'
+import { correctionClosed, type RentalCorrectionField } from '../lib/rental-record'
 import {
   cancellationDeadline,
   cancellationOutcome,
@@ -35,7 +46,7 @@ import {
 import { labelConflicts } from '../services/calendar'
 import { chargeService } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
-import { assessRentalSlot, type RentalIssue } from '../services/rental-slot'
+import { assessRentalSlot, renterBanned, type RentalIssue } from '../services/rental-slot'
 import {
   PLACE_KINDS,
   assertPlaces,
@@ -440,6 +451,178 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
     }),
 }
 
+/**
+ * The snapshot of a correction (DD-R08): the status snapshot plus the fields a correction changes, so its undo can
+ * restore them. Unlike the status commands' snapshot it holds the renter's name and contact, because the undo needs
+ * them; the action log keeps its snapshots encrypted at rest (lesson `action-log-columns-encrypted-at-rest`).
+ */
+export type RentalCorrectionSnapshot = RentalSnapshot & {
+  renterDisplayName: string
+  contactName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  purpose: string | null
+  notes: string | null
+}
+
+export type RentalUpdateResult = FacilitiesCommandResult<Rental, RentalCorrectionSnapshot>
+
+export function rentalCorrectionSnapshot(row: Rental): RentalCorrectionSnapshot {
+  return {
+    ...rentalSnapshot(row),
+    renterDisplayName: row.renterDisplayName,
+    contactName: row.contactName ?? null,
+    contactPhone: row.contactPhone ?? null,
+    contactEmail: row.contactEmail ?? null,
+    purpose: row.purpose ?? null,
+    notes: row.notes ?? null,
+  }
+}
+
+const TEXT_FIELDS = ['contactName', 'contactPhone', 'contactEmail', 'purpose', 'notes'] as const
+type TextField = (typeof TEXT_FIELDS)[number]
+
+type RentalUpdateParsed = z.output<typeof rentalUpdateSchema>
+type CorrectionValues = Pick<RentalCorrectionSnapshot, TextField | 'renterType' | 'renterId'>
+
+/** A text the form sends: undefined keeps the stored value, an empty one clears it. */
+function textOrNull(value: string | null | undefined): string | null | undefined {
+  return value === undefined ? undefined : value?.trim() || null
+}
+
+/** The fields whose value differs between `current` and `next` (an unchanged value is no change). */
+function differingFields(current: CorrectionValues, next: Partial<CorrectionValues>): RentalCorrectionField[] {
+  const fields: RentalCorrectionField[] = TEXT_FIELDS.filter(
+    (field) => next[field] !== undefined && next[field] !== current[field],
+  )
+  const renterChanged =
+    (next.renterType !== undefined && next.renterType !== current.renterType) ||
+    (next.renterId !== undefined && next.renterId !== current.renterId)
+  return renterChanged ? [...fields, 'renter'] : fields
+}
+
+function correctionValues(row: Rental): CorrectionValues {
+  return {
+    renterType: row.renterType,
+    renterId: row.renterId ?? null,
+    contactName: row.contactName ?? null,
+    contactPhone: row.contactPhone ?? null,
+    contactEmail: row.contactEmail ?? null,
+    purpose: row.purpose ?? null,
+    notes: row.notes ?? null,
+  }
+}
+
+/**
+ * Assigns a registered renter to an unregistered rental: both `renterType` and `renterId` (422
+ * `rental_renter_invalid` otherwise, and for a rental whose renter is already a record or an unknown id); the name
+ * becomes the record's; a renter with an entry ban in force on the rental's day on its place family answers 409
+ * `entry_ban_active`.
+ */
+async function assignRenter(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Rental,
+  parsed: RentalUpdateParsed,
+): Promise<void> {
+  const renterType = parsed.renterType
+  const renterId = parsed.renterId
+  if (!renterType || !renterId || row.renterType !== 'unregistered') {
+    return throwFieldError('rental_renter_invalid', 'renterId')
+  }
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  const names =
+    renterType === 'institution'
+      ? await institutionNames(ctx.container, scope, [renterId], em)
+      : await personNames(ctx.container, scope, [renterId], em)
+  const name = names.get(renterId)
+  if (!name) return throwFieldError('rental_renter_invalid', 'renterId')
+  const date = calendarDateInZone(row.startsAt, await clubTimeZone(ctx.container, scope))
+  if (await renterBanned(ctx.container, em, scope, { placeId: row.placeId, renterType, renterId }, date)) {
+    await throwFieldError('entry_ban_active', 'renterId')
+  }
+  row.renterType = renterType
+  row.renterId = renterId
+  row.renterDisplayName = name
+}
+
+/** Re-authorizes an undo or redo of a correction on the current scope: the rental's place, as the first execution. */
+async function authorizeRentalReplay(ctx: CommandRuntimeContext, id: string | null | undefined): Promise<Rental> {
+  const em = ctx.transactionalEm
+  if (!em || !id) throw new Error('[internal] a rental replay needs the replay transaction and the id')
+  const { entity } = await authorizeScoped(
+    existingPlaceSpec(z.object({ id: z.uuid() }), RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
+    { id },
+    ctx,
+    em,
+    { mode: 'replay' },
+  )
+  return entity as Rental
+}
+
+const updateRentalCommand: CommandHandler<Record<string, unknown>, RentalUpdateResult> = {
+  id: 'facilities.rentals.update',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'facilities.rentals.update', async (em) => {
+      const authorized = await authorizeScoped(
+        existingPlaceSpec(rentalUpdateSchema, RENTAL_RESOURCE_KIND, rowLoader(ctx, Rental)),
+        rawInput,
+        ctx,
+        em,
+      )
+      const row = authorized.entity as Rental
+      const parsed = authorized.parsed
+      const before = rentalCorrectionSnapshot(row)
+      const texts: Partial<Record<TextField, string | null>> = {}
+      for (const field of TEXT_FIELDS) {
+        const value = textOrNull(parsed[field])
+        if (value !== undefined) texts[field] = value
+      }
+      const fields = differingFields(correctionValues(row), {
+        ...texts,
+        ...(parsed.renterType !== undefined ? { renterType: parsed.renterType } : {}),
+        ...(parsed.renterId !== undefined ? { renterId: parsed.renterId } : {}),
+      })
+      if (correctionClosed(row.status, fields)) await facilitiesErrors.throw('rental_closed', { status: row.status })
+      if (fields.includes('renter')) await assignRenter(ctx, em, row, parsed)
+      Object.assign(row, texts)
+      row.updatedAt = new Date()
+      return { entity: row, actingRole: authorized.actingRole, before }
+    })
+    await emitRental(result.entity, 'updated')
+    return result
+  },
+  buildLog: ({ result }) =>
+    facilitiesLog({
+      result,
+      resourceKind: RENTAL_RESOURCE_KIND,
+      labelKey: 'facilities.audit.rentals.update',
+      fallback: 'Correct a rental',
+      after: rentalCorrectionSnapshot(result.entity),
+    }),
+  async authorizeReplay({ ctx, logEntry }) {
+    await authorizeRentalReplay(ctx, logEntry.resourceId)
+  },
+  async undo({ ctx, logEntry }) {
+    const before = logEntry.snapshotBefore as RentalCorrectionSnapshot | null | undefined
+    if (!before?.id) throw new Error('[internal] missing rental snapshot for undo')
+    const row = await authorizeRentalReplay(ctx, before.id)
+    // The undo follows the rule of the correction: a rental that left its slot keeps all but its notes.
+    if (correctionClosed(row.status, differingFields(correctionValues(row), before))) {
+      await facilitiesErrors.throw('rental_closed', { status: row.status })
+    }
+    row.renterType = before.renterType
+    row.renterId = before.renterId
+    row.renterDisplayName = before.renterDisplayName
+    for (const field of TEXT_FIELDS) row[field] = before[field]
+    row.updatedAt = new Date()
+    await (ctx.transactionalEm as EntityManager).flush()
+    await emitRental(row, 'updated')
+  },
+}
+
 const lifecycleSchema = z.object({ now: z.iso.datetime({ offset: true }).optional() }).strict()
 
 export type LifecycleJobResult = { now: string; counts: { done: number }; changedIds: string[] }
@@ -491,4 +674,5 @@ registerCommand(confirmRentalCommand)
 registerCommand(cancelRentalCommand)
 registerCommand(noShowRentalCommand)
 registerCommand(moveRentalCommand)
+registerCommand(updateRentalCommand)
 registerCommand(advanceLifecycleCommand)

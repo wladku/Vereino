@@ -38,6 +38,8 @@ export type PaymentsChargeService = {
     input: { sourceType: 'rental'; sourceId: string; outcome: ChargeOutcome },
     ctx: CommandRuntimeContext,
   ): Promise<{ warning?: 'charge_paid'; afterCommit?: () => Promise<void> }>
+  /** The stored status of each charge of the caller's organization; unknown or foreign ids are absent (#279). */
+  statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext): Promise<Map<string, string>>
 }
 
 /** The registered charge service, or null while `payments` provides none. */

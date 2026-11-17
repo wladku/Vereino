@@ -161,8 +161,6 @@ export type RentalItem = {
   renterCategory: string
   contactName: string | null
   contactPhone: string | null
-  purpose?: string | null
-  notes?: string | null
   requestedVia: string
   startsAt: string
   endsAt: string
@@ -175,6 +173,15 @@ export type RentalItem = {
   regulationsAcceptedAt: string | null
   needsReschedule: boolean
   updatedAt: string
+  // Since #279 (facilities parity spec phase 5).
+  contactEmail?: string | null
+  purpose?: string | null
+  notes?: string | null
+  regulationsAcceptedVia?: string | null
+  emailVerifiedAt?: string | null
+  decisionReason?: string | null
+  payee?: { institutionId: string; name: string } | null
+  chargeState?: string
 }
 
 export type RentalConflict = { kind: string; id: string; start: string; end: string }
@@ -226,6 +233,31 @@ export async function getRental(request: APIRequestContext, token: string, id: s
   const rental = (await listRentals(request, token)).find((item) => item.id === id)
   if (!rental) throw new Error(`[internal] rental ${id} not listed`)
   return rental
+}
+
+/** `GET /api/facilities/rentals?id=` — one rental, or undefined outside the caller's scope (#279). */
+export async function readRental(request: APIRequestContext, token: string, id: string) {
+  const result = await call<List<RentalItem>>(request, 'GET', `/api/facilities/rentals?id=${id}`, token)
+  expect(result.status, `GET /api/facilities/rentals?id= ${JSON.stringify(result.body)}`).toBe(200)
+  return result.body?.items?.at(0)
+}
+
+/** `PUT /api/facilities/rentals` (`facilities.rentals.update`) with the given lock token, else the current one. */
+export async function putRental(
+  request: APIRequestContext,
+  token: string,
+  id: string,
+  data: Record<string, unknown>,
+  lockToken?: string,
+) {
+  const version = lockToken ?? (await getRental(request, token, id)).updatedAt
+  return call<CodedError & { ok?: boolean; id?: string; updatedAt?: string }>(
+    request,
+    'PUT',
+    '/api/facilities/rentals',
+    token,
+    { data: { id, ...data }, headers: { [OPTIMISTIC_LOCK_HEADER]: version } },
+  )
 }
 
 /** `POST /api/facilities/rentals/{id}/{action}` with the rental's current lock token. */

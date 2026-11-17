@@ -66,11 +66,16 @@ function conflictView(entry: OccupancyEntry): ConflictView {
   return { kind: entry.kind, id: entry.id, start: entry.start.toISOString(), end: entry.end.toISOString() }
 }
 
-async function renterBanned(
+/**
+ * True when the registered renter has an entry ban in force on `date` (the club calendar date of the slot) on the
+ * place, its ancestors or its descendants; an unregistered renter is never banned by record. Also read by the rental
+ * correction that assigns a renter record (#279).
+ */
+export async function renterBanned(
   container: AwilixContainer,
   em: EntityManager,
   scope: FacilitiesScope,
-  input: SlotInput,
+  input: Pick<SlotInput, 'placeId' | 'renterType' | 'renterId'>,
   date: string,
 ): Promise<boolean> {
   if (!input.renterId || (input.renterType !== 'institution' && input.renterType !== 'person')) return false

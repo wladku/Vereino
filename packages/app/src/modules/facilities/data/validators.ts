@@ -31,6 +31,7 @@ import {
   RENTER_TYPES,
   STAFF_REQUESTED_VIA,
 } from '../lib/rentals'
+import { RENTAL_VIEWS } from '../lib/rental-record'
 import { MAX_ZONE_PRIORITY, ZONES, ZONE_SOURCES } from '../lib/zones'
 
 const wallTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$|^24:00(?::00)?$/)
@@ -221,6 +222,24 @@ export const rentalMoveSchema = z
   .object({ id: z.uuid(), startsAt: instantSchema, placeId: z.uuid().optional() })
   .strict()
 
+/**
+ * `PUT /api/facilities/rentals` (`facilities.rentals.update`, DD-R08, #279): the contact, the purpose and the notes;
+ * `renterType` + `renterId` assign a registered renter to an unregistered rental (both or neither). The lock token
+ * travels in the platform optimistic-lock header.
+ */
+export const rentalUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    contactName: optionalText(200),
+    contactPhone: optionalText(50),
+    contactEmail: z.email().max(320).nullable().optional(),
+    purpose: optionalText(500),
+    notes: optionalText(2000),
+    renterType: z.enum(ENTRY_BAN_SUBJECT_TYPES).optional(),
+    renterId: z.uuid().optional(),
+  })
+  .strict()
+
 export const rentalListQuerySchema = z.object({
   ...listQueryBase,
   sortField: z.enum(['startsAt', 'amount', 'createdAt', 'updatedAt']).optional(),
@@ -232,6 +251,13 @@ export const rentalListQuerySchema = z.object({
   /** Rentals that end on or after / start before an instant (the calendar week). */
   endsAfter: instantSchema.optional(),
   startsBefore: instantSchema.optional(),
+  /** One rental (the rental page, #279). */
+  id: z.uuid().optional(),
+  /** B-24 perspectives: `to_move` (flagged, still holding the slot), `unpaid` (requested, past the payment deadline). */
+  view: z.enum(RENTAL_VIEWS).optional(),
+  /** Rentals that start on or after `from` and before `to` (the attendant's rentals tab). */
+  from: instantSchema.optional(),
+  to: instantSchema.optional(),
 })
 
 // --- Online requests (#125) ---
