@@ -38,11 +38,19 @@ See the commit; `payments` (lib, commands, routes, services, components, widgets
 - `npx jest src/modules/payments/lib/__tests__/manual-charges.test.ts` — 14 passed.
 - `yarn generate` — completed.
 - `yarn typecheck` — exit 0.
+- First full-suite `yarn test` failed: `payments-rules.test.ts › declares the error codes with their statuses` (the table lacked the three new codes) — fixed. `yarn lint` failed: `AddChargeDialog.tsx` "Returning a void expression from a function is forbidden" (4×) — fixed.
+- `yarn test:integration:vereino --filter TEST-C07` — 1 passed (1.9 min); re-run after the review fixes (see the PR).
+- `yarn test:integration:vereino --filter TEST-C08` — 1 passed (2.0 min).
+- `yarn verify` — all 17 steps passed (1203 unit tests, `manual-charges.ts` 100 % lines/branches/functions).
+
+## Review
+
+An independent review subagent read `git diff origin/main...HEAD` against the spec: no blocking defects. Fixed: a guardian whose person record was deleted no longer counts as a payer (`payerFactsOf` keeps only live persons); the add-charge dialog checks the PLN 100 000 limit on the amount field. Accepted and documented in the module README (the spec names no other path): a primary payer whose guardianship starts later is not assigned when it begins, and a manual charge committed while a primary-payer event is handled may stay without a payer — B-22 assigns both.
 
 ## Open problems
 
-None yet.
+None.
 
 ## Next steps
 
-Integration tests TEST-C07 and TEST-C08, then `yarn verify`, then the PR.
+Review and merge the PR; spec L's PersonRecord change rebases on (or under) this tab per the spec's rebase rule.
