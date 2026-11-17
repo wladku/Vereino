@@ -132,14 +132,32 @@ describe('otherPayersOf (DD-C06)', () => {
       ['ala', 'kasia'],
       ['own', ME],
     ])
-    expect(otherPayersOf(ME, ['jas', 'ala', 'own', 'none', 'jas'], payers, names)).toEqual([
+    const owing = new Set(['jas', 'ala', 'own', 'none'])
+    expect(otherPayersOf(ME, ['jas', 'ala', 'own', 'none', 'jas'], payers, owing, names)).toEqual([
       { wardFirstName: 'Ala', payerFirstName: 'Kasia' },
       { wardFirstName: 'Jaś', payerFirstName: 'Kasia' },
     ])
   })
 
+  it('leaves out a ward with nothing open to pay', () => {
+    expect(
+      otherPayersOf(
+        ME,
+        ['jas', 'ala'],
+        new Map([
+          ['jas', 'kasia'],
+          ['ala', 'kasia'],
+        ]),
+        new Set(['ala']),
+        names,
+      ),
+    ).toEqual([{ wardFirstName: 'Ala', payerFirstName: 'Kasia' }])
+  })
+
   it('falls back to an empty name when a person is not found', () => {
-    expect(otherPayersOf(ME, ['x'], new Map([['x', 'y']]), names)).toEqual([{ wardFirstName: '', payerFirstName: '' }])
+    expect(otherPayersOf(ME, ['x'], new Map([['x', 'y']]), new Set(['x']), names)).toEqual([
+      { wardFirstName: '', payerFirstName: '' },
+    ])
   })
 })
 

@@ -73,6 +73,7 @@ type MyOrderCampaign = {
   name: string
   closesOn: string
   status: string
+  ordersOpen: boolean
   children: { state: string }[]
 }
 
@@ -105,8 +106,12 @@ function formatDate(value: string, locale: string, short = false): string {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(locale, style).format(date)
 }
 
-/** The charges ticked on entry: every payable one, or only `?pay={id}` when the link names one (REQ-C10). */
-function initialSelection(payable: ReadonlySet<string>, pay: string | null): string[] {
+/**
+ * The charges ticked on entry: every payable one, or only `?pay={id}` when the link names one (REQ-C10); nothing while
+ * a payment is still in progress, so coming back from the payment form never starts a second one in two taps.
+ */
+function initialSelection(payable: ReadonlySet<string>, pay: string | null, paying: boolean): string[] {
+  if (paying) return []
   if (pay) return payable.has(pay) ? [pay] : []
   return [...payable]
 }
@@ -223,14 +228,18 @@ function CampaignCard() {
   const t = useT()
   const locale = useLocale()
   const campaigns = useQuery({
-    queryKey: ['payments-my-orders'],
+    // Its own key: this read answers [] on any failure, which must not stand in for M-16's list.
+    queryKey: ['payments-my-orders', 'campaign-card'],
     queryFn: async (): Promise<MyOrderCampaign[]> => {
       const call = await apiCall<{ items: MyOrderCampaign[] }>('/api/payments/my-orders', NO_FORBIDDEN_REDIRECT)
       return call.ok && call.result ? call.result.items : []
     },
     retry: false,
   })
-  const campaign = campaigns.data?.find((item) => item.status === 'open' && item.children.length > 0)
+  // The open campaign that closes first (the list comes latest deadline first).
+  const campaign = (campaigns.data ?? [])
+    .filter((item) => item.status === 'open' && item.ordersOpen && item.children.length > 0)
+    .sort((a, b) => a.closesOn.localeCompare(b.closesOn))[0]
   if (!campaign) return null
   const toOrder = campaign.children.some((child) => child.state === 'not_ordered')
   return (
@@ -366,9 +375,10 @@ function Payments() {
     () => new Set((charges.data?.items ?? []).filter((charge) => charge.payable).map((charge) => charge.id)),
     [charges.data],
   )
+  const paying = (charges.data?.checkouts ?? []).some((checkout) => checkout.state === 'in_progress')
   const selection = React.useMemo(
-    () => (selected ?? initialSelection(payableIds, pay)).filter((id) => payableIds.has(id)).sort(),
-    [selected, payableIds, pay],
+    () => (selected ?? initialSelection(payableIds, pay, paying)).filter((id) => payableIds.has(id)).sort(),
+    [selected, payableIds, pay, paying],
   )
   const quote = useQuery({
     queryKey: ['payments-quote', selection],
@@ -387,11 +397,11 @@ function Payments() {
   const toggle = React.useCallback(
     (id: string) => {
       setSelected((stored) => {
-        const current = stored ?? initialSelection(payableIds, pay)
+        const current = stored ?? initialSelection(payableIds, pay, paying)
         return current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
       })
     },
-    [payableIds, pay],
+    [payableIds, pay, paying],
   )
 
   const startPayment = async () => {

@@ -30,6 +30,15 @@
 - `yarn verify`: all 17 steps passed.
 - Lesson `qa-ui-texts-from-catalogs`: the anchored `exact` pattern in `toContainText` cost a run a second time (#279, #298), so the rule moved into `AGENTS.md` → Validation.
 
+## Review (independent subagent, PR #345)
+
+No defect in the money arithmetic, scoping, privacy or the `int[]` mapping. Fixed in a follow-up commit:
+- nothing is pre-ticked while a checkout is in progress (a return to M-08 cannot start a second payment in two taps; a server-side 409 would be a new error code, so it is left for a later decision);
+- the campaign card takes the open campaign that still accepts orders (`ordersOpen`) and closes first, and uses its own query key;
+- "paid by" requires an `open` or `partially_paid` charge of the ward (*Domain Vocabulary* → Other payer); TEST-C11 checks Basia while Jaś still owes.
+
+After the fixes: payer-summary unit 13 passed (100 %); TEST-C11 1 passed (1.8m); E07-S03 1 passed (1.9m); `yarn verify` all 17 steps passed.
+
 ## Open problems / next steps
 
 - UI QA of M-08 in both locales, light and dark, at 375 px (exit gate), then tick AC-C10.

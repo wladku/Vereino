@@ -48,19 +48,21 @@ export type OwnCharge = {
 export type OtherPayer = { wardFirstName: string; payerFirstName: string }
 
 /**
- * The caller's wards paid by someone else (DD-C06): each ward whose primary payer is a person other than the caller,
- * with both first names, by the ward's first name. A ward without a primary payer is not listed.
+ * The caller's wards paid by someone else (DD-C06, *Domain Vocabulary* → Other payer): each ward whose primary payer
+ * is a person other than the caller and who has something to pay (`owing`: an `open` or `partially_paid` charge), with
+ * both first names, by the ward's first name. A ward without a primary payer, or with nothing to pay, is not listed.
  */
 export function otherPayersOf(
   callerId: string,
   wardIds: readonly string[],
   primaryPayers: ReadonlyMap<string, string>,
+  owing: ReadonlySet<string>,
   firstNames: ReadonlyMap<string, string>,
 ): OtherPayer[] {
   return [...new Set(wardIds)]
     .flatMap((wardId) => {
       const payerId = primaryPayers.get(wardId)
-      if (!payerId || payerId === callerId) return []
+      if (!payerId || payerId === callerId || !owing.has(wardId)) return []
       return [{ wardFirstName: firstNames.get(wardId) ?? '', payerFirstName: firstNames.get(payerId) ?? '' }]
     })
     .sort((a, b) => a.wardFirstName.localeCompare(b.wardFirstName))

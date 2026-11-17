@@ -107,8 +107,9 @@ async function ownCharges(container: AwilixContainer, payer: Payer) {
 }
 
 /**
- * The caller's wards whose primary payer today is another person (DD-C06, `people.personDirectory.primaryPayers`):
- * first names only — the other guardian's amounts and discounts never reach this caller.
+ * The caller's wards whose primary payer today is another person and who have an `open` or `partially_paid` charge
+ * (DD-C06, `people.personDirectory.primaryPayers`): first names only — the other guardian's amounts and discounts
+ * never reach this caller (the charge read keeps only the ward ids).
  */
 export async function otherPayers(container: AwilixContainer, payer: Payer): Promise<OtherPayer[]> {
   if (payer.wardIds.length === 0) return []
@@ -116,9 +117,22 @@ export async function otherPayers(container: AwilixContainer, payer: Payer): Pro
   const payers = await primaryPayers(container, payer.scope, payer.wardIds, today)
   const others = [...payers.entries()].filter(([, payerId]) => payerId !== payer.personId)
   if (others.length === 0) return []
+  const owingRows = await freshEm(container).find(
+    Charge,
+    {
+      ...payer.scope,
+      deletedAt: null,
+      sourceType: { $ne: 'rental' as const },
+      status: { $in: [...OPEN_CHARGE_STATUSES] },
+      personId: { $in: others.map(([wardId]) => wardId) },
+    },
+    { fields: ['id', 'personId'] },
+  )
+  const owing = new Set(owingRows.flatMap((row) => (row.personId ? [row.personId] : [])))
+  if (owing.size === 0) return []
   const persons = await findPersons(container, payer.scope, others.flat())
   const firstNames = new Map([...persons.entries()].map(([id, person]) => [id, person.firstName]))
-  return otherPayersOf(payer.personId, payer.wardIds, payers, firstNames)
+  return otherPayersOf(payer.personId, payer.wardIds, payers, owing, firstNames)
 }
 
 /**

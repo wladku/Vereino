@@ -300,25 +300,7 @@ test('TEST-C11 M-08 ticks everything, pays what remains, names the rule and who 
       [3000, false],
     ])
 
-    // A checkout of a partially paid charge and an open one: the sum of the remainders, no overpayment at capture.
-    await setFeeMode(request, admin, { onlineFeeMode: 'club_pays' })
-    await cash(olaNow.id, 5000)
-    const remainder = olaNow.amountDue - 5000
-    const paying = await checkout(request, kasiaToken, [olaNow.id, jasNow.id])
-    expect(paying.body).toMatchObject({ amount: remainder + jasNow.amountDue, total: remainder + jasNow.amountDue })
-    await gatewayWebhook(request, {
-      sessionId: paying.sessionId,
-      status: 'captured',
-      amountReceived: (remainder + jasNow.amountDue) / 100,
-    })
-    await expect.poll(async () => (await getCharge(request, admin, olaNow.id)).status, { timeout: 25_000 }).toBe('paid')
-    const olaPaid = await getCharge(request, admin, olaNow.id)
-    expect(olaPaid.payments.filter((payment) => payment.method === 'online')).toEqual([
-      expect.objectContaining({ amount: remainder, overpayment: false }),
-    ])
-    expect((await getCharge(request, admin, jasNow.id)).status).toBe('paid')
-
-    // --- Basia, Jaś's second guardian, who does not pay ---
+    // --- Basia, Jaś's second guardian, who does not pay (Jaś still has an open charge) ---
     const basiaPassword = await signInBrowser(page, request, club, basiaUserId, basiaEmail)
     const basiaToken = await getAuthToken(request, basiaEmail, basiaPassword)
     const hers = await myCharges(request, basiaToken)
@@ -343,6 +325,24 @@ test('TEST-C11 M-08 ticks everything, pays what remains, names the rule and who 
     await page.goto('/club')
     await expect(page.getByTestId('club-tile-payments-state')).toHaveAttribute('data-state', 'other_pays')
     await expect(page.getByTestId('club-tile-payments-state')).toHaveText(TILE_PAID_BY_KASIA)
+
+    // A checkout of a partially paid charge and an open one: the sum of the remainders, no overpayment at capture.
+    await setFeeMode(request, admin, { onlineFeeMode: 'club_pays' })
+    await cash(olaNow.id, 5000)
+    const remainder = olaNow.amountDue - 5000
+    const paying = await checkout(request, kasiaToken, [olaNow.id, jasNow.id])
+    expect(paying.body).toMatchObject({ amount: remainder + jasNow.amountDue, total: remainder + jasNow.amountDue })
+    await gatewayWebhook(request, {
+      sessionId: paying.sessionId,
+      status: 'captured',
+      amountReceived: (remainder + jasNow.amountDue) / 100,
+    })
+    await expect.poll(async () => (await getCharge(request, admin, olaNow.id)).status, { timeout: 25_000 }).toBe('paid')
+    const olaPaid = await getCharge(request, admin, olaNow.id)
+    expect(olaPaid.payments.filter((payment) => payment.method === 'online')).toEqual([
+      expect.objectContaining({ amount: remainder, overpayment: false }),
+    ])
+    expect((await getCharge(request, admin, jasNow.id)).status).toBe('paid')
 
     expect(violations).toEqual({})
   } finally {
