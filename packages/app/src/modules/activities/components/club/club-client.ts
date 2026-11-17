@@ -10,7 +10,13 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { calendarRangeRetry } from '../../lib/member-calendar'
 import { coachBadge } from '../../lib/occurrence-list'
-import type { CalendarBadgeTone, CalendarItem, CalendarItemAction, CalendarItemBadge } from '@vereino/core'
+import type {
+  CalendarBadgeTone,
+  CalendarItem,
+  CalendarItemAction,
+  CalendarItemBadge,
+  CalendarItemNote,
+} from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 
 export type Translate = ReturnType<typeof useT>
@@ -120,6 +126,10 @@ export type CalendarOccurrence = {
   endAt: string
   /** The gathering instant before the start (club spec DD-43), or null. */
   gatheringAt: string | null
+  /** The declaration deadline (REQ-A07), or null; only a `confirm` session carries one in the member reads. */
+  confirmBy?: string | null
+  /** True from the deadline until the start: members can no longer declare (DD-A02). */
+  deadlinePassed?: boolean
   placeId: string
   placeName: string | null
   placeAddress: string | null
@@ -251,6 +261,8 @@ export type AttendanceList = {
   occurrence: CalendarOccurrence
   declarationKind: DeclarationKind
   summary: CalendarSummary
+  /** `confirm`: the participants who have not answered (REQ-A07). */
+  unansweredCount?: number
   checkOff: CheckOffWindow
   actingRole: string
   /** False when the club setting `coach_may_cancel` keeps the caller from cancelling (#199). */
@@ -495,10 +507,39 @@ export function parseActionId(id: string): { personId: string; declared: Declare
 }
 
 /**
+ * The deadline lines of a session card (REQ-A07, M-02, M-03): "Confirm by {at}" before the deadline, then "Deadline
+ * passed {at}" with the hint to write to the coach. Only a planned session that has not started and concerns the
+ * viewer (a member perspective with persons) shows them; `formatAt` writes the instant in the club zone.
+ */
+export function deadlineNotes(
+  entry: Pick<CalendarEntry, 'occurrence' | 'declarationsOpen' | 'persons'>,
+  as: MemberPerspective,
+  t: Translate,
+  formatAt: (at: Date) => string,
+): CalendarItemNote[] {
+  const { occurrence } = entry
+  if (as === 'coach' || !occurrence.confirmBy || !entry.declarationsOpen || entry.persons.length === 0) return []
+  const at = formatAt(new Date(occurrence.confirmBy))
+  if (!occurrence.deadlinePassed) return [{ id: 'deadline', text: t('activities.deadline.confirmBy', { at }) }]
+  return [
+    { id: 'deadline', text: t('activities.deadline.passed', { at }), tone: 'warning' },
+    {
+      id: 'deadline-hint',
+      text: t(as === 'self' ? 'activities.deadline.passedHintSelf' : 'activities.deadline.passedHint'),
+    },
+  ]
+}
+
+/**
  * One calendar entry as the shared list shows it (title, section marker, place, coach, persons, statuses, declaration
  * actions). The coach is staff, so naming them shows no other family's data (R15).
  */
-export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: Translate): CalendarItem {
+export function toCalendarItem(
+  entry: CalendarEntry,
+  as: MemberPerspective,
+  t: Translate,
+  formatAt: (at: Date) => string,
+): CalendarItem {
   const { occurrence } = entry
   const many = entry.persons.length > 1
   const badges: CalendarItemBadge[] = entry.persons.map((person) => {
@@ -552,6 +593,7 @@ export function toCalendarItem(entry: CalendarEntry, as: MemberPerspective, t: T
         ? `${occurrence.coachName} ${t('activities.substitutions.substitution')}`
         : occurrence.coachName,
     subtitle,
+    notes: deadlineNotes(entry, as, t, formatAt),
     href: as === 'coach' ? attendanceHref(occurrence.id) : sessionHref(occurrence.id, as),
     badges,
     actions,

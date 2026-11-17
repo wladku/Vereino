@@ -28,11 +28,10 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS, addDays, isCalendarDate } from '@vereino/core'
 import { browserTimeZone, clubToday, formatDayHeading, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { bookableWindowsByDay, chipDates, CHIP_DAYS } from '../lib/day-axis'
-import { closingAfter, zoneAtMinute } from '../lib/slot'
 import { isBookablePlace } from '../lib/place-scope'
 import { AvailabilityDialog, type BulkResult } from './AvailabilityDialog'
 import { MaintenanceTaskDialog } from './MaintenanceTaskDialog'
-import { SlotDialog, type SlotPreset } from './slot/SlotDialog'
+import { SlotDialog, slotPresetAt, type SlotPreset } from './slot/SlotDialog'
 import { useSlotKinds } from './slot/slot-client'
 import {
   CALENDAR_HREF,
@@ -56,12 +55,11 @@ import {
   PLACES_CALENDAR_KEY,
   calendarErrorStatus,
   cancelInternalBooking,
+  capacityText,
   dayWindow,
   entriesOfDay,
   entryLabel,
   entryRange,
-  minutesOf,
-  timeOf,
   useStaffCalendar,
   zoneWallTime,
   zonedLocalInstant,
@@ -212,13 +210,6 @@ function AvailabilityCard({
       <p className="text-muted-foreground mt-2 text-xs">{t('facilities.calendar.availabilityCard.note')}</p>
     </details>
   )
-}
-
-/** "2 club groups at a time" in the locale's plural form. */
-function capacityText(t: ReturnType<typeof useT>, locale: string, count: number): string {
-  const form = new Intl.PluralRules(locale).select(count)
-  const key = ['one', 'few', 'many'].includes(form) ? form : 'other'
-  return t(`facilities.calendar.capacity.${key}`, { n: count })
 }
 
 function PlaceDay({
@@ -489,24 +480,8 @@ function PlaceDay({
           redacted={redacted}
           canBook={canBook}
           onBookHour={(time) => {
-            const minute = minutesOf(time)
-            const opening = day?.opening?.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) }))
-            const zones = (day?.zones ?? []).map((zone) => ({
-              from: minutesOf(zone.from),
-              to: minutesOf(zone.to),
-              zone: zone.zone,
-            }))
-            const closing = closingAfter(opening ?? null, minute)
             setSlotKey((current) => current + 1)
-            setSlotPreset({
-              placeId,
-              placeName: name,
-              date,
-              time,
-              zone: zoneAtMinute(zones, minute),
-              closing: closing === null ? null : timeOf(closing),
-              heldRequests: dayEntries.filter((entry) => entry.kind === 'request'),
-            })
+            setSlotPreset(slotPresetAt({ placeId, placeName: name, date, time, day, entries: dayEntries }))
           }}
         />
         <DayEntries

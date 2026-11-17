@@ -80,6 +80,7 @@ export async function replanSeries(
   const plan = sessionPlan(stored, sessions, clock.today, await actedOnSessionIds(em, scope, stored))
   const coachPersonId = activity.defaultCoachPersonId ?? null
   const gatheringMinutesBefore = activity.gatheringMinutesBefore ?? null
+  const confirmByMinutesBefore = activity.confirmByMinutesBefore ?? null
   await assertNoConflicts(
     await findConflicts(
       ctx.container,
@@ -116,13 +117,15 @@ export async function replanSeries(
         row.endAt.getTime() === occurrence.endAt.getTime() &&
         row.placeId === activity.defaultPlaceId &&
         (row.coachPersonId ?? null) === coachPersonId &&
-        (row.gatheringMinutesBefore ?? null) === gatheringMinutesBefore
+        (row.gatheringMinutesBefore ?? null) === gatheringMinutesBefore &&
+        (row.confirmByMinutesBefore ?? null) === confirmByMinutesBefore
       if (unchanged) continue
       row.startAt = occurrence.startAt
       row.endAt = occurrence.endAt
       row.placeId = activity.defaultPlaceId
       row.coachPersonId = coachPersonId
       row.gatheringMinutesBefore = gatheringMinutesBefore
+      row.confirmByMinutesBefore = confirmByMinutesBefore
       row.needsReschedule = false
       row.updatedAt = now
       changes.updatedIds.push(row.id)
@@ -142,6 +145,7 @@ export async function replanSeries(
         placeId: activity.defaultPlaceId,
         coachPersonId,
         gatheringMinutesBefore,
+        confirmByMinutesBefore,
       }),
     )
     changes.createdIds.push(id)

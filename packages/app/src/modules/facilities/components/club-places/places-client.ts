@@ -1,10 +1,10 @@
 // The typed client of the staff facility pages `/club/places` and `/club/places/[placeId]` (README M-11; REQ-023,
 // REQ-027; #123): the shape of `GET /api/facilities/calendar`, the reads and writes the pages run (the calendar, the
 // booking options, the feature check, an internal booking, its cancellation with the lock token, a group's event),
-// the wall-time handling in the club's time zone (`Intl`, never the browser's zone) and the cutting of a day into the
-// timeline segments of 08:00–22:00. Planned maintenance windows (#128) are entries of their own; a place maintainer
-// without `facilities.view` reads the calendar redacted (`maintenance.redacted`: the other entries without names), and
-// `maintenance.canPlan` / `planPlaceIds` say where "Plan maintenance" applies. Authorization stays on the routes and commands; these helpers only hide what the
+// the wall-time handling in the club's time zone (`Intl`, never the browser's zone) and the entries of a day. Planned
+// maintenance windows (#128) are entries of their own; a place maintainer without `facilities.view` reads the calendar
+// redacted (`maintenance.redacted`: the other entries without names), and `maintenance.canPlan` / `planPlaceIds` say
+// where "Plan maintenance" applies. Authorization stays on the routes and commands; these helpers only hide what the
 // server would refuse.
 import { useQuery } from '@tanstack/react-query'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
@@ -32,17 +32,12 @@ export const PLACES_CALENDAR_KEY = 'facilities-club-calendar'
 /** A coded refusal does not send a staff member to the sign-in page; the page shows it instead. */
 const OWN_FORBIDDEN: Record<string, string> = { 'x-om-forbidden-redirect': '0' }
 
-/** The event types a group's booking offers and the name limit, as `activities`' `eventCreateSchema` sets them. */
+/** The event types a group's booking offers, as `activities`' `eventCreateSchema` sets them. */
 export const EVENT_TYPES = ['tournament', 'other'] as const
-export const EVENT_NAME_MAX = 200
 
 /** The purpose limits of `internalBookingCreateSchema`. */
 export const PURPOSE_MIN = 3
 export const PURPOSE_MAX = 120
-
-/** The timeline's day: 08:00–22:00 in the club's zone, in minutes after midnight. */
-export const DAY_START = 8 * 60
-export const DAY_END = 22 * 60
 
 export type CalendarEntryKind = 'session' | 'rental' | 'request' | 'booking' | 'closure' | 'maintenance'
 export const ENTRY_KINDS: readonly CalendarEntryKind[] = [
@@ -178,89 +173,16 @@ export function dayWindow(date: string, timeZone: string): { from: string; to: s
   }
 }
 
-/** "Sat" of a calendar date in the interface locale. */
-export function shortWeekday(date: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
-}
-
-/** "9:00–12:00": the hours without a leading zero, as the booking message reads. */
-export function compactRange(fromTime: string, toTime: string): string {
-  const compact = (time: string) => time.replace(/^0(\d)/, '$1')
-  return `${compact(fromTime)}–${compact(toTime)}`
+/** "2 club groups at a time" in the locale's plural form. */
+export function capacityText(t: Translate, locale: string, count: number): string {
+  const form = new Intl.PluralRules(locale).select(count)
+  const key = ['one', 'few', 'many'].includes(form) ? form : 'other'
+  return t(`facilities.calendar.capacity.${key}`, { n: count })
 }
 
 /** `HH:MM–HH:MM` of an entry in the club's zone. */
 export function entryRange(entry: { start: string; end: string }, timeZone: string): string {
   return `${timeOf(zoneWallTime(new Date(entry.start), timeZone).minutes)}–${timeOf(zoneWallTime(new Date(entry.end), timeZone).minutes)}`
-}
-
-// --- The day's timeline ---
-
-export type SegmentEntry = { entry: CalendarEntry; first: boolean }
-export type TimelineSegment = {
-  from: number
-  to: number
-  zone: Zone | null
-  /** Inside the opening hours (always, when the day has no opening-hours limit). */
-  open: boolean
-  entries: SegmentEntry[]
-}
-
-/**
- * Cuts 08:00–22:00 of a day at every zone, opening and entry boundary. Each segment carries its zone, whether the
- * place is open and the entries occupying it (`first` marks the segment an entry starts in, where its block and
- * actions are shown; later segments name it as continuing).
- */
-export function daySegments(
-  day: CalendarDay | null,
-  entries: readonly CalendarEntry[],
-  date: string,
-  timeZone: string,
-): TimelineSegment[] {
-  const clip = (minutes: number) => Math.min(DAY_END, Math.max(DAY_START, minutes))
-  const placed = entries
-    .map((entry) => ({
-      entry,
-      from: minutesOnDate(entry.start, date, timeZone),
-      to: minutesOnDate(entry.end, date, timeZone),
-    }))
-    .filter((item) => item.to > DAY_START && item.from < DAY_END && item.to > item.from)
-  const zones = (day?.zones ?? []).map((zone) => ({
-    from: minutesOf(zone.from),
-    to: minutesOf(zone.to),
-    zone: zone.zone,
-  }))
-  const opening = day?.opening
-    ? day.opening.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) }))
-    : null
-  const cuts = new Set<number>([DAY_START, DAY_END])
-  for (const item of [...placed, ...zones, ...(opening ?? [])]) {
-    cuts.add(clip(item.from))
-    cuts.add(clip(item.to))
-  }
-  const points = [...cuts].sort((a, b) => a - b)
-  const segments: TimelineSegment[] = []
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const from = points[index]
-    const to = points[index + 1]
-    const zone = zones.filter((entry) => entry.from <= from && entry.to >= to).pop()?.zone ?? null
-    const open = opening === null || opening.some((window) => window.from <= from && window.to >= to)
-    segments.push({
-      from,
-      to,
-      zone,
-      open,
-      entries: placed
-        .filter((item) => item.from < to && item.to > from)
-        .map((item) => ({ entry: item.entry, first: clip(item.from) === from })),
-    })
-  }
-  return segments
-}
-
-/** A segment the user may pick as a free range: open, not a closed zone and with nothing on it. */
-export function isFreeSegment(segment: TimelineSegment): boolean {
-  return segment.open && segment.zone !== 'closed' && segment.entries.length === 0
 }
 
 /** The entries of one place on a club-zone day, by start. */

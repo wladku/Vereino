@@ -1,9 +1,10 @@
 'use client'
 // Moving one planned session (club spec glossary *Session*, DD-10; REQ-A05 of the groups and activities parity spec,
-// #268): date, times, gathering time and place, shared by the session record ("Move") and the "Move" row button of the
-// sessions list (B-15, `MoveOccurrenceDialog`). The move detaches the session from its series and clears "needs a new
-// time"; one that overbooks a place or a coach is refused with 409 and its conflict list is shown above the fields. The
-// coach changes only through the substitute dialog, so every change of the coach is in the history (#95).
+// #268): date, times, gathering time, declaration deadline (REQ-A07, #269, `confirm` kinds only) and place, shared by
+// the session record ("Move") and the "Move" row button of the sessions list (B-15, `MoveOccurrenceDialog`). The move
+// detaches the session from its series and clears "needs a new time"; one that overbooks a place or a coach is refused
+// with 409 and its conflict list is shown above the fields. The coach changes only through the substitute dialog, so
+// every change of the coach is in the history (#95).
 import * as React from 'react'
 import { CrudForm, type CrudField } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -23,16 +24,18 @@ import {
   instantTime,
   placeOptions,
   scheduleConflictsOf,
+  takesDeadline,
   timeRangeOfInstants,
   toInstant,
   tolerant,
+  useDeclarationKinds,
   type OccurrenceRow,
   type ScheduleConflict,
 } from './client-helpers'
 
 export type MovableOccurrence = Pick<
   OccurrenceRow,
-  'id' | 'startAt' | 'endAt' | 'gatheringAt' | 'placeId' | 'updatedAt' | 'activityName'
+  'id' | 'startAt' | 'endAt' | 'gatheringAt' | 'placeId' | 'updatedAt' | 'activityName' | 'activityType' | 'confirmBy'
 >
 
 type MoveValues = Record<string, unknown> & {
@@ -41,6 +44,9 @@ type MoveValues = Record<string, unknown> & {
   endTime?: string
   /** The gathering wall time on the session's date (DD-43); empty = none. */
   gatheringTime?: string
+  /** The declaration deadline's date and wall time (REQ-A07); both empty = none. */
+  confirmByDate?: string
+  confirmByTime?: string
   placeId?: string
   updatedAt?: string | null
 }
@@ -71,6 +77,9 @@ export function MoveOccurrenceForm({
 }) {
   const t = useT()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
+  const kinds = useDeclarationKinds()
+  // REQ-A07: the deadline is offered for a `confirm` kind, and always when the session already has one.
+  const showDeadline = Boolean(occurrence.confirmBy) || takesDeadline(kinds, occurrence.activityType)
   const fields = React.useMemo<CrudField[]>(
     () => [
       dateField('date', t('activities.occurrences.fields.date'), { required: true }),
@@ -80,6 +89,15 @@ export function MoveOccurrenceForm({
         layout: 'half',
         description: t('activities.occurrences.fields.gathering.help'),
       }),
+      ...(showDeadline
+        ? [
+            dateField('confirmByDate', t('activities.occurrences.fields.confirmByDate'), {
+              layout: 'half',
+              description: t('activities.occurrences.fields.confirmBy.help'),
+            }),
+            timeField('confirmByTime', t('activities.occurrences.fields.confirmByTime'), { layout: 'half' }),
+          ]
+        : []),
       {
         id: 'placeId',
         label: t('activities.fields.place'),
@@ -89,7 +107,7 @@ export function MoveOccurrenceForm({
         required: true,
       },
     ],
-    [t],
+    [t, showDeadline],
   )
   const initialValues = React.useMemo<MoveValues>(
     () => ({
@@ -98,6 +116,8 @@ export function MoveOccurrenceForm({
       startTime: instantTime(occurrence.startAt),
       endTime: instantTime(occurrence.endAt),
       gatheringTime: instantTime(occurrence.gatheringAt),
+      confirmByDate: instantDate(occurrence.confirmBy),
+      confirmByTime: instantTime(occurrence.confirmBy),
       placeId: occurrence.placeId ?? '',
       updatedAt: occurrence.updatedAt,
     }),
@@ -139,6 +159,17 @@ export function MoveOccurrenceForm({
             const message = t('activities.form.errors.invalid')
             throw createCrudFormError(message, { gatheringTime: message })
           }
+          // REQ-A07: an untouched deadline is not sent, so a moved session keeps its offset (the server answers 422 when
+          // that offset falls in the past); a changed one is sent as an instant, and two cleared fields remove it.
+          const confirmByDate = typeof values.confirmByDate === 'string' ? values.confirmByDate : ''
+          const confirmByTime = typeof values.confirmByTime === 'string' ? values.confirmByTime : ''
+          const confirmByChanged =
+            confirmByDate !== initialValues.confirmByDate || confirmByTime !== initialValues.confirmByTime
+          const confirmBy = confirmByDate || confirmByTime ? toInstant(confirmByDate, confirmByTime) : null
+          if (confirmByChanged && (confirmByDate || confirmByTime) && !confirmBy) {
+            const message = t('activities.occurrences.fields.confirmBy.incomplete')
+            throw createCrudFormError(message, { confirmByDate: message, confirmByTime: message })
+          }
           try {
             await apiCallOrThrow(
               `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}`,
@@ -150,6 +181,7 @@ export function MoveOccurrenceForm({
                   endAt,
                   placeId: values.placeId,
                   ...(gatheringChanged ? { gatheringAt } : {}),
+                  ...(confirmByChanged ? { confirmBy } : {}),
                 }),
               },
               { errorMessage: t('activities.occurrences.errors.move') },

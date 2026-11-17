@@ -94,6 +94,17 @@ function Details({ occurrence, t }: { occurrence: OccurrenceDetail; t: Translate
       ? ([[t('activities.gathering.label'), instantTime(occurrence.gatheringAt)]] as Array<[string, React.ReactNode]>)
       : []),
     [t('activities.occurrences.fields.time'), timeRangeOfInstants(occurrence.startAt, occurrence.endAt)],
+    // REQ-A07: the declaration deadline, when the session has one ("Deadline passed" once it passed).
+    ...(occurrence.confirmBy
+      ? ([
+          [
+            occurrence.deadlinePassed ? t('activities.deadline.over') : t('activities.deadline.label'),
+            <span key="deadline" data-testid="occurrence-deadline">
+              {`${dateLabel(t, instantDate(occurrence.confirmBy))} ${instantTime(occurrence.confirmBy)}`}
+            </span>,
+          ],
+        ] as Array<[string, React.ReactNode]>)
+      : []),
     [t('activities.fields.place'), <PlaceValue key="place" occurrence={occurrence} t={t} />],
     [
       t('activities.fields.coach'),

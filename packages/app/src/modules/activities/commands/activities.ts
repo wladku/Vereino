@@ -52,6 +52,8 @@ export type ActivitySnapshot = {
   defaultStartTime: string
   defaultEndTime: string
   gatheringMinutesBefore: number | null
+  /** Absent in a snapshot written before REQ-A07 (#269): no deadline. */
+  confirmByMinutesBefore?: number | null
   description: string | null
   isActive: boolean
   /** Absent in a snapshot written before #96: not an away trip. */
@@ -81,6 +83,7 @@ export function activitySnapshot(row: Activity): ActivitySnapshot {
     defaultStartTime: row.defaultStartTime,
     defaultEndTime: row.defaultEndTime,
     gatheringMinutesBefore: row.gatheringMinutesBefore ?? null,
+    confirmByMinutesBefore: row.confirmByMinutesBefore ?? null,
     description: row.description ?? null,
     isActive: row.isActive,
     isAway: row.isAway,
@@ -101,6 +104,7 @@ function restoreActivity(row: Activity, before: ActivitySnapshot): void {
   row.defaultEndTime = before.defaultEndTime
   // A snapshot written before DD-43 has no gathering field: no gathering time.
   row.gatheringMinutesBefore = before.gatheringMinutesBefore ?? null
+  row.confirmByMinutesBefore = before.confirmByMinutesBefore ?? null
   row.description = before.description
   row.isActive = before.isActive
   row.isAway = before.isAway ?? false
@@ -117,6 +121,7 @@ function seriesKey(row: Activity): string {
     row.defaultPlaceId,
     row.defaultCoachPersonId ?? null,
     row.gatheringMinutesBefore ?? null,
+    row.confirmByMinutesBefore ?? null,
     row.isActive,
   ])
 }
@@ -252,6 +257,7 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
         defaultStartTime: normalizeLocalTime(parsed.startTime),
         defaultEndTime: normalizeLocalTime(parsed.endTime),
         gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
+        confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: parsed.isActive ?? true,
         isAway: parsed.isAway ?? false,
@@ -338,6 +344,7 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       row.defaultStartTime = normalizeLocalTime(startTime)
       row.defaultEndTime = normalizeLocalTime(endTime)
       if (patch.gatheringMinutesBefore !== undefined) row.gatheringMinutesBefore = patch.gatheringMinutesBefore
+      if (patch.confirmByMinutesBefore !== undefined) row.confirmByMinutesBefore = patch.confirmByMinutesBefore
       if (patch.description !== undefined) row.description = patch.description
       if (patch.isActive !== undefined) row.isActive = patch.isActive
       if (patch.isAway !== undefined) row.isAway = patch.isAway

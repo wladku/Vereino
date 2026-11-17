@@ -56,6 +56,7 @@ export const { metadata, GET } = makeCrudRoute({
       'is_detached',
       'needs_reschedule',
       'gathering_minutes_before',
+      'confirm_by_minutes_before',
       'tenant_id',
       'organization_id',
       'created_at',

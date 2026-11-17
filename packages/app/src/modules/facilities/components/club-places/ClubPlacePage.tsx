@@ -1,13 +1,15 @@
 'use client'
-// `/club/places/[placeId]` — one place's day (README M-11; REQ-023, REQ-027; #123): the day picker (previous and
-// next day, a date input; the arrow keys move the day), the 08:00–22:00 timeline of the chosen day in the club's
-// time zone with its zones and blocks and a text legend, and — for a user with `facilities.bookings.create` — the
-// booking range (from / to; picking a free segment fills it) with "Book", which opens the booking dialog. A booking
-// the user may cancel shows "Cancel" (with a confirmation; the booking's version travels as the lock token). States:
-// a timeline skeleton while loading, an error with retry, a permission-denied state (403), and "no zone rules" when the
-// day has none. Planned maintenance (#128): a user who may plan on the place (`maintenance.canPlan`, the place among
-// `planPlaceIds` or every place) gets "Plan maintenance" — a one-off window in the club's zone, prefilled from the
-// booking range; a place maintainer without `facilities.view` reads the day redacted and cannot book.
+// `/club/places/[placeId]?date=` — one place's day on the phone (README M-11; facilities parity spec REQ-R12, J-R03;
+// #278): the name, the long date and the capacity; the seven day chips from today with "Other day" (DD-R03; the day
+// lives in the address); the hint; the day axis (`DayAxis`, DD-R01) in the club's time zone. One tap on a free hour
+// opens the slot dialog (`SlotDialog`, #277) with the kinds the user may save (DD-R04: a coach with groups starts on
+// "For a group"); without any kind the hours are not buttons. "Wpisy dnia" repeats every entry as text; a tap on an
+// entry (its line, or its block on the axis) opens the details sheet (`EntryDetails`), where an own booking is
+// cancelled after a confirmation (the booking's version travels as the lock token). States: an axis skeleton while
+// loading, an error with retry, a permission-denied state (403), "no zone rules" when the day has none and the axis's
+// own closed-day line. Planned maintenance (#128): a user who may plan on the place (`maintenance.canPlan`, the place
+// among `planPlaceIds` or every place) gets "Plan maintenance"; a place maintainer without `facilities.view` reads the
+// day redacted and cannot book.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -17,32 +19,33 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { Input } from '@open-mercato/ui/primitives/input'
-import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { addDays, calendarDateInZone, isCalendarDate, isLocalTime } from '@vereino/core'
+import { calendarDateInZone, isCalendarDate } from '@vereino/core'
 import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
 import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
 import { flashFlagged } from '../maintenance-client'
-import { BookDialog } from './BookDialog'
+import { RENTALS_KEY } from '../rentals-client'
+import { DayAxis } from '../day-axis/DayAxis'
+import { DayChips } from '../day-axis/DayChips'
+import { DayEntries } from '../day-axis/DayEntries'
+import { SlotDialog, slotPresetAt, type SlotPreset } from '../slot/SlotDialog'
+import { useSlotKinds } from '../slot/slot-client'
+import { EntryDetails } from './EntryDetails'
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
-import { PlaceTimeline, TimelineLegend } from './PlaceTimeline'
 import {
   CLUB_PLACES_HREF,
   PLACES_CALENDAR_KEY,
   calendarErrorStatus,
   canPlanMaintenance,
   cancelInternalBooking,
-  compactRange,
+  capacityText,
   dayWindow,
-  daySegments,
   entriesOfDay,
   entryLabel,
   entryRange,
   placeHref,
-  shortWeekday,
-  usePlacesFeatures,
   useStaffCalendar,
+  zoneWallTime,
   zonedLocalInstant,
   zonedLocalValue,
   type CalendarEntry,
@@ -54,33 +57,22 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const features = usePlacesFeatures()
+  const slotKinds = useSlotKinds()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
-  const id = React.useId()
   const zone = profile.club.timezone
+  const today = calendarDateInZone(new Date(), zone)
   const requested = searchParams.get('date')
-  const date = requested && isCalendarDate(requested) ? requested : calendarDateInZone(new Date(), zone)
+  const date = requested && isCalendarDate(requested) ? requested : today
   const window = React.useMemo(() => ({ ...dayWindow(date, zone), placeId }), [date, zone, placeId])
   const query = useStaffCalendar(window)
-  const [from, setFrom] = React.useState('')
-  const [to, setTo] = React.useState('')
-  const [rangeProblem, setRangeProblem] = React.useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [slotPreset, setSlotPreset] = React.useState<SlotPreset | null>(null)
+  const [slotKey, setSlotKey] = React.useState(0)
+  const [details, setDetails] = React.useState<CalendarEntry | null>(null)
   const [planKey, setPlanKey] = React.useState(0)
 
   const goTo = (next: string) => {
     if (!isCalendarDate(next)) return
-    setFrom('')
-    setTo('')
-    setRangeProblem(null)
     router.replace(placeHref(placeId, next))
-  }
-
-  // On the day buttons the left and right arrow keys move the day (the date input keeps its own arrow keys).
-  const moveByArrow = (event: React.KeyboardEvent) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    event.preventDefault()
-    goTo(addDays(date, event.key === 'ArrowLeft' ? -1 : 1))
   }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: [PLACES_CALENDAR_KEY] })
@@ -90,41 +82,10 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const place = calendar?.places.find((entry) => entry.id === placeId) ?? null
   const day = calendar?.days.find((entry) => entry.date === date) ?? null
   const entries = calendar ? entriesOfDay(calendar.entries, date, timeZone) : []
-  const segments = calendar ? daySegments(day, entries, date, timeZone) : []
   const redacted = calendar?.maintenance?.redacted === true
-  const canBook = features.book && !redacted
+  const canBook = slotKinds.kinds.length > 0 && !redacted
   const canPlan = calendar ? canPlanMaintenance(calendar, placeId) : false
-  const planWindow = {
-    startsAt: `${date}T${from || '08:00'}`,
-    endsAt: `${date}T${to || '10:00'}`,
-  }
-
-  const openBooking = () => {
-    if (!isLocalTime(from) || !isLocalTime(to)) {
-      setRangeProblem(t('facilities.places.range.required'))
-      return
-    }
-    if (to <= from) {
-      setRangeProblem(t('facilities.places.range.endBeforeStart'))
-      return
-    }
-    setRangeProblem(null)
-    setDialogOpen(true)
-  }
-
-  const onBooked = () => {
-    setDialogOpen(false)
-    flash(
-      t('facilities.places.booked', {
-        when: `${shortWeekday(date, locale)} ${compactRange(from, to)}`,
-        place: place?.name ?? '',
-      }),
-      'success',
-    )
-    setFrom('')
-    setTo('')
-    void refresh()
-  }
+  const name = place?.name ?? ''
 
   const cancelling = React.useRef(new Set<string>())
   const cancel = async (entry: CalendarEntry) => {
@@ -176,23 +137,22 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
             <p className="max-w-prose">{t('facilities.places.noZones')}</p>
           </Alert>
         ) : null}
-        <PlaceTimeline
-          segments={segments}
+        <DayAxis
+          date={date}
           timeZone={timeZone}
-          placeId={placeId}
-          places={calendar.places}
-          selected={from && to ? { from, to } : null}
-          canBook={canBook}
+          day={day}
+          entries={entries}
+          today={today}
+          nowMinutes={zoneWallTime(new Date(), timeZone).minutes}
           redacted={redacted}
-          onPick={(nextFrom, nextTo) => {
-            setFrom(nextFrom)
-            setTo(nextTo)
-            setRangeProblem(null)
-            document.getElementById(`${id}-from`)?.focus()
+          canBook={canBook}
+          onBookHour={(time) => {
+            setSlotKey((current) => current + 1)
+            setSlotPreset(slotPresetAt({ placeId, placeName: name, date, time, day, entries }))
           }}
-          onCancel={(entry) => void cancel(entry)}
+          onEntry={setDetails}
         />
-        <TimelineLegend />
+        <DayEntries entries={entries} timeZone={timeZone} placeId={placeId} redacted={redacted} onOpen={setDetails} />
       </>
     )
   }
@@ -202,59 +162,22 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
       <Link href={CLUB_PLACES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
         {t('facilities.places.back')}
       </Link>
-      <h1 className="text-2xl font-semibold break-words" data-testid="club-place-title">
-        {place?.name ?? t('facilities.places.title')}
-      </h1>
-      {place?.parentName ? <p className="text-muted-foreground text-sm break-words">{place.parentName}</p> : null}
-      <nav
-        aria-label={t('facilities.places.day.label')}
-        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
-        data-testid="club-place-day-picker"
-      >
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            onClick={() => {
-              goTo(addDays(date, -1))
-            }}
-            onKeyDown={moveByArrow}
-            data-testid="club-place-day-prev"
-          >
-            {t('facilities.places.day.previous')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            onClick={() => {
-              goTo(addDays(date, 1))
-            }}
-            onKeyDown={moveByArrow}
-            data-testid="club-place-day-next"
-          >
-            {t('facilities.places.day.next')}
-          </Button>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${id}-date`}>{t('facilities.places.day.date')}</Label>
-          <Input
-            id={`${id}-date`}
-            type="date"
-            className="min-h-11"
-            value={date}
-            onChange={(event) => {
-              goTo(event.target.value)
-            }}
-            data-testid="club-place-date"
-          />
-        </div>
-      </nav>
-      <h2 className="text-lg font-semibold" aria-live="polite" data-testid="club-place-day-heading">
-        {formatDayHeading(date, locale)}
-      </h2>
-      <p className="text-muted-foreground text-sm">{t('facilities.places.day.zone', { zone: timeZone })}</p>
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="text-2xl font-semibold break-words" data-testid="club-place-title">
+          {place?.name ?? t('facilities.places.title')}
+        </h1>
+        {place?.parentName ? <p className="text-muted-foreground text-sm break-words">{place.parentName}</p> : null}
+        <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="club-place-day-heading">
+          {formatDayHeading(date, locale)}
+          {place ? ` · ${capacityText(t, locale, place.capacityGroups)}` : null}
+        </p>
+      </div>
+      <DayChips today={today} date={date} onSelect={goTo} />
+      {canBook ? (
+        <p className="text-muted-foreground text-sm" data-testid="club-place-hint">
+          {t('facilities.places.clickHint')}
+        </p>
+      ) : null}
       {canPlan && place ? (
         <div>
           <Button
@@ -270,70 +193,38 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           </Button>
         </div>
       ) : null}
-      {canBook && calendar && place ? (
-        <section
-          aria-labelledby={`${id}-range`}
-          className="flex flex-col gap-2 rounded-md border p-3"
-          data-testid="club-place-range"
-        >
-          <h2 id={`${id}-range`} className="text-sm font-medium">
-            {t('facilities.places.range.title')}
-          </h2>
-          <p className="text-muted-foreground text-xs">{t('facilities.places.range.help')}</p>
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`${id}-from`}>{t('facilities.places.range.from')}</Label>
-              <Input
-                id={`${id}-from`}
-                type="time"
-                className="min-h-11"
-                value={from}
-                aria-invalid={rangeProblem ? true : undefined}
-                aria-describedby={rangeProblem ? `${id}-range-problem` : undefined}
-                onChange={(event) => {
-                  setFrom(event.target.value)
-                }}
-                data-testid="club-place-from"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`${id}-to`}>{t('facilities.places.range.to')}</Label>
-              <Input
-                id={`${id}-to`}
-                type="time"
-                className="min-h-11"
-                value={to}
-                aria-invalid={rangeProblem ? true : undefined}
-                aria-describedby={rangeProblem ? `${id}-range-problem` : undefined}
-                onChange={(event) => {
-                  setTo(event.target.value)
-                }}
-                data-testid="club-place-to"
-              />
-            </div>
-            <Button type="button" className="col-span-2 min-h-11" onClick={openBooking} data-testid="club-place-book">
-              {t('facilities.places.book.open')}
-            </Button>
-          </div>
-          {rangeProblem ? (
-            <p id={`${id}-range-problem`} className="text-destructive text-sm" role="alert">
-              {rangeProblem}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
       {body}
-      {dialogOpen && place ? (
-        <BookDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          place={place}
+      {canBook && slotPreset ? (
+        <SlotDialog
+          key={slotKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSlotPreset(null)
+          }}
+          kinds={slotKinds.kinds}
+          groups={slotKinds.groups}
+          preset={slotPreset}
+          places={[]}
+          onSaved={async () => {
+            await Promise.all([queryClient.invalidateQueries({ queryKey: [RENTALS_KEY] }), refresh()])
+          }}
+        />
+      ) : null}
+      {details ? (
+        <EntryDetails
+          entry={details}
           date={date}
-          from={from}
-          to={to}
           timeZone={timeZone}
-          groupEvents={features.groupEvents}
-          onBooked={onBooked}
+          placeName={name}
+          redacted={redacted}
+          onOpenChange={(open) => {
+            if (!open) setDetails(null)
+          }}
+          onCancel={(entry) => {
+            // The confirmation replaces the sheet rather than stacking a second dialog on it.
+            setDetails(null)
+            void cancel(entry)
+          }}
         />
       ) : null}
       {planKey > 0 && place ? (
@@ -345,7 +236,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           }}
           places={[{ value: place.id, label: place.name }]}
           windowOnly
-          initialWindow={planWindow}
+          initialWindow={{ startsAt: `${date}T08:00`, endsAt: `${date}T10:00` }}
           toInstant={(local) => zonedLocalInstant(local, timeZone)}
           toLocal={(iso) => zonedLocalValue(iso, timeZone)}
           windowHelp={t('facilities.maintenance.plan.zone', { zone: timeZone })}

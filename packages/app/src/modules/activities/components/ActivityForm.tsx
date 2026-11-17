@@ -50,8 +50,11 @@ import {
   groupKindOptions,
   placeOptions,
   scheduleConflictsOf,
+  takesDeadline,
   tolerant,
+  useDeclarationKinds,
   type ActivityDetail,
+  type DeclarationKinds,
   type ScheduleConflict,
   type Translate,
 } from './client-helpers'
@@ -84,6 +87,7 @@ type TypeSelectProps = {
   setValue: (value: unknown) => void
   setFormValue?: (id: string, value: unknown) => void
   kinds: GroupKinds
+  declarationKinds: DeclarationKinds | null
   t: Translate
 }
 
@@ -91,13 +95,24 @@ type TypeSelectProps = {
  * The type of the activity, offered per the group's kind (B-14). A type the newly chosen group does not take falls back
  * to `training`; until a group is chosen every type is listed (the server still answers 422 for a forged pair).
  */
-function ActivityTypeSelect({ id, value, disabled, values, setValue, setFormValue, kinds, t }: TypeSelectProps) {
+function ActivityTypeSelect({
+  id,
+  value,
+  disabled,
+  values,
+  setValue,
+  setFormValue,
+  kinds,
+  declarationKinds,
+  t,
+}: TypeSelectProps) {
   const groupId = typeof values?.groupId === 'string' ? values.groupId : ''
   const kind = groupId ? (kinds[groupId] ?? null) : null
   const types = React.useMemo(() => (kind ? typesForGroupKind(kind) : [...ACTIVITY_TYPES]), [kind])
   const current = typeof value === 'string' ? value : ''
   const opponentShown = values?.takesOpponent === true
   const invitedShown = values?.isTournament === true
+  const deadlineShown = values?.takesDeadline !== false
   React.useEffect(() => {
     if (current && !types.some((type) => type === current)) setValue('training')
   }, [current, types, setValue])
@@ -105,6 +120,11 @@ function ActivityTypeSelect({ id, value, disabled, values, setValue, setFormValu
   React.useEffect(() => {
     if (opponentShown !== takesOpponent(current)) setFormValue?.('takesOpponent', takesOpponent(current))
   }, [current, opponentShown, setFormValue])
+  // The declaration deadline is shown for a type of a `confirm` kind (REQ-A07).
+  React.useEffect(() => {
+    const takes = takesDeadline(declarationKinds, current)
+    if (deadlineShown !== takes) setFormValue?.('takesDeadline', takes)
+  }, [current, declarationKinds, deadlineShown, setFormValue])
   // The invited teams field is shown for a tournament (#268).
   React.useEffect(() => {
     if (invitedShown !== (current === 'tournament')) setFormValue?.('isTournament', current === 'tournament')
@@ -204,6 +224,7 @@ function PlaceSelect({
 
 function useActivityFields(t: Translate, { editing, coachSeed, activityId, onGate }: FieldsOptions) {
   const [kinds, setKinds] = React.useState<GroupKinds>({})
+  const declarationKinds = useDeclarationKinds()
   const groupField = React.useMemo<CrudField>(
     () => ({
       id: 'groupId',
@@ -236,11 +257,12 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId, onGat
           setValue={setValue}
           setFormValue={setFormValue}
           kinds={kinds}
+          declarationKinds={declarationKinds}
           t={t}
         />
       ),
     }),
-    [t, kinds],
+    [t, kinds, declarationKinds],
   )
   const fields = React.useMemo<CrudField[]>(
     () => [
@@ -302,6 +324,14 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId, onGat
         layout: 'half',
         description: t('activities.fields.gatheringMinutesBefore.help'),
       },
+      {
+        id: 'confirmByHoursBefore',
+        label: t('activities.fields.confirmByHoursBefore'),
+        type: 'number',
+        layout: 'half',
+        description: t('activities.fields.confirmByHoursBefore.help'),
+        visibleWhen: { field: 'takesDeadline', equals: true },
+      },
     ],
     [t, coachSeed, groupField, typeField],
   )
@@ -328,7 +358,7 @@ function useActivityFields(t: Translate, { editing, coachSeed, activityId, onGat
         id: 'dates',
         title: t('activities.form.groups.dates'),
         column: 2,
-        fields: ['startsOn', 'startTime', 'endTime', 'gatheringMinutesBefore'],
+        fields: ['startsOn', 'startTime', 'endTime', 'gatheringMinutesBefore', 'confirmByHoursBefore'],
       },
       {
         id: 'recurrence',
