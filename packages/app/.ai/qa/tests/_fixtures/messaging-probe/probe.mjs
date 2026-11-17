@@ -448,6 +448,20 @@ async function runStep(step) {
       const results = await Promise.all(Array.from({ length: step.times ?? 1 }, runOnce))
       return { results }
     }
+    case 'subscriber': {
+      // A module subscriber run with `payload` under the probe's scope as the emitter's trusted scope (TEST-A15: a
+      // payload naming another tenant's records under the first tenant's scope must write and send nothing).
+      const subscriber = bootstrapData.modules
+        .flatMap((module) => module.subscribers ?? [])
+        .find((entry) => entry.id === step.id)
+      if (!subscriber) throw new Error(`[internal] unknown subscriber ${String(step.id)}`)
+      try {
+        await subscriber.handler(step.payload, { tenantId: scope.tenantId, organizationId: scope.organizationId })
+        return { ok: true }
+      } catch (error) {
+        return { error: codedError(error) }
+      }
+    }
     case 'override': {
       await rows(
         `insert into notification_type_overrides (id, tenant_id, notification_type_id, channels, created_at, updated_at)

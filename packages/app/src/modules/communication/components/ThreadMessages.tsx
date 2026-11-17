@@ -1,7 +1,7 @@
 'use client'
 // The messages of a thread and the reply box, shared by the admin thread page and the member thread page (foundation
 // III DD-M10, DD-M12; R01, R15): each message with its author and the role they wrote in, "edited" / "deleted", a
-// system message for a cancellation (naming who cancelled and in which role, #139), and the "staff and family only"
+// system message for a cancellation (naming who cancelled and in which role, #139) or a moved session (#271), and the "staff and family only"
 // marker on a member's reply. Club text is shown as written (line breaks kept, never as markup). The admin page adds
 // its own part under each message (`renderFooter`: the delivery status and "Delete message", B-19).
 import * as React from 'react'
@@ -47,7 +47,12 @@ export function MessageList({
           ) : message.system ? (
             <div className="flex flex-col gap-1">
               <p className="font-medium">{t('communication.message.system')}</p>
-              {message.authorName ? (
+              {message.kind === 'reschedule' ? (
+                // A moved-session notice is written whole, in the club's language (REQ-A09, #271).
+                <p className="break-words whitespace-pre-line" data-testid="thread-message-reschedule">
+                  {message.body}
+                </p>
+              ) : message.authorName ? (
                 // A cancellation notice names who cancelled and in which role (R01, #139).
                 <p className="break-words whitespace-pre-line" data-testid="thread-message-cancelled-by">
                   {t('communication.message.cancelledBy', {

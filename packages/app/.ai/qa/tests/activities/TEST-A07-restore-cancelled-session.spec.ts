@@ -5,19 +5,32 @@ import {
   createEvent,
   getOccurrence,
   moveOccurrence,
+  readNotifications,
   scheduleFor,
   zoneInstant,
   type CodedError,
 } from '../_fixtures/activities'
-import { OPTIMISTIC_LOCK_HEADER, call, calendarDate, createClub, type Club } from '../_fixtures/club'
+import {
+  OPTIMISTIC_LOCK_HEADER,
+  birthDateTurning,
+  call,
+  calendarDate,
+  createClub,
+  createStaff,
+  signInAs,
+  type Club,
+} from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
+import { getThread, listThreads } from '../_fixtures/communication'
+import { addMembership } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
 
 // TEST-A07 (#268; groups and activities parity spec REQ-A05, AC-A05, Q-A20; club spec glossary *Session*): the club
 // administrator restores a cancelled future session with a reason of 3–500 characters — refused with the collision list
 // while its place is taken meanwhile, accepted once it is free; a cancelled session that has ended answers 409
 // `occurrence_already_ended`; a planned one `occurrence_not_cancelled`; a coordinator gets 403. The record offers
-// "Restore" to the administrator only. The moved-session notice of a restore arrives with E10-S06.
+// "Restore" to the administrator only. A restore is announced (E10-S06, #271): a participant with an account gets one
+// in-app notice `activities.occurrence_moved` and the session thread a `reschedule` message.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -66,6 +79,17 @@ test('TEST-A07 the administrator restores a cancelled future session; collisions
     const { pitch, zaki, orliki, coordinator } = await scheduleFor(request, club)
     const admin = club.adminToken
     const day = addDays(calendarDate(), 3)
+    const participant = await createStaff(request, club, {
+      firstName: 'Iga',
+      lastName: 'Dorosła',
+      birthDate: birthDateTurning(19),
+    })
+    await addMembership(request, admin, {
+      groupId: zaki,
+      personId: participant.personId,
+      role: 'participant',
+      validFrom: addDays(calendarDate(), -30),
+    })
     const future = await oneOff(request, club, {
       groupId: zaki,
       placeId: pitch,
@@ -106,6 +130,34 @@ test('TEST-A07 the administrator restores a cancelled future session; collisions
     const restored = await restore(request, admin, future, 'Boisko jednak wolne', await lock(future))
     expect(restored.status, JSON.stringify(restored.body)).toBe(200)
     expect((await getOccurrence(request, admin, future)).body).toMatchObject({ status: 'planned', cancelReason: null })
+
+    // The restore is announced once: the participant's in-app notice and a `reschedule` message in the session thread.
+    const participantToken = await signInAs(request, club, participant.userId, participant.email)
+    await expect
+      .poll(
+        async () =>
+          (
+            await readNotifications(
+              request,
+              participantToken,
+              `&type=activities.occurrence_moved&sourceEntityId=${future}`,
+            )
+          ).length,
+        { timeout: 30_000 },
+      )
+      .toBe(1)
+    await expect
+      .poll(
+        async () => {
+          const threads = await listThreads(request, admin, `&scopeType=occurrence&scopeId=${future}`)
+          const thread = threads.at(0) ? await getThread(request, admin, String(threads.at(0)?.id)) : null
+          return (thread?.body?.messages ?? []).filter(
+            (message) => (message as { kind?: string }).kind === 'reschedule',
+          ).length
+        },
+        { timeout: 60_000 },
+      )
+      .toBe(1)
 
     // A planned session is not restored again.
     const planned = await restore(request, admin, future, 'Jeszcze raz', await lock(future))

@@ -61,6 +61,64 @@ export const cancellationSchema = z
   })
   .strict()
 
+const reschedulePointSchema = z
+  .object({
+    startAt: z.iso.datetime(),
+    endAt: z.iso.datetime(),
+    placeId: z.uuid().nullable(),
+    venueName: z.string().max(200).nullable(),
+    gatheringMinutesBefore: z.number().int().nullable(),
+  })
+  .strict()
+
+const rescheduleRuleSchema = z
+  .object({
+    startTime: z.string().min(1).max(8),
+    endTime: z.string().min(1).max(8),
+    placeId: z.uuid().nullable(),
+    venueName: z.string().max(200).nullable(),
+    gatheringMinutesBefore: z.number().int().nullable(),
+  })
+  .strict()
+
+/**
+ * The moved-session subscribers' command input (REQ-A09, #271): a session with the `change` of
+ * `activities.occurrence.updated`, or an activity with the `scheduleChange` of `activities.activity.updated`; the
+ * event key (the record id and the version the change wrote) and who made it.
+ */
+export const rescheduleSchema = z
+  .object({
+    occurrenceId: z.uuid().optional(),
+    activityId: z.uuid().optional(),
+    eventKey: z.string().min(1).max(200),
+    change: z
+      .object({
+        kinds: z.array(z.enum(['time', 'place', 'gathering', 'restored'])).min(1),
+        before: reschedulePointSchema,
+      })
+      .strict()
+      .optional(),
+    scheduleChange: z
+      .object({
+        from: z.iso.date(),
+        movedCount: z.number().int().min(1),
+        before: rescheduleRuleSchema,
+        after: rescheduleRuleSchema,
+      })
+      .strict()
+      .optional(),
+    actorUserId: z.uuid().nullable().optional(),
+    actorPersonId: z.uuid().nullable().optional(),
+    actingRole: z.string().min(1).max(40).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (input) =>
+      (input.occurrenceId !== undefined && input.change !== undefined && input.activityId === undefined) ||
+      (input.activityId !== undefined && input.scheduleChange !== undefined && input.occurrenceId === undefined),
+    { message: 'a session with its change, or an activity with its schedule change' },
+  )
+
 export const threadListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),

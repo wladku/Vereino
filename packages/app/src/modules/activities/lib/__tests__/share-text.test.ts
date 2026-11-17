@@ -33,6 +33,13 @@ describe('share text paths (DD-M14, DD-17)', () => {
     expect(shareTextKey('cancelled', true)).toBe('activities.shareText.cancelledWithGathering')
     expect(shareTextKey('cancelled', false)).toBe('activities.shareText.cancelled')
   })
+
+  it('says a planned session moved when its thread last announced a move (REQ-A09)', () => {
+    expect(shareTextKey('planned', false, true)).toBe('activities.shareText.moved')
+    expect(shareTextKey('planned', true, true)).toBe('activities.shareText.movedWithGathering')
+    expect(shareTextKey('cancelled', false, true)).toBe('activities.shareText.cancelled')
+    expect(shareTextKey('done', false, true)).toBe('activities.shareText.planned')
+  })
 })
 
 describe('session date and time in the club zone', () => {

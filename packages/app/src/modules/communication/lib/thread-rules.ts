@@ -29,25 +29,30 @@ export type ThreadScopeType = (typeof THREAD_SCOPE_TYPES)[number]
 /**
  * A thread message row (DD-M10): a message, a revision that supersedes one, or a tombstone that deletes one; or the
  * system message of a session cancellation (`cancellation`, #139), which names who cancelled (`author_person_id`)
- * and in which role (`acting_role`, R01) and, like every system message, is never edited or deleted.
+ * and in which role (`acting_role`, R01), or of a moved, restored or re-planned session (`reschedule`, REQ-A09, #271),
+ * whose body is the whole notice in the club's language and whose author is who made the change. Like every system
+ * message, neither is ever edited or deleted.
  */
-export const MESSAGE_KINDS = ['message', 'revision', 'tombstone', 'cancellation'] as const
+export const MESSAGE_KINDS = ['message', 'revision', 'tombstone', 'cancellation', 'reschedule'] as const
 export type MessageKind = (typeof MESSAGE_KINDS)[number]
 
 /** The kinds that start a message of their own (a revision or a tombstone only changes one). */
-export const ORIGINAL_MESSAGE_KINDS: readonly MessageKind[] = ['message', 'cancellation']
+export const ORIGINAL_MESSAGE_KINDS: readonly MessageKind[] = ['message', 'cancellation', 'reschedule']
 
-/** True for a row that is a message of its own: a message or a cancellation notice. */
+/** The system notices about a session (a cancellation, a move), written by the club in the name of who acted. */
+export const NOTICE_MESSAGE_KINDS: readonly MessageKind[] = ['cancellation', 'reschedule']
+
+/** True for a row that is a message of its own: a message or a session notice. */
 export function isOriginalMessage(row: { kind: MessageKind }): boolean {
   return ORIGINAL_MESSAGE_KINDS.includes(row.kind)
 }
 
 /**
  * True for a message the club wrote, not a person (DD-M10): one without an author — the session cancellation of
- * before #139 — or a cancellation notice, whose author is the person who cancelled the session.
+ * before #139 — or a session notice, whose author is the person who cancelled or moved the session.
  */
 export function isSystemMessage(row: { kind: MessageKind; authorPersonId: string | null }): boolean {
-  return row.authorPersonId === null || row.kind === 'cancellation'
+  return row.authorPersonId === null || NOTICE_MESSAGE_KINDS.includes(row.kind)
 }
 
 /** Who a message is for: everyone in the thread, or the staff only (a member's reply, DD-M12). */
@@ -268,6 +273,8 @@ export type MessageRow = {
 /** A message as a thread shows it: the latest revision's body, "edited", "deleted" (DD-M10). */
 export type MessageView = {
   id: string
+  /** The kind of the original message (`message`, `cancellation`, `reschedule`). */
+  kind: MessageKind
   authorPersonId: string | null
   actingRole: string
   audience: MessageAudience
@@ -290,6 +297,7 @@ export function latestMessages(rows: readonly MessageRow[]): MessageView[] {
     if (isOriginalMessage(row)) {
       views.set(row.id, {
         id: row.id,
+        kind: row.kind,
         authorPersonId: row.authorPersonId,
         actingRole: row.actingRole,
         audience: row.audience,

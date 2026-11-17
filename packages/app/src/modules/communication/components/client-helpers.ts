@@ -114,6 +114,8 @@ export type ThreadMessageItem = {
   editedAt: string | null
   deleted: boolean
   system: boolean
+  /** `reschedule`: a moved-session notice whose body is the whole notice (REQ-A09). */
+  kind: 'message' | 'cancellation' | 'reschedule'
   recipientCount: number
   hasDeliveries: boolean
   canDelete: boolean
