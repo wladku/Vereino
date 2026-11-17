@@ -25,13 +25,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, periodLabel, periodStatus, type RoleAssignmentRow } from './client-helpers'
-import { useClubToday } from '@vereino/ui'
+import {
+  PickerEmptyHint,
+  browserFocusTarget,
+  pickerEmptyState,
+  reloadOnFocusEffect,
+  useClubToday,
+  type PickerEmptyState,
+} from '@vereino/ui'
+import { useGrantedFeatures } from './useGrantedFeatures'
 
 const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
 type SectionItem = { id: string; name: string | null }
 
 type PlaceOption = { id: string; name: string; parentName: string | null }
+
+const SECTION_CREATE_HREF = '/backend/club/sections/create'
+const PLACE_CREATE_HREF = '/backend/club/places/create'
+
+type LookupEmpty = { state: PickerEmptyState; term: string } | null
+
+const lookupEmpty = (count: number, search: string): LookupEmpty => {
+  const state = pickerEmptyState(count, search)
+  return state ? { state, term: search.trim() } : null
+}
 
 const placeTitle = (place: PlaceOption) => (place.parentName ? `${place.parentName} › ${place.name}` : place.name)
 
@@ -54,6 +72,19 @@ export function RolesPanel({
   const [sectionId, setSectionId] = React.useState<string | null>(null)
   const [placeId, setPlaceId] = React.useState<string | null>(null)
   const [validFrom, setValidFrom] = React.useState(today)
+  // An empty section or place lookup links to the club's create page (people life-cycle spec REQ-L14, picker row 4);
+  // the lookup is mounted again when the window regains focus, so a record created in the other tab shows up.
+  const canCreateStructure = useGrantedFeatures()['club_core.manage']
+  const [sectionEmpty, setSectionEmpty] = React.useState<LookupEmpty>(null)
+  const [placeEmpty, setPlaceEmpty] = React.useState<LookupEmpty>(null)
+  const [lookupKey, setLookupKey] = React.useState(0)
+  const hintShown = sectionEmpty !== null || placeEmpty !== null
+  React.useEffect(() => {
+    const reload = () => {
+      setLookupKey((key) => key + 1)
+    }
+    return reloadOnFocusEffect(hintShown ? browserFocusTarget() : null, reload)()
+  }, [hintShown])
 
   const query = useQuery({
     queryKey: ['people-role-assignments', personId],
@@ -89,15 +120,19 @@ export function RolesPanel({
     const params = new URLSearchParams({ pageSize: '50', sortField: 'name', sortDir: 'asc' })
     if (search.trim()) params.set('search', search.trim())
     const data = await readApiResultOrThrow<{ items?: SectionItem[] }>(`/api/club_core/sections?${params.toString()}`)
-    return (data.items ?? []).map((section) => ({ id: section.id, title: section.name ?? section.id }))
+    const items = (data.items ?? []).map((section) => ({ id: section.id, title: section.name ?? section.id }))
+    setSectionEmpty(lookupEmpty(items.length, search))
+    return items
   }, [])
 
   const fetchPlaces = React.useCallback(async (search: string): Promise<LookupSelectItem[]> => {
     const data = await readApiResultOrThrow<{ items?: PlaceOption[] }>('/api/club_core/options/places')
     const needle = search.trim().toLocaleLowerCase()
-    return (data.items ?? [])
+    const items = (data.items ?? [])
       .filter((place) => !needle || placeTitle(place).toLocaleLowerCase().includes(needle))
       .map((place) => ({ id: place.id, title: placeTitle(place) }))
+    setPlaceEmpty(lookupEmpty(items.length, search))
+    return items
   }, [])
 
   const refresh = async () => {
@@ -245,6 +280,7 @@ export function RolesPanel({
             <div className="flex flex-1 flex-col gap-1">
               <Label>{t('people.roles.fields.section')}</Label>
               <LookupSelect
+                key={`section-${String(lookupKey)}`}
                 value={sectionId}
                 onChange={setSectionId}
                 fetchItems={fetchSections}
@@ -258,12 +294,28 @@ export function RolesPanel({
                 selectedLabel={t('people.common.selected')}
                 disabled={busy}
               />
+              {sectionEmpty && !sectionId ? (
+                <PickerEmptyHint
+                  state={sectionEmpty.state}
+                  term={sectionEmpty.term}
+                  canCreate={canCreateStructure}
+                  create={{ kind: 'link', href: SECTION_CREATE_HREF }}
+                  labels={{
+                    none: t('people.picker.section.none'),
+                    noMatch: t('people.picker.section.noMatch'),
+                    add: t('people.picker.section.add'),
+                    askAdmin: t('people.picker.askAdmin'),
+                  }}
+                  testId="people-role-section-hint"
+                />
+              ) : null}
             </div>
           ) : null}
           {needsPlace ? (
             <div className="flex flex-1 flex-col gap-1">
               <Label>{t('people.roles.fields.place')}</Label>
               <LookupSelect
+                key={`place-${String(lookupKey)}`}
                 value={placeId}
                 onChange={setPlaceId}
                 fetchItems={fetchPlaces}
@@ -277,6 +329,21 @@ export function RolesPanel({
                 selectedLabel={t('people.common.selected')}
                 disabled={busy}
               />
+              {placeEmpty && !placeId ? (
+                <PickerEmptyHint
+                  state={placeEmpty.state}
+                  term={placeEmpty.term}
+                  canCreate={canCreateStructure}
+                  create={{ kind: 'link', href: PLACE_CREATE_HREF }}
+                  labels={{
+                    none: t('people.picker.place.none'),
+                    noMatch: t('people.picker.place.noMatch'),
+                    add: t('people.picker.place.add'),
+                    askAdmin: t('people.picker.askAdmin'),
+                  }}
+                  testId="people-role-place-hint"
+                />
+              ) : null}
             </div>
           ) : null}
           <div className="flex flex-col gap-1">
