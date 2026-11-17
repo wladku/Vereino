@@ -19,6 +19,11 @@ import {
 import { instantLabel, type FlaggedCounts, type Translate } from './facilities-client'
 
 export const MAINTENANCE_HREF = '/backend/facilities/maintenance'
+/** The maintainer's task list on the phone (facilities parity spec REQ-R15, J-R07; #283). */
+export const CLUB_MAINTENANCE_HREF = '/club/places/maintenance'
+
+/** How many done tasks the phone list shows, the latest first. */
+const DONE_ON_PHONE = 20
 
 export const MAINTENANCE_API = 'facilities/maintenance-tasks'
 export const MAINTENANCE_URL = '/api/facilities/maintenance-tasks'
@@ -169,6 +174,35 @@ export function useMaintenancePlaces() {
         }))
         .sort((a, b) => a.label.localeCompare(b.label))
       return { options, canPlan: call.result.maintenance?.canPlan === true }
+    },
+  })
+}
+
+// --- The maintainer's list (`/club/places/maintenance`) ---
+
+export type MaintainerTasks = { planned: MaintenanceTaskRow[]; done: MaintenanceTaskRow[] }
+
+/**
+ * The planned tasks of the caller's places (every one, the nearest due date first) and the latest done ones; the route
+ * filters both by the caller's places. A failed read throws its HTTP status as the message (a 403 shows its own state).
+ */
+export function useMaintainerTasks() {
+  return useQuery({
+    queryKey: [MAINTENANCE_KEY, 'maintainer'],
+    queryFn: async (): Promise<MaintainerTasks> => {
+      const read = async (params: Record<string, string>) => {
+        const query = new URLSearchParams(params)
+        const call = await apiCall<{ items?: MaintenanceTaskRow[] }>(`${MAINTENANCE_URL}?${query.toString()}`, {
+          headers: OWN_FORBIDDEN,
+        })
+        if (!call.ok || !call.result) throw new Error(String(call.status))
+        return call.result.items ?? []
+      }
+      const [planned, done] = await Promise.all([
+        read({ status: 'planned', pageSize: '200', sortField: 'dueDate', sortDir: 'asc' }),
+        read({ status: 'done', pageSize: String(DONE_ON_PHONE), sortField: 'updatedAt', sortDir: 'desc' }),
+      ])
+      return { planned, done }
     },
   })
 }

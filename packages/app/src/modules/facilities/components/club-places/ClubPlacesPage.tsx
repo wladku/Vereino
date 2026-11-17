@@ -4,7 +4,8 @@
 // parent, its kind and surface and the number of today's entries on the place family (the place, its ancestors and its
 // descendants) in the club's time zone, linking to the place's day. One read: `GET /api/facilities/calendar` without
 // `placeId` for today. A place maintainer without `facilities.view` (#128) sees the places assigned to them; a user who
-// may read neither sees a permission-denied state.
+// may read neither sees a permission-denied state. A user who may plan maintenance (`maintenance.canPlan`) gets the link
+// "Maintenance" to their task list (`/club/places/maintenance`; REQ-R15, #283).
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
@@ -15,6 +16,7 @@ import { calendarDateInZone } from '@vereino/core'
 import { MemberSkeleton } from '@vereino/ui'
 import { isBookablePlace, placeFamilyOf } from '../../lib/place-scope'
 import { CLUB_FACILITY_HREF, useFacilityFeatures } from '../club-facility/facility-client'
+import { CLUB_MAINTENANCE_HREF } from '../maintenance-client'
 import { FacilitiesClubFrame, type PlacesProfile } from './FacilitiesClubFrame'
 import {
   calendarErrorStatus,
@@ -139,16 +141,29 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
     )
   }
 
+  const canPlan = query.data?.maintenance?.canPlan === true
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{t('facilities.places.title')}</h1>
-        {features.logWrite ? (
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={CLUB_FACILITY_HREF} data-testid="club-places-facility-today">
-              {t('facilities.facility.title')}
-            </Link>
-          </Button>
+        {features.logWrite || canPlan ? (
+          <div className="flex flex-wrap gap-2">
+            {features.logWrite ? (
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={CLUB_FACILITY_HREF} data-testid="club-places-facility-today">
+                  {t('facilities.facility.title')}
+                </Link>
+              </Button>
+            ) : null}
+            {canPlan ? (
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={CLUB_MAINTENANCE_HREF} data-testid="club-places-maintenance">
+                  {t('facilities.places.maintenance.title')}
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       <p className="text-muted-foreground max-w-prose text-sm">{t('facilities.places.list.intro')}</p>

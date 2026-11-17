@@ -1,14 +1,17 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   MAINTENANCE_KINDS,
+  MAINTENANCE_LIST_GROUPS,
   MAINTENANCE_SCHEDULE_TYPES,
   dateReminderKey,
   dateReminderStage,
+  maintenanceListGroup,
   maintenanceTaskProblem,
   maintenanceTransitions,
   maintenanceWindowChanged,
   nextDueDate,
   parseMaintenanceRecurrence,
+  plannerReminderKey,
   taskOccupies,
   usageReminderKey,
   usedHours,
@@ -153,5 +156,34 @@ describe('maintenance tasks (REQ-022, DD-36)', () => {
   it('builds the reminder keys (DD-46)', () => {
     expect(dateReminderKey('t', '2026-12-01', 'd14')).toBe('facilities:maint-due:t:2026-12-01:d14')
     expect(usageReminderKey('t', at('2026-11-01T00:00:00Z'))).toBe('facilities:maint-usage:t:2026-11-01T00:00:00.000Z')
+    expect(plannerReminderKey('facilities:maint-due:t:2026-12-01:d1')).toBe(
+      'facilities:maint-due:t:2026-12-01:d1:planner',
+    )
+  })
+
+  it('sorts a task into Due, Planned or Done on the maintainer list (REQ-R15)', () => {
+    const now = at('2026-11-20T10:00:00Z')
+    const today = '2026-11-20'
+    const task = {
+      status: 'planned',
+      dueDate: null,
+      startsAt: null,
+      scheduleType: 'one_off',
+      usageHoursThreshold: null,
+      usageHours: null,
+    }
+    expect(MAINTENANCE_LIST_GROUPS).toEqual(['due', 'planned', 'done'])
+    expect(maintenanceListGroup({ ...task, status: 'done' }, today, now)).toBe('done')
+    expect(maintenanceListGroup({ ...task, status: 'cancelled' }, today, now)).toBeNull()
+    expect(maintenanceListGroup({ ...task, dueDate: '2026-12-04' }, today, now)).toBe('due')
+    expect(maintenanceListGroup({ ...task, dueDate: '2026-11-01' }, today, now)).toBe('due')
+    expect(maintenanceListGroup({ ...task, dueDate: '2026-12-05' }, today, now)).toBe('planned')
+    expect(maintenanceListGroup({ ...task, startsAt: '2026-11-20T09:00:00Z' }, today, now)).toBe('due')
+    expect(maintenanceListGroup({ ...task, startsAt: '2026-11-21T07:00:00Z' }, today, now)).toBe('planned')
+    const usage = { ...task, scheduleType: 'usage_hours', usageHoursThreshold: 10 }
+    expect(maintenanceListGroup({ ...usage, usageHours: 10 }, today, now)).toBe('due')
+    expect(maintenanceListGroup({ ...usage, usageHours: 9.5 }, today, now)).toBe('planned')
+    expect(maintenanceListGroup(usage, today, now)).toBe('planned')
+    expect(maintenanceListGroup({ ...task, usageHoursThreshold: 1, usageHours: 5 }, today, now)).toBe('planned')
   })
 })
