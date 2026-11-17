@@ -32,6 +32,8 @@ export const errorCodes = [
   { code: 'entry_ban_active', status: 409, messageKey: 'facilities.errors.entry_ban_active' },
   { code: 'rental_start_past', status: 422, messageKey: 'facilities.errors.rental_start_past' },
   { code: 'rental_not_started', status: 409, messageKey: 'facilities.errors.rental_not_started' },
+  // A correction of a rental that no longer holds its slot; only the notes stay writable (DD-R08, #279).
+  { code: 'rental_closed', status: 409, messageKey: 'facilities.errors.rental_closed' },
   // Internal bookings (glossary *Internal booking*, REQ-023, M-11 validation; #123). An occupied slot answers
   // `rental_conflict` with the list (club spec), a closure or the opening hours `place_closed`.
   { code: 'booking_period_invalid', status: 422, messageKey: 'facilities.errors.booking_period_invalid' },

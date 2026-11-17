@@ -2,7 +2,7 @@
 // The "New rental" dialog (facilities spec B-24, B-23 "New rental from a slot"; E08-S02 #122), opened from the rentals
 // list and from a bookable slot of the facility calendar: place, start, 1–4 units of 90 minutes, the renter (an
 // institution or a person found by search, or the name of an unregistered renter), the renter category, the contact,
-// how the rental was taken and the regulations accepted. A live quote (nothing saved) shows the amount, the end, the
+// how the rental was taken, the regulations accepted, the purpose (#279) and notes. A live quote (nothing saved) shows the amount, the end, the
 // payment due date and the free cancellation deadline; its issues — conflicts, closures, bans, a missing rate — are
 // shown next to the field they belong to, the same way as a refused save.
 import * as React from 'react'
@@ -145,6 +145,7 @@ export function RentalDialog({
   const [contactEmail, setContactEmail] = React.useState('')
   const [via, setVia] = React.useState<StaffVia>('phone')
   const [accepted, setAccepted] = React.useState(false)
+  const [purpose, setPurpose] = React.useState('')
   const [notes, setNotes] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
@@ -226,6 +227,7 @@ export function RentalDialog({
             contactEmail: textOrNull(contactEmail),
             requestedVia: via,
             regulationsAccepted: accepted,
+            purpose: textOrNull(purpose),
             notes: textOrNull(notes),
           }),
         },
@@ -559,6 +561,20 @@ export function RentalDialog({
                 })}
               </Label>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-purpose`}>{t('facilities.rentals.fields.purpose')}</Label>
+            <Input
+              id={`${ids}-purpose`}
+              maxLength={500}
+              value={purpose}
+              disabled={pending}
+              data-testid="facilities-rental-purpose"
+              onChange={(event) => {
+                setPurpose(event.target.value)
+              }}
+            />
           </div>
 
           <div className="flex flex-col gap-1">
