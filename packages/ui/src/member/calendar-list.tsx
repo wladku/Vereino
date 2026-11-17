@@ -112,6 +112,15 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
           {item.placeAddress ? <span className="block">{item.placeAddress}</span> : null}
         </p>
       ) : null}
+      {(item.notes ?? []).map((note) => (
+        <p
+          key={note.id}
+          className={note.tone === 'warning' ? 'text-sm font-semibold' : 'text-sm'}
+          data-testid={`calendar-item-note-${note.id}`}
+        >
+          {note.text}
+        </p>
+      ))}
       {badges.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {badges.map((badge) => (

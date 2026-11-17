@@ -1,13 +1,16 @@
 // The coach's phone form for a one-off event (club spec REQ-027, *UI architecture* "New event"; #140): the options it
 // offers — the groups the coach coaches, with their section, and the bookable leaves of the club's places — the
 // checks it runs before sending, the request body of `POST /api/activities/events` with the instants in the club's
-// time zone, and the form field a refusal points at. Pure.
+// time zone, the declaration deadline in hours before the start (REQ-A07), and the form field a refusal points at.
+// Pure.
 import { isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
 import { EVENT_TYPES, type ActivityType, type GroupKindLike } from './activities-rules'
 
 /** The limits of the event's name and note, as `eventCreateSchema` sets them. */
 export const EVENT_NAME_MAX = 200
 export const EVENT_NOTE_MAX = 4000
+/** The largest deadline the phone form takes, in hours: 14 days (REQ-A07). */
+export const EVENT_CONFIRM_BY_MAX_HOURS = 336
 
 export type EventGroupSource = { id: string; name: string; kind: GroupKindLike; sectionId: string; isActive: boolean }
 export type EventGroupOption = { id: string; name: string; kind: GroupKindLike; sectionName: string | null }
@@ -56,11 +59,20 @@ export type EventDraft = {
   endTime: string
   invitedExternalTeamIds: readonly string[]
   description: string
+  /** The declaration deadline in whole hours before the start (REQ-A07); empty or absent = none. */
+  confirmByHours?: string
 }
 
-export type EventDraftField = 'groupId' | 'type' | 'name' | 'placeId' | 'date' | 'startTime' | 'endTime'
+export type EventDraftField =
+  'groupId' | 'type' | 'name' | 'placeId' | 'date' | 'startTime' | 'endTime' | 'confirmByHours'
 export type EventDraftProblem = 'required' | 'invalid' | 'endBeforeStart'
 export type EventDraftProblems = Partial<Record<EventDraftField, EventDraftProblem>>
+
+/** Whole hours 1–336 as a number, or null. */
+function confirmByHours(text: string): number | null {
+  const hours = Number(text)
+  return Number.isInteger(hours) && hours >= 1 && hours <= EVENT_CONFIRM_BY_MAX_HOURS ? hours : null
+}
 
 function isEventType(value: string): value is ActivityType {
   return (EVENT_TYPES as readonly string[]).includes(value)
@@ -82,6 +94,8 @@ export function eventDraftProblems(draft: EventDraft): EventDraftProblems {
     else if (!isLocalTime(draft[field])) problems[field] = 'invalid'
   }
   if (!problems.startTime && !problems.endTime && draft.endTime <= draft.startTime) problems.endTime = 'endBeforeStart'
+  const hours = draft.confirmByHours?.trim() ?? ''
+  if (hours && confirmByHours(hours) === null) problems.confirmByHours = 'invalid'
   return problems
 }
 
@@ -94,14 +108,17 @@ export type EventRequestBody = {
   endsAt: string
   invitedExternalTeamIds: string[]
   description: string | null
+  confirmByMinutesBefore?: number
 }
 
 /**
  * The body of `POST /api/activities/events` for a draft without problems: the wall times of the club's zone as
- * instants, the invited teams only for a tournament (REQ-027), a blank note as null.
+ * instants, the invited teams only for a tournament (REQ-027), a blank note as null, and the deadline in minutes only
+ * when the form offers it for the type (`takesDeadline`, a `confirm` kind, REQ-A07) and it is filled in.
  */
-export function eventRequestBody(draft: EventDraft, timeZone: string): EventRequestBody {
+export function eventRequestBody(draft: EventDraft, timeZone: string, takesDeadline = true): EventRequestBody {
   const description = draft.description.trim()
+  const hours = takesDeadline ? confirmByHours(draft.confirmByHours?.trim() ?? '') : null
   return {
     groupId: draft.groupId,
     type: draft.type,
@@ -111,6 +128,7 @@ export function eventRequestBody(draft: EventDraft, timeZone: string): EventRequ
     endsAt: zonedInstant(draft.date, draft.endTime, timeZone).toISOString(),
     invitedExternalTeamIds: draft.type === 'tournament' ? [...new Set(draft.invitedExternalTeamIds)] : [],
     description: description ? description : null,
+    ...(hours === null ? {} : { confirmByMinutesBefore: hours * 60 }),
   }
 }
 
@@ -120,6 +138,9 @@ const FIELD_OF_CODE: ReadonlyMap<string, EventDraftField> = new Map([
   ['activity_times_inverted', 'endTime'],
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
+  ['occurrence_confirm_by_after_start', 'confirmByHours'],
+  ['occurrence_confirm_by_too_early', 'confirmByHours'],
+  ['occurrence_confirm_by_in_past', 'confirmByHours'],
 ])
 
 const FIELD_OF_REFERENCE: ReadonlyMap<string, EventDraftField> = new Map([

@@ -24,6 +24,7 @@ import { activitiesErrors } from '../api/errors'
 import { Activity, Attendance, AttendancePolicy, Occurrence } from '../data/entities'
 import type { CalendarItemPerspective, CalendarPerspective } from '../data/validators'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import { confirmByIso, deadlinePassed, effectiveConfirmByMinutes } from '../lib/confirm-by'
 import { gatheringIso } from '../lib/gathering'
 import {
   declarationOutcome,
@@ -89,6 +90,10 @@ export type CalendarOccurrenceView = {
   endAt: string
   /** The gathering instant before the start (DD-43), or null when the session has none. */
   gatheringAt: string | null
+  /** The declaration deadline (REQ-A07), or null when the session has none or is not of a `confirm` kind. */
+  confirmBy: string | null
+  /** True from the deadline until the start: members can no longer declare (DD-A02). */
+  deadlinePassed: boolean
   placeId: string
   placeName: string | null
   placeAddress: string | null
@@ -205,7 +210,10 @@ function occurrenceView(
   row: Occurrence,
   names: Names,
   places: Awaited<ReturnType<typeof placeDetails>>,
+  kind: DeclarationKind,
+  now: Date,
 ): CalendarOccurrenceView {
+  const confirmByMinutes = effectiveConfirmByMinutes(kind, row.confirmByMinutesBefore)
   const activity = names.activities.get(row.activityId)
   const teams = names.teams.get(row.activityId)
   const place = places.get(row.placeId)
@@ -223,6 +231,8 @@ function occurrenceView(
     startAt: iso(row.startAt),
     endAt: iso(row.endAt),
     gatheringAt: gatheringIso(row.startAt, row.gatheringMinutesBefore),
+    confirmBy: confirmByIso(row.startAt, confirmByMinutes),
+    deadlinePassed: deadlinePassed(row.startAt, confirmByMinutes, now),
     placeId: row.placeId,
     placeName: place?.name ?? null,
     placeAddress: place?.address ?? null,
@@ -349,7 +359,10 @@ async function memberCalendar(
     const activity = names.activities.get(row.activityId)
     const activityType = (activity?.type as ActivityType | undefined) ?? 'other'
     const kind = settings.declarationKinds[activityType] ?? 'confirm'
-    const open = declarationWindow(row, now) === 'open'
+    // DD-A02: after the deadline of a `confirm` session the member can no longer declare.
+    const open =
+      declarationWindow(row, now) === 'open' &&
+      !deadlinePassed(row.startAt, effectiveConfirmByMinutes(kind, row.confirmByMinutesBefore), now)
     const policy = resolvePolicy(policies, { groupId: row.groupId, activityType, isAway: activity?.isAway === true })
     const personViews = (concerned.get(row.id) ?? []).map((personId): CalendarPersonView => {
       const person = persons.get(personId)
@@ -367,9 +380,9 @@ async function memberCalendar(
       }
     })
     return {
-      occurrence: occurrenceView(row, names, places),
+      occurrence: occurrenceView(row, names, places, kind, now),
       declarationKind: kind,
-      declarationsOpen: open,
+      declarationsOpen: declarationWindow(row, now) === 'open',
       persons: personViews,
       ...(calledUp ? { calledUpChildren: calledUp.get(row.id) ?? [] } : {}),
     }
@@ -496,7 +509,7 @@ async function staffCalendar(
       .filter((member) => member.role === 'participant')
       .map((member) => member.personId)
     return {
-      occurrence: occurrenceView(row, names, places),
+      occurrence: occurrenceView(row, names, places, kind, now),
       declarationKind: kind,
       declarationsOpen: declarationWindow(row, now) === 'open',
       persons: [],
@@ -585,7 +598,9 @@ export async function describeOccurrence(
   ctx: CommandRuntimeContext,
   scope: ActivitiesScope,
   row: Occurrence,
+  kind: DeclarationKind,
+  now: Date,
 ): Promise<CalendarOccurrenceView> {
   const [names, places] = await Promise.all([loadNames(ctx, scope, [row]), placeDetails(ctx, scope, [row.placeId])])
-  return occurrenceView(row, names, places)
+  return occurrenceView(row, names, places, kind, now)
 }

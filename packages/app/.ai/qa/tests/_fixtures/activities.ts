@@ -43,6 +43,10 @@ export type OccurrenceItem = {
   /** The gathering instant before the start (club spec DD-43), with the session's offset. */
   gatheringAt?: string | null
   gatheringMinutesBefore?: number | null
+  /** The declaration deadline (REQ-A07) and its offset. */
+  confirmBy?: string | null
+  confirmByMinutesBefore?: number | null
+  deadlinePassed?: boolean
   placeId: string | null
   coachPersonId: string | null
   status: string | null

@@ -5,7 +5,8 @@ import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
-import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { useQuery } from '@tanstack/react-query'
+import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Recurrence, WEEKDAYS, errorCodeOf, type Weekday } from '@vereino/core'
 import type { GroupKindLike } from '../lib/activities-rules'
@@ -55,6 +56,8 @@ export type ActivityRow = {
   generatedUntil: string | null
   /** The default gathering time of the sessions in minutes before the start (DD-43). */
   gatheringMinutesBefore: number | null
+  /** The default declaration deadline of the sessions in minutes before the start (REQ-A07). */
+  confirmByMinutesBefore?: number | null
   description: string | null
   isActive: boolean
   /** An away trip (#96). */
@@ -80,6 +83,10 @@ export type OccurrenceRow = {
   /** The session's gathering instant (DD-43), or null. */
   gatheringAt: string | null
   gatheringMinutesBefore: number | null
+  /** The session's declaration deadline (REQ-A07), or null; it has effect only for a `confirm` kind. */
+  confirmBy?: string | null
+  /** True from the deadline until the start (DD-A02). */
+  deadlinePassed?: boolean
   placeId: string | null
   placeName?: string | null
   coachPersonId: string | null
@@ -370,6 +377,39 @@ export async function personOptions(query?: string): Promise<CrudFieldOption[]> 
 }
 
 /** The option value the coach picker uses for "No coach"; the request body sends `null` for it. */
+/** The club's declaration kind per activity type (`GET /api/activities/events/options`, D-026). */
+export type DeclarationKinds = Record<string, 'absence_only' | 'confirm'>
+
+export const DECLARATION_KINDS_QUERY_KEY = ['activities-declaration-kinds']
+
+/** The club's declaration kinds for the forms' deadline field (REQ-A07); null while loading or when unreadable. */
+export function useDeclarationKinds(): DeclarationKinds | null {
+  const query = useQuery({
+    queryKey: DECLARATION_KINDS_QUERY_KEY,
+    queryFn: async (): Promise<DeclarationKinds | null> => {
+      const call = await apiCall<{ declarationKinds?: DeclarationKinds }>(
+        '/api/activities/events/options',
+        OWN_FORBIDDEN_STATE,
+      )
+      return call.ok ? (call.result?.declarationKinds ?? null) : null
+    },
+    staleTime: 60_000,
+  })
+  return query.data ?? null
+}
+
+/**
+ * Whether a form offers the declaration deadline for an activity type (REQ-A07): only a `confirm` kind takes one;
+ * while the kinds are unknown the field stays offered, since the server ignores it for any other kind.
+ */
+export function takesDeadline(kinds: DeclarationKinds | null, type: unknown): boolean {
+  if (!kinds || typeof type !== 'string' || !type) return true
+  return kinds[type] !== 'absence_only'
+}
+
+/** The largest deadline offset the forms take, in hours (14 days, REQ-A07). */
+export const MAX_CONFIRM_BY_HOURS = 336
+
 export const NO_COACH = 'none'
 
 type CoachOptionRow = { id: string; name: string }
@@ -430,6 +470,10 @@ const FIELD_OF_CODE = new Map<string, string>([
   ['place_not_bookable', 'placeId'],
   ['occurrence_gathering_after_start', 'gatheringTime'],
   ['occurrence_gathering_too_early', 'gatheringTime'],
+  // REQ-A07: the move dialog's deadline fields (the series and event forms show the message above the form).
+  ['occurrence_confirm_by_after_start', 'confirmByDate'],
+  ['occurrence_confirm_by_too_early', 'confirmByDate'],
+  ['occurrence_confirm_by_in_past', 'confirmByDate'],
 ])
 
 /** The `field` an `activities_reference_invalid` names, as a form field id. */

@@ -48,6 +48,7 @@ export class Activity extends ScopedEntityBase {
     | 'endsOn'
     | 'generatedUntil'
     | 'gatheringMinutesBefore'
+    | 'confirmByMinutesBefore'
     | 'description'
     | 'isActive'
     | 'isAway'
@@ -105,6 +106,13 @@ export class Activity extends ScopedEntityBase {
   @Property({ name: 'gathering_minutes_before', type: 'integer', nullable: true })
   gatheringMinutesBefore?: number | null
 
+  /**
+   * The default declaration deadline of its sessions, in minutes before the start (REQ-A07, DD-A01); null = none. It
+   * has effect only for a `confirm` declaration kind.
+   */
+  @Property({ name: 'confirm_by_minutes_before', type: 'integer', nullable: true })
+  confirmByMinutesBefore?: number | null
+
   @Property({ name: 'description', type: 'text', nullable: true })
   description?: string | null
 
@@ -148,6 +156,7 @@ export class Occurrence extends ScopedEntityBase {
     | 'isDetached'
     | 'needsReschedule'
     | 'gatheringMinutesBefore'
+    | 'confirmByMinutesBefore'
 
   @Property({ name: 'activity_id', type: 'uuid' })
   activityId!: string
@@ -192,6 +201,13 @@ export class Occurrence extends ScopedEntityBase {
    */
   @Property({ name: 'gathering_minutes_before', type: 'integer', nullable: true })
   gatheringMinutesBefore?: number | null
+
+  /**
+   * The session's declaration deadline in minutes before `start_at` (REQ-A07, DD-A01): copied from the activity by
+   * the planner, set by a session edit, kept when the session moves; read as the instant `confirmBy`.
+   */
+  @Property({ name: 'confirm_by_minutes_before', type: 'integer', nullable: true })
+  confirmByMinutesBefore?: number | null
 }
 
 /**

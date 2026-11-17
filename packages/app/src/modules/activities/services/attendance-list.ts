@@ -24,6 +24,7 @@ import {
   type Expectation,
 } from '../lib/policy'
 import { activityOf, describeOccurrence, type CalendarOccurrenceView } from './calendar'
+import { deadlineReached, effectiveConfirmByMinutes, listRank } from '../lib/confirm-by'
 import { attendanceSettings, findPersons, type ActivitiesScope } from './directory'
 
 export type AttendanceListRow = {
@@ -45,6 +46,8 @@ export type AttendanceList = {
   occurrence: CalendarOccurrenceView
   declarationKind: DeclarationKind
   summary: DeclarationSummary
+  /** `confirm`: the participants who have not answered (REQ-A07); 0 for `absence_only`. */
+  unansweredCount: number
   /** `open` from the start until the session is closed; `not_started` before; `not_planned` when cancelled or done. */
   checkOff: CheckOffWindow
   /** The role the caller checks off in. */
@@ -75,14 +78,20 @@ export async function readAttendanceList(
   const byPerson = new Map(attendances.map((row) => [row.personId, row]))
   const { rosterIds, listed } = await listedPersonIds(ctx, em, occurrence, attendances)
   const markerIds = attendances.flatMap((row) => (row.markedByPersonId ? [row.markedByPersonId] : []))
-  const [persons, view, settings, activity, cancelRole] = await Promise.all([
+  const [persons, settings, activity, cancelRole] = await Promise.all([
     findPersons(ctx.container, scope, [...new Set([...listed, ...markerIds])], em),
-    describeOccurrence(ctx, scope, occurrence),
     attendanceSettings(ctx.container, scope),
     activityOf(em, scope, occurrence.activityId),
     cancelRoleOf(ctx.container, grants, occurrence),
   ])
   const kind = settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm'
+  const view = await describeOccurrence(ctx, scope, occurrence, kind, now)
+  // REQ-A07: once the deadline is reached the list puts "no answer" first, so the coach sees whom to chase.
+  const unansweredFirst = deadlineReached(
+    occurrence.startAt,
+    effectiveConfirmByMinutes(kind, occurrence.confirmByMinutesBefore),
+    now,
+  )
   const roster = new Set(rosterIds)
   const rows = [...listed].map((personId): AttendanceListRow => {
     const person = persons.get(personId)
@@ -103,14 +112,17 @@ export async function readAttendanceList(
   })
   rows.sort(
     (a, b) =>
+      listRank(a.expectation, unansweredFirst) - listRank(b.expectation, unansweredFirst) ||
       (a.lastName ?? '').localeCompare(b.lastName ?? '') ||
       (a.firstName ?? '').localeCompare(b.firstName ?? '') ||
       a.personId.localeCompare(b.personId),
   )
+  const summary = declarationSummary(kind, rosterIds, attendances)
   return {
     occurrence: view,
     declarationKind: kind,
-    summary: declarationSummary(kind, rosterIds, attendances),
+    summary,
+    unansweredCount: summary.unanswered,
     checkOff: checkOffWindow(occurrence, now),
     actingRole,
     mayCancel: cancelRole !== null,

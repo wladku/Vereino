@@ -15,6 +15,7 @@ import { Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
 import { eventCreateSchema } from '../data/validators'
 import { EVENT_TYPES, localDateTime } from '../lib/activities-rules'
+import { confirmByAt } from '../lib/confirm-by'
 import { clubClock } from '../services/directory'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import { activitySnapshot, ACTIVITY_RESOURCE_KIND, type ActivitySnapshot } from './activities'
@@ -79,6 +80,9 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
       const startAt = new Date(parsed.startsAt)
       const endAt = new Date(parsed.endsAt)
       if (endAt.getTime() <= startAt.getTime()) await activitiesErrors.throw('activity_times_inverted')
+      // REQ-A07: the event's own deadline must still be ahead (a series default is not checked: it is an offset).
+      const confirmBy = confirmByAt(startAt, parsed.confirmByMinutesBefore)
+      if (confirmBy && confirmBy.getTime() < Date.now()) await activitiesErrors.throw('occurrence_confirm_by_in_past')
       const { timeZone } = await clubClock(ctx.container, scope)
       const start = localDateTime(startAt, timeZone)
       const end = localDateTime(endAt, timeZone)
@@ -108,6 +112,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
         defaultStartTime: start.time,
         defaultEndTime: end.time,
         gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
+        confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         description: parsed.description ?? null,
         isActive: true,
       })
@@ -125,6 +130,7 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           placeId: parsed.placeId,
           coachPersonId,
           gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
+          confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         }),
       )
       return { entity: row, actingRole: authorized.actingRole, before: null, occurrenceId }

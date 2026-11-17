@@ -54,7 +54,12 @@ export const openApi: OpenApiRouteDoc = {
         { status: 400, description: 'Validation failed', schema: errorSchema },
         { status: 403, description: 'scope_denied, declaration_guardian_only', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
-        { status: 409, description: 'declaration_closed, occurrence_not_planned', schema: errorSchema },
+        {
+          status: 409,
+          description:
+            'declaration_closed, occurrence_not_planned, declaration_deadline_passed (a participant or guardian after the deadline of a `confirm` session, with `confirmBy` in the body; staff may still declare)',
+          schema: errorSchema,
+        },
         { status: 422, description: 'declaration_kind_absence_only, declaration_not_participant', schema: errorSchema },
       ],
     },
