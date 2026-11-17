@@ -2,13 +2,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from '@
 import { addDays, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan } from '../_fixtures/axe'
 import { calendarDate, call, createClub } from '../_fixtures/club'
-import {
-  type BookingCreated,
-  type CodedError,
-  postInternalBooking,
-  rentalPitch,
-  runRequestProbe,
-} from '../_fixtures/facilities'
+import { type CodedError, postInternalBooking, rentalPitch, runRequestProbe } from '../_fixtures/facilities'
 import { requestRow } from '../_fixtures/facility-requests'
 import { addMembership, signedInStaff } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
@@ -70,7 +64,7 @@ test('TEST-R11 panel tabs: zones, a past log entry, an incident, a ban from its 
     }
     const past = await postInternalBooking(request, admin, pastBooking)
     expect(past.status, JSON.stringify(past.body)).toBe(201)
-    expect((past.body as BookingCreated | null)?.supersededRequestIds ?? []).toEqual([])
+    expect(past.body?.supersededRequestIds ?? []).toEqual([])
     expect((await requestRow(held))?.status).toBe('pending_approval')
     // The occupancy check still runs for a past booking.
     const twice = await postInternalBooking(request, admin, pastBooking)

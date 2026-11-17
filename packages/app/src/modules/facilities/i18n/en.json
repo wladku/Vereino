@@ -731,7 +731,7 @@
   "facilities.records.incidents.columns.reporter": "Reported by",
   "facilities.records.incidents.columns.date": "Date",
   "facilities.records.incidents.banIssued": "ban issued",
-  "facilities.records.incidents.filters.banRequest": "Ban request",
+  "facilities.records.incidents.filters.banRequest": "Entry ban request",
   "facilities.records.incidents.actions.report": "Report incident",
   "facilities.records.incidents.actions.issueBan": "Issue ban",
   "facilities.records.incidents.report.help": "An incident at a club place, on today or an earlier day. Do not enter health data.",

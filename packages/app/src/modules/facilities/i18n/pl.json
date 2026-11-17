@@ -731,7 +731,7 @@
   "facilities.records.incidents.columns.reporter": "Zgłaszający",
   "facilities.records.incidents.columns.date": "Data",
   "facilities.records.incidents.banIssued": "zakaz wydany",
-  "facilities.records.incidents.filters.banRequest": "Wniosek o zakaz",
+  "facilities.records.incidents.filters.banRequest": "Prośba o zakaz wstępu",
   "facilities.records.incidents.actions.report": "Zgłoś incydent",
   "facilities.records.incidents.actions.issueBan": "Wydaj zakaz",
   "facilities.records.incidents.report.help": "Incydent na miejscu klubu, dziś lub wcześniej. Nie wpisuj danych o zdrowiu.",
