@@ -74,7 +74,10 @@
   the bulk availability); priority 6. Run 2 failed: the zone line assertion used an exact match on "Zone: Bookable,
   paid."; loosened. Run 3 failed only on the console check: the two intended 409 refusals are logged by the browser as
   failed resources; those lines are ignored. Run 4 — 1 passed (2.1 min).
-- `yarn verify` — see below.
+- `yarn verify` — run 1 failed at `contracts:check`: `facilities.slot.supersededN.few` and `.many` were in `pl.json`
+  only; added to `en.json` (same text as `other`, as the other plural keys do). `--from contracts:check` — the 8
+  remaining steps passed. Final full `yarn verify` — all 17 steps passed.
+- `--filter TEST-R03` (regression for the B-23 changes) — 1 passed (2.0 min).
 
 ## Open problems / next steps
 
