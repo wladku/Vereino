@@ -179,3 +179,7 @@ E06-S13 (README M-04, M-05, B-15, B-01, flow F-03 path A; club spec REQ-008, DD-
 - `unsettledCount` counts the month's planned sessions that ended 24 h ago or more (the B-15 "Unsettled" predicate) in the same reach.
 - `/backend/activities/reports/coach-units` (B-16) and `/club/coach/units` (More → My units for a coach context, no amounts).
 - `activities_activities.is_away` (activity form "Away trip") also feeds the `away_trip` declaration policy, which until now always resolved as not away.
+
+## Group usage and the group's activities (#266)
+
+`activities.groupUsage` (groups and activities parity spec REQ-A02; `services/group-usage.ts`) is the optional contract `groups` declares (`groups/services/group-usage.ts`) and reads with `hasRegistration`: `matchActivityCount` counts the group's live activities of type `match` or `sparring`, active or not, in the caller's transaction, so a team with matches does not become a class group. The activities list reads `?groupId=` (the group's "Activities" link) as its initial group filter, and while a group filter is set "New activity" opens `/backend/activities/activities/create?groupId=<id>`, which preselects the group.

@@ -83,9 +83,9 @@ async function chooseCrudOption(page: Page, field: string, option: RegExp): Prom
   await page.getByRole('option', { name: option }).click()
 }
 
-/** Picks a person in a `LookupSelect` (searched by last name) inside `scope`. */
-async function lookupPerson(scope: Locator, lastName: string, fullName: string): Promise<void> {
-  await scope.getByPlaceholder(uiText('club_core.coordinators.fields.person.search')).fill(lastName)
+/** Picks a person in a `LookupSelect` (searched by last name) inside `scope`; `search` is that picker's placeholder. */
+async function lookupPerson(scope: Locator, search: RegExp, lastName: string, fullName: string): Promise<void> {
+  await scope.getByPlaceholder(search).fill(lastName)
   await scope.getByRole('option', { name: new RegExp(fullName) }).click()
   await expect(scope.getByRole('option', { name: new RegExp(fullName) })).toHaveAttribute('aria-selected', 'true')
 }
@@ -100,7 +100,7 @@ async function createPersonThroughForm(
   // The date of birth is a native date input (typed, not picked), so it takes the ISO value directly.
   await crudInput(page, 'birthDate').fill(person.birthDate)
   await page
-    .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
+    .getByRole('button', { name: uiText('people.common.create', { exact: true }) })
     .first()
     .click()
   // A created person opens on the guardianship tab, where F-01 continues (#84).
@@ -202,7 +202,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await page.goto('/backend/club/sections/create')
         await crudInput(page, 'name').fill(name)
         await page
-          .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
+          .getByRole('button', { name: uiText('club_core.common.create', { exact: true }) })
           .first()
           .click()
         await expect(page).toHaveURL(/\/backend\/club\/sections$/)
@@ -220,7 +220,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         await page.goto(`/backend/club/sections/${String(sectionIds.get(section))}/edit?tab=coordinators`)
         const panel = page.getByRole('region', { name: uiText('club_core.coordinators.title', { exact: true }) })
         await expect(panel.getByText(NO_COORDINATOR)).toBeVisible()
-        await lookupPerson(panel, lastName, fullName)
+        await lookupPerson(panel, uiText('club_core.coordinators.fields.person.search'), lastName, fullName)
         await panel.getByRole('button', { name: uiText('club_core.coordinators.actions.assign') }).click()
         await expect(page.getByText(uiText('club_core.coordinators.flash.assigned')).first()).toBeVisible()
         await expect(panel.getByRole('listitem').filter({ hasText: fullName })).toBeVisible()
@@ -262,7 +262,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await crudInput(page, 'name').fill('Gmina Testowo')
       await chooseCrudOption(page, 'type', uiText('club_core.institutions.type.municipality', { exact: true }))
       await page
-        .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
+        .getByRole('button', { name: uiText('club_core.common.create', { exact: true }) })
         .first()
         .click()
       await expect(page).toHaveURL(/\/backend\/club\/institutions$/)
@@ -304,7 +304,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         if (place.owner) await chooseCrudOption(page, 'ownerInstitutionId', new RegExp(`^${place.owner}$`))
         if (place.external) await checkCrudBox(page, 'isExternal')
         await page
-          .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
+          .getByRole('button', { name: uiText('club_core.common.create', { exact: true }) })
           .first()
           .click()
         await expect(page).toHaveURL(/\/backend\/club\/places$/)
@@ -431,7 +431,12 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         [family.jas, [uiText('people.guardianships.consents.regulations'), /Image|Wizerunek/]],
         [family.ola, [uiText('people.guardianships.consents.regulations')]],
       ] as const) {
-        await lookupPerson(link, FAMILY_NAME, `${ward.firstName} ${ward.lastName}`)
+        await lookupPerson(
+          link,
+          uiText('people.guardianships.fields.person.search'),
+          FAMILY_NAME,
+          `${ward.firstName} ${ward.lastName}`,
+        )
         for (const name of [uiText('people.guardianships.primaryPayer'), ...consents]) {
           const box = link.getByRole('checkbox', { name })
           await box.click()
@@ -579,7 +584,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       ).toBeVisible()
       await expect(page.getByTestId('club-tile-profile')).toBeVisible()
       await expect(page.getByTestId('club-wards')).toHaveCount(0)
-      await expect(page.getByText(uiText('club_core.settings.groups.payments'))).toHaveCount(0)
+      await expect(page.getByText(uiText('people.club.tiles.payments.title'))).toHaveCount(0)
       // `/club/payments` exists since #110; without the payer feature a minor gets no payments screen and no charge.
       await page.goto('/club/payments')
       await expect(page.getByTestId('club-charge')).toHaveCount(0)
@@ -629,7 +634,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         (async () => {
           await crudInput(page, 'firstName').fill('Katarzyna')
           await page
-            .getByRole('button', { name: uiText('activities.club.attendance.save', { exact: true }) })
+            .getByRole('button', { name: uiText('people.common.save', { exact: true }) })
             .first()
             .click()
         })(),

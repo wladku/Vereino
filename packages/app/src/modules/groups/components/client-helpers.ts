@@ -22,6 +22,16 @@ export type TableColumns<T extends object> = DataTableProps<T>['columns']
 export const GROUPS_HREF = '/backend/groups/groups'
 export const SEASONS_HREF = '/backend/groups/seasons'
 export const EXTERNAL_TEAMS_HREF = '/backend/groups/external-teams'
+/** The platform dictionaries page, where the club administrator edits the age categories (REQ-019, #266). */
+export const DICTIONARIES_HREF = '/backend/config/dictionaries'
+
+/**
+ * The activities list filtered to a group (`activities` reads `?groupId=`, parity spec REQ-A02, #266). `groups` does not
+ * require `activities`; callers show the link only to users with `activities.view`.
+ */
+export function groupActivitiesHref(groupId: string): string {
+  return `/backend/activities/activities?groupId=${encodeURIComponent(groupId)}`
+}
 
 export type GroupRow = {
   id: string

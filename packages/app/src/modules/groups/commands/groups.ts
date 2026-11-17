@@ -6,7 +6,8 @@
 // concurrent season delete cannot pass its "in use" check; an age category is an entry of the club's age category
 // dictionary (`dictionaries`, REQ-019, #92). A group with memberships is deactivated, not deleted
 // (409 `group_has_memberships`), so the roster history survives. The public fields (#91, DD-29) follow the same writes;
-// an age range whose youngest age is above the oldest answers 422 `group_age_range_inverted` on the `ageTo` field.
+// an age range whose youngest age is above the oldest answers 422 `group_age_range_inverted` on the `ageTo` field. A
+// team with matches or sparrings does not become a class group (409 `group_has_matches`, parity spec REQ-A02, #266).
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -17,9 +18,10 @@ import { assertInScope, authorizeScoped, type AuthorizeScopedSpec, type TargetLo
 import { groupsErrors } from '../api/errors'
 import { Group, GroupMembership, Season } from '../data/entities'
 import { groupCreateSchema, groupDeleteSchema, groupUpdateSchema } from '../data/validators'
-import { ageRangeInverted, disallowedTeamFields, type GroupKind } from '../lib/groups-rules'
+import { ageRangeInverted, disallowedTeamFields, needsMatchGuard, type GroupKind } from '../lib/groups-rules'
 import { isAgeCategoryEntry } from '../services/age-categories'
 import { lockSectionForShare } from '../services/directory'
+import { groupUsageContract } from '../services/group-usage'
 import {
   GROUP_WRITE_KINDS,
   emitGroupsSideEffects,
@@ -197,6 +199,36 @@ async function assertGroupShape(
   }
 }
 
+/**
+ * 409 `group_has_matches` (parity spec REQ-A02, #266) when a team with live matches or sparrings would become a class
+ * group, with `details.total` and a field error on `kind`. The count comes from `activities.groupUsage`; without it no
+ * activity can reference the group and the change passes. A failing contract answers 503 `group_usage_failed`.
+ */
+async function assertNoMatches(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Group,
+  kind: GroupKind,
+): Promise<void> {
+  if (!needsMatchGuard(row.kind, kind)) return
+  const contract = groupUsageContract(ctx.container)
+  if (!contract) return
+  let total: number
+  try {
+    total = await contract.matchActivityCount(em, {
+      tenantId: row.tenantId,
+      organizationId: row.organizationId,
+      groupId: row.id,
+    })
+  } catch {
+    return groupsErrors.throw('group_usage_failed')
+  }
+  if (total === 0) return
+  const error = await groupsErrors.create('group_has_matches', { field: 'kind', details: { total } })
+  error.body = { ...error.body, fieldErrors: { kind: String(error.body.error ?? 'group_has_matches') } }
+  throw error
+}
+
 /** Number of live memberships of a group, ended ones included (the roster history). */
 function countMemberships(em: EntityManager, scope: GroupsScope, groupId: string): Promise<number> {
   return em.count(GroupMembership, { ...scope, groupId, deletedAt: null })
@@ -314,6 +346,7 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         season: shape.seasonId !== (row.seasonId ?? null),
         ageCategory: shape.ageCategoryEntryId !== (row.ageCategoryEntryId ?? null),
       })
+      await assertNoMatches(ctx, em, row, shape.kind)
       const ageFrom = patch.ageFrom !== undefined ? patch.ageFrom : (row.ageFrom ?? null)
       const ageTo = patch.ageTo !== undefined ? patch.ageTo : (row.ageTo ?? null)
       await assertAgeRange(ageFrom, ageTo)
@@ -363,6 +396,8 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
       season: before.seasonId !== (row.seasonId ?? null),
       ageCategory: beforeShape.ageCategoryEntryId !== (row.ageCategoryEntryId ?? null),
     })
+    // Undoing "class group → team" turns the team back into a class group: the same guard applies.
+    await assertNoMatches(ctx, em, row, before.kind)
     await undoRestore(ctx, row, before, restoreGroup, groupEvents, 'updated')
   },
 }
