@@ -47,6 +47,12 @@ See the commit; `payments` (lib, commands, routes, services, components, widgets
 
 An independent review subagent read `git diff origin/main...HEAD` against the spec: no blocking defects. Fixed: a guardian whose person record was deleted no longer counts as a payer (`payerFactsOf` keeps only live persons); the add-charge dialog checks the PLN 100 000 limit on the amount field. Accepted and documented in the module README (the spec names no other path): a primary payer whose guardianship starts later is not assigned when it begins, and a manual charge committed while a primary-payer event is handled may stay without a payer — B-22 assigns both.
 
+## CI fix (integration shard 3/3)
+
+- CI run 43999253326 failed on `E06-S02-person-record-tabs.spec.ts:109`: it opened `?tab=charges` as the *unknown* tab and expected Details. This PR made `charges` a real tab, so the administrator got the Charges tab. Fixed the test to use `?tab=unknown`; product behavior is unchanged. Lesson `new-tab-value-breaks-unknown-tab-tests`.
+- `main` was already merged in by the merge train (`d1bccc4`).
+- `yarn test:integration:vereino --filter E06-S02` — 1 passed (1.5 min).
+
 ## Open problems
 
 None.
