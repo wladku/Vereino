@@ -128,7 +128,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
       .click()
     await page.getByRole('option', { name: uiText('club_core.places.kind.pitch', { exact: true }) }).click()
     await page
-      .getByRole('button', { name: uiText('search.settings.actions.apply', { exact: true }) })
+      .getByRole('button', { name: uiText('ui.filters.actions.apply', { exact: true }) })
       .first()
       .click()
     await expect(page).toHaveURL(/\/backend\/club\/places\?kind=pitch$/)

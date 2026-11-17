@@ -172,7 +172,7 @@ test('TEST-076 an account with no linked club person gets 403 scope_unlinked; a 
       await page.locator('[data-crud-field-id="firstName"] input').fill('Nowa')
       await page.locator('[data-crud-field-id="lastName"] input').fill(marker)
       await page
-        .getByRole('button', { name: uiText('activities.common.create', { exact: true }) })
+        .getByRole('button', { name: uiText('people.common.create', { exact: true }) })
         .first()
         .click()
       await expect(page.getByText(message).first()).toBeVisible()
