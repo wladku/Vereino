@@ -29,22 +29,22 @@ type TabbedPage = {
 const PAGES: TabbedPage[] = [
   {
     menu: /^Institutions and contracts$/,
-    title: uiText('club_core.institutions.page.title', { exact: true }),
+    title: uiText('club_core.institutions.tabs.label', { exact: true }),
     tabs: [
       { name: uiText('club_core.institutions.tabs.institutions', { exact: true }), path: '/backend/club/institutions' },
-      { name: uiText('club_core.contracts.title', { exact: true }), path: '/backend/club/contracts' },
+      { name: uiText('club_core.institutions.tabs.contracts', { exact: true }), path: '/backend/club/contracts' },
     ],
     alias: { tab: 'contracts', path: '/backend/club/contracts' },
   },
   {
     menu: /^Threads and cases$/,
-    title: uiText('communication.threads.page.title', { exact: true }),
+    title: uiText('communication.threads.tabs.label', { exact: true }),
     tabs: [
       {
-        name: uiText('activities.occurrences.perspectives.all', { exact: true }),
+        name: uiText('communication.threads.tabs.all', { exact: true }),
         path: '/backend/communication/threads',
       },
-      { name: uiText('communication.cases.title', { exact: true }), path: '/backend/communication/cases' },
+      { name: uiText('communication.threads.tabs.cases', { exact: true }), path: '/backend/communication/cases' },
     ],
     alias: { tab: 'cases', path: '/backend/communication/cases' },
   },
@@ -53,8 +53,8 @@ const PAGES: TabbedPage[] = [
     title: uiText('facilities.rules.tabs.label', { exact: true }),
     tabs: [
       { name: uiText('facilities.rules.tabs.zones', { exact: true }), path: '/backend/facilities/zones' },
-      { name: uiText('facilities.closures.title', { exact: true }), path: '/backend/facilities/closures' },
-      { name: uiText('facilities.rates.title', { exact: true }), path: '/backend/facilities/rates' },
+      { name: uiText('facilities.rules.tabs.closures', { exact: true }), path: '/backend/facilities/closures' },
+      { name: uiText('facilities.rules.tabs.rates', { exact: true }), path: '/backend/facilities/rates' },
     ],
     alias: { tab: 'rates', path: '/backend/facilities/rates' },
   },
@@ -63,10 +63,10 @@ const PAGES: TabbedPage[] = [
     title: uiText('facilities.records.tabs.label', { exact: true }),
     tabs: [
       { name: uiText('facilities.records.tabs.logs', { exact: true }), path: '/backend/facilities/logs' },
-      { name: uiText('facilities.records.incidents.title', { exact: true }), path: '/backend/facilities/incidents' },
-      { name: uiText('facilities.records.bans.title', { exact: true }), path: '/backend/facilities/bans' },
+      { name: uiText('facilities.records.tabs.incidents', { exact: true }), path: '/backend/facilities/incidents' },
+      { name: uiText('facilities.records.tabs.bans', { exact: true }), path: '/backend/facilities/bans' },
       {
-        name: uiText('facilities.closures.reason.maintenance', { exact: true }),
+        name: uiText('facilities.records.tabs.maintenance', { exact: true }),
         path: '/backend/facilities/maintenance',
       },
     ],
@@ -74,11 +74,11 @@ const PAGES: TabbedPage[] = [
   },
   {
     menu: /^Municipality report$/,
-    title: uiText('facilities.reports.owner.title', { exact: true }),
+    title: uiText('facilities.reports.tabs.label', { exact: true }),
     tabs: [
-      { name: uiText('facilities.reports.owner.title', { exact: true }), path: '/backend/facilities/reports/owner' },
+      { name: uiText('facilities.reports.tabs.owner', { exact: true }), path: '/backend/facilities/reports/owner' },
       {
-        name: uiText('facilities.reports.rentedHours.title', { exact: true }),
+        name: uiText('facilities.reports.tabs.rentedHours', { exact: true }),
         path: '/backend/facilities/reports/rented-hours',
       },
     ],
