@@ -43,6 +43,7 @@ const events = [
     entity: 'role_assignment',
     category: 'crud',
   },
+  // Payload `{ id, tenantId, organizationId, guardianPersonId, wardPersonId }` (`wardPersonId` since #295, Contract 6).
   { id: 'people.guardianship.created', label: 'Guardianship created', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.updated', label: 'Guardianship updated', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.deleted', label: 'Guardianship deleted', entity: 'guardianship', category: 'crud' },

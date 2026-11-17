@@ -9,7 +9,8 @@ import { createModuleEvents } from '@open-mercato/shared/modules/events'
  * `payments.payment.recorded` per online payment; an online refund emits `payments.payment.refunded`. An order campaign (#115) emits
  * `payments.order_campaign.created|updated` and, per stage, `payments.order_campaign.status_changed` with the new status.
  * A guardian's order (#116) emits `payments.order.submitted|updated|cancelled` with its campaign and `order` charge;
- * a kit handed over at the pitch (#117) emits `payments.order.handed_over`.
+ * a kit handed over at the pitch (#117) emits `payments.order.handed_over`. A payer assigned to a charge without one
+ * (#295), by hand or from a guardianship, emits `payments.charge.payer_assigned` with the charge and the payer.
  */
 const events = [
   { id: 'payments.fee.created', label: 'Fee schedule created', entity: 'fee', category: 'crud' },
@@ -21,6 +22,7 @@ const events = [
   { id: 'payments.settings.updated', label: 'Payment settings updated', entity: 'settings', category: 'crud' },
   { id: 'payments.charge.created', label: 'Charges created', entity: 'charge', category: 'custom' },
   { id: 'payments.charge.cancelled', label: 'Charges cancelled', entity: 'charge', category: 'custom' },
+  { id: 'payments.charge.payer_assigned', label: 'Charge payer assigned', entity: 'charge', category: 'custom' },
   { id: 'payments.payment.recorded', label: 'Payment recorded', entity: 'payment', category: 'custom' },
   { id: 'payments.payment.reversed', label: 'Payment reversed', entity: 'payment', category: 'custom' },
   { id: 'payments.payment.refunded', label: 'Online payment refunded', entity: 'payment', category: 'custom' },

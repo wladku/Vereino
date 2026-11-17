@@ -62,7 +62,7 @@ export type PersonAccount = {
 }
 
 /** The tabs of the person record and their `?tab=` values (README B-10; #84). */
-export const PERSON_RECORD_TABS = ['details', 'guardianship', 'roles', 'account', 'groups'] as const
+export const PERSON_RECORD_TABS = ['details', 'guardianship', 'roles', 'account', 'groups', 'charges'] as const
 export type PersonRecordTab = (typeof PERSON_RECORD_TABS)[number]
 
 /** The person record opened on `tab`. */

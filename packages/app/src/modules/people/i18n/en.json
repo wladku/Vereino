@@ -519,5 +519,6 @@
   "people.errors.account_not_found": "This person has no account.",
   "people.errors.invitation_not_pending": "The invitation is no longer pending: the person has already signed in.",
   "people.errors.invitation_rate_limited": "Too many invitations sent. Try again later.",
-  "people.errors.last_club_admin": "The club's last active administrator cannot be blocked or have the account closed."
+  "people.errors.last_club_admin": "The club's last active administrator cannot be blocked or have the account closed.",
+  "people.persons.tabs.charges": "Charges"
 }

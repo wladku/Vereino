@@ -8,21 +8,39 @@
 //   (409 `charge_has_payments`, `charge_not_cancellable`);
 // - reversing a cash or transfer payment (the owner's default of 2026-11-06 on #109): a negative entry of the same
 //   charge that names the original and carries the reason; once per payment (409 `payment_already_reversed`), never
-//   for an online payment or a reversing entry (409 `payment_not_reversible`; an online payment is refunded, DD-42).
+//   for an online payment or a reversing entry (409 `payment_not_reversible`; an online payment is refunded, DD-42);
+// - a manual charge (payments parity spec REQ-C06, DD-C12; #295): a debtor, a description, an amount and a due date,
+//   payable to the club; the payer is the one named (an active guardian of the debtor, or the adult debtor — else 422
+//   `charge_payer_not_eligible`) or follows the *Payer* rule, otherwise the charge is created with `payer_missing`.
+//   Never edited: a wrong one is cancelled and created again;
+// - assigning a payer (#295) to an `open` or `partially_paid` charge without one (409 `charge_payer_already_set`,
+//   `charge_not_payable`; 422 `charge_payer_not_eligible`). Run with a worker context (the guardianship subscriber),
+//   the same command assigns the ward's current primary payer to every such charge of the ward instead.
 //
 // Every command row-locks the charge and checks its lock token (send the charge's `updatedAt` in the platform
 // optimistic-lock header), so concurrent payments of one charge never over-pay it. Money is never edited or deleted:
 // the commands are not undoable, and a reversing entry is the correction.
 import { randomUUID } from 'node:crypto'
+import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { notFound } from '@open-mercato/shared/lib/crud/errors'
+import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { z } from 'zod'
 import type { Scope } from '@vereino/core'
 import { authorizeScoped, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Payment } from '../data/entities'
-import { chargeCancelSchema, paymentRecordSchema, paymentReverseSchema } from '../data/validators'
 import {
+  chargeAssignPayerSchema,
+  chargeAssignWardPayerSchema,
+  chargeCancelSchema,
+  chargeManualCreateSchema,
+  paymentRecordSchema,
+  paymentReverseSchema,
+} from '../data/validators'
+import {
+  OPEN_CHARGE_STATUSES,
   amountDueOf,
   cancelRefusal,
   formatZloty,
@@ -32,8 +50,15 @@ import {
   reverseRefusal,
   settledStatus,
 } from '../lib/charge-ledger'
+import {
+  assignPayerRefusal,
+  manualDueDateInRange,
+  manualDueRange,
+  manualPayerOf,
+  payerEligible,
+} from '../lib/manual-charges'
 import type { ChargeStatus } from '../lib/payments-rules'
-import { clubClock } from '../services/directory'
+import { clubClock, payerFactsOf, primaryPayers, type PaymentsScope } from '../services/directory'
 import {
   PAYMENTS_WRITE_KINDS,
   clubTarget,
@@ -343,6 +368,227 @@ const reversePaymentCommand: CommandHandler<Record<string, unknown>, PaymentComm
     }),
 }
 
+async function personNotFound(): Promise<never> {
+  const { translate } = await resolveTranslations()
+  throw notFound(translate('payments.errors.person_not_found', 'Person not found'))
+}
+
+export type ChargePayerSnapshot = {
+  id: string
+  tenantId: string
+  organizationId: string
+  sourceType: string
+  personId: string | null
+  payerPersonId: string | null
+  payerMissing: boolean
+  description: string
+  amount: number
+  dueDate: string
+  status: ChargeStatus
+}
+
+function chargePayerSnapshot(row: Charge): ChargePayerSnapshot {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    sourceType: row.sourceType,
+    personId: row.personId ?? null,
+    payerPersonId: row.payerPersonId ?? null,
+    payerMissing: row.payerMissing,
+    description: row.description,
+    amount: row.amount,
+    dueDate: row.dueDate,
+    status: row.status,
+  }
+}
+
+export type ManualChargeResult = PaymentsCommandResult<Charge, null>
+
+const createManualChargeCommand: CommandHandler<Record<string, unknown>, ManualChargeResult> = {
+  id: 'payments.charges.create_manual',
+  // DD-C12: a manual charge is never edited or undone; a wrong one is cancelled and created again.
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const id = randomUUID()
+    const result = await inWriteTransaction(ctx, 'payments.charges.create_manual', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: chargeManualCreateSchema,
+          resourceKind: CHARGE_RESOURCE_KIND,
+          allowedKinds: PAYMENTS_WRITE_KINDS,
+          resolveTarget: (_parsed, _entity, scope) => clubTarget({ id, ...scope }),
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const { parsed, tenantId, organizationId } = authorized
+      const scope = { tenantId, organizationId }
+      const { today } = await clubClock(ctx.container, scope)
+      const facts = await payerFactsOf(ctx.container, scope, parsed.personId, today, em)
+      if (!facts) return personNotFound()
+      if (!manualDueDateInRange(parsed.dueDate, today)) {
+        await paymentsErrors.throw('charge_due_date_out_of_range', { ...manualDueRange(today), field: 'dueDate' })
+      }
+      let payerPersonId = manualPayerOf(facts)
+      if (parsed.payerPersonId) {
+        if (!payerEligible(parsed.payerPersonId, facts)) await paymentsErrors.throw('charge_payer_not_eligible')
+        payerPersonId = parsed.payerPersonId
+      }
+      const now = new Date()
+      const charge = em.create(Charge, {
+        id,
+        ...scope,
+        sourceType: 'manual',
+        sourceId: null,
+        personId: parsed.personId,
+        payerPersonId,
+        payerMissing: payerPersonId === null,
+        description: parsed.description,
+        amount: parsed.amount,
+        discountAmount: 0,
+        dueDate: parsed.dueDate,
+        payee: 'club',
+        status: 'open',
+        createdAt: now,
+        updatedAt: now,
+      })
+      em.persist(charge)
+      await em.flush()
+      return { entity: charge, actingRole: authorized.actingRole, before: null }
+    })
+    const charge = result.entity
+    await emitAfterCommit(
+      'payments.charge.created',
+      { tenantId: charge.tenantId, organizationId: charge.organizationId },
+      { chargeIds: [charge.id], sourceType: 'manual' },
+    )
+    return result
+  },
+  buildLog: ({ result }) =>
+    paymentsLog({
+      result,
+      resourceKind: CHARGE_RESOURCE_KIND,
+      labelKey: 'payments.audit.charges.createManual',
+      fallback: 'Add a charge by hand',
+      after: chargePayerSnapshot(result.entity),
+    }),
+}
+
+/** B-22 "Assign payer": one charge and the payer the administrator chose. */
+export type ChargePayerResult = PaymentsCommandResult<Charge, ChargePayerSnapshot> & { mode: 'charge' }
+
+/** The guardianship subscriber: the ward's charges that got the ward's current primary payer. */
+export type WardPayerResult = {
+  mode: 'ward'
+  scope: PaymentsScope
+  chargeIds: string[]
+  payerPersonId: string | null
+}
+
+function assignChosenPayer(rawInput: unknown, ctx: CommandRuntimeContext): Promise<ChargePayerResult> {
+  return inWriteTransaction(ctx, 'payments.charges.assign_payer', async (em) => {
+    const authorized = await authorizeScoped(chargeSpec(chargeAssignPayerSchema, ctx), rawInput, ctx, em)
+    const charge = authorized.entity as Charge
+    const refusal = assignPayerRefusal(charge)
+    if (refusal) await paymentsErrors.throw(refusal)
+    const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+    const { today } = await clubClock(ctx.container, scope)
+    const facts = charge.personId ? await payerFactsOf(ctx.container, scope, charge.personId, today, em) : null
+    if (!facts || !payerEligible(authorized.parsed.payerPersonId, facts)) {
+      await paymentsErrors.throw('charge_payer_not_eligible')
+    }
+    const before = chargePayerSnapshot(charge)
+    charge.payerPersonId = authorized.parsed.payerPersonId
+    charge.payerMissing = false
+    charge.updatedAt = new Date()
+    await em.flush()
+    return { mode: 'charge', entity: charge, actingRole: authorized.actingRole, before }
+  })
+}
+
+function assignWardPayer(rawInput: unknown, ctx: CommandRuntimeContext): Promise<WardPayerResult> {
+  return inWriteTransaction(ctx, 'payments.charges.assign_payer', async (em) => {
+    const authorized = await authorizeScoped(
+      {
+        input: chargeAssignWardPayerSchema,
+        resourceKind: CHARGE_RESOURCE_KIND,
+        allowedKinds: ['system_job'],
+        resolveTarget: (_parsed, _entity, trusted) => ({ id: trusted.organizationId, ...trusted }),
+        lock: 'none',
+        scopeSource: { job: true },
+      },
+      rawInput,
+      ctx,
+      em,
+    )
+    const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+    const wardId = authorized.parsed.wardPersonId
+    // The payer is read again now, so a stale or replayed event assigns only the payer that is current.
+    const { today } = await clubClock(ctx.container, scope)
+    const payerPersonId = (await primaryPayers(ctx.container, scope, [wardId], today, em)).get(wardId) ?? null
+    if (!payerPersonId) return { mode: 'ward', scope, chargeIds: [], payerPersonId: null }
+    const charges = await em.find(
+      Charge,
+      {
+        ...scope,
+        personId: wardId,
+        payerMissing: true,
+        status: { $in: [...OPEN_CHARGE_STATUSES] },
+        deletedAt: null,
+      },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    )
+    const now = new Date()
+    for (const charge of charges) {
+      charge.payerPersonId = payerPersonId
+      charge.payerMissing = false
+      charge.updatedAt = now
+    }
+    if (charges.length > 0) await em.flush()
+    return { mode: 'ward', scope, chargeIds: charges.map((charge) => charge.id), payerPersonId }
+  })
+}
+
+const assignPayerCommand: CommandHandler<Record<string, unknown>, ChargePayerResult | WardPayerResult> = {
+  id: 'payments.charges.assign_payer',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    if (!ctx.systemActor) {
+      const result = await assignChosenPayer(rawInput, ctx)
+      const charge = result.entity
+      await emitAfterCommit(
+        'payments.charge.payer_assigned',
+        { tenantId: charge.tenantId, organizationId: charge.organizationId },
+        { id: charge.id, payerPersonId: charge.payerPersonId },
+      )
+      return result
+    }
+    const result = await assignWardPayer(rawInput, ctx)
+    for (const chargeId of result.chargeIds) {
+      await emitAfterCommit('payments.charge.payer_assigned', result.scope, {
+        id: chargeId,
+        payerPersonId: result.payerPersonId,
+      })
+    }
+    return result
+  },
+  // The automatic assignment is a worker's; each charge's `payments.charge.payer_assigned` event records it.
+  buildLog: ({ result }) =>
+    result.mode === 'charge'
+      ? paymentsLog({
+          result,
+          resourceKind: CHARGE_RESOURCE_KIND,
+          labelKey: 'payments.audit.charges.assignPayer',
+          fallback: 'Assign a payer to a charge',
+          after: chargePayerSnapshot(result.entity),
+        })
+      : null,
+}
+
 registerCommand(recordPaymentCommand)
 registerCommand(cancelChargeCommand)
 registerCommand(reversePaymentCommand)
+registerCommand(createManualChargeCommand)
+registerCommand(assignPayerCommand)
