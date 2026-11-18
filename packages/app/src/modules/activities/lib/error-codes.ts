@@ -7,6 +7,8 @@ import type { ErrorCodeTable } from '@vereino/core'
 
 export const errorCodes = [
   { code: 'occurrence_place_conflict', status: 409, messageKey: 'activities.errors.occurrence_place_conflict' },
+  // A one-off event on a club place outside its opening hours (facilities parity spec REQ-R19, DD-R15, #288).
+  { code: 'event_place_closed', status: 409, messageKey: 'activities.errors.event_place_closed' },
   { code: 'occurrence_coach_conflict', status: 409, messageKey: 'activities.errors.occurrence_coach_conflict' },
   { code: 'occurrence_not_planned', status: 409, messageKey: 'activities.errors.occurrence_not_planned' },
   // Restoring a cancelled session (REQ-A05 of the groups and activities parity spec, #268): only a cancelled session,

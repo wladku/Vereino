@@ -232,6 +232,8 @@ const FIELD_OF_CODE: ReadonlyMap<string, EventDraftField> = new Map([
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
   ['venue_or_place_required', 'placeId'],
+  // 409 outside the place's opening hours (REQ-R19, #288): the message names the day's hours.
+  ['event_place_closed', 'startTime'],
   ['occurrence_gathering_after_start', 'gatheringTime'],
   ['occurrence_gathering_too_early', 'gatheringTime'],
   ['occurrence_confirm_by_after_start', 'confirmByHours'],

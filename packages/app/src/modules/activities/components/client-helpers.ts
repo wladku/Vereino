@@ -478,6 +478,8 @@ const FIELD_OF_CODE = new Map<string, string>([
   ['event_type_not_allowed', 'type'],
   ['activity_group_inactive', 'groupId'],
   ['place_not_bookable', 'placeId'],
+  // The 409 of a one-off event outside the place's opening hours (REQ-R19, #288).
+  ['event_place_closed', 'startTime'],
   ['occurrence_gathering_after_start', 'gatheringTime'],
   ['occurrence_gathering_too_early', 'gatheringTime'],
   // REQ-A07: the move dialog's deadline fields (the series and event forms show the message above the form).
