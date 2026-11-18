@@ -12,7 +12,8 @@ import { uiText } from '../_fixtures/ui-text'
 // totals in the URL; "Add to roster" searches by first name, shows "First Last (age N)" and leaves out a current
 // member; a wrongly added, never used membership is removed after a confirmation that says issued charges stay; an
 // upcoming row offers Edit and Remove but not End; Edit and End save their dates; `?personId=…&role=coach` opens the
-// dialog with the person and role chosen — at 375 px and on desktop, in both locales, light and dark, axe clean.
+// dialog with the person and role chosen; the person search is a labelled group and a dialog error is tied to its
+// fields (#359) — at 375 px and on desktop, in both locales, light and dark, axe clean.
 test.describe.configure({ timeout: 300_000 })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
@@ -83,6 +84,13 @@ test('TEST-A04 roster tab: views with totals in the URL, add by first name witho
     await expect(viewTab(page, 'ended')).toContainText('(0)')
     await page.getByTestId('roster-add').click()
     const dialog = page.getByTestId('groups-membership-dialog')
+    // The person search is a group named by its label; saving without a person ties the alert to it (#359).
+    const personGroup = dialog.getByRole('group', { name: uiText('groups.memberships.fields.person', { exact: true }) })
+    await expect(personGroup).toBeVisible()
+    await dialog.getByTestId('groups-membership-save').click()
+    const personProblem = dialog.getByRole('alert')
+    await expect(personProblem).toContainText(uiText('groups.memberships.errors.personRequired'))
+    await expect(personGroup).toHaveAttribute('aria-describedby', String(await personProblem.getAttribute('id')))
     await dialog.getByPlaceholder(uiText('groups.memberships.fields.person.search')).fill('Jan')
     const option = dialog.getByRole('option', {
       name: uiText('groups.memberships.personOption', { params: { name: 'Jan Kowalski', age: 9 } }),
@@ -130,6 +138,19 @@ test('TEST-A04 roster tab: views with totals in the URL, add by first name witho
     ).toHaveCount(0)
     await page.getByRole('menuitem', { name: uiText('groups.memberships.actions.edit', { exact: true }) }).click()
     const editDialog = page.getByTestId('groups-membership-dialog')
+    // An empty From is refused in the dialog: the date fields are marked invalid and point at the alert (#359).
+    const from = editDialog.getByTestId('groups-membership-from')
+    const firstDay = await from.inputValue()
+    await from.fill('')
+    await editDialog.getByTestId('groups-membership-save').click()
+    const datesProblem = editDialog.getByRole('alert')
+    await expect(datesProblem).toContainText(uiText('groups.memberships.errors.dates'))
+    const datesProblemId = String(await datesProblem.getAttribute('id'))
+    for (const field of [from, editDialog.getByTestId('groups-membership-to')]) {
+      await expect(field).toHaveAttribute('aria-invalid', 'true')
+      await expect(field).toHaveAttribute('aria-describedby', datesProblemId)
+    }
+    await from.fill(firstDay)
     await editDialog.getByTestId('groups-membership-to').fill(addDays(today, 40))
     await editDialog.getByTestId('groups-membership-save').click()
     await expect(editDialog).toBeHidden()

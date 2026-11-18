@@ -24,6 +24,7 @@ import {
   mayRemoveMembership,
   membershipActions,
   rosterRoleOrder,
+  rosterRoleRankSql,
   rosterRoleRank,
   rosterViewBounds,
   seasonDatesInverted,
@@ -256,6 +257,14 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     ]
     expect(rosterRoleOrder(rows).map((row) => row.id)).toEqual(['c1', 'c2', 'a1', 'p3', 'p1'])
     expect(rows[0].id).toBe('p1')
+  })
+
+  it('builds the SQL role key from the same ranks as rosterRoleRank (#359)', () => {
+    const sql = rosterRoleRankSql('m')
+    expect(sql).toBe("case m.role when 'coach' then 0 when 'assistant' then 1 when 'participant' then 2 else 3 end")
+    const ranks = new Map([...sql.matchAll(/when '(\w+)' then (\d+)/g)].map((match) => [match[1], Number(match[2])]))
+    for (const role of ROSTER_ROLE_ORDER) expect(ranks.get(role)).toBe(rosterRoleRank(role))
+    expect(Number(/else (\d+) end$/.exec(sql)?.[1])).toBe(rosterRoleRank('unknown'))
   })
 
   it('turns a view into bounds on the club day', () => {
