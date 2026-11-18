@@ -18,6 +18,7 @@ REQ-R17 / J-R06: a renter with an e-mail address gets a summary when staff enter
 5. Command `facilities.rentals.cancel_by_link`, routes `POST /api/facilities/public/rentals/cancel/preview` and `/cancel`, page `/p/[clubSlug]/rentals/cancel/[token]` (`RentalCancelView`) with the `no-referrer`/`no-store` header rule; the rental page notes a live rental without an address; en/pl catalogs; the `AGENTS.md` exception line names rental cancellation links.
 6. TEST-R17 (integration + UI) and its fixture `_fixtures/rental-links.ts`.
 7. Self-review: the link cancellation locks the rental row and re-reads its status, so it cannot race a staff action.
+8. `yarn verify`: lint failed (the page set state synchronously inside its effect; three void-returning arrow shorthands) → fixed; format:check failed → `yarn format` (9 own files) → green.
 
 ## Decisions
 
@@ -46,6 +47,8 @@ REQ-R17 / J-R06: a renter with an e-mail address gets a summary when staff enter
 - `npx jest src/modules/facilities/lib/__tests__/rental-links.test.ts` — 7 passed, 100 % statements/branches/functions/lines.
 - `yarn spec-changelogs:check`, `yarn lessons:check` — valid.
 - `yarn test:integration:vereino --filter TEST-R17` (with build, before the row-lock change) — 1 passed (2.3m).
+- `yarn verify` — failed at `lint` (4 errors in `RentalCancelView.tsx`: `react-hooks/set-state-in-effect`, `no-confusing-void-expression`); after the fix `yarn verify --from lint` failed at `format:check`; after `yarn format`, `yarn verify --from format:check` — all remaining 12 steps passed (generate, typecheck ×3 and lint passed in the earlier runs).
+- `yarn test:integration:vereino --filter TEST-R17 --no-build` on the final build — 1 passed (2.4m).
 
 ## Open problems / next steps
 
