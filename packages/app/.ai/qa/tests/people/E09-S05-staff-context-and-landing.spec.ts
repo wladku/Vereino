@@ -219,7 +219,10 @@ test('E09-S05 the staff context for a coach-only person, the switcher for a coac
     await showCalendarWeekOf(page, tomorrow)
     const shared = page.getByTestId('calendar-item').filter({ hasText: TRAINING })
     await expect(shared).toHaveCount(1)
-    await expect(shared.getByRole('link').first()).toHaveAttribute('href', /\/club\/occurrences\/[^/]+\/attendance$/)
+    await expect(shared.getByRole('link').first()).toHaveAttribute('href', /\/club\/occurrences\/[^/?]+\?as=coach$/)
+    await expect(
+      shared.getByRole('link', { name: uiText('activities.club.session.attendanceList', { exact: true }) }),
+    ).toHaveAttribute('href', /\/club\/occurrences\/[^/]+\/attendance$/)
     await expect(page.getByTestId('calendar-item').filter({ hasText: POOL })).toHaveCount(1)
     const titles = await page.getByTestId('calendar-item').allInnerTexts()
     expect(titles.findIndex((text) => text.includes(TRAINING))).toBeLessThan(
