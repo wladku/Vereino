@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 272`, label `cezar`): build phase 7 of the groups and
   activities parity spec — member session surfaces (REQ-A13), quick fill, attendance window, take-over and the unstaffed
   warning (REQ-A14), scores (REQ-A15).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md` phase 7; #272 (epic #252);
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md` phase 7; #272 (epic #252);
   branch `feat/issue-272-coach-attendance-phone`.
 - **Approval:** the spec is `Ready for implementation`; migration C, the scheduler target
   `activities:warn-unassigned-sessions` with `activities.session_without_coach`, the take-over and score routes and the
