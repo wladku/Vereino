@@ -609,7 +609,7 @@
   "club_core.places.public.fields.address": "Adres publiczny",
   "club_core.places.public.address.preview": "Kalendarz otwiera się pod adresem {path}",
   "club_core.places.public.address.noSlug": "Ustaw adres miejsca, aby zobaczyć, gdzie otwiera się jego kalendarz.",
-  "club_core.places.public.address.noClubSlug": "Klub nie ma jeszcze adresu strony; ustaw go w ustawieniach klubu.",
+  "club_core.places.public.address.noClubSlug": "Klub nie ma jeszcze adresu strony; ustaw go na stronie „Publikacja strony klubu” w menu Klub.",
   "club_core.places.public.fields.isPublicSchedule": "Grafik publiczny",
   "club_core.places.public.fields.isPublicSchedule.help": "Goście widzą to miejsce i jego miesiąc wyłącznie jako stany, bez nazwisk i nazw.",
   "club_core.places.public.fields.acceptsOnlineRequests": "Przyjmuje zgłoszenia online",
