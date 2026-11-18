@@ -489,8 +489,9 @@ export async function campaignSummary(
 export async function closeOrderCampaigns(
   container: AwilixContainer,
   scope: PaymentsScope,
+  now: Date = new Date(),
 ): Promise<{ closed: string[] }> {
-  const { today } = await clubClock(container, scope)
+  const { today } = await clubClock(container, scope, now)
   const closed = await closeExpiredCampaigns(freshEm(container), scope, today)
   for (const id of closed) {
     await emitPaymentsEvent(

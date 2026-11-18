@@ -1,5 +1,6 @@
 import { asFunction, asValue } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
+import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import { registerGatewayAdapter, registerWebhookHandler } from '@open-mercato/shared/modules/payment_gateways/types'
 import { createTokenLinkService, registerEmailTemplate } from '@/modules/foundation'
 import { OrderLink } from './data/entities'
@@ -11,6 +12,7 @@ import {
   orderReminderTemplate,
 } from './emails/templates'
 import { ORDER_LINK_TTL_MS } from './lib/orders'
+import notificationTypes from './notifications'
 import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-service'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
@@ -38,6 +40,10 @@ export function checkoutProviderKey(): string {
  * The order copy and the personal link e-mails (`payments.order_copy`, `payments.order_link`) are registered with the
  * other templates, and so is the coach's overdue reminder (`payments.charge_reminder`, REQ-033, #117).
  *
+ * The in-app type `payments.charge_overdue` of the daily overdue reminder (DD-C09, #301) is registered here as well
+ * as through `notifications.ts`, because the dispatch worker's runtime does not load the platform registry
+ * (lesson `notification-type-registry-in-worker-runtime`).
+ *
  * `payments.chargeService` (payments parity spec REQ-C01, DD-C01, #291): the rental charge service `facilities`
  * resolves with `hasRegistration` (facilities DD-19). It is stateless: every call writes through the caller's `em`.
  */
@@ -45,6 +51,7 @@ const orderLinks = createTokenLinkService(OrderLink, { use: 'until_expiry', ttlM
 const chargeService = createChargeService()
 
 export function register(container: AppContainer) {
+  registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, cashReceivedTemplate)
   registerEmailTemplate(container, orderReminderTemplate)
   registerEmailTemplate(container, orderCopyTemplate)

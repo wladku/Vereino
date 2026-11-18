@@ -12,25 +12,31 @@
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { createLogger } from '@open-mercato/shared/lib/logger'
+import { calendarDateInZone } from '@vereino/core'
 import { z } from 'zod'
 import { authorizeScoped, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { Charge, ChargeGeneration } from '../data/entities'
-import { tryLockGeneration } from '../data/queries'
+import { automaticGenerationSince, tryLockGeneration } from '../data/queries'
 import { chargeGenerateSchema } from '../data/validators'
 import { planCharges } from '../lib/charge-plan'
-import { periodInGenerationRange } from '../lib/payments-rules'
-import { clubClock } from '../services/directory'
+import { generationDue, periodInGenerationRange, periodOfDate, type GenerationDecision } from '../lib/payments-rules'
+import { clubClock, type PaymentsScope } from '../services/directory'
 import { loadGenerationInputs } from '../services/generation'
+import { storedPaymentsSettings } from '../services/read'
 import {
   PAYMENTS_WRITE_KINDS,
+  authorizePaymentsJob,
   clubTarget,
   emitAfterCommit,
   emitAfterReplayCommit,
   inWriteTransaction,
+  paymentsJobLog,
   paymentsLog,
   trustedTenantId,
   type PaymentsCommandResult,
+  type PaymentsJobScope,
 } from './shared'
 
 export const CHARGE_GENERATION_RESOURCE_KIND = 'payments.charge_generation'
@@ -90,6 +96,53 @@ async function authorizeGenerationReplay(
   return entity as ChargeGeneration
 }
 
+type GenerationClock = Awaited<ReturnType<typeof clubClock>>
+
+/**
+ * Plans and writes one generation of `period` — the run row and its charges — with the caller's transactional `em`,
+ * under the club's advisory lock the caller already holds. A plan with a fee over the per-session limit writes nothing
+ * and returns those fees. Shared by the manual `payments.charges.generate` and the daily `payments.charges.generate_due`.
+ */
+async function writeGeneration(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  input: { id: string; scope: { tenantId: string; organizationId: string }; period: string; clock: GenerationClock },
+): Promise<{ generation: ChargeGeneration | null; charges: Charge[]; overLimitFees: string[] }> {
+  const { id, scope, period, clock } = input
+  const plan = planCharges(await loadGenerationInputs(ctx.container, em, scope, period, clock))
+  if (plan.overLimitFees.length > 0) return { generation: null, charges: [], overLimitFees: plan.overLimitFees }
+  const generation = em.create(ChargeGeneration, {
+    id,
+    ...scope,
+    period,
+    createdCount: plan.charges.length,
+    skippedCount: plan.skipped,
+    payerMissingCount: plan.payerMissing,
+  })
+  em.persist(generation)
+  const charges = plan.charges.map((planned) =>
+    em.create(Charge, {
+      id: randomUUID(),
+      ...scope,
+      sourceType: 'fee',
+      sourceId: planned.feeId,
+      personId: planned.personId,
+      payerPersonId: planned.payerPersonId,
+      payerMissing: planned.payerMissing,
+      periodLabel: planned.periodLabel,
+      description: planned.description,
+      amount: planned.amount,
+      discountAmount: planned.discountAmount,
+      discountRuleId: planned.discountRuleId,
+      dueDate: planned.dueDate,
+      generationId: id,
+    }),
+  )
+  em.persist(charges)
+  await em.flush()
+  return { generation, charges, overLimitFees: [] }
+}
+
 const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGenerationResult> = {
   id: 'payments.charges.generate',
   isUndoable: true,
@@ -114,41 +167,15 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
       if (!periodInGenerationRange(parsed.period, clock.today)) await paymentsErrors.throw('period_out_of_range')
       if (!(await tryLockGeneration(em, organizationId))) await paymentsErrors.throw('generation_in_progress')
 
-      const plan = planCharges(await loadGenerationInputs(ctx.container, em, scope, parsed.period, clock))
-      if (plan.overLimitFees.length > 0) {
-        await paymentsErrors.throw('charge_amount_over_limit', { fee: plan.overLimitFees.join(', ') })
-      }
-      const generation = em.create(ChargeGeneration, {
+      const { generation, charges, overLimitFees } = await writeGeneration(ctx, em, {
         id,
-        tenantId,
-        organizationId,
+        scope,
         period: parsed.period,
-        createdCount: plan.charges.length,
-        skippedCount: plan.skipped,
-        payerMissingCount: plan.payerMissing,
+        clock,
       })
-      em.persist(generation)
-      const charges = plan.charges.map((planned) =>
-        em.create(Charge, {
-          id: randomUUID(),
-          tenantId,
-          organizationId,
-          sourceType: 'fee',
-          sourceId: planned.feeId,
-          personId: planned.personId,
-          payerPersonId: planned.payerPersonId,
-          payerMissing: planned.payerMissing,
-          periodLabel: planned.periodLabel,
-          description: planned.description,
-          amount: planned.amount,
-          discountAmount: planned.discountAmount,
-          discountRuleId: planned.discountRuleId,
-          dueDate: planned.dueDate,
-          generationId: id,
-        }),
-      )
-      em.persist(charges)
-      await em.flush()
+      if (!generation) {
+        return paymentsErrors.throw('charge_amount_over_limit', { fee: overLimitFees.join(', ') })
+      }
       return {
         entity: generation,
         actingRole: authorized.actingRole,
@@ -209,3 +236,110 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
 }
 
 registerCommand(generateChargesCommand)
+
+// --- payments.charges.generate_due (the daily `payments:generate-charges` job; DD-C08, #301) ---
+
+const logger = createLogger('payments').child({ component: 'generate-due' })
+
+/** Why the daily run generated nothing beyond the pure rule: the lock is held, or a fee is over its limit. */
+export type GenerateDueOutcome =
+  GenerationDecision | { due: false; period: string; reason: 'in_progress' | 'amount_over_limit' }
+
+export type GenerateDueResult = {
+  job: PaymentsJobScope
+  outcome: GenerateDueOutcome
+  summary: ChargeGenerationSummary | null
+}
+
+/** The club's calendar day on which migration B was applied, or null (logged) when its row cannot be read. */
+async function migrationAppliedOn(ctx: CommandRuntimeContext, scope: PaymentsScope, timeZone: string) {
+  try {
+    const appliedAt = await automaticGenerationSince(ctx.container.resolve<EntityManager>('em').fork())
+    if (appliedAt) return calendarDateInZone(appliedAt, timeZone)
+    logger.warn('Migration B is not recorded; the automatic generation waits', { ...scope })
+  } catch (error: unknown) {
+    logger.warn('The migration record could not be read; the automatic generation waits', { ...scope, err: error })
+  }
+  return null
+}
+
+/**
+ * `payments.charges.generate_due`: generates the current month in the club's calendar when the daily rule says so
+ * (`generationDue`: switch on, migration B's month passed, on or after the generation day, no generation of the month
+ * yet — an undone one counts). It writes the same generation as the manual command, under the same advisory lock: a
+ * held lock (a manual run in progress) or a month generated meanwhile generates nothing, and the next daily run looks
+ * again. Not undoable from the audit log (there is no user to own the undo); the administrator cancels charges.
+ */
+const generateDueCommand: CommandHandler<Record<string, unknown>, GenerateDueResult> = {
+  id: 'payments.charges.generate_due',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const job = await authorizePaymentsJob(ctx, 'payments.charges.generate_due.authorize', rawInput)
+    const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
+    const clock = await clubClock(ctx.container, scope, job.now)
+    const settings = await storedPaymentsSettings(ctx.container, scope)
+    const monthGenerated = (em: EntityManager, period: string) =>
+      em.count(ChargeGeneration, { ...scope, period, deletedAt: null }).then((count) => count > 0)
+    const decision = generationDue({
+      today: clock.today,
+      autoGenerate: settings?.autoGenerateCharges ?? true,
+      generationDay: settings?.generationDay ?? 1,
+      migrationAppliedOn: await migrationAppliedOn(ctx, scope, clock.timeZone),
+      monthGenerated: await monthGenerated(
+        ctx.container.resolve<EntityManager>('em').fork(),
+        periodOfDate(clock.today),
+      ),
+    })
+    if (!decision.due) return { job, outcome: decision, summary: null }
+
+    const id = randomUUID()
+    type Written =
+      | { generation: ChargeGeneration; chargeIds: string[] }
+      | { generation: null; reason: 'in_progress' | 'generated' | 'amount_over_limit'; overLimitFees?: string[] }
+    const written = await inWriteTransaction(ctx, 'payments.charges.generate_due', async (em): Promise<Written> => {
+      if (!(await tryLockGeneration(em, scope.organizationId))) return { generation: null, reason: 'in_progress' }
+      // Re-read under the lock: a manual run may have generated the month since the decision.
+      if (await monthGenerated(em, decision.period)) return { generation: null, reason: 'generated' }
+      const { generation, charges, overLimitFees } = await writeGeneration(ctx, em, {
+        id,
+        scope,
+        period: decision.period,
+        clock,
+      })
+      if (!generation) return { generation: null, reason: 'amount_over_limit', overLimitFees }
+      return { generation, chargeIds: charges.map((charge) => charge.id) }
+    })
+    if (!written.generation) {
+      if (written.reason === 'amount_over_limit') {
+        logger.warn('A fee is over its per-session limit; the month is not generated automatically', {
+          ...scope,
+          period: decision.period,
+          fees: written.overLimitFees?.length ?? 0,
+        })
+      }
+      return { job, outcome: { due: false, period: decision.period, reason: written.reason }, summary: null }
+    }
+    if (written.chargeIds.length > 0) {
+      await emitAfterCommit('payments.charge.created', scope, {
+        id: written.generation.id,
+        generationId: written.generation.id,
+        chargeIds: written.chargeIds,
+      })
+    }
+    return { job, outcome: decision, summary: summaryOf(written.generation) }
+  },
+  buildLog: ({ result }) =>
+    paymentsJobLog({
+      job: result.job,
+      labelKey: 'payments.audit.jobs.generateDue',
+      fallback: 'Generate the month’s charges automatically',
+      context: {
+        period: result.outcome.period,
+        generated: result.outcome.due,
+        reason: result.outcome.due ? null : result.outcome.reason,
+        ...(result.summary ? { generationId: result.summary.id, created: result.summary.created } : {}),
+      },
+    }),
+}
+
+registerCommand(generateDueCommand)

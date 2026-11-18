@@ -865,5 +865,20 @@
   "payments.assignPayer.error": "Nie udało się przypisać płatnika.",
   "payments.personCharges.title": "Należności",
   "payments.personCharges.empty": "Brak należności",
-  "payments.manual.amountInvalid": "Podaj kwotę od 0,01 do 100 000 zł."
+  "payments.manual.amountInvalid": "Podaj kwotę od 0,01 do 100 000 zł.",
+  "payments.audit.jobs.generateDue": "Automatyczne naliczenie opłat miesiąca",
+  "payments.audit.jobs.remindOverdue": "Przypomnienie płatnikom o zaległościach",
+  "payments.audit.jobs.reconcileCheckouts": "Uzgodnienie niedokończonych płatności online",
+  "payments.audit.jobs.closeOrderCampaigns": "Zamknięcie zamówień po terminie",
+  "payments.settings.groups.automation": "Automatyczne naliczanie i przypomnienia",
+  "payments.settings.fields.autoGenerateCharges": "Naliczaj opłaty miesiąca automatycznie",
+  "payments.settings.fields.autoGenerateCharges.help": "Co rano system sprawdza, czy składki bieżącego miesiąca są do naliczenia, i nalicza je raz, od dnia podanego niżej. Miesiąc cofnięty ręcznie nie zostanie naliczony ponownie.",
+  "payments.settings.fields.generationDay": "Dzień miesiąca",
+  "payments.settings.fields.generationDay.help": "Od tego dnia ({min}–{max}) naliczane są opłaty bieżącego miesiąca.",
+  "payments.settings.fields.overdueReminders": "Przypominaj płatnikom o zaległościach",
+  "payments.settings.fields.overdueReminders.help": "Dzień po terminie, potem co 7 dni, najwyżej 4 razy: jeden e-mail i powiadomienie w aplikacji na płatnika ze wszystkimi jego zaległościami. Opłaty za wynajem nie są przypominane.",
+  "payments.settings.validation.generationDay": "Podaj dzień od 1 do 28.",
+  "payments.email.chargeReminder.payerCode": "Twój kod płatnika do tytułu przelewu: {code}",
+  "payments.notifications.chargeOverdue.title": "Zaległe płatności",
+  "payments.notifications.chargeOverdue.body": "Część Twoich płatności jest po terminie. Otwórz płatności, aby je uregulować."
 }
