@@ -545,13 +545,31 @@ export async function bankPayers(request: APIRequestContext, token: string, quer
   )
 }
 
+export type BankImportItem = {
+  id: string
+  fileName: string
+  total: number
+  booked: number
+  suggested: number
+  unmatched: number
+  skipped: number
+  importedBy: { firstName: string; lastName: string } | null
+  deletable: boolean
+  updatedAt: string
+}
+
 export async function bankImports(request: APIRequestContext, token: string) {
-  return call<{ items: { id: string; total: number; booked: number; skipped: number }[]; total: number }>(
-    request,
-    'GET',
-    '/api/payments/bank-imports',
-    token,
-  )
+  return call<{ items: BankImportItem[]; total: number }>(request, 'GET', '/api/payments/bank-imports', token)
+}
+
+/** `DELETE /api/payments/bank-imports/{id}` with the import's lock token (payments parity DD-C13, #294). */
+export async function deleteBankImport(
+  request: APIRequestContext,
+  token: string,
+  id: string,
+  lock: string | null | undefined,
+) {
+  return call<CodedBody>(request, 'DELETE', `/api/payments/bank-imports/${id}`, token, { headers: lockHeaders(lock) })
 }
 
 /** The settings read of B-20 "Coaches and payments" (#302): the offered methods and the read-only connection facts. */

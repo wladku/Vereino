@@ -12,6 +12,7 @@ import { BankImport, BankTransaction, Charge, PayerRef, Payment } from '../data/
 import { OPEN_CHARGE_STATUSES, amountDueOf, paidTotal, remainingOf } from '../lib/charge-ledger'
 import {
   BANK_TRANSACTION_STATUSES,
+  deletableImports,
   type BankTransactionStatus,
   type OpenCharge,
   type PayerCandidate,
@@ -154,6 +155,34 @@ export async function livePaymentsOf(em: EntityManager, transfer: BankTransactio
   return originals.filter((row) => !reversed.has(row.id))
 }
 
+/**
+ * Which of `importIds` may be deleted (payments parity DD-C13, #294): those none of whose transfers any payment row
+ * names — the reversing entries of an undone transfer name it too, and soft-deleted rows count. Also returns the
+ * imports' transfer ids.
+ */
+export async function importDeletability(
+  em: EntityManager,
+  scope: PaymentsScope,
+  importIds: readonly string[],
+): Promise<{ deletable: Set<string>; transferIds: string[] }> {
+  if (importIds.length === 0) return { deletable: new Set(), transferIds: [] }
+  const transfers = await em.find(
+    BankTransaction,
+    { ...scope, importId: { $in: [...importIds] } },
+    { fields: ['id', 'importId'] },
+  )
+  const transferIds = transfers.map((row) => row.id)
+  const references = transferIds.length
+    ? await em.find(
+        Payment,
+        { ...scope, bankTransactionId: { $in: transferIds } },
+        { fields: ['id', 'bankTransactionId'] },
+      )
+    : []
+  const referenced = new Set(references.map((row) => row.bankTransactionId as string))
+  return { deletable: deletableImports(importIds, transfers, referenced), transferIds }
+}
+
 // --- Route reads ---
 
 type PersonName = { firstName: string; lastName: string }
@@ -276,10 +305,12 @@ export type BankImportItem = {
   unmatched: number
   skipped: number
   importedBy: PersonName | null
+  deletable: boolean
   createdAt: string
+  updatedAt: string
 }
 
-/** The club's imports, newest first, with who imported each. */
+/** The club's imports, newest first, with who imported each and whether it may be deleted (DD-C13). */
 export async function listImports(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -292,11 +323,18 @@ export async function listImports(
     limit: query.pageSize,
     offset: (query.page - 1) * query.pageSize,
   })
-  const persons = await findPersons(
-    container,
-    scope,
-    rows.flatMap((row) => (row.importedByPersonId ? [row.importedByPersonId] : [])),
-  )
+  const [persons, { deletable }] = await Promise.all([
+    findPersons(
+      container,
+      scope,
+      rows.flatMap((row) => (row.importedByPersonId ? [row.importedByPersonId] : [])),
+    ),
+    importDeletability(
+      em,
+      scope,
+      rows.map((row) => row.id),
+    ),
+  ])
   return {
     total,
     items: rows.map((row) => {
@@ -311,7 +349,9 @@ export async function listImports(
         unmatched: row.unmatched,
         skipped: row.skipped,
         importedBy: person ? { firstName: person.firstName, lastName: person.lastName } : null,
+        deletable: deletable.has(row.id),
         createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
       }
     }),
   }

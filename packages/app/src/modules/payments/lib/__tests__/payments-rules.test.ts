@@ -100,6 +100,7 @@ describe('payments vocabularies', () => {
       bank_statement_too_many: 413,
       bank_transaction_status_changed: 409,
       bank_payer_no_open_charges: 422,
+      bank_import_has_bookings: 409,
       charge_out_of_scope: 403,
       coach_fee_cash_disabled: 403,
       charge_payer_missing: 422,
