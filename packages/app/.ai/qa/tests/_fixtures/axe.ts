@@ -101,7 +101,44 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   )
-  expect(overflow, `page wider than 320 px by ${String(overflow)} px`).toBeLessThanOrEqual(0)
+  // On failure, name the innermost elements that stick out past the viewport (outside any scroll container), so a CI
+  // log shows the culprit without a local browser (#293).
+  const offenders =
+    overflow > 0
+      ? await page.evaluate(() => {
+          const width = document.documentElement.clientWidth
+          const clipped = (element: Element): boolean => {
+            for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+              const style = getComputedStyle(parent)
+              if (style.overflowX !== 'visible' && parent !== document.documentElement && parent !== document.body) {
+                return true
+              }
+            }
+            return false
+          }
+          const wide = [...document.querySelectorAll('body *')].filter(
+            (element) => element.getBoundingClientRect().right > width + 0.5 && !clipped(element),
+          )
+          return wide
+            .filter((element) => !wide.some((other) => other !== element && element.contains(other)))
+            .slice(0, 5)
+            .map((element) => {
+              const testId = element.getAttribute('data-testid')
+              const slot = element.getAttribute('data-slot')
+              const name = [
+                element.tagName.toLowerCase(),
+                testId ? `[data-testid="${testId}"]` : '',
+                slot ? `[data-slot="${slot}"]` : '',
+              ].join('')
+              const right = Math.round(element.getBoundingClientRect().right)
+              return `${name} right=${String(right)} "${element.textContent.trim().slice(0, 40)}"`
+            })
+        })
+      : []
+  expect(
+    overflow,
+    `page wider than 320 px by ${String(overflow)} px${offenders.length ? `: ${offenders.join('; ')}` : ''}`,
+  ).toBeLessThanOrEqual(0)
 }
 
 // Switches the colour scheme of a rendered page that cannot be reloaded (a filled form, its error state) and waits until

@@ -13,7 +13,8 @@
 4. Tests: `TEST-C06-kit-campaign-record.spec.ts` (TEST-C06, TEST-C04 for B-32); E07-S08's exact KPI assertion gains `notHandedOver`.
 5. Independent review (a subagent, read-only) of the diff: no correctness or security defect. Fixed: Polish plural forms of "kits not marked as handed over"; the row buttons' accessible names now contain their visible label ("Gotówka za strój: …", WCAG 2.5.3); the unpaid hand-over warning omits the due-date sentence when the charge has no date. Not changed: "Hand over" needs `payments.groups.collect`, which every role that opens B-32 (`payments.orders.manage`) holds today; a custom role with only the latter would get a 403.
 6. CI round 1 (run 44392929919): shards 1 and 2 passed; shard 3 failed on two tests. E07-S08 still expected the old tile text `/1 (of|z) 3/` (received "1 / 3"); fixed. TEST-C06's axe scan reported one critical `aria-allowed-attr` node on B-32 in en light and dark: the platform `StepIndicator` renders `<ol aria-orientation=…>`, and `aria-orientation` is not allowed on a list. Added a `PLATFORM_BASELINE` entry matched by `data-slot="step-indicator"`, so the rule still fails on Vereino markup. The steps after the scan ran first in that CI round.
-7. Spec: status line names phase 3 (#293), AC-C05 ticked, changelog file `2026-11-18-issue-293-phase-3.md`. Lesson `cezar-host-integration-runs-without-browser`.
+7. CI round 2 (run 44400190248): axe now clean; one failure left — TEST-C06's `expectNoPageOverflow` at 320 px: `page wider than 320 px by 7 px` (pl locale; E07-S08 at 320 px in en passes). The failure screenshot shows only the top of the page and this host cannot render it, so `expectNoPageOverflow` now names the innermost elements that stick out past the viewport outside any scroll container.
+8. Spec: status line names phase 3 (#293), AC-C05 ticked, changelog file `2026-11-18-issue-293-phase-3.md`. Lesson `cezar-host-integration-runs-without-browser`.
 
 ## Decisions
 
