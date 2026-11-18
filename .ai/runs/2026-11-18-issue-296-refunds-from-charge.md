@@ -53,4 +53,4 @@
 - **Conflict:** only the `**Status**` line of `.ai/specs/2026-11-14-vereino-parity-payments.md`; resolved by keeping both entries (phase 6 in #296 and phase 4 in #294). Fixtures, README and i18n catalogs auto-merged; both catalogs parse.
 - **Semantic check:** #294's TEST-C05 / TEST-042 assert nothing on the charges list or refunds; the only caller of the changed `visiblePerspectives` signature already uses the new shape.
 - **Commands:** `yarn verify`: all 17 steps passed. Integration is left to CI (no container runtime for this user).
-- **History:** merge commit on a detached HEAD at the PR head, pushed with `git push origin HEAD:<branch>`; no force-push.
+- **History:** a concurrent session pushed the identical merge (099423a5, empty tree diff against this run's d8f6ceb8) first; this run kept that commit and pushed only this log entry. No force-push.
