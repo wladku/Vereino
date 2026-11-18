@@ -325,6 +325,16 @@ export const maintenanceDueTemplate = defineEmailTemplate<MaintenanceDueParams>(
   link: () => '/backend/facilities/maintenance',
 })
 
+/** The maintainers' copy of the reminder (REQ-R15, J-R07; #283): it links to their phone page. */
+export const MAINTENANCE_DUE_PLANNER_TEMPLATE = 'facilities.maintenance_due_planner'
+
+export const maintenanceDuePlannerTemplate = defineEmailTemplate<MaintenanceDueParams>({
+  ...maintenanceDueTemplate,
+  id: MAINTENANCE_DUE_PLANNER_TEMPLATE,
+  notificationType: 'facilities.maintenance_due_planner',
+  link: () => '/club/places/maintenance',
+})
+
 // --- The entry ban request (DD-R12, J-R08; #282) ---
 
 export const BAN_REQUEST_TEMPLATE = 'facilities.entry_ban_requested'

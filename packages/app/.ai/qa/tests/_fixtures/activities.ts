@@ -293,6 +293,7 @@ export type NotificationItem = {
   type: string
   sourceEntityType: string | null
   sourceEntityId: string | null
+  linkHref?: string | null
   titleVariables?: Record<string, string> | null
   bodyVariables?: Record<string, string> | null
 }

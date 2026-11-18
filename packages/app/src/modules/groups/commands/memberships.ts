@@ -1,10 +1,11 @@
-// `groups.memberships.create|update|end` (club spec glossary *Membership*; TEST-030; #30 criteria 1–2): a person's
-// membership of a group as `participant`, `coach` or `assistant` for a period. A coordinator writes the memberships of
-// the groups of their sections, the club administrator every membership. A membership is ended through `valid_to`, never
-// deleted, so the roster keeps its history. Every write takes the group's row lock first and then refuses an
-// overlapping live membership of the same person, group and role (409 `membership_overlap`), so two concurrent writes
-// cannot both pass; the partial unique index on open-ended memberships backs the check. The person is a live `people`
-// person of the club (422 `groups_reference_invalid`). Every change emits `groups.membership.*`, on which the
+// `groups.memberships.create|update|end|delete` (club spec glossary *Membership*; TEST-030; #30 criteria 1–2; parity
+// spec REQ-A03, #267): a person's membership of a group as `participant`, `coach` or `assistant` for a period. A
+// coordinator writes the memberships of the groups of their sections, the club administrator every membership. A
+// membership is ended through `valid_to`, so the roster keeps its history; only a mistake is removed (a soft delete):
+// one that has not started, or a started one `activities` reports as never used (409 `membership_in_use`). Every
+// write takes the group's row lock first and then refuses an overlapping live membership of the same person, group and
+// role (409 `membership_overlap`), so two concurrent writes cannot both pass; the partial unique index on open-ended
+// memberships backs the check. The person is a live `people` person of the club (422 `groups_reference_invalid`). Every change emits `groups.membership.*`, on which the
 // `groups:sync-member-roles` subscriber recomputes the person's `auth` roles (an adult participant is a payer).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -14,10 +15,16 @@ import { isInvertedPeriod, type Scope } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { groupsErrors } from '../api/errors'
 import { type Group, GroupMembership } from '../data/entities'
-import { membershipCreateSchema, membershipEndSchema, membershipUpdateSchema } from '../data/validators'
-import { firstOverlapping, type MembershipRole } from '../lib/groups-rules'
+import {
+  membershipCreateSchema,
+  membershipDeleteSchema,
+  membershipEndSchema,
+  membershipUpdateSchema,
+} from '../data/validators'
+import { endRefused, firstOverlapping, mayRemoveMembership, type MembershipRole } from '../lib/groups-rules'
 import { clubToday } from '../services/club-clock'
 import { findPersons } from '../services/directory'
+import { groupUsageContract } from '../services/group-usage'
 import {
   GROUP_WRITE_KINDS,
   emitGroupsSideEffects,
@@ -73,10 +80,15 @@ async function loadMembershipLocked(
   ctx: CommandRuntimeContext,
   id: string,
   lock: TargetLock,
+  includeDeleted = false,
 ): Promise<LockedMembership | null> {
   const tenantId = trustedTenantId(ctx)
   if (!tenantId) return null
-  const membership = await em.findOne(GroupMembership, { id, tenantId, deletedAt: null }, lock)
+  const membership = await em.findOne(
+    GroupMembership,
+    { id, tenantId, ...(includeDeleted ? {} : { deletedAt: null }) },
+    lock,
+  )
   if (!membership) return null
   const group = await lockGroup(
     em,
@@ -89,12 +101,13 @@ async function loadMembershipLocked(
 function existingSpec<TSchema extends z.ZodType<{ id: string }>>(
   input: TSchema,
   ctx: CommandRuntimeContext,
+  includeDeleted = false,
 ): AuthorizeScopedSpec<TSchema, LockedMembership> {
   return {
     input,
     resourceKind: MEMBERSHIP_RESOURCE_KIND,
     allowedKinds: GROUP_WRITE_KINDS,
-    loadTarget: (parsed, em, lock) => loadMembershipLocked(em, ctx, parsed.id, lock),
+    loadTarget: (parsed, em, lock) => loadMembershipLocked(em, ctx, parsed.id, lock, includeDeleted),
     resolveTarget: (_parsed, entity) => {
       const loaded = entity as LockedMembership
       return membershipTarget(loaded.membership.id, loaded.group)
@@ -105,10 +118,12 @@ function existingSpec<TSchema extends z.ZodType<{ id: string }>>(
 async function authorizeMembershipReplay(
   ctx: CommandRuntimeContext,
   id: string | null | undefined,
+  includeDeleted = false,
 ): Promise<{ membership: GroupMembership; scope: Scope }> {
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] membership replay needs the replay transaction and the id')
-  const authorized = await authorizeScoped(existingSpec(z.object({ id: z.uuid() }), ctx), { id }, ctx, em, {
+  const spec = existingSpec(z.object({ id: z.uuid() }), ctx, includeDeleted)
+  const authorized = await authorizeScoped(spec, { id }, ctx, em, {
     mode: 'replay',
   })
   return { membership: (authorized.entity as LockedMembership).membership, scope: authorized.scope }
@@ -165,10 +180,17 @@ async function buildMembershipLog(result: MembershipCommandResult, labelKey: str
   })
 }
 
-/** Undo of an update or an end: restores the previous role and period, refusing a restore that would overlap. */
-async function restoreMembership(ctx: CommandRuntimeContext, before: MembershipSnapshot | null | undefined) {
+/**
+ * Undo of an update, an end or a remove: restores the previous role and period (and a removed row), refusing a restore
+ * that would overlap a membership written since.
+ */
+async function restoreMembership(
+  ctx: CommandRuntimeContext,
+  before: MembershipSnapshot | null | undefined,
+  removed = false,
+) {
   if (!before?.id) throw new Error('[internal] missing membership snapshot for undo')
-  const { membership: row } = await authorizeMembershipReplay(ctx, before.id)
+  const { membership: row } = await authorizeMembershipReplay(ctx, before.id, removed)
   const em = ctx.transactionalEm as EntityManager
   const key = {
     tenantId: row.tenantId,
@@ -181,9 +203,10 @@ async function restoreMembership(ctx: CommandRuntimeContext, before: MembershipS
   row.role = before.role
   row.validFrom = before.validFrom
   row.validTo = before.validTo
+  row.deletedAt = null
   row.updatedAt = new Date()
   await flushMembership(em)
-  await emitGroupsSideEffects(ctx, row, 'updated', membershipEvents, true)
+  await emitGroupsSideEffects(ctx, row, removed ? 'created' : 'updated', membershipEvents, true)
 }
 
 const createMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCommandResult> = {
@@ -295,12 +318,28 @@ const endMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCo
       const authorized = await authorizeScoped(existingSpec(membershipEndSchema, ctx), rawInput, ctx, em)
       const row = (authorized.entity as LockedMembership).membership
       const before = membershipSnapshot(row)
-      const validTo =
-        authorized.parsed.validTo ??
-        (await clubToday(ctx.container, { tenantId: authorized.tenantId, organizationId: authorized.organizationId }))
-      if (isInvertedPeriod(row.validFrom, validTo)) await foundationErrors.throw('validity_inverted')
+      const today = await clubToday(ctx.container, {
+        tenantId: authorized.tenantId,
+        organizationId: authorized.organizationId,
+      })
+      const validTo = authorized.parsed.validTo ?? today
+      // REQ-A03: ending before the first day, or ending a membership that has not started, is a coded 422; such a
+      // membership is edited or removed instead.
+      if (endRefused(row, validTo, today)) {
+        await groupsErrors.throw('membership_not_started', { validFrom: row.validFrom })
+      }
+      // A chosen last day may lie past the current one; like every other write it must not overlap another period.
+      const key = {
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        groupId: row.groupId,
+        personId: row.personId,
+        role: row.role,
+      }
+      await assertNoOverlap(em, key, { validFrom: row.validFrom, validTo }, row.id)
       row.validTo = validTo
       row.updatedAt = new Date()
+      await flushMembership(em)
       return { entity: row, actingRole: authorized.actingRole, before }
     })
     await emitGroupsSideEffects(ctx, result.entity, 'updated', membershipEvents)
@@ -315,6 +354,77 @@ const endMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCo
   },
 }
 
+/**
+ * Whether a started membership was used, from `activities.groupUsage` (REQ-A03): null without the contract (Remove is
+ * then allowed only before the start); a failing contract answers 503 `group_usage_failed`.
+ */
+async function membershipUsed(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: GroupMembership,
+): Promise<boolean | null> {
+  const usage = groupUsageContract(ctx.container)
+  if (!usage) return null
+  try {
+    return await usage.membershipUsed(em, {
+      tenantId: row.tenantId,
+      organizationId: row.organizationId,
+      groupId: row.groupId,
+      personId: row.personId,
+      from: row.validFrom,
+      to: row.validTo ?? null,
+    })
+  } catch {
+    return groupsErrors.throw('group_usage_failed')
+  }
+}
+
+/**
+ * Removes a membership entered by mistake (REQ-A03): a soft delete of one that has not started, or of a started one
+ * that was never used (else 409 `membership_in_use`; the caller ends it instead). Issued charges stay (V-A01).
+ */
+const deleteMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCommandResult> = {
+  id: 'groups.memberships.delete',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'groups.memberships.delete', async (em) => {
+      const authorized = await authorizeScoped(existingSpec(membershipDeleteSchema, ctx), rawInput, ctx, em)
+      const row = (authorized.entity as LockedMembership).membership
+      const today = await clubToday(ctx.container, {
+        tenantId: authorized.tenantId,
+        organizationId: authorized.organizationId,
+      })
+      const used = row.validFrom > today ? null : await membershipUsed(ctx, em, row)
+      if (!mayRemoveMembership(row, today, used)) {
+        await groupsErrors.throw('membership_in_use', { membershipId: row.id })
+      }
+      const before = membershipSnapshot(row)
+      row.deletedAt = new Date()
+      row.updatedAt = new Date()
+      return { entity: row, actingRole: authorized.actingRole, before }
+    })
+    await emitGroupsSideEffects(ctx, result.entity, 'deleted', membershipEvents)
+    return result
+  },
+  buildLog: ({ result }) =>
+    groupsLog({
+      result,
+      resourceKind: MEMBERSHIP_RESOURCE_KIND,
+      labelKey: 'groups.audit.memberships.delete',
+      fallback: 'Remove a group membership',
+      after: null,
+      parent: { resourceKind: 'groups.group', resourceId: result.entity.groupId },
+    }),
+  async authorizeReplay({ ctx, logEntry }) {
+    await authorizeMembershipReplay(ctx, logEntry.resourceId, true)
+  },
+  async undo({ ctx, logEntry }) {
+    await restoreMembership(ctx, logEntry.snapshotBefore as MembershipSnapshot | null | undefined, true)
+  },
+}
+
 registerCommand(createMembershipCommand)
 registerCommand(updateMembershipCommand)
 registerCommand(endMembershipCommand)
+registerCommand(deleteMembershipCommand)

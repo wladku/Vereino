@@ -196,3 +196,41 @@ export function dateReminderKey(taskId: string, dueDate: CalendarDate, stage: Da
 export function usageReminderKey(taskId: string, usageCountedFrom: Date): string {
   return `facilities:maint-usage:${taskId}:${usageCountedFrom.toISOString()}`
 }
+
+/**
+ * The key of a reminder's copy for the place maintainers, which links to their phone page (facilities parity spec
+ * REQ-R15; #283): the administrators' copy keeps the reminder's own key, so a reminder sent before stays sent.
+ */
+export function plannerReminderKey(reminderKey: string): string {
+  return `${reminderKey}:planner`
+}
+
+/** The sections of the maintainer's task list (`/club/places/maintenance`; REQ-R15, J-R07). */
+export const MAINTENANCE_LIST_GROUPS = ['due', 'planned', 'done'] as const
+export type MaintenanceListGroup = (typeof MAINTENANCE_LIST_GROUPS)[number]
+
+/**
+ * Where a task stands on the maintainer's list: a done task under "Done"; a planned task under "Due" once a reminder
+ * would go out for it — its due date within 14 days or passed (`dateReminderStage`), its hours of use at the
+ * threshold, or its window started — and under "Planned" otherwise; a cancelled task nowhere (null).
+ */
+export function maintenanceListGroup(
+  task: {
+    status: string
+    dueDate: CalendarDate | null
+    startsAt: string | null
+    scheduleType: string
+    usageHoursThreshold: number | null
+    usageHours: number | null
+  },
+  today: CalendarDate,
+  now: Date,
+): MaintenanceListGroup | null {
+  if (task.status === 'done') return 'done'
+  if (task.status !== 'planned') return null
+  if (task.dueDate && dateReminderStage(task.dueDate, today)) return 'due'
+  if (task.startsAt && Date.parse(task.startsAt) <= now.getTime()) return 'due'
+  const threshold = task.usageHoursThreshold
+  if (task.scheduleType === 'usage_hours' && threshold !== null && (task.usageHours ?? 0) >= threshold) return 'due'
+  return 'planned'
+}
