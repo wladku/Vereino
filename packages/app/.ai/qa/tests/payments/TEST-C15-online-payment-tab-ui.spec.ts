@@ -11,7 +11,13 @@ import { uiText } from '../_fixtures/ui-text'
 // BLIK, and shows the fee mode read-only with a link to club settings B-02.
 test.describe.configure({ timeout: 300_000 })
 
-const methodBox = (page: Page, method: string) => page.locator(`[data-crud-field-id="method_${method}"] input`).first()
+// The visible Radix checkbox button, not its hidden native input (the card above it intercepts that click).
+const methodBox = (page: Page, method: string) =>
+  page
+    .locator(
+      `[data-crud-field-id="method_${method}"] button[role="checkbox"], [data-crud-field-id="method_${method}"] input[type="checkbox"]`,
+    )
+    .first()
 
 test('TEST-C15 the "Online payment" group shows the connection, saves the methods and links to the fee setting', async ({
   page,

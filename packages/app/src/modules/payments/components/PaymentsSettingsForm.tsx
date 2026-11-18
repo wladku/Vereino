@@ -44,31 +44,34 @@ const methodField = (method: string) => `method_${method}`
 
 function OnlinePaymentFacts({ settings }: { settings: SettingsResponse }) {
   const t = useT()
+  // A `<dl>` holds only `dt`/`dd` groups (axe `definition-list`), so the hint sits after it.
   return (
-    <dl className="space-y-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <dt className="text-muted-foreground">{t('payments.settings.online.connection')}</dt>
-        <dd data-testid="payments-online-connection" data-connection={settings.onlineConnection}>
-          <StatusBadge variant={CONNECTION_VARIANTS[settings.onlineConnection]} dot>
-            {t(`payments.settings.online.connection.${settings.onlineConnection}`)}
-          </StatusBadge>
-        </dd>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <dt className="text-muted-foreground">{t('payments.settings.online.feeMode')}</dt>
-        <dd data-testid="payments-online-fee-mode">
-          {settings.onlineFeeMode
-            ? t(`payments.settings.online.feeMode.${settings.onlineFeeMode}`)
-            : t('payments.settings.online.feeMode.unknown')}
-        </dd>
-        <dd>
-          <Link className="text-primary underline underline-offset-2" href={CLUB_SETTINGS_HREF}>
-            {t('payments.settings.online.feeMode.link')}
-          </Link>
-        </dd>
-      </div>
+    <div className="space-y-3 text-sm">
+      <dl className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <dt className="text-muted-foreground">{t('payments.settings.online.connection')}</dt>
+          <dd data-testid="payments-online-connection" data-connection={settings.onlineConnection}>
+            <StatusBadge variant={CONNECTION_VARIANTS[settings.onlineConnection]} dot>
+              {t(`payments.settings.online.connection.${settings.onlineConnection}`)}
+            </StatusBadge>
+          </dd>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <dt className="text-muted-foreground">{t('payments.settings.online.feeMode')}</dt>
+          <dd data-testid="payments-online-fee-mode">
+            {settings.onlineFeeMode
+              ? t(`payments.settings.online.feeMode.${settings.onlineFeeMode}`)
+              : t('payments.settings.online.feeMode.unknown')}
+          </dd>
+          <dd>
+            <Link className="text-primary underline underline-offset-2" href={CLUB_SETTINGS_HREF}>
+              {t('payments.settings.online.feeMode.link')}
+            </Link>
+          </dd>
+        </div>
+      </dl>
       <p className="text-muted-foreground text-xs">{t('payments.settings.online.keysHint')}</p>
-    </dl>
+    </div>
   )
 }
 
