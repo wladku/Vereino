@@ -669,7 +669,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       // From the coach calendar to the attendance list of the started training.
       await openCoachCalendar(page, tuesday)
       const item = page.getByTestId('calendar-item').filter({ hasText: TRAINING })
-      await item.getByRole('link').first().click()
+      await item.getByRole('link', { name: uiText('activities.club.session.attendanceList', { exact: true }) }).click()
       await expect(page).toHaveURL(new RegExp(`${attendanceUrl}$`))
       await expect(page.getByTestId('club-attendance-title')).toContainText(TRAINING)
       await expect(page.getByTestId('club-attendance-summary')).toHaveText(

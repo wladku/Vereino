@@ -163,6 +163,11 @@ export class Activity extends ScopedEntityBase {
   name: 'activities_occurrences_venue_address_with_name',
   expression: 'venue_address IS NULL OR venue_name IS NOT NULL',
 })
+@Check({
+  name: 'activities_occurrences_score_pair',
+  expression:
+    '(score_home IS NULL) = (score_away IS NULL) AND (score_home IS NULL OR score_home BETWEEN 0 AND 99) AND (score_away IS NULL OR score_away BETWEEN 0 AND 99)',
+})
 @Index({
   name: 'activities_occurrences_slot_unique',
   expression:
@@ -189,6 +194,9 @@ export class Occurrence extends ScopedEntityBase {
     | 'confirmByMinutesBefore'
     | 'venueName'
     | 'venueAddress'
+    | 'scoreHome'
+    | 'scoreAway'
+    | 'resultNote'
 
   @Property({ name: 'activity_id', type: 'uuid' })
   activityId!: string
@@ -248,6 +256,19 @@ export class Occurrence extends ScopedEntityBase {
    */
   @Property({ name: 'confirm_by_minutes_before', type: 'integer', nullable: true })
   confirmByMinutesBefore?: number | null
+
+  /**
+   * The score of a match or sparring (REQ-A15, Q-A21; migration C): the club's team first ("home") unless the activity
+   * is away; both or neither, 0–99 (check `activities_occurrences_score_pair`), with an optional note.
+   */
+  @Property({ name: 'score_home', type: 'smallint', nullable: true })
+  scoreHome?: number | null
+
+  @Property({ name: 'score_away', type: 'smallint', nullable: true })
+  scoreAway?: number | null
+
+  @Property({ name: 'result_note', type: 'text', nullable: true })
+  resultNote?: string | null
 }
 
 /**

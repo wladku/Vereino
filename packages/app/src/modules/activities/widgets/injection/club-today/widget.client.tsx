@@ -24,6 +24,7 @@ import { ButtonGroup } from '@open-mercato/ui/primitives/button-group'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
+import { SessionCardFacts } from '../../../components/club/SessionCardFacts'
 import { addCalendarDays, calendarDateInZone } from '@vereino/core'
 import {
   badgeVariant,
@@ -189,6 +190,10 @@ function CoachTile({
                 <span className="text-muted-foreground text-xs">{entry.occurrence.placeName}</span>
               ) : null}
             </Link>
+            <SessionCardFacts
+              occurrence={entry.occurrence}
+              sectionIds={entries.map((item) => item.occurrence.sectionId)}
+            />
             <div className="flex flex-wrap items-center gap-2 px-2">
               {entry.occurrence.status === 'cancelled' ? (
                 <StatusBadge variant="error">{t('activities.occurrences.status.cancelled')}</StatusBadge>
@@ -434,6 +439,8 @@ export default function ClubTodayTilesWidget({
                   <span className="text-muted-foreground text-xs">{occurrence.placeName}</span>
                 ) : null}
               </Link>
+              {/* REQ-A13 (M-02): the type, the section's dot, the map of an away venue, the substitute. */}
+              <SessionCardFacts occurrence={occurrence} sectionIds={soon.map((item) => item.occurrence.sectionId)} />
               {/* REQ-A07 (M-02): "Confirm by …", then "Deadline passed …" with the hint to write to the coach. */}
               {deadlineNotes(entry, scope.as, t, (at) => formatDeadline(at, locale, timeZone)).map((note) => (
                 <p

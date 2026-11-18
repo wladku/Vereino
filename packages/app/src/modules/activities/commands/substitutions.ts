@@ -12,6 +12,12 @@
 // - each writes one append-only entry (`activities_substitution_entries`: previous and new coach, kind, encrypted
 //   reason, who decided and in which role). Neither is undoable: the history is never rewritten, and a correction is
 //   a new assignment (giving the session back to its own coach records `coach_restored`).
+// - E10-S07 (#272; parity spec REQ-A14, J-A04 step 4): `activities.occurrences.take_over` — a coach or assistant of the
+//   session's group (the `coach` grant, whose `coached_group_ids` are the active coach and assistant memberships) takes
+//   a planned session that has no coach and has not ended: 409 `occurrence_has_coach` when someone was faster, 409
+//   `occurrence_already_ended` after its end, 409 `occurrence_coach_conflict` when the caller is busy then, 403 outside
+//   the group or without a coach or assistant membership on the session's date. It records the entry and notifies
+//   as an assignment does.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { z } from 'zod'
@@ -20,9 +26,16 @@ import { authorizeScoped, foundationErrors, scopeDenialCode, type TargetLock } f
 import { activitiesErrors } from '../api/errors'
 import { Occurrence, SubstitutionEntry } from '../data/entities'
 import { lockSchedule } from '../data/queries'
-import { occurrenceAbsenceSchema, occurrenceAssignCoachSchema } from '../data/validators'
-import { absenceProblem, assignmentKind, reasonOrNull, type SubstitutionKind } from '../lib/substitutions'
-import { coachCandidateIds } from '../services/directory'
+import { occurrenceAbsenceSchema, occurrenceAssignCoachSchema, occurrenceTakeOverSchema } from '../data/validators'
+import {
+  absenceProblem,
+  assignmentKind,
+  leadsGroup,
+  reasonOrNull,
+  takeOverProblem,
+  type SubstitutionKind,
+} from '../lib/substitutions'
+import { coachCandidateIds, rosterOn } from '../services/directory'
 import { busySessionsOf, substitutionStepsOf } from '../services/substitutions'
 import { OCCURRENCE_RESOURCE_KIND, occurrenceSnapshot, type OccurrenceSnapshot } from './occurrences'
 import {
@@ -38,6 +51,9 @@ import {
 
 /** Only the session's assigned coach reports their own absence. */
 export const ABSENCE_KINDS: readonly GrantKind[] = ['self']
+
+/** Only a coach or assistant of the session's group takes it over (REQ-A14); a coordinator assigns instead. */
+export const TAKE_OVER_KINDS: readonly GrantKind[] = ['coach']
 
 export type SubstitutionCommandResult = ActivitiesCommandResult<Occurrence, OccurrenceSnapshot> & {
   entryId: string
@@ -86,6 +102,39 @@ async function appendEntry(
   em.persist(created)
   await em.flush()
   return created
+}
+
+/** 409 `occurrence_coach_conflict` with the overlapping sessions when the coach is busy at the session's time. */
+async function assertCoachFree(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  row: Occurrence,
+  coachPersonId: string,
+): Promise<void> {
+  // One schedule writer at a time, so two assignments cannot both find the coach free.
+  await lockSchedule(em, row.organizationId)
+  const busy = await busySessionsOf(em, scope, row, [coachPersonId])
+  if (busy.length === 0) return
+  await activitiesErrors.throw('occurrence_coach_conflict', {
+    conflicts: [
+      {
+        key: row.id,
+        startAt: row.startAt.toISOString(),
+        endAt: row.endAt.toISOString(),
+        kind: 'coach',
+        sessions: busy.map((session) => ({
+          id: session.id,
+          activityId: session.activityId,
+          activityName: session.activityName,
+          groupId: session.groupId,
+          placeId: session.placeId,
+          startAt: session.startAt.toISOString(),
+          endAt: session.endAt.toISOString(),
+        })),
+        blocks: [],
+      },
+    ],
+  })
 }
 
 function substitutionLog(labelKey: string, fallback: string) {
@@ -207,31 +256,7 @@ const assignCoachCommand: CommandHandler<Record<string, unknown>, SubstitutionCo
       if (!(await coachCandidateIds(ctx.container, scope, row.occurrenceDate, em)).includes(coachPersonId)) {
         await activitiesErrors.throw('activities_reference_invalid', { field: 'coachPersonId' })
       }
-      // One schedule writer at a time, so two assignments cannot both find the coach free.
-      await lockSchedule(em, row.organizationId)
-      const busy = await busySessionsOf(em, scope, row, [coachPersonId])
-      if (busy.length > 0) {
-        await activitiesErrors.throw('occurrence_coach_conflict', {
-          conflicts: [
-            {
-              key: row.id,
-              startAt: row.startAt.toISOString(),
-              endAt: row.endAt.toISOString(),
-              kind: 'coach',
-              sessions: busy.map((session) => ({
-                id: session.id,
-                activityId: session.activityId,
-                activityName: session.activityName,
-                groupId: session.groupId,
-                placeId: session.placeId,
-                startAt: session.startAt.toISOString(),
-                endAt: session.endAt.toISOString(),
-              })),
-              blocks: [],
-            },
-          ],
-        })
-      }
+      await assertCoachFree(em, scope, row, coachPersonId)
       const steps = (await substitutionStepsOf(em, scope, [row.id])).get(row.id) ?? []
       const kind = assignmentKind(steps, previousCoachPersonId, coachPersonId)
       const before = occurrenceSnapshot(row)
@@ -261,5 +286,69 @@ const assignCoachCommand: CommandHandler<Record<string, unknown>, SubstitutionCo
   buildLog: substitutionLog('activities.audit.occurrences.assignCoach', 'Assign a session coach'),
 }
 
+const takeOverCommand: CommandHandler<Record<string, unknown>, SubstitutionCommandResult> = {
+  id: 'activities.occurrences.take_over',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const load = loadOccurrence(ctx)
+    const result = await inWriteTransaction(ctx, 'activities.occurrences.take_over', async (em) => {
+      // The row is locked for the write, so of two people taking over at once the second waits and finds a coach (409
+      // `occurrence_has_coach`). No version is compared: the only state the caller acts on is "no coach", re-read here.
+      const authorized = await authorizeScoped(
+        {
+          input: occurrenceTakeOverSchema,
+          resourceKind: OCCURRENCE_RESOURCE_KIND,
+          allowedKinds: TAKE_OVER_KINDS,
+          lock: 'none',
+          loadTarget: (parsed: z.output<typeof occurrenceTakeOverSchema>, txEm, lock) => load(txEm, parsed.id, lock),
+          resolveTarget: (_parsed, entity) => scheduleTarget(entity as Occurrence, (entity as Occurrence).id),
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const row = authorized.entity as Occurrence
+      const coachPersonId = selfPersonId(authorized.scope)
+      if (!coachPersonId) return foundationErrors.throw(scopeDenialCode(authorized.scope))
+      const problem = takeOverProblem(row, new Date())
+      if (problem === 'not_planned') await activitiesErrors.throw('occurrence_not_planned', { status: row.status })
+      if (problem === 'ended') await activitiesErrors.throw('occurrence_already_ended')
+      if (problem === 'has_coach') await activitiesErrors.throw('occurrence_has_coach')
+      const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      // The grant reflects today's memberships; the caller must also lead the group on the session's date.
+      if (!leadsGroup(await rosterOn(ctx.container, scope, row.groupId, row.occurrenceDate, em), coachPersonId)) {
+        return foundationErrors.throw('scope_denied')
+      }
+      await assertCoachFree(em, scope, row, coachPersonId)
+      const steps = (await substitutionStepsOf(em, scope, [row.id])).get(row.id) ?? []
+      const kind = assignmentKind(steps, null, coachPersonId)
+      const before = occurrenceSnapshot(row)
+      row.coachPersonId = coachPersonId
+      row.updatedAt = new Date()
+      const entry = await appendEntry(em, row, {
+        kind,
+        previousCoachPersonId: null,
+        newCoachPersonId: coachPersonId,
+        reason: null,
+        decidedByPersonId: coachPersonId,
+        actingRole: authorized.actingRole,
+      })
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        entryId: entry.id,
+        kind,
+        previousCoachPersonId: null,
+        newCoachPersonId: coachPersonId,
+      }
+    })
+    await emitCoachEvent('activities.occurrence.coach_changed', result, ctx)
+    return result
+  },
+  buildLog: substitutionLog('activities.audit.occurrences.takeOver', 'Take over a session'),
+}
+
 registerCommand(reportAbsenceCommand)
 registerCommand(assignCoachCommand)
+registerCommand(takeOverCommand)

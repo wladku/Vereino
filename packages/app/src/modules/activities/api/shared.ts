@@ -76,6 +76,31 @@ function venueOfRow(row: Row): { name: string; address: string } | null {
   return name ? { name, address: text(row.venue_address) ?? '' } : null
 }
 
+/** A session's substitution history, oldest first (E06-S13); entries are never edited. */
+export const substitutionHistorySchema = z
+  .array(
+    z.object({
+      id: z.uuid(),
+      kind: z.enum(['absence_reported', 'substitute_assigned', 'coach_restored']),
+      previousCoachPersonId: z.string().nullable(),
+      previousCoachName: z.string().nullable(),
+      newCoachPersonId: z.string().nullable(),
+      newCoachName: z.string().nullable(),
+      reason: z.string().nullable(),
+      decidedByPersonId: z.uuid(),
+      decidedByName: z.string().nullable(),
+      actingRole: z.string(),
+      createdAt: z.string(),
+    }),
+  )
+  .describe('The substitution history, oldest first (E06-S13); entries are never edited.')
+
+/** The score of a match or sparring (REQ-A15): "home" is the club's team unless the activity is away. */
+export const scoreSchema = z
+  .object({ home: z.number().int(), away: z.number().int(), note: z.string().nullable() })
+  .nullable()
+  .describe('The recorded score of a match or sparring (REQ-A15), or null.')
+
 /** The response shape of a typed venue (REQ-A08, DD-A03). */
 export const venueResponseSchema = z
   .object({ name: z.string(), address: z.string() })
@@ -479,6 +504,11 @@ export const calendarEntrySchema = z.object({
       placeAddress: z.string().nullable(),
       placeGeoLat: z.number().nullable(),
       placeGeoLng: z.number().nullable(),
+      placeExternal: z
+        .boolean()
+        .describe('A place outside the club’s own or a typed venue: the cards link its map (REQ-A13).'),
+      isAway: z.boolean().describe('The activity is an away trip.'),
+      score: scoreSchema,
       opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
       invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
       updatedAt: z.string(),
@@ -507,6 +537,15 @@ export const calendarEntrySchema = z.object({
     .describe(
       'GET /calendar/{id}?as=coach: false when the club setting coach_may_cancel is off and the caller holds only a coach grant on the session',
     ),
+  mayEdit: z.boolean().optional().describe('GET /calendar/{id}?as=coach: the caller may edit the planned session'),
+  mayTakeOver: z
+    .boolean()
+    .optional()
+    .describe(
+      'GET /calendar/{id}?as=coach: a coach or assistant of the group may take over the session without a coach',
+    ),
+  mayScore: z.boolean().optional().describe('GET /calendar/{id}?as=coach: a started match or sparring takes a score'),
+  substitutions: substitutionHistorySchema.optional().describe('GET /calendar/{id}?as=coach: the substitution history'),
 })
 
 /** `GET`, `PUT /api/activities/occurrences/{id}/attendance` (#33): the coach's attendance list. */
@@ -520,7 +559,10 @@ export const attendanceListSchema = z.object({
     .describe('`confirm`: the participants who have not answered (REQ-A07); listed first once the deadline is reached'),
   checkOff: z
     .enum(['open', 'not_started', 'not_planned'])
-    .describe('`open` from the start until the session is closed; `not_planned` when cancelled or done'),
+    .describe(
+      '`open` from 30 minutes before the start until the session is closed (DD-A13); `not_planned` when cancelled or done',
+    ),
+  checkOffOpensAt: z.string().describe('The instant the check-off opens: 30 minutes before the start'),
   actingRole: z.string().describe('The role the caller checks off in'),
   mayCancel: z
     .boolean()
