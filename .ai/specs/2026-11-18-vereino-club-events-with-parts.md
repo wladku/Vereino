@@ -184,7 +184,7 @@ One new feature id, `club_core.places.add_external`, granted to `vereino_coordin
 | Public tournament page | extend | `club_core` (`clubCorePublicSite`, `public-shared.ts` `publicRoute`, `fileResponse`, `PublicFrame.tsx`) | optional DI `activities.publicEvents` gains `clubEvent()` and `clubEventFile()` | One slug lookup and frame (DD-T11) |
 | P-06 card | extend | `activities` (`lib/public-events.ts`, `services/public-events.ts`), `club_core` (`PublicEventsView.tsx`) | the same contribution | DD-T12 |
 | "Club events" in More | extend | `@vereino/ui` (`packages/ui/src/member/member-nav.ts` `MEMBER_MORE_DESTINATIONS`) | nav data | D-029 |
-| Panel menu entry | extend | `activities` backend pages under the "Classes" group | page metadata | navigation spec |
+| Panel menu entry | extend | `activities` backend pages under the activities sidebar group (today "Harmonogram" / Schedule; "Zajęcia" / Classes once the navigation spec renames it) | page metadata | navigation spec |
 
 The installed records that stay the source of truth: places and institutions in `club_core`, groups and external teams in `groups`, persons in `people`, files in the platform's `attachments`, threads and e-mails in `communication`, notifications in the platform's `notifications`.
 
@@ -253,7 +253,7 @@ Guest
 | Spec | Direction | What | Where in this spec |
 |---|---|---|---|
 | A `2026-11-14-vereino-parity-groups-and-activities.md` | T needs A | The deadline (phase 4, #269), the session edit page (phase 5, #270), the moved notices (phase 6, #271), the coordinator's phone session block (phase 8, #273) — all merged at `adaf8a43` | phases 1, 5 |
-| N `2026-11-14-vereino-parity-navigation-and-naming.md` | T needs N | P-06 (#263, merged), the More list (#258, merged), the panel "Classes" group | phases 3, 5, 6 |
+| N `2026-11-14-vereino-parity-navigation-and-naming.md` | T needs N | P-06 (#263, merged), the More list (#258, merged), the activities sidebar group ("Harmonogram" today, "Zajęcia" after N phase 1) | phases 3, 5, 6 |
 | R `2026-11-14-vereino-parity-facilities.md` | T needs R | Opening hours of a club place for one-off events (REQ-R19, #363, merged); external places are not bookable (`isBookablePlace`) | phase 1 |
 | L `2026-11-14-vereino-people-life-cycle-and-data-entry.md` | none | The institution picker of REQ-L14 is reused as is | phase 2 |
 
@@ -273,7 +273,7 @@ The example of every journey and test is the club's real tournament, as the post
 
 ### Journey J-T02 — The administrator adds the poster and the funders and publishes
 
-1. Aneta opens Classes → **Club events** in the panel and the record "GWIAZDA CUP 2026" (`?tab=details`). She sees the nine parts on the Parts tab grouped by day.
+1. Aneta opens Harmonogram → **Club events** ("Imprezy klubowe") in the panel and the record "GWIAZDA CUP 2026" (`?tab=details`). She sees the nine parts on the Parts tab grouped by day.
 2. On the Files tab she uploads the poster (a 3.1 MB JPEG) and four funder logos: "Aktywni lokalnie", "Ministerstwo Sportu i Turystyki", "Fundacja Orły Sportu", "Gmina Liszki", each with its name.
 3. On Details she switches "Public" on and saves. The header shows **Public page** linking to `/p/gwiazda/events/gwiazda-cup-2026`; the club publishes the `events` block already.
 4. Failures: an SVG logo renamed `.png` answers 422 `club_event_file_format_unsupported`; a 7 MB poster answers 422 `club_event_file_too_large`; a 13th logo answers 422 `club_event_funders_limit`; a stale record answers 409 with the shared conflict message.
@@ -330,7 +330,7 @@ The closest installed references: `activities/components/ActivitiesTable.tsx` an
 | Role | Navigation groups in order | Dashboard / injected widgets | Login-to-primary-task flow |
 |---|---|---|---|
 | Section coordinator (phone) | Bottom bar as the navigation spec defines; More → **Club events** (new entry, features `activities.manage`) | none | `/club` → More → Club events → New club event: 3 taps and the form |
-| Club administrator (panel) | Classes → … Activities, **Club events** (new), Sessions … | none | Classes → Club events → record → Parts → Add part: 4 clicks |
+| Club administrator (panel) | Harmonogram → … Activities, **Club events** (new), Sessions … | none | Harmonogram → Club events → record → Parts → Add part: 4 clicks |
 | Guardian, participant (phone) | as today | the part card on Today and in the calendar | `/club` → card → session page: 1 tap |
 | Coach (phone) | as today | the part card in the coach's calendar | unchanged |
 | Guest | public menu Club · Sections · Facilities · Events | — | Events → card → tournament page: 1 tap; or the poster's QR code |
@@ -561,6 +561,7 @@ No new event id, subscriber, job, notification type or e-mail template. An open 
 | TEST-T13 | UI | Kasia and Wojtek (as coach) on a phone at 375 px; the event public | Today, calendar, session page | the part card shows the event line with the link; the session page lists the visiting teams; the coach's session page has no Edit and no Cancel | REQ-T03 |
 | TEST-T14 | UI | A guest at 375 px and desktop, light and dark, en and pl | P-06 → the club event card → the tournament page; the unpublished state | poster, dates, place with the map link, days and parts, funders with alternative texts; the 404 state with the club page link; axe clean | REQ-T09, REQ-T10 |
 | TEST-T15 | unit | `activities/lib/club-events.ts` (new: slug proposal and format, part kind rules, event dates, open-part rule, which part sessions an event place change moves, copy prefill), `lib/public-events.ts` (club event entries, folding parts, section chips, past window), `lib/public-club-event.ts` (new: the public view: days, our team, visiting teams), `lib/member-event.ts` (`isExternal`); `club_core/lib/places.ts` (duplicate key of an external place); `packages/ui/src/member/member-nav.ts` (the More entry) | every branch | 100 % line, branch and function coverage (`AGENTS.md`) | REQ-T02, REQ-T05, REQ-T06, REQ-T09, REQ-T10, REQ-T12 |
+| TEST-T16 | security | Two tenants, each with a club event and parts; users of club A without `activities.manage` and a coordinator of another section | Call every staff route of phases 1 and 2 (`/api/activities/club-events*`, `/api/club_core/places/external`) across tenants and without the feature or section scope | 404 for the other tenant's ids, 403 without the feature or outside the section scope; nothing is written | REQ-T01, REQ-T02, REQ-T06 |
 
 The integration tests live in `packages/app/.ai/qa/tests/activities/` and `club_core/`, and run with `yarn test:integration:vereino --filter TEST-Txx`. Fixtures build the example through the API (the poster's days are moved into the future relative to the test's clock, keeping their weekdays and times); tests that need a passed deadline write the offset so that the instant is already past. UI texts come from the catalogs through `uiText('<key>')`.
 
@@ -582,7 +583,7 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
   6. Reads: `clubEvent` on `/api/activities/calendar*` and `/api/activities/occurrences/{id}`; `clubEventId` on the activities list and record; `isExternal` on `/api/activities/events/options`.
 - **Independent slices / estimated commits:** (a) migration, entities, rules: 1; (b) event and part commands and routes: 2; (c) guards and reads: 1.
 - **Requirements closed:** REQ-T01, REQ-T02, REQ-T05 (API), REQ-T07; REQ-T04 (ids through the API)
-- **Tests:** TEST-T01, TEST-T02, TEST-T04, TEST-T05, TEST-T06, TEST-T15 (activities rules part)
+- **Tests:** TEST-T01, TEST-T02, TEST-T03 (calendar reads and `mayEdit`/`mayCancel`), TEST-T04, TEST-T05, TEST-T06, TEST-T15 (activities rules part), TEST-T16 (club-event routes)
 - **Exit gate:** the nine parts of the example created through the API; Kasia's calendar read shows one part; every guard answers its code.
 
 ### Phase 2 — An external place from the form
@@ -596,7 +597,7 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
   3. A shared `AddExternalPlaceDialog` (panel) and sheet (member) in `club_core/components/` reused by phases 3 and 5; the owner picker from `/api/club_core/institutions/options`.
 - **Independent slices / estimated commits:** (a) feature, command, route: 1; (b) dialog and sheet: 1.
 - **Requirements closed:** REQ-T06
-- **Tests:** TEST-T07, TEST-T15 (club_core part)
+- **Tests:** TEST-T07, TEST-T15 (club_core part), TEST-T16 (external place route)
 - **Exit gate:** TEST-T07 green; after `yarn mercato auth sync-role-acls` an existing coordinator holds the feature.
 
 ### Phase 3 — Panel: list, form and record with parts (B-T1, B-T2, B-T3)
@@ -605,7 +606,7 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
 - **Outcome:** J-T02 steps 1 and 3 and the panel half of J-T05 work.
 - **Why this order / value delivered:** the administrator can enter a tournament end to end.
 - **Deliverables:**
-  1. `activities/backend/club-events/*` pages; the "Club events" menu entry in the "Classes" group.
+  1. `activities/backend/club-events/*` pages; the "Club events" ("Imprezy klubowe") menu entry in the activities sidebar group, next to Activities.
   2. `ClubEventsTable.tsx`, `ClubEventForm.tsx` (place picker with the external mark and the add-place dialog), `ClubEventRecord.tsx` (tabs), `ClubEventPartsTable.tsx`, `ClubEventPartDialog.tsx` (visiting teams with "Add team" from the `ExternalTeamForm` fields, coach picker, `?copyOf=`), `MoveOccurrenceDialog` with a locked place.
   3. B-13 and the session record show "Part of {event}".
   4. i18n `activities.clubEvents.*` (en, pl).
@@ -640,7 +641,7 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
   4. i18n `activities.clubEvents.club.*`.
 - **Independent slices / estimated commits:** (a) list and event page: 1; (b) forms: 1; (c) nav and files block: 1.
 - **Requirements closed:** REQ-T12
-- **Tests:** TEST-T12
+- **Tests:** TEST-T12, TEST-T15 (`member-nav.ts` part)
 - **Exit gate:** J-T01 on a 375 px phone in both locales, light and dark, without any `/backend` page.
 
 ### Phase 6 — The public tournament page and the P-06 card
@@ -668,19 +669,19 @@ Validation for each phase: `yarn verify`, the phase's integration tests, and for
   2. i18n keys.
 - **Independent slices / estimated commits:** 1.
 - **Requirements closed:** REQ-T03
-- **Tests:** TEST-T03, TEST-T13
+- **Tests:** TEST-T03 (member pages), TEST-T13
 - **Exit gate:** TEST-T13 at 375 px in both locales, light and dark.
 
 ## Requirement Traceability
 
 | Requirement | Journey / surface | Data/API/event contracts | Phase | Tests | Acceptance criterion |
 |---|---|---|---|---|---|
-| REQ-T01 | J-T01, J-T02, B-T2, `/club/club-events/new` | `activities_club_events`, `activities.club_events.*` | 1, 3, 5 | TEST-T01, TEST-T11, TEST-T12 | AC-T01 |
+| REQ-T01 | J-T01, J-T02, B-T2, `/club/club-events/new` | `activities_club_events`, `activities.club_events.*` | 1, 3, 5 | TEST-T01, TEST-T11, TEST-T12, TEST-T16 | AC-T01 |
 | REQ-T02 | J-T01, J-T05, B-T3 Parts, phone event page | `activities_club_event_parts`, `club_event_id`, `activities.club_event_parts.*`, guards | 1, 3, 5 | TEST-T02, TEST-T04, TEST-T11, TEST-T15 | AC-T02, AC-T03 |
 | REQ-T03 | J-T03, J-T06, M-02, M-03, M-04 | `clubEvent` on reads, `mayEdit`/`mayCancel` | 1, 7 | TEST-T03, TEST-T04, TEST-T13 | AC-T04 |
 | REQ-T04 | J-T01 step 4, part dialog and form | `visiting_team_ids`, `invited_external_team_ids`, `/api/groups/external-teams` | 1, 3, 5 | TEST-T02, TEST-T11 | AC-T02 |
 | REQ-T05 | J-T01 step 2, J-T05 step 3 | `place_id`, `club_event_part_place_fixed`, moved notices | 1, 3, 5 | TEST-T04, TEST-T06, TEST-T15 | AC-T05 |
-| REQ-T06 | J-T01 step 2, add-place dialog and sheet | `club_core.places.add_external`, feature | 2 | TEST-T07, TEST-T15 | AC-T06 |
+| REQ-T06 | J-T01 step 2, add-place dialog and sheet | `club_core.places.add_external`, feature | 2 | TEST-T07, TEST-T15, TEST-T16 | AC-T06 |
 | REQ-T07 | J-T01 step 7 | `findConflicts` (coach-only at an external place) | 1 | TEST-T05 | AC-T07 |
 | REQ-T08 | J-T02 step 2, Files tab, phone files block | `activities_club_event_files`, `activities.club_event_files.*`, public file route | 4, 6 | TEST-T08, TEST-T09 | AC-T08 |
 | REQ-T09 | J-T04, P-T1 | public route, `activities.publicEvents.clubEvent()` | 6 | TEST-T09, TEST-T14, TEST-T15 | AC-T09 |
@@ -795,7 +796,7 @@ Chosen without the owner, as the option closest to the existing code or the most
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
 | Q-T20 | Are the Ask First items of *Rollout* approved: migrations T1 and T2, the feature `club_core.places.add_external` for the coordinator, the new routes, fields and command ids as one group, the P-06 narrowing (`section` nullable for a whole-club club event, parts folded), and the behaviour changes on the activity and session commands? | Władek Kuć | yes (phase 1 needs T1 and the behaviour changes; phase 2 the feature; phase 4 T2; phase 6 the P-06 change) | pending |
-| Q-T21 | Should the autonomous defaults Q-T01, Q-T05, Q-T10 and Q-T11 (marked ⚠) stand? | Władek Kuć | yes for phase 1 (Q-T01, Q-T05, Q-T11) and phase 2 (Q-T10) | Q-T01, Q-T05 and Q-T10 confirmed by the owner on 2026-11-18; Q-T11 still open |
+| Q-T21 | Should the autonomous defaults Q-T01, Q-T05, Q-T10 and Q-T11 stand (only Q-T11 is still marked ⚠)? | Władek Kuć | yes for phase 1 (Q-T01, Q-T05, Q-T11) and phase 2 (Q-T10) | Q-T01, Q-T05 and Q-T10 confirmed by the owner on 2026-11-18; Q-T11 still open |
 | Q-T22 | Are "Impreza klubowa" / "Część" the right Polish names (Q-T09)? | Władek Kuć | no | confirmed by the owner on 2026-11-18: "Impreza klubowa" / "Część", menu "Imprezy klubowe" |
 | Q-T23 | Should a later version add a per-part place for parallel parts at a club complex (Q-T02)? | Władek Kuć | no | default: not in this version |
 | Q-T24 | Should the public page show the funders' links or a PDF poster (Q-T08)? | Władek Kuć | no | default: no |
