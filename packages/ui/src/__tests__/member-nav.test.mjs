@@ -52,13 +52,13 @@ test('checks one fixed feature list: the Facilities tab and every built More ent
   assert.deepEqual(MEMBER_NAV_FEATURES, [
     'facilities.view',
     'activities.reports.view_own',
+    'groups.view',
     'facilities.maintenance.manage',
     'facilities.log.write',
     'payments.orders.place',
     'payments.groups.view',
     'payments.cash.record',
   ])
-  assert.equal(MEMBER_NAV_FEATURES.includes('groups.view'), false)
   assert.deepEqual(
     MEMBER_MORE_DESTINATIONS.map((entry) => entry.href),
     [
@@ -169,6 +169,7 @@ test('the administrator gets every built entry in the table order, Accept cash a
   assert.deepEqual(moreOf(result), [
     CLUB_PROFILE_HREF,
     CLUB_MY_UNITS_HREF,
+    CLUB_GROUPS_HREF,
     CLUB_PLACES_HREF,
     CLUB_FACILITY_TODAY_HREF,
     CLUB_ORDERS_HREF,
@@ -178,9 +179,15 @@ test('the administrator gets every built entry in the table order, Accept cash a
   ])
   assert.equal(result.more.items.at(-2).label, 't:people.club.nav.acceptCash')
   assert.equal(result.more.items.at(-3).label, 't:people.club.nav.groupPayments')
-  // Groups waits for its page (spec A, REQ-A11) whatever the grants.
-  assert.equal(moreOf(nav({ features: ['groups.view'] })).includes(CLUB_GROUPS_HREF), false)
-  assert.equal(labels.groups, 't:people.club.nav.groups')
+})
+
+test('Groups is behind More for `groups.view` (a coordinator, a coach) and current on a roster (REQ-A11, #274)', () => {
+  const result = nav({ contexts: ['self', 'coordinator'], features: ['groups.view'] })
+  assert.deepEqual(moreOf(result), [CLUB_PROFILE_HREF, CLUB_GROUPS_HREF, BACKEND_HREF])
+  assert.equal(result.more.items[1].label, 't:people.club.nav.groups')
+  assert.deepEqual(currentOf('/club/groups/g-1', { features: ['groups.view'] }), ['more'])
+  // A guardian without `groups.view` is not offered it.
+  assert.equal(moreOf(nav({ contexts: ['self', 'guardian'], features: GUARDIAN })).includes(CLUB_GROUPS_HREF), false)
 })
 
 test('offers the admin panel to a staff context only, never to a coach (E06-S15 #97)', () => {

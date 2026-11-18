@@ -12,8 +12,18 @@ import type { PublicPlacesView, PublicScheduleDay, PublicScheduleView } from '..
 
 export type { PublicPlacesView, PublicScheduleDay, PublicScheduleView, PublicSlot, PublicSlotState, OpeningHours }
 
+/** The club header of the public pages. */
+export type PublicClub = PublicPlacesView['club']
+
+/**
+ * A public read's result. A page with nothing to show still carries the club's header (`club`) while the club
+ * publishes its page, so every state renders inside the club's frame (#289); null for an unknown club.
+ */
 export type PublicFacilitiesLoad<T> =
-  { status: 'ok'; page: T } | { status: 'not_found' } | { status: 'disabled' } | { status: 'month_invalid' }
+  | { status: 'ok'; page: T }
+  | { status: 'not_found'; club: PublicClub | null }
+  | { status: 'disabled'; club: PublicClub | null }
+  | { status: 'month_invalid'; club: PublicClub | null }
 
 /** The states in the order the legend lists them: the free ones first, then the taken ones. */
 export const LEGEND_STATES: readonly PublicSlotState[] = [
@@ -56,12 +66,16 @@ export const placeHref = (clubSlug: string, placeSlug: string, month?: string | 
   `${placesHref(clubSlug)}/${encodeURIComponent(placeSlug)}${month ? `?month=${encodeURIComponent(month)}` : ''}`
 
 async function loadPublic<T>(url: string): Promise<PublicFacilitiesLoad<T>> {
-  const call = await apiCall<T & { code?: string }>(url)
+  const call = await apiCall<T & { code?: string; club?: PublicClub }>(url)
   if (call.ok && call.result) return { status: 'ok', page: call.result }
-  if (call.status === 404)
-    return call.result?.code === 'public_places_disabled' ? { status: 'disabled' } : { status: 'not_found' }
+  const club = call.result?.club ?? null
+  if (call.status === 404) {
+    return call.result?.code === 'public_places_disabled' ? { status: 'disabled', club } : { status: 'not_found', club }
+  }
   // A month outside the readable range (a stale permalink): the page offers the current month instead.
-  if (call.status === 400 && call.result?.code === 'public_schedule_month_invalid') return { status: 'month_invalid' }
+  if (call.status === 400 && call.result?.code === 'public_schedule_month_invalid') {
+    return { status: 'month_invalid', club }
+  }
   throw new Error(`[internal] public facilities request failed with ${String(call.status)}`)
 }
 
@@ -86,6 +100,12 @@ export function usePublicSchedule(clubSlug: string, placeSlug: string, month: st
     // The shown month stays on screen while the next one loads.
     placeholderData: (previous) => previous,
   })
+}
+
+/** The club of any answer of the places read: the page's header, or the one a 404 carries; null while unknown. */
+export function clubOfLoad(load: PublicFacilitiesLoad<PublicPlacesView> | undefined): PublicClub | null {
+  if (!load) return null
+  return load.status === 'ok' ? load.page.club : load.club
 }
 
 /** A `YYYY-MM` of the URL, or null when absent or malformed (the API then shows the current month). */
@@ -234,18 +254,32 @@ export type RequestSummary = {
   holdExpiresAt: string
   /** The header of the club's public pages; null while the club publishes no page (#261). */
   club: PublicPlacesView['club'] | null
+  /** What the requester entered, answered once by the confirmation that spent the link (#289, Q-R16). */
+  summary: {
+    placeName: string
+    placeSlug: string | null
+    startsAt: string
+    endsAt: string
+    units: number
+    renterDisplayName: string
+    contactName: string | null
+    contactEmail: string | null
+    amount: number | null
+    payeeName: string | null
+  }
 }
 
 export type VerifyOutcome =
   | { status: 'ok'; summary: RequestSummary }
   | { status: 'expired' }
-  | { status: 'taken' }
+  /** `placeSlug`: the place's public calendar to go back to; null while it has none. */
+  | { status: 'taken'; placeSlug: string | null }
   | { status: 'too_many' }
   | { status: 'failed' }
 
 /** Confirms a request with the e-mailed token, sent in the body (never in a URL the server logs). */
 export async function verifyPublicRequest(token: string): Promise<VerifyOutcome> {
-  const call = await apiCall<RequestSummary>('/api/facilities/public/requests/verify', {
+  const call = await apiCall<RequestSummary & { placeSlug?: unknown }>('/api/facilities/public/requests/verify', {
     method: 'POST',
     headers: GUEST_HEADERS,
     body: JSON.stringify({ token }),
@@ -253,7 +287,10 @@ export async function verifyPublicRequest(token: string): Promise<VerifyOutcome>
   if (call.ok && call.result) return { status: 'ok', summary: call.result }
   // An unknown, used or expired link (410), or a malformed one (400), reads the same: the link no longer works.
   if (call.status === 410 || call.status === 400 || call.status === 404) return { status: 'expired' }
-  if (call.status === 409) return { status: 'taken' }
+  if (call.status === 409) {
+    const placeSlug = call.result?.placeSlug
+    return { status: 'taken', placeSlug: typeof placeSlug === 'string' && placeSlug ? placeSlug : null }
+  }
   if (call.status === 429) return { status: 'too_many' }
   return { status: 'failed' }
 }
@@ -282,4 +319,56 @@ export function zonedInstantLabel(instant: string, timeZone: string, locale: str
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(new Date(instant))
+}
+
+/** `POST /api/facilities/public/rentals/cancel/preview` → 200 (J-R06, #286): no contact data. */
+export type RentalCancelPreview = {
+  placeName: string
+  startsAt: string
+  endsAt: string
+  timeZone: string
+  amount: number
+  currency: string
+  free: boolean
+  cancellationDeadline: string
+  payeeName: string | null
+  club: PublicPlacesView['club'] | null
+}
+
+export type CancelPreviewOutcome =
+  { status: 'ok'; preview: RentalCancelPreview } | { status: 'expired' } | { status: 'too_many' } | { status: 'failed' }
+
+export type CancelOutcome =
+  | { status: 'ok'; result: 'cancelled_free' | 'cancelled_late' }
+  | { status: 'expired' }
+  | { status: 'too_many' }
+  | { status: 'failed' }
+
+/** An unknown, spent or expired link (410), or a malformed one (400), reads the same: the link no longer works. */
+function linkFailure(status: number): { status: 'expired' } | { status: 'too_many' } | { status: 'failed' } {
+  if (status === 410 || status === 400 || status === 404) return { status: 'expired' }
+  if (status === 429) return { status: 'too_many' }
+  return { status: 'failed' }
+}
+
+/** Reads what cancelling would do; the token goes in the body (never in a URL the server logs) and is not spent. */
+export async function previewRentalCancel(token: string): Promise<CancelPreviewOutcome> {
+  const call = await apiCall<RentalCancelPreview>('/api/facilities/public/rentals/cancel/preview', {
+    method: 'POST',
+    headers: GUEST_HEADERS,
+    body: JSON.stringify({ token }),
+  })
+  if (call.ok && call.result) return { status: 'ok', preview: call.result }
+  return linkFailure(call.status)
+}
+
+/** Cancels the rental with the renter's explicit confirmation; spends the link. */
+export async function cancelRentalByLink(token: string): Promise<CancelOutcome> {
+  const call = await apiCall<{ status: 'cancelled_free' | 'cancelled_late' }>('/api/facilities/public/rentals/cancel', {
+    method: 'POST',
+    headers: GUEST_HEADERS,
+    body: JSON.stringify({ token, confirm: true }),
+  })
+  if (call.ok && call.result) return { status: 'ok', result: call.result.status }
+  return linkFailure(call.status)
 }
