@@ -1,0 +1,1 @@
+| 2026-11-18 | REQ-L16 (owner request): each age category carries a PZPN "U" range (new table `groups_age_category_ranges`, migration E, Ask First item 15); birth years per season on a new "Kategorie wiekowe" tab; a team's age range is proposed from its category; the REQ-L15 "Fits" filter uses birth years for teams; DD-L17, J-L10, TEST-L23, AC-L16, phase L12, Q-L25/Q-L26 |
