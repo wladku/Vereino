@@ -3,8 +3,9 @@
 // of the former "Book" dialog (#123). "For a group": one of the user's own groups, the type, the name (at least 3
 // characters) and the invited teams, posted to `POST /api/activities/events` as a home event on the chosen place.
 // "General purpose": a purpose of 3–120 characters and a section, posted to `POST /api/facilities/internal-bookings`.
-// A 409 lists the colliding entries ("from–to label"); the success message adds how many held requests the booking
-// superseded (`ui.slotModal.supersededN`).
+// A 409 lists the colliding entries ("from–to label"); a group event outside the place's opening hours shows the
+// refusal with the day's hours at the start field (409 `event_place_closed`, REQ-R19, #288); the success message adds
+// how many held requests the booking superseded (`ui.slotModal.supersededN`).
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
@@ -145,6 +146,13 @@ export function GroupBody({
       return
     }
     const message = typeof result.answer.error === 'string' && result.status === 422 ? result.answer.error : null
+    // Outside the place's opening hours (REQ-R19): the message with the day's hours stands at the start field.
+    if (result.answer.code === 'event_place_closed') {
+      const text = typeof result.answer.error === 'string' ? result.answer.error : t('facilities.places.errors.book')
+      report.startIssues([{ code: result.answer.code, text, conflicts: [] }])
+      report.problem(t('facilities.places.errors.book'))
+      return
+    }
     reportRefusal(
       t,
       result,

@@ -535,14 +535,23 @@ export const calendarEntrySchema = z.object({
     .boolean()
     .optional()
     .describe(
-      'GET /calendar/{id}?as=coach: false when the club setting coach_may_cancel is off and the caller holds only a coach grant on the session',
+      'GET /calendar/{id}?as=coach|coordinator: false when the club setting coach_may_cancel is off and the caller holds only a coach grant on the session',
     ),
-  mayEdit: z.boolean().optional().describe('GET /calendar/{id}?as=coach: the caller may edit the planned session'),
+  mayEdit: z
+    .boolean()
+    .optional()
+    .describe('GET /calendar/{id}?as=coach|coordinator: the caller may edit the planned session'),
   mayTakeOver: z
     .boolean()
     .optional()
     .describe(
-      'GET /calendar/{id}?as=coach: a coach or assistant of the group may take over the session without a coach',
+      'GET /calendar/{id}?as=coach|coordinator: a coach or assistant of the group may take over the session without a coach',
+    ),
+  mayAssign: z
+    .boolean()
+    .optional()
+    .describe(
+      'GET /calendar/{id}?as=coach|coordinator: the caller (a coordinator of the section or the club administrator) may assign a substitute or change the coach of the planned session',
     ),
   mayScore: z.boolean().optional().describe('GET /calendar/{id}?as=coach: a started match or sparring takes a score'),
   substitutions: substitutionHistorySchema.optional().describe('GET /calendar/{id}?as=coach: the substitution history'),

@@ -185,6 +185,7 @@ describe('eventFieldOfError', () => {
   it('points a coded refusal at its field', () => {
     expect(eventFieldOfError('activity_type_requires_team')).toBe('type')
     expect(eventFieldOfError('event_type_not_allowed')).toBe('type')
+    expect(eventFieldOfError('event_place_closed')).toBe('startTime')
     expect(eventFieldOfError('activity_times_inverted')).toBe('endTime')
     expect(eventFieldOfError('activity_group_inactive')).toBe('groupId')
     expect(eventFieldOfError('place_not_bookable')).toBe('placeId')

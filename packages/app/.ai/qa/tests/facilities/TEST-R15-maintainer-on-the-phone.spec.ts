@@ -29,7 +29,7 @@ import { uiText } from '../_fixtures/ui-text'
 // pitch, an inspection on the hall. Once the rental and the internal booking reach 10 hours, the reminder job sends
 // him both reminders linking to `/club/places/maintenance` and the administrator hers linking to the panel's
 // Maintenance tab. At 375 px he follows the link from "Facilities": the list shows only the pitch's tasks under Due and
-// Planned. On Friday's redacted day of the pitch ("Zajęte przez klub", no names) he plans brushing over the 07:00
+// Planned. On Friday's redacted day of the pitch ("Zajęte przez klub", no names) he plans brushing over the 08:00
 // session, which is flagged. He marks the inspection done: it moves to Done and next year's instance is planned.
 // Completing it again answers 409 `maintenance_task_closed`; the hall answers 403. Polish and English, light and dark.
 test.describe.configure({ timeout: 420_000 })
@@ -130,14 +130,14 @@ test('TEST-R15 the maintainer on the phone: reminder link, own tasks, a window f
       expect(item).toMatchObject({ type: 'facilities.maintenance_due', linkHref: '/backend/facilities/maintenance' })
     }
 
-    // Friday 07:00–08:30 on the pitch: a session the window will cover.
+    // Friday 08:00–09:30 on the pitch, inside its opening hours: a session the window will cover.
     const session = await createEvent(request, admin, {
       groupId: setup.zaki,
       type: 'tournament',
       name: 'Sparing Żaków',
       placeId: pitch,
-      startsAt: zoneInstant(friday, '07:00'),
-      endsAt: zoneInstant(friday, '08:30'),
+      startsAt: zoneInstant(friday, '08:00'),
+      endsAt: zoneInstant(friday, '09:30'),
     })
     expect(session.status, JSON.stringify(session.body)).toBe(201)
 
@@ -187,8 +187,8 @@ test('TEST-R15 the maintainer on the phone: reminder link, own tasks, a window f
     await expect(dialog).toBeVisible()
     await dialog.getByTestId('club-place-maintenance-dialog-kind').click()
     await page.getByRole('option', { name: uiText('facilities.maintenance.kinds.brushing', { exact: true }) }).click()
-    await dialog.getByTestId('club-place-maintenance-dialog-start').fill(`${friday}T07:00`)
-    await dialog.getByTestId('club-place-maintenance-dialog-end').fill(`${friday}T09:00`)
+    await dialog.getByTestId('club-place-maintenance-dialog-start').fill(`${friday}T08:00`)
+    await dialog.getByTestId('club-place-maintenance-dialog-end').fill(`${friday}T10:00`)
     await dialog.getByTestId('club-place-maintenance-dialog-save').click()
     await expect(dialog).toBeHidden()
     await expect(

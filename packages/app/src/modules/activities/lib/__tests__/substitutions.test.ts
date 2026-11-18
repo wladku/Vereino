@@ -10,6 +10,7 @@ import {
   isUnsettled,
   leadsGroup,
   originalCoach,
+  pickerOptions,
   reasonOrNull,
   substituteFor,
   substituteOptions,
@@ -212,5 +213,25 @@ describe('taking over (E10-S07, REQ-A14)', () => {
     expect(leadsGroup(roster, 'c')).toBe(true)
     expect(leadsGroup(roster, 'p')).toBe(false)
     expect(leadsGroup(roster, 'x')).toBe(false)
+  })
+})
+
+describe('the coach picker (E10-S08 #273)', () => {
+  const busy = { occurrenceId: 'o-9', activityName: 'Training', startAt: '2026-11-06T17:00:00.000Z' }
+  const options = [
+    { id: 'a', name: 'Irena Adamska', busy },
+    { id: 'b', name: 'Bartek Łukasik', busy: null },
+    { id: 'c', name: 'Celina Bart', busy: null },
+  ]
+
+  it('lists the free coaches first, each half in the given order', () => {
+    expect(pickerOptions(options, '').map((option) => option.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('keeps the names in which every typed word starts a word, ignoring case and diacritics', () => {
+    expect(pickerOptions(options, 'bar').map((option) => option.id)).toEqual(['b', 'c'])
+    expect(pickerOptions(options, ' bart  luk ').map((option) => option.id)).toEqual(['b'])
+    expect(pickerOptions(options, 'irena').map((option) => option.id)).toEqual(['a'])
+    expect(pickerOptions(options, 'zenon')).toEqual([])
   })
 })

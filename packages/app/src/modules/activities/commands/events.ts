@@ -4,9 +4,10 @@
 // coordinator of the group's section or the club administrator. A group outside the caller's scope answers 403
 // `scope_denied`; `match` or `sparring` on a class group 422 `activity_type_requires_team`; `training` or `camp` 422
 // `event_type_not_allowed`; both a place and a typed venue, or neither, 422 `venue_or_place_required`; an overbooked
-// place tree or coach 409 (a typed venue occupies no club place, so only the coach is checked). The event is a one-off
-// activity (no rule) with one session at the given instants; its coach is the given person or, for a coach, the coach
-// themself; a typed venue turns "away" on unless `isAway` says otherwise (Q-A25).
+// place tree or coach 409 (a typed venue occupies no club place, so only the coach is checked); a club place outside
+// its opening hours that day 409 `event_place_closed` with `opening` (facilities parity spec REQ-R19). The event is a
+// one-off activity (no rule) with one session at the given instants; its coach is the given person or, for a coach,
+// the coach themself; a typed venue turns "away" on unless `isAway` says otherwise (Q-A25).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler } from '@open-mercato/shared/lib/commands'
@@ -18,8 +19,9 @@ import { lockSchedule } from '../data/queries'
 import { eventCreateSchema } from '../data/validators'
 import { EVENT_TYPES, localDateTime } from '../lib/activities-rules'
 import { confirmByAt } from '../lib/confirm-by'
+import { eventOutsideOpeningHours, openingLine } from '../lib/opening-hours'
 import { awayByDefault, chooseLocation } from '../lib/venue'
-import { clubClock } from '../services/directory'
+import { clubClock, placeOpeningHours } from '../services/directory'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
 import { activitySnapshot, ACTIVITY_RESOURCE_KIND, type ActivitySnapshot } from './activities'
 import {
@@ -95,6 +97,18 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
       const { timeZone } = await clubClock(ctx.container, scope)
       const start = localDateTime(startAt, timeZone)
       const end = localDateTime(endAt, timeZone)
+      // REQ-R19 (DD-R15): a club place's opening hours bound the event; a typed venue has no place and no hours.
+      if (placeId) {
+        const hours = (await placeOpeningHours(ctx.container, scope, [placeId], em)).get(placeId) ?? null
+        const opening = eventOutsideOpeningHours(hours, startAt, endAt, timeZone)
+        if (opening) {
+          await activitiesErrors.throw('event_place_closed', {
+            field: 'startsAt',
+            opening,
+            hours: openingLine(opening),
+          })
+        }
+      }
       await lockSchedule(em, organizationId)
       await assertNoConflicts(
         await findConflicts(
