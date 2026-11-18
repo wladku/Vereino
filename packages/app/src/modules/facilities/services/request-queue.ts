@@ -1,7 +1,9 @@
 // The reads of the online requests (facilities spec P-05, B-25, the B-01 widget; REQ-024; #125):
 // - `requestSummary`: what the confirmation page shows a guest after the link — the place, the slot, the indicative
-//   amount and the end of the 48-hour hold; nothing else of the request — and the header of the club's public pages
-//   (`club_core`'s public frame of the club the token named, null while the club publishes no page; #261);
+//   amount and the end of the 48-hour hold — and the header of the club's public pages (`club_core`'s public frame of
+//   the club the token named, null while the club publishes no page; #261). Since #289 (facilities parity spec P-05,
+//   Q-R16) also `summary`: the requester's organisation, contact name and e-mail (never the phone), the place's public
+//   slug and the payee — answered once, by the confirmation that spent the link;
 // - `requestQueue`: the B-25 queue and the B-01 widget — the confirmed requests whose hold is still valid, the soonest
 //   expiry first, with the requester's details (decrypted for the administrator), the indicative amount, the
 //   entry-ban hint and the entries that collide with the slot now (sessions, rentals, club bookings, closures and other
@@ -11,7 +13,7 @@
 //   confirmed.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import type { ClubCorePublicSite, PublicClubFrame } from '../../club_core/services/public-site'
 import { Rental } from '../data/entities'
 import { blockingHolds } from '../lib/requests'
@@ -30,9 +32,36 @@ export type RequestSummary = {
   currency: string
   holdExpiresAt: string
   club: PublicClubFrame['club'] | null
+  /**
+   * What the requester entered, shown once to the person who proved the address (facilities parity spec P-05, Q-R16;
+   * #289): the organisation, the contact name and the e-mail — never the phone. `placeSlug` is the way back to the
+   * place's calendar (null while it has none), `payeeName` the owner institution a rental is paid to (null = the club).
+   */
+  summary: {
+    placeName: string
+    placeSlug: string | null
+    startsAt: string
+    endsAt: string
+    units: number
+    renterDisplayName: string
+    contactName: string | null
+    contactEmail: string | null
+    amount: number | null
+    payeeName: string | null
+  }
 }
 
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
+
+/** The public slug of the place while its calendar is public; null without `club_core` or a public calendar. */
+export async function publicPlaceSlug(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  placeId: string,
+): Promise<string | null> {
+  if (!container.hasRegistration(CLUB_CORE_PUBLIC_SITE)) return null
+  return container.resolve<ClubCorePublicSite>(CLUB_CORE_PUBLIC_SITE).publicPlaceSlug(scope, placeId)
+}
 
 /** The public header of the club the token named; null without `club_core` or while the club publishes no page. */
 export async function publicClub(
@@ -51,18 +80,44 @@ export async function requestSummary(
 ): Promise<RequestSummary> {
   const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
   const settings = await clubRequestSettings(container, scope)
-  const place = (await findPlaces(container, scope, [row.placeId])).get(row.placeId)
+  const em = container.resolve<EntityManager>('em').fork()
+  const place = (await findPlaces(container, scope, [row.placeId], em)).get(row.placeId)
+  // The requester's own entries, decrypted inside the scope the token named.
+  const entered = await findOneWithDecryption(
+    em,
+    Rental,
+    { id: row.id, ...scope, deletedAt: null },
+    { fields: ['id', 'renterDisplayName', 'contactName', 'contactEmail'] },
+    scope,
+  )
+  const payee = await placePayee(container, scope, row.placeId, em)
+  const placeName = place?.name ?? ''
+  const startsAt = row.startsAt.toISOString()
+  const endsAt = row.endsAt.toISOString()
+  const amount = row.rateId ? row.amount : null
   return {
     status: 'pending_approval',
-    placeName: place?.name ?? '',
-    startsAt: row.startsAt.toISOString(),
-    endsAt: row.endsAt.toISOString(),
+    placeName,
+    startsAt,
+    endsAt,
     timeZone,
     units: row.units,
-    amount: row.rateId ? row.amount : null,
+    amount,
     currency: settings.currency,
     holdExpiresAt: (row.holdExpiresAt ?? row.updatedAt).toISOString(),
     club: await publicClub(container, scope),
+    summary: {
+      placeName,
+      placeSlug: await publicPlaceSlug(container, scope, row.placeId),
+      startsAt,
+      endsAt,
+      units: row.units,
+      renterDisplayName: entered?.renterDisplayName ?? '',
+      contactName: entered?.contactName ?? null,
+      contactEmail: entered?.contactEmail ?? null,
+      amount,
+      payeeName: payee?.name ?? null,
+    },
   }
 }
 

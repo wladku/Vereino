@@ -15,16 +15,11 @@ import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActions'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
-import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
-import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorCodeOf } from '@vereino/core'
 import { useClubToday } from '@vereino/ui'
 import {
   MEMBERSHIP_ROLES,
@@ -45,6 +40,7 @@ import {
 } from './client-helpers'
 import { EndMembershipDialog, MembershipDialog, personOptionLabel, type PersonOption } from './MembershipDialogs'
 import { useHasFeature } from './useCanManageGroups'
+import { useRemoveMembership } from './useRemoveMembership'
 
 const PAGE_SIZE = 50
 
@@ -156,7 +152,6 @@ export function RosterPanel({
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const canViewPeople = useHasFeature('people.view')
-  const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const view = viewFrom(searchParams.get('status'))
   const [page, setPage] = React.useState(1)
   const [dialog, setDialog] = React.useState<Dialogs>(null)
@@ -238,40 +233,10 @@ export function RosterPanel({
     })
   }
 
-  const remove = async (row: MembershipRow) => {
-    const name = personName(row.person) || t('groups.memberships.unknownPerson')
-    const confirmed = await confirm({
-      title: t('groups.memberships.confirm.remove.title', { name }),
-      text: t('groups.memberships.confirm.remove.text'),
-      confirmText: t('groups.memberships.actions.remove'),
-      variant: 'destructive',
-    })
-    if (!confirmed) return
-    try {
-      await withScopedApiRequestHeaders(buildOptimisticLockHeader(row.updatedAt), () =>
-        apiCallOrThrow(
-          `/api/groups/memberships?id=${encodeURIComponent(row.id)}`,
-          { method: 'DELETE' },
-          { errorMessage: t('groups.memberships.errors.remove') },
-        ),
-      )
-      flash(t('groups.memberships.flash.removed', { name }), 'success')
-    } catch (error: unknown) {
-      if (errorCodeOf(error) === 'membership_in_use' && rowStatus(row, today) === 'active') {
-        // J-A01 step 5: a used active membership is ended instead; an ended one keeps its last day.
-        const endInstead = await confirm({
-          title: t('groups.memberships.confirm.inUse.title'),
-          text: t('groups.memberships.confirm.inUse.text', { name }),
-          confirmText: t('groups.memberships.actions.end'),
-        })
-        if (endInstead) setDialog({ kind: 'end', row })
-      } else if (!surfaceRecordConflict(error, t, { onRefresh: () => void refresh() })) {
-        flash(errorMessage(error, t('groups.memberships.errors.remove')), 'error')
-      }
-    } finally {
-      await refresh()
-    }
-  }
+  const endInstead = React.useCallback((row: MembershipRow) => {
+    setDialog({ kind: 'end', row })
+  }, [])
+  const { remove, ConfirmDialogElement } = useRemoveMembership({ today, refresh, onEndInstead: endInstead })
 
   const rowActions = (row: MembershipRow) => {
     const items: RowActionItem[] = membershipActions(rowStatus(row, today)).map((action) => ({
