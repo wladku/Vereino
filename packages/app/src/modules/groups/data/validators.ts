@@ -3,7 +3,7 @@
 // commands (the kind of an update comes from the stored row), so a class group with team fields answers 422.
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
-import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES } from '../lib/groups-rules'
+import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES, ROSTER_VIEWS } from '../lib/groups-rules'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
@@ -105,14 +105,20 @@ export const membershipEndSchema = z
   })
   .strict()
 
+/** Removes a membership entered by mistake (`?id=`, parity spec REQ-A03). */
+export const membershipDeleteSchema = z.object({ id: z.uuid() }).strict()
+
 export const membershipListQuerySchema = z.object({
   ...listQueryBase,
-  sortField: z.enum(['validFrom', 'createdAt', 'updatedAt']).optional(),
+  /** `roster`: coaches, then assistants, then participants; the latest start first within a role (REQ-A03). */
+  sortField: z.enum(['validFrom', 'createdAt', 'updatedAt', 'roster']).optional(),
   groupId: z.uuid().optional(),
   personId: z.uuid().optional(),
   role: z.enum(MEMBERSHIP_ROLES).optional(),
   /** Only the memberships active on this calendar day. */
   activeOn: calendarDateSchema.optional(),
+  /** A roster view on the club's today: `active`, `upcoming` (starts later) or `ended` (the history; REQ-A03). */
+  status: z.enum(ROSTER_VIEWS).optional(),
 })
 
 // --- Seasons ---

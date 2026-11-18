@@ -41,8 +41,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * `activities.placeSessions` (facilities spec DD-20, #121): the planned sessions on places in a window and the
  * reschedule flag a closure sets on them, for `facilities`.
  *
- * `activities.groupUsage` (groups and activities parity spec REQ-A02, #266): the number of a group's matches, which
- * `groups` reads with `hasRegistration` before a team becomes a class group (`groups/services/group-usage.ts`).
+ * `activities.groupUsage` (groups and activities parity spec REQ-A02, REQ-A03; #266, #267): the number of a group's
+ * matches, which `groups` reads with `hasRegistration` before a team becomes a class group, and whether a membership
+ * was used, which it reads before a started membership is removed (`groups/services/group-usage.ts`).
  * Stateless: it reads with the caller's EntityManager inside the command's transaction.
  */
 const declarationLinks = createTokenLinkService(DeclarationToken, {
