@@ -8,14 +8,20 @@
 // opens the same month. Below the month: the opening hours, the rates per 90 minutes, the rules, the club phone and
 // the photos — only what the API sends, never a name of a renter, a group or a person. A bookable stretch that a guest
 // could request offers "Request a booking", which opens the request dialog (P-04, E08-S05 #125).
+// While the place takes online requests, a notice says the request is valid only after the administrator approves it
+// and names who the rental is paid to (the owner institution or the club). On a phone the current month's list starts
+// today, marked as today, and "Show earlier days" brings back the days before it; days without a stretch stay omitted
+// (parity spec REQ-R16, Q-R17; #289).
 // States: loading, error with retry, 404, "the club does not share facility calendars", a month that cannot be shown,
-// and a month without any published stretch.
+// and a month without any published stretch — each answered state inside the club's frame.
 import * as React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { calendarDateInZone } from '@vereino/core'
 import { PublicRequestDialog, type RequestTarget } from './PublicRequestDialog'
 import {
   PublicFacilitiesDisabled,
@@ -124,32 +130,68 @@ function DayContent({ day, compact = false }: { day: PublicScheduleDay; compact?
   )
 }
 
-/** The month on a phone: the days with something to show, one after another. */
-function DayList({ days }: { days: PublicScheduleDay[] }) {
+/**
+ * The month on a phone: the days with something to show, one after another. In the month holding `today` the list
+ * starts today; "Show earlier days" brings back the days before it.
+ */
+function DayList({ days, today }: { days: PublicScheduleDay[]; today: string }) {
   const t = useT()
   const locale = useLocale()
-  const shown = days.filter(dayHasContent)
+  const [showEarlier, setShowEarlier] = React.useState(false)
+  const withContent = days.filter(dayHasContent)
+  const inMonth = days.some((day) => day.date === today)
+  const hidden = inMonth && !showEarlier ? withContent.filter((day) => day.date < today).length : 0
+  const shown = hidden > 0 ? withContent.filter((day) => day.date >= today) : withContent
   return (
     <div className="flex flex-col gap-2 md:hidden" data-testid="public-schedule-list">
+      {hidden > 0 ? (
+        <p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            data-testid="public-schedule-show-earlier"
+            onClick={() => {
+              setShowEarlier(true)
+            }}
+          >
+            {t('facilities.public.schedule.showEarlier')}
+          </Button>
+        </p>
+      ) : null}
       <ol className="flex flex-col gap-3">
         {shown.map((day) => (
           <li
             key={day.date}
-            className="bg-card flex flex-col gap-2 rounded-lg border p-3"
+            className={`bg-card flex flex-col gap-2 rounded-lg border p-3 ${day.date === today ? 'border-primary border-2' : ''}`}
+            aria-current={day.date === today ? 'date' : undefined}
             data-testid={`public-schedule-day-${day.date}`}
           >
-            <h3 className="font-medium">{formatDayHeading(day.date, locale)}</h3>
+            <h3 className="font-medium">
+              {formatDayHeading(day.date, locale)}
+              {day.date === today ? (
+                <span className="text-muted-foreground font-normal" data-testid="public-schedule-today">
+                  {' '}
+                  ({t('facilities.public.schedule.today')})
+                </span>
+              ) : null}
+            </h3>
             <DayContent day={day} />
           </li>
         ))}
       </ol>
+      {shown.length === 0 ? (
+        <p className="text-muted-foreground text-sm" data-testid="public-schedule-rest-empty">
+          {t('facilities.public.schedule.restEmpty')}
+        </p>
+      ) : null}
       <p className="text-muted-foreground text-sm">{t('facilities.public.schedule.listHint')}</p>
     </div>
   )
 }
 
 /** The month from `md` up: weeks from Monday, each day with its stretches written out. */
-function MonthGrid({ days }: { days: PublicScheduleDay[] }) {
+function MonthGrid({ days, today }: { days: PublicScheduleDay[]; today: string }) {
   const locale = useLocale()
   const leading = days.length > 0 ? isoWeekday(days[0].date) - 1 : 0
   return (
@@ -168,7 +210,8 @@ function MonthGrid({ days }: { days: PublicScheduleDay[] }) {
         {days.map((day) => (
           <li
             key={day.date}
-            className={`flex min-h-24 flex-col gap-1 rounded-md border p-1.5 ${dayHasContent(day) ? 'bg-card' : 'bg-muted'}`}
+            className={`flex min-h-24 flex-col gap-1 rounded-md border p-1.5 ${dayHasContent(day) ? 'bg-card' : 'bg-muted'} ${day.date === today ? 'border-primary border-2' : ''}`}
+            aria-current={day.date === today ? 'date' : undefined}
             data-testid={`public-schedule-cell-${day.date}`}
           >
             <span className="text-sm font-medium">
@@ -355,9 +398,28 @@ function MonthNavigation({ page, busy }: { page: ScheduleView; busy: boolean }) 
   )
 }
 
+/**
+ * "An online request is valid only after the club administrator approves it", the 48-hour hold and who the rental is
+ * paid to after approval: the owner institution, or the club.
+ */
+function OnlineNotice({ owner }: { owner: string | null }) {
+  const t = useT()
+  return (
+    <Alert status="information" data-testid="public-place-online-notice">
+      <AlertTitle>{t('facilities.public.schedule.onlineNotice.title')}</AlertTitle>
+      <AlertDescription>
+        {owner
+          ? t('facilities.public.schedule.onlineNotice.text', { owner })
+          : t('facilities.public.schedule.onlineNotice.textClub')}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boolean; onRefresh: () => void }) {
   const t = useT()
   const { place } = page
+  const today = calendarDateInZone(new Date(), page.timeZone)
   const hasContent = page.days.some(dayHasContent)
   const [target, setTarget] = React.useState<RequestTarget | null>(null)
   // A new key per opening starts the dialog fresh.
@@ -384,12 +446,13 @@ function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boo
               : t('facilities.public.places.byPhone')}
           </p>
         </section>
+        {place.acceptsOnlineRequests ? <OnlineNotice owner={page.owner} /> : null}
         <section className="flex flex-col gap-3" aria-labelledby="public-schedule-month" data-testid="public-schedule">
           <MonthNavigation page={page} busy={busy} />
           {hasContent ? (
             <>
-              <DayList days={page.days} />
-              <MonthGrid days={page.days} />
+              <DayList key={page.month} days={page.days} today={today} />
+              <MonthGrid days={page.days} today={today} />
             </>
           ) : (
             <p className="text-muted-foreground" data-testid="public-schedule-empty">
@@ -490,7 +553,7 @@ export function PublicScheduleView({
   if (!load) return <PublicFacilitiesError onRetry={() => void query.refetch()} />
   if (load.status === 'not_found') {
     return (
-      <PublicFacilitiesFrame club={null}>
+      <PublicFacilitiesFrame club={load.club}>
         <PublicFacilitiesNotice
           title={t('facilities.public.notFound.title')}
           message={t('facilities.public.schedule.notFound')}
@@ -499,10 +562,10 @@ export function PublicScheduleView({
       </PublicFacilitiesFrame>
     )
   }
-  if (load.status === 'disabled') return <PublicFacilitiesDisabled club={null} />
+  if (load.status === 'disabled') return <PublicFacilitiesDisabled club={load.club} />
   if (load.status === 'month_invalid') {
     return (
-      <PublicFacilitiesFrame club={null}>
+      <PublicFacilitiesFrame club={load.club}>
         <PublicFacilitiesNotice
           title={t('facilities.public.schedule.monthInvalid.title')}
           message={t('facilities.public.schedule.monthInvalid.message')}

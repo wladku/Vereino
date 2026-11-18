@@ -1,11 +1,14 @@
 'use client'
 // `/p/[clubSlug]/requests/verify/[token]` — "Request confirmation" (facilities spec P-05, J-007 step 3, REQ-024, DD-44;
-// E08-S05 #125): the link from the confirmation e-mail. On load the page posts the token in the body — once, also under
-// React's strict mode, which runs an effect twice — and shows "Awaiting the administrator's approval until …" with the
-// request's summary (the place, the slot in the club's time zone, the units and the indicative amount), "Link expired"
-// for a used, unknown or expired link (410) and "The slot was taken" (409), each with a link back to the club's places.
-// Once the link is confirmed the frame shows the club's public header from the answer (#261); before that, and for a
-// link that no longer works, the page title alone.
+// E08-S05 #125; parity spec REQ-R16, #289): the link from the confirmation e-mail. On load the page posts the token in
+// the body — once, also under React's strict mode, which runs an effect twice — and shows "Awaiting the
+// administrator's approval until …" with the request's summary: the place, the slot in the club's time zone, the
+// units, what the requester entered (organisation · contact · e-mail, never the phone — answered once, by the
+// confirmation that spent the link, Q-R16) and the indicative amount payable to the facility owner after approval.
+// "Link expired" for a used, unknown or expired link (410, no data) with a link back to the club's places, and "The
+// slot was taken" (409) with "Back to the calendar" of that place.
+// Every state renders inside the club's frame: the header of the confirmed request's club, otherwise the club of the
+// address read through the public places (a club that publishes no page leaves the page title alone).
 // The token is never rendered or logged; the server sends this path with `Referrer-Policy: no-referrer`.
 import * as React from 'react'
 import Link from 'next/link'
@@ -16,8 +19,11 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton } from '@vereino/ui'
 import { PublicFacilitiesFrame } from './PublicFacilitiesFrame'
 import {
+  clubOfLoad,
   formatAmount,
+  placeHref,
   placesHref,
+  usePublicPlaces,
   verifyPublicRequest,
   zonedInstantLabel,
   zonedSlotLabel,
@@ -25,50 +31,67 @@ import {
   type VerifyOutcome,
 } from './public-client'
 
-function BackToPlaces({ clubSlug }: { clubSlug: string }) {
-  const t = useT()
+function BackLink({ href, label, testId }: { href: string; label: string; testId: string }) {
   return (
     <p>
       <Button asChild variant="outline" className="min-h-11">
-        <Link href={placesHref(clubSlug)} data-testid="public-verify-places">
-          {t('facilities.public.verify.places')}
+        <Link href={href} data-testid={testId}>
+          {label}
         </Link>
       </Button>
     </p>
   )
 }
 
+function BackToPlaces({ clubSlug }: { clubSlug: string }) {
+  const t = useT()
+  return (
+    <BackLink href={placesHref(clubSlug)} label={t('facilities.public.verify.places')} testId="public-verify-places" />
+  )
+}
+
 function Summary({ summary }: { summary: RequestSummary }) {
   const t = useT()
   const locale = useLocale()
+  const entered = summary.summary
+  const requester = [entered.renterDisplayName, entered.contactName, entered.contactEmail]
+    .filter((part): part is string => Boolean(part))
+    .join(' · ')
+  const amount =
+    entered.amount === null
+      ? t('facilities.public.verify.summary.noAmount')
+      : entered.payeeName
+        ? t('facilities.public.verify.estimate', {
+            amount: formatAmount(entered.amount, summary.currency, locale),
+            owner: entered.payeeName,
+          })
+        : t('facilities.public.verify.estimateClub', {
+            amount: formatAmount(entered.amount, summary.currency, locale),
+          })
   const rows: Array<[string, string, string]> = [
-    ['place', t('facilities.public.verify.summary.place'), summary.placeName],
+    ['place', t('facilities.public.verify.summary.place'), entered.placeName],
     [
       'slot',
       t('facilities.public.verify.summary.slot'),
-      zonedSlotLabel(summary.startsAt, summary.endsAt, summary.timeZone, locale),
+      zonedSlotLabel(entered.startsAt, entered.endsAt, summary.timeZone, locale),
     ],
     [
       'units',
       t('facilities.public.verify.summary.units'),
-      t('facilities.public.request.units.label', { units: summary.units, minutes: summary.units * 90 }),
+      t('facilities.public.request.units.label', { units: entered.units, minutes: entered.units * 90 }),
     ],
-    [
-      'amount',
-      t('facilities.public.verify.summary.amount'),
-      summary.amount === null
-        ? t('facilities.public.verify.summary.noAmount')
-        : t('facilities.public.verify.summary.amountValue', {
-            amount: formatAmount(summary.amount, summary.currency, locale),
-          }),
-    ],
+    ['requester', t('facilities.public.verify.summary.requester'), requester],
+    ['amount', t('facilities.public.verify.summary.amount'), amount],
   ]
   return (
-    <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-3" data-testid="public-verify-summary">
+    <dl
+      className="bg-card grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border p-4 text-sm sm:grid-cols-3"
+      data-testid="public-verify-summary"
+    >
       {rows.map(([key, label, value]) => (
         <React.Fragment key={key}>
           <dt className="text-muted-foreground">{label}</dt>
-          <dd className="sm:col-span-2" data-testid={`public-verify-${key}`}>
+          <dd className="break-words sm:col-span-2" data-testid={`public-verify-${key}`}>
             {value}
           </dd>
         </React.Fragment>
@@ -80,6 +103,8 @@ function Summary({ summary }: { summary: RequestSummary }) {
 export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token: string }) {
   const t = useT()
   const locale = useLocale()
+  // The club's frame for every state; the confirmed request's own club wins once it is known.
+  const places = usePublicPlaces(clubSlug)
   // Without a token there is nothing to confirm: the link is read as expired.
   const [outcome, setOutcome] = React.useState<VerifyOutcome | null>(() => (token ? null : { status: 'expired' }))
   // The link is spent by the first call: the ref keeps strict mode's second effect from posting it again. No cleanup
@@ -126,7 +151,15 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
           <AlertTitle>{t(`facilities.public.verify.${outcome.status}.title`)}</AlertTitle>
           <AlertDescription>{t(`facilities.public.verify.${outcome.status}.text`)}</AlertDescription>
         </Alert>
-        <BackToPlaces clubSlug={clubSlug} />
+        {outcome.status === 'taken' && outcome.placeSlug ? (
+          <BackLink
+            href={placeHref(clubSlug, outcome.placeSlug)}
+            label={t('facilities.public.verify.backToCalendar')}
+            testId="public-verify-calendar"
+          />
+        ) : (
+          <BackToPlaces clubSlug={clubSlug} />
+        )}
       </>
     )
   } else {
@@ -149,8 +182,9 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
     )
   }
 
+  const club = (outcome?.status === 'ok' ? outcome.summary.club : null) ?? clubOfLoad(places.data)
   return (
-    <PublicFacilitiesFrame club={outcome?.status === 'ok' ? outcome.summary.club : null}>
+    <PublicFacilitiesFrame club={club}>
       <section className="flex flex-col gap-4" aria-labelledby="public-verify-title" aria-busy={!outcome}>
         <h1 id="public-verify-title" className="text-2xl font-semibold">
           {t('facilities.public.verify.title')}
