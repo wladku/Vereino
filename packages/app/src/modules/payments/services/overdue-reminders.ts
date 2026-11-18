@@ -163,10 +163,18 @@ export async function sendOverdueReminders(
       }
       const enqueued = await freshEm(container).transactional(async (tx) => {
         for (const charge of listed) {
-          // The marker moves only from the count this run read: a concurrent run that got there first rolls us back.
+          // The marker moves only from the count this run read and only while the charge is still open: a concurrent
+          // run that got there first, or a charge paid or cancelled since the read, rolls this payer back; the next
+          // run reads it afresh.
           const updated = await tx.nativeUpdate(
             Charge,
-            { id: charge.id, ...scope, reminderCount: charge.reminderCount },
+            {
+              id: charge.id,
+              ...scope,
+              reminderCount: charge.reminderCount,
+              status: { $in: [...OPEN_CHARGE_STATUSES] },
+              deletedAt: null,
+            },
             { reminderCount: charge.reminderCount + 1, lastRemindedAt: now },
           )
           if (updated !== 1) throw new ConcurrentReminder()
