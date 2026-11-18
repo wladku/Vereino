@@ -1,0 +1,1 @@
+| 2026-11-18 | Owner answers: Q-T01 (a part without a club group only at an external place), Q-T05 (only the organiser moves or cancels a part), Q-T10 (the coordinator only adds an external place), Q-T09/Q-T22 (names "Impreza klubowa" / "Część") confirmed; Q-T20 and Q-T11 still open |

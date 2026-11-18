@@ -1,0 +1,1 @@
+| 2026-11-18 | Review fixes before filing E14: the menu entry sits in the activities group ("Harmonogram" today), TEST-T03 split between phases 1 and 7, TEST-T15 in phase 5, new TEST-T16 (cross-tenant and scope checks of the staff routes), Q-T21 wording |
