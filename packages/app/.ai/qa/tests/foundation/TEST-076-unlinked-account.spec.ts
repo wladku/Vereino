@@ -18,7 +18,7 @@ import {
 } from '../_fixtures/club'
 import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
 import { postGroup } from '../_fixtures/groups'
-import { uiText } from '../_fixtures/ui-text'
+import { uiText, uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-076 (#76): an account that passes the feature check but is not linked to a person of the club gets 403
 // `scope_unlinked` with a message naming the fix (en + pl) — on a create command, on an update of a record that exists
@@ -28,10 +28,8 @@ import { uiText } from '../_fixtures/ui-text'
 // record page renders it as its own 403 state (axe-clean).
 test.describe.configure({ timeout: 300_000 })
 
-const UNLINKED_EN =
-  'Your account is not linked to a person of this club, so it has no access to club records. A club administrator must link it. In a new club, the first administrator is set up with: yarn mercato people bootstrap-admin'
-const UNLINKED_PL =
-  'Twoje konto nie jest powiązane z osobą w tym klubie, więc nie ma dostępu do danych klubu. Musi je powiązać administrator klubu. W nowym klubie pierwszego administratora tworzy się poleceniem: yarn mercato people bootstrap-admin'
+const UNLINKED_EN = uiTextIn('en', 'foundation.errors.scope_unlinked')
+const UNLINKED_PL = uiTextIn('pl', 'foundation.errors.scope_unlinked')
 const DENIED_EN = 'You do not have access to this record.'
 const DENIED_PL = 'Nie masz dostępu do tego rekordu.'
 const EN = { Cookie: 'locale=en' }
@@ -62,7 +60,7 @@ test('TEST-076 an account with no linked club person gets 403 scope_unlinked; a 
       ?.total
 
     // A tenant administrator account with every `people` feature (the club administrator's platform role) and no
-    // person of the club linked to it — the state of a new club before `people bootstrap-admin`.
+    // person of the club linked to it — the state of a new club before its first administrator is chosen.
     const email = `unlinked-${uniqueSuffix()}@example.org`
     const password = `Vereino-${uniqueSuffix()}-Aa1!`
     const unlinkedId = await createUserFixture(request, club.superToken, {

@@ -131,6 +131,77 @@ export function rosterOrder<T extends Validity>(rows: readonly T[], today: Calen
   )
 }
 
+/** The roster views of B-12 (parity spec REQ-A03, #267); `ended` is the History view. */
+export const ROSTER_VIEWS = ['active', 'upcoming', 'ended'] as const satisfies readonly PeriodStatus[]
+
+/** The roster's role order (B-12): coaches, then assistants, then participants. */
+export const ROSTER_ROLE_ORDER: readonly MembershipRole[] = ['coach', 'assistant', 'participant']
+
+/** A role's place in the roster order; an unknown role sorts last. */
+export function rosterRoleRank(role: string): number {
+  const rank = ROSTER_ROLE_ORDER.indexOf(role as MembershipRole)
+  return rank < 0 ? ROSTER_ROLE_ORDER.length : rank
+}
+
+/**
+ * The roster order of `sortField=roster` (REQ-A03): by role (coaches first), then the latest start first, then the id
+ * for a stable page boundary. The server orders the same way in SQL; this is its reference. Returns a new array.
+ */
+export function rosterRoleOrder<T extends { id: string; role: string; validFrom: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort(
+    (a, b) =>
+      rosterRoleRank(a.role) - rosterRoleRank(b.role) ||
+      b.validFrom.localeCompare(a.validFrom) ||
+      a.id.localeCompare(b.id),
+  )
+}
+
+/** The bounds of a roster view on `today`, as inclusive calendar-day comparisons on `valid_from` and `valid_to`. */
+export type RosterViewBounds =
+  | { view: 'active'; startsOnOrBefore: CalendarDate; endsOnOrAfter: CalendarDate }
+  | { view: 'upcoming'; startsAfter: CalendarDate }
+  | { view: 'ended'; endsBefore: CalendarDate }
+
+/** The filter of a roster view (REQ-A03): the same split as `periodStatus`, expressed as bounds a query can use. */
+export function rosterViewBounds(view: PeriodStatus, today: CalendarDate): RosterViewBounds {
+  if (view === 'active') return { view, startsOnOrBefore: today, endsOnOrAfter: today }
+  if (view === 'upcoming') return { view, startsAfter: today }
+  return { view, endsBefore: today }
+}
+
+export const MEMBERSHIP_ACTIONS = ['edit', 'end', 'remove'] as const
+export type MembershipAction = (typeof MEMBERSHIP_ACTIONS)[number]
+
+/**
+ * The row actions a manager is offered per membership status (REQ-A03, J-A01 step 3): an upcoming membership cannot be
+ * ended (it is edited or removed), an ended one is not ended again. Remove is offered on every row; the server refuses
+ * a started membership that was used (409 `membership_in_use`).
+ */
+export function membershipActions(status: PeriodStatus): MembershipAction[] {
+  if (status === 'active') return ['edit', 'end', 'remove']
+  return ['edit', 'remove']
+}
+
+/**
+ * Whether an end with the last day `validTo` is refused with 422 `membership_not_started` (REQ-A03): the membership
+ * starts after `today`, or the last day is before its first day.
+ */
+export function endRefused(period: { validFrom: CalendarDate }, validTo: CalendarDate, today: CalendarDate): boolean {
+  return period.validFrom > today || validTo < period.validFrom
+}
+
+/**
+ * Whether a membership may be removed (REQ-A03): one that has not started always; a started one only when `activities`
+ * answered that it was never used. `used` is null when the usage contract is not registered.
+ */
+export function mayRemoveMembership(
+  period: { validFrom: CalendarDate },
+  today: CalendarDate,
+  used: boolean | null,
+): boolean {
+  return period.validFrom > today || used === false
+}
+
 /**
  * The comparison key of a group name in the bulk import's group column (#65, club spec REQ-036, D-026): Unicode NFC,
  * trimmed, lower case. "Orliki U8", " orliki u8 " and "ORLIKI U8" are one name; inner spaces and punctuation count.

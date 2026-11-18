@@ -1,5 +1,13 @@
 import { describe, expect, it } from '@jest/globals'
-import { awayByDefault, chooseLocation, placeLine, placeMapHref, storedVenue, venueLocation } from '../venue'
+import {
+  awayByDefault,
+  cardMapHref,
+  chooseLocation,
+  placeLine,
+  placeMapHref,
+  storedVenue,
+  venueLocation,
+} from '../venue'
 
 // #268 (REQ-A05, glossary *Map link*): the session record's place line and map link.
 describe('placeMapHref', () => {
@@ -75,5 +83,19 @@ describe('awayByDefault', () => {
     expect(awayByDefault(venue, false)).toBe(false)
     expect(awayByDefault(null, undefined)).toBe(false)
     expect(awayByDefault(null, true)).toBe(true)
+  })
+})
+
+describe('cardMapHref (E10-S07, REQ-A13)', () => {
+  const away = { name: 'Stadion', address: 'ul. Sportowa 1, Liszki', geoLat: null, geoLng: null }
+
+  it('links the map of an external place or a typed venue', () => {
+    expect(cardMapHref({ ...away, placeExternal: true })).toBe(placeMapHref(away))
+  })
+
+  it('shows no link for a club place or without an address', () => {
+    expect(cardMapHref({ ...away, placeExternal: false })).toBeNull()
+    expect(cardMapHref(away)).toBeNull()
+    expect(cardMapHref({ ...away, address: null, placeExternal: true })).toBeNull()
   })
 })

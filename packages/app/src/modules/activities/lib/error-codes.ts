@@ -85,6 +85,11 @@ export const errorCodes = [
   // an assignment names a coach of the club other than the session's current one.
   { code: 'absence_after_start', status: 409, messageKey: 'activities.errors.absence_after_start' },
   { code: 'occurrence_coach_unchanged', status: 422, messageKey: 'activities.errors.occurrence_coach_unchanged' },
+  // Taking over and scores (E10-S07 #272; parity spec REQ-A14, REQ-A15): a coach or assistant of the group takes a
+  // session without a coach; a score is recorded on a match or sparring once it has started.
+  { code: 'occurrence_has_coach', status: 409, messageKey: 'activities.errors.occurrence_has_coach' },
+  { code: 'score_not_applicable', status: 422, messageKey: 'activities.errors.score_not_applicable' },
+  { code: 'score_before_start', status: 409, messageKey: 'activities.errors.score_before_start' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

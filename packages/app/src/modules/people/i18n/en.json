@@ -547,7 +547,7 @@
   "people.firstAdministrator.fields.user.help": "A user of this organization. They get the club administrator role and sign in with their own account.",
   "people.firstAdministrator.user.placeholder": "Choose a user",
   "people.firstAdministrator.user.search": "Search by e-mail or name",
-  "people.firstAdministrator.user.empty": "No user found. Add the user on the platform's Users page first.",
+  "people.firstAdministrator.user.empty": "No user found. Add the user first on the \"Users\" page under Settings › Auth.",
   "people.firstAdministrator.errors.userRequired": "Choose a user.",
   "people.firstAdministrator.errors.load": "Could not check whether the club has an administrator.",
   "people.firstAdministrator.flash.created": "The club administrator was created.",

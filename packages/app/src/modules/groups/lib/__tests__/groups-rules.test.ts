@@ -18,6 +18,14 @@ import {
   needsMatchGuard,
   periodStatus,
   rosterOrder,
+  ROSTER_ROLE_ORDER,
+  ROSTER_VIEWS,
+  endRefused,
+  mayRemoveMembership,
+  membershipActions,
+  rosterRoleOrder,
+  rosterRoleRank,
+  rosterViewBounds,
   seasonDatesInverted,
 } from '../groups-rules'
 
@@ -149,6 +157,8 @@ describe('groups error codes', () => {
       ['group_has_matches', 409],
       ['group_usage_failed', 503],
       ['membership_overlap', 409],
+      ['membership_in_use', 409],
+      ['membership_not_started', 422],
       ['season_dates_inverted', 422],
       ['season_name_taken', 409],
       ['season_in_use', 409],
@@ -223,5 +233,58 @@ describe('parseAgeInput', () => {
     expect(parseAgeInput(-1)).toBe('invalid')
     expect(parseAgeInput('100')).toBe('invalid')
     expect(parseAgeInput(true)).toBe('invalid')
+  })
+})
+
+describe('roster rules (parity spec REQ-A03, #267)', () => {
+  it('names the three views and orders roles coaches, assistants, participants', () => {
+    expect(ROSTER_VIEWS).toEqual(['active', 'upcoming', 'ended'])
+    expect(ROSTER_ROLE_ORDER).toEqual(['coach', 'assistant', 'participant'])
+    expect(rosterRoleRank('coach')).toBe(0)
+    expect(rosterRoleRank('assistant')).toBe(1)
+    expect(rosterRoleRank('participant')).toBe(2)
+    expect(rosterRoleRank('unknown')).toBe(3)
+  })
+
+  it('sorts by role, then the latest start first, then the id', () => {
+    const rows = [
+      { id: 'p1', role: 'participant', validFrom: '2026-09-01' },
+      { id: 'c2', role: 'coach', validFrom: '2026-01-01' },
+      { id: 'a1', role: 'assistant', validFrom: '2026-02-01' },
+      { id: 'p3', role: 'participant', validFrom: '2026-10-01' },
+      { id: 'c1', role: 'coach', validFrom: '2026-01-01' },
+    ]
+    expect(rosterRoleOrder(rows).map((row) => row.id)).toEqual(['c1', 'c2', 'a1', 'p3', 'p1'])
+    expect(rows[0].id).toBe('p1')
+  })
+
+  it('turns a view into bounds on the club day', () => {
+    expect(rosterViewBounds('active', '2026-11-17')).toEqual({
+      view: 'active',
+      startsOnOrBefore: '2026-11-17',
+      endsOnOrAfter: '2026-11-17',
+    })
+    expect(rosterViewBounds('upcoming', '2026-11-17')).toEqual({ view: 'upcoming', startsAfter: '2026-11-17' })
+    expect(rosterViewBounds('ended', '2026-11-17')).toEqual({ view: 'ended', endsBefore: '2026-11-17' })
+  })
+
+  it('offers End only on an active membership', () => {
+    expect(membershipActions('active')).toEqual(['edit', 'end', 'remove'])
+    expect(membershipActions('upcoming')).toEqual(['edit', 'remove'])
+    expect(membershipActions('ended')).toEqual(['edit', 'remove'])
+  })
+
+  it('refuses an end before the start or of a membership that has not started', () => {
+    expect(endRefused({ validFrom: '2026-12-01' }, '2026-12-05', '2026-11-17')).toBe(true)
+    expect(endRefused({ validFrom: '2026-09-01' }, '2026-08-31', '2026-11-17')).toBe(true)
+    expect(endRefused({ validFrom: '2026-09-01' }, '2026-09-01', '2026-11-17')).toBe(false)
+    expect(endRefused({ validFrom: '2026-11-17' }, '2026-11-30', '2026-11-17')).toBe(false)
+  })
+
+  it('removes a membership before its start, or a started one only when never used', () => {
+    expect(mayRemoveMembership({ validFrom: '2026-12-01' }, '2026-11-17', null)).toBe(true)
+    expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', false)).toBe(true)
+    expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', true)).toBe(false)
+    expect(mayRemoveMembership({ validFrom: '2026-09-01' }, '2026-11-17', null)).toBe(false)
   })
 })

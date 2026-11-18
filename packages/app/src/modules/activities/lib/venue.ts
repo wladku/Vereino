@@ -72,3 +72,11 @@ export function venueLocation(venue: TypedVenue): PlaceLocation {
 export function awayByDefault(venue: TypedVenue | null, isAway: boolean | undefined): boolean {
   return isAway ?? venue !== null
 }
+
+/**
+ * The map link a session card shows (REQ-A13, glossary *Map link*): only for a place outside the club's own or a typed
+ * venue — the club's own places are known to its members — and only when there is something to point at.
+ */
+export function cardMapHref(occurrence: PlaceLocation & { placeExternal?: boolean }): string | null {
+  return occurrence.placeExternal ? placeMapHref(occurrence) : null
+}

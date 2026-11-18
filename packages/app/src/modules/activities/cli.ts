@@ -6,7 +6,7 @@ import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireJobResult } from './commands/attendance'
 import type { RemindersJobResult } from './commands/declaration-links'
-import type { GenerateJobResult } from './commands/jobs'
+import type { GenerateJobResult, WarnUnassignedJobResult } from './commands/jobs'
 import { setUpClubActivities } from './services/club-setup'
 import { checkAppendOnly, listContactAccessLog } from './services/contact-access-log'
 
@@ -96,8 +96,34 @@ const sendDeclarationReminders: ModuleCli = {
 }
 
 /**
- * `activities set-up-club --tenant <id> --org <id>`: re-runs the club's `activities` setup — the generator, expiry and
- * evening-reminder schedules and the default declaration policies — and prints what it registered. Idempotent (an
+ * `activities warn-unassigned-sessions --tenant <id> --org <id> [--now <ISO instant>]`: runs the 15-minute warning about
+ * sessions without a coach now — the same command the `activities:warn-unassigned-sessions` job dispatches — and prints
+ * its counts. `--now` evaluates the two-hour window as of another instant (an operator catching up; the tests' clock).
+ */
+const warnUnassignedSessions: ModuleCli = {
+  command: 'warn-unassigned-sessions',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato activities warn-unassigned-sessions --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, WarnUnassignedJobResult>(
+      'activities.occurrences.warn_unassigned',
+      { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts })}\n`)
+  },
+}
+
+/**
+ * `activities set-up-club --tenant <id> --org <id>`: re-runs the club's `activities` setup — the generator, expiry,
+ * evening-reminder and unstaffed-warning schedules and the default declaration policies — and prints what it registered. Idempotent (an
  * upsert of each schedule, no policy twice); the backfill for a club set up before a schedule existed, e.g. the 18:00
  * declaration reminders of clubs created before #105 (#192).
  */
@@ -163,6 +189,7 @@ const commands: ModuleCli[] = [
   generateOccurrences,
   expireGuardianConfirmations,
   sendDeclarationReminders,
+  warnUnassignedSessions,
   setUpClub,
   contactAccessLogCli,
   checkAppendOnlyCli,

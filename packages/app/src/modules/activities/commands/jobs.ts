@@ -5,6 +5,10 @@
 // slot that already has a session (generated, detached or cancelled) is never generated again, and the unique slot
 // index makes a retried run a no-op. A new session over a conflict the job cannot refuse is created with
 // `needs_reschedule` for the coordinator. Not undoable: it only re-derives sessions from the audited series.
+//
+// `activities.occurrences.warn_unassigned` — the `activities:warn-unassigned-sessions` job (parity spec REQ-A14, Q-A19;
+// E10-S07 #272): every 15 minutes the planned sessions without a coach that start within two hours are warned about,
+// once per session and recipient (`services/unstaffed-warning.ts`). `system_job` only, like the generator.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -15,11 +19,12 @@ import { addCalendarDays, expandOccurrences, type ActingRole, type CalendarDate 
 import { authorizeScoped } from '@/modules/foundation'
 import { Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
-import { generateOccurrencesSchema } from '../data/validators'
+import { generateOccurrencesSchema, warnUnassignedSchema } from '../data/validators'
 import { horizonEnd, lastSessionDay } from '../lib/activities-rules'
 import { clubClock } from '../services/directory'
 import { findConflicts } from '../services/schedule'
 import { activityRule } from '../services/series'
+import { unstaffedSessions, warnUnstaffedSession } from '../services/unstaffed-warning'
 import { emitAfterCommit, inWriteTransaction } from './shared'
 
 const logger = createLogger('activities').child({ component: 'generate-occurrences' })
@@ -193,3 +198,70 @@ const generateOccurrencesCommand: CommandHandler<Record<string, unknown>, Genera
 }
 
 registerCommand(generateOccurrencesCommand)
+
+export type WarnUnassignedCounts = { sessions: number; warned: number; notified: number; failed: number }
+
+export type WarnUnassignedJobResult = {
+  tenantId: string
+  organizationId: string
+  actingRole: ActingRole
+  now: string
+  counts: WarnUnassignedCounts
+}
+
+const warnUnassignedCommand: CommandHandler<Record<string, unknown>, WarnUnassignedJobResult> = {
+  id: 'activities.occurrences.warn_unassigned',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const authorized = await inWriteTransaction(ctx, 'activities.occurrences.warn_unassigned.authorize', (em) =>
+      authorizeScoped(
+        {
+          input: warnUnassignedSchema,
+          resourceKind: 'activities.organization',
+          allowedKinds: ['system_job'],
+          resolveTarget: (_parsed, _entity, scope) => ({ id: scope.organizationId, ...scope }),
+          lock: 'none',
+          scopeSource: { job: true },
+        },
+        rawInput,
+        ctx,
+        em,
+      ),
+    )
+    const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+    const now = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
+    const em = ctx.container.resolve<EntityManager>('em').fork()
+    const due = await unstaffedSessions(em, scope, now)
+    const counts: WarnUnassignedCounts = { sessions: due.length, warned: 0, notified: 0, failed: 0 }
+    for (const { id } of due) {
+      try {
+        const notified = await warnUnstaffedSession(ctx.container, scope, id, now)
+        if (notified.length > 0) counts.warned += 1
+        counts.notified += notified.length
+      } catch (error: unknown) {
+        counts.failed += 1
+        logger.warn('The unstaffed warning failed for one session; the next run retries it', {
+          ...scope,
+          occurrenceId: id,
+          err: error,
+        })
+        getTelemetryRuntime()?.reportError(error, { module: 'activities', code: 'activities.warn_unassigned.failed' })
+      }
+    }
+    logger.info('Unstaffed session warnings finished', { ...scope, now: now.toISOString(), ...counts })
+    return { ...scope, actingRole: authorized.actingRole, now: now.toISOString(), counts }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('activities.audit.jobs.warnUnassigned', 'Warn about sessions without a coach'),
+      resourceKind: 'activities.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: { actingRole: result.actingRole, now: result.now, ...result.counts },
+    }
+  },
+}
+
+registerCommand(warnUnassignedCommand)

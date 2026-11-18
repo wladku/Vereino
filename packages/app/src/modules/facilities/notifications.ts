@@ -43,6 +43,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     actions: [],
   },
   {
+    // #283 (REQ-R15, J-R07): the same reminder for a place maintainer, linking to their phone page; same keys.
+    type: 'facilities.maintenance_due_planner',
+    module: 'facilities',
+    channels: ['in_app'],
+    titleKey: 'facilities.notifications.maintenanceDue.title',
+    bodyKey: 'facilities.notifications.maintenanceDue.body',
+    icon: 'wrench',
+    severity: 'warning',
+    category: 'facilities',
+    linkHref: '/club/places/maintenance',
+    actions: [],
+  },
+  {
     // #282 (DD-R12, J-R08): an incident asks for an entry ban; the club administrators decide on the Incidents tab.
     type: 'facilities.entry_ban_requested',
     module: 'facilities',

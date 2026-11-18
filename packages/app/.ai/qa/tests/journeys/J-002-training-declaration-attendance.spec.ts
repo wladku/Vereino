@@ -173,19 +173,16 @@ async function saveActivityWizard(page: Page): Promise<string> {
   return new URL(page.url()).searchParams.get('activity') as string
 }
 
-/** Adds a person to the roster of the open group record (`RosterPanel`) with a role. */
+/** Adds a person to the roster of the open group record (`RosterPanel`, the "Add to roster" dialog) with a role. */
 async function addToRoster(page: Page, person: { lastName: string; fullName: string }, role: RegExp): Promise<void> {
-  const form = page.getByRole('form', { name: ADD_TO_GROUP })
-  await lookupPerson(form, uiText('groups.memberships.fields.person.search'), person.lastName, person.fullName)
-  await form.locator('#groups-membership-role').click()
+  await page.getByRole('button', { name: ADD_TO_GROUP }).first().click()
+  const dialog = page.getByTestId('groups-membership-dialog')
+  await lookupPerson(dialog, uiText('groups.memberships.fields.person.search'), person.lastName, person.fullName)
+  await dialog.getByTestId('groups-membership-role').click()
   await page.getByRole('option', { name: role }).click()
-  await form.getByRole('button', { name: ADD_TO_GROUP }).click()
-  await expect(
-    page
-      .getByRole('list', { name: uiText('groups.memberships.list') })
-      .getByRole('listitem')
-      .filter({ hasText: person.fullName }),
-  ).toBeVisible()
+  await dialog.getByTestId('groups-membership-save').click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('row').filter({ hasText: person.fullName })).toBeVisible()
 }
 
 /** Opens the member calendar of a coach-only person on the week of `date` (`/club/calendar`, the staff context). */
@@ -672,7 +669,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       // From the coach calendar to the attendance list of the started training.
       await openCoachCalendar(page, tuesday)
       const item = page.getByTestId('calendar-item').filter({ hasText: TRAINING })
-      await item.getByRole('link').first().click()
+      await item.getByRole('link', { name: uiText('activities.club.session.attendanceList', { exact: true }) }).click()
       await expect(page).toHaveURL(new RegExp(`${attendanceUrl}$`))
       await expect(page.getByTestId('club-attendance-title')).toContainText(TRAINING)
       await expect(page.getByTestId('club-attendance-summary')).toHaveText(

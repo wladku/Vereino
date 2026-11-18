@@ -609,7 +609,7 @@
   "club_core.places.public.fields.address": "Public address",
   "club_core.places.public.address.preview": "The calendar opens at {path}",
   "club_core.places.public.address.noSlug": "Set the place address to see where its calendar opens.",
-  "club_core.places.public.address.noClubSlug": "The club has no page address yet; set it in the club settings.",
+  "club_core.places.public.address.noClubSlug": "The club has no page address yet; set it on the \"Club page publication\" page in the Club menu.",
   "club_core.places.public.fields.isPublicSchedule": "Public schedule",
   "club_core.places.public.fields.isPublicSchedule.help": "Guests see the place and its month as states only, without names.",
   "club_core.places.public.fields.acceptsOnlineRequests": "Accepts online requests",

@@ -10,11 +10,13 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { calendarRangeRetry } from '../../lib/member-calendar'
 import { coachBadge } from '../../lib/occurrence-list'
+import { cardMapHref } from '../../lib/venue'
 import type {
   CalendarBadgeTone,
   CalendarItem,
   CalendarItemAction,
   CalendarItemBadge,
+  CalendarItemLink,
   CalendarItemNote,
 } from '@vereino/core'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -50,6 +52,14 @@ export function newEventHref(proposed: { date?: string; placeId?: string; groupI
   for (const [key, value] of Object.entries(proposed)) if (value) params.set(key, value)
   const query = params.toString()
   return query ? `/club/events/new?${query}` : '/club/events/new'
+}
+
+/**
+ * "Message the group" (REQ-A13): the member inbox opening its composer addressed to the session's audience. The query
+ * is `communication`'s URL contract (`composePreset`); `activities` never imports `communication`.
+ */
+export function composeForSessionHref(id: string): string {
+  return `/club/messages?compose=${encodeURIComponent(`occurrence:${id}`)}`
 }
 
 /** The coach's attendance list of a session (#33). */
@@ -143,6 +153,12 @@ export type CalendarOccurrence = {
   placeAddress: string | null
   placeGeoLat: number | null
   placeGeoLng: number | null
+  /** A place outside the club's own or a typed venue: the cards link its map (REQ-A13). */
+  placeExternal?: boolean
+  /** The activity is an away trip (REQ-A15: the club's team is `away` in the score). */
+  isAway?: boolean
+  /** The recorded score of a match or sparring (REQ-A15), or null. */
+  score?: SessionScore | null
   coachPersonId: string | null
   coachName: string | null
   /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
@@ -177,6 +193,23 @@ export type CalendarEntry = {
   mayCancel?: boolean
   /** `as=coach` (#270, DD-A05): the caller may edit the planned session (a coach: only a one-off event's session). */
   mayEdit?: boolean
+  /** `as=coach` (REQ-A14, #272): a coach or assistant of the group may take over the session without a coach. */
+  mayTakeOver?: boolean
+  /** `as=coach` (REQ-A15): a started match or sparring takes a score. */
+  mayScore?: boolean
+  /** `as=coach` (REQ-A13): the substitution history, oldest first. */
+  substitutions?: SubstitutionHistoryEntry[]
+}
+
+export type SessionScore = { home: number; away: number; note: string | null }
+
+export type SubstitutionHistoryEntry = {
+  id: string
+  kind: 'absence_reported' | 'substitute_assigned' | 'coach_restored'
+  previousCoachName: string | null
+  newCoachName: string | null
+  decidedByName: string | null
+  createdAt: string
 }
 
 export type CalendarResponse = { items: CalendarEntry[]; timeZone: string; from: string; to: string }
@@ -274,6 +307,8 @@ export type AttendanceList = {
   /** `confirm`: the participants who have not answered (REQ-A07). */
   unansweredCount?: number
   checkOff: CheckOffWindow
+  /** The instant the check-off opens: 30 minutes before the start (DD-A13). */
+  checkOffOpensAt: string
   actingRole: string
   /** False when the club setting `coach_may_cancel` keeps the caller from cancelling (#199). */
   mayCancel: boolean
@@ -435,6 +470,35 @@ export async function cancelSession(
 }
 
 /**
+ * A coach or assistant of the group takes over the session without a coach (REQ-A14, #272); no version is needed: the
+ * server re-reads "no coach" under a row lock and answers 409 `occurrence_has_coach` when someone was faster.
+ */
+export async function takeOverSession(id: string, errorMessage: string): Promise<void> {
+  await apiCallOrThrow(
+    `/api/activities/occurrences/${encodeURIComponent(id)}/take-over`,
+    { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' },
+    { errorMessage },
+  )
+}
+
+/** Records (or with both scores null clears) the score of a match or sparring against the session version (REQ-A15). */
+export async function saveScore(
+  id: string,
+  input: { scoreHome: number | null; scoreAway: number | null; note: string | null },
+  errorMessage: string,
+  lockToken: string,
+): Promise<{ score: SessionScore | null; updatedAt: string } | null> {
+  const call = await withScopedApiRequestHeaders(buildOptimisticLockHeader(lockToken), () =>
+    apiCallOrThrow<{ score: SessionScore | null; updatedAt: string }>(
+      `/api/activities/occurrences/${encodeURIComponent(id)}/score`,
+      { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) },
+      { errorMessage },
+    ),
+  )
+  return call.result ?? null
+}
+
+/**
  * The assigned coach reports they cannot run the session (E06-S13 #95), with an optional reason, against the
  * session's lock token.
  */
@@ -569,6 +633,18 @@ export function toCalendarItem(
   if (coachMark === 'needs_coach') {
     badges.push({ id: 'needs-coach', label: t('activities.club.session.needsCoach'), tone: 'warning' })
   }
+  // REQ-A13: a substitute reads "substitute: {name}" (M-02 `m.occCard.substitute`).
+  if (coachMark === 'substitution' && occurrence.coachName) {
+    badges.push({
+      id: 'substitute',
+      label: t('activities.club.session.substituteCoach', { name: occurrence.coachName }),
+      tone: 'info',
+    })
+  }
+  // REQ-A13 (M-02, M-03): the type badge, as the session page shows it.
+  if (occurrence.activityType) {
+    badges.unshift({ id: 'type', label: t(`activities.types.${occurrence.activityType}`), tone: 'neutral' })
+  }
   const actions: CalendarItemAction[] = []
   if (entry.declarationsOpen && as !== 'coach') {
     for (const person of entry.persons) {
@@ -588,6 +664,11 @@ export function toCalendarItem(
   }
   const title = [occurrence.activityName, occurrence.groupName].filter(Boolean).join(' · ')
   const subtitle = as === 'guardian' ? entry.persons.map((person) => person.firstName).join(', ') : null
+  // REQ-A13: the coach's card opens the session page and carries "Attendance list" (M-02, M-03).
+  const links: CalendarItemLink[] =
+    as === 'coach' && occurrence.status !== 'cancelled'
+      ? [{ id: 'attendance', label: t('activities.club.session.attendanceList'), href: attendanceHref(occurrence.id) }]
+      : []
   return {
     id: occurrence.id,
     title: title || t('activities.club.session.untitled'),
@@ -597,15 +678,20 @@ export function toCalendarItem(
     status: occurrence.status,
     place: occurrence.placeName,
     placeAddress: occurrence.placeAddress,
+    placeHref: cardMapHref({
+      name: occurrence.placeName,
+      address: occurrence.placeAddress,
+      geoLat: occurrence.placeGeoLat,
+      geoLng: occurrence.placeGeoLng,
+      placeExternal: occurrence.placeExternal,
+    }),
     section: occurrence.sectionName ? { id: occurrence.sectionId, label: occurrence.sectionName } : null,
-    coach:
-      coachMark === 'substitution' && occurrence.coachName
-        ? `${occurrence.coachName} ${t('activities.substitutions.substitution')}`
-        : occurrence.coachName,
+    coach: occurrence.coachName,
     subtitle,
     notes: deadlineNotes(entry, as, t, formatAt),
-    href: as === 'coach' ? attendanceHref(occurrence.id) : sessionHref(occurrence.id, as),
+    href: sessionHref(occurrence.id, as),
     badges,
     actions,
+    links,
   }
 }
