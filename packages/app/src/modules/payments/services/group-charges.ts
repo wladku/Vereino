@@ -8,6 +8,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CalendarDate, Scope } from '@vereino/core'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { foundationErrors } from '@/modules/foundation'
 import type { GroupDirectoryEntry } from '../../groups/services/group-directory'
 import { Charge, Fee, Order, OrderCampaign, OrderLine, Payment } from '../data/entities'
 import { amountDueOf, remainingOf } from '../lib/charge-ledger'
@@ -22,6 +23,8 @@ import {
   groupFilterOf,
   groupTotals,
   orderChargeVisible,
+  ownFirst,
+  ownGroupIds,
   type GroupChargeKind,
   type GroupTotals,
 } from '../lib/group-charges'
@@ -324,7 +327,8 @@ export type HeldCash = { items: (ReceiptSummary & { payer: PersonName | null })[
 export type GroupChargesView = {
   today: CalendarDate
   coachFeeAccess: CoachFeeAccess
-  groups: (Pick<GroupDirectoryEntry, 'id' | 'name' | 'sectionId'> & GroupTotals)[]
+  /** `own`: a group the caller leads as a coach; the others (a coordinator's section, the club) show "(section)". */
+  groups: (Pick<GroupDirectoryEntry, 'id' | 'name' | 'sectionId'> & GroupTotals & { own: boolean })[]
   groupId: string | null
   group: GroupTotals | null
   children: GroupChild[]
@@ -332,9 +336,9 @@ export type GroupChargesView = {
 }
 
 /**
- * M-18 for the caller: their groups (each with its totals, for the chips), the selected group (default the first)
- * with its children (only those with a shown charge; "To pay" keeps those with something due) and its campaigns.
- * A `groupId` outside the caller's groups selects nothing.
+ * M-18 for the caller: their groups, their own first (each with its totals, for the chips), the selected group
+ * (default the first) with its children (only those with a shown charge; "To pay" keeps those with something due) and
+ * its campaigns. A `groupId` outside the caller's groups answers 403 `scope_denied` (REQ-C12, #300).
  */
 export async function groupChargesView(
   container: AwilixContainer,
@@ -345,7 +349,13 @@ export async function groupChargesView(
   const em = freshEm(container)
   const { today } = await clubClock(container, scope)
   const { setting, access } = await feeAccessFor(container, scope, grants)
-  const groups = await groupsOfScope(container, scope, grants, em)
+  const own = ownGroupIds(grants)
+  const groups = ownFirst(
+    (await groupsOfScope(container, scope, grants, em)).map((group) => ({ ...group, own: own.has(group.id) })),
+  )
+  if (query.groupId !== undefined && !groups.some((group) => group.id === query.groupId)) {
+    await foundationErrors.throw('scope_denied')
+  }
   const participants = new Map<string, string[]>()
   for (const group of groups) participants.set(group.id, await groupParticipants(container, scope, group.id, today, em))
   const rows = await rawCharges(
@@ -392,6 +402,7 @@ export async function groupChargesView(
       id: group.id,
       name: group.name,
       sectionId: group.sectionId,
+      own: group.own,
       ...groupTotals(childrenOf(group.id)),
     })),
     groupId: selected?.id ?? null,

@@ -3,13 +3,14 @@
 // `/club/coach/payments` with the people to pay and overdue in the coach's groups and the cash the coach holds. The
 // spot does not enforce the widget's `features`, so the tile stays hidden until the read answers and for a caller the
 // API refuses (no `payments.groups.view`, e.g. a ward) or who has no groups; any other failed read keeps the link
-// with the plain description.
+// with the plain description. The link opens M-18 on the coach's group with "To pay" (`?group=&due=1`; REQ-C12, #300).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatZloty } from '../../../lib/charge-ledger'
+import { coachPaymentsHref, tileGroupOf } from '../../../lib/group-charges'
 import type { GroupChargesView } from '../../../components/club/coach/coach-client'
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
@@ -51,7 +52,11 @@ export default function ClubCoachPaymentsWidget() {
         {t('payments.coach.title')}
       </h2>
       <div className={TILE_CLASS}>
-        <Link href="/club/coach/payments" className={LINK_CLASS} data-testid="club-tile-coach-payments">
+        <Link
+          href={coachPaymentsHref({ groupId: view ? tileGroupOf(view.groups) : null, due: true })}
+          className={LINK_CLASS}
+          data-testid="club-tile-coach-payments"
+        >
           <span className="font-semibold">{t('payments.coach.title')}</span>
           <span className="text-muted-foreground max-w-prose text-sm" data-testid="club-tile-coach-payments-state">
             {view && people !== null && overdue !== null

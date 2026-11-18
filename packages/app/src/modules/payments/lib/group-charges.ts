@@ -2,8 +2,9 @@
 // charges, DD-31, DD-32; REQ-033, TEST-045; issue #117 E07-S10; UX concept M-18): which groups a coach or coordinator
 // sees, which charges of a group's child are shown (fees of the group's fee schedule per the club's "Coaches and
 // payments" setting, orders of campaigns covering the group), whether cash may be accepted for a charge, the child's
-// and the group's totals, the "To pay" filter, whose overdue charges a reminder goes to and when a kit may be handed
-// over. Time is a parameter (engineering standards S3.5); nothing here reads the database.
+// and the group's totals, the "To pay" filter, whose overdue charges a reminder goes to, when a kit may be handed
+// over, which groups are the caller's own and M-18's address (REQ-C12, #300). Time is a parameter (engineering
+// standards S3.5); nothing here reads the database.
 import type { CalendarDate, Scope } from '@vereino/core'
 import { OPEN_CHARGE_STATUSES, isOverdue } from './charge-ledger'
 import type { CampaignStatus } from './order-campaigns'
@@ -160,4 +161,45 @@ export function handOverRefusal(input: {
 /** A child's order with its campaign may be handed over now (the row action is shown). */
 export function canHandOver(campaignStatus: CampaignStatus, handedOver: boolean): boolean {
   return HAND_OVER_STATUSES.includes(campaignStatus) && !handedOver
+}
+
+/**
+ * The groups the caller leads as a coach (REQ-C12): M-18 lists them first and marks every other group it shows — a
+ * coordinator's section, the administrator's club — with "(section)".
+ */
+export function ownGroupIds(scope: Scope): Set<string> {
+  return new Set(grantIds(scope, 'coach'))
+}
+
+/** The groups with the caller's own first, each part in its given order. */
+export function ownFirst<T extends { own: boolean }>(groups: readonly T[]): T[] {
+  return [...groups.filter((group) => group.own), ...groups.filter((group) => !group.own)]
+}
+
+/** M-18's address: `/club/coach/payments`, with `?group=` and `&due=1` ("To pay") when set (REQ-C12). */
+export const COACH_PAYMENTS_HREF = '/club/coach/payments'
+
+export type CoachPaymentsUrlState = { groupId: string | null; due: boolean }
+
+/** The M-18 state a link or a reload carries: the group (`group`) and the "To pay" filter (`due=1`). */
+export function readCoachPaymentsUrl(get: (key: string) => string | null): CoachPaymentsUrlState {
+  const groupId = get('group')?.trim()
+  return { groupId: groupId ? groupId : null, due: get('due') === '1' }
+}
+
+export function coachPaymentsHref(state: CoachPaymentsUrlState): string {
+  const params = new URLSearchParams()
+  if (state.groupId) params.set('group', state.groupId)
+  if (state.due) params.set('due', '1')
+  const query = params.toString()
+  return query ? `${COACH_PAYMENTS_HREF}?${query}` : COACH_PAYMENTS_HREF
+}
+
+/**
+ * The group the Today tile opens M-18 on (REQ-C12): the caller's own group with people to pay, else their first own
+ * group, else the first group they see; none without groups.
+ */
+export function tileGroupOf(groups: readonly { id: string; own: boolean; peopleToPay: number }[]): string | null {
+  const own = groups.filter((group) => group.own)
+  return (own.find((group) => group.peopleToPay > 0) ?? own[0] ?? groups[0])?.id ?? null
 }
