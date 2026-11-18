@@ -256,6 +256,22 @@ export function matchTransfer(input: {
   return unmatched('no_match')
 }
 
+// --- Deleting an import (payments parity DD-C13, #294) ---
+
+/**
+ * The imports among `transfers` that may be deleted: those none of whose transfers a payment row ever referenced
+ * (`referenced`: transfer ids named by any payment, reversed or not, so booked-then-undone still blocks). An import
+ * without transfers (every line a debit or a duplicate) is deletable.
+ */
+export function deletableImports(
+  importIds: readonly string[],
+  transfers: readonly { id: string; importId: string }[],
+  referenced: ReadonlySet<string>,
+): Set<string> {
+  const blocked = new Set(transfers.filter((row) => referenced.has(row.id)).map((row) => row.importId))
+  return new Set(importIds.filter((id) => !blocked.has(id)))
+}
+
 export type ImportCounts = { total: number; booked: number; suggested: number; unmatched: number; skipped: number }
 
 /** The import summary: every entry of the file, by what happened to it (debits and duplicates are skipped). */
