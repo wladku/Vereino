@@ -15,6 +15,7 @@ import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place
 import { ACTIVITIES_PUBLIC_EVENTS, createPublicEvents } from './services/public-events'
 import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
+import { ACTIVITIES_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 
 /**
@@ -45,6 +46,11 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * matches, which `groups` reads with `hasRegistration` before a team becomes a class group, and whether a membership
  * was used, which it reads before a started membership is removed (`groups/services/group-usage.ts`).
  * Stateless: it reads with the caller's EntityManager inside the command's transaction.
+ *
+ * `groups.season.activities` (people life-cycle spec REQ-L08, DD-L10; #311): the season contributor `groups` reads
+ * with `hasRegistration` (`groups/services/season-rollover.ts`) — the recurring activities of the rolled-over groups end
+ * on the old season's last day and may be copied into the new season. Stateless: it works in the caller's
+ * EntityManager, inside the rollover's transaction.
  */
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
@@ -57,6 +63,7 @@ export function register(container: AppContainer) {
   container.register({
     [ACTIVITIES_DECLARATION_LINKS]: asValue(declarationLinks),
     [ACTIVITIES_GROUP_USAGE]: asValue(groupUsage),
+    [ACTIVITIES_SEASON_CONTRIBUTOR]: asValue(seasonContribution),
     [audienceProviderToken('activity')]: asValue(activityAudienceProvider),
     [audienceProviderToken('occurrence')]: asValue(occurrenceAudienceProvider),
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.

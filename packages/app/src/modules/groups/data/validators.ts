@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
 import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES, ROSTER_VIEWS } from '../lib/groups-rules'
+import { ROLLOVER_GROUP_ACTIONS, ROLLOVER_RECORD_ACTIONS } from '../lib/season-rollover'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
@@ -147,6 +148,57 @@ export const seasonListQuerySchema = z.object({
   sortField: z.enum(['name', 'startsOn', 'createdAt', 'updatedAt']).optional(),
   search: searchQuery,
 })
+
+// --- Season rollover (people life-cycle spec REQ-L08, *Vocabulary* → "Season rollover plan"; #311) ---
+
+/** The new season: an existing one, or one the plan creates. */
+const rolloverSeasonSchema = z.union([
+  z.object({ id: z.uuid() }).strict(),
+  z.object({ name: nameSchema, startsOn: calendarDateSchema, endsOn: calendarDateSchema }).strict(),
+])
+
+const rolloverGroupSchema = z
+  .object({
+    groupId: z.uuid(),
+    action: z.enum(ROLLOVER_GROUP_ACTIONS),
+    /** `rename` and `copy`: the new name. */
+    name: nameSchema.nullable().optional(),
+    /** `rename` and `copy` of a team: the new age category (a `dictionaries` entry id); null clears it. */
+    ageCategoryEntryId: z.uuid().nullable().optional(),
+  })
+  .strict()
+
+/** The values an `end_and_copy` copy changes; each contributor checks the keys it understands (422 otherwise). */
+const rolloverCopySchema = z.record(z.string().max(40), z.union([z.string().max(200), z.number(), z.null()]))
+
+const rolloverRecordSchema = z
+  .object({
+    recordId: z.uuid(),
+    action: z.enum(ROLLOVER_RECORD_ACTIONS),
+    copy: rolloverCopySchema.optional(),
+  })
+  .strict()
+
+const rolloverPlanShape = {
+  fromSeasonId: z.uuid(),
+  season: rolloverSeasonSchema,
+  groups: z.array(rolloverGroupSchema).max(200).default([]),
+  records: z.array(rolloverRecordSchema).max(1000).default([]),
+}
+
+/** `POST /api/groups/seasons/rollover/preview`. */
+export const rolloverPreviewSchema = z.object(rolloverPlanShape).strict()
+
+/** `POST /api/groups/seasons/rollover` — `groups.seasons.rollover`. */
+export const rolloverApplySchema = z
+  .object({
+    ...rolloverPlanShape,
+    previewToken: z.string().min(1).max(200),
+    announce: z.boolean().default(false),
+  })
+  .strict()
+
+export type RolloverPreviewInput = z.output<typeof rolloverPreviewSchema>
 
 // --- External teams ---
 
