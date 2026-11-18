@@ -4,7 +4,8 @@
 // the staff only), and the read marker moved when the thread is opened, so the inbox dot and the tile count clear. Its
 // own 403 ("not yours") and 404 states. README M-07 (E06-S20): the "Case" mark and its read-only banner, "Copy text for
 // group chat" for the thread's staff (its author, the scope's coaches, the section's coordinator), and under the
-// reader's own messages "E-mail: {n} delivered · {m} not delivered".
+// reader's own messages "E-mail: {n} delivered · {m} not delivered" and "Edit" (people life-cycle spec REQ-L12, #304;
+// never on a case).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -16,7 +17,7 @@ import { MemberSkeleton } from '@vereino/ui'
 import { emailDeliverySummary } from '../../lib/member-inbox'
 import { CLUB_MESSAGES_HREF, scopeLabel, type ThreadMessageItem, type Translate } from '../client-helpers'
 import { MessageList, ReplyBox } from '../ThreadMessages'
-import { CaseBanner, ShareTextPanel, postReply, useMarkRead, useThread } from '../ThreadRecord'
+import { CaseBanner, ShareTextPanel, postReply, useEditMessage, useMarkRead, useThread } from '../ThreadRecord'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
 import { MessagesClubFrame } from './MessagesClubFrame'
 
@@ -56,6 +57,7 @@ function Thread({ id }: { id: string }) {
     void queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY })
   }, [queryClient, id])
   useMarkRead(thread, refresh)
+  const editMessage = useEditMessage(thread, refresh)
 
   const back = (
     <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
@@ -103,7 +105,12 @@ function Thread({ id }: { id: string }) {
       </header>
       {thread.isCase ? <CaseBanner thread={thread} /> : null}
       {thread.staff ? <ShareTextPanel thread={thread} /> : null}
-      <MessageList messages={thread.messages} renderFooter={(message) => emailLine(t, message)} />
+      <MessageList
+        messages={thread.messages}
+        renderFooter={(message) => emailLine(t, message)}
+        isCase={thread.isCase}
+        onEdit={editMessage}
+      />
       <ReplyBox
         pending={pending}
         hint={thread.staff ? null : t('communication.reply.memberHint')}
