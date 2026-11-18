@@ -435,8 +435,10 @@ function OrdersTab({
           title: t('payments.orders.handOver.unpaidTitle'),
           text: [
             t('payments.orders.handOver.unpaidDue', { amount: formatMoney(row.remaining, locale) }),
-            t('payments.orders.handOver.unpaidText', { due: formatDay(row.dueDate, locale) }),
-          ].join(' '),
+            row.dueDate ? t('payments.orders.handOver.unpaidText', { due: formatDay(row.dueDate, locale) }) : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
           confirmText: t('payments.orders.handOver.unpaidSubmit'),
         })
         if (!confirmed) return
