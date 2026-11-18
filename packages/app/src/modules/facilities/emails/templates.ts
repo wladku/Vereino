@@ -412,7 +412,10 @@ const rentalCancelledParams = z
 export type RentalCancelledParams = z.output<typeof rentalCancelledParams>
 
 const CANCELLED_LEADS: Record<CancelledOutcome, [string, string]> = {
-  free: ['facilities.email.rentalCancelled.free', 'Your booking of {place}, {slot}, has been cancelled free of charge.'],
+  free: [
+    'facilities.email.rentalCancelled.free',
+    'Your booking of {place}, {slot}, has been cancelled free of charge.',
+  ],
   late: [
     'facilities.email.rentalCancelled.late',
     'Your booking of {place}, {slot}, has been cancelled after the free cancellation deadline: the payment of {amount} is forfeited.',
@@ -448,8 +451,6 @@ export const rentalCancelledTemplate = defineEmailTemplate<RentalCancelledParams
   actionLabel: (t) => t('facilities.email.request.action', 'Open the calendar'),
   link: (params) => placesPath(params),
 })
-
-
 
 // --- The maintenance reminder (#128) ---
 

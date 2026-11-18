@@ -49,11 +49,7 @@ function Summary({ preview }: { preview: RentalCancelPreview }) {
       t('facilities.public.verify.summary.slot'),
       zonedSlotLabel(preview.startsAt, preview.endsAt, preview.timeZone, locale),
     ],
-    [
-      'amount',
-      t('facilities.public.cancel.summary.amount'),
-      formatAmount(preview.amount, preview.currency, locale),
-    ],
+    ['amount', t('facilities.public.cancel.summary.amount'), formatAmount(preview.amount, preview.currency, locale)],
   ]
   if (preview.payeeName) rows.push(['payee', t('facilities.public.cancel.summary.payee'), preview.payeeName])
   return (
@@ -181,9 +177,7 @@ export function RentalCancelView({ clubSlug, token }: { clubSlug: string; token:
         <Summary preview={preview.preview} />
         <Alert status={preview.preview.free ? 'information' : 'warning'} data-testid="public-cancel-terms">
           <AlertTitle>
-            {preview.preview.free
-              ? t('facilities.public.cancel.free.title')
-              : t('facilities.public.cancel.late.title')}
+            {preview.preview.free ? t('facilities.public.cancel.free.title') : t('facilities.public.cancel.late.title')}
           </AlertTitle>
           <AlertDescription>
             {preview.preview.free
@@ -211,11 +205,7 @@ export function RentalCancelView({ clubSlug, token }: { clubSlug: string; token:
 
   return (
     <PublicFacilitiesFrame club={preview?.status === 'ok' ? preview.preview.club : null}>
-      <section
-        className="flex flex-col gap-4"
-        aria-labelledby="public-cancel-title"
-        aria-busy={!preview || submitting}
-      >
+      <section className="flex flex-col gap-4" aria-labelledby="public-cancel-title" aria-busy={!preview || submitting}>
         <h1 id="public-cancel-title" className="text-2xl font-semibold">
           {t('facilities.public.cancel.title')}
         </h1>

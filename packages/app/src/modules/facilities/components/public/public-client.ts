@@ -299,10 +299,7 @@ export type RentalCancelPreview = {
 }
 
 export type CancelPreviewOutcome =
-  | { status: 'ok'; preview: RentalCancelPreview }
-  | { status: 'expired' }
-  | { status: 'too_many' }
-  | { status: 'failed' }
+  { status: 'ok'; preview: RentalCancelPreview } | { status: 'expired' } | { status: 'too_many' } | { status: 'failed' }
 
 export type CancelOutcome =
   | { status: 'ok'; result: 'cancelled_free' | 'cancelled_late' }

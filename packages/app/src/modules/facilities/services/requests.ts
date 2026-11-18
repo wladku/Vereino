@@ -146,8 +146,7 @@ export async function sendDecisionMail(
     timeZone: settings.timeZone,
     clubSlug: settings.publicSlug,
   }
-  const params: Record<string, unknown> =
-    status === 'rejected' ? { ...base, reason: row.decisionReason ?? '—' } : base
+  const params: Record<string, unknown> = status === 'rejected' ? { ...base, reason: row.decisionReason ?? '—' } : base
   const dispatchId = await em.transactional(async (tx) => {
     const enqueued = await dispatchService(container).enqueue(
       tx,

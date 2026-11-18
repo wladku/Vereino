@@ -39,10 +39,12 @@ export async function latestEmail(address: string, subject: string, count = 1): 
 /** The rental's link rows: purpose, whether spent, its expiry and its hash (never the raw token). */
 export async function rentalLinkRows(rentalId: string) {
   return withClient(async (client) => {
-    const { rows } = await client.query<{ purpose: string; used_at: Date | null; expires_at: Date; token_hash: string }>(
-      `select purpose, used_at, expires_at, token_hash from facilities_rental_links where rental_id = $1`,
-      [rentalId],
-    )
+    const { rows } = await client.query<{
+      purpose: string
+      used_at: Date | null
+      expires_at: Date
+      token_hash: string
+    }>(`select purpose, used_at, expires_at, token_hash from facilities_rental_links where rental_id = $1`, [rentalId])
     return rows
   })
 }

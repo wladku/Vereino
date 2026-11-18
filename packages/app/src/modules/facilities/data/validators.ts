@@ -292,7 +292,9 @@ export const requestVerifySchema = z.object({ token: z.string().min(1).max(200) 
 export const rentalCancelPreviewSchema = z.object({ token: z.string().min(1).max(200) }).strict()
 
 /** `POST /api/facilities/public/rentals/cancel`: the token and the renter's explicit confirmation. */
-export const rentalCancelByLinkSchema = z.object({ token: z.string().min(1).max(200), confirm: z.literal(true) }).strict()
+export const rentalCancelByLinkSchema = z
+  .object({ token: z.string().min(1).max(200), confirm: z.literal(true) })
+  .strict()
 
 /**
  * `POST /api/facilities/rentals/{id}/approve` (B-25): the renter — an existing institution or person, or a new

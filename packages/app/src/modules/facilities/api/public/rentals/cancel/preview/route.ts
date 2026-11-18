@@ -44,7 +44,7 @@ const cancelPreviewSchema = z.object({
   currency: z.string(),
   free: z.boolean().describe('True while cancelling is free; false when the payment is forfeited'),
   cancellationDeadline: z.string().describe('The last instant a cancellation is free'),
-  payeeName: z.string().nullable().describe("The place owner the rental is paid to; null when the club is the payee"),
+  payeeName: z.string().nullable().describe('The place owner the rental is paid to; null when the club is the payee'),
   club: publicClubSchema
     .nullable()
     .describe("The header of the club's public pages (the club the link named); null while it publishes no page"),
