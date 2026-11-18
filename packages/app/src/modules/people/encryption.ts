@@ -21,6 +21,14 @@ export const PERSON_IMPORT_ROW_ENTITY_ID = 'people:person_import_row'
 /** The staged row's values (names, PESEL, contacts) of a bulk import (club spec → `people_import_rows`, #28). */
 export const importRowRaw = encryptedField({ entityId: PERSON_IMPORT_ROW_ENTITY_ID, field: 'raw' })
 
+export const DEPARTURE_REQUEST_ENTITY_ID = 'people:departure_request'
+/** A departure request's note and decline reason (people life-cycle spec *Data Models*, #306). */
+export const departureRequestNote = encryptedField({ entityId: DEPARTURE_REQUEST_ENTITY_ID, field: 'note' })
+export const departureRequestDeclineReason = encryptedField({
+  entityId: DEPARTURE_REQUEST_ENTITY_ID,
+  field: 'decline_reason',
+})
+
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   {
     entityId: PERSON_ENTITY_ID,
@@ -35,6 +43,10 @@ export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
     ],
   },
   { entityId: PERSON_IMPORT_ROW_ENTITY_ID, fields: [importRowRaw.mapEntry] },
+  {
+    entityId: DEPARTURE_REQUEST_ENTITY_ID,
+    fields: [departureRequestNote.mapEntry, departureRequestDeclineReason.mapEntry],
+  },
 ]
 
 export default defaultEncryptionMaps

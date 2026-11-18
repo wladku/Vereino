@@ -17,6 +17,19 @@ export const errorCodes = [
   // response names it), and a user who is not a user of the organization.
   { code: 'club_admin_exists', status: 409, messageKey: 'people.errors.club_admin_exists' },
   { code: 'user_not_in_organization', status: 404, messageKey: 'people.errors.user_not_in_organization' },
+  // People life-cycle spec phase L4 (REQ-L03; #306): leaving the club — a last day before today, a blocker (the
+  // details name each), a preview that no longer matches, a missing payer hand-over, an undo after the last day, a
+  // return of a person who has not left, and the member's requests (one open per subject, none from a minor, a
+  // decision on a request that is no longer open).
+  { code: 'departure_date_in_past', status: 422, messageKey: 'people.errors.departure_date_in_past' },
+  { code: 'departure_blocked', status: 409, messageKey: 'people.errors.departure_blocked' },
+  { code: 'departure_preview_stale', status: 409, messageKey: 'people.errors.departure_preview_stale' },
+  { code: 'departure_payer_required', status: 422, messageKey: 'people.errors.departure_payer_required' },
+  { code: 'departure_undo_expired', status: 409, messageKey: 'people.errors.departure_undo_expired' },
+  { code: 'person_not_left', status: 409, messageKey: 'people.errors.person_not_left' },
+  { code: 'departure_request_exists', status: 409, messageKey: 'people.errors.departure_request_exists' },
+  { code: 'departure_request_minor', status: 422, messageKey: 'people.errors.departure_request_minor' },
+  { code: 'departure_request_not_open', status: 409, messageKey: 'people.errors.departure_request_not_open' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
   // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.

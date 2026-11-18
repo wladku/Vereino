@@ -148,7 +148,7 @@ export function createContactResolver(): ContactResolver {
         emOf(ctx),
         Person,
         { ...scope, id: { $in: unique }, deletedAt: null },
-        { fields: ['id', 'firstName', 'lastName', 'email', 'preferredLocale', 'birthDate', 'userId'] },
+        { fields: ['id', 'firstName', 'lastName', 'email', 'preferredLocale', 'birthDate', 'userId', 'leftOn'] },
         scope,
       )
       return rows.map((row): AudienceContact => ({
@@ -158,6 +158,8 @@ export function createContactResolver(): ContactResolver {
         email: row.email?.trim() || null,
         locale: localeForPerson(row, settings.defaultLocale),
         birthDate: row.birthDate ?? null,
+        // A former person is reached by no audience (people life-cycle spec DD-L05, #306; `expandAudience`).
+        leftOn: row.leftOn ?? null,
       }))
     },
     async guardiansOf(personIds, today, ctx) {

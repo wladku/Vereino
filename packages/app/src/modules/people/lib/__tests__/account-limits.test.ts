@@ -1,8 +1,10 @@
 // People life-cycle spec *Security → Rate limits* (#303): the re-send limits, the integration opt-in and the wait.
 import { describe, expect, it } from '@jest/globals'
 import {
+  DEPARTURE_REQUESTS_PER_MEMBER,
   RESEND_PER_ACCOUNT,
   RESEND_PER_ACTOR,
+  departureRequestLimits,
   resendLimits,
   retryAfterMinutes,
   testLimiterRequested,
@@ -16,6 +18,15 @@ describe('resendLimits', () => {
     ])
     expect(RESEND_PER_ACCOUNT.points).toBe(3)
     expect(RESEND_PER_ACTOR.points).toBe(20)
+  })
+})
+
+describe('departureRequestLimits (#306)', () => {
+  it('limits a member to 5 departure requests in 24 hours, keyed by tenant and person', () => {
+    expect(departureRequestLimits({ tenantId: 't', callerPersonId: 'p' })).toEqual([
+      { config: { points: 5, duration: 86400, keyPrefix: 'people_departure_request' }, key: 't:p' },
+    ])
+    expect(DEPARTURE_REQUESTS_PER_MEMBER.points).toBe(5)
   })
 })
 

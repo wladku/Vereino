@@ -18,6 +18,18 @@ export function resendLimits(input: { tenantId: string; personId: string; actorU
   ]
 }
 
+/** Departure requests per member: 5 in 24 hours (people life-cycle spec *Rate limits*; #306). */
+export const DEPARTURE_REQUESTS_PER_MEMBER = {
+  points: 5,
+  duration: 86400,
+  keyPrefix: 'people_departure_request',
+} as const
+
+/** The limit of one member's departure request. */
+export function departureRequestLimits(input: { tenantId: string; callerPersonId: string }): AccountLimit[] {
+  return [{ config: { ...DEPARTURE_REQUESTS_PER_MEMBER }, key: `${input.tenantId}:${input.callerPersonId}` }]
+}
+
 /**
  * True when an integration run asks for real limits on this request: the platform's opt-in for auth limits
  * (`OM_TEST_MODE=1`, `OM_TEST_AUTH_RATE_LIMIT_MODE=opt-in`, header `x-om-test-rate-limit: on`). Integration runs

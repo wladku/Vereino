@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { audienceProviderToken } from '@vereino/core'
 import { groupAudienceProvider, sectionAudienceProvider } from './services/audience'
+import { GROUPS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { createGroupDirectory } from './services/group-directory'
 import { GROUPS_MEMBERSHIP_CONTRIBUTION, membershipContribution } from './services/membership-contribution'
 import { GROUPS_MEMBERSHIP_IMPORTER, membershipImporter } from './services/membership-importer'
@@ -42,6 +43,11 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  * (`people/services/person-filter.ts`) and intersects into its own filter. Stateless: it reads with the caller's
  * EntityManager.
  *
+ * `people.departure.groups` (people life-cycle spec DD-L03, #306): the departure contributor `people` reads with
+ * `hasRegistration` (`people/services/departure.ts`) — a leaving person's memberships end on the last day (or are
+ * removed when they would start later), with the undo and the `groups.membership.*` events after the commit.
+ * Stateless: it works in the caller's EntityManager, inside the departure's transaction.
+ *
  * `groups.publicCatalog` (club spec DD-28, DD-29; #91): the public groups block of a section's public page, which
  * `club_core` reads with `hasRegistration` (`club_core/services/public-blocks.ts`).
  */
@@ -51,6 +57,7 @@ export function register(container: AppContainer) {
     [GROUPS_MEMBERSHIP_IMPORTER]: asValue(membershipImporter),
     [GROUPS_SECTION_USAGE]: asValue(sectionUsage),
     [GROUPS_PERSON_FILTER]: asValue(personFilter),
+    [GROUPS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
     [GROUPS_PUBLIC_CATALOG]: asFunction(() => createPublicCatalog(container)).scoped(),
     [audienceProviderToken('section')]: asValue(sectionAudienceProvider),
     [audienceProviderToken('group')]: asValue(groupAudienceProvider),
