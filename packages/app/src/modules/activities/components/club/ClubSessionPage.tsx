@@ -11,7 +11,9 @@
 // marks "Needs a coach" and "substitute: {name}", and the assigned coach reports an absence from the coach block
 // (E06-S13 #95). E10-S07 (#272, REQ-A13, REQ-A15): the type badge and the section's dot under the title, the score of
 // a match or sparring, and in the coach block "Take the session", "Message the group", the score form and the
-// substitution history.
+// substitution history. E10-S08 (#273, REQ-A10): a section coordinator reads it as the coordinator (`?as=coordinator`
+// from a section list or count, or by default when they do not coach) and gets the same block with the actions the
+// read allows; a session of another section is "This is not your session".
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -23,7 +25,14 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { badgeVariant, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
+import {
+  badgeVariant,
+  formatClockTime,
+  formatDayHeading,
+  formatTimeRange,
+  memberStaffScopes,
+  MemberSkeleton,
+} from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
 import { formatDeadline } from '../../lib/confirm-by'
@@ -186,12 +195,14 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   const perspectives = sessionPerspectives(searchParams.get('as'), {
     hasWards: profile.wards.length > 0,
     coaches: profile.contexts.includes('coach'),
+    coordinates: memberStaffScopes(profile).includes('coordinator'),
   })
   const as: Perspective = perspectives.member
   const personId = searchParams.get('personId')
   const query = useMemberSession(id, as, personId)
-  const coachQuery = useMemberSession(id, 'coach', null, perspectives.coach)
-  const view = sessionPageView(readState(true, query), readState(perspectives.coach, coachQuery))
+  const staffAs = perspectives.staff ?? 'coach'
+  const coachQuery = useMemberSession(id, staffAs, null, perspectives.staff !== null)
+  const view = sessionPageView(readState(true, query), readState(perspectives.staff !== null, coachQuery))
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
 
@@ -233,7 +244,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             className="min-h-11"
             onClick={() => {
               void query.refetch()
-              if (perspectives.coach) void coachQuery.refetch()
+              if (perspectives.staff) void coachQuery.refetch()
             }}
           >
             {t('activities.club.actions.retry')}
@@ -396,6 +407,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
       {coachEntry ? (
         <CoachSessionBlock
           entry={coachEntry}
+          as={staffAs}
           timeZone={entry.timeZone}
           selfPersonId={profile.person.id}
           absenceLabel={[

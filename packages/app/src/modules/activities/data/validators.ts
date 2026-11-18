@@ -346,8 +346,11 @@ export const coachUnitsQuerySchema = z.object({
     .transform((value) => value === '1' || value === 'true'),
 })
 
-/** `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward) or the coach (E06-S15 #97). */
-export const CALENDAR_ITEM_PERSPECTIVES = ['self', 'guardian', 'coach'] as const
+/**
+ * `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward), the coach (E06-S15 #97) or the
+ * section coordinator (E10-S08 #273).
+ */
+export const CALENDAR_ITEM_PERSPECTIVES = ['self', 'guardian', 'coach', 'coordinator'] as const
 export type CalendarItemPerspective = (typeof CALENDAR_ITEM_PERSPECTIVES)[number]
 
 export const calendarItemQuerySchema = z.object({

@@ -5,19 +5,24 @@
 
 export type MemberSessionPerspective = 'self' | 'guardian'
 
-export type SessionPerspectives = { member: MemberSessionPerspective; coach: boolean }
+/** The staff read of the page: the coach's (`as=coach`) or the section coordinator's (`as=coordinator`, E10-S08). */
+export type StaffSessionPerspective = 'coach' | 'coordinator'
+
+export type SessionPerspectives = { member: MemberSessionPerspective; staff: StaffSessionPerspective | null }
 
 /**
  * The reads the page makes: the member perspective (`guardian` when asked for, or by default for a guardian; `self`
- * otherwise) and the coach's whenever the person coaches, whatever `?as=` names.
+ * otherwise) and a staff read — the coordinator's when the link asks for `as=coordinator` and the person coordinates
+ * (or coordinates without coaching), else the coach's whenever the person coaches, whatever `?as=` names.
  */
 export function sessionPerspectives(
   requested: string | null,
-  profile: { hasWards: boolean; coaches: boolean },
+  profile: { hasWards: boolean; coaches: boolean; coordinates?: boolean },
 ): SessionPerspectives {
   const member: MemberSessionPerspective =
     requested === 'guardian' || (requested !== 'self' && profile.hasWards) ? 'guardian' : 'self'
-  return { member, coach: profile.coaches }
+  const coordinator = profile.coordinates === true && (requested === 'coordinator' || !profile.coaches)
+  return { member, staff: coordinator ? 'coordinator' : profile.coaches ? 'coach' : null }
 }
 
 /** The state of one read: `off` when the page does not make it. */

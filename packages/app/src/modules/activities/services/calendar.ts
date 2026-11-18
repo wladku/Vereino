@@ -41,7 +41,7 @@ import {
 } from '../lib/policy'
 import { policyRows } from '../commands/attendance'
 import { cancelRoleOf, mayEditSession } from '../commands/occurrences'
-import { scheduleTarget } from '../commands/shared'
+import { PLAN_KINDS, scheduleTarget } from '../commands/shared'
 import { TAKE_OVER_KINDS } from '../commands/substitutions'
 import {
   activeGuardians,
@@ -152,6 +152,11 @@ export type CalendarEntry = {
    * planned session, which has no coach.
    */
   mayTakeOver?: boolean
+  /**
+   * `GET /calendar/{id}?as=coach|coordinator` (REQ-A10, #273): the caller — a coordinator of the section or the club
+   * administrator — may assign a substitute or change the coach of the planned session.
+   */
+  mayAssign?: boolean
   /** `GET /calendar/{id}?as=coach` (REQ-A15): the session takes a score now (a started match or sparring). */
   mayScore?: boolean
   /** `GET /calendar/{id}?as=coach` (REQ-A13): the substitution history, oldest first. */
@@ -561,6 +566,31 @@ async function staffCalendar(
   })
 }
 
+/** What the staff reads tell the session page about one session (REQ-A10, E10-S08 #273). */
+export type SessionActionFlags = { mayAssign: boolean; mayEdit: boolean; mayTakeOver: boolean }
+
+/**
+ * The commands' own checks, so a read never offers more than the server accepts: `mayAssign` — a planned session and a
+ * coordinator or administrator grant on it (`activities.occurrences.assign_coach`); `mayEdit` — a planned session the
+ * caller may edit (`mayEditSession`, DD-A05); `mayTakeOver` — a planned session without a coach that has not ended, and
+ * a coach grant on its group (REQ-A14).
+ */
+export function sessionActionFlags(
+  grants: Scope,
+  row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
+  state: { status: OccurrenceStatus; coachPersonId: string | null; endAt: Date },
+  recurring: boolean,
+  now: Date,
+): SessionActionFlags {
+  const target = scheduleTarget(row, row.id)
+  const planned = state.status === 'planned'
+  return {
+    mayAssign: planned && findActingRole(grants, PLAN_KINDS, target) !== null,
+    mayEdit: planned && mayEditSession(grants, row, recurring),
+    mayTakeOver: takeOverProblem(state, now) === null && findActingRole(grants, TAKE_OVER_KINDS, target) !== null,
+  }
+}
+
 /** `GET /api/activities/calendar`. */
 export async function readCalendar(
   ctx: CommandRuntimeContext,
@@ -588,7 +618,8 @@ export async function readCalendar(
  * (E06-S15 #97) it is the session of `as=coach` — one of the coach's groups or the session they are assigned to — with
  * the declaration summary; a session outside that scope answers 403 `scope_denied` (the attendance list's answer), so
  * the page says "This is not your session" and shows none of it. The coach's entry says whether they may cancel it
- * (`mayCancel`, #199).
+ * (`mayCancel`, #199). As the coordinator (`as=coordinator`, E10-S08 #273) it is the session of a section they
+ * coordinate, under the same rule, with the same flags and `mayAssign`.
  */
 export async function readCalendarItem(
   ctx: CommandRuntimeContext,
@@ -610,23 +641,24 @@ export async function readCalendarItem(
   const window = { from: row.occurrenceDate, to: row.occurrenceDate }
   const { timeZone } = await attendanceSettings(ctx.container, scope)
   let item: CalendarEntry | undefined
-  if (as === 'coach') {
-    await assertStaffFeature(ctx, scope, 'activities.coach')
-    item = (await staffCalendar(ctx, scope, grants, 'coach', window, timeZone, now, undefined, row.id)).at(0)
+  if (as === 'coach' || as === 'coordinator') {
+    // E10-S08 (#273): the coordinator reads the session of a section they coordinate (`as=coordinator` of the
+    // calendar); any other session of the club answers 403 like the coach's.
+    await assertStaffFeature(ctx, scope, as === 'coach' ? 'activities.coach' : 'activities.view')
+    item = (await staffCalendar(ctx, scope, grants, as, window, timeZone, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
     const { occurrence } = item
+    const recurring = Boolean((await activityOf(em, scope, occurrence.activityId))?.recurrenceRule)
     item = {
       ...item,
       mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null,
-      mayEdit:
-        occurrence.status === 'planned' &&
-        mayEditSession(grants, row, Boolean((await activityOf(em, scope, occurrence.activityId))?.recurrenceRule)),
-      // The command's own check: a planned session without a coach, and a coach grant on its group.
-      mayTakeOver:
-        takeOverProblem(
-          { status: occurrence.status, coachPersonId: occurrence.coachPersonId, endAt: new Date(occurrence.endAt) },
-          now,
-        ) === null && findActingRole(grants, TAKE_OVER_KINDS, scheduleTarget(row, row.id)) !== null,
+      ...sessionActionFlags(
+        grants,
+        row,
+        { status: occurrence.status, coachPersonId: occurrence.coachPersonId, endAt: new Date(occurrence.endAt) },
+        recurring,
+        now,
+      ),
       mayScore: showsScore(occurrence.activityType, occurrence, now),
       substitutions: await substitutionHistory(ctx.container, scope, row.id),
     }

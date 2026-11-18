@@ -3,7 +3,9 @@
 // shape and the same `calledUpChildren` rule as the calendar. A session the caller's own or wards' memberships do not
 // cover does not exist for them (404), so another family's session is never described. `as=coach` (E06-S15 #97) reads
 // it under the scope of `as=coach` in the calendar — a coach of the session's group or its assigned coach, with
-// `activities.coach` — and answers 403 `scope_denied` for any other session of the club.
+// `activities.coach` — and answers 403 `scope_denied` for any other session of the club. `as=coordinator` (E10-S08 #273)
+// reads it under the scope of `as=coordinator` — a section the caller coordinates, with `activities.view` — likewise.
+// The staff entries carry what the caller may do: `mayCancel`, `mayEdit`, `mayTakeOver`, `mayAssign`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
@@ -37,9 +39,9 @@ export const openApi: OpenApiRouteDoc = {
   summary: 'One session of the member calendar',
   methods: {
     GET: {
-      summary: 'Read one session as a participant, a guardian or its coach',
+      summary: 'Read one session as a participant, a guardian, its coach or its section coordinator',
       description:
-        'The session with its declaration kind, whether declarations are open, the concerned persons’ declarations and options, and the called-up children the club setting and the consents allow. 404 when the session is not in the caller’s (or the wards’) calendar. `as=coach` returns the session of one of the caller’s groups, or the session they are assigned to, with the declaration summary and no persons; 403 `scope_denied` for another session of the club.',
+        'The session with its declaration kind, whether declarations are open, the concerned persons’ declarations and options, and the called-up children the club setting and the consents allow. 404 when the session is not in the caller’s (or the wards’) calendar. `as=coach` returns the session of one of the caller’s groups, or the session they are assigned to, with the declaration summary and no persons; `as=coordinator` the session of a section the caller coordinates (the club administrator: any). Both staff entries say what the caller may do (`mayCancel`, `mayEdit`, `mayTakeOver`, `mayAssign`, `mayScore`) and carry the substitution history; 403 `scope_denied` for another session of the club.',
       query: calendarItemQuerySchema,
       responses: [
         { status: 200, description: 'The session entry', schema: calendarEntrySchema.extend({ timeZone: z.string() }) },

@@ -10,7 +10,10 @@
 // says `mayCancel: false` and "Cancel session" is not offered, so the coach only reports an absence. E10-S07 (#272;
 // REQ-A13…REQ-A15): a coach or assistant of the group takes a session without a coach ("Take the session"); "Message
 // the group" opens the member composer addressed to the session; a started match or sparring takes its score; the
-// substitution history closes the block.
+// substitution history closes the block. E10-S08 (#273, REQ-A10): the block is shown to whoever may act — the section's
+// coordinator reads the session as `as=coordinator` — and follows the read's `may*` flags: "Assign substitute" or
+// "Change coach" opens a bottom sheet (the panel dialog's picker), "Edit time or place" opens the edit form in the same
+// perspective; the buttons are full width with 44 px targets, "Cancel session" last; each action ends with a toast.
 import * as React from 'react'
 import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -31,6 +34,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib/activities-rules'
 import { errorCodeOf } from '@vereino/core'
 import { ScoreForm } from '../ScoreForm'
+import { AssignCoachSheet } from './AssignCoachSheet'
 import { ReportAbsence } from './ReportAbsence'
 import {
   attendanceHref,
@@ -201,12 +205,15 @@ export function CancelSessionDialog({
 
 export function CoachSessionBlock({
   entry,
+  as = 'coach',
   selfPersonId,
   absenceLabel,
   onCancelled,
   timeZone,
 }: {
   entry: CalendarEntry
+  /** The perspective the session was read in: the coach's or the section coordinator's (#273). */
+  as?: 'coach' | 'coordinator'
   /** The signed-in member's person: "Report absence" is for the session's assigned coach only. */
   selfPersonId: string | null
   /** "{activity}, {date} {time}" for the absence dialog. */
@@ -219,9 +226,13 @@ export function CoachSessionBlock({
   const t = useT()
   const [cancelling, setCancelling] = React.useState(false)
   const [takingOver, setTakingOver] = React.useState(false)
+  const [assigning, setAssigning] = React.useState(false)
   const { occurrence } = entry
   const cancellable = occurrence.status === 'planned' && entry.mayCancel !== false
   const history = entry.substitutions ?? []
+  const fullWidth = 'min-h-11 w-full'
+  const assignable = entry.mayAssign === true && occurrence.status === 'planned'
+  const assignKey = occurrence.coachPersonId ? 'changeCoach' : 'assignSubstitute'
 
   const takeOver = async () => {
     setTakingOver(true)
@@ -265,12 +276,12 @@ export function CoachSessionBlock({
           {summaryLine(t, entry.summary)}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2" data-testid="club-session-actions">
         {/* REQ-A14 (J-A04 step 4): a coach or assistant of the group takes the session without a coach. */}
         {entry.mayTakeOver === true ? (
           <Button
             type="button"
-            className="min-h-11"
+            className={fullWidth}
             disabled={takingOver}
             data-testid="club-session-take-over"
             onClick={() => {
@@ -281,33 +292,49 @@ export function CoachSessionBlock({
           </Button>
         ) : null}
         {occurrence.status !== 'cancelled' ? (
-          <Button asChild className="min-h-11">
+          <Button asChild className={fullWidth}>
             <Link href={attendanceHref(occurrence.id)} data-testid="club-session-attendance">
               {t('activities.club.session.attendanceList')}
             </Link>
           </Button>
         ) : null}
+        {/* REQ-A10 (J-A04 step 2): the coordinator or the administrator assigns a substitute or changes the coach. */}
+        {assignable ? (
+          <Button
+            type="button"
+            variant="outline"
+            className={fullWidth}
+            data-testid="club-session-assign"
+            onClick={() => {
+              setAssigning(true)
+            }}
+          >
+            {t(`activities.club.session.${assignKey}`)}
+          </Button>
+        ) : null}
+        {/* DD-A05 (#270): a coach edits the session of their own one-off event; the coordinator any planned session of
+            the section (#273). The read says whether the caller may. */}
+        {entry.mayEdit === true && occurrence.status === 'planned' ? (
+          <Button asChild variant="outline" className={fullWidth}>
+            <Link href={sessionEditHref(occurrence.id, as)} data-testid="club-session-edit">
+              {t('activities.club.session.edit')}
+            </Link>
+          </Button>
+        ) : null}
         {/* REQ-A13: the composer addressed to the session's audience (the group's participants and their guardians). */}
         {occurrence.status !== 'cancelled' ? (
-          <Button asChild variant="outline" className="min-h-11">
+          <Button asChild variant="outline" className={fullWidth}>
             <Link href={composeForSessionHref(occurrence.id)} data-testid="club-session-message-group">
               {t('activities.club.session.messageGroup')}
             </Link>
           </Button>
         ) : null}
-        {/* DD-A05 (#270): a coach edits the session of their own one-off event; the read says whether they may. */}
-        {entry.mayEdit === true && occurrence.status === 'planned' ? (
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={sessionEditHref(occurrence.id)} data-testid="club-session-edit">
-              {t('activities.club.session.edit')}
-            </Link>
-          </Button>
-        ) : null}
+        <ReportAbsence occurrence={occurrence} selfPersonId={selfPersonId} label={absenceLabel} onDone={onCancelled} />
         {cancellable ? (
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            className={fullWidth}
             data-testid="club-session-cancel"
             aria-describedby="club-session-cancel-hint"
             onClick={() => {
@@ -317,7 +344,6 @@ export function CoachSessionBlock({
             {t('activities.club.session.cancel')}
           </Button>
         ) : null}
-        <ReportAbsence occurrence={occurrence} selfPersonId={selfPersonId} label={absenceLabel} onDone={onCancelled} />
       </div>
       {cancellable ? (
         <p id="club-session-cancel-hint" className="text-muted-foreground text-xs">
@@ -358,6 +384,15 @@ export function CoachSessionBlock({
         onOpenChange={setCancelling}
         onDone={onCancelled}
       />
+      {assignable ? (
+        <AssignCoachSheet
+          occurrence={occurrence}
+          title={t(`activities.club.session.${assignKey}Title`, { session: absenceLabel })}
+          open={assigning}
+          onOpenChange={setAssigning}
+          onDone={() => onCancelled('')}
+        />
+      ) : null}
     </section>
   )
 }
