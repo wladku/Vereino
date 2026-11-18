@@ -1,8 +1,9 @@
 'use client'
 // The materials panel of the section edit page (club spec glossary *Section*: public materials, UI table "Public page"
 // group; #29): the section's files with their public flag, an upload (PDF, PNG, JPEG, WebP up to 10 MB — the server
-// checks the bytes) and a confirmed removal. Only files marked public appear on the public page, and only while the
-// club publishes the `materials` block. Every change sends the material's lock token.
+// checks the bytes), "Rename" in place with save and cancel (people life-cycle spec REQ-L12, #304: no new upload) and a
+// confirmed removal. Only files marked public appear on the public page, and only while the club publishes the
+// `materials` block. Every change sends the material's lock token; a stale one surfaces the conflict.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -44,6 +45,13 @@ export function SectionMaterialsPanel({ sectionId, canEdit }: { sectionId: strin
   const [title, setTitle] = React.useState('')
   const [isPublic, setIsPublic] = React.useState(true)
   const [busy, setBusy] = React.useState(false)
+  const [renaming, setRenaming] = React.useState<{ id: string; title: string } | null>(null)
+  const renameInputRef = React.useRef<HTMLInputElement>(null)
+  const renamingId = renaming?.id ?? null
+  // "Rename" opens the title field with the focus in it.
+  React.useEffect(() => {
+    if (renamingId) renameInputRef.current?.focus()
+  }, [renamingId])
   const base = `/api/club_core/sections/${sectionId}/materials`
   const queryKey = ['club_core-section-materials', sectionId]
   const query = useQuery({
@@ -51,13 +59,16 @@ export function SectionMaterialsPanel({ sectionId, canEdit }: { sectionId: strin
     queryFn: () => readApiResultOrThrow<{ items: MaterialItem[] }>(base),
   })
 
-  const run = async (action: () => Promise<unknown>, success: string, failure: string) => {
+  /** Runs a change and reports it; true when it was saved. */
+  const run = async (action: () => Promise<unknown>, success: string, failure: string): Promise<boolean> => {
     setBusy(true)
     try {
       await action()
       flash(success, 'success')
+      return true
     } catch (err: unknown) {
       if (!surfaceRecordConflict(err, t)) flash(errorMessage(err, failure), 'error')
+      return false
     } finally {
       setBusy(false)
       await queryClient.invalidateQueries({ queryKey })
@@ -79,23 +90,27 @@ export function SectionMaterialsPanel({ sectionId, canEdit }: { sectionId: strin
     setTitle('')
   }
 
-  const togglePublic = (item: MaterialItem) =>
+  const update = (item: MaterialItem, patch: { isPublic?: boolean; title?: string }) =>
     run(
       () =>
         withScopedApiRequestHeaders(buildOptimisticLockHeader(item.updatedAt), () =>
           apiCallOrThrow(
             `${base}/${item.id}`,
-            {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ isPublic: !item.isPublic }),
-            },
+            { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) },
             { errorMessage: t('club_core.materials.errors.save') },
           ),
         ),
       t('club_core.materials.flash.saved'),
       t('club_core.materials.errors.save'),
     )
+
+  const togglePublic = (item: MaterialItem) => update(item, { isPublic: !item.isPublic })
+
+  const rename = async (item: MaterialItem, title: string) => {
+    const next = title.trim()
+    if (!next) return
+    if (next === item.title || (await update(item, { title: next }))) setRenaming(null)
+  }
 
   const remove = async (item: MaterialItem) => {
     const confirmed = await confirm({ title: t('club_core.materials.confirm.delete'), variant: 'destructive' })
@@ -123,24 +138,96 @@ export function SectionMaterialsPanel({ sectionId, canEdit }: { sectionId: strin
     list = (
       <ul className="flex flex-col divide-y rounded-md border" data-testid="section-materials-list">
         {query.data.items.map((item) => (
-          <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
-            <span className="flex flex-col">
-              <a
-                className="font-medium underline underline-offset-4"
-                href={item.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+          <li
+            key={item.id}
+            className="flex flex-wrap items-center justify-between gap-2 p-3"
+            data-testid="section-material"
+            data-material-id={item.id}
+          >
+            {renaming?.id === item.id ? (
+              <form
+                className="flex min-w-0 flex-1 flex-wrap items-end gap-2"
+                aria-label={t('club_core.materials.rename.label')}
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void rename(item, renaming.title)
+                }}
               >
-                {item.title}
-              </a>
-              <span className="text-muted-foreground text-xs">{item.fileName}</span>
-            </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <Label htmlFor={`section-material-rename-${item.id}`}>{t('club_core.materials.rename.label')}</Label>
+                  <Input
+                    id={`section-material-rename-${item.id}`}
+                    value={renaming.title}
+                    maxLength={200}
+                    required
+                    ref={renameInputRef}
+                    disabled={busy}
+                    data-testid="section-material-rename-input"
+                    onChange={(event) => {
+                      setRenaming({ id: item.id, title: event.target.value })
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        event.preventDefault()
+                        setRenaming(null)
+                      }
+                    }}
+                  />
+                </span>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={busy || !renaming.title.trim()}
+                  data-testid="section-material-rename-save"
+                >
+                  {t('club_core.common.save')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setRenaming(null)
+                  }}
+                >
+                  {t('club_core.common.cancel')}
+                </Button>
+              </form>
+            ) : (
+              <span className="flex flex-col">
+                <a
+                  className="font-medium underline underline-offset-4"
+                  href={item.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="section-material-title"
+                >
+                  {item.title}
+                </a>
+                <span className="text-muted-foreground text-xs">{item.fileName}</span>
+              </span>
+            )}
             <span className="flex flex-wrap items-center gap-2">
               <StatusBadge variant={item.isPublic ? 'success' : 'neutral'}>
                 {item.isPublic ? t('club_core.materials.public') : t('club_core.materials.internal')}
               </StatusBadge>
               {canEdit ? (
                 <>
+                  {renaming?.id !== item.id ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      data-testid="section-material-rename"
+                      onClick={() => {
+                        setRenaming({ id: item.id, title: item.title })
+                      }}
+                    >
+                      {t('club_core.materials.actions.rename')}
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"

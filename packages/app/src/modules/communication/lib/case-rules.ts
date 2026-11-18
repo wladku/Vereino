@@ -54,3 +54,18 @@ export function mayDeleteMessage(input: {
   if (messageChangeRefusal(input) !== null) return false
   return input.own || input.staffRole !== null
 }
+
+/**
+ * Whether a reader is offered "Edit" on a message (B-19, M-07; DD-M10; people life-cycle spec REQ-L12): only its
+ * author, and only while the change would not be refused (the thread is not a case, the message is no system message
+ * and not deleted). The command (`communication.messages.revise`) checks again and answers 409 `case_immutable` when
+ * the thread became a case meanwhile.
+ */
+export function mayEditMessage(input: {
+  threadIsCase: boolean
+  system: boolean
+  deleted: boolean
+  own: boolean
+}): boolean {
+  return input.own && messageChangeRefusal(input) === null
+}

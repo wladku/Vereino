@@ -9,7 +9,8 @@
 // the thread's version (409 conflicts surfaced with a refresh); a case shows a read-only banner with who marked it and
 // when. "Delete message" (DD-M10, #103) on each message the reader may delete — its author, the section's coordinator,
 // the administrator — while the thread is not a case, behind a confirmation and with the thread's version; the message
-// then reads "deleted" and the history keeps it.
+// then reads "deleted" and the history keeps it. "Edit" (people life-cycle spec REQ-L12, #304) on the reader's own
+// messages while the thread is not a case, sent with the thread's version (`useEditMessage`, also on M-07).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
@@ -86,6 +87,45 @@ export async function postReply(t: Translate, threadId: string, body: string): P
     flash(errorMessage(error, t('communication.reply.errors.send')), 'error')
     return false
   }
+}
+
+/**
+ * Saves a new text of the reader's own message (DD-M10: a revision; the history keeps the old text) with the thread's
+ * version (S5.2). True closes the editor: saved, or refused for good — 409 `case_immutable` (the thread became a case
+ * meanwhile), a deleted or a system message — with the reason and a refresh. A stale version is surfaced as a conflict
+ * with a refresh and keeps the editor open, so the text can be sent again.
+ */
+export function useEditMessage(thread: ThreadDetail | null, refresh: () => void) {
+  const t = useT()
+  return React.useCallback(
+    async (message: ThreadMessageItem, body: string): Promise<boolean> => {
+      if (!thread) return false
+      try {
+        await withScopedApiRequestHeaders(buildOptimisticLockHeader(thread.updatedAt), () =>
+          apiCallOrThrow(
+            `/api/communication/threads/${encodeURIComponent(thread.id)}/messages/${encodeURIComponent(message.id)}`,
+            { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body }) },
+            { errorMessage: t('communication.message.edit.errors.save') },
+          ),
+        )
+        flash(t('communication.message.edit.flash'), 'success')
+        refresh()
+        return true
+      } catch (error: unknown) {
+        const code = errorCodeOf(error)
+        if (code === 'case_immutable' || code === 'message_deleted' || code === 'message_not_editable') {
+          flash(errorMessage(error, t(`communication.errors.${code}`)), 'error')
+          refresh()
+          return true
+        }
+        if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
+          flash(errorMessage(error, t('communication.message.edit.errors.save')), 'error')
+        }
+        return false
+      }
+    },
+    [thread, t, refresh],
+  )
 }
 
 /** "Copy text for group chat" (DD-M14): the text with the link to the clipboard, shown, and confirmed live. */
@@ -407,6 +447,7 @@ export function ThreadRecord({ id }: { id: string }) {
     messagesTitleRef.current?.focus()
   }, [])
   const deletion = useDeleteMessage(thread, refresh, focusMessages)
+  const editMessage = useEditMessage(thread, refresh)
 
   if (!query.data && query.isFetching) return <LoadingMessage label={t('communication.club.loading')} />
   if (!query.data) {
@@ -525,7 +566,7 @@ export function ThreadRecord({ id }: { id: string }) {
         >
           {t('communication.threads.record.messagesTitle')}
         </h2>
-        <MessageList messages={thread.messages} renderFooter={footer} />
+        <MessageList messages={thread.messages} renderFooter={footer} isCase={thread.isCase} onEdit={editMessage} />
         <ReplyBox
           pending={pending}
           hint={thread.staff ? null : t('communication.reply.memberHint')}

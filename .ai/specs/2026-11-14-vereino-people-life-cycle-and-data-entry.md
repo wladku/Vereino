@@ -1,7 +1,7 @@
 # Vereino — people life cycle and data entry
 
 **Date**: 2026-11-14
-**Status**: Ready for implementation — approved by the product owner on 2026-11-16 ([owner decisions on #255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561)): the thirteen Ask First items approved, Q-L01 and Q-L02 answered, Q-L03…Q-L21 confirmed, the audit gaps (c1)–(c11) fixed in this text. Cross-spec order: phases L1–L3 build behind spec N's phases 1–3; L4, L5, L7, L9 and L10 name what they need from specs A and C (both still `Draft`) under *Cross-spec dependencies*; L5 clears its cash blocker only after #118
+**Status**: Ready for implementation — approved by the product owner on 2026-11-16 ([owner decisions on #255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561)): the thirteen Ask First items approved, Q-L01 and Q-L02 answered, Q-L03…Q-L21 confirmed, the audit gaps (c1)–(c11) fixed in this text. Cross-spec order: phases L1–L3 build behind spec N's phases 1–3; L4, L5, L7, L9 and L10 name what they need from specs A and C (both still `Draft`) under *Cross-spec dependencies*; L5 clears its cash blocker only after #118. **Addition of 2026-11-18, not yet approved:** REQ-L15 (moving several children from one roster to another group) and the roster's "Move" action, at the owner's request after testing the sandbox; REQ-L16 (birth-year ranges of the age categories) followed the same day; the new route (Ask First item 14), migration E (item 15) and Q-L22…Q-L26 wait for the owner's confirmation on the spec PR; until then phases L11 and L12 are not ready, while phases L1–L10 stay ready.
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -102,6 +102,8 @@ Who has it: the club administrator first; then guardians and adult participants 
 - **REQ-L12** — Every stored field in this list can be entered and corrected in the interface: role assignment dates, guardianship start date, external id, person photo, section material title, contract attachment, and the text of one's own message.
 - **REQ-L13** — The first club administrator is created without the command line.
 - **REQ-L14** — An empty picker never ends a task. It says what is missing and offers a link or an in-place create when the user may create the record, and names who can when the user may not.
+- **REQ-L15** (owner request of 2026-11-18) — From a group's roster the administrator or the section coordinator moves one child or several selected children to another group on a chosen day, in one previewed step that can be undone. Each child keeps the history of both groups, and REQ-L11's effects (declarations, one fee for the month) hold for every child. The roster suggests the children whose age fits the target group.
+- **REQ-L16** (owner request of 2026-11-18) — Each age category of the club carries a range of PZPN "U" years, so the club administrator sees which birth years belong to it in a given season. A team's public age range is proposed from its category, and the "Fits {group}" filter of REQ-L15 uses the category's birth years for a team.
 
 ## Non-goals
 
@@ -109,7 +111,7 @@ Who has it: the club administrator first; then guardians and adult participants 
 - Automatic deletion or anonymisation after a period without a request (CM Q-019 default stays).
 - Sign-ups of non-members to events, start lists and differentiated entry fees (CM Q-027 default stays; Q-L06).
 - Self-enrolment of a child into a group or section from the phone or the public page: the mockup has no such screen, and the coordinator enrols (Q-L06).
-- The roster screens (B-12 and the coordinator's phone roster), the activity wizard, the fee form and the facility forms: specs A, C and R own them. This spec gives them the group-move rule (REQ-L11) and the picker pattern (REQ-L14).
+- The roster screens (B-12 and the coordinator's phone roster), the activity wizard, the fee form and the facility forms: specs A, C and R own them. This spec gives them the group-move rule (REQ-L11) and the picker pattern (REQ-L14). Exception: the roster's "Move" action, for one child and for several (REQ-L15), is specified here, because spec A's roster (REQ-A03) offers only Edit, End and Remove.
 - B-33 "Cash to settle" (issue #118) and the "Accept cash" dialog (spec C). REQ-L04 only reads the amount a coach holds.
 - A payer other than the adult after the 18th birthday (Q-L02), and a guardianship that continues after 18 by rule (Q-L03).
 - The treasurer role (held back, D-030, #245).
@@ -169,6 +171,8 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 | **DD-L13** One empty-picker pattern in `@vereino/ui/admin`: `PickerEmptyHint` and `InlineCreateDialog`, driven by the user's features | Seven modules have the same dead end; one component, one test | A hint text per form | Seven wordings; no create path |
 | **DD-L14** The first administrator is made on a panel page open to the technical administrator while the club has none; it runs the existing command `people.persons.bootstrap_admin` | The command exists (`people/commands/jobs.ts:119`); only the entry point is missing | Make the tenant's first user an administrator automatically | The technical administrator must not get personal data by default (CM *Users*) |
 | **DD-L15** A group move is one command, `groups.memberships.move`. The month's fee follows the group on the period's reference day; a later generation in the same period skips the new group's fee for a moved child | The generator reads the roster on one reference day (`payments/services/generation.ts:21-45`) but uses today for the current period, so a re-run after a move would charge twice | Pro-rate both fees | Not in the mockup; clubs charge whole months |
+| **DD-L16** Moving several children is one command, `groups.memberships.move_many`, applied in one transaction after a preview; it reuses the single move for each child and has one undo | A season-end promotion moves 5–15 children at once; partial results would leave a group half-moved and a second click would double the rest | One call of `groups.memberships.move` per child from the page | No single undo; a failure in the middle leaves both groups wrong; the fee skip rule would run per call |
+| **DD-L17** The "U" range of an age category is a Vereino row keyed by the platform dictionary entry (`groups_age_category_ranges`), not text parsed from the label; a team fits by birth year in the season's reference year, a class group by age on the move date | The platform `DictionaryEntry` holds only value, label, colour, icon and position (`@open-mercato/core/src/modules/dictionaries/data/entities.ts`), and PZPN counts categories by birth year ("rocznik"), not by age on a day | Parse "U10–U11" from the label; store ages instead of "U" years | A renamed category breaks the parsing; ages on a day misplace children born late in the year |
 
 ## Domain Vocabulary and Business Rules
 
@@ -195,7 +199,12 @@ Contributors read and write with the caller's `EntityManager`, so the departure 
 | Season rollover plan | New season (existing or created in the plan) plus one action per group: `continue` (new `season_id`), `rename` (continue with a new name and age category), `close` (deactivate; memberships, recurring activities and fees end on the old season's last day), `copy` (a new group with the same settings and an empty roster). Per recurring activity and fee of a continued or renamed group: `end`, `end_and_copy` or `keep` | `groups.seasons.rollover` | 409 `rollover_plan_stale` when the preview no longer matches; 409 with the conflict list when a copied activity collides; nothing is applied in part |
 | Own consents | `{ regulations, image, trips }` of a person aged 18 or more, changed by that person or the administrator | `people_persons.consents` | Change by anyone else → 403; a minor's own consents → 422 `consents_minor` |
 | Consent wording | Per consent key: the club's text (≤ 1000 characters) or, when empty, the built-in text; `changedAt` set on every change | `club_core_club_settings.consent_texts` | 422 on length |
-| Group move | Ends the membership in the old group on the day before `date` (spec A's end on a chosen last day, REQ-A03) and starts one in the new group on `date`, same role, in one transaction. This spec adds only the pairing and the effects on declarations and the fee; the roster action that calls it is spec A's | `groups.memberships.move` | 409 on an overlap; 403 outside the section scope of either group |
+| Group move | Ends the membership in the old group on the day before `date` (spec A's end on a chosen last day, REQ-A03) and starts one in the new group on `date`, same role, in one transaction. This spec adds the pairing, the effects on declarations and the fee, and the roster actions that call it (REQ-L15) | `groups.memberships.move` | 409 on an overlap; 403 outside the section scope of either group |
+| Moving several children | A group move (above) for each selected participant of one roster to one target group on one `date` (today or later, Q-L08). The preview lists, per child, what happens: moved; already a member of the target group on that date (skipped); has future declarations in the old group (dropped); a fee in the target group (charged once for the month, DD-L15). An active participant of the source roster on `date` is movable; a membership that has ended or not started by `date` is listed as `skip_not_active`. The apply step moves every child the preview listed as movable, or none | `groups.memberships.move_many` | 409 `move_preview_stale` when a membership changed after the preview (the page refreshes the preview); 422 `move_same_group`, `move_target_inactive`, `move_date_in_past` or `move_too_many` (more than 100); 403 outside the section scope of either group |
+| Fits the target group's age | For a team whose category has a range (REQ-L16): a participant whose birth year is among the category's birth years in the reference year. Otherwise: a participant whose age on the move date lies within the target group's `age_from`–`age_to` (the public age range, #91). The roster's "Fits {group}" filter preselects them; it never moves anyone by itself. Without an age range on the target group the filter is not offered | `groups` | — |
+| Age category range | Two whole numbers `u_from` ≤ `u_to` (1–99; `u_to` may be open) on an age category, meaning PZPN "U" years: a child belongs to the category "U{from}–U{to}" in a season when `reference_year − birth_year + 1` lies in the range. Defaults for the seeded categories: Kids 4–5, Skrzat 6–7, Żak 8–9, Orlik 10–11, Młodzik 12–13, Trampkarz 14–15, Junior młodszy 16–17, Junior starszy 18–19, Senior 20–open | `groups_age_category_ranges` | 422 `age_range_inverted`; a category without a range offers no birth years |
+| Reference year | The calendar year in which the group's season starts; for a team without a season, the calendar year of the move date (for the filter) or of today (for the display) | `groups` seasons | — |
+| Birth years of a category | For a reference year R, the years `R − u_to + 1` … `R − u_from + 1` (e.g. Orlik U10–U11 in the season 2026/27: 2016–2017) | computed, never stored | — |
 
 **What withdrawing a consent changes** (shown next to each consent on M-10 and in the confirmation; keys `people.club.profile.consents.effect.<key>`):
 
@@ -328,6 +337,22 @@ B-11 Seasons tab -> POST /api/groups/seasons/rollover/preview -> groups + groups
 3. She adds a child, opens Guardians, searches for the mother, gets "No person found — Add 'Kasia Kowalska'", and creates her in place.
 4. A coordinator opening the group form with no section sees "No section yet. Ask the club administrator to add one" and no button.
 
+### Journey J-L09 — The Kids move up to Skrzaty
+
+1. On 1 September Ewa, coordinator of the football section, opens the roster of "Kids" and chooses **Move to another group**. She picks "Skrzaty" and the date 1 September.
+2. The roster filter **Fits Skrzaty** (the group's age range 6–7) preselects six of the eleven children. She unticks one whose parents asked to stay a year longer and ticks one who is younger but ready.
+3. The preview lists six children to move, one skipped (already in Skrzaty since August), two with declarations for future Kids sessions that will be dropped, and the September fee charged once, in Skrzaty.
+4. She confirms. Kids' roster shows the six under **History** with the last day 31 August; Skrzaty's roster lists them from 1 September. Each child's **Groups** tab on B-10 shows "Kids 2025-09-01 – 2026-08-31" and "Skrzaty from 2026-09-01".
+5. An hour later she notices one wrong child and uses **Undo** on the toast; all six moves are reverted together, and she repeats the move without that child.
+6. On the phone, from **More → Groups → Kids**, the same action works with the same preview (D-029).
+
+### Journey J-L10 — The categories know their birth years
+
+1. Aneta, club administrator, opens Groups → **Age categories** (a tab next to Seasons). The nine PZPN categories show their "U" ranges and, for the current season 2026/27, the birth years: Orlik U10–U11 → 2016–2017.
+2. She adds a category "Orlik młodszy" with the range U10–U10; it is created in the club's dictionary and gets its range in one step.
+3. Ewa, coordinator, creates the team "Orliki 2017" with the category Orlik młodszy. The team's public tab proposes "Wiek od 9, do 10" and shows "Rocznik 2017 w sezonie 2026/27"; she keeps it.
+4. In September, moving children to "Orliki 2017", the filter **Fits Orliki 2017** preselects the children born in 2017, whatever their birthday.
+
 ## UI and Interaction Contracts
 
 The mockup has no screen for leaving, erasure, the 18th birthday or the season rollover: D-031 §8 adds them. Each is placed on the nearest mockup screen (the tabs of B-10 `screenPerson`, the Seasons tab of B-11, the profile M-10 `screenProfile`) and keeps that screen's layout. Polish texts that exist in the mockup are cited by key (`docs/ux-concept/mockups/i18n/pl.json`); new texts get new keys in the owning module's catalogs, in both locales, with the glossary's words.
@@ -340,7 +365,7 @@ Closest installed references: `people/components/PersonRecord.tsx` (tabs synced 
 | B-10 `…?tab=leaving` (new tab, shown with `people.manage`) | Open requests; "Record a request"; "Leaving the club" (preview → confirm); "Return to the club"; "Anonymise"; "Delete person" | `GET/POST /api/people/departure-requests`; `POST /api/people/departures/preview`; `POST /api/people/departures`; `POST …/{id}/return`; `POST …/{id}/anonymize`; `DELETE /api/people/persons/{id}` | `SectionInUseDialog.tsx`, `ImportRecord.tsx`, `GeneratePeriodDialog.tsx` | `SectionHeader`, `DataTable` (preview rows), `Alert`, `useConfirmDialog` (typed confirmation for anonymise), `StatusBadge` | loading, nothing to end, blockers (links), warnings, choices missing, stale preview (409), success, 403 | REQ-L03, REQ-L04, REQ-L05 |
 | B-10 `…?tab=roles` | "Staff setup" checklist; assign with an optional end date; "Edit" (dates, scope); "End on…" with a date | `GET/POST/PUT /api/people/role-assignments`; `POST …/{id}/end` (all built) | `RolesPanel.tsx`; the coordinator "until" date of `club_core/components/SectionCoordinators.tsx` | as today + `Dialog`, date `Input` | loading, empty (mockup `b.screenPerson.emptyRolesTitle`), 409 duplicate, 409 version, 422 dates | REQ-L09, REQ-L12 |
 | B-10 `…?tab=guardians` | Start date on add and edit; in-place "Add a new person"; for an adult: "Own consents" with author and date | `POST/PUT /api/people/guardianships` (built); `POST /api/people/persons` ; `POST /api/people/persons/{id}/consents` | `GuardianshipsPanel.tsx` | `LookupSelect` + `PickerEmptyHint`, `InlineCreateDialog` | as today + empty picker, 409 duplicate person (PESEL) | REQ-L10, REQ-L12, REQ-L14 |
-| B-10 `…?tab=details` and `/backend/people/persons/create` | External id (with `people.manage`); photo upload and removal | `PUT /api/people/persons`; `POST/DELETE /api/people/persons/{id}/photo` | `PersonForm.tsx`; `club_core/components/LogoPanel.tsx` | `CrudForm`, the logo panel's file control | 409 `person_external_id_taken`, 422 per file, upload progress | REQ-L12 |
+| B-10 `…?tab=details` and `/backend/people/persons/create` | External id (shown and sent with `people.pesel.view`, the feature that returns it); photo upload and removal | `PUT /api/people/persons`; `POST/DELETE /api/people/persons/{id}/photo` | `PersonForm.tsx`; `club_core/components/LogoPanel.tsx` | `CrudForm`, the logo panel's file control | 409 `external_id_duplicate`, 422 per file, upload progress | REQ-L12 |
 | B-09 `/backend/people/persons` | Perspective "Former"; filter "Needs attention": may get an account, turns 18 within 30 days, adult without contact, missing consents | `GET /api/people/persons?view=former`, `?attention=…` | `PersonsTable.tsx` (perspective tablist and URL filters of the precedent spec, DD-U03) | `DataTable` filters, tablist | loading, empty per perspective, filtered-empty | REQ-L03, REQ-L06, REQ-L07, REQ-L10 |
 | `/backend/people/first-administrator` (new; linked from a banner while the club has no administrator) | Pick a user of the organization, first and last name, confirm | `POST /api/people/first-administrator` | `PersonCreatePage.tsx` | `Page`, `PageBody`, `CrudForm` | loading, 409 `club_admin_exists` (the page then says who it is), 403, success → B-09 | REQ-L13 |
 | B-02 `/backend/club/settings`, group "Consent texts" | One textarea per consent key, with the built-in text as placeholder and "last changed" | `GET/PUT /api/club_core/settings` | `ClubSettingsForm.tsx` | `CrudForm` group | loading, 422 length, 409 version | REQ-L10 |
@@ -470,6 +495,22 @@ Three notes on the rows, from the hand-overs of specs A and C:
 - **Responsive and accessibility:** 375 px, both locales, light and dark; touch targets at least 44 px; the submit bar stays above the bottom navigation.
 - **Localization:** `people.club.leave.*`.
 
+### Roster: moving children (REQ-L15)
+
+| Surface / route | Purpose and primary actions | Data source / mutations | Closest installed reference | Canonical shell / components | Required states | Requirement IDs |
+|---|---|---|---|---|---|---|
+| B-12 `/backend/groups/groups/[id]?tab=roster`, view **Active** | Row action **Move…** (one child); row selection with the toolbar action **Move to another group** (several); filter chip **Fits {group}** once a target is chosen | `POST /api/groups/memberships/move` (one), `POST /api/groups/memberships/move-many` with `dryRun` then apply | `groups/components/RosterPanel.tsx` (views and row actions of #355); `payments/components/GeneratePeriodDialog.tsx` (preview, then apply) | `DataTable` row selection, `Dialog` with target group (`LookupSelect`, active groups of the caller's sections except this one), date (default the 1st of the next month, never in the past), preview list, **Move {n}** | no participant selected (action disabled with a hint); preview loading; nothing movable (apply disabled, reasons listed); stale preview (refreshed with a notice); success toast with **Undo**; 403 | REQ-L15 |
+| `/club/groups/[id]` (spec A REQ-A11, phone roster) | The same two actions and the same dialog as a full-screen sheet | as above | spec A's phone roster | sheet, sticky **Move {n}** button | as above; 375 px, both locales, light and dark | REQ-L15 |
+| B-10 `…?tab=groups` | History of memberships with both groups and dates after a move (existing tab, no change) | `GET /api/groups/memberships?personId=` | `groups` injection on the person record (#84) | — | — | REQ-L15 |
+
+### Groups: age categories (REQ-L16)
+
+| Surface / route | Purpose and primary actions | Data source / mutations | Closest installed reference | Canonical shell / components | Required states | Requirement IDs |
+|---|---|---|---|---|---|---|
+| B-11 `/backend/groups/age-categories` (new tab **Kategorie wiekowe** in `GroupsNav`, after Seasons) | The club's categories in the dictionary's order with "U od", "U do" and the birth years for a chosen season (default: the season of today); edit the range in the row; **Dodaj kategorię** (name and range in one dialog); a link to the platform dictionary page for renaming, reordering and deleting | `GET /api/groups/age-categories?seasonId=`, `PUT /api/groups/age-categories/{entryId}/range`, `POST /api/groups/age-categories` | `groups/components/SeasonsTable.tsx`; the in-place category create of #305 | `DataTable` with inline number inputs, `Dialog` | no dictionary (hint to the club administrator); category without a range ("brak zakresu"); 422 inverted range; read-only for a coordinator | REQ-L16 |
+| B-12 team form and **Strona publiczna** tab | When a category with a range is chosen and the public age fields are empty, "Wiek od" and "Wiek do" are proposed as `u_from − 1` and `u_to` (editable; never overwritten once set); the tab shows "Rocznik {years} w sezonie {season}" | existing group fields | `GroupForm.tsx`, `GroupPublicForm.tsx` | inline hint | category without a range: no proposal | REQ-L16 |
+| Roster dialog of REQ-L15 | The chip reads **Pasuje do {grupy} (rocznik {years})** for a team with a ranged category, **Pasuje do {grupy} ({from}–{to} lat)** otherwise | as REQ-L15 | — | — | target without a range and without ages: no chip | REQ-L15, REQ-L16 |
+
 ## Data Models
 
 ### `people_persons` (changed)
@@ -481,6 +522,19 @@ Three notes on the rows, from the hand-overs of specs A and C:
 | `erasure_hold_until` | date, null | partial index where not null | no | set with `anonymized_at` when a payment is under the hold; cleared when the job erases the name |
 | `consents` | jsonb, default `{}` | — | personal data, not encrypted (as on the guardianship) | `StoredConsents`; written only through the P-08 transitions; only for a person aged 18 or more |
 | `photo_attachment_id` | uuid, null | — | the file is in the private `attachments` partition | PNG, JPEG or WebP ≤ 5 MB, byte-checked as `club_core/api/uploads.ts`; deleted on anonymisation |
+
+### `groups_age_category_ranges` (new)
+
+| Field | Type / nullability | Scope / index | Sensitive / encrypted | Lifecycle and validation |
+|---|---|---|---|---|
+| `id` | UUID, required | primary key | no | immutable |
+| `tenant_id` / `organization_id` | UUID, required | composite scope index | no | trusted context only |
+| `age_category_entry_id` | UUID, required | unique (`organization_id`, `age_category_entry_id`) | no | an entry of the club's `groups.age_categories` dictionary; a row whose entry was deleted on the platform is ignored and removed by the next write |
+| `u_from` | smallint, required | — | no | 1–99 |
+| `u_to` | smallint, null | — | no | ≥ `u_from`; null = open |
+| `created_at`, `updated_at` | timestamp, required | optimistic-lock version | no | — |
+
+Seeded for the nine default categories by `groups` `seedDefaults` (new clubs) and by the migration for existing clubs whose entries still carry the default values (`kids` … `senior`); renamed or added entries get no range until the administrator sets one.
 
 ### `people_departure_requests` (new)
 
@@ -537,6 +591,10 @@ Every route is a custom guarded command route with per-method `metadata` and `op
 | `POST` | `/api/groups/seasons/rollover/preview` | auth + `groups.manage` + section scope | the plan (see *Vocabulary*) | what will be created, changed and ended, per module; conflicts; `previewToken` | 403 for a group outside the scope; 422 plan errors | REQ-L08 |
 | `POST` / `groups.seasons.rollover` | `/api/groups/seasons/rollover` | same | the plan + `previewToken` + `announce: boolean` | 200 summary; `groups.season.rolled_over` | 409 `rollover_plan_stale`; 409 conflicts; not undoable (each created record is ended or deleted by its own command) | REQ-L08 |
 | `POST` / `groups.memberships.move` | `/api/groups/memberships/move` | auth + `groups.manage` + both groups in scope | `{ membershipId, toGroupId, date }` | 200 both memberships; the existing `groups.membership.*` events | 409 overlap; 409 version | REQ-L11 |
+| `POST` / `groups.memberships.move_many` | `/api/groups/memberships/move-many` | auth + `groups.manage` + the source and the target group in scope | `{ fromGroupId, toGroupId, date, membershipIds: string[] (1–100, participants of fromGroupId), dryRun?: boolean, previewToken?: string }` | `dryRun`: `{ items: [{ membershipId, personId, outcome: 'move' \| 'skip_already_member' \| 'skip_not_active', futureDeclarations, feeNote }], previewToken }`; apply: `{ moved: n, skipped: n }` and one `groups.membership.*` event pair per moved child; one undo token | 409 `move_preview_stale`; 422 `move_same_group`, `move_target_inactive`, `move_date_in_past`, `move_too_many`; 403 scope | REQ-L15 |
+| `GET` | `/api/groups/age-categories` | auth + `groups.view` | `seasonId?` | `{ items: [{ entryId, value, label, uFrom, uTo, birthYears: { from, to } \| null }], referenceYear }` | — | REQ-L16 |
+| `PUT` / `groups.age_category_ranges.set` | `/api/groups/age-categories/{entryId}/range` | auth + `dictionaries.manage` | `{ uFrom, uTo? }` | 200 the row; audit; undoable | 422 `age_range_inverted`; 404 not an entry of the club's dictionary | REQ-L16 |
+| `POST` / `groups.age_categories.create` | `/api/groups/age-categories` | auth + `dictionaries.manage` | `{ label, uFrom, uTo? }` | 201 the dictionary entry with its range, in one transaction | 409 a category with that name exists; 422 range | REQ-L16 |
 | contract `DepartureContributor` | DI `people.departure.<module>` | called by `people` only | `preview(em, subject, lastDay)`; `apply(em, subject, lastDay, choices)` → `{ snapshot, changes }`; `undo(em, subject, snapshot)` → `changes`; `afterCommit(changes, ctx)` (events, cache, search; table under *Proposed Solution*); `hasHistory(em, subject)`; `payments` also `retentionHoldUntil(em, subject)` | items, warnings, blockers | `preview`, `apply` or `undo` throws → the whole departure or undo rolls back; `afterCommit` failures are logged and retried, never rolled back | REQ-L03…REQ-L05 |
 | contract `SeasonContributor` | DI `groups.season.<module>` | called by `groups` only | `preview(em, plan)`, `apply(em, plan)` | items and conflicts | throws → the whole rollover rolls back | REQ-L08 |
 | `GET` | `/api/club_core/institutions/options` | auth + `club_core.view` | `search?` | `{ items: [{ id, name }] }`, names only, `no-store` | 401, 403 | REQ-L14 |
@@ -614,7 +672,7 @@ Tests are self-contained (own tenant, users and records) and run with `yarn test
 | TEST-L10 | integration + UI | a child one day under the threshold; a club that lowers the threshold | run the job on the day, and again; lower the threshold and run | one notice to guardians and administrators; B-09 "may get an account" lists the child; the dashboard widget "People needing attention" counts the child under that filter and links to it; a new notice after the change only for the newly eligible | REQ-L07 |
 | TEST-L11 | integration + UI (phone) | an adult participant; a guardian; a 17-year-old with an account; a coach of their group; a coordinator | the adult gives and withdraws each consent; the minor tries through the API; open the attendance read as the coach; read the person as the coordinator | stored with author and date; the effect line and the confirmation appear; 422 `consents_minor`; flags present for the coach; no consents in the coordinator's read | REQ-L10 |
 | TEST-L12 | integration + UI | a club with built-in texts and one given consent | change a consent text; open the profile; send 1001 characters | the phone shows the club's text; the earlier consent reads "given to an earlier wording" and stays valid; 422 | REQ-L10 |
-| TEST-L13 | integration + UI | a person with a role, a guardianship, a material, a thread with own and others' messages, a case | assign a role with an end date; edit its dates; end it on a future date; set a guardianship start date; type an external id used by another person; rename a material; edit a message in the panel and on the phone; edit in a case | each value stored and shown; 409 `person_external_id_taken`; "edited" mark; no edit on others' messages; 409 `case_immutable` | REQ-L12 |
+| TEST-L13 | integration + UI | a person with a role, a guardianship, a material, a thread with own and others' messages, a case | assign a role with an end date; edit its dates; end it on a future date; set a guardianship start date; type an external id used by another person; rename a material; edit a message in the panel and on the phone; edit in a case | each value stored and shown; 409 `external_id_duplicate`; "edited" mark; no edit on others' messages; 409 `case_immutable` | REQ-L12 |
 | TEST-L14 | UI + unit | a club without institutions, sections, seasons and people; an administrator and a coordinator | open forms 1–6 of the picker table as each | the hint and the right action per feature; an in-place create selects the new record; the coordinator sees "Ask the club administrator"; the component has full unit coverage | REQ-L14 |
 | TEST-L15 | UI | a tenant with a platform user and no club administrator | first-administrator page; then add a place with a new institution, a child with a new guardian, a section, a group | no step needs the command line or a second visit to another module's menu; a second call answers 409 `club_admin_exists` | REQ-L13, REQ-L14 |
 | TEST-L16 | integration + UI | a season with four groups in two sections, recurring activities, fees, and a rental that collides with one copied activity | preview and apply a plan with continue, rename, close and copy; change a group between preview and apply; apply twice; run as the coordinator of one section; announce | groups, memberships, `ends_on` and `valid_to` as planned; copies start on the new dates with the new amount; the conflict stops the whole plan; 409 `rollover_plan_stale`; the second apply changes nothing; the other section untouched; one post per continued group | REQ-L08 |
@@ -622,6 +680,9 @@ Tests are self-contained (own tenant, users and records) and run with `yarn test
 | TEST-L18 | integration + UI | a new person; an administrator and a coordinator | follow the staff checklist; upload a photo and a contract PDF; upload an SVG renamed `.png` | each row turns done; the coordinator has no account or contract action; files stored privately; 422 on the fake image | REQ-L09, REQ-L12 |
 | TEST-L19 | unit | — | `people/lib/life-cycle-rules.ts`, `people/lib/departure-rules.ts`, `groups/lib/season-rollover.ts`, the account-state function in `@vereino/core` | 100 % line, branch and function coverage (AGENTS.md) | REQ-L01…REQ-L11 |
 | TEST-L20 | security | a second tenant; users without each feature | call every new route of the phase (each phase that adds a route lists TEST-L20: L1, L3, L4, L6, L7, L9, L10) | fail closed: 403 or 404, no data of the other tenant, no contributor called | all |
+| TEST-L21 | integration | group "Kids" with eleven participants, one already in "Skrzaty", two with future declarations, a September fee in both groups, generated September charges | preview a move of seven to "Skrzaty" on 1 September; apply; generate September again; undo; change one membership between preview and apply | the preview lists six moves and one skip with reasons; after apply both rosters and the B-10 history match; one September fee per child; undo restores both groups and the declarations; a changed membership gives 409 `move_preview_stale`; a coordinator of another section gets 403 | REQ-L15, REQ-L11 |
+| TEST-L22 | UI | as TEST-L21, a target group with the age range 6–7 | select via **Fits Skrzaty**, untick one, move, undo from the toast, on the panel and at 375 px | the filter preselects by age on the move date; the dialog states are as in the UI contract; both locales, light and dark | REQ-L15 |
+| TEST-L23 | integration + unit | a club with the seeded categories, a season starting 2026-09-01, children born 2015–2018 | read the categories for that season; set Orlik młodszy U10–U10; create a team with it; move children with **Fits** | Orlik U10–U11 shows 2016–2017; the team's public tab proposes 9–10 and "Rocznik 2017"; the filter preselects the 2017 births only; an inverted range gives 422; a coordinator cannot change a range (403); the birth-year rule has 100 % coverage in `groups/lib/groups-rules.ts` | REQ-L16 |
 
 ## Implementation Phases
 
@@ -644,7 +705,7 @@ State on 2026-11-16: spec N (`2026-11-14-vereino-parity-navigation-and-naming.md
 | L8 | spec N phase 6 | slot for `people.dashboard.peopleNeedingAttention` (N row 11) | as for L4 |
 | L9 | spec N phase 1 (remainder) | the "Classes / Zajęcia → Groups → Seasons" path | the wizard is reached from the existing Seasons tab of `GroupsNav`, under today's "Groups" sidebar group |
 | L9 | spec A phase 2 (REQ-A03) | the action `close` ends memberships on the old season's last day | the existing `groups.memberships.end` |
-| L10 | spec A phase 2 (roster "Move", a roster opened with a preselected person) | the entry points of `groups.memberships.move` and of the staff checklist's "Add to a group as coach" | the move route ships with its test (TEST-L17); the checklist row links to the group's roster without preselection |
+| L10 | spec A phase 2 (the roster views and row actions, built in #355; a roster opened with a preselected person) | the staff checklist's "Add to a group as coach"; the "Move…" row action is built by L10 itself (REQ-L15), since #355 shipped none | the move route ships with its test (TEST-L17); the checklist row links to the group's roster without preselection |
 | L10 | spec C (the skip rule in charge generation, agreed on 2026-11-16) and spec C phase 5 (REQ-C07, the Charges tab on B-10) | the skip rule in `payments/lib/charge-plan.ts`; the tab order Details, Guardians, Roles, Account, Groups, Charges, Leaving in `PersonRecord.tsx` | the second of L10 and C phase 5 to land rebases on the first; neither changes the other's tab |
 | — | spec R | consumer of the picker pattern only (row 10 of the picker table) | — |
 
@@ -760,15 +821,39 @@ State on 2026-11-16: spec N (`2026-11-14-vereino-parity-navigation-and-naming.md
 
 ### Phase L10 — Staff setup, group move, photo and contract file
 
-- **Depends on:** spec A phase 2 (REQ-A03 and the roster screen that opens with a preselected person and offers "Move"); spec C for the generation skip rule (agreed, owner decision 2026-11-16) and C phase 5 for the Charges tab order on B-10 (*Cross-spec dependencies*)
+- **Depends on:** spec A phase 2 (REQ-A03, built in #355; L10 adds the roster's "Move…" row action itself, REQ-L15); spec C for the generation skip rule (agreed, owner decision 2026-11-16) and C phase 5 for the Charges tab order on B-10 (*Cross-spec dependencies*)
 - **Outcome:** J-L07 works end to end; REQ-L11 holds.
 - **Why this order / value delivered:** the remaining data-entry rows; touches other specs' screens, so it lands after them.
-- **Deliverables:** migration D (`people_persons.photo_attachment_id`, `club_core_contracts.attachment_id`; approved 2026-11-16); the checklist on `RolesPanel.tsx` with the injection spot in `PersonRecord.tsx` (the file spec C's phase 5 also edits for the Charges tab) and the rows from `groups` and `club_core`; `groups.memberships.move`, built on spec A's membership end (REQ-A03); the skip rule in `payments/lib/charge-plan.ts`; the photo and attachment routes and controls.
+- **Deliverables:** migration D (`people_persons.photo_attachment_id`, `club_core_contracts.attachment_id`; approved 2026-11-16); the checklist on `RolesPanel.tsx` with the injection spot in `PersonRecord.tsx` (the file spec C's phase 5 also edits for the Charges tab) and the rows from `groups` and `club_core`; `groups.memberships.move`, built on spec A's membership end (REQ-A03), with the roster's "Move…" row action and its one-child dialog in `RosterPanel.tsx` (phase L11 extends the same dialog to several children); the skip rule in `payments/lib/charge-plan.ts`; the photo and attachment routes and controls.
 - **Independent slices / estimated commits:** (a) checklist: 1; (b) move and fee rule: 2; (c) files: 1.
 - **Requirements closed:** REQ-L09, REQ-L11, REQ-L12 (photo, contract attachment)
 - **Tests:** TEST-L17, TEST-L18, TEST-L20 (the move, photo and contract attachment routes)
 - **Validation:** as above
 - **Exit gate:** J-L07 in the browser; TEST-L17 green.
+
+### Phase L11 — Move several children from a roster
+
+- **Depends on:** L10 (`groups.memberships.move` and the fee skip rule); spec A phase 2 (the roster views and row actions, built in #355); spec A phase 9 (the phone roster `/club/groups`) for the phone entry point only
+- **Outcome:** J-L09 works end to end; REQ-L15 holds.
+- **Why this order / value delivered:** the season-end promotion is a recurring task of every coordinator; it reuses the single move, so it comes right after it.
+- **Deliverables:** `groups.memberships.move_many` with its preview and undo in `groups/commands/memberships.ts`; the route `/api/groups/memberships/move-many`; the age-fit rule in `groups/lib/groups-rules.ts` with unit tests; row selection, the toolbar action "Move to another group" and the several-children form of L10's dialog in `RosterPanel.tsx`; the same dialog on the phone roster when spec A phase 9 is built; catalog keys in `groups/i18n/pl.json` and `en.json`.
+- **Independent slices / estimated commits:** (a) command, route and rule: 2; (b) panel dialog: 1; (c) phone sheet: 1.
+- **Requirements closed:** REQ-L15
+- **Tests:** TEST-L21, TEST-L22, TEST-L20 (the new route)
+- **Validation:** as above
+- **Exit gate:** J-L09 in the browser as a coordinator; TEST-L21 green.
+
+### Phase L12 — Birth-year ranges of the age categories
+
+- **Depends on:** none (the category picker and the in-place create exist since #305); phase L11 uses the ranges when L12 has landed and falls back to the group's age range before
+- **Outcome:** J-L10 works end to end; REQ-L16 holds.
+- **Why this order / value delivered:** small and independent; makes the promotion filter match how PZPN counts categories.
+- **Deliverables:** migration E (`groups_age_category_ranges` with the seed for existing clubs); the entity, the commands and the routes in `groups`; the birth-year rule in `groups/lib/groups-rules.ts`; the **Kategorie wiekowe** tab; the proposal in `GroupForm.tsx` / `GroupPublicForm.tsx`; `seedDefaults` for new clubs; catalog keys in `groups/i18n/pl.json` and `en.json`.
+- **Independent slices / estimated commits:** (a) data, rule and routes: 2; (b) tab and form proposal: 1.
+- **Requirements closed:** REQ-L16
+- **Tests:** TEST-L23, TEST-L20 (the new routes)
+- **Validation:** as above
+- **Exit gate:** J-L10 in the browser as the club administrator; TEST-L23 green.
 
 ## Requirement Traceability
 
@@ -788,6 +873,8 @@ State on 2026-11-16: spec N (`2026-11-14-vereino-parity-navigation-and-naming.md
 | REQ-L12 | B-10, B-05, B-07, B-19, M-07 | existing `PUT`/`PATCH` routes; `photo_attachment_id`, `attachment_id` | L2, L10 | TEST-L13, TEST-L18 | AC-L13 |
 | REQ-L13 | J-L08; `/backend/people/first-administrator` | `POST /api/people/first-administrator`; `people.persons.bootstrap_admin` | L3 | TEST-L15 | AC-L14 |
 | REQ-L14 | J-L08; picker table | `PickerEmptyHint`, `InlineCreateDialog` | L3 | TEST-L14, TEST-L15 | AC-L14 |
+| REQ-L15 | J-L09; roster (B-12, phone roster) | `groups.memberships.move_many`, `/api/groups/memberships/move-many`, age-fit rule | L11 | TEST-L21, TEST-L22 | AC-L15 |
+| REQ-L16 | J-L10; Kategorie wiekowe tab, team form | `groups_age_category_ranges`, `/api/groups/age-categories*`, birth-year rule | L12 (L11 uses it) | TEST-L23 | AC-L16 |
 
 **Extension surfaces** (`.ai/guides/spec-delivery.md`). Each added surface names the Vereino adaptation the implementation starts from:
 
@@ -824,6 +911,8 @@ Rollback follows S14.6: redeploy the previous release, never run `down()`. Every
 | 11 | Ending guardianships of wards already 18 or older on existing data: dry run first, then the owner's explicit confirmation, then the real run | L8 (#310) | data change by a job (see below) | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
 | 12 | The re-send uses the V-L01 fallback (`requestPasswordReset`, 60-minute link); deep imports of platform internals only if `.ai/guides/framework-contracts.md` lists them (`BACKWARD_COMPATIBILITY.md` §9) | L1 (#303) | reliance on a platform surface | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
 | 13 | Seed change: the default age category "Kids (U4–U5)" for new clubs | L3 (#305) | seed | approved 2026-11-16 ([#255](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)) |
+| 14 | New route `POST /api/groups/memberships/move-many` with the command `groups.memberships.move_many` and the error codes `move_preview_stale`, `move_same_group`, `move_target_inactive`, `move_date_in_past`, `move_too_many` (additive; no migration, no new feature id: it uses `groups.manage`) | L11 | contract (route, command) | requested by the owner on 2026-11-18; confirm on the spec PR |
+| 15 | Migration E: table `groups_age_category_ranges` with the seed of the nine default ranges for existing clubs; routes `GET/POST /api/groups/age-categories`, `PUT …/{entryId}/range`; error `age_range_inverted` | L12 | migration, new entity, contract | requested by the owner on 2026-11-18; confirm on the spec PR |
 
 No new module and no new dependency (the owner approved none; none is needed).
 
@@ -867,6 +956,8 @@ No new module and no new dependency (the owner approved none; none is needed).
 - [ ] **AC-L12** — After a child is moved to another group, the old group's future sessions no longer show the child, the new group's sessions show the child undeclared, and the month has exactly one fee charge.
 - [ ] **AC-L13** — A role assignment can be created with an end date, edited and ended on a chosen date; a guardianship's start date can be set; a person has an external id and a photo; a section material can be renamed; a contract carries a PDF; the author edits their own message in the panel and on the phone (375 px, both locales, light and dark) unless the thread is a case.
 - [x] **AC-L14** — On a fresh tenant the first club administrator is created in the panel, and the walk-through place → institution → person → guardian → section → group needs no command line and meets no empty picker without a hint and an action. A user without the creating feature sees who can add the record and no button.
+- [ ] **AC-L15** — A coordinator moves several selected children from one roster to another group on a chosen day after a preview, every moved child shows both groups with their dates on B-10, the month has one fee per child, the whole move can be undone at once, and the same works on the phone at 375 px in both locales, light and dark.
+- [ ] **AC-L16** — Every seeded age category shows its "U" range and the birth years for the chosen season; the club administrator sets a range and adds a category with its range; a team's public age range is proposed from its category; the "Fits" filter of a team preselects children by birth year.
 - [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
 - [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
 
@@ -911,6 +1002,11 @@ Confirmed as written by the product owner on 2026-11-16 ([#255](https://github.c
 | Q-L19 | Is "Leaving" a seventh tab on B-10? | Yes, after the mockup's six, shown only with `people.manage` | D-031 §8 adds the function; the mockup's tabs keep their order | confirmed 2026-11-16 |
 | Q-L20 | Can a departure be undone? | Yes, until its last day, including the hand-overs, contracts and maintainer rows (each contributor's `undo`); afterwards "Return to the club" and new memberships | After the last day accounts are closed and notices sent | confirmed 2026-11-16 |
 | Q-L21 | Is the name of an anonymised person replaced in stored message bodies? | No. Only the author and participant labels change; the text others wrote stays | Editing other people's messages is out of proportion; cases are immutable (CM) | confirmed 2026-11-16 |
+| Q-L22 | How many children may one move take? | Up to 100, one roster, one target group | A roster rarely exceeds 30; the limit keeps the transaction short | autonomous default (2026-11-18), confirm on the spec PR |
+| Q-L23 | Does the move keep each child's role? | Yes: participants only; coaches and assistants are moved one by one with **Move…** | A coach changing groups is a staffing decision, not a promotion | autonomous default (2026-11-18), confirm on the spec PR |
+| Q-L24 | Is a child already in the target group an error? | No: skipped with the reason in the preview; the others move | One known exception should not block the promotion | autonomous default (2026-11-18), confirm on the spec PR |
+| Q-L25 | Which year is the reference year of a season? | The calendar year in which the season starts (2026/27 → 2026); without a season, the year of the move date | PZPN youth categories change with the season; clubs think "rocznik 2017 in 2026/27" | autonomous default (2026-11-18), confirm on the spec PR |
+| Q-L26 | How is a team's age range proposed from "U{from}–U{to}"? | "Wiek od" = u_from − 1, "Wiek do" = u_to; editable, never overwriting values already set | A U-category spans children who are u_from − 1 at the season start and u_to at its end | autonomous default (2026-11-18), confirm on the spec PR |
 
 ## Open Questions
 
