@@ -18,6 +18,7 @@ import {
   notOkResponse,
   publicClubSchema,
   publicErrorSchema,
+  publicNotOkSchema,
   publicPlaceCardSchema,
   publicRoute,
   routeParam,
@@ -78,6 +79,10 @@ const scheduleSchema = z.object({
       includesLighting: z.boolean(),
     }),
   ),
+  owner: z
+    .string()
+    .nullable()
+    .describe("Who a rental is paid to: the place's owner institution (nearest up the tree); null = the club"),
   phone: z.string().nullable(),
   days: z.array(
     z.object({
@@ -104,11 +109,11 @@ export const openApi: OpenApiRouteDoc = {
       query: z.object({ month: z.string().optional() }),
       responses: [{ status: 200, description: 'The month', schema: scheduleSchema }],
       errors: [
-        { status: 400, description: '`public_schedule_month_invalid`', schema: publicErrorSchema },
+        { status: 400, description: '`public_schedule_month_invalid`', schema: publicNotOkSchema },
         {
           status: 404,
           description: '`public_place_not_found`, `public_places_disabled`',
-          schema: publicErrorSchema,
+          schema: publicNotOkSchema,
         },
         { status: 429, description: 'Too many requests', schema: publicErrorSchema },
       ],
