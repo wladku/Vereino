@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  COACH_PAYMENTS_HREF,
   HAND_OVER_STATUSES,
   canHandOver,
+  coachPaymentsHref,
   childTotals,
   coachCashRefusal,
   describeCharge,
@@ -13,6 +15,10 @@ import {
   handOverRefusal,
   orderChargeVisible,
   overdueByPayer,
+  ownFirst,
+  ownGroupIds,
+  readCoachPaymentsUrl,
+  tileGroupOf,
 } from '../group-charges'
 
 describe('groupFilterOf', () => {
@@ -194,5 +200,67 @@ describe('handOverRefusal and canHandOver', () => {
   it('hands over an unpaid kit only after the warning', () => {
     expect(handOverRefusal({ ...base, remaining: 100 })).toBe('order_unpaid_confirm_required')
     expect(handOverRefusal({ ...base, remaining: 100, confirmUnpaid: true })).toBeNull()
+  })
+})
+
+describe('own groups (REQ-C12, #300)', () => {
+  it("takes the coach's groups, not the coordinator's sections", () => {
+    expect([
+      ...ownGroupIds([
+        { kind: 'coordinator', ids: ['s1'] },
+        { kind: 'coach', ids: ['g1', 'g2'] },
+        { kind: 'coach', ids: ['g1'] },
+        { kind: 'club_admin' },
+      ]),
+    ]).toEqual(['g1', 'g2'])
+    expect(ownGroupIds([{ kind: 'club_admin' }]).size).toBe(0)
+  })
+
+  it('lists the own groups first, each part in its order', () => {
+    const groups = [
+      { id: 'a', own: false },
+      { id: 'b', own: true },
+      { id: 'c', own: false },
+      { id: 'd', own: true },
+    ]
+    expect(ownFirst(groups).map((group) => group.id)).toEqual(['b', 'd', 'a', 'c'])
+  })
+})
+
+describe("M-18's address (REQ-C12, #300)", () => {
+  const read = (query: string) => {
+    const params = new URLSearchParams(query)
+    return readCoachPaymentsUrl((key) => params.get(key))
+  }
+
+  it('reads the group and the "To pay" filter', () => {
+    expect(read('group=g1&due=1')).toEqual({ groupId: 'g1', due: true })
+    expect(read('group=%20&due=true')).toEqual({ groupId: null, due: false })
+    expect(read('')).toEqual({ groupId: null, due: false })
+  })
+
+  it('writes only what is set', () => {
+    expect(coachPaymentsHref({ groupId: 'g1', due: true })).toBe(`${COACH_PAYMENTS_HREF}?group=g1&due=1`)
+    expect(coachPaymentsHref({ groupId: 'g1', due: false })).toBe(`${COACH_PAYMENTS_HREF}?group=g1`)
+    expect(coachPaymentsHref({ groupId: null, due: true })).toBe(`${COACH_PAYMENTS_HREF}?due=1`)
+    expect(coachPaymentsHref({ groupId: null, due: false })).toBe(COACH_PAYMENTS_HREF)
+  })
+
+  it('opens the Today tile on the own group with people to pay', () => {
+    expect(
+      tileGroupOf([
+        { id: 'section', own: false, peopleToPay: 3 },
+        { id: 'quiet', own: true, peopleToPay: 0 },
+        { id: 'busy', own: true, peopleToPay: 2 },
+      ]),
+    ).toBe('busy')
+    expect(
+      tileGroupOf([
+        { id: 'section', own: false, peopleToPay: 3 },
+        { id: 'quiet', own: true, peopleToPay: 0 },
+      ]),
+    ).toBe('quiet')
+    expect(tileGroupOf([{ id: 'section', own: false, peopleToPay: 0 }])).toBe('section')
+    expect(tileGroupOf([])).toBeNull()
   })
 })

@@ -35,6 +35,8 @@ export type CashReceipt = {
   payer: PersonName | null
   amount: number
   chargeCount: number
+  /** What the receipt paid for: its charges' descriptions (REQ-C12). */
+  descriptions: string[]
   reversed: boolean
   createdAt: string
 }

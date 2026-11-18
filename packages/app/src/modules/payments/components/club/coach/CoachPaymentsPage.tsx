@@ -5,7 +5,11 @@
 // never the discount reason) with "Accept cash" (several charges at once), "Send reminder" (overdue) and "Hand over
 // kit" (after the delivery; an unpaid kit after a warning), and the group's campaigns with "Remind guardians" and the
 // text for the group chat. A child without a payer is shown without cash: a matter for the treasurer.
+// REQ-C12 (#300): the URL holds the group and the filter (`?group=&due=1`, the Today tile's link), the chips scroll and
+// mark a group that is not the caller's own with "(section)", the group card states the club's coach mode, a handed
+// over kit shows when, and a group outside the caller's groups shows the 403 state without charges.
 import * as React from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
@@ -19,9 +23,11 @@ import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz, type Translate } from '../../client-helpers'
+import { coachPaymentsHref, readCoachPaymentsUrl, type CoachPaymentsUrlState } from '../../../lib/group-charges'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
 import {
   COACH_PAYMENTS_QUERY_KEY,
+  GroupChargesLoadError,
   collectCash,
   handOverKit,
   remindCampaign,
@@ -267,6 +273,7 @@ function ChargeRow({
   locale: string
 }) {
   const refresh = useRefresh()
+  const timeZone = useClubTimeZone()
   const [warning, setWarning] = React.useState(false)
   const [pending, setPending] = React.useState(false)
   const order = charge.order
@@ -311,8 +318,16 @@ function ChargeRow({
         <span className="text-muted-foreground text-sm">{order.lines.join(', ')}</span>
       ) : null}
       {order?.handedOverAt ? (
-        <span className="text-sm" data-testid="coach-kit-handed-over">
-          {t('payments.coach.handOver.handedOver')}
+        <span data-testid="coach-kit-handed-over">
+          <StatusBadge variant="success">
+            {t('payments.coach.handOver.handedOverAt', {
+              at: new Intl.DateTimeFormat(locale, {
+                dateStyle: 'short',
+                timeStyle: 'short',
+                timeZone: timeZone ?? undefined,
+              }).format(new Date(order.handedOverAt)),
+            })}
+          </StatusBadge>
         </span>
       ) : null}
       {order?.canHandOver ? (
@@ -543,14 +558,50 @@ function CampaignCard({ campaign, groupId, t }: { campaign: CoachCampaign; group
   )
 }
 
+const MODE_KEYS = {
+  collect: 'payments.coach.mode.collect',
+  view: 'payments.coach.mode.view',
+  none: 'payments.coach.mode.none',
+} as const
+
 function CoachPayments() {
   const t = useT()
   const locale = useLocale()
-  const [groupId, setGroupId] = React.useState<string | null>(null)
-  const [due, setDue] = React.useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  // The URL holds the group and the "To pay" filter, so the Today tile's link and a reload restore them.
+  const state = React.useMemo(() => readCoachPaymentsUrl((key) => searchParams.get(key)), [searchParams])
+  const { groupId, due } = state
+  const navigate = React.useCallback(
+    (change: Partial<CoachPaymentsUrlState>) => {
+      router.replace(coachPaymentsHref({ ...state, ...change }), { scroll: false })
+    },
+    [router, state],
+  )
   const query = useGroupCharges(groupId, due)
 
   if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('payments.coach.loading')} />
+  if (query.error instanceof GroupChargesLoadError && query.error.status === 403) {
+    return (
+      <Alert status="error" data-testid="coach-forbidden">
+        <div className="flex flex-col gap-2">
+          <p>{t('payments.coach.errors.forbidden')}</p>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                navigate({ groupId: null })
+              }}
+            >
+              {t('payments.coach.showMyGroups')}
+            </Button>
+          </div>
+        </div>
+      </Alert>
+    )
+  }
   if (!query.data) {
     return (
       <ErrorMessage
@@ -574,20 +625,29 @@ function CoachPayments() {
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t('payments.coach.groups')}>
+          <div
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+            role="group"
+            aria-label={t('payments.coach.groups')}
+            data-testid="coach-group-chips"
+          >
             {view.groups.map((group) => (
               <Button
                 key={group.id}
                 type="button"
                 variant={group.id === selected ? 'default' : 'outline'}
-                className="min-h-11"
+                className="min-h-11 shrink-0"
                 aria-pressed={group.id === selected}
                 data-testid="coach-group-chip"
+                data-own={group.own}
                 onClick={() => {
-                  setGroupId(group.id)
+                  navigate({ groupId: group.id })
                 }}
               >
-                {t('payments.coach.groupChip', { name: group.name, count: group.peopleToPay })}
+                {t('payments.coach.groupChip', {
+                  name: group.own ? group.name : `${group.name} ${t('payments.coach.sectionSuffix')}`,
+                  count: group.peopleToPay,
+                })}
               </Button>
             ))}
           </div>
@@ -601,7 +661,7 @@ function CoachPayments() {
                 aria-pressed={due === value}
                 data-testid={value ? 'coach-filter-due' : 'coach-filter-all'}
                 onClick={() => {
-                  setDue(value)
+                  navigate({ groupId: selected, due: value })
                 }}
               >
                 {value ? t('payments.coach.filterDue') : t('payments.coach.filterAll')}
@@ -618,6 +678,9 @@ function CoachPayments() {
                 <strong data-testid="coach-group-total">{formatMoney(view.group.totalDue, locale)}</strong>
               </span>
               <span>{t('payments.coach.groupOverdue', { count: view.group.peopleOverdue })}</span>
+              <span className="text-muted-foreground w-full text-sm" data-testid="coach-group-mode">
+                {t(MODE_KEYS[view.coachFeeAccess])}
+              </span>
             </section>
           ) : null}
           {view.children.length === 0 ? (
@@ -659,7 +722,10 @@ export function CoachPaymentsPage() {
             <h1 className="text-xl font-semibold">{t('payments.coach.title')}</h1>
             <p className="text-muted-foreground text-sm">{t('payments.coach.help')}</p>
           </div>
-          <CoachPayments />
+          {/* `useSearchParams` needs a Suspense boundary in a production build. */}
+          <React.Suspense fallback={<MemberSkeleton shape="rows" label={t('payments.coach.loading')} />}>
+            <CoachPayments />
+          </React.Suspense>
         </div>
       )}
     </PaymentsClubFrame>

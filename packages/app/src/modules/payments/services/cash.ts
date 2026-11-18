@@ -1,7 +1,7 @@
 // Reads of "Accept cash" for the `payments` routes (issue #114; foundation spec REQ-F16: routes reach the ORM only
 // through services): the club's charges still to pay, optionally of one payer, their descriptions decrypted and what was
 // paid on them; the payers with something to pay (also the statement's Assign, #113); and the cash one user accepted on
-// a day, with the reversals that cancel some of it.
+// a day, with the reversals that cancel some of it, and what each receipt paid for (REQ-C12, #300).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -72,19 +72,26 @@ export async function cashAcceptedBy(
   return { payments, reversed: new Set(reversals.map((row) => row.reversesPaymentId as string)) }
 }
 
-/** The payers of the given charges, by charge id (for the receipts list). */
-export async function chargePayers(
+/**
+ * The payer and the decrypted description of the given charges, by charge id: "Received today" names each receipt's
+ * charges over its number (REQ-C12, #300).
+ */
+export async function receiptCharges(
   container: AwilixContainer,
   scope: PaymentsScope,
   chargeIds: readonly string[],
-): Promise<Map<string, string | null>> {
+): Promise<Map<string, { payerPersonId: string | null; description: string }>> {
   if (chargeIds.length === 0) return new Map()
-  const rows = await freshEm(container).find(
+  const rows = await findWithDecryption(
+    freshEm(container),
     Charge,
     { ...scope, id: { $in: [...new Set(chargeIds)] } },
-    { fields: ['id', 'payerPersonId'] },
+    {},
+    scope,
   )
-  return new Map(rows.map((row) => [row.id, row.payerPersonId ?? null]))
+  return new Map(
+    rows.map((row) => [row.id, { payerPersonId: row.payerPersonId ?? null, description: row.description }]),
+  )
 }
 
 export type PayerWithDue = {

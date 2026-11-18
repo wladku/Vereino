@@ -437,7 +437,14 @@ export async function cashCharges(request: APIRequestContext, token: string, pay
 export async function cashToday(request: APIRequestContext, token: string) {
   return call<{
     date: string
-    items: { receiptNumber: string; payerPersonId: string | null; amount: number; reversed: boolean }[]
+    items: {
+      receiptNumber: string
+      payerPersonId: string | null
+      amount: number
+      reversed: boolean
+      /** The receipt's charges' descriptions (REQ-C12, #300). */
+      descriptions: string[]
+    }[]
     total: number
   }>(request, 'GET', '/api/payments/cash', token)
 }

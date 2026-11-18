@@ -1,10 +1,8 @@
 // Client pieces of "My groups' payments" (payments spec REQ-033; UX concept M-18; issue #117): the response shape of
 // `GET /api/payments/group-charges`, its query key and the coach's writes (cash, reminders, kit handover). Authorization
-// stays on the routes and the commands.
+// stays on the routes and the commands. A group outside the caller's groups answers 403 (REQ-C12, #300).
 import { useQuery } from '@tanstack/react-query'
-import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
-
-export const COACH_PAYMENTS_HREF = '/club/coach/payments'
+import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 
 /** Every M-18 query starts with this key, so one invalidation refreshes the groups, the children and the cash. */
 export const COACH_PAYMENTS_QUERY_KEY = 'payments-coach'
@@ -67,7 +65,7 @@ export type CoachReceipt = {
 export type GroupChargesView = {
   today: string
   coachFeeAccess: 'collect' | 'view' | 'none'
-  groups: ({ id: string; name: string; sectionId: string } & GroupTotals)[]
+  groups: ({ id: string; name: string; sectionId: string; own: boolean } & GroupTotals)[]
   groupId: string | null
   group: GroupTotals | null
   children: CoachChild[]
@@ -75,16 +73,26 @@ export type GroupChargesView = {
   cash: { items: CoachReceipt[]; total: number; paymentCount: number }
 }
 
-class GroupChargesLoadError extends Error {}
+export class GroupChargesLoadError extends Error {
+  constructor(readonly status: number) {
+    super(String(status))
+  }
+}
 
 export function useGroupCharges(groupId: string | null, due: boolean) {
   return useQuery({
     queryKey: [COACH_PAYMENTS_QUERY_KEY, groupId, due],
+    // A group outside the caller's groups stays refused: no retry.
+    retry: (count, error) => !(error instanceof GroupChargesLoadError && error.status === 403) && count < 3,
     queryFn: async () => {
       const params = new URLSearchParams({ due: due ? '1' : '0' })
       if (groupId) params.set('groupId', groupId)
-      const call = await apiCallOrThrow<GroupChargesView>(`/api/payments/group-charges?${params.toString()}`)
-      if (!call.result) throw new GroupChargesLoadError()
+      // Without the header `apiFetch` throws `ForbiddenError` on the 403 before the status check below (lesson
+      // `apifetch-403-throws-before-page-branch`).
+      const call = await apiCall<GroupChargesView>(`/api/payments/group-charges?${params.toString()}`, {
+        headers: { 'x-om-forbidden-redirect': '0' },
+      })
+      if (!call.ok || !call.result) throw new GroupChargesLoadError(call.status)
       return call.result
     },
   })

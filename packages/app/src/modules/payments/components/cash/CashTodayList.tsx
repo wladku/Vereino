@@ -1,7 +1,7 @@
 'use client'
 // "Received by me today" (UX concept M-15; payments spec REQ-031; issue #114): the receipts the signed-in user issued
-// today, each with the payer and the amount, and the total to hand over to the treasurer. A reversed receipt stays in
-// the list, struck through, and counts for nothing.
+// today, each with what it paid for over its number and the payer (REQ-C12, #300), the amount, and the total to hand
+// over to the treasurer. A reversed receipt stays in the list, struck through, and counts for nothing.
 import * as React from 'react'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, personName } from '../client-helpers'
@@ -41,14 +41,19 @@ export function CashTodayList() {
             className="flex flex-wrap items-baseline justify-between gap-2 p-3"
             data-testid="cash-today-item"
           >
-            <span className="flex flex-col">
-              <span className={item.reversed ? 'font-medium line-through' : 'font-medium'}>
-                {personName(item.payer) || t('payments.cash.today.unknownPayer')}
+            <span className="flex min-w-0 flex-col">
+              <span
+                className={item.reversed ? 'font-medium break-words line-through' : 'font-medium break-words'}
+                data-testid="cash-today-description"
+              >
+                {item.descriptions.join(', ')}
               </span>
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground text-sm" data-testid="cash-today-receipt">
                 {item.reversed
                   ? t('payments.cash.today.reversed', { receipt: item.receiptNumber })
                   : item.receiptNumber}
+                {' · '}
+                {personName(item.payer) || t('payments.cash.today.unknownPayer')}
               </span>
             </span>
             <span className="font-semibold">{formatMoney(item.amount, locale)}</span>
