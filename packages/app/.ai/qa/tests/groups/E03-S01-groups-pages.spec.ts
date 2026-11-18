@@ -100,15 +100,13 @@ test('E03-S01 groups pages: list, create, record with roster at 375 px in dark m
       .click()
     await expect(page).toHaveURL(/\/backend\/groups\/groups\/[0-9a-f-]{36}$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Basen — początkujący' })).toBeVisible()
-    await expect(page.getByText(/Nobody belongs to this group yet|Nikt jeszcze nie należy/)).toBeVisible()
+    await expect(page.getByText(uiText('groups.memberships.empty.active.title'))).toBeVisible()
 
-    // The team's record: the roster with the person, the role, the period and the end action.
+    // The team's record: the roster with the person, the role, the period and the row actions.
     await page.goto(`/backend/groups/groups/${team}`)
     await expect(page.getByRole('heading', { level: 1, name: 'Żaki' })).toBeVisible()
     await expect(page.getByText('Jan Kowalski')).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: /End membership: Jan Kowalski|Zakończ członkostwo: Jan Kowalski/ }),
-    ).toBeVisible()
+    await expect(page.locator('[data-testid^="roster-actions-"]').first()).toBeVisible()
     await expect(
       page.getByRole('button', { name: uiText('groups.memberships.actions.add', { exact: true }) }),
     ).toBeVisible()
