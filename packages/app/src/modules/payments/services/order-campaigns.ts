@@ -407,7 +407,9 @@ export async function campaignOrders(
       order.orderedByPersonId,
       ...(order.handedOverByPersonId ? [order.handedOverByPersonId] : []),
     ]),
-    ...[...paymentsOf.values()].flat().flatMap((entry) => (entry.collectedByPersonId ? [entry.collectedByPersonId] : [])),
+    ...[...paymentsOf.values()]
+      .flat()
+      .flatMap((entry) => (entry.collectedByPersonId ? [entry.collectedByPersonId] : [])),
   ])
   const nameOf = (personId: string | null | undefined): PersonName => {
     const person = personId ? persons.get(personId) : undefined

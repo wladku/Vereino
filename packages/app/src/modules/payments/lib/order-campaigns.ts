@@ -200,7 +200,14 @@ export function supplierSummary(products: readonly SummaryProduct[], orders: rea
     const expanded = order.lines.flatMap((line) => expandLine(line, byId))
     for (const { product, size, inSet } of expanded) {
       const key = `${product.id}\u0000${size ?? ''}`
-      const unit = units.get(key) ?? { product, productId: product.id, productName: product.name, size, quantity: 0, inSets: 0 }
+      const unit = units.get(key) ?? {
+        product,
+        productId: product.id,
+        productName: product.name,
+        size,
+        quantity: 0,
+        inSets: 0,
+      }
       unit.quantity += 1
       if (inSet) unit.inSets += 1
       units.set(key, unit)
