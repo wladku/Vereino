@@ -21,7 +21,8 @@ Bring the PR up to date with `main` and make the required integration checks gre
    - Each recipient is sent inside its own try/catch, which logs the person or rental id.
    - Nit: the English subject is now "Entries to be moved ({count}) because of {cause}", so a single entry no longer reads "1 entries".
    - Minors filed as a follow-up instead of growing the PR: one query per item in the save request, and no integration step for a moved window. The integration test for a moved window could not be run here (no Docker).
-7. Added the third shape to lesson `integration-tests-must-not-depend-on-the-clock`.
+7. While CI ran, `main` gained #390 (`ae24bd19`), the same TEST-L03 fix in a smaller form. Merged `origin/main` and resolved the conflict by taking `main`'s version, so this PR no longer changes TEST-L03. CI on `5918401e` had already passed shard 3/3, which includes TEST-L03, on Wednesday after 17:00.
+8. Added the third shape to lesson `integration-tests-must-not-depend-on-the-clock`.
 
 ## Decisions
 
@@ -30,7 +31,7 @@ Bring the PR up to date with `main` and make the required integration checks gre
 
 ## Files changed
 
-- `packages/app/.ai/qa/tests/people/TEST-L03-departure.spec.ts`
+- `packages/app/.ai/qa/tests/people/TEST-L03-departure.spec.ts` (later replaced by `main`'s #390 version in the merge)
 - `.ai/lessons/integration-tests-must-not-depend-on-the-clock.md`
 - `.ai/runs/2026-11-18-pr-387-fix-integration.md`
 - `packages/app/src/modules/facilities/{lib/reschedule-notice.ts,lib/__tests__/reschedule-notice.test.ts,services/reschedule-notice.ts,emails/templates.ts,i18n/en.json,i18n/pl.json}`
