@@ -43,7 +43,7 @@ Evidence from 2026-11-18:
 
 1. **Six integration shards** (#399) behind the one required `integration` check.
 2. **Date-safe fixtures** — a shared helper picks days at least two days ahead for declarations, bookings and sessions; existing tests that use "today" or "tomorrow" move to it.
-3. **Failure ledger** — a separate, non-blocking job after each CI run on a same-repository PR or on `main` collects the run's unexpected Playwright failures (not `flaky` retry passes) by test id; when the same test id fails in two runs whose PR sets share no PR within 48 h, or fails on `main`, it opens one quarantine issue labelled `bug`, `priority-high`, `cezar`. Only test ids that match a spec file on `main` are written; no free text from the run is copied (the issue feeds an autonomous agent).
+3. **Failure ledger** — a separate, non-blocking job after each failed, cancelled or timed-out CI run (a PR update cancels a run whose finished shards hold real failures) on a same-repository PR or on `main` collects the run's unexpected Playwright failures (not `flaky` retry passes) by test id; when the same test id fails in two runs whose PR sets share no PR within 48 h, or fails on `main`, it opens one quarantine issue labelled `bug`, `priority-high`, `cezar`. Only test ids that match a spec file on `main` are written; no free text from the run is copied (the issue feeds an autonomous agent).
 4. **Picker spreads modules** — never two queued or running issue builds of the same spec module.
 5. **Fixes from events** — the train mirrors `merge-train-failed` / `merge-train-conflict` onto the PR's linked issue (the `issue-N` in the branch name), and a Cezar automation on that issue label queues a `vereino-pr` run at once. Cezar 0.16.1 polls issue labels but not pull-request labels, and its schedules run at most hourly (checked 2026-11-18), so the label has to reach an issue.
 6. **Rules** — the train skips a `risk-high` PR with `needs-qa` until `qa` (MT-D02); Cezar runs at most three builds (MT-D04); both written into `SDLC.md`.
@@ -81,8 +81,8 @@ N/A — repository tooling; no tenant data. The ledger job uses the workflow's `
 ```
 CI run completed (same-repo PR or main) ─► ci-failure-ledger.yml
    download this run's results.json artifacts ─► unexpected failures by test id (spec file on main)
-   per test id: find/update the open tracking issue (run links) ─► second disjoint failure in 48 h or any failure on main
-   ─► label the issue bug, priority-high, cezar ─► Cezar builds the test.fixme quarantine PR (SDLC.md)
+   add them to the ledger issue ─► second disjoint failure in 48 h or any failure on main
+   ─► open a quarantine issue (bug, priority-high, risk-low, then cezar) ─► Cezar builds the test.fixme quarantine PR (SDLC.md)
 train adds merge-train-failed / merge-train-conflict to the PR and its linked issue ─► Cezar automation (issue.labeled) ─► vereino-pr run; the train removes both labels when the state clears (picker PR step stays as fallback)
 ```
 
@@ -96,7 +96,7 @@ N/A — no UI.
 
 ## Data Models
 
-N/A — no entities. State: one open GitHub issue per tracked test id, titled `test: quarantine <TEST-ID>` with a hidden marker `<!-- ci-failure-ledger:<TEST-ID> -->` and a list of run links.
+N/A — no entities. State: one ledger issue `CI failure ledger (automated)` (label `blocked`, so no build picks it up) holding the failures of the last 48 h as a table plus a hidden `ci-failure-ledger-data` JSON block; one quarantine issue per test only when the rule fires, with the marker `<!-- ci-failure-ledger:quarantine:<TEST-ID> -->`. Only issues written by `github-actions[bot]` are read back. (Changed during Step 2.2: an issue per failing test would have opened one for every real PR failure, such as TEST-C01 on #391.)
 
 ## API, Command, and Error Contracts
 
