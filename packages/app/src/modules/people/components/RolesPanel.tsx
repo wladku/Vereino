@@ -1,23 +1,17 @@
 'use client'
 // The "Roles" tab of the person record (club spec UI table; DD-33): the person's staff role assignments in the
 // caller's scope with the section or place name and the period; with `people.roles.manage` the club administrator
-// assigns a role (a coordinator with the section picker, a facility attendant with the place picker, #126) and ends an
-// assignment through the existing role-assignment routes. A second assignment of the same role and section (or place)
-// in an overlapping period is refused by the server (409).
+// assigns a role (a coordinator with the section picker, a facility attendant with the place picker, #126) with an
+// optional end date, edits an assignment's period and scope ("Edit") and ends it on a chosen day ("End on…"; people
+// life-cycle spec REQ-L12, #304) through the existing role-assignment routes. A second assignment of the same role and
+// section (or place) in an overlapping period is refused by the server (409), an inverted period with 422.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
-import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
-import {
-  apiCallOrThrow,
-  readApiResultOrThrow,
-  withScopedApiRequestHeaders,
-} from '@open-mercato/ui/backend/utils/apiCall'
-import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
@@ -34,6 +28,7 @@ import {
   type PickerEmptyState,
 } from '@vereino/ui'
 import { useGrantedFeatures } from './useGrantedFeatures'
+import { RoleAssignmentDialog, type RoleAssignmentDialogMode } from './RoleAssignmentDialog'
 
 const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
@@ -53,6 +48,21 @@ const lookupEmpty = (count: number, search: string): LookupEmpty => {
 
 const placeTitle = (place: PlaceOption) => (place.parentName ? `${place.parentName} › ${place.name}` : place.name)
 
+async function loadSections(search: string): Promise<LookupSelectItem[]> {
+  const params = new URLSearchParams({ pageSize: '50', sortField: 'name', sortDir: 'asc' })
+  if (search.trim()) params.set('search', search.trim())
+  const data = await readApiResultOrThrow<{ items?: SectionItem[] }>(`/api/club_core/sections?${params.toString()}`)
+  return (data.items ?? []).map((section) => ({ id: section.id, title: section.name ?? section.id }))
+}
+
+async function loadPlaces(search: string): Promise<LookupSelectItem[]> {
+  const data = await readApiResultOrThrow<{ items?: PlaceOption[] }>('/api/club_core/options/places')
+  const needle = search.trim().toLocaleLowerCase()
+  return (data.items ?? [])
+    .filter((place) => !needle || placeTitle(place).toLocaleLowerCase().includes(needle))
+    .map((place) => ({ id: place.id, title: placeTitle(place) }))
+}
+
 export function RolesPanel({
   personId,
   canManage,
@@ -66,12 +76,13 @@ export function RolesPanel({
   const t = useT()
   const today = useClubToday()
   const queryClient = useQueryClient()
-  const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
   const [role, setRole] = React.useState<string>('coordinator')
   const [sectionId, setSectionId] = React.useState<string | null>(null)
   const [placeId, setPlaceId] = React.useState<string | null>(null)
   const [validFrom, setValidFrom] = React.useState(today)
+  const [validTo, setValidTo] = React.useState('')
+  const [dialog, setDialog] = React.useState<{ mode: RoleAssignmentDialogMode; row: RoleAssignmentRow } | null>(null)
   // An empty section or place lookup links to the club's create page (people life-cycle spec REQ-L14, picker row 4);
   // the lookup is mounted again when the window regains focus, so a record created in the other tab shows up.
   const canCreateStructure = useGrantedFeatures()['club_core.manage']
@@ -116,21 +127,15 @@ export function RolesPanel({
     },
   })
 
+  // The assign form's lookups also report an empty result for the hint; the edit dialog's lookups do not.
   const fetchSections = React.useCallback(async (search: string): Promise<LookupSelectItem[]> => {
-    const params = new URLSearchParams({ pageSize: '50', sortField: 'name', sortDir: 'asc' })
-    if (search.trim()) params.set('search', search.trim())
-    const data = await readApiResultOrThrow<{ items?: SectionItem[] }>(`/api/club_core/sections?${params.toString()}`)
-    const items = (data.items ?? []).map((section) => ({ id: section.id, title: section.name ?? section.id }))
+    const items = await loadSections(search)
     setSectionEmpty(lookupEmpty(items.length, search))
     return items
   }, [])
 
   const fetchPlaces = React.useCallback(async (search: string): Promise<LookupSelectItem[]> => {
-    const data = await readApiResultOrThrow<{ items?: PlaceOption[] }>('/api/club_core/options/places')
-    const needle = search.trim().toLocaleLowerCase()
-    const items = (data.items ?? [])
-      .filter((place) => !needle || placeTitle(place).toLocaleLowerCase().includes(needle))
-      .map((place) => ({ id: place.id, title: placeTitle(place) }))
+    const items = await loadPlaces(search)
     setPlaceEmpty(lookupEmpty(items.length, search))
     return items
   }, [])
@@ -153,6 +158,7 @@ export function RolesPanel({
             ...(role === 'coordinator' ? { sectionId } : {}),
             ...(role === 'facility_operator' ? { placeId } : {}),
             validFrom,
+            ...(validTo ? { validTo } : {}),
           }),
         },
         { errorMessage: t('people.roles.errors.assign') },
@@ -160,31 +166,9 @@ export function RolesPanel({
       flash(t('people.roles.flash.assigned'), 'success')
       setSectionId(null)
       setPlaceId(null)
+      setValidTo('')
     } catch (error: unknown) {
       flash(errorMessage(error, t('people.roles.errors.assign')), 'error')
-    } finally {
-      setBusy(false)
-      await refresh()
-    }
-  }
-
-  const end = async (row: RoleAssignmentRow) => {
-    const confirmed = await confirm({ title: t('people.roles.confirm.end'), variant: 'destructive' })
-    if (!confirmed) return
-    setBusy(true)
-    try {
-      await withScopedApiRequestHeaders(buildOptimisticLockHeader(row.updatedAt), () =>
-        apiCallOrThrow(
-          `/api/people/role-assignments/${row.id}/end`,
-          { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}) },
-          { errorMessage: t('people.roles.errors.end') },
-        ),
-      )
-      flash(t('people.roles.flash.ended'), 'success')
-    } catch (error: unknown) {
-      if (!surfaceRecordConflict(error, t, { onRefresh: () => void refresh() })) {
-        flash(errorMessage(error, t('people.roles.errors.end')), 'error')
-      }
     } finally {
       setBusy(false)
       await refresh()
@@ -212,32 +196,65 @@ export function RolesPanel({
               : row.placeId
                 ? query.data?.places.get(row.placeId)
                 : null
+            const title = `${t(`people.roles.role.${row.role}`)}${scopeName ? ` — ${scopeName}` : ''}`
             return (
-              <li key={row.id} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={row.id}
+                className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                data-testid="people-role-row"
+                data-role-assignment-id={row.id}
+              >
                 <span className="flex flex-col">
-                  <span className="font-medium">
-                    {t(`people.roles.role.${row.role}`)}
-                    {scopeName ? ` — ${scopeName}` : ''}
-                  </span>
+                  <span className="font-medium">{title}</span>
                   <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                    <span>{periodLabel(t, row.validFrom, row.validTo)}</span>
+                    <span data-testid="people-role-period">{periodLabel(t, row.validFrom, row.validTo)}</span>
                     <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
                       {t(`people.common.${status}`)}
                     </StatusBadge>
                   </span>
                 </span>
-                {canManage && status !== 'ended' ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
-                      void end(row)
+                {canManage ? (
+                  <span className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      data-testid="people-role-edit"
+                      onClick={() => {
+                        setDialog({ mode: 'edit', row })
+                      }}
+                    >
+                      {t('people.common.edit')}
+                    </Button>
+                    {status !== 'ended' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        data-testid="people-role-end"
+                        onClick={() => {
+                          setDialog({ mode: 'end', row })
+                        }}
+                      >
+                        {t('people.roles.actions.endOn')}
+                      </Button>
+                    ) : null}
+                  </span>
+                ) : null}
+                {dialog?.row.id === row.id ? (
+                  <RoleAssignmentDialog
+                    mode={dialog.mode}
+                    row={row}
+                    title={title}
+                    fetchSections={loadSections}
+                    fetchPlaces={loadPlaces}
+                    onClose={() => {
+                      setDialog(null)
                     }}
-                  >
-                    {t('people.roles.actions.end')}
-                  </Button>
+                    onDone={refresh}
+                  />
                 ) : null}
               </li>
             )
@@ -358,6 +375,19 @@ export function RolesPanel({
               }}
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="people-role-to">{t('people.roles.fields.validTo')}</Label>
+            <Input
+              id="people-role-to"
+              type="date"
+              value={validTo}
+              min={validFrom || undefined}
+              disabled={busy}
+              onChange={(event) => {
+                setValidTo(event.target.value)
+              }}
+            />
+          </div>
           <Button
             type="submit"
             disabled={busy || !validFrom || (needsSection && !sectionId) || (needsPlace && !placeId)}
@@ -366,7 +396,6 @@ export function RolesPanel({
           </Button>
         </form>
       ) : null}
-      {ConfirmDialogElement}
     </section>
   )
 }

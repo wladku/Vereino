@@ -3,8 +3,9 @@
 // guardians with the relation, the primary payer, the period and — only when the API returns them (the club
 // administrator, a guardian of the ward) — the consents. The club administrator adds a guardian or a ward of the
 // person ("Add a guardian" / "Add a ward"; links never chain, so a person with a live guardian gets no "Add a ward"
-// and a live guardian no "Add a guardian", with the reason shown), edits the relation, payer flag, end day and
-// consents, and ends a guardianship (never deletes it).
+// and a live guardian no "Add a guardian", with the reason shown) from a chosen start date, edits the relation, payer
+// flag, start and end day (people life-cycle spec REQ-L12, #304) and the consents, and ends a guardianship (never
+// deletes it).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -152,7 +153,13 @@ function ConsentBadges({ row, t }: { row: GuardianshipRow; t: Translate }) {
   )
 }
 
-type EditorState = { relation: string; isPrimaryPayer: boolean; validTo: string; consents: ConsentFlags }
+type EditorState = {
+  relation: string
+  isPrimaryPayer: boolean
+  validFrom: string
+  validTo: string
+  consents: ConsentFlags
+}
 
 function GuardianshipItem({
   row,
@@ -176,7 +183,7 @@ function GuardianshipItem({
   const status = periodStatus(row.validFrom, row.validTo, today)
   const counterpartId = counterpart?.id
   return (
-    <li className="flex flex-col gap-3 py-3">
+    <li className="flex flex-col gap-3 py-3" data-testid="people-guardianship-row" data-guardianship-id={row.id}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-1">
           {counterpartId ? (
@@ -188,7 +195,7 @@ function GuardianshipItem({
           )}
           <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
             <span>{t(`people.guardianships.relation.${row.relation}`)}</span>
-            <span>{periodLabel(t, row.validFrom, row.validTo)}</span>
+            <span data-testid="people-guardianship-period">{periodLabel(t, row.validFrom, row.validTo)}</span>
             <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
               {t(`people.common.${status}`)}
             </StatusBadge>
@@ -208,6 +215,7 @@ function GuardianshipItem({
                 setEditor({
                   relation: row.relation,
                   isPrimaryPayer: row.isPrimaryPayer,
+                  validFrom: row.validFrom ?? today,
                   validTo: row.validTo ?? '',
                   consents: consentFlags(row),
                 })
@@ -256,6 +264,19 @@ function GuardianshipItem({
               />
             </div>
             <div className="flex flex-col gap-1">
+              <Label htmlFor={`valid-from-${row.id}`}>{t('people.guardianships.fields.validFrom')}</Label>
+              <Input
+                id={`valid-from-${row.id}`}
+                type="date"
+                required
+                value={editor.validFrom}
+                disabled={busy}
+                onChange={(event) => {
+                  setEditor({ ...editor, validFrom: event.target.value })
+                }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
               <Label htmlFor={`valid-to-${row.id}`}>{t('people.guardianships.fields.validTo')}</Label>
               <Input
                 id={`valid-to-${row.id}`}
@@ -291,7 +312,7 @@ function GuardianshipItem({
             />
           ) : null}
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={busy}>
+            <Button type="submit" size="sm" disabled={busy || !editor.validFrom}>
               {t('people.common.save')}
             </Button>
             <Button
@@ -616,6 +637,7 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
         id: row.id,
         relation: state.relation,
         isPrimaryPayer: state.isPrimaryPayer,
+        validFrom: state.validFrom,
         validTo: state.validTo || null,
         ...(row.consents ? { consents: state.consents } : {}),
       }

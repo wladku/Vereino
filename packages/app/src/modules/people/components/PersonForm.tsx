@@ -4,6 +4,9 @@
 // `people.pesel.view`; anyone else sees the field empty and disabled with a hint (#262). The e-mail, phone, notes and
 // PESEL are stored encrypted. A created person opens on the guardianship tab, where flow F-01 continues (#84). The date
 // of birth is a native date input (typed or pasted, `dd.mm.rrrr` in a Polish browser) bounded to the last 120 years.
+// The external id (an import identifier for a person without a PESEL, #28) is an identifier like the PESEL: the API
+// returns it only with `people.pesel.view`, so the field is shown — and sent — only then (people life-cycle spec
+// REQ-L12, #304); another person's id answers 409 `external_id_duplicate`, shown on the field.
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -11,7 +14,7 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { birthDateBounds, birthDateProblem, type BirthDateProblem } from '@vereino/core'
+import { birthDateBounds, birthDateProblem, errorCodeOf, type BirthDateProblem } from '@vereino/core'
 import { clubToday, dateField, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { PERSONS_HREF, personRecordHref, textOrNull, type PersonDetail, type Translate } from './client-helpers'
 
@@ -29,6 +32,7 @@ type PersonFormValues = {
   email: string
   phone: string
   pesel: string
+  externalId: string
   notes: string
   updatedAt?: string | null
 }
@@ -89,6 +93,15 @@ function usePersonFields(t: Translate, withPesel: boolean) {
       description: withPesel ? t('people.persons.fields.pesel.help') : t('people.persons.fields.pesel.hintOther'),
       ...(withPesel ? {} : { disabled: true }),
     })
+    if (withPesel) {
+      list.push({
+        id: 'externalId',
+        label: t('people.persons.fields.externalId'),
+        type: 'text',
+        maxLength: 100,
+        description: t('people.persons.fields.externalId.help'),
+      })
+    }
     return list
   }, [t, withPesel, today])
   const groups = React.useMemo<CrudFormGroup[]>(
@@ -97,12 +110,19 @@ function usePersonFields(t: Translate, withPesel: boolean) {
         id: 'details',
         title: t('people.persons.groups.details'),
         column: 1,
-        fields: ['firstName', 'lastName', 'birthDate', 'preferredLocale', 'pesel'],
+        fields: [
+          'firstName',
+          'lastName',
+          'birthDate',
+          'preferredLocale',
+          'pesel',
+          ...(withPesel ? ['externalId'] : []),
+        ],
       },
       { id: 'contact', title: t('people.persons.groups.contact'), column: 2, fields: ['email', 'phone'] },
       { id: 'internal', title: t('people.persons.groups.internal'), column: 2, fields: ['notes'] },
     ],
-    [t],
+    [t, withPesel],
   )
   return { fields, groups }
 }
@@ -113,7 +133,7 @@ const BIRTH_DATE_MESSAGES: Record<BirthDateProblem, string> = {
   too_old: 'people.persons.errors.birthDateTooOld',
 }
 
-/** The request body; the PESEL only when the user may see it (otherwise it is left as it is). */
+/** The request body; the PESEL and the external id only when the user may see them (otherwise left as they are). */
 /** `today` is the club's calendar date at the save (#231): a birth date after it is in the future. */
 function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Translate, today: string) {
   const birthDate = textOrNull(values.birthDate)
@@ -130,8 +150,15 @@ function payload(values: Partial<PersonFormValues>, withPesel: boolean, t: Trans
     email: textOrNull(values.email),
     phone: textOrNull(values.phone),
     notes: textOrNull(values.notes),
-    ...(withPesel ? { pesel: textOrNull(values.pesel) } : {}),
+    ...(withPesel ? { pesel: textOrNull(values.pesel), externalId: textOrNull(values.externalId) } : {}),
   }
+}
+
+/** A refused save: an external id another person has (409 `external_id_duplicate`) shows at its field. */
+function externalIdConflict(error: unknown): unknown {
+  if (errorCodeOf(error) !== 'external_id_duplicate') return error
+  const message = error instanceof Error ? error.message : String(error)
+  return createCrudFormError(message, { externalId: message }, { status: 409 })
 }
 
 export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
@@ -156,6 +183,7 @@ export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
         email: '',
         phone: '',
         pesel: '',
+        externalId: '',
         notes: '',
       }}
       submitLabel={t('people.common.create')}
@@ -163,7 +191,9 @@ export function PersonCreateForm({ withPesel }: { withPesel: boolean }) {
         const created = await createCrud<{ id?: string }>(
           'people/persons',
           payload(values, withPesel, t, clubToday(new Date(), timeZone)),
-        )
+        ).catch((error: unknown) => {
+          throw externalIdConflict(error)
+        })
         flash(t('people.persons.flash.created'), 'success')
         router.push(created.result?.id ? personRecordHref(created.result.id, 'guardianship') : PERSONS_HREF)
       }}
@@ -199,6 +229,7 @@ export function PersonDetailsForm({
         email: person.email ?? '',
         phone: person.phone ?? '',
         pesel: withPesel ? (person.pesel ?? '') : '',
+        externalId: withPesel ? (person.externalId ?? '') : '',
         notes: person.notes ?? '',
         updatedAt: person.updatedAt,
       }}
@@ -207,6 +238,8 @@ export function PersonDetailsForm({
         await updateCrud('people/persons', {
           id: person.id,
           ...payload(values, withPesel, t, clubToday(new Date(), timeZone)),
+        }).catch((error: unknown) => {
+          throw externalIdConflict(error)
         })
         flash(t('people.persons.flash.saved'), 'success')
         await onSaved()
