@@ -32,7 +32,7 @@ function inRange(birthDate: string, range: ReturnType<typeof birthDateRange>): b
 
 describe('constants', () => {
   it('lists the perspectives, roles and URL filters of B-09', () => {
-    expect(PERSON_LIST_VIEWS).toEqual(['all', 'staff', 'children', 'no_account'])
+    expect(PERSON_LIST_VIEWS).toEqual(['all', 'staff', 'children', 'no_account', 'former'])
     expect(PERSON_FILTER_ROLES).toEqual([
       'club_admin',
       'coordinator',
@@ -108,7 +108,16 @@ describe('personListPlan', () => {
       role: null,
       sectionId: null,
       groupId: null,
+      former: 'exclude',
     })
+  })
+
+  it('leaves former persons out except in their perspective and a name search of the plain list (#306)', () => {
+    expect(personListPlan({ view: 'former' }, today).former).toBe('only')
+    expect(personListPlan({ view: 'former', search: 'Kow' }, today).former).toBe('only')
+    expect(personListPlan({ search: 'Kow' }, today).former).toBe('any')
+    expect(personListPlan({ search: '  ' }, today).former).toBe('exclude')
+    expect(personListPlan({ view: 'staff', search: 'Kow' }, today).former).toBe('exclude')
   })
 
   it('maps the perspectives', () => {
@@ -133,6 +142,7 @@ describe('personListPlan', () => {
       role: 'participant',
       sectionId: 's',
       groupId: 'g',
+      former: 'exclude',
     })
   })
 })

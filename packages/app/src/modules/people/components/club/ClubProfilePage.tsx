@@ -11,7 +11,8 @@
 // the field; below the form, a guardian's "Wards and consents" (each ward's age, account, the "Primary payer" badge
 // (#263), groups with sections — the `groups` widget on the `vereino:club:ward:groups` spot — and the three consents with date and author), a ward's
 // "My guardians" with the consents read-only (R10: consents and payments stay with the guardian), and the link to the
-// platform's change-password page.
+// platform's change-password page. People life-cycle spec M-10 (#306): an adult member gets the link "Leave the club"
+// to `/club/profile/leave`; a minor does not.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -30,11 +31,14 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { resolveLocaleLabel } from '@open-mercato/shared/lib/i18n/locale-label'
 import { useLocale, useSupportedLocales, useT } from '@open-mercato/shared/lib/i18n/context'
+import { calendarDateInZone } from '@vereino/core'
+import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
 import { ConsentList } from './ConsentList'
 import {
   CHANGE_PASSWORD_HREF,
+  CLUB_LEAVE_HREF,
   MEMBER_PROFILE_API,
   MEMBER_PROFILE_QUERY_KEY,
   formatCalendarDate,
@@ -409,6 +413,29 @@ function PasswordSection() {
   )
 }
 
+/** "Leave the club" (people life-cycle spec M-10 row, #306): the link to `/club/profile/leave`; a minor has none. */
+function LeaveSection({ profile }: { profile: MemberProfile }) {
+  const t = useT()
+  if (!mayFileDepartureRequest(profile.person.birthDate, calendarDateInZone(new Date(), profile.club.timezone))) {
+    return null
+  }
+  return (
+    <section aria-labelledby="club-profile-leave" className="bg-card flex flex-col gap-2 rounded-lg border p-4">
+      <h2 id="club-profile-leave" className="text-lg font-semibold">
+        {t('people.club.leave.title')}
+      </h2>
+      <p className="text-muted-foreground max-w-prose text-sm">{t('people.club.profile.leave.lead')}</p>
+      <Link
+        href={CLUB_LEAVE_HREF}
+        className="text-primary inline-flex min-h-11 items-center text-sm underline"
+        data-testid="club-profile-leave"
+      >
+        {t('people.club.profile.leave.link')}
+      </Link>
+    </section>
+  )
+}
+
 export function ClubProfilePage() {
   // Keyed by the lock token: a saved or reloaded profile starts the form from the stored values.
   return (
@@ -419,6 +446,7 @@ export function ClubProfilePage() {
           <WardsSection profile={profile} />
           <GuardiansSection profile={profile} />
           <PasswordSection />
+          <LeaveSection profile={profile} />
         </div>
       )}
     </ClubFrame>

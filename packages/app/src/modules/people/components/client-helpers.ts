@@ -25,6 +25,8 @@ export type PersonListRow = {
   preferredLocale: string | null
   birthDate: string | null
   hasAccount: boolean
+  /** The last day in the club (people life-cycle spec REQ-L03, #306); absent in responses before it. */
+  leftOn?: string | null
   createdAt: string | null
   updatedAt: string | null
 }
@@ -61,8 +63,16 @@ export type PersonAccount = {
   lastSignInAt: string | null
 }
 
-/** The tabs of the person record and their `?tab=` values (README B-10; #84). */
-export const PERSON_RECORD_TABS = ['details', 'guardianship', 'roles', 'account', 'groups', 'charges'] as const
+/** The tabs of the person record and their `?tab=` values (README B-10; #84; "Leaving" since #306). */
+export const PERSON_RECORD_TABS = [
+  'details',
+  'guardianship',
+  'roles',
+  'account',
+  'groups',
+  'charges',
+  'leaving',
+] as const
 export type PersonRecordTab = (typeof PERSON_RECORD_TABS)[number]
 
 /** The person record opened on `tab`. */

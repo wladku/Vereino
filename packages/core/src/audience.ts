@@ -29,6 +29,11 @@ export type AudienceContact = {
   /** The person's language, already resolved person → club default. */
   readonly locale: string
   readonly birthDate: CalendarDate | null
+  /**
+   * The person's last day in the club (people life-cycle spec DD-L05, #306): from that day on the person is former and
+   * no audience reaches them. Absent or null for a member.
+   */
+  readonly leftOn?: CalendarDate | null
 }
 
 export type RecipientChannel = 'in_app' | 'email'
@@ -90,6 +95,11 @@ function isMinor(contact: AudienceContact | undefined, today: CalendarDate): boo
   return Boolean(contact?.birthDate) && !isAdultOn(contact?.birthDate as CalendarDate, today)
 }
 
+/** A former person (`leftOn` reached): left out of every audience (people life-cycle spec Q-L10). */
+function isFormer(contact: AudienceContact, today: CalendarDate): boolean {
+  return Boolean(contact.leftOn) && (contact.leftOn as CalendarDate) <= today
+}
+
 /** The members whose guardians the expansion needs: minors reached as participants or directly. */
 export function minorMemberIds(
   members: readonly AudienceMember[],
@@ -113,7 +123,8 @@ function channelsOf(contact: AudienceContact): RecipientChannel[] {
 /**
  * Expands the provider's members into recipients (DD-M06): a minor participant adds their active guardians and stays a
  * recipient only with an account; a minor without an account and without an active guardian is unreachable; adults
- * and coaches stay. One person appears once with every reason; `exclude` (the author) is dropped after the expansion.
+ * and coaches stay. A former person (`leftOn` reached, #306) is reached neither as a member nor as a guardian. One
+ * person appears once with every reason; `exclude` (the author) is dropped after the expansion.
  * Recipients are sorted by person id; an unreachable person is a recipient without channels.
  */
 export function expandAudience(
@@ -128,11 +139,15 @@ export function expandAudience(
     set.add(reason)
     reasons.set(personId, set)
   }
+  const reachable = (personId: string) => {
+    const contact = input.contacts.get(personId)
+    return contact !== undefined && !isFormer(contact, today)
+  }
   for (const member of input.members) {
     const contact = input.contacts.get(member.personId)
-    if (!contact) continue
+    if (!contact || isFormer(contact, today)) continue
     if (followsMinorRule(member.reason) && isMinor(contact, today)) {
-      const guardians = (input.guardiansByWard.get(member.personId) ?? []).filter((id) => input.contacts.has(id))
+      const guardians = (input.guardiansByWard.get(member.personId) ?? []).filter(reachable)
       for (const guardianId of guardians) add(guardianId, 'guardian')
       if (contact.userId) add(member.personId, member.reason)
       else if (guardians.length === 0) unreachableMinors.set(member.personId, member.reason)

@@ -60,6 +60,8 @@ export type PersonBasicView = {
   preferredLocale: string | null
   birthDate: string | null
   hasAccount: boolean
+  /** The last day in the club (people life-cycle spec REQ-L03, #306); the coordinator's basic read gains it too. */
+  leftOn: string | null
   createdAt: string | null
   updatedAt: string | null
 }
@@ -89,6 +91,7 @@ export function personBasicView(person: Person): PersonBasicView {
     preferredLocale: person.preferredLocale ?? null,
     birthDate: person.birthDate ?? null,
     hasAccount: Boolean(person.userId),
+    leftOn: person.leftOn ?? null,
     createdAt: iso(person.createdAt),
     updatedAt: iso(person.updatedAt),
   }
@@ -122,6 +125,7 @@ export function personListItem(row: Record<string, unknown>) {
     birthDate: text(row.birth_date),
     userId: text(row.user_id),
     hasAccount: typeof row.user_id === 'string',
+    leftOn: text(row.left_on)?.slice(0, 10) ?? null,
     createdAt: iso(row.created_at as Date | string | null),
     updatedAt: iso(row.updated_at as Date | string | null),
   }

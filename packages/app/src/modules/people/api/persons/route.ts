@@ -2,7 +2,8 @@
 // basic data only), create and update through the `people` commands. The list never carries the e-mail, phone,
 // notes or PESEL.
 //
-// The list's filters and perspectives (UX parity spec REQ-U01, B-09): `view`, `search` (first or last name),
+// The list's filters and perspectives (UX parity spec REQ-U01, B-09): `view` (with `former`, people life-cycle spec
+// DD-L05, #306: every other perspective hides former persons, except a name search of the plain list), `search` (first or last name),
 // `sectionId`, `groupId`, `role`, `hasAccount`, `ageFrom`/`ageTo`. Predicates over `people`'s own data are resolved
 // here, membership predicates through the optional `groups.personFilter` contract (DD-U01); the resulting ids are ANDed
 // with the record scope, so a filter never widens it. `afterList` adds the own columns `roles`, `hasWards` and
@@ -51,6 +52,10 @@ async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope:
     return peopleErrors.throw('people_filter_age_range', { field: 'ageTo' })
   }
   const plan = personListPlan(query, today)
+  // Former persons (`left_on` reached, people life-cycle spec DD-L05, #306): only in their perspective, hidden elsewhere.
+  if (plan.former === 'only') predicates.push({ left_on: { $lte: today } } as Where)
+  if (plan.former === 'exclude')
+    predicates.push({ $or: [{ left_on: { $exists: false } }, { left_on: { $gt: today } }] } as Where)
   for (const exists of plan.accountConditions) predicates.push({ user_id: { $exists: exists } } as Where)
   // `birth_date` is a plain `date` column; the bounds are calendar dates in the club zone.
   if (plan.birthDates?.onOrBefore) predicates.push({ birth_date: { $lte: plan.birthDates.onOrBefore } } as Where)
@@ -130,6 +135,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       'preferred_locale',
       'birth_date',
       'user_id',
+      'left_on',
       'tenant_id',
       'organization_id',
       'created_at',
@@ -184,6 +190,10 @@ const listItemSchema = z.object({
   birthDate: z.string().nullable(),
   userId: z.string().nullable(),
   hasAccount: z.boolean(),
+  leftOn: z
+    .string()
+    .nullable()
+    .describe('The last day in the club (people life-cycle spec REQ-L03); null while a member'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   age: z.number().int().nullable().describe('Completed years on the club date; null without a birth date'),

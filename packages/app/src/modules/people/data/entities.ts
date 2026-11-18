@@ -24,6 +24,7 @@ decorateScopedEntityBase({ PrimaryKey, Property })
 @Entity({ tableName: 'people_persons' })
 @Index({ name: 'people_persons_org_last_name_idx', properties: ['organizationId', 'lastName'] })
 @Index({ name: 'people_persons_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'people_persons_org_left_on_idx', properties: ['organizationId', 'leftOn'] })
 @Index({
   name: 'people_persons_org_pesel_hash_unique',
   expression:
@@ -55,6 +56,7 @@ export class Person extends ScopedEntityBase {
     | 'publishNameConsentAt'
     | 'externalId'
     | 'externalIdHash'
+    | 'leftOn'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -112,6 +114,83 @@ export class Person extends ScopedEntityBase {
   /** The deterministic lookup hash of `external_id` the platform fills (duplicates, import matching). */
   @Property({ name: 'external_id_hash', type: 'text', nullable: true })
   externalIdHash?: string | null
+
+  /**
+   * The person's last day in the club (people life-cycle spec REQ-L03, DD-L05; #306): set by the departure, cleared by
+   * "Return to the club". From that day on the person is *former*: left out of the default list, pickers and audiences.
+   */
+  @Property({ name: 'left_on', type: 'date', nullable: true })
+  leftOn?: string | null
+}
+
+/**
+ * A member's request to leave the club, for themself or a ward, or one the administrator records from a letter or the
+ * club's own decision (people life-cycle spec *Data Models* → `people_departure_requests`, REQ-L03; #306). The rows of
+ * one family request share `batch_id`; one open request per subject (partial unique index). `open` → `done` (the
+ * departure ran) or `declined` (with a reason); a member deletes their own open request (soft delete). `note` and
+ * `decline_reason` are encrypted (`encryption.ts`).
+ */
+@Entity({ tableName: 'people_departure_requests' })
+@Index({ name: 'people_departure_requests_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'people_departure_requests_org_batch_idx', properties: ['organizationId', 'batchId'] })
+@Index({
+  name: 'people_departure_requests_org_status_created_idx',
+  properties: ['organizationId', 'status', 'createdAt'],
+})
+@Index({
+  name: 'people_departure_requests_org_subject_open_unique',
+  expression: `create unique index "people_departure_requests_org_subject_open_unique" on "people_departure_requests" ("organization_id", "subject_person_id") where status = 'open' and deleted_at is null`,
+})
+export class DepartureRequest extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'requestedByPersonId'
+    | 'requestedLastDay'
+    | 'erasureRequested'
+    | 'note'
+    | 'status'
+    | 'decidedByPersonId'
+    | 'decidedAt'
+    | 'declineReason'
+
+  @Property({ name: 'batch_id', type: 'uuid' })
+  batchId!: string
+
+  @Property({ name: 'subject_person_id', type: 'uuid' })
+  subjectPersonId!: string
+
+  /** Null when the administrator records a letter or the club's own decision. */
+  @Property({ name: 'requested_by_person_id', type: 'uuid', nullable: true })
+  requestedByPersonId?: string | null
+
+  /** `self` | `guardian` | `club`. */
+  @Property({ name: 'requester_kind', type: 'text' })
+  requesterKind!: 'self' | 'guardian' | 'club'
+
+  /** `YYYY-MM-DD`, today or later when filed. */
+  @Property({ name: 'requested_last_day', type: 'date', nullable: true })
+  requestedLastDay?: string | null
+
+  @Property({ name: 'erasure_requested', type: 'boolean', default: false })
+  erasureRequested: boolean = false
+
+  /** ≤ 1000 characters; encrypted. */
+  @Property({ name: 'note', type: 'text', nullable: true })
+  note?: string | null
+
+  /** `open` | `done` | `declined`. */
+  @Property({ name: 'status', type: 'text', default: 'open' })
+  status: 'open' | 'done' | 'declined' = 'open'
+
+  @Property({ name: 'decided_by_person_id', type: 'uuid', nullable: true })
+  decidedByPersonId?: string | null
+
+  @Property({ name: 'decided_at', type: Date, nullable: true })
+  decidedAt?: Date | null
+
+  /** Encrypted. */
+  @Property({ name: 'decline_reason', type: 'text', nullable: true })
+  declineReason?: string | null
 }
 
 /**
