@@ -14,7 +14,8 @@ type ScannedNode = { html: string; target: unknown[] }
 // backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
 // its text, and its breadcrumb puts an aria-label on the role-less current-page span; the schedule family
 // (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text;
-// `LookupSelect` points its search combobox at a listbox it has not rendered yet.
+// `LookupSelect` points its search combobox at a listbox it has not rendered yet; `StepIndicator` puts
+// `aria-orientation` on its list.
 // Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
 const PLATFORM_BASELINE: {
@@ -58,6 +59,13 @@ const PLATFORM_BASELINE: {
   // calendar of `/backend/activities/occurrences`, #94).
   { rule: 'aria-required-children', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
   { rule: 'aria-required-parent', owner: 'ScheduleView grid', matches: (node) => node.html.includes('class="rbc-') },
+  // `StepIndicator` renders its steps as an `<ol aria-orientation=…>`; `aria-orientation` is not allowed on the implicit
+  // `list` role (first scanned on the order campaign record, `/backend/payments/orders/[id]`, #293).
+  {
+    rule: 'aria-allowed-attr',
+    owner: 'StepIndicator list',
+    matches: (node) => node.html.includes('data-slot="step-indicator"'),
+  },
   // `LookupSelect`'s search input is a `role="combobox"` whose `aria-controls` names its listbox and whose
   // `aria-expanded` is true while it searches, but the listbox renders only once there are results or a typed query:
   // with no candidates and an empty query the reference points at nothing (first scanned on "Add section" with its
