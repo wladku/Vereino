@@ -38,3 +38,11 @@
 
 - UI QA of B-21 "To refund" and the B-22 refund dialog at 375 px in both locales (AC-C08).
 - E12-S07: the "to refund" line of the dashboard widget reads `meta.toRefundCount`'s source.
+
+## Follow-up run: CI stabilization of PR #391 (2026-11-18, cezar task a3d69ff9, `om-auto-fix-pr 391`)
+
+- **Trigger:** required checks `integration` and `integration (shard 3/3)` failed after `main` (with #385, E11-S11) was merged in.
+- **Cause (test bug, semantic conflict):** TEST-C01 from #385 pinned `GET /api/payments/charges` `meta` with `toEqual({ rentalsPerspective: true })`; this PR adds `meta.toRefundCount`, so the list answered `{ rentalsPerspective: true, toRefundCount: 0 }`. Both PRs were green alone; failed on retry too, so not a flake.
+- **Fix:** merged the latest `main` (clean), then TEST-C01 expects `{ rentalsPerspective: true, toRefundCount: 0 }` — a new club holds no online overpayment, so the count is deterministic and the assertion stays exact. No product code changed.
+- **Commands:** `yarn test:integration:vereino --filter TEST-C01` could not run here ("Could not find a working container runtime strategy": no Docker socket access for this user); CI is the integration oracle for this step. `yarn verify`: all 17 steps passed.
+- **Lesson:** `.ai/lessons/exact-meta-assertions-break-on-additive-fields.md`.

@@ -45,7 +45,7 @@ function startWithinADay(): string {
   throw new Error('[internal] no bookable start within a day')
 }
 
-type ChargeList = { items?: ChargeItem[]; meta?: { rentalsPerspective?: boolean } }
+type ChargeList = { items?: ChargeItem[]; meta?: { rentalsPerspective?: boolean; toRefundCount?: number } }
 
 test('TEST-C01 a rental gets its charge payable to the owner; cancellation, the paid warning and the service contract', async ({
   page,
@@ -85,10 +85,11 @@ test('TEST-C01 a rental gets its charge payable to the owner; cancellation, the 
       status: 'open',
     })
 
-    // The list: one charge for the rental under the rentals perspective, which DD-C02 shows with `facilities`.
+    // The list: one charge for the rental under the rentals perspective, which DD-C02 shows with `facilities`; a new
+    // club holds no online overpayment, so nothing waits under "To refund" (#296).
     const list = await call<ChargeList>(request, 'GET', '/api/payments/charges?pageSize=100&sourceType=rental', admin)
     expect(list.status, JSON.stringify(list.body)).toBe(200)
-    expect(list.body?.meta).toEqual({ rentalsPerspective: true })
+    expect(list.body?.meta).toEqual({ rentalsPerspective: true, toRefundCount: 0 })
     expect(list.body?.items?.filter((item) => item.sourceId === rentalId)).toHaveLength(1)
     const owner = await call<ChargeList>(request, 'GET', '/api/payments/charges?pageSize=100&payee=club', admin)
     expect(owner.body?.items?.some((item) => item.id === chargeId)).toBe(false)
