@@ -37,3 +37,12 @@
   - run 4: failed — `Command handler not registered for id payments.order_campaigns.close_due` (**real defect**: the missing `registerCommand`; fixed);
   - run 5: 1 passed (1.2m).
 - Lesson `cli-job-runs-cannot-see-the-test-gateway` added.
+- `yarn verify`: failed at `lint` with 4 errors (an unused type parameter in TEST-C14, `no-base-to-string` in `PaymentsSettingsForm` `dayOf`, a number in a template literal in `overdue-reminders.ts`); fixed; `yarn verify --from lint` passed; a full `yarn verify` then passed all 17 steps.
+- `yarn test:integration:vereino --filter TEST-C14` (fresh production build): 1 passed (1.2m).
+
+## Open problems / next steps
+
+- UI QA of the B-20 group "Automatic charges and reminders" in both locales at 375 px (the integration test covers the API, not the form).
+- Existing clubs need `yarn mercato payments set-up-club --tenant <id> --org <id>` once after deploy (API-created and existing tenants run no `seedDefaults`); the example club gets them from `seedDefaults`.
+- The checkout booking by the scheduled sweep is not observable from a CLI run with the test gateway (lesson `cli-job-runs-cannot-see-the-test-gateway`); TEST-057 covers the fulfilment.
+- REQ-L11 (E13-S10) changes the same generation; whichever lands second rebases (`writeGeneration` is the shared seam).

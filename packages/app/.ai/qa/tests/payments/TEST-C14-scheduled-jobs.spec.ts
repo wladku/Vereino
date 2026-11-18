@@ -62,7 +62,7 @@ const JOB_NAMES = [
   'payments:reconcile-checkouts',
 ]
 
-function runJob<T extends JobRun>(club: Club, job: string, now?: string): T {
+function runJob(club: Club, job: string, now?: string): JobRun {
   const result = mercato([
     'payments',
     'run-job',
@@ -73,7 +73,7 @@ function runJob<T extends JobRun>(club: Club, job: string, now?: string): T {
     '--org',
     club.tenant.organizationId,
     ...(now ? ['--now', now] : []),
-  ]) as T | null
+  ]) as JobRun | null
   if (!result) throw new Error(`[internal] payments run-job ${job} printed no result`)
   return result
 }
@@ -206,7 +206,7 @@ test('TEST-C14 generation, overdue reminders and the two sweeps run on a schedul
     // The job command sweeps the club's unfinished checkout. The test gateway keeps its sessions in the memory of the
     // server process, so the CLI process cannot see the capture; the booking itself is the same `fulfilCheckout` that
     // TEST-057 drives through the refresh in the server process, and the scheduled worker runs in that process.
-    const reconciled = runJob<JobRun & { summary: { checked: number } }>(club, 'reconcile-checkouts')
+    const reconciled = runJob(club, 'reconcile-checkouts') as JobRun & { summary: { checked: number } }
     expect(reconciled.summary.checked).toBeGreaterThanOrEqual(1)
     expect((await refreshCheckout(request, ewaToken, started.checkoutId)).body).toMatchObject({ status: 'completed' })
     expect(await getCharge(request, admin, ewaCharge.chargeId)).toMatchObject({ status: 'paid', paid: 5000 })
@@ -227,12 +227,10 @@ test('TEST-C14 generation, overdue reminders and the two sweeps run on a schedul
     const campaignId = String(campaign.body?.id)
     const opened = await transition(request, admin, campaignId, 'open', String(campaign.body?.updatedAt))
     expect(opened.status, JSON.stringify(opened.body)).toBe(200)
-    expect(runJob<JobRun & { closed: string[] }>(club, 'close-order-campaigns').closed).not.toContain(campaignId)
-    const swept = runJob<JobRun & { closed: string[] }>(
-      club,
-      'close-order-campaigns',
-      zoneInstant(addDays(closesOn, 1), '00:15'),
-    )
+    expect((runJob(club, 'close-order-campaigns') as JobRun & { closed: string[] }).closed).not.toContain(campaignId)
+    const swept = runJob(club, 'close-order-campaigns', zoneInstant(addDays(closesOn, 1), '00:15')) as JobRun & {
+      closed: string[]
+    }
     expect(swept.closed).toContain(campaignId)
     expect((await getCampaign(request, admin, campaignId)).status).toBe('closed')
 
@@ -267,7 +265,7 @@ test('TEST-C14 generation, overdue reminders and the two sweeps run on a schedul
     })
     expect(orphan.payerMissing).toBe(true)
     const rental = await insertRentalCharge(club, adam, due)
-    const remind = (day: string) => runJob<RemindRun>(club, 'overdue-reminders', zoneInstant(day, '09:00'))
+    const remind = (day: string) => runJob(club, 'overdue-reminders', zoneInstant(day, '09:00')) as RemindRun
 
     // Switched off: nothing is sent or marked.
     const off = await putSettings(request, admin, { overdueReminders: false })
@@ -334,11 +332,11 @@ test('TEST-C14 generation, overdue reminders and the two sweeps run on a schedul
       validFrom: today,
     })
     const orgId = club.tenant.organizationId
-    const generateOn = (day: string) => runJob<GenerateRun>(club, 'generate-charges', zoneInstant(day, '06:00'))
+    const generateOn = (day: string) => runJob(club, 'generate-charges', zoneInstant(day, '06:00')) as GenerateRun
 
     // This run's month is the one migration B was applied in: nothing, even after its generation day.
     const thisMonth = periodFromNow(0)
-    expect(runJob<GenerateRun>(club, 'generate-charges').outcome).toMatchObject({
+    expect((runJob(club, 'generate-charges') as GenerateRun).outcome).toMatchObject({
       due: false,
       period: thisMonth,
       reason: 'before_first_month',

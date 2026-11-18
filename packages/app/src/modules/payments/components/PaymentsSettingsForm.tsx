@@ -30,8 +30,10 @@ type SettingsResponse = {
 
 /** The day field as an integer, or null when it is empty or not a whole number (the server answers the range). */
 function dayOf(value: unknown): number | null {
-  const day = typeof value === 'number' ? value : Number(String(value ?? '').trim())
-  return String(value ?? '').trim() !== '' && Number.isInteger(day) ? day : null
+  if (typeof value === 'number') return Number.isInteger(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const day = Number(value.trim())
+  return Number.isInteger(day) ? day : null
 }
 
 type FormValues = Record<string, unknown> & { updatedAt: string | null }

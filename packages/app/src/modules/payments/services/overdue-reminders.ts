@@ -53,7 +53,7 @@ function calendarDate(value: unknown): string {
 /** One dispatch per payer, day and listed charges with their counts: a retried run re-uses the first dispatch. */
 function reminderKey(payerPersonId: string, today: string, charges: readonly ReminderCandidate[]): string {
   const digest = createHash('sha256')
-    .update(charges.map((charge) => `${charge.id}:${charge.reminderCount}`).join(','))
+    .update(charges.map((charge) => `${charge.id}:${String(charge.reminderCount)}`).join(','))
     .digest('hex')
     .slice(0, 24)
   return `payments:overdue-reminder:${payerPersonId}:${today}:${digest}`
