@@ -28,3 +28,11 @@
 ## Open problems / next steps
 
 - Owner decision: whether legacy statement files (imports before this change) should also be removed by a one-off cleanup.
+
+## Follow-up run — merge-train failure on shard 3/3 (2026-11-18)
+
+- **Trigger:** cezar `om-auto-fix-pr 389` after the merge train labelled the PR `merge-train-failed` (run 44355601522, `integration (shard 3/3)`).
+- **Base:** the branch already contained every `main` commit (`git log HEAD..origin/main` empty); no merge needed.
+- **Failure:** one test, `TEST-L03 a family leaves on a future day …` (`people/TEST-L03-departure.spec.ts:141`), both attempts: `{"error":"Declarations for this session are closed.","code":"declaration_closed"}`; 85 other tests passed. The test declares on the Wednesday 17:00 session of the window `today … today + 10`; the train ran on Wednesday 2026-11-18 after that session's declarations had closed, so `before` was today's closed session. The failure is time-of-day dependent, lives in a file this PR does not touch, and is fixed by open PR #390 ("TEST-L03 declares on a session after today, not on today's").
+- **Decision:** no code change here — duplicating #390's one-line fix on this branch would conflict with it. The required checks go green on a re-run once #390 lands or once the run is not on a Wednesday after the session's close.
+- **Changed:** this run log only.
