@@ -38,7 +38,7 @@ import {
 } from '../lib/public-schedule'
 import { OCCUPYING_RENTAL_STATUSES } from '../lib/rentals'
 import { dayZoneSegments } from '../lib/zones'
-import { openingHours, plannedSessions, type FacilitiesScope } from './directory'
+import { openingHours, placePayee, plannedSessions, type FacilitiesScope } from './directory'
 import { placeFamilyIds } from './occupancy'
 
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
@@ -50,7 +50,12 @@ export type PublicFacilitiesClub = PublicClubFrame['club']
 /** A place card of P-03: no id. */
 export type PublicPlaceCard = Omit<PublicPlace, 'id'>
 
-export type PublicPlacesView = { club: PublicFacilitiesClub; places: PublicPlaceCard[] }
+export type PublicPlacesView = {
+  club: PublicFacilitiesClub
+  /** The club's booking mode: whether it publishes its `online_requests` block (the P-03 intro, #289). */
+  onlineRequests: boolean
+  places: PublicPlaceCard[]
+}
 
 export type PublicScheduleDay = {
   date: string
@@ -70,14 +75,23 @@ export type PublicScheduleView = {
   /** The place's effective opening hours (its own or its nearest ancestor's, DD-41); null = no limit. */
   openingHours: OpeningHours | null
   rates: PublicRate[]
+  /**
+   * Who a rental of the place is paid to: the nearest owner institution up the place tree, null = the club itself (the
+   * P-04 notice, #289). Public: the owner's name is the payee every renter is told.
+   */
+  owner: string | null
   /** The phone the page shows: the club's, published with its `contact` block. */
   phone: string | null
   days: PublicScheduleDay[]
 }
 
-/** Why a public read has nothing to show: unknown or non-public (404), no places calendar (404), a bad month (400). */
+/**
+ * Why a public read has nothing to show: unknown or non-public (404), no places calendar (404), a bad month (400).
+ * `club` is the header of a known club that publishes its page, so every state renders inside its frame (#289); it is
+ * absent for an unknown club.
+ */
 export type PublicFacilitiesResult<T> =
-  { status: 'ok'; value: T } | { status: 'not_found' } | { status: 'disabled' } | { status: 'month_invalid' }
+  { status: 'ok'; value: T } | { status: 'not_found' | 'disabled' | 'month_invalid'; club?: PublicFacilitiesClub }
 
 function site(container: AwilixContainer): ClubCorePublicSite | null {
   return container.hasRegistration(CLUB_CORE_PUBLIC_SITE)
@@ -97,8 +111,13 @@ function card(place: PublicPlace): PublicPlaceCard {
   }
 }
 
+/**
+ * The answer of a read with nothing to show, with the club's header when club_core's lookup found a club that publishes
+ * its page: a club that does not share its calendars still shows its name and phone (P-03 disabled), an unknown place
+ * the club's frame (#289).
+ */
 function notOk<T>(result: Exclude<PublicSiteResult<unknown>, { status: 'ok' }>): PublicFacilitiesResult<T> {
-  return { status: result.status }
+  return result.frame ? { status: result.status, club: result.frame.club } : { status: result.status }
 }
 
 /** `GET /api/facilities/public/{clubSlug}/places` (P-03): the club's places with a public calendar, by name. */
@@ -110,7 +129,15 @@ export async function publicPlacesView(
   if (!publicSite) return { status: 'not_found' }
   const result = await publicSite.publicPlaces(clubSlug)
   if (result.status !== 'ok') return notOk(result)
-  return { status: 'ok', value: { club: result.value.frame.club, places: result.value.places.map(card) } }
+  const { frame } = result.value
+  return {
+    status: 'ok',
+    value: {
+      club: frame.club,
+      onlineRequests: frame.publishedBlocks.includes('online_requests'),
+      places: result.value.places.map(card),
+    },
+  }
 }
 
 /**
@@ -133,7 +160,7 @@ export async function publicScheduleView(
   const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
   const timeZone = settings.values.timezone
   const range = scheduleMonth(month, localMoment(now, timeZone).date)
-  if (!range) return { status: 'month_invalid' }
+  if (!range) return { status: 'month_invalid', club: frame.club }
   const em = container.resolve<EntityManager>('em').fork()
   const window = {
     start: zonedInstant(range.first, '00:00', timeZone),
@@ -151,6 +178,7 @@ export async function publicScheduleView(
   const hours = (await openingHours(container, scope, [place.id], em)).get(place.id) ?? null
   const rules = (await em.find(ZoneRule, { ...scope, deletedAt: null, placeId: place.id })).map(zoneRuleShapeOf)
   const rates = (await em.find(RentalRate, { ...scope, deletedAt: null, placeId: place.id })).map(rentalRateShapeOf)
+  const payee = await placePayee(container, scope, place.id, em)
   const days = datesBetween(range.first, range.last).map((date) => {
     const opening = openingWindowsOn(hours, date)?.map((w) => ({ from: w.from, to: w.to })) ?? null
     return {
@@ -182,6 +210,7 @@ export async function publicScheduleView(
       currency: settings.values.currency,
       openingHours: hours,
       rates: publicRates(rates, place.id, range.first, range.last),
+      owner: payee?.name ?? null,
       phone: frame.club.contact?.phone ?? null,
       days,
     },
@@ -262,7 +291,7 @@ export async function requestPlace(
   const publicSite = site(container)
   if (!publicSite) return { status: 'not_found' }
   const found = await publicSite.publicPlace(clubSlug, placeSlug)
-  if (found.status !== 'ok') return notOk(found)
+  if (found.status !== 'ok') return { status: found.status }
   const { frame, place } = found.value
   return {
     status: 'ok',

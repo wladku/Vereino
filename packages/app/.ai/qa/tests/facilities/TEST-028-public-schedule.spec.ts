@@ -3,6 +3,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes }
 import { createClub } from '../_fixtures/club'
 import { publish } from '../_fixtures/publication'
 import { PRIVATE_NAMES, publicPitch } from '../_fixtures/public-places'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #124 (E08-S04), facilities spec P-03, P-04, REQ-014, TEST-028: a guest without a session opens the club page,
 // follows "Facilities" to the club's public facilities (the public pitch, never the hall that is not public) and opens
@@ -158,14 +159,15 @@ test('TEST-028 public facility pages: P-01 link, P-03 cards, P-04 day list and m
     await page.goto(`/p/${slug}`)
     await expect(page.getByTestId('public-club-name')).toBeVisible()
     await expect(page.getByTestId('public-club-places-link')).toHaveCount(0)
-    await page.goto(`/p/${slug}/places`)
-    await expect(page.getByTestId('public-places-disabled')).toContainText(
-      'The club does not share facility calendars.',
-    )
-    await page.goto(`/p/${slug}/places/${setup.placeSlug}`)
-    await expect(page.getByTestId('public-places-disabled')).toContainText(
-      'The club does not share facility calendars.',
-    )
+    // Inside the club's frame, with its phone to ask about free slots (#289).
+    for (const path of [`/p/${slug}/places`, `/p/${slug}/places/${setup.placeSlug}`]) {
+      await page.goto(path)
+      const disabled = page.getByTestId('public-places-disabled')
+      await expect(disabled).toContainText(uiText('facilities.public.disabled.title'))
+      await expect(disabled).toContainText(uiText('facilities.public.disabled.call'))
+      await expect(page.getByTestId('public-places-disabled-phone')).toHaveText('600 000 000')
+      await expect(page.getByTestId('public-footer-club')).toBeVisible()
+    }
   } finally {
     await club.cleanup()
   }
