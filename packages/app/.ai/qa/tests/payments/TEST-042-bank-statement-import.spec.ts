@@ -275,7 +275,7 @@ test('TEST-042 bank statement import, matching and the confirmation queue', asyn
     })
     await page.getByTestId('bank-import-submit').click()
     await expect(page.getByTestId('bank-import-summary')).toContainText(/1 transfers|Przelewy: 1/)
-    await expect(page.getByTestId('bank-history').locator('li')).toHaveCount(4)
+    await expect(page.getByTestId('bank-history').locator('tbody tr')).toHaveCount(4)
   } finally {
     await club.cleanup()
   }
