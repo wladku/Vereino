@@ -472,6 +472,9 @@ function OrdersTab({
     <DataTable<CampaignOrderRow>
       title={t('payments.orders.tabs.orders')}
       extensionTableId="payments.order-campaign-orders"
+      // The "… results in 53ms" footer does not wrap and outgrows 320 px with the CI font; its length changes run to
+      // run (TEST-C06), as on the roster panel.
+      showQueryTime={false}
       columns={columns}
       data={query.data?.items ?? []}
       isLoading={query.isLoading}
