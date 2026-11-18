@@ -1,0 +1,1 @@
+| 2026-11-18 | REQ-L15 review fixes: the status says phase L11 waits for approval; L10 builds the one-child "Move…" dialog, L11 extends it; TEST-L20 in L11; `skip_not_active` defined; named 422 codes |
