@@ -1,7 +1,7 @@
 # Batch merge train: one green run lands several PRs
 
 **Date**: 2026-11-18
-**Status**: Draft
+**Status**: Ready for implementation — approved by the owner on 2026-11-18
 
 > Related: `.ai/specs/2026-11-18-merge-throughput.md` (faster CI, failure ledger, QA rule; this spec was split out of it on review); engineering standards S14.1 and ADR-015; `SDLC.md` → "Validation gate"; `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (100 % unit-tested in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); ruleset 26707580 "main: merge only when up to date and green"; `docs/ops/github-settings.md`. Identifiers: decisions `BT-D01…`, requirements `REQ-BT01…`, tests `BT-TEST-01…`, acceptance `BT-AC-01…`.
 
@@ -154,7 +154,13 @@ Phases 1-2 ship dark (size 1). Rollback at any time: size 1; close the batch bra
 
 ## Final Compliance Report
 
-Pending — filled when the spec moves to `Ready for implementation`.
+| Check | Result |
+|---|---|
+| Every requirement maps to a phase, a test or evidence, and an acceptance criterion | Pass — REQ-BT01 … REQ-BT05 (*Requirement Traceability*) |
+| No blocking open question | Pass — owner decisions of 2026-11-18 recorded under *Design Decisions* |
+| Tenant scope, UI, data model, i18n | N/A — repository tooling, no tenant data and no UI |
+| Ask First items | Listed per phase; ruleset and token changes need the owner's approval when their phase starts |
+| Staff-engineer review | Done 2026-11-18 (fresh-context subagent); 2 critical and 5 high findings addressed |
 
 ## Open Questions
 

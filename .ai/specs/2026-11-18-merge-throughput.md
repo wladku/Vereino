@@ -1,7 +1,7 @@
 # Merge throughput: PRs reach main without stalling
 
 **Date**: 2026-11-18
-**Status**: Draft
+**Status**: Ready for implementation — approved by the owner on 2026-11-18
 
 > Related: engineering standards `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (S13, S14, ADR-015; this spec amends S14.1); the batch train in `.ai/specs/2026-11-18-batch-merge-train.md` (split out of this spec on review); `SDLC.md` → "Validation gate" and "The automation contract"; `.github/workflows/ci.yml`, `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (unit tests in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); `packages/app/.ai/qa/tests/playwright.config.ts`. Identifiers: goals `MT-01…`, decisions `MT-D01…`, requirements `REQ-MT01…`, tests `MT-TEST-01…`, acceptance `MT-AC-01…`, questions `MT-Q1…`.
 
@@ -176,7 +176,13 @@ Every phase is additive and reverts with its PR. The ledger can be disabled by d
 
 ## Final Compliance Report
 
-Pending — filled when the spec moves to `Ready for implementation`.
+| Check | Result |
+|---|---|
+| Every requirement maps to a phase, a test or evidence, and an acceptance criterion | Pass — REQ-MT01, REQ-MT03 … REQ-MT06, REQ-MT09, REQ-MT10 (*Requirement Traceability*) |
+| No blocking open question | Pass — owner decisions of 2026-11-18 recorded under *Design Decisions* |
+| Tenant scope, UI, data model, i18n | N/A — repository tooling, no tenant data and no UI |
+| Ask First items | Listed per phase; ruleset and token changes need the owner's approval when their phase starts |
+| Staff-engineer review | Done 2026-11-18 (fresh-context subagent); 2 critical and 5 high findings addressed |
 
 ## Open Questions
 
