@@ -353,6 +353,7 @@
   "activities.errors.occurrence_confirm_by_in_past": "The deadline to confirm is already in the past. Set a new one or remove it.",
   "activities.errors.occurrence_not_planned": "Only a planned session can be changed.",
   "activities.errors.occurrence_place_conflict": "The place is already taken at this time.",
+  "activities.errors.event_place_closed": "The place is not open at that time. Opening hours that day: {hours}.",
   "activities.errors.public_session_not_found": "This page does not exist or is no longer available.",
   "activities.events.create.title": "New one-off event",
   "activities.events.errors.create": "The event could not be created.",

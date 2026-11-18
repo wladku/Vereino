@@ -5,7 +5,7 @@
 // enabled with `activities`, so a missing registration is a deployment error and fails closed.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { calendarDateInZone, type CalendarDate } from '@vereino/core'
+import { calendarDateInZone, type CalendarDate, type OpeningHours } from '@vereino/core'
 import type {
   ClubCoreDirectory,
   PlaceDirectoryEntry,
@@ -146,6 +146,20 @@ export function assertBookablePlace(
 ): Promise<void> {
   assertRegistered(container, CLUB_CORE_PLACES)
   return container.resolve<ClubCorePlacesService>(CLUB_CORE_PLACES).assertBookableLeaf(scope, placeId, em)
+}
+
+/**
+ * The opening hours that apply to each place, its own or inherited (facilities spec DD-41); null for no limit
+ * (facilities parity spec DD-R15: the one-off event check, #288).
+ */
+export function placeOpeningHours(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  placeIds: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, OpeningHours | null>> {
+  assertRegistered(container, CLUB_CORE_PLACES)
+  return container.resolve<ClubCorePlacesService>(CLUB_CORE_PLACES).openingHours(scope, placeIds, em)
 }
 
 export function findPersons(
