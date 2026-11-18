@@ -14,7 +14,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import { errorCodeOf, isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
 import { browserTimeZone, useClubTimeZone } from '@vereino/ui'
-import type { RentalChargeState } from '../lib/rental-record'
+import { awaitsPayment, type RentalChargeState } from '../lib/rental-record'
 import { MOVABLE_RENTAL_STATUSES, type RentalStatus } from '../lib/rentals'
 import { timeOf, zoneWallTime } from './club-places/places-client'
 import type { Translate } from './facilities-client'
@@ -29,6 +29,16 @@ export const RENTALS_KEY = 'facilities-rentals'
 /** B-24 and the rental page (#279). */
 export const RENTALS_HREF = '/backend/facilities/rentals'
 export const REQUESTS_HREF = '/backend/facilities/requests'
+
+/** B-22, the charge record of `payments`, where the payment of a rental with a charge is recorded (DD-R09, #285). */
+export function chargeHref(chargeId: string): string {
+  return `/backend/payments/charges/${encodeURIComponent(chargeId)}`
+}
+
+/** The charge to record the payment on when "Confirm payment" leads there (DD-R09), else null (confirm at once). */
+export function chargeAwaitingPayment(row: Pick<RentalRow, 'chargeId' | 'chargeState'>): string | null {
+  return awaitsPayment(row.chargeId, row.chargeState) ? row.chargeId : null
+}
 
 export function rentalHref(id: string): string {
   return `${RENTALS_HREF}/${encodeURIComponent(id)}`

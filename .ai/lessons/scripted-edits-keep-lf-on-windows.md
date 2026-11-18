@@ -13,4 +13,6 @@ topics: ["windows", "line-endings", "crlf", "scripted-edits"]
 
 **Rule**: In scripted edits on Windows, read and write bytes (`open(p, 'rb')` / `open(p, 'wb')` with explicit `.decode('utf-8')` / `.encode('utf-8')`) or pass `newline='\n'` when writing text. Prefer the Edit tool for small changes. After any scripted edit, check `git diff --stat` for CRLF warnings before running the gate.
 
+**Repeated**: #285 (2026-11-18) — Python helpers rewrote 18 files with CRLF; normalized with `sed -i 's/\r$//'` before the gate. Promoted to a Never rule in `AGENTS.md`.
+
 **Applies to**: any agent run on the Windows workstation that edits repository files through Python, Node or shell scripts instead of the editor tools.

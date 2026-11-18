@@ -1,14 +1,15 @@
 // `GET /api/facilities/reports/owner` (facilities spec the owner report row of *API*; REQ-015, TEST-025, AC-015;
 // README B-28, flow F-12; #127): the municipality report of a facility (a place and its sub-places) for a period of
 // club-zone dates — scheduled hours by zone, club time (sessions and internal bookings) by zone, the rentals (count,
-// value, the table), the payments to the owner's account with their source, incidents and maintenance done — as JSON
+// value, the table), the owner institution, the payments to the owner's account with their source (charges, the
+// rental register, or both — facilities parity spec REQ-R11, #285), incidents and maintenance done — as JSON
 // or (`format=csv`) as a CSV file with the same figures. Read-only; the club administrator holds
 // `facilities.reports.view` through `facilities.*`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
 import { ownerReportQuerySchema } from '../../../data/validators'
-import { ownerReportCsv, reportPeriodProblem } from '../../../lib/owner-report'
+import { PAYMENTS_SOURCES, ownerReportCsv, reportPeriodProblem } from '../../../lib/owner-report'
 import { RENTAL_STATUSES } from '../../../lib/rentals'
 import { ZONES } from '../../../lib/zones'
 import { ownerReport } from '../../../services/owner-report'
@@ -30,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
     }
     const problem = reportPeriodProblem(parsed.data.from, parsed.data.to)
     if (problem) await facilitiesErrors.throw(problem)
-    const report = await ownerReport(ctx.container, scope, parsed.data)
+    const report = await ownerReport(ctx, scope, parsed.data)
     if (!report) return Response.json({ error: 'Not found' }, { status: 404 })
     if (parsed.data.format === 'csv') {
       return new Response(ownerReportCsv(report), {
@@ -53,6 +54,10 @@ const hoursByZone = z.object(
 
 const responseSchema = z.object({
   place: z.object({ id: z.uuid(), name: z.string() }),
+  owner: z
+    .object({ institutionId: z.uuid(), name: z.string() })
+    .nullable()
+    .describe('The owner institution of the place (nearest up the place tree); null when the club owns it'),
   from: z.string(),
   to: z.string(),
   timeZone: z.string(),
@@ -82,7 +87,12 @@ const responseSchema = z.object({
   payments: z.object({
     amount: z.number().int().describe('Minor units'),
     count: z.number().int(),
-    source: z.enum(['rental_register']).describe('Where the figure comes from'),
+    source: z
+      .enum(PAYMENTS_SOURCES)
+      .describe(
+        'Where the figure comes from: `charges` (paid rental charges), `rental_register` (confirmed and done rentals without a charge) or `mixed`',
+      ),
+    partiallyPaidCount: z.number().int().describe('Rentals whose charge is partly paid; not in the amount'),
   }),
   incidents: z.object({ count: z.number().int() }),
   maintenance: z.object({ done: z.number().int(), cost: z.number().int().describe('Minor units') }),
@@ -95,7 +105,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read the owner report of a facility for a period, as JSON or CSV',
       description:
-        'The facility is the place and its sub-places; the period runs over whole club-zone days `from`–`to` (from ≤ to, less than a year). Hours are in hours with two decimals, amounts in minor units. Club time = `planned` and `done` sessions plus confirmed internal bookings, clipped to the period. Rentals = the ones that start in the period and are requested, confirmed, done, cancelled late or no-show. Payments come from the rental register (confirmed and done rentals) until `payments` reports rental charges (DD-19). `format=csv` answers a CSV file with the same figures: a `section,item,value` summary, then the rentals.',
+        'The facility is the place and its sub-places; the period runs over whole club-zone days `from`–`to` (from ≤ to, less than a year). Hours are in hours with two decimals, amounts in minor units. Club time = `planned` and `done` sessions plus confirmed internal bookings, clipped to the period. Rentals = the ones that start in the period and are requested, confirmed, done, cancelled late or no-show. Payments: a rental with a charge counts its amount once the charge is paid (`partiallyPaidCount` counts the partly paid ones apart); a rental without a charge counts from the rental register (confirmed and done); `source` says which of the two, or `mixed`. `format=csv` answers a CSV file with the same figures: a `section,item,value` summary, then the rentals.',
       query: ownerReportQuerySchema,
       responses: [
         {
