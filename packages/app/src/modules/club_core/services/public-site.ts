@@ -47,7 +47,15 @@ import {
 
 const logger = createLogger('club_core').child({ component: 'public-site' })
 
-export type PublicSiteResult<T> = { status: 'not_found' } | { status: 'disabled' } | { status: 'ok'; value: T }
+/**
+ * A public read's answer. `frame` on `not_found` / `disabled` is the header of a club that publishes its page while the
+ * thing asked for is not public (its places calendar, one place; #289), so that page still renders inside the club's
+ * frame; absent for an unknown club or one whose page is off.
+ */
+export type PublicSiteResult<T> =
+  | { status: 'not_found'; frame?: PublicClubFrame }
+  | { status: 'disabled'; frame?: PublicClubFrame }
+  | { status: 'ok'; value: T }
 
 export type PublicLogo = { url: string | null; source: LogoSource; initial: string }
 
@@ -184,6 +192,11 @@ export type ClubCorePublicSite = {
    * row is read inside that scope; `not_found` without a public slug, `disabled` while the page is off.
    */
   clubFrameForScope(scope: { tenantId: string; organizationId: string }): Promise<PublicSiteResult<PublicClubFrame>>
+  /**
+   * The public slug of a place of a trusted club while the place has a public calendar (the way back to it from the
+   * request confirmation of `facilities`, #289), else null. No slug lookup: the place is read inside that scope.
+   */
+  publicPlaceSlug(scope: { tenantId: string; organizationId: string }, placeId: string): Promise<string | null>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
@@ -396,7 +409,8 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
   async function findPlacesClub(db: EntityManager, clubSlug: string): Promise<PublicSiteResult<FoundClub>> {
     const found = await findClub(db, clubSlug)
     if (found.status !== 'ok') return found
-    return found.value.publication.blocks.places_calendar ? found : DISABLED
+    if (found.value.publication.blocks.places_calendar) return found
+    return { status: 'disabled', frame: await frameOf(db, found.value) }
   }
 
   async function frameOf(db: EntityManager, club: FoundClub): Promise<PublicClubFrame> {
@@ -644,6 +658,23 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return { status: 'ok', value: await frameOf(db, club) }
     },
 
+    async publicPlaceSlug(scope, placeId) {
+      if (!UUID_PATTERN.test(placeId)) return null
+      const place = await em().findOne(
+        Place,
+        {
+          tenantId: scope.tenantId,
+          organizationId: scope.organizationId,
+          id: placeId,
+          isPublicSchedule: true,
+          isActive: true,
+          deletedAt: null,
+        },
+        { fields: ['id', 'publicSlug'] },
+      )
+      return place?.publicSlug ?? null
+    },
+
     async publicPlaces(clubSlug) {
       const db = em()
       const found = await findPlacesClub(db, clubSlug)
@@ -678,7 +709,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       if (found.status !== 'ok') return found
       const club = found.value
       const place = await findPublicPlace(db, club, placeSlug)
-      if (!place) return NOT_FOUND
+      if (!place) return { status: 'not_found', frame: await frameOf(db, club) }
       const files = await placeFiles(db, club, [place.id])
       const regulations = files.find((file) => file.kind === 'regulations')
       return {

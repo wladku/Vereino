@@ -122,8 +122,10 @@ test('TEST-L03 a family leaves on a future day in one previewed step; undo, job,
       end: '18:00',
     })
     const later = training.sessions.find((session) => (session.occurrenceDate ?? '') > lastDay)
+    // A day after today: on a Wednesday today's 17:00 session closes its declarations at its start (409
+    // `declaration_closed`), so a run late in the day would fail.
     const before = training.sessions.find(
-      (session) => (session.occurrenceDate ?? '') >= today && (session.occurrenceDate ?? '') <= lastDay,
+      (session) => (session.occurrenceDate ?? '') > today && (session.occurrenceDate ?? '') <= lastDay,
     )
     expect(later, 'a session after the last day').toBeTruthy()
     const declared = await declare(request, family.guardian.token, {
