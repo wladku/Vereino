@@ -6,6 +6,7 @@ import {
   allocateTransfer,
   containsWords,
   findPayerCodes,
+  deletableImports,
   importCounts,
   matchTransfer,
   paysWholeCharges,
@@ -236,5 +237,21 @@ describe('importCounts', () => {
       unmatched: 1,
       skipped: 3,
     })
+  })
+})
+
+describe('deletableImports', () => {
+  const transfers = [
+    { id: 't1', importId: 'a' },
+    { id: 't2', importId: 'a' },
+    { id: 't3', importId: 'b' },
+  ]
+
+  it('keeps an import none of whose transfers a payment ever named, and one without transfers', () => {
+    expect(deletableImports(['a', 'b', 'c'], transfers, new Set())).toEqual(new Set(['a', 'b', 'c']))
+  })
+
+  it('blocks an import when any of its transfers is referenced, reversed or not', () => {
+    expect(deletableImports(['a', 'b', 'c'], transfers, new Set(['t2']))).toEqual(new Set(['b', 'c']))
   })
 })

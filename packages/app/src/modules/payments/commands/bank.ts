@@ -13,6 +13,11 @@
 //   a grant, a refund or other, Restore returns a skipped transfer to "Unmatched" (Q1 on #113), Undo writes reversing
 //   entries (S10.4) for the transfer's payments, reopens the charges and returns it to "To confirm". Each checks the
 //   transfer's lock token (409 `optimistic_lock_conflict`) and its status (409 `bank_transaction_status_changed`).
+// - `payments.bank_imports.delete` (payments parity REQ-C04, DD-C13; #294) removes an import from which nothing was
+//   ever booked: its transactions, the import and its statement file, so the corrected file imports again. A payment
+//   row naming one of its transactions — booked, or booked and undone — answers 409 `bank_import_has_bookings`. It
+//   checks the import's lock token, is audited with the file name and the counts (no transaction content) and is not
+//   undoable.
 //
 // The import and every decision that moves money take the club's statement lock, then row-lock the charges, so two of
 // them never spread one charge's remaining amount twice. Like every `payments` write of phase 4 they need the club
@@ -22,7 +27,7 @@ import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
+import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { z } from 'zod'
 import type { Scope } from '@vereino/core'
@@ -59,7 +64,7 @@ import {
 import type { CashAllocation } from '../lib/cash'
 import { MAX_REFERENCE_LENGTH, amountDueOf, paidTotal, settledStatus } from '../lib/charge-ledger'
 import type { PaymentsErrorCode } from '../lib/error-codes'
-import { livePaymentsOf, payerCandidates, payerOpenCharges, storedHashes } from '../services/bank'
+import { importDeletability, livePaymentsOf, payerCandidates, payerOpenCharges, storedHashes } from '../services/bank'
 import { clubClock } from '../services/directory'
 import {
   PAYMENTS_WRITE_KINDS,
@@ -74,10 +79,14 @@ import {
 export const BANK_IMPORT_RESOURCE_KIND = 'payments.bank_import'
 export const BANK_TRANSACTION_RESOURCE_KIND = 'payments.bank_transaction'
 
-/** The `attachments` partition, owner and assignment of a statement file (read only with `payments.bank.import`). */
+/**
+ * The `attachments` partition and owner of a statement file (read only with `payments.bank.import`). The upload adds
+ * the owner as the file's only assignment, so deleting the import can release it (lesson
+ * `attachment-owner-assignment-and-release`). Imports stored before #294 also carry `payments:bank_statement`, which
+ * `releaseScoped` refuses to release.
+ */
 export const BANK_STATEMENT_PARTITION = 'privateAttachments'
 export const BANK_STATEMENT_OWNER_ENTITY = 'payments:bank_import'
-export const BANK_STATEMENT_ASSIGNMENT = 'payments:bank_statement'
 
 // --- The uploaded file (never part of the stored command input) ---
 
@@ -230,7 +239,6 @@ const createImportCommand: CommandHandler<Record<string, unknown>, BankImportRes
       fileName: upload.fileName,
       declaredMimeType: upload.mimeType,
       buffer: upload.buffer,
-      assignments: [{ type: BANK_STATEMENT_ASSIGNMENT, id: importId }],
       persistLink: async (tx: EntityManager, attachmentId: string) => {
         const authorized = await authorizeScoped(spec, fields, ctx, tx)
         const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
@@ -555,6 +563,103 @@ function decisionCommand(action: BankAction): CommandHandler<Record<string, unkn
   }
 }
 
+// --- Deleting an import ---
+
+type BankImportSnapshot = ImportCounts & { fileName: string; format: string; transactions: number }
+
+export type BankImportDeleteResult = PaymentsCommandResult<BankImport, BankImportSnapshot> & {
+  /** True when the statement file could not be released (an import stored before #294). */
+  fileKept: boolean
+}
+
+const deleteImportSpec = (
+  ctx: CommandRuntimeContext,
+): AuthorizeScopedSpec<typeof bankTransactionActionSchema, BankImport> => ({
+  input: bankTransactionActionSchema,
+  resourceKind: BANK_IMPORT_RESOURCE_KIND,
+  allowedKinds: PAYMENTS_WRITE_KINDS,
+  loadTarget: (parsed, em, lock) => {
+    const tenantId = trustedTenantId(ctx)
+    if (!tenantId) return Promise.resolve(null)
+    return em.findOne(BankImport, { id: parsed.id, tenantId, deletedAt: null }, lock)
+  },
+  resolveTarget: (_parsed, entity) => clubTarget(entity as BankImport),
+})
+
+const deleteImportCommand: CommandHandler<Record<string, unknown>, BankImportDeleteResult> = {
+  id: 'payments.bank_imports.delete',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const attachments = attachmentServiceOf(ctx)
+    const box: { cleanup?: (() => Promise<void>) | null } = {}
+    const result = await inWriteTransaction(ctx, 'payments.bank_imports.delete', async (em) => {
+      const authorized = await authorizeScoped(deleteImportSpec(ctx), rawInput, ctx, em)
+      const row = authorized.entity as BankImport
+      const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      // No decision books a transfer of this import while it is being deleted.
+      await lockBankStatements(em, scope.organizationId)
+      const { deletable, transferIds } = await importDeletability(em, scope, [row.id])
+      if (!deletable.has(row.id)) await paymentsErrors.throw('bank_import_has_bookings')
+      const before: BankImportSnapshot = {
+        fileName: row.fileName,
+        format: row.format,
+        total: row.total,
+        booked: row.booked,
+        suggested: row.suggested,
+        unmatched: row.unmatched,
+        skipped: row.skipped,
+        transactions: transferIds.length,
+      }
+      let fileKept = false
+      try {
+        const released = await attachments.releaseScoped?.(
+          {
+            attachmentId: row.attachmentId,
+            ...scope,
+            expectedOwner: { entityId: BANK_STATEMENT_OWNER_ENTITY, recordId: row.id },
+            expectedAssignment: { type: BANK_STATEMENT_OWNER_ENTITY, id: row.id },
+            expectedPartitionCode: BANK_STATEMENT_PARTITION,
+          },
+          { em, flush: false },
+        )
+        box.cleanup = released ?? null
+      } catch (error: unknown) {
+        // 404: already gone, nothing left to delete. 409: a file stored before #294 with a second assignment that the
+        // platform refuses to release; the rows still go so the corrected file imports again, and the audit says so.
+        if (!isCrudHttpError(error) || (error.status !== 404 && error.status !== 409)) throw error
+        fileKept = error.status === 409
+      }
+      await em.nativeDelete(BankTransaction, { ...scope, importId: row.id })
+      em.remove(row)
+      return { entity: row, actingRole: authorized.actingRole, before, fileKept }
+    })
+    // The file's bytes go once the rows are gone.
+    await box.cleanup?.()
+    const scope = { tenantId: result.entity.tenantId, organizationId: result.entity.organizationId }
+    const counts = result.before
+    await emitAfterCommit('payments.bank_import.deleted', scope, {
+      id: result.entity.id,
+      total: counts.total,
+      booked: counts.booked,
+      suggested: counts.suggested,
+      unmatched: counts.unmatched,
+      skipped: counts.skipped,
+      transactions: counts.transactions,
+    })
+    return result
+  },
+  buildLog: ({ result }) =>
+    paymentsLog({
+      result,
+      resourceKind: BANK_IMPORT_RESOURCE_KIND,
+      labelKey: 'payments.audit.bank.delete',
+      fallback: 'Delete a bank statement import',
+      after: null,
+      context: { fileKept: result.fileKept },
+    }),
+}
+
 registerCommand(createImportCommand)
+registerCommand(deleteImportCommand)
 for (const action of ['confirm', 'assign', 'ignore', 'restore', 'undo'] as const)
   registerCommand(decisionCommand(action))
