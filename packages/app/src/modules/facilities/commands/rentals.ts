@@ -21,6 +21,7 @@
 // facility attendant (`PLACE_KINDS`, #126): a create or a move names a place of the caller's grant (403
 // `scope_denied` otherwise).
 import { randomUUID } from 'node:crypto'
+import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { createLogger } from '@open-mercato/shared/lib/logger'
@@ -44,6 +45,7 @@ import {
   rentalMoveSchema,
   rentalUpdateSchema,
 } from '../data/validators'
+import { rentalCancellable } from '../lib/rental-links'
 import { correctionClosed, rentalChargeState, type RentalCorrectionField } from '../lib/rental-record'
 import {
   cancellationDeadline,
@@ -410,7 +412,15 @@ const cancelByLinkCommand: CommandHandler<Record<string, unknown>, RentalCommand
     const afterCommit: Array<() => Promise<void>> = []
     let chargeWarning: 'charge_paid' | undefined
     const result = await inWriteTransaction(ctx, 'facilities.rentals.cancel_by_link', async (em) => {
-      const { row, scope } = await rentalOfLink(ctx.container, em, input.token)
+      const found = await rentalOfLink(ctx.container, em, input.token)
+      const scope = found.scope
+      // The row lock serializes this with a staff action on the same rental; the status is read again under it.
+      const row = await em.findOne(
+        Rental,
+        { id: found.row.id, ...scope, deletedAt: null },
+        { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+      )
+      if (!row || !rentalCancellable(row.status)) return foundationErrors.throw('token_link_expired')
       const redeemed = await rentalLinks(ctx.container).redeem(em, input.token, { scope })
       if (!redeemed) return foundationErrors.throw('token_link_expired')
       const before = rentalSnapshot(row)
