@@ -7,7 +7,10 @@ import {
   PURPOSE_MIN_LENGTH,
   bookingCancellable,
   bookingPeriodProblem,
-  bookingStartAllowed,
+  PAST_BOOKING_MAX_DAYS,
+  bookingInPast,
+  bookingStartProblem,
+  earliestPastBookingDate,
   calendarDatesOf,
   calendarWindowProblem,
   internalBookingTransitions,
@@ -39,10 +42,39 @@ describe('internal bookings (REQ-023, DD-25, DD-46)', () => {
     expect(bookingPeriodProblem(start, at('x'))).toBe('malformed')
   })
 
-  it('refuses a start that is not in the future', () => {
+  it('takes a start that is not in the future as a past booking', () => {
     const now = at('2026-11-10T12:00:00Z')
-    expect(bookingStartAllowed(at('2026-11-10T12:00:01Z'), now)).toBe(true)
-    expect(bookingStartAllowed(now, now)).toBe(false)
+    expect(bookingInPast(at('2026-11-10T12:00:01Z'), now)).toBe(false)
+    expect(bookingInPast(now, now)).toBe(true)
+  })
+})
+
+describe('past club bookings (DD-R17, the 92-day rule)', () => {
+  const zone = 'Europe/Warsaw'
+  // 2026-11-17 00:30 in Warsaw is still 2026-11-16 in UTC: the days are counted in the club's zone.
+  const now = at('2026-11-16T23:30:00Z')
+
+  it('counts 92 club-zone days back from today', () => {
+    expect(PAST_BOOKING_MAX_DAYS).toBe(92)
+    expect(earliestPastBookingDate('2026-11-17')).toBe('2026-08-17')
+  })
+
+  it('always allows a future start', () => {
+    expect(bookingStartProblem(at('2026-11-17T08:00:00Z'), now, zone, false)).toBeNull()
+    expect(bookingStartProblem(at('2026-11-17T08:00:00Z'), now, zone, true)).toBeNull()
+  })
+
+  it('refuses a past start to every caller but the club administrator', () => {
+    expect(bookingStartProblem(at('2026-11-16T08:00:00Z'), now, zone, false)).toBe('booking_start_past')
+    expect(bookingStartProblem(now, now, zone, false)).toBe('booking_start_past')
+    expect(bookingStartProblem(at('2026-11-16T08:00:00Z'), now, zone, true)).toBeNull()
+  })
+
+  it('allows the club administrator 92 days back and refuses an older start', () => {
+    // 2026-08-17 00:00 in Warsaw (UTC+2) is the first instant of the earliest allowed day.
+    expect(bookingStartProblem(at('2026-08-16T22:00:00Z'), now, zone, true)).toBeNull()
+    expect(bookingStartProblem(at('2026-08-16T21:59:00Z'), now, zone, true)).toBe('booking_too_old')
+    expect(bookingStartProblem(at('2026-08-09T08:00:00Z'), now, zone, true)).toBe('booking_too_old')
   })
 })
 

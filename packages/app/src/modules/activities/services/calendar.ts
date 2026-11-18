@@ -11,6 +11,7 @@ import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import {
   addCalendarDays,
+  findActingRole,
   isServedCalendarRange,
   scopeWhere,
   type CalendarDate,
@@ -40,6 +41,8 @@ import {
 } from '../lib/policy'
 import { policyRows } from '../commands/attendance'
 import { cancelRoleOf, mayEditSession } from '../commands/occurrences'
+import { scheduleTarget } from '../commands/shared'
+import { TAKE_OVER_KINDS } from '../commands/substitutions'
 import {
   activeGuardians,
   attendanceSettings,
@@ -51,7 +54,9 @@ import {
   type ActivitiesScope,
 } from './directory'
 import { activityLabels, activityTeams, nameMaps } from './read'
-import { substituteForOf, type SubstituteFor } from './substitutions'
+import { substituteForOf, substitutionHistory, type SubstituteFor, type SubstitutionHistoryItem } from './substitutions'
+import { scoreView, showsScore, type ScoreView } from '../lib/score'
+import { takeOverProblem } from '../lib/substitutions'
 
 export type CalendarDeclarationView = {
   attendanceId: string
@@ -103,6 +108,12 @@ export type CalendarOccurrenceView = {
   placeAddress: string | null
   placeGeoLat: number | null
   placeGeoLng: number | null
+  /** A place outside the club's own (an away venue) or a typed venue: the cards link its map (REQ-A13). */
+  placeExternal: boolean
+  /** The activity is an away trip: the score lists the opponent first in `scoreHome`'s slot (REQ-A15). */
+  isAway: boolean
+  /** The recorded score of a match or sparring (REQ-A15), or null. */
+  score: ScoreView | null
   coachPersonId: string | null
   coachName: string | null
   /** The session's own coach when the current coach is a substitute (E06-S13 #95), else null. */
@@ -136,6 +147,15 @@ export type CalendarEntry = {
    * club administrator, or as a coach of its group when it is the session of a one-off event.
    */
   mayEdit?: boolean
+  /**
+   * `GET /calendar/{id}?as=coach` (REQ-A14, #272): the caller — a coach or assistant of the group — may take over the
+   * planned session, which has no coach.
+   */
+  mayTakeOver?: boolean
+  /** `GET /calendar/{id}?as=coach` (REQ-A15): the session takes a score now (a started match or sparring). */
+  mayScore?: boolean
+  /** `GET /calendar/{id}?as=coach` (REQ-A13): the substitution history, oldest first. */
+  substitutions?: SubstitutionHistoryItem[]
 }
 
 export type CalendarResult = {
@@ -254,6 +274,9 @@ function occurrenceView(
     placeAddress: venue?.address ?? place?.address ?? null,
     placeGeoLat: place?.geoLat ?? null,
     placeGeoLng: place?.geoLng ?? null,
+    placeExternal: venue !== null || place?.isExternal === true,
+    isAway: activity?.isAway ?? false,
+    score: scoreView(row),
     coachPersonId: row.coachPersonId ?? null,
     coachName: row.coachPersonId ? (names.persons.get(row.coachPersonId) ?? null) : null,
     substituteForPersonId: substitution?.personId ?? null,
@@ -591,12 +614,21 @@ export async function readCalendarItem(
     await assertStaffFeature(ctx, scope, 'activities.coach')
     item = (await staffCalendar(ctx, scope, grants, 'coach', window, timeZone, now, undefined, row.id)).at(0)
     if (!item) return foundationErrors.throw('scope_denied')
+    const { occurrence } = item
     item = {
       ...item,
       mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null,
       mayEdit:
-        item.occurrence.status === 'planned' &&
-        mayEditSession(grants, row, Boolean((await activityOf(em, scope, item.occurrence.activityId))?.recurrenceRule)),
+        occurrence.status === 'planned' &&
+        mayEditSession(grants, row, Boolean((await activityOf(em, scope, occurrence.activityId))?.recurrenceRule)),
+      // The command's own check: a planned session without a coach, and a coach grant on its group.
+      mayTakeOver:
+        takeOverProblem(
+          { status: occurrence.status, coachPersonId: occurrence.coachPersonId, endAt: new Date(occurrence.endAt) },
+          now,
+        ) === null && findActingRole(grants, TAKE_OVER_KINDS, scheduleTarget(row, row.id)) !== null,
+      mayScore: showsScore(occurrence.activityType, occurrence, now),
+      substitutions: await substitutionHistory(ctx.container, scope, row.id),
     }
   } else {
     const personIds = await memberPersons(grants, as, personId)

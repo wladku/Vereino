@@ -31,6 +31,8 @@ export type CalendarListLabels = {
   coach?: string
   /** The word before the gathering time ("Gathering"); without it the time stands alone. */
   gathering?: string
+  /** The text of a place's map link ("map"); without it no map link renders. */
+  map?: string
 }
 
 export type CalendarListProps = {
@@ -57,6 +59,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
   const titleClassName = calendarTitleClassName(tone)
   const actions = item.actions ?? []
   const badges = item.badges ?? []
+  const links = item.links ?? []
   return (
     <li
       className="bg-card flex flex-col gap-2 rounded-lg border p-4"
@@ -110,6 +113,17 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
         <p className="text-muted-foreground text-sm">
           {item.place}
           {item.placeAddress ? <span className="block">{item.placeAddress}</span> : null}
+          {item.placeHref && labels.map ? (
+            <a
+              href={item.placeHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary inline-flex min-h-11 items-center underline"
+              data-testid="calendar-item-map"
+            >
+              {labels.map}
+            </a>
+          ) : null}
         </p>
       ) : null}
       {(item.notes ?? []).map((note) => (
@@ -145,6 +159,19 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
             >
               {action.label}
             </Button>
+          ))}
+        </div>
+      ) : null}
+      {Link && links.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {links.map((link) => (
+            <Link
+              key={link.id}
+              href={link.href}
+              className="border-input bg-background hover:bg-accent focus-visible:shadow-focus inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium outline-none"
+            >
+              {link.label}
+            </Link>
           ))}
         </div>
       ) : null}

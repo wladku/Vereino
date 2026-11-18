@@ -92,6 +92,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     category: 'activities',
     actions: [],
   },
+  // REQ-A14 (#272): two hours before a planned session without a coach, the section's coordinators and the group's
+  // coaches and assistants are warned once (job `activities:warn-unassigned-sessions`).
+  {
+    type: 'activities.session_without_coach',
+    module: 'activities',
+    channels: ['in_app'],
+    titleKey: 'activities.notifications.sessionWithoutCoach.title',
+    bodyKey: 'activities.notifications.sessionWithoutCoach.body',
+    icon: 'user-x',
+    severity: 'warning',
+    category: 'activities',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

@@ -12,6 +12,7 @@ import { CHECK_OFF_KINDS, checkOffRole, checkOffTarget, listedPersonIds } from '
 import { cancelRoleOf } from '../commands/occurrences'
 import { Attendance, Occurrence } from '../data/entities'
 import {
+  checkOffOpensAt,
   checkOffWindow,
   declarationSummary,
   expectationOf,
@@ -48,8 +49,10 @@ export type AttendanceList = {
   summary: DeclarationSummary
   /** `confirm`: the participants who have not answered (REQ-A07); 0 for `absence_only`. */
   unansweredCount: number
-  /** `open` from the start until the session is closed; `not_started` before; `not_planned` when cancelled or done. */
+  /** `open` from 30 minutes before the start until closed (DD-A13); `not_started` before; `not_planned` otherwise. */
   checkOff: CheckOffWindow
+  /** The instant the check-off opens (the "opens at {time}" state of M-05). */
+  checkOffOpensAt: string
   /** The role the caller checks off in. */
   actingRole: ActingRole
   /** Whether the caller may cancel the session (`coach_may_cancel`, #199). */
@@ -124,6 +127,7 @@ export async function readAttendanceList(
     summary,
     unansweredCount: summary.unanswered,
     checkOff: checkOffWindow(occurrence, now),
+    checkOffOpensAt: checkOffOpensAt(occurrence.startAt).toISOString(),
     actingRole,
     mayCancel: cancelRole !== null,
     timeZone: settings.timeZone,

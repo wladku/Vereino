@@ -6,6 +6,7 @@
 import * as React from 'react'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import {
@@ -39,6 +40,37 @@ type HoursMode = 'same' | 'perDay'
 type WriteMode = 'replace' | 'append'
 type Hours = { from: string; to: string }
 type DayError = { placeId?: string; weekday: number; code: string }
+
+/** What a save of the dialog did: the counts, and the club sessions and pending requests it touches. */
+export function AvailabilitySaveSummary({ result }: { result: BulkResult }) {
+  const t = useT()
+  const { clubOccurrencesInWindows, pendingRequestsOutside } = result.warnings
+  return (
+    <div className="flex flex-col gap-2" data-testid="facilities-availability-result">
+      <Alert status="success">
+        <AlertTitle>{t('facilities.availability.saved.title')}</AlertTitle>
+        <AlertDescription>
+          {t('facilities.availability.saved.counts', { created: result.created, removed: result.removed })}
+        </AlertDescription>
+      </Alert>
+      {clubOccurrencesInWindows > 0 || pendingRequestsOutside > 0 ? (
+        <Alert status="warning">
+          <AlertTitle>{t('facilities.availability.warnings.title')}</AlertTitle>
+          <AlertDescription>
+            <ul className="flex flex-col gap-1">
+              {clubOccurrencesInWindows > 0 ? (
+                <li>{t('facilities.availability.warnings.clubSessions', { count: clubOccurrencesInWindows })}</li>
+              ) : null}
+              {pendingRequestsOutside > 0 ? (
+                <li>{t('facilities.availability.warnings.pendingRequests', { count: pendingRequestsOutside })}</li>
+              ) : null}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+    </div>
+  )
+}
 
 const WORKDAYS = [1, 2, 3, 4, 5]
 const WEEKEND = [6, 7]

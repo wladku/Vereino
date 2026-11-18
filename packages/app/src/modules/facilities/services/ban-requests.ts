@@ -3,12 +3,14 @@
 // and by e-mail — that an attendant asks for an entry ban at the place, through the foundation `dispatch`. The key
 // `facilities:ban-request:<incidentId>` is the "sent" marker, so the request is announced once per incident, however
 // often the incident is saved or the event redelivered. The message names the place only: no renter contact and no
-// incident description (*Security*), and the incident's encrypted columns are never read.
+// incident description (*Security*), and the incident's encrypted columns are never read. The panel's "Ban request"
+// filter and the "ban issued" mark read which requests a ban was issued from (B-27, DD-R12; #281): a ban saved with the
+// incident's id closes the request, revoked later or not.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { calendarDateInZone } from '@vereino/core'
 import { resolveMembers, type DispatchService } from '@/modules/foundation'
-import { Incident } from '../data/entities'
+import { EntryBan, Incident } from '../data/entities'
 import { BAN_REQUEST_TEMPLATE } from '../emails/templates'
 import { clubAdminPersonIds, clubTimeZone, findPlaces, type FacilitiesScope } from './directory'
 
@@ -65,4 +67,36 @@ export async function notifyBanRequest(
   if (!enqueued.created) return 0
   await dispatch.publish(enqueued.dispatchId, scope)
   return recipients.length
+}
+
+/** The incidents among `incidentIds` an entry ban was issued from (DD-R12: the incident shows "ban issued"). */
+export async function incidentsWithBan(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  incidentIds: readonly string[],
+): Promise<Set<string>> {
+  if (incidentIds.length === 0) return new Set()
+  const em = container.resolve<EntityManager>('em').fork()
+  const bans = await em.find(
+    EntryBan,
+    { ...scope, deletedAt: null, incidentId: { $in: [...incidentIds] } },
+    { fields: ['id', 'incidentId'] },
+  )
+  return new Set(bans.flatMap((ban) => (ban.incidentId ? [ban.incidentId] : [])))
+}
+
+/** The incidents whose ban request is still open: `entry_ban_requested` among the actions, and no ban issued yet. */
+export async function openBanRequestIds(container: AwilixContainer, scope: FacilitiesScope): Promise<string[]> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const requested = await em.find(
+    Incident,
+    { ...scope, deletedAt: null, actionTaken: { $contains: ['entry_ban_requested'] } },
+    { fields: ['id'] },
+  )
+  const issued = await incidentsWithBan(
+    container,
+    scope,
+    requested.map((incident) => incident.id),
+  )
+  return requested.map((incident) => incident.id).filter((id) => !issued.has(id))
 }

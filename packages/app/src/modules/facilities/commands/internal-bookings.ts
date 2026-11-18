@@ -4,20 +4,23 @@
 //   under the organization's occupancy lock (DD-43) the period (422), a closure or the opening hours (409
 //   `place_closed`) and the sessions, rentals and other bookings on the place, its ancestors and descendants (409
 //   `rental_conflict` with the list and names — staff see them) are checked; the booking is stored `confirmed`, and the
-//   external requests holding the slot become `superseded` in the same unit of work;
+//   external requests holding the slot become `superseded` in the same unit of work. The club administrator may also
+//   record a booking that started in the past, at most 92 days back (422 `booking_too_old`; others 422
+//   `booking_start_past`): the occupancy checks still run, and it supersedes nothing, so it sends nothing (DD-R17, #281);
 // - the booker, the coordinator of the booking's section or the administrator cancels it (`confirmed → cancelled`).
 // A booking for a group is a one-off event of `activities` (`POST /api/activities/events`, DD-26), not a booking.
 // Not undoable: the status only moves forward (DD-46); a wrong booking is cancelled.
 import { randomUUID } from 'node:crypto'
 import { registerCommand, type CommandHandler } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
-import type { GrantKind, Scope } from '@vereino/core'
+import { hasKind, type GrantKind, type Scope } from '@vereino/core'
 import { advanceWhere, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { InternalBooking, Rental } from '../data/entities'
 import { internalBookingCancelSchema, internalBookingCreateSchema } from '../data/validators'
 import {
+  bookingInPast,
   bookingPeriodProblem,
-  bookingStartAllowed,
+  bookingStartProblem,
   internalBookingTransitions,
   supersededRequests,
   type InternalBookingStatus,
@@ -142,13 +145,14 @@ const createInternalBookingCommand: CommandHandler<Record<string, unknown>, Inte
       const startsAt = new Date(parsed.startsAt)
       const endsAt = new Date(parsed.endsAt)
       if (bookingPeriodProblem(startsAt, endsAt)) await throwFieldError('booking_period_invalid', 'endsAt')
-      if (!bookingStartAllowed(startsAt, now)) await throwFieldError('booking_start_past', 'startsAt')
+      const timeZone = await clubTimeZone(ctx.container, scope)
+      const startProblem = bookingStartProblem(startsAt, now, timeZone, hasKind(authorized.scope, 'club_admin'))
+      if (startProblem) await throwFieldError(startProblem, 'startsAt')
 
       const window = { start: startsAt, end: endsAt }
       const placeIds = await placeFamilyIds(ctx.container, scope, parsed.placeId, em)
       const entries = await calendarEntries(ctx.container, em, scope, placeIds, window, now)
       const closures = entries.filter((entry) => entry.kind === 'closure')
-      const timeZone = await clubTimeZone(ctx.container, scope)
       const hours = (await openingHours(ctx.container, scope, [parsed.placeId], em)).get(parsed.placeId) ?? null
       // No opening hours on the place chain means no limit, overnight and multi-day bookings included (DD-41).
       const outsideHours = hours !== null && !slotWithinOpeningHours(hours, localSlotOf(startsAt, endsAt, timeZone))
@@ -183,7 +187,9 @@ const createInternalBookingCommand: CommandHandler<Record<string, unknown>, Inte
       await em.flush()
 
       // A club booking supersedes the external requests holding the slot (glossary *External request*), in this unit
-      // of work; only the requests whose hold is still valid, and each only while it is still `pending_approval`.
+      // of work; only the requests whose hold is still valid, and each only while it is still `pending_approval`. A
+      // booking recorded after the fact supersedes nothing (DD-R17).
+      if (bookingInPast(startsAt, now)) return { entity: row, actingRole: authorized.actingRole, before: null }
       const holds = supersededRequests(
         entries
           .filter((entry) => entry.kind === 'request')

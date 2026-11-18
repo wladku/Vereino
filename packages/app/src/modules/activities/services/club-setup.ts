@@ -1,7 +1,8 @@
 // Setting up a club's `activities` defaults (foundation II P-12, DD-G07): the daily `activities:generate-occurrences`
 // schedule at 03:00 in the club's time zone, the 15-minute `activities:expire-guardian-confirmations` schedule and the
 // daily `activities:send-declaration-reminders` schedule at 18:00 in the club's time zone (club spec *Events, Jobs*
-// rows; REQ-017), plus the default declaration policies (#32). Idempotent (an upsert on the stable id, a
+// rows; REQ-017), the 15-minute `activities:warn-unassigned-sessions` schedule (parity spec REQ-A14, #272), plus the
+// default declaration policies (#32). Idempotent (an upsert on the stable id, a
 // find-or-create of the policies); used by `setup.ts` `seedDefaults` and re-run when the club's time zone changes.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
@@ -48,6 +49,22 @@ export async function registerRemindersSchedule(container: AwilixContainer, scop
   })
 }
 
+/** Every 15 minutes: the warning two hours before a session without a coach (parity spec REQ-A14, Q-A19). */
+export const WARN_UNASSIGNED_INTERVAL = '15m' as const
+
+export async function registerWarnUnassignedSchedule(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+): Promise<boolean> {
+  return registerModuleSchedule(container, {
+    module: 'activities',
+    name: 'warn-unassigned-sessions',
+    schedule: { interval: WARN_UNASSIGNED_INTERVAL },
+    scope,
+    description: 'Warn the coordinators and the group leaders two hours before a session without a coach.',
+  })
+}
+
 /**
  * Seeds the default declaration policies (club spec *Declaration policy* defaults, D-006; `lib/policy.ts`
  * `DEFAULT_POLICIES`) for a club that has none of them yet — one row per scope key, never overwriting a club's own
@@ -84,12 +101,17 @@ export async function seedDefaultPolicies(container: AwilixContainer, scope: Act
 
 /** Which schedules were registered (false: the registration failed and was logged) and how many policies were added. */
 export type ClubActivitiesSetUp = {
-  schedules: { generateOccurrences: boolean; expireGuardianConfirmations: boolean; sendDeclarationReminders: boolean }
+  schedules: {
+    generateOccurrences: boolean
+    expireGuardianConfirmations: boolean
+    sendDeclarationReminders: boolean
+    warnUnassignedSessions: boolean
+  }
   policiesCreated: number
 }
 
 /**
- * Everything `seedDefaults` does for one club: the three schedules and the default policies. Idempotent, so the
+ * Everything `seedDefaults` does for one club: the four schedules and the default policies. Idempotent, so the
  * `activities set-up-club` command re-runs it for a club set up before a schedule existed (#192: the reminders).
  */
 export async function setUpClubActivities(
@@ -99,9 +121,10 @@ export async function setUpClubActivities(
   const generateOccurrences = await registerGenerateSchedule(container, scope)
   const expireGuardianConfirmations = await registerExpireSchedule(container, scope)
   const sendDeclarationReminders = await registerRemindersSchedule(container, scope)
+  const warnUnassignedSessions = await registerWarnUnassignedSchedule(container, scope)
   const policiesCreated = await seedDefaultPolicies(container, scope)
   return {
-    schedules: { generateOccurrences, expireGuardianConfirmations, sendDeclarationReminders },
+    schedules: { generateOccurrences, expireGuardianConfirmations, sendDeclarationReminders, warnUnassignedSessions },
     policiesCreated,
   }
 }

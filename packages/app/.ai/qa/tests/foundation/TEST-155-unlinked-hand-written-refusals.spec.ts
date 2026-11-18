@@ -14,6 +14,7 @@ import {
 import { getThread, postThread, previewAudience } from '../_fixtures/communication'
 import { csvFile, uploadImport } from '../_fixtures/imports'
 import { checkOwnPayments } from '../_fixtures/members'
+import { uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-155 (#155, follow-up to TEST-076): the refusals written by hand for "the caller has no linked person" answer
 // 403 `scope_unlinked` for an account not linked to a person of the club — the member calendar `as=self`, the
@@ -25,8 +26,7 @@ test.describe.configure({ timeout: 300_000 })
 type Coded = { code?: string; error?: string; id?: string; items?: unknown[] }
 type ListBody = { items?: { id: string }[]; total?: number }
 
-const UNLINKED_EN =
-  'Your account is not linked to a person of this club, so it has no access to club records. A club administrator must link it. In a new club, the first administrator is set up with: yarn mercato people bootstrap-admin'
+const UNLINKED_EN = uiTextIn('en', 'foundation.errors.scope_unlinked')
 
 test('TEST-155 hand-written "no linked person" refusals answer 403 scope_unlinked; a linked outsider keeps scope_denied', async ({
   request,

@@ -1907,6 +1907,57 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "result_note": {
+          "name": "result_note",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "score_away": {
+          "name": "score_away",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
+        "score_home": {
+          "name": "score_home",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
         "section_id": {
           "name": "section_id",
           "type": "uuid",
@@ -2123,6 +2174,11 @@
           "name": "activities_occurrences_place_or_venue",
           "expression": "(place_id IS NOT NULL) <> (venue_name IS NOT NULL)",
           "definition": "check ((place_id IS NOT NULL) <> (venue_name IS NOT NULL))"
+        },
+        {
+          "name": "activities_occurrences_score_pair",
+          "expression": "(score_home IS NULL) = (score_away IS NULL) AND (score_home IS NULL OR score_home BETWEEN 0 AND 99) AND (score_away IS NULL OR score_away BETWEEN 0 AND 99)",
+          "definition": "check ((score_home IS NULL) = (score_away IS NULL) AND (score_home IS NULL OR score_home BETWEEN 0 AND 99) AND (score_away IS NULL OR score_away BETWEEN 0 AND 99))"
         },
         {
           "name": "activities_occurrences_venue_address_with_name",

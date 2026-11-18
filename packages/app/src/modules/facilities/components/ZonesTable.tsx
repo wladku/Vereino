@@ -1,7 +1,9 @@
 'use client'
 // `/backend/facilities/zones` (facilities spec B-26; REQ-013; #121): the weekly zone rules of the club's places — the
-// place, days, times, zone, priority, source and validity — with a place selector and the week preview of the chosen
-// place. Read with `facilities.view`; add, edit and delete for `facilities.manage`.
+// place, days, times, zone, priority, validity and source in the mockup's order (`screenZones`, facilities parity spec
+// REQ-R09; #281), the place linking to its calendar — with a place selector and the week preview of the chosen place.
+// Read with `facilities.view`; "Set booking availability" (the primary action, `AvailabilityDialog`), add, edit and
+// delete for `facilities.manage`.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,7 +21,8 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { ZONES, ZONE_SOURCES } from '../lib/zones'
-import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
+import { AvailabilityDialog, AvailabilitySaveSummary, type BulkResult } from './AvailabilityDialog'
+import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
 import { WeekZonePreview } from './WeekZonePreview'
 import {
   ZONES_HREF,
@@ -48,7 +51,9 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Zo
       header: t('facilities.fields.place'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="font-medium">{placeLabel(t, names, row.original.placeId)}</span>,
+      cell: ({ row }) => (
+        <PlaceCalendarLink placeId={row.original.placeId} label={placeLabel(t, names, row.original.placeId)} />
+      ),
     },
     {
       id: 'weekdays',
@@ -78,19 +83,19 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Zo
       meta: { priority: 3 },
     },
     {
+      id: 'validity',
+      header: t('facilities.columns.validity'),
+      enableSorting: false,
+      meta: { priority: 3 },
+      cell: ({ row }) => validityLabel(t, row.original.validFrom, row.original.validTo),
+    },
+    {
       accessorKey: 'source',
       header: t('facilities.zones.columns.source'),
       enableSorting: false,
       meta: { priority: 4 },
       cell: ({ row }) =>
         row.original.source ? t(`facilities.zones.source.${row.original.source}`) : t('facilities.common.empty'),
-    },
-    {
-      id: 'validity',
-      header: t('facilities.columns.validity'),
-      enableSorting: false,
-      meta: { priority: 3 },
-      cell: ({ row }) => validityLabel(t, row.original.validFrom, row.original.validTo),
     },
   ]
 }
@@ -115,6 +120,9 @@ export function ZonesTable() {
   const [placeId, setPlaceId] = React.useState(ALL_PLACES)
   const [filters, setFilters] = React.useState<FilterValues>({})
   const [page, setPage] = React.useState(1)
+  // A new key per opening starts the availability dialog fresh; 0 = closed.
+  const [availabilityKey, setAvailabilityKey] = React.useState(0)
+  const [saved, setSaved] = React.useState<BulkResult | null>(null)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
   const { data, isLoading, error } = useQuery({
@@ -171,9 +179,20 @@ export function ZonesTable() {
   }
 
   const createAction = manage ? (
-    <Button asChild>
-      <Link href={`${ZONES_HREF}/create`}>{t('facilities.zones.actions.create')}</Link>
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button
+        type="button"
+        data-testid="facilities-zones-availability"
+        onClick={() => {
+          setAvailabilityKey((current) => current + 1)
+        }}
+      >
+        {t('facilities.availability.open')}
+      </Button>
+      <Button asChild variant="outline">
+        <Link href={`${ZONES_HREF}/create`}>{t('facilities.zones.actions.create')}</Link>
+      </Button>
+    </div>
   ) : null
   const filtered = Object.keys(filterParams(filters)).length > 0
   const empty = !isLoading && !error && (data?.items.length ?? 0) === 0
@@ -181,6 +200,7 @@ export function ZonesTable() {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm">{t('facilities.zones.description')}</p>
+      {saved ? <AvailabilitySaveSummary result={saved} /> : null}
       <PlaceSelect
         options={places.options}
         status={places}
@@ -276,6 +296,22 @@ export function ZonesTable() {
       ) : (
         <p className="text-muted-foreground text-sm">{t('facilities.preview.choosePlace')}</p>
       )}
+      {manage && availabilityKey > 0 ? (
+        <AvailabilityDialog
+          key={availabilityKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setAvailabilityKey(0)
+          }}
+          places={places.options}
+          initialPlaceId={selectedPlace}
+          onSaved={async (result) => {
+            setSaved(result)
+            flash(t('facilities.availability.saved.title'), 'success')
+            await queryClient.invalidateQueries({ queryKey: [ZONE_RULES_KEY] })
+          }}
+        />
+      ) : null}
       {ConfirmDialogElement}
     </div>
   )

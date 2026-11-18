@@ -1,5 +1,11 @@
 import { describe, expect, it } from '@jest/globals'
-import { MEMBER_COMPOSER_KINDS, emailDeliverySummary, memberComposerKinds, wardThreadsOf } from '../member-inbox'
+import {
+  MEMBER_COMPOSER_KINDS,
+  composePreset,
+  emailDeliverySummary,
+  memberComposerKinds,
+  wardThreadsOf,
+} from '../member-inbox'
 
 describe('wardThreadsOf', () => {
   it('collects the distinct groups and their known sections, sorted', () => {
@@ -53,6 +59,30 @@ describe('emailDeliverySummary', () => {
       delivered: 3,
       notDelivered: 3,
       pending: 1,
+    })
+  })
+})
+
+describe('composePreset (E10-S07, REQ-A13)', () => {
+  const id = '0b5d6a4e-1c2f-4a3b-9d8e-7f6a5b4c3d2e'
+
+  it('reads a session, a group or a section preset', () => {
+    expect(composePreset(`occurrence:${id}`)).toEqual({ kind: 'occurrence', ids: [id] })
+    expect(composePreset(`group:${id.toUpperCase()}`)).toEqual({ kind: 'group', ids: [id] })
+    expect(composePreset(`section:${id}`)).toEqual({ kind: 'section', ids: [id] })
+  })
+
+  it('opens nothing for another kind, a malformed id or no value', () => {
+    expect(composePreset(`club:${id}`)).toBeNull()
+    expect(composePreset('occurrence:nope')).toBeNull()
+    expect(composePreset(null)).toBeNull()
+    expect(composePreset(undefined)).toBeNull()
+  })
+
+  it('reads the link the session page builds (`?compose=occurrence%3A<id>`)', () => {
+    expect(composePreset(new URLSearchParams(`compose=occurrence%3A${id}`).get('compose'))).toEqual({
+      kind: 'occurrence',
+      ids: [id],
     })
   })
 })

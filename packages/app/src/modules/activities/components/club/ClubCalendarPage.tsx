@@ -213,6 +213,7 @@ function Calendar({ profile }: { profile: ClubProfile }) {
           sections: t('activities.club.calendar.sections'),
           coach: t('activities.club.calendar.coach'),
           gathering: t('activities.gathering.label'),
+          map: t('activities.club.card.map'),
         }}
         Link={MemberLink}
         onAction={(itemId, actionId) => void onAction(itemId, actionId)}

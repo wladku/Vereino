@@ -405,6 +405,7 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
   maintenance_scheduled: 'facilities.places.errors.maintenance',
   booking_period_invalid: 'facilities.places.errors.period',
   booking_start_past: 'facilities.places.errors.past',
+  booking_too_old: 'facilities.errors.booking_too_old',
   booking_section_invalid: 'facilities.places.errors.section',
   scope_denied: 'facilities.places.errors.denied',
   scope_unlinked: 'facilities.places.errors.denied',

@@ -547,7 +547,7 @@
   "people.firstAdministrator.fields.user.help": "Użytkownik tej organizacji. Dostanie rolę administratora klubu i będzie logować się własnym kontem.",
   "people.firstAdministrator.user.placeholder": "Wybierz użytkownika",
   "people.firstAdministrator.user.search": "Szukaj po e-mailu lub nazwisku",
-  "people.firstAdministrator.user.empty": "Nie znaleziono użytkownika. Najpierw dodaj go na stronie Użytkownicy platformy.",
+  "people.firstAdministrator.user.empty": "Nie znaleziono użytkownika. Najpierw dodaj go na stronie „Użytkownicy” w Ustawienia › Autoryzacja.",
   "people.firstAdministrator.errors.userRequired": "Wybierz użytkownika.",
   "people.firstAdministrator.errors.load": "Nie udało się sprawdzić, czy klub ma administratora.",
   "people.firstAdministrator.flash.created": "Administrator klubu został ustanowiony.",

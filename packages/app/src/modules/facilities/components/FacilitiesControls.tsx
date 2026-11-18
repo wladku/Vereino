@@ -1,8 +1,10 @@
 'use client'
 // Small controls shared by the `facilities` backend pages (#121): the place selector above a list or the calendar, the
 // weekday chips (a `CrudForm` custom field and the availability dialog) and the empty state of a list, rendered
-// outside `DataTable` (lesson `empty-datatable-axe-at-375`).
+// outside `DataTable` (lesson `empty-datatable-axe-at-375`). The place cell of the B-26 tabs links to that place's
+// calendar (#281).
 import * as React from 'react'
+import Link from 'next/link'
 import type { CrudCustomFieldRenderProps, CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -10,7 +12,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS } from '@vereino/core'
-import type { PlaceOptionsStatus } from './facilities-client'
+import { placeCalendarHref, type PlaceOptionsStatus } from './facilities-client'
 
 /** The value of the "all places" entry (a Radix select item cannot have an empty value). */
 export const ALL_PLACES = 'all'
@@ -177,5 +179,22 @@ export function ListEmptyState({
         </div>
       ) : null}
     </section>
+  )
+}
+
+/** A table's place cell: the place's name, linking to its day on the calendar (B-26; #281). */
+export function PlaceCalendarLink({ placeId, label }: { placeId: string; label: string }) {
+  return (
+    <Link
+      className="font-medium underline-offset-4 hover:underline"
+      href={placeCalendarHref(placeId)}
+      data-testid="facilities-place-calendar-link"
+      onClick={(event) => {
+        // The rows open their edit form; the link opens the calendar instead.
+        event.stopPropagation()
+      }}
+    >
+      {label}
+    </Link>
   )
 }

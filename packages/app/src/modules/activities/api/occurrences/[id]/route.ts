@@ -29,8 +29,12 @@ import {
   conflictErrorSchema,
   errorSchema,
   occurrenceListItemSchema,
+  scoreSchema,
+  substitutionHistorySchema,
   updateResponseSchema,
 } from '../../shared'
+import { CHECK_OFF_KINDS, checkOffTarget } from '../../../commands/check-off'
+import { scoreView, showsScore } from '../../../lib/score'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['activities.view'] },
@@ -57,23 +61,12 @@ const detailSchema = occurrenceListItemSchema.extend({
   activityRecurring: z.boolean().describe('The session belongs to a weekly series (not a one-off activity).'),
   opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
   invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
-  substitutions: z
-    .array(
-      z.object({
-        id: z.uuid(),
-        kind: z.enum(['absence_reported', 'substitute_assigned', 'coach_restored']),
-        previousCoachPersonId: z.string().nullable(),
-        previousCoachName: z.string().nullable(),
-        newCoachPersonId: z.string().nullable(),
-        newCoachName: z.string().nullable(),
-        reason: z.string().nullable(),
-        decidedByPersonId: z.uuid(),
-        decidedByName: z.string().nullable(),
-        actingRole: z.string(),
-        createdAt: z.string(),
-      }),
-    )
-    .describe('The substitution history, oldest first (E06-S13); entries are never edited.'),
+  substitutions: substitutionHistorySchema,
+  isAway: z.boolean().describe('The activity is an away trip (the score lists the club’s team second in `away`).'),
+  score: scoreSchema,
+  mayScore: z
+    .boolean()
+    .describe('The caller may record the score: a started match or sparring and the grants that check off (REQ-A15).'),
   actingRole: z.string(),
   placeAddress: z.string().nullable().describe("The address of the session's place (#268), or null."),
   placeGeoLat: z.number().nullable(),
@@ -167,6 +160,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       opponentName: activityTeam?.opponentName ?? null,
       invitedTeamNames: activityTeam?.invitedTeamNames ?? [],
       substitutions,
+      isAway: activity?.isAway ?? false,
+      score: scoreView(row),
+      // The command's own checks: a started match or sparring, and a grant that checks off attendance on the session.
+      mayScore:
+        showsScore(activity?.type, { status: row.status, startAt: row.startAt.toISOString() }, new Date()) &&
+        findActingRole(grants, CHECK_OFF_KINDS, checkOffTarget(row)) !== null,
       actingRole,
       mayCancel: cancelRole !== null,
       mayRestore,

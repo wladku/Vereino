@@ -51,3 +51,16 @@ export function emailDeliverySummary(
   if (total === 0) return null
   return { delivered: counts.sent, notDelivered: counts.failed + counts.skipped, pending: counts.queued }
 }
+
+/**
+ * The composer a link opens preset (E10-S07 #272, groups and activities parity spec REQ-A13 "Message the group"):
+ * `?compose=occurrence:<id>` (a session) or `group:<id>` / `section:<id>` — a kind the member composer offers and a
+ * uuid. Anything else opens nothing; the composer still offers only what the author's grants allow.
+ */
+export function composePreset(value: string | null | undefined): { kind: AudienceKind; ids: string[] } | null {
+  const match = /^(section|group|occurrence):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(
+    value ?? '',
+  )
+  if (!match) return null
+  return { kind: match[1] as AudienceKind, ids: [match[2].toLowerCase()] }
+}

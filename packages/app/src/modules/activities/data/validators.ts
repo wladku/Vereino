@@ -18,6 +18,7 @@ import {
   POLICY_SCOPES,
   TIMEOUT_DEFAULTS,
 } from '../lib/policy'
+import { RESULT_NOTE_MAX, SCORE_MAX } from '../lib/score'
 
 const nameSchema = z.string().trim().min(1).max(200)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
@@ -196,6 +197,9 @@ export const occurrenceAssignCoachSchema = z
   })
   .strict()
 
+/** `activities.occurrences.take_over` (REQ-A14): the caller takes a session without a coach; nothing else is sent. */
+export const occurrenceTakeOverSchema = z.object({ id: z.uuid() }).strict()
+
 export const occurrenceListQuerySchema = z.object({
   ...listQueryBase,
   sortField: z.enum(['startAt', 'occurrenceDate', 'createdAt', 'updatedAt']).optional(),
@@ -350,3 +354,24 @@ export const calendarItemQuerySchema = z.object({
   as: z.enum(CALENDAR_ITEM_PERSPECTIVES),
   personId: z.uuid().optional(),
 })
+
+/** The job `activities.occurrences.warn_unassigned` (REQ-A14): `now` replays a run as of another instant. */
+export const warnUnassignedSchema = z.object({ now: instantSchema.optional() }).strict()
+
+/**
+ * `activities.occurrences.record_score` (REQ-A15): both sides' scores 0–99, or both null to clear the score, and an
+ * optional note of up to 500 characters.
+ */
+export const occurrenceScoreBodySchema = z.object({
+  scoreHome: z.number().int().min(0).max(SCORE_MAX).nullable(),
+  scoreAway: z.number().int().min(0).max(SCORE_MAX).nullable(),
+  note: z.string().max(RESULT_NOTE_MAX).nullable().optional(),
+})
+
+export const occurrenceScoreSchema = occurrenceScoreBodySchema
+  .extend({ id: z.uuid() })
+  .strict()
+  .refine((value) => (value.scoreHome === null) === (value.scoreAway === null), {
+    message: 'Send both scores, or neither to clear the score',
+    path: ['scoreAway'],
+  })

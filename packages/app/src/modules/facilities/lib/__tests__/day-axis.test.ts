@@ -9,6 +9,7 @@ import {
   bookableWindowsByDay,
   chipDates,
   freeOpenHours,
+  hourInPast,
   isClosedDay,
   layoutLanes,
   maxLanes,
@@ -103,6 +104,15 @@ describe('isClosedDay', () => {
   })
 })
 
+describe('hourInPast', () => {
+  it('is true on a past day and before now on today', () => {
+    expect(hourInPast('2026-11-15', at('20:00'), '2026-11-16', at('10:00'))).toBe(true)
+    expect(hourInPast('2026-11-16', at('09:00'), '2026-11-16', at('10:00'))).toBe(true)
+    expect(hourInPast('2026-11-16', at('10:00'), '2026-11-16', at('10:00'))).toBe(false)
+    expect(hourInPast('2026-11-17', at('08:00'), '2026-11-16', at('10:00'))).toBe(false)
+  })
+})
+
 describe('freeOpenHours', () => {
   const base: FreeHoursInput = {
     bounds: { from: at('08:00'), to: at('14:00') },
@@ -126,6 +136,18 @@ describe('freeOpenHours', () => {
   it('offers no hour on a past day or a closed day', () => {
     expect(freeOpenHours({ ...base, date: '2026-11-15' })).toEqual([])
     expect(freeOpenHours({ ...base, opening: [] })).toEqual([])
+  })
+
+  it('offers the past hours from the earliest day of a past club booking (DD-R17)', () => {
+    expect(freeOpenHours({ ...base, date: '2026-11-15', pastFrom: '2026-08-16' })).toEqual([at('09:00'), at('11:00')])
+    expect(freeOpenHours({ ...base, date: '2026-08-16', pastFrom: '2026-08-16' })).toEqual([at('09:00'), at('11:00')])
+    expect(freeOpenHours({ ...base, date: '2026-08-15', pastFrom: '2026-08-16' })).toEqual([])
+    expect(freeOpenHours({ ...base, date: '2026-11-15', pastFrom: null })).toEqual([])
+    expect(freeOpenHours({ ...base, date: '2026-11-16', nowMinutes: at('12:00'), pastFrom: '2026-08-16' })).toEqual([
+      at('09:00'),
+      at('11:00'),
+    ])
+    expect(freeOpenHours({ ...base, date: '2026-11-15', opening: [], pastFrom: '2026-08-16' })).toEqual([])
   })
 
   it('treats a day without opening hours as open, other zones as no obstacle', () => {
