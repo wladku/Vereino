@@ -1,7 +1,7 @@
 # Run: issue #273 — a section coordinator assigns a substitute, moves and cancels sessions from the phone
 
 - **Trigger:** cezar `om-auto-fix-issue 273` (the `cezar` label added to the issue on 2026-11-18).
-- **Issue / spec / branch:** #273 (E10-S08) / `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md` phase 8 (REQ-A10, TEST-A16, AC-A12) / `feat/issue-273-section-coordinator-substitutes`
+- **Issue / spec / branch:** #273 (E10-S08) / `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md` phase 8 (REQ-A10, TEST-A16, AC-A12) / `feat/issue-273-section-coordinator-substitutes`
 - **Date:** 2026-11-18
 
 ## Goal

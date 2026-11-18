@@ -16,7 +16,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
-import { Tabs, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { CLUB_GROUPS_HREF, MemberSkeleton, useClubToday } from '@vereino/ui'
@@ -301,8 +301,10 @@ function Roster({ group }: { group: GroupDetail }) {
             </TabsTrigger>
           ))}
         </TabsList>
+        <TabsContent value={view} className="flex flex-col gap-2">
+          {body}
+        </TabsContent>
       </Tabs>
-      {body}
       {sheet?.kind === 'add' || sheet?.kind === 'edit' ? (
         <MembershipDialog
           open
