@@ -1,22 +1,76 @@
 'use client'
 // `/backend/payments/settings` — the "Coaches and payments" tab of B-20 (UX concept README B-20, flow F-07
 // administrator path; payments spec R07, DD-32; issue #108): whether coaches see membership fees and may take cash for
-// them — fees and orders with cash (default), fees view-only, or orders only. `CrudForm` sends the lock token from
+// them — fees and orders with cash (default), fees view-only, or orders only. The "Online payment" group (#302,
+// REQ-C14, DD-C11, Q-C01) shows whether Stripe is connected and in which mode, the offered methods as checkboxes (a
+// non-empty subset) and the online fee mode read-only with a link to club settings B-02. `CrudForm` sends the lock token from
 // `initialValues.updatedAt` (null until the first save creates the row).
 import * as React from 'react'
+import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
+import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { ONLINE_METHODS, type OnlineConnection } from '../lib/online-payment'
 import { COACH_FEE_ACCESS } from '../lib/payments-rules'
 import { PaymentsNav } from './PaymentsNav'
 import { errorMessage } from './client-helpers'
 
 const SETTINGS_API = '/api/payments/settings'
+/** Club settings B-02, where the online fee is set (Q-C01). */
+const CLUB_SETTINGS_HREF = '/backend/club/settings'
 
-type SettingsResponse = { coachFeeAccess: string; autoBookBankMatches: boolean; updatedAt: string | null }
+type SettingsResponse = {
+  coachFeeAccess: string
+  autoBookBankMatches: boolean
+  onlineMethods: string[]
+  onlineConnection: OnlineConnection
+  onlineFeeMode: 'club_pays' | 'payer_pays' | null
+  updatedAt: string | null
+}
+
+const CONNECTION_VARIANTS: Record<OnlineConnection, 'success' | 'warning' | 'error' | 'neutral'> = {
+  connected_live: 'success',
+  connected_test: 'warning',
+  not_connected: 'error',
+  unknown: 'neutral',
+}
+
+const methodField = (method: string) => `method_${method}`
+
+function OnlinePaymentFacts({ settings }: { settings: SettingsResponse }) {
+  const t = useT()
+  return (
+    <dl className="space-y-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <dt className="text-muted-foreground">{t('payments.settings.online.connection')}</dt>
+        <dd data-testid="payments-online-connection" data-connection={settings.onlineConnection}>
+          <StatusBadge variant={CONNECTION_VARIANTS[settings.onlineConnection]} dot>
+            {t(`payments.settings.online.connection.${settings.onlineConnection}`)}
+          </StatusBadge>
+        </dd>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <dt className="text-muted-foreground">{t('payments.settings.online.feeMode')}</dt>
+        <dd data-testid="payments-online-fee-mode">
+          {settings.onlineFeeMode
+            ? t(`payments.settings.online.feeMode.${settings.onlineFeeMode}`)
+            : t('payments.settings.online.feeMode.unknown')}
+        </dd>
+        <dd>
+          <Link className="text-primary underline underline-offset-2" href={CLUB_SETTINGS_HREF}>
+            {t('payments.settings.online.feeMode.link')}
+          </Link>
+        </dd>
+      </div>
+      <p className="text-muted-foreground text-xs">{t('payments.settings.online.keysHint')}</p>
+    </dl>
+  )
+}
 
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
@@ -41,12 +95,27 @@ export function PaymentsSettingsForm() {
         })),
         description: t('payments.settings.fields.coachFeeAccess.help'),
       },
+      ...ONLINE_METHODS.map((method): CrudField => ({
+        id: methodField(method),
+        label: t(`payments.settings.online.method.${method}`),
+        type: 'checkbox',
+      })),
     ],
     [t],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
-    () => [{ id: 'coaches', title: t('payments.settings.groups.coaches'), column: 1, fields: ['coachFeeAccess'] }],
-    [t],
+    () => [
+      { id: 'coaches', title: t('payments.settings.groups.coaches'), column: 1, fields: ['coachFeeAccess'] },
+      {
+        id: 'online',
+        title: t('payments.settings.groups.online'),
+        description: t('payments.settings.online.methodsHelp'),
+        column: 1,
+        fields: ONLINE_METHODS.map(methodField),
+        component: () => (settings ? <OnlinePaymentFacts settings={settings} /> : null),
+      },
+    ],
+    [t, settings],
   )
 
   let content: React.ReactNode
@@ -60,15 +129,26 @@ export function PaymentsSettingsForm() {
         titleHeadingLevel={1}
         fields={fields}
         groups={groups}
-        initialValues={{ coachFeeAccess: settings.coachFeeAccess, updatedAt: settings.updatedAt }}
+        initialValues={{
+          coachFeeAccess: settings.coachFeeAccess,
+          ...Object.fromEntries(
+            ONLINE_METHODS.map((method) => [methodField(method), settings.onlineMethods.includes(method)]),
+          ),
+          updatedAt: settings.updatedAt,
+        }}
         submitLabel={t('payments.common.save')}
         onSubmit={async (values) => {
+          const onlineMethods = ONLINE_METHODS.filter((method) => values[methodField(method)] === true)
+          if (onlineMethods.length === 0) {
+            const message = t('payments.errors.online_methods_invalid')
+            throw createCrudFormError(message, { [methodField(ONLINE_METHODS[0])]: message })
+          }
           await apiCallOrThrow(
             SETTINGS_API,
             {
               method: 'PUT',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ coachFeeAccess: values.coachFeeAccess }),
+              body: JSON.stringify({ coachFeeAccess: values.coachFeeAccess, onlineMethods }),
             },
             { errorMessage: t('payments.settings.errors.save') },
           )

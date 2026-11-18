@@ -8,7 +8,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
-import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call } from './club'
+import { setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call, type Club } from './club'
 
 export type CodedBody = { error?: string; code?: string }
 
@@ -192,7 +193,11 @@ export type Quote = CodedBody & { amount?: number; feeAmount?: number; total?: n
 export type StartedCheckout = Quote & {
   checkoutId?: string
   providerKey?: string
-  clientSession?: { type: string; rendererKey?: string; payload?: { sessionId?: string } } | null
+  clientSession?: {
+    type: string
+    rendererKey?: string
+    payload?: { sessionId?: string; paymentTypes?: string[] }
+  } | null
 }
 
 export type RefreshedCheckout = CodedBody & {
@@ -547,4 +552,52 @@ export async function bankImports(request: APIRequestContext, token: string) {
     '/api/payments/bank-imports',
     token,
   )
+}
+
+/** The settings read of B-20 "Coaches and payments" (#302): the offered methods and the read-only connection facts. */
+export type PaymentsSettingsBody = CodedBody & {
+  coachFeeAccess?: string
+  autoBookBankMatches?: boolean
+  onlineMethods?: string[]
+  onlineConnection?: string
+  onlineFeeMode?: string | null
+  updatedAt?: string | null
+}
+
+/**
+ * Plays the technical administrator of DD-C11 (#302): grants the club's platform role the two integration features,
+ * stores Stripe credentials with the given publishable key on the platform integration route and enables it. The
+ * keys are fakes: nothing calls Stripe.
+ */
+export async function connectStripe(
+  request: APIRequestContext,
+  club: Club,
+  publishableKey: string,
+  adminToken = club.adminToken,
+) {
+  await setRoleAclFeatures(request, club.superToken, {
+    roleId: club.tenant.roleId,
+    features: [
+      'audit_logs.view_self',
+      'audit_logs.undo_self',
+      'integrations.manage',
+      'integrations.credentials.manage',
+    ],
+  })
+  const route = '/api/integrations/gateway_stripe'
+  const current = await call<{ updatedAt?: string | null }>(request, 'GET', `${route}/credentials`, adminToken)
+  expect(current.status, JSON.stringify(current.body)).toBe(200)
+  const saved = await call(request, 'PUT', `${route}/credentials`, adminToken, {
+    data: {
+      credentials: {
+        publishableKey,
+        secretKey: publishableKey.replace('pk_', 'sk_'),
+        webhookSecret: 'whsec_vereino_test',
+      },
+    },
+    headers: current.body?.updatedAt ? { [OPTIMISTIC_LOCK_HEADER]: current.body.updatedAt } : {},
+  })
+  expect(saved.status, JSON.stringify(saved.body)).toBe(200)
+  const enabled = await call(request, 'PUT', `${route}/state`, adminToken, { data: { isEnabled: true } })
+  expect(enabled.status, JSON.stringify(enabled.body)).toBe(200)
 }

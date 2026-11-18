@@ -426,13 +426,17 @@ export class ChargeGeneration extends ScopedEntityBase {
 @Unique({ name: 'payments_settings_organization_unique', properties: ['organizationId'] })
 @Index({ name: 'payments_settings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class PaymentsSettings extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'autoBookBankMatches' | 'coachFeeAccess'
+  [OptionalProps]?: ScopedEntityOptionalProps | 'autoBookBankMatches' | 'coachFeeAccess' | 'onlineMethods'
 
   @Property({ name: 'auto_book_bank_matches', type: 'boolean', default: true })
   autoBookBankMatches: boolean = true
 
   @Property({ name: 'coach_fee_access', type: 'text', default: 'collect' })
   coachFeeAccess: CoachFeeAccess = 'collect'
+
+  /** The online methods offered to payers (REQ-C14, migration C): a non-empty subset of `card`, `blik`, `p24`. */
+  @Property({ name: 'online_methods', type: 'text[]', defaultRaw: "'{card}'" })
+  onlineMethods: string[] = ['card']
 }
 
 /**

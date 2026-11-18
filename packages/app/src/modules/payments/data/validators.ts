@@ -328,6 +328,13 @@ export const paymentsSettingsUpdateSchema = z
   .object({
     coachFeeAccess: z.enum(COACH_FEE_ACCESS).optional(),
     autoBookBankMatches: z.boolean().optional(),
+    onlineMethods: z
+      .array(z.string())
+      .max(10)
+      .optional()
+      .describe(
+        'The offered online methods: a non-empty subset of `card`, `blik`, `p24` (422 `online_methods_invalid`)',
+      ),
   })
   .strict()
 
