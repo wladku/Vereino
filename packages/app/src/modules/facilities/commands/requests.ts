@@ -9,7 +9,8 @@
 //   only as the delivery's secret (DD-44). A filled honeypot field is refused before anything is read;
 // - `facilities.rentals.verify_request` (no session): the token is looked up once by its hash (DD-35), the occupancy
 //   lock taken, the link spent and the slot re-checked; the request holds its slot for 48 h (`pending_approval`) and
-//   carries the entry-ban name hint for the administrator. A 409 rolls the redemption back with it;
+//   carries the entry-ban name hint for the administrator. A 409 rolls the redemption back with it and names the
+//   place's public slug (`placeSlug`, the way back to its calendar; #289);
 // - `facilities.rentals.approve` / `reject` (B-25, `facilities.rentals.approve`): approval names the renter (an
 //   institution or a person of the club, or a new institution created in the same transaction), re-checks the slot
 //   with that renter (an active entry ban answers 409), stores the amount (a changed amount needs a note) and the
@@ -36,6 +37,7 @@ import { chargeService, rentalChargeInput } from '../services/charges'
 import { clubRequestSettings, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
 import { placeFamilyIds } from '../services/occupancy'
 import { requestPlace } from '../services/public-schedule'
+import { publicPlaceSlug } from '../services/request-queue'
 import { enqueueVerificationMail, publishDispatch, requestLinks, requestLocale } from '../services/requests'
 import { assessRentalSlot, type RentalIssue } from '../services/rental-slot'
 import { RENTAL_RESOURCE_KIND, rentalSnapshot, type RentalCommandResult } from './rentals'
@@ -79,14 +81,27 @@ async function throwRequestIssue(issues: readonly RentalIssue[]): Promise<void> 
   }
 }
 
+type HoldWindow = { placeId: string; start: Date; end: Date; ignoreId: string | null }
+
 /** 409 `slot_unavailable` when another confirmed request holds an overlapping slot on the place family. */
 async function assertNoHold(
   ctx: CommandRuntimeContext,
   em: EntityManager,
   scope: FacilitiesScope,
-  input: { placeId: string; start: Date; end: Date; ignoreId: string | null },
+  input: HoldWindow,
   now: Date,
 ): Promise<void> {
+  if (await heldByAnother(ctx, em, scope, input, now)) await facilitiesErrors.throw('slot_unavailable')
+}
+
+/** Whether another confirmed request holds an overlapping slot on the place family. */
+async function heldByAnother(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: FacilitiesScope,
+  input: HoldWindow,
+  now: Date,
+): Promise<boolean> {
   const placeIds = await placeFamilyIds(ctx.container, scope, input.placeId, em)
   const rows = await em.find(
     Rental,
@@ -113,7 +128,7 @@ async function assertNoHold(
     now,
     input.ignoreId,
   )
-  if (holds.length > 0) await facilitiesErrors.throw('slot_unavailable')
+  return holds.length > 0
 }
 
 /** The names of the renters banned from the place family on the slot's date (the B-25 hint). */
@@ -287,15 +302,21 @@ const verifyRequestCommand: CommandHandler<Record<string, unknown>, VerifyReques
         },
         now,
       )
-      const taken = assessment.issues.some((issue) => issue.code !== 'rental_rate_missing')
-      if (taken) await facilitiesErrors.throw('slot_unavailable')
-      await assertNoHold(
-        ctx,
-        em,
-        scope,
-        { placeId: row.placeId, start: row.startsAt, end: row.endsAt, ignoreId: row.id },
-        now,
-      )
+      const taken =
+        assessment.issues.some((issue) => issue.code !== 'rental_rate_missing') ||
+        (await heldByAnother(
+          ctx,
+          em,
+          scope,
+          { placeId: row.placeId, start: row.startsAt, end: row.endsAt, ignoreId: row.id },
+          now,
+        ))
+      // The way back to the place's calendar (P-05 "Back to the calendar", #289); null while it has no public calendar.
+      if (taken) {
+        await facilitiesErrors.throw('slot_unavailable', {
+          placeSlug: await publicPlaceSlug(ctx.container, scope, row.placeId),
+        })
+      }
       const settings = await clubRequestSettings(ctx.container, scope)
       const banned = await bannedNames(ctx, em, scope, row.placeId, calendarDateInZone(row.startsAt, settings.timeZone))
       row.status = 'pending_approval'

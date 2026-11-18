@@ -13,6 +13,7 @@ import {
   notOkResponse,
   publicClubSchema,
   publicErrorSchema,
+  publicNotOkSchema,
   publicPlaceCardSchema,
   publicRoute,
   routeParam,
@@ -31,7 +32,11 @@ export async function GET(_request: Request, context: PublicRouteContext): Promi
   })
 }
 
-const placesSchema = z.object({ club: publicClubSchema, places: z.array(publicPlaceCardSchema) })
+const placesSchema = z.object({
+  club: publicClubSchema,
+  onlineRequests: z.boolean().describe("The club's booking mode: whether it publishes its `online_requests` block"),
+  places: z.array(publicPlaceCardSchema),
+})
 
 export const openApi: OpenApiRouteDoc = {
   tag: 'Facilities',
@@ -40,13 +45,13 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the facilities of a club with a public calendar',
       description:
-        'Sessionless (REQ-014). Active places marked "public schedule", by name; no personal data. Rate-limited per client IP; `Cache-Control: public, s-maxage=60`.',
+        'Sessionless (REQ-014). Active places marked "public schedule", by name, and the club booking mode; no personal data. A 404 carries the club public header while the club publishes its page. Rate-limited per client IP; `Cache-Control: public, s-maxage=60`.',
       responses: [{ status: 200, description: 'The places', schema: placesSchema }],
       errors: [
         {
           status: 404,
           description: '`public_place_not_found` (unknown club), `public_places_disabled` (no places calendar)',
-          schema: publicErrorSchema,
+          schema: publicNotOkSchema,
         },
         { status: 429, description: 'Too many requests', schema: publicErrorSchema },
       ],
