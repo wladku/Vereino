@@ -6,7 +6,7 @@
 //   bookings whose end has passed, `done` rentals — never stored, so a corrected or cancelled entry changes the count;
 // - the daily reminders: 14 days and 1 day before a due date, and once the usage threshold is reached, in-app to the
 //   place's maintainers and the club administrators through the foundation `dispatch`, whose idempotency key is the
-//   "sent" marker (DD-46).
+//   "sent" marker (DD-46); the maintainers' copy links to their phone page (REQ-R15; #283).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { createLogger } from '@open-mercato/shared/lib/logger'
@@ -14,10 +14,11 @@ import { calendarDateInZone, type Recipient } from '@vereino/core'
 import type { DispatchService } from '@/modules/foundation'
 import type { MaintainerScopeProvider } from '../../people/services/maintainer-scope'
 import { InternalBooking, MaintenanceTask, PlaceMaintainer, Rental } from '../data/entities'
-import { MAINTENANCE_DUE_TEMPLATE } from '../emails/templates'
+import { MAINTENANCE_DUE_PLANNER_TEMPLATE, MAINTENANCE_DUE_TEMPLATE } from '../emails/templates'
 import {
   dateReminderKey,
   dateReminderStage,
+  plannerReminderKey,
   usageReminderKey,
   usedHours,
   type DateReminderStage,
@@ -117,9 +118,12 @@ export type MaintenanceReminderCounts = { sent: number; skipped: number; failed:
 
 type Reminder = { task: MaintenanceTask; key: string; stage: DateReminderStage | 'usage'; hours: number | null }
 
+type ReminderRecipients = { admins: Recipient[]; planners: Recipient[] }
+
 /**
- * The people a reminder of a task goes to: the maintainers of its place and the club administrators on `today`, those
- * with an account, as in-app recipients.
+ * The people a reminder of a task goes to, those with an account, as in-app recipients: the club administrators on
+ * `today`, whose notice links to the panel's Maintenance tab, and the maintainers of its place who are not among them,
+ * whose notice links to `/club/places/maintenance` (REQ-R15; #283).
  */
 async function reminderRecipients(
   container: AwilixContainer,
@@ -127,30 +131,33 @@ async function reminderRecipients(
   scope: FacilitiesScope,
   placeId: string,
   today: string,
-): Promise<Recipient[]> {
+): Promise<ReminderRecipients> {
   const maintainers = await em.find(
     PlaceMaintainer,
     { ...scope, placeId, deletedAt: null },
     { fields: ['id', 'personId'] },
   )
-  const admins = await clubAdminPersonIds(container, scope, today, em)
-  const personIds = [...new Set([...maintainers.map((row) => row.personId), ...admins])]
-  const users = await userIdsOf(container, scope, personIds, em)
-  return personIds.flatMap((personId) => {
-    const userId = users.get(personId)
-    return userId
-      ? [{ personId, userId, email: null, locale: 'en', reasons: ['direct' as const], channels: ['in_app' as const] }]
-      : []
-  })
+  const admins = [...new Set(await clubAdminPersonIds(container, scope, today, em))]
+  const planners = [...new Set(maintainers.map((row) => row.personId))].filter((id) => !admins.includes(id))
+  const users = await userIdsOf(container, scope, [...admins, ...planners], em)
+  const inApp = (personIds: string[]): Recipient[] =>
+    personIds.flatMap((personId) => {
+      const userId = users.get(personId)
+      return userId
+        ? [{ personId, userId, email: null, locale: 'en', reasons: ['direct' as const], channels: ['in_app' as const] }]
+        : []
+    })
+  return { admins: inApp(admins), planners: inApp(planners) }
 }
 
-/** Enqueues one reminder and publishes it; false when its key was used before (sent already). */
+/** Enqueues one copy of a reminder and publishes it; false when its key was used before (sent already). */
 async function sendReminder(
   container: AwilixContainer,
   scope: FacilitiesScope,
   reminder: Reminder,
   placeName: string,
   recipients: readonly Recipient[],
+  copy: { template: string; key: string },
 ): Promise<boolean> {
   const dispatch = container.resolve<DispatchService>(FOUNDATION_DISPATCH)
   const em = container.resolve<EntityManager>('em').fork()
@@ -158,7 +165,7 @@ async function sendReminder(
     dispatch.enqueue(
       tx,
       {
-        template: MAINTENANCE_DUE_TEMPLATE,
+        template: copy.template,
         params: {
           taskId: reminder.task.id,
           placeName,
@@ -169,7 +176,7 @@ async function sendReminder(
         },
         recipients,
         source: { module: 'facilities', type: 'facilities:maintenance_task', id: reminder.task.id },
-        idempotencyKey: reminder.key,
+        idempotencyKey: copy.key,
         actor: { userId: null, actingRole: 'system' },
       },
       { ...scope, scope: [{ kind: 'system_job' }], em: tx },
@@ -225,10 +232,21 @@ export async function sendMaintenanceReminders(
       }
       if (reminders.length === 0) continue
       const recipients = await reminderRecipients(container, em, scope, task.placeId, today)
+      const placeName = places.get(task.placeId)?.name ?? ''
       for (const reminder of reminders) {
-        if (await sendReminder(container, scope, reminder, places.get(task.placeId)?.name ?? '', recipients)) {
-          counts.sent += 1
-        } else counts.skipped += 1
+        // The administrators' copy keeps the reminder's key; the maintainers' copy goes only when there are any.
+        const sentToAdmins = await sendReminder(container, scope, reminder, placeName, recipients.admins, {
+          template: MAINTENANCE_DUE_TEMPLATE,
+          key: reminder.key,
+        })
+        const sentToPlanners =
+          recipients.planners.length > 0 &&
+          (await sendReminder(container, scope, reminder, placeName, recipients.planners, {
+            template: MAINTENANCE_DUE_PLANNER_TEMPLATE,
+            key: plannerReminderKey(reminder.key),
+          }))
+        if (sentToAdmins || sentToPlanners) counts.sent += 1
+        else counts.skipped += 1
       }
     } catch (error: unknown) {
       counts.failed += 1
