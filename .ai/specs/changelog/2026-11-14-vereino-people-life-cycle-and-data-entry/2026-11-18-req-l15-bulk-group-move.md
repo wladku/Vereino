@@ -1,0 +1,1 @@
+| 2026-11-18 | REQ-L15 (owner request): move one or several children from a roster to another group in one previewed, undoable step, with the age-fit filter; the roster's "Move" action is now this spec's (spec A's REQ-A03 offers none); DD-L16, J-L09, TEST-L21/L22, AC-L15, phase L11, Ask First item 14 (the route, to be confirmed), Q-L22…Q-L24 |
