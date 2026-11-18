@@ -293,10 +293,16 @@ export async function confirmRental(request: APIRequestContext, adminToken: stri
       adminToken,
     )
     expect(charge.status, JSON.stringify(charge.body)).toBe(200)
-    const paid = await call<CodedError>(request, 'POST', `/api/payments/charges/${rental.chargeId}/payments`, adminToken, {
-      data: { amount: charge.body?.remaining, method: 'transfer', paidOn: calendarDate() },
-      headers: { [OPTIMISTIC_LOCK_HEADER]: String(charge.body?.updatedAt) },
-    })
+    const paid = await call<CodedError>(
+      request,
+      'POST',
+      `/api/payments/charges/${rental.chargeId}/payments`,
+      adminToken,
+      {
+        data: { amount: charge.body?.remaining, method: 'transfer', paidOn: calendarDate() },
+        headers: { [OPTIMISTIC_LOCK_HEADER]: String(charge.body?.updatedAt) },
+      },
+    )
     expect(paid.status, JSON.stringify(paid.body)).toBe(201)
     await expect
       .poll(async () => (await getRental(request, adminToken, id)).status, { timeout: 60_000 })
@@ -534,12 +540,10 @@ export function runChargeProbe(club: Club, input: Record<string, unknown>): Char
         timeout: 300_000,
       },
     )
-    const last = run.stdout.trimEnd().split(/?
-/).pop() ?? ''
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
     if (run.status !== 0 || !last.startsWith('{')) {
       throw new Error(
-        `[internal] the facilities charge probe exited ${String(run.status)}: ${run.stderr}
-${run.stdout.slice(-4000)}`,
+        `[internal] the facilities charge probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
       )
     }
     return JSON.parse(last) as ChargeProbeResult

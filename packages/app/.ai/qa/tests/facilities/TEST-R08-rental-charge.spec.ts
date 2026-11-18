@@ -86,13 +86,23 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
     const today = calendarDate()
     const owner = await create(request, admin, 'institutions', { name: 'Gmina Przykładowo', type: 'municipality' })
     const place = await getOne(request, admin, 'places', setup.pitch)
-    const owned = await update(request, admin, 'places', { id: setup.pitch, ownerInstitutionId: owner }, place?.updatedAt)
+    const owned = await update(
+      request,
+      admin,
+      'places',
+      { id: setup.pitch, ownerInstitutionId: owner },
+      place?.updatedAt,
+    )
     expect(owned.status, JSON.stringify(owned.body)).toBe(200)
     const tuesday = nextWeekday(addDays(today, 7), 'TU')
     const wednesday = addDays(tuesday, 1)
 
     // --- Entry: a registered and an unregistered renter ---
-    const registered = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, zoneInstant(tuesday, '08:00')))
+    const registered = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.neighbours, zoneInstant(tuesday, '08:00')),
+    )
     expect(registered.status, JSON.stringify(registered.body)).toBe(201)
     const registeredId = String(registered.body?.id)
     const registeredCharge = String(registered.body?.chargeId)
@@ -187,7 +197,9 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
 
     // --- Move: a rental with a charge keeps its deadline (the charge's due date); one without gets a new one ---
     const beforeMove = await getRental(request, admin, requestId)
-    const movedCharged = await rentalAction(request, admin, requestId, 'move', { startsAt: zoneInstant(wednesday, '08:00') })
+    const movedCharged = await rentalAction(request, admin, requestId, 'move', {
+      startsAt: zoneInstant(wednesday, '08:00'),
+    })
     expect(movedCharged.status, JSON.stringify(movedCharged.body)).toBe(200)
     const afterMove = await getRental(request, admin, requestId)
     expect(afterMove).toMatchObject({ amount: beforeMove.amount, paymentDeadline: beforeMove.paymentDeadline })
@@ -212,7 +224,11 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
     expect((await getCharge(request, admin, String(soon.body?.chargeId))).status).toBe('forfeited')
 
     // --- Owner report: the owner, and the source of the payments figure ---
-    const partly = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, zoneInstant(tuesday, '13:00')))
+    const partly = await postRental(
+      request,
+      admin,
+      phoneRental(setup.pitch, setup.neighbours, zoneInstant(tuesday, '13:00')),
+    )
     expect(partly.status, JSON.stringify(partly.body)).toBe(201)
     await pay(request, admin, String(partly.body?.chargeId), 5_000)
     await expect
@@ -226,7 +242,12 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
       payments: { amount: 25_000, count: 1, source: 'charges', partiallyPaidCount: 1 },
     })
     const register = await ownerReport(request, admin, setup.pitch, addDays(thursday, 1), addDays(thursday, 1))
-    expect(register.body?.payments).toEqual({ amount: 25_000, count: 1, source: 'rental_register', partiallyPaidCount: 0 })
+    expect(register.body?.payments).toEqual({
+      amount: 25_000,
+      count: 1,
+      source: 'rental_register',
+      partiallyPaidCount: 0,
+    })
     const mixed = await ownerReport(request, admin, setup.pitch, tuesday, addDays(thursday, 1))
     expect(mixed.body?.payments).toEqual({ amount: 50_000, count: 2, source: 'mixed', partiallyPaidCount: 1 })
 
