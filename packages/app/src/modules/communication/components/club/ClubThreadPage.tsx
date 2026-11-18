@@ -8,7 +8,8 @@
 // never on a case). The section coordinator's phone actions (groups and activities parity spec REQ-A12, D-031 §3,
 // Q-A26; #274), behind `communication.cases.manage` and the thread's own flags: "Mark as case" (confirmed, it cannot be
 // undone) and "Delete" under each message they may delete while the thread is not a case — the message then reads
-// "deleted". A refusal (409 `case_immutable` when the thread became a case meanwhile) is shown in the page as text.
+// "deleted". A refused delete (409 `case_immutable` when the thread became a case meanwhile) is shown in the page as
+// text until the next action.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -80,7 +81,15 @@ function Thread({ id }: { id: string }) {
     subjectRef.current?.focus()
   }, [])
   const deletion = useDeleteMessage(thread, refresh, focusSubject, setRefusal)
-  const editMessage = useEditMessage(thread, refresh)
+  const saveEdit = useEditMessage(thread, refresh)
+  // Any next action clears a delete refusal, so a stale alert never sits over a later result.
+  const editMessage = React.useCallback(
+    (message: ThreadMessageItem, body: string) => {
+      setRefusal(null)
+      return saveEdit(message, body)
+    },
+    [saveEdit],
+  )
 
   const back = (
     <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
@@ -164,7 +173,10 @@ function Thread({ id }: { id: string }) {
             variant="outline"
             className="min-h-11"
             disabled={marking}
-            onClick={() => void markCase()}
+            onClick={() => {
+              setRefusal(null)
+              void markCase()
+            }}
             data-testid="club-thread-mark-case"
           >
             {t('communication.cases.actions.mark')}
@@ -178,12 +190,7 @@ function Thread({ id }: { id: string }) {
       ) : null}
       {thread.isCase ? <CaseBanner thread={thread} /> : null}
       {thread.staff ? <ShareTextPanel thread={thread} /> : null}
-      <MessageList
-        messages={thread.messages}
-        renderFooter={footer}
-        isCase={thread.isCase}
-        onEdit={editMessage}
-      />
+      <MessageList messages={thread.messages} renderFooter={footer} isCase={thread.isCase} onEdit={editMessage} />
       <ReplyBox
         pending={pending}
         hint={thread.staff ? null : t('communication.reply.memberHint')}
