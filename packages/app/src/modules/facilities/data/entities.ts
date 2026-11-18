@@ -1,6 +1,11 @@
 import { ArrayType, OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
-import { ScopedEntityBase, decorateScopedEntityBase, type ScopedEntityOptionalProps } from '@vereino/db'
+import {
+  ScopedEntityBase,
+  decorateScopedEntityBase,
+  tokenLinkColumns,
+  type ScopedEntityOptionalProps,
+} from '@vereino/db'
 import type { ClosureReason } from '../lib/closures'
 import type { IncidentAction, IncidentKind } from '../lib/incidents'
 import type { InternalBookingStatus } from '../lib/internal-bookings'
@@ -12,6 +17,7 @@ import type {
 } from '../lib/maintenance'
 import type { GroupPresent } from '../lib/logs'
 import type { RenterCategory } from '../lib/rates'
+import type { RentalLinkPurpose } from '../lib/rental-links'
 import type { EntryBanSubjectType, RenterType, RentalStatus, RequestedVia } from '../lib/rentals'
 import type { Zone, ZoneSource } from '../lib/zones'
 
@@ -612,4 +618,40 @@ export class PlaceMaintainer extends ScopedEntityBase {
 
   @Property({ name: 'assigned_at', type: Date })
   assignedAt!: Date
+}
+
+const rentalLinkColumns = tokenLinkColumns({ use: 'single' })
+
+/**
+ * A renter's personal link to a rental (facilities parity spec *Data Models* → `facilities_rental_links`, DD-R13,
+ * REQ-R17; foundation P-10, DD-35; #286): the hash of the raw token (the raw token exists only in the dispatch
+ * delivery's encrypted secret and in the e-mail, DD-44), the rental and what the link is for (`purpose`; P-10 already
+ * names its policy "use"). One link per rental and purpose: a move re-issues it with a new hash (the old row is
+ * deleted in the same transaction). Valid until the rental starts; spent (`used_at`) by the cancellation.
+ * `rental_id` is a scalar id of `facilities_rentals` (no ORM relation).
+ */
+@Entity({ tableName: 'facilities_rental_links' })
+@Unique({
+  name: 'facilities_rental_links_org_rental_purpose_unique',
+  properties: ['organizationId', 'rentalId', 'purpose'],
+})
+@Index({ name: 'facilities_rental_links_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class RentalLink extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'usedAt'
+
+  @Property(rentalLinkColumns.tokenHash)
+  tokenHash!: string
+
+  @Property(rentalLinkColumns.expiresAt)
+  expiresAt!: Date
+
+  @Property(rentalLinkColumns.usedAt)
+  usedAt?: Date | null
+
+  @Property({ name: 'rental_id', type: 'uuid' })
+  rentalId!: string
+
+  /** What the link is for: `cancel` (the renter's cancellation, J-R06). */
+  @Property({ name: 'purpose', type: 'text' })
+  purpose!: RentalLinkPurpose
 }

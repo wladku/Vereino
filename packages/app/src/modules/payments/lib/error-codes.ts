@@ -78,6 +78,8 @@ export const errorCodes = [
     messageKey: 'payments.errors.bank_transaction_status_changed',
   },
   { code: 'bank_payer_no_open_charges', status: 422, messageKey: 'payments.errors.bank_payer_no_open_charges' },
+  // Deleting a bank import (payments parity spec Contract 5, #294).
+  { code: 'bank_import_has_bookings', status: 409, messageKey: 'payments.errors.bank_import_has_bookings' },
   // "My groups' payments" (#117).
   { code: 'charge_out_of_scope', status: 403, messageKey: 'payments.errors.charge_out_of_scope' },
   { code: 'coach_fee_cash_disabled', status: 403, messageKey: 'payments.errors.coach_fee_cash_disabled' },

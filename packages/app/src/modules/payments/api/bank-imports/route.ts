@@ -4,7 +4,8 @@
 //   lines), an optional `format` (`csv`/`mt940`, detected from the content otherwise) and an optional `columnProfile`
 //   (JSON: the header text of the `date`, `amount`, `sender`, `title` and `account` columns). It answers the summary:
 //   recorded, to confirm, unmatched and skipped (debits and transfers imported before), and the unreadable lines;
-// - `GET` is the import history, newest first.
+// - `GET` is the import history, newest first, each with who imported it and whether it may be deleted (`deletable`,
+//   payments parity DD-C13; #294); `DELETE /bank-imports/{id}` deletes one.
 import { z } from 'zod'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -58,7 +59,11 @@ const historySchema = z.object({
       unmatched: z.number().int(),
       skipped: z.number().int(),
       importedBy: z.object({ firstName: z.string(), lastName: z.string() }).nullable(),
+      deletable: z
+        .boolean()
+        .describe('True when no payment ever referenced one of its transactions, so the import may be deleted'),
       createdAt: z.string(),
+      updatedAt: z.string().describe('The lock token of `DELETE /api/payments/bank-imports/{id}`'),
     }),
   ),
   total: z.number().int(),
@@ -162,7 +167,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Import history',
       description:
-        'The club’s statement imports, newest first, with their counts at import time and who imported each.',
+        'The club’s statement imports, newest first, with their counts at import time, who imported each and whether it may be deleted (`deletable`: no payment ever referenced one of its transactions).',
       query: bankImportListQuerySchema,
       responses: [{ status: 200, description: 'The imports', schema: historySchema }],
       errors: [

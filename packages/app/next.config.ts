@@ -153,6 +153,15 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         ],
       },
       {
+        // The renter's cancellation page carries the e-mailed token in its path, like the request confirmation
+        // (facilities parity spec REQ-R17, DD-R13; #286).
+        source: '/p/:clubSlug/rentals/cancel/:token',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
         // Marker header consumed by the custom-domain DNS reverse-resolve check
         // (see SPEC 2026-04-08-portal-custom-domain-routing). Lets the verifier
         // tell "request reached our origin" from "request was answered by an

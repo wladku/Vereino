@@ -257,11 +257,22 @@ export function facilityAgreement(
   return container.resolve<ClubCoreContracts>(CLUB_CORE_CONTRACTS).facilityAgreement(scope, institutionId, on, em)
 }
 
-/** The club values the request e-mails need: the time zone, the currency, the default language and the own account. */
+/**
+ * The club values the request and renter e-mails need: the time zone, the currency, the default language, the own
+ * account, and (#286) the public slug of the cancellation link, the club's rules and its phone.
+ */
 export async function clubRequestSettings(
   container: AwilixContainer,
   scope: FacilitiesScope,
-): Promise<{ timeZone: string; currency: string; locale: string; bankAccount: string | null }> {
+): Promise<{
+  timeZone: string
+  currency: string
+  locale: string
+  bankAccount: string | null
+  publicSlug: string | null
+  rulesUrl: string | null
+  contactPhone: string | null
+}> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
   const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
   return {
@@ -269,6 +280,9 @@ export async function clubRequestSettings(
     currency: settings.values.currency,
     locale: settings.values.defaultLocale,
     bankAccount: settings.publicSettings.bankAccount,
+    publicSlug: settings.publicSettings.publicSlug,
+    rulesUrl: settings.publicSettings.rulesUrl,
+    contactPhone: settings.publicSettings.contactPhone,
   }
 }
 

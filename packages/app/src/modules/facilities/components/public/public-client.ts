@@ -320,3 +320,55 @@ export function zonedInstantLabel(instant: string, timeZone: string, locale: str
     hourCycle: 'h23',
   }).format(new Date(instant))
 }
+
+/** `POST /api/facilities/public/rentals/cancel/preview` → 200 (J-R06, #286): no contact data. */
+export type RentalCancelPreview = {
+  placeName: string
+  startsAt: string
+  endsAt: string
+  timeZone: string
+  amount: number
+  currency: string
+  free: boolean
+  cancellationDeadline: string
+  payeeName: string | null
+  club: PublicPlacesView['club'] | null
+}
+
+export type CancelPreviewOutcome =
+  { status: 'ok'; preview: RentalCancelPreview } | { status: 'expired' } | { status: 'too_many' } | { status: 'failed' }
+
+export type CancelOutcome =
+  | { status: 'ok'; result: 'cancelled_free' | 'cancelled_late' }
+  | { status: 'expired' }
+  | { status: 'too_many' }
+  | { status: 'failed' }
+
+/** An unknown, spent or expired link (410), or a malformed one (400), reads the same: the link no longer works. */
+function linkFailure(status: number): { status: 'expired' } | { status: 'too_many' } | { status: 'failed' } {
+  if (status === 410 || status === 400 || status === 404) return { status: 'expired' }
+  if (status === 429) return { status: 'too_many' }
+  return { status: 'failed' }
+}
+
+/** Reads what cancelling would do; the token goes in the body (never in a URL the server logs) and is not spent. */
+export async function previewRentalCancel(token: string): Promise<CancelPreviewOutcome> {
+  const call = await apiCall<RentalCancelPreview>('/api/facilities/public/rentals/cancel/preview', {
+    method: 'POST',
+    headers: GUEST_HEADERS,
+    body: JSON.stringify({ token }),
+  })
+  if (call.ok && call.result) return { status: 'ok', preview: call.result }
+  return linkFailure(call.status)
+}
+
+/** Cancels the rental with the renter's explicit confirmation; spends the link. */
+export async function cancelRentalByLink(token: string): Promise<CancelOutcome> {
+  const call = await apiCall<{ status: 'cancelled_free' | 'cancelled_late' }>('/api/facilities/public/rentals/cancel', {
+    method: 'POST',
+    headers: GUEST_HEADERS,
+    body: JSON.stringify({ token, confirm: true }),
+  })
+  if (call.ok && call.result) return { status: 'ok', result: call.result.status }
+  return linkFailure(call.status)
+}

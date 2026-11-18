@@ -10,8 +10,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { calendarDateInZone, type CalendarDate } from '@vereino/core'
 import { EntryBan, RentalRate, ZoneRule } from '../data/entities'
-import { rentalRateShapeOf } from '../commands/rental-rates'
-import { zoneRuleShapeOf } from '../commands/zone-rules'
+import { rentalRateShapeOf, zoneRuleShapeOf } from '../data/shapes'
 import { quoteRate, type RenterCategory } from '../lib/rates'
 import {
   banActiveOn,
