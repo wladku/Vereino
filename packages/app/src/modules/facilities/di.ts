@@ -3,7 +3,12 @@ import { registerNotificationTypes } from '@open-mercato/core/modules/notificati
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { OCCUPANCY_PROVIDER_TOKEN, registerEmailTemplate } from '@/modules/foundation'
-import { banRequestTemplate, maintenanceDueTemplate, requestEmailTemplates } from './emails/templates'
+import {
+  banRequestTemplate,
+  maintenanceDuePlannerTemplate,
+  maintenanceDueTemplate,
+  requestEmailTemplates,
+} from './emails/templates'
 import notificationTypes from './notifications'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
 import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
@@ -30,6 +35,7 @@ export function register(container: AppContainer) {
   registerNotificationTypes(notificationTypes)
   for (const template of requestEmailTemplates) registerEmailTemplate(container, template)
   registerEmailTemplate(container, maintenanceDueTemplate)
+  registerEmailTemplate(container, maintenanceDuePlannerTemplate)
   registerEmailTemplate(container, banRequestTemplate)
   const service = asFunction((cradle: { em: EntityManager }) => createOccupancyService(() => cradle.em))
     .scoped()
