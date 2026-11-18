@@ -1,7 +1,7 @@
 # Run: issue #267 — a coordinator corrects a roster mistake (E10-S02, parity spec phase 2)
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 267`, label `cezar`). Feature route: the issue is covered by
-  `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md` phase 2 (REQ-A03), which is `Ready for
+  `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md` phase 2 (REQ-A03), which is `Ready for
   implementation`. Its contract changes (`DELETE /api/groups/memberships`, `status` and `sortField=roster`, 422
   `membership_not_started` on `…/end`, `activities.groupUsage.membershipUsed`) were approved by the owner on
   2026-11-16 ([#252](https://github.com/wladku/Vereino/issues/252#issuecomment-6910004411), item (a)6).
