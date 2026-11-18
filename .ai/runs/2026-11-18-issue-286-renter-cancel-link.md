@@ -50,6 +50,8 @@ REQ-R17 / J-R06: a renter with an e-mail address gets a summary when staff enter
 - `yarn verify` — failed at `lint` (4 errors in `RentalCancelView.tsx`: `react-hooks/set-state-in-effect`, `no-confusing-void-expression`); after the fix `yarn verify --from lint` failed at `format:check`; after `yarn format`, `yarn verify --from format:check` — all remaining 12 steps passed (generate, typecheck ×3 and lint passed in the earlier runs).
 - `yarn test:integration:vereino --filter TEST-R17 --no-build` on the final build — 1 passed (2.4m).
 - After PR #386 opened, `main` gained #385 (phase 11) and the merge train marked a conflict: merged `origin/main` into the branch (conflicts in `commands/rentals.ts` imports and the two catalogs, both sides additive, kept both). `yarn verify` — all 17 steps passed; TEST-R17 `--no-build` — 1 passed (2.2m).
+- Merge train: "a required check failed" on 2582c69 (integration shards 2/3 and 3/3, browser-smoke). Cause: `facilities/di.ts` → `services/rental-links` → `request-queue` → `calendar` imported `commands/zone-rules.ts`, so every `yarn mercato facilities …` CLI call failed with "Duplicate command registration for id facilities.zone_rules.create". Fixed in 8319fdbc (services import the shapes from `data/shapes.ts`).
+- `om-auto-fix-pr` (2026-11-18, cezar run a7900042): review of the full diff found no blockers; `yarn verify` on 8319fdbc — all 17 steps passed. CI on 8319fdbc: gate, browser-smoke, perf, integration shards 1/3 and 2/3 green; shard 3/3 failed only on `TEST-L03` (`declaration_closed`, 409 instead of 200/201), the same date-dependent failure `main` had on fcd48544 and fixed in #390 (ae24bd19). Merged `origin/main` (bringing #390) into the branch; `yarn typecheck:qa` — exit 0.
 
 ## Open problems / next steps
 
