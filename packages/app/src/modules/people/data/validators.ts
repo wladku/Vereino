@@ -278,3 +278,69 @@ export const importRowListQuerySchema = z.object({
   /** Only the rows that still need a decision. */
   pending: z.enum(['true', 'false']).optional(),
 })
+
+// --- Leaving the club (people life-cycle spec REQ-L03, *API* rows; phase L4, #306) ---
+
+/** At most this many persons leave in one departure or one member's request (a family). */
+export const DEPARTURE_MAX_PERSONS = 20
+const departurePersonIds = z.array(z.uuid()).min(1).max(DEPARTURE_MAX_PERSONS)
+const departureNoteSchema = z.string().trim().max(1000)
+
+/** `POST /api/people/departures/preview`. */
+export const departurePreviewSchema = z.object({ personIds: departurePersonIds, lastDay: calendarDateSchema }).strict()
+
+/** `people.persons.depart` (`POST /api/people/departures`). */
+export const departureSchema = z
+  .object({
+    personIds: departurePersonIds,
+    lastDay: calendarDateSchema,
+    previewToken: z.string().min(1).max(200),
+    nextPayer: z
+      .array(z.object({ wardPersonId: z.uuid(), guardianPersonId: z.uuid() }).strict())
+      .max(DEPARTURE_MAX_PERSONS)
+      .optional(),
+    requestBatchId: z.uuid().optional(),
+  })
+  .strict()
+
+/** `people.persons.return` (`POST /api/people/persons/{id}/return`). */
+export const personReturnSchema = z.object({ id: z.uuid() }).strict()
+
+/** `POST /api/people/me/departure-requests`: the member names themself and/or their wards. */
+export const memberDepartureRequestSchema = z
+  .object({
+    subjectPersonIds: departurePersonIds,
+    lastDay: calendarDateSchema.optional(),
+    erasure: z.boolean().default(false),
+    note: departureNoteSchema.optional(),
+  })
+  .strict()
+
+/** `DELETE /api/people/me/departure-requests/{batchId}`: the member withdraws their open request. */
+export const withdrawDepartureRequestSchema = z.object({ batchId: z.uuid() }).strict()
+
+/** `POST /api/people/departure-requests`: the administrator records a letter or the club's own decision. */
+export const recordDepartureRequestSchema = z
+  .object({
+    subjectPersonId: z.uuid(),
+    requesterKind: z.enum(['self', 'guardian', 'club']),
+    lastDay: calendarDateSchema.optional(),
+    erasure: z.boolean().default(false),
+    note: departureNoteSchema.optional(),
+  })
+  .strict()
+
+/** `PUT /api/people/departure-requests`: the administrator declines an open request with a reason. */
+export const declineDepartureRequestSchema = z
+  .object({ id: z.uuid(), reason: z.string().trim().min(1).max(1000) })
+  .strict()
+
+/** `GET /api/people/departure-requests`. */
+export const departureRequestListQuerySchema = z
+  .object({
+    status: z.enum(['open', 'done', 'declined']).optional(),
+    subjectPersonId: z.uuid().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict()

@@ -10,6 +10,8 @@ export const MEMBER_PROFILE_QUERY_KEY = ['people-me'] as const
 export { BACKEND_HREF, CLUB_HOME_HREF, CLUB_PROFILE_HREF } from '@vereino/ui'
 /** The platform's change-password page of the `auth` module (README M-10). */
 export const CHANGE_PASSWORD_HREF = '/backend/profile/change-password'
+/** The member's request to leave the club (people life-cycle spec REQ-L03, #306). */
+export const CLUB_LEAVE_HREF = '/club/profile/leave'
 
 export type SelfConsent = { granted: boolean; at: string | null }
 export type WardConsentKind = 'regulations' | 'image' | 'trips'

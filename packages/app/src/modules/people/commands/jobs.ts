@@ -18,6 +18,7 @@ import { bootstrapAdminSchema, importPurgeJobSchema, syncRolesJobSchema } from '
 import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
+import { closeDepartedAccounts, type DepartedAccountCounts } from '../services/departure-accounts'
 import { activeClubAdministrator, isOrganizationUser } from '../services/first-administrator'
 import {
   syncAllPersonRoles,
@@ -61,7 +62,12 @@ function authorizeJob(
   })
 }
 
-export type SyncRolesJobResult = OrganizationTarget & { today: string; counts: RoleSyncCounts }
+export type SyncRolesJobResult = OrganizationTarget & {
+  today: string
+  counts: RoleSyncCounts
+  /** People life-cycle spec Q-L09 (#306): accounts of persons who left before `today`, closed by this run. */
+  accounts: DepartedAccountCounts
+}
 
 /**
  * `people.persons.sync_roles` — the `people:sync-role-expiry` job: recomputes the desired roles of every person
@@ -90,7 +96,12 @@ const syncRolesJobCommand: CommandHandler<Record<string, unknown>, SyncRolesJobR
       },
     })
     logger.info('Role sync finished', { ...scope, today, ...counts })
-    return { ...target, today, counts }
+    const accounts = await closeDepartedAccounts(ctx, scope, today, (error) => {
+      logger.warn('Closing the account of a departed person failed; the next run retries it', { ...scope, err: error })
+      getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.departure.account_close_failed' })
+    })
+    if (accounts.closed + accounts.failed > 0) logger.info('Departed accounts closed', { ...scope, today, ...accounts })
+    return { ...target, today, counts, accounts }
   },
   async buildLog({ result }) {
     const { translate } = await resolveTranslations()
@@ -100,7 +111,13 @@ const syncRolesJobCommand: CommandHandler<Record<string, unknown>, SyncRolesJobR
       resourceId: result.organizationId,
       tenantId: result.tenantId,
       organizationId: result.organizationId,
-      context: { actingRole: result.actingRole, today: result.today, ...result.counts },
+      context: {
+        actingRole: result.actingRole,
+        today: result.today,
+        ...result.counts,
+        accountsClosed: result.accounts.closed,
+        accountsFailed: result.accounts.failed,
+      },
     }
   },
 }

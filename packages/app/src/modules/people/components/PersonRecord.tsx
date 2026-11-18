@@ -9,7 +9,9 @@
 // `people` never imports `groups`); it is shown only when a widget the user may see is registered there. The "Charges"
 // tab is the spot `vereino:people:person-record:charges`, filled the same way by `payments` (payments parity spec DD-C05,
 // #295): absent without `payments.view` or without the `payments` module. The header
-// shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262).
+// shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262). The
+// "Leaving" tab (people life-cycle spec B-10 `?tab=leaving`, Q-L19, #306) comes last and only with `people.manage`;
+// a former person's header says since when they left.
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -24,6 +26,7 @@ import { useClubToday } from '@vereino/ui'
 import { personAge } from '../lib/people-rules'
 import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
+import { LeavingPanel } from './LeavingPanel'
 import { PersonDetailsForm } from './PersonForm'
 import { RolesPanel } from './RolesPanel'
 import {
@@ -143,8 +146,12 @@ export function PersonRecord({ id }: { id: string }) {
   const person = load.person
   const canEdit = features['people.manage'] && person.access === 'full'
   const canManageAccount = features['people.accounts.manage'] && person.access === 'full'
+  const hasLeavingTab = canEdit
   const allowedTabs = PERSON_RECORD_TABS.filter(
-    (value) => (value !== 'groups' || hasGroupsTab) && (value !== 'charges' || hasChargesTab),
+    (value) =>
+      (value !== 'groups' || hasGroupsTab) &&
+      (value !== 'charges' || hasChargesTab) &&
+      (value !== 'leaving' || hasLeavingTab),
   )
   const tab = tabFrom(searchParams.get('tab'), allowedTabs)
   const selectTab = (value: string) => {
@@ -163,9 +170,16 @@ export function PersonRecord({ id }: { id: string }) {
             {headerSubtitle(person, personAge(person.birthDate, today, locale), t) || t('people.persons.record.title')}
           </span>
         </div>
-        <StatusBadge variant={person.hasAccount ? 'success' : 'neutral'}>
-          {person.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
-        </StatusBadge>
+        <div className="flex flex-wrap gap-2">
+          {person.leftOn && person.leftOn <= today ? (
+            <StatusBadge variant="neutral" data-testid="person-record-former">
+              {t('people.leaving.leftOn', { date: person.leftOn })}
+            </StatusBadge>
+          ) : null}
+          <StatusBadge variant={person.hasAccount ? 'success' : 'neutral'}>
+            {person.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
+          </StatusBadge>
+        </div>
       </header>
       <Tabs value={tab} onValueChange={selectTab} variant="underline">
         <div className="overflow-x-auto">
@@ -176,6 +190,7 @@ export function PersonRecord({ id }: { id: string }) {
             <TabsTrigger value="account">{t('people.persons.tabs.account')}</TabsTrigger>
             {hasGroupsTab ? <TabsTrigger value="groups">{t('people.persons.tabs.groups')}</TabsTrigger> : null}
             {hasChargesTab ? <TabsTrigger value="charges">{t('people.persons.tabs.charges')}</TabsTrigger> : null}
+            {hasLeavingTab ? <TabsTrigger value="leaving">{t('people.persons.tabs.leaving')}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="details" className="pt-4">
@@ -208,6 +223,11 @@ export function PersonRecord({ id }: { id: string }) {
         {hasChargesTab ? (
           <TabsContent value="charges" className="pt-4">
             <InjectionSpot spotId={CHARGES_SPOT_ID} context={{ personId: person.id }} />
+          </TabsContent>
+        ) : null}
+        {hasLeavingTab ? (
+          <TabsContent value="leaving" className="pt-4">
+            <LeavingPanel person={person} onChanged={refetch} />
           </TabsContent>
         ) : null}
       </Tabs>

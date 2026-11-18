@@ -25,6 +25,16 @@ const events = [
     entity: 'person',
     category: 'lifecycle',
   },
+  // People life-cycle spec phase L4 (REQ-L03; #306): a member's departure request was filed (payload carries the batch
+  // id, which keys the administrators' notice) and a person's departure was confirmed (one event per person, with
+  // the last day). Ids and dates only.
+  {
+    id: 'people.departure_request.created',
+    label: 'Departure request filed',
+    entity: 'departure_request',
+    category: 'lifecycle',
+  },
+  { id: 'people.person.departed', label: 'Person left the club', entity: 'person', category: 'lifecycle' },
   {
     id: 'people.role_assignment.created',
     label: 'Role assignment created',

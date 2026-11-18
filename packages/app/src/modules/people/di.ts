@@ -1,8 +1,15 @@
 import { asFunction, asValue } from 'awilix'
+import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { CONTACT_RESOLVER_TOKEN, audienceProviderToken } from '@vereino/core'
-import { SCOPE_PROVIDER_TOKEN } from '@/modules/foundation'
+import { SCOPE_PROVIDER_TOKEN, registerEmailTemplate } from '@/modules/foundation'
+import {
+  departureConfirmedTemplate,
+  departureRequestDeclinedTemplate,
+  departureRequestReceivedTemplate,
+} from './emails/templates'
+import notificationTypes from './notifications'
 import { clubAudienceProvider, createContactResolver, personsAudienceProvider } from './services/audience'
 import type { ClubScope } from './services/club-clock'
 import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
@@ -44,6 +51,11 @@ export type PeopleRoleSync = {
 }
 
 export function register(container: AppContainer) {
+  // People life-cycle spec phase L4 (#306): the departure notices — in-app types and the e-mail templates (P-31).
+  registerNotificationTypes(notificationTypes)
+  registerEmailTemplate(container, departureRequestReceivedTemplate)
+  registerEmailTemplate(container, departureRequestDeclinedTemplate)
+  registerEmailTemplate(container, departureConfirmedTemplate)
   // Registrars run for every request and job container, so the services close over that container; the factories
   // take no parameters, which keeps them independent of CLASSIC parameter-name injection.
   const scopeService = asFunction(() => createPeopleScopeService(container)).scoped()

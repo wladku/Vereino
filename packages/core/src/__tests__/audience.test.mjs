@@ -188,3 +188,29 @@ test('an account holder without an address is reached in the app and counted wit
   assert.deepEqual(audienceCounts(recipients), { recipients: 2, withoutEmail: 1, unreachable: 0 })
   assert.deepEqual(audienceCounts([]), { recipients: 0, withoutEmail: 0, unreachable: 0 })
 })
+
+test('a former person is reached neither as a member nor as a guardian (people life-cycle spec DD-L05, #306)', () => {
+  const contacts = new Map([
+    ['left', contact('left', { userId: 'uleft', email: 'left@example.test', leftOn: '2026-11-02' })],
+    ['leaving', contact('leaving', { userId: 'uleaving', leftOn: '2026-11-30' })],
+    ['kid', contact('kid', { birthDate: '2016-01-01' })],
+    ['oldGuardian', contact('oldGuardian', { userId: 'uold', leftOn: '2026-10-31' })],
+    ['guardian', contact('guardian', { email: 'g@example.test', leftOn: null })],
+  ])
+  const { recipients } = expandAudience(
+    {
+      members: [
+        { personId: 'left', reason: 'direct' },
+        { personId: 'leaving', reason: 'participant' },
+        { personId: 'kid', reason: 'participant' },
+      ],
+      contacts,
+      guardiansByWard: new Map([['kid', ['oldGuardian', 'guardian']]]),
+    },
+    TODAY,
+  )
+  assert.deepEqual(
+    recipients.map((recipient) => recipient.personId),
+    ['guardian', 'leaving'],
+  )
+})
