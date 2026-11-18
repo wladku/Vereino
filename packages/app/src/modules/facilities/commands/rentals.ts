@@ -26,11 +26,19 @@ import { registerCommand, type CommandHandler, type CommandRuntimeContext } from
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { z } from 'zod'
 import { calendarDateInZone } from '@vereino/core'
-import { advanceWhere, assertInScope, assertTransition, authorizeScoped, foundationErrors } from '@/modules/foundation'
+import {
+  advanceWhere,
+  assertInScope,
+  assertTransition,
+  authorizeScoped,
+  foundationErrors,
+  jobCommandContext,
+} from '@/modules/foundation'
 import { facilitiesErrors } from '../api/errors'
 import { Rental } from '../data/entities'
 import {
   rentalActionSchema,
+  rentalCancelByLinkSchema,
   rentalCancelSchema,
   rentalCreateSchema,
   rentalMoveSchema,
@@ -52,6 +60,7 @@ import {
 import { labelConflicts } from '../services/calendar'
 import { chargeService } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
+import { rentalLinks, rentalOfLink } from '../services/rental-links'
 import { assessRentalSlot, rentalAgreement, renterBanned, type RentalIssue } from '../services/rental-slot'
 import {
   PLACE_KINDS,
@@ -174,11 +183,11 @@ async function renterName(
   return name
 }
 
-async function emitRental(row: Rental, event: string): Promise<void> {
+async function emitRental(row: Rental, event: string, extra: Record<string, unknown> = {}): Promise<void> {
   await emitAfterCommit(
     `facilities.rental.${event}` as Parameters<typeof emitAfterCommit>[0],
     { tenantId: row.tenantId, organizationId: row.organizationId },
-    { id: row.id, placeId: row.placeId },
+    { id: row.id, placeId: row.placeId, ...extra },
   )
 }
 
@@ -302,6 +311,22 @@ type TransitionSpec = {
   guard?: (row: Rental, now: Date) => Promise<void>
 }
 
+/** Cancels (free) or forfeits (late) the rental's charge in `em`'s transaction; nothing without `payments` or a charge. */
+async function cancelCharge(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Rental,
+  to: 'cancelled_free' | 'cancelled_late',
+): Promise<{ warning?: 'charge_paid'; afterCommit?: () => Promise<void> }> {
+  const charges = chargeService(ctx.container)
+  if (!charges || !row.chargeId) return {}
+  return charges.cancelForSource(
+    em,
+    { sourceType: 'rental', sourceId: row.id, outcome: to === 'cancelled_free' ? 'cancelled' : 'forfeited' },
+    ctx,
+  )
+}
+
 /** A status move on an existing rental with the lock token; a cancellation also cancels or forfeits the charge. */
 function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, unknown>, RentalCommandResult> {
   return {
@@ -328,16 +353,9 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
         if (to === 'cancelled_free' || to === 'cancelled_late') {
           const reason = (authorized.parsed as { reason?: string | null }).reason
           if (reason) row.decisionReason = reason
-          const charges = chargeService(ctx.container)
-          if (charges && row.chargeId) {
-            const outcome = await charges.cancelForSource(
-              em,
-              { sourceType: 'rental', sourceId: row.id, outcome: to === 'cancelled_free' ? 'cancelled' : 'forfeited' },
-              ctx,
-            )
-            chargeWarning = outcome.warning
-            if (outcome.afterCommit) afterCommit.push(outcome.afterCommit)
-          }
+          const outcome = await cancelCharge(ctx, em, row, to)
+          chargeWarning = outcome.warning
+          if (outcome.afterCommit) afterCommit.push(outcome.afterCommit)
         }
         return { entity: row, actingRole: authorized.actingRole, before }
       })
@@ -373,6 +391,56 @@ const cancelRentalCommand = transitionCommand({
   fallback: 'Cancel a rental',
   schema: rentalCancelSchema,
 })
+
+/**
+ * `facilities.rentals.cancel_by_link` (facilities parity spec REQ-R17, J-R06, the public cancel row of *API, Command,
+ * and Error Contracts*; DD-R13; #286): the renter cancels through the e-mailed link, without a session. The link is
+ * looked up once by its token hash (DD-35, the AGENTS.md exception approved on #253) and names the club; the rental
+ * must still hold its slot and the link must be live (410 `token_link_expired` / `token_link_used` otherwise, with
+ * no data). The outcome follows the staff rule — free up to the cancellation deadline, late after it (the charge
+ * forfeited) — and the link is spent in the same transaction. Acting role `system`, `actor: guest` in the log, and
+ * no input kept (the input is the raw token, DD-44).
+ */
+const cancelByLinkCommand: CommandHandler<Record<string, unknown>, RentalCommandResult> = {
+  id: 'facilities.rentals.cancel_by_link',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const input = rentalCancelByLinkSchema.parse(rawInput)
+    const now = new Date()
+    const afterCommit: Array<() => Promise<void>> = []
+    let chargeWarning: 'charge_paid' | undefined
+    const result = await inWriteTransaction(ctx, 'facilities.rentals.cancel_by_link', async (em) => {
+      const { row, scope } = await rentalOfLink(ctx.container, em, input.token)
+      const redeemed = await rentalLinks(ctx.container).redeem(em, input.token, { scope })
+      if (!redeemed) return foundationErrors.throw('token_link_expired')
+      const before = rentalSnapshot(row)
+      const to = cancellationOutcome(now, row.cancellationDeadline ?? cancellationDeadline(row.startsAt))
+      await assertTransition(rentalTransitions, row.status, to)
+      row.status = to
+      row.updatedAt = now
+      // The charge is cancelled in the club the link named: a sessionless request has no scope of its own.
+      const outcome = await cancelCharge({ ...ctx, ...jobCommandContext(ctx.container, scope) }, em, row, to)
+      chargeWarning = outcome.warning
+      if (outcome.afterCommit) afterCommit.push(outcome.afterCommit)
+      return { entity: row, actingRole: 'system' as const, before }
+    })
+    for (const effect of afterCommit) await effect()
+    await emitRental(result.entity, 'cancelled')
+    return chargeWarning ? { ...result, chargeWarning } : result
+  },
+  buildLog: async ({ result }) => ({
+    ...(await facilitiesLog({
+      result,
+      resourceKind: RENTAL_RESOURCE_KIND,
+      labelKey: 'facilities.audit.rentals.cancelByLink',
+      fallback: 'Cancel a rental through the renter link',
+      after: rentalSnapshot(result.entity),
+      context: { actor: 'guest' },
+    })),
+    // The input is the raw token: keep it out of `action_logs` (DD-44).
+    replayable: false,
+  }),
+}
 
 const noShowRentalCommand = transitionCommand({
   id: 'facilities.rentals.no_show',
@@ -446,7 +514,8 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       row.updatedAt = now
       return { entity: row, actingRole: authorized.actingRole, before }
     })
-    await emitRental(result.entity, 'moved')
+    // The move's own id keys the renter's "moved" e-mail (#286): one e-mail per move, even back to an earlier slot.
+    await emitRental(result.entity, 'moved', { moveId: randomUUID() })
     return result
   },
   buildLog: ({ result }) =>
@@ -783,6 +852,7 @@ const advanceLifecycleCommand: CommandHandler<Record<string, unknown>, Lifecycle
 registerCommand(createRentalCommand)
 registerCommand(confirmRentalCommand)
 registerCommand(cancelRentalCommand)
+registerCommand(cancelByLinkCommand)
 registerCommand(noShowRentalCommand)
 registerCommand(moveRentalCommand)
 registerCommand(updateRentalCommand)

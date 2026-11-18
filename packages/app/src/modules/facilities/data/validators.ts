@@ -288,6 +288,12 @@ export const publicRequestSchema = z
 /** `POST /api/facilities/public/requests/verify` (P-05): the token in the body, never in the path (DD-44). */
 export const requestVerifySchema = z.object({ token: z.string().min(1).max(200) }).strict()
 
+/** `POST /api/facilities/public/rentals/cancel/preview` (J-R06, #286): the token from the e-mail, in the body. */
+export const rentalCancelPreviewSchema = z.object({ token: z.string().min(1).max(200) }).strict()
+
+/** `POST /api/facilities/public/rentals/cancel`: the token and the renter's explicit confirmation. */
+export const rentalCancelByLinkSchema = z.object({ token: z.string().min(1).max(200), confirm: z.literal(true) }).strict()
+
 /**
  * `POST /api/facilities/rentals/{id}/approve` (B-25): the renter — an existing institution or person, or a new
  * institution — optionally another category (the staff-only winter-lighting rate) and an amount; a changed amount

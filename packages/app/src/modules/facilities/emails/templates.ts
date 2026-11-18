@@ -4,13 +4,16 @@
 // address the guest typed (no person record), in the form's language, with `optOut: 'never'` (answers to the guest's
 // own request). The raw token reaches the verification template only through the delivery's secret
 // (`ctx.secrets.token`, DD-44) and becomes the button's link; it is never a param. The params are encrypted at rest in
-// the dispatch outbox. On the dispatch worker's import graph, so it imports no `.tsx` and nothing of `@vereino/ui`
+// the dispatch outbox. The renter's e-mails (facilities parity spec REQ-R17; #286) — the summary of a staff entry, the
+// "moved" and the "cancelled" e-mail — and the approval carry the cancellation link the same way (the delivery's
+// secret). On the dispatch worker's import graph, so it imports no `.tsx` and nothing of `@vereino/ui`
 // (lesson `worker-runtime-imports-and-notification-strategies`).
 import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { formatBankAccount } from '@vereino/core'
 import { defineEmailTemplate, type EmailRenderContext } from '@/modules/foundation'
+import { rentalCancelPath, type CancelledOutcome } from '../lib/rental-links'
 import { formatAmount, formatInstant, formatSlot } from '../lib/requests'
 
 const h = React.createElement
@@ -118,52 +121,102 @@ export const requestVerificationTemplate = defineEmailTemplate<RequestVerificati
 
 const decisionBase = { ...slotParams, clubSlug: z.string().min(1).max(120).nullable() }
 
-const approvedParams = z
-  .object({
-    ...decisionBase,
-    amount: z.number().int(),
-    currency: z.string().length(3),
-    payeeName: z.string().max(200).nullable(),
-    bankAccount: z.string().max(64).nullable(),
-    paymentDeadline: z.iso.datetime({ offset: true }).nullable(),
-    cancellationDeadline: z.iso.datetime({ offset: true }).nullable(),
-  })
-  .strict()
+/**
+ * The terms of a booking (the approval, the renter's summary and the "moved" e-mail; #125, #286): the amount, the
+ * payee's account, the deadlines, the club's rules and the cancellation link — or the club's phone when there is no
+ * link. `rulesUrl` and `clubPhone` are optional so the approval e-mails queued before #286 still render.
+ */
+const bookingTerms = {
+  amount: z.number().int(),
+  currency: z.string().length(3),
+  payeeName: z.string().max(200).nullable(),
+  bankAccount: z.string().max(64).nullable(),
+  paymentDeadline: z.iso.datetime({ offset: true }).nullable(),
+  cancellationDeadline: z.iso.datetime({ offset: true }).nullable(),
+  rulesUrl: z.string().max(2000).nullable().optional(),
+  clubPhone: z.string().max(64).nullable().optional(),
+}
+
+type BookingTermsParams = SlotParams & {
+  clubSlug: string | null
+  amount: number
+  currency: string
+  payeeName: string | null
+  bankAccount: string | null
+  paymentDeadline: string | null
+  cancellationDeadline: string | null
+  rulesUrl?: string | null
+  clubPhone?: string | null
+}
+
+/** The renter's cancellation page (J-R06): only with the delivery's secret token and the club's public slug. */
+function cancelLink(params: { clubSlug: string | null }, ctx: EmailRenderContext): string | null {
+  return typeof ctx.secrets.token === 'string' && params.clubSlug
+    ? rentalCancelPath(params.clubSlug, ctx.secrets.token)
+    : null
+}
+
+function termLines(
+  t: TranslateWithFallbackFn,
+  params: BookingTermsParams,
+  ctx: EmailRenderContext,
+): Array<string | null> {
+  const at = (iso: string) => formatInstant(new Date(iso), params.timeZone, ctx.locale)
+  const deadline = params.cancellationDeadline ? at(params.cancellationDeadline) : null
+  return [
+    t('facilities.email.requestApproved.amount', 'Amount to pay: {amount}', {
+      amount: formatAmount(params.amount, params.currency, ctx.locale),
+    }),
+    params.bankAccount
+      ? t('facilities.email.requestApproved.account', 'Transfer to: {payee}, account {account}', {
+          payee: params.payeeName ?? ctx.clubName,
+          account: formatBankAccount(params.bankAccount),
+        })
+      : t('facilities.email.requestApproved.noAccount', 'The club will send you the account number for the transfer.'),
+    params.paymentDeadline
+      ? t('facilities.email.requestApproved.paymentDeadline', 'Pay by: {date}', { date: at(params.paymentDeadline) })
+      : null,
+    deadline
+      ? t('facilities.email.requestApproved.cancellationDeadline', 'Free cancellation until: {date}', {
+          date: deadline,
+        })
+      : null,
+    params.rulesUrl
+      ? t('facilities.email.rental.rules', 'The rules of the facility: {url}', { url: params.rulesUrl })
+      : null,
+    cancelLink(params, ctx)
+      ? t(
+          'facilities.email.rental.cancelLink',
+          'To cancel, use the button below. A cancellation after the free cancellation deadline forfeits the payment.',
+        )
+      : params.clubPhone
+        ? t('facilities.email.rental.cancelPhone', 'To cancel, call the club: {phone}', { phone: params.clubPhone })
+        : t('facilities.email.rental.cancelContact', 'To cancel, contact the club.'),
+  ]
+}
+
+const approvedParams = z.object({ ...decisionBase, ...bookingTerms }).strict()
 
 export type RequestApprovedParams = z.output<typeof approvedParams>
 
 function approvedCopy(t: TranslateWithFallbackFn, params: RequestApprovedParams, ctx: EmailRenderContext) {
   const values = { place: params.placeName, slot: slotOf(params, ctx) }
-  const at = (iso: string) => formatInstant(new Date(iso), params.timeZone, ctx.locale)
   return {
     subject: t('facilities.email.requestApproved.subject', 'Booking approved: {place}, {slot}', values),
     lead: t('facilities.email.requestApproved.lead', 'Your booking of {place}, {slot}, has been approved.', values),
-    lines: [
-      t('facilities.email.requestApproved.amount', 'Amount to pay: {amount}', {
-        amount: formatAmount(params.amount, params.currency, ctx.locale),
-      }),
-      params.bankAccount
-        ? t('facilities.email.requestApproved.account', 'Transfer to: {payee}, account {account}', {
-            payee: params.payeeName ?? ctx.clubName,
-            account: formatBankAccount(params.bankAccount),
-          })
-        : t(
-            'facilities.email.requestApproved.noAccount',
-            'The club will send you the account number for the transfer.',
-          ),
-      params.paymentDeadline
-        ? t('facilities.email.requestApproved.paymentDeadline', 'Pay by: {date}', { date: at(params.paymentDeadline) })
-        : null,
-      params.cancellationDeadline
-        ? t('facilities.email.requestApproved.cancellationDeadline', 'Free cancellation until: {date}', {
-            date: at(params.cancellationDeadline),
-          })
-        : null,
-    ],
+    lines: termLines(t, params, ctx),
   }
 }
 
-/** `facilities.request_approved`: the amount, the owner's account and the deadlines (J-007 step 4). */
+const cancelActionLabel = (t: TranslateWithFallbackFn, params: { clubSlug: string | null }, ctx: EmailRenderContext) =>
+  cancelLink(params, ctx)
+    ? t('facilities.email.rental.cancelAction', 'Cancel the booking')
+    : t('facilities.email.request.action', 'Open the calendar')
+
+/**
+ * `facilities.request_approved`: the amount, the owner's account and the deadlines (J-007 step 4); since #286 the
+ * button is the renter's cancellation link (the delivery's secret), else the club's calendar.
+ */
 export const requestApprovedTemplate = defineEmailTemplate<RequestApprovedParams>({
   id: 'facilities.request_approved',
   notificationType: REQUEST_UPDATE_NOTIFICATION,
@@ -179,8 +232,8 @@ export const requestApprovedTemplate = defineEmailTemplate<RequestApprovedParams
     const copy = approvedCopy(t, params, ctx)
     return plainText(copy.lead, copy.lines)
   },
-  actionLabel: (t) => t('facilities.email.request.action', 'Open the calendar'),
-  link: (params) => placesPath(params),
+  actionLabel: cancelActionLabel,
+  link: (params, ctx) => cancelLink(params, ctx) ?? placesPath(params),
 })
 
 const rejectedParams = z.object({ ...decisionBase, reason: z.string().min(1).max(500) }).strict()
@@ -273,6 +326,130 @@ function supersededLead(t: TranslateWithFallbackFn, params: RequestClosedParams,
     { place: params.placeName, slot: slotOf(params, ctx) },
   )
 }
+
+// --- The renter's e-mails (facilities parity spec REQ-R17, J-R06; #286) ---
+// To the rental's contact address, in the club's language (a staff entry has no form language), with the same
+// in-app type as the request e-mails (a bare address never has an in-app delivery). The summary and the "moved"
+// e-mail carry the cancellation link through the delivery's secret only (DD-44).
+
+const rentalTermsParams = z.object({ ...decisionBase, ...bookingTerms }).strict()
+
+export type RentalTermsParams = z.output<typeof rentalTermsParams>
+
+function summaryCopy(t: TranslateWithFallbackFn, params: RentalTermsParams, ctx: EmailRenderContext) {
+  const values = { place: params.placeName, slot: slotOf(params, ctx) }
+  return {
+    subject: t('facilities.email.rentalSummary.subject', 'Your booking: {place}, {slot}', values),
+    lead: t('facilities.email.rentalSummary.lead', 'The club has booked {place} for you, {slot}.', values),
+    lines: termLines(t, params, ctx),
+  }
+}
+
+/** `facilities.rental_summary`: the summary of a rental staff entered (J-005), once per rental. */
+export const rentalSummaryTemplate = defineEmailTemplate<RentalTermsParams>({
+  id: 'facilities.rental_summary',
+  notificationType: REQUEST_UPDATE_NOTIFICATION,
+  optOut: 'never',
+  params: rentalTermsParams,
+  subject: (t, params, ctx) => summaryCopy(t, params, ctx).subject,
+  preheader: (t, params, ctx) => summaryCopy(t, params, ctx).lead,
+  body: (t, params, ctx) => {
+    const copy = summaryCopy(t, params, ctx)
+    return paragraphs(copy.lead, copy.lines)
+  },
+  text: (t, params, ctx) => {
+    const copy = summaryCopy(t, params, ctx)
+    return plainText(copy.lead, copy.lines)
+  },
+  actionLabel: cancelActionLabel,
+  link: (params, ctx) => cancelLink(params, ctx) ?? placesPath(params),
+})
+
+function movedCopy(t: TranslateWithFallbackFn, params: RentalTermsParams, ctx: EmailRenderContext) {
+  const values = { place: params.placeName, slot: slotOf(params, ctx) }
+  return {
+    subject: t('facilities.email.rentalMoved.subject', 'Booking moved: {place}, {slot}', values),
+    lead: t('facilities.email.rentalMoved.lead', 'Your booking has been moved to {place}, {slot}.', values),
+    lines: [
+      t(
+        'facilities.email.rentalMoved.newLink',
+        'Earlier links to this booking no longer work; use the one in this message.',
+      ),
+      ...termLines(t, params, ctx),
+    ],
+  }
+}
+
+/** `facilities.rental_moved`: the new slot with a re-issued cancellation link, once per move. */
+export const rentalMovedTemplate = defineEmailTemplate<RentalTermsParams>({
+  id: 'facilities.rental_moved',
+  notificationType: REQUEST_UPDATE_NOTIFICATION,
+  optOut: 'never',
+  params: rentalTermsParams,
+  subject: (t, params, ctx) => movedCopy(t, params, ctx).subject,
+  preheader: (t, params, ctx) => movedCopy(t, params, ctx).lead,
+  body: (t, params, ctx) => {
+    const copy = movedCopy(t, params, ctx)
+    return paragraphs(copy.lead, copy.lines)
+  },
+  text: (t, params, ctx) => {
+    const copy = movedCopy(t, params, ctx)
+    return plainText(copy.lead, copy.lines)
+  },
+  actionLabel: cancelActionLabel,
+  link: (params, ctx) => cancelLink(params, ctx) ?? placesPath(params),
+})
+
+const rentalCancelledParams = z
+  .object({
+    ...decisionBase,
+    outcome: z.enum(['free', 'late', 'unpaid']),
+    amount: z.number().int(),
+    currency: z.string().length(3),
+  })
+  .strict()
+
+export type RentalCancelledParams = z.output<typeof rentalCancelledParams>
+
+const CANCELLED_LEADS: Record<CancelledOutcome, [string, string]> = {
+  free: ['facilities.email.rentalCancelled.free', 'Your booking of {place}, {slot}, has been cancelled free of charge.'],
+  late: [
+    'facilities.email.rentalCancelled.late',
+    'Your booking of {place}, {slot}, has been cancelled after the free cancellation deadline: the payment of {amount} is forfeited.',
+  ],
+  unpaid: [
+    'facilities.email.rentalCancelled.unpaid',
+    'Your booking of {place}, {slot}, has been cancelled because it was not paid by the payment deadline.',
+  ],
+}
+
+function cancelledLead(t: TranslateWithFallbackFn, params: RentalCancelledParams, ctx: EmailRenderContext): string {
+  const [key, fallback] = CANCELLED_LEADS[params.outcome]
+  return t(key, fallback, {
+    place: params.placeName,
+    slot: slotOf(params, ctx),
+    amount: formatAmount(params.amount, params.currency, ctx.locale),
+  })
+}
+
+/** `facilities.rental_cancelled`: the outcome — free, late (forfeited) or unpaid after the deadline — once per status. */
+export const rentalCancelledTemplate = defineEmailTemplate<RentalCancelledParams>({
+  id: 'facilities.rental_cancelled',
+  notificationType: REQUEST_UPDATE_NOTIFICATION,
+  optOut: 'never',
+  params: rentalCancelledParams,
+  subject: (t, params, ctx) =>
+    t('facilities.email.rentalCancelled.subject', 'Booking cancelled: {place}, {slot}', {
+      place: params.placeName,
+      slot: slotOf(params, ctx),
+    }),
+  body: (t, params, ctx) => paragraphs(cancelledLead(t, params, ctx), []),
+  text: (t, params, ctx) => plainText(cancelledLead(t, params, ctx), []),
+  actionLabel: (t) => t('facilities.email.request.action', 'Open the calendar'),
+  link: (params) => placesPath(params),
+})
+
+
 
 // --- The maintenance reminder (#128) ---
 

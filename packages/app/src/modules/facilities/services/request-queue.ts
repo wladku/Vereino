@@ -35,7 +35,7 @@ export type RequestSummary = {
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
 
 /** The public header of the club the token named; null without `club_core` or while the club publishes no page. */
-async function publicClub(container: AwilixContainer, scope: FacilitiesScope): Promise<PublicClubFrame['club'] | null> {
+export async function publicClub(container: AwilixContainer, scope: FacilitiesScope): Promise<PublicClubFrame['club'] | null> {
   if (!container.hasRegistration(CLUB_CORE_PUBLIC_SITE)) return null
   const frame = await container.resolve<ClubCorePublicSite>(CLUB_CORE_PUBLIC_SITE).clubFrameForScope(scope)
   return frame.status === 'ok' ? frame.value.club : null
