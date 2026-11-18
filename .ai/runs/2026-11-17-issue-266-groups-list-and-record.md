@@ -3,7 +3,7 @@
 - **Date:** 2026-11-17
 - **Trigger:** cezar run 0ac84a70 (`issue.labeled` `cezar`), skill `om-auto-fix-issue` with the vereino override.
 - **Issue:** [#266](https://github.com/wladku/Vereino/issues/266) — feature route.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md`, phase 1 (REQ-A01, REQ-A02; TEST-A01, TEST-A02; AC-A01, AC-A02).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md`, phase 1 (REQ-A01, REQ-A02; TEST-A01, TEST-A02; AC-A01, AC-A02).
 - **Branch:** `feat/issue-266-groups-list-class-group`
 
 ## Gate decisions

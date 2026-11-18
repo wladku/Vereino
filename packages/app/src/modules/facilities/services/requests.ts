@@ -4,7 +4,8 @@
 //   row is the link: `verification_token_hash`, `verification_expires_at`, `email_verified_at`), 1 hour;
 // - the confirmation e-mail, enqueued inside the submitting command's transaction with the raw token only as the
 //   delivery's encrypted secret, keyed by the bare address (never in an event, a job payload or a log);
-// - the decision e-mails (approved, rejected, expired, superseded), each enqueued once per request and status
+// - the decision e-mails (rejected, expired, superseded; the approval is the renter's terms e-mail of
+//   `rental-links.ts`, #286), each enqueued once per request and status
 //   (`facilities:rental:<id>:<status>`, DD-46) in a transaction of its own by the persistent subscribers;
 // - the in-app notice to the club's administrators (who hold `facilities.rentals.approve`) when a request is
 //   confirmed — resolved in the club's organization, never tenant-wide.
@@ -25,11 +26,10 @@ import { Rental } from '../data/entities'
 import notificationTypes from '../notifications'
 import { REQUEST_VERIFICATION_TTL_MS } from '../lib/requests'
 import { calendarDateInZone } from '@vereino/core'
-import { clubAdminUserIds, clubRequestSettings, findPlaces, placePayee, type FacilitiesScope } from './directory'
+import { clubAdminUserIds, clubRequestSettings, findPlaces, type FacilitiesScope } from './directory'
 
 export const FACILITIES_REQUEST_LINKS = 'facilities.requestLinks' as const
 const DISPATCH = 'foundationDispatch'
-const CLUB_CORE_SETTINGS = 'clubCoreSettings'
 
 /** A request row as the token-link service sees it: the rental with its link columns set. */
 export type RequestLinkRow = Rental & TokenLinkEntity<'single'>
@@ -55,17 +55,6 @@ function dispatchService(container: AwilixContainer): DispatchService {
 /** The supported language of a requester's e-mails: the form's, else the club's default. */
 export function requestLocale(requested: string | null | undefined, clubDefault: string): string {
   return resolveSupportedLocale(requested ?? undefined) ?? resolveSupportedLocale(clubDefault) ?? 'en'
-}
-
-/** The club's public slug (the link of the e-mails); null when the club has none. */
-async function clubSlugOf(container: AwilixContainer, scope: FacilitiesScope): Promise<string | null> {
-  if (!container.hasRegistration(CLUB_CORE_SETTINGS)) return null
-  const settings = await container
-    .resolve<{ get(scope: FacilitiesScope): Promise<{ publicSettings: { publicSlug: string | null } }> }>(
-      CLUB_CORE_SETTINGS,
-    )
-    .get(scope)
-  return settings.publicSettings.publicSlug
 }
 
 export type VerificationMail = {
@@ -123,20 +112,19 @@ export async function publishDispatch(
   await dispatchService(container).publish(dispatchId, scope)
 }
 
-export type DecisionStatus = 'approved' | 'rejected' | 'expired' | 'superseded'
+export type DecisionStatus = 'rejected' | 'expired' | 'superseded'
 
 /** The rental statuses each decision e-mail is sent in; a later status change does not resend it. */
 const DECISION_RENTAL_STATUSES: Record<DecisionStatus, readonly string[]> = {
-  // An approved request may already be confirmed (paid) when the subscriber runs.
-  approved: ['requested', 'confirmed'],
   rejected: ['rejected'],
   expired: ['expired'],
   superseded: ['superseded'],
 }
 
 /**
- * The requester's e-mail about a decision on their online request, once per request and status. Nothing for a staff
- * entry (no online request), a request without an address, or a rental no longer in the decision's status.
+ * The requester's e-mail about a negative decision on their online request, once per request and status. Nothing for
+ * a staff entry (no online request), a request without an address, or a rental no longer in the decision's status.
+ * The approval states the booking's terms with the cancellation link (`sendTermsMail` in `rental-links.ts`, #286).
  */
 export async function sendDecisionMail(
   container: AwilixContainer,
@@ -156,23 +144,9 @@ export async function sendDecisionMail(
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     timeZone: settings.timeZone,
-    clubSlug: await clubSlugOf(container, scope),
+    clubSlug: settings.publicSlug,
   }
-  let params: Record<string, unknown> = base
-  if (status === 'approved') {
-    const payee = await placePayee(container, scope, row.placeId, em)
-    params = {
-      ...base,
-      amount: row.amount,
-      currency: settings.currency,
-      payeeName: payee?.bankAccount ? payee.name : null,
-      bankAccount: payee?.bankAccount ?? settings.bankAccount,
-      paymentDeadline: row.paymentDeadline?.toISOString() ?? null,
-      cancellationDeadline: row.cancellationDeadline?.toISOString() ?? null,
-    }
-  } else if (status === 'rejected') {
-    params = { ...base, reason: row.decisionReason ?? '—' }
-  }
+  const params: Record<string, unknown> = status === 'rejected' ? { ...base, reason: row.decisionReason ?? '—' } : base
   const dispatchId = await em.transactional(async (tx) => {
     const enqueued = await dispatchService(container).enqueue(
       tx,
