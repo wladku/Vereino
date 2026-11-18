@@ -2,7 +2,7 @@
 
 - **Trigger:** cezar run 1bdb9b0b (`om-auto-fix-issue 269`, label `cezar` added 2026-11-17).
 - **Issue:** [#269](https://github.com/wladku/Vereino/issues/269) — feature, priority-high, risk-high.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md`, phase 4 (REQ-A07, REQ-A04 complete; TEST-A09, TEST-A10, TEST-A22 deadline part). Status `Ready for implementation`; migration A and the behaviour changes approved by the owner on #252 (2026-11-16).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md`, phase 4 (REQ-A07, REQ-A04 complete; TEST-A09, TEST-A10, TEST-A22 deadline part). Status `Ready for implementation`; migration A and the behaviour changes approved by the owner on #252 (2026-11-16).
 - **Branch:** `feat/issue-269-guardian-declaration-deadline`.
 
 ## Steps

@@ -7,12 +7,16 @@ import {
   banRequestTemplate,
   maintenanceDuePlannerTemplate,
   maintenanceDueTemplate,
+  rentalCancelledTemplate,
+  rentalMovedTemplate,
+  rentalSummaryTemplate,
   requestEmailTemplates,
 } from './emails/templates'
 import notificationTypes from './notifications'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
 import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
 import { createPublicPlacesBlock } from './services/public-schedule'
+import { FACILITIES_RENTAL_LINKS, createRentalLinkService } from './services/rental-links'
 import { FACILITIES_REQUEST_LINKS, createRequestLinkService } from './services/requests'
 
 /** The club page block of the public places (club spec DD-28; #124), read by `club_core` with `hasRegistration`. */
@@ -28,12 +32,19 @@ export const FACILITIES_PUBLIC_PLACES = 'facilities.publicPlaces' as const
  * `facilities.requestLinks` (DD-44, #125): the P-10 single-use link on `facilities_rentals` (1 h) — the single DD-35
  * lookup of the request's token hash. The request e-mail templates (P-31) are registered for every request and job
  * container, so the dispatch worker finds them, and the in-app types are added to the platform's registry.
+ *
+ * `facilities.rentalLinks` (facilities parity spec DD-R13, #286): the renter's single-use cancellation link in
+ * `facilities_rental_links`, valid until the rental starts; with the renter's e-mails (summary, moved, cancelled).
  */
 const requestLinkService = createRequestLinkService()
+const rentalLinkService = createRentalLinkService()
 
 export function register(container: AppContainer) {
   registerNotificationTypes(notificationTypes)
   for (const template of requestEmailTemplates) registerEmailTemplate(container, template)
+  registerEmailTemplate(container, rentalSummaryTemplate)
+  registerEmailTemplate(container, rentalMovedTemplate)
+  registerEmailTemplate(container, rentalCancelledTemplate)
   registerEmailTemplate(container, maintenanceDueTemplate)
   registerEmailTemplate(container, maintenanceDuePlannerTemplate)
   registerEmailTemplate(container, banRequestTemplate)
@@ -45,6 +56,7 @@ export function register(container: AppContainer) {
     [OCCUPANCY_PROVIDER_TOKEN]: service,
     [FACILITIES_PUBLIC_PLACES]: asFunction(() => createPublicPlacesBlock(container)).scoped(),
     [FACILITIES_REQUEST_LINKS]: asValue(requestLinkService),
+    [FACILITIES_RENTAL_LINKS]: asValue(rentalLinkService),
     // #128 (DD-36): the places a person maintains, read by `people` for the scope grant and the derived role.
     [FACILITIES_MAINTAINER_SCOPE_PROVIDER]: asValue(createMaintainerScopeProvider()),
   })
