@@ -121,14 +121,15 @@ async function newToCause(
         end: cause.previous.end,
       }
     : null
-  const fresh = <T extends { id: string }>(
+  const fresh = (
     kind: 'session' | 'rental' | 'booking',
-    rows: readonly (T & {
-      placeId: string
-      startsAt: Date
-      endsAt: Date
-    })[],
-  ) => rows.filter((row) => !announcedBefore({ kind, ...row }, previous)).map((row) => row.id)
+    rows: ReadonlyArray<{ id: string; placeId: string; startsAt: Date; endsAt: Date }>,
+  ) =>
+    rows
+      .filter(
+        (row) => !announcedBefore({ kind, placeId: row.placeId, startsAt: row.startsAt, endsAt: row.endsAt }, previous),
+      )
+      .map((row) => row.id)
   return {
     sessions: fresh('session', sessions),
     rentals: fresh('rental', rentals),
