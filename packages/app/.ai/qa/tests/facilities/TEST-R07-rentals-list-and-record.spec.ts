@@ -3,7 +3,7 @@ import { addDays, nextWeekday, weekdayOf, zoneInstant } from '../_fixtures/activ
 import { prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { confirmationToken, requestForm, submitRequest, verifyRequest } from '../_fixtures/facility-requests'
-import { listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
+import { confirmRental, listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
 import { publicPitch } from '../_fixtures/public-places'
 import { uiText } from '../_fixtures/ui-text'
 
@@ -60,7 +60,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
     }
     const requested = await enter('Najemca Wtorek', zoneInstant(tuesday, '08:00'))
     const confirmed = await enter('Najemca Potwierdzony', zoneInstant(tuesday, '11:00'))
-    expect((await rentalAction(request, admin, confirmed, 'confirm')).status).toBe(200)
+    await confirmRental(request, admin, confirmed)
     const cancelled = await enter('Najemca Odwołany', zoneInstant(tuesday, '13:00'))
     expect((await rentalAction(request, admin, cancelled, 'cancel')).status).toBe(200)
     const flagged = await enter('Najemca Do Przeniesienia', zoneInstant(wednesday, '08:00'))

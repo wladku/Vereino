@@ -4,6 +4,7 @@ import {
   REPORTED_RENTAL_STATUSES,
   clubZoneMinutes,
   hoursOf,
+  ownerPayments,
   ownerReportCsv,
   ownerReportEmpty,
   periodDates,
@@ -179,8 +180,42 @@ describe('rental statuses', () => {
   })
 })
 
+describe('ownerPayments (REQ-R11)', () => {
+  it('reads the register when no rental has a charge', () => {
+    expect(
+      ownerPayments([
+        { amount: 100, status: 'confirmed', chargeState: 'none' },
+        { amount: 200, status: 'done', chargeState: 'none' },
+        { amount: 400, status: 'requested', chargeState: 'none' },
+      ]),
+    ).toEqual({ amount: 300, count: 2, source: 'rental_register', partiallyPaidCount: 0 })
+    expect(ownerPayments([])).toEqual({ amount: 0, count: 0, source: 'rental_register', partiallyPaidCount: 0 })
+  })
+
+  it('counts a charged rental once its charge is paid and the partly paid ones apart', () => {
+    expect(
+      ownerPayments([
+        { amount: 100, status: 'confirmed', chargeState: 'paid' },
+        { amount: 200, status: 'requested', chargeState: 'partially_paid' },
+        { amount: 400, status: 'requested', chargeState: 'open' },
+        { amount: 800, status: 'cancelled_late', chargeState: 'forfeited' },
+      ]),
+    ).toEqual({ amount: 100, count: 1, source: 'charges', partiallyPaidCount: 1 })
+  })
+
+  it('is mixed when rentals of both kinds occur', () => {
+    expect(
+      ownerPayments([
+        { amount: 100, status: 'confirmed', chargeState: 'paid' },
+        { amount: 200, status: 'confirmed', chargeState: 'none' },
+      ]),
+    ).toEqual({ amount: 300, count: 2, source: 'mixed', partiallyPaidCount: 0 })
+  })
+})
+
 const report = (patch: Partial<OwnerReport> = {}): OwnerReport => ({
   place: { id: 'pitch', name: 'Boisko A' },
+  owner: { institutionId: 'gmina', name: 'Gmina Zielonka' },
   from: '2026-11-01',
   to: '2026-11-30',
   timeZone: TZ,
@@ -216,7 +251,7 @@ const report = (patch: Partial<OwnerReport> = {}): OwnerReport => ({
       },
     ],
   },
-  payments: { amount: 50_000, count: 1, source: 'rental_register' },
+  payments: { amount: 50_000, count: 1, source: 'rental_register', partiallyPaidCount: 0 },
   incidents: { count: 1 },
   maintenance: { done: 1, cost: 12_050 },
   ...patch,
@@ -226,7 +261,7 @@ describe('ownerReportEmpty', () => {
   const nothing = report({
     clubTime: { total: 0, sessions: 0, bookings: 0, byZone: report().clubTime.byZone },
     rentals: { count: 0, value: 0, items: [] },
-    payments: { amount: 0, count: 0, source: 'rental_register' },
+    payments: { amount: 0, count: 0, source: 'rental_register', partiallyPaidCount: 0 },
     incidents: { count: 0 },
     maintenance: { done: 0, cost: 0 },
   })
@@ -248,6 +283,7 @@ describe('ownerReportCsv', () => {
     expect(lines).toEqual([
       'section,item,value',
       'report,place,Boisko A',
+      'report,owner,Gmina Zielonka',
       'report,from,2026-11-01',
       'report,to,2026-11-30',
       'report,currency,PLN',
@@ -268,6 +304,7 @@ describe('ownerReportCsv', () => {
       'payments,amount,500.00',
       'payments,count,1',
       'payments,source,rental_register',
+      'payments,partially_paid_count,0',
       'incidents,count,1',
       'maintenance,done,1',
       'maintenance,cost,120.50',
@@ -277,6 +314,10 @@ describe('ownerReportCsv', () => {
       "2026-11-07,10:00,11:30,'=HYPERLINK(),1,250.00,requested",
       '',
     ])
+  })
+
+  it('writes an empty owner when the club owns the place', () => {
+    expect(ownerReportCsv(report({ owner: null })).split('\r\n')).toContain('report,owner,')
   })
 
   it('writes a negative amount with its sign', () => {

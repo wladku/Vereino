@@ -10,7 +10,8 @@
 // variant is the attendant's `/club/facility/rentals/[id]` (E11-S08, #282): the same read and actions, the contact,
 // purpose and notes only (assigning a register record needs the register, which the attendant cannot read), no version
 // history and no "Decide" link (both are the administrator's), and for a rental with a charge its charge state and no
-// "Confirm payment": the administrator records the payment (DD-R09).
+// "Confirm payment": the administrator records the payment (DD-R09). On the administrator's page "Confirm payment" of a
+// rental whose charge is unpaid opens that charge on B-22, where the payment is recorded and confirms the rental (#285).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -34,6 +35,8 @@ import {
   RENTALS_KEY,
   RENTALS_URL,
   REQUESTS_HREF,
+  chargeAwaitingPayment,
+  chargeHref,
   chargeStateVariant,
   clubDateOf,
   clubTimeOf,
@@ -276,22 +279,34 @@ export function RentalRecord({ id, variant = 'panel' }: { id: string; variant?: 
               <Link href={REQUESTS_HREF}>{t('facilities.rentals.list.decision')}</Link>
             </Button>
           ) : null}
-          {available.map((action) => (
-            <Button
-              key={action}
-              type="button"
-              size="sm"
-              variant={action === 'cancel' || action === 'noShow' ? 'destructive-outline' : 'outline'}
-              data-testid={`facilities-rental-record-${action}`}
-              onClick={() => {
-                actions.run(rental, action)
-              }}
-            >
-              {action === 'confirm' || action === 'cancel'
+          {available.map((action) => {
+            const label =
+              action === 'confirm' || action === 'cancel'
                 ? t(`facilities.rentals.list.${action}`)
-                : t(`facilities.rentals.actions.${action}`)}
-            </Button>
-          ))}
+                : t(`facilities.rentals.actions.${action}`)
+            const chargeId = action === 'confirm' ? chargeAwaitingPayment(rental) : null
+            // A rental with an unpaid charge is confirmed by its payment: the button opens the charge (DD-R09).
+            return chargeId ? (
+              <Button key={action} asChild size="sm" variant="outline">
+                <Link href={chargeHref(chargeId)} data-testid={`facilities-rental-record-${action}`}>
+                  {label}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                key={action}
+                type="button"
+                size="sm"
+                variant={action === 'cancel' || action === 'noShow' ? 'destructive-outline' : 'outline'}
+                data-testid={`facilities-rental-record-${action}`}
+                onClick={() => {
+                  actions.run(rental, action)
+                }}
+              >
+                {label}
+              </Button>
+            )
+          })}
         </div>
       </header>
 

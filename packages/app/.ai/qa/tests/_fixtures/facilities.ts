@@ -1,6 +1,8 @@
 // Facilities fixtures (#121, facilities spec phase 5 step 2): zone rules, the bulk booking availability, closures,
 // rental rates and the opening hours of a place (`club_core_places.opening_hours`, DD-41).
 import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
 import { scheduleFor, type ScheduleSetup } from './activities'
@@ -275,6 +277,37 @@ export async function rentalAction(
   })
 }
 
+/**
+ * Confirms a `requested` rental the way the club administrator does (facilities parity spec DD-R09, #285): a rental
+ * with an unpaid charge by recording the whole remaining amount on its charge (`POST
+ * /api/payments/charges/{id}/payments`), which confirms the rental through the `payments.payment.recorded`
+ * subscriber; a rental without one (or with a paid charge) by `POST …/confirm`. Returns the confirmed rental.
+ */
+export async function confirmRental(request: APIRequestContext, adminToken: string, id: string): Promise<RentalItem> {
+  const rental = await getRental(request, adminToken, id)
+  if (rental.chargeId && (rental.chargeState === 'open' || rental.chargeState === 'partially_paid')) {
+    const charge = await call<{ remaining: number; updatedAt: string }>(
+      request,
+      'GET',
+      `/api/payments/charges/${rental.chargeId}`,
+      adminToken,
+    )
+    expect(charge.status, JSON.stringify(charge.body)).toBe(200)
+    const paid = await call<CodedError>(request, 'POST', `/api/payments/charges/${rental.chargeId}/payments`, adminToken, {
+      data: { amount: charge.body?.remaining, method: 'transfer', paidOn: calendarDate() },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(charge.body?.updatedAt) },
+    })
+    expect(paid.status, JSON.stringify(paid.body)).toBe(201)
+    await expect
+      .poll(async () => (await getRental(request, adminToken, id)).status, { timeout: 60_000 })
+      .toBe('confirmed')
+  } else {
+    const confirmed = await rentalAction(request, adminToken, id, 'confirm')
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+  }
+  return getRental(request, adminToken, id)
+}
+
 export async function postEntryBan(request: APIRequestContext, token: string, data: Record<string, unknown>) {
   return call<CodedError & { id?: string }>(request, 'POST', '/api/facilities/entry-bans', token, { data })
 }
@@ -461,4 +494,56 @@ export function runRequestProbe(club: Club, input: Record<string, unknown>): Rec
     )
   }
   return JSON.parse(last) as Record<string, unknown>
+}
+
+const CHARGE_PROBE = path.join(APP_ROOT, '.ai', 'qa', 'tests', '_fixtures', 'facilities-charge-probe', 'probe.mjs')
+
+export type ChargeProbeResult = {
+  hidden?: boolean
+  id?: string
+  chargeId?: string | null
+  created?: string
+  confirmed?: string
+  confirmedIds?: string[]
+}
+
+/**
+ * Runs the facilities charge probe (`facilities-charge-probe/probe.mjs`, TEST-R08) in the club's scope as its
+ * administrator, with a private queue directory: `without` enters and confirms a rental with `payments.chargeService`
+ * hidden; `replay` runs `facilities.rentals.confirm_paid` for a charge once more.
+ */
+export function runChargeProbe(club: Club, input: Record<string, unknown>): ChargeProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(
+      process.execPath,
+      [
+        CHARGE_PROBE,
+        JSON.stringify({
+          tenantId: club.tenant.tenantId,
+          organizationId: club.tenant.organizationId,
+          userId: club.adminUserId,
+          ...input,
+        }),
+      ],
+      {
+        cwd: APP_ROOT,
+        env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+        timeout: 300_000,
+      },
+    )
+    const last = run.stdout.trimEnd().split(/?
+/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the facilities charge probe exited ${String(run.status)}: ${run.stderr}
+${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as ChargeProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
 }
