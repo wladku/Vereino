@@ -46,3 +46,11 @@
 - **Fix:** merged the latest `main` (clean), then TEST-C01 expects `{ rentalsPerspective: true, toRefundCount: 0 }` — a new club holds no online overpayment, so the count is deterministic and the assertion stays exact. No product code changed.
 - **Commands:** `yarn test:integration:vereino --filter TEST-C01` could not run here ("Could not find a working container runtime strategy": no Docker socket access for this user); CI is the integration oracle for this step. `yarn verify`: all 17 steps passed.
 - **Lesson:** `.ai/lessons/exact-meta-assertions-break-on-additive-fields.md`.
+
+## Follow-up run: base merge of PR #391 (2026-11-18, cezar task 4d7b7729, `om-auto-fix-pr 391`)
+
+- **Trigger:** the merge train labeled the PR `merge-train-conflict` after #389 (E12-S04, #294) landed on `main`.
+- **Conflict:** only the `**Status**` line of `.ai/specs/2026-11-14-vereino-parity-payments.md`; resolved by keeping both entries (phase 6 in #296 and phase 4 in #294). Fixtures, README and i18n catalogs auto-merged; both catalogs parse.
+- **Semantic check:** #294's TEST-C05 / TEST-042 assert nothing on the charges list or refunds; the only caller of the changed `visiblePerspectives` signature already uses the new shape.
+- **Commands:** `yarn verify`: all 17 steps passed. Integration is left to CI (no container runtime for this user).
+- **History:** merge commit on a detached HEAD at the PR head, pushed with `git push origin HEAD:<branch>`; no force-push.
