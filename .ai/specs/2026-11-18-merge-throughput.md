@@ -45,7 +45,7 @@ Evidence from 2026-11-18:
 2. **Date-safe fixtures** — a shared helper picks days at least two days ahead for declarations, bookings and sessions; existing tests that use "today" or "tomorrow" move to it.
 3. **Failure ledger** — a separate, non-blocking job after each CI run on a same-repository PR or on `main` collects the run's unexpected Playwright failures (not `flaky` retry passes) by test id; when the same test id fails in two runs whose PR sets share no PR within 48 h, or fails on `main`, it opens one quarantine issue labelled `bug`, `priority-high`, `cezar`. Only test ids that match a spec file on `main` are written; no free text from the run is copied (the issue feeds an autonomous agent).
 4. **Picker spreads modules** — never two queued or running issue builds of the same spec module.
-5. **Fixes from events** — a Cezar automation on the train labels queues a `vereino-pr` run at once.
+5. **Fixes from events** — the train mirrors `merge-train-failed` / `merge-train-conflict` onto the PR's linked issue (the `issue-N` in the branch name), and a Cezar automation on that issue label queues a `vereino-pr` run at once. Cezar 0.16.1 polls issue labels but not pull-request labels, and its schedules run at most hourly (checked 2026-11-18), so the label has to reach an issue.
 6. **Rules** — the train skips a `risk-high` PR with `needs-qa` until `qa` (MT-D02); Cezar runs at most three builds (MT-D04); both written into `SDLC.md`.
 
 ### Design Decisions and Alternatives
@@ -83,7 +83,7 @@ CI run completed (same-repo PR or main) ─► ci-failure-ledger.yml
    download this run's results.json artifacts ─► unexpected failures by test id (spec file on main)
    per test id: find/update the open tracking issue (run links) ─► second disjoint failure in 48 h or any failure on main
    ─► label the issue bug, priority-high, cezar ─► Cezar builds the test.fixme quarantine PR (SDLC.md)
-train adds merge-train-failed / merge-train-conflict ─► Cezar automation ─► vereino-pr run (picker PR step stays as fallback)
+train adds merge-train-failed / merge-train-conflict to the PR and its linked issue ─► Cezar automation (issue.labeled) ─► vereino-pr run; the train removes both labels when the state clears (picker PR step stays as fallback)
 ```
 
 ## User Journeys
@@ -116,7 +116,7 @@ See *Architecture and Data Flow*. The ledger never blocks a merge and never fail
 
 - **MT-TEST-03** `ci-failure-ledger`: parse `results.json` (unexpected vs flaky vs missing shard), disjoint-run rule, `main` rule, marker lookup, test-id allow-list, fork skip.
 - **MT-TEST-04** date-safe helper: never today or tomorrow, respects the requested weekday, crosses month and year ends.
-- **MT-TEST-05** `planMergeTrain` MT-D02 rule: `risk-high` + `needs-qa` without `qa` is skipped; with `qa`, or with another risk, it is queued.
+- **MT-TEST-05** `planMergeTrain` MT-D02 rule: `risk-high` + `needs-qa` without `qa` is skipped; with `qa`, or with another risk, it is queued; label sync mirrors `merge-train-failed`/`-conflict` onto the issue named by `issue-N` in the head branch, and not when the branch names none.
 - **Evidence:** 10 CI runs after Phase 1 (p50); a replayed pair of failing artifacts in a `workflow_dispatch` dry run of the ledger; one observed label-started fix run.
 
 ## Implementation Phases
@@ -135,11 +135,12 @@ See *Architecture and Data Flow*. The ledger never blocks a merge and never fail
 
 - Step 3.1 — MT-D02 in `planMergeTrain` (MT-TEST-05).
 - Step 3.2 — `SDLC.md` "Validation gate" (QA rule) and "automation contract" (Cezar at three builds); `docs/ops/github-settings.md` lists only the checks the ruleset requires (`gate`, `integration`, `browser-smoke`).
+- Step 3.3 — the train mirrors its two labels onto the linked issue of a PR whose branch names `issue-N` (and removes them with the PR's), so Cezar can react (MT-TEST-05 extended); a PR without a linked issue keeps the hourly picker as its path.
 - Exit: `yarn verify` green.
 
 ### Operations (outside the repository, run log only)
 
-- Cezar automation on `pull_request.labeled` (`merge-train-failed`, `merge-train-conflict`) queuing `vereino-pr` with the picker's task text; if Cezar's GitHub automations cannot watch pull-request labels, a picker pass every 15 min limited to the PR step.
+- Cezar automation on `issue.labeled` (`merge-train-failed`, `merge-train-conflict`) queuing `vereino-pr` with the picker's task text; the run finds the open PR from the issue. Cezar 0.16.1 has no pull-request label event and no schedule shorter than one hour, so the repository part is Step 3.3.
 - Picker prompt: the module-spread rule.
 - `~/.cezar/config.json` `resources.maxParallel: 3`.
 - Evidence: one observed label-started run within 10 min, recorded in `.ai/runs/`.
@@ -152,7 +153,7 @@ See *Architecture and Data Flow*. The ledger never blocks a merge and never fail
 | REQ-MT03 | Date-safe fixtures | 2 | MT-TEST-04 | MT-AC-03 |
 | REQ-MT04 | Failure ledger and quarantine issue | 2 | MT-TEST-03, dry run | MT-AC-03 |
 | REQ-MT05 | Picker spreads modules | Ops | run log | MT-AC-04 |
-| REQ-MT06 | Fix run on train labels | Ops | run log | MT-AC-04 |
+| REQ-MT06 | Fix run on train labels (mirrored to the linked issue) | 3, Ops | MT-TEST-05, run log | MT-AC-04 |
 | REQ-MT09 | `risk-high` + `needs-qa` waits for `qa` | 3 | MT-TEST-05 | MT-AC-05 |
 | REQ-MT10 | Rules in `SDLC.md`, Cezar at three builds | 3, Ops | `yarn verify`, run log | MT-AC-05 |
 
