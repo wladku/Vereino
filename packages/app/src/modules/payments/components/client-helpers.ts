@@ -99,7 +99,21 @@ export type PaymentRow = {
   source: PaymentSource
   reversesPaymentId: string | null
   reversed: boolean
+  /** An online share whose charge was no longer open: money to refund (Q-049). */
+  overpayment: boolean
+  /** Grosz still refundable through the gateway; 0 for anything but an online payment (#296). */
+  refundable: number
+  refunds: RefundRow[]
   createdAt: string
+}
+
+/** One refund of an online payment (B-22, #296). */
+export type RefundRow = {
+  id: string
+  amount: number
+  paidOn: string
+  reason: string | null
+  gatewayRefundId: string | null
 }
 
 /** A person who may pay a charge without a payer (B-22 "Assign payer", #295). */
