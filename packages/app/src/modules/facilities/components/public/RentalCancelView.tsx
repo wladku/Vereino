@@ -122,25 +122,34 @@ export function RentalCancelView({ clubSlug, token }: { clubSlug: string; token:
   const [result, setResult] = React.useState<CancelOutcome | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
 
-  const load = React.useCallback(() => {
-    setPreview(null)
+  const fetchPreview = React.useCallback(() => {
     previewRentalCancel(token)
       .then(setPreview)
-      .catch(() => setPreview({ status: 'failed' }))
+      .catch(() => {
+        setPreview({ status: 'failed' })
+      })
   }, [token])
+  const load = () => {
+    setPreview(null)
+    fetchPreview()
+  }
 
   React.useEffect(() => {
     // The preview spends nothing, so strict mode's second run is harmless.
-    if (token) load()
-  }, [token, load])
+    if (token) fetchPreview()
+  }, [token, fetchPreview])
 
   const confirm = () => {
     if (submitting) return
     setSubmitting(true)
     cancelRentalByLink(token)
       .then(setResult)
-      .catch(() => setResult({ status: 'failed' }))
-      .finally(() => setSubmitting(false))
+      .catch(() => {
+        setResult({ status: 'failed' })
+      })
+      .finally(() => {
+        setSubmitting(false)
+      })
   }
 
   let body: React.ReactNode

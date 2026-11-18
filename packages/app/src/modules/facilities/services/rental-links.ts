@@ -224,7 +224,7 @@ export async function rentalOfLink(
 ): Promise<{ row: Rental; scope: FacilitiesScope }> {
   // DD-35: the one system-scope lookup by the token's hash; everything after it uses the found club.
   const found = await rentalLinks(container).peek(em, token)
-  if (!found || found.link.purpose !== 'cancel') return foundationErrors.throw('token_link_expired')
+  if (!found) return foundationErrors.throw('token_link_expired')
   const scope = { tenantId: found.tenantId, organizationId: found.organizationId }
   const row = await em.findOne(Rental, { id: found.link.rentalId, ...scope, deletedAt: null }, { refresh: true })
   if (!row || !rentalCancellable(row.status)) return foundationErrors.throw('token_link_expired')
