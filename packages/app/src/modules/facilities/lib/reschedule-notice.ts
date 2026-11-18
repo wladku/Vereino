@@ -99,6 +99,17 @@ export function planRescheduleNotices(input: {
   }))
 }
 
+/** The most entries one message lists; a longer list ends with "and K more" (the e-mail template's params cap). */
+export const RESCHEDULE_ENTRY_LIMIT = 500
+
+/** The first `limit` entries of a message (already by start) and how many it leaves out. */
+export function limitNoticeEntries<T>(
+  entries: readonly T[],
+  limit: number = RESCHEDULE_ENTRY_LIMIT,
+): { shown: T[]; more: number } {
+  return { shown: entries.slice(0, limit), more: Math.max(0, entries.length - limit) }
+}
+
 /** The sections whose coordinators a plan needs, with each session's day (one directory read per pair). */
 export function sectionDays(
   sessions: readonly FlaggedSession[],

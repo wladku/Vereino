@@ -1,8 +1,10 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   RENTALS_TO_MOVE_HREF,
+  RESCHEDULE_ENTRY_LIMIT,
   announcedBefore,
   isToMoveView,
+  limitNoticeEntries,
   placeDayToMoveHref,
   planRescheduleNotices,
   rescheduleNoticeKey,
@@ -153,6 +155,17 @@ describe('reschedule notices (REQ-R18, J-R05)', () => {
       true,
     )
     expect(announcedBefore({ ...booking, placeId: 'elsewhere' }, previous)).toBe(false)
+  })
+
+  it('lists at most the limit of entries and counts the rest', () => {
+    expect(RESCHEDULE_ENTRY_LIMIT).toBe(500)
+    expect(limitNoticeEntries(['a', 'b', 'c'], 2)).toEqual({ shown: ['a', 'b'], more: 1 })
+    expect(limitNoticeEntries(['a', 'b'], 2)).toEqual({ shown: ['a', 'b'], more: 0 })
+    const many = Array.from({ length: 501 }, (_, index) => index)
+    const limited = limitNoticeEntries(many)
+    expect(limited.shown).toHaveLength(500)
+    expect(limited.shown[499]).toBe(499)
+    expect(limited.more).toBe(1)
   })
 
   it('links staff to the place’s day filtered and administrators to B-24', () => {

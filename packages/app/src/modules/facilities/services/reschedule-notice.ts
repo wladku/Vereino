@@ -20,6 +20,7 @@ import {
   type RescheduleParams,
 } from '../emails/templates'
 import {
+  limitNoticeEntries,
   planRescheduleNotices,
   rescheduleNoticeKey,
   sectionDays,
@@ -103,15 +104,33 @@ export async function notifyRescheduleNeeded(
   const places = await findPlaces(container, scope, placeIds, em)
   const placeName = (placeId: string) => places.get(placeId)?.name ?? '—'
 
+  // Each recipient on its own: one failed dispatch is logged and never stops the notices after it.
   let people = 0
   for (const notice of notices) {
-    if (await sendNotice(ctx, notice, placeName)) people += 1
+    if (await isolated(ctx, { personId: notice.personId }, () => sendNotice(ctx, notice, placeName))) people += 1
   }
   let renters = 0
   for (const rentalId of rentals.map((row) => row.id)) {
-    if (await sendRenterMail(ctx, rentalId, placeName, settings.locale)) renters += 1
+    if (await isolated(ctx, { rentalId }, () => sendRenterMail(ctx, rentalId, placeName, settings.locale))) renters += 1
   }
   return { people, renters }
+}
+
+async function isolated(
+  ctx: Context,
+  recipient: Record<string, string>,
+  send: () => Promise<boolean>,
+): Promise<boolean> {
+  try {
+    return await send()
+  } catch (error: unknown) {
+    logger.warn('Reschedule notice failed for one recipient', {
+      ...recipient,
+      causeId: ctx.cause.id,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return false
+  }
 }
 
 async function flaggedSessions(ctx: Context, ids: readonly string[]): Promise<FlaggedSession[]> {
@@ -176,10 +195,12 @@ async function sendNotice(
     return false
   }
   const first = notice.entries[0]
+  const { shown, more } = limitNoticeEntries(notice.entries)
   const params: RescheduleParams = {
     causeKind: ctx.cause.kind,
     timeZone: ctx.timeZone,
-    entries: notice.entries.map((entry) => ({
+    ...(more > 0 ? { more } : {}),
+    entries: shown.map((entry) => ({
       kind: entry.kind,
       placeName: placeName(entry.placeId),
       startsAt: entry.startsAt.toISOString(),

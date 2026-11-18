@@ -1021,6 +1021,7 @@
   "facilities.email.reschedule.sessionUnnamed": "Trening — {place}, {slot}",
   "facilities.email.reschedule.booking": "Rezerwacja klubu — {place}, {slot}",
   "facilities.email.reschedule.rental": "Wynajem — {place}, {slot}",
+  "facilities.email.reschedule.more": "… oraz kolejne wpisy: {count}",
   "facilities.email.reschedule.action": "Otwórz dzień",
   "facilities.email.reschedule.actionRentals": "Otwórz wynajmy do przeniesienia",
   "facilities.email.rescheduleRenter.subject": "Twój wynajem: {place} — trzeba zmienić termin",

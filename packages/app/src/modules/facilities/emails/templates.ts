@@ -12,7 +12,7 @@ import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/tran
 import { formatBankAccount } from '@vereino/core'
 import { defineEmailTemplate, type EmailRenderContext } from '@/modules/foundation'
 import { formatAmount, formatInstant, formatSlot } from '../lib/requests'
-import { RENTALS_TO_MOVE_HREF, placeDayToMoveHref } from '../lib/reschedule-notice'
+import { RENTALS_TO_MOVE_HREF, RESCHEDULE_ENTRY_LIMIT, placeDayToMoveHref } from '../lib/reschedule-notice'
 
 const h = React.createElement
 
@@ -414,7 +414,9 @@ const rescheduleParams = z
           .strict(),
       )
       .min(1)
-      .max(500),
+      .max(RESCHEDULE_ENTRY_LIMIT),
+    /** Entries beyond the listed ones (a message lists at most `RESCHEDULE_ENTRY_LIMIT`). */
+    more: z.number().int().min(0).optional(),
     linkPlaceId: z.uuid(),
     linkDate: z.iso.date(),
   })
@@ -450,15 +452,19 @@ function rescheduleLine(
 }
 
 function rescheduleCopy(t: TranslateWithFallbackFn, params: RescheduleParams, ctx: EmailRenderContext) {
-  const values = { cause: causeOf(t, params.causeKind), count: String(params.entries.length) }
+  const more = params.more ?? 0
+  const values = { cause: causeOf(t, params.causeKind), count: String(params.entries.length + more) }
+  const lines = params.entries.map((entry) => rescheduleLine(t, entry, params, ctx))
+  if (more > 0)
+    lines.push(t('facilities.email.reschedule.more', '… and more entries: {count}', { count: String(more) }))
   return {
-    subject: t('facilities.email.reschedule.subject', 'To be moved: {count} entries because of {cause}', values),
+    subject: t('facilities.email.reschedule.subject', 'Entries to be moved ({count}) because of {cause}', values),
     lead: t(
       'facilities.email.reschedule.lead',
       'Because of {cause}, these entries were marked to be moved. Give them a new time:',
       values,
     ),
-    lines: params.entries.map((entry) => rescheduleLine(t, entry, params, ctx)),
+    lines,
   }
 }
 
