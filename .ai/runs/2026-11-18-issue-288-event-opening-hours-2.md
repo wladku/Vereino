@@ -16,6 +16,8 @@
 6. TEST-R04 flake (`facilities-slot-kind` showed "General purpose (club booking)" instead of "For a group"): `SlotDialog` sets the preselected kind once at mount (`useState(kinds[0])`), so the coach's groups arriving later leave the earlier kind in place. This race is already on main and this PR does not touch it, so it goes to a follow-up issue instead of growing this PR.
 7. Review of the PR's code diff (stage 1 of the loop): no blocker or major found.
 
+8. CI on `3ffac54d` went fully green (all three integration shards passed), but `main` gained #365 (#306) meanwhile and the PR turned `CONFLICTING`. Merged `main` again (`f811aaaf`); the only conflict was `BACKWARD_COMPATIBILITY.md`, where both sides added an independent bullet to the API-route list, so both were kept. The new #306 tests create no group events.
+
 ## Decisions
 
 - Fixed the test, not the rule: REQ-R19 deliberately refuses one-off events outside opening hours, and TEST-R15 only needed a session that a maintenance window covers.
@@ -30,7 +32,8 @@
 
 - `yarn test:integration:vereino --filter TEST-R15`: `1 passed (3.6m)` (the test itself 1.7m).
 - `yarn verify`: `[verify] all 17 step(s) passed`.
-- Pushed to `feat/issue-288-group-event-outside-opening-hours` (fast-forward, no force-push); CI is re-run on the new head.
+- Pushed to `feat/issue-288-group-event-outside-opening-hours` (fast-forward, no force-push); CI on `3ffac54d`: all 10 checks passed.
+- After the second `main` merge: `yarn verify` again `[verify] all 17 step(s) passed`; pushed and CI re-runs on the new head.
 
 ## Open problems / next steps
 
