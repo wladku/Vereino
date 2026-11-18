@@ -31,7 +31,13 @@ export function useRentalActions({
     async (row: RentalRow, action: 'confirm' | 'noShow') => {
       const confirmed = await confirm({
         title: t(`facilities.rentals.${action}.title`),
-        text: t(`facilities.rentals.${action}.text`, { slot: slotLabel(row.startsAt, row.endsAt, timeZone) }),
+        // Without a charge the confirm is noted in the rental register only (DD-R09).
+        text: t(
+          action === 'confirm' && row.chargeState === 'none'
+            ? 'facilities.rentals.confirm.registerText'
+            : `facilities.rentals.${action}.text`,
+          { slot: slotLabel(row.startsAt, row.endsAt, timeZone) },
+        ),
         confirmText: t(`facilities.rentals.actions.${action}`),
         cancelText: t('facilities.rentals.actions.back'),
         variant: action === 'noShow' ? 'destructive' : 'default',
