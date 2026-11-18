@@ -385,9 +385,9 @@ export function SeasonRolloverWizard() {
             if (seasonReady && !busy) void loadGroups()
           }}
         >
-          {seasons.isLoading ? <p className="text-sm text-muted-foreground">{t('groups.rollover.loading')}</p> : null}
+          {seasons.isLoading ? <p className="text-muted-foreground text-sm">{t('groups.rollover.loading')}</p> : null}
           {!seasons.isLoading && seasonRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('groups.rollover.noSeasons')}</p>
+            <p className="text-muted-foreground text-sm">{t('groups.rollover.noSeasons')}</p>
           ) : null}
           <div className="flex flex-col gap-1">
             <Label htmlFor="groups-rollover-from">{t('groups.rollover.fields.fromSeason')}</Label>
@@ -492,10 +492,10 @@ export function SeasonRolloverWizard() {
 
       {step === 2 && base ? (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t('groups.rollover.groups.help', { from: base.fromSeason.name, lastDay: base.lastDay })}
           </p>
-          <p className="text-sm text-muted-foreground">{t('groups.rollover.groups.scopeNote')}</p>
+          <p className="text-muted-foreground text-sm">{t('groups.rollover.groups.scopeNote')}</p>
           {base.groups.length === 0 ? (
             <p className="text-sm" data-testid="groups-rollover-no-groups">
               {t('groups.rollover.groups.empty')}
@@ -513,7 +513,7 @@ export function SeasonRolloverWizard() {
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="font-medium break-words">{group.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {t('groups.rollover.groups.participants', { count: group.participants })}
                       </span>
                     </div>
@@ -583,7 +583,7 @@ export function SeasonRolloverWizard() {
                       ) : null}
                     </div>
                     {choice.action === 'close' ? (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         {t('groups.rollover.groups.closeHelp', { lastDay: base.lastDay })}
                       </p>
                     ) : null}
@@ -631,7 +631,7 @@ export function SeasonRolloverWizard() {
 
       {step === 3 && base ? (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t('groups.rollover.records.help', { lastDay: base.lastDay })}
           </p>
           {continuedGroups.every((group) => !base.candidates.some((c) => c.groupId === group.groupId)) ? (
@@ -765,7 +765,7 @@ export function SeasonRolloverWizard() {
 
       {step === 4 && preview ? (
         <div className="flex flex-col gap-4" data-testid="groups-rollover-preview">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t('groups.rollover.preview.help', {
               from: preview.fromSeason.name,
               to: preview.toSeason.name,
