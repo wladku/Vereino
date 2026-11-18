@@ -1,10 +1,10 @@
 'use client'
-// Whether the signed-in user holds `communication.post` (wildcard-aware, through the platform's feature check). Only
-// hides actions the server would refuse anyway; authorization stays on the routes and commands.
+// Whether the signed-in user holds a feature (wildcard-aware, through the platform's feature check):
+// `communication.post` for "New announcement", `communication.cases.manage` for "Mark as case" and "Delete" on the
+// member thread page (REQ-A12, #274). Only hides actions the server would refuse anyway; authorization stays on the
+// routes and commands.
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
-
-const FEATURE = 'communication.post'
 
 function grants(granted: readonly string[], feature: string): boolean {
   return granted.some(
@@ -12,19 +12,23 @@ function grants(granted: readonly string[], feature: string): boolean {
   )
 }
 
-export function useCanPost(): boolean {
+export function useHasFeature(feature: string): boolean {
   const query = useQuery({
-    queryKey: ['feature-check', FEATURE],
+    queryKey: ['feature-check', feature],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const call = await apiCall<{ granted?: unknown[] }>('/api/auth/feature-check', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ features: [FEATURE] }),
+        body: JSON.stringify({ features: [feature] }),
       })
       const granted = call.ok && Array.isArray(call.result?.granted) ? call.result.granted.map(String) : []
-      return grants(granted, FEATURE)
+      return grants(granted, feature)
     },
   })
   return query.data === true
+}
+
+export function useCanPost(): boolean {
+  return useHasFeature('communication.post')
 }

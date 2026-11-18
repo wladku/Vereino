@@ -3,7 +3,9 @@
 // optional To) and "End membership" (a chosen last day, default today). The add dialog searches first and last names
 // (`GET /api/people/persons?search=`), shows "First Last (age N)" and leaves out the group's current members. A coded
 // refusal stays in the dialog (409 `membership_overlap`, 422 `membership_not_started`, `validity_inverted`); a stale
-// version closes the dialog through the platform's conflict UI. Escape cancels, Ctrl/Cmd+Enter saves.
+// version closes the dialog through the platform's conflict UI. Escape cancels, Ctrl/Cmd+Enter saves. On the phone
+// roster (`/club/groups/[id]`, REQ-A11, #274) the same forms open as bottom sheets (`surface="sheet"`) with full-width
+// buttons.
 import * as React from 'react'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -22,6 +24,14 @@ import {
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@open-mercato/ui/primitives/sheet'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ROSTER_ROLE_ORDER, type MembershipRole } from '../lib/groups-rules'
 import { errorMessage, personName, roleLabel, type MembershipRow, type Translate } from './client-helpers'
@@ -78,9 +88,79 @@ function Problem({ id, text }: { id: string; text: string | null }) {
   ) : null
 }
 
+/** A centred dialog in the panel (B-12), a bottom sheet on the phone roster (REQ-A11). */
+export type FormSurface = 'dialog' | 'sheet'
+
+/** The footer buttons' width: full width in a sheet, so a thumb reaches them (44 px targets either way). */
+function buttonClass(surface: FormSurface): string {
+  return surface === 'sheet' ? 'min-h-11 w-full sm:w-auto' : 'min-h-11'
+}
+
+function FormFrame({
+  surface,
+  open,
+  onOpenChange,
+  testId,
+  title,
+  description,
+  onSubmitShortcut,
+  footer,
+  children,
+}: {
+  surface: FormSurface
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  testId: string
+  title: string
+  description: string
+  onSubmitShortcut: () => void
+  footer: React.ReactNode
+  children: React.ReactNode
+}) {
+  const t = useT()
+  if (surface === 'sheet') {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="max-h-dvh rounded-t-xl"
+          closeLabel={t('groups.common.close')}
+          data-testid={testId}
+          onKeyDown={submitOnCtrlEnter(onSubmitShortcut)}
+        >
+          <SheetHeader>
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 overflow-y-auto px-4">{children}</div>
+          <SheetFooter>{footer}</SheetFooter>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        closeAriaLabel={t('groups.common.close')}
+        data-testid={testId}
+        onKeyDown={submitOnCtrlEnter(onSubmitShortcut)}
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {children}
+        <DialogFooter>{footer}</DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export type MembershipDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** `dialog` by default. */
+  surface?: FormSurface
   groupId: string
   groupKind: string | null
   today: string
@@ -96,6 +176,7 @@ export type MembershipDialogProps = {
 export function MembershipDialog({
   open,
   onOpenChange,
+  surface = 'dialog',
   groupId,
   groupKind,
   today,
@@ -192,129 +273,130 @@ export function MembershipDialog({
   }
 
   const name = membership ? personName(membership.person) || t('groups.memberships.unknownPerson') : null
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        closeAriaLabel={t('groups.common.close')}
-        data-testid="groups-membership-dialog"
-        onKeyDown={submitOnCtrlEnter(() => void submit())}
+  const footer = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className={buttonClass(surface)}
+        disabled={pending}
+        onClick={() => {
+          onOpenChange(false)
+        }}
       >
-        <DialogHeader>
-          <DialogTitle>
-            {editing ? t('groups.memberships.edit.title') : t('groups.memberships.actions.add')}
-          </DialogTitle>
-          <DialogDescription>{name ?? t('groups.memberships.add.help')}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4">
-          {editing ? null : (
-            <div
-              className="flex flex-col gap-1"
-              role="group"
-              aria-labelledby={`${ids}-person`}
-              // `aria-invalid` is not allowed on a group; the message is still read with it.
-              aria-describedby={problemField === 'person' ? problemId : undefined}
-              data-testid="groups-membership-person"
-            >
-              <Label id={`${ids}-person`}>{t('groups.memberships.fields.person')}</Label>
-              <LookupSelect
-                value={personId}
-                onChange={setPersonId}
-                fetchItems={fetchPersons}
-                minQuery={0}
-                placeholder={t('groups.memberships.fields.person.placeholder')}
-                searchPlaceholder={t('groups.memberships.fields.person.search')}
-                emptyLabel={t('groups.memberships.fields.person.empty')}
-                loadingLabel={t('groups.common.loading')}
-                clearLabel={t('groups.common.clear')}
-                selectLabel={t('groups.common.select')}
-                selectedLabel={t('groups.common.selected')}
-                disabled={pending}
-              />
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${ids}-role`}>{t('groups.memberships.fields.role')}</Label>
-            <Select value={role} onValueChange={setRole} disabled={pending}>
-              <SelectTrigger id={`${ids}-role`} className="min-h-11" data-testid="groups-membership-role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROSTER_ROLE_ORDER.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {roleLabel(t, value, groupKind)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {t('groups.common.cancel')}
+      </Button>
+      <Button
+        type="button"
+        className={buttonClass(surface)}
+        disabled={pending}
+        data-testid="groups-membership-save"
+        onClick={() => {
+          void submit()
+        }}
+      >
+        {t('groups.common.save')}
+      </Button>
+    </>
+  )
+  return (
+    <FormFrame
+      surface={surface}
+      open={open}
+      onOpenChange={onOpenChange}
+      testId="groups-membership-dialog"
+      title={editing ? t('groups.memberships.edit.title') : t('groups.memberships.actions.add')}
+      description={name ?? t('groups.memberships.add.help')}
+      onSubmitShortcut={() => void submit()}
+      footer={footer}
+    >
+      <div className="flex flex-col gap-4">
+        {editing ? null : (
+          <div
+            className="flex flex-col gap-1"
+            role="group"
+            aria-labelledby={`${ids}-person`}
+            // `aria-invalid` is not allowed on a group; the message is still read with it.
+            aria-describedby={problemField === 'person' ? problemId : undefined}
+            data-testid="groups-membership-person"
+          >
+            <Label id={`${ids}-person`}>{t('groups.memberships.fields.person')}</Label>
+            <LookupSelect
+              value={personId}
+              onChange={setPersonId}
+              fetchItems={fetchPersons}
+              minQuery={0}
+              placeholder={t('groups.memberships.fields.person.placeholder')}
+              searchPlaceholder={t('groups.memberships.fields.person.search')}
+              emptyLabel={t('groups.memberships.fields.person.empty')}
+              loadingLabel={t('groups.common.loading')}
+              clearLabel={t('groups.common.clear')}
+              selectLabel={t('groups.common.select')}
+              selectedLabel={t('groups.common.selected')}
+              disabled={pending}
+            />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`${ids}-from`}>{t('groups.memberships.fields.validFrom')}</Label>
-              <Input
-                id={`${ids}-from`}
-                type="date"
-                className="min-h-11"
-                required
-                value={validFrom}
-                disabled={pending}
-                {...invalidProps(problemField === 'dates', problemId)}
-                data-testid="groups-membership-from"
-                onChange={(event) => {
-                  setValidFrom(event.target.value)
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`${ids}-to`}>{t('groups.memberships.fields.validTo')}</Label>
-              <Input
-                id={`${ids}-to`}
-                type="date"
-                className="min-h-11"
-                min={validFrom || undefined}
-                value={validTo}
-                disabled={pending}
-                {...invalidProps(problemField === 'dates', problemId)}
-                data-testid="groups-membership-to"
-                onChange={(event) => {
-                  setValidTo(event.target.value)
-                }}
-              />
-            </div>
-          </div>
-          <Problem id={problemId} text={problem} />
+        )}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${ids}-role`}>{t('groups.memberships.fields.role')}</Label>
+          <Select value={role} onValueChange={setRole} disabled={pending}>
+            <SelectTrigger id={`${ids}-role`} className="min-h-11" data-testid="groups-membership-role">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROSTER_ROLE_ORDER.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {roleLabel(t, value, groupKind)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            disabled={pending}
-            onClick={() => {
-              onOpenChange(false)
-            }}
-          >
-            {t('groups.common.cancel')}
-          </Button>
-          <Button
-            type="button"
-            className="min-h-11"
-            disabled={pending}
-            data-testid="groups-membership-save"
-            onClick={() => {
-              void submit()
-            }}
-          >
-            {t('groups.common.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-from`}>{t('groups.memberships.fields.validFrom')}</Label>
+            <Input
+              id={`${ids}-from`}
+              type="date"
+              className="min-h-11"
+              required
+              value={validFrom}
+              disabled={pending}
+              {...invalidProps(problemField === 'dates', problemId)}
+              data-testid="groups-membership-from"
+              onChange={(event) => {
+                setValidFrom(event.target.value)
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-to`}>{t('groups.memberships.fields.validTo')}</Label>
+            <Input
+              id={`${ids}-to`}
+              type="date"
+              className="min-h-11"
+              min={validFrom || undefined}
+              value={validTo}
+              disabled={pending}
+              {...invalidProps(problemField === 'dates', problemId)}
+              data-testid="groups-membership-to"
+              onChange={(event) => {
+                setValidTo(event.target.value)
+              }}
+            />
+          </div>
+        </div>
+        <Problem id={problemId} text={problem} />
+      </div>
+    </FormFrame>
   )
 }
 
 export type EndMembershipDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** `dialog` by default. */
+  surface?: FormSurface
   membership: MembershipRow
   today: string
   onSaved: () => void | Promise<void>
@@ -325,6 +407,7 @@ export type EndMembershipDialogProps = {
 export function EndMembershipDialog({
   open,
   onOpenChange,
+  surface = 'dialog',
   membership,
   today,
   onSaved,
@@ -375,63 +458,64 @@ export function EndMembershipDialog({
     }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        closeAriaLabel={t('groups.common.close')}
-        data-testid="groups-membership-end-dialog"
-        onKeyDown={submitOnCtrlEnter(() => void submit())}
+  const footer = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className={buttonClass(surface)}
+        disabled={pending}
+        onClick={() => {
+          onOpenChange(false)
+        }}
       >
-        <DialogHeader>
-          <DialogTitle>{t('groups.memberships.actions.endFor', { name })}</DialogTitle>
-          <DialogDescription>{t('groups.memberships.end.help')}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${ids}-last`}>{t('groups.memberships.fields.lastDay')}</Label>
-            <Input
-              id={`${ids}-last`}
-              type="date"
-              className="min-h-11 sm:w-60"
-              required
-              min={firstDay}
-              value={lastDay}
-              disabled={pending}
-              {...invalidProps(problemField === 'dates', problemId)}
-              data-testid="groups-membership-last-day"
-              onChange={(event) => {
-                setLastDay(event.target.value)
-              }}
-            />
-          </div>
-          <Problem id={problemId} text={problem} />
+        {t('groups.common.cancel')}
+      </Button>
+      <Button
+        type="button"
+        variant="destructive"
+        className={buttonClass(surface)}
+        disabled={pending}
+        data-testid="groups-membership-end-save"
+        onClick={() => {
+          void submit()
+        }}
+      >
+        {t('groups.memberships.actions.end')}
+      </Button>
+    </>
+  )
+  return (
+    <FormFrame
+      surface={surface}
+      open={open}
+      onOpenChange={onOpenChange}
+      testId="groups-membership-end-dialog"
+      title={t('groups.memberships.actions.endFor', { name })}
+      description={t('groups.memberships.end.help')}
+      onSubmitShortcut={() => void submit()}
+      footer={footer}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${ids}-last`}>{t('groups.memberships.fields.lastDay')}</Label>
+          <Input
+            id={`${ids}-last`}
+            type="date"
+            className="min-h-11 sm:w-60"
+            required
+            min={firstDay}
+            value={lastDay}
+            disabled={pending}
+            {...invalidProps(problemField === 'dates', problemId)}
+            data-testid="groups-membership-last-day"
+            onChange={(event) => {
+              setLastDay(event.target.value)
+            }}
+          />
         </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            disabled={pending}
-            onClick={() => {
-              onOpenChange(false)
-            }}
-          >
-            {t('groups.common.cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            className="min-h-11"
-            disabled={pending}
-            data-testid="groups-membership-end-save"
-            onClick={() => {
-              void submit()
-            }}
-          >
-            {t('groups.memberships.actions.end')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Problem id={problemId} text={problem} />
+      </div>
+    </FormFrame>
   )
 }

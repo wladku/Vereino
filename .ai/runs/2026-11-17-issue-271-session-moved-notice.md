@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 271`, label `cezar`): build phase 6 of the groups and activities
   parity spec — a moved, restored or re-planned session is announced in the session thread, in the app and by e-mail
   (D-031 §7).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md` phase 6 (REQ-A09) and
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md` phase 6 (REQ-A09) and
   phase 5 deliverable 4; #271 (epic #252); branch `feat/issue-271-session-moved-notice`.
 - **Approval:** the spec is `Ready for implementation`; the contract changes of phase 6 (the `change` and actor fields,
   `scheduleChange`, `communication.threads.record_reschedule`, `communication.session_moved`,
