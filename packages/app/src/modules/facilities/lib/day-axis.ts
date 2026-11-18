@@ -112,17 +112,29 @@ export type FreeHoursInput = {
   today: CalendarDate
   /** The minutes of now on `today` in the club's zone. */
   nowMinutes: number
+  /**
+   * DD-R17: the earliest past day whose hours stay free, for the club administrator's past club booking; null or
+   * absent = no past hour is free.
+   */
+  pastFrom?: CalendarDate | null
+}
+
+/** True when the hour starting at `hour` minutes of `date` began before now (DD-R17: a past club booking). */
+export function hourInPast(date: CalendarDate, hour: number, today: CalendarDate, nowMinutes: number): boolean {
+  return date < today || (date === today && hour < nowMinutes)
 }
 
 /**
  * The free open hours of a day, as the minute each starts at: whole hours of the axis inside an opening window, on no
- * closed zone and with no entry on them. A past day has none, and today none that started before now (TEST-R01).
+ * closed zone and with no entry on them. A past day has none, and today none that started before now (TEST-R01) —
+ * unless `pastFrom` reaches the day: then its past hours are free too (DD-R17).
  */
 export function freeOpenHours(input: FreeHoursInput): number[] {
-  if (input.date < input.today || isClosedDay(input.opening)) return []
+  const pastOpen = input.pastFrom !== undefined && input.pastFrom !== null && input.date >= input.pastFrom
+  if ((input.date < input.today && !pastOpen) || isClosedDay(input.opening)) return []
   const overlaps = (span: Span, hour: number) => span.from < hour + HOUR && span.to > hour
   return axisHours(input.bounds).filter((hour) => {
-    if (input.date === input.today && hour < input.nowMinutes) return false
+    if (!pastOpen && hourInPast(input.date, hour, input.today, input.nowMinutes)) return false
     const open =
       input.opening === null || input.opening.some((window) => window.from <= hour && window.to >= hour + HOUR)
     if (!open) return false

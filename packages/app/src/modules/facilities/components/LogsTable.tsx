@@ -1,9 +1,10 @@
 'use client'
 // `/backend/facilities/logs` — the daily facility log (facilities spec B-27; REQ-016; E08-S06 #126): one row per place
-// and day with the operator, the opening and closing times, the conditions before and after, the groups present and
-// the remarks; a place selector and a date filter. "Edit" opens a dialog for the times, conditions and remarks; after
-// the end of the following day only the club administrator may change a log (403 `log_edit_closed`, shown in the
-// dialog). A log is never deleted. Everything here needs `facilities.log.write`.
+// and day with the attendant, the opening and closing times, the conditions before and after (the mockup's
+// `screenLogs` columns, parity spec REQ-R10; #281), the groups present and the remarks; a place selector and a date
+// filter. "Add entry" writes a day's log after the fact (`LogCreateDialog`), "Edit" opens a dialog for the times,
+// conditions and remarks; after the end of the following day only the club administrator may write a log (403
+// `log_edit_closed`, shown in the dialog). A log is never deleted. Everything here needs `facilities.log.write`.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
@@ -28,6 +29,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { LOG_TEXT_MAX_LENGTH } from '../lib/logs'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
+import { LogCreateDialog } from './LogCreateDialog'
 import {
   codedMessage,
   errorMessage,
@@ -89,22 +91,24 @@ function buildColumns(t: Translate): TableColumns<LogRow> {
       cell: ({ row }) => <span className="tabular-nums">{timeLabel(row.original.closedAt) || empty}</span>,
     },
     {
-      id: 'conditions',
-      header: t('facilities.records.logs.columns.conditions'),
+      id: 'conditionBefore',
+      header: t('facilities.records.logs.columns.before'),
       enableSorting: false,
-      meta: { priority: 4, truncate: true, maxWidth: '20rem' },
-      cell: ({ row }) => (
-        <span className="flex flex-col text-xs">
-          <span>{t('facilities.records.logs.before', { text: row.original.conditionBefore ?? empty })}</span>
-          <span>{t('facilities.records.logs.after', { text: row.original.conditionAfter ?? empty })}</span>
-        </span>
-      ),
+      meta: { priority: 4, truncate: true, maxWidth: '16rem' },
+      cell: ({ row }) => row.original.conditionBefore ?? empty,
+    },
+    {
+      id: 'conditionAfter',
+      header: t('facilities.records.logs.columns.after'),
+      enableSorting: false,
+      meta: { priority: 4, truncate: true, maxWidth: '16rem' },
+      cell: ({ row }) => row.original.conditionAfter ?? empty,
     },
     {
       id: 'groups',
       header: t('facilities.records.logs.columns.groups'),
       enableSorting: false,
-      meta: { priority: 3 },
+      meta: { priority: 5 },
       cell: ({ row }) => {
         const groups = row.original.groupsPresent
         const people = groups.reduce((sum, group) => sum + group.headcount, 0)
@@ -309,6 +313,8 @@ export function LogsTable() {
   const [filters, setFilters] = React.useState<FilterValues>({})
   const [page, setPage] = React.useState(1)
   const [editing, setEditing] = React.useState<LogRow | null>(null)
+  // A new key per opening starts "Add entry" fresh; 0 = closed.
+  const [createKey, setCreateKey] = React.useState(0)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
   const { data, isLoading, error } = useQuery({
@@ -335,6 +341,17 @@ export function LogsTable() {
   )
   const filtered = Object.keys(filterParams(filters)).length > 0
   const empty = !isLoading && !error && (data?.items.length ?? 0) === 0
+  const createAction = (
+    <Button
+      type="button"
+      data-testid="facilities-logs-create"
+      onClick={() => {
+        setCreateKey((current) => current + 1)
+      }}
+    >
+      {t('facilities.records.logs.actions.create')}
+    </Button>
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -354,6 +371,7 @@ export function LogsTable() {
         <ListEmptyState
           title={t('facilities.records.logs.title')}
           message={t('facilities.records.logs.empty')}
+          actions={createAction}
           testId="facilities-logs-empty"
           onClearFilters={
             filtered
@@ -371,6 +389,7 @@ export function LogsTable() {
             titleHeadingLevel={1}
             entityId="facilities:facility_log"
             extensionTableId="facilities.logs"
+            actions={createAction}
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
@@ -422,6 +441,18 @@ export function LogsTable() {
             if (!open) setEditing(null)
           }}
           onDone={refresh}
+        />
+      ) : null}
+      {createKey > 0 ? (
+        <LogCreateDialog
+          key={createKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setCreateKey(0)
+          }}
+          places={places.options}
+          initialPlaceId={selectedPlace}
+          onSaved={refresh}
         />
       ) : null}
     </div>

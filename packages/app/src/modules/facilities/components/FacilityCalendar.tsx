@@ -9,7 +9,9 @@
 // the decision, closure → the closures, maintenance → the task dialog); "To be moved" limits the axis and the list to
 // flagged entries and counts them per chip day. Rentals and requests are drawn for every reader with `facilities.view`;
 // the contact stays with the rental scope (DD-R18). A free hour opens the slot dialog (E11-S03, #277) with the kinds
-// the user may save (DD-R04); without any kind the hours are not buttons.
+// the user may save (DD-R04); without any kind the hours are not buttons. On a past day, and before now on today, the
+// hours are buttons for the club administrator only, up to 92 days back, and open the dialog with the general kind
+// alone: a club booking recorded after the fact (DD-R17, #281).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -19,7 +21,7 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Label } from '@open-mercato/ui/primitives/label'
@@ -27,9 +29,11 @@ import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS, addDays, isCalendarDate } from '@vereino/core'
 import { browserTimeZone, clubToday, formatDayHeading, useClubTimeZone, useClubToday } from '@vereino/ui'
-import { bookableWindowsByDay, chipDates, CHIP_DAYS } from '../lib/day-axis'
+import { bookableWindowsByDay, chipDates, hourInPast, CHIP_DAYS } from '../lib/day-axis'
+import { earliestPastBookingDate } from '../lib/internal-bookings'
+import type { SlotKind } from '../lib/slot'
 import { isBookablePlace } from '../lib/place-scope'
-import { AvailabilityDialog, type BulkResult } from './AvailabilityDialog'
+import { AvailabilityDialog, AvailabilitySaveSummary, type BulkResult } from './AvailabilityDialog'
 import { MaintenanceTaskDialog } from './MaintenanceTaskDialog'
 import { SlotDialog, slotPresetAt, type SlotPreset } from './slot/SlotDialog'
 import { useSlotKinds } from './slot/slot-client'
@@ -60,6 +64,7 @@ import {
   entriesOfDay,
   entryLabel,
   entryRange,
+  minutesOf,
   useStaffCalendar,
   zoneWallTime,
   zonedLocalInstant,
@@ -77,36 +82,6 @@ const placeSettingsHref = (placeId: string) => `/backend/club/places/${encodeURI
 /** The calendar's address of a place and a day. */
 export const calendarHref = (placeId: string, date: string) =>
   `${CALENDAR_HREF}?place=${encodeURIComponent(placeId)}&date=${encodeURIComponent(date)}`
-
-function SaveSummary({ result }: { result: BulkResult }) {
-  const t = useT()
-  const { clubOccurrencesInWindows, pendingRequestsOutside } = result.warnings
-  return (
-    <div className="flex flex-col gap-2" data-testid="facilities-availability-result">
-      <Alert status="success">
-        <AlertTitle>{t('facilities.availability.saved.title')}</AlertTitle>
-        <AlertDescription>
-          {t('facilities.availability.saved.counts', { created: result.created, removed: result.removed })}
-        </AlertDescription>
-      </Alert>
-      {clubOccurrencesInWindows > 0 || pendingRequestsOutside > 0 ? (
-        <Alert status="warning">
-          <AlertTitle>{t('facilities.availability.warnings.title')}</AlertTitle>
-          <AlertDescription>
-            <ul className="flex flex-col gap-1">
-              {clubOccurrencesInWindows > 0 ? (
-                <li>{t('facilities.availability.warnings.clubSessions', { count: clubOccurrencesInWindows })}</li>
-              ) : null}
-              {pendingRequestsOutside > 0 ? (
-                <li>{t('facilities.availability.warnings.pendingRequests', { count: pendingRequestsOutside })}</li>
-              ) : null}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-    </div>
-  )
-}
 
 /** The availability card (REQ-R03): a `details` element, open when the place has no bookable window. */
 function AvailabilityCard({
@@ -238,6 +213,8 @@ function PlaceDay({
   const slotKinds = useSlotKinds()
   const [slotPreset, setSlotPreset] = React.useState<SlotPreset | null>(null)
   const [slotKey, setSlotKey] = React.useState(0)
+  // DD-R17: an hour before now opens the dialog with the general kind alone (a past club booking).
+  const [slotPast, setSlotPast] = React.useState(false)
   const [task, setTask] = React.useState<{ row: MaintenanceTaskRow; placeName: string; key: number } | null>(null)
   const filterId = React.useId()
 
@@ -263,6 +240,10 @@ function PlaceDay({
   const entries = toMove ? dayEntries.filter((entry) => entry.needsReschedule) : dayEntries
   const redacted = calendar?.maintenance?.redacted === true
   const canBook = slotKinds.kinds.length > 0 && !redacted
+  // DD-R17: only the club administrator (the holder of `facilities.manage`) records a past club booking.
+  const pastFrom = features.manage && slotKinds.kinds.includes('general') ? earliestPastBookingDate(today) : null
+  const pastKinds: SlotKind[] = ['general']
+  const nowMinutes = zoneWallTime(new Date(), timeZone).minutes
   const flagged = React.useMemo(() => {
     if (!toMove || !calendar || !inChips) return null
     return new Map(
@@ -476,11 +457,13 @@ function PlaceDay({
           entries={entries}
           occupying={dayEntries}
           today={today}
-          nowMinutes={zoneWallTime(new Date(), timeZone).minutes}
+          nowMinutes={nowMinutes}
           redacted={redacted}
           canBook={canBook}
+          pastFrom={pastFrom}
           onBookHour={(time) => {
             setSlotKey((current) => current + 1)
+            setSlotPast(hourInPast(date, minutesOf(time), today, nowMinutes))
             setSlotPreset(slotPresetAt({ placeId, placeName: name, date, time, day, entries: dayEntries }))
           }}
         />
@@ -511,7 +494,7 @@ function PlaceDay({
           </Button>
         </div>
       ) : null}
-      {result ? <SaveSummary result={result} /> : null}
+      {result ? <AvailabilitySaveSummary result={result} /> : null}
       {rules.isSuccess ? (
         <AvailabilityCard
           rows={rows}
@@ -582,7 +565,7 @@ function PlaceDay({
           onOpenChange={(open) => {
             if (!open) setSlotPreset(null)
           }}
-          kinds={slotKinds.kinds}
+          kinds={slotPast ? pastKinds : slotKinds.kinds}
           groups={slotKinds.groups}
           preset={slotPreset}
           places={placeOptions.options}

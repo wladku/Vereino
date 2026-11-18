@@ -73,6 +73,8 @@ export type IncidentRow = {
   threadId: string | null
   /** The incident photos in upload order, each with its authenticated route (#126). */
   photos: Array<{ id: string; fileName: string; url: string }>
+  /** An entry ban was issued from this incident (DD-R12, #281). */
+  banIssued: boolean
   createdAt: string | null
   updatedAt: string | null
 }
