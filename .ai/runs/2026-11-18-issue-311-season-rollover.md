@@ -11,7 +11,7 @@
 4. Slice (c) `payments/services/season-rollover.ts` (registered as `groups.season.payments`): fees end and copy with a new name, amount or payment day; a fee of a copied activity points at the copy; only the club administrator's grants change fees.
 5. Slice (d) the wizard `groups/components/SeasonRolloverWizard.tsx` at `/backend/groups/seasons/rollover` (navHidden), "Start a new season" on the Seasons tab, texts in `en` and `pl`.
 6. Integration test `groups/TEST-L16-season-rollover.spec.ts` (TEST-L16, TEST-L20, the wizard in the browser with axe in light and dark).
-7. Docs: spec changelog `2026-11-18-issue-311-phase-l9.md`, AC-L09 ticked.
+7. Docs: spec changelog `2026-11-18-issue-311-phase-l9.md`, AC-L09 ticked; lessons `contributor-gets-rules-through-context` and `local-playwright-report-breaks-lint`.
 
 ## Decisions
 
@@ -27,9 +27,12 @@
 
 - Unit: `groups/lib/season-rollover.ts` and `rollover-token.ts` at 100 % line, branch and function coverage (`npx jest src/modules/groups/lib` — 5 suites, 62 tests passed).
 - `yarn typecheck` and `yarn typecheck:qa`: exit 0. `eslint` on the changed files: 0 errors (the remaining warnings are `no-unnecessary-condition` on record lookups, the existing kind).
-- Integration and gate: see below.
+- `yarn test:integration:vereino --filter TEST-L16`: first run (one test with the browser) failed before any step — `browserType.launch: … chrome-headless-shell: error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file` (the machine lacks the system library; installing system packages is outside this run). The test was split: the API scenario (TEST-L16, TEST-L20) and a separate browser test of the wizard. Second run: the API scenario failed at the repeated apply — `Expected: "rollover_plan_stale" Received: "season_name_taken"` (the plan's new season now existed); the apply now answers a season name taken since the preview as `rollover_plan_stale`. Third run: API scenario **1 passed**; the browser test failed again only on the missing `libatk` (not run locally — CI runs it).
+- `yarn verify`: first run failed at `lint` with 162 `react-hooks/rules-of-hooks` errors, all in the gitignored `packages/app/.ai/qa/test-results/html/trace/*.js` left by the local integration run (removed; lesson `local-playwright-report-breaks-lint`); then `format:check` on the wizard (fixed with `yarn format`). Final full run: **all 17 steps passed**.
 
 ## Open problems / next steps
+
+- The browser test `TEST-L16 the wizard opens from the Seasons tab…` (light and dark, axe) did not run locally (missing `libatk`); it runs in CI with the integration suite.
 
 - A copy that collides only with another copy of the same plan is not shown in the preview; the apply still refuses it (409 `occurrence_place_conflict`) and applies nothing.
 - When spec A's new activity fields land, the activity copy should carry them (the contributor copies the stored fields of `activities_activities` as they are today).
