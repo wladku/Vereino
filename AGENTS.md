@@ -51,6 +51,7 @@ Route first; never probe unmatched context.
 - Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
+- Never import a command file (`commands/*.ts` that calls `registerCommand`) from anything a module's `di.ts` loads: the CLI registers it twice and every `yarn mercato <module>` call fails; take shared helpers from `lib/` or `data/` (`yarn verify` step `di-commands:check`, lesson `di-reaches-no-command-file`).
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
 - Never hard-code user strings/status colors; expose secrets/transcripts; or guess answerable contracts.
 - Never give text the `brand` variant of `Tag`/`StatusBadge` or its `brand-violet` classes: it fails axe color-contrast (2.11:1); use a status variant (lesson `tag-brand-variant-low-contrast`).
