@@ -96,6 +96,31 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
   expect(overflow, `page wider than 320 px by ${String(overflow)} px`).toBeLessThanOrEqual(0)
 }
 
+// Switches the colour scheme of a rendered page that cannot be reloaded (a filled form, its error state) and waits until
+// the page shows it: the ThemeProvider has set the `dark` class and every colour transition it started has finished. A
+// scan during the fade reports half-blended colours as contrast violations (#368); `reducedMotion` does not stop it.
+export async function switchColorScheme(page: Page, colorScheme: 'light' | 'dark'): Promise<void> {
+  await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+  await page.waitForFunction(
+    (dark) => document.documentElement.classList.contains('dark') === dark,
+    colorScheme === 'dark',
+  )
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    // Two frames: the class change is styled and its transitions are created before they are read.
+    await frame()
+    await frame()
+    for (;;) {
+      const running = document
+        .getAnimations()
+        .filter((animation) => animation instanceof CSSTransition && animation.playState === 'running')
+      if (running.length === 0) return
+      await Promise.allSettled(running.map((animation) => animation.finished))
+      await frame()
+    }
+  })
+}
+
 // Scans the current page in light and then dark mode (S7.4, S7.8) and returns the blocking violations per scheme. The
 // page is reloaded after each switch: a scheme changed on a rendered page fades its colours, and a scan during the
 // fade reports half-blended colours as contrast violations (lesson `axe-after-color-scheme-and-react-query-error-refetch`).
