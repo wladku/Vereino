@@ -3,12 +3,13 @@ import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub, createPerson } from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
 import {
-  type CodedError,
+  confirmRental,
   phoneRental,
   postEntryBan,
   postRental,
   rentalAction,
   rentalPitch,
+  type CodedError,
 } from '../_fixtures/facilities'
 import { signedInStaff } from '../_fixtures/groups'
 
@@ -562,8 +563,11 @@ test('TEST-026 the facility attendant: place scope, log edit window, rentals and
     )
     expect(rental.status, JSON.stringify(rental.body)).toBe(201)
     const rentalId = String(rental.body?.id)
-    const confirmed = await rentalAction(request, attendant.token, rentalId, 'confirm')
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+    // The rental has a charge: the attendant cannot confirm it; the administrator's recorded payment does (DD-R09).
+    const awaiting = await rentalAction(request, attendant.token, rentalId, 'confirm')
+    expect(awaiting.status, JSON.stringify(awaiting.body)).toBe(409)
+    expect(awaiting.body?.code).toBe('rental_awaits_payment')
+    await confirmRental(request, admin, rentalId)
     const early = await rentalAction(request, attendant.token, rentalId, 'no-show')
     expect(early.status, JSON.stringify(early.body)).toBe(409)
     expect(early.body?.code).toBe('rental_not_started')

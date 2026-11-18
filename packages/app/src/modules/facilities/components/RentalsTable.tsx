@@ -45,6 +45,8 @@ import {
   RENTALS_API,
   RENTALS_KEY,
   VISIBLE_RENTAL_ACTIONS,
+  chargeAwaitingPayment,
+  chargeHref,
   chargeStateVariant,
   payeeLabel,
   rentalActions,
@@ -78,7 +80,7 @@ export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'need
   )
 }
 
-/** The amount with its payee and, when the rental has a charge, the charge state. */
+/** The amount with its payee and the charge state ("rental register" for a rental without a charge, DD-R09). */
 export function RentalAmount({ row, t }: { row: RentalRow; t: Translate }) {
   return (
     <span className="flex flex-col items-start gap-1">
@@ -86,11 +88,9 @@ export function RentalAmount({ row, t }: { row: RentalRow; t: Translate }) {
         {row.amount === null ? t('facilities.common.empty') : minorToAmount(row.amount)}
       </span>
       <span className="text-muted-foreground text-xs">{payeeLabel(t, row.payee)}</span>
-      {row.chargeState !== 'none' ? (
-        <StatusBadge variant={chargeStateVariant(row.chargeState)}>
-          {t(`facilities.rentals.chargeState.${row.chargeState}`)}
-        </StatusBadge>
-      ) : null}
+      <StatusBadge variant={chargeStateVariant(row.chargeState)}>
+        {t(`facilities.rentals.chargeState.${row.chargeState}`)}
+      </StatusBadge>
     </span>
   )
 }
@@ -243,21 +243,37 @@ export function RentalsTable() {
       if (visible.length === 0) return null
       return (
         <span className="flex flex-wrap gap-2">
-          {visible.map((action) => (
-            <Button
-              key={action}
-              type="button"
-              size="sm"
-              variant={action === 'cancel' ? 'destructive-outline' : 'outline'}
-              data-testid={`facilities-rental-${action}-${row.id}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                actions.run(row, action)
-              }}
-            >
-              {t(`facilities.rentals.list.${action}`)}
-            </Button>
-          ))}
+          {visible.map((action) => {
+            const chargeId = action === 'confirm' ? chargeAwaitingPayment(row) : null
+            // A rental with an unpaid charge is confirmed by its payment: the button opens the charge (DD-R09).
+            return chargeId ? (
+              <Button key={action} asChild size="sm" variant="outline">
+                <Link
+                  href={chargeHref(chargeId)}
+                  data-testid={`facilities-rental-${action}-${row.id}`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                  }}
+                >
+                  {t(`facilities.rentals.list.${action}`)}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                key={action}
+                type="button"
+                size="sm"
+                variant={action === 'cancel' ? 'destructive-outline' : 'outline'}
+                data-testid={`facilities-rental-${action}-${row.id}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  actions.run(row, action)
+                }}
+              >
+                {t(`facilities.rentals.list.${action}`)}
+              </Button>
+            )
+          })}
         </span>
       )
     },

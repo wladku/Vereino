@@ -3,13 +3,13 @@ import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
 import { calendarDate, createClub } from '../_fixtures/club'
 import {
+  confirmRental,
   getRental,
   phoneRental,
   postEntryBan,
   postRental,
   putRental,
   readRental,
-  rentalAction,
   rentalPitch,
   runRentalLifecycle,
 } from '../_fixtures/facilities'
@@ -134,7 +134,7 @@ test('TEST-R06 rental correction: contact, purpose, notes, renter record, ban, c
     )
     expect(doneRental.status, JSON.stringify(doneRental.body)).toBe(201)
     const doneId = String(doneRental.body?.id)
-    expect((await rentalAction(request, admin, doneId, 'confirm')).status).toBe(200)
+    await confirmRental(request, admin, doneId)
     expect(runRentalLifecycle(club, zoneInstant(tuesday, '09:31')).changedIds).toEqual([doneId])
     const closed = await putRental(request, admin, doneId, { contactName: 'Ktoś Inny' })
     expect(closed.status, JSON.stringify(closed.body)).toBe(409)

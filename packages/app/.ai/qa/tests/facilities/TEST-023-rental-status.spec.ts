@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { addDays, nextWeekday, weekdayOf, zoneInstant } from '../_fixtures/activities'
 import { calendarDate, createClub } from '../_fixtures/club'
 import {
+  confirmRental,
   getRental,
   phoneRental,
   postRental,
@@ -46,11 +47,9 @@ test('TEST-023 rental status: confirm, cancel free and late, move, no-show, life
       return String(created.body?.id)
     }
 
-    // Confirm by hand (no `payments` charge service): requested → confirmed.
+    // Confirm: the rental's charge is paid (facilities parity spec DD-R09), requested → confirmed.
     const first = await enter(zoneInstant(tuesday, '08:00'))
-    const confirmed = await rentalAction(request, admin, first, 'confirm')
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
-    expect(confirmed.body?.status).toBe('confirmed')
+    expect((await confirmRental(request, admin, first)).status).toBe('confirmed')
 
     // Move to a free slot: the status and the amount stay; onto an occupied slot: 409 `rental_conflict`.
     const second = await enter(zoneInstant(tuesday, '11:00'))

@@ -1,9 +1,11 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   RENTAL_CHARGE_STATES,
+  awaitsPayment,
   correctionClosed,
   isRentalView,
   readRentalListUrl,
+  rentalChargeDescription,
   rentalChargeState,
   rentalListQuery,
   rentalListUrlParams,
@@ -64,6 +66,40 @@ describe('charge state of a rental', () => {
   it("is the charge's status otherwise", () => {
     expect(rentalChargeState('c1', statuses)).toBe('partially_paid')
     expect(RENTAL_CHARGE_STATES).toContain('forfeited')
+  })
+})
+
+describe('a rental waiting for its payment (DD-R09)', () => {
+  it('waits while its charge is open or partly paid', () => {
+    expect(awaitsPayment('c1', 'open')).toBe(true)
+    expect(awaitsPayment('c1', 'partially_paid')).toBe(true)
+  })
+
+  it('is confirmed at once without a charge, with a paid, cancelled or unknown charge', () => {
+    expect(awaitsPayment(null, 'none')).toBe(false)
+    expect(awaitsPayment(undefined, 'open')).toBe(false)
+    expect(awaitsPayment('c1', 'paid')).toBe(false)
+    expect(awaitsPayment('c1', 'cancelled')).toBe(false)
+    expect(awaitsPayment('c1', 'forfeited')).toBe(false)
+    expect(awaitsPayment('c1', 'none')).toBe(false)
+  })
+})
+
+describe('the description of a rental charge', () => {
+  const echo = (key: string, fallback?: string, params?: Record<string, string>) =>
+    `${key}|${fallback ?? ''}|${JSON.stringify(params)}`
+
+  it('names the place, the club-zone date and the wall times', () => {
+    const text = rentalChargeDescription(echo, {
+      placeName: 'Orlik',
+      startsAt: new Date('2027-01-05T17:00:00Z'),
+      endsAt: new Date('2027-01-05T18:30:00Z'),
+      timeZone: 'Europe/Warsaw',
+      locale: 'pl',
+    })
+    expect(text).toBe(
+      'facilities.charge.rentalDesc|Rental: {place}, {date} {start}–{end}|{"place":"Orlik","date":"05.01.2027","start":"18:00","end":"19:30"}',
+    )
   })
 })
 
