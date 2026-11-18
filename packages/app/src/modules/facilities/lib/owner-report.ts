@@ -1,9 +1,10 @@
 // Pure rules of the owner (municipality) report (facilities spec REQ-015, TEST-025, AC-015; README B-28, flow F-12;
 // #127): the period a report may cover (from ≤ to, at most one year), the scheduled hours of each zone, the club time
 // (sessions and internal bookings) split by the zone it fell in, which rentals count and which count as paid in the
-// rental register, and the CSV export. Nothing here reads the database or the clock (S3.5); the club time zone is a
-// parameter.
+// rental register, where the payments figure comes from once rentals carry charges (facilities parity spec REQ-R11,
+// #285), and the CSV export. Nothing here reads the database or the clock (S3.5); the club time zone is a parameter.
 import { addDays, zonedInstant, type CalendarDate } from '@vereino/core'
+import type { RentalChargeState } from './rental-record'
 import { localSlotOf, type RentalStatus } from './rentals'
 import { ZONES, dayZoneSegments, type Zone, type ZoneRuleShape } from './zones'
 
@@ -22,8 +23,47 @@ export const REPORTED_RENTAL_STATUSES: readonly RentalStatus[] = [
  */
 export const PAID_RENTAL_STATUSES: readonly RentalStatus[] = ['confirmed', 'done']
 
-/** Where the payments figure comes from; only the rental register exists until `payments` reports rental charges. */
-export type PaymentsSource = 'rental_register'
+/**
+ * Where the payments figure comes from (REQ-R11): the rentals' charges, the rental register (rentals without a charge:
+ * `payments` absent, or a rental entered before it was enabled), or both.
+ */
+export const PAYMENTS_SOURCES = ['charges', 'rental_register', 'mixed'] as const
+export type PaymentsSource = (typeof PAYMENTS_SOURCES)[number]
+
+/** A reported rental as the payments figure reads it: its amount, status and the live state of its charge. */
+export type PaymentRental = { amount: number; status: RentalStatus; chargeState: RentalChargeState }
+
+export type OwnerPayments = { amount: number; count: number; source: PaymentsSource; partiallyPaidCount: number }
+
+/**
+ * The payments to the owner's account (B-28, REQ-R11): a rental with a charge counts its amount once the charge is
+ * `paid`, and a `partially_paid` charge is counted apart (not in the sum — exact partial amounts stay in `payments`,
+ * Q-R01); a rental without a charge counts from the register when it is confirmed or done. The source is `charges` or
+ * `rental_register` when every reported rental is of one kind, `mixed` when both occur; no rental at all reads as the
+ * register.
+ */
+export function ownerPayments(rentals: readonly PaymentRental[]): OwnerPayments {
+  let amount = 0
+  let count = 0
+  let partiallyPaidCount = 0
+  let withCharge = 0
+  for (const rental of rentals) {
+    if (rental.chargeState === 'none') {
+      if (!PAID_RENTAL_STATUSES.includes(rental.status)) continue
+      amount += rental.amount
+      count += 1
+      continue
+    }
+    withCharge += 1
+    if (rental.chargeState === 'partially_paid') partiallyPaidCount += 1
+    if (rental.chargeState !== 'paid') continue
+    amount += rental.amount
+    count += 1
+  }
+  const source: PaymentsSource =
+    withCharge === 0 ? 'rental_register' : withCharge === rentals.length ? 'charges' : 'mixed'
+  return { amount, count, source, partiallyPaidCount }
+}
 
 export type ReportPeriodProblem = 'report_period_order' | 'report_period_too_long'
 
@@ -174,6 +214,8 @@ export type OwnerReportRental = {
 
 export type OwnerReport = {
   place: { id: string; name: string }
+  /** The owner institution of the place (the nearest one up the place tree), null when the club itself is the owner. */
+  owner: { institutionId: string; name: string } | null
   from: CalendarDate
   to: CalendarDate
   timeZone: string
@@ -182,7 +224,7 @@ export type OwnerReport = {
   zoneHours: Record<Zone, number>
   clubTime: { total: number; sessions: number; bookings: number; byZone: Record<Zone | 'none', number> }
   rentals: { count: number; value: number; items: OwnerReportRental[] }
-  payments: { amount: number; count: number; source: PaymentsSource }
+  payments: OwnerPayments
   incidents: { count: number }
   maintenance: { done: number; cost: number }
 }
@@ -224,6 +266,7 @@ export function ownerReportCsv(report: OwnerReport): string {
   // Only the place name is free text; the rest are fixed keys, dates and numbers.
   const summary: Array<[string, string, string]> = [
     ['report', 'place', csvField(report.place.name)],
+    ['report', 'owner', csvField(report.owner?.name ?? '')],
     ['report', 'from', report.from],
     ['report', 'to', report.to],
     ['report', 'currency', report.currency],
@@ -241,6 +284,7 @@ export function ownerReportCsv(report: OwnerReport): string {
     ['payments', 'amount', groszToDecimal(report.payments.amount)],
     ['payments', 'count', String(report.payments.count)],
     ['payments', 'source', report.payments.source],
+    ['payments', 'partially_paid_count', String(report.payments.partiallyPaidCount)],
     ['incidents', 'count', String(report.incidents.count)],
     ['maintenance', 'done', String(report.maintenance.done)],
     ['maintenance', 'cost', groszToDecimal(report.maintenance.cost)],

@@ -2,7 +2,7 @@
 // correction*, *Charge state of a rental*, *Unpaid after the deadline*, *To be moved*; #279): which fields a
 // correction may change in which status, the two B-24 perspectives as list filters, the charge state a list item
 // carries, and the B-24 address state (`?status=&view=&place=&page=`). Nothing here reads the database or the clock.
-import { MOVABLE_RENTAL_STATUSES, type RentalStatus } from './rentals'
+import { MOVABLE_RENTAL_STATUSES, localSlotOf, type RentalStatus } from './rentals'
 
 /** The statuses in which the contact, the purpose and the renter may be corrected; the notes also later (DD-R08). */
 export const CORRECTABLE_RENTAL_STATUSES: readonly RentalStatus[] = ['requested', 'confirmed']
@@ -62,6 +62,44 @@ export function rentalChargeState(
 }
 
 const CHARGE_STATUSES = RENTAL_CHARGE_STATES.filter((state) => state !== 'none')
+
+/** The charge states in which a rental waits for its payment (DD-R09): the charge exists and is not yet paid. */
+export const AWAITING_CHARGE_STATES: readonly RentalChargeState[] = ['open', 'partially_paid']
+
+/**
+ * True when a direct confirm of the rental is refused (409 `rental_awaits_payment`, DD-R09): it has a charge the
+ * charge service reports `open` or `partially_paid`. A rental without a charge, a `paid` charge (the repair path for a
+ * missed payment event), a cancelled or forfeited charge, or a charge the service does not know is confirmed at once.
+ */
+export function awaitsPayment(chargeId: string | null | undefined, state: RentalChargeState): boolean {
+  return Boolean(chargeId) && AWAITING_CHARGE_STATES.includes(state)
+}
+
+/** The translator the charge description is rendered with (the club's default locale). */
+type DescriptionTranslate = (key: string, fallback?: string, params?: Record<string, string>) => string
+
+/**
+ * The description of a rental's charge (facilities parity spec *Charge of a rental*; the mockup's `charge.rentalDesc`):
+ * "Wynajem: {place}, {date} {start}–{end}" with the date and wall times of the slot in the club zone.
+ */
+export function rentalChargeDescription(
+  t: DescriptionTranslate,
+  input: { placeName: string; startsAt: Date; endsAt: Date; timeZone: string; locale: string },
+): string {
+  const date = new Intl.DateTimeFormat(input.locale, {
+    timeZone: input.timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(input.startsAt)
+  const slot = localSlotOf(input.startsAt, input.endsAt, input.timeZone)
+  return t('facilities.charge.rentalDesc', 'Rental: {place}, {date} {start}–{end}', {
+    place: input.placeName,
+    date,
+    start: slot.from,
+    end: slot.to,
+  })
+}
 
 // --- The B-24 address (`/backend/facilities/rentals?status=&view=&place=&page=`) ---
 

@@ -1176,7 +1176,7 @@
   "facilities.rentals.views.empty.unpaid": "Brak wynajmów nieopłaconych po terminie.",
   "facilities.rentals.payee.owner": "na konto: {name}",
   "facilities.rentals.payee.club": "na konto klubu",
-  "facilities.rentals.chargeState.none": "bez należności",
+  "facilities.rentals.chargeState.none": "rejestr wynajmów",
   "facilities.rentals.chargeState.open": "nieopłacona",
   "facilities.rentals.chargeState.partially_paid": "opłacona częściowo",
   "facilities.rentals.chargeState.paid": "opłacona",
@@ -1313,5 +1313,13 @@
   "facilities.places.details.group": "Grupa",
   "facilities.places.details.coach": "Trener",
   "facilities.places.details.status": "Status",
-  "facilities.places.details.contact": "Kontakt"
+  "facilities.places.details.contact": "Kontakt",
+  "facilities.errors.rental_awaits_payment": "Ten wynajem potwierdza wpłata: zapisz wpłatę na należności wynajmu.",
+  "facilities.charge.rentalDesc": "Wynajem: {place}, {date} {start}–{end}",
+  "facilities.rentals.confirm.registerText": "Wynajem {slot} zostanie potwierdzony. Wpłata zostanie odnotowana tylko w rejestrze wynajmów.",
+  "facilities.reports.owner.owner": "Właściciel: {name}",
+  "facilities.reports.owner.ownerClub": "Właściciel: klub",
+  "facilities.reports.owner.paymentsSource.charges": "Źródło: należności wynajmów ({count} opłaconych)",
+  "facilities.reports.owner.paymentsSource.mixed": "Źródło: należności wynajmów i rejestr wynajmów ({count} wynajmów)",
+  "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą"
 }

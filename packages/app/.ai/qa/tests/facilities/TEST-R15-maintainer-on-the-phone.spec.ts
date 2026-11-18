@@ -5,10 +5,10 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes }
 import { birthDateTurning, calendarDate, createClub, createStaff } from '../_fixtures/club'
 import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
 import {
+  confirmRental,
   phoneRental,
   postInternalBooking,
   postRental,
-  rentalAction,
   rentalPitch,
   runRentalLifecycle,
   staffCalendar,
@@ -93,8 +93,7 @@ test('TEST-R15 the maintainer on the phone: reminder link, own tasks, a window f
       phoneRental(pitch, setup.neighbours, zoneInstant(saturday, '09:00'), 4),
     )
     expect(rental.status, JSON.stringify(rental.body)).toBe(201)
-    const confirmed = await rentalAction(request, admin, String(rental.body?.id), 'confirm')
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+    await confirmRental(request, admin, String(rental.body?.id))
     const booking = await postInternalBooking(request, admin, {
       placeId: pitch,
       startsAt: zoneInstant(saturday, '15:00'),
