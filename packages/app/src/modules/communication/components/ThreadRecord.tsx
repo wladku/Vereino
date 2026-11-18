@@ -165,7 +165,7 @@ export function CaseBanner({ thread }: { thread: ThreadDetail }) {
 }
 
 /** "Mark as case": confirmed first (it cannot be undone), then sent with the thread's version. */
-function useMarkCase(thread: ThreadDetail | null, refresh: () => void) {
+export function useMarkCase(thread: ThreadDetail | null, refresh: () => void) {
   const t = useT()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [marking, setMarking] = React.useState(false)
@@ -341,9 +341,15 @@ function MessageDeliveries({
 /**
  * "Delete message": confirmed first, then sent with the thread's version (S5.2). A refusal on the way — 409
  * `case_immutable` (the thread was marked as a case meanwhile), an already deleted or a system message — refreshes the
- * page with the reason; a stale version is surfaced as a conflict with a refresh.
+ * page with the reason; a stale version is surfaced as a conflict with a refresh. `onRefused` takes the reason instead
+ * of a toast (the member thread page shows it in the page, REQ-A12).
  */
-function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afterDelete: () => void) {
+export function useDeleteMessage(
+  thread: ThreadDetail | null,
+  refresh: () => void,
+  afterDelete: () => void,
+  onRefused?: (reason: string) => void,
+) {
   const t = useT()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [deleting, setDeleting] = React.useState<string | null>(null)
@@ -373,7 +379,9 @@ function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afte
       } catch (error: unknown) {
         const code = errorCodeOf(error)
         if (code === 'case_immutable' || code === 'message_deleted' || code === 'message_not_editable') {
-          flash(errorMessage(error, t(`communication.errors.${code}`)), 'error')
+          const reason = errorMessage(error, t(`communication.errors.${code}`))
+          if (onRefused) onRefused(reason)
+          else flash(reason, 'error')
           refresh()
         } else if (!surfaceRecordConflict(error, t, { onRefresh: refresh })) {
           flash(errorMessage(error, t('communication.message.delete.errors.delete')), 'error')
@@ -382,7 +390,7 @@ function useDeleteMessage(thread: ThreadDetail | null, refresh: () => void, afte
         setDeleting(null)
       }
     },
-    [thread, confirm, t, refresh, afterDelete],
+    [thread, confirm, t, refresh, afterDelete, onRefused],
   )
   return { deleteMessage, deleting, ConfirmDialogElement }
 }

@@ -117,8 +117,8 @@ const FACILITIES_TAB_FEATURE = 'facilities.view'
 /** The destinations behind More between Profile and the admin panel, in the order More lists them. */
 export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
   { href: CLUB_MY_UNITS_HREF, label: 'myUnits', features: ['activities.reports.view_own'], available: true },
-  // The page (rosters for a coordinator, own groups for a coach) arrives with spec A (REQ-A11), which flips this.
-  { href: CLUB_GROUPS_HREF, label: 'groups', features: ['groups.view'], available: false },
+  // The rosters of a coordinator's sections, a coach's own groups (spec A, REQ-A11, #274).
+  { href: CLUB_GROUPS_HREF, label: 'groups', features: ['groups.view'], available: true },
   // Listed only while Facilities is not the fourth tab (one entry per destination, A-N07).
   {
     href: CLUB_PLACES_HREF,
