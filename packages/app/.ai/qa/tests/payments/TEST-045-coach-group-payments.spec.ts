@@ -441,7 +441,8 @@ test('TEST-045 coach group payments: fees and kit of my group, cash with one rec
     expect(coordinated.body?.groups?.map((group) => group.name).sort()).toEqual(['Orliki', 'Żaki'])
     const tennisSeen = await view(request, tennisCoach.token)
     expect(tennisSeen.body?.groups?.map((group) => group.name)).toEqual(['Tenis 1'])
-    expect((await view(request, tennisCoach.token, `?groupId=${zaki}`)).body?.children).toEqual([])
+    // Another coach's group answers 403 (REQ-C12, #300), never an empty view.
+    expect((await view(request, tennisCoach.token, `?groupId=${zaki}`)).status).toBe(403)
     const tennisCash = await collect(request, tennisCoach.token, {
       groupId: zaki,
       participantPersonId: bartek,

@@ -143,6 +143,7 @@ describe('receiptSummaries', () => {
     const payments = [
       { id: 'p1', receiptNumber: 'KP/2026/11/001', chargeId: 'c1', amount: 15000, createdAt: at },
       { id: 'p2', receiptNumber: 'KP/2026/11/001', chargeId: 'c2', amount: 8500, createdAt: at },
+      { id: 'p5', receiptNumber: 'KP/2026/11/001', chargeId: 'c1', amount: 0, createdAt: at },
       { id: 'p3', receiptNumber: 'KP/2026/11/002', chargeId: 'c3', amount: 4000, createdAt: at },
       { id: 'p4', receiptNumber: 'KP/2026/11/003', chargeId: 'c4', amount: 1000, createdAt: at },
     ]
@@ -157,7 +158,8 @@ describe('receiptSummaries', () => {
           receiptNumber: 'KP/2026/11/001',
           payerPersonId: 'anna',
           amount: 15000,
-          chargeCount: 2,
+          chargeCount: 3,
+          chargeIds: ['c1', 'c2'],
           reversed: false,
           createdAt: at,
         },
@@ -166,6 +168,7 @@ describe('receiptSummaries', () => {
           payerPersonId: null,
           amount: 0,
           chargeCount: 1,
+          chargeIds: ['c3'],
           reversed: true,
           createdAt: at,
         },
@@ -174,6 +177,7 @@ describe('receiptSummaries', () => {
           payerPersonId: null,
           amount: 1000,
           chargeCount: 1,
+          chargeIds: ['c4'],
           reversed: false,
           createdAt: at,
         },

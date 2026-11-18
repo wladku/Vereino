@@ -6,7 +6,7 @@
 // (on). After saving, the toast "Received X in cash from … — receipt KP/…" and a fresh form for the next payer.
 // One form for every screen (payments parity DD-C03, #292): `payerPersonId` opens it with that payer chosen (B-22) and
 // the focus on the amount, `chargeIds` ticks only those charges (a B-32 order row), and `origin` names the screen in
-// the audit context.
+// the audit context. `receiverName` names who receives the cash under the form, before saving (M-15; REQ-C12, #300).
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -40,6 +40,7 @@ export function CashAcceptForm({
   chargeIds,
   focusOnOpen = false,
   formRef,
+  receiverName,
   onDone,
   onCancel,
 }: {
@@ -52,6 +53,8 @@ export function CashAcceptForm({
   focusOnOpen?: boolean
   /** The form element, so the dialog can submit it on Ctrl/Cmd+Enter. */
   formRef?: React.Ref<HTMLFormElement>
+  /** The signed-in collector, shown as "Received by: {name}" under the form. */
+  receiverName?: string
   onDone?: (recorded: CashRecorded) => void | Promise<void>
   onCancel?: () => void
 }) {
@@ -385,6 +388,12 @@ export function CashAcceptForm({
           setNotify(checked)
         }}
       />
+
+      {receiverName ? (
+        <p className="text-muted-foreground text-sm" data-testid="cash-taken-by">
+          {t('payments.cash.takenBy', { name: receiverName })}
+        </p>
+      ) : null}
 
       {problem ? (
         <p id={ids.problem} className="text-destructive text-sm" role="alert" data-testid="cash-problem">

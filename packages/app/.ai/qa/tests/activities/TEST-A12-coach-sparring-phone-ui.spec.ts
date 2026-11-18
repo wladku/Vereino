@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { addDays, getOccurrence, nextWeekday, zoneInstant } from '../_fixtures/activities'
-import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
+import {
+  expectNoPageOverflow,
+  prepareForAccessibilityScan,
+  scanBlockingViolations,
+  switchColorScheme,
+} from '../_fixtures/axe'
 import { familyFor } from '../_fixtures/attendance'
 import { calendarDate, call, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
@@ -77,11 +82,13 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
     await page.getByTestId('club-event-venue-name').fill(VENUE.name)
     await page.getByTestId('club-event-venue-address').fill(VENUE.address)
     for (const colorScheme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      // The form keeps its values and its error state, so the scheme changes without a reload and the scan waits for
+      // the fade to end (#368).
+      await switchColorScheme(page, colorScheme)
       await expect(page.getByTestId('club-event-submit')).toBeInViewport()
       await scan(`/club/events/new (en, ${colorScheme})`)
     }
-    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+    await switchColorScheme(page, 'light')
     const created = page.waitForResponse(
       (response) => response.url().endsWith('/api/activities/events') && response.request().method() === 'POST',
     )

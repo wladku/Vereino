@@ -4,7 +4,8 @@
 // children with their group fees and kit orders — amount due, due date, status, never the discount or its reason —
 // its campaigns with the Messenger text, and "Cash with you" (the receipts the caller collected and still holds).
 // `due=1` keeps the children with something to pay. A coach sees the groups they lead, a coordinator the groups of
-// their sections, the club administrator every group; anyone else gets no groups.
+// their sections, the club administrator every group; anyone else gets no groups. The caller's own groups come first
+// and carry `own`; a `groupId` outside the caller's groups answers 403 `scope_denied` (REQ-C12, #300).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
@@ -56,7 +57,15 @@ const chargeSchema = z.object({
 const responseSchema = z.object({
   today: z.string(),
   coachFeeAccess: z.enum(['collect', 'view', 'none']).describe('The club\'s "Coaches and payments" setting'),
-  groups: z.array(z.object({ id: z.uuid(), name: z.string(), sectionId: z.string(), ...totalsSchema })),
+  groups: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      sectionId: z.string(),
+      own: z.boolean().describe('A group the caller leads as a coach; the others show "(section)"'),
+      ...totalsSchema,
+    }),
+  ),
   groupId: z.string().nullable(),
   group: z.object(totalsSchema).nullable(),
   children: z.array(
@@ -159,6 +168,7 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: 'Invalid query', schema: errorSchema },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
+        { status: 403, description: '`scope_denied` (a `groupId` outside my groups)', schema: errorSchema },
       ],
     },
   },

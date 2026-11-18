@@ -142,6 +142,8 @@ export type ReceiptSummary = {
   /** What the receipt still holds: its payments less the reversed ones. */
   amount: number
   chargeCount: number
+  /** The receipt's charges, each once, in the order they were paid ("Received today" names them, REQ-C12). */
+  chargeIds: string[]
   /** Every payment of the receipt was reversed. */
   reversed: boolean
   createdAt: string
@@ -163,10 +165,12 @@ export function receiptSummaries(
       payerPersonId: payerOf.get(payment.chargeId) ?? null,
       amount: 0,
       chargeCount: 0,
+      chargeIds: [],
       reversed: true,
       createdAt: payment.createdAt,
     }
     summary.chargeCount += 1
+    if (!summary.chargeIds.includes(payment.chargeId)) summary.chargeIds.push(payment.chargeId)
     if (!reversed.has(payment.id)) {
       summary.amount += payment.amount
       summary.reversed = false
