@@ -4,7 +4,7 @@
 //   an e-mail confirmation to the payer unless `notify` is false; the optional `origin` (B-21, B-22, B-29, …; DD-C03,
 //   #292) goes to the audit context;
 // - `GET` is "Received by me today": the receipts the caller issued today in the club's calendar, with the total to hand
-//   over to the treasurer (reversed payments count for nothing).
+//   over to the treasurer (reversed payments count for nothing), each receipt with what it paid for (REQ-C12, #300).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -18,7 +18,7 @@ import {
 import type { CashRecordResult } from '../../commands/cash'
 import { cashRecordSchema } from '../../data/validators'
 import { receiptSummaries } from '../../lib/cash'
-import { cashAcceptedBy, chargePayers } from '../../services/cash'
+import { cashAcceptedBy, receiptCharges } from '../../services/cash'
 import { clubClock, findPersons } from '../../services/directory'
 import { PAYMENTS_READ_KINDS, errorSchema } from '../shared'
 
@@ -57,6 +57,7 @@ const todayResponseSchema = z.object({
       payer: personSchema,
       amount: z.number().int().describe('Grosz; reversed payments excluded'),
       chargeCount: z.number().int(),
+      descriptions: z.array(z.string()).describe("The receipt's charges, each once, in the order they were paid"),
       reversed: z.boolean(),
       createdAt: z.string(),
     }),
@@ -104,11 +105,12 @@ export async function GET(request: Request): Promise<Response> {
     })
     const { today } = await clubClock(ctx.container, scope)
     const { payments, reversed } = await cashAcceptedBy(ctx.container, scope, userId, today)
-    const payerOf = await chargePayers(
+    const charges = await receiptCharges(
       ctx.container,
       scope,
       payments.map((row) => row.chargeId),
     )
+    const payerOf = new Map([...charges].map(([id, charge]) => [id, charge.payerPersonId]))
     const summary = receiptSummaries(
       payments.map((row) => ({
         id: row.id,
@@ -127,9 +129,13 @@ export async function GET(request: Request): Promise<Response> {
     )
     return Response.json({
       date: today,
-      items: summary.items.map((item) => {
+      items: summary.items.map(({ chargeIds, ...item }) => {
         const payer = item.payerPersonId ? persons.get(item.payerPersonId) : undefined
-        return { ...item, payer: payer ? { firstName: payer.firstName, lastName: payer.lastName } : null }
+        return {
+          ...item,
+          payer: payer ? { firstName: payer.firstName, lastName: payer.lastName } : null,
+          descriptions: chargeIds.map((id) => charges.get(id)?.description ?? ''),
+        }
       }),
       total: summary.total,
     })
