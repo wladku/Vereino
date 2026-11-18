@@ -36,6 +36,16 @@ export function slotKinds(access: SlotKindAccess): SlotKind[] {
   })
 }
 
+/**
+ * The kind the slot dialog shows (DD-R04, #366): the user's pick while it is still offered, else the first offered
+ * kind. The offered kinds can grow after the dialog opens (a coach's groups load later), so the preselection follows
+ * them until the user picks one. No kind offered → `rental`, the B-24 "New rental" kind.
+ */
+export function selectedSlotKind(kinds: readonly SlotKind[], picked: SlotKind | null): SlotKind {
+  if (picked !== null && kinds.includes(picked)) return picked
+  return kinds[0] ?? 'rental'
+}
+
 export type MinuteSpan = { from: number; to: number }
 
 /**
