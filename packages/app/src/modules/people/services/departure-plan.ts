@@ -91,12 +91,12 @@ async function relatedGuardianships(em: EntityManager, scope: ClubScope, personI
     ...where,
     $or: [{ guardianPersonId: { $in: [...personIds] } }, { wardPersonId: { $in: [...personIds] } }],
   })
+  if (direct.length === 0) return []
   const linked = [...new Set(direct.flatMap((row) => [row.guardianPersonId, row.wardPersonId]))]
-  const all = await em.find(Guardianship, {
+  return em.find(Guardianship, {
     ...where,
     $or: [{ guardianPersonId: { $in: linked } }, { wardPersonId: { $in: linked } }],
   })
-  return all.length > 0 ? all : direct
 }
 
 /** Persons with an active `club_admin` role today, and those among them whose account is active. */
