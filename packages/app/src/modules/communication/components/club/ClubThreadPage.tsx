@@ -4,11 +4,11 @@
 // the staff only), and the read marker moved when the thread is opened, so the inbox dot and the tile count clear. Its
 // own 403 ("not yours") and 404 states. README M-07 (E06-S20): the "Case" mark and its read-only banner, "Copy text for
 // group chat" for the thread's staff (its author, the scope's coaches, the section's coordinator), and under the
-// reader's own messages "E-mail: {n} delivered · {m} not delivered". The section coordinator's phone actions (groups
-// and activities parity spec REQ-A12, D-031 §3, Q-A26; #274), behind `communication.cases.manage` and the thread's own
-// flags: "Mark as case" (confirmed, it cannot be undone) and "Delete" under each message they may delete while the
-// thread is not a case — the message then reads "deleted". A refusal (409 `case_immutable` when the thread became a
-// case meanwhile) is shown in the page as text.
+// reader's own messages "E-mail: {n} delivered · {m} not delivered" and "Edit" (people life-cycle spec REQ-L12, #304;
+// never on a case). The section coordinator's phone actions (groups and activities parity spec REQ-A12, D-031 §3,
+// Q-A26; #274), behind `communication.cases.manage` and the thread's own flags: "Mark as case" (confirmed, it cannot be
+// undone) and "Delete" under each message they may delete while the thread is not a case — the message then reads
+// "deleted". A refusal (409 `case_immutable` when the thread became a case meanwhile) is shown in the page as text.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -26,6 +26,7 @@ import {
   ShareTextPanel,
   postReply,
   useDeleteMessage,
+  useEditMessage,
   useMarkCase,
   useMarkRead,
   useThread,
@@ -79,6 +80,7 @@ function Thread({ id }: { id: string }) {
     subjectRef.current?.focus()
   }, [])
   const deletion = useDeleteMessage(thread, refresh, focusSubject, setRefusal)
+  const editMessage = useEditMessage(thread, refresh)
 
   const back = (
     <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
@@ -176,7 +178,12 @@ function Thread({ id }: { id: string }) {
       ) : null}
       {thread.isCase ? <CaseBanner thread={thread} /> : null}
       {thread.staff ? <ShareTextPanel thread={thread} /> : null}
-      <MessageList messages={thread.messages} renderFooter={footer} />
+      <MessageList
+        messages={thread.messages}
+        renderFooter={footer}
+        isCase={thread.isCase}
+        onEdit={editMessage}
+      />
       <ReplyBox
         pending={pending}
         hint={thread.staff ? null : t('communication.reply.memberHint')}

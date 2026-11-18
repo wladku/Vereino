@@ -53,6 +53,8 @@ export type PersonDetail = PersonListRow & {
   /** The account state read from the platform user (full view, #303). */
   account?: PersonAccount
   pesel?: string | null
+  /** The import identifier (#28); returned, like the PESEL, only with `people.pesel.view`. */
+  externalId?: string | null
 }
 
 /** `account` of the full person view (people life-cycle spec REQ-L01, DD-L02). */
