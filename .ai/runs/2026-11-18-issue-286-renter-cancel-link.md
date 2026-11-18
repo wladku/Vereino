@@ -49,6 +49,7 @@ REQ-R17 / J-R06: a renter with an e-mail address gets a summary when staff enter
 - `yarn test:integration:vereino --filter TEST-R17` (with build, before the row-lock change) — 1 passed (2.3m).
 - `yarn verify` — failed at `lint` (4 errors in `RentalCancelView.tsx`: `react-hooks/set-state-in-effect`, `no-confusing-void-expression`); after the fix `yarn verify --from lint` failed at `format:check`; after `yarn format`, `yarn verify --from format:check` — all remaining 12 steps passed (generate, typecheck ×3 and lint passed in the earlier runs).
 - `yarn test:integration:vereino --filter TEST-R17 --no-build` on the final build — 1 passed (2.4m).
+- After PR #386 opened, `main` gained #385 (phase 11) and the merge train marked a conflict: merged `origin/main` into the branch (conflicts in `commands/rentals.ts` imports and the two catalogs, both sides additive, kept both). `yarn verify` — all 17 steps passed; TEST-R17 `--no-build` — 1 passed (2.2m).
 
 ## Open problems / next steps
 
