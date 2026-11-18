@@ -4,12 +4,13 @@ import { expectNoPageOverflow } from '../_fixtures/axe'
 import { calendarDate, call, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import {
-  type CodedError,
+  confirmRental,
   phoneRental,
   postInternalBooking,
   postRental,
   rentalAction,
   rentalPitch,
+  type CodedError,
 } from '../_fixtures/facilities'
 import { completeMaintenance, listMaintenance, postMaintenance } from '../_fixtures/maintenance'
 
@@ -18,8 +19,8 @@ import { completeMaintenance, listMaintenance, postMaintenance } from '../_fixtu
 // checked against a count made here from the test data: the scheduled zone hours (club training Mon–Fri 16:00–19:30,
 // bookable Mon–Fri 08:00–16:00 and 19:30–22:00, Sat–Sun 09:00–20:30, all from today), the club time (the Tuesday
 // training sessions and a 2-hour internal booking, by zone), two billable rentals (a confirmed one and a requested
-// one; a free cancellation and a rental after the period do not count), the payments from the rental register (only
-// the confirmed rental — `payments` reports no rental charges, DD-19), one incident and one maintenance task done with
+// one; a free cancellation and a rental after the period do not count), the payments from the rentals' charges (only
+// the confirmed rental, whose charge was paid — facilities parity spec REQ-R11), one incident and one maintenance task done with
 // its cost. A period of a year answers 422, an inverted one 422, a caller without `facilities.reports.view` 403. The
 // CSV has the same figures. A period with nothing in it reports zeros. The page shows the KPIs at 375 px.
 test.describe.configure({ timeout: 300_000 })
@@ -33,7 +34,7 @@ type Report = CodedError & {
   zoneHours: Record<string, number>
   clubTime: { total: number; sessions: number; bookings: number; byZone: Record<string, number> }
   rentals: { count: number; value: number; items: Array<{ id: string; amount: number; status: string }> }
-  payments: { amount: number; count: number; source: string }
+  payments: { amount: number; count: number; source: string; partiallyPaidCount: number }
   incidents: { count: number }
   maintenance: { done: number; cost: number }
 }
@@ -90,8 +91,7 @@ test('TEST-025 owner report: every figure matches the test data, CSV the same, 4
       phoneRental(setup.pitch, setup.neighbours, zoneInstant(thursday, '08:00'), 2),
     )
     expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(201)
-    const confirmAction = await rentalAction(request, admin, String(confirmed.body?.id), 'confirm')
-    expect(confirmAction.status, JSON.stringify(confirmAction.body)).toBe(200)
+    await confirmRental(request, admin, String(confirmed.body?.id))
     const saturday = nextWeekday(addDays(today, 1), 'SA')
     const requested = await postRental(
       request,
@@ -169,7 +169,7 @@ test('TEST-025 owner report: every figure matches the test data, CSV the same, 4
       to,
       ...expected,
       rentals: { count: 2, value: 75_000 },
-      payments: { amount: 50_000, count: 1, source: 'rental_register' },
+      payments: { amount: 50_000, count: 1, source: 'charges', partiallyPaidCount: 0 },
       incidents: { count: 1 },
       maintenance: { done: 1, cost: 12_050 },
     })
@@ -203,7 +203,7 @@ test('TEST-025 owner report: every figure matches the test data, CSV the same, 4
     expect(summary.get('rentals.count')).toBe('2')
     expect(summary.get('rentals.value')).toBe('750.00')
     expect(summary.get('payments.amount')).toBe('500.00')
-    expect(summary.get('payments.source')).toBe('rental_register')
+    expect(summary.get('payments.source')).toBe('charges')
     expect(summary.get('incidents.count')).toBe('1')
     expect(summary.get('maintenance.done')).toBe('1')
     expect(summary.get('maintenance.cost')).toBe('120.50')

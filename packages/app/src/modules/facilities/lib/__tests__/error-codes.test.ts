@@ -24,6 +24,7 @@ describe('facilities error codes', () => {
       'rental_start_past',
       'rental_not_started',
       'rental_closed',
+      'rental_awaits_payment',
       'booking_period_invalid',
       'booking_start_past',
       'booking_too_old',

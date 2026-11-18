@@ -33,7 +33,7 @@ import { EntryBan, Rental } from '../data/entities'
 import { publicRequestSchema, requestApproveSchema, requestRejectSchema, requestVerifySchema } from '../data/validators'
 import { blockingHolds, entryBanNameMatch, approvalAmount, holdActive, holdExpiry } from '../lib/requests'
 import { banActiveOn, rentalTransitions, startAllowed } from '../lib/rentals'
-import { chargeService } from '../services/charges'
+import { chargeService, rentalChargeInput } from '../services/charges'
 import { clubRequestSettings, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
 import { placeFamilyIds } from '../services/occupancy'
 import { requestPlace } from '../services/public-schedule'
@@ -465,22 +465,8 @@ const approveRequestCommand: CommandHandler<Record<string, unknown>, RentalComma
       const charges = chargeService(ctx.container)
       if (charges && row.chargeId == null) {
         await em.flush()
-        const settings = await clubRequestSettings(ctx.container, scope)
-        const charge = await charges.createForSource(
-          em,
-          {
-            sourceType: 'rental',
-            sourceId: row.id,
-            payee: 'owner_institution',
-            payeeInstitutionId: null,
-            payerInstitutionId: renter.renterType === 'institution' ? renter.renterId : null,
-            payerPersonId: renter.renterType === 'person' ? renter.renterId : null,
-            amount: row.amount,
-            dueDate: calendarDateInZone(row.paymentDeadline ?? row.startsAt, settings.timeZone),
-            description: renter.name,
-          },
-          ctx,
-        )
+        // The same charge a staff entry creates: payable to the place's payee, the approved renter as payer.
+        const charge = await charges.createForSource(em, await rentalChargeInput(ctx.container, em, scope, row), ctx)
         row.chargeId = charge.chargeId
         afterCommit.push(charge.afterCommit)
       }

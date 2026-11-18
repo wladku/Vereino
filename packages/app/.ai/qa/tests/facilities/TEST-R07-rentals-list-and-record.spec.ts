@@ -3,7 +3,7 @@ import { addDays, nextWeekday, weekdayOf, zoneInstant } from '../_fixtures/activ
 import { prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { confirmationToken, requestForm, submitRequest, verifyRequest } from '../_fixtures/facility-requests'
-import { listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
+import { confirmRental, listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
 import { publicPitch } from '../_fixtures/public-places'
 import { uiText } from '../_fixtures/ui-text'
 
@@ -60,7 +60,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
     }
     const requested = await enter('Najemca Wtorek', zoneInstant(tuesday, '08:00'))
     const confirmed = await enter('Najemca Potwierdzony', zoneInstant(tuesday, '11:00'))
-    expect((await rentalAction(request, admin, confirmed, 'confirm')).status).toBe(200)
+    await confirmRental(request, admin, confirmed)
     const cancelled = await enter('Najemca Odwołany', zoneInstant(tuesday, '13:00'))
     expect((await rentalAction(request, admin, cancelled, 'cancel')).status).toBe(200)
     const flagged = await enter('Najemca Do Przeniesienia', zoneInstant(wednesday, '08:00'))
@@ -184,12 +184,13 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
       .toBe('Turniej szóstek — finał')
     expect((await readRental(request, admin, enteredId))?.notes).toBe('Dwie bramki')
 
-    // The actions from the page update it: Confirm payment, then Cancel.
+    // The actions from the page: Confirm payment opens the rental's unpaid charge on B-22 (DD-R09, #285), where the
+    // recorded payment confirms the rental; then Cancel.
+    const chargeId = String((await readRental(request, admin, enteredId))?.chargeId)
     await page.getByTestId('facilities-rental-record-confirm').click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: uiText('facilities.rentals.actions.confirm', { exact: true }) })
-      .click()
+    await expect(page).toHaveURL(new RegExp(`/backend/payments/charges/${chargeId}`))
+    await confirmRental(request, admin, enteredId)
+    await page.goto(`/backend/facilities/rentals/${enteredId}`)
     await expect(record.getByText(uiText('facilities.rentals.status.confirmed', { exact: true }))).toBeVisible()
     await expect(page.getByTestId('facilities-rental-record-confirm')).toHaveCount(0)
     await page.getByTestId('facilities-rental-record-cancel').click()

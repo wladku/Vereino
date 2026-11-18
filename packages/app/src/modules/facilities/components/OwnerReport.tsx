@@ -3,7 +3,9 @@
 // #127): for a facility and a month or quarter, from `GET /api/facilities/reports/owner` — KPI cards for the scheduled
 // hours of each zone with the club time that fell in it, the club time (sessions and internal bookings), the rentals
 // (count and value), the payments to the municipality's account with their source, incidents and maintenance done —
-// then the period's rentals. "Export CSV" downloads the same figures. Empty state "No data for this period".
+// then the period's rentals. "Export CSV" downloads the same figures. Empty state "No data for this period". Under the
+// subtitle the owner institution of the place; the payments card names its source — the rentals' charges, the rental
+// register, or both — and the partly paid charges apart (facilities parity spec REQ-R11, #285).
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
@@ -141,9 +143,15 @@ function ReportKpis({ report, t, locale }: { report: Report; t: Translate; local
         testId="owner-report-payments"
         label={t('facilities.reports.owner.payments')}
         value={money(report.payments.amount)}
-        note={t(`facilities.reports.owner.paymentsSource.${report.payments.source}`, {
-          count: report.payments.count,
-        })}
+        note={[
+          t(`facilities.reports.owner.paymentsSource.${report.payments.source}`, { count: report.payments.count }),
+          // A partly paid charge is not in the sum; its exact amount stays on the charge (Q-R01).
+          report.payments.partiallyPaidCount > 0
+            ? t('facilities.reports.owner.partiallyPaid', { count: report.payments.partiallyPaidCount })
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       />
       <Kpi
         testId="owner-report-incidents"
@@ -298,6 +306,13 @@ export function OwnerReport() {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">{t('facilities.reports.owner.title')}</h1>
           <p className="text-muted-foreground text-sm">{t('facilities.reports.owner.subtitle')}</p>
+          {data ? (
+            <p className="text-sm" data-testid="owner-report-owner">
+              {data.owner
+                ? t('facilities.reports.owner.owner', { name: data.owner.name })
+                : t('facilities.reports.owner.ownerClub')}
+            </p>
+          ) : null}
         </div>
         {exportAction}
       </div>

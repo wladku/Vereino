@@ -3,34 +3,48 @@
 // `from`–`to`. Figures: the scheduled hours of each zone (the zone rules of those places), the club time — `planned`
 // and `done` sessions and confirmed internal bookings, clipped to the period and split by the zone they fell in —, the
 // rentals that start in the period and were billable (count, value, the table), the payments to the owner's account,
-// the incidents that occurred and the maintenance tasks done in the period. `payments` writes rental charges since #291
-// (DD-19), but this report does not read them yet (the facilities parity spec, E11-S11), so the payments figure still
-// comes from the rental register — the confirmed and done rentals — and the report says so. Encrypted columns are read with `findWithDecryption`.
+// the incidents that occurred and the maintenance tasks done in the period. The report names the owner institution
+// and says where its payments figure comes from (facilities parity spec REQ-R11, #285): a rental with a charge counts
+// once its charge, read live through `payments.chargeService.statusOf`, is paid; a rental without one counts from the
+// rental register (confirmed and done). Encrypted columns are read with `findWithDecryption`.
 import type { EntityManager } from '@mikro-orm/postgresql'
-import type { AwilixContainer } from 'awilix'
+import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { addDays, zonedInstant, type CalendarDate } from '@vereino/core'
 import { Incident, InternalBooking, MaintenanceTask, Rental, ZoneRule } from '../data/entities'
 import { zoneRuleShapeOf } from '../data/shapes'
 import { OCCUPYING_BOOKING_STATUSES } from '../lib/internal-bookings'
 import {
-  PAID_RENTAL_STATUSES,
   REPORTED_RENTAL_STATUSES,
   clubZoneMinutes,
   hoursOf,
+  ownerPayments,
   periodDates,
   scheduledZoneMinutes,
   type OwnerReport,
 } from '../lib/owner-report'
+import { rentalChargeState } from '../lib/rental-record'
 import { ZONES, type ZoneRuleShape } from '../lib/zones'
-import { clubRequestSettings, clubSessionTimes, findPlaces, placeFamily, type FacilitiesScope } from './directory'
+import { chargeService } from './charges'
+import {
+  clubRequestSettings,
+  clubSessionTimes,
+  findPlaces,
+  placeFamily,
+  placePayee,
+  type FacilitiesScope,
+} from './directory'
 
-/** Null when `placeId` names no place of the club. The period has been checked (`reportPeriodProblem`). */
+/**
+ * Null when `placeId` names no place of the club. The period has been checked (`reportPeriodProblem`). `ctx` is the
+ * caller's request context, which the charge service reads its scope from.
+ */
 export async function ownerReport(
-  container: AwilixContainer,
+  ctx: CommandRuntimeContext,
   scope: FacilitiesScope,
   query: { placeId: string; from: CalendarDate; to: CalendarDate },
 ): Promise<OwnerReport | null> {
+  const container = ctx.container
   const em = container.resolve<EntityManager>('em').fork()
   const place = (await findPlaces(container, scope, [query.placeId], em)).get(query.placeId)
   if (!place) return null
@@ -87,11 +101,22 @@ export async function ownerReport(
   )
   const zoneKeys = [...ZONES, 'none' as const]
   const minutesOf = (totals: Record<string, number>) => zoneKeys.reduce((sum, zone) => sum + totals[zone], 0)
-  const paid = rentals.filter((row) => PAID_RENTAL_STATUSES.includes(row.status))
+  const charges = chargeService(container)
+  const chargeIds = rentals.flatMap((row) => (row.chargeId ? [row.chargeId] : []))
+  const statuses = charges && chargeIds.length > 0 ? await charges.statusOf(chargeIds, ctx) : new Map<string, string>()
+  const payments = ownerPayments(
+    rentals.map((row) => ({
+      amount: row.amount,
+      status: row.status,
+      chargeState: rentalChargeState(row.chargeId, statuses),
+    })),
+  )
+  const payee = await placePayee(container, scope, query.placeId, em)
   const sessionHours = hoursOf(minutesOf(sessionMinutes))
   const bookingHours = hoursOf(minutesOf(bookingMinutes))
   return {
     place: { id: place.id, name: place.name },
+    owner: payee ? { institutionId: payee.institutionId, name: payee.name } : null,
     from: query.from,
     to: query.to,
     timeZone,
@@ -119,7 +144,7 @@ export async function ownerReport(
         status: row.status,
       })),
     },
-    payments: { amount: paid.reduce((sum, row) => sum + row.amount, 0), count: paid.length, source: 'rental_register' },
+    payments,
     incidents: { count: incidents },
     maintenance: { done: works.length, cost: works.reduce((sum, row) => sum + (row.cost ?? 0), 0) },
   }

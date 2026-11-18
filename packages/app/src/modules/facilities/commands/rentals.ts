@@ -36,7 +36,13 @@ import {
   rentalMoveSchema,
   rentalUpdateSchema,
 } from '../data/validators'
-import { correctionClosed, rentalChargeState, type RentalCorrectionField } from '../lib/rental-record'
+import {
+  awaitsPayment,
+  correctionClosed,
+  rentalChargeState,
+  type RentalChargeState,
+  type RentalCorrectionField,
+} from '../lib/rental-record'
 import {
   cancellationDeadline,
   cancellationOutcome,
@@ -50,7 +56,7 @@ import {
   type RentalStatus,
 } from '../lib/rentals'
 import { labelConflicts } from '../services/calendar'
-import { chargeService } from '../services/charges'
+import { chargeService, rentalChargeInput } from '../services/charges'
 import { clubTimeZone, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
 import { assessRentalSlot, rentalAgreement, renterBanned, type RentalIssue } from '../services/rental-slot'
 import {
@@ -255,23 +261,7 @@ const createRentalCommand: CommandHandler<Record<string, unknown>, RentalCommand
       const charges = chargeService(ctx.container)
       if (charges) {
         await em.flush()
-        const timeZone = await clubTimeZone(ctx.container, scope)
-        const charge = await charges.createForSource(
-          em,
-          {
-            sourceType: 'rental',
-            sourceId: row.id,
-            payee: 'owner_institution',
-            payeeInstitutionId: null,
-            payerInstitutionId: row.renterType === 'institution' ? row.renterId : null,
-            payerPersonId: row.renterType === 'person' ? row.renterId : null,
-            payerDisplayName: row.renterType === 'unregistered' ? name : null,
-            amount: row.amount,
-            dueDate: calendarDateInZone(row.paymentDeadline ?? row.startsAt, timeZone),
-            description: name,
-          },
-          ctx,
-        )
+        const charge = await charges.createForSource(em, await rentalChargeInput(ctx.container, em, scope, row), ctx)
         row.chargeId = charge.chargeId
         afterCommit.push(charge.afterCommit)
       }
@@ -298,8 +288,8 @@ type TransitionSpec = {
   labelKey: string
   fallback: string
   schema: typeof rentalActionSchema | typeof rentalCancelSchema
-  /** A check after the transition table allows the move (a no-show only after the start). */
-  guard?: (row: Rental, now: Date) => Promise<void>
+  /** A check after the transition table allows the move (a no-show only after the start, a confirm once paid). */
+  guard?: (row: Rental, now: Date, ctx: CommandRuntimeContext) => Promise<void>
 }
 
 /** A status move on an existing rental with the lock token; a cancellation also cancels or forfeits the charge. */
@@ -322,7 +312,7 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
         const before = rentalSnapshot(row)
         const to = typeof spec.to === 'function' ? spec.to(row, now) : spec.to
         await assertTransition(rentalTransitions, row.status, to)
-        if (spec.guard) await spec.guard(row, now)
+        if (spec.guard) await spec.guard(row, now, ctx)
         row.status = to
         row.updatedAt = now
         if (to === 'cancelled_free' || to === 'cancelled_late') {
@@ -356,6 +346,18 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
   }
 }
 
+/** The live state of the rental's charge (`none` without a charge or without the charge service). */
+async function chargeStateOf(ctx: CommandRuntimeContext, row: Rental): Promise<RentalChargeState> {
+  const charges = chargeService(ctx.container)
+  if (!charges || !row.chargeId) return 'none'
+  return rentalChargeState(row.chargeId, await charges.statusOf([row.chargeId], ctx))
+}
+
+/**
+ * A rental with a charge is confirmed by its payment (DD-R09): while the charge is open or partly paid a direct
+ * confirm answers 409 `rental_awaits_payment` with the charge to record the payment on; once it is paid the confirm
+ * succeeds (the repair path for a missed payment event). A rental without a charge is confirmed at once (the register).
+ */
 const confirmRentalCommand = transitionCommand({
   id: 'facilities.rentals.confirm',
   to: 'confirmed',
@@ -363,6 +365,11 @@ const confirmRentalCommand = transitionCommand({
   labelKey: 'facilities.audit.rentals.confirm',
   fallback: 'Confirm a rental',
   schema: rentalActionSchema,
+  guard: async (row, _now, ctx) => {
+    if (awaitsPayment(row.chargeId, await chargeStateOf(ctx, row))) {
+      await facilitiesErrors.throw('rental_awaits_payment', { chargeId: row.chargeId as string })
+    }
+  },
 })
 
 const cancelRentalCommand = transitionCommand({
@@ -441,7 +448,9 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       row.startsAt = startsAt
       row.endsAt = assessment.endsAt
       row.cancellationDeadline = cancellationDeadline(startsAt)
-      row.paymentDeadline = assessment.paymentDeadline
+      // A rental with a charge keeps its deadline: the charge's due date was set from it and DD-19 has no update, so
+      // the two never diverge (facilities parity spec *Payment deadline*, #221).
+      if (!row.chargeId) row.paymentDeadline = assessment.paymentDeadline
       row.needsReschedule = false
       row.updatedAt = now
       return { entity: row, actingRole: authorized.actingRole, before }
@@ -780,6 +789,58 @@ const advanceLifecycleCommand: CommandHandler<Record<string, unknown>, Lifecycle
   },
 }
 
+const confirmPaidSchema = z.object({ chargeId: z.uuid() }).strict()
+
+export type ConfirmPaidResult = { confirmedIds: string[] }
+
+/**
+ * `facilities.rentals.confirm_paid` (facilities parity spec DD-R09, REQ-R06; the `payments.payment.recorded` row of
+ * *Events*; #285): the organization's `requested` rental whose charge is `chargeId` becomes `confirmed` once the
+ * charge service reports that charge `paid`. One conditional update (`advanceWhere`), so a repeated event, a partial
+ * payment or a charge of another source advances nothing (DD-46); without the charge service it does nothing. Run by
+ * the `facilities:payment-recorded` subscriber with a session-less job context.
+ */
+const confirmPaidCommand: CommandHandler<Record<string, unknown>, ConfirmPaidResult> = {
+  id: 'facilities.rentals.confirm_paid',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const charges = chargeService(ctx.container)
+    const { scope, confirmed } = await inWriteTransaction(ctx, 'facilities.rentals.confirm_paid', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: confirmPaidSchema,
+          resourceKind: 'facilities.organization',
+          allowedKinds: ['system_job'],
+          resolveTarget: (_parsed, _entity, trusted) => ({ id: trusted.organizationId, ...trusted }),
+          lock: 'none',
+          scopeSource: { job: true },
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const trusted = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      const none = { scope: trusted, confirmed: [] as Array<{ id: string; placeId: string }> }
+      if (!charges) return none
+      const { chargeId } = authorized.parsed
+      // No index on `charge_id` (facilities parity spec *Data Models*): the organization's requested rentals are few.
+      const rental = await em.findOne(Rental, { ...trusted, chargeId, status: 'requested', deletedAt: null })
+      if (!rental) return none
+      if (rentalChargeState(chargeId, await charges.statusOf([chargeId], ctx)) !== 'paid') return none
+      const moved = await advanceWhere(em, Rental, {
+        transitions: rentalTransitions,
+        where: { ...trusted, id: rental.id, chargeId, deletedAt: null },
+        from: 'requested',
+        to: 'confirmed',
+        set: { updatedAt: new Date() },
+      })
+      return { scope: trusted, confirmed: moved.length === 1 ? [{ id: rental.id, placeId: rental.placeId }] : [] }
+    })
+    for (const entry of confirmed) await emitAfterCommit('facilities.rental.confirmed', scope, entry)
+    return { confirmedIds: confirmed.map((entry) => entry.id) }
+  },
+}
+
 registerCommand(createRentalCommand)
 registerCommand(confirmRentalCommand)
 registerCommand(cancelRentalCommand)
@@ -787,3 +848,4 @@ registerCommand(noShowRentalCommand)
 registerCommand(moveRentalCommand)
 registerCommand(updateRentalCommand)
 registerCommand(advanceLifecycleCommand)
+registerCommand(confirmPaidCommand)
