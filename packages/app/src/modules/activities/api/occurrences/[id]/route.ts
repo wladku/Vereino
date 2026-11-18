@@ -1,7 +1,8 @@
 // `GET, PATCH /api/activities/occurrences/{id}` (club spec API table, REQ-005, TEST-007): one session with its names
 // and the caller's acting role (a coach of the group, the coordinator of its section, the club administrator), whom a
 // substitute stands in for and the substitution history (E06-S13 #95), whether the caller may cancel it (`mayCancel`,
-// #215: false where `coach_may_cancel` is off and the caller holds only a coach grant on it), and the move — `activities.occurrences.update`, which detaches the session from its series and is refused with 409 when
+// #215: false where `coach_may_cancel` is off and the caller holds only a coach grant on it), whether they may assign
+// a substitute, edit or take it over (`mayAssign`, `mayEdit`, `mayTakeOver`; REQ-A10, E10-S08 #273), and the move — `activities.occurrences.update`, which detaches the session from its series and is refused with 409 when
 // it overbooks the place tree or the coach. Send the lock token in the platform optimistic-lock header.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -23,6 +24,7 @@ import { activityLabels, activityTeams, findOccurrence, nameMaps } from '../../.
 import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
 import { countMoveNotified } from '../../../services/session-notice'
+import { sessionActionFlags } from '../../../services/calendar'
 import { selfPersonId } from '../../../commands/shared'
 import {
   SCHEDULE_READ_KINDS,
@@ -74,6 +76,21 @@ const detailSchema = occurrenceListItemSchema.extend({
   mayRestore: z
     .boolean()
     .describe('The caller may restore the cancelled session: the club administrator, while it has not ended (#268).'),
+  mayAssign: z
+    .boolean()
+    .describe(
+      'The caller may assign a substitute or change the coach: a planned session, its coordinator or the club administrator (REQ-A10).',
+    ),
+  mayEdit: z
+    .boolean()
+    .describe(
+      'The caller may edit the planned session: its coordinator or the club administrator, a coach only a one-off event’s session (DD-A05).',
+    ),
+  mayTakeOver: z
+    .boolean()
+    .describe(
+      'The caller — a coach or assistant of the group — may take over the planned session without a coach (REQ-A14).',
+    ),
 })
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -169,6 +186,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       actingRole,
       mayCancel: cancelRole !== null,
       mayRestore,
+      // REQ-A10 (#273): the commands' own checks, as the member session page reads them.
+      ...sessionActionFlags(
+        grants,
+        row,
+        { status: row.status, coachPersonId: row.coachPersonId ?? null, endAt: row.endAt },
+        activity?.recurring ?? false,
+        new Date(),
+      ),
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.occurrences.detail')

@@ -2,7 +2,9 @@
 // path A; E06-S13 #95): the kinds of a substitution entry, who a substitute stands in for, when the assigned coach may
 // still report an absence, the coaches the substitute dialog offers with the session that keeps each one busy, and the
 // "unsettled" predicate (a planned session 24 hours after its end, club spec *Events* row). Pure: callers pass "now".
-// E10-S07 (#272, REQ-A14): when a session without a coach is warned about, and to whom.
+// E10-S07 (#272, REQ-A14): when a session without a coach is warned about, and to whom. E10-S08 (#273): the coach
+// picker's order (free coaches first) and search.
+import { foldForSearch } from './coach-options'
 
 export const SUBSTITUTION_KINDS = ['absence_reported', 'substitute_assigned', 'coach_restored'] as const
 
@@ -134,6 +136,22 @@ export function substituteOptions(
           : null,
       }
     })
+}
+
+/**
+ * The order and the search of the coach picker (the panel dialog and the phone's sheet, E10-S08 #273): the free coaches
+ * first, then the busy ones, each in the given (name) order, narrowed to the names in which every typed word starts a
+ * word (case and diacritics ignored, so "bar" finds "Bartek").
+ */
+export function pickerOptions(options: readonly SubstituteOption[], search: string): SubstituteOption[] {
+  const words = foldForSearch(search)
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+  const shown = options.filter((option) => {
+    const names = foldForSearch(option.name).split(/\s+/)
+    return words.every((word) => names.some((name) => name.startsWith(word)))
+  })
+  return [...shown.filter((option) => option.busy === null), ...shown.filter((option) => option.busy !== null)]
 }
 
 export type TakeOverProblem = 'not_planned' | 'ended' | 'has_coach'

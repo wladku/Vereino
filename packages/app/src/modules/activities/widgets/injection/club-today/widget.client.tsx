@@ -12,7 +12,10 @@
 // coach" marker. The coach tile is added to the member tiles, so a coach who is also a guardian sees both; acting as a
 // coach (the header switcher) leaves it alone. The coach tile also offers "New event" (#140). E06-S13 (#95): the coach
 // tile opens with an "Unsettled session" alert for each session of the last two weeks that ended 24 hours ago or more
-// and is still not closed, linking to its attendance list.
+// and is still not closed, linking to its attendance list. E10-S08 (#273, REQ-A10, M-02): in the staff context a
+// section coordinator gets the tile "Section sessions" with the counts Needing a coach, Needs a new time and Unsettled
+// (the panel's sessions views, `pageSize=1`), each opening the section calendar in that view; the coach tile stays only
+// for a person who also coaches.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -56,6 +59,7 @@ import {
   newEventHref,
   sessionHref,
   useMemberCalendar,
+  useSectionCount,
   type CalendarEntry,
   type CalendarPerson,
   type DeclaredValue,
@@ -64,6 +68,7 @@ import {
 import { needsCoach } from '../../../lib/activities-rules'
 import { formatDeadline } from '../../../lib/confirm-by'
 import { unsettledEntries } from '../../../lib/substitutions'
+import { SECTION_COUNT_VIEWS, sectionCalendarHref, type SectionListView } from '../../../lib/coordinator-sessions'
 
 /** The slice of `people`'s member profile the Today page passes as the spot context. */
 export type ClubTodayContext = {
@@ -235,6 +240,56 @@ function CoachTile({
   )
 }
 
+/** One count of the section tile: "Needing a coach (2)", opening the section calendar in that view. */
+function SectionCount({ view, today }: { view: SectionListView; today: string }) {
+  const t = useT()
+  const count = useSectionCount(view, today, true)
+  let value: React.ReactNode
+  if (count.data !== undefined) value = count.data
+  else if (count.isError) value = null
+  else value = <span className="bg-muted inline-block h-5 w-6 animate-pulse rounded" aria-hidden="true" />
+  return (
+    <li className="flex items-center gap-2" data-testid="club-today-section-count" data-view={view}>
+      <Link
+        href={sectionCalendarHref(view)}
+        className={`${LINK_CLASS} flex-1 flex-row items-center justify-between gap-2`}
+        aria-busy={count.data === undefined && !count.isError ? true : undefined}
+      >
+        <span className="text-sm">{t(`activities.club.section.view.${view}`)}</span>
+        <span className="text-lg font-semibold tabular-nums" data-testid="club-today-section-count-value">
+          {value}
+        </span>
+      </Link>
+      {count.isError ? (
+        <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => void count.refetch()}>
+          {t('activities.club.actions.retry')}
+        </Button>
+      ) : null}
+    </li>
+  )
+}
+
+/** The section coordinator's counts (M-02, #273): the sessions that need their action. */
+function SectionTile({ today }: { today: string }) {
+  const t = useT()
+  return (
+    <div className={TILE_CLASS} data-testid="club-tile-section">
+      <h3 className="font-semibold">{t('activities.club.section.tileTitle')}</h3>
+      <ul className="flex flex-col gap-1">
+        {SECTION_COUNT_VIEWS.map((view) => (
+          <SectionCount key={view} view={view} today={today} />
+        ))}
+      </ul>
+      <Link
+        href={sectionCalendarHref('all')}
+        className="text-primary inline-flex min-h-11 items-center text-sm underline"
+      >
+        {t('activities.club.section.openCalendar')}
+      </Link>
+    </div>
+  )
+}
+
 function PersonDeclaration({
   entry,
   person,
@@ -245,7 +300,7 @@ function PersonDeclaration({
 }: {
   entry: CalendarEntry
   person: CalendarPerson
-  as: MemberPerspective
+  as: Exclude<MemberPerspective, 'coordinator'>
   named: boolean
   busy: boolean
   onDeclare: (person: CalendarPerson, declared: DeclaredValue) => void
@@ -318,8 +373,10 @@ export default function ClubTodayTilesWidget({
   const [selection] = useMemberContext(profile)
   // In the staff context the member tiles step aside; otherwise the coach tile is added to them.
   const actingAsMember = selection.role === 'member'
-  // A coach, and anyone acting in the staff context (a coordinator too), gets the coach scope (spec N, staff scopes).
-  const coaches = (profile?.contexts.includes('coach') ?? false) || !actingAsMember
+  // In the staff context a coordinator gets the section tile (#273); the coach tile stays for a person who coaches, and
+  // for anyone else acting in the staff context (spec N, staff scopes).
+  const coordinates = !actingAsMember && (profile?.contexts.includes('coordinator') ?? false)
+  const coaches = (profile?.contexts.includes('coach') ?? false) || (!actingAsMember && !coordinates)
   const scope = profile ? memberSideScope(profile, selection) : { as: 'self' as const, personId: null }
   const guardian = scope.as === 'guardian'
   const today = calendarDateInZone(new Date(), timeZone)
@@ -488,6 +545,11 @@ export default function ClubTodayTilesWidget({
         {t('activities.club.today.title')}
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {coordinates ? (
+          <li>
+            <SectionTile today={today} />
+          </li>
+        ) : null}
         {coaches ? (
           <li>
             <CoachTile

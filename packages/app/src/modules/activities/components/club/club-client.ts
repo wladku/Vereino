@@ -3,13 +3,17 @@
 // `activities` never imports `people`; the query key and shape are the ones `people`'s member pages use, so both
 // share one cache entry), the calendar queries, the declaration and decision writes, the coach's attendance list and
 // its save, and the mapping of calendar
-// entries to the shared `CalendarItem` (foundation II P-23). Authorization stays on the routes and commands.
+// entries to the shared `CalendarItem` (foundation II P-23). Authorization stays on the routes and commands. E10-S08
+// (#273, REQ-A10): the section coordinator's perspective — the section calendar, the view lists and the Today counts
+// read from the sessions list `GET /api/activities/occurrences`, and the coordinator's sections from `club_core`'s
+// `GET /api/club_core/sections` (an HTTP read; `activities` never imports `club_core`).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import { calendarRangeRetry } from '../../lib/member-calendar'
 import { coachBadge } from '../../lib/occurrence-list'
+import { sectionSessionsUrl, type SectionListView } from '../../lib/coordinator-sessions'
 import { cardMapHref } from '../../lib/venue'
 import type {
   CalendarBadgeTone,
@@ -27,10 +31,15 @@ export type Translate = ReturnType<typeof useT>
 export { BACKEND_HREF, CLUB_CALENDAR_HREF } from '@vereino/ui'
 
 /** The perspectives a member page reads the calendar in (`GET /api/activities/calendar?as=`). */
-export type MemberPerspective = 'self' | 'guardian' | 'coach'
+export type MemberPerspective = 'self' | 'guardian' | 'coach' | 'coordinator'
 
-/** The perspectives of the session page `/club/occurrences/[id]` (the coach's: E06-S15 #97). */
-export type SessionPerspective = 'self' | 'guardian' | 'coach'
+/** The perspectives of the session page `/club/occurrences/[id]` (the coach's: E06-S15 #97; the coordinator's: #273). */
+export type SessionPerspective = 'self' | 'guardian' | 'coach' | 'coordinator'
+
+/** The staff perspectives: the session is read with its declaration summary and what the caller may do. */
+export function isStaffPerspective(as: MemberPerspective): as is 'coach' | 'coordinator' {
+  return as === 'coach' || as === 'coordinator'
+}
 
 export function sessionHref(id: string, as: SessionPerspective, personId?: string | null): string {
   const params = new URLSearchParams({ as })
@@ -38,9 +47,13 @@ export function sessionHref(id: string, as: SessionPerspective, personId?: strin
   return `/club/occurrences/${encodeURIComponent(id)}?${params.toString()}`
 }
 
-/** The phone form that edits one session (`/club/occurrences/[id]/edit`, REQ-A08, #270). */
-export function sessionEditHref(id: string): string {
-  return `/club/occurrences/${encodeURIComponent(id)}/edit`
+/**
+ * The phone form that edits one session (`/club/occurrences/[id]/edit`, REQ-A08, #270); the coordinator's carries
+ * `?as=coordinator` (#273), so the form reads the session and returns to it in that perspective.
+ */
+export function sessionEditHref(id: string, as: 'coach' | 'coordinator' = 'coach'): string {
+  const path = `/club/occurrences/${encodeURIComponent(id)}/edit`
+  return as === 'coordinator' ? `${path}?as=coordinator` : path
 }
 
 /**
@@ -197,6 +210,8 @@ export type CalendarEntry = {
   mayTakeOver?: boolean
   /** `as=coach` (REQ-A15): a started match or sparring takes a score. */
   mayScore?: boolean
+  /** `as=coach|coordinator` (REQ-A10, #273): the caller may assign a substitute or change the coach. */
+  mayAssign?: boolean
   /** `as=coach` (REQ-A13): the substitution history, oldest first. */
   substitutions?: SubstitutionHistoryEntry[]
 }
@@ -217,7 +232,14 @@ export type CalendarResponse = { items: CalendarEntry[]; timeZone: string; from:
 /** A calendar read as the page shows it: `trimmed` when the API refused the range and the trimmed one was read. */
 export type CalendarLoad = CalendarResponse & { trimmed: boolean }
 
-export type CalendarQuery = { as: MemberPerspective; from: string; to: string; personId?: string | null }
+export type CalendarQuery = {
+  as: MemberPerspective
+  from: string
+  to: string
+  personId?: string | null
+  /** `as=coordinator`: one of the coordinator's sections (#273). */
+  sectionId?: string | null
+}
 
 class CalendarLoadError extends Error {}
 
@@ -226,6 +248,7 @@ export const CALENDAR_QUERY_KEY = 'activities-member-calendar'
 export function calendarUrl(query: CalendarQuery): string {
   const params = new URLSearchParams({ as: query.as, from: query.from, to: query.to })
   if (query.personId) params.set('personId', query.personId)
+  if (query.sectionId) params.set('sectionId', query.sectionId)
   return `/api/activities/calendar?${params.toString()}`
 }
 
@@ -245,7 +268,14 @@ export async function readMemberCalendar(query: CalendarQuery): Promise<Calendar
 
 export function useMemberCalendar(query: CalendarQuery | null) {
   return useQuery({
-    queryKey: [CALENDAR_QUERY_KEY, query?.as, query?.from, query?.to, query?.personId ?? null],
+    queryKey: [
+      CALENDAR_QUERY_KEY,
+      query?.as,
+      query?.from,
+      query?.to,
+      query?.personId ?? null,
+      query?.sectionId ?? null,
+    ],
     enabled: query !== null,
     queryFn: () => readMemberCalendar(query as CalendarQuery),
   })
@@ -258,7 +288,8 @@ export const SESSION_QUERY_KEY = 'activities-member-session'
 
 /**
  * One session in a perspective. A member's 403 (a person not theirs) reads as "not found"; the coach's 403 is a
- * session of the club outside their groups — "This is not your session" (E06-S15 #97). `enabled` false skips the read.
+ * session of the club outside their groups — "This is not your session" (E06-S15 #97) — and the coordinator's one
+ * outside their sections (#273). `enabled` false skips the read.
  */
 export function useMemberSession(id: string, as: SessionPerspective, personId: string | null, enabled = true) {
   return useQuery({
@@ -271,7 +302,7 @@ export function useMemberSession(id: string, as: SessionPerspective, personId: s
         `/api/activities/calendar/${encodeURIComponent(id)}?${params.toString()}`,
         OWN_FORBIDDEN_STATE,
       )
-      if (call.status === 403 && as === 'coach') return { status: 'forbidden' }
+      if (call.status === 403 && isStaffPerspective(as)) return { status: 'forbidden' }
       if (call.status === 404 || call.status === 403) return { status: 'not_found' }
       if (!call.ok || !call.result) throw new CalendarLoadError(String(call.status))
       return { status: 'ok', entry: call.result }
@@ -592,7 +623,9 @@ export function deadlineNotes(
   formatAt: (at: Date) => string,
 ): CalendarItemNote[] {
   const { occurrence } = entry
-  if (as === 'coach' || !occurrence.confirmBy || !entry.declarationsOpen || entry.persons.length === 0) return []
+  if (isStaffPerspective(as) || !occurrence.confirmBy || !entry.declarationsOpen || entry.persons.length === 0) {
+    return []
+  }
   const at = formatAt(new Date(occurrence.confirmBy))
   if (!occurrence.deadlinePassed) return [{ id: 'deadline', text: t('activities.deadline.confirmBy', { at }) }]
   return [
@@ -625,7 +658,7 @@ export function toCalendarItem(
       tone: state.tone,
     }
   })
-  if (as === 'coach' && entry.summary)
+  if (isStaffPerspective(as) && entry.summary)
     badges.push({ id: 'summary', label: summaryLine(t, entry.summary), tone: 'neutral' })
   if (occurrence.isDetached) badges.push({ id: 'moved', label: t('activities.occurrences.flags.moved'), tone: 'info' })
   // E06-S13 #95: a session without a coach, or led by a substitute.
@@ -646,7 +679,7 @@ export function toCalendarItem(
     badges.unshift({ id: 'type', label: t(`activities.types.${occurrence.activityType}`), tone: 'neutral' })
   }
   const actions: CalendarItemAction[] = []
-  if (entry.declarationsOpen && as !== 'coach') {
+  if (entry.declarationsOpen && !isStaffPerspective(as)) {
     for (const person of entry.persons) {
       if (!person.canDeclare) continue
       for (const choice of declarationChoices(entry.declarationKind, person.declaration)) {
@@ -664,9 +697,10 @@ export function toCalendarItem(
   }
   const title = [occurrence.activityName, occurrence.groupName].filter(Boolean).join(' · ')
   const subtitle = as === 'guardian' ? entry.persons.map((person) => person.firstName).join(', ') : null
-  // REQ-A13: the coach's card opens the session page and carries "Attendance list" (M-02, M-03).
+  // REQ-A13: the coach's card opens the session page and carries "Attendance list" (M-02, M-03); so does the
+  // coordinator's (REQ-A10, #273).
   const links: CalendarItemLink[] =
-    as === 'coach' && occurrence.status !== 'cancelled'
+    isStaffPerspective(as) && occurrence.status !== 'cancelled'
       ? [{ id: 'attendance', label: t('activities.club.session.attendanceList'), href: attendanceHref(occurrence.id) }]
       : []
   return {
@@ -694,4 +728,128 @@ export function toCalendarItem(
     actions,
     links,
   }
+}
+
+// --- The coordinator's section views and counts (`GET /api/activities/occurrences`, E10-S08 #273) ---
+
+/** One row of the sessions list, as far as the phone's section views read it. */
+export type SectionSessionRow = {
+  id: string
+  activityId: string | null
+  activityName?: string | null
+  activityType?: string | null
+  groupId: string | null
+  groupName?: string | null
+  sectionId: string | null
+  occurrenceDate: string | null
+  startAt: string | null
+  endAt: string | null
+  gatheringAt: string | null
+  confirmBy: string | null
+  deadlinePassed: boolean
+  placeId: string | null
+  placeName?: string | null
+  venue: { name: string; address: string } | null
+  coachPersonId: string | null
+  coachName?: string | null
+  substituteForPersonId?: string | null
+  substituteForName?: string | null
+  status: string | null
+  cancelReason: string | null
+  isDetached: boolean
+  needsReschedule: boolean
+  updatedAt: string | null
+}
+
+type SectionSessionsPage = { items: SectionSessionRow[]; total: number }
+
+class SectionSessionsLoadError extends Error {}
+
+export const SECTION_SESSIONS_QUERY_KEY = 'activities-section-sessions'
+
+async function readSectionSessions(url: string): Promise<SectionSessionsPage> {
+  const call = await apiCall<SectionSessionsPage>(url)
+  if (!call.ok || !call.result) throw new SectionSessionsLoadError(String(call.status))
+  return call.result
+}
+
+/** The sessions of one section view (not "All"), by start time, in the sections the coordinator reads. */
+export function useSectionSessions(view: SectionListView | null, today: string, sectionId: string | null) {
+  return useQuery({
+    queryKey: [SECTION_SESSIONS_QUERY_KEY, view, today, sectionId],
+    enabled: view !== null,
+    queryFn: () => readSectionSessions(sectionSessionsUrl(view as SectionListView, today, { sectionId })),
+  })
+}
+
+/** How many sessions one view holds (`pageSize=1`, the list's `total`): a count of the Today tile (M-02). */
+export function useSectionCount(view: SectionListView, today: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [SECTION_SESSIONS_QUERY_KEY, 'count', view, today],
+    enabled,
+    queryFn: async () => (await readSectionSessions(sectionSessionsUrl(view, today, { pageSize: 1 }))).total,
+  })
+}
+
+/**
+ * A row of a section view as a calendar entry of the coordinator (no persons, no summary: the list does not read the
+ * declarations), so the view shows the same cards as the section calendar.
+ */
+export function sectionSessionEntry(row: SectionSessionRow): CalendarEntry {
+  return {
+    occurrence: {
+      id: row.id,
+      activityId: row.activityId ?? '',
+      activityName: row.activityName ?? null,
+      activityType: row.activityType ?? null,
+      groupId: row.groupId ?? '',
+      groupName: row.groupName ?? null,
+      sectionId: row.sectionId ?? '',
+      sectionName: null,
+      occurrenceDate: row.occurrenceDate ?? '',
+      startAt: row.startAt ?? '',
+      endAt: row.endAt ?? '',
+      gatheringAt: row.gatheringAt,
+      confirmBy: row.confirmBy,
+      deadlinePassed: row.deadlinePassed,
+      placeId: row.placeId,
+      venue: row.venue,
+      placeName: row.placeName ?? null,
+      placeAddress: row.venue?.address ?? null,
+      placeGeoLat: null,
+      placeGeoLng: null,
+      placeExternal: row.venue !== null,
+      coachPersonId: row.coachPersonId,
+      coachName: row.coachName ?? null,
+      substituteForPersonId: row.substituteForPersonId ?? null,
+      substituteForName: row.substituteForName ?? null,
+      opponentName: null,
+      invitedTeamNames: [],
+      status: row.status === 'done' || row.status === 'cancelled' ? row.status : 'planned',
+      cancelReason: row.cancelReason,
+      isDetached: row.isDetached,
+      needsReschedule: row.needsReschedule,
+      updatedAt: row.updatedAt ?? '',
+    },
+    declarationKind: 'confirm',
+    declarationsOpen: false,
+    persons: [],
+  }
+}
+
+export type SectionOption = { id: string; name: string }
+
+/** The active sections the caller reads (a coordinator: theirs; the record scope narrows them), by name. */
+export function useCoordinatorSections(enabled: boolean) {
+  return useQuery({
+    queryKey: ['activities-coordinator-sections'],
+    enabled,
+    queryFn: async (): Promise<SectionOption[]> => {
+      const call = await apiCall<{ items: { id: string; name: string | null }[] }>(
+        '/api/club_core/sections?isActive=true&sortField=name&pageSize=100',
+      )
+      if (!call.ok || !call.result) return []
+      return call.result.items.map((item) => ({ id: item.id, name: item.name ?? '' }))
+    },
+  })
 }

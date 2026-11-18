@@ -7,9 +7,12 @@
 // `GET /api/activities/events/options`. `PATCH /api/activities/occurrences/{id}` saves only what changed against the
 // session's lock token: a collision (409) lists the colliding sessions and saves nothing, a change made meanwhile shows
 // the shared conflict bar, and a coded 422 points at its field. The submit bar stays above the bottom navigation.
+// E10-S08 (#273, REQ-A10): opened with `?as=coordinator`, the form reads the session as the section's coordinator (any
+// planned session of their sections) and returns to the session page in that perspective; the toast names how many
+// people the move told, and a move clears "Needs a new time".
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
@@ -92,7 +95,17 @@ function FieldProblem({ id, text }: { id: string; text: string | undefined }) {
   )
 }
 
-function EditForm({ entry, timeZone, options }: { entry: CalendarEntry; timeZone: string; options: EditOptions }) {
+function EditForm({
+  entry,
+  timeZone,
+  options,
+  as,
+}: {
+  entry: CalendarEntry
+  timeZone: string
+  options: EditOptions
+  as: 'coach' | 'coordinator'
+}) {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -184,7 +197,7 @@ function EditForm({ entry, timeZone, options }: { entry: CalendarEntry; timeZone
         notified > 0 ? t('activities.club.edit.savedNotified', { count: notified }) : t('activities.club.edit.saved'),
         'success',
       )
-      router.push(sessionHref(occurrence.id, 'coach'))
+      router.push(sessionHref(occurrence.id, as))
       return
     }
     setPending(false)
@@ -413,7 +426,7 @@ function EditForm({ entry, timeZone, options }: { entry: CalendarEntry; timeZone
           {pending ? t('activities.club.edit.saving') : t('activities.club.edit.submit')}
         </Button>
         <Button asChild variant="outline" className="min-h-11">
-          <Link href={sessionHref(occurrence.id, 'coach')}>{t('activities.club.event.cancel')}</Link>
+          <Link href={sessionHref(occurrence.id, as)}>{t('activities.club.event.cancel')}</Link>
         </Button>
       </div>
     </form>
@@ -421,7 +434,8 @@ function EditForm({ entry, timeZone, options }: { entry: CalendarEntry; timeZone
 }
 
 function EditSession({ id, t }: { id: string; t: Translate }) {
-  const session = useMemberSession(id, 'coach', null)
+  const as = useSearchParams().get('as') === 'coordinator' ? 'coordinator' : 'coach'
+  const session = useMemberSession(id, as, null)
   const options = useEditOptions()
   let body: React.ReactNode
   const load = session.data
@@ -443,7 +457,7 @@ function EditSession({ id, t }: { id: string; t: Translate }) {
       </Alert>
     )
   } else if (load?.status === 'ok' && options.data) {
-    body = <EditForm entry={load.entry} timeZone={load.entry.timeZone} options={options.data} />
+    body = <EditForm entry={load.entry} timeZone={load.entry.timeZone} options={options.data} as={as} />
   } else {
     body = (
       <ErrorMessage
@@ -466,10 +480,7 @@ function EditSession({ id, t }: { id: string; t: Translate }) {
   }
   return (
     <>
-      <Link
-        href={sessionHref(id, 'coach')}
-        className="text-primary inline-flex min-h-11 items-center text-sm underline"
-      >
+      <Link href={sessionHref(id, as)} className="text-primary inline-flex min-h-11 items-center text-sm underline">
         {t('activities.club.edit.back')}
       </Link>
       <h1 className="text-2xl font-semibold">{t('activities.club.edit.title')}</h1>
