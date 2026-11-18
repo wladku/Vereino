@@ -85,8 +85,11 @@ export const openApi: OpenApiRouteDoc = {
       requestBody: { contentType: 'application/json', schema: paymentsSettingsUpdateSchema },
       responses: [{ status: 200, description: 'Updated settings', schema: settingsResponseSchema }],
       errors: [
-        { status: 400, description: 'Invalid input, `lock_token_required`', schema: errorSchema },
-        { status: 422, description: 'Invalid field, e.g. a generation day outside 1–28', schema: errorSchema },
+        {
+          status: 400,
+          description: 'Invalid input (e.g. a generation day outside 1–28), `lock_token_required`',
+          schema: errorSchema,
+        },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
         { status: 403, description: '`scope_denied`', schema: errorSchema },
         { status: 409, description: '`optimistic_lock_conflict`', schema: errorSchema },
