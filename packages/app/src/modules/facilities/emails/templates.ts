@@ -12,6 +12,7 @@ import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/tran
 import { formatBankAccount } from '@vereino/core'
 import { defineEmailTemplate, type EmailRenderContext } from '@/modules/foundation'
 import { formatAmount, formatInstant, formatSlot } from '../lib/requests'
+import { RENTALS_TO_MOVE_HREF, placeDayToMoveHref } from '../lib/reschedule-notice'
 
 const h = React.createElement
 
@@ -383,6 +384,142 @@ export const banRequestTemplate = defineEmailTemplate<BanRequestParams>({
   },
   actionLabel: (t) => t('facilities.email.banRequest.action', 'Open incidents'),
   link: () => BAN_REQUESTS_HREF,
+})
+
+// --- The reschedule notices (REQ-R18, DD-R14, J-R05; #287) ---
+
+/** Staff whose sessions or club bookings were flagged: in-app and e-mail, linking to the place's day on M-11. */
+export const RESCHEDULE_TEMPLATE = 'facilities.reschedule_needed'
+/** The administrators' copy (a rental among the entries): the same message, linking to B-24 "Do przeniesienia". */
+export const RESCHEDULE_RENTALS_TEMPLATE = 'facilities.reschedule_needed_rentals'
+/** The renter's e-mail to the rental's address: the club will propose a new time. */
+export const RESCHEDULE_RENTER_TEMPLATE = 'facilities.reschedule_renter'
+
+const causeKind = z.enum(['closure', 'maintenance'])
+
+const rescheduleParams = z
+  .object({
+    causeKind,
+    timeZone: z.string().min(1).max(64),
+    entries: z
+      .array(
+        z
+          .object({
+            kind: z.enum(['session', 'booking', 'rental']),
+            placeName: z.string().max(200),
+            startsAt: z.iso.datetime({ offset: true }),
+            endsAt: z.iso.datetime({ offset: true }),
+            label: z.string().max(200).nullable(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(500),
+    linkPlaceId: z.uuid(),
+    linkDate: z.iso.date(),
+  })
+  .strict()
+
+export type RescheduleParams = z.output<typeof rescheduleParams>
+
+function causeOf(t: TranslateWithFallbackFn, kind: RescheduleParams['causeKind']): string {
+  return kind === 'closure'
+    ? t('facilities.email.reschedule.cause.closure', 'a closure')
+    : t('facilities.email.reschedule.cause.maintenance', 'maintenance work')
+}
+
+function rescheduleLine(
+  t: TranslateWithFallbackFn,
+  entry: RescheduleParams['entries'][number],
+  params: RescheduleParams,
+  ctx: EmailRenderContext,
+): string {
+  const values = {
+    place: entry.placeName,
+    slot: slotOf({ ...entry, timeZone: params.timeZone }, ctx),
+    label: entry.label ?? '',
+  }
+  if (entry.kind === 'session') {
+    return entry.label
+      ? t('facilities.email.reschedule.session', 'Session {label} — {place}, {slot}', values)
+      : t('facilities.email.reschedule.sessionUnnamed', 'Session — {place}, {slot}', values)
+  }
+  if (entry.kind === 'booking')
+    return t('facilities.email.reschedule.booking', 'Club booking — {place}, {slot}', values)
+  return t('facilities.email.reschedule.rental', 'Rental — {place}, {slot}', values)
+}
+
+function rescheduleCopy(t: TranslateWithFallbackFn, params: RescheduleParams, ctx: EmailRenderContext) {
+  const values = { cause: causeOf(t, params.causeKind), count: String(params.entries.length) }
+  return {
+    subject: t('facilities.email.reschedule.subject', 'To be moved: {count} entries because of {cause}', values),
+    lead: t(
+      'facilities.email.reschedule.lead',
+      'Because of {cause}, these entries were marked to be moved. Give them a new time:',
+      values,
+    ),
+    lines: params.entries.map((entry) => rescheduleLine(t, entry, params, ctx)),
+  }
+}
+
+/**
+ * `facilities.reschedule_needed`: to the coordinators and coach of a flagged session and the booker of a flagged club
+ * booking, in-app (the generic keys of the notification type, DD-M07) and by e-mail. It names the places, the times and
+ * the kind of cause — no renter. The e-mail opens the first entry's day on M-11 filtered "Do przeniesienia".
+ */
+export const rescheduleTemplate = defineEmailTemplate<RescheduleParams>({
+  id: RESCHEDULE_TEMPLATE,
+  notificationType: 'facilities.reschedule_needed',
+  optOut: 'never',
+  params: rescheduleParams,
+  subject: (t, params, ctx) => rescheduleCopy(t, params, ctx).subject,
+  preheader: (t, params, ctx) => rescheduleCopy(t, params, ctx).lead,
+  body: (t, params, ctx) => {
+    const copy = rescheduleCopy(t, params, ctx)
+    return paragraphs(copy.lead, copy.lines)
+  },
+  text: (t, params, ctx) => {
+    const copy = rescheduleCopy(t, params, ctx)
+    return plainText(copy.lead, copy.lines)
+  },
+  actionLabel: (t) => t('facilities.email.reschedule.action', 'Open the day'),
+  link: (params) => placeDayToMoveHref(params.linkPlaceId, params.linkDate),
+})
+
+/** `facilities.reschedule_needed_rentals`: the administrators' copy, opening B-24 "Do przeniesienia". */
+export const rescheduleRentalsTemplate = defineEmailTemplate<RescheduleParams>({
+  ...rescheduleTemplate,
+  id: RESCHEDULE_RENTALS_TEMPLATE,
+  notificationType: 'facilities.reschedule_needed_rentals',
+  actionLabel: (t) => t('facilities.email.reschedule.actionRentals', 'Open rentals to move'),
+  link: () => RENTALS_TO_MOVE_HREF,
+})
+
+const rescheduleRenterParams = z.object({ ...slotParams, causeKind }).strict()
+
+export type RescheduleRenterParams = z.output<typeof rescheduleRenterParams>
+
+function rescheduleRenterCopy(t: TranslateWithFallbackFn, params: RescheduleRenterParams, ctx: EmailRenderContext) {
+  const values = { place: params.placeName, slot: slotOf(params, ctx), cause: causeOf(t, params.causeKind) }
+  return {
+    subject: t('facilities.email.rescheduleRenter.subject', 'Your rental of {place} has to be moved', values),
+    lead: t(
+      'facilities.email.rescheduleRenter.lead',
+      'Your rental of {place} at {slot} cannot take place because of {cause}. The club will contact you to propose a new time.',
+      values,
+    ),
+  }
+}
+
+/** `facilities.reschedule_renter`: to the rental's address, in its language; no link (the club proposes the time). */
+export const rescheduleRenterTemplate = defineEmailTemplate<RescheduleRenterParams>({
+  id: RESCHEDULE_RENTER_TEMPLATE,
+  notificationType: REQUEST_UPDATE_NOTIFICATION,
+  optOut: 'never',
+  params: rescheduleRenterParams,
+  subject: (t, params, ctx) => rescheduleRenterCopy(t, params, ctx).subject,
+  body: (t, params, ctx) => paragraphs(rescheduleRenterCopy(t, params, ctx).lead, []),
+  text: (t, params, ctx) => plainText(rescheduleRenterCopy(t, params, ctx).lead, []),
 })
 
 export const requestEmailTemplates = [

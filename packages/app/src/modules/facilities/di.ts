@@ -8,6 +8,9 @@ import {
   maintenanceDuePlannerTemplate,
   maintenanceDueTemplate,
   requestEmailTemplates,
+  rescheduleRenterTemplate,
+  rescheduleRentalsTemplate,
+  rescheduleTemplate,
 } from './emails/templates'
 import notificationTypes from './notifications'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
@@ -37,6 +40,9 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, maintenanceDueTemplate)
   registerEmailTemplate(container, maintenanceDuePlannerTemplate)
   registerEmailTemplate(container, banRequestTemplate)
+  registerEmailTemplate(container, rescheduleTemplate)
+  registerEmailTemplate(container, rescheduleRentalsTemplate)
+  registerEmailTemplate(container, rescheduleRenterTemplate)
   const service = asFunction((cradle: { em: EntityManager }) => createOccupancyService(() => cradle.em))
     .scoped()
     .proxy()
