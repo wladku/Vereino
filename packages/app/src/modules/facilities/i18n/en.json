@@ -1161,7 +1161,7 @@
   "facilities.rentals.views.empty.unpaid": "No rentals unpaid after the deadline.",
   "facilities.rentals.payee.owner": "to: {name}",
   "facilities.rentals.payee.club": "to the club’s account",
-  "facilities.rentals.chargeState.none": "no charge",
+  "facilities.rentals.chargeState.none": "rental register",
   "facilities.rentals.chargeState.open": "unpaid",
   "facilities.rentals.chargeState.partially_paid": "partly paid",
   "facilities.rentals.chargeState.paid": "paid",
@@ -1298,5 +1298,13 @@
   "facilities.places.details.group": "Group",
   "facilities.places.details.coach": "Coach",
   "facilities.places.details.status": "Status",
-  "facilities.places.details.contact": "Contact"
+  "facilities.places.details.contact": "Contact",
+  "facilities.errors.rental_awaits_payment": "This rental is confirmed by its payment: record the payment on the rental’s charge.",
+  "facilities.charge.rentalDesc": "Rental: {place}, {date} {start}–{end}",
+  "facilities.rentals.confirm.registerText": "The rental {slot} becomes confirmed. The payment is noted in the rental register only.",
+  "facilities.reports.owner.owner": "Owner: {name}",
+  "facilities.reports.owner.ownerClub": "Owner: the club",
+  "facilities.reports.owner.paymentsSource.charges": "Source: the rentals’ charges ({count} paid)",
+  "facilities.reports.owner.paymentsSource.mixed": "Source: the rentals’ charges and the rental register ({count} rentals)",
+  "facilities.reports.owner.partiallyPaid": "{count} partly paid, not in the sum"
 }

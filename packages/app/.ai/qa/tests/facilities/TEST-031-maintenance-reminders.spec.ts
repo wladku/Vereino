@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test'
 import { addDays, nextWeekday, readNotifications, zoneInstant } from '../_fixtures/activities'
 import { calendarDate, createClub } from '../_fixtures/club'
 import {
+  confirmRental,
   phoneRental,
   postInternalBooking,
   postRental,
-  rentalAction,
   rentalPitch,
   runRentalLifecycle,
 } from '../_fixtures/facilities'
@@ -64,8 +64,7 @@ test('TEST-031 reminders by date and by hours of use; completion continues the s
       phoneRental(setup.pitch, setup.neighbours, zoneInstant(saturday, '09:00'), 4),
     )
     expect(rental.status, JSON.stringify(rental.body)).toBe(201)
-    const confirmed = await rentalAction(request, admin, String(rental.body?.id), 'confirm')
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+    await confirmRental(request, admin, String(rental.body?.id))
     const booking = await postInternalBooking(request, admin, {
       placeId: setup.pitch,
       startsAt: zoneInstant(saturday, '15:00'),
