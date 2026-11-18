@@ -17,6 +17,7 @@ import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { notFound } from '@open-mercato/shared/lib/crud/errors'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
@@ -158,7 +159,7 @@ async function buildRollover(
   input: { today: string; forApply: boolean; createdSeasonId: string | null },
 ): Promise<RolloverBuild> {
   const fromSeason = await loadSeason(em, scope, parsed.fromSeasonId)
-  if (!fromSeason) return groupsErrors.throw('groups_reference_invalid', { field: 'fromSeasonId' })
+  if (!fromSeason) return throwNotFound()
   let toSeason: RolloverPreview['toSeason']
   if ('id' in parsed.season) {
     const existing = await loadSeason(em, scope, parsed.season.id, input.forApply)
@@ -169,7 +170,13 @@ async function buildRollover(
       return groupsErrors.throw('season_dates_inverted', { field: 'season.endsOn' })
     }
     const taken = await em.findOne(Season, { ...scope, name: parsed.season.name, deletedAt: null }, { fields: ['id'] })
-    if (taken) return groupsErrors.throw('season_name_taken', { field: 'season.name' })
+    // At the apply the preview has passed this check: a season with the name since then (another rollover, or this
+    // plan applied before) means the plan is stale.
+    if (taken) {
+      return input.forApply
+        ? groupsErrors.throw('rollover_plan_stale')
+        : groupsErrors.throw('season_name_taken', { field: 'season.name' })
+    }
     toSeason = { id: input.createdSeasonId, ...parsed.season, created: true }
   }
   const lastDay = fromSeason.endsOn
@@ -348,6 +355,12 @@ async function buildRollover(
     conflicts: conflicts.map((conflict) => conflict.recordId),
   }
   return { view, plan, groupRows, memberships, binding }
+}
+
+/** An old season outside the club (another organization's, or deleted): 404, as for any record of another club. */
+async function throwNotFound(): Promise<never> {
+  const { translate } = await resolveTranslations()
+  throw notFound(translate('foundation.errors.not_found', 'Not found'))
 }
 
 function pickSeason(row: Season) {

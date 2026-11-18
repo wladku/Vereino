@@ -43,6 +43,7 @@ export const openApi: OpenApiRouteDoc = {
       responses: [{ status: 200, description: 'The rollover was applied', schema: rolloverSummarySchema }],
       errors: [
         { status: 403, description: 'scope_denied (a group of another section)', schema: errorSchema },
+        { status: 404, description: 'The old season is not a season of the club', schema: errorSchema },
         {
           status: 409,
           description: 'rollover_plan_stale, rollover_conflicts, season_name_taken',

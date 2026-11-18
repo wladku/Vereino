@@ -37,6 +37,7 @@ export const openApi: OpenApiRouteDoc = {
       responses: [{ status: 200, description: 'The preview', schema: rolloverPreviewResponseSchema }],
       errors: [
         { status: 403, description: 'scope_denied (a group of another section)', schema: errorSchema },
+        { status: 404, description: 'The old season is not a season of the club', schema: errorSchema },
         {
           status: 409,
           description: 'season_name_taken (the plan creates a season with a name in use)',
