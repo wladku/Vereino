@@ -38,6 +38,8 @@ jobs:
   # The whole suite took 43-46 min in one job by 2026-11-06 (#193, #196), so it runs as Playwright shards. Each
   # shard has its own Testcontainers database and production build; the `integration` job below aggregates them
   # under the check name the main ruleset requires. Add a shard number when a shard nears its timeout.
+  # Six shards since 2026-11-18: three shards took 30-35 min each (41 min per CI run on average), and the merge
+  # train merges one PR per CI run, so the shard time bounds how many PRs reach main per hour.
   integration-shard:
     name: integration (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
@@ -45,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: corepack enable
