@@ -6,13 +6,15 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { Charge, Order, OrderCampaign, OrderLine, OrderProduct } from '../data/entities'
+import { contactResolver } from '@/modules/foundation'
+import { Charge, Order, OrderCampaign, OrderLine, OrderProduct, Payment } from '../data/entities'
 import { closeExpiredCampaigns } from '../data/queries'
 import { emitPaymentsEvent } from '../events'
-import { amountDueOf, remainingOf } from '../lib/charge-ledger'
+import { amountDueOf, isOverdue, remainingOf } from '../lib/charge-ledger'
 import {
   campaignKpis,
   nextAction,
+  orderPaymentEntries,
   supplierSummary,
   type CampaignAction,
   type CampaignKpis,
@@ -20,7 +22,15 @@ import {
   type ProductKind,
   type SupplierSummary,
 } from '../lib/order-campaigns'
-import { clubClock, findGroups, findPersons, findSections, rosterOn, type PaymentsScope } from './directory'
+import {
+  activeGuardians,
+  clubClock,
+  findGroups,
+  findPersons,
+  findSections,
+  rosterOn,
+  type PaymentsScope,
+} from './directory'
 import { paidTotals } from './ledger'
 
 function freshEm(container: AwilixContainer): EntityManager {
@@ -90,7 +100,7 @@ export function submittedOrders(
   )
 }
 
-export type OrderMoney = { total: number; paid: number; chargeStatus: string | null }
+export type OrderMoney = { total: number; paid: number; chargeStatus: string | null; dueDate: string | null }
 
 /** The amount due and what was paid on each order's charge. */
 export async function orderMoney(
@@ -106,7 +116,7 @@ export async function orderMoney(
       : em.find(
           Charge,
           { ...scope, id: { $in: chargeIds }, deletedAt: null },
-          { fields: ['id', 'amount', 'discountAmount', 'status'] },
+          { fields: ['id', 'amount', 'discountAmount', 'status', 'dueDate'] },
         ),
     paidTotals(container, scope, chargeIds),
   ])
@@ -120,6 +130,7 @@ export async function orderMoney(
           total: charge ? amountDueOf(charge) : 0,
           paid: paid.get(order.chargeId) ?? 0,
           chargeStatus: charge?.status ?? null,
+          dueDate: charge ? calendarDate(charge.dueDate) : null,
         },
       ]
     }),
@@ -306,7 +317,12 @@ export type CampaignOrderRow = {
   participant: PersonName
   groupId: string | null
   groupName: string | null
+  orderedByPersonId: string
   orderedBy: PersonName
+  /** Decrypted for the panel only; never in the supplier summary or its CSV. */
+  contactPhone: string | null
+  submittedVia: 'app' | 'email_link'
+  notes: string | null
   printName: string | null
   printNumber: number | null
   lines: { productId: string; productName: string; size: string | null; sizes: string | null; unitPrice: number }[]
@@ -315,11 +331,20 @@ export type CampaignOrderRow = {
   remaining: number
   chargeId: string
   chargeStatus: string | null
+  dueDate: string | null
+  overdue: boolean
+  payments: { method: string; collectedBy: PersonName }[]
   handedOver: boolean
+  handedOverAt: string | null
+  handedOverBy: PersonName
   createdAt: string
 }
 
-/** B-32 "Orders": the campaign's submitted orders with the child, group, lines, total, paid and handover. */
+/**
+ * B-32 "Orders" (REQ-C05): the campaign's submitted orders with the child, group, who ordered (name, phone, channel,
+ * notes — decrypted), lines, total, paid, the charge's due date and overdue marker, its live payments with who took
+ * them, and the handover (who and when).
+ */
 export async function campaignOrders(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -335,20 +360,57 @@ export async function campaignOrders(
   )
   if (orders.length === 0) return []
   const { today } = await clubClock(container, scope)
-  const [products, lines, money, participants, names] = await Promise.all([
+  const [products, lines, money, participants, names, ledger] = await Promise.all([
     campaignProducts(em, scope, [campaign.id]),
     em.find(OrderLine, { ...scope, orderId: { $in: orders.map((order) => order.id) }, deletedAt: null }),
     orderMoney(container, em, scope, orders),
     campaignParticipants(container, scope, campaign.groupIds, today, em),
     campaignNames(container, scope, [campaign]),
+    em.find(
+      Payment,
+      { ...scope, chargeId: { $in: orders.map((order) => order.chargeId) }, deletedAt: null },
+      {
+        fields: [
+          'id',
+          'chargeId',
+          'method',
+          'reversesPaymentId',
+          'isOverpayment',
+          'collectedByPersonId',
+          'recordedByPersonId',
+        ],
+        orderBy: { paidOn: 'asc', createdAt: 'asc' },
+      },
+    ),
   ])
-  const persons = await findPersons(
-    container,
-    scope,
-    orders.flatMap((order) => [order.participantPersonId, order.orderedByPersonId]),
-  )
-  const nameOf = (personId: string): PersonName => {
-    const person = persons.get(personId)
+  const paymentsOf = new Map<string, ReturnType<typeof orderPaymentEntries>>()
+  for (const order of orders) {
+    paymentsOf.set(
+      order.chargeId,
+      orderPaymentEntries(
+        ledger
+          .filter((row) => row.chargeId === order.chargeId)
+          .map((row) => ({
+            id: row.id,
+            method: row.method,
+            reversesPaymentId: row.reversesPaymentId ?? null,
+            isOverpayment: row.isOverpayment,
+            collectedByPersonId: row.collectedByPersonId ?? null,
+            recordedByPersonId: row.recordedByPersonId ?? null,
+          })),
+      ),
+    )
+  }
+  const persons = await findPersons(container, scope, [
+    ...orders.flatMap((order) => [
+      order.participantPersonId,
+      order.orderedByPersonId,
+      ...(order.handedOverByPersonId ? [order.handedOverByPersonId] : []),
+    ]),
+    ...[...paymentsOf.values()].flat().flatMap((entry) => (entry.collectedByPersonId ? [entry.collectedByPersonId] : [])),
+  ])
+  const nameOf = (personId: string | null | undefined): PersonName => {
+    const person = personId ? persons.get(personId) : undefined
     return person ? { firstName: person.firstName, lastName: person.lastName } : null
   }
   const productName = new Map(products.map((product) => [product.id, product.name]))
@@ -361,7 +423,11 @@ export async function campaignOrders(
       participant: nameOf(order.participantPersonId),
       groupId,
       groupName: groupId ? (names.groups.get(groupId) ?? null) : null,
+      orderedByPersonId: order.orderedByPersonId,
       orderedBy: nameOf(order.orderedByPersonId),
+      contactPhone: order.contactPhone ?? null,
+      submittedVia: order.submittedVia,
+      notes: order.notes ?? null,
       printName: order.printName ?? null,
       printNumber: order.printNumber ?? null,
       lines: lines
@@ -382,21 +448,43 @@ export async function campaignOrders(
       remaining: remainingOf(own.total, own.paid),
       chargeId: order.chargeId,
       chargeStatus: own.chargeStatus,
+      dueDate: own.dueDate,
+      overdue: isOverdue({ status: own.chargeStatus, dueDate: own.dueDate }, today),
+      payments: (paymentsOf.get(order.chargeId) ?? []).map((entry) => ({
+        method: entry.method,
+        collectedBy: nameOf(entry.collectedByPersonId),
+      })),
       handedOver: order.handedOverAt != null,
+      handedOverAt: order.handedOverAt?.toISOString() ?? null,
+      handedOverBy: nameOf(order.handedOverByPersonId),
       createdAt: order.createdAt.toISOString(),
     }
   })
 }
 
-export type MissingChildRow = { personId: string; participant: PersonName; groupId: string; groupName: string | null }
+export type MissingGuardian = { firstName: string; lastName: string; hasEmail: boolean }
 
-/** The children a campaign covers today without a submitted order, by group order then name. */
+export type MissingChildRow = {
+  personId: string
+  participant: PersonName
+  groupId: string
+  groupName: string | null
+  /** The child's active guardians, by name; empty for "no guardian". Filled only with `withGuardians`. */
+  guardians: MissingGuardian[]
+}
+
+/**
+ * The children a campaign covers today without a submitted order, by group order then name. With `withGuardians`
+ * (B-32 "No order", REQ-C05) each child carries its active guardians and whether each has an e-mail address — a
+ * flag only, the address itself never leaves the server.
+ */
 export async function campaignMissing(
   container: AwilixContainer,
   scope: PaymentsScope,
   campaign: OrderCampaign,
   groupId?: string,
   em?: EntityManager,
+  withGuardians = false,
 ): Promise<MissingChildRow[]> {
   const reader = em ?? freshEm(container)
   const { today } = await clubClock(container, scope)
@@ -417,6 +505,15 @@ export async function campaignMissing(
     ),
     campaignNames(container, scope, [campaign]),
   ])
+  const guardiansOf = withGuardians
+    ? await missingGuardians(
+        container,
+        scope,
+        missing.map(([personId]) => personId),
+        today,
+        reader,
+      )
+    : new Map<string, MissingGuardian[]>()
   const groupOrder = new Map(campaign.groupIds.map((id, index) => [id, index]))
   return missing
     .map(([personId, group]) => {
@@ -426,6 +523,7 @@ export async function campaignMissing(
         participant: person ? { firstName: person.firstName, lastName: person.lastName } : null,
         groupId: group,
         groupName: names.groups.get(group) ?? null,
+        guardians: guardiansOf.get(personId) ?? [],
       }
     })
     .sort(
@@ -436,7 +534,44 @@ export async function campaignMissing(
     )
 }
 
-/** B-32 "Supplier summary": units per product and size and the print rows of the submitted orders. */
+/**
+ * The active guardians of each of `wardIds` on `date`, by name, with whether each has an e-mail address (read through
+ * the contact resolver of `people`, decrypted in memory only). A guardian whose person record is gone is left out.
+ */
+async function missingGuardians(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  wardIds: readonly string[],
+  date: CalendarDate,
+  em: EntityManager,
+): Promise<Map<string, MissingGuardian[]>> {
+  const result = new Map<string, MissingGuardian[]>()
+  if (wardIds.length === 0) return result
+  const guardians = await activeGuardians(container, scope, wardIds, date, em)
+  const guardianIds = [...new Set([...guardians.values()].flat())]
+  if (guardianIds.length === 0) return result
+  const [persons, contacts] = await Promise.all([
+    findPersons(container, scope, guardianIds, em),
+    contactResolver(container).contacts(guardianIds, { container, ...scope, scope: [], em }),
+  ])
+  const withEmail = new Set(contacts.flatMap((contact) => (contact.email ? [contact.personId] : [])))
+  for (const wardId of wardIds) {
+    const rows = (guardians.get(wardId) ?? []).flatMap((guardianId) => {
+      const person = persons.get(guardianId)
+      return person
+        ? [{ firstName: person.firstName, lastName: person.lastName, hasEmail: withEmail.has(guardianId) }]
+        : []
+    })
+    rows.sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName))
+    result.set(wardId, rows)
+  }
+  return result
+}
+
+/**
+ * B-32 "Supplier summary": units per product and size (with those ordered in a set) and the print rows of the
+ * submitted orders, each naming its child for the screen (the CSV leaves the name out, Q-C11).
+ */
 export async function campaignSummary(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -445,13 +580,19 @@ export async function campaignSummary(
   const em = freshEm(container)
   const orders = await submittedOrders(em, scope, [campaign.id])
   const { today } = await clubClock(container, scope)
-  const [products, lines, participants, names] = await Promise.all([
+  const [products, lines, participants, names, persons] = await Promise.all([
     campaignProducts(em, scope, [campaign.id]),
     orders.length === 0
       ? Promise.resolve([] as OrderLine[])
       : em.find(OrderLine, { ...scope, orderId: { $in: orders.map((order) => order.id) }, deletedAt: null }),
     campaignParticipants(container, scope, campaign.groupIds, today, em),
     campaignNames(container, scope, [campaign]),
+    findPersons(
+      container,
+      scope,
+      orders.map((order) => order.participantPersonId),
+      em,
+    ),
   ])
   return supplierSummary(
     products.map((product) => ({
@@ -465,7 +606,9 @@ export async function campaignSummary(
     })),
     orders.map((order) => {
       const groupId = participants.get(order.participantPersonId)
+      const child = persons.get(order.participantPersonId)
       return {
+        participant: child ? { firstName: child.firstName, lastName: child.lastName } : null,
         printName: order.printName ?? null,
         printNumber: order.printNumber ?? null,
         groupName: groupId ? (names.groups.get(groupId) ?? null) : null,

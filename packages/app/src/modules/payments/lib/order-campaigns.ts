@@ -137,15 +137,28 @@ export type SummaryOrderLine = {
   componentSizes: Readonly<Record<string, string>> | null
 }
 
+/** A person's name as the B-32 reads return it. */
+export type SummaryPerson = { firstName: string; lastName: string } | null
+
 export type SummaryOrder = {
+  /** The child the order is for: shown on screen, never written to the supplier CSV (Q-C11). */
+  participant: SummaryPerson
   printName: string | null
   printNumber: number | null
   groupName: string | null
   lines: readonly SummaryOrderLine[]
 }
 
-export type SummaryUnit = { productId: string; productName: string; size: string | null; quantity: number }
+export type SummaryUnit = {
+  productId: string
+  productName: string
+  size: string | null
+  quantity: number
+  /** Of the quantity, the units ordered as part of a set ("Of which in sets"). */
+  inSets: number
+}
 export type SummaryPrint = {
+  participant: SummaryPerson
   printName: string | null
   printNumber: number | null
   groupName: string | null
@@ -157,13 +170,13 @@ export type SupplierSummary = { units: SummaryUnit[]; prints: SummaryPrint[] }
 function expandLine(
   line: SummaryOrderLine,
   products: ReadonlyMap<string, SummaryProduct>,
-): { product: SummaryProduct; size: string | null }[] {
+): { product: SummaryProduct; size: string | null; inSet: boolean }[] {
   const product = products.get(line.productId)
   if (!product) return []
-  if (product.kind === 'item') return [{ product, size: line.size }]
+  if (product.kind === 'item') return [{ product, size: line.size, inSet: false }]
   return product.componentProductIds.flatMap((id) => {
     const component = products.get(id)
-    return component ? [{ product: component, size: line.componentSizes?.[id] ?? null }] : []
+    return component ? [{ product: component, size: line.componentSizes?.[id] ?? null, inSet: true }] : []
   })
 }
 
@@ -175,8 +188,9 @@ function sizeRank(product: SummaryProduct, size: string | null): number {
 
 /**
  * The supplier summary (B-32): units per product and size (set items counted under their products), in the form's
- * product and size order, and the print rows — print name, number, group and sizes — of the orders that ask for one.
- * No contact details and no full names (Q1, data minimisation).
+ * product and size order, with how many of them came in a set, and the print rows — the child, print name, number,
+ * group and sizes — of the orders that ask for one. The screen names the child; the CSV for the supplier does not
+ * (Q1, Q-C11, data minimisation), and no contact details appear in either.
  */
 export function supplierSummary(products: readonly SummaryProduct[], orders: readonly SummaryOrder[]): SupplierSummary {
   const byId = new Map(products.map((product) => [product.id, product]))
@@ -184,14 +198,16 @@ export function supplierSummary(products: readonly SummaryProduct[], orders: rea
   const prints: SummaryPrint[] = []
   for (const order of orders) {
     const expanded = order.lines.flatMap((line) => expandLine(line, byId))
-    for (const { product, size } of expanded) {
+    for (const { product, size, inSet } of expanded) {
       const key = `${product.id}\u0000${size ?? ''}`
-      const unit = units.get(key)
-      if (unit) unit.quantity += 1
-      else units.set(key, { product, productId: product.id, productName: product.name, size, quantity: 1 })
+      const unit = units.get(key) ?? { product, productId: product.id, productName: product.name, size, quantity: 0, inSets: 0 }
+      unit.quantity += 1
+      if (inSet) unit.inSets += 1
+      units.set(key, unit)
     }
     if (order.printName || order.printNumber !== null) {
       prints.push({
+        participant: order.participant,
         printName: order.printName,
         printNumber: order.printNumber,
         groupName: order.groupName,
@@ -206,6 +222,7 @@ export function supplierSummary(products: readonly SummaryProduct[], orders: rea
       productName: unit.productName,
       size: unit.size,
       quantity: unit.quantity,
+      inSets: unit.inSets,
     }))
   prints.sort(
     (a, b) =>
@@ -266,9 +283,14 @@ export type CampaignKpis = {
   value: number
   paid: number
   handedOver: number
+  /** Orders whose kit is not handed over yet (the "Complete" warning, REQ-C05). */
+  notHandedOver: number
 }
 
-/** The B-30/B-32 KPIs: orders out of children, the value and what was paid (grosz), the kits handed over. */
+/**
+ * The B-30/B-32 KPIs: orders out of children, the value and what was paid (grosz), the kits handed over and those
+ * still to hand over.
+ */
 export function campaignKpis(
   children: number,
   orders: readonly { total: number; paid: number; handedOver: boolean }[],
@@ -280,7 +302,35 @@ export function campaignKpis(
     value: orders.reduce((sum, order) => sum + order.total, 0),
     paid: orders.reduce((sum, order) => sum + order.paid, 0),
     handedOver: orders.filter((order) => order.handedOver).length,
+    notHandedOver: orders.filter((order) => !order.handedOver).length,
   }
+}
+
+/** A payment of an order's charge as the ledger stores it. */
+export type OrderLedgerEntry = {
+  id: string
+  method: string
+  reversesPaymentId: string | null
+  isOverpayment: boolean
+  collectedByPersonId: string | null
+  recordedByPersonId: string | null
+}
+
+/**
+ * The payments a B-32 order row lists (REQ-C05), in ledger order: neither an online overpayment, nor a reversing
+ * entry, nor a reversed payment. Each names who took the money: the collector of the cash, else the person who
+ * recorded it (null for a payment nobody recorded by hand, such as an online or a bank statement one).
+ */
+export function orderPaymentEntries(
+  entries: readonly OrderLedgerEntry[],
+): { method: string; collectedByPersonId: string | null }[] {
+  const reversed = new Set(entries.flatMap((entry) => (entry.reversesPaymentId ? [entry.reversesPaymentId] : [])))
+  return entries
+    .filter((entry) => !entry.isOverpayment && !entry.reversesPaymentId && !reversed.has(entry.id))
+    .map((entry) => ({
+      method: entry.method,
+      collectedByPersonId: entry.collectedByPersonId ?? entry.recordedByPersonId,
+    }))
 }
 
 /** A stored product as the form's draft, keyed by its id (editing, or the copy of an earlier campaign). */
