@@ -73,9 +73,11 @@ export type ThreadComposerProps = {
   selectKinds?: (allowed: AudienceKind[]) => AudienceKind[]
   /** Replaces the backend landing (a flash and the backend thread page). */
   onPosted?: (posted: PostedThread) => void
+  /** The audience the composer opens with ("Message the group" from a session page, #272). */
+  initialAudience?: AudiencePickerValue
 }
 
-export function ThreadComposer({ embedded = false, selectKinds, onPosted }: ThreadComposerProps = {}) {
+export function ThreadComposer({ embedded = false, selectKinds, onPosted, initialAudience }: ThreadComposerProps = {}) {
   const t = useT()
   const router = useRouter()
   const kindsQuery = useQuery({
@@ -172,8 +174,8 @@ export function ThreadComposer({ embedded = false, selectKinds, onPosted }: Thre
     [t],
   )
   const initialValues = React.useMemo<ComposerValues>(
-    () => ({ audience: { kind: null, ids: [] }, subject: '', body: '' }),
-    [],
+    () => ({ audience: initialAudience ?? { kind: null, ids: [] }, subject: '', body: '' }),
+    [initialAudience],
   )
 
   return (

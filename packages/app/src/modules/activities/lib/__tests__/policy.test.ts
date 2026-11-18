@@ -3,6 +3,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   BUILT_IN_CLUB_POLICY,
+  checkOffOpensAt,
   checkOffWindow,
   DEFAULT_POLICIES,
   declarationChoices,
@@ -237,8 +238,11 @@ describe('expectationOf', () => {
 describe('checkOffWindow', () => {
   const startAt = new Date('2026-11-12T16:00:00Z')
 
-  it('opens at the start of a planned session', () => {
-    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-12T15:59:59Z'))).toBe('not_started')
+  it('opens 30 minutes before the start of a planned session (DD-A13)', () => {
+    expect(checkOffOpensAt(startAt).toISOString()).toBe('2026-11-12T15:30:00.000Z')
+    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-12T15:29:00Z'))).toBe('not_started')
+    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-12T15:30:00Z'))).toBe('open')
+    expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-12T15:31:00Z'))).toBe('open')
     expect(checkOffWindow({ status: 'planned', startAt }, startAt)).toBe('open')
     expect(checkOffWindow({ status: 'planned', startAt }, new Date('2026-11-13T09:00:00Z'))).toBe('open')
   })

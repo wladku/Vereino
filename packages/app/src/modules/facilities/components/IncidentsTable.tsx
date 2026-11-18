@@ -4,7 +4,11 @@
 // linked case; a place selector and a kind filter. An incident is evidence and is never deleted: no row offers a
 // delete. With `facilities.incidents.manage` "Edit" records further actions taken and links the communication case
 // the incident is followed in (chosen from the club's cases, or given by its id when the cases cannot be listed), and
-// adds photos (PNG, JPEG or WebP up to 5 MB, at most 5; never deleted, #126). The photos open in a new tab.
+// adds photos (PNG, JPEG or WebP up to 5 MB, at most 5; never deleted, #126). The photos open in a new tab. The parity
+// spec (REQ-R10, DD-R12; #281) orders the columns as the mockup's `screenLogs`, adds "Report incident" (the attendant's
+// dialog with a place and a day of the panel's choice), the filter "Ban request" (the requests no ban was issued from
+// yet) and, on such an incident, "Issue ban": the ban dialog filled with the place, the incident and a reason. An
+// incident a ban was issued from shows "ban issued".
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,10 +30,13 @@ import {
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { INCIDENT_ACTIONS, INCIDENT_KINDS, INCIDENT_PHOTOS_MAX, type IncidentAction } from '../lib/incidents'
-import { ActionChoices } from './club-facility/FacilityDialogs'
+import { ActionChoices, IncidentDialog, type DialogOutcome } from './club-facility/FacilityDialogs'
+import { BanDialog, type BanPrefill } from './BansTable'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import {
   codedMessage,
@@ -40,6 +47,7 @@ import {
   type Translate,
 } from './facilities-client'
 import {
+  BANS_KEY,
   INCIDENTS_API,
   INCIDENTS_KEY,
   caseHref,
@@ -67,12 +75,17 @@ function actionsLabel(t: Translate, actions: readonly string[]): string {
   return known.map((action) => t(`facilities.records.incidentAction.${action}`)).join(', ')
 }
 
+/** An incident that asks for an entry ban no ban was issued from yet (DD-R12). */
+function banRequestOpen(row: Pick<IncidentRow, 'actionTaken' | 'banIssued'>): boolean {
+  return row.actionTaken.includes('entry_ban_requested') && !row.banIssued
+}
+
 function buildColumns(t: Translate): TableColumns<IncidentRow> {
   const empty = t('facilities.common.empty')
   return [
     {
       id: 'occurredAt',
-      header: t('facilities.records.fields.occurredAt'),
+      header: t('facilities.records.incidents.columns.date'),
       enableSorting: false,
       meta: { priority: 1 },
       cell: ({ row }) => (
@@ -96,13 +109,6 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
       cell: ({ row }) => kindLabel(t, row.original.kind),
     },
     {
-      id: 'reporter',
-      header: t('facilities.records.incidents.columns.reporter'),
-      enableSorting: false,
-      meta: { priority: 3 },
-      cell: ({ row }) => row.original.reportedByName ?? empty,
-    },
-    {
       id: 'description',
       header: t('facilities.records.fields.description'),
       enableSorting: false,
@@ -123,7 +129,21 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
       header: t('facilities.records.fields.actionTaken'),
       enableSorting: false,
       meta: { priority: 3, truncate: true, maxWidth: '16rem' },
-      cell: ({ row }) => actionsLabel(t, row.original.actionTaken),
+      cell: ({ row }) => (
+        <span className="flex flex-col items-start gap-1">
+          <span>{actionsLabel(t, row.original.actionTaken)}</span>
+          {row.original.banIssued ? (
+            <StatusBadge variant="success">{t('facilities.records.incidents.banIssued')}</StatusBadge>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      id: 'reporter',
+      header: t('facilities.records.incidents.columns.reporter'),
+      enableSorting: false,
+      meta: { priority: 3 },
+      cell: ({ row }) => row.original.reportedByName ?? empty,
     },
     {
       id: 'photos',
@@ -182,8 +202,26 @@ function PhotoLinks({ photos }: { photos: IncidentRow['photos'] }) {
 }
 
 function filterParams(values: FilterValues): Record<string, string> {
+  const params: Record<string, string> = {}
   const kind: unknown = values.kind
-  return typeof kind === 'string' && kind ? { kind } : {}
+  if (typeof kind === 'string' && kind) params.kind = kind
+  if (values.banRequest === true) params.banRequest = 'open'
+  return params
+}
+
+/** The ban form of "Issue ban" (DD-R12): the incident's place, the incident, and its kind and description as the reason. */
+function banPrefillOf(t: Translate, row: IncidentRow): BanPrefill {
+  const when = instantLabel(row.occurredAt)
+  return {
+    placeId: row.placeId,
+    incidentId: row.id,
+    incidentLabel: `${when} · ${kindLabel(t, row.kind)}`,
+    reason: t('facilities.records.incidents.banReason', {
+      date: when,
+      kind: kindLabel(t, row.kind),
+      description: row.description ?? '',
+    }),
+  }
 }
 
 function IncidentEditDialog({
@@ -408,6 +446,11 @@ export function IncidentsTable() {
   const [filters, setFilters] = React.useState<FilterValues>({})
   const [page, setPage] = React.useState(1)
   const [editing, setEditing] = React.useState<IncidentRow | null>(null)
+  // A new key per opening starts a dialog fresh; 0 = closed.
+  const [reportKey, setReportKey] = React.useState(0)
+  const [banning, setBanning] = React.useState<{ key: number; prefill: BanPrefill } | null>(null)
+  const today = useClubToday()
+  const timeZone = useClubTimeZone() ?? browserTimeZone()
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
   const { data, isLoading, error } = useQuery({
@@ -436,11 +479,27 @@ export function IncidentsTable() {
         type: 'select',
         options: INCIDENT_KINDS.map((kind) => ({ value: kind, label: kindLabel(t, kind) })),
       },
+      { id: 'banRequest', label: t('facilities.records.incidents.filters.banRequest'), type: 'checkbox' },
     ],
     [t],
   )
   const filtered = Object.keys(filterParams(filters)).length > 0
   const empty = !isLoading && !error && (data?.items.length ?? 0) === 0
+  const reportAction = (
+    <Button
+      type="button"
+      data-testid="facilities-incidents-report"
+      onClick={() => {
+        setReportKey((current) => current + 1)
+      }}
+    >
+      {t('facilities.records.incidents.actions.report')}
+    </Button>
+  )
+  const onReported = (outcome: DialogOutcome) => {
+    flash(outcome.message, outcome.kind === 'conflict' ? 'error' : outcome.warning ? 'warning' : 'success')
+    void refresh()
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -460,6 +519,7 @@ export function IncidentsTable() {
         <ListEmptyState
           title={t('facilities.records.incidents.title')}
           message={t('facilities.records.incidents.empty')}
+          actions={reportAction}
           testId="facilities-incidents-empty"
           onClearFilters={
             filtered
@@ -477,6 +537,7 @@ export function IncidentsTable() {
             titleHeadingLevel={1}
             entityId="facilities:incident"
             extensionTableId="facilities.incidents"
+            actions={reportAction}
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
@@ -496,6 +557,20 @@ export function IncidentsTable() {
                 <span data-testid={`facilities-incident-actions-${row.id}`}>
                   <RowActions
                     items={[
+                      ...(banRequestOpen(row)
+                        ? [
+                            {
+                              id: 'issue-ban',
+                              label: t('facilities.records.incidents.actions.issueBan'),
+                              onSelect: () => {
+                                setBanning((current) => ({
+                                  key: (current?.key ?? 0) + 1,
+                                  prefill: banPrefillOf(t, row),
+                                }))
+                              },
+                            },
+                          ]
+                        : []),
                       {
                         id: 'edit',
                         label: t('facilities.common.edit'),
@@ -534,6 +609,35 @@ export function IncidentsTable() {
             if (!open) setEditing(null)
           }}
           onDone={refresh}
+        />
+      ) : null}
+      {reportKey > 0 ? (
+        <IncidentDialog
+          key={reportKey}
+          open
+          onOpenChange={(open) => {
+            if (!open) setReportKey(0)
+          }}
+          today={{ date: today, timeZone, place: null, entries: [] }}
+          where={{ places: places.options, maxDate: today }}
+          onOutcome={onReported}
+        />
+      ) : null}
+      {manage && banning ? (
+        <BanDialog
+          key={banning.key}
+          open
+          onOpenChange={(open) => {
+            if (!open) setBanning(null)
+          }}
+          places={places.options}
+          prefill={banning.prefill}
+          onSaved={async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: [INCIDENTS_KEY] }),
+              queryClient.invalidateQueries({ queryKey: [BANS_KEY] }),
+            ])
+          }}
         />
       ) : null}
     </div>

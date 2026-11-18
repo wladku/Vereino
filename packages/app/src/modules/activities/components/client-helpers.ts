@@ -134,6 +134,12 @@ export type OccurrenceDetail = OccurrenceRow & {
   placeGeoLng?: number | null
   /** The caller may restore the cancelled session (the club administrator, before its end; #268). */
   mayRestore?: boolean
+  /** The activity is an away trip (REQ-A15: the club's team is `away` in the score). */
+  isAway?: boolean
+  /** The recorded score of a match or sparring (REQ-A15), or null. */
+  score?: { home: number; away: number; note: string | null } | null
+  /** The caller may record the score: a started match or sparring (REQ-A15, #272). */
+  mayScore?: boolean
 }
 
 /** One entry of the 409 `conflicts` list and of a preview item's `conflicts`. */

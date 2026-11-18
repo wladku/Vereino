@@ -24,6 +24,6 @@ topics: ["i18n", "integration-tests"]
 
 **Problem**: A test that writes a label as `/^(Sign out|Wyloguj się)$/` copies the catalog. Any wording change, made in the same PR or in a PR merged meanwhile, breaks it, and only the integration run notices.
 
-), so it matches only a locator whose whole text is that label: use it with `getByRole(..., { name })` or `getByText`, never with `toContainText` on a section or a page, which then never matches (#279 lost two TEST-R07 runs to it, #298 one TEST-C11 run; promoted to `AGENTS.md` → Validation).
+), so it matches only a locator whose whole text is that label: use it with `getByRole(..., { name })` or `getByText`, never with `toContainText` on a section or a page, which then never matches (#279 lost two TEST-R07 runs to it, #298 one TEST-C11 run; promoted to `AGENTS.md` → Validation). A check that must tell the locales apart, such as an API `error` compared with `toBe` per `locale` cookie, takes the one locale's exact text from `uiTextIn('en' | 'pl', '<key>')` in the same fixture; it throws on a missing key. TEST-076 and TEST-155 copied the `scope_unlinked` message as literals until #358 rewrote it.
 
 **Applies to**: every file under `packages/app/.ai/qa/tests`.

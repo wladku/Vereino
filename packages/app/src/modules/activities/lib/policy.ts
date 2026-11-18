@@ -277,17 +277,25 @@ export function expectationOf(kind: DeclarationKind, row: DeclarationRow | undef
 
 export type CheckOffWindow = 'open' | 'not_started' | 'not_planned'
 
+/** The list opens this many minutes before the start (DD-A13: children arrive before the whistle). */
+export const CHECK_OFF_LEAD_MINUTES = 30
+
+/** The instant the check-off opens: 30 minutes before the start (DD-A13). */
+export function checkOffOpensAt(startAt: Date): Date {
+  return new Date(startAt.getTime() - CHECK_OFF_LEAD_MINUTES * 60_000)
+}
+
 /**
- * Actual attendance is checked off from the session's start until it is closed (club spec glossary *Actual
- * attendance*): a cancelled or done session answers 409 `occurrence_not_planned`, one that has not started 409
- * `attendance_not_started`. Before the start the coach reads the expectations only.
+ * Actual attendance is checked off from 30 minutes before the session's start until it is closed (club spec glossary
+ * *Actual attendance*, DD-A13): a cancelled or done session answers 409 `occurrence_not_planned`, one that does not
+ * open yet 409 `attendance_not_started`. Before that the coach reads the expectations only.
  */
 export function checkOffWindow(
   occurrence: { readonly status: string; readonly startAt: Date },
   now: Date,
 ): CheckOffWindow {
   if (occurrence.status !== 'planned') return 'not_planned'
-  return occurrence.startAt.getTime() <= now.getTime() ? 'open' : 'not_started'
+  return checkOffOpensAt(occurrence.startAt).getTime() <= now.getTime() ? 'open' : 'not_started'
 }
 
 /** The actions a member surface offers for a declaration of `kind` (club spec `/club` Today: D-026). */

@@ -9,11 +9,13 @@
 // row shows "Needs a coach" or "{substitute} (substitute for {coach})"; with `activities.manage` a planned session gets
 // "Assign substitute" / "Change coach" (the substitute dialog), and the substitution history is listed, oldest first.
 // #268 (REQ-A05): the place shows its address and a map link, and the club administrator restores a cancelled session
-// that has not ended (`mayRestore`) with a reason.
+// that has not ended (`mayRestore`) with a reason. E10-S07 (#272, REQ-A15): a match or sparring shows its score, and
+// once it started the session's coach, a coach of the group, the coordinator or the administrator records it here.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
+import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -24,7 +26,9 @@ import { CancelOccurrenceDialog } from './CancelOccurrenceDialog'
 import { MoveOccurrenceForm } from './MoveOccurrenceDialog'
 import { OccurrenceBadges, OccurrenceCoach } from './OccurrencesTable'
 import { RestoreOccurrenceDialog } from './RestoreOccurrenceDialog'
+import { clubFirstScore } from '../lib/score'
 import { placeLine, placeMapHref } from '../lib/venue'
+import { ScoreForm } from './ScoreForm'
 import { attendanceHref } from './club/club-client'
 import {
   OWN_FORBIDDEN_STATE,
@@ -352,6 +356,41 @@ export function OccurrenceRecord({ id }: { id: string }) {
         <p className="text-muted-foreground text-sm">{t('activities.occurrences.moved.help')}</p>
       ) : null}
       <Details occurrence={occurrence} t={t} />
+      {/* REQ-A15 (#272): the score of a match or sparring; recorded here once the session started. */}
+      {occurrence.mayScore === true || occurrence.score ? (
+        <section
+          className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+          aria-labelledby="occurrence-score"
+          data-testid="occurrence-score"
+        >
+          <h2 id="occurrence-score" className="text-lg font-semibold">
+            {t('activities.score.title')}
+          </h2>
+          {occurrence.score ? (
+            <p className="flex flex-col gap-1" data-testid="occurrence-score-value">
+              <span className="text-2xl font-semibold">
+                {clubFirstScore(occurrence.score, occurrence.isAway === true)}
+              </span>
+              {occurrence.score.note ? (
+                <span className="text-muted-foreground text-sm">{occurrence.score.note}</span>
+              ) : null}
+            </p>
+          ) : null}
+          {occurrence.mayScore === true ? (
+            <ScoreForm
+              key={occurrence.updatedAt ?? occurrence.id}
+              occurrenceId={occurrence.id}
+              updatedAt={occurrence.updatedAt ?? ''}
+              score={occurrence.score ?? null}
+              isAway={occurrence.isAway === true}
+              onSaved={async (message) => {
+                if (message) flash(message, 'success')
+                await refetch()
+              }}
+            />
+          ) : null}
+        </section>
+      ) : null}
       <SubstitutionHistory occurrence={occurrence} t={t} />
       {canMove && moving ? (
         <section

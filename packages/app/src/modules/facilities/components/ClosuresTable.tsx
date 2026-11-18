@@ -1,6 +1,7 @@
 'use client'
-// `/backend/facilities/closures` (facilities spec B-26, DD-22; #121): the closures of the club's places — place,
-// from–to, reason and note — with a place selector and a reason filter. Read with `facilities.view`; add, edit and
+// `/backend/facilities/closures` (facilities spec B-26, DD-22; #121): the closures of the club's places — place (a
+// link to its calendar), when, reason and description, as the mockup's `screenZones` (parity spec REQ-R09; #281) —
+// with a place selector and a reason filter. Read with `facilities.view`; add, edit and
 // delete for `facilities.manage`.
 import * as React from 'react'
 import Link from 'next/link'
@@ -19,13 +20,13 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { CLOSURE_REASONS } from '../lib/closures'
-import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
+import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
 import {
   CLOSURES_API,
   CLOSURES_HREF,
   editHref,
   errorMessage,
-  instantLabel,
+  periodLabel,
   placeLabel,
   useFacilitiesManage,
   usePlaceOptions,
@@ -44,21 +45,20 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Cl
       header: t('facilities.fields.place'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="font-medium">{placeLabel(t, names, row.original.placeId)}</span>,
+      cell: ({ row }) => (
+        <PlaceCalendarLink placeId={row.original.placeId} label={placeLabel(t, names, row.original.placeId)} />
+      ),
     },
     {
-      id: 'startsAt',
-      header: t('facilities.closures.fields.startsAt'),
+      id: 'when',
+      header: t('facilities.closures.columns.when'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => <span className="tabular-nums">{instantLabel(row.original.startsAt)}</span>,
-    },
-    {
-      id: 'endsAt',
-      header: t('facilities.closures.fields.endsAt'),
-      enableSorting: false,
-      meta: { priority: 2 },
-      cell: ({ row }) => <span className="tabular-nums">{instantLabel(row.original.endsAt)}</span>,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap tabular-nums">
+          {periodLabel(row.original.startsAt, row.original.endsAt)}
+        </span>
+      ),
     },
     {
       accessorKey: 'reason',
@@ -70,7 +70,7 @@ function buildColumns(t: Translate, names: Map<string, string>): TableColumns<Cl
     },
     {
       accessorKey: 'note',
-      header: t('facilities.closures.fields.note'),
+      header: t('facilities.closures.columns.description'),
       enableSorting: false,
       meta: { priority: 4, truncate: true, maxWidth: '20rem' },
       cell: ({ row }) => row.original.note ?? '',

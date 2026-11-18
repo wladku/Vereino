@@ -1,10 +1,11 @@
 // The list items of the facility records (B-27; REQ-016; #126): the daily logs, the incidents and the entry bans, as
 // the query engine returns them (encrypted columns already decrypted), plus the names the panel shows — the place, the
 // person who wrote or reported, the banned institution or person and the issuer — added by `afterList` to the rows the
-// scope filter already admitted.
+// scope filter already admitted. An incident also says whether an entry ban was issued from it (DD-R12; #281).
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { findPlaces, institutionNames, personNames, type FacilitiesScope } from '../services/directory'
+import { incidentsWithBan, openBanRequestIds } from '../services/ban-requests'
 import { photosOfIncidents, type IncidentPhotoView } from '../services/incident-photos'
 
 export const LOG_ENTITY_ID = 'facilities:facility_log'
@@ -122,6 +123,7 @@ export function incidentListItem(row: Row) {
     actionTaken: list(row.action_taken).filter((item): item is string => typeof item === 'string'),
     threadId: text(row.thread_id),
     photos: [] as IncidentPhotoView[],
+    banIssued: false,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -150,6 +152,7 @@ export const incidentListItemSchema = z.object({
       }),
     )
     .describe('The incident photos in upload order (#126)'),
+  banIssued: z.boolean().describe('An entry ban was issued from this incident (DD-R12, #281)'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
@@ -188,10 +191,29 @@ export async function attachIncidentNames(payload: { items?: unknown[] }, ctx: C
     scope,
     items.map((item) => item.id),
   )
+  const banned = await incidentsWithBan(
+    ctx.container,
+    scope,
+    items.map((item) => item.id),
+  )
   for (const item of items) {
     item.reportedByName = item.reportedByPersonId ? (persons.get(item.reportedByPersonId) ?? null) : null
     item.photos = photos.get(item.id) ?? []
+    item.banIssued = banned.has(item.id)
   }
+}
+
+/** No incident has this id: the filter of an empty set of open ban requests. */
+const NO_INCIDENT_ID = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * The list filter "Ban request" (B-27, DD-R12; #281): the incidents whose `entry_ban_requested` has no ban issued from it
+ * yet, within the caller's tenant and organization (the scope filter of the route still applies on top).
+ */
+export async function openBanRequestFilter(ctx: CrudCtx): Promise<{ id: { $in: string[] } }> {
+  const scope = trustedScope(ctx)
+  const ids = scope ? await openBanRequestIds(ctx.container, scope) : []
+  return { id: { $in: ids.length > 0 ? ids : [NO_INCIDENT_ID] } }
 }
 
 type BanItem = Named & {

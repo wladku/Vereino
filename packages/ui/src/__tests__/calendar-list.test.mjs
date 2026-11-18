@@ -268,3 +268,27 @@ test('renders the notes of an item in order, a warning one in bold (REQ-A07)', (
   )
   assert.doesNotMatch(render({ days: days(item()) }), /calendar-item-note/)
 })
+
+test('renders the map link of a place only when the item has one and the label is given (REQ-A13)', () => {
+  const withMap = item({ place: 'Stadion', placeAddress: 'ul. Sportowa 1', placeHref: 'https://osm.example/?q=x' })
+  const html = render({ days: days(withMap), labels: { ...labels, map: 'map' } })
+  assert.match(
+    html,
+    /<a href="https:\/\/osm.example\/\?q=x" target="_blank" rel="noopener noreferrer" class="[^"]*" data-testid="calendar-item-map">map<\/a>/,
+  )
+  assert.doesNotMatch(render({ days: days(withMap) }), /calendar-item-map/)
+  assert.doesNotMatch(
+    render({ days: days(item({ place: 'Hall' })), labels: { ...labels, map: 'map' } }),
+    /calendar-item-map/,
+  )
+})
+
+test('renders the secondary links of an item through the link component', () => {
+  const linked = item({
+    links: [{ id: 'attendance', label: 'Attendance list', href: '/club/occurrences/occ-1/attendance' }],
+  })
+  const html = render({ days: days(linked), Link })
+  assert.match(html, /<a href="\/club\/occurrences\/occ-1\/attendance" class="[^"]*">Attendance list<\/a>/)
+  assert.doesNotMatch(render({ days: days(linked) }), /Attendance list/)
+  assert.doesNotMatch(render({ days: days(item()), Link }), /Attendance list/)
+})

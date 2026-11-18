@@ -6,7 +6,8 @@
 // #126). The facilities parity spec (#282, J-R08) adds the party involved picked from today's rentals (its renter's
 // name goes into "people involved") and "Request an entry ban" (the action `entry_ban_requested`, which notifies the
 // club administrators). A coded refusal stays in the dialog next to the form; a conflict (the log changed or was
-// started meanwhile) closes it and the page reloads the day.
+// started meanwhile) closes it and the page reloads the day. The panel's Incidents tab reuses "Report incident" with a
+// place and a day of its own choice (B-27, REQ-R10; #281), and its Log tab the time and condition fields.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
@@ -92,7 +93,7 @@ function useSubmit(onOutcome: DialogProps['onOutcome'], onOpenChange: DialogProp
   return { pending, problem, setProblem, run }
 }
 
-function Problem({ text, testId }: { text: string | null; testId: string }) {
+export function Problem({ text, testId }: { text: string | null; testId: string }) {
   if (!text) return null
   return (
     <p className="text-destructive text-sm" role="alert" data-testid={testId}>
@@ -101,7 +102,7 @@ function Problem({ text, testId }: { text: string | null; testId: string }) {
   )
 }
 
-function TimeField({
+export function TimeField({
   id,
   label,
   value,
@@ -135,7 +136,7 @@ function TimeField({
   )
 }
 
-function ConditionField({
+export function ConditionField({
   id,
   label,
   help,
@@ -183,7 +184,7 @@ function ConditionField({
   )
 }
 
-function submitOnCtrlEnter(submit: () => void) {
+export function submitOnCtrlEnter(submit: () => void) {
   return (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
@@ -447,10 +448,30 @@ export function ActionChoices({
   )
 }
 
-export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogProps) {
+/**
+ * The panel's choice of where and when (B-27; #281): the places to pick from and the latest day (today). Without it the
+ * dialog reports at the attendant's place, today.
+ */
+export type IncidentWhere = { places: ReadonlyArray<{ value: string; label: string }>; maxDate: string }
+
+export function IncidentDialog({
+  today,
+  open,
+  onOpenChange,
+  onOutcome,
+  where,
+}: Omit<DialogProps, 'today'> & {
+  today: Pick<FacilityToday, 'date' | 'timeZone' | 'place' | 'entries'>
+  where?: IncidentWhere
+}) {
   const t = useT()
   const ids = React.useId()
   const [kind, setKind] = React.useState<IncidentKind | ''>('')
+  const [placeId, setPlaceId] = React.useState(() =>
+    where ? (where.places.length === 1 ? (where.places[0]?.value ?? '') : '') : (today.place?.id ?? ''),
+  )
+  const [date, setDate] = React.useState(today.date)
+  const [placeMissing, setPlaceMissing] = React.useState(false)
   const [time, setTime] = React.useState(() => clubTimeNow(today.timeZone))
   const [description, setDescription] = React.useState('')
   const [actions, setActions] = React.useState<IncidentAction[]>([])
@@ -475,16 +496,19 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
   }
 
   const submit = () => {
-    const occurredAt = clubInstant(today.date, time, today.timeZone)
+    const occurredAt = clubInstant(date, time, today.timeZone)
     if (!kind) {
       setKindMissing(true)
       return
     }
-    if (!occurredAt || !today.place) {
+    if (!placeId) {
+      setPlaceMissing(true)
+      return
+    }
+    if (!occurredAt) {
       setProblem(t('facilities.facility.errors.time'))
       return
     }
-    const placeId = today.place.id
     let failedPhotos = 0
     void run(
       async () => {
@@ -529,10 +553,65 @@ export function IncidentDialog({ today, open, onOpenChange, onOutcome }: DialogP
         <DialogHeader>
           <DialogTitle>{t('facilities.facility.incident.title')}</DialogTitle>
           <DialogDescription>
-            {t('facilities.facility.incident.help', { place: today.place?.name ?? '' })}
+            {where
+              ? t('facilities.records.incidents.report.help')
+              : t('facilities.facility.incident.help', { place: today.place?.name ?? '' })}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
+          {where ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`${ids}-place`}>{t('facilities.fields.place')}</Label>
+                <Select
+                  value={placeId}
+                  disabled={pending}
+                  onValueChange={(next: string) => {
+                    setPlaceId(next)
+                    setPlaceMissing(false)
+                  }}
+                >
+                  <SelectTrigger
+                    id={`${ids}-place`}
+                    className="min-h-11"
+                    data-testid="club-facility-incident-place"
+                    aria-invalid={placeMissing ? true : undefined}
+                    aria-describedby={placeMissing ? `${ids}-place-missing` : undefined}
+                  >
+                    <SelectValue placeholder={t('facilities.fields.place.choose')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {where.places.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {placeMissing ? (
+                  <p id={`${ids}-place-missing`} className="text-destructive text-xs" role="alert">
+                    {t('facilities.records.bans.errors.place')}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`${ids}-date`}>{t('facilities.records.fields.day')}</Label>
+                <Input
+                  id={`${ids}-date`}
+                  type="date"
+                  required
+                  max={where.maxDate}
+                  value={date}
+                  disabled={pending}
+                  className="min-h-11"
+                  data-testid="club-facility-incident-date"
+                  onChange={(event) => {
+                    setDate(event.target.value)
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${ids}-kind`}>{t('facilities.records.fields.kind')}</Label>

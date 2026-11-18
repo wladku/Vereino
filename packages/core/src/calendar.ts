@@ -38,6 +38,13 @@ export type CalendarItemNote = {
   readonly tone?: 'default' | 'warning'
 }
 
+/** A secondary link on an item, shown as a button under it ("Attendance list"). */
+export type CalendarItemLink = {
+  readonly id: string
+  readonly label: string
+  readonly href: string
+}
+
 export type CalendarItem = {
   readonly id: string
   readonly title: string
@@ -49,6 +56,8 @@ export type CalendarItem = {
   /** The place's name, and its address when the surface shows one (D21: "an address without a map pin cost 30 minutes"). */
   readonly place?: string | null
   readonly placeAddress?: string | null
+  /** A map link for the place (an external place or a typed venue, parity spec REQ-A13); opened in a new tab. */
+  readonly placeHref?: string | null
   readonly group?: string | null
   /** The section, shown as a marker with its name (never by colour alone) and listed in the legend. */
   readonly section?: CalendarItemSection | null
@@ -64,6 +73,8 @@ export type CalendarItem = {
   readonly href?: string | null
   readonly badges?: readonly CalendarItemBadge[]
   readonly actions?: readonly CalendarItemAction[]
+  /** Secondary links under the item, after its actions. */
+  readonly links?: readonly CalendarItemLink[]
 }
 
 /** One day of a calendar list: the club-zone date and its items, in start order. */

@@ -7,7 +7,10 @@
 // substitute sees whom they stand in for. Authorization stays on the routes: the block renders only after `as=coach`
 // answered the session. The cancel dialog is shared with the attendance list M-05 (#139); a coach's cancellation also
 // tells the section's coordinators, server-side. Where the club setting `coach_may_cancel` is off (#199), the read
-// says `mayCancel: false` and "Cancel session" is not offered, so the coach only reports an absence.
+// says `mayCancel: false` and "Cancel session" is not offered, so the coach only reports an absence. E10-S07 (#272;
+// REQ-A13…REQ-A15): a coach or assistant of the group takes a session without a coach ("Take the session"); "Message
+// the group" opens the member composer addressed to the session; a started match or sparring takes its score; the
+// substitution history closes the block.
 import * as React from 'react'
 import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -24,18 +27,49 @@ import {
 import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib/activities-rules'
 import { errorCodeOf } from '@vereino/core'
+import { ScoreForm } from '../ScoreForm'
 import { ReportAbsence } from './ReportAbsence'
 import {
   attendanceHref,
   cancelSession,
+  composeForSessionHref,
   errorText,
   sessionEditHref,
   summaryLine,
+  takeOverSession,
   type CalendarEntry,
+  type SubstitutionHistoryEntry,
 } from './club-client'
+
+/** One line of the substitution history: "17.11.2026, 20:14 — Marek N. reported an absence" (M-04). */
+function HistoryLine({ entry, timeZone }: { entry: SubstitutionHistoryEntry; timeZone: string }) {
+  const t = useT()
+  const locale = useLocale()
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short', timeZone }).format(
+    new Date(entry.createdAt),
+  )
+  const empty = t('activities.common.empty')
+  const text =
+    entry.kind === 'absence_reported'
+      ? t('activities.club.session.history.absence', { name: entry.previousCoachName ?? empty })
+      : entry.previousCoachName
+        ? t('activities.club.session.history.substitute', {
+            next: entry.newCoachName ?? empty,
+            prev: entry.previousCoachName,
+          })
+        : t('activities.club.session.history.assigned', { next: entry.newCoachName ?? empty })
+  return (
+    <li className="text-sm" data-testid="club-session-history-entry" data-kind={entry.kind}>
+      <time dateTime={entry.createdAt} className="text-muted-foreground">
+        {when}
+      </time>{' '}
+      — {text}
+    </li>
+  )
+}
 
 /** The session a cancellation targets: its id and the version the page showed (the lock token). */
 export type CancellableSession = { id: string; updatedAt: string }
@@ -170,6 +204,7 @@ export function CoachSessionBlock({
   selfPersonId,
   absenceLabel,
   onCancelled,
+  timeZone,
 }: {
   entry: CalendarEntry
   /** The signed-in member's person: "Report absence" is for the session's assigned coach only. */
@@ -178,11 +213,29 @@ export function CoachSessionBlock({
   absenceLabel: string
   /** Called with the success message of a cancellation or an absence (empty when only a refresh is needed). */
   onCancelled: (message: string) => Promise<void>
+  /** The club's time zone, for the history's times. */
+  timeZone: string
 }) {
   const t = useT()
   const [cancelling, setCancelling] = React.useState(false)
+  const [takingOver, setTakingOver] = React.useState(false)
   const { occurrence } = entry
   const cancellable = occurrence.status === 'planned' && entry.mayCancel !== false
+  const history = entry.substitutions ?? []
+
+  const takeOver = async () => {
+    setTakingOver(true)
+    try {
+      await takeOverSession(occurrence.id, t('activities.club.session.takeOverFailed'))
+      await onCancelled(t('activities.club.session.takenOver'))
+    } catch (error: unknown) {
+      // Someone was faster (409 `occurrence_has_coach`) or the caller is busy then: say so and show the new state.
+      flash(errorText(error, t('activities.club.session.takeOverFailed')), 'error')
+      await onCancelled('')
+    } finally {
+      setTakingOver(false)
+    }
+  }
   return (
     <section
       aria-labelledby="club-session-coach"
@@ -213,10 +266,32 @@ export function CoachSessionBlock({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
+        {/* REQ-A14 (J-A04 step 4): a coach or assistant of the group takes the session without a coach. */}
+        {entry.mayTakeOver === true ? (
+          <Button
+            type="button"
+            className="min-h-11"
+            disabled={takingOver}
+            data-testid="club-session-take-over"
+            onClick={() => {
+              void takeOver()
+            }}
+          >
+            {t('activities.club.session.takeOver')}
+          </Button>
+        ) : null}
         {occurrence.status !== 'cancelled' ? (
           <Button asChild className="min-h-11">
             <Link href={attendanceHref(occurrence.id)} data-testid="club-session-attendance">
               {t('activities.club.session.attendanceList')}
+            </Link>
+          </Button>
+        ) : null}
+        {/* REQ-A13: the composer addressed to the session's audience (the group's participants and their guardians). */}
+        {occurrence.status !== 'cancelled' ? (
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={composeForSessionHref(occurrence.id)} data-testid="club-session-message-group">
+              {t('activities.club.session.messageGroup')}
             </Link>
           </Button>
         ) : null}
@@ -248,6 +323,34 @@ export function CoachSessionBlock({
         <p id="club-session-cancel-hint" className="text-muted-foreground text-xs">
           {t('activities.club.session.cancelHint')}
         </p>
+      ) : null}
+      {/* REQ-A15: the score of a started match or sparring, also after the session is closed. */}
+      {entry.mayScore === true ? (
+        <section aria-labelledby="club-session-score-title" className="flex flex-col gap-2 border-t pt-3">
+          <h3 id="club-session-score-title" className="font-semibold">
+            {t('activities.score.title')}
+          </h3>
+          <ScoreForm
+            key={occurrence.updatedAt}
+            occurrenceId={occurrence.id}
+            updatedAt={occurrence.updatedAt}
+            score={occurrence.score ?? null}
+            isAway={occurrence.isAway === true}
+            onSaved={onCancelled}
+          />
+        </section>
+      ) : null}
+      {history.length > 0 ? (
+        <section aria-labelledby="club-session-history-title" className="flex flex-col gap-2 border-t pt-3">
+          <h3 id="club-session-history-title" className="font-semibold">
+            {t('activities.club.session.history.title')}
+          </h3>
+          <ul className="flex flex-col gap-1" data-testid="club-session-history">
+            {history.map((item) => (
+              <HistoryLine key={item.id} entry={item} timeZone={timeZone} />
+            ))}
+          </ul>
+        </section>
       ) : null}
       <CancelSessionDialog
         occurrence={occurrence}

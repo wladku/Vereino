@@ -2,7 +2,8 @@
 // request*; REQ-023, DD-25, DD-46; club spec the `facilities.internal_bookings.create|cancel` row; #123): staff of any
 // section book a free slot of any club place at once, in any zone, within the opening hours; the booking is
 // `confirmed` from the start and only a cancellation ends it. A booking supersedes the external requests that hold the
-// slot. Nothing here reads the database or the clock (S3.5): `now` is a parameter.
+// slot. The club administrator may also record a booking in the past, at most 92 days back, which supersedes nothing
+// (facilities parity spec DD-R17; #281). Nothing here reads the database or the clock (S3.5): `now` is a parameter.
 import { addDays, calendarDateInZone, defineTransitions, intervalsOverlap, type CalendarDate } from '@vereino/core'
 import type { RentalStatus } from './rentals'
 
@@ -30,9 +31,34 @@ export function bookingPeriodProblem(startsAt: Date, endsAt: Date): 'malformed' 
   return endsAt.getTime() > startsAt.getTime() ? null : 'inverted'
 }
 
-/** True when a booking may take this start: it lies after `now` (422 `booking_start_past` otherwise). */
-export function bookingStartAllowed(startsAt: Date, now: Date): boolean {
-  return startsAt.getTime() > now.getTime()
+/** DD-R17: how many club-zone days back the club administrator may record a club booking (a quarter, the owner report). */
+export const PAST_BOOKING_MAX_DAYS = 92
+
+/** True when the booking starts at or before `now`: a past booking, which supersedes nothing (DD-R17). */
+export function bookingInPast(startsAt: Date, now: Date): boolean {
+  return startsAt.getTime() <= now.getTime()
+}
+
+/** The earliest club-zone day a past club booking may start on (DD-R17). */
+export function earliestPastBookingDate(today: CalendarDate): CalendarDate {
+  return addDays(today, -PAST_BOOKING_MAX_DAYS)
+}
+
+/**
+ * Why a booking may not take this start, or null (DD-R17): a start after `now` is always allowed; a past start only for
+ * the club administrator (422 `booking_start_past` for every other caller), and only on a club-zone day at most 92
+ * days before today (422 `booking_too_old`).
+ */
+export function bookingStartProblem(
+  startsAt: Date,
+  now: Date,
+  timeZone: string,
+  clubAdmin: boolean,
+): 'booking_start_past' | 'booking_too_old' | null {
+  if (!bookingInPast(startsAt, now)) return null
+  if (!clubAdmin) return 'booking_start_past'
+  const today = calendarDateInZone(now, timeZone)
+  return calendarDateInZone(startsAt, timeZone) < earliestPastBookingDate(today) ? 'booking_too_old' : null
 }
 
 /** An external request as the supersession reads it. */

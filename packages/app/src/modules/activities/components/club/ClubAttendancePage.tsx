@@ -12,7 +12,9 @@
 // #139: a planned session is also cancelled from here ("the session will not take place"), with M-04's dialog — unless
 // the club setting `coach_may_cancel` is off and the caller only coaches the session (`mayCancel: false`, #199).
 // E06-S13 (#95): the assigned coach reports an absence here before the session starts; "Needs a coach" marks a
-// session without one.
+// session without one. E10-S07 (#272, REQ-A14): the quick fill follows the declaration kind — a training fills the
+// expected participants — and says why when nothing is left to fill; the list opens 30 minutes before the start
+// (DD-A13) and says when.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -29,10 +31,10 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { CLUB_HOME_HREF, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
 import {
   closesEarly,
-  declaredPresentFill,
   groupRosterHref,
   isCloseShortcut,
   presentCount,
+  quickFill,
   seesRosterLink,
   sheetEntries,
   unmarkedPersonIds,
@@ -221,7 +223,8 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
   const current = (row: AttendanceRow): ActualValue | null =>
     selections.has(row.personId) ? (selections.get(row.personId) ?? null) : row.actual
   const changed = sheetEntries(list.rows, current, false)
-  const toFill = editable ? declaredPresentFill(list.rows, current) : []
+  const toFill = editable ? quickFill(list.declarationKind, list.rows, current) : []
+  const fillsExpected = list.declarationKind === 'absence_only'
 
   const succeed = (message: string) => {
     setAnnouncement(message)
@@ -234,7 +237,9 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
       for (const personId of toFill) next.set(personId, 'present')
       return next
     })
-    succeed(t('activities.club.attendance.filledDeclared'))
+    succeed(
+      t(fillsExpected ? 'activities.club.attendance.filledExpected' : 'activities.club.attendance.filledDeclared'),
+    )
   }
 
   const save = async (complete: boolean) => {
@@ -401,7 +406,11 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
       ) : null}
       {list.checkOff === 'not_started' ? (
         <Alert status="information" data-testid="club-attendance-not-started">
-          <p className="max-w-prose">{t('activities.club.attendance.notStarted')}</p>
+          <p className="max-w-prose">
+            {t('activities.club.attendance.notStarted', {
+              time: formatClockTime(new Date(list.checkOffOpensAt), locale, list.timeZone),
+            })}
+          </p>
         </Alert>
       ) : null}
       <section aria-labelledby="club-attendance-list" className="flex flex-col gap-3">
@@ -449,16 +458,31 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
           data-testid="club-attendance-actions"
         >
           {list.rows.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              disabled={busy || toFill.length === 0}
-              onClick={fillDeclared}
-              data-testid="club-attendance-fill-declared"
-            >
-              {t('activities.club.attendance.fillDeclared')}
-            </Button>
+            <div className="flex flex-col gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                disabled={busy || toFill.length === 0}
+                aria-describedby={toFill.length === 0 ? 'club-attendance-fill-nothing' : undefined}
+                onClick={fillDeclared}
+                data-testid="club-attendance-fill-declared"
+                data-kind={list.declarationKind}
+              >
+                {t(
+                  fillsExpected ? 'activities.club.attendance.fillExpected' : 'activities.club.attendance.fillDeclared',
+                )}
+              </Button>
+              {toFill.length === 0 ? (
+                <p
+                  id="club-attendance-fill-nothing"
+                  className="text-muted-foreground text-xs"
+                  data-testid="club-attendance-fill-nothing"
+                >
+                  {t(`activities.club.attendance.fillNothing.${list.declarationKind}`)}
+                </p>
+              ) : null}
+            </div>
           ) : null}
           <Button
             type="button"

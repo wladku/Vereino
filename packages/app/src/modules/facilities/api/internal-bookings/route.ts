@@ -64,7 +64,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Book a free slot of a club place at once',
       description:
-        'A coach, coordinator or the club administrator books a place for a general purpose (3–120 characters) and a section, in any zone, without approval, when the slot is inside the opening hours and free of closures, sessions, rentals and other bookings on the place, its ancestors and descendants. Stored `confirmed`; the external requests holding the slot become `superseded`. A booking for a group is a one-off event: `POST /api/activities/events`.',
+        'A coach, coordinator or the club administrator books a place for a general purpose (3–120 characters) and a section, in any zone, without approval, when the slot is inside the opening hours and free of closures, sessions, rentals and other bookings on the place, its ancestors and descendants. Stored `confirmed`; the external requests holding the slot become `superseded`. The club administrator may also record a booking that started in the past, at most 92 days back (DD-R17): the same checks run, and it supersedes nothing. A booking for a group is a one-off event: `POST /api/activities/events`.',
       requestBody: { contentType: 'application/json', schema: internalBookingCreateSchema },
       responses: [{ status: 201, description: 'The booking', schema: responseSchema }],
       errors: [
@@ -79,7 +79,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 422,
           description:
-            '`booking_period_invalid`, `booking_start_past`, `booking_section_invalid`, `facilities_reference_invalid`',
+            '`booking_period_invalid`, `booking_start_past` (a past start by any caller but the club administrator), `booking_too_old` (a past start more than 92 days back, DD-R17), `booking_section_invalid`, `facilities_reference_invalid`',
           schema: errorSchema,
         },
       ],

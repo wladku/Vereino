@@ -1,7 +1,8 @@
 // `/api/facilities/incidents` — incidents at the club's places (facilities spec the CRUD row for `/incidents`,
 // REQ-016, §6 of the regulations; M-12 "Report incident", B-27; #126): listed and reported with
 // `facilities.log.write`; the actions taken and the linked case are changed with `facilities.incidents.manage`. There
-// is no DELETE: an incident is evidence and is never deleted. The description and the people involved are decrypted
+// is no DELETE: an incident is evidence and is never deleted. `banRequest=open` lists the incidents whose entry ban
+// request has no ban issued yet, and each item says whether a ban was issued from it (DD-R12; #281). The description and the people involved are decrypted
 // by the query engine.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -12,7 +13,13 @@ import { scopeContract } from '@/modules/foundation'
 import { INCIDENT_REPORT_KINDS, type IncidentCommandResult } from '../../commands/incidents'
 import { Incident } from '../../data/entities'
 import { incidentCreateSchema, incidentListQuerySchema, incidentUpdateSchema } from '../../data/validators'
-import { INCIDENT_ENTITY_ID, attachIncidentNames, incidentListItem, incidentListItemSchema } from '../records'
+import {
+  INCIDENT_ENTITY_ID,
+  attachIncidentNames,
+  incidentListItem,
+  incidentListItemSchema,
+  openBanRequestFilter,
+} from '../records'
 import { PLACE_COLUMNS, updateResponseSchema } from '../shared'
 
 type IncidentListQuery = z.infer<typeof incidentListQuerySchema>
@@ -58,6 +65,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       const business: Where[] = []
       if (query.placeId) business.push({ place_id: query.placeId })
       if (query.kind) business.push({ kind: query.kind })
+      if (query.banRequest === 'open') business.push(await openBanRequestFilter(ctx))
       return { $and: [scopeWhere(scope, INCIDENT_REPORT_KINDS, PLACE_COLUMNS), ...business] } as Where
     },
     transformItem: incidentListItem,
