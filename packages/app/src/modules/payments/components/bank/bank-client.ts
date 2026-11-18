@@ -1,5 +1,6 @@
 // Client pieces of B-29 "Bank statement" (payments spec REQ-030; issue #113): the response shapes of
-// `/api/payments/bank-transactions`, `/bank-imports`, `/bank-payers` and `/settings`, their query keys and the writes.
+// `/api/payments/bank-transactions`, `/bank-imports`, `/bank-payers` and `/settings`, their query keys and the writes
+// (deleting an import: payments parity REQ-C04, #294).
 // Authorization stays on the routes and the commands.
 import { useQuery } from '@tanstack/react-query'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
@@ -51,7 +52,9 @@ export type BankImportRow = {
   unmatched: number
   skipped: number
   importedBy: PersonName | null
+  deletable: boolean
   createdAt: string
+  updatedAt: string
 }
 
 export type BankImportSummary = {
@@ -180,5 +183,12 @@ export async function decide(
       },
       { errorMessage },
     ),
+  )
+}
+
+/** Deletes an import from which nothing was booked, with its lock token (payments parity DD-C13). */
+export async function deleteImport(row: Pick<BankImportRow, 'id' | 'updatedAt'>, errorMessage: string): Promise<void> {
+  await withScopedApiRequestHeaders(buildOptimisticLockHeader(row.updatedAt), () =>
+    apiCallOrThrow(`/api/payments/bank-imports/${encodeURIComponent(row.id)}`, { method: 'DELETE' }, { errorMessage }),
   )
 }

@@ -10,7 +10,8 @@ import { createModuleEvents } from '@open-mercato/shared/modules/events'
  * `payments.order_campaign.created|updated` and, per stage, `payments.order_campaign.status_changed` with the new status.
  * A guardian's order (#116) emits `payments.order.submitted|updated|cancelled` with its campaign and `order` charge;
  * a kit handed over at the pitch (#117) emits `payments.order.handed_over`. A payer assigned to a charge without one
- * (#295), by hand or from a guardianship, emits `payments.charge.payer_assigned` with the charge and the payer.
+ * (#295), by hand or from a guardianship, emits `payments.charge.payer_assigned` with the charge and the payer. A
+ * deleted bank import (#294) emits `payments.bank_import.deleted` with its id and counts.
  */
 const events = [
   { id: 'payments.fee.created', label: 'Fee schedule created', entity: 'fee', category: 'crud' },
@@ -51,6 +52,12 @@ const events = [
   { id: 'payments.order.cancelled', label: 'Kit order cancelled', entity: 'order', category: 'custom' },
   { id: 'payments.order.handed_over', label: 'Kit handed over', entity: 'order', category: 'custom' },
   { id: 'payments.bank_import.completed', label: 'Bank statement imported', entity: 'bank_import', category: 'custom' },
+  {
+    id: 'payments.bank_import.deleted',
+    label: 'Bank statement import deleted',
+    entity: 'bank_import',
+    category: 'custom',
+  },
   {
     id: 'payments.bank_transaction.decided',
     label: 'Statement transfer decided',

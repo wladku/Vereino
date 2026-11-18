@@ -315,6 +315,12 @@ export function RentalRecord({ id, variant = 'panel' }: { id: string; variant?: 
           {t('facilities.facility.rental.awaitsPayment')}
         </p>
       ) : null}
+      {/* #286: a live rental without an address gets none of the renter's e-mails or the cancellation link. */}
+      {!withContact || rental.contactEmail ? null : (
+        <p className="text-muted-foreground text-sm" role="note" data-testid="facilities-rental-record-no-email">
+          {t('facilities.rentals.record.noEmail')}
+        </p>
+      )}
       {withContact ? null : (
         <p className="text-muted-foreground text-sm" role="note" data-testid="facilities-rental-record-closed">
           {t('facilities.rentals.record.closedNotice')}
