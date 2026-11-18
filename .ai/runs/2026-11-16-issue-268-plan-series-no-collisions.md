@@ -3,7 +3,7 @@
 - **Date:** 2026-11-16
 - **Agent / tool:** Claude Code (Opus 5.5) under cezar, `om-auto-fix-issue` (feature route) with the repo-local override; one background subagent for the reports slice
 - **Trigger:** label `cezar` on #268 (issue.labeled)
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md` phase 3 (Ready for implementation since 2026-11-16); #268; epic #252; branch `feat/issue-268-plan-series-no-collisions`
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md` phase 3 (Ready for implementation since 2026-11-16); #268; epic #252; branch `feat/issue-268-plan-series-no-collisions`
 - **Status:** completed (PR opened; see Next steps)
 
 ## Goal

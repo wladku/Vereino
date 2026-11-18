@@ -2,7 +2,7 @@
 
 - **Trigger:** cezar run 09645cb3 (`om-auto-fix-issue 270`, label `cezar` added 2026-11-17).
 - **Issue:** [#270](https://github.com/wladku/Vereino/issues/270) — feature, priority-high, risk-high.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md`, phase 5 (REQ-A08; TEST-A11, TEST-A12; AC-A09; J-A02 steps 1 and 6). Status `Ready for implementation`; migration B, the `placeId` narrowing, the wider events input and the coach's edit right approved by the owner on #252 (2026-11-16, comment 6910004411).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md`, phase 5 (REQ-A08; TEST-A11, TEST-A12; AC-A09; J-A02 steps 1 and 6). Status `Ready for implementation`; migration B, the `placeId` narrowing, the wider events input and the coach's edit right approved by the owner on #252 (2026-11-16, comment 6910004411).
 - **Branch:** `feat/issue-270-coach-sparring-match-phone`.
 
 ## Steps

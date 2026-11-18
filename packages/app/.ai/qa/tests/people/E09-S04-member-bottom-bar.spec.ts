@@ -227,7 +227,8 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     await expect(bar.getByRole('link', { name: PAYMENTS })).toHaveCount(0)
     await expectTargets(page, 3)
 
-    // --- The coach without own payments: Facilities as the tab; My units and My groups' payments behind More ---
+    // --- The coach without own payments: Facilities as the tab; My units, Groups (#274) and My groups' payments behind
+    // More ---
     await signInBrowser(page, request, club, family.coach.userId, family.coach.email)
     const coachBar = await expectSameBar(page, 4, [
       '/club',
@@ -242,12 +243,15 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
       expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.myUnits', { exact: true }))]),
     )
     expect(coachBar.more).toEqual(
+      expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.groups', { exact: true }))]),
+    )
+    expect(coachBar.more).toEqual(
       expect.arrayContaining([expect.stringMatching(uiText('people.club.nav.groupPayments', { exact: true }))]),
     )
     expect(coachBar.more.some((entry) => uiText('people.club.nav.facilitiesMore', { exact: true }).test(entry))).toBe(
       false,
     )
-    expect(coachBar.more).toHaveLength(3)
+    expect(coachBar.more).toHaveLength(4)
     await openSettled(page, '/club/places')
     await expect(bar.getByRole('link', { name: FACILITIES })).toHaveAttribute('aria-current', 'page')
     await expectTargets(page, 4)
@@ -292,6 +296,7 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     expect(busyBar.more).toEqual([
       expect.stringMatching(uiText('people.club.nav.profile', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.myUnits', { exact: true })),
+      expect.stringMatching(uiText('people.club.nav.groups', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.facilitiesMore', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.orders', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.groupPayments', { exact: true })),

@@ -1,7 +1,7 @@
 # Run: epic #252 — spec A to Ready for implementation
 
 - **Goal and trigger:** unattended cezar run (task 2fd95077) of `om-auto-create-pr`: record the owner's decisions of 2026-11-16 in spec A, fix the pre-implementation audit gaps (c1)–(c9), set the status to Ready. Docs only.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md`. **Issue:** epic #252 ([audit](https://github.com/wladku/Vereino/issues/252#issuecomment-6899294590) 2026-11-15, [owner decisions](https://github.com/wladku/Vereino/issues/252#issuecomment-6910004411) 2026-11-16). **Branch:** `docs/issue-252-spec-a-ready`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md`. **Issue:** epic #252 ([audit](https://github.com/wladku/Vereino/issues/252#issuecomment-6899294590) 2026-11-15, [owner decisions](https://github.com/wladku/Vereino/issues/252#issuecomment-6910004411) 2026-11-16). **Branch:** `docs/issue-252-spec-a-ready`.
 
 ## Steps
 
@@ -23,7 +23,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-14-vereino-parity-groups-and-activities.md`
+- `.ai/specs/implemented/2026-11-14-vereino-parity-groups-and-activities.md`
 - `.ai/specs/changelog/2026-11-14-vereino-parity-groups-and-activities/2026-11-16-issue-252-ready.md` (new)
 - `.ai/runs/2026-11-16-issue-252-spec-a-ready.md` (this log)
 
