@@ -31,6 +31,11 @@ export const publicClubSchema = z.object({
     ),
 })
 
+/** A 404 or 400 of a public read: the error, and the club's header while the club publishes its page (#289). */
+export const publicNotOkSchema = publicErrorSchema.extend({
+  club: publicClubSchema.optional().describe("The club's public header; absent for an unknown club"),
+})
+
 export const publicPlaceCardSchema = z.object({
   slug: z.string(),
   name: z.string(),
@@ -55,7 +60,10 @@ export function jsonResponse(body: unknown): Response {
   return Response.json(body, { headers: { 'Cache-Control': PUBLIC_CACHE_CONTROL } })
 }
 
-/** The answer of a read that is not `ok`; never says which condition failed beyond "disabled". */
+/**
+ * The answer of a read that is not `ok`; never says which condition failed beyond "disabled". It carries the club's
+ * public header (`club`) when the club publishes its page, so the page renders inside the club's frame (#289).
+ */
 export async function notOkResponse(result: Exclude<PublicFacilitiesResult<unknown>, { status: 'ok' }>) {
   const code =
     result.status === 'month_invalid'
@@ -63,7 +71,7 @@ export async function notOkResponse(result: Exclude<PublicFacilitiesResult<unkno
       : result.status === 'disabled'
         ? 'public_places_disabled'
         : 'public_place_not_found'
-  const error = await facilitiesErrors.create(code)
+  const error = await facilitiesErrors.create(code, result.club ? { club: result.club } : undefined)
   return Response.json(error.body, { status: error.status, headers: { 'Cache-Control': PUBLIC_CACHE_CONTROL } })
 }
 

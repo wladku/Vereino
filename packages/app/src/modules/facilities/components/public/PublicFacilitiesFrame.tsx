@@ -153,16 +153,32 @@ export function PublicFacilitiesError({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-/** "The club does not share facility calendars": a club that does not publish them, or one without a public place. */
+/**
+ * "The club does not share facility calendars": a club that does not publish them, or one without a public place —
+ * inside the club's frame, with its phone to ask about free slots while the club publishes one (P-03, #289).
+ */
 export function PublicFacilitiesDisabled({ club }: { club: FrameClub | null }) {
   const t = useT()
+  const phone = club?.contact?.phone ?? null
   return (
     <PublicFacilitiesFrame club={club}>
       <PublicFacilitiesNotice
         title={t('facilities.public.disabled.title')}
-        message={t('facilities.public.disabled.message')}
+        message={phone ? t('facilities.public.disabled.call') : t('facilities.public.disabled.message')}
         testId="public-places-disabled"
-      />
+      >
+        {phone ? (
+          <p>
+            <a
+              className="inline-flex min-h-11 items-center text-lg font-medium underline underline-offset-4"
+              href={phoneHref(phone)}
+              data-testid="public-places-disabled-phone"
+            >
+              {phone}
+            </a>
+          </p>
+        ) : null}
+      </PublicFacilitiesNotice>
     </PublicFacilitiesFrame>
   )
 }
