@@ -3,8 +3,11 @@
 // row. `today` is the club's calendar date (S3.5: time is a parameter).
 import { ADULT_AGE, assertCalendarDate, isCalendarDate, type CalendarDate } from '@vereino/core'
 
-/** The perspectives of the people list (B-09): all, staff (has a role), children (under 18), without an account. */
-export const PERSON_LIST_VIEWS = ['all', 'staff', 'children', 'no_account'] as const
+/**
+ * The perspectives of the people list (B-09): all, staff (has a role), children (under 18), without an account, and
+ * former persons (people life-cycle spec REQ-L03, DD-L05; #306), whom every other perspective leaves out.
+ */
+export const PERSON_LIST_VIEWS = ['all', 'staff', 'children', 'no_account', 'former'] as const
 export type PersonListView = (typeof PERSON_LIST_VIEWS)[number]
 
 /**
@@ -33,6 +36,7 @@ export type PersonListFilterQuery = {
   hasAccount?: 'true' | 'false'
   ageFrom?: number
   ageTo?: number
+  search?: string
 }
 
 /** Inclusive upper (`onOrBefore`) and exclusive lower (`after`) birth-date bounds; null when a side is open. */
@@ -42,7 +46,9 @@ export type BirthDateRange = { onOrBefore: CalendarDate | null; after: CalendarD
  * The plan of a list query:
  * - `birthDates` — the age bounds as birth dates, or null without an age condition;
  * - `accountConditions` — each entry requires `user_id` to exist (true) or not (false); two opposite ones match nobody;
- * - `staff`, `role`, `sectionId`, `groupId` — the id predicates the route resolves and intersects.
+ * - `staff`, `role`, `sectionId`, `groupId` — the id predicates the route resolves and intersects;
+ * - `former` — `only` former persons (`left_on` reached), `exclude` them, or `any` (a typed name in the "all"
+ *   perspective searches every perspective, so an administrator finds someone who left).
  */
 export type PersonListPlan = {
   birthDates: BirthDateRange | null
@@ -51,6 +57,7 @@ export type PersonListPlan = {
   role: PersonFilterRole | null
   sectionId: string | null
   groupId: string | null
+  former: 'only' | 'exclude' | 'any'
 }
 
 /**
@@ -96,6 +103,7 @@ export function personListPlan(query: PersonListFilterQuery, today: CalendarDate
     role: query.role ?? null,
     sectionId: query.sectionId ?? null,
     groupId: query.groupId ?? null,
+    former: view === 'former' ? 'only' : view === 'all' && query.search?.trim() ? 'any' : 'exclude',
   }
 }
 
