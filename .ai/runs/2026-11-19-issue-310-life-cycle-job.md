@@ -32,9 +32,17 @@
 
 - `yarn generate` — ok. `yarn typecheck` — ok. `yarn lint` — 0 errors (warnings pre-existing in style). `yarn contracts:check` — 0 problems. `yarn spec-changelogs:check` — valid.
 - `npx jest life-cycle-rules person-list-filters --coverage` — 60 tests, 100 % on both files.
-- `yarn test:integration:vereino --filter TEST-L09` — first run failed at setup: `Expected: "pending_guardian" Received: "final"` (the policy reads the age on the session's day; the ward turned 18 before the match). Fixed the fixture (birthday 10 days out). Results of the re-run: see below.
+- `yarn test:integration:vereino --filter TEST-L09`:
+  - run 1 failed at setup: `Expected: "pending_guardian" Received: "final"` (the policy reads the age on the session's day; the ward turned 18 before the match). Fixed the fixture (birthday 10 days out); lesson `declaration-minority-read-on-session-day`.
+  - run 2: `dispatchCount … Expected: 2 Received: 1` — the job ran as of a past day, before the administrator's role assignment (created today by the fixture) started; the test now backdates it.
+  - run 3: `consents.image … Received: { granted: false, byPersonId: null }`. Run 4 added database assertions (guardianship consents before, the adult's `consents` after the run): the image consent was copied; it failed only on `trips`, which the test expected to carry Anna's withdrawal — but withdrawing a consent never given is no decision (P-08), so nothing is copied. Fixed the expectation. The run-3 image failure did not reproduce in runs 4–6.
+  - runs 5 and 6: **passed** (`1 passed (41.3s)`, `1 passed (41.2s)`).
+- `yarn test:integration:vereino --filter TEST-L10`: split into an API test and a browser test. API test **passed** (`✓ 1 … (12.6s)`). Browser test cannot start here: `chrome-headless-shell: error while loading shared libraries: libatk-1.0.so.0` (the host lacks the system library; installing it is outside this run's permissions). It runs in CI.
+- `yarn verify`: all steps through `lint` passed; `format:check` failed on the new test file (`TEST-L09-coming-of-age.spec.ts is not formatted`); after `yarn format`, `yarn verify --from format:check` — `all 13 step(s) passed` (format:check, ds, i18n, contracts, settings-prefixes, glossary, qa-texts, di-commands, lessons, spec-changelogs, test, test:scripts, build). The only change between the two parts was formatting of one test file.
 
 ## Open problems / next steps
+
+- The TEST-L10 browser test (dashboard widget, ward card at 375 px, pl/en, light/dark, axe) was not run locally (missing browser library); CI must show it green.
 
 - First real run on existing clubs: `mercato people life-cycle --tenant --org --dry-run`, the owner confirms the counts, then `… --register-schedule` (spec *Rollout*, item 11). Not run by this autonomous run (no access to a real database).
 - Phase L6 registers step 5 (erasure step two) and TEST-L07's job case.
