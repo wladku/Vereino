@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
+  PERSON_ATTENTION_FILTERS,
   PERSON_FILTER_ROLES,
   PERSON_LIST_FILTER_KEYS,
   PERSON_LIST_VIEWS,
@@ -267,8 +268,21 @@ export function PersonsTable() {
       { id: 'ageFrom', label: t('people.persons.filters.ageFrom'), type: 'text', placeholder: '0' },
       { id: 'ageTo', label: t('people.persons.filters.ageTo'), type: 'text', placeholder: '120' },
     )
+    // "Needs attention" (people life-cycle spec B-09, #309): consent state is for the club administrator only, and the
+    // participants come from `groups`.
+    if (groupsAvailable && features['people.manage']) {
+      defs.push({
+        id: 'attention',
+        label: t('people.persons.filters.attention'),
+        type: 'select',
+        options: PERSON_ATTENTION_FILTERS.map((value) => ({
+          value,
+          label: t(`people.persons.filters.attention.${value}`),
+        })),
+      })
+    }
     return defs
-  }, [t, groupsAvailable, groupsQuery.data])
+  }, [t, groupsAvailable, groupsQuery.data, features])
 
   const filtered = isPersonListFiltered(state)
   const canManage = features['people.manage']

@@ -57,6 +57,23 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "consent_texts": {
+          "name": "consent_texts",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'{}'",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "json"
+        },
         "contact_phone": {
           "name": "contact_phone",
           "type": "text",

@@ -4,7 +4,8 @@
 // resolved interface locale (DD-34) and whether the payments tile may be shown (R10); E06-S22 (#104) adds the wards'
 // age, the consent authors' names and the member's own active guardians with their consents. 404 `person_not_linked` when the
 // account is linked to no person (the UI says "Account not linked to a person — contact the club"). The scope comes
-// only from the session: no id in the path or the body names the person.
+// only from the session: no id in the path or the body names the person. #309 (people life-cycle spec REQ-L10) adds an
+// adult's own consents (`ownConsents`, null for a minor) and the club's consent texts (`consentTexts`, DD-L11).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -148,6 +149,14 @@ const memberProfileSchema = z.object({
   }),
   paymentsVisible: z.boolean().describe('False for a minor (R10) and without payments.view_own'),
   isParticipant: z.boolean().describe('An active participant membership today; false without the groups module'),
+  ownConsents: memberConsentsSchema
+    .nullable()
+    .describe(
+      "An adult's own consents (aged 18 or more, a known birth date); null for a minor. Changed through PUT /api/people/me/consents",
+    ),
+  consentTexts: z
+    .record(z.string(), z.object({ text: z.string(), changedAt: z.string() }))
+    .describe("The club's own consent texts by key; a key without an entry uses the built-in text (DD-L11)"),
 })
 
 export const openApi: OpenApiRouteDoc = {
@@ -157,7 +166,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read own profile, wards and consents',
       description:
-        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, the active staff roles, the acting contexts, whether the person is an active participant and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
+        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, an adult's own consents, the club's consent texts, the active staff roles, the acting contexts, whether the person is an active participant and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
       responses: [{ status: 200, description: 'The member profile', schema: memberProfileSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

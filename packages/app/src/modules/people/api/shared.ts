@@ -239,6 +239,23 @@ export const personViewSchema = z.object({
   externalId: z.string().nullable().optional(),
   shareContactWithCoachesAt: z.string().nullable().optional().describe('Full view only'),
   sharePresenceWithGuardiansAt: z.string().nullable().optional().describe('Full view only'),
+  holdsOwnConsents: z
+    .boolean()
+    .optional()
+    .describe('With people.manage only: 18 or more with a known birth date, so the person holds own consents (#309)'),
+  ownConsents: z
+    .record(
+      z.enum(['regulations', 'image', 'trips']),
+      z.object({
+        granted: z.boolean(),
+        at: z.string().nullable(),
+        byPersonId: z.string().nullable(),
+        byName: z.string().nullable(),
+        byRole: z.string().nullable(),
+      }),
+    )
+    .optional()
+    .describe("With people.manage only: an adult participant's own consents with the date and the author (#309)"),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
@@ -279,3 +296,17 @@ export const roleAssignmentViewSchema = z.object({
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
+
+/** The answer of the own-consents routes (#309): the person's consents and the new lock token. */
+export const ownConsentsResponseSchema = z.object({
+  consents: consentsViewSchema,
+  updatedAt: z.string().nullable().describe("The person's lock token"),
+})
+
+/** The own consents of a person as the routes return them (`people.persons.set_own_consents`, #309). */
+export function ownConsentsResponse(person: Person) {
+  return {
+    consents: consentsView(parseStoredConsents(person.consents)),
+    updatedAt: iso(person.updatedAt),
+  }
+}

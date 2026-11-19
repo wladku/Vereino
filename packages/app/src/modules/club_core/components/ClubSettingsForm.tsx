@@ -4,14 +4,17 @@
 // #29 the club logo panel sits under the form (upload, replace, remove; REQ-028). Since #87 the club name (the platform
 // organization's) is edited here and the time zone is picked from the runtime's IANA zones. Since #199 it holds
 // `coach_may_cancel`, whether a coach may cancel a session; since #111 the club's bank account for the payers' transfer
-// instructions.
+// instructions. Since #309 (people life-cycle spec B-02, REQ-L10, DD-L11) the group "Consent texts" holds one textarea
+// per consent key (at most 1000 characters; empty restores the built-in text, shown as the placeholder) with the date it
+// was last changed; a consent given before a change stays valid and reads "given to an earlier wording".
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { createCrudFormError, normalizeCrudServerError } from '@open-mercato/ui/backend/utils/serverErrors'
+import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatBankAccount } from '@vereino/core'
 import {
   ACTIVITY_TYPES,
@@ -24,6 +27,12 @@ import {
   timeZoneOptions,
   type ClubSettingsValues,
 } from '../lib/settings'
+import {
+  CONSENT_TEXT_KEYS,
+  CONSENT_TEXT_MAX_LENGTH,
+  type ConsentTextKey,
+  type ConsentTexts,
+} from '../lib/consent-texts'
 import { nameInitial } from '../lib/files'
 import { enumOptions, errorMessage, numberOrNull, textOrNull } from './client-helpers'
 import { LogoPanel } from './LogoPanel'
@@ -36,12 +45,30 @@ type SettingsResponse = ClubSettingsValues & {
   bankAccount: string | null
   logoAttachmentId: string | null
   logoUrl: string | null
+  consentTexts?: ConsentTexts
   updatedAt: string | null
 }
 
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
 const kindField = (type: string) => `declarationKind_${type}`
+const consentTextField = (key: ConsentTextKey) => `consentText_${key}`
+
+/** The API names a too-long text `consentTexts.<key>`; the form's field is `consentText_<key>`. */
+function remapConsentTextErrors(error: unknown, fallback: string): unknown {
+  const normalized = normalizeCrudServerError(error)
+  const fieldErrors = normalized.fieldErrors
+  if (!fieldErrors) return error
+  const mapped = Object.fromEntries(
+    Object.entries(fieldErrors).map(([field, message]) => [
+      field.startsWith('consentTexts.')
+        ? consentTextField(field.slice('consentTexts.'.length) as ConsentTextKey)
+        : field,
+      message,
+    ]),
+  )
+  return createCrudFormError(normalized.message ?? fallback, mapped, { status: normalized.status })
+}
 
 /** The IANA zones this browser knows; empty where `Intl.supportedValuesOf` is missing (the stored zone stays listed). */
 function supportedTimeZones(): string[] {
@@ -68,6 +95,7 @@ function toFormValues(settings: SettingsResponse): FormValues {
     updatedAt: settings.updatedAt,
   }
   for (const type of ACTIVITY_TYPES) values[kindField(type)] = settings.declarationKinds[type]
+  for (const key of CONSENT_TEXT_KEYS) values[consentTextField(key)] = settings.consentTexts?.[key]?.text ?? ''
   return values
 }
 
@@ -91,11 +119,19 @@ function toPayload(values: Record<string, unknown>) {
     coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
     bankAccount: textOrNull(values.bankAccount),
+    // An empty text restores the built-in one; an unchanged text keeps its "last changed" date (DD-L11).
+    consentTexts: Object.fromEntries(
+      CONSENT_TEXT_KEYS.map((key) => {
+        const value = values[consentTextField(key)]
+        return [key, typeof value === 'string' ? value : '']
+      }),
+    ),
   }
 }
 
 export function ClubSettingsForm() {
   const t = useT()
+  const locale = useLocale()
   const queryClient = useQueryClient()
   const { data: settings, error } = useQuery({
     queryKey: ['club_core-settings'],
@@ -103,6 +139,7 @@ export function ClubSettingsForm() {
   })
 
   const currentTimeZone = settings?.timezone ?? null
+  const consentTexts = settings?.consentTexts
   const fields = React.useMemo<CrudField[]>(() => {
     const kindOptions = enumOptions(DECLARATION_KINDS, 'club_core.settings.declarationKind', t)
     const zones = timeZoneOptions(supportedTimeZones(), currentTimeZone).map((zone) => ({ value: zone, label: zone }))
@@ -207,8 +244,26 @@ export function ClubSettingsForm() {
         type: 'checkbox',
         description: t('club_core.settings.fields.coachMayCancel.description'),
       },
+      ...CONSENT_TEXT_KEYS.map<CrudField>((key) => {
+        const changedAt = consentTexts?.[key]?.changedAt
+        const date = changedAt
+          ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(changedAt))
+          : null
+        return {
+          id: consentTextField(key),
+          label: t(`club_core.settings.consentTexts.${key}`),
+          type: 'textarea',
+          rows: 3,
+          maxLength: CONSENT_TEXT_MAX_LENGTH,
+          showCount: true,
+          placeholder: t(`club_core.settings.consentTexts.${key}.builtIn`),
+          description: date
+            ? t('club_core.settings.consentTexts.lastChanged', { date })
+            : t('club_core.settings.consentTexts.builtInInUse'),
+        }
+      }),
     ]
-  }, [t, currentTimeZone])
+  }, [t, currentTimeZone, consentTexts, locale])
 
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -237,6 +292,13 @@ export function ClubSettingsForm() {
         column: 2,
         fields: ['coachSettlementModel', 'showCalledUpChildren', 'coachMayCancel'],
       },
+      {
+        id: 'consentTexts',
+        title: t('club_core.settings.groups.consentTexts'),
+        description: t('club_core.settings.groups.consentTexts.description'),
+        column: 1,
+        fields: CONSENT_TEXT_KEYS.map(consentTextField),
+      },
     ],
     [t],
   )
@@ -255,15 +317,19 @@ export function ClubSettingsForm() {
         initialValues={toFormValues(settings)}
         submitLabel={t('club_core.settings.save')}
         onSubmit={async (values) => {
-          await apiCallOrThrow(
-            SETTINGS_API,
-            {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(toPayload(values)),
-            },
-            { errorMessage: t('club_core.settings.errors.save') },
-          )
+          try {
+            await apiCallOrThrow(
+              SETTINGS_API,
+              {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify(toPayload(values)),
+              },
+              { errorMessage: t('club_core.settings.errors.save') },
+            )
+          } catch (error: unknown) {
+            throw remapConsentTextErrors(error, t('club_core.settings.errors.save'))
+          }
           flash(t('club_core.settings.flash.saved'), 'success')
           await queryClient.invalidateQueries({ queryKey: ['club_core-settings'] })
         }}

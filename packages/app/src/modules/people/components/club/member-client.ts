@@ -81,7 +81,24 @@ export type MemberProfile = {
   paymentsVisible: boolean
   /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
   isParticipant?: boolean
+  /** An adult's own consents (people life-cycle spec REQ-L10, #309); null for a minor. */
+  ownConsents?: WardConsents | null
+  /** The club's own consent texts by key with the instant of their last change (DD-L11). */
+  consentTexts?: ConsentTexts
 }
+
+/** The keys of the club's consent texts (`club_core` `CONSENT_TEXT_KEYS`). */
+export type ConsentTextKey =
+  | 'regulations'
+  | 'image'
+  | 'trips'
+  | 'share_contact_with_coaches'
+  | 'share_presence_with_guardians'
+  | 'publish_name_consent'
+export type ConsentTexts = Partial<Record<ConsentTextKey, { text: string; changedAt: string }>>
+
+/** The own consents of an adult participant on `PUT /api/people/me/consents` (#309). */
+export const OWN_CONSENTS_API = '/api/people/me/consents'
 
 export type MemberProfileLoad = { status: 'ok'; profile: MemberProfile } | { status: 'not_linked' }
 

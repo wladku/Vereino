@@ -57,6 +57,7 @@ export class Person extends ScopedEntityBase {
     | 'externalId'
     | 'externalIdHash'
     | 'leftOn'
+    | 'consents'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -121,6 +122,15 @@ export class Person extends ScopedEntityBase {
    */
   @Property({ name: 'left_on', type: 'date', nullable: true })
   leftOn?: string | null
+
+  /**
+   * An adult participant's own consents (people life-cycle spec REQ-L10, DD-L12; #309): `StoredConsents`
+   * (`lib/people-rules.ts`), the shape of the guardianship's, written only through the P-08 transitions of
+   * `people.persons.set_own_consents` and only for a person aged 18 or more. Personal data, not encrypted (as on the
+   * guardianship).
+   */
+  @Property({ name: 'consents', type: 'json', defaultRaw: `'{}'::jsonb` })
+  consents: StoredConsents = {}
 }
 
 /**

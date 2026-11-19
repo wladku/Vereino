@@ -8,14 +8,17 @@
 // here, membership predicates through the optional `groups.personFilter` contract (DD-U01); the resulting ids are ANDed
 // with the record scope, so a filter never widens it. `afterList` adds the own columns `roles`, `hasWards` and
 // `guardians` (the list hook is synchronous per row, so the batch read runs after the page); the route opts in to
-// response enrichers, so `groups` adds `_groups` (DD-U02).
+// response enrichers, so `groups` adds `_groups` (DD-U02). People life-cycle spec B-09 (#309): `attention=missing_consents`
+// lists the participants whose `regulations` consent is not given; it reveals consent state, so it needs `people.manage`
+// (403 `scope_denied` otherwise).
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
 import type { Where } from '@open-mercato/shared/lib/query/types'
 import { ageOn, findActingRole, scopeWhere } from '@vereino/core'
-import { scopeContract } from '@/modules/foundation'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
+import { foundationErrors, scopeContract } from '@/modules/foundation'
 import { Person } from '../../data/entities'
 import { ASSIGNABLE_ROLES, personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
 import { PERSON_ENTITY_ID } from '../../encryption'
@@ -44,6 +47,14 @@ function clubScopeOf(ctx: CrudCtx): ClubScope | null {
   return tenantId && organizationId ? { tenantId, organizationId } : null
 }
 
+/** The consent filter reveals consent state: the club administrator's `people.manage` only (REQ-L10). */
+async function assertMayReadConsents(ctx: CrudCtx, clubScope: ClubScope): Promise<void> {
+  const userId = ctx.auth?.sub
+  const rbac = ctx.container.resolve<RbacService>('rbacService')
+  const allowed = !!userId && (await rbac.userHasAllFeatures(userId, ['people.manage'], clubScope))
+  if (!allowed) await foundationErrors.throw('scope_denied')
+}
+
 /** The filter and perspective predicates of the query, ANDed with the record scope by `buildFilters`. */
 async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope: ClubScope): Promise<Where[]> {
   const predicates: Where[] = []
@@ -51,6 +62,7 @@ async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope:
   if (query.ageFrom !== undefined && query.ageTo !== undefined && query.ageFrom > query.ageTo) {
     return peopleErrors.throw('people_filter_age_range', { field: 'ageTo' })
   }
+  if (query.attention === 'missing_consents') await assertMayReadConsents(ctx, clubScope)
   const plan = personListPlan(query, today)
   // Former persons (`left_on` reached, people life-cycle spec DD-L05, #306): only in their perspective, hidden elsewhere.
   if (plan.former === 'only') predicates.push({ left_on: { $lte: today } } as Where)

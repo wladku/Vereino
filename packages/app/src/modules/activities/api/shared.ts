@@ -590,6 +590,12 @@ export const attendanceListSchema = z.object({
       markedByPersonId: z.string().nullable(),
       markedByName: z.string().nullable(),
       markedAsRole: z.string().nullable(),
+      consentFlags: z
+        .object({ image: z.boolean(), trips: z.boolean() })
+        .optional()
+        .describe(
+          'The coach of the session only (people life-cycle spec REQ-L10): whether the image and trip consents are given today',
+        ),
     }),
   ),
 })

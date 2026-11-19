@@ -55,6 +55,19 @@ export type PersonDetail = PersonListRow & {
   pesel?: string | null
   /** The import identifier (#28); returned, like the PESEL, only with `people.pesel.view`. */
   externalId?: string | null
+  /** With `people.manage`: 18 or more with a known birth date, so the person holds own consents (#309). */
+  holdsOwnConsents?: boolean
+  /** With `people.manage`: an adult participant's own consents with the date and the author (#309). */
+  ownConsents?: Record<ConsentKind, OwnConsent>
+}
+
+/** One own consent of an adult participant as `GET /api/people/persons/{id}` returns it (#309). */
+export type OwnConsent = {
+  granted: boolean
+  at: string | null
+  byPersonId: string | null
+  byName: string | null
+  byRole: string | null
 }
 
 /** `account` of the full person view (people life-cycle spec REQ-L01, DD-L02). */

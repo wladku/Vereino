@@ -22,7 +22,12 @@ import type {
   MembershipPeriod,
   RosterEntry,
 } from '../../groups/services/group-directory'
-import type { PersonDirectory, PersonDirectoryEntry, SharedContact } from '../../people/services/person-directory'
+import type {
+  ConsentFlags,
+  PersonDirectory,
+  PersonDirectoryEntry,
+  SharedContact,
+} from '../../people/services/person-directory'
 
 /** Tokens of the required modules' services (`club_core/di.ts`, `groups/di.ts`, `people/di.ts`). */
 const CLUB_CORE_DIRECTORY = 'clubCoreDirectory'
@@ -270,6 +275,23 @@ export function sharedContacts(
   ids: readonly string[],
 ): Promise<Map<string, SharedContact>> {
   return personDirectory(container).sharedContacts(scope, ids)
+}
+
+/**
+ * The `image` and `trips` consent flags of the persons among `ids` on `today` (people life-cycle spec REQ-L10, #309):
+ * two booleans per participant, for the coach of the session only — the caller decides that. An empty map when the
+ * installed `people` does not offer the contract yet (no flags are shown).
+ */
+export async function consentFlags(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+  today: CalendarDate,
+  em?: EntityManager,
+): Promise<Map<string, ConsentFlags>> {
+  const directory = personDirectory(container)
+  if (typeof directory.consentFlags !== 'function') return new Map()
+  return directory.consentFlags(scope, ids, today, em)
 }
 
 /** The club's time zone (club spec DD-37: `Europe/Warsaw` by default). */

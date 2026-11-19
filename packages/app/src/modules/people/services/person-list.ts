@@ -10,7 +10,7 @@ import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { ASSIGNABLE_ROLES } from '../data/validators'
 import { intersectIdSets, listDisplayName, type PersonListPlan } from '../lib/person-list-filters'
 import type { ClubScope } from './club-clock'
-import { searchPersonIds as searchDirectoryPersonIds } from './person-directory'
+import { effectiveConsentsOf, searchPersonIds as searchDirectoryPersonIds } from './person-directory'
 import { personFilterContract, type PersonFilterContract, type PersonFilterQuery } from './person-filter'
 
 /** Why the list cannot answer a plan: a membership filter without `groups`, or the `groups` contract failed. */
@@ -117,6 +117,13 @@ export async function resolvePlanPersonIds(
     sets.push(union(members, assigned))
   }
   if (plan.groupId) sets.push(await memberIds(contract, em, { ...base, groupId: plan.groupId }))
+  if (plan.missingConsents) {
+    // People life-cycle spec REQ-L10 (#309): participants whose `regulations` consent is not given today — an adult's
+    // own decision, else the most recent one among the active guardianships.
+    const participants = await memberIds(contract, em, { ...base, membershipRoles: ['participant'] })
+    const consents = await effectiveConsentsOf(em, scope, [...participants], today)
+    sets.push(new Set([...participants].filter((id) => !consents.get(id)?.regulations)))
+  }
   return intersectIdSets(sets)
 }
 
