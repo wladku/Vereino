@@ -68,6 +68,34 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     linkHref: '/backend/facilities/incidents',
     actions: [],
   },
+  {
+    // #287 (REQ-R18, DD-R14, J-R05): a closure or maintenance window flagged a coordinator's, coach's or booker's
+    // entries to be moved. The in-app link is per type (DD-M07), so it opens the club's places on the phone; the
+    // e-mail's button opens the place's day filtered "Do przeniesienia".
+    type: 'facilities.reschedule_needed',
+    module: 'facilities',
+    channels: ['in_app'],
+    titleKey: 'facilities.notifications.reschedule.title',
+    bodyKey: 'facilities.notifications.reschedule.body',
+    icon: 'calendar-x',
+    severity: 'warning',
+    category: 'facilities',
+    linkHref: '/club/places',
+    actions: [],
+  },
+  {
+    // #287: the administrators' copy when a rental is among the entries; B-24 "Do przeniesienia". Same keys.
+    type: 'facilities.reschedule_needed_rentals',
+    module: 'facilities',
+    channels: ['in_app'],
+    titleKey: 'facilities.notifications.reschedule.title',
+    bodyKey: 'facilities.notifications.reschedule.body',
+    icon: 'calendar-x',
+    severity: 'warning',
+    category: 'facilities',
+    linkHref: '/backend/facilities/rentals?view=to_move',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

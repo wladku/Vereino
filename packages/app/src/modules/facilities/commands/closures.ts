@@ -20,6 +20,7 @@ import { authorizeScoped, lockOccupancy, trustedScopeOf } from '@/modules/founda
 import { Closure } from '../data/entities'
 import { closureCreateSchema, closureDeleteSchema, closureUpdateSchema } from '../data/validators'
 import { closurePeriodProblem, closureWindowChanged, type RescheduleCounts } from '../lib/closures'
+import type { CauseWindow } from '../lib/reschedule-notice'
 import type { FacilitiesScope } from '../services/directory'
 import { flagUnderWindow } from '../services/reschedule'
 import {
@@ -72,16 +73,37 @@ function restoreClosure(row: Closure, before: ClosureSnapshot): void {
   row.note = before.note
 }
 
+/** A closure's window as the reschedule notices compare it (the cause's previous window, #287). */
+function closureWindowOf(snapshot: ClosureSnapshot): CauseWindow {
+  return { placeId: snapshot.placeId, start: new Date(snapshot.startsAt), end: new Date(snapshot.endsAt) }
+}
+
 async function assertPeriod(startsAt: Date, endsAt: Date): Promise<void> {
   if (closurePeriodProblem(startsAt, endsAt)) await throwFieldError('closure_period_invalid', 'endsAt')
 }
 
-type ClosureWindow = Pick<Closure, 'tenantId' | 'organizationId' | 'placeId' | 'startsAt' | 'endsAt'>
+type ClosureWindow = Pick<
+  Closure,
+  'id' | 'tenantId' | 'organizationId' | 'placeId' | 'startsAt' | 'endsAt' | 'updatedAt'
+>
 
-/** Flags the entries under the closure after the commit (`services/reschedule.ts`, DD-43). */
-function flagUnderClosure(ctx: CommandRuntimeContext, row: ClosureWindow): Promise<RescheduleCounts> {
+/**
+ * Flags the entries under the closure after the commit (`services/reschedule.ts`, DD-43) and tells the people who
+ * must move them; the closure as saved (its id and `updatedAt`) is the notices' cause (REQ-R18, #287).
+ */
+function flagUnderClosure(
+  ctx: CommandRuntimeContext,
+  row: ClosureWindow,
+  previous: CauseWindow | null,
+): Promise<RescheduleCounts> {
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
-  return flagUnderWindow(ctx.container, scope, row.placeId, { start: row.startsAt, end: row.endsAt })
+  return flagUnderWindow(
+    ctx.container,
+    scope,
+    row.placeId,
+    { start: row.startsAt, end: row.endsAt },
+    { kind: 'closure', id: row.id, updatedAt: row.updatedAt, previous },
+  )
 }
 
 /**
@@ -89,19 +111,21 @@ function flagUnderClosure(ctx: CommandRuntimeContext, row: ClosureWindow): Promi
  * replay holds the occupancy lock until then, and the flags run in transactions of their own (DD-43). A rollback
  * flags nothing.
  */
-function flagAfterReplayCommit(ctx: CommandRuntimeContext, row: Closure): void {
+function flagAfterReplayCommit(ctx: CommandRuntimeContext, row: Closure, previous: CauseWindow | null = null): void {
   const em = ctx.transactionalEm
   if (!em) throw new Error('[internal] a replay flag needs the replay transaction: ' + row.id)
   // The window as replayed: a copy, so nothing that touches the row before the commit moves it.
   const window: ClosureWindow = {
+    id: row.id,
     tenantId: row.tenantId,
     organizationId: row.organizationId,
     placeId: row.placeId,
     startsAt: row.startsAt,
     endsAt: row.endsAt,
+    updatedAt: row.updatedAt,
   }
   onTransactionLifetimeComplete(em, async (outcome) => {
-    if (outcome === 'committed') await flagUnderClosure(ctx, window)
+    if (outcome === 'committed') await flagUnderClosure(ctx, window, previous)
   })
 }
 
@@ -164,7 +188,7 @@ const createClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
       flagAfterReplayCommit(ctx, result.entity)
       return { ...result, flagged: NONE_FLAGGED }
     }
-    return { ...result, flagged: await flagUnderClosure(ctx, result.entity) }
+    return { ...result, flagged: await flagUnderClosure(ctx, result.entity, null) }
   },
   buildLog: ({ result }) =>
     facilitiesLog({
@@ -224,11 +248,12 @@ const updateClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
       result.entity,
     )
     if (!moved) return { ...result, flagged: NONE_FLAGGED }
+    const previous = closureWindowOf(before)
     if (ctx.transactionalEm) {
-      flagAfterReplayCommit(ctx, result.entity)
+      flagAfterReplayCommit(ctx, result.entity, previous)
       return { ...result, flagged: NONE_FLAGGED }
     }
-    return { ...result, flagged: await flagUnderClosure(ctx, result.entity) }
+    return { ...result, flagged: await flagUnderClosure(ctx, result.entity, previous) }
   },
   buildLog: ({ result }) =>
     facilitiesLog({
@@ -252,7 +277,9 @@ const updateClosureCommand: CommandHandler<Record<string, unknown>, ClosureComma
     row.updatedAt = new Date()
     await (ctx.transactionalEm as EntityManager).flush()
     await emitClosure(row, 'updated')
-    if (closureWindowChanged(current, row)) flagAfterReplayCommit(ctx, row)
+    if (closureWindowChanged(current, row)) {
+      flagAfterReplayCommit(ctx, row, { placeId: current.placeId, start: current.startsAt, end: current.endsAt })
+    }
   },
 }
 
