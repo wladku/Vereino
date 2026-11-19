@@ -9,6 +9,10 @@ export const errorCodes = [
   { code: 'place_has_children', status: 409, messageKey: 'club_core.errors.place_has_children' },
   // Facilities spec DD-41 (#121): windows out of order or overlapping, or seasons covering a date twice.
   { code: 'place_opening_hours_invalid', status: 422, messageKey: 'club_core.errors.place_opening_hours_invalid' },
+  // Club events spec REQ-T06 (#377): a live place with the same name and address (trimmed, case-insensitive) already
+  // exists — `details.placeId` names it; the undo of an added external place is refused once something points at it.
+  { code: 'external_place_exists', status: 409, messageKey: 'club_core.errors.external_place_exists' },
+  { code: 'place_in_use', status: 409, messageKey: 'club_core.errors.place_in_use' },
   { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
   // Club settings and institutions (#87): a known IANA zone, the 13–18 threshold, a club name, an NRB bank account.
   { code: 'timezone_unknown', status: 422, messageKey: 'club_core.errors.timezone_unknown' },

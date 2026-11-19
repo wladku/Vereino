@@ -67,6 +67,48 @@ export function bookablePlaceProblem(place: { childCount: number } | null): Book
   return place.childCount > 0 ? 'has_children' : null
 }
 
+/**
+ * The fields of an external place added from a club event form (club events spec REQ-T06, DD-T08; #377): a name of
+ * 2–160 characters and the venue's address of 5–500 (the public page builds the map link from it).
+ */
+export const EXTERNAL_PLACE_NAME_MIN = 2
+export const EXTERNAL_PLACE_NAME_MAX = 160
+export const EXTERNAL_PLACE_ADDRESS_MIN = 5
+export const EXTERNAL_PLACE_ADDRESS_MAX = 500
+
+/** The kind an added external place takes when the caller names none. */
+export const EXTERNAL_PLACE_DEFAULT_KIND: PlaceKind = 'other'
+
+/**
+ * The duplicate key of a place: its name and address, trimmed and lower-cased (an absent address counts as empty),
+ * so "Hala w Liszkach " and "hala w liszkach" at the same address are one place.
+ */
+export function externalPlaceKey(name: string, address: string | null | undefined): string {
+  return `${name.trim().toLocaleLowerCase('pl')}\n${(address ?? '').trim().toLocaleLowerCase('pl')}`
+}
+
+/**
+ * The id of the first of `places` with the same duplicate key as the candidate, else null; `places` are the live
+ * places of the club the caller narrowed (by name) beforehand.
+ */
+export function duplicateExternalPlaceId(
+  candidate: { name: string; address: string },
+  places: readonly { id: string; name: string; address: string | null }[],
+): string | null {
+  const key = externalPlaceKey(candidate.name, candidate.address)
+  return places.find((place) => externalPlaceKey(place.name, place.address) === key)?.id ?? null
+}
+
+/** The fields of an add-place draft that break their length rule (trimmed), for the dialog before it sends. */
+export function externalPlaceDraftProblems(draft: { name: string; address: string }): Array<'name' | 'address'> {
+  const problems: Array<'name' | 'address'> = []
+  const name = draft.name.trim().length
+  if (name < EXTERNAL_PLACE_NAME_MIN || name > EXTERNAL_PLACE_NAME_MAX) problems.push('name')
+  const address = draft.address.trim().length
+  if (address < EXTERNAL_PLACE_ADDRESS_MIN || address > EXTERNAL_PLACE_ADDRESS_MAX) problems.push('address')
+  return problems
+}
+
 const optionalText = (max: number) =>
   z
     .string()

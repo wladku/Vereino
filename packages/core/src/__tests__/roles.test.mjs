@@ -72,6 +72,10 @@ test('catalogueRoleFeatures returns copies keyed by auth role', () => {
   assert.ok(features.vereino_coordinator.includes('groups.manage'))
   assert.ok(features.vereino_coordinator.includes('activities.view'))
   assert.ok(features.vereino_coordinator.includes('activities.manage'))
+  // Club events spec REQ-T06 (#377): the coordinator adds an external place, never through `club_core.manage`.
+  assert.ok(features.vereino_coordinator.includes('club_core.places.add_external'))
+  assert.ok(!features.vereino_coordinator.includes('club_core.manage'))
+  assert.ok(!features.vereino_coach.includes('club_core.places.add_external'))
   assert.ok(features.vereino_coach.includes('activities.coach'))
   features.vereino_payer.push('mutated')
   assert.equal(roleCatalogue.payer.features.includes('mutated'), false)

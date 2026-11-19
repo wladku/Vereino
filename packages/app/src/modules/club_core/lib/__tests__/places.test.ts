@@ -1,7 +1,11 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  EXTERNAL_PLACE_DEFAULT_KIND,
   PLACE_KINDS,
   bookablePlaceProblem,
+  duplicateExternalPlaceId,
+  externalPlaceDraftProblems,
+  externalPlaceKey,
   decimalOrNull,
   effectiveOpeningHours,
   parsePlaceContacts,
@@ -146,5 +150,41 @@ describe('effective opening hours (DD-41)', () => {
 
   it('stops on a damaged loop', () => {
     expect(effectiveOpeningHours('loop-a', parentOf, new Map())).toBeNull()
+  })
+})
+
+describe('external place duplicates (club events spec REQ-T06, #377)', () => {
+  it('keys a place by its trimmed, lower-cased name and address', () => {
+    expect(externalPlaceKey('  Hala sportowa w Liszkach ', 'UL. Szkolna 50, Liszki ')).toBe(
+      'hala sportowa w liszkach\nul. szkolna 50, liszki',
+    )
+    expect(externalPlaceKey('ŁAWKA', null)).toBe('ławka\n')
+    expect(externalPlaceKey('Ławka', undefined)).toBe(externalPlaceKey('ławka', '  '))
+  })
+
+  it('finds the live place with the same name and address', () => {
+    const places = [
+      { id: 'other-address', name: 'Hala sportowa w Liszkach', address: 'ul. Szkolna 5, Liszki' },
+      { id: 'no-address', name: 'Hala sportowa w Liszkach', address: null },
+      { id: 'same', name: 'hala sportowa w liszkach', address: ' ul. szkolna 50, liszki' },
+    ]
+    expect(
+      duplicateExternalPlaceId({ name: 'Hala sportowa w Liszkach ', address: 'ul. Szkolna 50, Liszki' }, places),
+    ).toBe('same')
+    expect(duplicateExternalPlaceId({ name: 'Hala w Krakowie', address: 'ul. Szkolna 50, Liszki' }, places)).toBeNull()
+    expect(duplicateExternalPlaceId({ name: 'Hala', address: 'Adres 1' }, [])).toBeNull()
+  })
+
+  it('names the draft fields outside their lengths', () => {
+    expect(externalPlaceDraftProblems({ name: 'Hala', address: 'ul. Szkolna 50' })).toEqual([])
+    expect(externalPlaceDraftProblems({ name: ' H ', address: ' ul. ' })).toEqual(['name', 'address'])
+    expect(externalPlaceDraftProblems({ name: 'x'.repeat(161), address: 'y'.repeat(501) })).toEqual(['name', 'address'])
+    expect(externalPlaceDraftProblems({ name: 'x'.repeat(160), address: 'y'.repeat(500) })).toEqual([])
+    expect(externalPlaceDraftProblems({ name: 'Hala', address: 'abcd' })).toEqual(['address'])
+  })
+
+  it('defaults the kind to other', () => {
+    expect(PLACE_KINDS).toContain(EXTERNAL_PLACE_DEFAULT_KIND)
+    expect(EXTERNAL_PLACE_DEFAULT_KIND).toBe('other')
   })
 })
