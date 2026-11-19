@@ -108,7 +108,12 @@ async function backdateRoles(club: Club, personId: string, validFrom: string): P
   )
 }
 
-async function storedConsents(club: Club, table: 'people_persons' | 'people_guardianships', column: string, id: string) {
+async function storedConsents(
+  club: Club,
+  table: 'people_persons' | 'people_guardianships',
+  column: string,
+  id: string,
+) {
   return withClient(async (client) => {
     const rows = await client.query<{ consents: unknown }>(
       `select consents from ${table} where tenant_id = $1 and ${column} = $2 and deleted_at is null`,
