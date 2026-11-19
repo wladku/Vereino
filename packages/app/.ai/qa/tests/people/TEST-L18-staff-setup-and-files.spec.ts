@@ -192,7 +192,8 @@ test('TEST-L18 the staff checklist turns done row by row; a coordinator has no A
     // "Add a contract" opens the contract form with the person as the coach party.
     await page.getByTestId('club_core-staff-setup-contract-add').click()
     await expect(page).toHaveURL(new RegExp(`/backend/club/contracts/create\\?personId=${newcomer}`))
-    await expect(page.getByText('Tomasz Nowy')).toBeVisible()
+    // The picker shows the resolved name as its input's value, which `getByText` never matches.
+    await expect(page.locator('[data-crud-field-id="partyId"] input')).toHaveValue('Tomasz Nowy')
     // "Add to a group as coach" lands on the group's roster with the person and the coach role chosen.
     await page.goto(`/backend/groups/groups/${family.zaki}?tab=roster&personId=${newcomer}&role=coach`)
     await expect(page.getByTestId('groups-membership-dialog')).toBeVisible()
