@@ -3,7 +3,9 @@ import {
   ORDER_LINK_TTL_MS,
   answersOfLines,
   belowPaid,
+  campaignDeadlineLine,
   childOrderState,
+  childPaymentState,
   defaultPrintName,
   endOfDayInZone,
   normalizeEmail,
@@ -13,9 +15,11 @@ import {
   orderLinkExpiry,
   orderLinkPath,
   orderPagePath,
+  orderPickup,
   ordersOpen,
   personIdsWithEmail,
   takenNumbers,
+  todayOrderCampaigns,
   type FormProduct,
 } from '../orders'
 
@@ -210,6 +214,33 @@ describe('order window and state', () => {
     expect(childOrderState({ chargeStatus: 'partially_paid', handedOver: false })).toBe('to_pay')
     expect(childOrderState({ chargeStatus: 'paid', handedOver: false })).toBe('paid')
     expect(childOrderState({ chargeStatus: 'open', handedOver: true })).toBe('picked_up')
+  })
+
+  it('shows the payment apart from the pickup', () => {
+    expect(childPaymentState({ orderId: null, remaining: 0 })).toBe('not_ordered')
+    expect(childPaymentState({ orderId: 'o1', remaining: 1 })).toBe('to_pay')
+    expect(childPaymentState({ orderId: 'o1', remaining: 0 })).toBe('paid')
+  })
+
+  it("names a campaign's deadline line by its stage", () => {
+    expect(campaignDeadlineLine({ status: 'open', ordersOpen: true })).toBe('orders_until')
+    expect(campaignDeadlineLine({ status: 'open', ordersOpen: false })).toBe('closed_on')
+    expect(campaignDeadlineLine({ status: 'ordered', ordersOpen: false })).toBe('closed_on')
+    expect(campaignDeadlineLine({ status: 'delivered', ordersOpen: false })).toBe('ready_for_pickup')
+  })
+
+  it('tells the pickup of an order', () => {
+    expect(orderPickup('ordered', null)).toBeNull()
+    expect(orderPickup('delivered', null)).toBe('ready')
+    expect(orderPickup('delivered', '2026-12-12T16:40:00.000Z')).toBe('picked_up')
+  })
+
+  it('keeps for the Today tile only the campaigns that take orders', () => {
+    const open = { id: 'a', status: 'open' as const, ordersOpen: true }
+    const late = { id: 'b', status: 'open' as const, ordersOpen: false }
+    const closed = { id: 'c', status: 'closed' as const, ordersOpen: false }
+    expect(todayOrderCampaigns([open, late, closed])).toEqual([open])
+    expect(todayOrderCampaigns([])).toEqual([])
   })
 
   it('refuses a total below what was paid', () => {

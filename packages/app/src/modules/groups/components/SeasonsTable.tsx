@@ -1,6 +1,7 @@
 'use client'
 // `/backend/groups/seasons` — the "Seasons" tab of the groups list (club spec UI table, REQ-019): the club-wide seasons
-// of `team` groups, newest first; add, edit and delete for `groups.manage` (a season used by a group answers 409).
+// of `team` groups, newest first; add, edit and delete for `groups.manage` (a season used by a group answers 409), and
+// "Start a new season", the season rollover wizard (people life-cycle spec REQ-L08, #311).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -91,9 +92,14 @@ export function SeasonsTable() {
           extensionTableId="groups.seasons"
           actions={
             canManage ? (
-              <Button asChild>
-                <Link href={`${SEASONS_HREF}/create`}>{t('groups.seasons.actions.create')}</Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href={`${SEASONS_HREF}/rollover`}>{t('groups.rollover.title')}</Link>
+                </Button>
+                <Button asChild>
+                  <Link href={`${SEASONS_HREF}/create`}>{t('groups.seasons.actions.create')}</Link>
+                </Button>
+              </div>
             ) : null
           }
           columns={columns}
