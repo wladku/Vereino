@@ -69,6 +69,8 @@ export type ActivitySnapshot = {
   isAway?: boolean
   /** The sessions a delete removed, so its undo restores exactly them. */
   removedSessionIds?: string[]
+  /** The club event the activity is a part of (DD-T01); absent in a snapshot written before #376: none. */
+  clubEventId?: string | null
 }
 
 export type ActivityCommandResult = ActivitiesCommandResult<Activity, ActivitySnapshot> & { changes: SessionChanges }
@@ -118,7 +120,16 @@ export function activitySnapshot(row: Activity): ActivitySnapshot {
     description: row.description ?? null,
     isActive: row.isActive,
     isAway: row.isAway,
+    clubEventId: row.clubEventId ?? null,
   }
+}
+
+/**
+ * DD-T02: the activity of a club event's part changes only through its part (`activities.club_event_parts.*`), so the
+ * generic edit and delete refuse it — 409 `activity_is_club_event_part` with `clubEventId` in the body.
+ */
+async function assertNotClubEventPart(row: Activity): Promise<void> {
+  if (row.clubEventId) await activitiesErrors.throw('activity_is_club_event_part', { clubEventId: row.clubEventId })
 }
 
 function restoreActivity(row: Activity, before: ActivitySnapshot): void {
@@ -376,6 +387,7 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
     const result = await inWriteTransaction(ctx, 'activities.activities.update', async (em) => {
       const authorized = await authorizeScoped(existingSpec(activityUpdateSchema, loadActivity(ctx)), rawInput, ctx, em)
       const row = authorized.entity as Activity
+      await assertNotClubEventPart(row)
       const patch = authorized.parsed
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const before = activitySnapshot(row)
@@ -504,6 +516,7 @@ const deleteActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
     const result = await inWriteTransaction(ctx, 'activities.activities.delete', async (em) => {
       const authorized = await authorizeScoped(existingSpec(activityDeleteSchema, loadActivity(ctx)), rawInput, ctx, em)
       const row = authorized.entity as Activity
+      await assertNotClubEventPart(row)
       const clock = await clubClock(ctx.container, { tenantId: row.tenantId, organizationId: row.organizationId })
       const removedIds = await removeAllSessions(em, row, clock)
       const before = { ...activitySnapshot(row), removedSessionIds: removedIds }

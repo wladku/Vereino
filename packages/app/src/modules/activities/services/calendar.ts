@@ -41,6 +41,8 @@ import {
 } from '../lib/policy'
 import { policyRows } from '../commands/attendance'
 import { cancelRoleOf, mayEditSession } from '../commands/occurrences'
+import { partEventOf, type PartEvent } from './club-event-scope'
+import { clubEventRefs, type ClubEventRef } from './club-events'
 import { PLAN_KINDS, scheduleTarget } from '../commands/shared'
 import { TAKE_OVER_KINDS } from '../commands/substitutions'
 import {
@@ -123,6 +125,8 @@ export type CalendarOccurrenceView = {
   opponentName: string | null
   /** The invited external teams of a tournament or another event (#93). */
   invitedTeamNames: string[]
+  /** The club event a part session belongs to (club events spec REQ-T03); null for any other session. */
+  clubEvent: ClubEventRef | null
   status: OccurrenceStatus
   cancelReason: string | null
   isDetached: boolean
@@ -214,11 +218,12 @@ type Names = Awaited<ReturnType<typeof nameMaps>> & {
   activities: Awaited<ReturnType<typeof activityLabels>>
   teams: Awaited<ReturnType<typeof activityTeams>>
   substitutions: Map<string, SubstituteFor>
+  clubEvents: Map<string, ClubEventRef>
 }
 
 async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, rows: Occurrence[]): Promise<Names> {
   const activityIds = rows.map((row) => row.activityId)
-  const [names, activities, teams, substitutions] = await Promise.all([
+  const [names, activities, teams, substitutions, clubEvents] = await Promise.all([
     nameMaps(ctx.container, scope, {
       groupIds: rows.map((row) => row.groupId),
       sectionIds: rows.map((row) => row.sectionId),
@@ -232,8 +237,9 @@ async function loadNames(ctx: CommandRuntimeContext, scope: ActivitiesScope, row
       scope,
       rows.map((row) => ({ id: row.id, coachPersonId: row.coachPersonId ?? null })),
     ),
+    clubEventRefs(ctx.container, scope, activityIds),
   ])
-  return { ...names, activities, teams, substitutions }
+  return { ...names, activities, teams, substitutions, clubEvents }
 }
 
 /** The club places of the sessions; a session at a typed venue (REQ-A08) has none. */
@@ -288,6 +294,7 @@ function occurrenceView(
     substituteForName: substitution?.name ?? null,
     opponentName: teams?.opponentName ?? null,
     invitedTeamNames: teams?.invitedTeamNames ?? [],
+    clubEvent: names.clubEvents.get(row.activityId) ?? null,
     status: row.status,
     cancelReason: row.cancelReason ?? null,
     isDetached: row.isDetached,
@@ -581,12 +588,14 @@ export function sessionActionFlags(
   state: { status: OccurrenceStatus; coachPersonId: string | null; endAt: Date },
   recurring: boolean,
   now: Date,
+  part: PartEvent | null = null,
 ): SessionActionFlags {
   const target = scheduleTarget(row, row.id)
   const planned = state.status === 'planned'
   return {
     mayAssign: planned && findActingRole(grants, PLAN_KINDS, target) !== null,
-    mayEdit: planned && mayEditSession(grants, row, recurring),
+    // DD-T06: on the session of a club event's part only the event's managers edit (club events spec, #376).
+    mayEdit: planned && mayEditSession(grants, row, recurring, part),
     mayTakeOver: takeOverProblem(state, now) === null && findActingRole(grants, TAKE_OVER_KINDS, target) !== null,
   }
 }
@@ -633,7 +642,7 @@ export async function readCalendarItem(
   const row = await em.findOne(
     Occurrence,
     { id, ...scope, deletedAt: null },
-    { fields: ['id', 'tenantId', 'organizationId', 'sectionId', 'groupId', 'occurrenceDate'] },
+    { fields: ['id', 'tenantId', 'organizationId', 'sectionId', 'groupId', 'occurrenceDate', 'activityId'] },
   )
   if (!row) return null
   const grants = await scopeContract.resolve(ctx)
@@ -649,15 +658,17 @@ export async function readCalendarItem(
     if (!item) return foundationErrors.throw('scope_denied')
     const { occurrence } = item
     const recurring = Boolean((await activityOf(em, scope, occurrence.activityId))?.recurrenceRule)
+    const part = await partEventOf(em, scope, occurrence.activityId)
     item = {
       ...item,
-      mayCancel: (await cancelRoleOf(ctx.container, grants, row)) !== null,
+      mayCancel: (await cancelRoleOf(ctx.container, grants, row, em)) !== null,
       ...sessionActionFlags(
         grants,
         row,
         { status: occurrence.status, coachPersonId: occurrence.coachPersonId, endAt: new Date(occurrence.endAt) },
         recurring,
         now,
+        part,
       ),
       mayScore: showsScore(occurrence.activityType, occurrence, now),
       substitutions: await substitutionHistory(ctx.container, scope, row.id),

@@ -10,6 +10,7 @@ import {
   tokenLinkColumns,
 } from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import type { ClubEventStatus } from '../lib/club-events'
 import type { SubstitutionKind } from '../lib/substitutions'
 import type {
   ActualAttendance,
@@ -43,6 +44,11 @@ decorateAppendOnlyEntityBase({ PrimaryKey, Property })
   name: 'activities_activities_venue_address_with_name',
   expression: 'venue_address IS NULL OR venue_name IS NOT NULL',
 })
+@Check({
+  name: 'activities_activities_club_event_one_off',
+  expression: 'club_event_id IS NULL OR recurrence_rule IS NULL',
+})
+@Index({ name: 'activities_activities_org_club_event_idx', properties: ['organizationId', 'clubEventId'] })
 @Index({ name: 'activities_activities_org_group_active_idx', properties: ['organizationId', 'groupId', 'isActive'] })
 @Index({ name: 'activities_activities_org_section_idx', properties: ['organizationId', 'sectionId'] })
 @Index({ name: 'activities_activities_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
@@ -144,6 +150,155 @@ export class Activity extends ScopedEntityBase {
   /** An away trip (#96): its sessions count as trips in the coach units report. */
   @Property({ name: 'is_away', type: 'boolean', default: false })
   isAway: boolean = false
+
+  /**
+   * The club event this one-off activity is a part of (club events spec DD-T01, REQ-T02; migration T1): set only by
+   * `activities.club_event_parts.create`, only on a one-off activity (check `activities_activities_club_event_one_off`).
+   * Such an activity changes only through its part (409 `activity_is_club_event_part`, DD-T02).
+   */
+  @Property({ name: 'club_event_id', type: 'uuid', nullable: true })
+  clubEventId?: string | null
+}
+
+/**
+ * A club event (club events spec DD-T01, REQ-T01, *Data Models* → `activities_club_events`; migration T1): the shared
+ * facts of a tournament or a festival — name, public slug, description, one place (a live active leaf of the club's
+ * places, own or external; scalar id of `club_core`), the section it belongs to (null = the whole club), the public
+ * switch, the default gathering time and declaration deadline its new parts take, and a status `planned` or
+ * `cancelled` with a reason (check `activities_club_events_cancel_reason`). The slug is unique among the club's live
+ * club events (partial unique index).
+ */
+@Entity({ tableName: 'activities_club_events' })
+@Check({
+  name: 'activities_club_events_cancel_reason',
+  expression: `(status = 'cancelled') = (cancel_reason IS NOT NULL)`,
+})
+@Index({
+  name: 'activities_club_events_org_slug_unique',
+  expression:
+    'create unique index "activities_club_events_org_slug_unique" on "activities_club_events" ("organization_id", "public_slug") where deleted_at is null',
+})
+@Index({ name: 'activities_club_events_org_section_idx', properties: ['organizationId', 'sectionId'] })
+@Index({ name: 'activities_club_events_org_place_idx', properties: ['organizationId', 'placeId'] })
+@Index({ name: 'activities_club_events_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ClubEvent extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'sectionId'
+    | 'description'
+    | 'gatheringMinutesBefore'
+    | 'confirmByMinutesBefore'
+    | 'isPublic'
+    | 'status'
+    | 'cancelReason'
+
+  /** The section the event belongs to; null = a whole-club event, managed by the club administrator only. */
+  @Property({ name: 'section_id', type: 'uuid', nullable: true })
+  sectionId?: string | null
+
+  @Property({ name: 'name', type: 'text' })
+  name!: string
+
+  @Property({ name: 'public_slug', type: 'text' })
+  publicSlug!: string
+
+  @Property({ name: 'description', type: 'text', nullable: true })
+  description?: string | null
+
+  /** The one place of every part (DD-T05): a live active leaf of `club_core_places`, own or external. */
+  @Property({ name: 'place_id', type: 'uuid' })
+  placeId!: string
+
+  /** Copied to every new part (DD-43). */
+  @Property({ name: 'gathering_minutes_before', type: 'integer', nullable: true })
+  gatheringMinutesBefore?: number | null
+
+  /** Copied to every new part (REQ-A07). */
+  @Property({ name: 'confirm_by_minutes_before', type: 'integer', nullable: true })
+  confirmByMinutesBefore?: number | null
+
+  @Property({ name: 'is_public', type: 'boolean', default: false })
+  isPublic: boolean = false
+
+  /** `planned` → `cancelled`. */
+  @Property({ name: 'status', type: 'text', default: 'planned' })
+  status: ClubEventStatus = 'planned'
+
+  @Property({ name: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason?: string | null
+}
+
+/**
+ * A part of a club event (club events spec DD-T01, DD-T04, REQ-T02, *Data Models* → `activities_club_event_parts`;
+ * migration T1): what the part shows — title, category label, type, visiting teams (`groups` external team ids). A part
+ * with a group owns one one-off activity (`activity_id`, unique among live parts) whose session is the source of truth
+ * for its day, time, place, coach and status; an open part (no club group) keeps its own start, end and status here
+ * (checks `activities_club_event_parts_kind`, `activities_club_event_parts_open_times`).
+ */
+@Entity({ tableName: 'activities_club_event_parts' })
+@Check({
+  name: 'activities_club_event_parts_kind',
+  expression:
+    '(activity_id IS NOT NULL AND starts_at IS NULL AND ends_at IS NULL AND status IS NULL AND cancel_reason IS NULL) OR (activity_id IS NULL AND starts_at IS NOT NULL AND ends_at IS NOT NULL AND status IS NOT NULL)',
+})
+@Check({
+  name: 'activities_club_event_parts_open_times',
+  expression: 'starts_at IS NULL OR ends_at > starts_at',
+})
+@Index({
+  name: 'activities_club_event_parts_activity_unique',
+  expression:
+    'create unique index "activities_club_event_parts_activity_unique" on "activities_club_event_parts" ("activity_id") where deleted_at is null',
+})
+@Index({ name: 'activities_club_event_parts_org_event_idx', properties: ['organizationId', 'clubEventId'] })
+@Index({ name: 'activities_club_event_parts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ClubEventPart extends ScopedEntityBase {
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'categoryLabel'
+    | 'activityId'
+    | 'visitingTeamIds'
+    | 'startsAt'
+    | 'endsAt'
+    | 'status'
+    | 'cancelReason'
+
+  @Property({ name: 'club_event_id', type: 'uuid' })
+  clubEventId!: string
+
+  /** Copied to the activity's `name`. */
+  @Property({ name: 'title', type: 'text' })
+  title!: string
+
+  /** A text snapshot (≤ 60), proposed from the group's age category (DD-T03). */
+  @Property({ name: 'category_label', type: 'text', nullable: true })
+  categoryLabel?: string | null
+
+  /** `tournament` / `match` / `sparring` / `other`; copied to the activity's `type`. */
+  @Property({ name: 'type', type: 'text' })
+  type!: ActivityType
+
+  /** The part's one-off activity; null for an open part. */
+  @Property({ name: 'activity_id', type: 'uuid', nullable: true })
+  activityId?: string | null
+
+  /** `groups` external teams (≤ 32); copied to the activity's `invited_external_team_ids`. */
+  @Property({ name: 'visiting_team_ids', type: 'text[]', columnType: 'uuid[]', defaultRaw: `'{}'` })
+  visitingTeamIds: string[] = []
+
+  /** An open part's own start and end; null for a part with a group. */
+  @Property({ name: 'starts_at', type: Date, nullable: true })
+  startsAt?: Date | null
+
+  @Property({ name: 'ends_at', type: Date, nullable: true })
+  endsAt?: Date | null
+
+  /** An open part's own status (`planned` / `cancelled`); null for a part with a group. */
+  @Property({ name: 'status', type: 'text', nullable: true })
+  status?: ClubEventStatus | null
+
+  @Property({ name: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason?: string | null
 }
 
 /**
