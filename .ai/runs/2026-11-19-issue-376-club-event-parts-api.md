@@ -38,6 +38,14 @@
 - `yarn db:generate`: `activities: generated Migration20261119190631_activities.ts`, other modules no changes.
 - First integration runs: TEST-T01 failed at `expect(coachList.status).toBe(200)` (`{"error":"Forbidden","requiredFeatures":["activities.view"]}`) — the coach role has no `activities.view`; the test now expects 403. TEST-T02 failed at the declaration (`Expected: 200, Received: 201`) — the declare route answers 201 on a new declaration; the test now expects 201.
 
+- `yarn verify` (first full run) failed at `lint`: 13 errors — `@mikro-orm/*` imported in three route files (REQ-F16 boundary), unnecessary assertions, a spread of a class instance, template literals with non-strings. Fixed by moving the reads into `services/club-events.ts` (`findClubEvent`, `pastClubEvents`, `sessionClubEvent`) and small edits; `yarn verify --from lint` then passed.
+- Final `yarn verify`: all 18 steps passed.
+- `yarn test:integration:vereino --filter TEST-T01|TEST-T02|TEST-T04|TEST-T05|TEST-T06`: each `1 passed` (T01, T02, T04 rerun after the route refactor: `1 passed`).
+
 ## Open problems
 
+- None blocking. `ageCategoryLabel` of the options route stays null until phase 3; the `events` block check of `publicPath` joins phase 6.
+
 ## Next steps
+
+- Phase 2 (external place from the form, #E14-S02) and phase 3 (panel) build on these routes.
