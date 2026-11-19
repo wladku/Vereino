@@ -5,11 +5,31 @@
 // (`deleted_at IS NULL`) activity of a team-only type (`match`, `sparring`), active or not. A membership is used when
 // the person has a live attendance row in a live session of the group whose slot day lies within its period.
 import type { GroupUsageContract } from '../../groups/services/group-usage'
-import { Activity, Attendance, Occurrence } from '../data/entities'
+import { Activity } from '../data/entities'
 import { TEAM_ONLY_TYPES } from '../lib/activities-rules'
 
 /** The token `groups` reads (`ACTIVITIES_GROUP_USAGE` in `groups/services/group-usage.ts`). */
 export const ACTIVITIES_GROUP_USAGE = 'activities.groupUsage'
+
+/** The columns `membershipUsed` reads, typed for the Kysely query. */
+type GroupUsageDatabase = {
+  activities_attendances: {
+    id: string
+    tenant_id: string
+    organization_id: string
+    occurrence_id: string
+    person_id: string
+    deleted_at: Date | null
+  }
+  activities_occurrences: {
+    id: string
+    tenant_id: string
+    organization_id: string
+    group_id: string
+    occurrence_date: string
+    deleted_at: Date | null
+  }
+}
 
 export const groupUsage: GroupUsageContract = {
   matchActivityCount(em, { tenantId, organizationId, groupId }) {
@@ -22,21 +42,24 @@ export const groupUsage: GroupUsageContract = {
     })
   },
   async membershipUsed(em, { tenantId, organizationId, groupId, personId, from, to }) {
-    // The person's attendance rows first (indexed by person), then the group's sessions among them in the period.
-    const rows = await em.find(
-      Attendance,
-      { tenantId, organizationId, personId, deletedAt: null },
-      { fields: ['occurrenceId'] },
-    )
-    if (rows.length === 0) return false
-    const sessions = await em.count(Occurrence, {
-      tenantId,
-      organizationId,
-      groupId,
-      id: { $in: [...new Set(rows.map((row) => row.occurrenceId))] },
-      occurrenceDate: to ? { $gte: from, $lte: to } : { $gte: from },
-      deletedAt: null,
-    })
-    return sessions > 0
+    // One indexed query (#359): the person's live attendance joined to the group's live sessions in the period. Read
+    // through the EntityManager's Kysely client, which stays on the command's transaction.
+    let query = em
+      .getKysely<GroupUsageDatabase>()
+      .selectFrom('activities_attendances as a')
+      .innerJoin('activities_occurrences as o', 'o.id', 'a.occurrence_id')
+      .select('a.id')
+      .where('a.tenant_id', '=', tenantId)
+      .where('a.organization_id', '=', organizationId)
+      .where('a.person_id', '=', personId)
+      .where('a.deleted_at', 'is', null)
+      .where('o.tenant_id', '=', tenantId)
+      .where('o.organization_id', '=', organizationId)
+      .where('o.group_id', '=', groupId)
+      .where('o.deleted_at', 'is', null)
+      .where('o.occurrence_date', '>=', from)
+    if (to) query = query.where('o.occurrence_date', '<=', to)
+    const used = await query.limit(1).executeTakeFirst()
+    return used !== undefined
   },
 }
