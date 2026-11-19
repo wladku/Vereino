@@ -39,3 +39,7 @@
 ## Open problems / next steps
 
 - AC-L16 stays unticked until #383 lands the "Fits" filter that uses these ranges.
+
+## Review (PR #424)
+
+An independent reviewer read the diff (no blockers). Fixed: the hint's query key now includes the organization scope version; the OpenAPI request bodies reuse the validators (1–99 bounds). Kept, with reasons in the PR: the public tab fills the proposed ages into empty fields (Q-L26, J-L10 step 3 "she keeps it"; editable, never over a stored value); the create writes the dictionary entry directly so entry and range share one transaction, as the spec requires (the platform command runs its own transaction; the seed already writes entries this way). Left: the edit UI shows for `dictionaries.manage` without the `club_admin` grant (outside the role catalogue only; the server answers 403). After the fixes: `yarn typecheck` exit 0, eslint clean on the touched files, TEST-L23 **1 passed** (44.2 s).

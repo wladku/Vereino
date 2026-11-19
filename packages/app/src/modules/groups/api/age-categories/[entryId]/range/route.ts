@@ -6,6 +6,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse } from '@/modules/foundation'
 import type { AgeCategoryRangeResult } from '../../../../commands/age-categories'
+import { ageCategoryRangeSetSchema } from '../../../../data/validators'
 import { errorSchema } from '../../../shared'
 
 export const metadata = {
@@ -14,11 +15,8 @@ export const metadata = {
 
 const paramsSchema = z.object({ entryId: z.uuid() })
 
-const bodySchema = z.object({
-  uFrom: z.number().int(),
-  uTo: z.number().int().nullable().optional(),
-  updatedAt: z.string().nullable().optional().describe('The range’s `updatedAt` as read; omit for a first range'),
-})
+/** The body: the validator without the path's `entryId`. */
+const bodySchema = ageCategoryRangeSetSchema.omit({ entryId: true })
 
 const responseSchema = z.object({
   entryId: z.uuid(),

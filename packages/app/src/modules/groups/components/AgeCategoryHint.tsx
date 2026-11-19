@@ -5,6 +5,7 @@
 // nothing.
 import { useQuery } from '@tanstack/react-query'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { formatBirthYears } from '../lib/groups-rules'
 import { fetchAgeCategoryRanges, type AgeCategoryRangeList, type AgeCategoryRangeRow } from './AgeCategoriesTable'
 import type { Translate } from './client-helpers'
@@ -18,8 +19,9 @@ export type AgeCategoryRangeLookup = {
 
 /** The category's row (with its range and birth years) in the reference year of `seasonId`, or of today. */
 export function useAgeCategoryRange(entryId: string | null, seasonId: string | null): AgeCategoryRangeLookup {
+  const scopeVersion = useOrganizationScopeVersion()
   const query = useQuery({
-    queryKey: ['groups-age-categories', seasonId ?? '', 'lookup'],
+    queryKey: ['groups-age-categories', seasonId ?? '', 'lookup', scopeVersion],
     queryFn: () => fetchAgeCategoryRanges(seasonId),
     enabled: entryId !== null,
     staleTime: 60_000,

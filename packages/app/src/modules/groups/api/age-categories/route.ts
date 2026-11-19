@@ -10,7 +10,7 @@ import { notFound } from '@open-mercato/shared/lib/crud/errors'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
 import type { AgeCategoryCreateResult } from '../../commands/age-categories'
-import { ageCategoryListQuerySchema } from '../../data/validators'
+import { ageCategoryCreateSchema, ageCategoryListQuerySchema } from '../../data/validators'
 import { listAgeCategoryRanges } from '../../services/age-categories'
 import { clubToday } from '../../services/club-clock'
 import { errorSchema } from '../shared'
@@ -36,12 +36,6 @@ const listResponseSchema = z.object({
   items: z.array(itemSchema),
   referenceYear: z.number().int(),
   season: z.object({ id: z.uuid(), name: z.string(), startsOn: z.string() }).nullable(),
-})
-
-const createBodySchema = z.object({
-  label: z.string(),
-  uFrom: z.number().int(),
-  uTo: z.number().int().nullable().optional(),
 })
 
 const createResponseSchema = z.object({
@@ -117,7 +111,7 @@ export const openApi: OpenApiRouteDoc = {
       summary: 'Add an age category with its range',
       description:
         'Creates an entry of the club’s age category dictionary (value and label = `label`) and its "U" range in one transaction. Only the club administrator. Errors: 403 `scope_denied`, 409 `age_category_name_taken`, 422 `age_range_inverted` ("U od" above "U do"), 422 `age_categories_missing` (the club has no active age category dictionary).',
-      requestBody: { contentType: 'application/json', schema: createBodySchema },
+      requestBody: { contentType: 'application/json', schema: ageCategoryCreateSchema },
       responses: [{ status: 201, description: 'The new category and its range', schema: createResponseSchema }],
       errors: [
         { status: 400, description: 'Invalid body', schema: errorSchema },
