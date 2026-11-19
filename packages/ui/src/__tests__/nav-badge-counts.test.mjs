@@ -1,12 +1,7 @@
 // Navigation spec REQ-N03 (issue #260): the shared effect behind the menu-count widgets.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import {
-  NAV_BADGE_REFRESH_MS,
-  navBadgeCount,
-  navBadgeEffect,
-  navBadgeValue,
-} from '../admin/nav-badge-counts.ts'
+import { NAV_BADGE_REFRESH_MS, navBadgeCount, navBadgeEffect, navBadgeValue } from '../admin/nav-badge-counts.ts'
 import { fakeTimers, flush } from './admin-test-helpers.mjs'
 
 const label = (count) => `${count} waiting`

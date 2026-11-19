@@ -18,7 +18,9 @@ async function readCount(): Promise<Record<string, unknown>> {
   return { [OCCURRENCES_HREF]: body.total }
 }
 
-export default function SessionsNavBadgeWidget({ context }: InjectionWidgetComponentProps<Record<string, unknown>, Record<string, unknown>>) {
+export default function SessionsNavBadgeWidget({
+  context,
+}: InjectionWidgetComponentProps<Record<string, unknown>, Record<string, unknown>>) {
   const t = useT()
   // The shell's injection context carries the current path, so the counts are read again on every navigation.
   const path = typeof context.path === 'string' ? context.path : ''

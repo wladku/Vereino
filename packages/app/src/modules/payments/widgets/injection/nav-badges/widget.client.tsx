@@ -21,7 +21,9 @@ async function readCounts(): Promise<Record<string, unknown>> {
   return { [BANK_HREF]: body.bank?.toDecide, [ORDERS_HREF]: body.campaignsRunning }
 }
 
-export default function PaymentsNavBadgesWidget({ context }: InjectionWidgetComponentProps<Record<string, unknown>, Record<string, unknown>>) {
+export default function PaymentsNavBadgesWidget({
+  context,
+}: InjectionWidgetComponentProps<Record<string, unknown>, Record<string, unknown>>) {
   const t = useT()
   // The shell's injection context carries the current path, so the counts are read again on every navigation.
   const path = typeof context.path === 'string' ? context.path : ''
