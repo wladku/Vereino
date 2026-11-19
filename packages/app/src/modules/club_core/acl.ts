@@ -29,6 +29,14 @@ export const features = [
     module: 'club_core',
     dependsOn: ['club_core.view'],
   },
+  // Club events spec REQ-T06, DD-T08 (#377): a section coordinator adds a missing external place from the event form;
+  // the command fixes every field except name, address, kind and owner, and the place stays the administrator's to edit.
+  {
+    id: 'club_core.places.add_external',
+    title: 'Add an external place',
+    module: 'club_core',
+    dependsOn: ['club_core.view'],
+  },
 ]
 
 export default features

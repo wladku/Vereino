@@ -224,7 +224,13 @@ export async function findConflicts(
   const provider = placeIds.length > 0 ? occupancyProvider(container) : null
   if (provider) {
     try {
-      external = await provider.blockingIntervals(placeIds, { start, end }, scope)
+      // A save holds the occupancy lock in `em`'s transaction: the provider reads on that connection (#221 M1). A
+      // preview keeps the provider on its own fork, so a provider error never aborts the caller's transaction.
+      external = await provider.blockingIntervals(
+        placeIds,
+        { start, end },
+        mode === 'save' ? { tenantId: scope.tenantId, organizationId: scope.organizationId, em } : scope,
+      )
     } catch (error: unknown) {
       getTelemetryRuntime()?.reportError(error, { module: 'activities', code: 'activities.occupancy.provider_failed' })
       if (mode === 'save') {

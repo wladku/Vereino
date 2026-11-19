@@ -53,6 +53,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     features: [
       'club_core.view',
       'club_core.sections.public_content',
+      // A missing external place added from the club event form (club events spec REQ-T06, DD-T08; Q-T20 approved
+      // 2026-11-19, #377): the coordinator creates it, editing and deleting it stay `club_core.manage`.
+      'club_core.places.add_external',
       'people.view',
       // The platform does not expand `dependsOn` at check time (`aclDependencies.ts` only reports missing
       // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).

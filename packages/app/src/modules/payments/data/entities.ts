@@ -240,6 +240,7 @@ export class Charge extends ScopedEntityBase {
 @Index({ name: 'payments_payments_org_collector_idx', properties: ['organizationId', 'collectedByPersonId', 'paidOn'] })
 @Index({ name: 'payments_payments_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({ name: 'payments_payments_org_bank_transaction_idx', properties: ['organizationId', 'bankTransactionId'] })
+@Index({ name: 'payments_payments_org_cash_handover_idx', properties: ['organizationId', 'cashHandoverId'] })
 @Index({
   name: 'payments_payments_reverses_unique',
   expression:
@@ -268,6 +269,7 @@ export class Payment extends ScopedEntityBase {
     | 'collectedByPersonId'
     | 'receiptNumber'
     | 'bankTransactionId'
+    | 'cashHandoverId'
 
   @Property({ name: 'charge_id', type: 'uuid' })
   chargeId!: string
@@ -314,7 +316,10 @@ export class Payment extends ScopedEntityBase {
   @Property({ name: 'is_overpayment', type: 'boolean', default: false })
   isOverpayment: boolean = false
 
-  /** The person who took the cash in hand ("Accept cash", #114); held by them until a handover (E07-S11). */
+  /**
+   * The person who took the cash in hand ("Accept cash", #114); held by them until a handover (E07-S11, #118). Null
+   * when the cash went straight to the club: accepted by someone who settles cash (`payments.cash.settle`).
+   */
   @Property({ name: 'collected_by_person_id', type: 'uuid', nullable: true })
   collectedByPersonId?: string | null
 
@@ -328,6 +333,51 @@ export class Payment extends ScopedEntityBase {
    */
   @Property({ name: 'bank_transaction_id', type: 'uuid', nullable: true })
   bankTransactionId?: string | null
+
+  /**
+   * The handover (`payments_cash_handovers`, E07-S11, #118) in which the collector gave this cash payment to the club:
+   * set once, never cleared. A collected cash payment without it is still held by its collector.
+   */
+  @Property({ name: 'cash_handover_id', type: 'uuid', nullable: true })
+  cashHandoverId?: string | null
+}
+
+/**
+ * A cash handover (payments spec *Data Models* → `payments_cash_handovers`; REQ-033, TEST-046; issue #118, B-33): the
+ * club (the administrator, until the treasurer role of #245) received from one collector the cash of the listed
+ * payments. `RG/YYYY/MM/NNN`, sequential within the club and the month it was accepted in, under the club's advisory
+ * lock. Never edited: a payment reversed later keeps its handover, and the handover keeps its amount.
+ */
+@Entity({ tableName: 'payments_cash_handovers' })
+@Unique({ name: 'payments_cash_handovers_org_number_unique', properties: ['organizationId', 'number'] })
+@Index({
+  name: 'payments_cash_handovers_org_collector_idx',
+  properties: ['organizationId', 'collectorPersonId', 'createdAt'],
+})
+@Index({ name: 'payments_cash_handovers_org_created_idx', properties: ['organizationId', 'createdAt'] })
+@Index({ name: 'payments_cash_handovers_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class CashHandover extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'receivedByPersonId' | 'receivedByUserId'
+
+  /** `RG/YYYY/MM/NNN`. */
+  @Property({ name: 'number', type: 'text' })
+  number!: string
+
+  @Property({ name: 'collector_person_id', type: 'uuid' })
+  collectorPersonId!: string
+
+  @Property({ name: 'received_by_person_id', type: 'uuid', nullable: true })
+  receivedByPersonId?: string | null
+
+  @Property({ name: 'received_by_user_id', type: 'uuid', nullable: true })
+  receivedByUserId?: string | null
+
+  /** Grosz: the sum of the handed-over payments. */
+  @Property({ name: 'amount', type: 'int' })
+  amount!: number
+
+  @Property({ name: 'payment_ids', type: 'text[]', columnType: 'uuid[]' })
+  paymentIds!: string[]
 }
 
 /**
