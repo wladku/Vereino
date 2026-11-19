@@ -36,11 +36,24 @@ export function SessionCardFacts({
         placeExternal: occurrence.placeExternal,
       })
   const substitute = occurrence.substituteForPersonId && occurrence.coachName ? occurrence.coachName : null
+  const clubEvent = occurrence.clubEvent ?? null
   return (
     <div
       className={className ?? 'flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm'}
       data-testid="session-facts"
     >
+      {/* Club events spec REQ-T03 (M-02, M-04): the event a part belongs to, linked once its page is public. */}
+      {clubEvent ? (
+        <span className="w-full font-medium" data-testid="session-facts-club-event">
+          {clubEvent.publicPath ? (
+            <a href={clubEvent.publicPath} className="text-primary inline-flex min-h-11 items-center underline">
+              {clubEvent.name}
+            </a>
+          ) : (
+            clubEvent.name
+          )}
+        </span>
+      ) : null}
       {occurrence.activityType ? (
         <span data-testid="session-facts-type">
           <StatusBadge variant="neutral">{t(`activities.types.${occurrence.activityType}`)}</StatusBadge>

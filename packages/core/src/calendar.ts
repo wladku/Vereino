@@ -45,6 +45,12 @@ export type CalendarItemLink = {
   readonly href: string
 }
 
+/** What an item is a part of: a name, and the page it opens when there is one. */
+export type CalendarItemPartOf = {
+  readonly label: string
+  readonly href?: string | null
+}
+
 export type CalendarItem = {
   readonly id: string
   readonly title: string
@@ -65,6 +71,11 @@ export type CalendarItem = {
   readonly coach?: string | null
   /** A second line under the title — the wards the item concerns, … */
   readonly subtitle?: string | null
+  /**
+   * The larger whole the item is a part of — a club event's name on its part (club events spec REQ-T03) — linked to its
+   * public page when it has one.
+   */
+  readonly partOf?: CalendarItemPartOf | null
   /**
    * Short lines the module words in full under the details — the declaration deadline ("Confirm by Thu 13.11, 12:00",
    * groups and activities parity spec REQ-A07) or its passing with the hint to write to the coach.
