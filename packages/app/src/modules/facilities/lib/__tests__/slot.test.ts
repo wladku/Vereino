@@ -1,5 +1,13 @@
 import { describe, expect, it } from '@jest/globals'
-import { closingAfter, defaultSlotEnd, overlappingRequests, rentalSlotEnd, slotKinds, zoneAtMinute } from '../slot'
+import {
+  closingAfter,
+  defaultSlotEnd,
+  overlappingRequests,
+  rentalSlotEnd,
+  selectedSlotKind,
+  slotKinds,
+  zoneAtMinute,
+} from '../slot'
 
 describe('slotKinds', () => {
   it('offers every kind in the DD-R04 order', () => {
@@ -18,6 +26,23 @@ describe('slotKinds', () => {
 
   it('offers the rental alone to an attendant', () => {
     expect(slotKinds({ rentals: true, groupEvents: false, ownGroups: 0, bookings: false })).toEqual(['rental'])
+  })
+})
+
+describe('selectedSlotKind', () => {
+  it('preselects the first offered kind until the user picks one', () => {
+    expect(selectedSlotKind(['general'], null)).toBe('general')
+    // A coach's groups loaded after the dialog opened: the preselection follows the offered kinds (#366).
+    expect(selectedSlotKind(['group', 'general'], null)).toBe('group')
+  })
+
+  it("keeps the user's pick while it is offered", () => {
+    expect(selectedSlotKind(['group', 'general'], 'general')).toBe('general')
+    expect(selectedSlotKind(['general'], 'group')).toBe('general')
+  })
+
+  it('falls back to the rental kind when nothing is offered', () => {
+    expect(selectedSlotKind([], null)).toBe('rental')
   })
 })
 
