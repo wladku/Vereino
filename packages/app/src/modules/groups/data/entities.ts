@@ -176,3 +176,29 @@ export class ExternalTeam extends ScopedEntityBase {
   @Property({ name: 'notes', type: 'text', nullable: true })
   notes?: string | null
 }
+
+/**
+ * The PZPN "U" range of one age category (people life-cycle spec REQ-L16, DD-L17; #384): a Vereino row keyed by the
+ * `dictionaries` entry of the club's age category dictionary (`entry_id`, scalar, no cross-module relation), so a
+ * renamed or reordered category keeps its range. `u_to` null is open (Senior). One live row per entry.
+ */
+@Entity({ tableName: 'groups_age_category_ranges' })
+@Index({ name: 'groups_age_category_ranges_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({
+  name: 'groups_age_category_ranges_org_entry_unique',
+  expression:
+    'create unique index "groups_age_category_ranges_org_entry_unique" on "groups_age_category_ranges" ("organization_id", "entry_id") where deleted_at is null',
+})
+export class AgeCategoryRange extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'uTo'
+
+  @Property({ name: 'entry_id', type: 'uuid' })
+  entryId!: string
+
+  @Property({ name: 'u_from', type: 'smallint' })
+  uFrom!: number
+
+  /** Not below `u_from`; null = open. */
+  @Property({ name: 'u_to', type: 'smallint', nullable: true })
+  uTo?: number | null
+}

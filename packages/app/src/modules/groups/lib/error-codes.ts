@@ -42,6 +42,10 @@ export const errorCodes = [
     messageKey: 'groups.errors.rollover_record_action_duplicate',
   },
   { code: 'rollover_copy_invalid', status: 422, messageKey: 'groups.errors.rollover_copy_invalid' },
+  // The "U" ranges of the age categories (people life-cycle spec REQ-L16, *API* rows; #384).
+  { code: 'age_range_inverted', status: 422, messageKey: 'groups.errors.age_range_inverted' },
+  { code: 'age_category_name_taken', status: 409, messageKey: 'groups.errors.age_category_name_taken' },
+  { code: 'age_categories_missing', status: 422, messageKey: 'groups.errors.age_categories_missing' },
 ] as const satisfies ErrorCodeTable
 
 export type GroupsErrorCode = (typeof errorCodes)[number]['code']

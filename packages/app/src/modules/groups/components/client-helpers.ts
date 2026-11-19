@@ -22,6 +22,7 @@ export type TableColumns<T extends object> = DataTableProps<T>['columns']
 export const GROUPS_HREF = '/backend/groups/groups'
 export const SEASONS_HREF = '/backend/groups/seasons'
 export const EXTERNAL_TEAMS_HREF = '/backend/groups/external-teams'
+export const AGE_CATEGORIES_HREF = '/backend/groups/age-categories'
 /** The platform dictionaries page, where the club administrator edits the age categories (REQ-019, #266). */
 export const DICTIONARIES_HREF = '/backend/config/dictionaries'
 
