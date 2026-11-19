@@ -163,6 +163,17 @@ describe('groups error codes', () => {
       ['season_dates_inverted', 422],
       ['season_name_taken', 409],
       ['season_in_use', 409],
+      ['rollover_plan_stale', 409],
+      ['rollover_conflicts', 409],
+      ['rollover_plan_empty', 422],
+      ['rollover_same_season', 422],
+      ['rollover_season_overlap', 422],
+      ['rollover_group_unknown', 422],
+      ['rollover_group_action_duplicate', 422],
+      ['rollover_name_required', 422],
+      ['rollover_record_unknown', 422],
+      ['rollover_record_action_duplicate', 422],
+      ['rollover_copy_invalid', 422],
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`groups.errors.${entry.code}`)
   })

@@ -125,6 +125,12 @@ export const orderFormSchema = z.object({
       chargeId: z.uuid(),
       state: stateSchema,
       updatedAt: z.string().describe('The lock token of a change or a cancellation'),
+      submittedAt: z.string().describe('When the order was placed'),
+      handedOverAt: z.string().nullable().describe('When the coach handed the kit over; null until then'),
+      handedOverBy: z
+        .object({ firstName: z.string(), lastName: z.string() })
+        .nullable()
+        .describe('Who handed the kit over; null until then'),
     }),
   ),
   contact: z.object({ email: z.string().nullable(), phone: z.string().nullable() }),

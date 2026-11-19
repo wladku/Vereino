@@ -24,7 +24,7 @@ import { OrderCampaign, OrderLink } from '../data/entities'
 import type { OrderLinkParams } from '../emails/templates'
 import type { CampaignStatus } from '../lib/order-campaigns'
 import { MAX_ORDER_LINKS_PER_HOUR, orderLinkExpiry, ordersOpen, personIdsWithEmail } from '../lib/orders'
-import { activeGuardians, clubClock, type PaymentsScope } from './directory'
+import { activeGuardians, clubClock, findPersons, type PaymentsScope } from './directory'
 import { campaignParticipants } from './order-campaigns'
 import { orderFormView, type OrderFormView } from './orders'
 
@@ -205,7 +205,12 @@ export async function linkPersonIds(container: AwilixContainer, link: OrderLink)
   ]
 }
 
-export type OrderLinkPage = OrderFormView & { club: { name: string }; expiresAt: string }
+export type OrderLinkPage = OrderFormView & {
+  club: { name: string }
+  expiresAt: string
+  /** The link's guardian, named on the page so that it is not passed on (REQ-C11). */
+  guardian: { firstName: string; lastName: string }
+}
 
 /**
  * M-19: the order form of a personal link; null for an unknown, malformed or deleted token or a campaign that no
@@ -221,9 +226,16 @@ export async function readOrderLink(container: AwilixContainer, rawToken: string
   if (!campaign) return null
   if (campaign.status === 'completed') await paymentsErrors.throw('order_campaign_completed')
   const personIds = await linkPersonIds(container, view.link)
-  const [form, club] = await Promise.all([
+  const [form, club, guardians] = await Promise.all([
     orderFormView(container, scope, campaign, view.link.guardianPersonId, personIds),
     contactResolver(container).club({ container, ...scope, scope: [], em }),
+    findPersons(container, scope, [view.link.guardianPersonId], em),
   ])
-  return { ...form, club: { name: club.name }, expiresAt: view.link.expiresAt.toISOString() }
+  const guardian = guardians.get(view.link.guardianPersonId)
+  return {
+    ...form,
+    club: { name: club.name },
+    expiresAt: view.link.expiresAt.toISOString(),
+    guardian: { firstName: guardian?.firstName ?? '', lastName: guardian?.lastName ?? '' },
+  }
 }

@@ -12,7 +12,9 @@ import {
   FULL_RATE_CHILDREN,
   MAX_AMOUNT,
   MAX_DUE_DAY,
+  MAX_GENERATION_DAY,
   MIN_DUE_DAY,
+  MIN_GENERATION_DAY,
   isBillingPeriod,
 } from '../lib/payments-rules'
 import {
@@ -170,6 +172,8 @@ export const chargeListQuerySchema = z.object({
   payee: z.enum(PAYEES).optional(),
   /** Charges with a payment of this method that was not reversed (the "Cash payments" perspective). */
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
+  /** Charges holding an online overpayment not refunded yet (the "To refund" perspective, DD-C10). */
+  toRefund: flagSchema.optional(),
   /** Informational: the B-21 perspective the client shows; the filters above do the work. */
   perspective: z.enum(CHARGE_PERSPECTIVES).optional(),
 })
@@ -322,12 +326,26 @@ export const paymentRefundSchema = z
   })
   .strict()
 
+// --- Scheduled jobs (payments parity spec DD-C08, #301) ---
+
+/** The input of the four job commands: an optional clock for the operator CLI and the integration tests. */
+export const paymentsJobSchema = z.object({ now: z.iso.datetime({ offset: true }).optional() }).strict()
+
 // --- Settings ---
 
 export const paymentsSettingsUpdateSchema = z
   .object({
     coachFeeAccess: z.enum(COACH_FEE_ACCESS).optional(),
     autoBookBankMatches: z.boolean().optional(),
+    // "Automatic charges and reminders" (B-20; payments parity spec DD-C08, DD-C09; #301).
+    autoGenerateCharges: z.boolean().optional(),
+    generationDay: z
+      .number()
+      .int({ message: 'payments.settings.validation.generationDay' })
+      .min(MIN_GENERATION_DAY, { message: 'payments.settings.validation.generationDay' })
+      .max(MAX_GENERATION_DAY, { message: 'payments.settings.validation.generationDay' })
+      .optional(),
+    overdueReminders: z.boolean().optional(),
   })
   .strict()
 

@@ -207,7 +207,15 @@ test('E07-S08 kit order form, stages, price edits and the supplier summary', asy
     expect(removal.body?.code).toBe('order_product_in_use')
 
     // KPIs, "No order" and the reminder count Ola, the child without an order.
-    expect(detail.kpis).toEqual({ orders: 2, children: 3, missing: 1, value: 19500, paid: 0, handedOver: 0 })
+    expect(detail.kpis).toEqual({
+      orders: 2,
+      children: 3,
+      missing: 1,
+      value: 19500,
+      paid: 0,
+      handedOver: 0,
+      notHandedOver: 2,
+    })
     const missing = await call<{ items: { personId: string; groupName: string }[] }>(
       request,
       'GET',
@@ -332,7 +340,7 @@ test('E07-S08 kit order form, stages, price edits and the supplier summary', asy
 
     // "Close orders" counts the children without an order.
     await page.goto(`/backend/payments/orders/${secondId}`)
-    await expect(page.getByTestId('order-campaign-kpi-orders')).toContainText(/1 (of|z) 3/)
+    await expect(page.getByTestId('order-campaign-kpi-orders')).toContainText('1 / 3')
     await page.getByTestId('order-campaign-next').click()
     await expect(page.getByText(/Children without an order: 2|Dzieci bez zamówienia: 2/)).toBeVisible()
     await page

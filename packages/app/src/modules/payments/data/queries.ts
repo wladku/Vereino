@@ -18,6 +18,25 @@ export async function ensurePaymentsSettingsRow(
   )
 }
 
+/**
+ * The class name of migration B of the payments parity spec (#301). Its row in `mikro_orm_migrations_payments` dates
+ * the arrival of the automatic generation: the first automatic month is the next one (DD-C08, Q-C07).
+ */
+export const AUTOMATIC_GENERATION_MIGRATION = 'Migration20261118201338'
+
+/**
+ * When migration B was applied, or null when its row is missing. One deployment-wide row, not tenant data; the name
+ * is matched as a prefix because the stored name may carry the module suffix of the file.
+ */
+export async function automaticGenerationSince(em: EntityManager): Promise<Date | null> {
+  const rows = await em.execute<{ executed_at: Date | string | null }[]>(
+    'select executed_at from mikro_orm_migrations_payments where name like ? order by executed_at asc limit 1',
+    [`${AUTOMATIC_GENERATION_MIGRATION}%`],
+  )
+  const value = rows[0]?.executed_at
+  return value ? new Date(value) : null
+}
+
 /** The advisory-lock key of one club's charge generation (also taken by its undo). */
 export function generationLockKey(organizationId: string): string {
   return `payments.charges.generate:${organizationId}`
@@ -54,6 +73,31 @@ export async function chargeIdsWithPayment(
            where r.reverses_payment_id = p.id and r.organization_id = p.organization_id and r.deleted_at is null
         )`,
     [scope.tenantId, scope.organizationId, method],
+  )
+  return rows.map((row) => row.charge_id)
+}
+
+/**
+ * The live charges of the organization holding an online overpayment "to refund" (Q-049) that its refunds have not
+ * covered yet (the B-21 "To refund" perspective and `meta.toRefundCount`, payments parity DD-C10, #296). Distinct
+ * charge ids; overpayments are rare.
+ */
+export async function chargeIdsToRefund(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+): Promise<string[]> {
+  const rows = await em.execute<{ charge_id: string }[]>(
+    `select distinct p.charge_id
+       from payments_payments p
+       join payments_charges c
+         on c.id = p.charge_id and c.organization_id = p.organization_id and c.deleted_at is null
+      where p.tenant_id = ? and p.organization_id = ? and p.method = 'online' and p.is_overpayment = true
+        and p.reverses_payment_id is null and p.deleted_at is null
+        and p.amount + coalesce((
+          select sum(r.amount) from payments_payments r
+           where r.reverses_payment_id = p.id and r.organization_id = p.organization_id and r.deleted_at is null
+        ), 0) > 0`,
+    [scope.tenantId, scope.organizationId],
   )
   return rows.map((row) => row.charge_id)
 }

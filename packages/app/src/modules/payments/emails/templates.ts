@@ -292,6 +292,8 @@ const chargeReminderParams = z
       .min(1)
       .max(50),
     total: z.number().int(),
+    /** The payer's code `GW-XXXX` for the transfer title; the automatic reminder sends it (#301). */
+    payerCode: z.string().min(1).max(20).nullable().optional(),
   })
   .strict()
 
@@ -317,17 +319,24 @@ function chargeReminderCopy(t: TranslateWithFallbackFn, params: ChargeReminderPa
       'payments.email.chargeReminder.action',
       'Pay online in the club app, by transfer with your payer code, or in cash to the coach.',
     ),
+    payerCode: params.payerCode
+      ? t('payments.email.chargeReminder.payerCode', 'Your payer code for the transfer title: {code}', {
+          code: params.payerCode,
+        })
+      : null,
   }
 }
 
 /**
  * `payments.charge_reminder` ("Send reminder" of M-18; REQ-033, #117): the payer of a child's overdue charges of the
- * coach's group gets their list and total. `optOut: 'never'`: a club's own service message about the payer's money,
- * sent only on the coach's request. The descriptions travel in the encrypted params.
+ * coach's group gets their list and total. Since #301 (payments parity spec DD-C09) the daily overdue reminder sends
+ * it too, for all the payer's overdue charges with the payer code, by e-mail and as the in-app notice
+ * `payments.charge_overdue` (the coach's reminder stays e-mail only). `optOut: 'never'`: a club's own service message
+ * about the payer's money. The descriptions travel in the encrypted params.
  */
 export const chargeReminderTemplate = defineEmailTemplate<ChargeReminderParams>({
   id: 'payments.charge_reminder',
-  notificationType: 'payments.charge_reminder',
+  notificationType: 'payments.charge_overdue',
   optOut: 'never',
   params: chargeReminderParams,
   subject: (t, params) => chargeReminderCopy(t, params).subject,
@@ -344,11 +353,14 @@ export const chargeReminderTemplate = defineEmailTemplate<ChargeReminderParams>(
         ...text.lines.map((line, index) => h('li', { key: String(index) }, line)),
       ),
       h('p', { style: { margin: '0' } }, text.action),
+      text.payerCode ? h('p', { style: { margin: '12px 0 0', fontWeight: 600 } }, text.payerCode) : null,
     )
   },
   text: (t, params) => {
     const text = chargeReminderCopy(t, params)
-    return [text.lead, ...text.lines.map((line) => `- ${line}`), '', text.action].join('\n')
+    return [text.lead, ...text.lines.map((line) => `- ${line}`), '', text.action, text.payerCode]
+      .filter((line): line is string => line !== null)
+      .join('\n')
   },
   link: () => '/club/payments',
 })

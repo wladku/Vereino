@@ -3,8 +3,8 @@
 //   concurrent assignment for the same person wins and is read back; a code another payer holds is drawn again);
 // - the payer's Today summary (open total, nearest due date, "Everything is paid", "The guardian pays", and since
 //   #298 "{child}: paid by {first name}" when another guardian is a ward's primary payer, DD-C06);
-// - the transfer instructions of M-08: the club's account (`club_core`'s settings) and name, and the payer code;
-// - the B-01 widgets "Overdue" (remaining total, charges, families) and "Charges without a payer".
+// - the transfer instructions of M-08: the club's account (`club_core`'s settings) and name, and the payer code.
+// The B-01 widgets' read moved to `services/dashboard.ts` (#297).
 // Routes reach the ORM only through services (REQ-F16).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { UniqueConstraintViolationException } from '@mikro-orm/core'
@@ -15,7 +15,6 @@ import { OPEN_CHARGE_STATUSES, amountDueOf, remainingOf } from '../lib/charge-le
 import {
   generatePayerCode,
   otherPayersOf,
-  overdueSummary,
   ownPaymentsSummary,
   type OtherPayer,
   type OwnPaymentsSummary,
@@ -186,39 +185,5 @@ export async function transferInstructions(
     bankAccount: snapshot.publicSettings.bankAccount,
     recipient: snapshot.values.shortName ?? clubName,
     payerCode,
-  }
-}
-
-export type PaymentsDashboard = {
-  overdue: { total: number; charges: number; families: number }
-  withoutPayer: { charges: number }
-}
-
-/** The B-01 widgets "Overdue" and "Charges without a payer" for the club. */
-export async function paymentsDashboard(container: AwilixContainer, scope: PaymentsScope): Promise<PaymentsDashboard> {
-  const em = freshEm(container)
-  const { today } = await clubClock(container, scope)
-  const open = { ...scope, deletedAt: null, status: { $in: [...OPEN_CHARGE_STATUSES] } }
-  const [overdueRows, withoutPayer] = await Promise.all([
-    em.find(
-      Charge,
-      { ...open, dueDate: { $lt: today } },
-      { fields: ['id', 'amount', 'discountAmount', 'payerPersonId'] },
-    ),
-    em.count(Charge, { ...open, payerMissing: true }),
-  ])
-  const paid = await paidTotals(
-    container,
-    scope,
-    overdueRows.map((row) => row.id),
-  )
-  return {
-    overdue: overdueSummary(
-      overdueRows.map((row) => ({
-        payerPersonId: row.payerPersonId ?? null,
-        remaining: remainingOf(amountDueOf(row), paid.get(row.id) ?? 0),
-      })),
-    ),
-    withoutPayer: { charges: withoutPayer },
   }
 }

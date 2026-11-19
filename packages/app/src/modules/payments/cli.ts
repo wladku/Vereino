@@ -1,12 +1,16 @@
 // Operator commands of `payments` (`yarn mercato payments <command>`). `reconcile-checkouts` is the sweep of the
 // payments spec *Events* row `payments:reconcile-checkouts` (DD-42; #110): late captures are booked, `created`
-// checkouts older than 24 hours expire. The owner's default of 2026-11-06 on #110 ships it as a command run by hand or
-// by cron; the scheduled job comes later, like `payments:generate-charges` (#108). `close-order-campaigns` is the
-// `payments:close-order-campaigns` sweep of order campaigns (#115), shipped the same way.
+// checkouts older than 24 hours expire. `close-order-campaigns` is the `payments:close-order-campaigns` sweep of order
+// campaigns (#115). Both shipped as commands run by hand; since #301 (payments parity spec DD-C08) the scheduler runs
+// them every 15 minutes, and the two commands stay for operators. `set-up-club` registers the club's four schedules
+// (the backfill for a club created before them) and `run-job` runs one scheduled job now, optionally with `--now`.
 import { parseArgs } from 'node:util'
+import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { ModuleCli } from '@open-mercato/shared/modules/registry'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { jobCommandContext } from '@/modules/foundation'
 import { reconcileCheckouts } from './services/checkout'
+import { setUpClubPayments } from './services/club-setup'
 import { closeOrderCampaigns } from './services/order-campaigns'
 
 /** `payments reconcile-checkouts --tenant <id> --org <id>`: one run of the sweep for one club. */
@@ -57,6 +61,68 @@ const closeCampaigns: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [reconcile, closeCampaigns]
+function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
+  const options = Object.fromEntries(names.map((name) => [name, { type: 'string' as const }]))
+  const { values } = parseArgs({ args: argv, options, strict: false, allowPositionals: true })
+  return Object.fromEntries(names.map((name) => [name, typeof values[name] === 'string' ? values[name] : undefined]))
+}
+
+/**
+ * `payments set-up-club --tenant <id> --org <id>`: re-runs the club's `payments` setup — the four schedules — and
+ * prints what it registered. Idempotent (an upsert of each schedule); the backfill for a club created before #301.
+ */
+const setUpClub: ModuleCli = {
+  command: 'set-up-club',
+  async run(argv) {
+    const { tenant, org } = readOptions(argv, ['tenant', 'org'])
+    if (!tenant || !org) {
+      process.stderr.write('Usage: mercato payments set-up-club --tenant <tenantId> --org <organizationId>\n')
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const result = await setUpClubPayments(container, { tenantId: tenant, organizationId: org })
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+  },
+}
+
+/** The job command each scheduled job dispatches (payments parity spec DD-C08). */
+const JOB_COMMANDS: Readonly<Record<string, string>> = {
+  'generate-charges': 'payments.charges.generate_due',
+  'overdue-reminders': 'payments.charges.remind_overdue',
+  'reconcile-checkouts': 'payments.checkouts.reconcile',
+  'close-order-campaigns': 'payments.order_campaigns.close_due',
+}
+
+/**
+ * `payments run-job --job <name> --tenant <id> --org <id> [--now <ISO instant>]`: runs one scheduled job now — the
+ * same job command its worker dispatches — and prints its result. `--now` moves the clock (an operator replaying a
+ * missed day; the integration tests drive the generation day and the reminder cadence through it).
+ */
+const runJob: ModuleCli = {
+  command: 'run-job',
+  async run(argv) {
+    const { job, tenant, org, now } = readOptions(argv, ['job', 'tenant', 'org', 'now'])
+    const commandId = job ? JOB_COMMANDS[job] : undefined
+    if (!commandId || !tenant || !org) {
+      process.stderr.write(
+        `Usage: mercato payments run-job --job <${Object.keys(JOB_COMMANDS).join('|')}> --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n`,
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, { job: { now: Date } } & Record<string, unknown>>(commandId, {
+      input: now ? { now } : {},
+      ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }),
+    })
+    const { job: run, ...rest } = result
+    process.stdout.write(`${JSON.stringify({ now: run.now.toISOString(), ...rest })}\n`)
+  },
+}
+
+const commands: ModuleCli[] = [reconcile, closeCampaigns, setUpClub, runJob]
 
 export default commands

@@ -1,7 +1,8 @@
 // `GET /api/payments/order-campaigns/{id}/summary` — the supplier summary (payments spec API row `/summary`; REQ-032,
-// issue #115, B-32 "Supplier summary"): units per product and size (set items counted under their products) and the
-// print rows (print name, number, group, sizes) of the submitted orders, as JSON or (`format=csv`) as a CSV file. No
-// contact details and no full names (Q1 on #115, data minimisation).
+// issue #115, B-32 "Supplier summary"): units per product and size (set items counted under their products, with how
+// many came in a set) and the print rows (print name, number, group, sizes) of the submitted orders, as JSON or
+// (`format=csv`) as a CSV file. The JSON names each print's child for the screen (payments parity REQ-C05, #293); the
+// CSV carries no full names (Q-C11) and neither carries contact details (Q1 on #115, data minimisation).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
@@ -18,10 +19,20 @@ export const metadata = {
 
 const summarySchema = z.object({
   units: z.array(
-    z.object({ productId: z.uuid(), productName: z.string(), size: z.string().nullable(), quantity: z.number().int() }),
+    z.object({
+      productId: z.uuid(),
+      productName: z.string(),
+      size: z.string().nullable(),
+      quantity: z.number().int(),
+      inSets: z.number().int().describe('Of the quantity, the units ordered in a set'),
+    }),
   ),
   prints: z.array(
     z.object({
+      participant: z
+        .object({ firstName: z.string(), lastName: z.string() })
+        .nullable()
+        .describe('The child (on screen only; the CSV leaves it out)'),
       printName: z.string().nullable(),
       printNumber: z.number().int().nullable(),
       groupName: z.string().nullable(),

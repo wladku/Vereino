@@ -147,6 +147,8 @@ export class Charge extends ScopedEntityBase {
     | 'payerInstitutionId'
     | 'payeeInstitutionId'
     | 'payerLabel'
+    | 'lastRemindedAt'
+    | 'reminderCount'
 
   @Property({ name: 'source_type', type: 'text' })
   sourceType!: ChargeSourceType
@@ -212,6 +214,14 @@ export class Charge extends ScopedEntityBase {
 
   @Property({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason?: string | null
+
+  /** When the payer was last reminded of this overdue charge; written only by `payments.charges.remind_overdue` (#301). */
+  @Property({ name: 'last_reminded_at', type: Date, nullable: true })
+  lastRemindedAt?: Date | null
+
+  /** How many overdue reminders went out for this charge: 0–4 (payments parity spec DD-C09; #301). */
+  @Property({ name: 'reminder_count', type: 'int', default: 0 })
+  reminderCount: number = 0
 }
 
 /**
@@ -426,13 +436,31 @@ export class ChargeGeneration extends ScopedEntityBase {
 @Unique({ name: 'payments_settings_organization_unique', properties: ['organizationId'] })
 @Index({ name: 'payments_settings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class PaymentsSettings extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'autoBookBankMatches' | 'coachFeeAccess'
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'autoBookBankMatches'
+    | 'coachFeeAccess'
+    | 'autoGenerateCharges'
+    | 'generationDay'
+    | 'overdueReminders'
 
   @Property({ name: 'auto_book_bank_matches', type: 'boolean', default: true })
   autoBookBankMatches: boolean = true
 
   @Property({ name: 'coach_fee_access', type: 'text', default: 'collect' })
   coachFeeAccess: CoachFeeAccess = 'collect'
+
+  /** "Automatic charges and reminders" (B-20; payments parity spec DD-C08, #301): the daily job generates the month. */
+  @Property({ name: 'auto_generate_charges', type: 'boolean', default: true })
+  autoGenerateCharges: boolean = true
+
+  /** The day of the month (1–28) from which the daily job generates the current month (DD-C08). */
+  @Property({ name: 'generation_day', type: 'int', default: 1 })
+  generationDay: number = 1
+
+  /** Whether the daily job reminds payers of overdue charges (DD-C09). */
+  @Property({ name: 'overdue_reminders', type: 'boolean', default: true })
+  overdueReminders: boolean = true
 }
 
 /**

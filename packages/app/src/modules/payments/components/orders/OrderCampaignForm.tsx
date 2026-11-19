@@ -4,8 +4,11 @@
 // all", the orders and payment deadlines, supplier), personalisation (print name and number, a notes question) and
 // the products (children's and adult sizes and prices, "answer required", at most one set of at least two products).
 // A new form starts blank, from the "Academy kit" template or as a copy of an earlier campaign. "Save draft" keeps it
-// a draft; "Save and open collection" opens it and lands on the campaign page with the Messenger text.
+// a draft; "Save and open collection" opens it and lands on the campaign page with the Messenger text. Editing an
+// open campaign with orders says how many there are; a campaign past `open` explains the lock and links back to it
+// instead of a bare error (payments parity REQ-C05, #293).
 import * as React from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -14,12 +17,13 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   CAMPAIGN_DESCRIPTION_MAX,
   CAMPAIGN_NAME_MAX,
@@ -37,6 +41,7 @@ import {
   campaignHref,
   campaignOptions,
   parseSizes,
+  pluralKey,
   sectionGroups,
   sectionOptions,
   type CampaignDetail,
@@ -746,6 +751,7 @@ export function OrderCampaignCreateForm() {
 
 export function OrderCampaignEditForm({ id }: { id: string }) {
   const t = useT()
+  const locale = useLocale()
   const today = useClubToday()
   const router = useRouter()
   const { fields, groups } = useCampaignFields(t)
@@ -771,32 +777,59 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
   }
   if (query.error) return <ErrorMessage label={errorMessage(query.error, t('payments.orders.errors.load'))} />
   if (detail && !isCampaignEditable(detail.status)) {
-    return <ErrorMessage label={t('payments.errors.order_campaign_not_editable')} />
+    return (
+      <Alert status="warning" data-testid="order-campaign-locked">
+        <div className="flex flex-col items-start gap-2">
+          <strong>{t('payments.orders.edit.lockedTitle')}</strong>
+          <span>{t('payments.orders.edit.lockedText')}</span>
+          <Link
+            href={campaignHref(id)}
+            className="underline underline-offset-2"
+            data-testid="order-campaign-locked-back"
+          >
+            {t('payments.orders.edit.backToCampaign')}
+          </Link>
+        </div>
+      </Alert>
+    )
   }
+  const collecting = detail?.status === 'open' && detail.kpis.orders > 0 ? detail.kpis.orders : 0
 
   return (
-    <CrudForm<CampaignFormValues>
-      key={detail ? detail.updatedAt : 'loading'}
-      formId={FORM_ID}
-      title={t('payments.orders.edit.title')}
-      titleHeadingLevel={1}
-      backHref={campaignHref(id)}
-      cancelHref={campaignHref(id)}
-      entityId={ENTITY_ID}
-      fields={fields}
-      groups={groups}
-      isLoading={query.isLoading}
-      loadingMessage={t('payments.orders.loading')}
-      initialValues={detail ? { ...detailValues(detail, false, today), id } : blankValues(today)}
-      submitLabel={detail?.status === 'draft' ? t('payments.orders.actions.saveDraft') : t('payments.common.save')}
-      extraActions={detail?.status === 'draft' ? <OpenCollectionButton t={t} /> : undefined}
-      onSubmit={async (values, context) => {
-        const open = context?.submitter?.value === 'open'
-        // CrudForm adds the optimistic-lock header from `initialValues.updatedAt`.
-        await updateCrud<SaveResponse>('payments/order-campaigns', { id, ...toPayload(values, t, open) })
-        flash(t(open ? 'payments.orders.flash.opened' : 'payments.orders.flash.saved'), 'success')
-        afterSave(router, id, open)
-      }}
-    />
+    <div className="flex flex-col gap-4">
+      {collecting > 0 ? (
+        <Alert status="information" data-testid="order-campaign-collecting">
+          <div className="flex flex-col gap-1">
+            <strong>
+              {t(`payments.orders.edit.collectingTitle.${pluralKey(locale, collecting)}`, { count: collecting })}
+            </strong>
+            <span>{t('payments.orders.edit.collectingText')}</span>
+          </div>
+        </Alert>
+      ) : null}
+      <CrudForm<CampaignFormValues>
+        key={detail ? detail.updatedAt : 'loading'}
+        formId={FORM_ID}
+        title={t('payments.orders.edit.title')}
+        titleHeadingLevel={1}
+        backHref={campaignHref(id)}
+        cancelHref={campaignHref(id)}
+        entityId={ENTITY_ID}
+        fields={fields}
+        groups={groups}
+        isLoading={query.isLoading}
+        loadingMessage={t('payments.orders.loading')}
+        initialValues={detail ? { ...detailValues(detail, false, today), id } : blankValues(today)}
+        submitLabel={detail?.status === 'draft' ? t('payments.orders.actions.saveDraft') : t('payments.common.save')}
+        extraActions={detail?.status === 'draft' ? <OpenCollectionButton t={t} /> : undefined}
+        onSubmit={async (values, context) => {
+          const open = context?.submitter?.value === 'open'
+          // CrudForm adds the optimistic-lock header from `initialValues.updatedAt`.
+          await updateCrud<SaveResponse>('payments/order-campaigns', { id, ...toPayload(values, t, open) })
+          flash(t(open ? 'payments.orders.flash.opened' : 'payments.orders.flash.saved'), 'success')
+          afterSave(router, id, open)
+        }}
+      />
+    </div>
   )
 }
