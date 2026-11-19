@@ -8,6 +8,8 @@
 // "Accept cash" opens the shared cash dialog with the charge's payer chosen, for an open charge whose payer is a person
 // and never for a rental charge (Q-C16); "Received by" reads "bank statement" for an imported transfer (#292).
 // A charge without a payer shows "No payer" with "Assign payer" and a link to the debtor's guardianship tab (#295).
+// An online payment with something left to refund has "Refund" (the refund dialog), and lists its refunds under its
+// title; an overpayment still held reads "To refund" (REQ-C08, #296).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,6 +28,7 @@ import { AssignPayerDialog } from './AssignPayerDialog'
 import { ChargeStatusBadge, OverdueBadge } from './ChargesTable'
 import { ReasonDialog } from './ReasonDialog'
 import { RecordPaymentDialog } from './RecordPaymentDialog'
+import { RefundDialog } from './RefundDialog'
 import {
   CHARGES_HREF,
   formatMoney,
@@ -33,6 +36,7 @@ import {
   personName,
   type ChargeDetail,
   type PaymentRow,
+  type Translate,
 } from './client-helpers'
 
 type ChargeLoad = { status: 'ok'; charge: ChargeDetail } | { status: 'not_found' } | { status: 'denied' }
@@ -43,6 +47,23 @@ function Tile({ label, children, testId }: { label: string; children: React.Reac
       <h2 className="text-muted-foreground text-sm font-medium">{label}</h2>
       <div className="flex min-w-0 flex-col gap-1 break-words">{children}</div>
     </section>
+  )
+}
+
+/**
+ * An online payment's refund state: "To refund" for an overpayment still held (Q-049), "Refunded" once nothing is
+ * left, "Partly refunded" in between (#296).
+ */
+function RefundBadge({ payment, t }: { payment: PaymentRow; t: Translate }) {
+  if (payment.method !== 'online' || payment.reversesPaymentId) return null
+  if (payment.overpayment && payment.refundable > 0) {
+    return <StatusBadge variant="warning">{t('payments.ledger.payments.toRefund')}</StatusBadge>
+  }
+  if (payment.refunds.length === 0) return null
+  return (
+    <StatusBadge variant="neutral">
+      {payment.refundable > 0 ? t('payments.ledger.payments.partlyRefunded') : t('payments.ledger.payments.refunded')}
+    </StatusBadge>
   )
 }
 
@@ -62,6 +83,8 @@ export function ChargeRecord({ id }: { id: string }) {
   const [assigning, setAssigning] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
   const [reversing, setReversing] = React.useState<PaymentRow | null>(null)
+  // The id only: the dialog reads the payment from the latest record, so a refresh updates what is refundable.
+  const [refundingId, setRefundingId] = React.useState<string | null>(null)
   const query = useQuery({
     queryKey: ['payments-charge', id],
     queryFn: async (): Promise<ChargeLoad> => {
@@ -99,6 +122,7 @@ export function ChargeRecord({ id }: { id: string }) {
     canRecord && charge.sourceType !== 'rental' && !charge.payerMissing ? (charge.payerPersonId ?? null) : null
   const canCancel = status === 'open' && charge.paid === 0
   const lockHeader = () => buildOptimisticLockHeader(charge.updatedAt)
+  const refunding = refundingId ? charge.payments.find((payment) => payment.id === refundingId) : undefined
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -253,12 +277,31 @@ export function ChargeRecord({ id }: { id: string }) {
                         {payment.reversesPaymentId ? (
                           <StatusBadge variant="neutral">{t('payments.ledger.payments.reversal')}</StatusBadge>
                         ) : null}
-                        {payment.reversed ? (
+                        {payment.reversed && payment.method !== 'online' ? (
                           <StatusBadge variant="warning">{t('payments.ledger.payments.reversed')}</StatusBadge>
                         ) : null}
+                        <RefundBadge payment={payment} t={t} />
                       </span>
                     </TableCell>
-                    <TableCell className="break-words">{payment.reference ?? '—'}</TableCell>
+                    <TableCell className="break-words">
+                      {payment.reference ?? '—'}
+                      {payment.refunds.length > 0 ? (
+                        <ul
+                          className="text-muted-foreground mt-1 flex flex-col gap-0.5 text-xs"
+                          data-testid="charge-payment-refunds"
+                        >
+                          {payment.refunds.map((refund) => (
+                            <li key={refund.id} data-testid="charge-payment-refund">
+                              {t('payments.ledger.refund.line', {
+                                amount: formatMoney(refund.amount, locale),
+                                date: refund.paidOn,
+                                reason: refund.reason ?? '—',
+                              })}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </TableCell>
                     <TableCell data-testid="charge-payment-received-by">
                       {payment.source === 'bank_statement'
                         ? t('payments.ledger.payments.bankStatement')
@@ -279,6 +322,19 @@ export function ChargeRecord({ id }: { id: string }) {
                           {t('payments.ledger.reverse.action')}
                         </Button>
                       ) : null}
+                      {payment.refundable > 0 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          data-testid="refund-payment-open"
+                          onClick={() => {
+                            setRefundingId(payment.id)
+                          }}
+                        >
+                          {t('payments.ledger.refund.action')}
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -290,6 +346,17 @@ export function ChargeRecord({ id }: { id: string }) {
 
       {assigning ? (
         <AssignPayerDialog charge={charge} open={assigning} onOpenChange={setAssigning} onDone={refresh} />
+      ) : null}
+      {refunding ? (
+        <RefundDialog
+          payment={refunding}
+          lockToken={charge.updatedAt}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRefundingId(null)
+          }}
+          onDone={refresh}
+        />
       ) : null}
       {recording ? (
         <RecordPaymentDialog charge={charge} open={recording} onOpenChange={setRecording} onDone={refresh} />

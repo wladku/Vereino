@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
-import { addDays, createEvent, nextWeekday, readNotifications, zoneInstant } from '../_fixtures/activities'
+import { addDays, createEvent, readNotifications, safeDay, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { calendarDate, call, createClub } from '../_fixtures/club'
 import {
@@ -46,7 +46,9 @@ test('TEST-R13 the attendant on the phone: today rows, too-early no-show, ban re
     const setup = await rentalPitch(request, club)
     const pitch = setup.pitch
     const today = calendarDate()
-    const saturday = nextWeekday(addDays(today, 1), 'SA')
+    // Two or more days ahead: the Saturday rental by phone is cancelled free of charge only more than 24 hours before
+    // its 10:00 start, which a Saturday tomorrow is not on a Friday after 10:00.
+    const saturday = safeDay('SA')
 
     // Today on Boisko A: a session of Żaki with its coach, and a phone rental of KS Sąsiedzi with a contact (stored by
     // the probe, so its time of day never depends on when the test runs; it has no charge).
@@ -160,6 +162,9 @@ test('TEST-R13 the attendant on the phone: today rows, too-early no-show, ban re
     await page
       .getByRole('option', { name: uiText('facilities.records.incidentKind.rules_violation', { exact: true }) })
       .click()
+    // The time defaults to the browser's pinned 00:30, which the server refuses as future (`incident_time_future`)
+    // in a run between 00:00 and 00:25 Warsaw; 00:00 of today is never ahead of the server.
+    await incidentDialog.getByTestId('club-facility-incident-time').fill('00:00')
     await incidentDialog.getByTestId('club-facility-incident-description').fill('Bójka po meczu przy lewej bramce')
     await incidentDialog.getByTestId('club-facility-incident-rental').click()
     await page.getByRole('option', { name: /KS Sąsiedzi/ }).click()

@@ -1,7 +1,7 @@
 // `POST /api/payments/payments/{id}/refund` — `payments.payments.refund` (payments spec API table, DD-42, Q-050;
 // TEST-057; #110): the club administrator refunds an online payment, in full or in part, through the gateway. Send
 // the charge's lock token (`updatedAt`) in the platform optimistic-lock header and a fresh `operationId`; a retry
-// with the same `operationId` returns the same refund. No refund screen yet (the issue's scope; API only).
+// with the same `operationId` returns the same refund. B-22 calls it from its "Refund" dialog (REQ-C08, #296).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'

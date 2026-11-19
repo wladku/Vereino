@@ -5,6 +5,7 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
 import { create as createStructure } from './club-structure'
 import { createGroup, signedInStaff } from './groups'
+import { safeDayAfter } from '../../../../scripts/vereino-test-dates.mjs'
 
 export const CLUB_ZONE = 'Europe/Warsaw'
 
@@ -328,6 +329,16 @@ export function nextWeekday(date: string, weekday: WeekdayCode): string {
   let day = date
   while (weekdayOf(day) !== weekday) day = addDays(day, 1)
   return day
+}
+
+/**
+ * A club-calendar day at least `minDaysAhead` (2 or more) days after today, on `weekday` when given: never today or
+ * tomorrow, so a declaration, booking, rental or deadline on it does not depend on the hour of the run (TEST-L03, #390;
+ * lesson `integration-tests-pick-days-two-days-ahead`). The arithmetic is `safeDayAfter` in
+ * `scripts/vereino-test-dates.mjs`, unit-tested by `yarn test:scripts`.
+ */
+export function safeDay(weekday?: WeekdayCode, minDaysAhead = 2): string {
+  return safeDayAfter(calendarDate(), weekday, minDaysAhead)
 }
 
 /** The Monday of the Monday–Sunday week of `date` (the member calendar's week, `calendarWeek` in `@vereino/core`). */

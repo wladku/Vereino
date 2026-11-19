@@ -109,6 +109,9 @@ export type ChargePaymentItem = {
   reversed: boolean
   overpayment?: boolean
   gatewayRefundId?: string | null
+  /** Grosz still refundable through the gateway (#296). */
+  refundable?: number
+  refunds?: Array<{ id: string; amount: number; paidOn: string; reason: string | null; gatewayRefundId: string | null }>
 }
 
 export type ChargeDetail = ChargeItem & {
