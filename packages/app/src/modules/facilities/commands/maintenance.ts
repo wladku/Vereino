@@ -42,6 +42,7 @@ import {
 } from '../lib/maintenance'
 import { personNames, type FacilitiesScope } from '../services/directory'
 import { sendMaintenanceReminders, type MaintenanceReminderCounts } from '../services/maintenance'
+import type { CauseWindow } from '../lib/reschedule-notice'
 import { flagUnderWindow } from '../services/reschedule'
 import {
   MANAGE_KINDS,
@@ -156,12 +157,22 @@ async function emitTask(row: MaintenanceTask, action: 'created' | 'updated'): Pr
   )
 }
 
-/** After the commit: `facilities.maintenance.scheduled` and the reschedule flags under the window (DD-43). */
-async function scheduleWindow(ctx: CommandRuntimeContext, row: MaintenanceTask): Promise<RescheduleCounts> {
+/** After the commit: `facilities.maintenance.scheduled`, the reschedule flags under the window (DD-43) and their notices (#287). */
+async function scheduleWindow(
+  ctx: CommandRuntimeContext,
+  row: MaintenanceTask,
+  previous: CauseWindow | null,
+): Promise<RescheduleCounts> {
   if (!taskOccupies(row)) return NONE_FLAGGED
   const scope: FacilitiesScope = { tenantId: row.tenantId, organizationId: row.organizationId }
   await emitAfterCommit('facilities.maintenance.scheduled', scope, { id: row.id, placeId: row.placeId })
-  return flagUnderWindow(ctx.container, scope, row.placeId, { start: row.startsAt as Date, end: row.endsAt as Date })
+  return flagUnderWindow(
+    ctx.container,
+    scope,
+    row.placeId,
+    { start: row.startsAt as Date, end: row.endsAt as Date },
+    { kind: 'maintenance', id: row.id, updatedAt: row.updatedAt, previous },
+  )
 }
 
 const createMaintenanceCommand: CommandHandler<Record<string, unknown>, MaintenanceCommandResult> = {
@@ -218,7 +229,7 @@ const createMaintenanceCommand: CommandHandler<Record<string, unknown>, Maintena
       return { entity: row, actingRole: authorized.actingRole, before: null }
     })
     await emitTask(result.entity, 'created')
-    const flagged = await scheduleWindow(ctx, result.entity)
+    const flagged = await scheduleWindow(ctx, result.entity, null)
     return { ...result, flagged }
   },
   buildLog: ({ result }) =>
@@ -309,7 +320,12 @@ const updateMaintenanceCommand: CommandHandler<Record<string, unknown>, Maintena
         endsAt: result.entity.endsAt ?? null,
       },
     )
-    const flagged = moved ? await scheduleWindow(ctx, result.entity) : NONE_FLAGGED
+    // The window before the save, when it occupied the place: its entries were announced then (#287).
+    const previous =
+      before.status === 'planned' && before.startsAt && before.endsAt
+        ? { placeId: before.placeId, start: new Date(before.startsAt), end: new Date(before.endsAt) }
+        : null
+    const flagged = moved ? await scheduleWindow(ctx, result.entity, previous) : NONE_FLAGGED
     return { ...result, flagged }
   },
   buildLog: ({ result }) =>
