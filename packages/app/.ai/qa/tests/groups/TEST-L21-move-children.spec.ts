@@ -139,7 +139,7 @@ test('TEST-L21 several children move to another group in one previewed step that
       [family.guardian.token, family.elder.personId],
       [family.other.guardian.token, family.other.child.personId],
     ]) {
-      const declared = await declare(request, token, { occurrenceId: laterId, personId, declared: 'yes' })
+      const declared = await declare(request, token, { occurrenceId: laterId, personId, declared: 'no' })
       expect([200, 201], JSON.stringify(declared.body)).toContain(declared.status)
     }
 

@@ -155,14 +155,14 @@ export function FormFrame({
       <DialogContent
         closeAriaLabel={t('groups.common.close')}
         data-testid={testId}
-        className={fullScreen ? 'sm:max-w-2xl' : undefined}
+        className={fullScreen ? 'max-h-dvh overflow-y-auto sm:max-w-2xl' : undefined}
         onKeyDown={submitOnCtrlEnter(onSubmitShortcut)}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {fullScreen ? <div className="max-h-[60vh] min-h-0 overflow-y-auto">{children}</div> : children}
+        {children}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
     </Dialog>

@@ -181,6 +181,11 @@ describe('groups error codes', () => {
       ['rollover_record_unknown', 422],
       ['rollover_record_action_duplicate', 422],
       ['rollover_copy_invalid', 422],
+      ['move_preview_stale', 409],
+      ['move_same_group', 422],
+      ['move_target_inactive', 422],
+      ['move_date_in_past', 422],
+      ['move_too_many', 422],
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`groups.errors.${entry.code}`)
   })
