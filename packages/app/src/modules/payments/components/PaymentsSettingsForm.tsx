@@ -1,22 +1,40 @@
 'use client'
 // `/backend/payments/settings` — the "Coaches and payments" tab of B-20 (UX concept README B-20, flow F-07
 // administrator path; payments spec R07, DD-32; issue #108): whether coaches see membership fees and may take cash for
-// them — fees and orders with cash (default), fees view-only, or orders only. `CrudForm` sends the lock token from
-// `initialValues.updatedAt` (null until the first save creates the row).
+// them — fees and orders with cash (default), fees view-only, or orders only. Since #301 (payments parity spec DD-C08,
+// DD-C09) the group "Automatic charges and reminders": the daily generation switch, its day of the month (1–28) and
+// the overdue reminders switch. `CrudForm` sends the lock token from `initialValues.updatedAt` (null until the first
+// save creates the row).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { COACH_FEE_ACCESS } from '../lib/payments-rules'
+import { COACH_FEE_ACCESS, MAX_GENERATION_DAY, MIN_GENERATION_DAY } from '../lib/payments-rules'
 import { PaymentsNav } from './PaymentsNav'
 import { errorMessage } from './client-helpers'
 
 const SETTINGS_API = '/api/payments/settings'
 
-type SettingsResponse = { coachFeeAccess: string; autoBookBankMatches: boolean; updatedAt: string | null }
+type SettingsResponse = {
+  coachFeeAccess: string
+  autoBookBankMatches: boolean
+  autoGenerateCharges: boolean
+  generationDay: number
+  overdueReminders: boolean
+  updatedAt: string | null
+}
+
+/** The day field as an integer, or null when it is empty or not a whole number (the server answers the range). */
+function dayOf(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isInteger(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const day = Number(value.trim())
+  return Number.isInteger(day) ? day : null
+}
 
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
@@ -41,11 +59,41 @@ export function PaymentsSettingsForm() {
         })),
         description: t('payments.settings.fields.coachFeeAccess.help'),
       },
+      {
+        id: 'autoGenerateCharges',
+        label: t('payments.settings.fields.autoGenerateCharges'),
+        type: 'checkbox',
+        description: t('payments.settings.fields.autoGenerateCharges.help'),
+      },
+      {
+        id: 'generationDay',
+        label: t('payments.settings.fields.generationDay'),
+        type: 'number',
+        description: t('payments.settings.fields.generationDay.help', {
+          min: MIN_GENERATION_DAY,
+          max: MAX_GENERATION_DAY,
+        }),
+        visibleWhen: { field: 'autoGenerateCharges', equals: true },
+      },
+      {
+        id: 'overdueReminders',
+        label: t('payments.settings.fields.overdueReminders'),
+        type: 'checkbox',
+        description: t('payments.settings.fields.overdueReminders.help'),
+      },
     ],
     [t],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
-    () => [{ id: 'coaches', title: t('payments.settings.groups.coaches'), column: 1, fields: ['coachFeeAccess'] }],
+    () => [
+      { id: 'coaches', title: t('payments.settings.groups.coaches'), column: 1, fields: ['coachFeeAccess'] },
+      {
+        id: 'automation',
+        title: t('payments.settings.groups.automation'),
+        column: 1,
+        fields: ['autoGenerateCharges', 'generationDay', 'overdueReminders'],
+      },
+    ],
     [t],
   )
 
@@ -60,15 +108,34 @@ export function PaymentsSettingsForm() {
         titleHeadingLevel={1}
         fields={fields}
         groups={groups}
-        initialValues={{ coachFeeAccess: settings.coachFeeAccess, updatedAt: settings.updatedAt }}
+        initialValues={{
+          coachFeeAccess: settings.coachFeeAccess,
+          autoGenerateCharges: settings.autoGenerateCharges,
+          generationDay: settings.generationDay,
+          overdueReminders: settings.overdueReminders,
+          updatedAt: settings.updatedAt,
+        }}
         submitLabel={t('payments.common.save')}
         onSubmit={async (values) => {
+          const autoGenerateCharges = values.autoGenerateCharges === true
+          const day = dayOf(values.generationDay)
+          if (autoGenerateCharges && (day === null || day < MIN_GENERATION_DAY || day > MAX_GENERATION_DAY)) {
+            throw createCrudFormError(t('payments.settings.validation.generationDay'), {
+              generationDay: t('payments.settings.validation.generationDay'),
+            })
+          }
           await apiCallOrThrow(
             SETTINGS_API,
             {
               method: 'PUT',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ coachFeeAccess: values.coachFeeAccess }),
+              body: JSON.stringify({
+                coachFeeAccess: values.coachFeeAccess,
+                autoGenerateCharges,
+                overdueReminders: values.overdueReminders === true,
+                // A hidden day (generation off) keeps the stored one.
+                ...(autoGenerateCharges && day !== null ? { generationDay: day } : {}),
+              }),
             },
             { errorMessage: t('payments.settings.errors.save') },
           )

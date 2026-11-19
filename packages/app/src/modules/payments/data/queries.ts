@@ -18,6 +18,25 @@ export async function ensurePaymentsSettingsRow(
   )
 }
 
+/**
+ * The class name of migration B of the payments parity spec (#301). Its row in `mikro_orm_migrations_payments` dates
+ * the arrival of the automatic generation: the first automatic month is the next one (DD-C08, Q-C07).
+ */
+export const AUTOMATIC_GENERATION_MIGRATION = 'Migration20261118201338'
+
+/**
+ * When migration B was applied, or null when its row is missing. One deployment-wide row, not tenant data; the name
+ * is matched as a prefix because the stored name may carry the module suffix of the file.
+ */
+export async function automaticGenerationSince(em: EntityManager): Promise<Date | null> {
+  const rows = await em.execute<{ executed_at: Date | string | null }[]>(
+    'select executed_at from mikro_orm_migrations_payments where name like ? order by executed_at asc limit 1',
+    [`${AUTOMATIC_GENERATION_MIGRATION}%`],
+  )
+  const value = rows[0]?.executed_at
+  return value ? new Date(value) : null
+}
+
 /** The advisory-lock key of one club's charge generation (also taken by its undo). */
 export function generationLockKey(organizationId: string): string {
   return `payments.charges.generate:${organizationId}`
