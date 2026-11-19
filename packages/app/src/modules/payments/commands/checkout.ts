@@ -26,6 +26,7 @@ import { checkoutSchema, paymentRefundSchema } from '../data/validators'
 import { checkoutProviderKey } from '../di'
 import { amountDueOf, paidTotal, settledStatus } from '../lib/charge-ledger'
 import { refundRefusal, toGatewayAmount, type CheckoutTotals } from '../lib/checkout-rules'
+import { offeredOnlineMethods } from '../lib/online-payment'
 import {
   callGateway,
   checkedCharges,
@@ -35,6 +36,7 @@ import {
   type ReconcileSummary,
 } from '../services/checkout'
 import { clubClock } from '../services/directory'
+import { storedPaymentsSettings } from '../services/read'
 import { sweepChangedNothing } from '../lib/payments-rules'
 import { CHARGE_RESOURCE_KIND, PAYMENT_RESOURCE_KIND, ledgerOf } from './ledger'
 import {
@@ -51,9 +53,6 @@ import {
 } from './shared'
 
 export const CHECKOUT_RESOURCE_KIND = 'payments.checkout'
-
-/** The club's enabled online methods (DD-42: default card; BLIK and P24 wait for the sandbox run, Q-016). */
-const PAYMENT_TYPES = ['card']
 
 export type CheckoutCreateResult = PaymentsCommandResult<Checkout, null> & {
   totals: CheckoutTotals
@@ -109,6 +108,8 @@ const createCheckoutCommand: CommandHandler<Record<string, unknown>, CheckoutCre
       total: checkout.amount + checkout.feeAmount,
     }
     const providerKey = checkoutProviderKey()
+    // The club's offered methods (REQ-C14, #302): card by default; BLIK and Przelewy24 when the administrator chose them.
+    const settings = await storedPaymentsSettings(ctx.container, payer.scope)
     const em = ctx.container.resolve<EntityManager>('em').fork()
     let created: Awaited<ReturnType<ReturnType<typeof gatewayService>['createPaymentSession']>>
     try {
@@ -120,7 +121,7 @@ const createCheckoutCommand: CommandHandler<Record<string, unknown>, CheckoutCre
           amount: toGatewayAmount(totals.total),
           currencyCode: 'PLN',
           captureMethod: 'automatic',
-          paymentTypes: PAYMENT_TYPES,
+          paymentTypes: offeredOnlineMethods(settings?.onlineMethods),
           ...payer.scope,
         }),
       )
