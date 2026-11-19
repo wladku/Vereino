@@ -31,6 +31,7 @@ import {
   defaultSlotEnd,
   overlappingRequests,
   rentalSlotEnd,
+  selectedSlotKind,
   zoneAtMinute,
   type SlotKind,
 } from '../../lib/slot'
@@ -127,7 +128,9 @@ export function SlotDialog({
   const ids = React.useId()
   const formId = `${ids}-form`
   const kindId = `${ids}-kind`
-  const [kind, setKind] = React.useState<SlotKind>(kinds[0] ?? 'rental')
+  // The user's pick; until then the first offered kind, which may change as a coach's groups load (#366).
+  const [pickedKind, setPickedKind] = React.useState<SlotKind | null>(null)
+  const kind = selectedSlotKind(kinds, pickedKind)
   const [placeId, setPlaceId] = React.useState(preset?.placeId ?? (places.length === 1 ? (places[0]?.value ?? '') : ''))
   const [date, setDate] = React.useState(preset?.date ?? today)
   const [start, setStart] = React.useState(preset?.time ?? '')
@@ -228,7 +231,7 @@ export function SlotDialog({
                 const chosen = kinds.find((entry) => entry === next)
                 if (!chosen) return
                 // The times stay; only the body changes.
-                setKind(chosen)
+                setPickedKind(chosen)
                 clearOutcome()
               }}
             >
