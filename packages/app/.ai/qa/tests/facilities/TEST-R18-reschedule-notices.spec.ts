@@ -26,7 +26,9 @@ import { uiText } from '../_fixtures/ui-text'
 // booker (the booking), the club administrator (the rental) and e-mails the renter. Saving the closure again unchanged
 // sends nothing; maintenance planned over the same entries is a cause of its own and sends its own messages. B-24's
 // `view=to_move` lists the rental; the coordinator's e-mail link opens the place's day filtered "Do przeniesienia" on
-// the phone, in both locales, light and dark.
+// the phone, in both locales, light and dark. Moving the closure to 09:00–19:00 (#394) tells the coordinators and the
+// coach once more, listing only the session it adds (18:00–19:00), and sends nothing new to the booker, the
+// administrators or the renter.
 test.describe.configure({ timeout: 420_000 })
 
 type Notice = { id: string; type: string; sourceEntityId?: string | null; linkHref?: string | null }
@@ -40,13 +42,13 @@ async function notices(request: APIRequestContext, token: string, causeId: strin
   )
 }
 
-async function expectNotices(request: APIRequestContext, token: string, causeId: string, type: string) {
+async function expectNotices(request: APIRequestContext, token: string, causeId: string, type: string, count = 1) {
   await expect
     .poll(async () => (await notices(request, token, causeId)).map((item) => item.type), {
       timeout: 60_000,
-      message: `one ${type} notice for ${causeId}`,
+      message: `${String(count)} ${type} notice(s) for ${causeId}`,
     })
-    .toEqual([type])
+    .toEqual(Array.from({ length: count }, () => type))
 }
 
 const subject = uiText('facilities.email.reschedule.subject')
@@ -244,6 +246,37 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     await expect(page.getByTestId(`facilities-day-entry-${sessions[2]}`)).toBeVisible()
     await expectNoPageOverflow(page)
     expect(consoleErrors).toEqual([])
+
+    // The closure moved to 09:00–19:00 (#394): only the 18:00 session is new to it, so the academy's coordinators and
+    // the coach get one more message listing it alone; the booker, the administrators and the renter get nothing new.
+    const current = (await listClosures(request, admin, `&placeId=${setup.pitch}`)).find((row) => row.id === closureId)
+    const moved = await putClosure(
+      request,
+      admin,
+      {
+        id: closureId,
+        placeId: setup.pitch,
+        startsAt: zoneInstant(saturday, '09:00'),
+        endsAt: zoneInstant(saturday, '19:00'),
+        reason: 'municipal_event',
+      },
+      current?.updatedAt,
+    )
+    expect(moved.status, JSON.stringify(moved.body)).toBe(200)
+    expect(moved.body?.flagged).toEqual({ sessions: 1, rentals: 0, bookings: 0 })
+    await expectNotices(request, academyCoordinator.token, closureId, STAFF_TYPE, 2)
+    await expectNotices(request, setup.coordinator, closureId, STAFF_TYPE, 2)
+    await expectNotices(request, coach.token, closureId, STAFF_TYPE, 2)
+    for (const mailbox of [academyCoordinator.email, coach.email]) {
+      const movedMail = (await expectMails(mailbox, subject, 3)).at(-1)
+      expect(movedMail?.text).toContain('18:00–19:00')
+      expect(movedMail?.text).not.toContain('10:00–11:00')
+      expect(movedMail?.text).not.toContain('11:00–12:00')
+    }
+    expect(await notices(request, booker.token, closureId)).toHaveLength(1)
+    expect(await notices(request, admin, closureId)).toHaveLength(1)
+    expect(mails(booker.email, subject)).toHaveLength(2)
+    expect(mails(renterEmail, renterSubject)).toHaveLength(2)
   } finally {
     await club.cleanup()
   }

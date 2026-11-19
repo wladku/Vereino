@@ -308,16 +308,18 @@ export function clubAdminPersonIds(
   return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
-/** The person ids coordinating `sectionId` on `date` (the reschedule notice of a session, #287). */
-export function sectionCoordinatorIds(
+/**
+ * The person ids coordinating each section on each day among `pairs`, by `<sectionId>:<date>`, in one read (the
+ * reschedule notices of the sessions, #287, #394).
+ */
+export function sectionCoordinatorIdsOnDays(
   container: AwilixContainer,
   scope: FacilitiesScope,
-  sectionId: string,
-  date: string,
+  pairs: ReadonlyArray<{ sectionId: string; date: CalendarDate }>,
   em?: EntityManager,
-): Promise<string[]> {
+): Promise<Map<string, string[]>> {
   assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
-  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).sectionCoordinatorIdsOn(scope, sectionId, date, em)
+  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).sectionCoordinatorIdsOnDays(scope, pairs, em)
 }
 
 /** The user ids of the club's administrators on `date` (the request approvers, #125); persons without an account skipped. */
