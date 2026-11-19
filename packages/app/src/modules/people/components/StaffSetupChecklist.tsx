@@ -76,7 +76,9 @@ export function StaffSetupChecklist({
   const roleStep = periodStep(periods, today)
   const activeRoles = [
     ...new Set(
-      periods.filter((period) => periodStep([period], today) === 'done').map((period) => t(`people.roles.role.${period.role}`)),
+      periods
+        .filter((period) => periodStep([period], today) === 'done')
+        .map((period) => t(`people.roles.role.${period.role}`)),
     ),
   ]
   return (

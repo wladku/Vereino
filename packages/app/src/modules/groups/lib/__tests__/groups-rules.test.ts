@@ -310,9 +310,11 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
       lastDay: '2026-11-14',
       next: { validFrom: '2026-11-15', validTo: null },
     })
-    expect(
-      planMove({ ...open, validTo: '2027-06-30' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10'),
-    ).toEqual({ ok: true, lastDay: '2026-11-14', next: { validFrom: '2026-11-15', validTo: '2027-06-30' } })
+    expect(planMove({ ...open, validTo: '2027-06-30' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: true,
+      lastDay: '2026-11-14',
+      next: { validFrom: '2026-11-15', validTo: '2027-06-30' },
+    })
   })
 
   it('refuses a move to the same group, before the start, or after the membership is over', () => {
@@ -328,9 +330,10 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(
       planMove({ ...open, validFrom: '2026-12-01' }, { toGroupId: 'b', date: '2027-01-01' }, '2026-11-10'),
     ).toEqual({ ok: false, problem: 'not_started' })
-    expect(
-      planMove({ ...open, validTo: '2026-11-14' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10'),
-    ).toEqual({ ok: false, problem: 'not_active_on_date' })
+    expect(planMove({ ...open, validTo: '2026-11-14' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: false,
+      problem: 'not_active_on_date',
+    })
     expect(
       planMove({ ...open, validTo: '2026-11-15' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10'),
     ).toMatchObject({ ok: true })

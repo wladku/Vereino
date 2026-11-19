@@ -6,7 +6,7 @@
 // private `attachments` partition and is read only here, with the exact owner, assignment and partition.
 import { z } from 'zod'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
-import type { CommandBus } from '@open-mercato/shared/lib/commands'
+import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { storedFileName } from '@vereino/core'
@@ -41,7 +41,7 @@ type RouteContext = { params: Promise<{ id: string }> }
 const unauthorized = (): Response => Response.json({ error: 'Unauthorized' }, { status: 401 })
 const notFound = (): Response => Response.json({ error: 'Not found' }, { status: 404 })
 
-function attachmentService(container: { hasRegistration(name: string): boolean; resolve<T>(name: string): T }) {
+function attachmentService(container: CommandRuntimeContext['container']): AttachmentService {
   if (!container.hasRegistration('attachmentService')) {
     throw new CrudHttpError(503, { error: 'Attachment service is unavailable' })
   }
@@ -49,10 +49,7 @@ function attachmentService(container: { hasRegistration(name: string): boolean; 
 }
 
 /** Reads the form's `file` through the platform's bounded reader and checks its bytes; the coded 400/422 otherwise. */
-async function readPhoto(
-  service: AttachmentService,
-  request: Request,
-): Promise<PhotoUpload> {
+async function readPhoto(service: AttachmentService, request: Request): Promise<PhotoUpload> {
   if (!service.readUploadForm) throw new CrudHttpError(503, { error: 'Attachment service is unavailable' })
   const form = await service.readUploadForm(request)
   const file = form.get('file')
@@ -61,7 +58,9 @@ async function readPhoto(
   const checked = checkPersonPhoto(buffer)
   if (!checked.ok) {
     if (checked.problem === 'empty') throw new CrudHttpError(400, { error: 'File is required' })
-    return peopleErrors.throw(checked.problem === 'too_large' ? 'person_photo_too_large' : 'person_photo_format_unsupported')
+    return peopleErrors.throw(
+      checked.problem === 'too_large' ? 'person_photo_too_large' : 'person_photo_format_unsupported',
+    )
   }
   return {
     buffer,
@@ -127,7 +126,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
       PEOPLE_READ_OPTIONS,
     )
     // The photo is personal data outside a coordinator's basic read.
-    if (isBasicRead(actingRole)) return foundationErrors.throw('scope_denied')
+    if (isBasicRead(actingRole)) return await foundationErrors.throw('scope_denied')
     if (!person.photoAttachmentId) return notFound()
     const file = await attachmentService(ctx.container).readScoped({
       attachmentId: person.photoAttachmentId,
@@ -173,7 +172,11 @@ export const openApi: OpenApiRouteDoc = {
         { status: 400, description: 'No file', schema: errorSchema },
         { status: 403, description: '`scope_denied`', schema: errorSchema },
         { status: 404, description: 'Unknown person', schema: errorSchema },
-        { status: 422, description: '`person_photo_format_unsupported`, `person_photo_too_large`', schema: errorSchema },
+        {
+          status: 422,
+          description: '`person_photo_format_unsupported`, `person_photo_too_large`',
+          schema: errorSchema,
+        },
       ],
     },
     GET: {

@@ -505,7 +505,8 @@ const moveMembershipCommand: CommandHandler<Record<string, unknown>, MembershipM
       )
       if (!plan.ok) {
         if (plan.problem === 'same_group') await groupsErrors.throw('groups_reference_invalid', { field: 'toGroupId' })
-        if (plan.problem === 'not_started') await groupsErrors.throw('membership_not_started', { validFrom: row.validFrom })
+        if (plan.problem === 'not_started')
+          await groupsErrors.throw('membership_not_started', { validFrom: row.validFrom })
         return groupsErrors.throw('groups_reference_invalid', { field: 'date' })
       }
       const before = membershipSnapshot(row)

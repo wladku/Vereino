@@ -215,7 +215,11 @@ export function PersonRecord({ id }: { id: string }) {
           <RolesPanel
             personId={person.id}
             canManage={features['people.roles.manage']}
-            account={person.account ?? null}
+            // A coordinator's basic read has no account state, only whether there is an account.
+            account={
+              person.account ??
+              (person.hasAccount ? { state: 'active', email: null, invitedAt: null, lastSignInAt: null } : null)
+            }
             canManageAccount={canManageAccount}
             onOpenAccount={() => {
               selectTab('account')

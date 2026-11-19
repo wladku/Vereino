@@ -25,13 +25,15 @@ export default function StaffSetupContractWidget({
 }: InjectionWidgetComponentProps<StaffSetupContractContext, Record<string, unknown>>) {
   const t = useT()
   const today = useClubToday()
-  const personId = context?.personId ?? null
+  const personId = context.personId ?? null
   const query = useQuery({
     queryKey: ['club_core-staff-setup-contracts', personId],
     enabled: Boolean(personId),
     queryFn: async () => {
       const params = new URLSearchParams({ partyId: personId ?? '', kind: 'coach', pageSize: '100' })
-      const data = await readApiResultOrThrow<{ items?: ContractRow[] }>(`/api/club_core/contracts?${params.toString()}`)
+      const data = await readApiResultOrThrow<{ items?: ContractRow[] }>(
+        `/api/club_core/contracts?${params.toString()}`,
+      )
       return (data.items ?? []).filter((row) => row.partyType === 'person' && row.validFrom !== null)
     },
   })
@@ -58,7 +60,9 @@ export default function StaffSetupContractWidget({
             <StatusBadge variant={STAFF_STEP_VARIANT[step]}>{t(`club_core.staffSetup.step.${step}`)}</StatusBadge>
           ) : null}
         </span>
-        <span className="text-muted-foreground text-xs">{query.isLoading ? t('club_core.common.loading') : detail}</span>
+        <span className="text-muted-foreground text-xs">
+          {query.isLoading ? t('club_core.common.loading') : detail}
+        </span>
       </span>
       {personId && query.isSuccess ? (
         <span className="flex flex-wrap gap-2">

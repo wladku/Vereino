@@ -86,7 +86,10 @@ describe('logo and material checks', () => {
   })
 
   it('accepts one contract PDF up to 10 MB and refuses an image, a renamed SVG and a larger file (#312)', () => {
-    expect(checkContractAttachment(PDF)).toMatchObject({ ok: true, file: { format: 'pdf', mimeType: 'application/pdf' } })
+    expect(checkContractAttachment(PDF)).toMatchObject({
+      ok: true,
+      file: { format: 'pdf', mimeType: 'application/pdf' },
+    })
     expect(checkContractAttachment(sized(PDF, CONTRACT_ATTACHMENT_MAX_BYTES))).toMatchObject({ ok: true })
     expect(checkContractAttachment(PNG)).toEqual({ ok: false, problem: 'format_unsupported' })
     expect(checkContractAttachment(SVG)).toEqual({ ok: false, problem: 'format_unsupported' })

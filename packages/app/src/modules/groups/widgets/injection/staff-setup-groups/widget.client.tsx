@@ -25,7 +25,11 @@ async function activeGroups(search: string): Promise<LookupSelectItem[]> {
   const params: Record<string, string | number | boolean> = { isActive: true, pageSize: 50, sortField: 'name' }
   if (search.trim().length >= 2) params.search = search.trim()
   const data = await fetchCrudList<GroupRow>('groups/groups', params)
-  return data.items.map((group) => ({ id: group.id, title: group.name ?? group.id, subtitle: group.sectionName ?? null }))
+  return data.items.map((group) => ({
+    id: group.id,
+    title: group.name ?? group.id,
+    subtitle: group.sectionName ?? null,
+  }))
 }
 
 export default function StaffSetupGroupsWidget({
@@ -35,7 +39,7 @@ export default function StaffSetupGroupsWidget({
   const today = useClubToday()
   const router = useRouter()
   const canManage = useCanManageGroups()
-  const personId = context?.personId ?? null
+  const personId = context.personId ?? null
   const query = useQuery({
     queryKey: ['groups-staff-setup', personId],
     enabled: Boolean(personId),
@@ -50,7 +54,11 @@ export default function StaffSetupGroupsWidget({
     },
   })
   const rows = query.data ?? []
-  const periods = rows.map((row) => ({ validFrom: row.validFrom as string, validTo: row.validTo, name: row.group?.name }))
+  const periods = rows.map((row) => ({
+    validFrom: row.validFrom as string,
+    validTo: row.validTo,
+    name: row.group?.name,
+  }))
   const step = periodStep(periods, today)
   const active = [
     ...new Set(

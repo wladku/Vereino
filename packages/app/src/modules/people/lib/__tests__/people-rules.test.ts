@@ -352,6 +352,8 @@ describe('people error codes', () => {
       ['people_filter_unavailable', 400],
       ['people_filter_too_broad', 422],
       ['people_filter_failed', 503],
+      ['person_photo_format_unsupported', 422],
+      ['person_photo_too_large', 422],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })

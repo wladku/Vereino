@@ -28,7 +28,7 @@ export function PersonPhotoPanel({ person, onChanged }: { person: PersonDetail; 
   const hasPhoto = Boolean(person.hasPhoto)
 
   const upload = async (files: File[]) => {
-    const file = files[0]
+    const file = files.at(0)
     if (!file) return
     setBusy(true)
     try {

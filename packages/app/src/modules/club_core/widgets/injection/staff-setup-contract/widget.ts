@@ -9,7 +9,7 @@ const widget: InjectionWidgetModule<StaffSetupContractContext, Record<string, un
   metadata: {
     id: 'club_core.injection.staff-setup-contract',
     title: 'Person record: staff setup, contract',
-    description: "Whether the person has a coach contract, with a link to add or open it.",
+    description: 'Whether the person has a coach contract, with a link to add or open it.',
     features: ['club_core.contracts.manage'],
     priority: 300,
     enabled: true,

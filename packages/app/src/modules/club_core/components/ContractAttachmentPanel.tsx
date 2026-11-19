@@ -28,13 +28,17 @@ export function ContractAttachmentPanel({
   const url = `/api/club_core/contracts/${contractId}/attachment`
 
   const upload = async (files: File[]) => {
-    const file = files[0]
+    const file = files.at(0)
     if (!file) return
     setBusy(true)
     try {
       const body = new FormData()
       body.append('file', file)
-      await apiCallOrThrow(url, { method: 'POST', body }, { errorMessage: t('club_core.contracts.attachment.errors.upload') })
+      await apiCallOrThrow(
+        url,
+        { method: 'POST', body },
+        { errorMessage: t('club_core.contracts.attachment.errors.upload') },
+      )
       flash(t('club_core.contracts.attachment.flash.uploaded'), 'success')
       await onChanged()
     } catch (err: unknown) {
@@ -45,11 +49,18 @@ export function ContractAttachmentPanel({
   }
 
   const remove = async () => {
-    const confirmed = await confirm({ title: t('club_core.contracts.attachment.confirm.remove'), variant: 'destructive' })
+    const confirmed = await confirm({
+      title: t('club_core.contracts.attachment.confirm.remove'),
+      variant: 'destructive',
+    })
     if (!confirmed) return
     setBusy(true)
     try {
-      await apiCallOrThrow(url, { method: 'DELETE' }, { errorMessage: t('club_core.contracts.attachment.errors.remove') })
+      await apiCallOrThrow(
+        url,
+        { method: 'DELETE' },
+        { errorMessage: t('club_core.contracts.attachment.errors.remove') },
+      )
       flash(t('club_core.contracts.attachment.flash.removed'), 'success')
       await onChanged()
     } catch (err: unknown) {

@@ -4,16 +4,21 @@
 // download it, or remove it. The club administrator only (`club_core.contracts.manage`). The file stays in the private
 // `attachments` partition and is read only here, with the exact owner, assignment and partition of the contract's file.
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { assertInScope, commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
+import {
+  assertInScope,
+  commandContextForRequest,
+  errorResponse,
+  scopeContract,
+  trustedScopeOf,
+} from '@/modules/foundation'
 import type { ContractAttachmentResult } from '../../../../commands/contract-files'
 import { CLUB_CORE_PARTITION, withUpload } from '../../../../commands/logos'
 import { STRUCTURE_WRITE_KINDS, structureTarget } from '../../../../commands/shared'
-import { Contract } from '../../../../data/entities'
 import { CONTRACT_ATTACHMENT_ASSIGNMENT, CONTRACT_ATTACHMENT_OWNER_ENTITY } from '../../../../lib/files'
+import { findContractFileRef } from '../../../../services/contract-files'
 import { errorSchema } from '../../../shared'
 import { readCheckedUpload } from '../../../uploads'
 
@@ -79,12 +84,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
     const ctx = await commandContextForRequest(request)
     const scope = ctx ? trustedScopeOf(ctx) : null
     if (!ctx || !scope || !ctx.auth) return unauthorized()
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const contract = await em.findOne(
-      Contract,
-      { id: params.data.id, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
-      { fields: ['id', 'tenantId', 'organizationId', 'attachmentId'] },
-    )
+    const contract = await findContractFileRef(ctx.container, scope, params.data.id)
     if (!contract) return notFound()
     await assertInScope(await scopeContract.resolve(ctx), STRUCTURE_WRITE_KINDS, structureTarget(contract))
     if (!contract.attachmentId || !ctx.container.hasRegistration('attachmentService')) return notFound()

@@ -11,6 +11,6 @@ topics: ["integration-tests", "playwright", "auth-tokens", "crud-form", "undo"]
 
 **Problem**: (1) Setting a user's password for the browser sign-in ends that user's earlier API tokens, so later API calls fail with 401. (2) `CrudForm` labels are not bound to their inputs, so `getByLabel` finds nothing. (3) The platform undo endpoint (`audit_logs/api/audit-logs/actions/undo/route.ts`) undoes only the actor's latest undoable action on a resource, and hand-written action routes return no undo token header. (4) `createStaff` builds the e-mail address from the first name, so a non-ASCII name gives an invalid address.
 
-**Rule**: Take a fresh API token after setting a password. Reach CrudForm inputs through `[data-crud-field-id="<field>"] input`. Read the undo token from the actions list and undo in reverse order of the actor's actions. Use ASCII first names in staff fixtures.
+**Rule**: Take a fresh API token after setting a password. Reach CrudForm inputs through `[data-crud-field-id="<field>"] input`. Read the undo token from the actions list and undo in reverse order of the actor's actions; read that list with the actor's own token, because another user (even the club administrator) sees the entry without an `undoToken` (TEST-L17, #312: a coordinator's move listed with the administrator's token had none). Use ASCII first names in staff fixtures.
 
 **Applies to**: `packages/app/.ai/qa/tests/**`, `packages/app/.ai/qa/tests/_fixtures/**`.
