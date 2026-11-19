@@ -6,7 +6,10 @@ import {
   applyConsentChanges,
   calendarDateInZone,
   consentsView,
+  effectiveConsents,
   firstOverlapping,
+  givenToEarlierWording,
+  holdsOwnConsents,
   parseStoredConsents,
   isPayerEligible,
   isValidPesel,
@@ -336,6 +339,7 @@ describe('people error codes', () => {
       ['guardianship_ward_is_guardian', 422],
       ['role_assignment_duplicate', 409],
       ['person_not_linked', 404],
+      ['consents_minor', 422],
       ['payments_minor', 403],
       ['external_id_duplicate', 409],
       ['import_mapping_invalid', 422],
@@ -479,5 +483,42 @@ describe('applyConsentChanges (P-08 transitions)', () => {
     const regranted = applyConsentChanges(withdrawn.consents, { image: true }, later, 'guardian-2')
     expect(regranted.changed).toEqual(['image'])
     expect(regranted.consents.image).toEqual({ granted: true, at: later.toISOString(), by_person_id: 'guardian-2' })
+  })
+})
+
+describe('holdsOwnConsents (REQ-L10)', () => {
+  it('holds own consents from the 18th birthday with a known birth date', () => {
+    expect(holdsOwnConsents('2008-11-19', '2026-11-19')).toBe(true)
+    expect(holdsOwnConsents('2008-11-20T00:00:00.000Z', '2026-11-19')).toBe(false)
+    expect(holdsOwnConsents(null, '2026-11-19')).toBe(false)
+    expect(holdsOwnConsents(undefined, '2026-11-19')).toBe(false)
+    expect(holdsOwnConsents('not a date', '2026-11-19')).toBe(false)
+  })
+})
+
+describe('effectiveConsents (REQ-L10)', () => {
+  const entry = (granted: boolean, at: string) => ({ granted, at, by_person_id: null })
+  it('takes the adult’s own decision when there is one', () => {
+    const own = { image: entry(false, '2026-11-02T10:00:00.000Z') }
+    const guardian = { image: entry(true, '2026-11-05T10:00:00.000Z'), trips: entry(true, '2026-11-01T10:00:00.000Z') }
+    expect(effectiveConsents(own, [guardian])).toEqual({ regulations: false, image: false, trips: true })
+  })
+  it('takes the most recent decision among the active guardianships', () => {
+    const first = { regulations: entry(true, '2026-11-01T10:00:00.000Z') }
+    const second = { regulations: entry(false, '2026-11-03T10:00:00.000Z'), image: entry(true, '2026-11-01T00:00:00Z') }
+    expect(effectiveConsents(null, [second, first])).toEqual({ regulations: false, image: true, trips: false })
+    expect(effectiveConsents(null, [first, second]).regulations).toBe(false)
+    expect(effectiveConsents(null, [])).toEqual({ regulations: false, image: false, trips: false })
+  })
+})
+
+describe('givenToEarlierWording (DD-L11)', () => {
+  it('marks a consent given before the text changed', () => {
+    const consent = { granted: true, at: '2026-11-01T10:00:00.000Z' }
+    expect(givenToEarlierWording(consent, '2026-11-02T10:00:00.000Z')).toBe(true)
+    expect(givenToEarlierWording(consent, '2026-10-30T10:00:00.000Z')).toBe(false)
+    expect(givenToEarlierWording(consent, null)).toBe(false)
+    expect(givenToEarlierWording({ granted: false, at: consent.at }, '2026-11-02T10:00:00.000Z')).toBe(false)
+    expect(givenToEarlierWording({ granted: true, at: null }, '2026-11-02T10:00:00.000Z')).toBe(false)
   })
 })

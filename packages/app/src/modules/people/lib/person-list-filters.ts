@@ -24,6 +24,13 @@ export const PERSON_FILTER_ROLES = [
 ] as const
 export type PersonFilterRole = (typeof PERSON_FILTER_ROLES)[number]
 
+/**
+ * The "Needs attention" filter values of the list (people life-cycle spec B-09): `missing_consents` — participants
+ * whose `regulations` consent is not given (REQ-L10, #309). The values of phase L8 join this list.
+ */
+export const PERSON_ATTENTION_FILTERS = ['missing_consents'] as const
+export type PersonAttentionFilter = (typeof PERSON_ATTENTION_FILTERS)[number]
+
 /** Above this many candidate ids the list refuses with 422 `people_filter_too_broad` instead of loading them. */
 export const PERSON_FILTER_ID_LIMIT = 10_000
 
@@ -37,6 +44,7 @@ export type PersonListFilterQuery = {
   ageFrom?: number
   ageTo?: number
   search?: string
+  attention?: PersonAttentionFilter
 }
 
 /** Inclusive upper (`onOrBefore`) and exclusive lower (`after`) birth-date bounds; null when a side is open. */
@@ -46,7 +54,7 @@ export type BirthDateRange = { onOrBefore: CalendarDate | null; after: CalendarD
  * The plan of a list query:
  * - `birthDates` — the age bounds as birth dates, or null without an age condition;
  * - `accountConditions` — each entry requires `user_id` to exist (true) or not (false); two opposite ones match nobody;
- * - `staff`, `role`, `sectionId`, `groupId` — the id predicates the route resolves and intersects;
+ * - `staff`, `role`, `sectionId`, `groupId`, `missingConsents` — the id predicates the route resolves and intersects;
  * - `former` — `only` former persons (`left_on` reached), `exclude` them, or `any` (a typed name in the "all"
  *   perspective searches every perspective, so an administrator finds someone who left).
  */
@@ -58,6 +66,8 @@ export type PersonListPlan = {
   sectionId: string | null
   groupId: string | null
   former: 'only' | 'exclude' | 'any'
+  /** Participants whose `regulations` consent is not given (REQ-L10). */
+  missingConsents: boolean
 }
 
 /**
@@ -104,12 +114,13 @@ export function personListPlan(query: PersonListFilterQuery, today: CalendarDate
     sectionId: query.sectionId ?? null,
     groupId: query.groupId ?? null,
     former: view === 'former' ? 'only' : view === 'all' && query.search?.trim() ? 'any' : 'exclude',
+    missingConsents: query.attention === 'missing_consents',
   }
 }
 
 /** Whether the plan reads group memberships, which only the `groups` module can answer. */
 export function planNeedsMemberships(plan: PersonListPlan): boolean {
-  return plan.sectionId !== null || plan.groupId !== null || plan.role === 'participant'
+  return plan.sectionId !== null || plan.groupId !== null || plan.role === 'participant' || plan.missingConsents
 }
 
 /**
@@ -146,7 +157,15 @@ export function personRoleBadges(input: {
 }
 
 /** The list's filters kept in the URL besides the perspective, the search and the page (DD-U03). */
-export const PERSON_LIST_FILTER_KEYS = ['sectionId', 'groupId', 'role', 'hasAccount', 'ageFrom', 'ageTo'] as const
+export const PERSON_LIST_FILTER_KEYS = [
+  'sectionId',
+  'groupId',
+  'role',
+  'hasAccount',
+  'ageFrom',
+  'ageTo',
+  'attention',
+] as const
 export type PersonListFilterKey = (typeof PERSON_LIST_FILTER_KEYS)[number]
 
 /** The list page's state as the URL carries it. */

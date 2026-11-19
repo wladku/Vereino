@@ -50,6 +50,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'rulesUrl'
     | 'privacyPolicyUrl'
     | 'publication'
+    | 'consentTexts'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -140,6 +141,13 @@ export class ClubSettings extends ScopedEntityBase {
   /** The URL of the club's privacy policy, linked in the public page footer when set (#195). */
   @Property({ name: 'privacy_policy_url', type: 'text', nullable: true })
   privacyPolicyUrl?: string | null
+
+  /**
+   * The club's consent texts (DD-39; people life-cycle spec REQ-L10, DD-L11; #309): `{ <key>: { text, changedAt } }`
+   * for the keys of `lib/consent-texts.ts`; a missing key uses the built-in text. Read through `parseConsentTexts`.
+   */
+  @Property({ name: 'consent_texts', type: 'json', defaultRaw: `'{}'::jsonb` })
+  consentTexts: Record<string, unknown> = {}
 
   /** `{ enabled, blocks }` (glossary *Publication*); everything off by default, read through `lib/publication.ts`. */
   @Property({

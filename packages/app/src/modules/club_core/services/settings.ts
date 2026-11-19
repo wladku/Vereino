@@ -7,6 +7,7 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { ClubSettings } from '../data/entities'
+import { parseConsentTexts, type ConsentTexts } from '../lib/consent-texts'
 import { staffLogoUrl } from '../lib/files'
 import { resolvePublication, type Publication } from '../lib/publication'
 import {
@@ -40,6 +41,11 @@ export type ClubPublicSettings = {
 export type ClubSettingsSnapshot = {
   values: ClubSettingsValues
   publicSettings: ClubPublicSettings
+  /**
+   * The club's own consent texts with the instant of their last change (#309, DD-L11); a key without an entry uses the
+   * built-in text. Members read them on their profile, so they are not limited to the club administrator.
+   */
+  consentTexts: ConsentTexts
   /** Settings whose stored value was invalid and was replaced by the default. */
   defaultsApplied: ClubSettingKey[]
   /** The row's lock token, or null while the club has no stored row. */
@@ -112,6 +118,7 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
   return {
     values,
     publicSettings: publicSettingsOf(row),
+    consentTexts: parseConsentTexts(row?.consentTexts ?? null),
     defaultsApplied: invalidKeys,
     updatedAt: row?.updatedAt ?? null,
   }

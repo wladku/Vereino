@@ -5,7 +5,10 @@
 // (`scopeContract.resolve`), so the view never names a person outside the caller's scope. Spec N (REQ-N07, #259) adds
 // `isParticipant`, which with the wards is the member side of the acting context. E06-S22 (#104) adds each
 // ward's age on the club day, the name of each consent's last author, and — under the `self` grant, the member's own
-// guardianships — the member's active guardians with the consents they gave (read-only for the ward).
+// guardianships — the member's active guardians with the consents they gave (read-only for the ward). The people
+// life-cycle spec (REQ-L10, #309) adds an adult's own consents with their authors (`ownConsents`, null for a minor) and
+// the club's consent texts with the instant of their last change (`consentTexts`, DD-L11), so the profile shows the
+// club's wording and marks a consent given to an earlier one.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -25,8 +28,21 @@ import {
   type MemberConsentsView,
   type SelfConsentView,
 } from '../lib/member-rules'
-import { consentsView, parseStoredConsents, type ConsentsView, type GuardianRelation } from '../lib/people-rules'
-import { clubLogoUrl, clubSettings, clubToday, type ClubScope } from './club-clock'
+import {
+  consentsView,
+  holdsOwnConsents,
+  parseStoredConsents,
+  type ConsentsView,
+  type GuardianRelation,
+} from '../lib/people-rules'
+import {
+  clubConsentTexts,
+  clubLogoUrl,
+  clubSettings,
+  clubToday,
+  type ClubConsentTexts,
+  type ClubScope,
+} from './club-clock'
 import { membershipContribution } from './membership-contribution'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './payments-gate'
 
@@ -101,6 +117,13 @@ export type MemberProfile = {
   paymentsVisible: boolean
   /** An active participant membership today (spec N, REQ-N07); always false without `groups`. */
   isParticipant: boolean
+  /**
+   * The member's own consents with their authors (people life-cycle spec REQ-L10, #309): only for a person aged 18 or
+   * more with a known birth date; null otherwise (a minor's consents stay with the guardians).
+   */
+  ownConsents: MemberConsentsView | null
+  /** The club's consent texts by key with the instant of the last change (DD-L11); a missing key = built-in text. */
+  consentTexts: ClubConsentTexts
 }
 
 export function memberPersonView(person: Person): MemberPersonView {
@@ -306,6 +329,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   const locale = memberLocale([person.preferredLocale, settings.defaultLocale, requestLocale], supported, defaultLocale)
   const gate = ctx.container.resolve<PaymentsGate>(PEOPLE_PAYMENTS_GATE)
   const payments = await gate.check({ ...scope, userId })
+  const ownConsents = holdsOwnConsents(person.birthDate, today) ? await loadOwnConsents(em, scope, person) : null
   const contribution = membershipContribution(ctx.container)
   const isParticipant = contribution
     ? await contribution.isActiveParticipant(em, { ...scope, personId: person.id }, today)
@@ -325,5 +349,22 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     },
     paymentsVisible: payments.access === 'allowed',
     isParticipant,
+    ownConsents,
+    consentTexts: await clubConsentTexts(ctx.container, scope),
   }
+}
+
+/**
+ * An adult's own consents with their last authors: the person by name, anyone else (the club administrator) by the
+ * role label only (#191).
+ */
+async function loadOwnConsents(em: EntityManager, scope: ClubScope, person: Person): Promise<MemberConsentsView> {
+  const view = consentsView(parseStoredConsents(person.consents))
+  const outsiders = consentAuthorIds([view]).filter((id) => id !== person.id)
+  const roles = await loadAuthorRoles(em, scope, outsiders)
+  return withConsentAuthors(view, {
+    family: new Set([person.id]),
+    names: new Map([[person.id, fullName(person)]]),
+    roles,
+  })
 }

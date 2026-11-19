@@ -41,6 +41,18 @@ export async function clubLogoUrl(container: AwilixContainer, scope: ClubScope):
   return (await service.get(scope)).publicSettings.logoUrl
 }
 
+/**
+ * The club's own consent texts by key (`{ text, changedAt }`, club spec DD-39, people life-cycle spec DD-L11; #309).
+ * A key without an entry uses the built-in text; without `club_core` every text is the built-in one.
+ */
+export type ClubConsentTexts = ClubSettingsSnapshot['consentTexts']
+
+export async function clubConsentTexts(container: AwilixContainer, scope: ClubScope): Promise<ClubConsentTexts> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return {}
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return (await service.get(scope)).consentTexts
+}
+
 /** Today's calendar date in the club's time zone. */
 export async function clubToday(
   container: AwilixContainer,

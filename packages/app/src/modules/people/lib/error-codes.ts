@@ -60,6 +60,8 @@ export const errorCodes = [
   },
   { code: 'role_assignment_duplicate', status: 409, messageKey: 'people.errors.role_assignment_duplicate' },
   { code: 'person_not_linked', status: 404, messageKey: 'people.errors.person_not_linked' },
+  // An adult participant's own consents (people life-cycle spec REQ-L10; #309): only from the 18th birthday.
+  { code: 'consents_minor', status: 422, messageKey: 'people.errors.consents_minor' },
   { code: 'payments_minor', status: 403, messageKey: 'people.errors.payments_minor' },
   { code: 'external_id_duplicate', status: 409, messageKey: 'people.errors.external_id_duplicate' },
   // Bulk import (#28, club spec REQ-036): a file or mapping the import cannot use, a finished import, a review row

@@ -15,6 +15,7 @@ import {
   personListUrlParams,
   personRoleBadges,
   planNeedsMemberships,
+  PERSON_ATTENTION_FILTERS,
   readPersonListUrl,
   withoutLastFilter,
   yearsBefore,
@@ -41,7 +42,15 @@ describe('constants', () => {
       'guardian',
       'participant',
     ])
-    expect(PERSON_LIST_FILTER_KEYS).toEqual(['sectionId', 'groupId', 'role', 'hasAccount', 'ageFrom', 'ageTo'])
+    expect(PERSON_LIST_FILTER_KEYS).toEqual([
+      'sectionId',
+      'groupId',
+      'role',
+      'hasAccount',
+      'ageFrom',
+      'ageTo',
+      'attention',
+    ])
     expect(PERSON_FILTER_ID_LIMIT).toBe(10_000)
   })
 })
@@ -109,6 +118,7 @@ describe('personListPlan', () => {
       sectionId: null,
       groupId: null,
       former: 'exclude',
+      missingConsents: false,
     })
   })
 
@@ -143,6 +153,7 @@ describe('personListPlan', () => {
       sectionId: 's',
       groupId: 'g',
       former: 'exclude',
+      missingConsents: false,
     })
   })
 })
@@ -154,6 +165,13 @@ describe('planNeedsMemberships', () => {
     expect(planNeedsMemberships(personListPlan({ sectionId: 's' }, today))).toBe(true)
     expect(planNeedsMemberships(personListPlan({ groupId: 'g' }, today))).toBe(true)
     expect(planNeedsMemberships(personListPlan({ role: 'participant' }, today))).toBe(true)
+  })
+
+  it('is true for the missing-consents filter, which reads the participants (#309)', () => {
+    const plan = personListPlan({ attention: 'missing_consents' }, today)
+    expect(plan.missingConsents).toBe(true)
+    expect(planNeedsMemberships(plan)).toBe(true)
+    expect(PERSON_ATTENTION_FILTERS).toEqual(['missing_consents'])
   })
 })
 

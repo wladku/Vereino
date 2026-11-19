@@ -11,7 +11,8 @@
 // #295): absent without `payments.view` or without the `payments` module. The header
 // shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262). The
 // "Leaving" tab (people life-cycle spec B-10 `?tab=leaving`, Q-L19, #306) comes last and only with `people.manage`;
-// a former person's header says since when they left.
+// a former person's header says since when they left. For an adult the Guardianship tab starts with "Own consents"
+// (people life-cycle spec REQ-L10, #309), shown only with `people.manage`.
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -26,6 +27,7 @@ import { useClubToday } from '@vereino/ui'
 import { personAge } from '../lib/people-rules'
 import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
+import { OwnConsentsPanel } from './OwnConsentsPanel'
 import { LeavingPanel } from './LeavingPanel'
 import { PersonDetailsForm } from './PersonForm'
 import { RolesPanel } from './RolesPanel'
@@ -200,7 +202,10 @@ export function PersonRecord({ id }: { id: string }) {
             <ReadOnlyDetails person={person} t={t} />
           )}
         </TabsContent>
-        <TabsContent value="guardianship" className="pt-4">
+        <TabsContent value="guardianship" className="flex flex-col gap-4 pt-4">
+          {canEdit && person.holdsOwnConsents ? (
+            <OwnConsentsPanel key={person.updatedAt ?? person.id} person={person} onChanged={refetch} />
+          ) : null}
           <GuardianshipsPanel personId={person.id} canManage={features['people.manage']} />
         </TabsContent>
         <TabsContent value="roles" className="pt-4">

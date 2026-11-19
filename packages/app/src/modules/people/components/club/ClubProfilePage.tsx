@@ -12,7 +12,9 @@
 // (#263), groups with sections — the `groups` widget on the `vereino:club:ward:groups` spot — and the three consents with date and author), a ward's
 // "My guardians" with the consents read-only (R10: consents and payments stay with the guardian), and the link to the
 // platform's change-password page. People life-cycle spec M-10 (#306): an adult member gets the link "Leave the club"
-// to `/club/profile/leave`; a minor does not.
+// to `/club/profile/leave`; a minor does not. People life-cycle spec REQ-L10 (#309): an adult gets "My consents"
+// (`OwnConsentsSection`), and every consent shows the club's own wording when the club changed it, with "given to an
+// earlier wording" for a consent given before the change (DD-L11).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -35,7 +37,8 @@ import { calendarDateInZone } from '@vereino/core'
 import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
-import { ConsentList } from './ConsentList'
+import { ConsentList, EarlierWording, useConsentLabel } from './ConsentList'
+import { OwnConsentsSection } from './OwnConsentsSection'
 import {
   CHANGE_PASSWORD_HREF,
   CLUB_LEAVE_HREF,
@@ -44,6 +47,7 @@ import {
   formatCalendarDate,
   formatInstant,
   fullName,
+  type ConsentTexts,
   type MemberGuardian,
   type MemberProfile,
   type MemberWard,
@@ -97,6 +101,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
   const [phoneError, setPhoneError] = React.useState<string | null>(null)
   const isGuardian = profile.wards.length > 0
   const isCoach = profile.contexts.includes('coach')
+  const label = useConsentLabel(profile.consentTexts)
   const refresh = () => queryClient.invalidateQueries({ queryKey: MEMBER_PROFILE_QUERY_KEY })
 
   const consentDescription = (consent: SelfConsent) => {
@@ -244,8 +249,15 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
           </h2>
           <SwitchField
             id="club-consent-share-contact"
-            label={t('people.club.profile.consents.shareContactWithCoaches')}
+            label={label('share_contact_with_coaches', 'people.club.profile.consents.shareContactWithCoaches')}
             description={consentDescription(profile.person.consents.shareContactWithCoaches)}
+            badge={
+              <EarlierWording
+                consent={profile.person.consents.shareContactWithCoaches}
+                textKey="share_contact_with_coaches"
+                texts={profile.consentTexts}
+              />
+            }
             checked={state.shareContactWithCoaches}
             disabled={busy}
             onCheckedChange={(checked) => {
@@ -254,8 +266,15 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
           />
           <SwitchField
             id="club-consent-share-presence"
-            label={t('people.club.profile.consents.sharePresenceWithGuardians')}
+            label={label('share_presence_with_guardians', 'people.club.profile.consents.sharePresenceWithGuardians')}
             description={consentDescription(profile.person.consents.sharePresenceWithGuardians)}
+            badge={
+              <EarlierWording
+                consent={profile.person.consents.sharePresenceWithGuardians}
+                textKey="share_presence_with_guardians"
+                texts={profile.consentTexts}
+              />
+            }
             checked={state.sharePresenceWithGuardians}
             disabled={busy}
             onCheckedChange={(checked) => {
@@ -277,10 +296,17 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
           </h2>
           <SwitchField
             id="club-consent-publish-name"
-            label={t('people.club.profile.consents.publishNameConsent', {
+            label={label('publish_name_consent', 'people.club.profile.consents.publishNameConsent', {
               name: publicNamePreview(profile.person.firstName, profile.person.lastName),
             })}
             description={consentDescription(profile.person.consents.publishNameConsent)}
+            badge={
+              <EarlierWording
+                consent={profile.person.consents.publishNameConsent}
+                textKey="publish_name_consent"
+                texts={profile.consentTexts}
+              />
+            }
             checked={state.publishNameConsent}
             disabled={busy}
             onCheckedChange={(checked) => {
@@ -300,7 +326,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
   )
 }
 
-function WardEntry({ ward, timeZone }: { ward: MemberWard; timeZone: string }) {
+function WardEntry({ ward, timeZone, texts }: { ward: MemberWard; timeZone: string; texts?: ConsentTexts }) {
   const t = useT()
   return (
     <li className="flex flex-col gap-3 border-t pt-4 first:border-t-0 first:pt-0" data-testid="club-profile-ward">
@@ -328,7 +354,7 @@ function WardEntry({ ward, timeZone }: { ward: MemberWard; timeZone: string }) {
         </span>
       </div>
       <InjectionSpot spotId="vereino:club:ward:groups" context={{ personId: ward.personId, variant: 'compact' }} />
-      <ConsentList consents={ward.guardianship.consents} timeZone={timeZone} />
+      <ConsentList consents={ward.guardianship.consents} timeZone={timeZone} texts={texts} />
     </li>
   )
 }
@@ -348,7 +374,7 @@ function WardsSection({ profile }: { profile: MemberProfile }) {
       </h2>
       <ul className="flex flex-col gap-4">
         {profile.wards.map((ward) => (
-          <WardEntry key={ward.personId} ward={ward} timeZone={profile.club.timezone} />
+          <WardEntry key={ward.personId} ward={ward} timeZone={profile.club.timezone} texts={profile.consentTexts} />
         ))}
       </ul>
       <p className="text-muted-foreground max-w-prose text-xs">{t('people.club.profile.wards.changeHint')}</p>
@@ -356,7 +382,15 @@ function WardsSection({ profile }: { profile: MemberProfile }) {
   )
 }
 
-function GuardianEntry({ guardian, timeZone }: { guardian: MemberGuardian; timeZone: string }) {
+function GuardianEntry({
+  guardian,
+  timeZone,
+  texts,
+}: {
+  guardian: MemberGuardian
+  timeZone: string
+  texts?: ConsentTexts
+}) {
   const t = useT()
   return (
     <li className="flex flex-col gap-2 border-t pt-4 first:border-t-0 first:pt-0" data-testid="club-profile-guardian">
@@ -366,7 +400,7 @@ function GuardianEntry({ guardian, timeZone }: { guardian: MemberGuardian; timeZ
           ({t(`people.guardianships.relation.${guardian.relation}`)})
         </span>
       </span>
-      <ConsentList consents={guardian.consents} timeZone={timeZone} />
+      <ConsentList consents={guardian.consents} timeZone={timeZone} texts={texts} />
     </li>
   )
 }
@@ -388,7 +422,12 @@ function GuardiansSection({ profile }: { profile: MemberProfile }) {
       <p className="max-w-prose text-sm">{t('people.club.profile.guardians.summary', { names })}</p>
       <ul className="flex flex-col gap-4">
         {profile.guardians.map((guardian) => (
-          <GuardianEntry key={guardian.guardianshipId} guardian={guardian} timeZone={profile.club.timezone} />
+          <GuardianEntry
+            key={guardian.guardianshipId}
+            guardian={guardian}
+            timeZone={profile.club.timezone}
+            texts={profile.consentTexts}
+          />
         ))}
       </ul>
     </section>
@@ -443,6 +482,7 @@ export function ClubProfilePage() {
       {(profile) => (
         <div className="flex flex-col gap-6">
           <ProfileForm key={profile.person.updatedAt ?? profile.person.id} profile={profile} />
+          <OwnConsentsSection profile={profile} />
           <WardsSection profile={profile} />
           <GuardiansSection profile={profile} />
           <PasswordSection />

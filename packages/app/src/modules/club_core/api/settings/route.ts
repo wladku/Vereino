@@ -5,7 +5,9 @@
 // `club_core.publication.manage` (club spec API table). The logo is read here and written through `/api/club_core/logo`.
 // Since #87 (Q2) the read carries `clubName`, the platform organization's name, and the write may change it: after the
 // settings command has authorized the club administrator, the installed `directory.organizations.update` command
-// renames the caller's own organization — no Vereino column holds a second name.
+// renames the caller's own organization — no Vereino column holds a second name. Since #309 (people life-cycle spec
+// REQ-L10) the read carries `consentTexts` (`{ <key>: { text, changedAt } }`, the club's own wording) and the write
+// accepts `consentTexts: { <key>: string }`, where an empty string restores the built-in text.
 import { z } from 'zod'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
@@ -22,6 +24,7 @@ import {
   ORDER_SALES_DOCUMENTS,
   declarationKindsPatchSchema,
 } from '../../lib/settings'
+import { CONSENT_TEXT_KEYS, parseConsentTexts } from '../../lib/consent-texts'
 import { PUBLICATION_BLOCKS } from '../../lib/publication'
 import type { ClubCoreSettingsService, ClubPublicSettings, ClubSettingsScope } from '../../services/settings'
 import { CLUB_CORE_SETTINGS_SERVICE } from '../../di'
@@ -91,6 +94,7 @@ export async function GET(request: Request): Promise<Response> {
       ...settings.values,
       clubName: await organizationName(ctx, scope),
       ...publicFields(settings.publicSettings),
+      consentTexts: settings.consentTexts,
       defaultsApplied: settings.defaultsApplied,
       updatedAt: settings.updatedAt ? settings.updatedAt.toISOString() : null,
     })
@@ -123,6 +127,7 @@ export async function PUT(request: Request): Promise<Response> {
       ...result.values,
       clubName: clubName ?? currentName,
       ...publicFields(result.publicSettings),
+      consentTexts: parseConsentTexts(result.settings.consentTexts),
       updatedAt: result.settings.updatedAt.toISOString(),
     })
   } catch (error: unknown) {
@@ -160,6 +165,12 @@ const settingsResponseSchema = z.object({
     enabled: z.boolean(),
     blocks: z.object(Object.fromEntries(PUBLICATION_BLOCKS.map((block) => [block, z.boolean()]))),
   }),
+  consentTexts: z
+    .partialRecord(
+      z.enum(CONSENT_TEXT_KEYS),
+      z.object({ text: z.string(), changedAt: z.string().describe('The instant of the last change') }),
+    )
+    .describe("The club's own consent texts; a key without an entry uses the built-in text"),
   defaultsApplied: z.array(z.string()).optional(),
   updatedAt: z.string().nullable(),
 })
@@ -179,7 +190,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
+        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. `consentTexts` (`{ <key>: string }`, at most 1000 characters each) sets the club consent texts; an empty string restores the built-in text, and a changed text keeps every consent given earlier valid (it reads "given to an earlier wording"). Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
       requestBody: {
         contentType: 'application/json',
         schema: clubSettingsUpdateSchema.extend({ clubName: clubNameSchema.optional() }),
@@ -193,7 +204,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 422,
           description:
-            '`publication_slug_required`, `locale_unsupported`, `timezone_unknown`, `account_age_threshold_out_of_range`, `club_name_invalid`',
+            '`publication_slug_required`, `locale_unsupported`, `timezone_unknown`, `account_age_threshold_out_of_range`, `club_name_invalid`, `consent_text_too_long`',
           schema: errorSchema,
         },
       ],
