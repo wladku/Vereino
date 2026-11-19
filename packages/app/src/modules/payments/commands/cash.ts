@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { Recipient, Scope } from '@vereino/core'
 import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
@@ -143,9 +144,23 @@ export async function enqueueConfirmation(input: ConfirmationInput): Promise<str
 export type CashAcceptance = { receiptNumber: string; lines: CashPaymentLine[]; created: Payment[] }
 
 /**
+ * Whether the caller settles the club's cash (`payments.cash.settle`, B-33, #118): cash they accept goes straight to
+ * the club, so it is held by no collector and never waits for a handover.
+ */
+export async function callerSettlesCash(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+): Promise<boolean> {
+  const userId = ctx.auth?.sub
+  if (!userId) return false
+  return ctx.container.resolve<RbacService>('rbacService').userHasAllFeatures(userId, ['payments.cash.settle'], scope)
+}
+
+/**
  * Pays the row-locked `charges` with `amount` of cash received on `paidOn` (oldest first) under one new receipt
  * number: refuses a cancelled, forfeited or paid charge (409), an amount above what remains (422) and a future day
  * (422), takes the club's receipt numbering lock, writes the payments with their collector and settles the charges.
+ * The collector holds the cash until a handover (#118), unless they settle cash themselves.
  * Shared by "Accept cash" (#114) and the coach's cash of "My groups' payments" (#117).
  */
 export async function acceptCashOnCharges(
@@ -182,6 +197,8 @@ export async function acceptCashOnCharges(
     await paymentsErrors.throw(refusal)
   }
 
+  // Cash accepted by someone who settles cash is with the club at once (#118): no collector holds it.
+  const collectedByPersonId = (await callerSettlesCash(ctx, scope)) ? null : input.collectorPersonId
   await lockReceiptNumbering(em, scope.organizationId)
   const last = await lastReceiptNumber(em, scope, receiptPrefix(input.paidOn))
   const receiptNumber = nextReceiptNumber(input.paidOn, (last && receiptSequence(last)) || 0)
@@ -202,7 +219,7 @@ export async function acceptCashOnCharges(
       reference: null,
       recordedByPersonId: input.collectorPersonId,
       recordedByUserId: ctx.auth?.sub ?? null,
-      collectedByPersonId: input.collectorPersonId,
+      collectedByPersonId,
       receiptNumber,
       createdAt: now,
       updatedAt: now,

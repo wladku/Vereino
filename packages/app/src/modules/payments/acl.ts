@@ -11,6 +11,9 @@
 // of E07-S10 (#117, DD-31, DD-32) are "My groups' payments": `payments.groups.view` reads the charges of the children
 // of the caller's groups, `payments.groups.collect` accepts cash for them, reminds payers and hands over kit; both are
 // held by `vereino_coach` and `vereino_coordinator` (`@vereino/core` `roleCatalogue`), and the scope stays the grants'.
+// `payments.cash.settle` is B-33 "Cash to settle" of E07-S11 (#118): who holds the club's cash and accepting a
+// handover; cash accepted by a holder of it goes straight to the club. The club administrator's only until the
+// treasurer role (#245).
 export const features = [
   { id: 'payments.view', title: 'View charges', module: 'payments' },
   {
@@ -44,6 +47,12 @@ export const features = [
     title: 'Order kit for my children (and myself) and change or cancel the order before the deadline',
     module: 'payments',
     dependsOn: ['payments.view_own'],
+  },
+  {
+    id: 'payments.cash.settle',
+    title: "See who holds the club's cash and accept cash handovers",
+    module: 'payments',
+    dependsOn: ['payments.view'],
   },
   { id: 'payments.groups.view', title: "View my groups' fees and kit orders", module: 'payments' },
   {
