@@ -172,7 +172,7 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
     // --- The dashboard of each role: exactly its widgets and no platform widget (API) ---
     const adminWidgets = await layoutWidgets(request, admin)
     // The administrator: widgets 1, 2, 4, 5, 7 and 9 of the role table built so far, bank and campaigns (3, 6), and the
-    // departure requests of `people` (#121); no platform widget.
+    // departure requests of `people` (#121) and its "People needing attention" (row 11, #310); no platform widget.
     expect(adminWidgets).toEqual([
       'activities.dashboard.sessionsNeedingCoach',
       'activities.dashboard.unsettledSessions',
@@ -182,6 +182,7 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
       'payments.dashboard.overdue',
       'payments.dashboard.withoutPayer',
       'people.dashboard.departureRequests',
+      'people.dashboard.peopleNeedingAttention',
       'people.dashboard.sectionsWithoutCoordinator',
     ])
     for (const coordinator of [krystyna, marek]) {
