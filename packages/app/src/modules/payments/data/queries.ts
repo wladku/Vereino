@@ -78,6 +78,31 @@ export async function chargeIdsWithPayment(
 }
 
 /**
+ * The live charges of the organization holding an online overpayment "to refund" (Q-049) that its refunds have not
+ * covered yet (the B-21 "To refund" perspective and `meta.toRefundCount`, payments parity DD-C10, #296). Distinct
+ * charge ids; overpayments are rare.
+ */
+export async function chargeIdsToRefund(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+): Promise<string[]> {
+  const rows = await em.execute<{ charge_id: string }[]>(
+    `select distinct p.charge_id
+       from payments_payments p
+       join payments_charges c
+         on c.id = p.charge_id and c.organization_id = p.organization_id and c.deleted_at is null
+      where p.tenant_id = ? and p.organization_id = ? and p.method = 'online' and p.is_overpayment = true
+        and p.reverses_payment_id is null and p.deleted_at is null
+        and p.amount + coalesce((
+          select sum(r.amount) from payments_payments r
+           where r.reverses_payment_id = p.id and r.organization_id = p.organization_id and r.deleted_at is null
+        ), 0) > 0`,
+    [scope.tenantId, scope.organizationId],
+  )
+  return rows.map((row) => row.charge_id)
+}
+
+/**
  * Takes the club's receipt-numbering lock until the caller's transaction ends ("Accept cash", #114): two acceptances
  * of one club wait for each other, so the month's highest number read after the lock is never issued twice.
  */
