@@ -133,7 +133,8 @@ export function createOccupancyService(getEm: () => EntityManager): FacilitiesOc
   return {
     async blockingIntervals(placeIds, window, ctx: OccupancyContext): Promise<BlockingInterval[]> {
       const scope = { tenantId: ctx.tenantId, organizationId: ctx.organizationId }
-      const entries = await facilityEntries(getEm().fork(), scope, placeIds, window)
+      // The caller's transactional EntityManager when it holds the occupancy lock (#221 M1), else a fork of our own.
+      const entries = await facilityEntries(ctx.em ?? getEm().fork(), scope, placeIds, window)
       return entries.map((entry) => ({
         id: entry.id,
         resourceId: entry.placeId,
