@@ -25,7 +25,8 @@ import {
 // PLN 150 (due on the 5th) and PLN 85 (due on the 20th) in two months. The payer select lists only payers with
 // something to pay, with their wards and the total due. PLN 100 for the older month's two charges pays the older one
 // first (PLN 50 left) and leaves the other open; PLN 235 for the newer month's two pays both. Each acceptance issues
-// one sequential `KP/YYYY/MM/NNN` number, records the collector and e-mails the payer (not when turned off). An amount
+// one sequential `KP/YYYY/MM/NNN` number, records who took the cash (the administrator settles cash, so no collector
+// holds it — DD-31, #118) and e-mails the payer (not when turned off). An amount
 // above the selection → 422, a future date → 422, a paid charge → 409, another payer's charge → 422; "Received by me
 // today" sums what the caller accepted; a coach without `payments.cash.record` → 403. The B-21 dialog takes cash in the
 // browser and shows the receipt in its toast; `/club/cash` fits 375 px.
@@ -186,15 +187,27 @@ test('TEST-043 cash for several charges, oldest first, with a numbered receipt a
       [newerFee.id, 15000, 'paid'],
       [newerKit.id, 8500, 'paid'],
     ])
+    // The administrator settles cash (`payments.cash.settle`, DD-31, #118): the cash is with the club at once, so the
+    // payments name who recorded them and no collector holding it.
     const stored = await withClient((client) =>
-      client.query<{ receipt_number: string; collected_by_person_id: string; method: string }>(
-        'select receipt_number, collected_by_person_id, method from payments_payments where charge_id = any($1::uuid[])',
+      client.query<{
+        receipt_number: string
+        recorded_by_person_id: string
+        collected_by_person_id: string | null
+        method: string
+      }>(
+        'select receipt_number, recorded_by_person_id, collected_by_person_id, method from payments_payments where charge_id = any($1::uuid[])',
         [[newerFee.id, newerKit.id]],
       ),
     )
     expect(stored.rows).toHaveLength(2)
     for (const row of stored.rows) {
-      expect(row).toEqual({ receipt_number: secondReceipt, collected_by_person_id: club.adminPersonId, method: 'cash' })
+      expect(row).toEqual({
+        receipt_number: secondReceipt,
+        recorded_by_person_id: club.adminPersonId,
+        collected_by_person_id: null,
+        method: 'cash',
+      })
     }
 
     // A paid charge takes no more cash.
