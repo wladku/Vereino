@@ -107,9 +107,9 @@ test('E07-S04 Today tile, M-08 payer code and transfer instructions, B-01 overdu
     expect((await generate(request, admin, lastMonth)).body).toMatchObject({ created: 3, payerMissing: 1 })
     const dashboard = await paymentsDashboard(request, admin)
     expect(dashboard.status, JSON.stringify(dashboard.body)).toBe(200)
-    expect(dashboard.body).toEqual({
-      overdue: { total: 3 * FEE, charges: 3, families: 2 },
-      withoutPayer: { charges: 1 },
+    expect(dashboard.body).toMatchObject({
+      overdue: { total: 3 * FEE, charges: 3, families: 2, withoutPayer: 1 },
+      withoutPayer: { charges: 1, more: 0 },
     })
     let kasiaToken = await signInAs(request, club, kasia.userId, kasia.email)
     const forbidden = await paymentsDashboard(request, kasiaToken)

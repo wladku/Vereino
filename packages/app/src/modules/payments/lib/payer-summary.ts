@@ -115,16 +115,23 @@ export function ownPaymentsSummary(
   }
 }
 
-/** The B-01 "Overdue" widget: what remains on overdue charges, how many charges and how many families (payers). */
-export function overdueSummary(charges: readonly { payerPersonId: string | null; remaining: number }[]): {
+/**
+ * The B-01 "Overdue" widget: what remains on overdue charges, how many charges, how many families (payers) and how
+ * many of the charges have no payer (payments parity REQ-C09, #297).
+ */
+export function overdueSummary(
+  charges: readonly { payerPersonId: string | null; payerMissing: boolean; remaining: number }[],
+): {
   total: number
   charges: number
   families: number
+  withoutPayer: number
 } {
   const families = new Set(charges.flatMap((charge) => (charge.payerPersonId ? [charge.payerPersonId] : [])))
   return {
     total: charges.reduce((sum, charge) => sum + charge.remaining, 0),
     charges: charges.length,
     families: families.size,
+    withoutPayer: charges.filter((charge) => charge.payerMissing).length,
   }
 }
