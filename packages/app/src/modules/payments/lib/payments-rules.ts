@@ -286,3 +286,12 @@ export function reminderBatches(
   }
   return batches
 }
+
+/**
+ * Whether a run of a 15-minute sweep (`payments.checkouts.reconcile`, `payments.order_campaigns.close_due`) changed
+ * nothing: every count it reports is zero. Such a run writes no audit entry (#405), so a quiet club is not flooded
+ * with ~192 empty entries a day; a run that changed or failed anything is still audited.
+ */
+export function sweepChangedNothing(counts: Record<string, number>): boolean {
+  return Object.values(counts).every((count) => count === 0)
+}
