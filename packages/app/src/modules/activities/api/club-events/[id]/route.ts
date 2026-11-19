@@ -2,7 +2,6 @@
 // Command, and Error Contracts*; #376): readable club-wide by a coordinator and by the club administrator (Q-T18), with
 // the derived dates and place, `mayManage`, and each part — for a part with a group its session's time, coach, status,
 // gathering time, deadline and declared count; for an open part its own times and status — in time order.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -12,9 +11,8 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { ClubEvent } from '../../../data/entities'
 import { clubEventTarget } from '../../../services/club-event-scope'
-import { clubEventDerived, clubEventPartViews } from '../../../services/club-events'
+import { clubEventDerived, clubEventPartViews, findClubEvent } from '../../../services/club-events'
 import { attendanceSettings } from '../../../services/directory'
 import { CLUB_EVENT_READ_KINDS, CLUB_EVENT_READ_OPTIONS, clubEventListItemSchema } from '../../club-event-shared'
 import { errorSchema } from '../../shared'
@@ -58,8 +56,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const ctx = await commandContextForRequest(request)
     const scope = ctx ? trustedScopeOf(ctx) : null
     if (!ctx || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const row = await em.findOne(ClubEvent, { id, ...scope, deletedAt: null })
+    const row = await findClubEvent(ctx.container, scope, id)
     if (!row) return Response.json({ error: 'Not found' }, { status: 404 })
     const grants = await scopeContract.resolve(ctx)
     await assertInScope(grants, CLUB_EVENT_READ_KINDS, clubEventTarget(row), CLUB_EVENT_READ_OPTIONS)

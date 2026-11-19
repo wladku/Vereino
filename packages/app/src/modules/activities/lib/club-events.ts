@@ -28,8 +28,6 @@ export const MAX_VISITING_TEAMS = 32
 /** `^[a-z0-9]+(-[a-z0-9]+)*$`, 3–80 characters (DD-T13). */
 export const CLUB_EVENT_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-const POLISH_LETTERS: Readonly<Record<string, string>> = { ł: 'l', Ł: 'l' }
-
 /** Whether `slug` is a valid public slug of a club event. */
 export function isClubEventSlug(slug: string): boolean {
   return slug.length >= CLUB_EVENT_SLUG_MIN && slug.length <= CLUB_EVENT_SLUG_MAX && CLUB_EVENT_SLUG_PATTERN.test(slug)
@@ -41,11 +39,7 @@ export function isClubEventSlug(slug: string): boolean {
  * name leaves fewer than 3 characters, so the caller asks for a slug.
  */
 export function proposeClubEventSlug(name: string): string | null {
-  const ascii = name
-    .replace(/[łŁ]/g, (letter) => POLISH_LETTERS[letter] as string)
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
+  const ascii = name.replace(/[łŁ]/g, 'l').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const slug = ascii
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')

@@ -7,10 +7,11 @@ import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { Activity, Attendance, ClubEvent, ClubEventPart, Occurrence } from '../data/entities'
+import { pastClubEventIds } from '../data/queries'
 import { clubEventDates, clubEventPublicPath, partKind } from '../lib/club-events'
 import { gatheringIso } from '../lib/gathering'
 import { confirmByIso } from '../lib/confirm-by'
-import { clubEventManagerRole } from './club-event-scope'
+import { clubEventManagerRole, partEventOf, type PartEvent } from './club-event-scope'
 import { findExternalTeams, findGroups, findPersons, findPlaces, findSections, type ActivitiesScope } from './directory'
 
 /** The club event a part session belongs to, as the calendars and the session record show it (REQ-T03). */
@@ -258,4 +259,35 @@ export async function clubEventPartViews(
     }
   })
   return views.sort((a, b) => (a.startAt ?? '').localeCompare(b.startAt ?? '') || a.title.localeCompare(b.title, 'pl'))
+}
+
+/** A live club event of the organization, or null (the record route). */
+export function findClubEvent(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  id: string,
+): Promise<ClubEvent | null> {
+  return container
+    .resolve<EntityManager>('em')
+    .fork()
+    .findOne(ClubEvent, { id, ...scope, deletedAt: null })
+}
+
+/** The planned club events whose every part has ended (the list's "Past" and "Upcoming" views). */
+export function pastClubEvents(container: AwilixContainer, scope: ActivitiesScope, now: Date): Promise<string[]> {
+  return pastClubEventIds(container.resolve<EntityManager>('em').fork(), scope, now)
+}
+
+/** The club event of a session's activity: its managers (DD-T06) and its line on the reads (REQ-T03). */
+export async function sessionClubEvent(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  activityId: string,
+): Promise<{ part: PartEvent | null; clubEvent: ClubEventRef | null }> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const [part, refs] = await Promise.all([
+    partEventOf(em, scope, activityId),
+    clubEventRefs(container, scope, [activityId], em),
+  ])
+  return { part, clubEvent: refs.get(activityId) ?? null }
 }

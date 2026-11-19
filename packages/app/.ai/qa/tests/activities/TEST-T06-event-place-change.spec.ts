@@ -126,7 +126,7 @@ test('TEST-T06 a change of the event’s place moves only the planned future par
             await readNotifications(
               request,
               iga.token,
-              `&type=activities.occurrence_moved&sourceEntityId=${future1.occurrenceId}`,
+              `&type=activities.occurrence_moved&sourceEntityId=${String(future1.occurrenceId)}`,
             )
           ).length,
         { timeout: 30_000 },

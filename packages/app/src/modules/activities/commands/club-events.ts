@@ -150,7 +150,7 @@ async function assertSection(
 ): Promise<void> {
   if (!sectionId) return
   const section = (await findSections(ctx.container, scope, [sectionId], em)).get(sectionId)
-  if (!section || section.isActive === false) {
+  if (!section?.isActive) {
     await activitiesErrors.throw('activities_reference_invalid', { field: 'sectionId' })
   }
 }
@@ -398,7 +398,12 @@ const updateClubEventCommand: CommandHandler<
         const problem = sectionChangeProblem(row.sectionId ?? null, patch.sectionId, parts.length)
         if (problem) await activitiesErrors.throw(problem)
         // The new section must be the caller's too: a coordinator never hands an event to another section.
-        const target = clubEventTarget({ ...row, sectionId: patch.sectionId })
+        const target = clubEventTarget({
+          id: row.id,
+          tenantId: row.tenantId,
+          organizationId: row.organizationId,
+          sectionId: patch.sectionId,
+        })
         if (!findActingRole(authorized.scope, CLUB_EVENT_MANAGE_KINDS, target)) {
           await foundationErrors.throw('scope_denied')
         }

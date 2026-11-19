@@ -5,7 +5,6 @@
 // club administrator — 403 `scope_denied`; a change of the place moves the planned future part sessions and answers
 // with `sessionsMoved` and `notified`).
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import { createCrudOpenApiFactory, createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
@@ -14,7 +13,7 @@ import { scopeWhere } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import type { ClubEventCommandResult } from '../../commands/club-events'
 import { ClubEvent } from '../../data/entities'
-import { pastClubEventIds } from '../../data/queries'
+import { pastClubEvents } from '../../services/club-events'
 import { clubEventCreateSchema, clubEventListQuerySchema, clubEventUpdateSchema } from '../../data/validators'
 import {
   CLUB_EVENT_ENTITY_ID,
@@ -84,9 +83,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       if (query.view === 'cancelled') filters.push({ status: 'cancelled' } as Where)
       if (query.view === 'upcoming' || query.view === 'past') {
         const trusted = crudScope(ctx)
-        const past = trusted
-          ? await pastClubEventIds(ctx.container.resolve<EntityManager>('em').fork(), trusted, new Date())
-          : []
+        const past = trusted ? await pastClubEvents(ctx.container, trusted, new Date()) : []
         filters.push({ status: 'planned' } as Where)
         if (query.view === 'past') filters.push(past.length > 0 ? ({ id: { $in: past } } as Where) : NO_ROW)
         else if (past.length > 0) filters.push({ id: { $nin: past } } as Where)
@@ -121,7 +118,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
           updatedAt: entity.updatedAt.toISOString(),
           actingRole,
           sessionsMoved: sessionIds.length,
-          notified: await countMovedNotified(ctx as CrudCtx, sessionIds, actingRole),
+          notified: await countMovedNotified(ctx, sessionIds, actingRole),
         }
       },
     },

@@ -69,13 +69,13 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     const marek = await signedInStaff(request, club, { firstName: 'Marek', lastName: 'Trener', role: 'coach' })
     const since = addDays(calendarDate(), -30)
     await addMembership(request, admin, {
-      groupId: groups['Orlik młodszy'] as string,
+      groupId: groups['Orlik młodszy'],
       personId: wojtek.personId,
       role: 'coach',
       validFrom: since,
     })
     await addMembership(request, admin, {
-      groupId: groups['Trampkarz'] as string,
+      groupId: groups['Trampkarz'],
       personId: marek.personId,
       role: 'coach',
       validFrom: since,
@@ -92,7 +92,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     })
     await createGuardianship(request, admin, { guardianPersonId: kasiaPerson, wardPersonId: jas, validFrom: since })
     await addMembership(request, admin, {
-      groupId: groups['Orlik młodszy'] as string,
+      groupId: groups['Orlik młodszy'],
       personId: jas,
       role: 'participant',
       validFrom: since,
@@ -243,7 +243,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     // --- The 41st part: 422 club_event_parts_limit (31 more open parts, then one more) ---
     for (let index = 0; index < 31; index += 1) {
       await partIds(request, wojtek.token, eventId, {
-        title: `Część dodatkowa ${index + 1}`,
+        title: `Część dodatkowa ${String(index + 1)}`,
         groupId: null,
         startsAt: zoneInstant(sat2, '15:00'),
         endsAt: zoneInstant(sat2, '16:00'),

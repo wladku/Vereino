@@ -474,7 +474,7 @@ export async function cancelRolesOf(
 ): Promise<Map<string, ActingRole | null>> {
   const roles = new Map<string, ActingRole | null>()
   if (rows.length === 0) return roles
-  const first = rows[0] as CancelTargetRow
+  const first = rows[0]
   const parts = await partEventsOf(
     em ?? container.resolve<EntityManager>('em').fork(),
     { tenantId: first.tenantId, organizationId: first.organizationId },

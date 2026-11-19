@@ -4,7 +4,6 @@
 // #215: false where `coach_may_cancel` is off and the caller holds only a coach grant on it), whether they may assign
 // a substitute, edit or take it over (`mayAssign`, `mayEdit`, `mayTakeOver`; REQ-A10, E10-S08 #273), and the move — `activities.occurrences.update`, which detaches the session from its series and is refused with 409 when
 // it overbooks the place tree or the coach. Send the lock token in the platform optimistic-lock header.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -26,8 +25,7 @@ import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
 import { countMoveNotified } from '../../../services/session-notice'
 import { sessionActionFlags } from '../../../services/calendar'
-import { partEventOf } from '../../../services/club-event-scope'
-import { clubEventRefs } from '../../../services/club-events'
+import { sessionClubEvent } from '../../../services/club-events'
 import { selfPersonId } from '../../../commands/shared'
 import {
   SCHEDULE_READ_KINDS,
@@ -129,12 +127,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       cancelRoleOf(ctx.container, grants, row),
       findPlaces(ctx.container, scope, row.placeId ? [row.placeId] : []),
     ])
-    const em = ctx.container.resolve<EntityManager>('em').fork()
     // Club events spec REQ-T03, DD-T06 (#376): the club event of a part session, and its managers' flags.
-    const [part, clubEvents] = await Promise.all([
-      partEventOf(em, scope, row.activityId),
-      clubEventRefs(ctx.container, scope, [row.activityId], em),
-    ])
+    const { part, clubEvent } = await sessionClubEvent(ctx.container, scope, row.activityId)
     const place = row.placeId ? places.get(row.placeId) : undefined
     // Restore (#268): the club administrator only, a cancelled session that has not ended — the command's own checks.
     const mayRestore =
@@ -187,7 +181,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       updatedAt: row.updatedAt.toISOString(),
       opponentName: activityTeam?.opponentName ?? null,
       invitedTeamNames: activityTeam?.invitedTeamNames ?? [],
-      clubEvent: clubEvents.get(row.activityId) ?? null,
+      clubEvent,
       substitutions,
       isAway: activity?.isAway ?? false,
       score: scoreView(row),
