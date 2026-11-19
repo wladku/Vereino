@@ -51,10 +51,12 @@ Route first; never probe unmatched context.
 - Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
+- Never import a command file (`commands/*.ts` that calls `registerCommand`) from anything a module's `di.ts` loads: the CLI registers it twice and every `yarn mercato <module>` call fails; take shared helpers from `lib/` or `data/` (`yarn verify` step `di-commands:check`, lesson `di-reaches-no-command-file`).
 - Never use raw admin `fetch`/`<form>`, ad hoc crypto/cache/queues, role-name guards, or direct mutations when helpers exist.
 - Never hard-code user strings/status colors; expose secrets/transcripts; or guess answerable contracts.
 - Never give text the `brand` variant of `Tag`/`StatusBadge` or its `brand-violet` classes: it fails axe color-contrast (2.11:1); use a status variant (lesson `tag-brand-variant-low-contrast`).
 - Never import `@open-mercato/ui/backend/*` (`apiCall`, `CrudForm`, queries) in `packages/ui`: it typechecks the platform sources there; take the client as an argument (lesson `vereino-ui-imports-no-platform-client-sources`).
+- Never pass `assignments` to `attachmentService.createScoped` for a file the module must delete later: the upload already adds the owner as an assignment and `releaseScoped` refuses (409) a file with a second one; release the owner assignment (lesson `attachment-owner-assignment-and-release`).
 - Never write repository files from a Python or Node script in Windows text mode (it writes CRLF into this LF repository): prefer the Edit tool, else write bytes or `newline='\n'`, and check `git diff --stat` for CRLF warnings (lesson `scripted-edits-keep-lf-on-windows`, repeated in #93 and #285).
 - Never filter or text-search the encrypted `action_logs` columns (`command_id`, `context_json`, `command_payload`, snapshots) in SQL; match unencrypted columns or read through the audit API (lesson `action-log-columns-encrypted-at-rest`).
 
