@@ -12,7 +12,8 @@ export type GroupDirectoryEntry = { id: string; sectionId: string; name: string;
 
 export type RosterEntry = { personId: string; role: MembershipRole }
 
-export type ExternalTeamDirectoryEntry = { id: string; name: string }
+/** An external team: its name and the club it plays for (club events spec REQ-T04: the visiting teams of a part). */
+export type ExternalTeamDirectoryEntry = { id: string; name: string; clubName?: string | null }
 
 /** A membership of one person as the member calendar reads it (#32): the group, the role and the period. */
 export type MembershipPeriod = {
@@ -211,9 +212,9 @@ export async function findExternalTeams(
   const rows = await em.find(
     ExternalTeam,
     { id: { $in: unique }, ...scope, deletedAt: null },
-    { fields: ['id', 'name'] },
+    { fields: ['id', 'name', 'clubName'] },
   )
-  return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name }]))
+  return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name, clubName: row.clubName ?? null }]))
 }
 
 export function createGroupDirectory(getEm: () => EntityManager): GroupDirectory {
