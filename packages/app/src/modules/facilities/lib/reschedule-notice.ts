@@ -110,7 +110,7 @@ export function limitNoticeEntries<T>(
   return { shown: entries.slice(0, limit), more: Math.max(0, entries.length - limit) }
 }
 
-/** The sections whose coordinators a plan needs, with each session's day (one directory read per pair). */
+/** The sections whose coordinators a plan needs, with each session's day (all pairs read in one directory call, #394). */
 export function sectionDays(
   sessions: readonly FlaggedSession[],
   dayOf: (instant: Date) => CalendarDate,

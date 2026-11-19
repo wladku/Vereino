@@ -14,6 +14,8 @@
    - TEST-L12 (UI test): `signInBrowser` for the administrator resets the password and ends the token `createClub` returned; the later restore call used it. The test now takes a fresh token from the returned password (lesson `sign-in-browser-ends-the-api-token`).
 4. Lessons: new `confirm-dialog-is-an-alertdialog`; recurrence added to `sign-in-browser-ends-the-api-token`. `yarn lessons:check` passes.
 
+5. After the first push `main` advanced (fbd57f7d, #409) and the PR went `DIRTY`, so CI did not run. Merged it again: the only conflict was the import block of `people/services/person-directory.ts` (this PR's `people-rules` consent imports next to main's `section-role-holders` import); kept both. `yarn typecheck`, `yarn typecheck:qa`, `yarn lint` (0 errors), `yarn format:check` and `jest src/modules/people` (13 suites, 239 tests) pass on the merge result.
+
 ## Decisions
 
 - Fixed the tests, not the component: the dialog role and the token ending are the platform's documented behaviour; no assertion was weakened.
