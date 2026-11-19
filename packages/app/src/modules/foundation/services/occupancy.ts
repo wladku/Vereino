@@ -14,7 +14,12 @@ export type OccupancyReason = 'booking' | 'rental' | 'closure' | 'maintenance'
 /** A blocking interval on a place, with the reason the 409 `occurrence_place_conflict` list shows. */
 export type BlockingInterval = Interval & { readonly reason: OccupancyReason }
 
-export type OccupancyContext = { tenantId: string; organizationId: string }
+/**
+ * The caller's scope and, optionally, its EntityManager (#221 M1). A caller that holds the occupancy lock passes its
+ * transactional `em`, so the provider reads on the same connection and sees the caller's uncommitted rows instead of
+ * taking a second pool connection while the lock is held; without `em` the provider reads on its own fork.
+ */
+export type OccupancyContext = { tenantId: string; organizationId: string; em?: EntityManager }
 
 export type OccupancyProvider = {
   /** Blocking intervals on the given places that overlap `window`, in the caller's tenant and organization. */
