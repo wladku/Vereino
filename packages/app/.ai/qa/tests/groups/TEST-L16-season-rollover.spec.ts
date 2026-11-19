@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { addDays, createActivity, nextWeekday, zoneInstant } from '../_fixtures/activities'
-import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
+import { prepareForAccessibilityScan, scanBlockingViolations, switchColorScheme } from '../_fixtures/axe'
 import {
   birthDateTurning,
   calendarDate,
@@ -440,15 +440,15 @@ test("TEST-L16 the wizard opens from the Seasons tab and lists the groups in the
     await page.getByTestId('groups-rollover-next-2').click()
     await page.getByTestId('groups-rollover-next-3').click()
     await expect(page.getByTestId('groups-rollover-preview')).toBeVisible()
-    const violations = await scanInColorSchemes(
-      page,
-      testInfo,
-      'B-11 season rollover',
-      async () => {
-        await expect(page.getByTestId('groups-rollover-preview')).toBeVisible()
-      },
-      { platformBaseline: true },
-    )
+    // The preview lives in the wizard's client state, which a reload drops (`scanInColorSchemes` reloads), so the
+    // scheme changes on the rendered page and the scan waits for the fade to end (#368).
+    const violations: Record<string, unknown[]> = {}
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await switchColorScheme(page, colorScheme)
+      await expect(page.getByTestId('groups-rollover-preview')).toBeVisible()
+      const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
+      if (found.length > 0) violations[`B-11 season rollover (${colorScheme})`] = found
+    }
     expect(violations).toEqual({})
   } finally {
     await club.cleanup()

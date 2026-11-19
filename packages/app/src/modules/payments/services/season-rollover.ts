@@ -21,11 +21,14 @@ import type {
   SeasonRolloverContext,
   SeasonRolloverPlan,
 } from '../../groups/services/season-rollover'
-import { feeEvents } from '../commands/fees'
-import { PAYMENTS_WRITE_KINDS, clubTarget } from '../commands/shared'
+import { PAYMENTS_WRITE_KINDS, clubTarget, paymentsEvents } from '../commands/shared'
 import { Fee } from '../data/entities'
 import { findActivities, type PaymentsScope } from './directory'
 import type { ScheduleActivityEntry } from '../../activities/services/schedule-directory'
+
+// The same events config as `feeEvents` in `commands/fees.ts`, built here because `di.ts` loads this file and must
+// never reach a command file (lesson `di-reaches-no-command-file`).
+const feeEvents = paymentsEvents<Fee>('fee')
 
 /** The token `groups` reads (`seasonContributorToken('payments')` in `groups/services/season-rollover.ts`). */
 export const PAYMENTS_SEASON_CONTRIBUTOR = 'groups.season.payments'
