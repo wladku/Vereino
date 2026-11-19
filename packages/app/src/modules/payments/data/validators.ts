@@ -146,6 +146,15 @@ export const discountRuleListQuerySchema = z.object({
 
 export const chargeGenerateSchema = z.object({ period: billingPeriodSchema }).strict()
 
+/** `payments.charge_generations.undo` (#403): the generation; its lock token travels in the platform header. */
+export const chargeGenerationUndoSchema = z.object({ id: z.uuid() }).strict()
+
+/** `GET /api/payments/charge-generations` (#403): the club's generations, newest first. */
+export const chargeGenerationListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
 const flagSchema = z.enum(['1', '0', 'true', 'false'])
 
 /** True for a set query flag (`1` or `true`). */
@@ -337,6 +346,13 @@ export const paymentsSettingsUpdateSchema = z
   .object({
     coachFeeAccess: z.enum(COACH_FEE_ACCESS).optional(),
     autoBookBankMatches: z.boolean().optional(),
+    onlineMethods: z
+      .array(z.string())
+      .max(10)
+      .optional()
+      .describe(
+        'The offered online methods: a non-empty subset of `card`, `blik`, `p24` (422 `online_methods_invalid`)',
+      ),
     // "Automatic charges and reminders" (B-20; payments parity spec DD-C08, DD-C09; #301).
     autoGenerateCharges: z.boolean().optional(),
     generationDay: z

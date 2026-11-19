@@ -1,7 +1,7 @@
 # Vereino — Club events with parts: one tournament, many categories, days and groups
 
 **Date**: 2026-11-18
-**Status**: Draft — written 2026-11-18 from the owner's decisions D-032. The owner confirmed Q-T01, Q-T05, Q-T09/Q-T22 and Q-T10 on 2026-11-18; waiting for the approvals of Q-T20 (migrations, feature id, routes) and Q-T11
+**Status**: Ready for implementation — written 2026-11-18 from the owner's decisions D-032. The owner confirmed Q-T01, Q-T05, Q-T09/Q-T22 and Q-T10 on 2026-11-18, and on 2026-11-19 approved the Ask First items of *Rollout* (Q-T20), confirmed Q-T11 (the coach-only check at an external place applies only to part sessions, DD-T07) and kept the remaining autonomous defaults (Q-T02…Q-T04, Q-T06…Q-T08, Q-T12…Q-T19, Q-T23, Q-T24).
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -761,9 +761,9 @@ Every criterion that names a phone page is checked at 375 px, in English and Pol
 | Platform-native reuse and extension points were chosen before custom code | pass | Reuse and Ownership Map; DD-T01, DD-T08, DD-T09, DD-T11 |
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI and Interaction Contracts |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Implementation Phases 1–7 |
-| User approval for implementation | fail | The owner's review of this text and the approval of the Ask First items in *Rollout* (Q-T20) are pending |
+| User approval for implementation | pass | The owner approved the Ask First items in *Rollout* (Q-T20) and confirmed Q-T11 on 2026-11-19 |
 
-Verdict: `Blocked — the owner's review of this spec and the approval of migrations T1 and T2, the new feature and role-catalogue change, the P-06 narrowing and the behaviour changes on existing commands (Q-T20)`.
+Verdict: `Ready for implementation` — the owner approved migrations T1 and T2, the new feature and role-catalogue change, the P-06 narrowing and the behaviour changes on existing commands (Q-T20) and confirmed Q-T11 on 2026-11-19.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -772,34 +772,34 @@ Chosen without the owner, as the option closest to the existing code or the most
 | ID | Question | Chosen answer | Rationale | Confirmation |
 |---|---|---|---|---|
 | Q-T01 | Is a part without a club group allowed? | Yes, as an open part with its own times, only while the event's place is external (DD-T04) | The example's seniors' tournament has no club group; at a club place an open part would hide from the facility occupancy | confirmed by the owner on 2026-11-18 |
-| Q-T02 | One place per event, or a per-part override? | One place per event (DD-T05) | D-032 §1 lists the venue among the shared facts; the smallest model | pending |
-| Q-T03 | May a club event use a typed venue (REQ-A08)? | No; the place list with "Add place" (D-032 §4) | The place must stay on the list for next time | pending |
-| Q-T04 | More than one club group in one part? | No; one group or none | D-032 §1 names "the club's group" | pending |
+| Q-T02 | One place per event, or a per-part override? | One place per event (DD-T05) | D-032 §1 lists the venue among the shared facts; the smallest model | confirmed by the owner on 2026-11-19 |
+| Q-T03 | May a club event use a typed venue (REQ-A08)? | No; the place list with "Add place" (D-032 §4) | The place must stay on the list for next time | confirmed by the owner on 2026-11-19 |
+| Q-T04 | More than one club group in one part? | No; one group or none | D-032 §1 names "the club's group" | confirmed by the owner on 2026-11-19 |
 | Q-T05 | Who moves and cancels a part session? | The administrator and the coordinators of the event's section; not a coach, not a coordinator of another section (DD-T06) | The organiser owns a published schedule; DD-A05 was for a coach's own events | confirmed by the owner on 2026-11-18 |
-| Q-T06 | Can a part's group change? | No; remove the part (while unused) and add it again | A changed group would move declarations between families | pending |
-| Q-T07 | Does the public page name a part's group when the group is not public? | No; it shows the club's name (DD-T12) | DD-29 keeps a group private unless the club publishes it | pending |
-| Q-T08 | Poster and logo formats and limits; PDF poster; funder links? | Poster PNG/JPEG/WebP ≤ 5 MB, one; logos the same formats ≤ 2 MB, ≤ 12, with a name; no PDF, no links (DD-T10) | The place-photo and logo rules; a phone shows images inline | pending |
+| Q-T06 | Can a part's group change? | No; remove the part (while unused) and add it again | A changed group would move declarations between families | confirmed by the owner on 2026-11-19 |
+| Q-T07 | Does the public page name a part's group when the group is not public? | No; it shows the club's name (DD-T12) | DD-29 keeps a group private unless the club publishes it | confirmed by the owner on 2026-11-19 |
+| Q-T08 | Poster and logo formats and limits; PDF poster; funder links? | Poster PNG/JPEG/WebP ≤ 5 MB, one; logos the same formats ≤ 2 MB, ≤ 12, with a name; no PDF, no links (DD-T10) | The place-photo and logo rules; a phone shows images inline | confirmed by the owner on 2026-11-19 |
 | Q-T09 | Names of the new things? | EN "Club event", "Part"; PL "Impreza klubowa", "Część" (menu "Imprezy klubowe"); never "wydarzenie", which is the type `other` | The glossary's "one word names one thing"; the mockup has no such screen | confirmed by the owner on 2026-11-18 |
 | Q-T10 | What does the in-form "Add place" create, and what may the coordinator do with it later? | A root, active, external leaf with name, address, kind and owner; nothing more; no edit or delete without `club_core.manage` (DD-T08) | D-032 §4 asks only to add it | confirmed by the owner on 2026-11-18 (the feature id itself is still Ask First item, Q-T20) |
-| Q-T11 | Does "external place = coach-only check" apply to every session or only to parts? | Only to part sessions (DD-T07) | The narrowest behaviour change that delivers D-032 | ⚠ NEEDS HUMAN CONFIRMATION |
-| Q-T12 | How is a cancelled club event announced? | Through each part session's existing cancellation (DD-T14) | One path; each family hears about its own part | pending |
-| Q-T13 | May an event exist without parts? | Yes, as a draft; not public until it has a part | Lets the organiser enter the shared facts first | pending |
-| Q-T14 | Public URL? | `/p/[clubSlug]/events/[eventSlug]`, the slug proposed from the name, editable, unique per club (DD-T13) | DD-23; under the Events menu | pending |
-| Q-T15 | Does changing the event's place move the parts and announce each move? | Yes, the planned future part sessions, each announced by REQ-A09 | The families must know where to go | pending |
-| Q-T16 | Is a part "away"? | No: `is_away` false; the club hosts | The coach units report counts away trips separately (#96) | pending |
-| Q-T17 | Who leads a part by default? | The form proposes the group's coach (its only active `coach` membership, else empty); the unstaffed warning (REQ-A14) covers a part left without one | The existing rules for a session without a coach | pending |
-| Q-T18 | Who reads club events in the panel and on the phone? | Coordinators read all of the club's club events, change only their sections' | Parts of a whole-club event involve their groups | pending |
-| Q-T19 | A notice when a club event or part is created or published? | No | No notice exists for a new single event either; the calendar and the evening reminder cover it | pending |
+| Q-T11 | Does "external place = coach-only check" apply to every session or only to parts? | Only to part sessions (DD-T07) | The narrowest behaviour change that delivers D-032 | confirmed by the owner on 2026-11-19 |
+| Q-T12 | How is a cancelled club event announced? | Through each part session's existing cancellation (DD-T14) | One path; each family hears about its own part | confirmed by the owner on 2026-11-19 |
+| Q-T13 | May an event exist without parts? | Yes, as a draft; not public until it has a part | Lets the organiser enter the shared facts first | confirmed by the owner on 2026-11-19 |
+| Q-T14 | Public URL? | `/p/[clubSlug]/events/[eventSlug]`, the slug proposed from the name, editable, unique per club (DD-T13) | DD-23; under the Events menu | confirmed by the owner on 2026-11-19 |
+| Q-T15 | Does changing the event's place move the parts and announce each move? | Yes, the planned future part sessions, each announced by REQ-A09 | The families must know where to go | confirmed by the owner on 2026-11-19 |
+| Q-T16 | Is a part "away"? | No: `is_away` false; the club hosts | The coach units report counts away trips separately (#96) | confirmed by the owner on 2026-11-19 |
+| Q-T17 | Who leads a part by default? | The form proposes the group's coach (its only active `coach` membership, else empty); the unstaffed warning (REQ-A14) covers a part left without one | The existing rules for a session without a coach | confirmed by the owner on 2026-11-19 |
+| Q-T18 | Who reads club events in the panel and on the phone? | Coordinators read all of the club's club events, change only their sections' | Parts of a whole-club event involve their groups | confirmed by the owner on 2026-11-19 |
+| Q-T19 | A notice when a club event or part is created or published? | No | No notice exists for a new single event either; the calendar and the evening reminder cover it | confirmed by the owner on 2026-11-19 |
 
 ## Open Questions
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-T20 | Are the Ask First items of *Rollout* approved: migrations T1 and T2, the feature `club_core.places.add_external` for the coordinator, the new routes, fields and command ids as one group, the P-06 narrowing (`section` nullable for a whole-club club event, parts folded), and the behaviour changes on the activity and session commands? | Władek Kuć | yes (phase 1 needs T1 and the behaviour changes; phase 2 the feature; phase 4 T2; phase 6 the P-06 change) | pending |
-| Q-T21 | Should the autonomous defaults Q-T01, Q-T05, Q-T10 and Q-T11 stand (only Q-T11 is still marked ⚠)? | Władek Kuć | yes for phase 1 (Q-T01, Q-T05, Q-T11) and phase 2 (Q-T10) | Q-T01, Q-T05 and Q-T10 confirmed by the owner on 2026-11-18; Q-T11 still open |
+| Q-T20 | Are the Ask First items of *Rollout* approved: migrations T1 and T2, the feature `club_core.places.add_external` for the coordinator, the new routes, fields and command ids as one group, the P-06 narrowing (`section` nullable for a whole-club club event, parts folded), and the behaviour changes on the activity and session commands? | Władek Kuć | yes (phase 1 needs T1 and the behaviour changes; phase 2 the feature; phase 4 T2; phase 6 the P-06 change) | approved by the owner on 2026-11-19 |
+| Q-T21 | Should the autonomous defaults Q-T01, Q-T05, Q-T10 and Q-T11 stand (only Q-T11 is still marked ⚠)? | Władek Kuć | yes for phase 1 (Q-T01, Q-T05, Q-T11) and phase 2 (Q-T10) | Q-T01, Q-T05 and Q-T10 confirmed by the owner on 2026-11-18; Q-T11 confirmed on 2026-11-19 (only part sessions) |
 | Q-T22 | Are "Impreza klubowa" / "Część" the right Polish names (Q-T09)? | Władek Kuć | no | confirmed by the owner on 2026-11-18: "Impreza klubowa" / "Część", menu "Imprezy klubowe" |
-| Q-T23 | Should a later version add a per-part place for parallel parts at a club complex (Q-T02)? | Władek Kuć | no | default: not in this version |
-| Q-T24 | Should the public page show the funders' links or a PDF poster (Q-T08)? | Władek Kuć | no | default: no |
+| Q-T23 | Should a later version add a per-part place for parallel parts at a club complex (Q-T02)? | Władek Kuć | no | default kept by the owner on 2026-11-19: not in this version |
+| Q-T24 | Should the public page show the funders' links or a PDF poster (Q-T08)? | Władek Kuć | no | default kept by the owner on 2026-11-19: no |
 | V-T01 | Does the platform route table serve `club_core/frontend/p/[clubSlug]/events/[eventSlug]/page.tsx` next to the existing `events/page.tsx` without a clash? | implementer, phase 6 | no | to be checked with `yarn generate` in phase 6; the fallback is the same page in `activities/frontend/p/[clubSlug]/events/[eventSlug]` with `clubFrame`, like the public session page |
 
 ## Changelog

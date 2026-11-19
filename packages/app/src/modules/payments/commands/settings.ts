@@ -1,14 +1,17 @@
 // `payments.settings.update` (payments spec *Data Models* → `payments_settings`; R07, DD-32; B-20 "Coaches and
-// payments"; issue #108; the "Automatic charges and reminders" group since #301, DD-C08/DD-C09): a partial update of the club's payment settings by the club administrator. `execute` creates
-// the row with its defaults on the first update, row-locks it and authorizes inside one write transaction; undo
-// writes the previous values back after `authorizeReplay` re-checks the scope.
+// payments"; issue #108; the "Automatic charges and reminders" group since #301, DD-C08/DD-C09; the offered online
+// methods of #302, REQ-C14): a partial update of the club's payment settings by the club administrator. `execute`
+// creates the row with its defaults on the first update, row-locks it and authorizes inside one write transaction;
+// undo writes the previous values back after `authorizeReplay` re-checks the scope.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
 import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { PaymentsSettings } from '../data/entities'
 import { ensurePaymentsSettingsRow } from '../data/queries'
+import { paymentsErrors } from '../api/errors'
 import { paymentsSettingsUpdateSchema } from '../data/validators'
+import { offeredOnlineMethods, onlineMethodsInvalid } from '../lib/online-payment'
 import type { CoachFeeAccess } from '../lib/payments-rules'
 import {
   PAYMENTS_WRITE_KINDS,
@@ -29,6 +32,8 @@ export type PaymentsSettingsSnapshot = {
   organizationId: string
   coachFeeAccess: CoachFeeAccess
   autoBookBankMatches: boolean
+  /** Absent in a snapshot written before migration C (#302). */
+  onlineMethods?: string[]
   autoGenerateCharges: boolean
   generationDay: number
   overdueReminders: boolean
@@ -43,6 +48,7 @@ export function paymentsSettingsSnapshot(row: PaymentsSettings): PaymentsSetting
     organizationId: row.organizationId,
     coachFeeAccess: row.coachFeeAccess,
     autoBookBankMatches: row.autoBookBankMatches,
+    onlineMethods: [...row.onlineMethods],
     autoGenerateCharges: row.autoGenerateCharges,
     generationDay: row.generationDay,
     overdueReminders: row.overdueReminders,
@@ -95,8 +101,12 @@ const updatePaymentsSettingsCommand: CommandHandler<Record<string, unknown>, Pay
       if (!row) throw new Error('[internal] payment settings row missing after ensure')
       const before = paymentsSettingsSnapshot(row)
       const patch = authorized.parsed
+      if (patch.onlineMethods && onlineMethodsInvalid(patch.onlineMethods)) {
+        await paymentsErrors.throw('online_methods_invalid')
+      }
       if (patch.coachFeeAccess !== undefined) row.coachFeeAccess = patch.coachFeeAccess
       if (patch.autoBookBankMatches !== undefined) row.autoBookBankMatches = patch.autoBookBankMatches
+      if (patch.onlineMethods !== undefined) row.onlineMethods = offeredOnlineMethods(patch.onlineMethods)
       if (patch.autoGenerateCharges !== undefined) row.autoGenerateCharges = patch.autoGenerateCharges
       if (patch.generationDay !== undefined) row.generationDay = patch.generationDay
       if (patch.overdueReminders !== undefined) row.overdueReminders = patch.overdueReminders
@@ -124,6 +134,8 @@ const updatePaymentsSettingsCommand: CommandHandler<Record<string, unknown>, Pay
     const row = await authorizeSettingsReplay(ctx)
     row.coachFeeAccess = before.coachFeeAccess
     row.autoBookBankMatches = before.autoBookBankMatches
+    // A snapshot written before migration C has no methods: the row keeps the default it got from the migration.
+    if (before.onlineMethods) row.onlineMethods = offeredOnlineMethods(before.onlineMethods)
     // A snapshot written before #301 has no automation fields: those stay as they are.
     if (before.autoGenerateCharges !== undefined) row.autoGenerateCharges = before.autoGenerateCharges
     if (before.generationDay !== undefined) row.generationDay = before.generationDay

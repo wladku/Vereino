@@ -6,6 +6,7 @@
 import type { ErrorCodeTable } from '@vereino/core'
 
 export const errorCodes = [
+  { code: 'online_methods_invalid', status: 422, messageKey: 'payments.errors.online_methods_invalid' },
   { code: 'fee_target_invalid', status: 422, messageKey: 'payments.errors.fee_target_invalid' },
   { code: 'fee_target_unknown', status: 422, messageKey: 'payments.errors.fee_target_unknown' },
   { code: 'fee_period_locked', status: 422, messageKey: 'payments.errors.fee_period_locked' },

@@ -92,7 +92,13 @@ export const testGatewayAdapter: GatewayAdapter = {
       clientSession: {
         type: 'embedded',
         rendererKey: TEST_GATEWAY_RENDERER,
-        payload: { sessionId, amount: input.amount, currencyCode: input.currencyCode },
+        // The offered methods, as Stripe's Payment Element would show them (TEST-C15: BLIK offered, #302).
+        payload: {
+          sessionId,
+          amount: input.amount,
+          currencyCode: input.currencyCode,
+          paymentTypes: input.paymentTypes ?? ['card'],
+        },
       },
     })
   },
