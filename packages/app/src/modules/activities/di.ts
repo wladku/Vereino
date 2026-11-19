@@ -12,6 +12,7 @@ import { activityAudienceProvider, occurrenceAudienceProvider } from './services
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
 import { ACTIVITIES_GROUP_USAGE, groupUsage } from './services/group-usage'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
+import { ACTIVITIES_PLACE_USAGE, placeUsage } from './services/place-usage'
 import { ACTIVITIES_PUBLIC_EVENTS, createPublicEvents } from './services/public-events'
 import { ACTIVITIES_PUBLIC_SCHEDULE, createPublicSchedule } from './services/public-schedule'
 import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './services/schedule-directory'
@@ -47,6 +48,10 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
  * was used, which it reads before a started membership is removed (`groups/services/group-usage.ts`).
  * Stateless: it reads with the caller's EntityManager inside the command's transaction.
  *
+ * `activities.placeUsage` (club events spec REQ-T06, #377): whether a live activity or session points at a place,
+ * which `club_core` reads with `hasRegistration` before the undo of an added external place removes it
+ * (`club_core/services/place-usage.ts`). Stateless: it reads with the caller's EntityManager inside the undo.
+ *
  * `groups.season.activities` (people life-cycle spec REQ-L08, DD-L10; #311): the season contributor `groups` reads
  * with `hasRegistration` (`groups/services/season-rollover.ts`) — the recurring activities of the rolled-over groups end
  * on the old season's last day and may be copied into the new season. Stateless: it works in the caller's
@@ -63,6 +68,7 @@ export function register(container: AppContainer) {
   container.register({
     [ACTIVITIES_DECLARATION_LINKS]: asValue(declarationLinks),
     [ACTIVITIES_GROUP_USAGE]: asValue(groupUsage),
+    [ACTIVITIES_PLACE_USAGE]: asValue(placeUsage),
     [ACTIVITIES_SEASON_CONTRIBUTOR]: asValue(seasonContribution),
     [audienceProviderToken('activity')]: asValue(activityAudienceProvider),
     [audienceProviderToken('occurrence')]: asValue(occurrenceAudienceProvider),
