@@ -4855,6 +4855,23 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "online_methods": {
+          "name": "online_methods",
+          "type": "text[]",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'{card}'",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "array"
+        },
         "organization_id": {
           "name": "organization_id",
           "type": "uuid",
