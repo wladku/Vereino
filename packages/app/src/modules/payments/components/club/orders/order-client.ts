@@ -7,6 +7,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import type { CampaignStatus, ProductKind } from '../../../lib/order-campaigns'
 import type { ChildOrderState } from '../../../lib/orders'
 import type { TransferInstructions } from '../ClubPaymentsPage'
+import { CLUB_PAYMENTS_HREF } from '../PaymentsClubFrame'
 
 export const CLUB_ORDERS_HREF = '/club/orders'
 
@@ -23,6 +24,16 @@ export function orderLinkQueryKey(token: string) {
 export function clubOrderHref(campaignId: string, childId?: string): string {
   const path = `${CLUB_ORDERS_HREF}/${encodeURIComponent(campaignId)}`
   return childId ? `${path}?child=${encodeURIComponent(childId)}` : path
+}
+
+/** M-19 for one child of the link's guardian (the child chips). */
+export function orderLinkHref(token: string, childId: string): string {
+  return `/club/o/${encodeURIComponent(token)}?child=${encodeURIComponent(childId)}`
+}
+
+/** M-08 with only this charge ticked (REQ-C10, REQ-C11: "Pay online {amount}"). */
+export function payChargeHref(chargeId: string): string {
+  return `${CLUB_PAYMENTS_HREF}?pay=${encodeURIComponent(chargeId)}`
 }
 
 export type MyCampaignChild = {
@@ -85,6 +96,9 @@ export type FormOrder = {
   chargeId: string
   state: ChildOrderState
   updatedAt: string
+  submittedAt: string
+  handedOverAt: string | null
+  handedOverBy: { firstName: string; lastName: string } | null
 }
 
 export type OrderForm = {
@@ -107,7 +121,11 @@ export type OrderForm = {
   transfer: TransferInstructions | null
 }
 
-export type OrderLinkForm = OrderForm & { club: { name: string }; expiresAt: string }
+export type OrderLinkForm = OrderForm & {
+  club: { name: string }
+  expiresAt: string
+  guardian: { firstName: string; lastName: string }
+}
 
 export type OrderDraft = {
   setSelected: boolean
