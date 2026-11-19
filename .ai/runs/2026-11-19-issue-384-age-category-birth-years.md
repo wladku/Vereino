@@ -43,3 +43,11 @@
 ## Review (PR #424)
 
 An independent reviewer read the diff (no blockers). Fixed: the hint's query key now includes the organization scope version; the OpenAPI request bodies reuse the validators (1–99 bounds). Kept, with reasons in the PR: the public tab fills the proposed ages into empty fields (Q-L26, J-L10 step 3 "she keeps it"; editable, never over a stored value); the create writes the dictionary entry directly so entry and range share one transaction, as the spec requires (the platform command runs its own transaction; the seed already writes entries this way). Left: the edit UI shows for `dictionaries.manage` without the `club_admin` grant (outside the role catalogue only; the server answers 403). After the fixes: `yarn typecheck` exit 0, eslint clean on the touched files, TEST-L23 **1 passed** (44.2 s).
+
+## CI fix (PR #424, cezar task 53688008)
+
+- **Trigger:** required checks `integration` and `integration (shard 4/6)` failed on run 44598744007.
+- **Cause:** `E06-S08-groups-filters-and-counts.spec.ts:134` asserted the groups nav tabs as exactly Groups / External teams / Seasons; this PR adds the **Age categories** tab after Seasons (REQ-L16), so the list had a fourth entry (`+ "Age categories"`, failed on the retry too). Not a flake and not a product bug: the test's expectation was out of date.
+- **Fix:** the assertion now lists the fourth tab through `uiText('groups.nav.tabs.ageCategories', { exact: true })`. `integration` is the aggregate job and follows the shard.
+- **Local check:** `yarn test:integration:vereino --filter E06-S08` — **1 passed** (14.9 s); `yarn typecheck:qa` exit 0; `yarn qa-texts:check` 0 problems.
+- **Base:** merged `origin/main` (no conflicts) on a detached HEAD at the PR head; pushed with `git push origin HEAD:feat/issue-384-age-category-birth-years`.
