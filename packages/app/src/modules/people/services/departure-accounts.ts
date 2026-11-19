@@ -1,6 +1,7 @@
 // The accounts of persons who left close the day after their last day (people life-cycle spec Q-L09, *Events, Jobs*
-// step 4 "Dated departures"; phase L4, #306). Until the daily life-cycle job of phase L8 exists, the daily role sync
-// (`people.persons.sync_roles`, worker `people:sync-role-expiry`) runs this step after the roles: for every person with
+// step 4 "Dated departures"; phase L4, #306). The daily life-cycle job (`people.persons.life_cycle`, phase L8, #310)
+// runs it as its step 4; the daily role sync (`people.persons.sync_roles`) keeps running it too, because an existing
+// club gets the life-cycle schedule only after its confirmed first run (*Rollout*): for every person with
 // `left_on` before `today` and an account, the platform user is deleted (`auth.users.delete` through the foundation),
 // the link is cleared and `people.person.account_closed` is emitted. Idempotent: a closed account has no `user_id`.
 // One person's failure is logged and retried on the next run.

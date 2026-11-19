@@ -8,7 +8,9 @@
 // guardianships — the member's active guardians with the consents they gave (read-only for the ward). The people
 // life-cycle spec (REQ-L10, #309) adds an adult's own consents with their authors (`ownConsents`, null for a minor) and
 // the club's consent texts with the instant of their last change (`consentTexts`, DD-L11), so the profile shows the
-// club's wording and marks a consent given to an earlier one.
+// club's wording and marks a consent given to an earlier one. Phase L8 (#310) adds each ward's notice lines
+// (`wards[].notices`: "may have an own account", "turns 18 on {date}") and the member's own notice card before and after
+// the 18th birthday (`notice`); the authors of an adult's consents carried over from the former guardians are named.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
@@ -35,6 +37,7 @@ import {
   type ConsentsView,
   type GuardianRelation,
 } from '../lib/people-rules'
+import { ownNotice, wardNotices, type OwnNotice, type WardNotice } from '../lib/life-cycle-rules'
 import {
   clubConsentTexts,
   clubLogoUrl,
@@ -89,6 +92,8 @@ export type MemberWardView = {
     /** The lock token of `POST /api/people/guardianships/{id}/consents`. */
     updatedAt: string | null
   }
+  /** M-10 ward card lines (#310): the club's account age reached without an account; the 18th birthday within 30 days. */
+  notices: WardNotice[]
 }
 
 /** One active guardian of the member (E06-S22 #104): who they are and the consents they gave for the member. */
@@ -124,6 +129,8 @@ export type MemberProfile = {
   ownConsents: MemberConsentsView | null
   /** The club's consent texts by key with the instant of the last change (DD-L11); a missing key = built-in text. */
   consentTexts: ClubConsentTexts
+  /** The member's own card before and after their 18th birthday (#310); null otherwise or without a birth date. */
+  notice: OwnNotice | null
 }
 
 export function memberPersonView(person: Person): MemberPersonView {
@@ -230,6 +237,7 @@ async function loadFamily(
   personId: string,
   wardIds: readonly string[],
   today: string,
+  threshold: number,
 ): Promise<{ wards: MemberWardView[]; guardians: MemberGuardianView[] }> {
   const wardLinks = await loadWardLinks(em, scope, personId, wardIds, today)
   const guardianLinks = await loadGuardianLinks(em, scope, personId, today)
@@ -278,6 +286,7 @@ async function loadFamily(
           consents: consentsOf(link),
           updatedAt: iso(link.updatedAt),
         },
+        notices: wardNotices({ birthDate: ward.birthDate, hasAccount: Boolean(ward.userId), threshold, today }),
       },
     ]
   })
@@ -313,8 +322,9 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   if (!person) return null
   const grants = await scopeContract.resolve(ctx)
   const today = await clubToday(ctx.container, scope)
+  const settings = await clubSettings(ctx.container, scope)
   const wardIds = grants.find((grant) => grant.kind === 'guardian')?.ids ?? []
-  const { wards, guardians } = await loadFamily(em, scope, person.id, wardIds, today)
+  const { wards, guardians } = await loadFamily(em, scope, person.id, wardIds, today, settings.ownAccountMinAge)
   const assignments = await em.find(
     RoleAssignment,
     { ...scope, personId: person.id, deletedAt: null },
@@ -323,7 +333,6 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   const roles = assignments
     .filter((row) => isActiveAt({ validFrom: row.validFrom, validTo: row.validTo ?? null }, today))
     .map((row) => ({ role: row.role, sectionId: row.sectionId ?? null }))
-  const settings = await clubSettings(ctx.container, scope)
   const supported = await resolveSupportedLocalesForRequest()
   const requestLocale = await detectLocale({ supportedLocales: supported })
   const locale = memberLocale([person.preferredLocale, settings.defaultLocale, requestLocale], supported, defaultLocale)
@@ -351,20 +360,28 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     isParticipant,
     ownConsents,
     consentTexts: await clubConsentTexts(ctx.container, scope),
+    notice: ownNotice(person.birthDate, today),
   }
 }
 
 /**
- * An adult's own consents with their last authors: the person by name, anyone else (the club administrator) by the
- * role label only (#191).
+ * An adult's own consents with their last authors: the person and their guardians, past ones too (the consents carried
+ * over on the 18th birthday, #310), by name; anyone else (the club administrator) by the role label only (#191).
  */
 async function loadOwnConsents(em: EntityManager, scope: ClubScope, person: Person): Promise<MemberConsentsView> {
   const view = consentsView(parseStoredConsents(person.consents))
-  const outsiders = consentAuthorIds([view]).filter((id) => id !== person.id)
+  const family = (await loadFamilies(em, scope, [person.id])).get(person.id) as Set<string>
+  const authors = consentAuthorIds([view])
+  const outsiders = authors.filter((id) => !family.has(id))
+  const relatives = authors.filter((id) => family.has(id) && id !== person.id)
   const roles = await loadAuthorRoles(em, scope, outsiders)
+  const persons = await loadPersons(em, scope, relatives)
   return withConsentAuthors(view, {
-    family: new Set([person.id]),
-    names: new Map([[person.id, fullName(person)]]),
+    family,
+    names: new Map([
+      [person.id, fullName(person)],
+      ...[...persons.values()].map((relative): [string, string] => [relative.id, fullName(relative)]),
+    ]),
     roles,
   })
 }

@@ -184,6 +184,14 @@ export const updateAccountSchema = z
 /** Input of the job command; `today` is accepted only from the CLI and the worker (no HTTP route). */
 export const syncRolesJobSchema = z.object({ today: calendarDateSchema.optional() }).strict()
 
+/**
+ * Input of the life-cycle job `people.persons.life_cycle` (people life-cycle spec REQ-L06, REQ-L07; #310): the club day
+ * to run as (default: today in the club zone) and `dryRun`, which counts what a run would do and writes nothing.
+ */
+export const lifeCycleJobSchema = z
+  .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
+  .strict()
+
 /** Input of the first-administrator bootstrap (CLI only). */
 export const bootstrapAdminSchema = z
   .object({
@@ -213,7 +221,7 @@ export const personListQuerySchema = z.object({
   role: z.enum(PERSON_FILTER_ROLES).optional(),
   ageFrom: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
   ageTo: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
-  // People life-cycle spec B-09 "Needs attention" (#309): `missing_consents` needs `people.manage` (403 otherwise).
+  // People life-cycle spec B-09 "Needs attention" (#309, #310): every value needs `people.manage` (403 otherwise).
   attention: z.enum(PERSON_ATTENTION_FILTERS).optional(),
 })
 

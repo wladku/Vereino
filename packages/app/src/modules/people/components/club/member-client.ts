@@ -59,7 +59,15 @@ export type MemberWard = {
     consents: WardConsents
     updatedAt: string | null
   }
+  /** The ward card's life-cycle lines (#310); absent from an older response. */
+  notices?: WardNotice[]
 }
+
+/** A ward card line (people life-cycle spec M-10, #310). */
+export type WardNotice = { kind: 'may_have_account' } | { kind: 'turns_18'; on: string }
+
+/** The member's own card before (`turns_18`) and after (`came_of_age`) the 18th birthday (#310). */
+export type OwnNotice = { kind: 'turns_18' | 'came_of_age'; on: string }
 
 /** One of the member's own guardians with the consents they gave (E06-S22 #104). */
 export type MemberGuardian = {
@@ -85,6 +93,8 @@ export type MemberProfile = {
   ownConsents?: WardConsents | null
   /** The club's own consent texts by key with the instant of their last change (DD-L11). */
   consentTexts?: ConsentTexts
+  /** The member's own life-cycle card (#310); null or absent when there is none. */
+  notice?: OwnNotice | null
 }
 
 /** The keys of the club's consent texts (`club_core` `CONSENT_TEXT_KEYS`). */

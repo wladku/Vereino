@@ -14,7 +14,9 @@ import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacS
 import { authorizeScoped, foundationErrors, trustedScopeOf } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
-import { bootstrapAdminSchema, importPurgeJobSchema, syncRolesJobSchema } from '../data/validators'
+import { bootstrapAdminSchema, importPurgeJobSchema, lifeCycleJobSchema, syncRolesJobSchema } from '../data/validators'
+import { LIFE_CYCLE_STEPS } from '../lib/life-cycle-rules'
+import { runLifeCycle, type LifeCycleCounts } from '../services/life-cycle'
 import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
@@ -401,6 +403,78 @@ const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImpor
   },
 }
 
+export type LifeCycleJobResult = OrganizationTarget & {
+  today: string
+  dryRun: boolean
+  /** The steps this release runs (step 5, erasure step two, joins with phase L6). */
+  steps: string[]
+  counts: LifeCycleCounts
+  /** Wards with an active guardianship and no birth date: skipped and listed for the administrator. */
+  withoutBirthDate: string[]
+  cameOfAgePersonIds: string[]
+}
+
+/**
+ * `people.persons.life_cycle` — the daily `people:life-cycle` job (people life-cycle spec REQ-L06, REQ-L07, DD-L08,
+ * DD-L09; #310): notices 30 days before an 18th birthday; on the birthday the guardianships end the day before, the
+ * consents move to the adult and `people.person.came_of_age` is emitted; account-age notices; the accounts of dated
+ * departures close (`services/life-cycle.ts`). Idempotent through the state it writes and the dispatch keys, so a
+ * missed day is caught up by the next run; `dryRun` counts and writes nothing. Not undoable: a guardianship it ended
+ * is re-created by the administrator (*Rollout*); the audit entry carries the counts.
+ */
+const lifeCycleJobCommand: CommandHandler<Record<string, unknown>, LifeCycleJobResult> = {
+  id: 'people.persons.life_cycle',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const { target, parsed } = await authorizeJob(
+      ctx,
+      'people.persons.life_cycle.authorize',
+      lifeCycleJobSchema,
+      rawInput,
+    )
+    const scope = { tenantId: target.tenantId, organizationId: target.organizationId }
+    const today = typeof parsed.today === 'string' ? parsed.today : await clubToday(ctx.container, scope)
+    const dryRun = parsed.dryRun === true
+    logger.info('Life-cycle job started', { ...scope, today, dryRun })
+    const run = await runLifeCycle(ctx, scope, {
+      today,
+      dryRun,
+      onFailure: (error, step) => {
+        logger.warn('A life-cycle step failed for one person; the next run retries it', { ...scope, step, err: error })
+        getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.life_cycle.failed' })
+      },
+    })
+    logger.info('Life-cycle job finished', {
+      ...scope,
+      today,
+      dryRun,
+      ...run.counts,
+      withoutBirthDate: run.withoutBirthDate.length,
+    })
+    return { ...target, today, dryRun, steps: [...LIFE_CYCLE_STEPS], ...run }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.jobs.life_cycle', 'Run the people life cycle'),
+      resourceKind: 'people.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: {
+        actingRole: result.actingRole,
+        today: result.today,
+        dryRun: result.dryRun,
+        steps: result.steps,
+        ...result.counts,
+        withoutBirthDate: result.withoutBirthDate.length,
+        cameOfAgePersonIds: result.cameOfAgePersonIds,
+      },
+    }
+  },
+}
+
 registerCommand(syncRolesJobCommand)
 registerCommand(bootstrapAdminCommand)
 registerCommand(purgeImportsJobCommand)
+registerCommand(lifeCycleJobCommand)

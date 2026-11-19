@@ -1,6 +1,7 @@
 // Setting up a club's `people` defaults (foundation spec P-04, P-12): the `vereino_*` roles, their ACL features and
-// the daily `people:sync-role-expiry` and `people:purge-import-rows` (#28) schedules in the club zone. Idempotent; used by `setup.ts` `seedDefaults` and by
-// the `people bootstrap-admin` CLI for a tenant created outside `mercato init`.
+// the daily `people:sync-role-expiry` and `people:purge-import-rows` (#28) schedules in the club zone, and for a new
+// club the daily `people:life-cycle` (#310). Idempotent; used by `setup.ts` `seedDefaults` and by the
+// `people bootstrap-admin` CLI for a tenant created outside `mercato init`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { ensureCustomRoleAcls } from '@open-mercato/core/modules/auth/lib/setup-app'
@@ -36,14 +37,35 @@ export async function registerImportPurgeSchedule(container: AwilixContainer, sc
   })
 }
 
+/** Daily at 01:30 in the club's time zone, before the role sync at 02:00 re-derives the roles of the day. */
+export const LIFE_CYCLE_CRON = '30 1 * * *'
+
+/**
+ * The daily `people:life-cycle` schedule (people life-cycle spec *Events, Jobs*, DD-L09; #310). Registered at setup only
+ * for a new club; an existing club gets it from `mercato people life-cycle --register-schedule` after the owner
+ * confirmed the dry run (*Rollout*, item 11), so no scheduled run ends the guardianships of adults on existing data first.
+ */
+export async function registerLifeCycleSchedule(container: AwilixContainer, scope: ClubScope): Promise<boolean> {
+  const { timezone } = await clubSettings(container, scope)
+  return registerModuleSchedule(container, {
+    module: 'people',
+    name: 'life-cycle',
+    schedule: { cron: LIFE_CYCLE_CRON, timezone },
+    scope,
+    description:
+      '18th birthdays and account ages: notices, guardianships ending, consents; accounts of dated departures.',
+  })
+}
+
 /**
  * Seeds the roles and the schedules; with `withRoleAcls` (the CLI) also merges the roles' default features, as the
- * platform does itself after `seedDefaults` in `mercato init` and `mercato seed:defaults`.
+ * platform does itself after `seedDefaults` in `mercato init` and `mercato seed:defaults`. `lifeCycleSchedule: false`
+ * (the `bootstrap-admin` CLI, which may run on an existing club) leaves out the life-cycle schedule.
  */
 export async function setUpClubPeople(
   container: AwilixContainer,
   scope: ClubScope,
-  options: { withRoleAcls?: boolean } = {},
+  options: { withRoleAcls?: boolean; lifeCycleSchedule?: boolean } = {},
 ): Promise<void> {
   await seedRoles(container, { tenantId: scope.tenantId })
   if (options.withRoleAcls) {
@@ -57,4 +79,6 @@ export async function setUpClubPeople(
   }
   await registerRoleExpirySchedule(container, scope)
   await registerImportPurgeSchedule(container, scope)
+  // A new club (`seedDefaults`) has no backlog of adults under guardianship; an existing one waits for the confirmed run.
+  if (options.lifeCycleSchedule !== false) await registerLifeCycleSchedule(container, scope)
 }

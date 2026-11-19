@@ -35,6 +35,10 @@ const events = [
     category: 'lifecycle',
   },
   { id: 'people.person.departed', label: 'Person left the club', entity: 'person', category: 'lifecycle' },
+  // People life-cycle spec phase L8 (REQ-L06, DD-L08; #310): the daily job ended a ward's guardianships on the 18th
+  // birthday. Payload `{ id, tenantId, organizationId, birthday }` (ids and the date of the change only); `activities`
+  // makes the person's `pending_guardian` declarations of sessions from that day final.
+  { id: 'people.person.came_of_age', label: 'Person came of age', entity: 'person', category: 'lifecycle' },
   {
     id: 'people.role_assignment.created',
     label: 'Role assignment created',
