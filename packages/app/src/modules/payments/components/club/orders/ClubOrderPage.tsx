@@ -228,7 +228,8 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
             mode="app"
             endpoints={endpoints}
             queryKey={queryKey}
-            initialChildId={childId}
+            childId={childId}
+            childHref={(personId) => clubOrderHref(campaignId, personId)}
           />
         )
       }}

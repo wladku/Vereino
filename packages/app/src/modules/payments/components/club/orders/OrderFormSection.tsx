@@ -6,9 +6,15 @@
 // print name and number with the numbers taken in the child's group, contact, notes and a live total. "Orders are
 // closed" once the campaign stops taking orders. States: saving, field errors (422), closed meanwhile or changed
 // meanwhile (409: the page is read again), forbidden (403).
+//
+// Since #299 (payments parity spec REQ-C11): the head card carries the stage badge and both deadlines; the child chips
+// are links (`?child=`, `aria-current`) that scroll sideways at 375 px, with a check mark and a screen-reader text for a
+// child with an order; the summary shows when the order was placed, its notes, "ready for pickup from the coach" after
+// the delivery, who handed the kit over and when, and "Pay online {amount}", which opens M-08 with that charge only.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
@@ -16,18 +22,20 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { CheckboxField } from '@open-mercato/ui/primitives/checkbox-field'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { cn } from '@open-mercato/shared/lib/utils'
+import { useClubTimeZone } from '@vereino/ui'
 import { unitPrice } from '../../../lib/order-campaigns'
-import { NOT_ORDERING, ORDERING, PRINT_NAME_MAX, type ChildOrderState } from '../../../lib/orders'
+import { NOT_ORDERING, ORDERING, PRINT_NAME_MAX, orderPickup, type ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
-import { CLUB_PAYMENTS_HREF } from '../PaymentsClubFrame'
+import { STAGE_VARIANTS } from '../../orders/orders-client'
 import { MY_CHARGES_QUERY_KEY, TransferDetails } from '../ClubPaymentsPage'
 import {
   MY_ORDERS_QUERY_KEY,
+  payChargeHref,
   sendOrderWrite,
   type FormChild,
   type FormOrder,
@@ -50,6 +58,15 @@ function formatDate(value: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${value}T00:00:00Z`),
   )
+}
+
+/** A moment in the club's zone (the device's outside the member frame): "12.12.2026, 17:40". */
+function formatMoment(value: string, locale: string, timeZone: string | null): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: timeZone ?? undefined,
+  }).format(new Date(value))
 }
 
 function sizesOf(product: FormProductView): string[] {
@@ -108,6 +125,33 @@ function FieldProblem({ id, text }: { id: string; text?: string }) {
   )
 }
 
+/** "Ready for pickup from the coach" after the delivery; "Picked up — {time} · handed over by {name}" after it. */
+function OrderPickup({ status, order }: { status: OrderForm['campaign']['status']; order: FormOrder }) {
+  const t = useT()
+  const locale = useLocale()
+  const timeZone = useClubTimeZone()
+  const pickup = orderPickup(status, order.handedOverAt)
+  if (pickup === 'ready') {
+    return (
+      <Alert status="success" data-testid="order-ready">
+        <p className="font-medium">{t('payments.orders.club.readyForPickup')}</p>
+        <p>{t('payments.orders.club.readyText')}</p>
+      </Alert>
+    )
+  }
+  if (pickup === 'picked_up' && order.handedOverAt) {
+    const at = formatMoment(order.handedOverAt, locale, timeZone)
+    const by = order.handedOverBy ? `${order.handedOverBy.firstName} ${order.handedOverBy.lastName}`.trim() : ''
+    return (
+      <Alert status="success" data-testid="order-picked-up">
+        <p className="font-medium">{t('payments.orders.club.summary.pickedUp')}</p>
+        <p>{by ? t('payments.orders.club.summary.handedBy', { at, by }) : at}</p>
+      </Alert>
+    )
+  }
+  return null
+}
+
 export type OrderFormSectionProps = {
   form: OrderForm
   /** `app`: signed in, may pay online; `link`: a personal link, transfer or cash only. */
@@ -115,20 +159,28 @@ export type OrderFormSectionProps = {
   endpoints: OrderEndpoints
   /** The query the form was read with; refreshed after every write and every 409. */
   queryKey: QueryKey
-  initialChildId?: string | null
+  /** The child named in the URL (`?child=`); the first child when absent or not one of the form's. */
+  childId?: string | null
+  /** The page of one child: the chips link there. */
+  childHref: (personId: string) => string
 }
 
-export function OrderFormSection({ form, mode, endpoints, queryKey, initialChildId }: OrderFormSectionProps) {
+export function OrderFormSection({
+  form,
+  mode,
+  endpoints,
+  queryKey,
+  childId: requested,
+  childHref,
+}: OrderFormSectionProps) {
   const t = useT()
   const locale = useLocale()
+  const timeZone = useClubTimeZone()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const ids = React.useId()
-  const [childId, setChildId] = React.useState<string | null>(
-    () =>
-      form.children.find((child) => child.personId === initialChildId)?.personId ?? form.children[0]?.personId ?? null,
-  )
-  const child = form.children.find((entry) => entry.personId === childId) ?? null
+  const child = form.children.find((entry) => entry.personId === requested) ?? form.children[0] ?? null
+  const childId = child?.personId ?? null
   const order = child ? (form.orders.find((entry) => entry.participantPersonId === child.personId) ?? null) : null
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState<OrderDraft | null>(() => (child ? draftOf(form, child, order) : null))
@@ -141,6 +193,7 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
   const sourceKey = `${childId ?? ''}|${order?.updatedAt ?? ''}`
   const [draftKey, setDraftKey] = React.useState(sourceKey)
   if (draftKey !== sourceKey) {
+    if (draftKey.split('|')[0] !== (childId ?? '')) setProblems(NO_PROBLEMS)
     setDraftKey(sourceKey)
     setDraft(child ? draftOf(form, child, order) : null)
     setEditing(false)
@@ -258,15 +311,29 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
 
   return (
     <div className="flex flex-col gap-6" data-testid="order-form-section">
-      <section className="flex flex-col gap-2" aria-labelledby={`${ids}-title`}>
-        <h1 id={`${ids}-title`} className="text-2xl font-semibold" data-testid="order-campaign-name">
-          {form.campaign.name}
-        </h1>
+      <section
+        className="bg-card flex flex-col gap-2 rounded-lg border p-4"
+        aria-labelledby={`${ids}-title`}
+        data-testid="order-head"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 id={`${ids}-title`} className="text-2xl font-semibold" data-testid="order-campaign-name">
+            {form.campaign.name}
+          </h1>
+          <span data-testid="order-stage" data-stage={form.campaign.status}>
+            <StatusBadge variant={STAGE_VARIANTS[form.campaign.status]} dot>
+              {t(`payments.orders.stage.${form.campaign.status}`)}
+            </StatusBadge>
+          </span>
+        </div>
         {form.campaign.description ? (
           <p className="text-muted-foreground max-w-prose whitespace-pre-line">{form.campaign.description}</p>
         ) : null}
-        <p className="text-sm">
-          {open ? t('payments.orders.club.deadline', { date: formatDate(form.campaign.closesOn, locale) }) : null}
+        <p className="text-sm" data-testid="order-deadlines">
+          {t('payments.orders.club.deadlines', {
+            closes: formatDate(form.campaign.closesOn, locale),
+            payDue: formatDate(form.campaign.paymentDueOn, locale),
+          })}
         </p>
         {!open ? (
           <Alert status="information" data-testid="order-closed">
@@ -282,21 +349,35 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
       ) : null}
 
       {form.children.length > 1 ? (
-        <SegmentedControl
-          value={childId ?? undefined}
-          onValueChange={(value) => {
-            setChildId(value)
-            setProblems(NO_PROBLEMS)
-          }}
-          aria-label={t('payments.orders.club.childSwitcher')}
-          data-testid="order-child-switcher"
-        >
-          {form.children.map((entry) => (
-            <SegmentedControlItem key={entry.personId} value={entry.personId} className="min-h-11">
-              {entry.firstName}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+        <nav aria-label={t('payments.orders.club.childSwitcher')} data-testid="order-child-switcher">
+          <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {form.children.map((entry) => {
+              const current = entry.personId === childId
+              const ordered = form.orders.some((row) => row.participantPersonId === entry.personId)
+              return (
+                <li key={entry.personId} className="shrink-0">
+                  <Link
+                    href={childHref(entry.personId)}
+                    replace
+                    scroll={false}
+                    aria-current={current ? 'page' : undefined}
+                    className={cn(
+                      'focus-visible:shadow-focus inline-flex min-h-11 items-center gap-1 rounded-full border px-4 text-sm font-medium outline-none',
+                      current ? 'bg-primary text-primary-foreground border-primary' : 'bg-card hover:bg-accent',
+                    )}
+                    data-testid="order-child-chip"
+                    data-child={entry.firstName}
+                    data-ordered={ordered ? 'true' : 'false'}
+                  >
+                    {ordered ? <Check aria-hidden="true" className="size-4" /> : null}
+                    {entry.firstName}
+                    {ordered ? <span className="sr-only">{` — ${t('payments.orders.club.childOrdered')}`}</span> : null}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
       ) : null}
 
       {child ? (
@@ -321,6 +402,9 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
               {t(`payments.orders.club.state.${order.state}`)}
             </StatusBadge>
           </div>
+          <p className="text-muted-foreground text-sm" data-testid="order-summary-time">
+            {t('payments.orders.club.summary.orderOf', { at: formatMoment(order.submittedAt, locale, timeZone) })}
+          </p>
           <ul className="flex flex-col gap-1">
             {order.lines.map((line) => (
               <li key={`${line.productId}-${line.size ?? ''}`} className="flex justify-between gap-3">
@@ -339,6 +423,12 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
               })}
             </p>
           ) : null}
+          {order.notes ? (
+            <p className="whitespace-pre-line" data-testid="order-summary-notes">
+              {t('payments.orders.club.summary.notes', { notes: order.notes })}
+            </p>
+          ) : null}
+          <OrderPickup status={form.campaign.status} order={order} />
           <dl className="grid grid-cols-2 gap-1 text-sm sm:max-w-sm">
             <dt className="text-muted-foreground">{t('payments.orders.club.summary.total')}</dt>
             <dd className="font-semibold" data-testid="order-summary-total">
@@ -357,8 +447,8 @@ export function OrderFormSection({ form, mode, endpoints, queryKey, initialChild
               {mode === 'app' ? (
                 <div>
                   <Button asChild className="min-h-11">
-                    <Link href={CLUB_PAYMENTS_HREF} data-testid="order-pay-online">
-                      {t('payments.orders.club.pay.online')}
+                    <Link href={payChargeHref(order.chargeId)} data-testid="order-pay-online">
+                      {t('payments.orders.club.pay.onlineAmount', { amount: formatMoney(order.remaining, locale) })}
                     </Link>
                   </Button>
                 </div>
