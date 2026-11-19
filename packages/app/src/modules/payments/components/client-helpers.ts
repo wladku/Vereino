@@ -16,6 +16,7 @@ export const DISCOUNTS_HREF = '/backend/payments/discounts'
 export const PAYMENT_SETTINGS_HREF = '/backend/payments/settings'
 export const CHARGES_HREF = '/backend/payments/charges'
 export const BANK_HREF = '/backend/payments/bank'
+export const GENERATIONS_HREF = '/backend/payments/generations'
 
 export function chargeHref(id: string): string {
   return `${CHARGES_HREF}/${encodeURIComponent(id)}`

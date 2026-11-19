@@ -19,7 +19,7 @@ import { authorizeScoped, type AuthorizeScopedSpec, type TargetLock } from '@/mo
 import { paymentsErrors } from '../api/errors'
 import { Charge, ChargeGeneration } from '../data/entities'
 import { automaticGenerationSince, tryLockGeneration } from '../data/queries'
-import { chargeGenerateSchema } from '../data/validators'
+import { chargeGenerateSchema, chargeGenerationUndoSchema } from '../data/validators'
 import { planCharges } from '../lib/charge-plan'
 import { generationDue, periodInGenerationRange, periodOfDate, type GenerationDecision } from '../lib/payments-rules'
 import { clubClock, type PaymentsScope } from '../services/directory'
@@ -97,6 +97,42 @@ async function authorizeGenerationReplay(
 }
 
 type GenerationClock = Awaited<ReturnType<typeof clubClock>>
+
+function scopeOf(generation: ChargeGeneration): { tenantId: string; organizationId: string } {
+  return { tenantId: generation.tenantId, organizationId: generation.organizationId }
+}
+
+/**
+ * The undo of one generation (#108; #403), with the caller's transactional `em` and the generation row-locked or
+ * authorized by the caller: 409 `generation_already_undone` for an undone run, 409 `generation_in_progress` while
+ * another generation (or undo) of the club holds the advisory lock; otherwise cancels the run's charges that are still
+ * `open` (reason `generation_undone`; nothing is deleted), marks the run undone and returns the cancelled charge ids.
+ * Shared by the audit-log undo of `payments.charges.generate` and `payments.charge_generations.undo`.
+ */
+async function undoGeneration(em: EntityManager, generation: ChargeGeneration): Promise<string[]> {
+  if (generation.undoneAt) await paymentsErrors.throw('generation_already_undone')
+  if (!(await tryLockGeneration(em, generation.organizationId))) {
+    await paymentsErrors.throw('generation_in_progress')
+  }
+  const open = await em.find(Charge, {
+    ...scopeOf(generation),
+    generationId: generation.id,
+    status: 'open',
+    deletedAt: null,
+  })
+  const now = new Date()
+  for (const charge of open) {
+    charge.status = 'cancelled'
+    charge.cancelledAt = now
+    charge.cancelReason = GENERATION_UNDONE_REASON
+    charge.updatedAt = now
+  }
+  generation.undoneAt = now
+  generation.cancelledCount = open.length
+  generation.updatedAt = now
+  await em.flush()
+  return open.map((charge) => charge.id)
+}
 
 /**
  * Plans and writes one generation of `period` — the run row and its charges — with the caller's transactional `em`,
@@ -206,36 +242,79 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
   },
   async undo({ ctx, logEntry }) {
     const generation = await authorizeGenerationReplay(ctx, logEntry.resourceId)
-    const em = ctx.transactionalEm as EntityManager
-    if (generation.undoneAt) await paymentsErrors.throw('generation_already_undone')
-    if (!(await tryLockGeneration(em, generation.organizationId))) {
-      await paymentsErrors.throw('generation_in_progress')
-    }
-    const scope = { tenantId: generation.tenantId, organizationId: generation.organizationId }
-    const open = await em.find(Charge, { ...scope, generationId: generation.id, status: 'open', deletedAt: null })
-    const now = new Date()
-    for (const charge of open) {
-      charge.status = 'cancelled'
-      charge.cancelledAt = now
-      charge.cancelReason = GENERATION_UNDONE_REASON
-      charge.updatedAt = now
-    }
-    generation.undoneAt = now
-    generation.cancelledCount = open.length
-    generation.updatedAt = now
-    await em.flush()
-    if (open.length > 0) {
+    const cancelled = await undoGeneration(ctx.transactionalEm as EntityManager, generation)
+    if (cancelled.length > 0) {
       // Not `emitAfterCommit`: the replay transaction commits only after the bus's audit write (#184).
-      emitAfterReplayCommit(ctx, 'payments.charge.cancelled', scope, {
+      emitAfterReplayCommit(ctx, 'payments.charge.cancelled', scopeOf(generation), {
         id: generation.id,
         generationId: generation.id,
-        chargeIds: open.map((charge) => charge.id),
+        chargeIds: cancelled,
       })
     }
   },
 }
 
 registerCommand(generateChargesCommand)
+
+// --- payments.charge_generations.undo (the generation list's "Undo"; owner decision (a) on #403) ---
+
+export type ChargeGenerationUndoResult = PaymentsCommandResult<ChargeGeneration, ChargeGenerationSummary> & {
+  cancelled: number
+}
+
+/**
+ * `payments.charge_generations.undo`: the administrator's undo of one generation from the generation list — the
+ * undo of #108 for any run, including one written by the daily job, whose audit entry has no user to own an undo
+ * (the spec's risk row "Automatic generation creates charges the club did not expect"). Send the generation's lock
+ * token. Not undoable itself: the cancelled charges stay cancelled, and the month can be generated again by hand.
+ */
+const undoGenerationCommand: CommandHandler<Record<string, unknown>, ChargeGenerationUndoResult> = {
+  id: 'payments.charge_generations.undo',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'payments.charge_generations.undo', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: chargeGenerationUndoSchema,
+          resourceKind: CHARGE_GENERATION_RESOURCE_KIND,
+          allowedKinds: PAYMENTS_WRITE_KINDS,
+          loadTarget: (parsed, txEm, lock) => {
+            const tenantId = trustedTenantId(ctx)
+            if (!tenantId) return Promise.resolve(null)
+            return txEm.findOne(ChargeGeneration, { id: parsed.id, tenantId, deletedAt: null }, lock)
+          },
+          resolveTarget: (_parsed, entity) => clubTarget(entity as ChargeGeneration),
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const generation = authorized.entity as ChargeGeneration
+      const before = summaryOf(generation)
+      const chargeIds = await undoGeneration(em, generation)
+      return { entity: generation, actingRole: authorized.actingRole, before, chargeIds }
+    })
+    const { entity: generation, chargeIds, ...rest } = result
+    if (chargeIds.length > 0) {
+      await emitAfterCommit('payments.charge.cancelled', scopeOf(generation), {
+        id: generation.id,
+        generationId: generation.id,
+        chargeIds,
+      })
+    }
+    return { ...rest, entity: generation, cancelled: chargeIds.length }
+  },
+  buildLog: ({ result }) =>
+    paymentsLog({
+      result,
+      resourceKind: CHARGE_GENERATION_RESOURCE_KIND,
+      labelKey: 'payments.audit.generations.undo',
+      fallback: 'Undo a charge generation',
+      after: { ...summaryOf(result.entity), cancelled: result.cancelled },
+    }),
+}
+
+registerCommand(undoGenerationCommand)
 
 // --- payments.charges.generate_due (the daily `payments:generate-charges` job; DD-C08, #301) ---
 
@@ -268,7 +347,8 @@ async function migrationAppliedOn(ctx: CommandRuntimeContext, scope: PaymentsSco
  * (`generationDue`: switch on, migration B's month passed, on or after the generation day, no generation of the month
  * yet — an undone one counts). It writes the same generation as the manual command, under the same advisory lock: a
  * held lock (a manual run in progress) or a month generated meanwhile generates nothing, and the next daily run looks
- * again. Not undoable from the audit log (there is no user to own the undo); the administrator cancels charges.
+ * again. Not undoable from the audit log (there is no user to own the undo); the administrator undoes the run from
+ * the generation list (`payments.charge_generations.undo`, #403).
  */
 const generateDueCommand: CommandHandler<Record<string, unknown>, GenerateDueResult> = {
   id: 'payments.charges.generate_due',
