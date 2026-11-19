@@ -66,3 +66,10 @@ On B-20 "Coaches and payments" show whether Stripe is connected and in which mod
 
 - Review the PR; after merge, apply migration C with the usual deployment (`yarn db:migrate` by the owner).
 - BLIK and Przelewy24 should be switched on in production only after the sandbox run of the base spec's step 1 (Q-C15).
+
+## Run 2026-11-19 — om-auto-fix-pr: merge-train conflict
+
+- Trigger: the merge train labeled PR #401 `merge-train-conflict`. Worked on a detached HEAD at `origin/feat/issue-302-admin-online-payment-methods`, no force-push.
+- Merged `origin/main` twice (main advanced with #293 while the gate ran). Each time the only conflict was the parity spec's Status line; resolved by keeping main's phase list (phase 3 #293, phase 6 #296) and adding phase 12 #302. No migration, validator or i18n conflicts (`validators.ts`, `i18n/*.json` auto-merged; JSON parses).
+- `yarn verify` — all 18 steps passed on both merge commits (f8cb8748, 69d2f04b).
+- Removed the stale `merge-train-conflict` label; GitHub reports the PR `MERGEABLE`. CI on the new head is owned by the merge train.
