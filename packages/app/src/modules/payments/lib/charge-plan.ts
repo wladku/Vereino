@@ -66,7 +66,10 @@ export type PlannedCharge = {
 
 export type ChargePlan = {
   charges: PlannedCharge[]
-  /** Charges that already existed (idempotency: a second run skips every charge of the first). */
+  /**
+   * Charges that already existed (idempotency: a second run skips every charge of the first), and the new group's fee
+   * of a child moved after the period's first generation (DD-L15: the month is charged once).
+   */
   skipped: number
   /** Created charges without a payer (a minor without a primary payer). */
   payerMissing: number
@@ -162,10 +165,35 @@ export function bestDiscount(
   return best ? { ruleId: best.ruleId, amount: best.amount } : null
 }
 
+/**
+ * The persons already charged for the period by a fee of a group they have left, by fee period (people life-cycle
+ * spec DD-L15, Q-L17, REQ-L11; #312): a live charge of a monthly or per-session fee whose participants on the reference
+ * day no longer include the debtor. Such a person was moved (or left one group and joined another) after the period's
+ * first generation: the month's fee followed the group of that day, so a later generation skips the new group's fee
+ * of the same fee period. One-off fees are not periodic and never count; an existing charge of a fee that is not in
+ * the plan, or whose participants are unknown, says nothing about a move.
+ */
+export function chargedElsewhere(
+  input: Pick<PlanInput, 'fees' | 'participants' | 'existing'>,
+): Map<FeePeriod, Map<string, string>> {
+  const feesById = new Map(input.fees.map((fee) => [fee.id, fee]))
+  const result = new Map<FeePeriod, Map<string, string>>()
+  for (const charge of input.existing) {
+    const fee = feesById.get(charge.feeId)
+    const participants = input.participants.get(charge.feeId)
+    if (!fee || fee.period === 'one_off' || !participants || participants.includes(charge.personId)) continue
+    const persons = result.get(fee.period) ?? new Map<string, string>()
+    persons.set(charge.personId, charge.feeId)
+    result.set(fee.period, persons)
+  }
+  return result
+}
+
 /** The charges a period generation creates, and its summary. */
 export function planCharges(input: PlanInput): ChargePlan {
   const existingKeys = new Set(input.existing.map((charge) => `${charge.feeId}:${charge.personId}`))
   const feesById = new Map(input.fees.map((fee) => [fee.id, fee]))
+  const moved = chargedElsewhere(input)
   const fresh: Array<Candidate & { fee: PlanFee; amount: number }> = []
   const seen = new Set<string>()
   const overLimit = new Set<string>()
@@ -176,7 +204,8 @@ export function planCharges(input: PlanInput): ChargePlan {
       const key = `${fee.id}:${personId}`
       if (seen.has(key)) continue
       seen.add(key)
-      if (existingKeys.has(key)) {
+      // A moved child already owes the month's fee of the group they left (DD-L15): counted as already charged.
+      if (existingKeys.has(key) || moved.get(fee.period)?.has(personId)) {
         skipped += 1
         continue
       }
