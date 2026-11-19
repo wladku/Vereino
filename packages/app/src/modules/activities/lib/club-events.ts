@@ -162,3 +162,57 @@ export function partCopyPrefill(source: PartCopySource): PartCopyPrefill {
     groupId: null,
   }
 }
+
+// --- The panel's Parts tab (club events spec B-T3, REQ-T11; #378) ---
+
+/** One day of the Parts tab: its date (`YYYY-MM-DD`) and its parts in the order they came. */
+export type PartDay<T> = { date: string; parts: T[] }
+
+/**
+ * The parts grouped by day for the Parts tab (B-T3): days in date order, each part on the day `dayOf` gives it
+ * (the reader's local date of its start); a part without a day goes to a last group with the date ''. The parts keep
+ * the order they came in (the record reads them sorted by start, then title).
+ */
+export function partsByDay<T>(parts: readonly T[], dayOf: (part: T) => string): PartDay<T>[] {
+  const days = new Map<string, T[]>()
+  for (const part of parts) {
+    const date = dayOf(part)
+    const list = days.get(date)
+    if (list) list.push(part)
+    else days.set(date, [part])
+  }
+  const undated = days.get('')
+  days.delete('')
+  const dated = [...days.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, list]) => ({ date, parts: list }))
+  return undated ? [...dated, { date: '', parts: undated }] : dated
+}
+
+export type PartAction = 'edit' | 'copy' | 'move' | 'cancel' | 'remove'
+
+/**
+ * The row actions of a part (B-T3): nothing unless the caller manages a planned event; a planned part with a group
+ * Edit, Copy, Move, Cancel, Remove, a planned open part the same without Move (it has no session); a cancelled or done
+ * part only Copy, and a cancelled open part also Remove (the server removes an open part always, a part with a group
+ * only while its session is planned and unused).
+ */
+export function partActions(
+  part: { kind: PartKind; status: string | null },
+  event: { mayManage: boolean; status: string | null },
+): PartAction[] {
+  if (!event.mayManage || event.status !== 'planned') return []
+  if (part.status === 'planned') {
+    return part.kind === 'group' ? ['edit', 'copy', 'move', 'cancel', 'remove'] : ['edit', 'copy', 'cancel', 'remove']
+  }
+  return part.kind === 'open' ? ['copy', 'remove'] : ['copy']
+}
+
+/** Whole minutes from an earlier instant to a later one (a gathering or deadline offset), or null without both. */
+export function minutesBefore(earlier: string | null | undefined, start: string | null | undefined): number | null {
+  if (!earlier || !start) return null
+  const from = Date.parse(earlier)
+  const to = Date.parse(start)
+  if (Number.isNaN(from) || Number.isNaN(to) || from > to) return null
+  return Math.round((to - from) / 60_000)
+}

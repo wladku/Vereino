@@ -11,6 +11,7 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { storedVenue } from '../../../lib/venue'
+import { clubEventRefs } from '../../../services/club-events'
 import { findActivity, nameMaps } from '../../../services/read'
 import { SCHEDULE_READ_KINDS, activityListItemSchema, errorSchema } from '../../shared'
 
@@ -37,12 +38,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sectionId: row.sectionId,
       groupId: row.groupId,
     })
-    const names = await nameMaps(ctx.container, scope, {
-      groupIds: [row.groupId],
-      sectionIds: [row.sectionId],
-      placeIds: row.defaultPlaceId ? [row.defaultPlaceId] : [],
-      personIds: row.defaultCoachPersonId ? [row.defaultCoachPersonId] : [],
-    })
+    const [names, clubEvents] = await Promise.all([
+      nameMaps(ctx.container, scope, {
+        groupIds: [row.groupId],
+        sectionIds: [row.sectionId],
+        placeIds: row.defaultPlaceId ? [row.defaultPlaceId] : [],
+        personIds: row.defaultCoachPersonId ? [row.defaultCoachPersonId] : [],
+      }),
+      clubEventRefs(ctx.container, scope, row.clubEventId ? [row.id] : []),
+    ])
     return Response.json({
       id: row.id,
       sectionId: row.sectionId,
@@ -70,6 +74,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       isActive: row.isActive,
       isAway: row.isAway,
       clubEventId: row.clubEventId ?? null,
+      clubEvent: clubEvents.get(row.id) ?? null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       actingRole,
