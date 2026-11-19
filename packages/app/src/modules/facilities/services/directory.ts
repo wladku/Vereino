@@ -308,6 +308,18 @@ export function clubAdminPersonIds(
   return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
+/** The person ids coordinating `sectionId` on `date` (the reschedule notice of a session, #287). */
+export function sectionCoordinatorIds(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  sectionId: string,
+  date: string,
+  em?: EntityManager,
+): Promise<string[]> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).sectionCoordinatorIdsOn(scope, sectionId, date, em)
+}
+
 /** The user ids of the club's administrators on `date` (the request approvers, #125); persons without an account skipped. */
 export async function clubAdminUserIds(
   container: AwilixContainer,

@@ -170,6 +170,8 @@ export const chargeListQuerySchema = z.object({
   payee: z.enum(PAYEES).optional(),
   /** Charges with a payment of this method that was not reversed (the "Cash payments" perspective). */
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
+  /** Charges holding an online overpayment not refunded yet (the "To refund" perspective, DD-C10). */
+  toRefund: flagSchema.optional(),
   /** Informational: the B-21 perspective the client shows; the filters above do the work. */
   perspective: z.enum(CHARGE_PERSPECTIVES).optional(),
 })

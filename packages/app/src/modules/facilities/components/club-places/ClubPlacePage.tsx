@@ -19,12 +19,15 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
+import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
+import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
 import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
 import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
 import { flashFlagged } from '../maintenance-client'
 import { RENTALS_KEY } from '../rentals-client'
+import { isToMoveView } from '../../lib/reschedule-notice'
 import { DayAxis } from '../day-axis/DayAxis'
 import { DayChips } from '../day-axis/DayChips'
 import { DayEntries } from '../day-axis/DayEntries'
@@ -63,6 +66,9 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const today = calendarDateInZone(new Date(), zone)
   const requested = searchParams.get('date')
   const date = requested && isCalendarDate(requested) ? requested : today
+  // `view=to_move` (the reschedule notice's link, AC-R14; #287): the day's list shows only the entries to be moved.
+  const toMove = isToMoveView(searchParams.get('view'))
+  const filterId = React.useId()
   const window = React.useMemo(() => ({ ...dayWindow(date, zone), placeId }), [date, zone, placeId])
   const query = useStaffCalendar(window)
   const [slotPreset, setSlotPreset] = React.useState<SlotPreset | null>(null)
@@ -70,9 +76,12 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const [details, setDetails] = React.useState<CalendarEntry | null>(null)
   const [planKey, setPlanKey] = React.useState(0)
 
+  const dayHref = (next: string, filtered: boolean) =>
+    filtered ? `${placeHref(placeId, next)}&view=to_move` : placeHref(placeId, next)
+
   const goTo = (next: string) => {
     if (!isCalendarDate(next)) return
-    router.replace(placeHref(placeId, next))
+    router.replace(dayHref(next, toMove))
   }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: [PLACES_CALENDAR_KEY] })
@@ -152,7 +161,14 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           }}
           onEntry={setDetails}
         />
-        <DayEntries entries={entries} timeZone={timeZone} placeId={placeId} redacted={redacted} onOpen={setDetails} />
+        <DayEntries
+          entries={toMove ? entries.filter((entry) => entry.needsReschedule) : entries}
+          filtered={toMove}
+          timeZone={timeZone}
+          placeId={placeId}
+          redacted={redacted}
+          onOpen={setDetails}
+        />
       </>
     )
   }
@@ -173,6 +189,17 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
         </p>
       </div>
       <DayChips today={today} date={date} onSelect={goTo} />
+      <div className="flex min-h-11 items-center gap-2">
+        <Checkbox
+          id={filterId}
+          checked={toMove}
+          onCheckedChange={(value) => {
+            router.replace(dayHref(date, value === true))
+          }}
+          data-testid="club-place-to-move"
+        />
+        <Label htmlFor={filterId}>{t('facilities.places.toMoveFilter')}</Label>
+      </div>
       {canBook ? (
         <p className="text-muted-foreground text-sm" data-testid="club-place-hint">
           {t('facilities.places.clickHint')}
