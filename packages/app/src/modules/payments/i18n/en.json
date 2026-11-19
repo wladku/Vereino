@@ -962,5 +962,20 @@
   "payments.assignPayer.error": "The payer could not be assigned.",
   "payments.personCharges.title": "Charges",
   "payments.personCharges.empty": "No charges",
-  "payments.manual.amountInvalid": "Enter an amount from 0.01 to 100 000 zł."
+  "payments.manual.amountInvalid": "Enter an amount from 0.01 to 100 000 zł.",
+  "payments.audit.jobs.generateDue": "Generate the month’s charges automatically",
+  "payments.audit.jobs.remindOverdue": "Remind the payers of overdue charges",
+  "payments.audit.jobs.reconcileCheckouts": "Reconcile unfinished online payments",
+  "payments.audit.jobs.closeOrderCampaigns": "Close the order campaigns past their deadline",
+  "payments.settings.groups.automation": "Automatic charges and reminders",
+  "payments.settings.fields.autoGenerateCharges": "Generate the month’s charges automatically",
+  "payments.settings.fields.autoGenerateCharges.help": "Every morning the system checks whether the month’s membership fees are due and generates them once, on the day below. A month undone by hand is not generated again.",
+  "payments.settings.fields.generationDay": "Day of the month",
+  "payments.settings.fields.generationDay.help": "From this day ({min}–{max}) the current month’s charges are generated.",
+  "payments.settings.fields.overdueReminders": "Remind payers of overdue charges",
+  "payments.settings.fields.overdueReminders.help": "The day after the due date, then every 7 days, at most 4 times: one e-mail and app notice per payer with all their overdue charges. Rental charges are never reminded.",
+  "payments.settings.validation.generationDay": "Enter a day from 1 to 28.",
+  "payments.email.chargeReminder.payerCode": "Your payer code for the transfer title: {code}",
+  "payments.notifications.chargeOverdue.title": "Payments overdue",
+  "payments.notifications.chargeOverdue.body": "Some of your payments are past their due date. Open your payments to settle them."
 }
