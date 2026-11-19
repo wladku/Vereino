@@ -443,6 +443,7 @@ export class PaymentsSettings extends ScopedEntityBase {
     | 'autoGenerateCharges'
     | 'generationDay'
     | 'overdueReminders'
+    | 'onlineMethods'
 
   @Property({ name: 'auto_book_bank_matches', type: 'boolean', default: true })
   autoBookBankMatches: boolean = true
@@ -450,6 +451,9 @@ export class PaymentsSettings extends ScopedEntityBase {
   @Property({ name: 'coach_fee_access', type: 'text', default: 'collect' })
   coachFeeAccess: CoachFeeAccess = 'collect'
 
+  /** The online methods offered to payers (REQ-C14, migration C): a non-empty subset of `card`, `blik`, `p24`. */
+  @Property({ name: 'online_methods', type: 'text[]', defaultRaw: "'{card}'" })
+  onlineMethods: string[] = ['card']
   /** "Automatic charges and reminders" (B-20; payments parity spec DD-C08, #301): the daily job generates the month. */
   @Property({ name: 'auto_generate_charges', type: 'boolean', default: true })
   autoGenerateCharges: boolean = true

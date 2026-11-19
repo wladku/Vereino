@@ -39,6 +39,7 @@ describe('payments vocabularies', () => {
 
   it('declares the error codes with their statuses', () => {
     expect(Object.fromEntries(errorCodes.map((entry) => [entry.code, entry.status]))).toEqual({
+      online_methods_invalid: 422,
       fee_target_invalid: 422,
       fee_target_unknown: 422,
       fee_period_locked: 422,

@@ -1,0 +1,1 @@
+| 2026-11-19 | Owner decisions: Ask First item 14 (`POST /api/groups/memberships/move-many`, `groups.memberships.move_many`, its error codes) and item 15 (migration E, `groups_age_category_ranges` with the nine default ranges, the age-category routes, `age_range_inverted`) approved; Q-L22…Q-L26 confirmed as written; phases L11 (#383) and L12 (#384) ready |
