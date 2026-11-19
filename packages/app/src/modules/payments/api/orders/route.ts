@@ -1,6 +1,7 @@
-// `GET /api/payments/orders?campaignId=` — B-32 "Orders" (payments spec API table, REQ-032; issue #115): the
-// campaign's submitted orders with the child, the group, the person who ordered, the print, the lines with the price
-// recorded at order time, the total, what was paid and the handover. `POST` places a guardian's order (#116, M-17:
+// `GET /api/payments/orders?campaignId=` — B-32 "Orders" (payments spec API table, REQ-032; issue #115; payments
+// parity REQ-C05, #293): the campaign's submitted orders with the child, the group, the person who ordered with their
+// phone, channel and notes, the print, the lines with the price recorded at order time, the total, what was paid, the
+// due date and overdue marker, the payments with who took them, and the handover (who and when). `POST` places a guardian's order (#116, M-17:
 // `payments.orders.place`); a change and a cancellation are `PUT /api/payments/orders/{id}` and `…/{id}/cancel`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -24,7 +25,11 @@ const orderSchema = z.object({
   participant: personSchema,
   groupId: z.string().nullable(),
   groupName: z.string().nullable(),
+  orderedByPersonId: z.uuid(),
   orderedBy: personSchema,
+  contactPhone: z.string().nullable().describe("The orderer's contact phone (panel only)"),
+  submittedVia: z.enum(['app', 'email_link']),
+  notes: z.string().nullable(),
   printName: z.string().nullable(),
   printNumber: z.number().int().nullable(),
   lines: z.array(
@@ -41,7 +46,14 @@ const orderSchema = z.object({
   remaining: z.number().int(),
   chargeId: z.uuid(),
   chargeStatus: z.string().nullable(),
+  dueDate: z.string().nullable().describe("The charge's due date"),
+  overdue: z.boolean(),
+  payments: z
+    .array(z.object({ method: z.string(), collectedBy: personSchema }))
+    .describe('Live payments of the charge, oldest first; `collectedBy` is the collector, else who recorded it'),
   handedOver: z.boolean(),
+  handedOverAt: z.string().nullable(),
+  handedOverBy: personSchema,
   createdAt: z.string(),
 })
 
