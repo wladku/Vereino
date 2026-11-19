@@ -215,6 +215,11 @@ export function PersonRecord({ id }: { id: string }) {
           <RolesPanel
             personId={person.id}
             canManage={features['people.roles.manage']}
+            account={person.account ?? null}
+            canManageAccount={canManageAccount}
+            onOpenAccount={() => {
+              selectTab('account')
+            }}
             onOpenGuardianship={() => {
               selectTab('guardianship')
             }}

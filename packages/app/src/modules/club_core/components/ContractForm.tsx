@@ -5,6 +5,7 @@
 // rental terms of the owner's places, "Warunki wynajmu" (facilities parity spec DD-R10, REQ-R07; #284). The party and
 // the kind are fixed once the contract exists.
 import * as React from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { ErrorMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
@@ -58,6 +59,15 @@ function useSettlementModel() {
 
 function personLabel(person: PersonRow): string {
   return [person.firstName, person.lastName].filter(Boolean).join(' ') || person.id
+}
+
+/** The name of a chosen person (a party preselected through `?personId=`, #312), or the id when unknown. */
+async function personNameOf(id: string): Promise<string> {
+  const data = await readApiResultOrThrow<{ items?: PersonRow[] }>(
+    `/api/people/persons?ids=${encodeURIComponent(id)}&pageSize=1`,
+  ).catch(() => ({ items: [] as PersonRow[] }))
+  const person = (data.items ?? []).find((item) => item.id === id)
+  return person ? personLabel(person) : id
 }
 
 async function personOptions(query?: string): Promise<ComboboxOption[]> {
@@ -144,6 +154,7 @@ function PartyPicker({ id, value, disabled, values, setValue, t }: PartyPickerPr
           }}
           placeholder={t('club_core.contracts.fields.person.placeholder')}
           loadSuggestions={persons.tracked}
+          resolveLabel={personNameOf}
           allowCustomValues={false}
           clearable={false}
           disabled={disabled}
@@ -311,9 +322,14 @@ function rateValues(row: ContractRow | null): Record<CoachTermField, string> {
   }
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export function ContractCreateForm() {
   const t = useT()
   const model = useSettlementModel()
+  // "Add a contract" of the person's "Staff setup" checklist (REQ-L09, #312) names the person as the coach party.
+  const presetPerson = useSearchParams().get('personId')
+  const presetPartyId = presetPerson && UUID.test(presetPerson) ? presetPerson : ''
   const [kind, setKind] = React.useState<string>('coach')
   const fields = React.useMemo<CrudField[]>(
     () => [
@@ -390,7 +406,7 @@ export function ContractCreateForm() {
         kind: 'coach',
         isCoach: true,
         partyType: 'person',
-        partyId: '',
+        partyId: presetPartyId,
         validFrom: '',
         validTo: '',
         ...rateValues(null),
