@@ -1,0 +1,1 @@
+| 2026-11-19 | #413: `@open-mercato/ui@0.9.0` renders `setNavBadge` counts only in the settings and profile section sidebars, so the main-item counts of REQ-N03 never showed (CI `TEST-N04 UI`). `SidebarNavBadges` draws the platform chip from the same store into each main sidebar link until a platform release renders it there. Remove it with that upgrade. DD-N05 is unchanged |

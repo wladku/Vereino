@@ -1180,6 +1180,10 @@
   "vector.api.errors.reindexFailed": "벡터 재인덱싱에 실패했습니다",
   "vector.api.errors.searchFailed": "벡터 검색에 실패했습니다",
   "vector.api.errors.updateFailed": "벡터 설정 업데이트에 실패했습니다.",
+  "vereino.backend.memberInterface": "Member interface",
+  "vereino.dashboard.greeting": "Hello, {name}",
+  "vereino.dashboard.greetingNoName": "Hello",
+  "vereino.dashboard.subtitle": "{date} · what needs action today",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }
