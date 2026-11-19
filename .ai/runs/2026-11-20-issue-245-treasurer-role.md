@@ -73,6 +73,17 @@ changelog file, lesson `narrow-role-forms-read-names-through-own-module`.
 
 ## Open problems / next steps
 
+- **Deploy step:** an existing club gets the new `auth` role `vereino_treasurer` only from the role seed
+  (`seedRoles`, run by the bootstrap from `people`'s setup, or `yarn mercato auth sync-role-acls`). Until then the first
+  treasurer assignment fails the role sync with `foundation.roles.catalogue_mismatch`. New clubs get it from
+  `seedRoles` (the same step as `vereino_maintenance_planner` in #128).
+- Review (independent read-only reviewer): no blocking defect. Applied: a person who is both treasurer and coach is not
+  bound by `coach_fee_access` (like the administrator); TEST-046 now asserts the exact sidebar (the five Finance
+  items; the dashboard is the panel's home `/backend`, not a sidebar link — a first attempt expecting it there failed)
+  and the overdue widget on the dashboard; stale dashboard route comment. After the fixes: TEST-046 2 passed, TEST-045
+  1 passed, `yarn verify` all 18 steps passed. Accepted: a `payments.view` holder can find any person's name by a three-letter search (names only, DD-33);
+  the fee form's activity list offers active activities only.
+
 - A charge without a payer is fixed in the person record (guardianship); the treasurer cannot do it and leaves it to
   the administrator, as DD-33 intends (no people records).
 - The person select without a typed name offers the persons the club already charges (at most 200); a new person
