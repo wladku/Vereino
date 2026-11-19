@@ -1,12 +1,12 @@
 // Reads of the charge ledger for the `payments` routes (issue #109; foundation spec REQ-F16: routes reach the ORM only
 // through services): one charge with its description decrypted, its payments with their titles decrypted, the paid
-// totals of listed charges, the charges with an unreversed payment of a method and whether the rentals perspective is
-// shown (DD-C02, #291).
+// totals of listed charges, the charges with an unreversed payment of a method, the charges with an online overpayment
+// still to refund (DD-C10, #296) and whether the rentals perspective is shown (DD-C02, #291).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Charge, Payment } from '../data/entities'
-import { chargeIdsWithPayment } from '../data/queries'
+import { chargeIdsToRefund, chargeIdsWithPayment } from '../data/queries'
 import { rentalsPerspectiveShown } from '../lib/charge-ledger'
 import type { PaymentsScope } from './directory'
 
@@ -58,6 +58,11 @@ export async function paidTotals(
 /** The club's charges with a live, unreversed payment of `method`. */
 export function chargesPaidBy(container: AwilixContainer, scope: PaymentsScope, method: string): Promise<string[]> {
   return chargeIdsWithPayment(freshEm(container), scope, method)
+}
+
+/** The club's charges holding an online overpayment still to refund (B-21 "To refund", DD-C10, #296). */
+export function chargesToRefund(container: AwilixContainer, scope: PaymentsScope): Promise<string[]> {
+  return chargeIdsToRefund(freshEm(container), scope)
 }
 
 /** The descriptions of live charges of the club, decrypted (the cash confirmation e-mail, #114). */
