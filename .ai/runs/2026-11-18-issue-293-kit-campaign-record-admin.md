@@ -14,7 +14,10 @@
 5. Independent review (a subagent, read-only) of the diff: no correctness or security defect. Fixed: Polish plural forms of "kits not marked as handed over"; the row buttons' accessible names now contain their visible label ("Gotówka za strój: …", WCAG 2.5.3); the unpaid hand-over warning omits the due-date sentence when the charge has no date. Not changed: "Hand over" needs `payments.groups.collect`, which every role that opens B-32 (`payments.orders.manage`) holds today; a custom role with only the latter would get a 403.
 6. CI round 1 (run 44392929919): shards 1 and 2 passed; shard 3 failed on two tests. E07-S08 still expected the old tile text `/1 (of|z) 3/` (received "1 / 3"); fixed. TEST-C06's axe scan reported one critical `aria-allowed-attr` node on B-32 in en light and dark: the platform `StepIndicator` renders `<ol aria-orientation=…>`, and `aria-orientation` is not allowed on a list. Added a `PLATFORM_BASELINE` entry matched by `data-slot="step-indicator"`, so the rule still fails on Vereino markup. The steps after the scan ran first in that CI round.
 7. CI round 2 (run 44400190248): axe now clean; one failure left — TEST-C06's `expectNoPageOverflow` at 320 px: `page wider than 320 px by 7 px` (pl locale; E07-S08 at 320 px in en passes). The failure screenshot shows only the top of the page and this host cannot render it, so `expectNoPageOverflow` now names the innermost elements that stick out past the viewport outside any scroll container.
-8. Spec: status line names phase 3 (#293), AC-C05 ticked, changelog file `2026-11-18-issue-293-phase-3.md`. Lesson `cezar-host-integration-runs-without-browser`.
+8. `main` moved on and the PR turned CONFLICTING (no CI started for a45a2762): merged `origin/main` (74baa9e6), resolving the spec status line (phase 3 added to main's line with phase 4 / #294); full `yarn verify` on the merged tree passed every step.
+9. The 320 px overflow: the DataTable footer "Wyświetlanie 1 do 2 z 2 wyników w 53ms" does not wrap and, with the CI font, outgrows the page; its length also varies with the query time. A parallel session on the same account (not this run) diagnosed it from the CI trace and pushed edf3137b: `showQueryTime={false}` on the campaign orders table, as `RosterPanel` does. Reviewed and adopted here.
+10. CI round 3 (run 44410874773, head edf3137b): gate, perf, browser-smoke and integration shards 1 and 3 (TEST-C06, E07-S08) passed. Shard 2 failed on `facilities/TEST-R13` (`Expected: 201 Received: 422` when the attendant reports an incident) and flagged `facilities/TEST-R19` as flaky. Neither touches this PR's code. That shard ran around 23:00–23:40 UTC (00:00–00:40 Warsaw). `gh run rerun --failed` at 23:30 UTC: shard 2 passed and the `integration` check is green.
+11. Spec: status line names phase 3 (#293), AC-C05 ticked, changelog file `2026-11-18-issue-293-phase-3.md`. Lesson `cezar-host-integration-runs-without-browser`.
 
 ## Decisions
 
@@ -47,9 +50,10 @@
 
 ## Open problems
 
-- The browser steps of TEST-C06 (B-32 columns, Cash from the row, Hand over dialog, Complete dialog, B-31 alerts, axe in both locales and schemes, 375 px) and E07-S08 did not run on this host; CI runs them.
+- The browser steps of TEST-C06 and E07-S08 did not run on this host (no Chromium libraries); CI ran them, and they pass from round 3 on.
+- `facilities/TEST-R13` failed once with a 422 on the incident report in a CI run near Warsaw midnight, then passed on rerun. It may be a date-boundary flake; it is unrelated to this PR and was not investigated further.
 - AC-C02 stays open until the dashboard mount (phase 7).
 
 ## Next steps
 
-- CI's integration shards confirm TEST-C06 and E07-S08; review the PR.
+- Review and merge PR #397 through the merge train. Phase 7 (the dashboard mount) closes AC-C02.
