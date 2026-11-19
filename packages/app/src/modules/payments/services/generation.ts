@@ -6,7 +6,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { addCalendarDays, zonedInstant, type CalendarDate } from '@vereino/core'
-import { Charge, DiscountRule, Fee } from '../data/entities'
+import { Charge, ChargeGeneration, DiscountRule, Fee } from '../data/entities'
 import type { PlanInput, PlanRule } from '../lib/charge-plan'
 import { ONE_OFF_PERIOD_LABEL, activeInPeriod, countSessions, periodWindow, referenceDate } from '../lib/payments-rules'
 import { findActivities, findPersons, listOccurrences, primaryPayers, rosterOn, type PaymentsScope } from './directory'
@@ -110,6 +110,65 @@ export async function loadGenerationInputs(
       feeId: charge.sourceId as string,
       personId: charge.personId as string,
       payerPersonId: charge.payerPersonId ?? null,
+    })),
+  }
+}
+
+// --- The generation list (#403) ---
+
+export type ChargeGenerationItem = {
+  id: string
+  period: string
+  created: number
+  skipped: number
+  payerMissing: number
+  /** The run's charges still `open`: what an undo would cancel now (0 once undone). */
+  open: number
+  /** The charges the undo cancelled; null while the run is not undone. */
+  cancelled: number | null
+  undoneAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** The club's generations, newest first, each with the count of its charges an undo would still cancel. */
+export async function listGenerations(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  query: { page: number; pageSize: number },
+): Promise<{ items: ChargeGenerationItem[]; total: number }> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const [rows, total] = await em.findAndCount(
+    ChargeGeneration,
+    { ...scope, deletedAt: null },
+    { orderBy: { createdAt: 'desc', id: 'desc' }, limit: query.pageSize, offset: (query.page - 1) * query.pageSize },
+  )
+  const live = rows.filter((row) => !row.undoneAt).map((row) => row.id)
+  const openCharges = live.length
+    ? await em.find(
+        Charge,
+        { ...scope, generationId: { $in: live }, status: 'open', deletedAt: null },
+        { fields: ['id', 'generationId'] },
+      )
+    : []
+  const openOf = new Map<string, number>()
+  for (const charge of openCharges) {
+    const key = charge.generationId as string
+    openOf.set(key, (openOf.get(key) ?? 0) + 1)
+  }
+  return {
+    total,
+    items: rows.map((row) => ({
+      id: row.id,
+      period: row.period,
+      created: row.createdCount,
+      skipped: row.skippedCount,
+      payerMissing: row.payerMissingCount,
+      open: openOf.get(row.id) ?? 0,
+      cancelled: row.undoneAt ? (row.cancelledCount ?? 0) : null,
+      undoneAt: row.undoneAt ? row.undoneAt.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
     })),
   }
 }
