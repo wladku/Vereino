@@ -5,8 +5,8 @@
 // period and payee, searchable by surname and exportable to CSV. Each row shows the charge and its period, the payer
 // (an institution, a person or a renter's name; or "Without payer"), the amount with the discount, what remains, the
 // due date with the overdue marker, the payee and the status, and opens the charge (B-22). "Generate period"
-// creates all charges of a month at once and shows the summary. "Accept cash" (#114) takes cash for a payer's selected
-// charges with a numbered receipt; "Import statement" opens B-29. The perspectives follow the mockup's order, the
+// creates all charges of a month at once and shows the summary; "Generations" lists the runs with their undo (#403).
+// "Accept cash" (#114) takes cash for a payer's selected charges with a numbered receipt; "Import statement" opens B-29. The perspectives follow the mockup's order, the
 // perspective, filters, search and page live in the URL (restored on reload; precedent DD-U03), rows come in the list's
 // default order — the newest period first, then the due date — and Remaining reads "—" once nothing is owed (#292).
 // "Add charge" enters a charge by hand (#295); the person record's "Charges" tab reuses the columns. "To refund" lists
@@ -41,6 +41,7 @@ import { AddChargeDialog } from './AddChargeDialog'
 import { GeneratePeriodDialog } from './GeneratePeriodDialog'
 import {
   BANK_HREF,
+  GENERATIONS_HREF,
   chargeHref,
   errorMessage,
   formatMoney,
@@ -397,6 +398,11 @@ export function ChargesTable() {
                   }}
                 >
                   {t('payments.manual.action')}
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href={GENERATIONS_HREF} data-testid="charges-generations">
+                    {t('payments.charges.actions.generations')}
+                  </Link>
                 </Button>
                 <Button
                   type="button"
