@@ -92,6 +92,33 @@ export const errorCodes = [
   { code: 'occurrence_has_coach', status: 409, messageKey: 'activities.errors.occurrence_has_coach' },
   { code: 'score_not_applicable', status: 422, messageKey: 'activities.errors.score_not_applicable' },
   { code: 'score_before_start', status: 409, messageKey: 'activities.errors.score_before_start' },
+  // Club events and their parts (club events spec, *API, Command, and Error Contracts*, #376).
+  { code: 'club_event_slug_taken', status: 409, messageKey: 'activities.errors.club_event_slug_taken' },
+  { code: 'club_event_slug_invalid', status: 422, messageKey: 'activities.errors.club_event_slug_invalid' },
+  { code: 'club_event_cancelled', status: 409, messageKey: 'activities.errors.club_event_cancelled' },
+  { code: 'club_event_section_fixed', status: 422, messageKey: 'activities.errors.club_event_section_fixed' },
+  {
+    code: 'club_event_part_outside_section',
+    status: 422,
+    messageKey: 'activities.errors.club_event_part_outside_section',
+  },
+  { code: 'club_event_parts_limit', status: 422, messageKey: 'activities.errors.club_event_parts_limit' },
+  {
+    code: 'club_event_open_part_needs_external_place',
+    status: 422,
+    messageKey: 'activities.errors.club_event_open_part_needs_external_place',
+  },
+  { code: 'club_event_part_group_fixed', status: 422, messageKey: 'activities.errors.club_event_part_group_fixed' },
+  { code: 'club_event_part_in_use', status: 409, messageKey: 'activities.errors.club_event_part_in_use' },
+  { code: 'club_event_part_has_session', status: 422, messageKey: 'activities.errors.club_event_part_has_session' },
+  // The guards on the existing activity and session commands for a part (DD-T02, DD-T05, DD-T06).
+  { code: 'activity_is_club_event_part', status: 409, messageKey: 'activities.errors.activity_is_club_event_part' },
+  {
+    code: 'club_event_part_managed_by_event',
+    status: 403,
+    messageKey: 'activities.errors.club_event_part_managed_by_event',
+  },
+  { code: 'club_event_part_place_fixed', status: 422, messageKey: 'activities.errors.club_event_part_place_fixed' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

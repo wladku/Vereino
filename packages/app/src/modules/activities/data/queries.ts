@@ -37,3 +37,34 @@ export async function flagSessionsForReschedule(
   )
   return rows.map((row) => row.id)
 }
+
+/**
+ * The planned club events of the organization whose every live part has ended before `now` (club events spec B-T1
+ * views "Upcoming" / "Past"): a part with a group ends with its live session, an open part with its own `ends_at`. An
+ * event without a live part is never past.
+ */
+export async function pastClubEventIds(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  now: Date,
+): Promise<string[]> {
+  const rows = await em.execute<{ id: string }[]>(
+    `select e.id
+     from activities_club_events e
+     where e.tenant_id = ? and e.organization_id = ? and e.deleted_at is null and e.status = 'planned'
+       and exists (
+         select 1 from activities_club_event_parts p
+         where p.club_event_id = e.id and p.organization_id = e.organization_id and p.deleted_at is null
+       )
+       and not exists (
+         select 1
+         from activities_club_event_parts p
+         left join activities_occurrences o
+           on o.activity_id = p.activity_id and o.organization_id = p.organization_id and o.deleted_at is null
+         where p.club_event_id = e.id and p.organization_id = e.organization_id and p.deleted_at is null
+           and coalesce(o.end_at, p.ends_at) >= ?
+       )`,
+    [scope.tenantId, scope.organizationId, now],
+  )
+  return rows.map((row) => row.id)
+}

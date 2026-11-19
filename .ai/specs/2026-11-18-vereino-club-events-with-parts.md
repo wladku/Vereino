@@ -1,7 +1,7 @@
 # Vereino — Club events with parts: one tournament, many categories, days and groups
 
 **Date**: 2026-11-18
-**Status**: Ready for implementation — written 2026-11-18 from the owner's decisions D-032. The owner confirmed Q-T01, Q-T05, Q-T09/Q-T22 and Q-T10 on 2026-11-18, and on 2026-11-19 approved the Ask First items of *Rollout* (Q-T20), confirmed Q-T11 (the coach-only check at an external place applies only to part sessions, DD-T07) and kept the remaining autonomous defaults (Q-T02…Q-T04, Q-T06…Q-T08, Q-T12…Q-T19, Q-T23, Q-T24).
+**Status**: In progress — phase 1 implemented (#376). Written 2026-11-18 from the owner's decisions D-032. The owner confirmed Q-T01, Q-T05, Q-T09/Q-T22 and Q-T10 on 2026-11-18, and on 2026-11-19 approved the Ask First items of *Rollout* (Q-T20), confirmed Q-T11 (the coach-only check at an external place applies only to part sessions, DD-T07) and kept the remaining autonomous defaults (Q-T02…Q-T04, Q-T06…Q-T08, Q-T12…Q-T19, Q-T23, Q-T24).
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
