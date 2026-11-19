@@ -17,4 +17,6 @@ topics: ["playwright", "sign-in-browser", "auth-token", "integration-tests"]
 
 **Seen again**: ISSUE-140 (#140, 2026-11-06) signed the coach in with `signInBrowser` and then called `getMe` with `family.coach.token` from `familyFor`; the call failed and the test stopped at `me.body?.person.updatedAt` (undefined). This is the fourth record of the same trap (with `integration-fixture-pitfalls-tokens-crudform-undo` and `journey-test-sign-in-tokens-and-probe-limits`): a candidate for an `AGENTS.md` rule or for `signInBrowser` returning the fresh token itself.
 
+**Recurrence (2026-11-19, #309 / PR #412)**: TEST-L12 signed the club administrator in to B-02 with `signInBrowser` and then restored the consent text with `club.adminToken`; `PUT /api/club_core/settings` answered 401 and failed the required check `integration (shard 6/6)`. The test now takes `getAuthToken(request, club.tenant.email, password)` from the returned password.
+
 **Recurrence (2026-11-06, #139)**: ISSUE-139 kept using `family.coach.token` after `signInBrowser` for the coach and got 401 from `GET /api/notifications`. The test now takes a fresh token with `signInAs(request, club, userId, email)` once that person's browser part is over. `signInAs` also resets the password, so call it only after the browser session is no longer needed.

@@ -130,8 +130,10 @@ test('TEST-L12 B-02 holds the club text; the phone shows it and "given to an ear
     const changed = await updateClubSettings(request, admin, { consentTexts: { regulations: wording } })
     expect(changed.status, JSON.stringify(changed.body)).toBe(200)
 
-    // B-02: the textarea holds the club's text and says when it was last changed.
-    await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    // B-02: the textarea holds the club's text and says when it was last changed. Signing in through the browser ends
+    // the administrator's API token, so the later API calls take a fresh one (lesson `sign-in-browser-ends-the-api-token`).
+    const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    const freshAdmin = await getAuthToken(request, club.tenant.email, adminPassword)
     await page.goto('/backend/club/settings')
     const field = page.locator('[data-crud-field-id="consentText_regulations"] textarea')
     await expect(field).toHaveValue(wording)
@@ -170,7 +172,7 @@ test('TEST-L12 B-02 holds the club text; the phone shows it and "given to an ear
     }
 
     // An empty text restores the built-in wording; the earlier-wording mark goes with it.
-    const restored = await updateClubSettings(request, admin, { consentTexts: { regulations: '' } })
+    const restored = await updateClubSettings(request, freshAdmin, { consentTexts: { regulations: '' } })
     expect(restored.status, JSON.stringify(restored.body)).toBe(200)
     await page.goto('/club/profile')
     const row = page.getByTestId('club-own-consent-regulations')
