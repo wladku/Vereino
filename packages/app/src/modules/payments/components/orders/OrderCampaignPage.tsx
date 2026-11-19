@@ -1,20 +1,31 @@
 'use client'
 // `/backend/payments/orders/[id]` — B-32 the order campaign (UX concept README B-32; payments spec REQ-032; issue
-// #115): the stages draft → open (collecting) → closed → ordered → delivered → completed with one "next" action (the
-// "Close orders" dialog counts the children without an order), the KPIs, the Messenger text, and the tabs Orders,
-// Supplier summary (units per product and size, prints, CSV download) and No order ("Remind everyone"). Every
-// transition sends the campaign's lock token; a stale token surfaces the platform conflict and refreshes the page.
+// #115; payments parity REQ-C05, REQ-C02, DD-C04, #293): the stages draft → open (collecting) → closed → ordered →
+// delivered → completed with one "next" action ("Close orders" names the children without an order, the payment
+// deadline and the automatic closing date; "Complete" with kits not handed over is a danger dialog with their number),
+// the tiles Orders, Paid (of the value, due date) and Handed over (the supplier), the Messenger text, and the tabs:
+// - Orders (with their count): the child and group, who ordered (name, phone, channel; hidden under 768 px), the items
+//   with the notes, the print (hidden under 768 px), the amount, the payment (to pay / partially paid / paid, overdue
+//   in the error variant, each payment's method and who took it), the handover (who, the time in the title) and the
+//   row actions Cash (the shared dialog with the orderer and that order's charge), Hand over (only once delivered; an
+//   unpaid kit asks first and names the amount — the coach's `payments.orders.hand_over`, DD-C04) and Charge (B-22);
+// - Supplier summary: units per product and size with those ordered in sets, the prints with the child, CSV download,
+//   and a warning while orders are still collected;
+// - No order (with their count): the children with their guardians, "(no e-mail)" and "no guardian"; "Remind everyone".
+// Every transition sends the campaign's lock token; a stale token surfaces the platform conflict and refreshes the page.
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
-import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
+import { useConfirmDialog, type ConfirmDialogOptions } from '@open-mercato/ui/backend/confirm-dialog'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { useIsMobile } from '@open-mercato/ui/hooks/useIsMobile'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import {
   Dialog,
@@ -24,19 +35,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@open-mercato/ui/primitives/dialog'
+import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { StepIndicator, type StepIndicatorStep } from '@open-mercato/ui/primitives/step-indicator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { CAMPAIGN_STATUSES, isCampaignEditable, type CampaignAction } from '../../lib/order-campaigns'
+import { AcceptCashButton } from '../AcceptCashButton'
 import { ChargeStatusBadge } from '../ChargesTable'
 import { chargeHref, errorMessage, formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
+import { handOverKit } from '../club/coach/coach-client'
 import { CampaignStageBadge } from './OrderCampaignsTable'
 import {
   ORDERS_HREF,
   campaignApi,
   campaignHref,
+  pluralKey,
   type CampaignDetail,
   type CampaignOrderRow,
   type MissingChildRow,
@@ -45,11 +60,42 @@ import {
 
 type CampaignLoad = { status: 'ok'; campaign: CampaignDetail } | { status: 'not_found' } | { status: 'denied' }
 
-function Kpi({ label, value, testId }: { label: string; value: React.ReactNode; testId: string }) {
+type Confirm = (options?: ConfirmDialogOptions) => Promise<boolean>
+
+/** The charge statuses a payment can still be taken for (the "Cash" row action). */
+const PAYABLE = new Set(['open', 'partially_paid'])
+
+/** A calendar date (`YYYY-MM-DD`) in the user's locale. */
+function formatDay(value: string | null, locale: string): string {
+  if (!value) return ''
+  const [year, month, day] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, day)),
+  )
+}
+
+function formatMoment(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function Kpi({
+  label,
+  value,
+  hint,
+  testId,
+}: {
+  label: string
+  value: React.ReactNode
+  hint: React.ReactNode
+  testId: string
+}) {
   return (
     <section className="bg-card flex min-w-0 flex-col gap-1 rounded-lg border p-4" data-testid={testId}>
       <h2 className="text-muted-foreground text-sm font-medium">{label}</h2>
       <p className="text-xl font-semibold break-words">{value}</p>
+      <p className="text-muted-foreground text-sm break-words" data-testid={`${testId}-hint`}>
+        {hint}
+      </p>
     </section>
   )
 }
@@ -137,31 +183,174 @@ function ShareTextDialog({
   )
 }
 
-function orderColumns(t: Translate, locale: string): TableColumns<CampaignOrderRow> {
-  return [
+/** "to pay {amount}" (error when overdue), "partially paid — {amount} left", or the charge's own status badge. */
+function PaymentCell({ row, t, locale }: { row: CampaignOrderRow; t: Translate; locale: string }) {
+  const amount = formatMoney(row.remaining, locale)
+  const badge =
+    row.chargeStatus === 'open' ? (
+      <StatusBadge variant={row.overdue ? 'error' : 'info'} dot>
+        {t('payments.orders.orders.toPay', { amount })}
+      </StatusBadge>
+    ) : row.chargeStatus === 'partially_paid' ? (
+      <StatusBadge variant={row.overdue ? 'error' : 'warning'} dot>
+        {t('payments.orders.orders.partlyPaid', { amount })}
+      </StatusBadge>
+    ) : (
+      <ChargeStatusBadge status={row.chargeStatus} t={t} />
+    )
+  return (
+    <div className="flex flex-col items-start gap-1" data-testid="order-row-payment">
+      {badge}
+      {row.overdue ? <span className="text-sm">{t('payments.charges.overdue')}</span> : null}
+      {row.payments.length > 0 ? (
+        <span className="text-muted-foreground text-sm" data-testid="order-row-payments">
+          {row.payments
+            .map((payment) =>
+              [t(`payments.ledger.method.${payment.method}`, payment.method), personName(payment.collectedBy)]
+                .filter(Boolean)
+                .join(' — '),
+            )
+            .join(', ')}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+function HandoverCell({ row, t, locale }: { row: CampaignOrderRow; t: Translate; locale: string }) {
+  if (!row.handedOver) return <span data-testid="order-row-handover">—</span>
+  return (
+    <div
+      className="flex flex-col items-start gap-1"
+      data-testid="order-row-handover"
+      title={row.handedOverAt ? formatMoment(row.handedOverAt, locale) : undefined}
+    >
+      <StatusBadge variant="success" dot>
+        {t('payments.orders.orders.handedOver')}
+      </StatusBadge>
+      {row.handedOverBy ? <span className="text-muted-foreground text-sm">{personName(row.handedOverBy)}</span> : null}
+    </div>
+  )
+}
+
+function RowActions({
+  row,
+  campaign,
+  t,
+  onHandOver,
+  onChanged,
+}: {
+  row: CampaignOrderRow
+  campaign: CampaignDetail
+  t: Translate
+  onHandOver: (row: CampaignOrderRow) => void
+  onChanged: () => Promise<void>
+}) {
+  const child = personName(row.participant)
+  return (
+    <div className="flex flex-wrap gap-2">
+      {row.chargeStatus && PAYABLE.has(row.chargeStatus) ? (
+        <AcceptCashButton
+          origin="order_campaign"
+          payerPersonId={row.orderedByPersonId}
+          chargeIds={[row.chargeId]}
+          size="sm"
+          label={t('payments.orders.orders.cash')}
+          ariaLabel={t('payments.orders.orders.cashFor', { child })}
+          testId="order-row-cash"
+          onDone={onChanged}
+        />
+      ) : null}
+      {campaign.status === 'delivered' && !row.handedOver && row.groupId ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-label={t('payments.orders.orders.handOverFor', { child })}
+          data-testid="order-row-hand-over"
+          onClick={() => {
+            onHandOver(row)
+          }}
+        >
+          {t('payments.orders.orders.handOver')}
+        </Button>
+      ) : null}
+      <Button asChild size="sm" variant="ghost">
+        <Link
+          href={chargeHref(row.chargeId)}
+          aria-label={t('payments.orders.orders.chargeFor', { child })}
+          data-testid="order-row-charge"
+        >
+          {t('payments.orders.orders.charge')}
+        </Link>
+      </Button>
+    </div>
+  )
+}
+
+function orderColumns(
+  campaign: CampaignDetail,
+  t: Translate,
+  locale: string,
+  compact: boolean,
+  onHandOver: (row: CampaignOrderRow) => void,
+  onChanged: () => Promise<void>,
+): TableColumns<CampaignOrderRow> {
+  const columns: TableColumns<CampaignOrderRow> = [
     {
       id: 'participant',
       header: t('payments.orders.orders.columns.child'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => personName(row.original.participant) || '—',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-medium" data-testid="order-row-child">
+            {personName(row.original.participant) || '—'}
+          </span>
+          {row.original.groupName ? (
+            <span className="text-muted-foreground text-sm">{row.original.groupName}</span>
+          ) : null}
+        </div>
+      ),
     },
     {
-      accessorKey: 'groupName',
-      header: t('payments.orders.orders.columns.group'),
+      id: 'orderedBy',
+      header: t('payments.orders.orders.columns.orderedBy'),
       enableSorting: false,
-      meta: { priority: 3 },
-      cell: ({ row }) => row.original.groupName ?? '—',
+      meta: { priority: 2 },
+      cell: ({ row }) => (
+        <div className="flex flex-col" data-testid="order-row-ordered-by">
+          <span>{personName(row.original.orderedBy) || '—'}</span>
+          <span className="text-muted-foreground text-sm">
+            {[row.original.contactPhone, t(`payments.orders.orders.via.${row.original.submittedVia}`)]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </div>
+      ),
     },
     {
       id: 'lines',
       header: t('payments.orders.orders.columns.products'),
       enableSorting: false,
-      meta: { priority: 2, truncate: true, maxWidth: '20rem' },
-      cell: ({ row }) =>
-        row.original.lines
-          .map((line) => [line.productName, line.sizes ?? line.size].filter(Boolean).join(' — '))
-          .join('; '),
+      meta: { priority: 2, maxWidth: '20rem' },
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm">
+            {row.original.lines.map((line, index) => (
+              <React.Fragment key={`${line.productId}-${String(index)}`}>
+                {index > 0 ? <br /> : null}
+                {[line.productName, line.sizes ?? line.size].filter(Boolean).join(' — ')}
+              </React.Fragment>
+            ))}
+          </span>
+          {row.original.notes ? (
+            <span className="text-muted-foreground text-sm" data-testid="order-row-notes">
+              {t('payments.orders.orders.notes', { notes: row.original.notes })}
+            </span>
+          ) : null}
+        </div>
+      ),
     },
     {
       id: 'print',
@@ -179,48 +368,132 @@ function orderColumns(t: Translate, locale: string): TableColumns<CampaignOrderR
       cell: ({ row }) => formatMoney(row.original.total, locale),
     },
     {
-      id: 'status',
+      id: 'payment',
       header: t('payments.orders.orders.columns.payment'),
       enableSorting: false,
-      meta: { priority: 2 },
-      cell: ({ row }) => (
-        <Link href={chargeHref(row.original.chargeId)} className="underline-offset-2 hover:underline">
-          <ChargeStatusBadge status={row.original.chargeStatus} t={t} />
-        </Link>
-      ),
+      meta: { priority: 1 },
+      cell: ({ row }) => <PaymentCell row={row.original} t={t} locale={locale} />,
     },
     {
-      id: 'handedOver',
+      id: 'handover',
       header: t('payments.orders.orders.columns.handedOver'),
       enableSorting: false,
-      meta: { priority: 4 },
-      cell: ({ row }) => (row.original.handedOver ? t('payments.common.yes') : t('payments.common.no')),
+      meta: { priority: 2 },
+      cell: ({ row }) => <HandoverCell row={row.original} t={t} locale={locale} />,
+    },
+    {
+      id: 'actions',
+      header: t('payments.orders.orders.columns.actions'),
+      enableSorting: false,
+      meta: { priority: 1 },
+      cell: ({ row }) => (
+        <RowActions row={row.original} campaign={campaign} t={t} onHandOver={onHandOver} onChanged={onChanged} />
+      ),
     },
   ]
+  // "Ordered by" and "Print" give way to the actions on a phone (B-32 responsive contract).
+  return compact ? columns.filter((column) => column.id !== 'orderedBy' && column.id !== 'print') : columns
 }
 
-function OrdersTab({ campaignId, t, locale }: { campaignId: string; t: Translate; locale: string }) {
+function OrdersTab({
+  campaign,
+  t,
+  locale,
+  confirm,
+  onShare,
+  onCampaignChanged,
+}: {
+  campaign: CampaignDetail
+  t: Translate
+  locale: string
+  confirm: Confirm
+  onShare: () => void
+  onCampaignChanged: () => Promise<unknown>
+}) {
   const [page, setPage] = React.useState(1)
+  const compact = useIsMobile()
   const query = useQuery({
-    queryKey: ['payments-order-campaign-orders', campaignId, page],
+    queryKey: ['payments-order-campaign-orders', campaign.id, page],
     queryFn: async () => {
       const call = await apiCall<{ items: CampaignOrderRow[]; total: number; totalPages: number }>(
-        `/api/payments/orders?campaignId=${encodeURIComponent(campaignId)}&page=${String(page)}&pageSize=50`,
+        `/api/payments/orders?campaignId=${encodeURIComponent(campaign.id)}&page=${String(page)}&pageSize=50`,
       )
       if (!call.ok || !call.result) throw new Error(t('payments.orders.orders.error'))
       return call.result
     },
   })
-  const columns = React.useMemo(() => orderColumns(t, locale), [t, locale])
+  const { refetch } = query
+  const refresh = React.useCallback(async () => {
+    await Promise.all([refetch(), onCampaignChanged()])
+  }, [refetch, onCampaignChanged])
+  const handOver = React.useCallback(
+    async (row: CampaignOrderRow) => {
+      if (!row.groupId) return
+      const unpaid = row.remaining > 0
+      if (unpaid) {
+        const confirmed = await confirm({
+          title: t('payments.orders.handOver.unpaidTitle'),
+          text: [
+            t('payments.orders.handOver.unpaidDue', { amount: formatMoney(row.remaining, locale) }),
+            row.dueDate ? t('payments.orders.handOver.unpaidText', { due: formatDay(row.dueDate, locale) }) : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+          confirmText: t('payments.orders.handOver.unpaidSubmit'),
+        })
+        if (!confirmed) return
+      }
+      try {
+        await handOverKit(row.id, { groupId: row.groupId, confirmUnpaid: unpaid }, t('payments.orders.handOver.error'))
+        flash(t('payments.orders.handOver.done', { child: personName(row.participant) }), 'success')
+      } catch (error: unknown) {
+        flash(errorMessage(error, t('payments.orders.handOver.error')), 'error')
+      } finally {
+        await refresh()
+      }
+    },
+    [confirm, locale, refresh, t],
+  )
+  const columns = React.useMemo(
+    () =>
+      orderColumns(
+        campaign,
+        t,
+        locale,
+        compact,
+        (row) => {
+          void handOver(row)
+        },
+        refresh,
+      ),
+    [campaign, t, locale, compact, handOver, refresh],
+  )
   return (
     <DataTable<CampaignOrderRow>
       title={t('payments.orders.tabs.orders')}
       extensionTableId="payments.order-campaign-orders"
+      // The "… results in 53ms" footer does not wrap and outgrows 320 px with the CI font; its length changes run to
+      // run (TEST-C06), as on the roster panel.
+      showQueryTime={false}
       columns={columns}
       data={query.data?.items ?? []}
       isLoading={query.isLoading}
       error={query.error ? t('payments.orders.orders.error') : null}
-      emptyState={<p className="text-muted-foreground text-sm">{t('payments.orders.orders.empty')}</p>}
+      emptyState={
+        <div className="flex flex-col items-center gap-2 text-center" data-testid="order-campaign-orders-empty">
+          <p className="font-medium">{t('payments.orders.orders.empty')}</p>
+          <p className="text-muted-foreground text-sm">
+            {campaign.status === 'draft'
+              ? t('payments.orders.orders.emptyDraft')
+              : t('payments.orders.orders.emptyShare')}
+          </p>
+          {campaign.status !== 'draft' ? (
+            <Button type="button" variant="outline" size="sm" onClick={onShare}>
+              {t('payments.orders.share.action')}
+            </Button>
+          ) : null}
+        </div>
+      }
       pagination={{
         page,
         pageSize: 50,
@@ -232,11 +505,11 @@ function OrdersTab({ campaignId, t, locale }: { campaignId: string; t: Translate
   )
 }
 
-function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
+function SummaryTab({ campaign, t }: { campaign: CampaignDetail; t: Translate }) {
   const query = useQuery({
-    queryKey: ['payments-order-campaign-summary', campaignId],
+    queryKey: ['payments-order-campaign-summary', campaign.id],
     queryFn: async () => {
-      const call = await apiCall<SupplierSummaryView>(campaignApi(campaignId, '/summary'))
+      const call = await apiCall<SupplierSummaryView>(campaignApi(campaign.id, '/summary'))
       if (!call.ok || !call.result) throw new Error(t('payments.orders.summary.error'))
       return call.result
     },
@@ -246,9 +519,17 @@ function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
   const summary = query.data
   return (
     <div className="flex flex-col gap-4" data-testid="order-campaign-summary">
+      {campaign.status === 'open' ? (
+        <Alert status="warning" data-testid="order-campaign-summary-collecting">
+          <div className="flex flex-col gap-1">
+            <strong>{t('payments.orders.summary.collectingTitle')}</strong>
+            <span>{t('payments.orders.summary.collectingText')}</span>
+          </div>
+        </Alert>
+      ) : null}
       <div className="flex justify-end">
         <Button asChild variant="outline">
-          <a href={campaignApi(campaignId, '/summary?format=csv')} download data-testid="order-campaign-summary-csv">
+          <a href={campaignApi(campaign.id, '/summary?format=csv')} download data-testid="order-campaign-summary-csv">
             {t('payments.orders.summary.csv')}
           </a>
         </Button>
@@ -265,14 +546,16 @@ function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
                   <TableHead>{t('payments.orders.csv.product')}</TableHead>
                   <TableHead>{t('payments.orders.csv.size')}</TableHead>
                   <TableHead className="text-right">{t('payments.orders.csv.quantity')}</TableHead>
+                  <TableHead className="text-right">{t('payments.orders.summary.inSets')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {summary.units.map((unit) => (
-                  <TableRow key={`${unit.productId}-${unit.size ?? ''}`}>
+                  <TableRow key={`${unit.productId}-${unit.size ?? ''}`} data-testid="order-campaign-summary-unit">
                     <TableCell>{unit.productName}</TableCell>
                     <TableCell>{unit.size ?? '—'}</TableCell>
                     <TableCell className="text-right">{unit.quantity}</TableCell>
+                    <TableCell className="text-right">{unit.inSets > 0 ? unit.inSets : '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -289,6 +572,7 @@ function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>{t('payments.orders.orders.columns.child')}</TableHead>
                   <TableHead>{t('payments.orders.csv.printName')}</TableHead>
                   <TableHead>{t('payments.orders.csv.printNumber')}</TableHead>
                   <TableHead>{t('payments.orders.csv.group')}</TableHead>
@@ -297,7 +581,11 @@ function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
               </TableHeader>
               <TableBody>
                 {summary.prints.map((print, index) => (
-                  <TableRow key={`${String(index)}-${print.printName ?? ''}`}>
+                  <TableRow
+                    key={`${String(index)}-${print.printName ?? ''}`}
+                    data-testid="order-campaign-summary-print"
+                  >
+                    <TableCell>{personName(print.participant) || '—'}</TableCell>
                     <TableCell>{print.printName ?? '—'}</TableCell>
                     <TableCell>{print.printNumber ?? '—'}</TableCell>
                     <TableCell>{print.groupName ?? '—'}</TableCell>
@@ -315,6 +603,16 @@ function SummaryTab({ campaignId, t }: { campaignId: string; t: Translate }) {
       </section>
     </div>
   )
+}
+
+function guardiansText(item: MissingChildRow, t: Translate): string {
+  if (item.guardians.length === 0) return t('payments.orders.missing.noGuardian')
+  return item.guardians
+    .map((guardian) => {
+      const name = personName(guardian)
+      return guardian.hasEmail ? name : `${name} (${t('payments.orders.missing.noEmail')})`
+    })
+    .join(', ')
 }
 
 function MissingTab({ campaign, t }: { campaign: CampaignDetail; t: Translate }) {
@@ -372,13 +670,15 @@ function MissingTab({ campaign, t }: { campaign: CampaignDetail; t: Translate })
               <TableRow>
                 <TableHead>{t('payments.orders.orders.columns.child')}</TableHead>
                 <TableHead>{t('payments.orders.orders.columns.group')}</TableHead>
+                <TableHead>{t('payments.orders.missing.guardians')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) => (
-                <TableRow key={item.personId}>
-                  <TableCell>{personName(item.participant) || '—'}</TableCell>
+                <TableRow key={item.personId} data-testid="order-campaign-missing-row">
+                  <TableCell className="font-medium">{personName(item.participant) || '—'}</TableCell>
                   <TableCell>{item.groupName ?? '—'}</TableCell>
+                  <TableCell data-testid="order-campaign-missing-guardians">{guardiansText(item, t)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -398,10 +698,47 @@ function stageSteps(campaign: CampaignDetail, t: Translate): StepIndicatorStep[]
   }))
 }
 
+/** The confirmation of a stage move: "Close orders" and "Complete" carry what the administrator must know first. */
+function advanceDialog(
+  action: CampaignAction,
+  campaign: CampaignDetail,
+  t: Translate,
+  locale: string,
+): ConfirmDialogOptions {
+  const base = {
+    title: t(`payments.orders.next.${action}.title`),
+    confirmText: t(`payments.orders.next.${action}.action`),
+  }
+  if (action === 'close') {
+    return {
+      ...base,
+      text: [
+        t('payments.orders.next.close.text', { count: campaign.kpis.missing }),
+        t('payments.orders.next.close.due', { date: formatDay(campaign.paymentDueOn, locale) }),
+        t('payments.orders.next.close.auto', { date: formatDay(campaign.closesOn, locale) }),
+      ].join(' '),
+    }
+  }
+  if (action === 'complete' && campaign.kpis.notHandedOver > 0) {
+    const count = campaign.kpis.notHandedOver
+    return {
+      title: t('payments.orders.next.complete.title'),
+      text: [
+        t(`payments.orders.next.complete.notHanded.${pluralKey(locale, count)}`, { count }),
+        t('payments.orders.next.complete.notHandedText'),
+      ].join(' '),
+      confirmText: t('payments.orders.next.complete.anyway'),
+      variant: 'destructive',
+    }
+  }
+  return { ...base, text: t(`payments.orders.next.${action}.text`) }
+}
+
 export function OrderCampaignPage({ id }: { id: string }) {
   const t = useT()
   const locale = useLocale()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [sharing, setSharing] = React.useState(() => searchParams.get('share') === '1')
   const [pending, setPending] = React.useState(false)
@@ -415,6 +752,17 @@ export function OrderCampaignPage({ id }: { id: string }) {
       return { status: 'ok', campaign: call.result }
     },
   })
+  const { refetch } = query
+  const refreshCampaign = React.useCallback(async () => {
+    await Promise.all([
+      refetch(),
+      queryClient.invalidateQueries({ queryKey: ['payments-order-campaign-summary', id] }),
+      queryClient.invalidateQueries({ queryKey: ['payments-order-campaign-missing', id] }),
+    ])
+  }, [refetch, queryClient, id])
+  const openShare = React.useCallback(() => {
+    setSharing(true)
+  }, [])
 
   if (query.isLoading) return <LoadingMessage label={t('payments.orders.loading')} />
   if (query.error) return <ErrorMessage label={t('payments.orders.errors.load')} />
@@ -432,14 +780,7 @@ export function OrderCampaignPage({ id }: { id: string }) {
   const campaign = load.campaign
 
   const advance = async (action: CampaignAction) => {
-    const confirmed = await confirm({
-      title: t(`payments.orders.next.${action}.title`),
-      text:
-        action === 'close'
-          ? t('payments.orders.next.close.text', { count: campaign.kpis.missing })
-          : t(`payments.orders.next.${action}.text`),
-      confirmText: t(`payments.orders.next.${action}.action`),
-    })
+    const confirmed = await confirm(advanceDialog(action, campaign, t, locale))
     if (!confirmed) return
     setPending(true)
     try {
@@ -463,6 +804,7 @@ export function OrderCampaignPage({ id }: { id: string }) {
   }
 
   const next = campaign.nextAction
+  const { kpis } = campaign
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -477,7 +819,10 @@ export function OrderCampaignPage({ id }: { id: string }) {
             {[
               campaign.sectionName,
               campaign.groups.map((group) => group.name).join(', '),
-              t('payments.orders.deadlines', { closesOn: campaign.closesOn, paymentDueOn: campaign.paymentDueOn }),
+              t('payments.orders.deadlines', {
+                closesOn: formatDay(campaign.closesOn, locale),
+                paymentDueOn: formatDay(campaign.paymentDueOn, locale),
+              }),
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -495,14 +840,7 @@ export function OrderCampaignPage({ id }: { id: string }) {
             </Button>
           ) : null}
           {campaign.status !== 'draft' ? (
-            <Button
-              type="button"
-              variant="outline"
-              data-testid="order-campaign-share"
-              onClick={() => {
-                setSharing(true)
-              }}
-            >
+            <Button type="button" variant="outline" data-testid="order-campaign-share" onClick={openShare}>
               {t('payments.orders.share.action')}
             </Button>
           ) : null}
@@ -523,41 +861,49 @@ export function OrderCampaignPage({ id }: { id: string }) {
       <div className="overflow-x-auto">
         <StepIndicator steps={stageSteps(campaign, t)} aria-label={t('payments.orders.stages')} />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Kpi
           label={t('payments.orders.kpi.orders')}
-          value={t('payments.orders.kpi.ordersOf', { orders: campaign.kpis.orders, children: campaign.kpis.children })}
+          value={t('payments.orders.kpi.ordersOf', { orders: kpis.orders, children: kpis.children })}
+          hint={t('payments.orders.kpi.ordersHint')}
           testId="order-campaign-kpi-orders"
         />
         <Kpi
-          label={t('payments.orders.kpi.value')}
-          value={formatMoney(campaign.kpis.value, locale)}
-          testId="order-campaign-kpi-value"
-        />
-        <Kpi
           label={t('payments.orders.kpi.paid')}
-          value={formatMoney(campaign.kpis.paid, locale)}
+          value={formatMoney(kpis.paid, locale)}
+          hint={t('payments.orders.kpi.paidHint', {
+            value: formatMoney(kpis.value, locale),
+            date: formatDay(campaign.paymentDueOn, locale),
+          })}
           testId="order-campaign-kpi-paid"
         />
         <Kpi
           label={t('payments.orders.kpi.handedOver')}
-          value={campaign.kpis.handedOver}
+          value={t('payments.orders.kpi.handedOverOf', { handedOver: kpis.handedOver, orders: kpis.orders })}
+          hint={campaign.supplierName ?? t('payments.orders.kpi.noSupplier')}
           testId="order-campaign-kpi-handed-over"
         />
       </div>
       <Tabs defaultValue="orders" variant="underline">
         <div className="overflow-x-auto">
           <TabsList aria-label={t('payments.orders.tabs.label')}>
-            <TabsTrigger value="orders">{t('payments.orders.tabs.orders')}</TabsTrigger>
+            <TabsTrigger value="orders">{t('payments.orders.tabs.ordersCount', { count: kpis.orders })}</TabsTrigger>
             <TabsTrigger value="summary">{t('payments.orders.tabs.summary')}</TabsTrigger>
-            <TabsTrigger value="missing">{t('payments.orders.tabs.missing')}</TabsTrigger>
+            <TabsTrigger value="missing">{t('payments.orders.tabs.missingCount', { count: kpis.missing })}</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="orders" className="pt-4">
-          <OrdersTab campaignId={campaign.id} t={t} locale={locale} />
+          <OrdersTab
+            campaign={campaign}
+            t={t}
+            locale={locale}
+            confirm={confirm}
+            onShare={openShare}
+            onCampaignChanged={refreshCampaign}
+          />
         </TabsContent>
         <TabsContent value="summary" className="pt-4">
-          <SummaryTab campaignId={campaign.id} t={t} />
+          <SummaryTab campaign={campaign} t={t} />
         </TabsContent>
         <TabsContent value="missing" className="pt-4">
           <MissingTab campaign={campaign} t={t} />

@@ -36,6 +36,7 @@ export async function GET(_request: Request, context: { params: Promise<{ token?
 const pageSchema = orderFormSchema.extend({
   club: z.object({ name: z.string() }),
   expiresAt: z.string(),
+  guardian: z.object({ firstName: z.string(), lastName: z.string() }).describe("The link's guardian"),
 })
 
 export const openApi: OpenApiRouteDoc = {

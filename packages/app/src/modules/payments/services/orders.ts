@@ -184,6 +184,11 @@ export type OrderFormOrder = {
   chargeId: string
   state: ChildOrderState
   updatedAt: string
+  /** When the order was placed (REQ-C11, "Order of {time}"). */
+  submittedAt: string
+  /** When the coach handed the kit over, and who did; null until then. */
+  handedOverAt: string | null
+  handedOverBy: { firstName: string; lastName: string } | null
 }
 
 export type OrderFormView = {
@@ -240,7 +245,17 @@ export async function orderFormView(
   }))
   const own = all.filter((order) => candidates.includes(order.participantPersonId))
   const [persons, money, lines, contacts, transfer] = await Promise.all([
-    findPersons(container, scope, candidates, em),
+    findPersons(
+      container,
+      scope,
+      [
+        ...new Set([
+          ...candidates,
+          ...own.flatMap((order) => (order.handedOverByPersonId ? [order.handedOverByPersonId] : [])),
+        ]),
+      ],
+      em,
+    ),
     orderMoney(container, em, scope, own),
     own.length === 0
       ? Promise.resolve([] as OrderLine[])
@@ -299,6 +314,7 @@ export async function orderFormView(
         })),
       )
       const paid = money.get(order.id) as OrderMoney
+      const handedOverBy = order.handedOverByPersonId ? persons.get(order.handedOverByPersonId) : undefined
       return {
         id: order.id,
         participantPersonId: order.participantPersonId,
@@ -326,6 +342,9 @@ export async function orderFormView(
         chargeId: order.chargeId,
         state: childOrderState({ chargeStatus: paid.chargeStatus, handedOver: order.handedOverAt != null }),
         updatedAt: order.updatedAt.toISOString(),
+        submittedAt: order.createdAt.toISOString(),
+        handedOverAt: order.handedOverAt ? order.handedOverAt.toISOString() : null,
+        handedOverBy: handedOverBy ? { firstName: handedOverBy.firstName, lastName: handedOverBy.lastName } : null,
       }
     }),
     contact: { email: latest?.contactEmail ?? contacts[0]?.email ?? null, phone: latest?.contactPhone ?? null },

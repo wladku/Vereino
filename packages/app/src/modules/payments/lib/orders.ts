@@ -186,6 +186,42 @@ export function childOrderState(order: { chargeStatus: string | null; handedOver
   return order.chargeStatus === 'paid' ? 'paid' : 'to_pay'
 }
 
+/** A child's payment badge on M-16, shown apart from the pickup (REQ-C11): not ordered, to pay or paid. */
+export function childPaymentState(child: {
+  orderId: string | null
+  remaining: number
+}): Exclude<ChildOrderState, 'picked_up'> {
+  if (!child.orderId) return 'not_ordered'
+  return child.remaining > 0 ? 'to_pay' : 'paid'
+}
+
+/**
+ * The deadline line of a campaign on M-16 (REQ-C11): "orders until {date}" while it takes orders, "ready for pickup
+ * from the coach" once delivered, otherwise "closed on {date}".
+ */
+export type CampaignDeadlineLine = 'orders_until' | 'ready_for_pickup' | 'closed_on'
+
+export function campaignDeadlineLine(campaign: { status: CampaignStatus; ordersOpen: boolean }): CampaignDeadlineLine {
+  if (campaign.ordersOpen) return 'orders_until'
+  return campaign.status === 'delivered' ? 'ready_for_pickup' : 'closed_on'
+}
+
+/**
+ * The pickup notice of an order on M-17 (REQ-C11): picked up once the coach handed the kit over, "ready for pickup
+ * from the coach" while the delivered campaign waits for the handover, nothing before the delivery.
+ */
+export function orderPickup(campaignStatus: CampaignStatus, handedOverAt: string | null): 'picked_up' | 'ready' | null {
+  if (handedOverAt) return 'picked_up'
+  return campaignStatus === 'delivered' ? 'ready' : null
+}
+
+/** The campaigns of the Today "Order" tile (REQ-C11): those that still take orders. */
+export function todayOrderCampaigns<T extends { status: CampaignStatus; ordersOpen: boolean }>(
+  campaigns: readonly T[],
+): T[] {
+  return campaigns.filter((campaign) => campaign.status === 'open' && campaign.ordersOpen)
+}
+
 /** A changed order may not cost less than what was already paid on it. */
 export function belowPaid(total: number, paid: number): boolean {
   return total < paid

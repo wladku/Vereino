@@ -4,6 +4,7 @@ import {
   CAMPAIGN_STATUSES,
   campaignDateErrors,
   campaignKpis,
+  orderPaymentEntries,
   isCampaignEditable,
   nextAction,
   productDrafts,
@@ -153,12 +154,14 @@ describe('supplierSummary', () => {
   it('counts set items under their products, in form and size order, and lists the prints', () => {
     const summary = supplierSummary(products, [
       {
+        participant: { firstName: 'Jaś', lastName: 'Kowalski' },
         printName: 'JAŚ',
         printNumber: 7,
         groupName: 'Żaki',
         lines: [{ productId: 'kit', size: null, componentSizes: { shirt: '140', shorts: '128' } }],
       },
       {
+        participant: null,
         printName: null,
         printNumber: null,
         groupName: 'Orliki',
@@ -170,12 +173,14 @@ describe('supplierSummary', () => {
         ],
       },
       {
+        participant: null,
         printName: null,
         printNumber: 3,
         groupName: 'Żaki',
         lines: [{ productId: 'kit', size: null, componentSizes: null }],
       },
       {
+        participant: { firstName: 'Ada', lastName: 'Nowak' },
         printName: 'ADA',
         printNumber: null,
         groupName: null,
@@ -183,17 +188,24 @@ describe('supplierSummary', () => {
       },
     ])
     expect(summary.units).toEqual([
-      { productId: 'shirt', productName: 'Shirt', size: '140', quantity: 2 },
-      { productId: 'shirt', productName: 'Shirt', size: 'M', quantity: 1 },
-      { productId: 'shirt', productName: 'Shirt', size: null, quantity: 1 },
-      { productId: 'shirt', productName: 'Shirt', size: 'XXL', quantity: 1 },
-      { productId: 'shorts', productName: 'Shorts', size: '128', quantity: 1 },
-      { productId: 'shorts', productName: 'Shorts', size: null, quantity: 1 },
-      { productId: 'scarf', productName: 'Scarf', size: null, quantity: 1 },
+      { productId: 'shirt', productName: 'Shirt', size: '140', quantity: 2, inSets: 1 },
+      { productId: 'shirt', productName: 'Shirt', size: 'M', quantity: 1, inSets: 0 },
+      { productId: 'shirt', productName: 'Shirt', size: null, quantity: 1, inSets: 1 },
+      { productId: 'shirt', productName: 'Shirt', size: 'XXL', quantity: 1, inSets: 0 },
+      { productId: 'shorts', productName: 'Shorts', size: '128', quantity: 1, inSets: 1 },
+      { productId: 'shorts', productName: 'Shorts', size: null, quantity: 1, inSets: 1 },
+      { productId: 'scarf', productName: 'Scarf', size: null, quantity: 1, inSets: 0 },
     ])
     expect(summary.prints).toEqual([
-      { printName: 'ADA', printNumber: null, groupName: null, sizes: [{ productName: 'Shirt', size: 'XXL' }] },
       {
+        participant: { firstName: 'Ada', lastName: 'Nowak' },
+        printName: 'ADA',
+        printNumber: null,
+        groupName: null,
+        sizes: [{ productName: 'Shirt', size: 'XXL' }],
+      },
+      {
+        participant: null,
         printName: null,
         printNumber: 3,
         groupName: 'Żaki',
@@ -203,6 +215,7 @@ describe('supplierSummary', () => {
         ],
       },
       {
+        participant: { firstName: 'Jaś', lastName: 'Kowalski' },
         printName: 'JAŚ',
         printNumber: 7,
         groupName: 'Żaki',
@@ -216,11 +229,11 @@ describe('supplierSummary', () => {
 
   it('sorts prints without a number after the numbered ones of a group', () => {
     const summary = supplierSummary(products, [
-      { printName: 'B', printNumber: null, groupName: 'Żaki', lines: [] },
-      { printName: 'A', printNumber: 9, groupName: 'Żaki', lines: [] },
-      { printName: 'C', printNumber: null, groupName: null, lines: [] },
-      { printName: 'D', printNumber: 1, groupName: null, lines: [] },
-      { printName: 'E', printNumber: null, groupName: 'Żaki', lines: [] },
+      { participant: null, printName: 'B', printNumber: null, groupName: 'Żaki', lines: [] },
+      { participant: null, printName: 'A', printNumber: 9, groupName: 'Żaki', lines: [] },
+      { participant: null, printName: 'C', printNumber: null, groupName: null, lines: [] },
+      { participant: null, printName: 'D', printNumber: 1, groupName: null, lines: [] },
+      { participant: null, printName: 'E', printNumber: null, groupName: 'Żaki', lines: [] },
     ])
     expect(summary.prints.map((print) => print.printName)).toEqual(['D', 'C', 'A', 'B', 'E'])
   })
@@ -231,11 +244,12 @@ describe('supplierSummaryCsv', () => {
     const csv = supplierSummaryCsv(
       {
         units: [
-          { productId: 'shirt', productName: 'Shirt, home', size: '140', quantity: 2 },
-          { productId: 'scarf', productName: '=Scarf', size: null, quantity: 1 },
+          { productId: 'shirt', productName: 'Shirt, home', size: '140', quantity: 2, inSets: 1 },
+          { productId: 'scarf', productName: '=Scarf', size: null, quantity: 1, inSets: 0 },
         ],
         prints: [
           {
+            participant: { firstName: 'Jaś', lastName: 'Kowalski' },
             printName: 'JAŚ',
             printNumber: 7,
             groupName: 'Żaki',
@@ -244,7 +258,7 @@ describe('supplierSummaryCsv', () => {
               { productName: 'Scarf', size: null },
             ],
           },
-          { printName: null, printNumber: null, groupName: null, sizes: [] },
+          { participant: null, printName: null, printNumber: null, groupName: null, sizes: [] },
         ],
       },
       {
@@ -279,7 +293,7 @@ describe('campaignKpis', () => {
         { total: 15000, paid: 15000, handedOver: true },
         { total: 9000, paid: 0, handedOver: false },
       ]),
-    ).toEqual({ orders: 2, children: 5, missing: 3, value: 24000, paid: 15000, handedOver: 1 })
+    ).toEqual({ orders: 2, children: 5, missing: 3, value: 24000, paid: 15000, handedOver: 1, notHandedOver: 1 })
     expect(campaignKpis(0, [{ total: 1, paid: 0, handedOver: false }]).missing).toBe(0)
   })
 })
@@ -332,5 +346,38 @@ describe('productDrafts', () => {
     expect(drafts.map((draft) => draft.id)).toEqual([undefined, undefined])
     expect(drafts.map((draft) => draft.key)).toEqual(['copy-p1', 'copy-p2'])
     expect(drafts[1].componentKeys).toEqual(['copy-p1', 'copy-p3'])
+  })
+})
+
+describe('orderPaymentEntries', () => {
+  const entry = {
+    reversesPaymentId: null,
+    isOverpayment: false,
+    collectedByPersonId: null,
+    recordedByPersonId: null,
+  }
+  it('lists live payments with their collector, else who recorded them', () => {
+    expect(
+      orderPaymentEntries([
+        { ...entry, id: 'p1', method: 'cash', collectedByPersonId: 'coach', recordedByPersonId: 'admin' },
+        { ...entry, id: 'p2', method: 'cash', recordedByPersonId: 'admin' },
+        { ...entry, id: 'p3', method: 'online' },
+      ]),
+    ).toEqual([
+      { method: 'cash', collectedByPersonId: 'coach' },
+      { method: 'cash', collectedByPersonId: 'admin' },
+      { method: 'online', collectedByPersonId: null },
+    ])
+  })
+
+  it('leaves out overpayments, reversing entries and the payments they reverse', () => {
+    expect(
+      orderPaymentEntries([
+        { ...entry, id: 'p1', method: 'transfer' },
+        { ...entry, id: 'p2', method: 'transfer', reversesPaymentId: 'p1' },
+        { ...entry, id: 'p3', method: 'online', isOverpayment: true },
+        { ...entry, id: 'p4', method: 'cash' },
+      ]),
+    ).toEqual([{ method: 'cash', collectedByPersonId: null }])
   })
 })

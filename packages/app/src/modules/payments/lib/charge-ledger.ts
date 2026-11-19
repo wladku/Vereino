@@ -115,9 +115,19 @@ export function formatZloty(grosz: number): string {
 
 /**
  * The perspectives of the charge list in the mockup's order (payments parity Q-C02, #292): membership fees (the
- * default), overdue, orders, without payer, rentals — only when DD-C02 allows (#291) —, cash payments and all.
+ * default), overdue, orders, without payer, rentals — only when DD-C02 allows (#291) —, cash payments, all and "To
+ * refund" — only when an online overpayment waits for its refund (DD-C10, #296).
  */
-export const CHARGE_PERSPECTIVES = ['fees', 'overdue', 'orders', 'payer_missing', 'rentals', 'cash', 'all'] as const
+export const CHARGE_PERSPECTIVES = [
+  'fees',
+  'overdue',
+  'orders',
+  'payer_missing',
+  'rentals',
+  'cash',
+  'all',
+  'to_refund',
+] as const
 export type ChargePerspective = (typeof CHARGE_PERSPECTIVES)[number]
 
 export const DEFAULT_CHARGE_PERSPECTIVE: ChargePerspective = 'fees'
@@ -137,6 +147,8 @@ export function perspectiveQuery(perspective: ChargePerspective): Record<string,
       return { sourceType: 'order' }
     case 'rentals':
       return { sourceType: 'rental' }
+    case 'to_refund':
+      return { toRefund: '1' }
     case 'all':
       return {}
   }
@@ -152,9 +164,14 @@ export function chargePerspectiveOf(value: string | null, shown: readonly Charge
   return shown.find((perspective) => perspective === value) ?? DEFAULT_CHARGE_PERSPECTIVE
 }
 
-/** The perspectives shown: "Rentals (municipality)" only when the list response says so (DD-C02). */
-export function visiblePerspectives(rentalsShown: boolean): ChargePerspective[] {
-  return CHARGE_PERSPECTIVES.filter((perspective) => perspective !== 'rentals' || rentalsShown)
+/**
+ * The perspectives shown: "Rentals (municipality)" only when the list response says so (DD-C02), "To refund" only
+ * when it is not empty (DD-C10).
+ */
+export function visiblePerspectives(shown: { rentals: boolean; toRefund: boolean }): ChargePerspective[] {
+  return CHARGE_PERSPECTIVES.filter(
+    (perspective) => (perspective !== 'rentals' || shown.rentals) && (perspective !== 'to_refund' || shown.toRefund),
+  )
 }
 
 /** The B-21 list's state as its URL carries it (payments parity REQ-C03, #292; precedent DD-U03). */
@@ -214,6 +231,36 @@ export function paymentSourceOf(payment: { method: string; bankTransactionId?: s
   if (payment.method === 'online') return 'online'
   if (payment.method === 'cash') return 'cash'
   return 'manual'
+}
+
+// --- Refunds of online payments (payments parity REQ-C08, DD-C10; B-22, #296) ---
+
+type LedgerEntry = {
+  id: string
+  amount: number
+  method: string
+  reversesPaymentId?: string | null
+  gatewayTransactionId?: string | null
+}
+
+/** The refunds of each online payment: the online reversing entries that name it, in the ledger's order. */
+export function refundsByPayment<T extends LedgerEntry>(payments: readonly T[]): Map<string, T[]> {
+  const refunds = new Map<string, T[]>()
+  for (const payment of payments) {
+    if (payment.method !== 'online' || !payment.reversesPaymentId) continue
+    refunds.set(payment.reversesPaymentId, [...(refunds.get(payment.reversesPaymentId) ?? []), payment])
+  }
+  return refunds
+}
+
+/**
+ * What of a payment can still be refunded, in grosz: an online payment through the gateway that is not itself a
+ * reversing entry, less its refunds (negative entries), never below zero; 0 for any other payment (the command's
+ * check, `payments.payments.refund`).
+ */
+export function refundableOf(payment: LedgerEntry, refunds: readonly { amount: number }[]): number {
+  if (payment.method !== 'online' || payment.reversesPaymentId || !payment.gatewayTransactionId) return 0
+  return Math.max(0, payment.amount + paidTotal(refunds))
 }
 
 /**

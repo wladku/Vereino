@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
-import { addDays } from '../_fixtures/activities'
+import { addDays, safeDay } from '../_fixtures/activities'
 import { declare, familyFor, weeklySeries } from '../_fixtures/attendance'
 import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import {
@@ -122,10 +122,12 @@ test('TEST-L03 a family leaves on a future day in one previewed step; undo, job,
       end: '18:00',
     })
     const later = training.sessions.find((session) => (session.occurrenceDate ?? '') > lastDay)
-    // A day after today: on a Wednesday today's 17:00 session closes its declarations at its start (409
-    // `declaration_closed`), so a run late in the day would fail.
+    // Two or more days ahead (`safeDay`): on a Wednesday today's 17:00 session closes its declarations at its start
+    // (409 `declaration_closed`), so a run late in the day would fail (#390). A Wednesday between then and the last day
+    // always exists.
+    const firstSafe = safeDay()
     const before = training.sessions.find(
-      (session) => (session.occurrenceDate ?? '') > today && (session.occurrenceDate ?? '') <= lastDay,
+      (session) => (session.occurrenceDate ?? '') >= firstSafe && (session.occurrenceDate ?? '') <= lastDay,
     )
     expect(later, 'a session after the last day').toBeTruthy()
     const declared = await declare(request, family.guardian.token, {
