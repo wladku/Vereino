@@ -9,7 +9,8 @@
 // charges with a numbered receipt; "Import statement" opens B-29. The perspectives follow the mockup's order, the
 // perspective, filters, search and page live in the URL (restored on reload; precedent DD-U03), rows come in the list's
 // default order — the newest period first, then the due date — and Remaining reads "—" once nothing is owed (#292).
-// "Add charge" enters a charge by hand (#295); the person record's "Charges" tab reuses the columns.
+// "Add charge" enters a charge by hand (#295); the person record's "Charges" tab reuses the columns. "To refund" lists
+// the charges holding an online overpayment not refunded yet, shown only when it is not empty (DD-C10, #296).
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -23,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import {
+  DEFAULT_CHARGE_PERSPECTIVE,
   PAYEES,
   chargeListUrlParams,
   payerDisplayName,
@@ -88,7 +90,9 @@ function payeeLabel(row: Pick<ChargeRow, 'payee' | 'payeeInstitution'>, t: Trans
   return t(`payments.charges.payee.${row.payee ?? 'club'}`)
 }
 
-type ChargeList = Awaited<ReturnType<typeof fetchCrudList<ChargeRow>>> & { meta?: { rentalsPerspective?: boolean } }
+type ChargeList = Awaited<ReturnType<typeof fetchCrudList<ChargeRow>>> & {
+  meta?: { rentalsPerspective?: boolean; toRefundCount?: number }
+}
 
 /** The B-21 columns; the person record's "Charges" tab shows the same (#295). */
 export function chargeColumns(t: Translate, locale: string): TableColumns<ChargeRow> {
@@ -289,7 +293,16 @@ export function ChargesTable() {
   const columns = React.useMemo(() => chargeColumns(t, locale), [t, locale])
 
   // DD-C02: the response says whether the club shows "Rentals (municipality)"; a link that opens it keeps its tab.
-  const perspectives = visiblePerspectives(data?.meta?.rentalsPerspective === true || perspective === 'rentals')
+  // DD-C10: "To refund" shows only while an overpayment waits; a link that opens it keeps its tab until the list loads.
+  const toRefundCount = data?.meta?.toRefundCount
+  const perspectives = visiblePerspectives({
+    rentals: data?.meta?.rentalsPerspective === true || perspective === 'rentals',
+    toRefund: (toRefundCount ?? 0) > 0 || (perspective === 'to_refund' && toRefundCount === undefined),
+  })
+  // Once the last overpayment is refunded, the empty "To refund" perspective goes and the default one opens.
+  React.useEffect(() => {
+    if (perspective === 'to_refund' && toRefundCount === 0) navigate({ perspective: DEFAULT_CHARGE_PERSPECTIVE })
+  }, [navigate, perspective, toRefundCount])
 
   const exportCsv = async () => {
     setExporting(true)
