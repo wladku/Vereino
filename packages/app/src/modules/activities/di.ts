@@ -10,6 +10,7 @@ import { DECLARATION_LINK_TTL_MS } from './lib/declaration-links'
 import notificationTypes from './notifications'
 import { activityAudienceProvider, occurrenceAudienceProvider } from './services/audience'
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
+import { ACTIVITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
 import { ACTIVITIES_GROUP_USAGE, groupUsage } from './services/group-usage'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
 import { ACTIVITIES_PLACE_USAGE, placeUsage } from './services/place-usage'
@@ -86,5 +87,9 @@ export function register(container: AppContainer) {
     [ACTIVITIES_SHARE_TEXT]: asFunction(() => createShareText(container)).scoped(),
     [ACTIVITIES_PUBLIC_SCHEDULE]: asFunction(() => createPublicSchedule(container)).scoped(),
     [ACTIVITIES_PUBLIC_EVENTS]: asFunction(() => createPublicEvents(container)).scoped(),
+    // `people.departure.activities` (people life-cycle spec REQ-L04, #307): the departure contributor `people` reads
+    // with `hasRegistration` — a leaving coach's future sessions and default-coach activities are handed over or freed
+    // from the day after the last day, with substitution entries, the undo and the coach events after the commit.
+    [ACTIVITIES_DEPARTURE_CONTRIBUTOR]: asFunction(() => createDepartureContribution(container)).scoped(),
   })
 }

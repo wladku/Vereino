@@ -204,3 +204,32 @@ export function mayFileDepartureRequest(birthDate: CalendarDate | null | undefin
 
 export const DEPARTURE_REQUEST_STATUSES = ['open', 'done', 'declined'] as const
 export type DepartureRequestStatus = (typeof DEPARTURE_REQUEST_STATUSES)[number]
+
+/** A group a leaving coach leads after the last day (phase L5, #307): the departure needs a hand-over choice for it. */
+export type HandOverNeed = { personId: string; groupId: string }
+
+/** A hand-over choice as sent: the group's sessions go to `toPersonId`, or stay without a coach when it is null. */
+export type HandOverAnswer = { groupId: string; toPersonId: string | null }
+
+/**
+ * The groups that need a hand-over choice and have none (*Hand-over choice*): 422 `departure_handover_required` when
+ * any. A choice for a group that needs none is ignored.
+ */
+export function missingHandOvers(needs: readonly HandOverNeed[], given: readonly HandOverAnswer[]): string[] {
+  const answered = new Set(given.map((entry) => entry.groupId))
+  return [...new Set(needs.map((need) => need.groupId))].filter((groupId) => !answered.has(groupId)).sort()
+}
+
+/**
+ * The groups whose sessions would go to a person who leaves in the same departure, or which got two different
+ * choices: 422 `departure_handover_invalid` when any.
+ */
+export function invalidHandOvers(given: readonly HandOverAnswer[], leavingIds: readonly string[]): string[] {
+  const leaving = new Set(leavingIds)
+  const byGroup = new Map<string, Set<string | null>>()
+  for (const entry of given) byGroup.set(entry.groupId, (byGroup.get(entry.groupId) ?? new Set()).add(entry.toPersonId))
+  return [...byGroup.entries()]
+    .filter(([, targets]) => targets.size > 1 || [...targets].some((id) => id !== null && leaving.has(id)))
+    .map(([groupId]) => groupId)
+    .sort()
+}

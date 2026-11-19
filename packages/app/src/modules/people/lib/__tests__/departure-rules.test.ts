@@ -6,8 +6,10 @@ import {
   endAction,
   isDepartureDateInPast,
   isDepartureUndoExpired,
+  invalidHandOvers,
   isFormer,
   mayFileDepartureRequest,
+  missingHandOvers,
   missingPayerChoices,
   payerChoices,
   requesterKind,
@@ -263,5 +265,43 @@ describe('departure requests (DD-L06)', () => {
     expect(mayFileDepartureRequest('2000-01-01', '2026-11-18')).toBe(true)
     expect(mayFileDepartureRequest(null, '2026-11-18')).toBe(true)
     expect(mayFileDepartureRequest('2010-01-01', '2026-11-18')).toBe(false)
+  })
+})
+
+describe('hand-over choices (phase L5, #307)', () => {
+  const needs = [
+    { personId: 'w', groupId: 'g2' },
+    { personId: 'w', groupId: 'g1' },
+    { personId: 'x', groupId: 'g1' },
+  ]
+
+  it('lists every group that needs a choice and has none, once and sorted', () => {
+    expect(missingHandOvers(needs, [])).toEqual(['g1', 'g2'])
+    expect(missingHandOvers(needs, [{ groupId: 'g1', toPersonId: null }])).toEqual(['g2'])
+    expect(
+      missingHandOvers(needs, [
+        { groupId: 'g1', toPersonId: 'm' },
+        { groupId: 'g2', toPersonId: null },
+        { groupId: 'g9', toPersonId: 'm' },
+      ]),
+    ).toEqual([])
+    expect(missingHandOvers([], [])).toEqual([])
+  })
+
+  it('refuses a target who leaves too and two different choices for one group', () => {
+    expect(invalidHandOvers([{ groupId: 'g1', toPersonId: 'm' }], ['w'])).toEqual([])
+    expect(invalidHandOvers([{ groupId: 'g1', toPersonId: null }], ['w'])).toEqual([])
+    expect(invalidHandOvers([{ groupId: 'g1', toPersonId: 'x' }], ['w', 'x'])).toEqual(['g1'])
+    expect(
+      invalidHandOvers(
+        [
+          { groupId: 'g2', toPersonId: 'm' },
+          { groupId: 'g2', toPersonId: null },
+          { groupId: 'g1', toPersonId: 'm' },
+          { groupId: 'g1', toPersonId: 'm' },
+        ],
+        ['w'],
+      ),
+    ).toEqual(['g2'])
   })
 })

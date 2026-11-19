@@ -14,6 +14,7 @@ import {
 import { ORDER_LINK_TTL_MS } from './lib/orders'
 import notificationTypes from './notifications'
 import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-service'
+import { PAYMENTS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { PAYMENTS_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
@@ -64,6 +65,10 @@ export function register(container: AppContainer) {
     // `groups.season.payments` (people life-cycle spec REQ-L08, #311): the season contributor `groups` reads with
     // `hasRegistration` — the fees of the rolled-over groups end and may be copied. Stateless: the caller's transaction.
     [PAYMENTS_SEASON_CONTRIBUTOR]: asValue(seasonContribution),
+    // `people.departure.payments` (people life-cycle spec REQ-L04, #307): the departure contributor `people` reads with
+    // `hasRegistration` — cash a leaving person holds blocks the departure, open charges warn; `retentionHoldUntil`
+    // for the erasure (phase L6). Stateless: the caller's EntityManager.
+    [PAYMENTS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
   })
   // The gateway registries live on `globalThis`, so registering again for every container replaces the same entry.

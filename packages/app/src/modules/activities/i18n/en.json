@@ -322,6 +322,7 @@
   "activities.email.declarationLink.reminderSubject": "Tomorrow: {activity}, {time} — will you be there?",
   "activities.email.declarationLink.subject": "Your link: {activity}, {date}",
   "activities.errors.absence_after_start": "The session has already started, so an absence can no longer be reported. Cancel it or ask the coordinator.",
+  "activities.errors.departure_handover_coach_invalid": "The sessions can only be handed over to a coach of the club.",
   "activities.errors.activities_reference_invalid": "A selected record does not exist in the club.",
   "activities.errors.activity_dates_inverted": "The end date cannot be earlier than the start date.",
   "activities.errors.activity_group_inactive": "The group is inactive.",

@@ -1,7 +1,8 @@
-import { asFunction } from 'awilix'
+import { asFunction, asValue } from 'awilix'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { createClubCoreContracts } from './services/contracts'
+import { CLUB_CORE_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { createClubCoreDirectory } from './services/directory'
 import { createClubCorePlacesService } from './services/places'
 import { createClubCorePublicSite } from './services/public-site'
@@ -60,6 +61,10 @@ export function register(container: AppContainer) {
     [CLUB_CORE_CONTRACTS]: asFunction((cradle: { em: EntityManager }) => createClubCoreContracts(() => cradle.em))
       .scoped()
       .proxy(),
+    // `people.departure.club_core` (people life-cycle spec REQ-L04, #307): the departure contributor `people` reads with
+    // `hasRegistration` — a leaving person's contracts end on the last day, with the undo and the contract events after
+    // the commit. Stateless: the caller's EntityManager, inside the departure's transaction.
+    [CLUB_CORE_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
     // The request container is passed in, so the optional block providers are found with `hasRegistration`.
     [CLUB_CORE_PUBLIC_SITE]: asFunction((cradle: { em: EntityManager }) =>
       createClubCorePublicSite(() => cradle.em, container),
