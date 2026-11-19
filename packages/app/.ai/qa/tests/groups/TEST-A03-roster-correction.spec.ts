@@ -20,7 +20,10 @@ import { actionLogEntries } from '../_fixtures/people'
 // `sortField=roster`) and each view's total equals the data; the roster order lists coaches first; ending an upcoming
 // membership answers 422 `membership_not_started`, ending on a chosen day saves `valid_to` and an end into an overlap
 // answers 409 `membership_overlap`, as does an edit into an overlap; Remove succeeds for an upcoming and an unused
-// membership and answers 409 `membership_in_use` for one with attendance; an undo restores a removed row.
+// membership and answers 409 `membership_in_use` for one with attendance; an undo restores a removed row. Scope (#359):
+// the academy coordinator reads the roster as the administrator does, the pool coordinator reads none of its rows and
+// is refused a Remove with 403 `scope_denied`, another club reads nothing and gets 404, and a stale version answers 409
+// `optimistic_lock_conflict`.
 test.describe.configure({ timeout: 300_000 })
 
 type Page = { items?: MembershipItem[]; total?: number; totalPages?: number }
@@ -53,6 +56,20 @@ async function wholeView(request: APIRequestContext, token: string, groupId: str
 
 const ROLE_RANK: Record<string, number> = { coach: 0, assistant: 1, participant: 2 }
 
+/**
+ * The order of `sortField=roster`, as `rosterRoleOrder` in `lib/groups-rules.ts` defines it: the role rank, the latest
+ * start first, then the id. Negative when `previous` comes before `current`.
+ */
+function rosterCompare(previous: MembershipItem, current: MembershipItem): number {
+  // Code-unit comparison, as PostgreSQL orders `date` and lowercase `uuid` values (a locale collation would not).
+  const ascending = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0)
+  return (
+    ROLE_RANK[String(previous.role)] - ROLE_RANK[String(current.role)] ||
+    ascending(String(current.validFrom), String(previous.validFrom)) ||
+    ascending(previous.id, current.id)
+  )
+}
+
 async function removeMembership(request: APIRequestContext, token: string, id: string, lockToken: string | null) {
   return call<{ ok?: boolean; code?: string }>(request, 'DELETE', `/api/groups/memberships?id=${id}`, token, {
     headers: lockToken ? { [OPTIMISTIC_LOCK_HEADER]: lockToken } : {},
@@ -68,6 +85,7 @@ test('TEST-A03 a roster of 130 memberships is fully reachable per view; end, edi
   request,
 }) => {
   const club = await createClub(request, 'test-a03-roster')
+  const otherClub = await createClub(request, 'test-a03-other-club')
   try {
     const family = await familyFor(request, club)
     const token = club.adminToken
@@ -103,13 +121,11 @@ test('TEST-A03 a roster of 130 memberships is fully reachable per view; end, edi
       const plain = await readPage(request, token, `groupId=${group}&status=${status}&pageSize=1`)
       expect(plain.total, `CRUD total of ${status}`).toBe(total)
       totals[status] = total
-      // Coaches first, then assistants, then participants; within a role the latest start first.
+      // Coaches first, then assistants, then participants; within a role the latest start first, then the id.
       for (let index = 1; index < rows.length; index += 1) {
-        const previous = rows[index - 1]
-        const current = rows[index]
-        const order = ROLE_RANK[String(previous.role)] - ROLE_RANK[String(current.role)]
-        expect(order, `${status} role order at ${String(index)}`).toBeLessThanOrEqual(0)
-        if (order === 0) expect(String(previous.validFrom) >= String(current.validFrom)).toBe(true)
+        expect(rosterCompare(rows[index - 1], rows[index]), `${status} roster order at ${String(index)}`).toBeLessThan(
+          0,
+        )
       }
     }
     expect(totals.active + totals.upcoming + totals.ended).toBe(
@@ -223,6 +239,56 @@ test('TEST-A03 a roster of 130 memberships is fully reachable per view; end, edi
     expect(inUse.body?.code).toBe('membership_in_use')
     expect(await membershipOf(request, token, group, String(used?.id))).not.toBeNull()
 
+    // Scope (#359). The academy coordinator reads the active roster in the roster order, the same rows as the
+    // administrator; the pool coordinator reads none of Żaki's rows, with or without `groupId`.
+    const adminActive = await wholeView(request, token, group, 'active')
+    const academyActive = await wholeView(request, family.academyCoordinator.token, group, 'active')
+    expect(academyActive.total).toBe(adminActive.total)
+    expect(academyActive.rows.map((row) => row.id)).toEqual(adminActive.rows.map((row) => row.id))
+    const poolCoordinator = family.poolCoordinator.token
+    const poolView = await readPage(request, poolCoordinator, `groupId=${group}&status=active&sortField=roster`)
+    expect(poolView.items).toEqual([])
+    expect(poolView.total).toBe(0)
+    const poolAll = await readPage(request, poolCoordinator, 'sortField=roster&pageSize=100')
+    expect(poolAll.items?.some((item) => item.groupId === group)).toBe(false)
+    // The pool coordinator's Remove of a Żaki membership with the current version → 403 `scope_denied`, row kept.
+    const stranger = await createPerson(request, token, {
+      firstName: 'Ewa',
+      lastName: 'Zając',
+      birthDate: birthDateTurning(8),
+    })
+    const guarded = await addMembership(request, token, {
+      groupId: group,
+      personId: stranger,
+      role: 'participant',
+      validFrom: addDays(today, 30),
+    })
+    const guardedRow = await membershipOf(request, token, group, guarded)
+    const foreignSection = await removeMembership(request, poolCoordinator, guarded, guardedRow?.updatedAt ?? null)
+    expect(foreignSection.status, JSON.stringify(foreignSection.body)).toBe(403)
+    expect(foreignSection.body?.code).toBe('scope_denied')
+    // Another club (another tenant) reads no row and cannot remove it (404); the row stays.
+    const otherView = await readPage(request, otherClub.adminToken, `groupId=${group}&sortField=roster`)
+    expect(otherView.items).toEqual([])
+    expect(otherView.total).toBe(0)
+    const otherAll = await readPage(request, otherClub.adminToken, 'sortField=roster&pageSize=100')
+    expect(otherAll.items?.some((item) => item.groupId === group)).toBe(false)
+    const foreignTenant = await removeMembership(request, otherClub.adminToken, guarded, guardedRow?.updatedAt ?? null)
+    expect(foreignTenant.status, JSON.stringify(foreignTenant.body)).toBe(404)
+    expect(await membershipOf(request, token, group, guarded)).not.toBeNull()
+    // A stale version: the row was edited since it was read → 409 `optimistic_lock_conflict`, the row stays.
+    const touched = await call<{ updatedAt?: string }>(request, 'PUT', '/api/groups/memberships', token, {
+      data: { id: guarded, validTo: addDays(today, 60) },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(guardedRow?.updatedAt) },
+    })
+    expect(touched.status, JSON.stringify(touched.body)).toBe(200)
+    const stale = await removeMembership(request, token, guarded, guardedRow?.updatedAt ?? null)
+    expect(stale.status, JSON.stringify(stale.body)).toBe(409)
+    expect(stale.body?.code).toBe('optimistic_lock_conflict')
+    expect(await membershipOf(request, token, group, guarded)).not.toBeNull()
+    const current = await removeMembership(request, token, guarded, touched.body?.updatedAt ?? null)
+    expect(current.status, JSON.stringify(current.body)).toBe(200)
+
     // Undo of a remove restores the row with its period.
     const removeLog = (await actionLogEntries(request, token, unused)).find(
       (entry) => entry.commandId === 'groups.memberships.delete',
@@ -233,6 +299,7 @@ test('TEST-A03 a roster of 130 memberships is fully reachable per view; end, edi
     const restored = await membershipOf(request, token, group, unused)
     expect(restored).toMatchObject({ id: unused, personId: kasia, validTo: addDays(today, 13) })
   } finally {
+    await otherClub.cleanup()
     await club.cleanup()
   }
 })

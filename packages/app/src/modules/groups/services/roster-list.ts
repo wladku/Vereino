@@ -7,7 +7,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
 import { GroupMembership } from '../data/entities'
-import { ROSTER_ROLE_ORDER, rosterViewBounds, type MembershipRole, type PeriodStatus } from '../lib/groups-rules'
+import { rosterRoleRankSql, rosterViewBounds, type MembershipRole, type PeriodStatus } from '../lib/groups-rules'
 import type { GroupsScope } from '../commands/shared'
 
 export type RosterListFilter = {
@@ -22,10 +22,6 @@ export type RosterListFilter = {
 }
 
 export type RosterListPage = { rows: GroupMembership[]; total: number }
-
-/** `case role when 'coach' then 0 …`: the roster's role order (`ROSTER_ROLE_ORDER`) as a sort key. */
-const ROLE_RANK_SQL = (alias: string) =>
-  `case ${alias}.role ${ROSTER_ROLE_ORDER.map((role, rank) => `when '${role}' then ${String(rank)}`).join(' ')} else ${String(ROSTER_ROLE_ORDER.length)} end`
 
 function rosterWhere(scope: GroupsScope, filter: RosterListFilter): FilterQuery<GroupMembership> {
   const conditions: FilterQuery<GroupMembership>[] = [{ ...scope, deletedAt: null }]
@@ -67,7 +63,8 @@ export async function rosterPage(
   const em = container.resolve<EntityManager>('em').fork()
   const where = rosterWhere(scope, filter)
   const [rows, total] = await em.findAndCount(GroupMembership, where, {
-    orderBy: [{ [raw(ROLE_RANK_SQL)]: 'asc' }, { validFrom: 'desc' }, { id: 'asc' }],
+    // The keys of `rosterRoleOrder` (`lib/groups-rules.ts`): role rank, the latest start first, then the id.
+    orderBy: [{ [raw(rosterRoleRankSql)]: 'asc' }, { validFrom: 'desc' }, { id: 'asc' }],
     limit: pageSize,
     offset: (page - 1) * pageSize,
   })

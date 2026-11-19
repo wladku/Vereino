@@ -72,6 +72,14 @@ function submitOnCtrlEnter(submit: () => void) {
   }
 }
 
+/** The field a dialog problem is about, so that field points at the message (`aria-invalid`, `aria-describedby`). */
+type ProblemField = 'person' | 'dates' | null
+
+/** The `aria-invalid` and `aria-describedby` of a field: set only while the shown problem is about it. */
+function invalidProps(about: boolean, problemId: string): { 'aria-invalid'?: true; 'aria-describedby'?: string } {
+  return about ? { 'aria-invalid': true, 'aria-describedby': problemId } : {}
+}
+
 function Problem({ id, text }: { id: string; text: string | null }) {
   return text ? (
     <p id={id} className="text-destructive text-sm" role="alert">
@@ -187,6 +195,8 @@ export function MembershipDialog({
   const [validTo, setValidTo] = React.useState(membership?.validTo ?? '')
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
+  const [problemField, setProblemField] = React.useState<ProblemField>(null)
+  const problemId = `${ids}-problem`
   const members = React.useRef<Promise<Set<string>> | null>(null)
 
   const fetchPersons = React.useCallback(
@@ -214,14 +224,17 @@ export function MembershipDialog({
     if (pending) return
     if (!editing && !personId) {
       setProblem(t('groups.memberships.errors.personRequired'))
+      setProblemField('person')
       return
     }
     if (!CALENDAR_DATE.test(validFrom) || (validTo && !CALENDAR_DATE.test(validTo))) {
       setProblem(t('groups.memberships.errors.dates'))
+      setProblemField('dates')
       return
     }
     setPending(true)
     setProblem(null)
+    setProblemField(null)
     try {
       if (membership) {
         await withScopedApiRequestHeaders(buildOptimisticLockHeader(membership.updatedAt), () =>
@@ -299,8 +312,15 @@ export function MembershipDialog({
     >
       <div className="flex flex-col gap-4">
         {editing ? null : (
-          <div className="flex flex-col gap-1" data-testid="groups-membership-person">
-            <Label>{t('groups.memberships.fields.person')}</Label>
+          <div
+            className="flex flex-col gap-1"
+            role="group"
+            aria-labelledby={`${ids}-person`}
+            // `aria-invalid` is not allowed on a group; the message is still read with it.
+            aria-describedby={problemField === 'person' ? problemId : undefined}
+            data-testid="groups-membership-person"
+          >
+            <Label id={`${ids}-person`}>{t('groups.memberships.fields.person')}</Label>
             <LookupSelect
               value={personId}
               onChange={setPersonId}
@@ -342,6 +362,7 @@ export function MembershipDialog({
               required
               value={validFrom}
               disabled={pending}
+              {...invalidProps(problemField === 'dates', problemId)}
               data-testid="groups-membership-from"
               onChange={(event) => {
                 setValidFrom(event.target.value)
@@ -357,6 +378,7 @@ export function MembershipDialog({
               min={validFrom || undefined}
               value={validTo}
               disabled={pending}
+              {...invalidProps(problemField === 'dates', problemId)}
               data-testid="groups-membership-to"
               onChange={(event) => {
                 setValidTo(event.target.value)
@@ -364,7 +386,7 @@ export function MembershipDialog({
             />
           </div>
         </div>
-        <Problem id={`${ids}-problem`} text={problem} />
+        <Problem id={problemId} text={problem} />
       </div>
     </FormFrame>
   )
@@ -397,16 +419,20 @@ export function EndMembershipDialog({
   const [lastDay, setLastDay] = React.useState(firstDay && firstDay > today ? firstDay : today)
   const [pending, setPending] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
+  const [problemField, setProblemField] = React.useState<ProblemField>(null)
+  const problemId = `${ids}-problem`
   const name = personName(membership.person) || t('groups.memberships.unknownPerson')
 
   const submit = async () => {
     if (pending) return
     if (!CALENDAR_DATE.test(lastDay)) {
       setProblem(t('groups.memberships.errors.dates'))
+      setProblemField('dates')
       return
     }
     setPending(true)
     setProblem(null)
+    setProblemField(null)
     try {
       await withScopedApiRequestHeaders(buildOptimisticLockHeader(membership.updatedAt), () =>
         apiCallOrThrow(
@@ -481,13 +507,14 @@ export function EndMembershipDialog({
             min={firstDay}
             value={lastDay}
             disabled={pending}
+            {...invalidProps(problemField === 'dates', problemId)}
             data-testid="groups-membership-last-day"
             onChange={(event) => {
               setLastDay(event.target.value)
             }}
           />
         </div>
-        <Problem id={`${ids}-problem`} text={problem} />
+        <Problem id={problemId} text={problem} />
       </div>
     </FormFrame>
   )

@@ -174,7 +174,8 @@ export const { metadata, POST, PUT, DELETE } = crud
 
 /**
  * `sortField=roster` (REQ-A03): the roster order (role, then the latest start) is not a single column, so the page is
- * read by `rosterPage` under the same record scope as the CRUD list; every other sort runs the CRUD list.
+ * read by `rosterPage` under the same record scope as the CRUD list; every other sort runs the CRUD list. The order is
+ * fixed, so `sortDir` and `ids` have no effect here (documented in `openApi`, #359).
  */
 async function rosterList(request: Request): Promise<Response> {
   try {
@@ -216,6 +217,8 @@ const buildOpenApi = createCrudOpenApiFactory({ defaultTag: 'Groups' })
 export const openApi = buildOpenApi({
   resourceName: 'Membership',
   pluralName: 'Memberships',
+  description:
+    "Returns a paginated list of the memberships in the groups the caller may read (a coach's groups, the groups of a coordinator's sections, every group for the club administrator), with the person and the group. `status` narrows it to a roster view on the club's today. `sortField=roster` orders coaches, assistants, then participants, the latest start first, then by id; that order is fixed, so on this sort `sortDir` and `ids` are ignored.",
   querySchema: membershipListQuerySchema,
   listResponseSchema: createPagedListResponseSchema(membershipListItemSchema),
   create: {
