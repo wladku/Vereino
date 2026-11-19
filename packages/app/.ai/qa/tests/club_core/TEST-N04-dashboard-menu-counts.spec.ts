@@ -19,8 +19,8 @@ import { uiText } from '../_fixtures/ui-text'
 //   Requests, each read aloud as "{n} waiting"; the academy's coordinator sees 1 on Sessions; the coordinator of
 //   another section sees no count on Sessions (zero shows nothing).
 // - Dashboard: the layout of each role holds exactly its widgets (role table of the spec) and no platform widget —
-//   the coordinator the two sessions widgets, the attendant none, so the attendant's dashboard says "Nothing needs
-//   action today".
+//   the coordinator the two sessions widgets and "Today at the facility" (widget 8, #290), the attendant only that
+//   one; an account with nothing but the dashboard says "Nothing needs action today".
 // - Greeting and link: the administrator linked to a person is greeted by first name with today's date, and "Member
 //   interface" links to `/club` (also in the "More" menu under 768 px); an account linked to no person gets the
 //   greeting without a name and no link. axe at 1280 px in English and Polish, light and dark.
@@ -171,12 +171,13 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
     const admin = club.adminToken
     // --- The dashboard of each role: exactly its widgets and no platform widget (API) ---
     const adminWidgets = await layoutWidgets(request, admin)
-    // The administrator: widgets 1, 2, 4, 5, 7 and 9 of the role table built so far, bank and campaigns (3, 6), and the
-    // departure requests of `people` (#121) and its "People needing attention" (row 11, #310); no platform widget.
+    // The administrator: widgets 1, 2, 4, 5, 7, 8 and 9 of the role table built so far, bank and campaigns (3, 6), and
+    // the departure requests of `people` (#121) and its "People needing attention" (row 11, #310); no platform widget.
     expect(adminWidgets).toEqual([
       'activities.dashboard.sessionsNeedingCoach',
       'activities.dashboard.unsettledSessions',
       'facilities.dashboard.requestsAwaitingApproval',
+      'facilities.dashboard.todayAtFacility',
       'payments.dashboard.bank',
       'payments.dashboard.orderCampaigns',
       'payments.dashboard.overdue',
@@ -189,9 +190,10 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
       expect(await layoutWidgets(request, coordinator.token)).toEqual([
         'activities.dashboard.sessionsNeedingCoach',
         'activities.dashboard.unsettledSessions',
+        'facilities.dashboard.todayAtFacility',
       ])
     }
-    expect(await layoutWidgets(request, jan.token)).toEqual([])
+    expect(await layoutWidgets(request, jan.token)).toEqual(['facilities.dashboard.todayAtFacility'])
 
     // --- The reads behind the menu counts, with the query each widget sends ---
     const sessionsTotal = async (token: string) => {
@@ -334,17 +336,19 @@ test('TEST-N04 UI: menu counts, the dashboard of each role, the greeting and the
       sidebarLink(page, SESSIONS).getByLabel(uiText('activities.nav.badge.waiting', { exact: true })),
     ).toHaveCount(0)
 
-    // --- The facility attendant: an empty dashboard with "Nothing needs action today" ---
+    // --- The facility attendant: only "Today at the facility" (#290) ---
     await switchBrowserUser(page, request, club, jan.userId, jan.email)
     await page.goto('/backend')
-    await expect(page.getByText(uiText('dashboard.empty.readonly', { exact: true }))).toBeVisible()
+    await expect(page.getByTestId('facilities-widget-today')).toBeVisible()
+    await expect(page.getByTestId('activities-widget-sessionsNeedingCoach')).toHaveCount(0)
     await expect(page.getByTestId('backend-greeting-title')).toHaveText(
       uiText('vereino.dashboard.greeting', { exact: true, params: { name: 'Jan' } }),
     )
 
-    // --- An account linked to no person: the greeting without a name and no link ---
+    // --- An account linked to no person: the greeting without a name, no link, "Nothing needs action today" ---
     await switchBrowserUser(page, request, club, unlinkedId, unlinkedEmail)
     await page.goto('/backend')
+    await expect(page.getByText(uiText('dashboard.empty.readonly', { exact: true }))).toBeVisible()
     await expect(page.getByTestId('backend-greeting-title')).toHaveText(
       uiText('vereino.dashboard.greetingNoName', { exact: true }),
     )
