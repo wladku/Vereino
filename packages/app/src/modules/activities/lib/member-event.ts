@@ -40,14 +40,28 @@ export function eventGroupOptions(
     )
 }
 
-export type EventPlaceSource = { id: string; name: string; parentName: string | null; isLeaf: boolean }
-export type EventPlaceOption = { id: string; label: string }
+export type EventPlaceSource = {
+  id: string
+  name: string
+  parentName: string | null
+  isLeaf: boolean
+  /** A venue outside the club's own places (club events spec REQ-T05: the pickers mark it). */
+  isExternal?: boolean
+}
+export type EventPlaceOption = { id: string; label: string; isExternal: boolean }
 
-/** The places a session may point to (a leaf: a complex is booked through its pitches), "Complex › Pitch", by label. */
+/**
+ * The places a session may point to (a leaf: a complex is booked through its pitches), "Complex › Pitch", by label,
+ * each saying whether it is external (club events spec REQ-T05).
+ */
 export function eventPlaceOptions(places: readonly EventPlaceSource[]): EventPlaceOption[] {
   return places
     .filter((place) => place.isLeaf)
-    .map((place) => ({ id: place.id, label: place.parentName ? `${place.parentName} › ${place.name}` : place.name }))
+    .map((place) => ({
+      id: place.id,
+      label: place.parentName ? `${place.parentName} › ${place.name}` : place.name,
+      isExternal: place.isExternal === true,
+    }))
     .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id))
 }
 

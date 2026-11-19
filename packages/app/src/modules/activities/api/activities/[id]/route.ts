@@ -69,6 +69,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       description: row.description ?? null,
       isActive: row.isActive,
       isAway: row.isAway,
+      clubEventId: row.clubEventId ?? null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       actingRole,

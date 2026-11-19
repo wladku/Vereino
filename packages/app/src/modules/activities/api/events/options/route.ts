@@ -25,7 +25,7 @@ const responseSchema = z.object({
       sectionName: z.string().nullable(),
     }),
   ),
-  places: z.array(z.object({ id: z.uuid(), label: z.string() })),
+  places: z.array(z.object({ id: z.uuid(), label: z.string(), isExternal: z.boolean() })),
   declarationKinds: z
     .record(z.enum(ACTIVITY_TYPES), z.enum(DECLARATION_KINDS))
     .describe(
@@ -71,7 +71,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'List the groups and places of the coach’s event form',
       description:
-        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place"). Names and the group kind only, and the club’s declaration kind per activity type (REQ-A07).',
+        'The live active groups the caller coaches today (an active `coach` / `assistant` membership), by section and name, and the bookable places of the club (leaves of the place tree, labelled "Parent › Place", each with `isExternal`). Names and the group kind only, and the club’s declaration kind per activity type (REQ-A07).',
       responses: [{ status: 200, description: 'The options', schema: responseSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

@@ -5,7 +5,22 @@
 import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
-import { ACTIVITY_TYPES, OCCURRENCE_STATUSES } from '../lib/activities-rules'
+import { ACTIVITY_TYPES, OCCURRENCE_STATUSES, type ActivityType } from '../lib/activities-rules'
+import {
+  CLUB_EVENT_DESCRIPTION_MAX,
+  CLUB_EVENT_NAME_MAX,
+  CLUB_EVENT_NAME_MIN,
+  CLUB_EVENT_REASON_MAX,
+  CLUB_EVENT_REASON_MIN,
+  CLUB_EVENT_SLUG_MAX,
+  CLUB_EVENT_SLUG_MIN,
+  CLUB_EVENT_SLUG_PATTERN,
+  MAX_VISITING_TEAMS,
+  PART_CATEGORY_MAX,
+  PART_TITLE_MAX,
+  PART_TITLE_MIN,
+  PART_TYPES,
+} from '../lib/club-events'
 import { MAX_CONFIRM_BY_MINUTES } from '../lib/confirm-by'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import { SUBSTITUTION_REASON_MAX } from '../lib/substitutions'
@@ -378,3 +393,105 @@ export const occurrenceScoreSchema = occurrenceScoreBodySchema
     message: 'Send both scores, or neither to clear the score',
     path: ['scoreAway'],
   })
+
+// --- Club events and their parts (club events spec REQ-T01, REQ-T02, REQ-T04, *API, Command, and Error Contracts*) ---
+
+const clubEventSlugSchema = z
+  .string()
+  .trim()
+  .min(CLUB_EVENT_SLUG_MIN)
+  .max(CLUB_EVENT_SLUG_MAX)
+  .regex(CLUB_EVENT_SLUG_PATTERN, { message: 'Expected lower-case letters, digits and single hyphens' })
+const clubEventReasonSchema = z.string().trim().min(CLUB_EVENT_REASON_MIN).max(CLUB_EVENT_REASON_MAX)
+const visitingTeamIdsSchema = z.array(z.uuid()).max(MAX_VISITING_TEAMS)
+const partTitleSchema = z.string().trim().min(PART_TITLE_MIN).max(PART_TITLE_MAX)
+const partCategorySchema = z.string().trim().max(PART_CATEGORY_MAX).nullable().optional()
+const partTypeSchema = z.enum(PART_TYPES as [ActivityType, ...ActivityType[]])
+
+/** `POST /api/activities/club-events`: without `publicSlug` the slug is proposed from the name (DD-T13). */
+export const clubEventCreateSchema = z
+  .object({
+    name: z.string().trim().min(CLUB_EVENT_NAME_MIN).max(CLUB_EVENT_NAME_MAX),
+    publicSlug: clubEventSlugSchema.optional(),
+    /** Null = a whole-club event (the club administrator only). */
+    sectionId: z.uuid().nullable(),
+    placeId: z.uuid(),
+    description: optionalText(CLUB_EVENT_DESCRIPTION_MAX),
+    isPublic: z.boolean().optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
+  })
+  .strict()
+
+/** `PUT /api/activities/club-events`: send the lock token in the platform optimistic-lock header. */
+export const clubEventUpdateSchema = z
+  .object({
+    id: z.uuid(),
+    name: z.string().trim().min(CLUB_EVENT_NAME_MIN).max(CLUB_EVENT_NAME_MAX).optional(),
+    publicSlug: clubEventSlugSchema.optional(),
+    sectionId: z.uuid().nullable().optional(),
+    placeId: z.uuid().optional(),
+    description: optionalText(CLUB_EVENT_DESCRIPTION_MAX),
+    isPublic: z.boolean().optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
+  })
+  .strict()
+
+export const clubEventCancelSchema = z.object({ id: z.uuid(), reason: clubEventReasonSchema }).strict()
+
+export const CLUB_EVENT_VIEWS = ['upcoming', 'past', 'cancelled'] as const
+
+export const clubEventListQuerySchema = z.object({
+  ...listQueryBase,
+  sortField: z.enum(['name', 'createdAt', 'updatedAt']).optional(),
+  search: z.string().trim().min(1).max(200).optional(),
+  sectionId: z.uuid().optional(),
+  view: z.enum(CLUB_EVENT_VIEWS).optional(),
+})
+
+/**
+ * `POST /api/activities/club-events/{id}/parts`: a part with a group (`groupId`) is a one-off activity of that group
+ * with one session; `groupId: null` is an open part with its own times, only at an external place (DD-T04).
+ */
+export const clubEventPartCreateSchema = z
+  .object({
+    clubEventId: z.uuid(),
+    title: partTitleSchema,
+    categoryLabel: partCategorySchema,
+    type: partTypeSchema.default('tournament'),
+    groupId: z.uuid().nullable(),
+    startsAt: instantSchema,
+    endsAt: instantSchema,
+    coachPersonId: z.uuid().nullable().optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
+    visitingTeamIds: visitingTeamIdsSchema.optional(),
+  })
+  .strict()
+
+/**
+ * `PUT /api/activities/club-events/{id}/parts/{partId}`: the part's own fields; an open part also its times. The group
+ * is fixed (422 `club_event_part_group_fixed`) and the coach changes through Change coach, so neither is accepted.
+ */
+export const clubEventPartUpdateSchema = z
+  .object({
+    clubEventId: z.uuid(),
+    id: z.uuid(),
+    title: partTitleSchema.optional(),
+    categoryLabel: partCategorySchema,
+    type: partTypeSchema.optional(),
+    visitingTeamIds: visitingTeamIdsSchema.optional(),
+    gatheringMinutesBefore: gatheringMinutesSchema,
+    confirmByMinutesBefore: confirmByMinutesSchema,
+    startsAt: instantSchema.optional(),
+    endsAt: instantSchema.optional(),
+    groupId: z.uuid().nullable().optional(),
+  })
+  .strict()
+
+export const clubEventPartDeleteSchema = z.object({ clubEventId: z.uuid(), id: z.uuid() }).strict()
+
+export const clubEventPartCancelSchema = z
+  .object({ clubEventId: z.uuid(), id: z.uuid(), reason: clubEventReasonSchema })
+  .strict()
