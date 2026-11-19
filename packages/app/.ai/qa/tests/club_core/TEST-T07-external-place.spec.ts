@@ -101,14 +101,14 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
       isLeaf: true,
     })
     // The event form's options (`/api/activities/events/options`) offer it as a bookable leaf too.
-    const eventOptions = await call<{ places?: { id: string; label: string }[] }>(
+    const eventOptions = await call<{ places?: { id: string; label: string; isExternal: boolean }[] }>(
       request,
       'GET',
       '/api/activities/events/options',
       wojtek,
     )
     expect(eventOptions.status, JSON.stringify(eventOptions.body)).toBe(200)
-    expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name })
+    expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name, isExternal: true })
 
     // The same name and address — other case, spaces around — is the existing place (negative case).
     const again = await addPlace(wojtek, { name: '  hala SPORTOWA w liszkach ', address: 'UL. SZKOLNA 50, LISZKI ' })
