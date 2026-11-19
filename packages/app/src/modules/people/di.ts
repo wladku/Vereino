@@ -8,6 +8,8 @@ import {
   departureConfirmedTemplate,
   departureRequestDeclinedTemplate,
   departureRequestReceivedTemplate,
+  lifeCycleNoticeTemplates,
+  accountAgeNoticeTemplates,
 } from './emails/templates'
 import notificationTypes from './notifications'
 import { clubAudienceProvider, createContactResolver, personsAudienceProvider } from './services/audience'
@@ -56,6 +58,9 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, departureRequestReceivedTemplate)
   registerEmailTemplate(container, departureRequestDeclinedTemplate)
   registerEmailTemplate(container, departureConfirmedTemplate)
+  // Phase L8 (#310): the 18th-birthday and account-age notices.
+  for (const template of lifeCycleNoticeTemplates) registerEmailTemplate(container, template)
+  for (const template of accountAgeNoticeTemplates) registerEmailTemplate(container, template)
   // Registrars run for every request and job container, so the services close over that container; the factories
   // take no parameters, which keeps them independent of CLASSIC parameter-name injection.
   const scopeService = asFunction(() => createPeopleScopeService(container)).scoped()

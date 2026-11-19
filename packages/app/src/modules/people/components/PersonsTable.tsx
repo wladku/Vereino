@@ -268,17 +268,16 @@ export function PersonsTable() {
       { id: 'ageFrom', label: t('people.persons.filters.ageFrom'), type: 'text', placeholder: '0' },
       { id: 'ageTo', label: t('people.persons.filters.ageTo'), type: 'text', placeholder: '120' },
     )
-    // "Needs attention" (people life-cycle spec B-09, #309): consent state is for the club administrator only, and the
-    // participants come from `groups`.
-    if (groupsAvailable && features['people.manage']) {
+    // "Needs attention" (people life-cycle spec B-09, #309, #310): the club administrator's list; "missing consents"
+    // reads the participants from `groups`, the account-age, 18th-birthday and contact values do not.
+    if (features['people.manage']) {
       defs.push({
         id: 'attention',
         label: t('people.persons.filters.attention'),
         type: 'select',
-        options: PERSON_ATTENTION_FILTERS.map((value) => ({
-          value,
-          label: t(`people.persons.filters.attention.${value}`),
-        })),
+        options: PERSON_ATTENTION_FILTERS.filter((value) => groupsAvailable || value !== 'missing_consents').map(
+          (value) => ({ value, label: t(`people.persons.filters.attention.${value}`) }),
+        ),
       })
     }
     return defs
