@@ -6,7 +6,9 @@
 // with `details.placeId`, so the form offers to pick it; creates of one club are serialized by the place hierarchy's
 // advisory lock, so two coordinators cannot add the same hall twice at once. The coordinator acts club-wide
 // (`clubWideKinds`, as `/api/club_core/options/places`); editing and deleting the place stay `club_core.manage`.
-// The undo removes the place while no activity, session or club event points at it (409 `place_in_use`).
+// The undo removes the place while no activity, session or club event points at it (409 `place_in_use`) and it has
+// no live sub-places (409 `place_has_children`). Facility closures, rentals and zone rules on the place are not
+// checked: they are set by the administrator on the club's own places, and an undo is the creator's within minutes.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -17,9 +19,9 @@ import { authorizeScoped, type TargetLock } from '@/modules/foundation'
 import { z } from 'zod'
 import { clubCoreErrors } from '../api/errors'
 import { Institution, Place } from '../data/entities'
-import { lockPlaceHierarchy } from '../data/queries'
+import { countPlaceChildren, lockPlaceHierarchy } from '../data/queries'
 import { placeAddExternalSchema } from '../data/validators'
-import { duplicateExternalPlaceId } from '../lib/places'
+import { duplicateExternalPlaceId, isPickablePlace } from '../lib/places'
 import { placeUsageContract } from '../services/place-usage'
 import { PLACE_RESOURCE_KIND, placeEvents, placeSnapshot, type PlaceCommandResult } from './places'
 import {
@@ -42,19 +44,26 @@ export const EXTERNAL_PLACE_MATCH: ScopeMatchOptions = { clubWideKinds: ['coordi
 
 type Scope = { tenantId: string; organizationId: string }
 
-/** 409 `external_place_exists` with the id of the live place of the club with the same name and address. */
+/**
+ * 409 `external_place_exists` with the id of the live place of the club with the same name and address, and whether a
+ * place picker can select it (`pickable`: active and without live sub-places), so the form offers "Pick this place"
+ * only for a place it lists and otherwise points to the administrator.
+ */
 async function assertNoDuplicate(em: EntityManager, scope: Scope, name: string, address: string): Promise<void> {
   // Narrowed by name in SQL (a contains match survives stored spaces around it); the exact rule is the pure key.
   const candidates = await em.find(
     Place,
     { ...scope, deletedAt: null, name: { $ilike: `%${escapeLikePattern(name)}%` } },
-    { fields: ['id', 'name', 'address'], orderBy: { createdAt: 'asc', id: 'asc' } },
+    { fields: ['id', 'name', 'address', 'isActive'], orderBy: { createdAt: 'asc', id: 'asc' } },
   )
   const placeId = duplicateExternalPlaceId(
     { name, address },
     candidates.map((row) => ({ id: row.id, name: row.name, address: row.address ?? null })),
   )
-  if (placeId) await clubCoreErrors.throw('external_place_exists', { details: { placeId } })
+  if (!placeId) return
+  const isActive = candidates.find((row) => row.id === placeId)?.isActive ?? false
+  const pickable = isPickablePlace({ isActive, childCount: await countPlaceChildren(em, scope, placeId) })
+  await clubCoreErrors.throw('external_place_exists', { details: { placeId, pickable } })
 }
 
 /** The owner must be a live institution of the club (422 `place_reference_invalid` at the field, as on B-06). */
@@ -164,6 +173,12 @@ const addExternalPlaceCommand: CommandHandler<Record<string, unknown>, PlaceComm
   async undo({ ctx, logEntry }) {
     const row = await authorizeUndo(ctx, logEntry.resourceId)
     const em = ctx.transactionalEm
+    const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+    // The administrator may have put sub-places under it meanwhile: like a delete, the undo never orphans them.
+    if (em) {
+      await lockPlaceHierarchy(em, row.organizationId)
+      if ((await countPlaceChildren(em, scope, row.id)) > 0) await clubCoreErrors.throw('place_has_children')
+    }
     const contract = placeUsageContract(ctx.container)
     if (em && contract) {
       const used = await contract.isPlaceUsed(em, {

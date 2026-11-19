@@ -99,6 +99,14 @@ export function duplicateExternalPlaceId(
   return places.find((place) => externalPlaceKey(place.name, place.address) === key)?.id ?? null
 }
 
+/**
+ * True when a place pickers list can be selected for a session or an event: active and a leaf (no live sub-places),
+ * as `/api/club_core/options/places` and the leaf rule (`bookablePlaceProblem`) see it.
+ */
+export function isPickablePlace(place: { isActive: boolean; childCount: number }): boolean {
+  return place.isActive && place.childCount === 0
+}
+
 /** The fields of an add-place draft that break their length rule (trimmed), for the dialog before it sends. */
 export function externalPlaceDraftProblems(draft: { name: string; address: string }): Array<'name' | 'address'> {
   const problems: Array<'name' | 'address'> = []

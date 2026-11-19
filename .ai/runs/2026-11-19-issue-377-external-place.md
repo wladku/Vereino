@@ -48,3 +48,13 @@ Run `yarn mercato auth sync-role-acls` once after the deploy so existing coordin
 
 - E14-S03 (panel event form) and E14-S05 (phone form) mount the dialog and the sheet and cover TEST-T11/TEST-T12 in the browser.
 - Phase 1 adds the club event's place to `activities.placeUsage`.
+
+## Review round (PR #425)
+
+- Independent review task `f5815175` (read-only, `--kind review`): verdict **changes**.
+  - **M1** (fixed): the 409 `external_place_exists` could name an inactive place or a complex with sub-places, which no picker lists, so "Pick this place" selected an unusable id. The 409 now carries `details.pickable` (pure `isPickablePlace`: active and no live sub-places). The dialog offers the pick only when the place is pickable; otherwise it says the place cannot be picked here and points to the administrator (`club_core.externalPlace.errors.existsUnavailable`).
+  - **M2** (fixed): the undo soft-deleted without the hierarchy lock and the sub-places check. It now takes `lockPlaceHierarchy` and answers 409 `place_has_children`, like a delete.
+  - **L1** (documented, not changed): `activities.placeUsage` does not check facility closures, rentals or zone rules. The administrator sets those on the club's own places; the gap is noted in the command header.
+  - **L2** (fixed): TEST-T07 now also reads `/api/activities/events/options` and checks the inactive or complex duplicate (`pickable: false`) and the undo refused with a sub-place.
+  - **N1/N2** (accepted): an administrator's B-06 root create is not serialized with the duplicate check (B-06 has no duplicate rule). Coordinators hold no `audit_logs.undo_self`, so in practice the undo is the administrator's.
+- `yarn test:integration:vereino --filter TEST-T07` after the fixes: `1 passed (36.6s)`; full `yarn verify`: all 18 steps passed.

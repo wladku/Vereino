@@ -67,7 +67,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Add a missing external place from an event form',
       description:
-        'Creates a root, active, external place with a name (2–160), the venue’s address (5–500), a kind (default `other`) and an optional owner institution; every other field takes its default (not managed or rented by the club, no public calendar, no online requests, no opening hours, capacity 1). A section coordinator acts for the whole club; editing and deleting the place need `club_core.manage`. Emits `club_core.place.created`; audited and undoable while no activity, session or club event points at the place (409 `place_in_use`).',
+        'Creates a root, active, external place with a name (2–160), the venue’s address (5–500), a kind (default `other`) and an optional owner institution; every other field takes its default (not managed or rented by the club, no public calendar, no online requests, no opening hours, capacity 1). A section coordinator acts for the whole club; editing and deleting the place need `club_core.manage`. Emits `club_core.place.created`; audited and undoable while no activity, session or club event points at the place (409 `place_in_use`) and it has no sub-places (409 `place_has_children`).',
       requestBody: { contentType: 'application/json', schema: placeAddExternalSchema },
       responses: [{ status: 201, description: 'The added place, as a picker option', schema: responseSchema }],
       errors: [
@@ -81,7 +81,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 409,
           description:
-            '`external_place_exists`: a live place with the same name and address; `details.placeId` names it',
+            '`external_place_exists`: a live place with the same name and address; `details.placeId` names it and `details.pickable` says whether a picker lists it (active, without sub-places)',
           schema: errorSchema,
         },
         {

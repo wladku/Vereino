@@ -700,5 +700,6 @@
   "club_core.externalPlace.added": "{name} added and selected",
   "club_core.externalPlace.picked": "{name} selected",
   "club_core.externalPlace.errors.fields": "Enter a name of 2–160 characters and an address of 5–500 characters.",
+  "club_core.externalPlace.errors.existsUnavailable": "This place is already on the list, but it is inactive or divided into parts, so it cannot be picked here. Ask the administrator.",
   "club_core.externalPlace.errors.save": "The place could not be added. Try again."
 }

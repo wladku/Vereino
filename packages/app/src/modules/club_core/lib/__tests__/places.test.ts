@@ -6,6 +6,7 @@ import {
   duplicateExternalPlaceId,
   externalPlaceDraftProblems,
   externalPlaceKey,
+  isPickablePlace,
   decimalOrNull,
   effectiveOpeningHours,
   parsePlaceContacts,
@@ -181,6 +182,12 @@ describe('external place duplicates (club events spec REQ-T06, #377)', () => {
     expect(externalPlaceDraftProblems({ name: 'x'.repeat(161), address: 'y'.repeat(501) })).toEqual(['name', 'address'])
     expect(externalPlaceDraftProblems({ name: 'x'.repeat(160), address: 'y'.repeat(500) })).toEqual([])
     expect(externalPlaceDraftProblems({ name: 'Hala', address: 'abcd' })).toEqual(['address'])
+  })
+
+  it('offers an existing place for picking only when it is active and a leaf', () => {
+    expect(isPickablePlace({ isActive: true, childCount: 0 })).toBe(true)
+    expect(isPickablePlace({ isActive: false, childCount: 0 })).toBe(false)
+    expect(isPickablePlace({ isActive: true, childCount: 2 })).toBe(false)
   })
 
   it('defaults the kind to other', () => {

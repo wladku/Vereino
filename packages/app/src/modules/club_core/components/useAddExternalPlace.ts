@@ -31,13 +31,16 @@ export const NO_OWNER = '__none__'
 
 type Field = 'name' | 'address' | 'kind' | 'ownerInstitutionId'
 
-/** The existing place a 409 `external_place_exists` names, or null for any other error. */
-export function existingPlaceIdOf(error: unknown): string | null {
+/**
+ * The existing place a 409 `external_place_exists` names and whether a picker can select it (active, no sub-places),
+ * or null for any other error. An answer without `pickable` (older server) counts as pickable.
+ */
+export function existingPlaceOf(error: unknown): { placeId: string; pickable: boolean } | null {
   if (errorCodeOf(error) !== 'external_place_exists' || !error || typeof error !== 'object') return null
   const details = (error as { details?: unknown }).details
   if (!details || typeof details !== 'object') return null
-  const placeId = (details as { placeId?: unknown }).placeId
-  return typeof placeId === 'string' ? placeId : null
+  const { placeId, pickable } = details as { placeId?: unknown; pickable?: unknown }
+  return typeof placeId === 'string' ? { placeId, pickable: pickable !== false } : null
 }
 
 /** The fields a 400 validation answer names (its zod issues' first path segment). */
@@ -157,10 +160,17 @@ export function useAddExternalPlace({
       close(false)
       await onAdded(place)
     } catch (error: unknown) {
-      const existing = existingPlaceIdOf(error)
+      const existing = existingPlaceOf(error)
       if (existing) {
-        setExistingPlaceId(existing)
-        setProblem(t('club_core.errors.external_place_exists'))
+        // A place the picker does not list (inactive, or divided into sub-places) cannot be picked here.
+        setExistingPlaceId(existing.pickable ? existing.placeId : null)
+        setProblem(
+          t(
+            existing.pickable
+              ? 'club_core.errors.external_place_exists'
+              : 'club_core.externalPlace.errors.existsUnavailable',
+          ),
+        )
       } else {
         const code = errorCodeOf(error)
         const fields = code === 'place_reference_invalid' ? (['ownerInstitutionId'] as Field[]) : invalidFieldsOf(error)

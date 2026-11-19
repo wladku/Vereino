@@ -100,15 +100,43 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
       isExternal: true,
       isLeaf: true,
     })
+    // The event form's options (`/api/activities/events/options`) offer it as a bookable leaf too.
+    const eventOptions = await call<{ places?: { id: string; label: string }[] }>(
+      request,
+      'GET',
+      '/api/activities/events/options',
+      wojtek,
+    )
+    expect(eventOptions.status, JSON.stringify(eventOptions.body)).toBe(200)
+    expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name })
 
     // The same name and address — other case, spaces around — is the existing place (negative case).
     const again = await addPlace(wojtek, { name: '  hala SPORTOWA w liszkach ', address: 'UL. SZKOLNA 50, LISZKI ' })
     expect(again.status, JSON.stringify(again.body)).toBe(409)
     expect(again.body?.code).toBe('external_place_exists')
-    expect(again.body?.details).toEqual({ placeId: hallId })
+    expect(again.body?.details).toEqual({ placeId: hallId, pickable: true })
     // The same name at another address is another venue.
     const otherAddress = await addPlace(wojtek, { name: HALL.name, address: 'ul. Szkolna 5, Liszki' })
     expect(otherAddress.status, JSON.stringify(otherAddress.body)).toBe(201)
+    // A place no picker lists — inactive, or divided into sub-places — is still the duplicate, but not pickable.
+    const archived = await create(request, admin, 'places', {
+      name: 'Stara hala',
+      kind: 'hall',
+      address: 'ul. Długa 1, Liszki',
+      isActive: false,
+    })
+    const archivedAgain = await addPlace(wojtek, { name: 'Stara hala', address: 'ul. Długa 1, Liszki' })
+    expect(archivedAgain.status, JSON.stringify(archivedAgain.body)).toBe(409)
+    expect(archivedAgain.body?.details).toEqual({ placeId: archived, pickable: false })
+    const complex = await create(request, admin, 'places', {
+      name: 'Kompleks',
+      kind: 'complex',
+      address: 'ul. Polna 2',
+    })
+    await create(request, admin, 'places', { name: 'Kort 1', kind: 'pitch', parentPlaceId: complex })
+    const complexAgain = await addPlace(wojtek, { name: 'kompleks', address: 'ul. polna 2' })
+    expect(complexAgain.status, JSON.stringify(complexAgain.body)).toBe(409)
+    expect(complexAgain.body?.details).toEqual({ placeId: complex, pickable: false })
 
     // Field rules: the lengths, a known kind, no other field, a live owner of the club.
     for (const data of [
@@ -166,6 +194,19 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
     expect(blocked.status(), await blocked.text()).toBe(409)
     expect(((await blocked.json()) as { code?: string }).code).toBe('place_in_use')
     expect((await getOne(request, admin, 'places', pavilionId))?.id).toBe(pavilionId)
+
+    // A sub-place the administrator put under an added place blocks its undo: it is never orphaned.
+    const yard = await addPlace(admin, { name: 'Dziedziniec w Tyńcu', address: 'ul. Benedyktyńska 39, Kraków' })
+    expect(yard.status, JSON.stringify(yard.body)).toBe(201)
+    const yardId = String(yard.body?.id)
+    const corner = await create(request, admin, 'places', { name: 'Narożnik', kind: 'pitch', parentPlaceId: yardId })
+    const yardLog = (await actionLogEntries(request, admin, yardId)).find(
+      (entry) => entry.commandId === 'club_core.places.add_external',
+    )
+    const yardUndo = await undoByToken(request, admin, String(yardLog?.undoToken))
+    expect(yardUndo.status(), await yardUndo.text()).toBe(409)
+    expect(((await yardUndo.json()) as { code?: string }).code).toBe('place_has_children')
+    expect((await getOne(request, admin, 'places', corner))?.parentPlaceId).toBe(yardId)
 
     const shed = await addPlace(admin, { name: 'Szopa w Tyńcu', address: 'ul. Benedyktyńska 40, Kraków' })
     expect(shed.status, JSON.stringify(shed.body)).toBe(201)
