@@ -35,6 +35,7 @@ import {
   type ReconcileSummary,
 } from '../services/checkout'
 import { clubClock } from '../services/directory'
+import { sweepChangedNothing } from '../lib/payments-rules'
 import { CHARGE_RESOURCE_KIND, PAYMENT_RESOURCE_KIND, ledgerOf } from './ledger'
 import {
   PAYMENTS_WRITE_KINDS,
@@ -351,6 +352,11 @@ const refundPaymentCommand: CommandHandler<Record<string, unknown>, RefundComman
 
 export type ReconcileJobResult = { job: PaymentsJobScope; summary: ReconcileSummary }
 
+/** The counts of a sweep run that change or fail something (`checked` only counts what was looked at). */
+function changedCounts({ completed, failed, expired, errors }: ReconcileSummary) {
+  return { completed, failed, expired, errors }
+}
+
 /**
  * `payments.checkouts.reconcile`: one run of the DD-42 sweep for the club — late captures are booked, `created`
  * checkouts older than 24 hours expire — the service the operator command `payments reconcile-checkouts` calls too.
@@ -364,13 +370,16 @@ const reconcileCheckoutsCommand: CommandHandler<Record<string, unknown>, Reconci
     const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
     return { job, summary: await reconcileCheckouts(ctx.container, scope, job.now) }
   },
+  // A run that changed nothing leaves no audit entry: every 15 minutes per club would be ~96 empty entries a day (#405).
   buildLog: ({ result }) =>
-    paymentsJobLog({
-      job: result.job,
-      labelKey: 'payments.audit.jobs.reconcileCheckouts',
-      fallback: 'Reconcile unfinished online payments',
-      context: { ...result.summary },
-    }),
+    sweepChangedNothing(changedCounts(result.summary))
+      ? null
+      : paymentsJobLog({
+          job: result.job,
+          labelKey: 'payments.audit.jobs.reconcileCheckouts',
+          fallback: 'Reconcile unfinished online payments',
+          context: { ...result.summary },
+        }),
 }
 
 registerCommand(createCheckoutCommand)

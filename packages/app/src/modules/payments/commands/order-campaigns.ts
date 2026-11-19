@@ -26,6 +26,7 @@ import {
 } from '../data/validators'
 import type { OrderReminderParams } from '../emails/templates'
 import type { PaymentsErrorCode } from '../lib/error-codes'
+import { sweepChangedNothing } from '../lib/payments-rules'
 import {
   campaignDateErrors,
   isCampaignEditable,
@@ -582,13 +583,16 @@ const closeDueCampaignsCommand: CommandHandler<Record<string, unknown>, CloseDue
     const { closed } = await closeOrderCampaigns(ctx.container, scope, job.now)
     return { job, closed }
   },
+  // A run that closed nothing leaves no audit entry (#405), as `payments.checkouts.reconcile` does.
   buildLog: ({ result }) =>
-    paymentsJobLog({
-      job: result.job,
-      labelKey: 'payments.audit.jobs.closeOrderCampaigns',
-      fallback: 'Close the order campaigns past their deadline',
-      context: { closed: result.closed.length, campaignIds: result.closed },
-    }),
+    sweepChangedNothing({ closed: result.closed.length })
+      ? null
+      : paymentsJobLog({
+          job: result.job,
+          labelKey: 'payments.audit.jobs.closeOrderCampaigns',
+          fallback: 'Close the order campaigns past their deadline',
+          context: { closed: result.closed.length, campaignIds: result.closed },
+        }),
 }
 
 registerCommand(createCampaignCommand)

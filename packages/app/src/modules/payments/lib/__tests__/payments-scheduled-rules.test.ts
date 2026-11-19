@@ -8,6 +8,7 @@ import {
   generationDue,
   reminderBatches,
   reminderDue,
+  sweepChangedNothing,
   type ReminderCandidate,
 } from '../payments-rules'
 
@@ -138,5 +139,14 @@ describe('reminderBatches', () => {
       '2026-12-11',
     )
     expect(batches.size).toBe(0)
+  })
+})
+
+describe('sweepChangedNothing', () => {
+  it('is true only when every reported count is zero', () => {
+    expect(sweepChangedNothing({ completed: 0, failed: 0, expired: 0, errors: 0 })).toBe(true)
+    expect(sweepChangedNothing({})).toBe(true)
+    expect(sweepChangedNothing({ completed: 0, failed: 0, expired: 1, errors: 0 })).toBe(false)
+    expect(sweepChangedNothing({ closed: 2 })).toBe(false)
   })
 })
