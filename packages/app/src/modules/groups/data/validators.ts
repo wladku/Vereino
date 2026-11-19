@@ -3,7 +3,15 @@
 // commands (the kind of an update comes from the stored row), so a class group with team fields answers 422.
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
-import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES, ROSTER_VIEWS } from '../lib/groups-rules'
+import {
+  AGE_U_MAX,
+  AGE_U_MIN,
+  GROUP_AGE_MAX,
+  GROUP_AGE_MIN,
+  GROUP_KINDS,
+  MEMBERSHIP_ROLES,
+  ROSTER_VIEWS,
+} from '../lib/groups-rules'
 import { ROLLOVER_GROUP_ACTIONS, ROLLOVER_RECORD_ACTIONS } from '../lib/season-rollover'
 
 const nameSchema = z.string().trim().min(1).max(200)
@@ -182,6 +190,32 @@ export const seasonListQuerySchema = z.object({
   sortField: z.enum(['name', 'startsOn', 'createdAt', 'updatedAt']).optional(),
   search: searchQuery,
 })
+
+// --- Age category ranges (people life-cycle spec REQ-L16, *API* rows; #384) ---
+
+const uYear = z.number().int().min(AGE_U_MIN).max(AGE_U_MAX)
+
+/** `PUT /api/groups/age-categories/{entryId}/range`: the entry id from the path, the range and the row's lock token. */
+export const ageCategoryRangeSetSchema = z
+  .object({
+    entryId: z.uuid(),
+    uFrom: uYear,
+    uTo: uYear.nullable().optional(),
+    /** The range's `updatedAt` as read; omitted when the category had no range yet. */
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict()
+
+/** `POST /api/groups/age-categories`: a new entry of the club's dictionary with its range, in one transaction. */
+export const ageCategoryCreateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(150),
+    uFrom: uYear,
+    uTo: uYear.nullable().optional(),
+  })
+  .strict()
+
+export const ageCategoryListQuerySchema = z.object({ seasonId: z.uuid().optional() })
 
 // --- Season rollover (people life-cycle spec REQ-L08, *Vocabulary* → "Season rollover plan"; #311) ---
 

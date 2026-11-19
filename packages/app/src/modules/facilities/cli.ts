@@ -7,6 +7,7 @@ import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireRequestsJobResult } from './commands/requests'
 import type { MaintenanceRemindersJobResult } from './commands/maintenance'
 import type { LifecycleJobResult } from './commands/rentals'
+import { setUpClubFacilities } from './services/club-setup'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
   const options = Object.fromEntries(names.map((name) => [name, { type: 'string' as const }]))
@@ -100,6 +101,28 @@ const maintenanceReminders: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [rentalLifecycle, expireRequests, maintenanceReminders]
+/**
+ * `facilities set-up-club --tenant <id> --org <id>`: re-runs the club's `facilities` setup — the rental lifecycle,
+ * request expiry and maintenance reminder schedules — and prints what it registered; exit code 1 when a schedule was
+ * refused. Idempotent (an upsert of each schedule); the backfill for a club set up before a schedule existed (#221 L4,
+ * `docs/ops/deploy.md`).
+ */
+const setUpClub: ModuleCli = {
+  command: 'set-up-club',
+  async run(argv) {
+    const { tenant, org } = readOptions(argv, ['tenant', 'org'])
+    if (!tenant || !org) {
+      process.stderr.write('Usage: mercato facilities set-up-club --tenant <tenantId> --org <organizationId>\n')
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const result = await setUpClubFacilities(container, { tenantId: tenant, organizationId: org })
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+  },
+}
+
+const commands: ModuleCli[] = [rentalLifecycle, expireRequests, maintenanceReminders, setUpClub]
 
 export default commands

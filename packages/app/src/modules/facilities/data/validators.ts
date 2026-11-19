@@ -217,7 +217,7 @@ export const rentalActionSchema = z.object({ id: z.uuid() }).strict()
 
 export const rentalCancelSchema = z.object({ id: z.uuid(), reason: optionalText(500) }).strict()
 
-/** A move keeps the status and the amount; the units stay, so only the start and the place change. */
+/** A move keeps the status and the units, so only the start and the place change (another place re-quotes, #221). */
 export const rentalMoveSchema = z
   .object({ id: z.uuid(), startsAt: instantSchema, placeId: z.uuid().optional() })
   .strict()

@@ -4,13 +4,17 @@ import { calendarDate, call, createClub } from '../_fixtures/club'
 import { create, getOne, update } from '../_fixtures/club-structure'
 import { decide, queuedRequest } from '../_fixtures/facility-requests'
 import {
+  ORLIK_HOURS,
+  bulkAvailability,
   getRental,
   phoneRental,
+  postRate,
   postRental,
   rentalAction,
   rentalPitch,
   runChargeProbe,
   runRequestProbe,
+  setOpeningHours,
 } from '../_fixtures/facilities'
 import { getCharge, recordPayment, reversePayment } from '../_fixtures/payments'
 import { uiText } from '../_fixtures/ui-text'
@@ -21,8 +25,11 @@ import { uiText } from '../_fixtures/ui-text'
 // `charge.rentalDesc` description in the club's default locale (Polish) and the payment deadline's date as due date.
 // A direct confirm of an unpaid rental answers 409 `rental_awaits_payment` with the charge; a partial payment confirms
 // nothing, the full one confirms the rental once (a replayed `confirm_paid` changes nothing); a reversed payment leaves
-// the rental confirmed with its charge `open` again. A move keeps the deadline of a rental with a charge and gives a
-// rental without one a new deadline; a cancellation cancels (free) or forfeits (late) the charge. With the charge
+// the rental confirmed with its charge `open` again. A move re-dates the deadline and, with it, the unpaid charge's
+// due date and description (#221 L2); a move to another place re-quotes the amount and the charge from that place's
+// rates, and answers 422 `rental_rate_missing` where it has none; a rental whose charge holds a payment (even a
+// reversed one) keeps its amount, its deadline and its charge; a rental without a charge gets a new deadline and keeps
+// its amount on the same place; a cancellation cancels (free) or forfeits (late) the charge. With the charge
 // service hidden (probe) a rental gets no charge, confirms at once and reads `chargeState: none`. The owner report
 // names the owner and says `charges`, `rental_register` or `mixed`, with the partly paid rentals apart. B-24's
 // "Confirm payment" of an unpaid rental opens its charge; a rental without one says "rental register". A rental with
@@ -38,9 +45,9 @@ const zoneDate = (iso: string): string =>
     new Date(iso),
   )
 
-/** The Polish `charge.rentalDesc` of a rental of Boisko A. */
-const description = (startsAt: string, from: string, to: string): string =>
-  `Wynajem: Boisko A, ${new Intl.DateTimeFormat('pl', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(startsAt))} ${from}–${to}`
+/** The Polish `charge.rentalDesc` of a rental of Boisko A (or of the named place). */
+const description = (startsAt: string, from: string, to: string, place = 'Boisko A'): string =>
+  `Wynajem: ${place}, ${new Intl.DateTimeFormat('pl', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(startsAt))} ${from}–${to}`
 
 /** A bookable start within a day: a cancellation is late (TEST-R09). */
 function soonStart(): string {
@@ -195,15 +202,76 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
     const withoutId = String(without.id)
     expect(await getRental(request, admin, withoutId)).toMatchObject({ chargeId: null, chargeState: 'none' })
 
-    // --- Move: a rental with a charge keeps its deadline (the charge's due date); one without gets a new one ---
+    // --- Move (#221 L2): the unpaid charge follows the new date; another place re-quotes the amount and the charge ---
     const beforeMove = await getRental(request, admin, requestId)
     const movedCharged = await rentalAction(request, admin, requestId, 'move', {
       startsAt: zoneInstant(wednesday, '08:00'),
     })
     expect(movedCharged.status, JSON.stringify(movedCharged.body)).toBe(200)
     const afterMove = await getRental(request, admin, requestId)
-    expect(afterMove).toMatchObject({ amount: beforeMove.amount, paymentDeadline: beforeMove.paymentDeadline })
-    expect(zoneDate(String(afterMove.paymentDeadline))).toBe((await getCharge(request, admin, approvedCharge)).dueDate)
+    expect(afterMove.amount).toBe(beforeMove.amount)
+    expect(afterMove.paymentDeadline).not.toBe(beforeMove.paymentDeadline)
+    expect(await getCharge(request, admin, approvedCharge)).toMatchObject({
+      amount: beforeMove.amount,
+      dueDate: zoneDate(String(afterMove.paymentDeadline)),
+      description: description(zoneInstant(wednesday, '08:00'), '08:00', '09:30'),
+      status: 'open',
+    })
+    // Boisko B has its own external rate and no owner; Boisko C has no rate at all.
+    const pitchB = await create(request, admin, 'places', { name: 'Boisko B', kind: 'pitch' })
+    await setOpeningHours(request, admin, pitchB, ORLIK_HOURS)
+    const pitchBWindows = await bulkAvailability(request, admin, {
+      placeIds: [pitchB],
+      mode: 'replace',
+      validFrom: today,
+      windows: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, from: '08:00', to: '16:00' })),
+    })
+    expect(pitchBWindows.status, JSON.stringify(pitchBWindows.body)).toBe(200)
+    const pitchBRate = await postRate(request, admin, {
+      placeId: pitchB,
+      validFrom: today,
+      renterCategory: 'external_commercial',
+      pricePer90: 30_000,
+    })
+    expect(pitchBRate.status, JSON.stringify(pitchBRate.body)).toBe(201)
+    const pitchC = await create(request, admin, 'places', { name: 'Boisko C', kind: 'pitch' })
+    const noRate = await rentalAction(request, admin, requestId, 'move', {
+      placeId: pitchC,
+      startsAt: zoneInstant(wednesday, '09:30'),
+    })
+    expect(noRate.status, JSON.stringify(noRate.body)).toBe(422)
+    expect(noRate.body?.code).toBe('rental_rate_missing')
+    const toB = await rentalAction(request, admin, requestId, 'move', {
+      placeId: pitchB,
+      startsAt: zoneInstant(wednesday, '09:30'),
+    })
+    expect(toB.status, JSON.stringify(toB.body)).toBe(200)
+    const onB = await getRental(request, admin, requestId)
+    expect(onB).toMatchObject({ placeId: pitchB, amount: 30_000, chargeState: 'open' })
+    expect(await getCharge(request, admin, approvedCharge)).toMatchObject({
+      amount: 30_000,
+      payeeInstitution: null,
+      dueDate: zoneDate(String(onB.paymentDeadline)),
+      description: description(zoneInstant(wednesday, '09:30'), '09:30', '11:00', 'Boisko B'),
+    })
+    // A charge that held a payment (reversed since) keeps its terms, and so does its rental.
+    const heldBefore = await getRental(request, admin, unregisteredId)
+    const heldCharge = await getCharge(request, admin, unregisteredCharge)
+    const movedHeld = await rentalAction(request, admin, unregisteredId, 'move', {
+      placeId: pitchB,
+      startsAt: zoneInstant(wednesday, '11:00'),
+    })
+    expect(movedHeld.status, JSON.stringify(movedHeld.body)).toBe(200)
+    expect(await getRental(request, admin, unregisteredId)).toMatchObject({
+      placeId: pitchB,
+      amount: heldBefore.amount,
+      paymentDeadline: heldBefore.paymentDeadline,
+    })
+    expect(await getCharge(request, admin, unregisteredCharge)).toMatchObject({
+      amount: heldCharge.amount,
+      dueDate: heldCharge.dueDate,
+      description: heldCharge.description,
+    })
     const beforePlain = await getRental(request, admin, withoutId)
     const movedPlain = await rentalAction(request, admin, withoutId, 'move', {
       startsAt: zoneInstant(addDays(thursday, 1), '08:00'),

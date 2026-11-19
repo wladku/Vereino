@@ -49,6 +49,10 @@ export const errorCodes = [
   { code: 'move_target_inactive', status: 422, messageKey: 'groups.errors.move_target_inactive' },
   { code: 'move_date_in_past', status: 422, messageKey: 'groups.errors.move_date_in_past' },
   { code: 'move_too_many', status: 422, messageKey: 'groups.errors.move_too_many' },
+  // The "U" ranges of the age categories (people life-cycle spec REQ-L16, *API* rows; #384).
+  { code: 'age_range_inverted', status: 422, messageKey: 'groups.errors.age_range_inverted' },
+  { code: 'age_category_name_taken', status: 409, messageKey: 'groups.errors.age_category_name_taken' },
+  { code: 'age_categories_missing', status: 422, messageKey: 'groups.errors.age_categories_missing' },
 ] as const satisfies ErrorCodeTable
 
 export type GroupsErrorCode = (typeof errorCodes)[number]['code']

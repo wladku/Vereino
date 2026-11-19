@@ -13,6 +13,8 @@ describe('club_core error codes', () => {
         status: 422,
         messageKey: 'club_core.errors.place_opening_hours_invalid',
       },
+      { code: 'external_place_exists', status: 409, messageKey: 'club_core.errors.external_place_exists' },
+      { code: 'place_in_use', status: 409, messageKey: 'club_core.errors.place_in_use' },
       { code: 'institution_in_use', status: 409, messageKey: 'club_core.errors.institution_in_use' },
       { code: 'timezone_unknown', status: 422, messageKey: 'club_core.errors.timezone_unknown' },
       {
