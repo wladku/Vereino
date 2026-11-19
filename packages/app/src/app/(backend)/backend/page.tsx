@@ -4,6 +4,7 @@ import { DashboardScreen } from '@open-mercato/ui/backend/dashboard'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middleware/page-executor'
 import { backendMiddlewareEntries } from '@/.mercato/generated/backend-middleware.generated'
+import { BackendGreeting } from '@/components/BackendGreeting'
 
 export default async function BackendIndex() {
   const auth = await getAuthFromCookies()
@@ -28,6 +29,8 @@ export default async function BackendIndex() {
   if (middlewareRedirect) redirect(middlewareRedirect)
   return (
     <div className="p-6 space-y-6">
+      {/* B-01 (navigation spec REQ-N04, #260): the greeting above the platform dashboard. */}
+      <BackendGreeting />
       <DashboardScreen />
     </div>
   )

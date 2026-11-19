@@ -247,7 +247,7 @@
   "dashboard.empty.configurable": "Nie wybrano jeszcze żadnych widżetów. Użyj \"Dodaj widżet\", aby zbudować pulpit.",
   "dashboard.empty.noWidgets.description": "Widżety pulpitu pojawią się tutaj po dodaniu pierwszego modułu, który je udostępnia.",
   "dashboard.empty.noWidgets.title": "Brak widżetów pulpitu",
-  "dashboard.empty.readonly": "Brak dostępnych widżetów dla Twojego konta.",
+  "dashboard.empty.readonly": "Nic dziś nie wymaga działania.",
   "dashboard.error.partial": "Niektóre zmiany nie zostały zapisane",
   "dashboard.error.reload": "Ponownie wczytaj dane",
   "dashboard.loadError": "Nie udało się wczytać danych pulpitu. Spróbuj ponownie później.",
@@ -1180,6 +1180,10 @@
   "vector.api.errors.reindexFailed": "Ponowne indeksowanie wektorowe nie powiodło się",
   "vector.api.errors.searchFailed": "Wyszukiwanie wektorowe nie powiodło się",
   "vector.api.errors.updateFailed": "Nie udało się zaktualizować ustawień wektorowych.",
+  "vereino.backend.memberInterface": "Interfejs członkowski",
+  "vereino.dashboard.greeting": "Dzień dobry, {name}",
+  "vereino.dashboard.greetingNoName": "Dzień dobry",
+  "vereino.dashboard.subtitle": "{date} · co wymaga dziś działania",
   "vereino.login.clubLoading": "Wczytywanie klubu…",
   "vereino.login.tagline": "Jedno konto dla rodzica, zawodnika i trenera"
 }
