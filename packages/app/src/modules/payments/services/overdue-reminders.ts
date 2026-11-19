@@ -2,9 +2,10 @@
 // the job command `payments.charges.remind_overdue` runs this for one club. Each payer with a charge due a reminder
 // gets one dispatch of `payments.charge_reminder` — an e-mail listing every overdue charge of theirs with the payer
 // code, and the in-app notice `payments.charge_overdue` when they have an account. The marker (`reminder_count`,
-// `last_reminded_at`) moves only on the listed charges that were due a reminder (#404), and is written in the transaction that enqueues the dispatch, by a conditional UPDATE on the count
-// read, so a concurrent run reminds nobody twice and a failed delivery is the dispatch's retry, never a second
-// reminder. Rental charges and charges without a payer are never reminded.
+// `last_reminded_at`) moves only on the listed charges that were due a reminder (#404), and is written in the
+// transaction that enqueues the dispatch, by a conditional UPDATE on the count read, so a concurrent run reminds
+// nobody twice and a failed delivery is the dispatch's retry, never a second reminder. Rental charges and charges
+// without a payer are never reminded.
 import { createHash } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
@@ -164,9 +165,9 @@ export async function sendOverdueReminders(
       }
       const enqueued = await freshEm(container).transactional(async (tx) => {
         for (const charge of reminded) {
-          // Only the charges due a reminder count it (#404). The marker moves only from the count this run read and only while the charge is still open: a concurrent
-          // run that got there first, or a charge paid or cancelled since the read, rolls this payer back; the next
-          // run reads it afresh.
+          // Only the charges due a reminder count it (#404). The marker moves only from the count this run read and
+          // only while the charge is still open: a concurrent run that got there first, or a charge paid or cancelled
+          // since the read, rolls this payer back; the next run reads it afresh.
           const updated = await tx.nativeUpdate(
             Charge,
             {
