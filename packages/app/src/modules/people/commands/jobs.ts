@@ -419,7 +419,7 @@ export type LifeCycleJobResult = OrganizationTarget & {
  * DD-L09; #310): notices 30 days before an 18th birthday; on the birthday the guardianships end the day before, the
  * consents move to the adult and `people.person.came_of_age` is emitted; account-age notices; the accounts of dated
  * departures close (`services/life-cycle.ts`). Idempotent through the state it writes and the dispatch keys, so a
- * missed day is caught up by the next run; `dryRun` counts and writes nothing. Not undoable: a guardianship it ended
+ * missed day is caught up by the next run; `dryRun` counts and changes nothing but its audit entry. Not undoable: a guardianship it ended
  * is re-created by the administrator (*Rollout*); the audit entry carries the counts.
  */
 const lifeCycleJobCommand: CommandHandler<Record<string, unknown>, LifeCycleJobResult> = {

@@ -11,7 +11,7 @@
 //      person — any earlier account-age key counts, so a lowered threshold reaches only the newly eligible;
 //   4. dated departures: the accounts of persons who left before today close (`closeDepartedAccounts`).
 // Every notice is "sent once" through its dispatch idempotency key; a person's failure is logged, reported as
-// `people.life_cycle.failed` and retried by the next run. A dry run reads the same candidates and writes nothing.
+// `people.life_cycle.failed` and retried by the next run. A dry run reads the same candidates and changes nothing.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { LockMode } from '@mikro-orm/core'
 import type { AwilixContainer } from 'awilix'

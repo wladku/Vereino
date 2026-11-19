@@ -186,7 +186,7 @@ export const syncRolesJobSchema = z.object({ today: calendarDateSchema.optional(
 
 /**
  * Input of the life-cycle job `people.persons.life_cycle` (people life-cycle spec REQ-L06, REQ-L07; #310): the club day
- * to run as (default: today in the club zone) and `dryRun`, which counts what a run would do and writes nothing.
+ * to run as (default: today in the club zone) and `dryRun`, which counts what a run would do and changes nothing (only the audit entry of the run is written).
  */
 export const lifeCycleJobSchema = z
   .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })

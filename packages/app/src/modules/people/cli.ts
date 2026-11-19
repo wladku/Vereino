@@ -122,9 +122,10 @@ const purgeImportRows: ModuleCli = {
 
 /**
  * `people life-cycle --tenant <id> --org <id> [--today YYYY-MM-DD] [--dry-run] [--register-schedule]`: one run of the
- * daily life-cycle job (people life-cycle spec REQ-L06, REQ-L07; #310). `--dry-run` prints the counts and writes
- * nothing; `--register-schedule` registers the daily `people:life-cycle` schedule after a real run — the confirmed
- * first run on an existing club (*Rollout*, item 11). Prints the job's result as JSON.
+ * daily life-cycle job (people life-cycle spec REQ-L06, REQ-L07; #310). `--dry-run` prints the counts and changes
+ * nothing (the run leaves only its audit entry); `--register-schedule` registers the daily `people:life-cycle`
+ * schedule after a real run — the confirmed first run on an existing club (*Rollout*, item 11). Prints the job's result
+ * as JSON.
  */
 const lifeCycle: ModuleCli = {
   command: 'life-cycle',
