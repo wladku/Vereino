@@ -15,6 +15,7 @@ import { BrowserTelemetry } from '@open-mercato/telemetry/browser'
 import { resolveBrowserTelemetryConfig } from '@open-mercato/telemetry/browser/server'
 import { DemoFeedbackWidget } from '@/components/DemoFeedbackWidget'
 import { BackendHeaderChrome } from '@/components/BackendHeaderChrome'
+import { SidebarNavBadges } from '@/components/SidebarNavBadges'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { ClubTimeZone } from '@/components/ClubTimeZone'
 
@@ -198,6 +199,7 @@ export default async function BackendLayout({
         </ClubTimeZone>
         {demoModeEnabled ? <DemoFeedbackWidget demoModeEnabled={demoModeEnabled} /> : null}
         <BrowserTelemetry config={browserTelemetryConfig} />
+        <SidebarNavBadges />
       </AppShell>
     </I18nProvider>
   )

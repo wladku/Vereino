@@ -34,6 +34,16 @@ export function sessionsWidgetQuery(kind: SessionsWidgetKind, today: CalendarDat
   return new URLSearchParams(params).toString()
 }
 
+/**
+ * The query of the Sessions menu count (navigation spec REQ-N03, A-N14; #260): the "Needing a coach" window of the
+ * widget and of the B-15 tab, one row, because only the list's `total` is read.
+ */
+export function sessionsNavBadgeQuery(today: CalendarDate): string {
+  const params = new URLSearchParams(sessionsWidgetQuery('sessionsNeedingCoach', today))
+  params.set('pageSize', '1')
+  return params.toString()
+}
+
 /** The B-15 list in the widget's perspective. */
 export function sessionsWidgetListHref(kind: SessionsWidgetKind, listPath: string): string {
   return perspectiveHref(listPath, WIDGET_PERSPECTIVE[kind])

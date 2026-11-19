@@ -1367,5 +1367,6 @@
   "facilities.reports.owner.ownerClub": "Właściciel: klub",
   "facilities.reports.owner.paymentsSource.charges": "Źródło: należności wynajmów ({count} opłaconych)",
   "facilities.reports.owner.paymentsSource.mixed": "Źródło: należności wynajmów i rejestr wynajmów ({count} wynajmów)",
-  "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą"
+  "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą",
+  "facilities.nav.badge.waiting": "{count} oczekuje"
 }

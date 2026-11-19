@@ -998,5 +998,6 @@
   "payments.settings.validation.generationDay": "Enter a day from 1 to 28.",
   "payments.email.chargeReminder.payerCode": "Your payer code for the transfer title: {code}",
   "payments.notifications.chargeOverdue.title": "Payments overdue",
-  "payments.notifications.chargeOverdue.body": "Some of your payments are past their due date. Open your payments to settle them."
+  "payments.notifications.chargeOverdue.body": "Some of your payments are past their due date. Open your payments to settle them.",
+  "payments.nav.badge.waiting": "{count} waiting"
 }

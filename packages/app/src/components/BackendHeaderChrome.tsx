@@ -3,9 +3,10 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import * as React from 'react'
-import { MoreHorizontal, PlugZap, Settings, Mail } from 'lucide-react'
+import { MoreHorizontal, PlugZap, Settings, Mail, UserRound } from 'lucide-react'
 import { hasFeature } from '@open-mercato/shared/security/features'
 import { AuthSessionGuard } from '@open-mercato/ui/backend/AuthSessionGuard'
+import { Button } from '@open-mercato/ui/primitives/button'
 import { IconButton } from '@open-mercato/ui/primitives/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@open-mercato/ui/primitives/popover'
 import { IntegrationsButton } from '@open-mercato/ui/backend/IntegrationsButton'
@@ -14,6 +15,7 @@ import { SettingsButton } from '@open-mercato/ui/backend/SettingsButton'
 import { useBackendChrome } from '@open-mercato/ui/backend/BackendChromeProvider'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { AiAssistantShellIntegration } from '@/components/AiAssistantShellIntegration'
+import { useStaffPerson } from '@/components/use-staff-person'
 import { organizationScopeSeed } from '@vereino/ui/organization-scope-seed'
 
 // Before the first render: the page starts at the scope of its cookies, so its lists load once instead of again when the
@@ -138,9 +140,21 @@ export function BackendHeaderChrome({
     () => hasFeature(grantedFeatures, 'notifications.view'),
     [grantedFeatures],
   )
+  // "Member interface" (navigation spec REQ-N04, #260): only when `GET /api/people/me` resolves a person — not while it
+  // loads, on an error or for an account linked to no person, who would land on `/club`'s "no linked person" notice.
+  const { person } = useStaffPerson()
+  const showMemberInterface = Boolean(person)
 
   const mobileMoreItems = React.useMemo<MobileMoreItem[]>(() => {
     const items: MobileMoreItem[] = []
+    if (showMemberInterface) {
+      items.push({
+        id: 'member-interface',
+        href: '/club',
+        icon: <UserRound className="size-4" aria-hidden="true" />,
+        label: t('vereino.backend.memberInterface', 'Member interface'),
+      })
+    }
     if (showIntegrationsButton) {
       items.push({
         id: 'integrations',
@@ -164,7 +178,7 @@ export function BackendHeaderChrome({
       })
     }
     return items
-  }, [showIntegrationsButton, isReady, showMessages, t])
+  }, [showMemberInterface, showIntegrationsButton, isReady, showMessages, t])
 
   return (
     <>
@@ -183,6 +197,16 @@ export function BackendHeaderChrome({
       {isReady ? <LazyOrganizationSwitcher /> : null}
 
       {/* Secondary actions — inline on md+, grouped under a More button on <md */}
+      {showMemberInterface ? (
+        <span className="hidden md:contents">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/club" data-testid="backend-member-interface-link">
+              <UserRound className="size-4" aria-hidden="true" />
+              {t('vereino.backend.memberInterface', 'Member interface')}
+            </Link>
+          </Button>
+        </span>
+      ) : null}
       {showIntegrationsButton ? (
         <span className="hidden md:contents">
           <IntegrationsButton />
