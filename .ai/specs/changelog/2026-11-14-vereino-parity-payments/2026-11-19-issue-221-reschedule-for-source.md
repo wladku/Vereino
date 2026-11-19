@@ -1,0 +1,1 @@
+| 2026-11-19 | #221 L2 (owner-approved 2026-11-19): Contract 1a, `payments.chargeService.rescheduleForSource` rewrites the live charge of a moved rental (due date, description, amount, payee) while it holds no payment; rule *Rescheduling a rental charge* and the DI row added |

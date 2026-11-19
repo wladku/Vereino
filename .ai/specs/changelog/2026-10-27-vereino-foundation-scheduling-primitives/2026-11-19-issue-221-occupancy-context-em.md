@@ -1,0 +1,1 @@
+| 2026-11-19 | #221 M1 (owner-approved 2026-11-19): P-26 `OccupancyContext` gains the optional `em`; a session save passes its transactional EntityManager, so the occupancy provider no longer reads on a second pool connection while the occupancy lock is held |

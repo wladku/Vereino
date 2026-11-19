@@ -36,6 +36,21 @@ export type SourceChargeInput = {
 
 export type SourceChargeOutcome = 'cancelled' | 'forfeited'
 
+/**
+ * What a moved source changes on its charge (#221 L2): the due date from the new payment deadline, the description
+ * naming the new slot, and the amount and payee re-quoted for a new place. The payer never changes.
+ */
+export type SourceChargeReschedule = {
+  sourceType: 'rental'
+  sourceId: string
+  payeeInstitutionId: string | null
+  /** Grosz. */
+  amount: number
+  /** `YYYY-MM-DD` in the club's calendar. */
+  dueDate: string
+  description: string
+}
+
 export type PaymentsChargeService = {
   createForSource(
     em: EntityManager,
@@ -47,6 +62,16 @@ export type PaymentsChargeService = {
     input: { sourceType: 'rental'; sourceId: string; outcome: SourceChargeOutcome },
     ctx: CommandRuntimeContext,
   ): Promise<{ warning?: 'charge_paid'; afterCommit?: () => Promise<void> }>
+  /**
+   * Rewrites the live charge of a moved source in the caller's transaction (#221 L2): only while no payment was ever
+   * recorded on it; a charge holding a payment is left as it is and answers the warning `charge_paid`. Nothing happens
+   * when the source has no live charge.
+   */
+  rescheduleForSource(
+    em: EntityManager,
+    input: SourceChargeReschedule,
+    ctx: CommandRuntimeContext,
+  ): Promise<{ warning?: 'charge_paid' }>
   /** The stored status of each of the given charges of the caller's organization; unknown or foreign ids are absent. */
   statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext): Promise<Map<string, ChargeStatus>>
 }
@@ -145,6 +170,29 @@ export function createChargeService(): PaymentsChargeService {
             outcome: input.outcome,
           }),
       }
+    },
+
+    async rescheduleForSource(em, input, ctx) {
+      const scope = scopeOf(ctx)
+      if (!sourceAmountValid(input.amount) || !CALENDAR_DATE.test(input.dueDate)) {
+        await paymentsErrors.throw('charge_amount_invalid')
+      }
+      const charge = await liveSourceCharge(em, scope, input, true)
+      if (!charge) return {}
+      const payments = await em.count(Payment, { ...scope, chargeId: charge.id, deletedAt: null })
+      // The same rule as a cancellation: a charge that ever held money keeps its terms, so a move never reprices or
+      // re-dates money already paid.
+      const decision = sourceCancelDecision({ status: charge.status, hasPayments: payments > 0 })
+      if (decision === 'charge_paid') return { warning: 'charge_paid' }
+      if (decision === 'none') return {}
+      charge.dueDate = input.dueDate
+      charge.description = input.description
+      charge.amount = input.amount
+      charge.payeeInstitutionId = input.payeeInstitutionId
+      charge.status = sourceChargeStatus(input.amount)
+      charge.updatedAt = new Date()
+      await em.flush()
+      return {}
     },
 
     async statusOf(chargeIds, ctx) {

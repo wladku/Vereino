@@ -136,6 +136,31 @@ export async function lastReceiptNumber(
 }
 
 /**
+ * Takes the club's handover-numbering lock until the caller's transaction ends (B-33, #118): two handovers of one club
+ * wait for each other, so the month's highest `RG` number read after the lock is never issued twice.
+ */
+export async function lockHandoverNumbering(em: EntityManager, organizationId: string): Promise<void> {
+  await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`payments.cash.handover:${organizationId}`])
+}
+
+/** The club's highest handover number starting with `prefix` (`RG/2026/11/`), or null; read under the lock. */
+export async function lastHandoverNumber(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  prefix: string,
+): Promise<string | null> {
+  const rows = await em.execute<{ number: string }[]>(
+    `select number
+       from payments_cash_handovers
+      where tenant_id = ? and organization_id = ? and number like ?
+      order by length(number) desc, number desc
+      limit 1`,
+    [scope.tenantId, scope.organizationId, `${prefix}%`],
+  )
+  return rows[0]?.number ?? null
+}
+
+/**
  * Closes the club's `open` campaigns whose orders deadline is before `today` (the `payments:close-order-campaigns`
  * sweep, #115) in one conditional UPDATE, so a campaign the administrator closed meanwhile is not touched twice.
  * Returns the ids it closed.

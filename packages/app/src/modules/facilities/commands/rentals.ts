@@ -7,8 +7,9 @@
 //   descendants (409 `rental_conflict`), the renter's entry ban (409 `entry_ban_active`) — and stored as `requested`
 //   with the amount and the deadlines; with `payments` the charge is created in the same transaction (DD-19);
 // - confirm (`requested → confirmed`), cancel (free up to 24 h before, else late: the charge is forfeited), no-show
-//   and move (same checks for the new slot, the rental itself left out; keeps the status and the amount, clears the
-//   reschedule flag) go through the status table (409 `invalid_transition`) with the lock token;
+//   and move (same checks for the new slot, the rental itself left out; keeps the status, re-quotes the amount on a new
+//   place and re-dates the payment deadline and the unpaid charge, #221; clears the reschedule flag) go through the
+//   status table (409 `invalid_transition`) with the lock token;
 // - the lifecycle job closes the confirmed rentals whose end has passed (`confirmed → done`) with `advanceWhere`, and —
 //   where the management agreement with the place's owner turns automatic expiry on — cancels free of charge the
 //   unpaid `requested` rentals whose payment deadline has passed (facilities parity spec DD-R11, REQ-R07; #284).
@@ -492,12 +493,19 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       }
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const placeId = authorized.parsed.placeId ?? row.placeId
-      if (placeId !== row.placeId) {
+      const placeChanged = placeId !== row.placeId
+      if (placeChanged) {
         await assertInScope(authorized.scope, PLACE_KINDS, placeTarget({ id: row.id, ...scope, placeId }))
         await assertPlaces(ctx, em, scope, [placeId])
       }
       const startsAt = new Date(authorized.parsed.startsAt)
       if (!startAllowed(startsAt, now)) await throwFieldError('rental_start_past', 'startsAt')
+      // A charge that holds a payment is never repriced or re-dated: such a rental keeps its amount and its deadline.
+      // Every other move re-dates the deadline (and the charge, #221 L2), and a move to another place re-quotes the
+      // amount from that place's rates, so a missing rate there answers `rental_rate_missing` as an entry does.
+      const chargeState = await chargeStateOf(ctx, row)
+      const holdsPayment = chargeState === 'partially_paid' || (chargeState === 'paid' && row.amount > 0)
+      const requote = placeChanged && !holdsPayment
       const assessment = await assessRentalSlot(
         ctx.container,
         em,
@@ -513,22 +521,43 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
         },
         now,
       )
-      // The amount stays as agreed, so a missing rate on the new date does not block the move.
       await throwFirstIssue(
         ctx,
         em,
         scope,
         placeId,
-        assessment.issues.filter((issue) => issue.code !== 'rental_rate_missing'),
+        requote ? assessment.issues : assessment.issues.filter((issue) => issue.code !== 'rental_rate_missing'),
         now,
       )
+      const kept = { amount: row.amount, rateId: row.rateId, paymentDeadline: row.paymentDeadline }
       row.placeId = placeId
       row.startsAt = startsAt
       row.endsAt = assessment.endsAt
       row.cancellationDeadline = cancellationDeadline(startsAt)
-      // A rental with a charge keeps its deadline: the charge's due date was set from it and DD-19 has no update, so
-      // the two never diverge (facilities parity spec *Payment deadline*, #221).
-      if (!row.chargeId) row.paymentDeadline = assessment.paymentDeadline
+      if (requote) {
+        row.amount = assessment.amount ?? 0
+        row.rateId = assessment.rateId
+      }
+      if (!holdsPayment) row.paymentDeadline = assessment.paymentDeadline
+      const charges = chargeService(ctx.container)
+      if (charges && row.chargeId && !holdsPayment) {
+        // The charge follows the rental in this transaction: due date, description, amount and payee (#221 L2).
+        const charge = await rentalChargeInput(ctx.container, em, scope, row)
+        const outcome = await charges.rescheduleForSource(
+          em,
+          {
+            sourceType: charge.sourceType,
+            sourceId: charge.sourceId,
+            payeeInstitutionId: charge.payeeInstitutionId,
+            amount: charge.amount,
+            dueDate: charge.dueDate,
+            description: charge.description,
+          },
+          ctx,
+        )
+        // A payment recorded since the state was read: the charge kept its terms, so the rental keeps them too.
+        if (outcome.warning === 'charge_paid') Object.assign(row, kept)
+      }
       row.needsReschedule = false
       row.updatedAt = now
       return { entity: row, actingRole: authorized.actingRole, before }
