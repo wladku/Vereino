@@ -331,3 +331,53 @@ export function applyConsentChanges(
   }
   return { consents: next, changed }
 }
+
+/**
+ * Whether a person holds their own consents on `today` (people life-cycle spec REQ-L10, *Own consents*): a known birth
+ * date and 18 or more. Without a birth date the club cannot tell, so the person is treated as a minor (422
+ * `consents_minor`).
+ */
+export function holdsOwnConsents(birthDate: string | null | undefined, today: CalendarDate): boolean {
+  const date = birthDate ? birthDate.slice(0, 10) : null
+  return date !== null && isCalendarDate(date) && isAdultOn(date, today)
+}
+
+/** The most recent decision among `entries` (the latest `at`), or null when none was ever made. */
+function latestDecision(entries: ReadonlyArray<StoredConsentEntry | undefined>): StoredConsentEntry | null {
+  let latest: StoredConsentEntry | null = null
+  for (const entry of entries) {
+    if (entry && (!latest || Date.parse(entry.at) > Date.parse(latest.at))) latest = entry
+  }
+  return latest
+}
+
+/** Whether each consent is given for a participant (REQ-L10). */
+export type EffectiveConsents = { readonly [kind in ConsentKind]: boolean }
+
+/**
+ * The consents that hold for a participant: an adult's own decision when they made one (`own`, null for a minor);
+ * otherwise the most recent decision among the guardianships active today (the carry-over rule of DD-L08 reads them the
+ * same way). A consent nobody decided is not given.
+ */
+export function effectiveConsents(
+  own: StoredConsents | null,
+  guardianships: readonly StoredConsents[],
+): EffectiveConsents {
+  const given = (kind: ConsentKind): boolean => {
+    const decision = own?.[kind] ?? latestDecision(guardianships.map((consents) => consents[kind]))
+    return decision?.granted ?? false
+  }
+  return { regulations: given('regulations'), image: given('image'), trips: given('trips') }
+}
+
+/**
+ * DD-L11: a consent given before the club last changed its text reads "given to an earlier wording" and stays valid.
+ * False for a consent that is not given, has no date, or whose text was never changed.
+ */
+export function givenToEarlierWording(
+  consent: { readonly granted: boolean; readonly at: string | null },
+  textChangedAt: string | null | undefined,
+): boolean {
+  if (!consent.granted || !consent.at || !textChangedAt) return false
+  return Date.parse(consent.at) < Date.parse(textChangedAt)
+}

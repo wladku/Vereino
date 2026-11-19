@@ -27,18 +27,29 @@ import { checkoutProviderKey } from '../di'
 import { amountDueOf, paidTotal, settledStatus } from '../lib/charge-ledger'
 import { refundRefusal, toGatewayAmount, type CheckoutTotals } from '../lib/checkout-rules'
 import { offeredOnlineMethods } from '../lib/online-payment'
-import { callGateway, checkedCharges, gatewayService, payerOf } from '../services/checkout'
+import {
+  callGateway,
+  checkedCharges,
+  gatewayService,
+  payerOf,
+  reconcileCheckouts,
+  type ReconcileSummary,
+} from '../services/checkout'
 import { clubClock } from '../services/directory'
 import { storedPaymentsSettings } from '../services/read'
+import { sweepChangedNothing } from '../lib/payments-rules'
 import { CHARGE_RESOURCE_KIND, PAYMENT_RESOURCE_KIND, ledgerOf } from './ledger'
 import {
   PAYMENTS_WRITE_KINDS,
+  authorizePaymentsJob,
   clubTarget,
   emitAfterCommit,
   inWriteTransaction,
+  paymentsJobLog,
   paymentsLog,
   trustedTenantId,
   type PaymentsCommandResult,
+  type PaymentsJobScope,
 } from './shared'
 
 export const CHECKOUT_RESOURCE_KIND = 'payments.checkout'
@@ -338,5 +349,40 @@ const refundPaymentCommand: CommandHandler<Record<string, unknown>, RefundComman
     }),
 }
 
+// --- payments.checkouts.reconcile (the `payments:reconcile-checkouts` job; DD-42, payments parity spec DD-C08) ---
+
+export type ReconcileJobResult = { job: PaymentsJobScope; summary: ReconcileSummary }
+
+/** The counts of a sweep run that change or fail something (`checked` only counts what was looked at). */
+function changedCounts({ completed, failed, expired, errors }: ReconcileSummary) {
+  return { completed, failed, expired, errors }
+}
+
+/**
+ * `payments.checkouts.reconcile`: one run of the DD-42 sweep for the club — late captures are booked, `created`
+ * checkouts older than 24 hours expire — the service the operator command `payments reconcile-checkouts` calls too.
+ * Every 15 minutes from the scheduler (#301); idempotent, because each checkout is fulfilled at most once.
+ */
+const reconcileCheckoutsCommand: CommandHandler<Record<string, unknown>, ReconcileJobResult> = {
+  id: 'payments.checkouts.reconcile',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const job = await authorizePaymentsJob(ctx, 'payments.checkouts.reconcile', rawInput)
+    const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
+    return { job, summary: await reconcileCheckouts(ctx.container, scope, job.now) }
+  },
+  // A run that changed nothing leaves no audit entry: every 15 minutes per club would be ~96 empty entries a day (#405).
+  buildLog: ({ result }) =>
+    sweepChangedNothing(changedCounts(result.summary))
+      ? null
+      : paymentsJobLog({
+          job: result.job,
+          labelKey: 'payments.audit.jobs.reconcileCheckouts',
+          fallback: 'Reconcile unfinished online payments',
+          context: { ...result.summary },
+        }),
+}
+
 registerCommand(createCheckoutCommand)
 registerCommand(refundPaymentCommand)
+registerCommand(reconcileCheckoutsCommand)

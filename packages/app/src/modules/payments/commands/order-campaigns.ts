@@ -26,6 +26,7 @@ import {
 } from '../data/validators'
 import type { OrderReminderParams } from '../emails/templates'
 import type { PaymentsErrorCode } from '../lib/error-codes'
+import { sweepChangedNothing } from '../lib/payments-rules'
 import {
   campaignDateErrors,
   isCampaignEditable,
@@ -36,17 +37,20 @@ import {
   type ProductKind,
 } from '../lib/order-campaigns'
 import { activeGuardians, clubClock, findGroups, findSections, type PaymentsScope } from '../services/directory'
-import { campaignMissing, campaignProducts, usedProductIds } from '../services/order-campaigns'
+import { campaignMissing, campaignProducts, closeOrderCampaigns, usedProductIds } from '../services/order-campaigns'
 import {
   PAYMENTS_WRITE_KINDS,
+  authorizePaymentsJob,
   clubTarget,
   emitAfterCommit,
   emitPaymentsSideEffects,
   inWriteTransaction,
   paymentsEvents,
+  paymentsJobLog,
   paymentsLog,
   trustedTenantId,
   type PaymentsCommandResult,
+  type PaymentsJobScope,
 } from './shared'
 
 export const ORDER_CAMPAIGN_RESOURCE_KIND = 'payments.order_campaign'
@@ -561,7 +565,38 @@ const remindCampaignCommand: CommandHandler<Record<string, unknown>, OrderCampai
     }),
 }
 
+// --- payments.order_campaigns.close_due (the `payments:close-order-campaigns` job; payments parity spec DD-C08) ---
+
+export type CloseDueCampaignsResult = { job: PaymentsJobScope; closed: string[] }
+
+/**
+ * `payments.order_campaigns.close_due`: the club's `open` campaigns past their orders deadline become `closed` — the
+ * service the operator command `payments close-order-campaigns` calls too. Every 15 minutes from the scheduler
+ * (#301); the status condition in the UPDATE makes a repeated run change nothing.
+ */
+const closeDueCampaignsCommand: CommandHandler<Record<string, unknown>, CloseDueCampaignsResult> = {
+  id: 'payments.order_campaigns.close_due',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const job = await authorizePaymentsJob(ctx, 'payments.order_campaigns.close_due', rawInput)
+    const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
+    const { closed } = await closeOrderCampaigns(ctx.container, scope, job.now)
+    return { job, closed }
+  },
+  // A run that closed nothing leaves no audit entry (#405), as `payments.checkouts.reconcile` does.
+  buildLog: ({ result }) =>
+    sweepChangedNothing({ closed: result.closed.length })
+      ? null
+      : paymentsJobLog({
+          job: result.job,
+          labelKey: 'payments.audit.jobs.closeOrderCampaigns',
+          fallback: 'Close the order campaigns past their deadline',
+          context: { closed: result.closed.length, campaignIds: result.closed },
+        }),
+}
+
 registerCommand(createCampaignCommand)
 registerCommand(updateCampaignCommand)
 registerCommand(transitionCampaignCommand)
 registerCommand(remindCampaignCommand)
+registerCommand(closeDueCampaignsCommand)

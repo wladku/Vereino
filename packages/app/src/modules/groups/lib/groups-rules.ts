@@ -2,6 +2,7 @@
 // group kinds and membership roles, the team-only fields, membership periods and the season dates. Time is a
 // parameter (engineering standards S3.5); nothing here reads the database.
 import {
+  addCalendarDays,
   endsBefore,
   isActiveAt,
   isInvertedPeriod,
@@ -144,6 +145,15 @@ export function rosterRoleRank(role: string): number {
 }
 
 /**
+ * `case <alias>.role when 'coach' then 0 … else 3 end`: `rosterRoleRank` as the SQL sort key of `sortField=roster`
+ * (`services/roster-list.ts`), built from the same `ROSTER_ROLE_ORDER`, so the server and `rosterRoleOrder` agree.
+ */
+export function rosterRoleRankSql(alias: string): string {
+  const cases = ROSTER_ROLE_ORDER.map((role) => `when '${role}' then ${String(rosterRoleRank(role))}`).join(' ')
+  return `case ${alias}.role ${cases} else ${String(ROSTER_ROLE_ORDER.length)} end`
+}
+
+/**
  * The roster order of `sortField=roster` (REQ-A03): by role (coaches first), then the latest start first, then the id
  * for a stable page boundary. The server orders the same way in SQL; this is its reference. Returns a new array.
  */
@@ -188,6 +198,43 @@ export function membershipActions(status: PeriodStatus): MembershipAction[] {
  */
 export function endRefused(period: { validFrom: CalendarDate }, validTo: CalendarDate, today: CalendarDate): boolean {
   return period.validFrom > today || validTo < period.validFrom
+}
+
+export type MovePlan =
+  | { ok: true; lastDay: CalendarDate; next: { validFrom: CalendarDate; validTo: CalendarDate | null } }
+  | { ok: false; problem: 'same_group' | 'not_started' | 'not_active_on_date' }
+
+/**
+ * A group move (people life-cycle spec *Domain Vocabulary* → Group move, REQ-L11, DD-L15; #312): the membership ends
+ * the day before `date` (REQ-A03's end on a chosen last day, so it must have started and `date` must lie after its
+ * first day) and a membership of the same role starts in the target group on `date`, keeping a planned last day. A
+ * membership already over before `date` has nothing to move; the target must be another group.
+ */
+export function planMove(
+  membership: { groupId: string; validFrom: CalendarDate; validTo: CalendarDate | null },
+  move: { toGroupId: string; date: CalendarDate },
+  today: CalendarDate,
+): MovePlan {
+  if (move.toGroupId === membership.groupId) return { ok: false, problem: 'same_group' }
+  const lastDay = addCalendarDays(move.date, -1)
+  if (endRefused(membership, lastDay, today)) return { ok: false, problem: 'not_started' }
+  if (membership.validTo !== null && membership.validTo < move.date) return { ok: false, problem: 'not_active_on_date' }
+  return { ok: true, lastDay, next: { validFrom: move.date, validTo: membership.validTo } }
+}
+
+/**
+ * The first-day field of the roster's Move dialog (spec L *Roster: moving children*): never in the past and after the
+ * membership's first day; the 1st of the next month by default, or the earliest allowed day when that is later.
+ */
+export function moveDateBounds(
+  today: CalendarDate,
+  validFrom: CalendarDate | null,
+): { min: CalendarDate; initial: CalendarDate } {
+  const afterStart = validFrom ? addCalendarDays(validFrom, 1) : today
+  const min = afterStart > today ? afterStart : today
+  const [year, month] = today.split('-').map(Number)
+  const next = month === 12 ? `${String(year + 1)}-01-01` : `${String(year)}-${String(month + 1).padStart(2, '0')}-01`
+  return { min, initial: next > min ? next : min }
 }
 
 /**

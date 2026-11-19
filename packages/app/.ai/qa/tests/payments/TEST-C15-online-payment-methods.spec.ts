@@ -23,10 +23,13 @@ test.describe.configure({ timeout: 300_000 })
 
 const SETTINGS_KEYS = [
   'autoBookBankMatches',
+  'autoGenerateCharges',
   'coachFeeAccess',
+  'generationDay',
   'onlineConnection',
   'onlineFeeMode',
   'onlineMethods',
+  'overdueReminders',
   'updatedAt',
 ]
 

@@ -50,6 +50,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'rulesUrl'
     | 'privacyPolicyUrl'
     | 'publication'
+    | 'consentTexts'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -140,6 +141,13 @@ export class ClubSettings extends ScopedEntityBase {
   /** The URL of the club's privacy policy, linked in the public page footer when set (#195). */
   @Property({ name: 'privacy_policy_url', type: 'text', nullable: true })
   privacyPolicyUrl?: string | null
+
+  /**
+   * The club's consent texts (DD-39; people life-cycle spec REQ-L10, DD-L11; #309): `{ <key>: { text, changedAt } }`
+   * for the keys of `lib/consent-texts.ts`; a missing key uses the built-in text. Read through `parseConsentTexts`.
+   */
+  @Property({ name: 'consent_texts', type: 'json', defaultRaw: `'{}'::jsonb` })
+  consentTexts: Record<string, unknown> = {}
 
   /** `{ enabled, blocks }` (glossary *Publication*); everything off by default, read through `lib/publication.ts`. */
   @Property({
@@ -479,7 +487,7 @@ export class Institution extends ScopedEntityBase {
 @Index({ name: 'club_core_contracts_party_idx', properties: ['organizationId', 'partyType', 'partyId', 'kind'] })
 @Index({ name: 'club_core_contracts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Contract extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'terms'
+  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'terms' | 'attachmentId'
 
   /** `person` | `institution`. */
   @Property({ name: 'party_type', type: 'text' })
@@ -501,4 +509,12 @@ export class Contract extends ScopedEntityBase {
   /** Encrypted JSON text of the terms; a coach contract holds its rates in grosz (`lib/contracts.ts`). */
   @Property({ name: 'terms', type: 'text', nullable: true })
   terms?: string | null
+
+  /**
+   * The signed contract as one PDF in the private `attachments` partition (people life-cycle spec *Data Models*,
+   * REQ-L12; #312): up to 10 MB; a second upload replaces the first; read through
+   * `GET /api/club_core/contracts/{id}/attachment` with `club_core.contracts.manage`.
+   */
+  @Property({ name: 'attachment_id', type: 'uuid', nullable: true })
+  attachmentId?: string | null
 }

@@ -1001,6 +1001,13 @@
   "facilities.dashboard.requests.expiry": "Wygasa za {time}",
   "facilities.dashboard.requests.more": "i {count} więcej",
   "facilities.dashboard.requests.noSettings": "Ten widżet nie ma ustawień.",
+  "facilities.dashboard.todayAtFacility.title": "Dziś na obiekcie",
+  "facilities.dashboard.todayAtFacility.description": "Dzisiejsze treningi, wynajmy, zgłoszenia, rezerwacje, zamknięcia i konserwacje na miejscach klubu.",
+  "facilities.dashboard.today.open": "Otwórz kalendarz",
+  "facilities.dashboard.today.empty": "Nic nie zaplanowano",
+  "facilities.dashboard.today.error": "Nie udało się wczytać dzisiejszych wpisów.",
+  "facilities.dashboard.today.more": "i {count} więcej",
+  "facilities.dashboard.today.noSettings": "Ten widżet nie ma ustawień.",
   "facilities.errors.maintenance_scheduled": "W tym czasie w tym miejscu zaplanowano prace konserwacyjne. Wybierz inny termin.",
   "facilities.errors.maintenance_window_invalid": "Podaj początek i koniec; koniec musi być po początku.",
   "facilities.errors.maintenance_schedule_invalid": "Podaj okno czasowe lub termin; zadanie cykliczne wymaga terminu i odstępu powtórzeń.",
@@ -1367,5 +1374,6 @@
   "facilities.reports.owner.ownerClub": "Właściciel: klub",
   "facilities.reports.owner.paymentsSource.charges": "Źródło: należności wynajmów ({count} opłaconych)",
   "facilities.reports.owner.paymentsSource.mixed": "Źródło: należności wynajmów i rejestr wynajmów ({count} wynajmów)",
-  "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą"
+  "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą",
+  "facilities.nav.badge.waiting": "{count} oczekuje"
 }

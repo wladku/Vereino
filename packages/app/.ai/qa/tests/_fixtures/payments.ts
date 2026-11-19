@@ -244,12 +244,43 @@ export async function myPaymentsSummary(request: APIRequestContext, token: strin
 }
 
 export type PaymentsDashboardResult = CodedBody & {
-  overdue?: { total: number; charges: number; families: number }
-  withoutPayer?: { charges: number }
+  overdue?: { total: number; charges: number; families: number; withoutPayer: number }
+  withoutPayer?: {
+    charges: number
+    items: {
+      id: string
+      description: string
+      period: string | null
+      person: { firstName: string; lastName: string } | null
+    }[]
+    more: number
+  }
+  toRefund?: { count: number }
+  bank?: { toDecide: number }
+  campaigns?: {
+    id: string
+    name: string
+    status: string
+    orders: number
+    children: number
+    paid: number
+    value: number
+  }[]
+  campaignsRunning?: number
 }
 
 export async function paymentsDashboard(request: APIRequestContext, token: string) {
   return call<PaymentsDashboardResult>(request, 'GET', '/api/payments/dashboard', token)
+}
+
+/** `GET /api/payments/dashboard?only=counts` — spec N's menu counts (#297). */
+export async function paymentsDashboardCounts(request: APIRequestContext, token: string, only = 'counts') {
+  return call<CodedBody & Pick<PaymentsDashboardResult, 'bank' | 'campaignsRunning'>>(
+    request,
+    'GET',
+    `/api/payments/dashboard?only=${encodeURIComponent(only)}`,
+    token,
+  )
 }
 
 export async function myCharges(request: APIRequestContext, token: string) {

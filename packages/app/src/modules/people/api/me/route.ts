@@ -4,7 +4,9 @@
 // resolved interface locale (DD-34) and whether the payments tile may be shown (R10); E06-S22 (#104) adds the wards'
 // age, the consent authors' names and the member's own active guardians with their consents. 404 `person_not_linked` when the
 // account is linked to no person (the UI says "Account not linked to a person — contact the club"). The scope comes
-// only from the session: no id in the path or the body names the person.
+// only from the session: no id in the path or the body names the person. #309 (people life-cycle spec REQ-L10) adds an
+// adult's own consents (`ownConsents`, null for a minor) and the club's consent texts (`consentTexts`, DD-L11). Phase L8
+// (#310) adds `wards[].notices` and the member's own `notice` before and after the 18th birthday.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -120,6 +122,16 @@ const memberProfileSchema = z.object({
         consents: memberConsentsSchema,
         updatedAt: z.string().nullable().describe('Lock token of POST /api/people/guardianships/{id}/consents'),
       }),
+      notices: z
+        .array(
+          z.discriminatedUnion('kind', [
+            z.object({ kind: z.literal('may_have_account') }),
+            z.object({ kind: z.literal('turns_18'), on: z.string() }),
+          ]),
+        )
+        .describe(
+          'Ward card lines (#310): `may_have_account` (the club account age reached without an account), `turns_18` (the 18th birthday within 30 days, on `on`)',
+        ),
     }),
   ),
   guardians: z
@@ -148,6 +160,23 @@ const memberProfileSchema = z.object({
   }),
   paymentsVisible: z.boolean().describe('False for a minor (R10) and without payments.view_own'),
   isParticipant: z.boolean().describe('An active participant membership today; false without the groups module'),
+  ownConsents: memberConsentsSchema
+    .nullable()
+    .describe(
+      "An adult's own consents (aged 18 or more, a known birth date); null for a minor. Changed through PUT /api/people/me/consents",
+    ),
+  consentTexts: z
+    .record(z.string(), z.object({ text: z.string(), changedAt: z.string() }))
+    .describe("The club's own consent texts by key; a key without an entry uses the built-in text (DD-L11)"),
+  notice: z
+    .discriminatedUnion('kind', [
+      z.object({ kind: z.literal('turns_18'), on: z.string() }),
+      z.object({ kind: z.literal('came_of_age'), on: z.string() }),
+    ])
+    .nullable()
+    .describe(
+      "The member's own card (#310): `turns_18` in the 30 days before the 18th birthday, `came_of_age` in the 30 days from it; null otherwise",
+    ),
 })
 
 export const openApi: OpenApiRouteDoc = {
@@ -157,7 +186,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read own profile, wards and consents',
       description:
-        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, the active staff roles, the acting contexts, whether the person is an active participant and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
+        "The person linked to the signed-in user in the session organization, the active wards with their age and consents (with the authors' names), the member's own active guardians with their consents, an adult's own consents, the club's consent texts, the active staff roles, the acting contexts, whether the person is an active participant and the resolved locale. 404 `person_not_linked` when the account is linked to no person.",
       responses: [{ status: 200, description: 'The member profile', schema: memberProfileSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

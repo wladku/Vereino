@@ -57,6 +57,8 @@ export class Person extends ScopedEntityBase {
     | 'externalId'
     | 'externalIdHash'
     | 'leftOn'
+    | 'consents'
+    | 'photoAttachmentId'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -121,6 +123,22 @@ export class Person extends ScopedEntityBase {
    */
   @Property({ name: 'left_on', type: 'date', nullable: true })
   leftOn?: string | null
+
+  /**
+   * An adult participant's own consents (people life-cycle spec REQ-L10, DD-L12; #309): `StoredConsents`
+   * (`lib/people-rules.ts`), the shape of the guardianship's, written only through the P-08 transitions of
+   * `people.persons.set_own_consents` and only for a person aged 18 or more. Personal data, not encrypted (as on the
+   * guardianship).
+   */
+  @Property({ name: 'consents', type: 'json', defaultRaw: `'{}'::jsonb` })
+  consents: StoredConsents = {}
+
+  /**
+   * The person's photo in the private `attachments` partition (people life-cycle spec *Data Models*, REQ-L12; #312):
+   * PNG, JPEG or WebP up to 5 MB, byte-checked; read only through `GET /api/people/persons/{id}/photo`.
+   */
+  @Property({ name: 'photo_attachment_id', type: 'uuid', nullable: true })
+  photoAttachmentId?: string | null
 }
 
 /**

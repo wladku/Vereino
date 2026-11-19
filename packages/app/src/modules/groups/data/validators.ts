@@ -106,6 +106,18 @@ export const membershipEndSchema = z
   })
   .strict()
 
+/**
+ * Moves a membership to another group from `date` (people life-cycle spec REQ-L11, `groups.memberships.move`; #312):
+ * `id` is the moved membership, the route's `membershipId`.
+ */
+export const membershipMoveSchema = z
+  .object({
+    id: z.uuid(),
+    toGroupId: z.uuid(),
+    date: calendarDateSchema,
+  })
+  .strict()
+
 /** Removes a membership entered by mistake (`?id=`, parity spec REQ-A03). */
 export const membershipDeleteSchema = z.object({ id: z.uuid() }).strict()
 

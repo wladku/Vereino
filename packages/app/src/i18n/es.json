@@ -1180,6 +1180,10 @@
   "vector.api.errors.reindexFailed": "Reindexación vectorial fallida",
   "vector.api.errors.searchFailed": "Búsqueda vectorial fallida",
   "vector.api.errors.updateFailed": "No se pudieron actualizar la configuración vectorial.",
+  "vereino.backend.memberInterface": "Member interface",
+  "vereino.dashboard.greeting": "Hello, {name}",
+  "vereino.dashboard.greetingNoName": "Hello",
+  "vereino.dashboard.subtitle": "{date} · what needs action today",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

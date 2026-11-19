@@ -9,6 +9,7 @@ import {
   type CoachTermField,
   type FacilityTermField,
 } from '../lib/contracts'
+import { CONSENT_TEXT_KEYS } from '../lib/consent-texts'
 import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
 import { PLACE_FILE_KINDS } from '../lib/files'
 import { publicLinkUrlSchema, publicSlugSchema, publicationPatchSchema } from '../lib/publication'
@@ -66,6 +67,9 @@ export const clubSettingsUpdateSchema = clubSettingsPatchSchema
     rulesUrl: nullableLink.optional(),
     privacyPolicyUrl: nullableLink.optional(),
     publication: publicationPatchSchema.optional(),
+    // The club's consent texts (#309): an empty string restores the built-in text; the 1000-character limit is a
+    // 422 business error of the command, so the cap here only bounds the request.
+    consentTexts: z.partialRecord(z.enum(CONSENT_TEXT_KEYS), z.string().max(20_000)).optional(),
   })
   .strict()
 

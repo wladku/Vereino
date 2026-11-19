@@ -9,7 +9,8 @@ import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
-import { trustedScopeOf } from '@/modules/foundation'
+import { authorizeScoped, trustedScopeOf } from '@/modules/foundation'
+import { paymentsJobSchema } from '../data/validators'
 import { emitPaymentsEvent, type PaymentsEventId } from '../events'
 
 /** Every `payments` write of phase 4 step 2: the club administrator (the treasurer role is held back, D-030). */
@@ -171,4 +172,66 @@ export async function undoRestore<TEntity extends ScopedRow, TSnapshot>(
   row.updatedAt = new Date()
   await ctx.transactionalEm?.flush()
   await emitPaymentsSideEffects(ctx, row, action, events, true)
+}
+
+/** The resource kind of the scheduled `payments` jobs, whose target is the club itself (payments parity spec DD-C08). */
+export const PAYMENTS_ORGANIZATION_RESOURCE_KIND = 'payments.organization'
+
+export type PaymentsJobScope = {
+  tenantId: string
+  organizationId: string
+  actingRole: ActingRole
+  /** The run's clock: `now` from the operator CLI (`--now`) or the integration tests; a worker never sets it. */
+  now: Date
+}
+
+/**
+ * Authorizes a scheduled `payments` job (payments parity spec DD-C08, #301): only a session-less job context
+ * (`jobCommandContext`, grant `system_job`) for the organization it was registered for. Its own short transaction;
+ * the job's work runs afterwards in its own transactions.
+ */
+export async function authorizePaymentsJob(
+  ctx: CommandRuntimeContext,
+  label: string,
+  rawInput: unknown,
+): Promise<PaymentsJobScope> {
+  const authorized = await inWriteTransaction(ctx, label, (em) =>
+    authorizeScoped(
+      {
+        input: paymentsJobSchema,
+        resourceKind: PAYMENTS_ORGANIZATION_RESOURCE_KIND,
+        allowedKinds: ['system_job'],
+        resolveTarget: (_parsed, _entity, scope) => ({ id: scope.organizationId, ...scope }),
+        lock: 'none',
+        scopeSource: { job: true },
+      },
+      rawInput,
+      ctx,
+      em,
+    ),
+  )
+  return {
+    tenantId: authorized.tenantId,
+    organizationId: authorized.organizationId,
+    actingRole: authorized.actingRole,
+    now: authorized.parsed.now ? new Date(authorized.parsed.now) : new Date(),
+  }
+}
+
+/** The audit entry of a scheduled job: the club as the resource, the run's counts as its context. */
+export async function paymentsJobLog(args: {
+  job: PaymentsJobScope
+  labelKey: string
+  fallback: string
+  context: Record<string, unknown>
+}) {
+  const { translate } = await resolveTranslations()
+  return {
+    actionLabel: translate(args.labelKey, args.fallback),
+    resourceKind: PAYMENTS_ORGANIZATION_RESOURCE_KIND,
+    resourceId: args.job.organizationId,
+    tenantId: args.job.tenantId,
+    organizationId: args.job.organizationId,
+    context: { ...args.context, now: args.job.now.toISOString(), actingRole: args.job.actingRole },
+  }
 }

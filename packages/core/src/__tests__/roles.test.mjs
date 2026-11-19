@@ -39,6 +39,7 @@ test('the catalogue holds the five phase 1 roles (Q17), the facility attendant a
     'facilities.rentals.manage',
     'facilities.log.write',
     'facilities.incidents.manage',
+    'dashboards.view',
   ])
   assert.equal(roleCatalogue.facility_operator.requiresScope, 'place')
   assert.ok(!roleCatalogue.facility_operator.features.includes('facilities.rentals.approve'))
@@ -56,7 +57,11 @@ test('catalogueRoleFeatures returns copies keyed by auth role', () => {
   assert.deepEqual(features.vereino_member, ['people.self', 'activities.attendance.declare', 'communication.view'])
   assert.ok(features.vereino_club_admin.includes('people.*'))
   assert.ok(features.vereino_club_admin.includes('dashboards.view'))
-  assert.ok(!features.vereino_coordinator.includes('dashboards.view'))
+  // Q-N03 (navigation spec REQ-N04, #260): the coordinator and the attendant open the dashboard; a coach does not.
+  assert.ok(features.vereino_coordinator.includes('dashboards.view'))
+  assert.ok(features.vereino_facility_operator.includes('dashboards.view'))
+  assert.ok(!features.vereino_coach.includes('dashboards.view'))
+  assert.ok(!features.vereino_member.includes('dashboards.view'))
   assert.ok(features.vereino_club_admin.includes('dictionaries.*'))
   assert.equal(
     features.vereino_coordinator.some((feature) => feature.startsWith('dictionaries.')),

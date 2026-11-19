@@ -58,6 +58,17 @@ export function checkPlaceFile(bytes: Uint8Array, kind: PlaceFileKind) {
     : checkFileBytes(bytes, ['pdf'], PLACE_REGULATIONS_MAX_BYTES)
 }
 
+/** Attachment owner (the contract) and assignment of a contract's signed PDF (people life-cycle spec REQ-L12; #312). */
+export const CONTRACT_ATTACHMENT_OWNER_ENTITY = 'club_core:contract'
+export const CONTRACT_ATTACHMENT_ASSIGNMENT = 'club_core:contract_attachment'
+/** 10 MB, like a section material (spec L *Data Models* → `club_core_contracts.attachment_id`). */
+export const CONTRACT_ATTACHMENT_MAX_BYTES = MATERIAL_MAX_BYTES
+
+/** A contract attachment upload: one PDF up to 10 MB. */
+export function checkContractAttachment(bytes: Uint8Array) {
+  return checkFileBytes(bytes, ['pdf'], CONTRACT_ATTACHMENT_MAX_BYTES)
+}
+
 /** The position of the next photo: one after the highest live position, 0 for the first photo. */
 export function nextPhotoPosition(positions: readonly number[]): number {
   return positions.length === 0 ? 0 : Math.max(...positions) + 1

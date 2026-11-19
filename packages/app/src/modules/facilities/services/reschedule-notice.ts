@@ -5,11 +5,12 @@
 // an address, nothing (logged) when neither — and the renter of a flagged rental gets an e-mail at the rental's address.
 // The key `facilities:reschedule:<causeId>:<updatedAt ms>:<personId>` (renter: `…:<rentalId>`) is the "sent" marker,
 // so a redelivery sends nothing twice and a moved window (a new `updatedAt`) is a new cause. The messages name places,
-// times and the kind of cause; never a renter or their contact.
+// times and the kind of cause; never a renter or their contact. The reads do not grow with the flagged entries (#394):
+// one read per kind of entry, one for the coordinators of every (section, day) and one for the places.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { createLogger } from '@open-mercato/shared/lib/logger'
-import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { calendarDateInZone, type CalendarDate } from '@vereino/core'
 import { resolveMembers, type DispatchService } from '@/modules/foundation'
 import { InternalBooking, Rental } from '../data/entities'
@@ -34,7 +35,7 @@ import {
   clubAdminPersonIds,
   clubRequestSettings,
   findPlaces,
-  sectionCoordinatorIds,
+  sectionCoordinatorIdsOnDays,
   sessionsByIds,
   type FacilitiesScope,
 } from './directory'
@@ -74,11 +75,17 @@ export async function notifyRescheduleNeeded(
 
   const sessions = await flaggedSessions(ctx, flagged.sessions)
   const bookings = await flaggedBookings(ctx, flagged.bookings)
-  const rentals = await em.find(
-    Rental,
-    { ...scope, deletedAt: null, id: { $in: [...flagged.rentals] } },
-    { fields: ['id', 'placeId', 'startsAt', 'endsAt'] },
-  )
+  // One decrypting read serves the entries and the renters' e-mails (their address and language are encrypted).
+  const rentals =
+    flagged.rentals.length > 0
+      ? await findWithDecryption(
+          em,
+          Rental,
+          { ...scope, deletedAt: null, id: { $in: [...flagged.rentals] } },
+          {},
+          scope,
+        )
+      : []
   const rentalEntries: FlaggedRental[] = rentals.map((row) => ({
     kind: 'rental',
     id: row.id,
@@ -87,10 +94,9 @@ export async function notifyRescheduleNeeded(
     endsAt: row.endsAt,
     label: null,
   }))
-  const coordinators = new Map<string, readonly string[]>()
-  for (const { sectionId, date } of sectionDays(sessions, dayOf)) {
-    coordinators.set(`${sectionId}:${date}`, await sectionCoordinatorIds(container, scope, sectionId, date, em))
-  }
+  const pairs = sectionDays(sessions, dayOf)
+  const coordinators =
+    pairs.length > 0 ? await sectionCoordinatorIdsOnDays(container, scope, pairs, em) : new Map<string, string[]>()
   const admins = rentalEntries.length > 0 ? await clubAdminPersonIds(container, scope, dayOf(now), em) : []
   const notices = planRescheduleNotices({
     sessions,
@@ -110,8 +116,9 @@ export async function notifyRescheduleNeeded(
     if (await isolated(ctx, { personId: notice.personId }, () => sendNotice(ctx, notice, placeName))) people += 1
   }
   let renters = 0
-  for (const rentalId of rentals.map((row) => row.id)) {
-    if (await isolated(ctx, { rentalId }, () => sendRenterMail(ctx, rentalId, placeName, settings.locale))) renters += 1
+  for (const rental of rentals) {
+    const send = () => sendRenterMail(ctx, rental, placeName, settings.locale)
+    if (await isolated(ctx, { rentalId: rental.id }, send)) renters += 1
   }
   return { people, renters }
 }
@@ -227,20 +234,13 @@ async function sendNotice(
 /** The renter's e-mail at the rental's address, in its language; nothing (logged) without an address. */
 async function sendRenterMail(
   ctx: Context,
-  rentalId: string,
+  row: Rental,
   placeName: (placeId: string) => string,
   clubLocale: string,
 ): Promise<boolean> {
-  const row = await findOneWithDecryption(
-    ctx.em,
-    Rental,
-    { id: rentalId, ...ctx.scope, deletedAt: null },
-    {},
-    ctx.scope,
-  )
-  if (!row?.contactEmail) {
+  if (!row.contactEmail) {
     logger.info('Reschedule e-mail to the renter not sent: the rental has no address', {
-      rentalId,
+      rentalId: row.id,
       causeId: ctx.cause.id,
     })
     return false

@@ -24,8 +24,9 @@ export const CLOSURES_HREF = '/backend/facilities/closures'
 export const RATES_HREF = '/backend/facilities/rates'
 export const RENTALS_HREF = '/backend/facilities/rentals'
 
-/** The calendar of one place on today (the calendar opens on today when the address names no day). */
-export const placeCalendarHref = (placeId: string) => `${CALENDAR_HREF}?place=${encodeURIComponent(placeId)}`
+/** The calendar of one place on a day; on today when the address names no day. */
+export const placeCalendarHref = (placeId: string, date?: string) =>
+  `${CALENDAR_HREF}?place=${encodeURIComponent(placeId)}${date ? `&date=${encodeURIComponent(date)}` : ''}`
 
 export const editHref = (base: string, id: string) => `${base}/${encodeURIComponent(id)}/edit`
 

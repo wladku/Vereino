@@ -2,7 +2,7 @@
 // discount, Charge; REQ-011, REQ-018; issue #108): the fee periods, the discount kinds and their conditions, the
 // "Coaches and payments" setting, the charge statuses and the billing period `YYYY-MM`. Time is a parameter
 // (engineering standards S3.5); nothing here reads the database.
-import { periodsOverlap, type CalendarDate } from '@vereino/core'
+import { calendarDaysBetween, periodsOverlap, type CalendarDate } from '@vereino/core'
 
 /** `monthly` (one charge per month), `one_off` (one charge in all, e.g. a camp) or `per_occurrence` (per session). */
 export const FEE_PERIODS = ['monthly', 'one_off', 'per_occurrence'] as const
@@ -179,4 +179,119 @@ export function countSessions(
       session.status !== 'cancelled' &&
       (target.activityId ? session.activityId === target.activityId : session.groupId === target.groupId),
   ).length
+}
+
+// --- Scheduled generation and overdue reminders (payments parity spec DD-C08, DD-C09; REQ-C13; #301) ---
+
+/** The club's generation day: 1–28, so it exists in every month (B-20 "Automatic charges and reminders"). */
+export const MIN_GENERATION_DAY = 1
+export const MAX_GENERATION_DAY = 28
+
+/** Days between two overdue reminders of one charge, and how many it gets at most (DD-C09, Q-C06). */
+export const REMINDER_INTERVAL_DAYS = 7
+export const MAX_REMINDERS = 4
+
+/**
+ * The first month the daily job generates: the month after the one in which migration B was applied, in the club's
+ * calendar (owner's amendment of Q-C07, DD-C08) — the deploy month is never caught up mid-month.
+ */
+export function firstAutomaticPeriod(migrationAppliedOn: CalendarDate): string {
+  return shiftPeriod(periodOfDate(migrationAppliedOn), 1)
+}
+
+export type GenerationSkipReason =
+  'switched_off' | 'boundary_unknown' | 'before_first_month' | 'before_day' | 'generated'
+
+export type GenerationDecision =
+  { due: true; period: string } | { due: false; period: string; reason: GenerationSkipReason }
+
+/**
+ * Whether the daily job generates the current month today (DD-C08): the switch is on, migration B's day is known, the
+ * month is not earlier than the first automatic month, today is on or after the generation day and the month has no
+ * generation yet — an undone one counts, so an undone month is never regenerated automatically.
+ */
+export function generationDue(input: {
+  today: CalendarDate
+  autoGenerate: boolean
+  generationDay: number
+  migrationAppliedOn: CalendarDate | null
+  monthGenerated: boolean
+}): GenerationDecision {
+  const period = periodOfDate(input.today)
+  const skip = (reason: GenerationSkipReason): GenerationDecision => ({ due: false, period, reason })
+  if (!input.autoGenerate) return skip('switched_off')
+  if (!input.migrationAppliedOn) return skip('boundary_unknown')
+  if (period < firstAutomaticPeriod(input.migrationAppliedOn)) return skip('before_first_month')
+  if (Number(input.today.slice(8, 10)) < input.generationDay) return skip('before_day')
+  if (input.monthGenerated) return skip('generated')
+  return { due: true, period }
+}
+
+/**
+ * Whether a charge's payer is reminded of it today (DD-C09): past its due date in the club's calendar, fewer than four
+ * reminders so far, and either none yet (the day after the due date at the earliest) or seven days since the last one.
+ * The status, payer and source checks belong to the query.
+ */
+export function reminderDue(
+  charge: { dueDate: CalendarDate; reminderCount: number; lastRemindedOn: CalendarDate | null },
+  today: CalendarDate,
+): boolean {
+  if (charge.reminderCount >= MAX_REMINDERS || today <= charge.dueDate) return false
+  if (charge.reminderCount === 0 || !charge.lastRemindedOn) return true
+  return calendarDaysBetween(charge.lastRemindedOn, today) >= REMINDER_INTERVAL_DAYS
+}
+
+/** A charge as the overdue reminder job reads it: its ledger state, its payer and its reminder marker. */
+export type ReminderCandidate = {
+  id: string
+  sourceType: ChargeSourceType
+  status: ChargeStatus
+  payerPersonId: string | null
+  dueDate: CalendarDate
+  remaining: number
+  reminderCount: number
+  lastRemindedOn: CalendarDate | null
+}
+
+/**
+ * The reminders the job sends today, one per payer (DD-C09): a payer is reminded when at least one of their charges is
+ * due a reminder (`reminderDue`), and the message lists every overdue charge of theirs that is still below the cap —
+ * so all listed charges share one 7-day cadence afterwards. Rental charges (paid to the facility owner) and charges
+ * without a payer are never reminded; a charge is overdue while `open` or `partially_paid` with something remaining
+ * after its due date. Payers in id order, charges by due date, then id.
+ */
+export function reminderBatches(
+  charges: readonly ReminderCandidate[],
+  today: CalendarDate,
+): Map<string, ReminderCandidate[]> {
+  const byPayer = new Map<string, ReminderCandidate[]>()
+  for (const charge of charges) {
+    const overdue =
+      charge.sourceType !== 'rental' &&
+      (charge.status === 'open' || charge.status === 'partially_paid') &&
+      charge.remaining > 0 &&
+      charge.reminderCount < MAX_REMINDERS &&
+      today > charge.dueDate
+    if (!overdue || !charge.payerPersonId) continue
+    byPayer.set(charge.payerPersonId, [...(byPayer.get(charge.payerPersonId) ?? []), charge])
+  }
+  const batches = new Map<string, ReminderCandidate[]>()
+  for (const payer of [...byPayer.keys()].sort()) {
+    const listed = byPayer.get(payer) as ReminderCandidate[]
+    if (!listed.some((charge) => reminderDue(charge, today))) continue
+    batches.set(
+      payer,
+      [...listed].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id)),
+    )
+  }
+  return batches
+}
+
+/**
+ * Whether a run of a 15-minute sweep (`payments.checkouts.reconcile`, `payments.order_campaigns.close_due`) changed
+ * nothing: every count it reports is zero. Such a run writes no audit entry (#405), so a quiet club is not flooded
+ * with ~192 empty entries a day; a run that changed or failed anything is still audited.
+ */
+export function sweepChangedNothing(counts: Record<string, number>): boolean {
+  return Object.values(counts).every((count) => count === 0)
 }

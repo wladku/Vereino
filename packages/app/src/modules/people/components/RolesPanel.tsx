@@ -4,7 +4,8 @@
 // assigns a role (a coordinator with the section picker, a facility attendant with the place picker, #126) with an
 // optional end date, edits an assignment's period and scope ("Edit") and ends it on a chosen day ("End on…"; people
 // life-cycle spec REQ-L12, #304) through the existing role-assignment routes. A second assignment of the same role and
-// section (or place) in an overlapping period is refused by the server (409), an inverted period with 422.
+// section (or place) in an overlapping period is refused by the server (409), an inverted period with 422. The tab
+// starts with the "Staff setup" checklist (people life-cycle spec REQ-L09, #312).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
@@ -18,7 +19,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorMessage, periodLabel, periodStatus, type RoleAssignmentRow } from './client-helpers'
+import { errorMessage, periodLabel, periodStatus, type PersonAccount, type RoleAssignmentRow } from './client-helpers'
 import {
   PickerEmptyHint,
   browserFocusTarget,
@@ -29,6 +30,7 @@ import {
 } from '@vereino/ui'
 import { useGrantedFeatures } from './useGrantedFeatures'
 import { RoleAssignmentDialog, type RoleAssignmentDialogMode } from './RoleAssignmentDialog'
+import { StaffSetupChecklist } from './StaffSetupChecklist'
 
 const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
 
@@ -66,10 +68,19 @@ async function loadPlaces(search: string): Promise<LookupSelectItem[]> {
 export function RolesPanel({
   personId,
   canManage,
+  account = null,
+  canManageAccount = false,
+  onOpenAccount,
   onOpenGuardianship,
 }: {
   personId: string
   canManage: boolean
+  /** The person's account state for the "Staff setup" checklist (REQ-L09, #312). */
+  account?: PersonAccount | null
+  /** `people.accounts.manage` on a full read: the checklist's Account action. */
+  canManageAccount?: boolean
+  /** Opens the record's "Account" tab (the checklist's Account action). */
+  onOpenAccount?: () => void
   /** Opens the record's "Guardianship and consents" tab: a parent is a guardianship there, not a staff role. */
   onOpenGuardianship?: () => void
 }) {
@@ -177,11 +188,26 @@ export function RolesPanel({
 
   const rows = query.data?.rows ?? []
   const needsSection = role === 'coordinator'
+  // The checklist's Role action (REQ-L09): the assign form starts with the coach role and takes the focus.
+  const assignCoachRole = () => {
+    setRole('coach')
+    document.getElementById('people-role')?.focus()
+  }
   const needsPlace = role === 'facility_operator'
 
   return (
     <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-label={t('people.roles.title')}>
       <SectionHeader title={t('people.roles.title')} count={rows.length} />
+      <StaffSetupChecklist
+        personId={personId}
+        account={account}
+        roles={rows}
+        today={today}
+        canManageAccount={canManageAccount}
+        canManageRoles={canManage}
+        onOpenAccount={onOpenAccount}
+        onAssignCoachRole={assignCoachRole}
+      />
       {query.isLoading ? <LoadingMessage label={t('people.common.loading')} /> : null}
       {query.error ? <ErrorMessage label={errorMessage(query.error, t('people.roles.errors.load'))} /> : null}
       {query.isSuccess && rows.length === 0 ? (

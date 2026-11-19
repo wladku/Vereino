@@ -1,7 +1,7 @@
 // `/api/payments/settings` — the club's payment settings (payments spec API table; R07, DD-32; B-20 "Coaches and
-// payments"; issue #108; the "Online payment" group of #302, REQ-C14, DD-C11): the read returns the defaults until the
-// first change, with the read-only connection mode and online fee mode; the write is the `payments.settings.update`
-// command of the club administrator.
+// payments"; issue #108; "Automatic charges and reminders" since #301; the "Online payment" group of #302, REQ-C14,
+// DD-C11): the read returns the defaults until the first change, with the read-only connection mode and online fee
+// mode; the write is the `payments.settings.update` command of the club administrator.
 import type { AwilixContainer } from 'awilix'
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -40,6 +40,9 @@ async function view(container: AwilixContainer, scope: PaymentsScope, row: Payme
     onlineMethods: offeredOnlineMethods(row?.onlineMethods),
     onlineConnection: connection,
     onlineFeeMode: fee?.onlineFeeMode ?? null,
+    autoGenerateCharges: row?.autoGenerateCharges ?? true,
+    generationDay: row?.generationDay ?? 1,
+    overdueReminders: row?.overdueReminders ?? true,
     updatedAt: row ? row.updatedAt.toISOString() : null,
   }
 }
@@ -83,6 +86,11 @@ const settingsResponseSchema = z.object({
     .enum(['club_pays', 'payer_pays'])
     .nullable()
     .describe('Read-only: the online fee mode, set in club settings; null when it cannot be read'),
+  autoGenerateCharges: z
+    .boolean()
+    .describe('"Automatic charges and reminders": the daily job generates the month on `generationDay` (default true)'),
+  generationDay: z.number().int().min(1).max(28).describe('The day of the month (1–28) the month is generated from'),
+  overdueReminders: z.boolean().describe('The daily job reminds payers of overdue charges (default true)'),
   updatedAt: z.string().nullable().describe('The lock token; null until the first change'),
 })
 
@@ -103,7 +111,11 @@ export const openApi: OpenApiRouteDoc = {
       requestBody: { contentType: 'application/json', schema: paymentsSettingsUpdateSchema },
       responses: [{ status: 200, description: 'Updated settings', schema: settingsResponseSchema }],
       errors: [
-        { status: 400, description: 'Invalid input, `lock_token_required`', schema: errorSchema },
+        {
+          status: 400,
+          description: 'Invalid input (e.g. a generation day outside 1–28), `lock_token_required`',
+          schema: errorSchema,
+        },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
         { status: 403, description: '`scope_denied`', schema: errorSchema },
         { status: 409, description: '`optimistic_lock_conflict`', schema: errorSchema },

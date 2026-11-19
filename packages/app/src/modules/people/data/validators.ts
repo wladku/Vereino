@@ -5,7 +5,7 @@ import { calendarDateSchema, refineValidity, validityShape } from '@/modules/fou
 import { IMPORT_FIELDS, type ImportField } from '../lib/import-mapping'
 import { IMPORT_CLASSIFICATIONS, IMPORT_DECISIONS } from '../lib/import-rules'
 import { GUARDIAN_RELATIONS, type ConsentKind } from '../lib/people-rules'
-import { PERSON_FILTER_ROLES, PERSON_LIST_VIEWS } from '../lib/person-list-filters'
+import { PERSON_ATTENTION_FILTERS, PERSON_FILTER_ROLES, PERSON_LIST_VIEWS } from '../lib/person-list-filters'
 import { MAX_AGE_YEARS } from '@vereino/core'
 
 const nameSchema = z.string().trim().min(1).max(200)
@@ -123,6 +123,17 @@ export const guardianshipEndSchema = z
   })
   .strict()
 
+/**
+ * An adult participant's change of their own consents, or the administrator's for the person `id` (people life-cycle
+ * spec REQ-L10; #309). Without `id` the target is the caller's own person; the lock token travels in the platform header.
+ */
+export const ownConsentsSchema = z
+  .object({
+    id: z.uuid().optional(),
+    changes: consentChangesSchema,
+  })
+  .strict()
+
 /** A guardian's (or the administrator's) change of the consents (club spec glossary *Consents*). */
 export const guardianshipConsentsSchema = z
   .object({
@@ -173,6 +184,14 @@ export const updateAccountSchema = z
 /** Input of the job command; `today` is accepted only from the CLI and the worker (no HTTP route). */
 export const syncRolesJobSchema = z.object({ today: calendarDateSchema.optional() }).strict()
 
+/**
+ * Input of the life-cycle job `people.persons.life_cycle` (people life-cycle spec REQ-L06, REQ-L07; #310): the club day
+ * to run as (default: today in the club zone) and `dryRun`, which counts what a run would do and changes nothing (only the audit entry of the run is written).
+ */
+export const lifeCycleJobSchema = z
+  .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
+  .strict()
+
 /** Input of the first-administrator bootstrap (CLI only). */
 export const bootstrapAdminSchema = z
   .object({
@@ -202,6 +221,8 @@ export const personListQuerySchema = z.object({
   role: z.enum(PERSON_FILTER_ROLES).optional(),
   ageFrom: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
   ageTo: z.coerce.number().int().min(0).max(MAX_AGE_YEARS).optional(),
+  // People life-cycle spec B-09 "Needs attention" (#309, #310): every value needs `people.manage` (403 otherwise).
+  attention: z.enum(PERSON_ATTENTION_FILTERS).optional(),
 })
 
 export const roleAssignmentListQuerySchema = z.object({

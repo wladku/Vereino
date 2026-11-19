@@ -60,7 +60,7 @@ Stable IDs per `.ai/review-checklist.md` and `.ai/guides/contracts.md` → *Froz
 | Command ID | `commands/*.ts` | `people.persons.create_account` |
 | DI token | `di.ts` | `people.scopeService` (club spec data flow; **Gap:** final registration keys) |
 | Notification type | `notifications.ts` | `activities.coach_needed` |
-| Scheduler target | module scheduler config | `people:sync-role-expiry`, `payments:generate-charges` |
+| Scheduler target | module scheduler config | `people:sync-role-expiry`, `people:life-cycle`, `payments:generate-charges` |
 | Search entity, `extensionTableId`, `CrudForm`/enricher entity ID, widget/injection spot | `search.ts`, pages, `widgets/injection-table.ts` | colon-form IDs, set per module |
 
 - **Breaking:** renaming or removing any ID; removing a required event-payload field; changing a DI service interface incompatibly; removing an ACL feature still granted to a role.

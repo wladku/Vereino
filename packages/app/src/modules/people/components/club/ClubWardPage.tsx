@@ -4,7 +4,10 @@
 // the guardian gives or withdraws through `POST /api/people/guardianships/{id}/consents` with the guardianship's lock
 // token. The page reads the ward only from the guardian's own profile (`GET /api/people/me`), so a person who is not
 // the caller's ward is never shown. E06-S22 (#104): the ward's age, groups and sections (the `groups` widget on the
-// `vereino:club:ward:groups` spot) and each consent's last author.
+// `vereino:club:ward:groups` spot) and each consent's last author. People life-cycle spec REQ-L10 (#309): each consent
+// shows the club's own wording (DD-39), "given to an earlier wording" when given before the club changed it (DD-L11),
+// and the line saying what withdrawing changes. Phase L8 (#310): the lines "May have an own account — ask the club" and
+// "Turns 18 on {date}: from then {name} decides alone".
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,13 +22,15 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClubFrame } from './ClubFrame'
-import { useConsentStatus } from './ConsentList'
+import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
+import { WardNotices } from './LifeCycleNotices'
 import {
   CLUB_HOME_HREF,
   MEMBER_PROFILE_QUERY_KEY,
   WARD_CONSENT_KINDS,
   formatCalendarDate,
   fullName,
+  type ConsentTexts,
   type MemberProfile,
   type MemberWard,
   type WardConsentKind,
@@ -45,9 +50,10 @@ function errorText(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
-function WardConsents({ ward, timeZone }: { ward: MemberWard; timeZone: string }) {
+function WardConsents({ ward, timeZone, texts }: { ward: MemberWard; timeZone: string; texts?: ConsentTexts }) {
   const t = useT()
   const status = useConsentStatus(timeZone)
+  const label = useConsentLabel(texts)
   const queryClient = useQueryClient()
   const [state, setState] = React.useState<ConsentState>(() => consentState(ward))
   const [busy, setBusy] = React.useState(false)
@@ -93,17 +99,20 @@ function WardConsents({ ward, timeZone }: { ward: MemberWard; timeZone: string }
       </h2>
       {WARD_CONSENT_KINDS.map((kind) => {
         return (
-          <SwitchField
-            key={kind}
-            id={`club-ward-consent-${kind}`}
-            label={t(`people.guardianships.consents.${kind}`)}
-            description={status(ward.guardianship.consents[kind])}
-            checked={state[kind]}
-            disabled={busy}
-            onCheckedChange={(checked) => {
-              setState((current) => ({ ...current, [kind]: checked }))
-            }}
-          />
+          <div key={kind} className="flex flex-col gap-1">
+            <SwitchField
+              id={`club-ward-consent-${kind}`}
+              label={label(kind, `people.guardianships.consents.${kind}`)}
+              description={status(ward.guardianship.consents[kind])}
+              badge={<EarlierWording consent={ward.guardianship.consents[kind]} textKey={kind} texts={texts} />}
+              checked={state[kind]}
+              disabled={busy}
+              onCheckedChange={(checked) => {
+                setState((current) => ({ ...current, [kind]: checked }))
+              }}
+            />
+            <ConsentEffect kind={kind} />
+          </div>
         )
       })}
       <div>
@@ -157,11 +166,13 @@ function Ward({ profile, personId }: { profile: MemberProfile; personId: string 
           ) : null}
         </div>
       </div>
+      <WardNotices ward={ward} />
       <InjectionSpot spotId="vereino:club:ward:groups" context={{ personId: ward.personId, variant: 'section' }} />
       <WardConsents
         key={ward.guardianship.updatedAt ?? ward.guardianship.id}
         ward={ward}
         timeZone={profile.club.timezone}
+        texts={profile.consentTexts}
       />
     </>
   )

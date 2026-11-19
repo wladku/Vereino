@@ -142,3 +142,172 @@ export const departureConfirmedTemplate = defineEmailTemplate<DepartureConfirmed
   actionLabel: (t) => t('people.email.departureConfirmed.action', 'Open the club'),
   link: () => '/club/profile',
 })
+
+// --- The 18th birthday and the account age (people life-cycle spec REQ-L06, REQ-L07; phase L8, #310) ---
+// Each notice has a family version (the guardians and the person) and an administrators' version that links to the
+// person record. They name the person (first name) and the date of the change, never the birth date (*Security*).
+
+const lifeCycleParams = z.object({ personId: z.uuid(), name: z.string().min(1).max(200), on: z.iso.date() }).strict()
+
+export type LifeCycleNoticeParams = z.output<typeof lifeCycleParams>
+
+const accountAgeParams = z
+  .object({ personId: z.uuid(), name: z.string().min(1).max(200), threshold: z.number().int().min(0).max(18) })
+  .strict()
+
+export type AccountAgeNoticeParams = z.output<typeof accountAgeParams>
+
+type NoticeCopy = { subject: string; lead: string }
+
+/** One template per notice and audience: the copy, the action and the link differ; the mechanics do not. */
+function noticeTemplate<P extends Record<string, unknown>>(input: {
+  id: string
+  params: z.ZodType<P>
+  copy: (t: TranslateWithFallbackFn, params: P, locale: string) => NoticeCopy
+  actionLabel: (t: TranslateWithFallbackFn) => string
+  link: (params: P) => string
+}) {
+  return defineEmailTemplate<P>({
+    id: input.id,
+    notificationType: input.id,
+    optOut: 'never',
+    params: input.params,
+    subject: (t, params, ctx) => input.copy(t, params, ctx.locale).subject,
+    body: (t, params, ctx) => {
+      const copy = input.copy(t, params, ctx.locale)
+      return paragraphs(copy.subject, [copy.lead])
+    },
+    text: (t, params, ctx) => {
+      const copy = input.copy(t, params, ctx.locale)
+      return plainText(copy.subject, [copy.lead])
+    },
+    actionLabel: input.actionLabel,
+    link: input.link,
+  })
+}
+
+const personRecordLink = (params: { personId: string }) => `/backend/people/persons/${params.personId}`
+
+export const TURNS_18_SOON_TEMPLATE = 'people.turns_18_soon'
+export const TURNS_18_SOON_ADMIN_TEMPLATE = 'people.turns_18_soon_admin'
+export const CAME_OF_AGE_TEMPLATE = 'people.came_of_age'
+export const CAME_OF_AGE_ADMIN_TEMPLATE = 'people.came_of_age_admin'
+export const ACCOUNT_AGE_REACHED_TEMPLATE = 'people.account_age_reached'
+export const ACCOUNT_AGE_REACHED_ADMIN_TEMPLATE = 'people.account_age_reached_admin'
+
+export const turns18SoonTemplate = noticeTemplate<LifeCycleNoticeParams>({
+  id: TURNS_18_SOON_TEMPLATE,
+  params: lifeCycleParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.on, locale) }
+    return {
+      subject: t('people.email.turns18Soon.subject', 'From {date} {name} decides alone', values),
+      lead: t(
+        'people.email.turns18Soon.lead',
+        'From {date} {name} is an adult and decides alone: the guardianships end, the consents the guardians gave pass to {name}, who can change them, and new charges name {name} as payer. The guardians no longer see the calendar, the declarations or the charges of {name}. To keep receiving the club messages, {name} needs an own account or an e-mail address — ask the club.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionFamily', 'Open the club'),
+  link: () => '/club/profile',
+})
+
+export const turns18SoonAdminTemplate = noticeTemplate<LifeCycleNoticeParams>({
+  id: TURNS_18_SOON_ADMIN_TEMPLATE,
+  params: lifeCycleParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.on, locale) }
+    return {
+      subject: t('people.email.turns18SoonAdmin.subject', '{name} decides alone from {date}', values),
+      lead: t(
+        'people.email.turns18SoonAdmin.lead',
+        'From {date} {name} is an adult: the guardianships end on the day before and new charges name {name} as payer. Check that {name} has an account or an e-mail address.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionAdmin', 'Open the person'),
+  link: personRecordLink,
+})
+
+export const cameOfAgeTemplate = noticeTemplate<LifeCycleNoticeParams>({
+  id: CAME_OF_AGE_TEMPLATE,
+  params: lifeCycleParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.on, locale) }
+    return {
+      subject: t('people.email.cameOfAge.subject', 'Since {date} {name} decides alone', values),
+      lead: t(
+        'people.email.cameOfAge.lead',
+        'Since {date} {name} is an adult. The guardianships ended on the day before; the consents the guardians gave now belong to {name}, who can change them in the app, and new charges name {name} as payer.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionFamily', 'Open the club'),
+  link: () => '/club/profile',
+})
+
+export const cameOfAgeAdminTemplate = noticeTemplate<LifeCycleNoticeParams>({
+  id: CAME_OF_AGE_ADMIN_TEMPLATE,
+  params: lifeCycleParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.on, locale) }
+    return {
+      subject: t('people.email.cameOfAgeAdmin.subject', '{name} is an adult since {date}', values),
+      lead: t(
+        'people.email.cameOfAgeAdmin.lead',
+        'Since {date} {name} is an adult: the guardianships ended on the day before, the consents passed to {name} and new charges name {name} as payer.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionAdmin', 'Open the person'),
+  link: personRecordLink,
+})
+
+export const accountAgeReachedTemplate = noticeTemplate<AccountAgeNoticeParams>({
+  id: ACCOUNT_AGE_REACHED_TEMPLATE,
+  params: accountAgeParams,
+  copy: (t, params) => {
+    const values = { name: params.name, age: params.threshold }
+    return {
+      subject: t('people.email.accountAgeReached.subject', '{name} may have an own account', values),
+      lead: t(
+        'people.email.accountAgeReached.lead',
+        '{name} has reached the age from which the club allows an own account ({age}). With it {name} sees the calendar and declares attendance on the phone. Ask the club to create it.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionFamily', 'Open the club'),
+  link: (params) => `/club/wards/${params.personId}`,
+})
+
+export const accountAgeReachedAdminTemplate = noticeTemplate<AccountAgeNoticeParams>({
+  id: ACCOUNT_AGE_REACHED_ADMIN_TEMPLATE,
+  params: accountAgeParams,
+  copy: (t, params) => {
+    const values = { name: params.name, age: params.threshold }
+    return {
+      subject: t('people.email.accountAgeReachedAdmin.subject', '{name} may get an account', values),
+      lead: t(
+        'people.email.accountAgeReachedAdmin.lead',
+        '{name} has reached the club account age ({age}) and has no account. The family was told to ask the club; create the account on request.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.lifeCycle.actionAdmin', 'Open the person'),
+  link: (params) => `/backend/people/persons/${params.personId}?tab=account`,
+})
+
+/** The 18th-birthday templates and the account-age templates, registered in `di.ts`. */
+export const lifeCycleNoticeTemplates = [
+  turns18SoonTemplate,
+  turns18SoonAdminTemplate,
+  cameOfAgeTemplate,
+  cameOfAgeAdminTemplate,
+]
+export const accountAgeNoticeTemplates = [accountAgeReachedTemplate, accountAgeReachedAdminTemplate]

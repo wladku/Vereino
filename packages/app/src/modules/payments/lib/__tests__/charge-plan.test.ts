@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   bestDiscount,
+  chargedElsewhere,
   compareByAge,
   payerOf,
   planCharges,
@@ -196,6 +197,44 @@ describe('bestDiscount', () => {
   })
 })
 
+describe('chargedElsewhere', () => {
+  const perSession: PlanFee = { id: 'fee-hall', name: 'Hala', amount: 2000, period: 'per_occurrence', dueDay: 10 }
+
+  it('lists, per fee period, the persons charged by a fee of a group they left', () => {
+    const result = chargedElsewhere({
+      fees: [zaki, basen, camp, perSession],
+      participants: new Map([
+        ['fee-zaki', ['adam']],
+        ['fee-basen', ['kuba']],
+        ['fee-camp', []],
+        ['fee-hall', []],
+      ]),
+      existing: [
+        { feeId: 'fee-zaki', personId: 'ola', payerPersonId: 'anna' },
+        { feeId: 'fee-zaki', personId: 'adam', payerPersonId: 'adam' },
+        { feeId: 'fee-camp', personId: 'kuba', payerPersonId: 'anna' },
+        { feeId: 'fee-hall', personId: 'kuba', payerPersonId: 'anna' },
+        { feeId: 'fee-gone', personId: 'minor', payerPersonId: null },
+      ],
+    })
+    expect(result).toEqual(
+      new Map([
+        ['monthly', new Map([['ola', 'fee-zaki']])],
+        ['per_occurrence', new Map([['kuba', 'fee-hall']])],
+      ]),
+    )
+  })
+
+  it('says nothing about a fee whose participants are unknown', () => {
+    const result = chargedElsewhere({
+      fees: [zaki],
+      participants: new Map(),
+      existing: [{ feeId: 'fee-zaki', personId: 'ola', payerPersonId: 'anna' }],
+    })
+    expect(result.size).toBe(0)
+  })
+})
+
 describe('planCharges', () => {
   it('creates one charge per fee and participant with payer, discount and due date (TEST-018)', () => {
     const plan = planCharges(input())
@@ -268,6 +307,49 @@ describe('planCharges', () => {
       ['kuba', 3600],
       ['minor', 0],
     ])
+  })
+
+  it('charges a moved child the month once: the new group fee is skipped after the old one was generated (DD-L15)', () => {
+    // Ola was charged Żaki on the period's first generation, then moved to Basen; Kuba stays in Basen.
+    const plan = planCharges(
+      input({
+        participants: new Map([
+          ['fee-zaki', ['adam']],
+          ['fee-basen', ['kuba', 'ola']],
+        ]),
+        existing: [{ feeId: 'fee-zaki', personId: 'ola', payerPersonId: 'anna' }],
+      }),
+    )
+    expect(plan.skipped).toBe(1)
+    expect(plan.charges.map((charge) => [charge.feeId, charge.personId])).toEqual([
+      ['fee-zaki', 'adam'],
+      ['fee-basen', 'kuba'],
+    ])
+  })
+
+  it('charges the new group fee in the next period, when no charge of the old group exists', () => {
+    const plan = planCharges(
+      input({
+        period: '2027-01',
+        referenceDate: '2027-01-01',
+        participants: new Map([['fee-basen', ['ola']]]),
+      }),
+    )
+    expect(plan.charges.map((charge) => [charge.feeId, charge.personId])).toEqual([['fee-basen', 'ola']])
+  })
+
+  it('still charges both fees of a child who stays in both groups', () => {
+    const plan = planCharges(
+      input({
+        participants: new Map([
+          ['fee-zaki', ['ola']],
+          ['fee-basen', ['ola']],
+        ]),
+        existing: [{ feeId: 'fee-zaki', personId: 'ola', payerPersonId: 'anna' }],
+      }),
+    )
+    expect(plan.skipped).toBe(1)
+    expect(plan.charges.map((charge) => [charge.feeId, charge.personId])).toEqual([['fee-basen', 'ola']])
   })
 
   it('reports a repeated run as all skipped', () => {

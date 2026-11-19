@@ -4,7 +4,9 @@
 // person id. It returns no notes or PESEL; the account link (`findUserIds`) and the active guardians
 // (`activeGuardians`) serve a consumer that notifies the people a record concerns (a cancelled session, #31). Contact
 // data leaves only through `sharedContacts`, for guardians who gave `share_contact_with_coaches_at` and have an
-// account (REQ-037, DD-39, #34), after the consumer has authorized the read and logged it (`auditedRead`).
+// account (REQ-037, DD-39, #34), after the consumer has authorized the read and logged it (`auditedRead`). The people
+// life-cycle spec (REQ-L10, #309) adds `consentFlags`: two booleans per participant (`image`, `trips`) from the active
+// guardianships or an adult's own consents, for the coach of a session — never the consents themselves.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { findEntityIdsBySearchTokens, type SearchTokenDatabase } from '@open-mercato/shared/lib/search/tokenLookup'
@@ -13,6 +15,14 @@ import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { PERSON_ENTITY_ID } from '../encryption'
 import { contactSharingFilter } from '../lib/contact-sharing'
 import { publicPersonName } from '../lib/member-rules'
+import {
+  effectiveConsents,
+  holdsOwnConsents,
+  parseStoredConsents,
+  type EffectiveConsents,
+  type StoredConsents,
+} from '../lib/people-rules'
+import { holdersBySectionDay, sectionDaysSpan, type SectionDay } from '../lib/section-role-holders'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -88,13 +98,37 @@ export type PersonDirectory = {
     em?: EntityManager,
   ): Promise<string[]>
   /**
+   * `sectionCoordinatorIdsOn` for many (section, day) pairs in one read: the coordinators of each pair, by
+   * `<sectionId>:<date>` (`sectionDayKey`); every pair has an entry. For a consumer that would otherwise read once per
+   * pair (the reschedule notices of a long closure, #394).
+   */
+  sectionCoordinatorIdsOnDays(
+    scope: ClubScope,
+    pairs: readonly SectionDay[],
+    em?: EntityManager,
+  ): Promise<Map<string, string[]>>
+  /**
    * The ids of the persons whose first or last name matches every word of `term` (prefixes of three characters or
    * more), through the platform's hashed `search_tokens` — the names are encrypted. Null when the index was not
    * consulted (no word long enough). For a consumer that filters its own records by a person's name (the payments
    * charge list, #109); ids only.
    */
   searchPersonIds(scope: ClubScope, term: string, em?: EntityManager): Promise<Set<string> | null>
+  /**
+   * Whether each live person among `ids` has the `image` and the `trips` consent on `today` (people life-cycle spec
+   * REQ-L10, #309): an adult's own decision, else the most recent decision among the guardianships active on `today`.
+   * Two booleans only, for the coach of the session whose participants `ids` are; the consumer authorizes that first.
+   */
+  consentFlags(
+    scope: ClubScope,
+    ids: readonly string[],
+    today: CalendarDate,
+    em?: EntityManager,
+  ): Promise<Map<string, ConsentFlags>>
 }
+
+/** The two consents a coach sees as flags beside a participant (REQ-L10). */
+export type ConsentFlags = { image: boolean; trips: boolean }
 
 /** A guardian's contact details shared with the coaches of their wards' groups (REQ-037). */
 export type SharedContact = {
@@ -304,6 +338,36 @@ export async function sectionCoordinatorIdsOn(
   return [...new Set(rows.map((row) => row.personId))]
 }
 
+export async function sectionCoordinatorIdsOnDays(
+  em: EntityManager,
+  scope: ClubScope,
+  pairs: readonly SectionDay[],
+): Promise<Map<string, string[]>> {
+  const span = sectionDaysSpan(pairs)
+  if (!span) return new Map()
+  const rows = await em.find(
+    RoleAssignment,
+    {
+      ...scope,
+      deletedAt: null,
+      role: 'coordinator',
+      sectionId: { $in: [...new Set(pairs.map((pair) => pair.sectionId))] },
+      validFrom: { $lte: span.to },
+      $or: [{ validTo: null }, { validTo: { $gte: span.from } }],
+    },
+    { fields: ['id', 'personId', 'sectionId', 'validFrom', 'validTo'] },
+  )
+  return holdersBySectionDay(
+    pairs,
+    rows.map((row) => ({
+      personId: row.personId,
+      sectionId: row.sectionId ?? null,
+      validFrom: row.validFrom,
+      validTo: row.validTo ?? null,
+    })),
+  )
+}
+
 export async function searchPersonIds(em: EntityManager, scope: ClubScope, term: string): Promise<Set<string> | null> {
   const result = await findEntityIdsBySearchTokens({
     db: em.getKysely<SearchTokenDatabase>(),
@@ -313,6 +377,56 @@ export async function searchPersonIds(em: EntityManager, scope: ClubScope, term:
     scope,
   })
   return result.matched ? new Set(result.ids) : null
+}
+
+/**
+ * The consents that hold on `today` for each live person among `ids` (REQ-L10): an adult's own decision when they made
+ * one, else the most recent decision among the guardianships active on `today`; a person nobody decided for has none.
+ */
+export async function effectiveConsentsOf(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+  today: CalendarDate,
+): Promise<Map<string, EffectiveConsents>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const [persons, links] = await Promise.all([
+    em.find(Person, { id: { $in: unique }, ...scope, deletedAt: null }, { fields: ['id', 'birthDate', 'consents'] }),
+    em.find(
+      Guardianship,
+      {
+        ...scope,
+        wardPersonId: { $in: unique },
+        deletedAt: null,
+        validFrom: { $lte: today },
+        $or: [{ validTo: null }, { validTo: { $gte: today } }],
+      },
+      { fields: ['id', 'wardPersonId', 'consents'] },
+    ),
+  ])
+  const guardianConsents = new Map<string, StoredConsents[]>()
+  for (const link of links) {
+    const list = guardianConsents.get(link.wardPersonId) ?? []
+    list.push(parseStoredConsents(link.consents))
+    guardianConsents.set(link.wardPersonId, list)
+  }
+  return new Map(
+    persons.map((person) => {
+      const own = holdsOwnConsents(person.birthDate, today) ? parseStoredConsents(person.consents) : null
+      return [person.id, effectiveConsents(own, guardianConsents.get(person.id) ?? [])]
+    }),
+  )
+}
+
+export async function consentFlags(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+  today: CalendarDate,
+): Promise<Map<string, ConsentFlags>> {
+  const consents = await effectiveConsentsOf(em, scope, ids, today)
+  return new Map([...consents].map(([id, given]) => [id, { image: given.image, trips: given.trips }]))
 }
 
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
@@ -328,6 +442,8 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
     sectionCoordinatorIdsOn: (scope, sectionId, date, em) =>
       sectionCoordinatorIdsOn(em ?? getEm().fork(), scope, sectionId, date),
+    sectionCoordinatorIdsOnDays: (scope, pairs, em) => sectionCoordinatorIdsOnDays(em ?? getEm().fork(), scope, pairs),
     searchPersonIds: (scope, term, em) => searchPersonIds(em ?? getEm().fork(), scope, term),
+    consentFlags: (scope, ids, today, em) => consentFlags(em ?? getEm().fork(), scope, ids, today),
   }
 }

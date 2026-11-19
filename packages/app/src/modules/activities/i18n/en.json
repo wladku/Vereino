@@ -888,5 +888,6 @@
   "activities.club.session.assignSubstituteTitle": "Assign a substitute — {session}",
   "activities.club.session.changeCoachTitle": "Change the coach — {session}",
   "activities.substitutions.search": "Search coaches",
-  "activities.substitutions.noMatch": "No coach matches the search."
+  "activities.substitutions.noMatch": "No coach matches the search.",
+  "activities.nav.badge.waiting": "{count} waiting"
 }

@@ -3,10 +3,12 @@
 // on the session date and anyone with an attendance row, each with what the declarations say (per the kind: expected or
 // absent under `absence_only`, confirmed, declined or unanswered under `confirm`), the actual attendance and who marked
 // it in which role, plus the summary line and whether the check-off is open. Read by the same grants that check off: a
-// coach of another group gets 403 `scope_denied`, an unknown session 404.
+// coach of another group gets 403 `scope_denied`, an unknown session 404. For the coach of the session (acting role
+// `coach`) each row also carries `consentFlags` — whether the `image` and `trips` consents are given today (people
+// life-cycle spec REQ-L10, #309); a coordinator's or an administrator's list carries none.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import type { ActingRole } from '@vereino/core'
+import { calendarDateInZone, type ActingRole } from '@vereino/core'
 import { assertInScope, scopeContract } from '@/modules/foundation'
 import { CHECK_OFF_KINDS, checkOffRole, checkOffTarget, listedPersonIds } from '../commands/check-off'
 import { cancelRoleOf } from '../commands/occurrences'
@@ -26,7 +28,7 @@ import {
 } from '../lib/policy'
 import { activityOf, describeOccurrence, type CalendarOccurrenceView } from './calendar'
 import { deadlineReached, effectiveConfirmByMinutes, listRank } from '../lib/confirm-by'
-import { attendanceSettings, findPersons, type ActivitiesScope } from './directory'
+import { attendanceSettings, consentFlags, findPersons, type ActivitiesScope } from './directory'
 
 export type AttendanceListRow = {
   personId: string
@@ -41,6 +43,8 @@ export type AttendanceListRow = {
   markedByPersonId: string | null
   markedByName: string | null
   markedAsRole: string | null
+  /** The coach of the session only (REQ-L10): whether the `image` and `trips` consents are given today. */
+  consentFlags?: { image: boolean; trips: boolean }
 }
 
 export type AttendanceList = {
@@ -87,6 +91,11 @@ export async function readAttendanceList(
     activityOf(em, scope, occurrence.activityId),
     cancelRoleOf(ctx.container, grants, occurrence),
   ])
+  // REQ-L10 (#309): the consent flags go to the coach of the session only, never to a coordinator or the administrator.
+  const flags =
+    actingRole === 'coach'
+      ? await consentFlags(ctx.container, scope, [...listed], calendarDateInZone(now, settings.timeZone), em)
+      : null
   const kind = settings.declarationKinds[activity?.type ?? 'other'] ?? 'confirm'
   const view = await describeOccurrence(ctx, scope, occurrence, kind, now)
   // REQ-A07: once the deadline is reached the list puts "no answer" first, so the coach sees whom to chase.
@@ -111,6 +120,7 @@ export async function readAttendanceList(
       markedByPersonId: row?.markedByPersonId ?? null,
       markedByName: row?.markedByPersonId ? fullName(persons.get(row.markedByPersonId)) : null,
       markedAsRole: row?.markedAsRole ?? null,
+      ...(flags ? { consentFlags: flags.get(personId) ?? { image: false, trips: false } } : {}),
     }
   })
   rows.sort(

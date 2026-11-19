@@ -23,7 +23,10 @@ import {
   endRefused,
   mayRemoveMembership,
   membershipActions,
+  moveDateBounds,
+  planMove,
   rosterRoleOrder,
+  rosterRoleRankSql,
   rosterRoleRank,
   rosterViewBounds,
   seasonDatesInverted,
@@ -269,6 +272,14 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(rows[0].id).toBe('p1')
   })
 
+  it('builds the SQL role key from the same ranks as rosterRoleRank (#359)', () => {
+    const sql = rosterRoleRankSql('m')
+    expect(sql).toBe("case m.role when 'coach' then 0 when 'assistant' then 1 when 'participant' then 2 else 3 end")
+    const ranks = new Map([...sql.matchAll(/when '(\w+)' then (\d+)/g)].map((match) => [match[1], Number(match[2])]))
+    for (const role of ROSTER_ROLE_ORDER) expect(ranks.get(role)).toBe(rosterRoleRank(role))
+    expect(Number(/else (\d+) end$/.exec(sql)?.[1])).toBe(rosterRoleRank('unknown'))
+  })
+
   it('turns a view into bounds on the club day', () => {
     expect(rosterViewBounds('active', '2026-11-17')).toEqual({
       view: 'active',
@@ -290,6 +301,48 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(endRefused({ validFrom: '2026-09-01' }, '2026-08-31', '2026-11-17')).toBe(true)
     expect(endRefused({ validFrom: '2026-09-01' }, '2026-09-01', '2026-11-17')).toBe(false)
     expect(endRefused({ validFrom: '2026-11-17' }, '2026-11-30', '2026-11-17')).toBe(false)
+  })
+
+  it('plans a group move: ends the day before and starts on the date with the same planned last day (REQ-L11)', () => {
+    const open = { groupId: 'a', validFrom: '2026-09-01', validTo: null }
+    expect(planMove(open, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: true,
+      lastDay: '2026-11-14',
+      next: { validFrom: '2026-11-15', validTo: null },
+    })
+    expect(planMove({ ...open, validTo: '2027-06-30' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: true,
+      lastDay: '2026-11-14',
+      next: { validFrom: '2026-11-15', validTo: '2027-06-30' },
+    })
+  })
+
+  it('refuses a move to the same group, before the start, or after the membership is over', () => {
+    const open = { groupId: 'a', validFrom: '2026-09-01', validTo: null }
+    expect(planMove(open, { toGroupId: 'a', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: false,
+      problem: 'same_group',
+    })
+    expect(planMove(open, { toGroupId: 'b', date: '2026-09-01' }, '2026-11-10')).toEqual({
+      ok: false,
+      problem: 'not_started',
+    })
+    expect(
+      planMove({ ...open, validFrom: '2026-12-01' }, { toGroupId: 'b', date: '2027-01-01' }, '2026-11-10'),
+    ).toEqual({ ok: false, problem: 'not_started' })
+    expect(planMove({ ...open, validTo: '2026-11-14' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10')).toEqual({
+      ok: false,
+      problem: 'not_active_on_date',
+    })
+    expect(
+      planMove({ ...open, validTo: '2026-11-15' }, { toGroupId: 'b', date: '2026-11-15' }, '2026-11-10'),
+    ).toMatchObject({ ok: true })
+  })
+
+  it('offers the 1st of the next month as the move date, never before today or the day after the start', () => {
+    expect(moveDateBounds('2026-11-19', '2026-09-01')).toEqual({ min: '2026-11-19', initial: '2026-12-01' })
+    expect(moveDateBounds('2026-12-05', null)).toEqual({ min: '2026-12-05', initial: '2027-01-01' })
+    expect(moveDateBounds('2026-11-19', '2026-12-10')).toEqual({ min: '2026-12-11', initial: '2026-12-11' })
   })
 
   it('removes a membership before its start, or a started one only when never used', () => {

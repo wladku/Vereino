@@ -888,5 +888,6 @@
   "activities.club.session.assignSubstituteTitle": "Wskaż zastępcę — {session}",
   "activities.club.session.changeCoachTitle": "Zmień prowadzącego — {session}",
   "activities.substitutions.search": "Szukaj trenera",
-  "activities.substitutions.noMatch": "Żaden trener nie pasuje do wyszukiwania."
+  "activities.substitutions.noMatch": "Żaden trener nie pasuje do wyszukiwania.",
+  "activities.nav.badge.waiting": "{count} oczekuje"
 }

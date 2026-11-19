@@ -11,6 +11,8 @@ export type ContractRow = {
   validFrom: string | null
   validTo: string | null
   terms: (Partial<Record<CoachTermField, number>> & FacilityTerms) | null
+  /** Whether the signed contract PDF is stored (#312). */
+  hasAttachment?: boolean
   createdAt: string | null
   updatedAt: string | null
 }

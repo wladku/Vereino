@@ -5,7 +5,9 @@ import {
   PERSON_FILTER_ROLES,
   PERSON_LIST_FILTER_KEYS,
   PERSON_LIST_VIEWS,
+  attentionBirthDates,
   birthDateRange,
+  intersectBirthDateRanges,
   canRemoveLastFilter,
   intersectIdSets,
   isPersonListFiltered,
@@ -15,6 +17,7 @@ import {
   personListUrlParams,
   personRoleBadges,
   planNeedsMemberships,
+  PERSON_ATTENTION_FILTERS,
   readPersonListUrl,
   withoutLastFilter,
   yearsBefore,
@@ -41,7 +44,15 @@ describe('constants', () => {
       'guardian',
       'participant',
     ])
-    expect(PERSON_LIST_FILTER_KEYS).toEqual(['sectionId', 'groupId', 'role', 'hasAccount', 'ageFrom', 'ageTo'])
+    expect(PERSON_LIST_FILTER_KEYS).toEqual([
+      'sectionId',
+      'groupId',
+      'role',
+      'hasAccount',
+      'ageFrom',
+      'ageTo',
+      'attention',
+    ])
     expect(PERSON_FILTER_ID_LIMIT).toBe(10_000)
   })
 })
@@ -109,6 +120,8 @@ describe('personListPlan', () => {
       sectionId: null,
       groupId: null,
       former: 'exclude',
+      missingConsents: false,
+      withoutEmail: false,
     })
   })
 
@@ -143,6 +156,8 @@ describe('personListPlan', () => {
       sectionId: 's',
       groupId: 'g',
       former: 'exclude',
+      missingConsents: false,
+      withoutEmail: false,
     })
   })
 })
@@ -154,6 +169,102 @@ describe('planNeedsMemberships', () => {
     expect(planNeedsMemberships(personListPlan({ sectionId: 's' }, today))).toBe(true)
     expect(planNeedsMemberships(personListPlan({ groupId: 'g' }, today))).toBe(true)
     expect(planNeedsMemberships(personListPlan({ role: 'participant' }, today))).toBe(true)
+  })
+
+  it('is true for the missing-consents filter, which reads the participants (#309)', () => {
+    const plan = personListPlan({ attention: 'missing_consents' }, today)
+    expect(plan.missingConsents).toBe(true)
+    expect(planNeedsMemberships(plan)).toBe(true)
+    expect(PERSON_ATTENTION_FILTERS).toEqual([
+      'missing_consents',
+      'account_age',
+      'turns_18_soon',
+      'adult_without_contact',
+    ])
+  })
+
+  it('is false for the L8 values, which read only the person (#310)', () => {
+    expect(planNeedsMemberships(personListPlan({ attention: 'account_age' }, today))).toBe(false)
+    expect(planNeedsMemberships(personListPlan({ attention: 'turns_18_soon' }, today))).toBe(false)
+    expect(planNeedsMemberships(personListPlan({ attention: 'adult_without_contact' }, today))).toBe(false)
+  })
+})
+
+describe('intersectBirthDateRanges', () => {
+  it('keeps one side when the other is absent', () => {
+    const range = { onOrBefore: '2010-01-01', after: null }
+    expect(intersectBirthDateRanges(null, null)).toBeNull()
+    expect(intersectBirthDateRanges(range, null)).toBe(range)
+    expect(intersectBirthDateRanges(null, range)).toBe(range)
+  })
+
+  it('takes the earlier upper and the later lower bound', () => {
+    expect(
+      intersectBirthDateRanges(
+        { onOrBefore: '2010-01-01', after: '2000-01-01' },
+        { onOrBefore: '2012-01-01', after: '2005-01-01' },
+      ),
+    ).toEqual({ onOrBefore: '2010-01-01', after: '2005-01-01' })
+    expect(
+      intersectBirthDateRanges(
+        { onOrBefore: '2012-01-01', after: '2005-01-01' },
+        { onOrBefore: '2010-01-01', after: '2000-01-01' },
+      ),
+    ).toEqual({ onOrBefore: '2010-01-01', after: '2005-01-01' })
+    expect(
+      intersectBirthDateRanges({ onOrBefore: null, after: null }, { onOrBefore: '2010-01-01', after: '2000-01-01' }),
+    ).toEqual({
+      onOrBefore: '2010-01-01',
+      after: '2000-01-01',
+    })
+    expect(
+      intersectBirthDateRanges({ onOrBefore: '2010-01-01', after: '2000-01-01' }, { onOrBefore: null, after: null }),
+    ).toEqual({
+      onOrBefore: '2010-01-01',
+      after: '2000-01-01',
+    })
+  })
+})
+
+describe('attentionBirthDates (#310)', () => {
+  it('has nothing for no value and for missing consents', () => {
+    expect(attentionBirthDates(undefined, today, 16)).toBeNull()
+    expect(attentionBirthDates('missing_consents', today, 16)).toBeNull()
+  })
+
+  it('lists minors without an account at the club account age', () => {
+    expect(attentionBirthDates('account_age', today, 16)).toEqual({
+      birthDates: { onOrBefore: '2010-11-04', after: '2008-11-04' },
+      withoutAccount: true,
+    })
+  })
+
+  it('lists persons whose 18th birthday is within 30 days', () => {
+    const range = attentionBirthDates('turns_18_soon', today, 16)
+    expect(range).toEqual({ birthDates: { onOrBefore: '2008-12-04', after: '2008-11-04' }, withoutAccount: false })
+    // Born 2008-11-05: 18 on 2026-11-05 (tomorrow) — in; born 2008-11-04: 18 today — out.
+    expect('2008-11-05' > (range?.birthDates.after as string)).toBe(true)
+    expect('2008-11-04' > (range?.birthDates.after as string)).toBe(false)
+  })
+
+  it('lists adults without an account', () => {
+    expect(attentionBirthDates('adult_without_contact', today, 16)).toEqual({
+      birthDates: { onOrBefore: '2008-11-04', after: null },
+      withoutAccount: true,
+    })
+  })
+
+  it('narrows the plan: account, age bounds and e-mail', () => {
+    const plan = personListPlan({ attention: 'adult_without_contact', ageTo: 30, hasAccount: 'false' }, today)
+    expect(plan.accountConditions).toEqual([false])
+    expect(plan.withoutEmail).toBe(true)
+    expect(plan.birthDates).toEqual({ onOrBefore: '2008-11-04', after: '1995-11-04' })
+    expect(personListPlan({ attention: 'account_age' }, today, 13).birthDates).toEqual({
+      onOrBefore: '2013-11-04',
+      after: '2008-11-04',
+    })
+    expect(personListPlan({ attention: 'account_age' }, today).birthDates?.onOrBefore).toBe('2010-11-04')
+    expect(personListPlan({ attention: 'turns_18_soon' }, today).accountConditions).toEqual([])
   })
 })
 

@@ -5,7 +5,10 @@
 // (and since #195 the rules and privacy-policy URLs of the page footer; since #262 online requests need the facility
 // calendar, checked only when either flag changes — 422 on the field)
 // (glossary *Publication*): a page switched on needs the slug (422), and a slug another club holds answers 409 from
-// the unique index — no lookup across clubs runs here. The logo has its own commands (`commands/logos.ts`).
+// the unique index — no lookup across clubs runs here. The logo has its own commands (`commands/logos.ts`). Since #309
+// it writes the club's consent texts (people life-cycle spec REQ-L10, DD-L11): a text over 1000 characters answers 422
+// `consent_text_too_long` on the field `consentTexts.<key>`, an empty one restores the built-in text, and a changed one
+// records the instant of the change (a consent given earlier then reads "given to an earlier wording").
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -20,6 +23,13 @@ import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
 import { clubSettingsUpdateSchema } from '../data/validators'
+import {
+  applyConsentTextsPatch,
+  consentTextTooLong,
+  parseConsentTexts,
+  type ConsentTexts,
+  type ConsentTextsPatch,
+} from '../lib/consent-texts'
 import {
   applyPublicationPatch,
   clubPublicationProblem,
@@ -70,6 +80,8 @@ type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
   rulesUrl?: string | null
   privacyPolicyUrl?: string | null
   publication?: Publication
+  // The consent texts (#309); absent in log entries written before them.
+  consentTexts?: ConsentTexts
 }
 
 export type ClubSettingsUpdateResult = {
@@ -94,6 +106,7 @@ function snapshot(row: ClubSettings): SettingsSnapshot {
     rulesUrl: row.rulesUrl ?? null,
     privacyPolicyUrl: row.privacyPolicyUrl ?? null,
     publication: resolvePublication(row.publication),
+    consentTexts: parseConsentTexts(row.consentTexts),
   }
 }
 
@@ -171,6 +184,7 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   if (before.rulesUrl !== undefined) row.rulesUrl = before.rulesUrl
   if (before.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = before.privacyPolicyUrl
   if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
+  if (before.consentTexts !== undefined) row.consentTexts = { ...parseConsentTexts(before.consentTexts) }
   row.updatedAt = new Date()
 }
 
@@ -240,6 +254,12 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
               row.bankAccount =
                 normalizeBankAccount(bankAccount) ?? (await throwFieldError('bank_account_invalid', 'bankAccount'))
             }
+            // The club's consent texts (#309): the limit first, then the change with its instant.
+            const consentPatch = patch.consentTexts as ConsentTextsPatch | undefined
+            const tooLong = consentPatch ? consentTextTooLong(consentPatch) : null
+            if (tooLong) await throwFieldError('consent_text_too_long', `consentTexts.${tooLong}`)
+            const texts = applyConsentTextsPatch(parseConsentTexts(row.consentTexts), consentPatch, new Date())
+            if (texts.changed.length > 0) row.consentTexts = { ...texts.texts }
             const problem = writePublicSettings(row, patch)
             if (problem?.code === 'publication_requests_need_calendar')
               await throwFieldError(problem.code, problem.field)

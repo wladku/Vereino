@@ -12,7 +12,9 @@ import {
   FULL_RATE_CHILDREN,
   MAX_AMOUNT,
   MAX_DUE_DAY,
+  MAX_GENERATION_DAY,
   MIN_DUE_DAY,
+  MIN_GENERATION_DAY,
   isBillingPeriod,
 } from '../lib/payments-rules'
 import {
@@ -324,6 +326,11 @@ export const paymentRefundSchema = z
   })
   .strict()
 
+// --- Scheduled jobs (payments parity spec DD-C08, #301) ---
+
+/** The input of the four job commands: an optional clock for the operator CLI and the integration tests. */
+export const paymentsJobSchema = z.object({ now: z.iso.datetime({ offset: true }).optional() }).strict()
+
 // --- Settings ---
 
 export const paymentsSettingsUpdateSchema = z
@@ -337,6 +344,15 @@ export const paymentsSettingsUpdateSchema = z
       .describe(
         'The offered online methods: a non-empty subset of `card`, `blik`, `p24` (422 `online_methods_invalid`)',
       ),
+    // "Automatic charges and reminders" (B-20; payments parity spec DD-C08, DD-C09; #301).
+    autoGenerateCharges: z.boolean().optional(),
+    generationDay: z
+      .number()
+      .int({ message: 'payments.settings.validation.generationDay' })
+      .min(MIN_GENERATION_DAY, { message: 'payments.settings.validation.generationDay' })
+      .max(MAX_GENERATION_DAY, { message: 'payments.settings.validation.generationDay' })
+      .optional(),
+    overdueReminders: z.boolean().optional(),
   })
   .strict()
 

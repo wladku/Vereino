@@ -19,6 +19,8 @@ export const errorCodes = [
   },
   { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
   { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
+  // The club's consent texts (people life-cycle spec REQ-L10; #309): at most 1000 characters per text.
+  { code: 'consent_text_too_long', status: 422, messageKey: 'club_core.errors.consent_text_too_long' },
   // Sections (UX parity spec DD-U04, DD-U05, DD-U07): no deactivation or delete under active groups; names 2–80 on
   // create and rename, unique case-insensitively among the club's live sections.
   { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },
@@ -53,6 +55,13 @@ export const errorCodes = [
   { code: 'contract_overlap', status: 409, messageKey: 'club_core.errors.contract_overlap' },
   { code: 'contract_party_invalid', status: 422, messageKey: 'club_core.errors.contract_party_invalid' },
   { code: 'contract_terms_invalid', status: 422, messageKey: 'club_core.errors.contract_terms_invalid' },
+  // The signed contract PDF (people life-cycle spec REQ-L12, *API* row `/api/club_core/contracts/{id}/attachment`; #312).
+  {
+    code: 'contract_attachment_format_unsupported',
+    status: 422,
+    messageKey: 'club_core.errors.contract_attachment_format_unsupported',
+  },
+  { code: 'contract_attachment_too_large', status: 422, messageKey: 'club_core.errors.contract_attachment_too_large' },
   // Sessionless public pages (DD-23, DD-35): an unknown slug, a section that is not public and a section of another
   // club answer the same 404; a club that does not publish its page answers its own 404.
   { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },

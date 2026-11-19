@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import {
   SESSIONS_WIDGET_LIMIT,
   WIDGET_PERSPECTIVE,
+  sessionsNavBadgeQuery,
   sessionsWidgetListHref,
   sessionsWidgetQuery,
   summarizeSessionsPage,
@@ -14,6 +15,18 @@ describe('sessions widget queries', () => {
     expect(Object.fromEntries(new URLSearchParams(sessionsWidgetQuery('sessionsNeedingCoach', '2026-12-25')))).toEqual({
       page: '1',
       pageSize: String(SESSIONS_WIDGET_LIMIT),
+      sortField: 'startAt',
+      sortDir: 'asc',
+      unassigned: '1',
+      from: '2026-12-25',
+      to: '2027-01-08',
+    })
+  })
+
+  it('counts the same window for the Sessions menu item, reading one row (#260)', () => {
+    expect(Object.fromEntries(new URLSearchParams(sessionsNavBadgeQuery('2026-12-25')))).toEqual({
+      page: '1',
+      pageSize: '1',
       sortField: 'startAt',
       sortDir: 'asc',
       unassigned: '1',
