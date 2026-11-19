@@ -11,6 +11,8 @@ const events = [
   { id: 'groups.season.created', label: 'Season created', entity: 'season', category: 'crud' },
   { id: 'groups.season.updated', label: 'Season updated', entity: 'season', category: 'crud' },
   { id: 'groups.season.deleted', label: 'Season deleted', entity: 'season', category: 'crud' },
+  // People life-cycle spec REQ-L08 (#311): a season rollover was applied; ids only.
+  { id: 'groups.season.rolled_over', label: 'Season rolled over', entity: 'season', category: 'custom' },
   { id: 'groups.external_team.created', label: 'External team created', entity: 'external_team', category: 'crud' },
   { id: 'groups.external_team.updated', label: 'External team updated', entity: 'external_team', category: 'crud' },
   { id: 'groups.external_team.deleted', label: 'External team deleted', entity: 'external_team', category: 'crud' },
