@@ -7,7 +7,7 @@
 import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { ComboboxInput, type ComboboxOption } from '@open-mercato/ui/backend/inputs'
-import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import {
   Dialog,
@@ -24,24 +24,17 @@ import { addCalendarDays } from '@vereino/core'
 import { useClubToday } from '@vereino/ui'
 import { MAX_MANUAL_DESCRIPTION_LENGTH, MIN_MANUAL_DESCRIPTION_LENGTH, manualDueRange } from '../lib/manual-charges'
 import { MAX_AMOUNT } from '../lib/payments-rules'
-import { errorCode, errorMessage, personName, toGrosz } from './client-helpers'
+import { errorCode, errorMessage, lookupRows, toGrosz } from './client-helpers'
 
 type CreateResult = { chargeId?: string; payerMissing?: boolean }
-
-type PersonRow = { id: string; firstName: string | null; lastName: string | null }
 
 type Field = 'person' | 'description' | 'amount' | 'dueDate'
 
 const PROPOSED_DUE_DAYS = 7
 
 async function personOptions(query?: string): Promise<ComboboxOption[]> {
-  const params = new URLSearchParams({ pageSize: '20' })
-  if (query?.trim()) params.set('search', query.trim())
-  const data = await readApiResultOrThrow<{ items?: PersonRow[] }>(`/api/people/persons?${params.toString()}`)
-  return (data.items ?? []).map((person) => ({
-    value: person.id,
-    label: personName({ firstName: person.firstName ?? '', lastName: person.lastName ?? '' }) || person.id,
-  }))
+  const rows = await lookupRows('persons', { search: query, pageSize: 20 })
+  return rows.map((person) => ({ value: person.id, label: person.label }))
 }
 
 export function AddChargeDialog({

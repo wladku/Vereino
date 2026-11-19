@@ -106,8 +106,9 @@ describe('memberContexts', () => {
         { kind: 'coordinator', ids: ['s1'] },
         { kind: 'coach', ids: ['g1'] },
         { kind: 'facility_operator', ids: ['pl1'] },
+        { kind: 'treasurer' },
       ]),
-    ).toEqual(['self', 'guardian', 'coach', 'coordinator', 'club_admin', 'facility_operator'])
+    ).toEqual(['self', 'guardian', 'coach', 'coordinator', 'club_admin', 'facility_operator', 'treasurer'])
   })
 
   it('ignores the marker and job grants and an empty scope', () => {
@@ -159,6 +160,13 @@ describe('memberLanding', () => {
   it('sends an administrator without a member side who does not coach to /backend', () => {
     expect(landing({ grants: ['self', 'club_admin'] })).toEqual({ redirect: BACKEND_HOME, notice: false })
     expect(landing({ grants: ['club_admin', 'coordinator'] })?.redirect).toBe(BACKEND_HOME)
+  })
+
+  it('sends a treasurer without a member side who does not coach to /backend (#245)', () => {
+    expect(landing({ grants: ['self', 'treasurer'] })).toEqual({ redirect: BACKEND_HOME, notice: false })
+    expect(landing({ grants: ['self', 'treasurer'], facilityLogFeature: true })?.redirect).toBe(BACKEND_HOME)
+    expect(landing({ grants: ['self', 'treasurer'], memberSide: true })?.redirect).toBe(MEMBER_HOME)
+    expect(landing({ grants: ['self', 'treasurer', 'coach'] })?.redirect).toBe(MEMBER_HOME)
   })
 
   it('sends an administrator who is a parent or a coach to /club', () => {

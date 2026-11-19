@@ -21,6 +21,7 @@ import {
 } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, personGuardianshipHref, personName, type ChargeDetail } from './client-helpers'
+import { usePeopleRecordAccess } from './useRecordLinks'
 
 export function AssignPayerDialog({
   charge,
@@ -34,6 +35,7 @@ export function AssignPayerDialog({
   onDone: () => Promise<void>
 }) {
   const t = useT()
+  const linkPersons = usePeopleRecordAccess()
   const ids = { legend: React.useId(), problem: React.useId() }
   const options = charge.payerOptions
   const [payerId, setPayerId] = React.useState(options.length === 1 ? options[0].id : '')
@@ -123,7 +125,7 @@ export function AssignPayerDialog({
             ))}
           </fieldset>
         )}
-        {charge.personId ? (
+        {charge.personId && linkPersons ? (
           <Link
             href={personGuardianshipHref(charge.personId)}
             className="text-sm underline underline-offset-2"

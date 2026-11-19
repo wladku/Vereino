@@ -15,7 +15,7 @@ import {
 
 const TODAY = '2026-10-27'
 
-test('the catalogue holds the five phase 1 roles (Q17), the facility attendant and the derived maintenance planner', () => {
+test('the catalogue holds the five phase 1 roles (Q17), the facility attendant, the treasurer and the derived maintenance planner', () => {
   assert.deepEqual(catalogueAuthRoles(), [
     'vereino_club_admin',
     'vereino_coach',
@@ -24,12 +24,14 @@ test('the catalogue holds the five phase 1 roles (Q17), the facility attendant a
     'vereino_maintenance_planner',
     'vereino_member',
     'vereino_payer',
+    'vereino_treasurer',
   ])
   assert.deepEqual(VEREINO_ROLES, [
     'club_admin',
     'coordinator',
     'coach',
     'facility_operator',
+    'treasurer',
     'member',
     'payer',
     'maintenance_planner',
@@ -49,6 +51,31 @@ test('the catalogue holds the five phase 1 roles (Q17), the facility attendant a
   assert.ok(!roleCatalogue.coordinator.features.includes('facilities.maintenance.manage'))
   assert.equal(roleCatalogue.coordinator.requiresScope, 'section')
   assert.equal(roleCatalogue.club_admin.requiresScope, null)
+})
+
+test('the treasurer holds the finance features only (payments spec DD-33, #245)', () => {
+  assert.deepEqual(roleCatalogue.treasurer.features, [
+    'payments.view',
+    'payments.manage',
+    'payments.bank.import',
+    'payments.cash.record',
+    'payments.cash.settle',
+    'payments.orders.manage',
+    'dashboards.view',
+  ])
+  for (const prefix of ['people.', 'groups.', 'activities.', 'club_core.', 'facilities.', 'communication.']) {
+    assert.equal(
+      roleCatalogue.treasurer.features.some((feature) => feature.startsWith(prefix)),
+      false,
+      prefix,
+    )
+  }
+  assert.equal(roleCatalogue.treasurer.requiresScope, null)
+  assert.deepEqual(authRolesFor(['treasurer']), ['vereino_member', 'vereino_treasurer'])
+  assert.deepEqual(rolesForAssignments([{ role: 'treasurer', validFrom: '2026-01-01', validTo: null }], TODAY), [
+    'vereino_member',
+    'vereino_treasurer',
+  ])
 })
 
 test('catalogueRoleFeatures returns copies keyed by auth role', () => {

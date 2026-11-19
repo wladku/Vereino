@@ -193,7 +193,7 @@ export async function signedInStaff(
   input: {
     firstName: string
     lastName: string
-    role: 'coordinator' | 'coach' | 'facility_operator' | 'club_admin'
+    role: 'coordinator' | 'coach' | 'facility_operator' | 'club_admin' | 'treasurer'
     sectionId?: string
     /** The facility attendant's place (#126). */
     placeId?: string

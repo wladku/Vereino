@@ -106,7 +106,7 @@ export function memberLocale(
 
 /**
  * The acting contexts of `GET /api/people/me`, in a fixed order (REQ-001); `facility_operator` names the facility
- * attendant (spec N, REQ-N08).
+ * attendant (spec N, REQ-N08), `treasurer` the treasurer (payments spec DD-33, #245).
  */
 const CONTEXT_ORDER: readonly (GrantKind & ActingRole)[] = [
   'self',
@@ -115,6 +115,7 @@ const CONTEXT_ORDER: readonly (GrantKind & ActingRole)[] = [
   'coordinator',
   'club_admin',
   'facility_operator',
+  'treasurer',
 ]
 
 /** The acting contexts of a scope: the provider grant kinds it holds, `self` first. */
@@ -145,8 +146,8 @@ export type LandingInput = {
 
 /**
  * Where a sign-in lands (spec N, REQ-N08; DD-N09: grants and features, never a role name): the attendant with no
- * member side and no staff grant on `/club/facility`; an administrator with no member side who does not coach on
- * `/backend`; everyone else with `people.self` on `/club`. A user linked to no person stays on `/backend` with a notice
+ * member side and no staff grant on `/club/facility`; an administrator or a treasurer (#245) with no member side who
+ * does not coach on `/backend`; everyone else with `people.self` on `/club`. A user linked to no person stays on `/backend` with a notice
  * and never reaches anyone's data. An explicit redirect the user asked for is kept. Null keeps the platform's answer.
  */
 export function memberLanding(input: LandingInput): { redirect: string; notice: boolean } | null {
@@ -154,9 +155,10 @@ export function memberLanding(input: LandingInput): { redirect: string; notice: 
   if (!input.linked) return { redirect: BACKEND_HOME, notice: true }
   const holds = (kind: string) => input.grants.includes(kind)
   if (!input.memberSide) {
-    const staff = holds('coach') || holds('coordinator') || holds('club_admin')
+    const panel = holds('club_admin') || holds('treasurer')
+    const staff = holds('coach') || holds('coordinator') || panel
     if (input.facilityLogFeature && !staff) return { redirect: FACILITY_HOME, notice: false }
-    if (holds('club_admin') && !holds('coach')) return { redirect: BACKEND_HOME, notice: false }
+    if (panel && !holds('coach')) return { redirect: BACKEND_HOME, notice: false }
   }
   if (input.selfFeature) return { redirect: MEMBER_HOME, notice: false }
   return null

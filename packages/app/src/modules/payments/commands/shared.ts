@@ -1,6 +1,7 @@
 // Shared pieces of the `payments` commands: the write transaction, the club-wide target, tenant-narrowed row-locked
-// loads, CRUD side-effect configs, the audit log entry and the generic undo steps. Phase 4 runs without the treasurer
-// role (D-030): every `payments` write is the club administrator's, club-wide (`authorizeScoped` with `club_admin`).
+// loads, CRUD side-effect configs, the audit log entry and the generic undo steps. Every `payments` write is the club
+// administrator's or the treasurer's (payments spec DD-33, #245), club-wide (`authorizeScoped` with `club_admin` or
+// `treasurer`).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { onTransactionLifetimeComplete, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
@@ -13,8 +14,11 @@ import { authorizeScoped, trustedScopeOf } from '@/modules/foundation'
 import { paymentsJobSchema } from '../data/validators'
 import { emitPaymentsEvent, type PaymentsEventId } from '../events'
 
-/** Every `payments` write of phase 4 step 2: the club administrator (the treasurer role is held back, D-030). */
-export const PAYMENTS_WRITE_KINDS: readonly GrantKind[] = ['club_admin']
+/**
+ * Every club-wide `payments` write: the club administrator and the treasurer (DD-33, #245), least-privileged first, so
+ * a person holding both is recorded as acting as the treasurer.
+ */
+export const PAYMENTS_WRITE_KINDS: readonly GrantKind[] = ['treasurer', 'club_admin']
 
 export type ScopedRow = {
   id: string

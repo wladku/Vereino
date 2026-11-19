@@ -1,19 +1,20 @@
 // ACL features of `payments` used by phase 4 steps 2, 3, 4, 8 and 9 (payments spec *Users, Permissions, and Scope*;
 // issues #108, #109, #110, #114, #115). The club administrator holds them through `payments.*` (`@vereino/core`
 // `roleCatalogue`); the payer role `vereino_payer` holds `payments.view_own` and `payments.pay_online` (a minor never
-// passes the R10 gate `people.paymentsGate`, even with the feature). The treasurer role (DD-33) is held back (A02,
-// D-030). `payments.cash.record` is "Accept cash" (REQ-031); its command still requires the club administrator's grant,
-// like every `payments` write of phase 4 — the treasurer's grant arrives with DD-33 and the coach's own path
+// passes the R10 gate `people.paymentsGate`, even with the feature). The treasurer role `vereino_treasurer` (DD-33,
+// #245) holds `payments.view`, `payments.manage`, `payments.bank.import`, `payments.cash.record`, `payments.cash.settle`
+// and `payments.orders.manage`. `payments.cash.record` is "Accept cash" (REQ-031); its command requires the club
+// administrator's or the treasurer's grant, like every club-wide `payments` write, and the coach's own path
 // (`payments.groups.collect`, DD-31, DD-32) with E07-S10 (#117). `payments.orders.manage` is the order campaigns of
-// E07-S08 (#115), also the club administrator's only. `payments.bank.import` is the statement import of E07-S06 (#113):
-// the file, its transfers and the decisions on them, the club administrator's only until DD-33.
+// E07-S08 (#115), also the treasurer's. `payments.bank.import` is the statement import of E07-S06 (#113):
+// the file, its transfers and the decisions on them, the club administrator's and the treasurer's.
 // `payments.orders.place` is the guardian's kit order of E07-S09 (#116), held by `vereino_payer`. The coach features
 // of E07-S10 (#117, DD-31, DD-32) are "My groups' payments": `payments.groups.view` reads the charges of the children
 // of the caller's groups, `payments.groups.collect` accepts cash for them, reminds payers and hands over kit; both are
 // held by `vereino_coach` and `vereino_coordinator` (`@vereino/core` `roleCatalogue`), and the scope stays the grants'.
 // `payments.cash.settle` is B-33 "Cash to settle" of E07-S11 (#118): who holds the club's cash and accepting a
-// handover; cash accepted by a holder of it goes straight to the club. The club administrator's only until the
-// treasurer role (#245).
+// handover; cash accepted by a holder of it goes straight to the club. The club administrator's and the treasurer's
+// (#245).
 export const features = [
   { id: 'payments.view', title: 'View charges', module: 'payments' },
   {

@@ -12,6 +12,7 @@ import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
+import { usePeopleRecordAccess } from '../useRecordLinks'
 import { AcceptHandoverDialog, formatDay } from './AcceptHandoverDialog'
 import {
   CASH_CUSTODY_QUERY_KEY,
@@ -96,7 +97,7 @@ function custodyColumns(
   ]
 }
 
-function historyColumns(t: Translate, locale: string): TableColumns<HandoverRow> {
+function historyColumns(t: Translate, locale: string, linkPersons: boolean): TableColumns<HandoverRow> {
   return [
     {
       accessorKey: 'number',
@@ -121,14 +122,19 @@ function historyColumns(t: Translate, locale: string): TableColumns<HandoverRow>
       header: t('payments.cashCustody.history.columns.from'),
       enableSorting: false,
       meta: { priority: 1 },
-      cell: ({ row }) => (
-        <Link
-          className="underline-offset-4 hover:underline"
-          href={`/backend/people/persons/${encodeURIComponent(row.original.collectorPersonId)}`}
-        >
-          {personName(row.original.collector) || t('payments.cashCustody.unknownPerson')}
-        </Link>
-      ),
+      cell: ({ row }) => {
+        const name = personName(row.original.collector) || t('payments.cashCustody.unknownPerson')
+        // The treasurer opens no people record (DD-33, #245): the name stays text.
+        if (!linkPersons) return name
+        return (
+          <Link
+            className="underline-offset-4 hover:underline"
+            href={`/backend/people/persons/${encodeURIComponent(row.original.collectorPersonId)}`}
+          >
+            {name}
+          </Link>
+        )
+      },
     },
     {
       id: 'receipts',
@@ -190,7 +196,8 @@ export function CashCustodyPage() {
   const handovers = useHandovers(page)
   const [accepting, setAccepting] = React.useState<CustodyCollector | null>(null)
   const columns = React.useMemo(() => custodyColumns(t, locale, setAccepting), [t, locale])
-  const history = React.useMemo(() => historyColumns(t, locale), [t, locale])
+  const linkPersons = usePeopleRecordAccess()
+  const history = React.useMemo(() => historyColumns(t, locale, linkPersons), [t, locale, linkPersons])
   const refresh = React.useCallback(
     () => queryClient.invalidateQueries({ queryKey: [CASH_CUSTODY_QUERY_KEY] }),
     [queryClient],

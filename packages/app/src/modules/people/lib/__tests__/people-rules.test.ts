@@ -161,6 +161,12 @@ describe('roleScopeProblem', () => {
     expect(roleScopeProblem('coordinator', { sectionId: 'section-a', placeId: 'hall' })).toBe('unexpected')
     expect(roleScopeProblem('club_admin', { placeId: 'hall' })).toBe('unexpected')
   })
+
+  it('takes neither a section nor a place for a treasurer (#245)', () => {
+    expect(roleScopeProblem('treasurer', {})).toBeNull()
+    expect(roleScopeProblem('treasurer', { sectionId: 'section-a' })).toBe('unexpected')
+    expect(roleScopeProblem('treasurer', { placeId: 'hall' })).toBe('unexpected')
+  })
 })
 
 describe('personScope', () => {
@@ -202,6 +208,22 @@ describe('personScope', () => {
     ])
     expect(personScope({ personId: 'p1', assignments: [attendant('hall')], guardianships: [] }, today)).toEqual([
       { kind: 'facility_operator', ids: ['hall'] },
+      { kind: 'self', ids: ['p1'] },
+    ])
+  })
+
+  it('adds the club-wide treasurer grant for an active treasurer assignment only (DD-33, #245)', () => {
+    const treasurer = (validTo: string | null): AssignmentRecord => ({
+      role: 'treasurer',
+      validFrom: '2026-01-01',
+      validTo,
+      sectionId: null,
+    })
+    expect(personScope({ personId: 'p1', assignments: [treasurer(null)], guardianships: [] }, today)).toEqual([
+      { kind: 'treasurer' },
+      { kind: 'self', ids: ['p1'] },
+    ])
+    expect(personScope({ personId: 'p1', assignments: [treasurer('2026-10-26')], guardianships: [] }, today)).toEqual([
       { kind: 'self', ids: ['p1'] },
     ])
   })

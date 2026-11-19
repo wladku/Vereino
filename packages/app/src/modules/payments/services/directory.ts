@@ -69,6 +69,15 @@ export function findSections(
   return clubDirectory(container).findSections(scope, ids, em)
 }
 
+/** The live active sections of the club, by name (the order campaign's section select, #245). */
+export function listSections(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  em?: EntityManager,
+): Promise<SectionDirectoryEntry[]> {
+  return clubDirectory(container).listSections(scope, null, em)
+}
+
 /** The live institutions of the club among `ids` by id, names only (a rental charge's payer and payee, #291). */
 export function findInstitutions(
   container: AwilixContainer,
@@ -128,6 +137,15 @@ export function findActivities(
   em?: EntityManager,
 ): Promise<Map<string, ScheduleActivityEntry>> {
   return scheduleDirectory(container).findActivities(scope, ids, em)
+}
+
+/** The live active activities of the club, by name (the fee form's activity select, #245). */
+export function listActivities(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  em?: EntityManager,
+): Promise<ScheduleActivityEntry[]> {
+  return scheduleDirectory(container).listActivities(scope, null, em)
 }
 
 /** The page size of `activities.scheduleDirectory.listOccurrences`: it returns at most this many sessions, by start. */
