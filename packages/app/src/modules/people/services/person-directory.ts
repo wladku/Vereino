@@ -13,6 +13,7 @@ import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { PERSON_ENTITY_ID } from '../encryption'
 import { contactSharingFilter } from '../lib/contact-sharing'
 import { publicPersonName } from '../lib/member-rules'
+import { holdersBySectionDay, sectionDaysSpan, type SectionDay } from '../lib/section-role-holders'
 import type { ClubScope } from './club-clock'
 
 /** The display data of a person a consumer may show next to the record it authorized. */
@@ -87,6 +88,16 @@ export type PersonDirectory = {
     date: CalendarDate,
     em?: EntityManager,
   ): Promise<string[]>
+  /**
+   * `sectionCoordinatorIdsOn` for many (section, day) pairs in one read: the coordinators of each pair, by
+   * `<sectionId>:<date>` (`sectionDayKey`); every pair has an entry. For a consumer that would otherwise read once per
+   * pair (the reschedule notices of a long closure, #394).
+   */
+  sectionCoordinatorIdsOnDays(
+    scope: ClubScope,
+    pairs: readonly SectionDay[],
+    em?: EntityManager,
+  ): Promise<Map<string, string[]>>
   /**
    * The ids of the persons whose first or last name matches every word of `term` (prefixes of three characters or
    * more), through the platform's hashed `search_tokens` — the names are encrypted. Null when the index was not
@@ -304,6 +315,36 @@ export async function sectionCoordinatorIdsOn(
   return [...new Set(rows.map((row) => row.personId))]
 }
 
+export async function sectionCoordinatorIdsOnDays(
+  em: EntityManager,
+  scope: ClubScope,
+  pairs: readonly SectionDay[],
+): Promise<Map<string, string[]>> {
+  const span = sectionDaysSpan(pairs)
+  if (!span) return new Map()
+  const rows = await em.find(
+    RoleAssignment,
+    {
+      ...scope,
+      deletedAt: null,
+      role: 'coordinator',
+      sectionId: { $in: [...new Set(pairs.map((pair) => pair.sectionId))] },
+      validFrom: { $lte: span.to },
+      $or: [{ validTo: null }, { validTo: { $gte: span.from } }],
+    },
+    { fields: ['id', 'personId', 'sectionId', 'validFrom', 'validTo'] },
+  )
+  return holdersBySectionDay(
+    pairs,
+    rows.map((row) => ({
+      personId: row.personId,
+      sectionId: row.sectionId ?? null,
+      validFrom: row.validFrom,
+      validTo: row.validTo ?? null,
+    })),
+  )
+}
+
 export async function searchPersonIds(em: EntityManager, scope: ClubScope, term: string): Promise<Set<string> | null> {
   const result = await findEntityIdsBySearchTokens({
     db: em.getKysely<SearchTokenDatabase>(),
@@ -328,6 +369,7 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     roleHolderIdsOn: (scope, role, date, em) => roleHolderIdsOn(em ?? getEm().fork(), scope, role, date),
     sectionCoordinatorIdsOn: (scope, sectionId, date, em) =>
       sectionCoordinatorIdsOn(em ?? getEm().fork(), scope, sectionId, date),
+    sectionCoordinatorIdsOnDays: (scope, pairs, em) => sectionCoordinatorIdsOnDays(em ?? getEm().fork(), scope, pairs),
     searchPersonIds: (scope, term, em) => searchPersonIds(em ?? getEm().fork(), scope, term),
   }
 }
