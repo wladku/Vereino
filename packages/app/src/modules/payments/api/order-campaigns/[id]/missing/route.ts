@@ -1,6 +1,7 @@
 // `GET /api/payments/order-campaigns/{id}/missing` — B-32 "No order" (REQ-032, issue #115; an additive route recorded
-// in the payments spec): the children the campaign's groups cover today without a submitted order, with their group.
-// The "Close orders" dialog counts them.
+// in the payments spec): the children the campaign's groups cover today without a submitted order, with their group
+// and (payments parity REQ-C05, #293) their active guardians with a flag for a missing e-mail address. The "Close
+// orders" dialog counts them.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { errorResponse } from '@/modules/foundation'
@@ -21,6 +22,9 @@ const responseSchema = z.object({
       participant: z.object({ firstName: z.string(), lastName: z.string() }).nullable(),
       groupId: z.uuid(),
       groupName: z.string().nullable(),
+      guardians: z
+        .array(z.object({ firstName: z.string(), lastName: z.string(), hasEmail: z.boolean() }))
+        .describe('Active guardians; empty when the child has none'),
     }),
   ),
   total: z.number().int(),
@@ -31,7 +35,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const loaded = await campaignForRequest(request, context.params)
     if (!loaded.ok) return loaded.response
     const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams))
-    const items = await campaignMissing(loaded.ctx.container, loaded.scope, loaded.campaign, query.groupId)
+    const items = await campaignMissing(
+      loaded.ctx.container,
+      loaded.scope,
+      loaded.campaign,
+      query.groupId,
+      undefined,
+      true,
+    )
     return Response.json({ items, total: items.length })
   } catch (error: unknown) {
     return errorResponse(error, 'payments.order_campaigns.missing')
