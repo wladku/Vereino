@@ -12,7 +12,8 @@
 // shows the age and whether the person has an account ("12 lat · ma konto"; navigation spec REQ-N12, #262). The
 // "Leaving" tab (people life-cycle spec B-10 `?tab=leaving`, Q-L19, #306) comes last and only with `people.manage`;
 // a former person's header says since when they left. For an adult the Guardianship tab starts with "Own consents"
-// (people life-cycle spec REQ-L10, #309), shown only with `people.manage`.
+// (people life-cycle spec REQ-L10, #309), shown only with `people.manage`. With `people.manage` the Details tab starts
+// with the person's photo (REQ-L12, #312) and the Roles tab carries the "Staff setup" checklist (REQ-L09, #312).
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -30,6 +31,7 @@ import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { OwnConsentsPanel } from './OwnConsentsPanel'
 import { LeavingPanel } from './LeavingPanel'
 import { PersonDetailsForm } from './PersonForm'
+import { PersonPhotoPanel } from './PersonPhotoPanel'
 import { RolesPanel } from './RolesPanel'
 import {
   OWN_FORBIDDEN_STATE,
@@ -195,7 +197,8 @@ export function PersonRecord({ id }: { id: string }) {
             {hasLeavingTab ? <TabsTrigger value="leaving">{t('people.persons.tabs.leaving')}</TabsTrigger> : null}
           </TabsList>
         </div>
-        <TabsContent value="details" className="pt-4">
+        <TabsContent value="details" className="flex flex-col gap-4 pt-4">
+          {canEdit ? <PersonPhotoPanel person={person} onChanged={refetch} /> : null}
           {canEdit ? (
             <PersonDetailsForm person={person} withPesel={features['people.pesel.view']} onSaved={refetch} />
           ) : (

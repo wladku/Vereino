@@ -78,6 +78,9 @@ export const errorCodes = [
   { code: 'people_filter_unavailable', status: 400, messageKey: 'people.errors.people_filter_unavailable' },
   { code: 'people_filter_too_broad', status: 422, messageKey: 'people.errors.people_filter_too_broad' },
   { code: 'people_filter_failed', status: 503, messageKey: 'people.errors.people_filter_failed' },
+  // The person's photo (people life-cycle spec REQ-L12, *API* row `/api/people/persons/{id}/photo`; #312).
+  { code: 'person_photo_format_unsupported', status: 422, messageKey: 'people.errors.person_photo_format_unsupported' },
+  { code: 'person_photo_too_large', status: 422, messageKey: 'people.errors.person_photo_too_large' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

@@ -58,6 +58,7 @@ export class Person extends ScopedEntityBase {
     | 'externalIdHash'
     | 'leftOn'
     | 'consents'
+    | 'photoAttachmentId'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -131,6 +132,13 @@ export class Person extends ScopedEntityBase {
    */
   @Property({ name: 'consents', type: 'json', defaultRaw: `'{}'::jsonb` })
   consents: StoredConsents = {}
+
+  /**
+   * The person's photo in the private `attachments` partition (people life-cycle spec *Data Models*, REQ-L12; #312):
+   * PNG, JPEG or WebP up to 5 MB, byte-checked; read only through `GET /api/people/persons/{id}/photo`.
+   */
+  @Property({ name: 'photo_attachment_id', type: 'uuid', nullable: true })
+  photoAttachmentId?: string | null
 }
 
 /**

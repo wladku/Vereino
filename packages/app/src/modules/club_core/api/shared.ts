@@ -130,6 +130,7 @@ export function contractListItem(row: Row) {
     validFrom: day(row.valid_from),
     validTo: day(row.valid_to),
     terms: terms ? parseContractTerms(text(row.kind), terms) : null,
+    hasAttachment: Boolean(row.attachment_id),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -248,6 +249,9 @@ export const contractListItemSchema = z.object({
     .describe(
       "A coach contract's rates in grosz (the club model's fields), or a management agreement's rental terms (`paymentDeadlineDays`, `autoExpireUnpaid`); null for the other kinds",
     ),
+  hasAttachment: z
+    .boolean()
+    .describe('Whether the signed contract PDF is stored (`GET /api/club_core/contracts/{id}/attachment`)'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   partyName: z.string().nullable().optional().describe("The person's or institution's name; null when unknown"),

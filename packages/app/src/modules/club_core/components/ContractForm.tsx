@@ -26,6 +26,7 @@ import {
   type CoachTermField,
 } from '../lib/contracts'
 import { enumOptions, errorMessage, textOrNull, type Translate } from './client-helpers'
+import { ContractAttachmentPanel } from './ContractAttachmentPanel'
 import { groszToZloty, zlotyToGrosz, type ContractRow } from './contracts-shared'
 import {
   PERSON_CREATE_HREF,
@@ -423,6 +424,23 @@ export function ContractEditForm({ id }: { id: string }) {
     },
   })
   const row = query.data ?? null
+  const hasAttachment = row?.hasAttachment ?? false
+  const refetch = query.refetch
+
+  // The signed PDF (REQ-L12, #312) is uploaded at once; a change moves the version, so the record is read again and
+  // the form starts from it (the form is keyed by `updatedAt`).
+  const AttachmentField = React.useCallback(
+    () => (
+      <ContractAttachmentPanel
+        contractId={id}
+        hasAttachment={hasAttachment}
+        onChanged={async () => {
+          await refetch()
+        }}
+      />
+    ),
+    [id, hasAttachment, refetch],
+  )
 
   const fields = React.useMemo<CrudField[]>(
     () => [
@@ -437,8 +455,14 @@ export function ContractEditForm({ id }: { id: string }) {
       ...periodFields(t),
       ...(model.data ? rateFields(model.data, t) : []),
       ...rentalTermFields(t),
+      {
+        id: 'attachment',
+        label: t('club_core.contracts.fields.attachment'),
+        type: 'custom',
+        component: AttachmentField,
+      },
     ],
-    [t, model.data],
+    [t, model.data, AttachmentField],
   )
   const groups = React.useMemo<CrudFormGroup[]>(
     () => [
@@ -446,7 +470,7 @@ export function ContractEditForm({ id }: { id: string }) {
         id: 'contract',
         title: t('club_core.contracts.groups.contract'),
         column: 1,
-        fields: ['kindLabel', 'partyLabel', 'validFrom', 'validTo'],
+        fields: ['kindLabel', 'partyLabel', 'validFrom', 'validTo', 'attachment'],
       },
       ...(model.data ? [ratesGroup(model.data, t)] : []),
       rentalTermsGroup(t),

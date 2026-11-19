@@ -6,11 +6,11 @@ import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { CheckedUpload } from '../commands/logos'
-import { checkLogo, checkMaterial, checkPlaceFile, storedFileName } from '../lib/files'
+import { checkContractAttachment, checkLogo, checkMaterial, checkPlaceFile, storedFileName } from '../lib/files'
 import type { ClubCoreErrorCode } from '../lib/error-codes'
 import { clubCoreErrors } from './errors'
 
-export type UploadKind = 'logo' | 'material' | 'place_photo' | 'place_regulations'
+export type UploadKind = 'logo' | 'material' | 'place_photo' | 'place_regulations' | 'contract_attachment'
 
 type Checked = ReturnType<typeof checkLogo>
 
@@ -36,6 +36,12 @@ const UPLOADS: Record<
     tooLarge: 'place_file_too_large',
     unsupported: 'place_file_format_unsupported',
     name: 'regulations',
+  },
+  contract_attachment: {
+    check: checkContractAttachment,
+    tooLarge: 'contract_attachment_too_large',
+    unsupported: 'contract_attachment_format_unsupported',
+    name: 'contract',
   },
 }
 

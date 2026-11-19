@@ -71,6 +71,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'valid_from',
       'valid_to',
       'terms',
+      'attachment_id',
       'tenant_id',
       'organization_id',
       'created_at',
