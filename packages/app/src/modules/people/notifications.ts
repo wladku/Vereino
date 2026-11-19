@@ -6,6 +6,27 @@ import type { NotificationTypeDefinition } from '@open-mercato/shared/modules/no
  * request (to the member who filed it) and the club confirmed a departure (to the persons who leave, a minor's
  * guardians for the minor). No message carries a reason, a note or a birth date.
  */
+function attentionList(filter: string): string {
+  return `/backend/people/persons?attention=${filter}`
+}
+
+function lifeCycleType(type: string, key: string, icon: string, linkHref: string): NotificationTypeDefinition[] {
+  return [
+    {
+      type,
+      module: 'people',
+      channels: ['in_app'],
+      titleKey: `people.notifications.${key}.title`,
+      bodyKey: `people.notifications.${key}.body`,
+      icon,
+      severity: 'info',
+      category: 'people',
+      linkHref,
+      actions: [],
+    },
+  ]
+}
+
 export const notificationTypes: NotificationTypeDefinition[] = [
   {
     type: 'people.departure_request_received',
@@ -42,6 +63,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     linkHref: '/club/profile',
     actions: [],
   },
+  // Phase L8 (#310): the 18th birthday 30 days ahead and on the day, and the account age — a family version (the
+  // guardians and the person) and the administrators' version linking to the "Needs attention" list.
+  ...lifeCycleType('people.turns_18_soon', 'turns18Soon', 'calendar-clock', '/club/profile'),
+  ...lifeCycleType('people.turns_18_soon_admin', 'turns18SoonAdmin', 'calendar-clock', attentionList('turns_18_soon')),
+  ...lifeCycleType('people.came_of_age', 'cameOfAge', 'user-check', '/club/profile'),
+  ...lifeCycleType('people.came_of_age_admin', 'cameOfAgeAdmin', 'user-check', '/backend/people/persons'),
+  ...lifeCycleType('people.account_age_reached', 'accountAgeReached', 'user-check', '/club'),
+  ...lifeCycleType(
+    'people.account_age_reached_admin',
+    'accountAgeReachedAdmin',
+    'user-check',
+    attentionList('account_age'),
+  ),
 ]
 
 export default notificationTypes

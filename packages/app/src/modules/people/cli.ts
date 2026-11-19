@@ -7,7 +7,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
-import { setUpClubPeople } from './services/club-setup'
+import { registerLifeCycleSchedule, setUpClubPeople } from './services/club-setup'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './services/payments-gate'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
@@ -61,7 +61,8 @@ const bootstrapAdmin: ModuleCli = {
     }
     const scope = { tenantId: tenant, organizationId: org }
     const container = await createRequestContainer()
-    await setUpClubPeople(container, scope, { withRoleAcls: true })
+    // The life-cycle schedule waits for the confirmed first run on a club that may already hold data (#310).
+    await setUpClubPeople(container, scope, { withRoleAcls: true, lifeCycleSchedule: false })
     await runJobCommand('people.persons.bootstrap_admin', scope, {
       userId: user,
       firstName,
@@ -119,6 +120,53 @@ const purgeImportRows: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments, purgeImportRows]
+/**
+ * `people life-cycle --tenant <id> --org <id> [--today YYYY-MM-DD] [--dry-run] [--register-schedule]`: one run of the
+ * daily life-cycle job (people life-cycle spec REQ-L06, REQ-L07; #310). `--dry-run` prints the counts and changes
+ * nothing (the run leaves only its audit entry); `--register-schedule` registers the daily `people:life-cycle`
+ * schedule after a real run — the confirmed first run on an existing club (*Rollout*, item 11). Prints the job's result
+ * as JSON.
+ */
+const lifeCycle: ModuleCli = {
+  command: 'life-cycle',
+  async run(argv) {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        tenant: { type: 'string' },
+        org: { type: 'string' },
+        today: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'register-schedule': { type: 'boolean' },
+      },
+      strict: false,
+      allowPositionals: true,
+    })
+    const tenant = typeof values.tenant === 'string' ? values.tenant : undefined
+    const org = typeof values.org === 'string' ? values.org : undefined
+    const today = typeof values.today === 'string' ? values.today : undefined
+    const dryRun = values['dry-run'] === true
+    const register = values['register-schedule'] === true
+    if (!tenant || !org || (dryRun && register)) {
+      process.stderr.write(
+        'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const scope = { tenantId: tenant, organizationId: org }
+    await runJobCommand('people.persons.life_cycle', scope, {
+      ...(today ? { today } : {}),
+      ...(dryRun ? { dryRun } : {}),
+    })
+    if (register) {
+      const registered = await registerLifeCycleSchedule(await createRequestContainer(), scope)
+      process.stdout.write(`${JSON.stringify({ scheduleRegistered: registered })}\n`)
+      if (!registered) process.exitCode = 1
+    }
+  },
+}
+
+const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments, purgeImportRows, lifeCycle]
 
 export default commands

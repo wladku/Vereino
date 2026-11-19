@@ -10,7 +10,9 @@
 // `guardians` (the list hook is synchronous per row, so the batch read runs after the page); the route opts in to
 // response enrichers, so `groups` adds `_groups` (DD-U02). People life-cycle spec B-09 (#309): `attention=missing_consents`
 // lists the participants whose `regulations` consent is not given; it reveals consent state, so it needs `people.manage`
-// (403 `scope_denied` otherwise).
+// (403 `scope_denied` otherwise). Phase L8 (#310) adds `attention=account_age` (minors without an account at the club's
+// account age), `turns_18_soon` (18th birthday within 30 days) and `adult_without_contact` (adults with neither an
+// account nor an e-mail); every "Needs attention" value is the club administrator's list and needs `people.manage`.
 import { z } from 'zod'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
@@ -23,7 +25,7 @@ import { Person } from '../../data/entities'
 import { ASSIGNABLE_ROLES, personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
 import { PERSON_ENTITY_ID } from '../../encryption'
 import { PERSON_FILTER_ID_LIMIT, intersectIdSets, personListPlan } from '../../lib/person-list-filters'
-import { clubToday, type ClubScope } from '../../services/club-clock'
+import { clubSettings, clubToday, type ClubScope } from '../../services/club-clock'
 import {
   PersonFilterProblem,
   loadPersonListColumns,
@@ -47,8 +49,8 @@ function clubScopeOf(ctx: CrudCtx): ClubScope | null {
   return tenantId && organizationId ? { tenantId, organizationId } : null
 }
 
-/** The consent filter reveals consent state: the club administrator's `people.manage` only (REQ-L10). */
-async function assertMayReadConsents(ctx: CrudCtx, clubScope: ClubScope): Promise<void> {
+/** "Needs attention" is the club administrator's list (consent state, REQ-L10; ages and contacts, #310). */
+async function assertMayReadAttention(ctx: CrudCtx, clubScope: ClubScope): Promise<void> {
   const userId = ctx.auth?.sub
   const rbac = ctx.container.resolve<RbacService>('rbacService')
   const allowed = !!userId && (await rbac.userHasAllFeatures(userId, ['people.manage'], clubScope))
@@ -62,13 +64,17 @@ async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope:
   if (query.ageFrom !== undefined && query.ageTo !== undefined && query.ageFrom > query.ageTo) {
     return peopleErrors.throw('people_filter_age_range', { field: 'ageTo' })
   }
-  if (query.attention === 'missing_consents') await assertMayReadConsents(ctx, clubScope)
-  const plan = personListPlan(query, today)
+  if (query.attention) await assertMayReadAttention(ctx, clubScope)
+  const ownAccountMinAge =
+    query.attention === 'account_age' ? (await clubSettings(ctx.container, clubScope)).ownAccountMinAge : undefined
+  const plan = personListPlan(query, today, ownAccountMinAge)
   // Former persons (`left_on` reached, people life-cycle spec DD-L05, #306): only in their perspective, hidden elsewhere.
   if (plan.former === 'only') predicates.push({ left_on: { $lte: today } } as Where)
   if (plan.former === 'exclude')
     predicates.push({ $or: [{ left_on: { $exists: false } }, { left_on: { $gt: today } }] } as Where)
   for (const exists of plan.accountConditions) predicates.push({ user_id: { $exists: exists } } as Where)
+  // `adult_without_contact` (#310): no contact e-mail (an encrypted column; only its absence is compared).
+  if (plan.withoutEmail) predicates.push({ email: { $exists: false } } as Where)
   // `birth_date` is a plain `date` column; the bounds are calendar dates in the club zone.
   if (plan.birthDates?.onOrBefore) predicates.push({ birth_date: { $lte: plan.birthDates.onOrBefore } } as Where)
   if (plan.birthDates?.after) predicates.push({ birth_date: { $gt: plan.birthDates.after } } as Where)
