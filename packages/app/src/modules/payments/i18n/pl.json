@@ -998,5 +998,6 @@
   "payments.settings.validation.generationDay": "Podaj dzień od 1 do 28.",
   "payments.email.chargeReminder.payerCode": "Twój kod płatnika do tytułu przelewu: {code}",
   "payments.notifications.chargeOverdue.title": "Zaległe płatności",
-  "payments.notifications.chargeOverdue.body": "Część Twoich płatności jest po terminie. Otwórz płatności, aby je uregulować."
+  "payments.notifications.chargeOverdue.body": "Część Twoich płatności jest po terminie. Otwórz płatności, aby je uregulować.",
+  "payments.nav.badge.waiting": "{count} oczekuje"
 }

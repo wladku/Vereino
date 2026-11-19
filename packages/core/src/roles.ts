@@ -70,6 +70,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'facilities.bookings.create',
       'payments.groups.view',
       'payments.groups.collect',
+      // The panel dashboard with the widgets of the coordinator's other features: "Sessions needing a coach" and
+      // "Unsettled sessions" for the own sections (navigation spec REQ-N04, Q-N03 approved 2026-11-15; #260).
+      'dashboards.view',
     ],
     implies: ['member'],
     requiresScope: 'section',
@@ -96,8 +99,15 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     authRole: 'vereino_facility_operator',
     // The facility attendant (club spec *Users, Permissions, and Scope*; #126): the calendar, rentals entered after a
     // phone call, the log and incidents — limited by the `facility_operator` grant to the assigned place and its
-    // descendants. Approving online requests stays the administrator's (`facilities.rentals.approve`, Q-025).
-    features: ['facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage'],
+    // descendants. Approving online requests stays the administrator's (`facilities.rentals.approve`, Q-025). The panel
+    // dashboard shows the attendant only the widgets of these features (navigation spec REQ-N04, Q-N03; #260).
+    features: [
+      'facilities.view',
+      'facilities.rentals.manage',
+      'facilities.log.write',
+      'facilities.incidents.manage',
+      'dashboards.view',
+    ],
     implies: ['member'],
     requiresScope: 'place',
   },

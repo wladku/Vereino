@@ -247,7 +247,7 @@
   "dashboard.empty.configurable": "No widgets selected yet. Use \"Add a widget\" to start building your dashboard.",
   "dashboard.empty.noWidgets.description": "Dashboard widgets will appear here after you add the first module that exposes them.",
   "dashboard.empty.noWidgets.title": "No dashboard widgets yet",
-  "dashboard.empty.readonly": "No widgets are available for your account yet.",
+  "dashboard.empty.readonly": "Nothing needs action today.",
   "dashboard.error.partial": "Some changes were not saved",
   "dashboard.error.reload": "Reload data",
   "dashboard.loadError": "Unable to load dashboard data. Please try again later.",
@@ -1180,6 +1180,10 @@
   "vector.api.errors.reindexFailed": "Vector reindex failed",
   "vector.api.errors.searchFailed": "Vector search failed",
   "vector.api.errors.updateFailed": "Failed to update vector settings.",
+  "vereino.backend.memberInterface": "Member interface",
+  "vereino.dashboard.greeting": "Hello, {name}",
+  "vereino.dashboard.greetingNoName": "Hello",
+  "vereino.dashboard.subtitle": "{date} · what needs action today",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }
