@@ -75,8 +75,13 @@ type PersonName = { firstName: string; lastName: string } | null
 export type CampaignOrderRow = {
   id: string
   participant: PersonName
+  groupId: string | null
   groupName: string | null
+  orderedByPersonId: string
   orderedBy: PersonName
+  contactPhone: string | null
+  submittedVia: 'app' | 'email_link'
+  notes: string | null
   printName: string | null
   printNumber: number | null
   lines: { productId: string; productName: string; size: string | null; sizes: string | null; unitPrice: number }[]
@@ -85,14 +90,26 @@ export type CampaignOrderRow = {
   remaining: number
   chargeId: string
   chargeStatus: string | null
+  dueDate: string | null
+  overdue: boolean
+  payments: { method: string; collectedBy: PersonName }[]
   handedOver: boolean
+  handedOverAt: string | null
+  handedOverBy: PersonName
 }
 
-export type MissingChildRow = { personId: string; participant: PersonName; groupId: string; groupName: string | null }
+export type MissingChildRow = {
+  personId: string
+  participant: PersonName
+  groupId: string
+  groupName: string | null
+  guardians: { firstName: string; lastName: string; hasEmail: boolean }[]
+}
 
 export type SupplierSummaryView = {
-  units: { productId: string; productName: string; size: string | null; quantity: number }[]
+  units: { productId: string; productName: string; size: string | null; quantity: number; inSets: number }[]
   prints: {
+    participant: PersonName
     printName: string | null
     printNumber: number | null
     groupName: string | null
@@ -101,6 +118,12 @@ export type SupplierSummaryView = {
 }
 
 export type Option = { value: string; label: string }
+
+/** The catalog suffix of a count's plural form in `locale` (`one`, `few`, `many` or `other`). */
+export function pluralKey(locale: string, count: number): 'one' | 'few' | 'many' | 'other' {
+  const form = new Intl.PluralRules(locale).select(count)
+  return form === 'one' || form === 'few' || form === 'many' ? form : 'other'
+}
 
 /** The club's active sections, by name. */
 export async function sectionOptions(): Promise<Option[]> {

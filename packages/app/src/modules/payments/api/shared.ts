@@ -346,6 +346,7 @@ export const campaignKpisSchema = z.object({
   value: z.number().int().describe('Grosz due on the orders'),
   paid: z.number().int().describe('Grosz paid on the orders'),
   handedOver: z.number().int(),
+  notHandedOver: z.number().int().describe('Orders whose kit is not handed over yet'),
 })
 
 export const orderCampaignListItemSchema = z.object({
