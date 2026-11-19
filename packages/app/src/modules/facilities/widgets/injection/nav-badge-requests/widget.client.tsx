@@ -17,10 +17,10 @@ async function readCount(): Promise<Record<string, unknown>> {
 export default function RequestsNavBadgeWidget({ context }: InjectionWidgetComponentProps<Record<string, unknown>, Record<string, unknown>>) {
   const t = useT()
   // The shell's injection context carries the current path, so the counts are read again on every navigation.
-  const path = typeof context?.path === 'string' ? context.path : ''
+  const path = typeof context.path === 'string' ? context.path : ''
   const label = React.useCallback((count: number) => t('facilities.nav.badge.waiting', { count }), [t])
   React.useEffect(
-    navBadgeEffect({ hrefs: [REQUESTS_HREF], read: readCount, publish: setNavBadge, label }),
+    () => navBadgeEffect({ hrefs: [REQUESTS_HREF], read: readCount, publish: setNavBadge, label })(),
     [path, label],
   )
   return null
