@@ -165,12 +165,12 @@ describe('overdueSummary', () => {
   it('counts families by payer and sums what remains', () => {
     expect(
       overdueSummary([
-        { payerPersonId: 'a', remaining: 10000 },
-        { payerPersonId: 'a', remaining: 5000 },
-        { payerPersonId: 'b', remaining: 20000 },
-        { payerPersonId: null, remaining: 1000 },
+        { payerPersonId: 'a', payerMissing: false, remaining: 10000 },
+        { payerPersonId: 'a', payerMissing: false, remaining: 5000 },
+        { payerPersonId: 'b', payerMissing: false, remaining: 20000 },
+        { payerPersonId: null, payerMissing: true, remaining: 1000 },
       ]),
-    ).toEqual({ total: 36000, charges: 4, families: 2 })
-    expect(overdueSummary([])).toEqual({ total: 0, charges: 0, families: 0 })
+    ).toEqual({ total: 36000, charges: 4, families: 2, withoutPayer: 1 })
+    expect(overdueSummary([])).toEqual({ total: 0, charges: 0, families: 0, withoutPayer: 0 })
   })
 })
