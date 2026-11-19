@@ -118,6 +118,28 @@ export const membershipMoveSchema = z
   })
   .strict()
 
+/**
+ * Moves several participants of one roster to another group from `date` (people life-cycle spec REQ-L15, *API* row
+ * `groups.memberships.move_many`; #383). The list is capped by the command (422 `move_too_many` above 100), so the
+ * schema accepts a little more to answer with that code; `dryRun` previews, the apply sends the preview's token.
+ */
+export const membershipMoveManySchema = z
+  .object({
+    fromGroupId: z.uuid(),
+    toGroupId: z.uuid(),
+    date: calendarDateSchema,
+    membershipIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(1000)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'membershipIds must be unique' }),
+    dryRun: z.boolean().optional(),
+    previewToken: z.string().max(200).optional(),
+  })
+  .strict()
+
+export type MembershipMoveManyInput = z.infer<typeof membershipMoveManySchema>
+
 /** Removes a membership entered by mistake (`?id=`, parity spec REQ-A03). */
 export const membershipDeleteSchema = z.object({ id: z.uuid() }).strict()
 

@@ -42,6 +42,13 @@ export const errorCodes = [
     messageKey: 'groups.errors.rollover_record_action_duplicate',
   },
   { code: 'rollover_copy_invalid', status: 422, messageKey: 'groups.errors.rollover_copy_invalid' },
+  // Moving several children from a roster (people life-cycle spec REQ-L15, *API* row `groups.memberships.move_many`;
+  // #383).
+  { code: 'move_preview_stale', status: 409, messageKey: 'groups.errors.move_preview_stale' },
+  { code: 'move_same_group', status: 422, messageKey: 'groups.errors.move_same_group' },
+  { code: 'move_target_inactive', status: 422, messageKey: 'groups.errors.move_target_inactive' },
+  { code: 'move_date_in_past', status: 422, messageKey: 'groups.errors.move_date_in_past' },
+  { code: 'move_too_many', status: 422, messageKey: 'groups.errors.move_too_many' },
 ] as const satisfies ErrorCodeTable
 
 export type GroupsErrorCode = (typeof errorCodes)[number]['code']

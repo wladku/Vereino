@@ -99,11 +99,11 @@ function Problem({ id, text }: { id: string; text: string | null }) {
 export type FormSurface = 'dialog' | 'sheet'
 
 /** The footer buttons' width: full width in a sheet, so a thumb reaches them (44 px targets either way). */
-function buttonClass(surface: FormSurface): string {
+export function buttonClass(surface: FormSurface): string {
   return surface === 'sheet' ? 'min-h-11 w-full sm:w-auto' : 'min-h-11'
 }
 
-function FormFrame({
+export function FormFrame({
   surface,
   open,
   onOpenChange,
@@ -113,6 +113,7 @@ function FormFrame({
   onSubmitShortcut,
   footer,
   children,
+  fullScreen = false,
 }: {
   surface: FormSurface
   open: boolean
@@ -123,6 +124,8 @@ function FormFrame({
   onSubmitShortcut: () => void
   footer: React.ReactNode
   children: React.ReactNode
+  /** A long form (the bulk move): a full-height sheet, a wider dialog whose body scrolls. */
+  fullScreen?: boolean
 }) {
   const t = useT()
   if (surface === 'sheet') {
@@ -130,7 +133,7 @@ function FormFrame({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-dvh rounded-t-xl"
+          className={fullScreen ? 'h-dvh max-h-dvh' : 'max-h-dvh rounded-t-xl'}
           closeLabel={t('groups.common.close')}
           data-testid={testId}
           onKeyDown={submitOnCtrlEnter(onSubmitShortcut)}
@@ -139,7 +142,9 @@ function FormFrame({
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>{description}</SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 overflow-y-auto px-4">{children}</div>
+          <div className={fullScreen ? 'min-h-0 flex-1 overflow-y-auto px-4' : 'min-h-0 overflow-y-auto px-4'}>
+            {children}
+          </div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
       </Sheet>
@@ -150,13 +155,14 @@ function FormFrame({
       <DialogContent
         closeAriaLabel={t('groups.common.close')}
         data-testid={testId}
+        className={fullScreen ? 'sm:max-w-2xl' : undefined}
         onKeyDown={submitOnCtrlEnter(onSubmitShortcut)}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {children}
+        {fullScreen ? <div className="max-h-[60vh] min-h-0 overflow-y-auto">{children}</div> : children}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
     </Dialog>

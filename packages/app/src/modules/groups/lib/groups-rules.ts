@@ -3,6 +3,7 @@
 // parameter (engineering standards S3.5); nothing here reads the database.
 import {
   addCalendarDays,
+  ageOn,
   endsBefore,
   isActiveAt,
   isInvertedPeriod,
@@ -235,6 +236,55 @@ export function moveDateBounds(
   const [year, month] = today.split('-').map(Number)
   const next = month === 12 ? `${String(year + 1)}-01-01` : `${String(year)}-${String(month + 1).padStart(2, '0')}-01`
   return { min, initial: next > min ? next : min }
+}
+
+/** The most children one bulk move takes (people life-cycle spec Q-L22: one roster, one target group, up to 100). */
+export const MOVE_MANY_LIMIT = 100
+
+export type MoveManyProblem = 'too_many' | 'same_group' | 'date_in_past'
+
+/**
+ * Why a bulk move (`groups.memberships.move_many`, REQ-L15, DD-L16) is refused before any child is looked at, or null:
+ * more than `MOVE_MANY_LIMIT` children (422 `move_too_many`), the same group (422 `move_same_group`), a first day before
+ * `today` in the club zone (422 `move_date_in_past`, Q-L08).
+ */
+export function moveManyProblem(
+  move: { fromGroupId: string; toGroupId: string; date: CalendarDate; count: number },
+  today: CalendarDate,
+): MoveManyProblem | null {
+  if (move.count > MOVE_MANY_LIMIT) return 'too_many'
+  if (move.fromGroupId === move.toGroupId) return 'same_group'
+  if (move.date < today) return 'date_in_past'
+  return null
+}
+
+export const MOVE_OUTCOMES = ['move', 'skip_already_member', 'skip_not_active'] as const
+export type MoveOutcome = (typeof MOVE_OUTCOMES)[number]
+
+/**
+ * What a bulk move does with one child (REQ-L15, Q-L24): a membership the single move cannot move on `date` (not
+ * started by then, or over before it) is `skip_not_active`; a child whose participant membership of the target group
+ * overlaps the new period is `skip_already_member` (the others still move); every other child is moved.
+ */
+export function moveOutcome(plan: MovePlan, alreadyMember: boolean): MoveOutcome {
+  if (!plan.ok) return 'skip_not_active'
+  return alreadyMember ? 'skip_already_member' : 'move'
+}
+
+/**
+ * The age-fit rule of the roster's **Fits {group}** filter (REQ-L15): a child fits the target group when their age in
+ * completed years on the move date lies within the group's `age_from`–`age_to` (either bound may be open). Null when
+ * it cannot be told: the group has no age range, or the child has no birth date.
+ */
+export function fitsAgeRange(
+  birthDate: CalendarDate | null,
+  date: CalendarDate,
+  range: { ageFrom: number | null; ageTo: number | null },
+): boolean | null {
+  if (range.ageFrom === null && range.ageTo === null) return null
+  if (!birthDate) return null
+  const age = ageOn(birthDate, date)
+  return (range.ageFrom === null || age >= range.ageFrom) && (range.ageTo === null || age <= range.ageTo)
 }
 
 /**
