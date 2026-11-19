@@ -1,7 +1,8 @@
 // The people list's filters and perspectives (UX parity spec REQ-U01, DD-U01, DD-U03; B-09): pure translations of the
 // query into birth-date bounds, account conditions and the id predicates the route resolves, plus the role badges of a
 // row. `today` is the club's calendar date (S3.5: time is a parameter).
-import { ADULT_AGE, assertCalendarDate, isCalendarDate, type CalendarDate } from '@vereino/core'
+import { ADULT_AGE, addDays, assertCalendarDate, isCalendarDate, type CalendarDate } from '@vereino/core'
+import { TURNS_18_NOTICE_DAYS } from './life-cycle-rules'
 
 /**
  * The perspectives of the people list (B-09): all, staff (has a role), children (under 18), without an account, and
@@ -26,9 +27,16 @@ export type PersonFilterRole = (typeof PERSON_FILTER_ROLES)[number]
 
 /**
  * The "Needs attention" filter values of the list (people life-cycle spec B-09): `missing_consents` — participants
- * whose `regulations` consent is not given (REQ-L10, #309). The values of phase L8 join this list.
+ * whose `regulations` consent is not given (REQ-L10, #309); phase L8 (#310): `account_age` — minors without an account
+ * whose age reached the club's `own_account_min_age` (REQ-L07); `turns_18_soon` — persons whose 18th birthday is
+ * within 30 days (REQ-L06); `adult_without_contact` — adults with neither an account nor an e-mail address.
  */
-export const PERSON_ATTENTION_FILTERS = ['missing_consents'] as const
+export const PERSON_ATTENTION_FILTERS = [
+  'missing_consents',
+  'account_age',
+  'turns_18_soon',
+  'adult_without_contact',
+] as const
 export type PersonAttentionFilter = (typeof PERSON_ATTENTION_FILTERS)[number]
 
 /** Above this many candidate ids the list refuses with 422 `people_filter_too_broad` instead of loading them. */
@@ -68,6 +76,8 @@ export type PersonListPlan = {
   former: 'only' | 'exclude' | 'any'
   /** Participants whose `regulations` consent is not given (REQ-L10). */
   missingConsents: boolean
+  /** Persons without a contact e-mail (`adult_without_contact`, #310). */
+  withoutEmail: boolean
 }
 
 /**
@@ -100,14 +110,66 @@ export function birthDateRange(
   return { onOrBefore, after }
 }
 
-/** The predicates of a list query (the perspective combines with the filters by AND). */
-export function personListPlan(query: PersonListFilterQuery, today: CalendarDate): PersonListPlan {
+/** The range both bounds allow: the earlier inclusive upper bound and the later exclusive lower bound. */
+export function intersectBirthDateRanges(
+  first: BirthDateRange | null,
+  second: BirthDateRange | null,
+): BirthDateRange | null {
+  if (!first || !second) return first ?? second
+  const earlier = (a: CalendarDate | null, b: CalendarDate | null) => (a === null ? b : b === null || a < b ? a : b)
+  const later = (a: CalendarDate | null, b: CalendarDate | null) => (a === null ? b : b === null || a > b ? a : b)
+  return { onOrBefore: earlier(first.onOrBefore, second.onOrBefore), after: later(first.after, second.after) }
+}
+
+/**
+ * The birth dates and the account condition of an L8 "Needs attention" value (#310); null for a value without them.
+ * `turns_18_soon`: the 18th birthday after `today` and on or before `today` + 30 days, i.e. born after `today` − 18
+ * years and on or before (`today` + 30 days) − 18 years.
+ */
+export function attentionBirthDates(
+  attention: PersonAttentionFilter | undefined,
+  today: CalendarDate,
+  ownAccountMinAge: number,
+): { birthDates: BirthDateRange; withoutAccount: boolean } | null {
+  if (attention === 'account_age') {
+    return {
+      birthDates: birthDateRange({ ageFrom: ownAccountMinAge, ageTo: ADULT_AGE - 1 }, today) as BirthDateRange,
+      withoutAccount: true,
+    }
+  }
+  if (attention === 'turns_18_soon') {
+    return {
+      birthDates: {
+        onOrBefore: yearsBefore(addDays(today, TURNS_18_NOTICE_DAYS), ADULT_AGE),
+        after: yearsBefore(today, ADULT_AGE),
+      },
+      withoutAccount: false,
+    }
+  }
+  if (attention === 'adult_without_contact') {
+    return { birthDates: birthDateRange({ ageFrom: ADULT_AGE }, today) as BirthDateRange, withoutAccount: true }
+  }
+  return null
+}
+
+/**
+ * The predicates of a list query (the perspective combines with the filters by AND). `ownAccountMinAge` is the club's
+ * account age (`attention=account_age`).
+ */
+export function personListPlan(
+  query: PersonListFilterQuery,
+  today: CalendarDate,
+  ownAccountMinAge = 16,
+): PersonListPlan {
   const view = query.view ?? 'all'
   const accountConditions: boolean[] = []
   if (query.hasAccount) accountConditions.push(query.hasAccount === 'true')
   if (view === 'no_account' && !accountConditions.includes(false)) accountConditions.push(false)
+  const attention = attentionBirthDates(query.attention, today, ownAccountMinAge)
+  if (attention?.withoutAccount && !accountConditions.includes(false)) accountConditions.push(false)
+  const ages = birthDateRange({ ageFrom: query.ageFrom, ageTo: query.ageTo, minorsOnly: view === 'children' }, today)
   return {
-    birthDates: birthDateRange({ ageFrom: query.ageFrom, ageTo: query.ageTo, minorsOnly: view === 'children' }, today),
+    birthDates: intersectBirthDateRanges(ages, attention?.birthDates ?? null),
     accountConditions,
     staff: view === 'staff',
     role: query.role ?? null,
@@ -115,6 +177,7 @@ export function personListPlan(query: PersonListFilterQuery, today: CalendarDate
     groupId: query.groupId ?? null,
     former: view === 'former' ? 'only' : view === 'all' && query.search?.trim() ? 'any' : 'exclude',
     missingConsents: query.attention === 'missing_consents',
+    withoutEmail: query.attention === 'adult_without_contact',
   }
 }
 

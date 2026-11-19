@@ -301,6 +301,11 @@ export type DispatchService = {
     ctx: Omit<AudienceContext, 'container'>,
   ): Promise<PagedDeliveries>
   /**
+   * The idempotency keys among `keys` that already have a dispatch in the organization — the "already told" marker of
+   * a notice sent once (DD-L09: the people life-cycle job keeps no marker table of its own).
+   */
+  existingKeys(keys: readonly string[], scope: DispatchScope): Promise<Set<string>>
+  /**
    * The delivery counts of several dispatches by status, keyed by dispatch id (a dispatch without rows is absent);
    * `options.channel` counts one channel only.
    */
@@ -330,8 +335,35 @@ export async function deliveryCounts(
   return new Map(rows.map(({ dispatchId, ...counts }) => [dispatchId, counts]))
 }
 
+/** How many keys one `existingKeys` query carries. */
+const KEY_LOOKUP_CHUNK = 500
+
+/** The idempotency keys among `keys` that already have a dispatch in the organization. */
+export async function existingDispatchKeys(
+  em: EntityManager,
+  keys: readonly string[],
+  scope: DispatchScope,
+): Promise<Set<string>> {
+  const unique = [...new Set(keys)]
+  const found = new Set<string>()
+  for (let start = 0; start < unique.length; start += KEY_LOOKUP_CHUNK) {
+    const rows = await em.find(
+      Dispatch,
+      {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        idempotencyKey: { $in: unique.slice(start, start + KEY_LOOKUP_CHUNK) },
+      },
+      { fields: ['id', 'idempotencyKey'] },
+    )
+    for (const row of rows) found.add(row.idempotencyKey)
+  }
+  return found
+}
+
 export function createDispatchService(container: AwilixContainer): DispatchService {
   return {
+    existingKeys: (keys, scope) => existingDispatchKeys(container.resolve<EntityManager>('em').fork(), keys, scope),
     enqueue: (em, request, ctx) => enqueueDispatch(em, request, { ...ctx, container }),
     publish: (dispatchId, scope) => publishDispatch(container, dispatchId, scope),
     deliveriesOf: (dispatchId, page, ctx) => deliveriesOf(dispatchId, page, { ...ctx, container }),

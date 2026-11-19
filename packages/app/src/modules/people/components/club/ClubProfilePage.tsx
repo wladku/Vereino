@@ -14,7 +14,8 @@
 // platform's change-password page. People life-cycle spec M-10 (#306): an adult member gets the link "Leave the club"
 // to `/club/profile/leave`; a minor does not. People life-cycle spec REQ-L10 (#309): an adult gets "My consents"
 // (`OwnConsentsSection`), and every consent shows the club's own wording when the club changed it, with "given to an
-// earlier wording" for a consent given before the change (DD-L11).
+// earlier wording" for a consent given before the change (DD-L11). Phase L8 (#310): a card before and after the
+// member's own 18th birthday, and each ward's lines "May have an own account" and "Turns 18 on {date}" (`WardNotices`).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -38,6 +39,7 @@ import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
 import { ConsentList, EarlierWording, useConsentLabel } from './ConsentList'
+import { OwnLifeCycleNotice, WardNotices } from './LifeCycleNotices'
 import { OwnConsentsSection } from './OwnConsentsSection'
 import {
   CHANGE_PASSWORD_HREF,
@@ -353,6 +355,7 @@ function WardEntry({ ward, timeZone, texts }: { ward: MemberWard; timeZone: stri
           ) : null}
         </span>
       </div>
+      <WardNotices ward={ward} />
       <InjectionSpot spotId="vereino:club:ward:groups" context={{ personId: ward.personId, variant: 'compact' }} />
       <ConsentList consents={ward.guardianship.consents} timeZone={timeZone} texts={texts} />
     </li>
@@ -481,6 +484,7 @@ export function ClubProfilePage() {
     <ClubFrame skeleton="fields">
       {(profile) => (
         <div className="flex flex-col gap-6">
+          <OwnLifeCycleNotice profile={profile} />
           <ProfileForm key={profile.person.updatedAt ?? profile.person.id} profile={profile} />
           <OwnConsentsSection profile={profile} />
           <WardsSection profile={profile} />

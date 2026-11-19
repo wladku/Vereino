@@ -5,7 +5,8 @@
 // age, the consent authors' names and the member's own active guardians with their consents. 404 `person_not_linked` when the
 // account is linked to no person (the UI says "Account not linked to a person — contact the club"). The scope comes
 // only from the session: no id in the path or the body names the person. #309 (people life-cycle spec REQ-L10) adds an
-// adult's own consents (`ownConsents`, null for a minor) and the club's consent texts (`consentTexts`, DD-L11).
+// adult's own consents (`ownConsents`, null for a minor) and the club's consent texts (`consentTexts`, DD-L11). Phase L8
+// (#310) adds `wards[].notices` and the member's own `notice` before and after the 18th birthday.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -121,6 +122,16 @@ const memberProfileSchema = z.object({
         consents: memberConsentsSchema,
         updatedAt: z.string().nullable().describe('Lock token of POST /api/people/guardianships/{id}/consents'),
       }),
+      notices: z
+        .array(
+          z.discriminatedUnion('kind', [
+            z.object({ kind: z.literal('may_have_account') }),
+            z.object({ kind: z.literal('turns_18'), on: z.string() }),
+          ]),
+        )
+        .describe(
+          'Ward card lines (#310): `may_have_account` (the club account age reached without an account), `turns_18` (the 18th birthday within 30 days, on `on`)',
+        ),
     }),
   ),
   guardians: z
@@ -157,6 +168,15 @@ const memberProfileSchema = z.object({
   consentTexts: z
     .record(z.string(), z.object({ text: z.string(), changedAt: z.string() }))
     .describe("The club's own consent texts by key; a key without an entry uses the built-in text (DD-L11)"),
+  notice: z
+    .discriminatedUnion('kind', [
+      z.object({ kind: z.literal('turns_18'), on: z.string() }),
+      z.object({ kind: z.literal('came_of_age'), on: z.string() }),
+    ])
+    .nullable()
+    .describe(
+      "The member's own card (#310): `turns_18` in the 30 days before the 18th birthday, `came_of_age` in the 30 days from it; null otherwise",
+    ),
 })
 
 export const openApi: OpenApiRouteDoc = {
