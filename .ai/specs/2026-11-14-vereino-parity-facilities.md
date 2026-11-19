@@ -736,7 +736,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 - **Depends on:** Phase 1; the navigation spec's phase 6 (the dashboard frame and `dashboards.view` for the coordinator and the attendant) and its widget table (widget 8)
 - **Outcome:** the administrator's, coordinator's and attendant's dashboards start with the facility's entries in their scope (administrator and coordinator: the club's places; attendant: the assigned places).
 - **Why this order / value delivered:** the last widget of README B-01 that `facilities` owns.
-- **Deliverables:** `widgets/dashboard/today-at-facility/widget.ts` and `widget.client.tsx`; its default placement in `setup.ts`.
+- **Deliverables:** `widgets/dashboard/today-at-facility/widget.ts` and `widget.client.tsx`; its default placement through `defaultEnabled` and the registry order, which puts it right after "Requests awaiting approval" (the platform seeds a new layout from `defaultEnabled` widgets; `setup.ts` has no seam for a layout and the module writes no `dashboards` row, #290).
 - **Independent slices / estimated commits:** 1
 - **Requirements closed:** REQ-R20
 - **Tests:** TEST-R20
