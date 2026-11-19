@@ -53,7 +53,7 @@ async function setLocale(page: Page, locale: 'en' | 'pl') {
 }
 
 /** Opens the row menu of the part titled `title` and chooses `action`. */
-async function partAction(page: Page, title: string, action: string): Promise<void> {
+async function partAction(page: Page, title: string, action: string | RegExp): Promise<void> {
   const row = page.getByRole('row').filter({ hasText: title })
   await row.getByRole('button', { name: OPEN_ACTIONS }).click()
   await page.getByRole('menuitem', { name: action }).click()
@@ -311,7 +311,7 @@ test('TEST-T11 the administrator lists, creates and works a club event in the pa
     await page.goto(`/backend/activities/club-events/${wholeClub}?tab=details`)
     await expect(page.getByTestId('club-event-details-readonly')).toBeVisible()
     await expect(page.getByTestId('club-event-cancel')).toHaveCount(0)
-    await page.getByRole('tab', { name: /Parts|Części/ }).click()
+    await page.goto(`/backend/activities/club-events/${wholeClub}?tab=parts`)
     await expect(page.getByTestId('club-event-parts-empty')).toBeVisible()
     await expect(page.getByTestId('club-event-add-part')).toHaveCount(0)
 

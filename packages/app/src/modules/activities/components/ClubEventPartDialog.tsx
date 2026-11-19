@@ -596,7 +596,7 @@ export function ClubEventPartDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         closeAriaLabel={t('activities.common.close')}
-        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+        className="sm:max-w-2xl"
         data-testid="club-event-part-dialog"
       >
         <DialogHeader>
