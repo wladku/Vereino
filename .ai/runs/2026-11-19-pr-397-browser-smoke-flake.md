@@ -12,6 +12,9 @@
 3. Merged `origin/main` (120f53f7) into the PR head on a detached HEAD. The merge was clean (cfd8e9a6).
 4. `yarn verify` on the merged tree: **all 18 steps passed**, including test, test:scripts and build.
 5. Pushed with `git push origin HEAD:feat/issue-293-kit-campaign-record-admin`. The new CI run re-runs browser-smoke on the merged tree.
+6. CI run 44434165866 on 0aac401e was **all green**: browser-smoke (4m38s), gate, perf and the six integration shards.
+7. `main` then gained #391 (phase 6, #296), and the PR became `CONFLICTING`. The only conflict was the spec's `Status` line. I resolved it by keeping both "phase 3 in #293" and "phase 6 in #296" (97085ace). The i18n catalogs merged automatically.
+8. `yarn verify` on the re-merged tree: **all 18 steps passed**. Pushed again.
 
 ## Decisions
 
@@ -24,5 +27,5 @@
 
 ## Open problems / next steps
 
-- The follow-up issue for the intermittent sign-in timeout in `login-smoke.mjs` (two failures in ~8 h on unrelated PRs) is linked in the PR comment.
+- #407 tracks the intermittent sign-in timeout in `login-smoke.mjs` (two failures in ~8 h on unrelated PRs).
 - PR #397 keeps `needs-qa`. The merge stays with the merge train and `om-approve-merge-pr`.
