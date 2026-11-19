@@ -249,6 +249,7 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
 
     // The closure moved to 09:00–19:00 (#394): only the 18:00 session is new to it, so the academy's coordinators and
     // the coach get one more message listing it alone; the booker, the administrators and the renter get nothing new.
+    // The academy coordinator signed in above, which ended their first API token: read as `coordinatorToken`.
     const current = (await listClosures(request, admin, `&placeId=${setup.pitch}`)).find((row) => row.id === closureId)
     const moved = await putClosure(
       request,
@@ -264,7 +265,7 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     )
     expect(moved.status, JSON.stringify(moved.body)).toBe(200)
     expect(moved.body?.flagged).toEqual({ sessions: 1, rentals: 0, bookings: 0 })
-    await expectNotices(request, academyCoordinator.token, closureId, STAFF_TYPE, 2)
+    await expectNotices(request, coordinatorToken, closureId, STAFF_TYPE, 2)
     await expectNotices(request, setup.coordinator, closureId, STAFF_TYPE, 2)
     await expectNotices(request, coach.token, closureId, STAFF_TYPE, 2)
     for (const mailbox of [academyCoordinator.email, coach.email]) {
