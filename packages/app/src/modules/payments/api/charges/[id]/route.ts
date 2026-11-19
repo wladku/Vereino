@@ -4,6 +4,7 @@
 // it was reversed, and where it came from (`source`: "bank statement" for an imported transfer, #292); a rental charge
 // adds its payer and payee institutions and the typed-in renter's name (#291). A charge without a payer lists who may
 // pay it (`payerOptions`: the debtor's active guardians, then the debtor when adult; B-22 "Assign payer", #295).
+// An online payment carries what is still `refundable` and its `refunds[]` (B-22 "Refund", REQ-C08, #296).
 // `updatedAt` is the lock token the payment, cancellation and reversal commands expect.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -14,7 +15,15 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { amountDueOf, isOverdue, paidTotal, paymentSourceOf, remainingOf } from '../../../lib/charge-ledger'
+import {
+  amountDueOf,
+  isOverdue,
+  paidTotal,
+  paymentSourceOf,
+  refundableOf,
+  refundsByPayment,
+  remainingOf,
+} from '../../../lib/charge-ledger'
 import { payerOptionIds } from '../../../lib/manual-charges'
 import { clubClock, findInstitutions, findPersons, payerFactsOf } from '../../../services/directory'
 import { chargePayments, findCharge } from '../../../services/ledger'
@@ -28,6 +37,14 @@ export const metadata = {
 const paramsSchema = z.object({ id: z.uuid() })
 
 const personSchema = z.object({ firstName: z.string(), lastName: z.string() }).nullable()
+
+const refundSchema = z.object({
+  id: z.uuid().describe('The reversing entry'),
+  amount: z.number().int().describe('Grosz refunded (positive)'),
+  paidOn: z.string(),
+  reason: z.string().nullable(),
+  gatewayRefundId: z.string().nullable(),
+})
 
 const paymentSchema = z.object({
   id: z.uuid(),
@@ -45,6 +62,13 @@ const paymentSchema = z.object({
     .boolean()
     .describe('An online share whose charge was no longer open: money to refund, not paid (#110)'),
   gatewayRefundId: z.string().nullable().describe("The provider's refund id of an online refund"),
+  refundable: z
+    .number()
+    .int()
+    .describe('Grosz still refundable through the gateway: an online payment less its refunds; 0 otherwise (#296)'),
+  refunds: z
+    .array(refundSchema)
+    .describe('The refunds of an online payment, oldest first; empty for any other payment (#296)'),
   createdAt: z.string(),
 })
 
@@ -103,6 +127,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return person ? { firstName: person.firstName, lastName: person.lastName } : null
     }
     const reversed = new Set(payments.flatMap((row) => (row.reversesPaymentId ? [row.reversesPaymentId] : [])))
+    const refunds = refundsByPayment(payments)
     const amountDue = amountDueOf(charge)
     const paid = paidTotal(payments.filter((row) => !row.isOverpayment))
     const dueDate = calendarDate(charge.dueDate)
@@ -153,6 +178,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         reversed: reversed.has(row.id),
         overpayment: row.isOverpayment,
         gatewayRefundId: row.gatewayRefundId ?? null,
+        refundable: refundableOf(row, refunds.get(row.id) ?? []),
+        refunds: (refunds.get(row.id) ?? []).map((refund) => ({
+          id: refund.id,
+          amount: -refund.amount,
+          paidOn: calendarDate(refund.paidOn),
+          reason: refund.reference ?? null,
+          gatewayRefundId: refund.gatewayRefundId ?? null,
+        })),
         createdAt: row.createdAt.toISOString(),
       })),
     })

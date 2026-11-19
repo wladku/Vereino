@@ -7,6 +7,8 @@
 // name, what was paid, what remains and the overdue marker; `meta.rentalsPerspective` says whether B-21 shows
 // "Rentals (municipality)" (DD-C02). Without a sort the newest period comes first, then the due date (Contract 3, #292).
 // `involvesPersonId` keeps the charges the person owes or pays (the person record's "Charges" tab, #295).
+// `toRefund=1` keeps the charges holding an online overpayment not refunded yet, and `meta.toRefundCount` counts them
+// whatever the filters, so B-21 shows "To refund" only when it is not empty (DD-C10, #296).
 //
 // `POST /api/payments/charges` — `payments.charges.create_manual` (payments parity spec REQ-C06, DD-C12; B-21 and the
 // person record's "Add charge"; #295): a charge entered by hand, payable to the club; 201 `{ chargeId, payerMissing }`.
@@ -21,7 +23,7 @@ import { Charge } from '../../data/entities'
 import { chargeListQuerySchema, chargeManualCreateSchema, flagSet } from '../../data/validators'
 import { OPEN_CHARGE_STATUSES, amountDueOf, isOverdue, remainingOf } from '../../lib/charge-ledger'
 import { clubClock, findInstitutions, findPersons, searchPersonIds } from '../../services/directory'
-import { chargesPaidBy, paidTotals, rentalsPerspective } from '../../services/ledger'
+import { chargesPaidBy, chargesToRefund, paidTotals, rentalsPerspective } from '../../services/ledger'
 import { discountRuleNames } from '../../services/read'
 import {
   CHARGE_ENTITY_ID,
@@ -46,7 +48,11 @@ async function attachNames(payload: { items?: unknown[]; meta?: unknown }, ctx: 
   const items = (payload.items ?? []) as ChargeListItem[]
   const scope = listScope(ctx)
   if (!scope) return
-  payload.meta = { rentalsPerspective: await rentalsPerspective(ctx.container, scope) }
+  const [rentals, toRefund] = await Promise.all([
+    rentalsPerspective(ctx.container, scope),
+    chargesToRefund(ctx.container, scope),
+  ])
+  payload.meta = { rentalsPerspective: rentals, toRefundCount: toRefund.length }
   if (items.length === 0) return
   const personIds = items.flatMap((item) => [item.personId, item.payerPersonId]).filter((id): id is string => !!id)
   const institutionIds = items
@@ -114,6 +120,10 @@ async function businessFilters(query: ChargeListQuery, ctx: CrudCtx): Promise<Wh
   }
   if (query.paymentMethod) {
     const ids = await chargesPaidBy(ctx.container, scope, query.paymentMethod)
+    where.push({ id: { $in: ids.length > 0 ? ids : [NO_CHARGE_ID] } } as Where)
+  }
+  if (flagSet(query.toRefund)) {
+    const ids = await chargesToRefund(ctx.container, scope)
     where.push({ id: { $in: ids.length > 0 ? ids : [NO_CHARGE_ID] } } as Where)
   }
   if (query.search) {
@@ -221,6 +231,12 @@ export const openApi = buildOpenApi({
         rentalsPerspective: z
           .boolean()
           .describe('DD-C02: show "Rentals (municipality)" — `facilities` is enabled or a live rental charge exists'),
+        toRefundCount: z
+          .number()
+          .int()
+          .describe(
+            'DD-C10: the charges holding an online overpayment still to refund; "To refund" shows when above 0',
+          ),
       })
       .optional(),
   }),

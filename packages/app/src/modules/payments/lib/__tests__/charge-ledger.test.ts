@@ -24,6 +24,8 @@ import {
   chargeListUrlParams,
   paymentSourceOf,
   readChargeListUrl,
+  refundableOf,
+  refundsByPayment,
   remainingShown,
   SETTLED_CHARGE_STATUSES,
   MAX_PAYER_LABEL_LENGTH,
@@ -131,16 +133,34 @@ describe('perspectives', () => {
     expect(perspectiveQuery('cash')).toEqual({ paymentMethod: 'cash' })
     expect(perspectiveQuery('orders')).toEqual({ sourceType: 'order' })
     expect(perspectiveQuery('rentals')).toEqual({ sourceType: 'rental' })
+    expect(perspectiveQuery('to_refund')).toEqual({ toRefund: '1' })
   })
 
-  it('shows rentals only when DD-C02 allows', () => {
-    expect(visiblePerspectives(false)).not.toContain('rentals')
-    expect(visiblePerspectives(true)).toEqual([...CHARGE_PERSPECTIVES])
+  it('shows rentals only when DD-C02 allows and "To refund" only when it is not empty (DD-C10)', () => {
+    expect(visiblePerspectives({ rentals: false, toRefund: true })).not.toContain('rentals')
+    expect(visiblePerspectives({ rentals: true, toRefund: false })).not.toContain('to_refund')
+    expect(visiblePerspectives({ rentals: true, toRefund: true })).toEqual([...CHARGE_PERSPECTIVES])
   })
 
   it("lists the perspectives in the mockup's order (Q-C02, #292)", () => {
-    expect(visiblePerspectives(true)).toEqual(['fees', 'overdue', 'orders', 'payer_missing', 'rentals', 'cash', 'all'])
-    expect(visiblePerspectives(false)).toEqual(['fees', 'overdue', 'orders', 'payer_missing', 'cash', 'all'])
+    expect(visiblePerspectives({ rentals: true, toRefund: true })).toEqual([
+      'fees',
+      'overdue',
+      'orders',
+      'payer_missing',
+      'rentals',
+      'cash',
+      'all',
+      'to_refund',
+    ])
+    expect(visiblePerspectives({ rentals: false, toRefund: false })).toEqual([
+      'fees',
+      'overdue',
+      'orders',
+      'payer_missing',
+      'cash',
+      'all',
+    ])
   })
 
   it('allows rentals with facilities registered or with a live rental charge (DD-C02)', () => {
@@ -220,7 +240,7 @@ describe('perspective links', () => {
       '/backend/payments/charges?perspective=overdue',
     )
     expect(chargesPerspectiveHref('/backend/payments/charges', 'fees')).toBe('/backend/payments/charges')
-    const shown = visiblePerspectives(false)
+    const shown = visiblePerspectives({ rentals: false, toRefund: false })
     expect(chargePerspectiveOf('payer_missing', shown)).toBe('payer_missing')
     expect(chargePerspectiveOf('rentals', shown)).toBe('fees')
     expect(chargePerspectiveOf(null, shown)).toBe('fees')
@@ -321,5 +341,39 @@ describe('B-21 remaining and B-22 payment source (REQ-C03, #292)', () => {
     expect(paymentSourceOf({ method: 'online' })).toBe('online')
     expect(paymentSourceOf({ method: 'cash', bankTransactionId: null })).toBe('cash')
     expect(paymentSourceOf({ method: 'transfer' })).toBe('manual')
+  })
+})
+
+describe('refunds of online payments (REQ-C08, #296)', () => {
+  const online = { id: 'p1', amount: 15000, method: 'online', reversesPaymentId: null, gatewayTransactionId: 'tx' }
+  const firstRefund = { id: 'r1', amount: -5000, method: 'online', reversesPaymentId: 'p1', gatewayTransactionId: 'tx' }
+  const secondRefund = {
+    id: 'r2',
+    amount: -10000,
+    method: 'online',
+    reversesPaymentId: 'p1',
+    gatewayTransactionId: 'tx',
+  }
+  const cash = { id: 'c1', amount: 5000, method: 'cash', reversesPaymentId: null }
+  const cashReversal = { id: 'c2', amount: -5000, method: 'cash', reversesPaymentId: 'c1' }
+
+  it('groups the online reversing entries under the payment they refund', () => {
+    const refunds = refundsByPayment([online, firstRefund, cash, cashReversal, secondRefund])
+    expect(refunds.get('p1')).toEqual([firstRefund, secondRefund])
+    expect(refunds.has('c1')).toBe(false)
+    expect(refundsByPayment([]).size).toBe(0)
+  })
+
+  it('leaves the amount less the refunds to refund, never below zero', () => {
+    expect(refundableOf(online, [])).toBe(15000)
+    expect(refundableOf(online, [firstRefund])).toBe(10000)
+    expect(refundableOf(online, [firstRefund, secondRefund])).toBe(0)
+    expect(refundableOf(online, [firstRefund, secondRefund, firstRefund])).toBe(0)
+  })
+
+  it('refunds nothing of a manual payment, a reversing entry or a payment without a gateway transaction', () => {
+    expect(refundableOf(cash, [])).toBe(0)
+    expect(refundableOf(firstRefund, [])).toBe(0)
+    expect(refundableOf({ ...online, gatewayTransactionId: null }, [])).toBe(0)
   })
 })
