@@ -33,8 +33,15 @@ import {
   SheetTitle,
 } from '@open-mercato/ui/primitives/sheet'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { ROSTER_ROLE_ORDER, type MembershipRole } from '../lib/groups-rules'
-import { errorMessage, personName, roleLabel, type MembershipRow, type Translate } from './client-helpers'
+import { ROSTER_ROLE_ORDER, moveDateBounds, type MembershipRole } from '../lib/groups-rules'
+import {
+  errorMessage,
+  personName,
+  roleLabel,
+  type GroupRow,
+  type MembershipRow,
+  type Translate,
+} from './client-helpers'
 
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -514,6 +521,180 @@ export function EndMembershipDialog({
             }}
           />
         </div>
+        <Problem id={problemId} text={problem} />
+      </div>
+    </FormFrame>
+  )
+}
+
+export type MoveMembershipDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** `dialog` by default. */
+  surface?: FormSurface
+  membership: MembershipRow
+  today: string
+  onSaved: () => void | Promise<void>
+  onRefresh: () => void
+}
+
+/**
+ * "Move to another group" (spec L REQ-L11, REQ-L15 one child; #312): the target group (an active group other than
+ * this one; the server keeps it within the caller's sections) and the first day there (default the 1st of the next
+ * month, never in the past). The membership ends the day before; the old group's undecided declarations after it are
+ * dropped and the month's fee is charged once, which the dialog says.
+ */
+export function MoveMembershipDialog({
+  open,
+  onOpenChange,
+  surface = 'dialog',
+  membership,
+  today,
+  onSaved,
+  onRefresh,
+}: MoveMembershipDialogProps) {
+  const t = useT()
+  const ids = React.useId()
+  const bounds = moveDateBounds(today, membership.validFrom)
+  const [toGroupId, setToGroupId] = React.useState<string | null>(null)
+  const [date, setDate] = React.useState(bounds.initial)
+  const [pending, setPending] = React.useState(false)
+  const [problem, setProblem] = React.useState<string | null>(null)
+  const [problemField, setProblemField] = React.useState<'group' | 'dates' | null>(null)
+  const problemId = `${ids}-problem`
+  const name = personName(membership.person) || t('groups.memberships.unknownPerson')
+
+  const fetchGroups = React.useCallback(
+    async (search: string): Promise<LookupSelectItem[]> => {
+      const params: Record<string, string | number | boolean> = { isActive: true, pageSize: 50, sortField: 'name' }
+      if (search.trim().length >= 2) params.search = search.trim()
+      const data = await fetchCrudList<GroupRow>('groups/groups', params)
+      return data.items
+        .filter((group) => group.id !== membership.groupId)
+        .map((group) => ({ id: group.id, title: group.name ?? group.id, subtitle: group.sectionName ?? null }))
+    },
+    [membership.groupId],
+  )
+
+  const submit = async () => {
+    if (pending) return
+    if (!toGroupId) {
+      setProblem(t('groups.memberships.move.groupRequired'))
+      setProblemField('group')
+      return
+    }
+    if (!CALENDAR_DATE.test(date) || date < bounds.min) {
+      setProblem(t('groups.memberships.errors.dates'))
+      setProblemField('dates')
+      return
+    }
+    setPending(true)
+    setProblem(null)
+    setProblemField(null)
+    try {
+      await withScopedApiRequestHeaders(buildOptimisticLockHeader(membership.updatedAt), () =>
+        apiCallOrThrow(
+          '/api/groups/memberships/move',
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ membershipId: membership.id, toGroupId, date }),
+          },
+          { errorMessage: t('groups.memberships.errors.move') },
+        ),
+      )
+      onOpenChange(false)
+      await onSaved()
+    } catch (error: unknown) {
+      if (surfaceRecordConflict(error, t, { onRefresh })) {
+        onOpenChange(false)
+        return
+      }
+      setProblem(errorMessage(error, t('groups.memberships.errors.move')))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const footer = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className={buttonClass(surface)}
+        disabled={pending}
+        onClick={() => {
+          onOpenChange(false)
+        }}
+      >
+        {t('groups.common.cancel')}
+      </Button>
+      <Button
+        type="button"
+        className={buttonClass(surface)}
+        disabled={pending}
+        data-testid="groups-membership-move-save"
+        onClick={() => {
+          void submit()
+        }}
+      >
+        {t('groups.memberships.actions.move')}
+      </Button>
+    </>
+  )
+  return (
+    <FormFrame
+      surface={surface}
+      open={open}
+      onOpenChange={onOpenChange}
+      testId="groups-membership-move-dialog"
+      title={t('groups.memberships.move.title', { name })}
+      description={t('groups.memberships.move.help')}
+      onSubmitShortcut={() => void submit()}
+      footer={footer}
+    >
+      <div className="flex flex-col gap-4">
+        <div
+          className="flex flex-col gap-1"
+          role="group"
+          aria-labelledby={`${ids}-group`}
+          aria-describedby={problemField === 'group' ? problemId : undefined}
+          data-testid="groups-membership-move-group"
+        >
+          <Label id={`${ids}-group`}>{t('groups.memberships.move.group')}</Label>
+          <LookupSelect
+            value={toGroupId}
+            onChange={setToGroupId}
+            fetchItems={fetchGroups}
+            minQuery={0}
+            placeholder={t('groups.memberships.move.group.placeholder')}
+            searchPlaceholder={t('groups.memberships.move.group.search')}
+            emptyLabel={t('groups.memberships.move.group.empty')}
+            loadingLabel={t('groups.common.loading')}
+            clearLabel={t('groups.common.clear')}
+            selectLabel={t('groups.common.select')}
+            selectedLabel={t('groups.common.selected')}
+            disabled={pending}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${ids}-date`}>{t('groups.memberships.move.date')}</Label>
+          <Input
+            id={`${ids}-date`}
+            type="date"
+            className="min-h-11 sm:w-60"
+            required
+            min={bounds.min}
+            value={date}
+            disabled={pending}
+            {...invalidProps(problemField === 'dates', problemId)}
+            data-testid="groups-membership-move-date"
+            onChange={(event) => {
+              setDate(event.target.value)
+            }}
+          />
+        </div>
+        <p className="text-muted-foreground text-sm">{t('groups.memberships.move.effects')}</p>
         <Problem id={problemId} text={problem} />
       </div>
     </FormFrame>

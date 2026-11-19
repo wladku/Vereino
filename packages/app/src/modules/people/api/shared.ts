@@ -80,6 +80,8 @@ export type PersonView = PersonBasicView & {
   /** The person's own consents as a guardian (#27): the instant each was given, null when not given. */
   shareContactWithCoachesAt: string | null
   sharePresenceWithGuardiansAt: string | null
+  /** Whether the person has a photo (#312). */
+  hasPhoto: boolean
 }
 
 export function personBasicView(person: Person): PersonBasicView {
@@ -111,6 +113,7 @@ export function personView(person: Person, options: { withPesel: boolean; accoun
     ...(options.withPesel ? { pesel: person.pesel ?? null, externalId: person.externalId ?? null } : {}),
     shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
     sharePresenceWithGuardiansAt: iso(person.sharePresenceWithGuardiansAt),
+    hasPhoto: Boolean(person.photoAttachmentId),
   }
 }
 
@@ -239,6 +242,10 @@ export const personViewSchema = z.object({
   externalId: z.string().nullable().optional(),
   shareContactWithCoachesAt: z.string().nullable().optional().describe('Full view only'),
   sharePresenceWithGuardiansAt: z.string().nullable().optional().describe('Full view only'),
+  hasPhoto: z
+    .boolean()
+    .optional()
+    .describe('Full view only: the person has a photo (`GET /api/people/persons/{id}/photo`, #312)'),
   holdsOwnConsents: z
     .boolean()
     .optional()

@@ -90,7 +90,8 @@ function restoreContract(row: Contract, before: ContractSnapshot): void {
   row.terms = before.terms ? JSON.stringify(before.terms) : null
 }
 
-function loader(ctx: CommandRuntimeContext, includeDeleted = false) {
+/** Loads a contract of the trusted tenant, decrypted and row-locked (also the target of `contract-files.ts`). */
+export function contractLoader(ctx: CommandRuntimeContext, includeDeleted = false) {
   return (em: EntityManager, id: string, lock: TargetLock): Promise<Contract | null> => {
     const tenantId = trustedTenantId(ctx)
     if (!tenantId) return Promise.resolve(null)
@@ -196,10 +197,10 @@ const createContractCommand: CommandHandler<Record<string, unknown>, ContractCom
       after: contractSnapshot(result.entity),
     }),
   async authorizeReplay({ ctx, logEntry }) {
-    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, loader(ctx))
+    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, contractLoader(ctx))
   },
   async undo({ ctx, logEntry }) {
-    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, loader(ctx))
+    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, contractLoader(ctx))
     await undoCreate(ctx, row, contractEvents)
   },
 }
@@ -211,7 +212,7 @@ const updateContractCommand: CommandHandler<Record<string, unknown>, ContractCom
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'club_core.contracts.update', async (em) => {
       const authorized = await authorizeScoped(
-        existingSpec(contractUpdateSchema, CONTRACT_RESOURCE_KIND, loader(ctx)),
+        existingSpec(contractUpdateSchema, CONTRACT_RESOURCE_KIND, contractLoader(ctx)),
         rawInput,
         ctx,
         em,
@@ -241,12 +242,12 @@ const updateContractCommand: CommandHandler<Record<string, unknown>, ContractCom
       after: contractSnapshot(result.entity),
     }),
   async authorizeReplay({ ctx, logEntry }) {
-    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, loader(ctx))
+    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, contractLoader(ctx))
   },
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as ContractSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing contract snapshot for undo')
-    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, before.id, loader(ctx))
+    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, before.id, contractLoader(ctx))
     restoreContract(row, before)
     await assertNoOverlap(ctx.transactionalEm as EntityManager, row)
     await undoRestore(ctx, row, before, restoreContract, contractEvents, 'updated')
@@ -260,7 +261,7 @@ const deleteContractCommand: CommandHandler<Record<string, unknown>, ContractCom
   async execute(rawInput, ctx) {
     const result = await inWriteTransaction(ctx, 'club_core.contracts.delete', async (em) => {
       const authorized = await authorizeScoped(
-        existingSpec(contractDeleteSchema, CONTRACT_RESOURCE_KIND, loader(ctx)),
+        existingSpec(contractDeleteSchema, CONTRACT_RESOURCE_KIND, contractLoader(ctx)),
         rawInput,
         ctx,
         em,
@@ -283,12 +284,12 @@ const deleteContractCommand: CommandHandler<Record<string, unknown>, ContractCom
       after: null,
     }),
   async authorizeReplay({ ctx, logEntry }) {
-    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, loader(ctx, true))
+    await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, logEntry.resourceId, contractLoader(ctx, true))
   },
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as ContractSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing contract snapshot for undo')
-    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, before.id, loader(ctx, true))
+    const row = await authorizeReplay(ctx, CONTRACT_RESOURCE_KIND, before.id, contractLoader(ctx, true))
     restoreContract(row, before)
     await assertNoOverlap(ctx.transactionalEm as EntityManager, row)
     await undoRestore(ctx, row, before, restoreContract, contractEvents, 'created')

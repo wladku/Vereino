@@ -59,6 +59,8 @@ export type PersonDetail = PersonListRow & {
   holdsOwnConsents?: boolean
   /** With `people.manage`: an adult participant's own consents with the date and the author (#309). */
   ownConsents?: Record<ConsentKind, OwnConsent>
+  /** Full view: the person has a photo (`GET /api/people/persons/{id}/photo`, #312). */
+  hasPhoto?: boolean
 }
 
 /** One own consent of an adult participant as `GET /api/people/persons/{id}` returns it (#309). */

@@ -11,6 +11,8 @@ import {
   PLACE_REGULATIONS_MAX_BYTES,
   checkLogo,
   checkMaterial,
+  checkContractAttachment,
+  CONTRACT_ATTACHMENT_MAX_BYTES,
   checkPlaceFile,
   nextPhotoPosition,
   detectFileFormat,
@@ -81,6 +83,20 @@ describe('logo and material checks', () => {
     expect(checkMaterial(JPEG)).toMatchObject({ ok: true, file: { format: 'jpeg' } })
     expect(checkMaterial(SVG)).toEqual({ ok: false, problem: 'format_unsupported' })
     expect(checkMaterial(sized(PDF, MATERIAL_MAX_BYTES + 1))).toEqual({ ok: false, problem: 'too_large' })
+  })
+
+  it('accepts one contract PDF up to 10 MB and refuses an image, a renamed SVG and a larger file (#312)', () => {
+    expect(checkContractAttachment(PDF)).toMatchObject({
+      ok: true,
+      file: { format: 'pdf', mimeType: 'application/pdf' },
+    })
+    expect(checkContractAttachment(sized(PDF, CONTRACT_ATTACHMENT_MAX_BYTES))).toMatchObject({ ok: true })
+    expect(checkContractAttachment(PNG)).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkContractAttachment(SVG)).toEqual({ ok: false, problem: 'format_unsupported' })
+    expect(checkContractAttachment(sized(PDF, CONTRACT_ATTACHMENT_MAX_BYTES + 1))).toEqual({
+      ok: false,
+      problem: 'too_large',
+    })
   })
 
   it('accepts a place photo (PNG, JPEG, WebP up to 5 MB) and refuses an SVG, a PDF and a larger file', () => {

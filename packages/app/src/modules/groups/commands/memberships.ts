@@ -12,22 +12,30 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
 import { isInvertedPeriod, type Scope } from '@vereino/core'
-import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
+import {
+  assertInScope,
+  authorizeScoped,
+  foundationErrors,
+  type AuthorizeScopedSpec,
+  type TargetLock,
+} from '@/modules/foundation'
 import { groupsErrors } from '../api/errors'
 import { type Group, GroupMembership } from '../data/entities'
 import {
   membershipCreateSchema,
   membershipDeleteSchema,
   membershipEndSchema,
+  membershipMoveSchema,
   membershipUpdateSchema,
 } from '../data/validators'
-import { endRefused, firstOverlapping, mayRemoveMembership, type MembershipRole } from '../lib/groups-rules'
+import { endRefused, firstOverlapping, mayRemoveMembership, planMove, type MembershipRole } from '../lib/groups-rules'
 import { clubToday } from '../services/club-clock'
 import { findPersons } from '../services/directory'
 import { groupUsageContract } from '../services/group-usage'
 import {
   GROUP_WRITE_KINDS,
   emitGroupsSideEffects,
+  groupTarget,
   groupsLog,
   inWriteTransaction,
   isUniqueViolation,
@@ -424,7 +432,137 @@ const deleteMembershipCommand: CommandHandler<Record<string, unknown>, Membershi
   },
 }
 
+/** The moved membership and both groups, row-locked: the membership first, then the two groups in id order. */
+type LockedMove = LockedMembership & { target: Group | null }
+
+/**
+ * The scope target of a move is the moved membership (its section and group); the target group is checked against
+ * the same grants with `assertInScope` (403 `scope_denied` outside the caller's sections). Locking both groups in id
+ * order keeps two opposite moves from deadlocking, and serializes the overlap checks of both rosters.
+ */
+function moveSpec(ctx: CommandRuntimeContext): AuthorizeScopedSpec<typeof membershipMoveSchema, LockedMove> {
+  return {
+    input: membershipMoveSchema,
+    resourceKind: MEMBERSHIP_RESOURCE_KIND,
+    allowedKinds: GROUP_WRITE_KINDS,
+    loadTarget: async (parsed, em, lock) => {
+      const tenantId = trustedTenantId(ctx)
+      if (!tenantId) return null
+      const membership = await em.findOne(GroupMembership, { id: parsed.id, tenantId, deletedAt: null }, lock)
+      if (!membership) return null
+      const scope = { tenantId: membership.tenantId, organizationId: membership.organizationId }
+      const locked = new Map<string, Group | null>()
+      for (const groupId of [...new Set([membership.groupId, parsed.toGroupId])].sort()) {
+        locked.set(groupId, await lockGroup(em, scope, groupId))
+      }
+      const group = locked.get(membership.groupId)
+      if (!group) return null
+      return { membership, group, target: locked.get(parsed.toGroupId) ?? null, updatedAt: membership.updatedAt }
+    },
+    resolveTarget: (_parsed, entity) => {
+      const loaded = entity as LockedMove
+      return membershipTarget(loaded.membership.id, loaded.group)
+    },
+  }
+}
+
+export type MembershipMoveSnapshot = { ended: MembershipSnapshot; started: MembershipSnapshot }
+
+export type MembershipMoveResult = MembershipCommandResult & { started: GroupMembership }
+
+/**
+ * `groups.memberships.move` (people life-cycle spec *Domain Vocabulary* → Group move, REQ-L11, DD-L15; #312): ends the
+ * membership on the day before `date` and starts one of the same role in the target group on `date`, in one
+ * transaction. The target group is a live, active group of the club in the caller's scope (422
+ * `groups_reference_invalid` for the same or an unknown or inactive group, 403 `scope_denied` outside the caller's
+ * sections); an overlapping membership in the target group answers 409 `membership_overlap`. Both writes emit their
+ * `groups.membership.*` event, so the `activities` subscriber drops the old group's undecided declarations after the
+ * last day; the charge generation charges the month once (`payments/lib/charge-plan.ts`). Undo restores the old
+ * membership and removes the new one.
+ */
+const moveMembershipCommand: CommandHandler<Record<string, unknown>, MembershipMoveResult> = {
+  id: 'groups.memberships.move',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'groups.memberships.move', async (em) => {
+      const authorized = await authorizeScoped(moveSpec(ctx), rawInput, ctx, em)
+      const { membership: row, target } = authorized.entity as LockedMove
+      const { parsed } = authorized
+      if (!target || !target.isActive) {
+        await groupsErrors.throw('groups_reference_invalid', { field: 'toGroupId' })
+      }
+      const targetGroup = target as Group
+      await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))
+      const today = await clubToday(ctx.container, {
+        tenantId: authorized.tenantId,
+        organizationId: authorized.organizationId,
+      })
+      const plan = planMove(
+        { groupId: row.groupId, validFrom: row.validFrom, validTo: row.validTo ?? null },
+        { toGroupId: targetGroup.id, date: parsed.date },
+        today,
+      )
+      if (!plan.ok) {
+        if (plan.problem === 'same_group') await groupsErrors.throw('groups_reference_invalid', { field: 'toGroupId' })
+        if (plan.problem === 'not_started')
+          await groupsErrors.throw('membership_not_started', { validFrom: row.validFrom })
+        return groupsErrors.throw('groups_reference_invalid', { field: 'date' })
+      }
+      const before = membershipSnapshot(row)
+      const key = {
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        groupId: targetGroup.id,
+        personId: row.personId,
+        role: row.role,
+      }
+      await assertNoOverlap(em, key, plan.next, null)
+      row.validTo = plan.lastDay
+      row.updatedAt = new Date()
+      const started = em.create(GroupMembership, {
+        id: randomUUID(),
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        groupId: targetGroup.id,
+        personId: row.personId,
+        role: row.role,
+        validFrom: plan.next.validFrom,
+        validTo: plan.next.validTo,
+      })
+      em.persist(started)
+      await flushMembership(em)
+      return { entity: row, started, actingRole: authorized.actingRole, before }
+    })
+    await emitGroupsSideEffects(ctx, result.entity, 'updated', membershipEvents)
+    await emitGroupsSideEffects(ctx, result.started, 'created', membershipEvents)
+    return result
+  },
+  buildLog: async ({ result }) => ({
+    ...(await buildMembershipLog(result, 'groups.audit.memberships.move', 'Move to another group')),
+    snapshotAfter: {
+      ended: membershipSnapshot(result.entity),
+      started: membershipSnapshot(result.started),
+    } satisfies MembershipMoveSnapshot,
+  }),
+  async authorizeReplay({ ctx, logEntry }) {
+    await authorizeMembershipReplay(ctx, logEntry.resourceId)
+    const after = logEntry.snapshotAfter as MembershipMoveSnapshot | null | undefined
+    await authorizeMembershipReplay(ctx, after?.started?.id)
+  },
+  async undo({ ctx, logEntry }) {
+    const after = logEntry.snapshotAfter as MembershipMoveSnapshot | null | undefined
+    const { membership: started } = await authorizeMembershipReplay(ctx, after?.started?.id)
+    started.deletedAt = new Date()
+    started.updatedAt = new Date()
+    await ctx.transactionalEm?.flush()
+    await emitGroupsSideEffects(ctx, started, 'deleted', membershipEvents, true)
+    await restoreMembership(ctx, logEntry.snapshotBefore as MembershipSnapshot | null | undefined)
+  },
+}
+
 registerCommand(createMembershipCommand)
 registerCommand(updateMembershipCommand)
 registerCommand(endMembershipCommand)
 registerCommand(deleteMembershipCommand)
+registerCommand(moveMembershipCommand)

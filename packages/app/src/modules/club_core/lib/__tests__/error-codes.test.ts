@@ -59,6 +59,16 @@ describe('club_core error codes', () => {
       { code: 'contract_overlap', status: 409, messageKey: 'club_core.errors.contract_overlap' },
       { code: 'contract_party_invalid', status: 422, messageKey: 'club_core.errors.contract_party_invalid' },
       { code: 'contract_terms_invalid', status: 422, messageKey: 'club_core.errors.contract_terms_invalid' },
+      {
+        code: 'contract_attachment_format_unsupported',
+        status: 422,
+        messageKey: 'club_core.errors.contract_attachment_format_unsupported',
+      },
+      {
+        code: 'contract_attachment_too_large',
+        status: 422,
+        messageKey: 'club_core.errors.contract_attachment_too_large',
+      },
       { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
       { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
       { code: 'public_events_disabled', status: 404, messageKey: 'club_core.errors.public_events_disabled' },

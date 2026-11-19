@@ -5,8 +5,8 @@
 // (`?tab=roster&status=active`). With `groups.manage` a coordinator of the group's section or the club administrator
 // adds a person ("Add to roster"; `?personId=…&role=…` opens the dialog with the person and role chosen, spec L J-L07),
 // edits the role and dates, ends a membership on a chosen day and removes one entered by mistake. A started membership
-// that was used cannot be removed (409 `membership_in_use`): the confirmation then offers End. An upcoming membership
-// offers Edit and Remove only. A removed row comes back through the platform's undo.
+// that was used cannot be removed (409 `membership_in_use`): the confirmation then offers End. An active membership
+// also offers "Move…" to another group (spec L REQ-L11; #312). An upcoming membership offers Edit and Remove only. A removed row comes back through the platform's undo.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -38,7 +38,13 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
-import { EndMembershipDialog, MembershipDialog, personOptionLabel, type PersonOption } from './MembershipDialogs'
+import {
+  EndMembershipDialog,
+  MembershipDialog,
+  MoveMembershipDialog,
+  personOptionLabel,
+  type PersonOption,
+} from './MembershipDialogs'
 import { useHasFeature } from './useCanManageGroups'
 import { useRemoveMembership } from './useRemoveMembership'
 
@@ -134,6 +140,7 @@ type Dialogs =
   | { kind: 'add'; person: { id: string; label: string } | null; role: MembershipRole | null }
   | { kind: 'edit'; row: MembershipRow }
   | { kind: 'end'; row: MembershipRow }
+  | { kind: 'move'; row: MembershipRow }
   | null
 
 export function RosterPanel({
@@ -239,7 +246,8 @@ export function RosterPanel({
   const { remove, ConfirmDialogElement } = useRemoveMembership({ today, refresh, onEndInstead: endInstead })
 
   const rowActions = (row: MembershipRow) => {
-    const items: RowActionItem[] = membershipActions(rowStatus(row, today)).map((action) => ({
+    const status = rowStatus(row, today)
+    const items: RowActionItem[] = membershipActions(status).map((action) => ({
       id: action,
       label: t(`groups.memberships.actions.${action}`),
       destructive: action === 'remove',
@@ -249,6 +257,16 @@ export function RosterPanel({
         else void remove(row)
       },
     }))
+    // "Move…" (spec L REQ-L11, REQ-L15 one child; #312): an active membership moves to another group.
+    if (status === 'active') {
+      items.splice(2, 0, {
+        id: 'move',
+        label: t('groups.memberships.actions.moveEllipsis'),
+        onSelect: () => {
+          setDialog({ kind: 'move', row })
+        },
+      })
+    }
     return (
       <span data-testid={`roster-actions-${row.id}`}>
         <RowActions items={items} />
@@ -349,6 +367,19 @@ export function RosterPanel({
           today={today}
           onSaved={async () => {
             flash(t('groups.memberships.flash.ended'), 'success')
+            await refresh()
+          }}
+          onRefresh={() => void refresh()}
+        />
+      ) : null}
+      {dialog?.kind === 'move' ? (
+        <MoveMembershipDialog
+          open
+          onOpenChange={close}
+          membership={dialog.row}
+          today={today}
+          onSaved={async () => {
+            flash(t('groups.memberships.flash.moved'), 'success')
             await refresh()
           }}
           onRefresh={() => void refresh()}

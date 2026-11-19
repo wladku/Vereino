@@ -487,7 +487,7 @@ export class Institution extends ScopedEntityBase {
 @Index({ name: 'club_core_contracts_party_idx', properties: ['organizationId', 'partyType', 'partyId', 'kind'] })
 @Index({ name: 'club_core_contracts_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class Contract extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'terms'
+  [OptionalProps]?: ScopedEntityOptionalProps | 'validTo' | 'terms' | 'attachmentId'
 
   /** `person` | `institution`. */
   @Property({ name: 'party_type', type: 'text' })
@@ -509,4 +509,12 @@ export class Contract extends ScopedEntityBase {
   /** Encrypted JSON text of the terms; a coach contract holds its rates in grosz (`lib/contracts.ts`). */
   @Property({ name: 'terms', type: 'text', nullable: true })
   terms?: string | null
+
+  /**
+   * The signed contract as one PDF in the private `attachments` partition (people life-cycle spec *Data Models*,
+   * REQ-L12; #312): up to 10 MB; a second upload replaces the first; read through
+   * `GET /api/club_core/contracts/{id}/attachment` with `club_core.contracts.manage`.
+   */
+  @Property({ name: 'attachment_id', type: 'uuid', nullable: true })
+  attachmentId?: string | null
 }
