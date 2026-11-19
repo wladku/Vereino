@@ -59,14 +59,18 @@ import {
 } from '../lib/manual-charges'
 import type { ChargeStatus } from '../lib/payments-rules'
 import { clubClock, payerFactsOf, primaryPayers, type PaymentsScope } from '../services/directory'
+import { sendOverdueReminders, type OverdueRemindersRun } from '../services/overdue-reminders'
 import {
   PAYMENTS_WRITE_KINDS,
+  authorizePaymentsJob,
   clubTarget,
   emitAfterCommit,
   inWriteTransaction,
+  paymentsJobLog,
   paymentsLog,
   trustedTenantId,
   type PaymentsCommandResult,
+  type PaymentsJobScope,
 } from './shared'
 
 export const CHARGE_RESOURCE_KIND = 'payments.charge'
@@ -587,6 +591,32 @@ const assignPayerCommand: CommandHandler<Record<string, unknown>, ChargePayerRes
       : null,
 }
 
+// --- payments.charges.remind_overdue (the daily `payments:overdue-reminders` job; DD-C09, #301) ---
+
+export type RemindOverdueResult = { job: PaymentsJobScope } & OverdueRemindersRun
+
+/**
+ * `payments.charges.remind_overdue`: today's overdue reminders of the club, one dispatch per payer
+ * (`services/overdue-reminders.ts`). Not undoable: a message sent cannot be taken back.
+ */
+const remindOverdueCommand: CommandHandler<Record<string, unknown>, RemindOverdueResult> = {
+  id: 'payments.charges.remind_overdue',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const job = await authorizePaymentsJob(ctx, 'payments.charges.remind_overdue', rawInput)
+    const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
+    return { job, ...(await sendOverdueReminders(ctx.container, scope, job.now)) }
+  },
+  buildLog: ({ result }) =>
+    paymentsJobLog({
+      job: result.job,
+      labelKey: 'payments.audit.jobs.remindOverdue',
+      fallback: 'Remind the payers of overdue charges',
+      context: { today: result.today, switchedOff: result.switchedOff, ...result.counts },
+    }),
+}
+
+registerCommand(remindOverdueCommand)
 registerCommand(recordPaymentCommand)
 registerCommand(cancelChargeCommand)
 registerCommand(reversePaymentCommand)

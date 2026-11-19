@@ -144,6 +144,15 @@ export function rosterRoleRank(role: string): number {
 }
 
 /**
+ * `case <alias>.role when 'coach' then 0 … else 3 end`: `rosterRoleRank` as the SQL sort key of `sortField=roster`
+ * (`services/roster-list.ts`), built from the same `ROSTER_ROLE_ORDER`, so the server and `rosterRoleOrder` agree.
+ */
+export function rosterRoleRankSql(alias: string): string {
+  const cases = ROSTER_ROLE_ORDER.map((role) => `when '${role}' then ${String(rosterRoleRank(role))}`).join(' ')
+  return `case ${alias}.role ${cases} else ${String(ROSTER_ROLE_ORDER.length)} end`
+}
+
+/**
  * The roster order of `sortField=roster` (REQ-A03): by role (coaches first), then the latest start first, then the id
  * for a stable page boundary. The server orders the same way in SQL; this is its reference. Returns a new array.
  */
