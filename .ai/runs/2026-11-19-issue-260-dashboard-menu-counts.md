@@ -36,3 +36,12 @@
 ## Open problems / next steps
 
 - AC-N03 and AC-N04 stay unticked in the spec until CI's browser run of `TEST-N04 UI` is green on the PR.
+
+## Follow-up run 2026-11-19: merge train failure on #413 (om-auto-fix-pr)
+
+- **Trigger**: label `merge-train-failed`. The required check `integration (shard 2/6)` failed on head `256ac037`, which already contains `main` (`git merge origin/main`: up to date).
+- **Failure (verbatim, both attempts)**: `TEST-N04 UI … Error: /backend/activities/occurrences … expect(locator).toHaveText(expected) failed … Locator: getByTestId('sidebar').locator('a[href="/backend/activities/occurrences"]').getByLabel(/^(?:1 waiting|1 oczekuje)$/) … Error: element(s) not found`.
+- **Root cause**: the widget's one-row read answered, since `openDashboard` waits for it, and the count reached `setNavBadge`. But `@open-mercato/ui@0.9.0`'s `AppShell` renders `<NavItemBadge>` only in the settings and profile section sidebars (`renderSectionItem`), never on main items. `0.10.1-develop.8292` renders it there too. No stable release does. The fault was in the installed platform, not in the widgets.
+- **Decision**: this needed no Ask First approval. Upgrading the platform is a dependency change and no stable release has the fix. Dropping the counts would cut scope and weaken TEST-N04. So the app now draws the platform chip from the same store. `packages/app/src/components/SidebarNavBadges.tsx`, mounted once in `app/(backend)/backend/layout.tsx`, follows the sidebar with a `MutationObserver` and portals one chip per main link. The chip has the same classes, `99+` cap, compact placement and label as the platform's, plus `role="img"` so its `aria-label` is allowed. REQ-N03, DD-N05 and TEST-N04 are unchanged. The spec notes the bridge and that it goes away with the upgrade. A changelog entry and the lesson `platform-nav-badges-not-on-main-sidebar` record this.
+- **Checks**: `yarn generate` passed. `yarn typecheck` passed with no errors. `eslint` and `prettier` pass on the changed files. `TEST-N04 UI` still runs only in CI, because this host cannot launch Chromium (lesson `cezar-host-integration-runs-without-browser`).
+- `yarn verify`: all 18 steps pass.
