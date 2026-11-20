@@ -2,9 +2,10 @@
 // the job command `payments.charges.remind_overdue` runs this for one club. Each payer with a charge due a reminder
 // gets one dispatch of `payments.charge_reminder` — an e-mail listing every overdue charge of theirs with the payer
 // code, and the in-app notice `payments.charge_overdue` when they have an account. The marker (`reminder_count`,
-// `last_reminded_at`) is written in the transaction that enqueues the dispatch, by a conditional UPDATE on the count
-// read, so a concurrent run reminds nobody twice and a failed delivery is the dispatch's retry, never a second
-// reminder. Rental charges and charges without a payer are never reminded.
+// `last_reminded_at`) moves only on the listed charges that were due a reminder (#404), and is written in the
+// transaction that enqueues the dispatch, by a conditional UPDATE on the count read, so a concurrent run reminds
+// nobody twice and a failed delivery is the dispatch's retry, never a second reminder. Rental charges and charges
+// without a payer are never reminded.
 import { createHash } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
@@ -30,7 +31,7 @@ export type OverdueReminderCounts = {
   payers: number
   /** Payers reminded (one dispatch each). */
   reminded: number
-  /** Charges listed in the sent reminders (their marker moved on). */
+  /** Charges due a reminder in the sent reminders (their marker moved on); other listed charges are not counted. */
   charges: number
   /** Payers without an e-mail address or an account: nothing sent, nothing marked. */
   unreachable: number
@@ -116,7 +117,8 @@ export async function sendOverdueReminders(
   counts.payers = batches.size
   if (batches.size === 0) return { switchedOff: false, today, counts }
 
-  const debtorIds = [...new Set([...batches.values()].flat().flatMap((charge) => rows.get(charge.id)?.personId ?? []))]
+  const listedCharges = [...batches.values()].flatMap((batch) => batch.listed)
+  const debtorIds = [...new Set(listedCharges.flatMap((charge) => rows.get(charge.id)?.personId ?? []))]
   const persons = await findPersons(container, scope, debtorIds)
   const resolverCtx = { container, ...scope, scope: [{ kind: 'system_job' as const }] }
   const contacts = new Map(
@@ -124,7 +126,7 @@ export async function sendOverdueReminders(
   )
   const dispatch = container.resolve<DispatchService>('foundationDispatch')
 
-  for (const [payerPersonId, listed] of batches) {
+  for (const [payerPersonId, { listed, reminded }] of batches) {
     try {
       const contact = contacts.get(payerPersonId)
       const channels: Recipient['channels'][number][] = [
@@ -162,10 +164,10 @@ export async function sendOverdueReminders(
         payerCode: await ensurePayerCode(container, scope, payerPersonId),
       }
       const enqueued = await freshEm(container).transactional(async (tx) => {
-        for (const charge of listed) {
-          // The marker moves only from the count this run read and only while the charge is still open: a concurrent
-          // run that got there first, or a charge paid or cancelled since the read, rolls this payer back; the next
-          // run reads it afresh.
+        for (const charge of reminded) {
+          // Only the charges due a reminder count it (#404). The marker moves only from the count this run read and
+          // only while the charge is still open: a concurrent run that got there first, or a charge paid or cancelled
+          // since the read, rolls this payer back; the next run reads it afresh.
           const updated = await tx.nativeUpdate(
             Charge,
             {
@@ -194,7 +196,7 @@ export async function sendOverdueReminders(
       })
       await dispatch.publish(enqueued.dispatchId, scope)
       counts.reminded += 1
-      counts.charges += listed.length
+      counts.charges += reminded.length
     } catch (error: unknown) {
       counts.failed += 1
       if (!(error instanceof ConcurrentReminder)) {
