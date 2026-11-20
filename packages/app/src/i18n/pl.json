@@ -1180,6 +1180,8 @@
   "vector.api.errors.reindexFailed": "Ponowne indeksowanie wektorowe nie powiodło się",
   "vector.api.errors.searchFailed": "Wyszukiwanie wektorowe nie powiodło się",
   "vector.api.errors.updateFailed": "Nie udało się zaktualizować ustawień wektorowych.",
+  "vereino.accessDenied.memberHome": "Przejdź do interfejsu członkowskiego",
+  "vereino.accessDenied.signOut": "Wyloguj się i użyj innego konta",
   "vereino.backend.memberInterface": "Interfejs członkowski",
   "vereino.dashboard.greeting": "Dzień dobry, {name}",
   "vereino.dashboard.greetingNoName": "Dzień dobry",

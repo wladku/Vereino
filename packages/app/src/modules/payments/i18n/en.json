@@ -27,6 +27,7 @@
   "payments.common.delete": "Delete",
   "payments.common.back": "Back",
   "payments.common.close": "Close",
+  "payments.common.retry": "Try again",
   "payments.common.period.open": "from {from}",
   "payments.common.period.closed": "{from} – {to}",
   "payments.fees.title": "Fees and discounts",

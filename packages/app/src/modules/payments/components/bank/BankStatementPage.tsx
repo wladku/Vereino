@@ -18,6 +18,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { TableLoadError } from '@vereino/ui'
 import {
   BANK_PERSPECTIVES,
   DEFAULT_BANK_PERSPECTIVE,
@@ -265,7 +266,15 @@ export function BankStatementPage() {
             columns={columns}
             data={transfers.data?.items ?? []}
             isLoading={transfers.isLoading}
-            error={transfers.error ? errorMessage(transfers.error, t('payments.bank.errors.load')) : null}
+            error={
+              transfers.error ? (
+                <TableLoadError
+                  message={t('payments.bank.errors.load')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void transfers.refetch()}
+                />
+              ) : null
+            }
             emptyState={
               <p className="text-muted-foreground text-sm" data-testid="bank-empty">
                 {t(`payments.bank.empty.${perspective}`)}

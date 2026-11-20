@@ -121,7 +121,8 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/next.config.ts` | `transpilePackages` for `@vereino/*`; `Referrer-Policy: no-referrer` (and `Cache-Control: no-store`) on the token pages and APIs: declaration links, booking request confirmation, rental cancellation | Monorepo; #192, #125, #286 |
 | `packages/app/src/modules.ts` | Registers the Vereino modules (`{ id, from: '@app' }`) | `AGENTS.md` |
 | `packages/app/src/app/globals.css` | `@source` for `@vereino/ui`; sign-in page body rule; focus ring for the coordinator calendar's scroll regions | Monorepo; #261, #248 |
-| `packages/app/src/app/(backend)/backend/layout.tsx` | Club logo and club time zone from the optional `clubCoreSettings` service; `ClubTimeZone` and `SidebarNavBadges` | #29, #231, #260 |
+| `packages/app/src/app/(backend)/backend/layout.tsx` | Club logo and club time zone from the optional `clubCoreSettings` service; `ClubTimeZone`, `SidebarNavBadges` and `PlatformA11yRepairs` (names `CrudForm` controls by their labels and table search boxes by their placeholders, gives the AppShell breadcrumb page a role, starts the AppShell link names with their visible text) | #29, #231, #260, #497 |
+| `packages/app/src/app/(backend)/backend/[...slug]/page.tsx`, `packages/app/src/app/(frontend)/[...slug]/page.tsx` | The access-denied state offers the dashboard (backend) or the member interface (frontend) and signing out (`AccessDeniedActions`) instead of one link to `/` | #497 |
 | `packages/app/src/app/(backend)/backend/page.tsx` | `BackendGreeting` above the platform dashboard | #260 |
 | `packages/app/src/app/login/page.tsx` | Club header above the platform sign-in form; Vereino page title | #261 |
 | `packages/app/src/app/start/page.tsx`, `packages/app/src/components/DemoFeedbackWidget.tsx` | Design tokens instead of hard-coded sizes and colours | `ds:check` |

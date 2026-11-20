@@ -1180,6 +1180,8 @@
   "vector.api.errors.reindexFailed": "Reindexación vectorial fallida",
   "vector.api.errors.searchFailed": "Búsqueda vectorial fallida",
   "vector.api.errors.updateFailed": "No se pudieron actualizar la configuración vectorial.",
+  "vereino.accessDenied.memberHome": "Ir a la interfaz de socios",
+  "vereino.accessDenied.signOut": "Cerrar sesión y usar otra cuenta",
   "vereino.backend.memberInterface": "Member interface",
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",

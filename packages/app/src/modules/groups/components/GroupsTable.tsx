@@ -26,6 +26,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   GROUP_PERSPECTIVES,
   categoryOrLevel,
@@ -339,7 +340,15 @@ function GroupsList() {
               columns={columns}
               data={data?.items ?? []}
               isLoading={isLoading}
-              error={error ? errorMessage(error, t('groups.groups.errors.load')) : null}
+              error={
+                error ? (
+                  <TableLoadError
+                    message={t('groups.groups.errors.load')}
+                    retryLabel={t('groups.common.retry')}
+                    onRetry={() => void refetch()}
+                  />
+                ) : null
+              }
               emptyState={emptyState}
               searchValue={search}
               searchPlaceholder={t('groups.groups.search')}

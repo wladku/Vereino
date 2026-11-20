@@ -27,6 +27,7 @@
   "payments.common.delete": "Usuń",
   "payments.common.back": "Wróć",
   "payments.common.close": "Zamknij",
+  "payments.common.retry": "Spróbuj ponownie",
   "payments.common.period.open": "od {from}",
   "payments.common.period.closed": "{from} – {to}",
   "payments.fees.title": "Cenniki i zniżki",

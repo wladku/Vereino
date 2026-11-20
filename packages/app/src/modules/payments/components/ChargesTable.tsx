@@ -23,6 +23,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   DEFAULT_CHARGE_PERSPECTIVE,
   PAYEES,
@@ -286,7 +287,7 @@ export function ChargesTable() {
     [perspective, period, payee, state.search],
   )
 
-  const { data, isLoading, error } = useQuery<ChargeList>({
+  const { data, isLoading, error, refetch } = useQuery<ChargeList>({
     queryKey: ['payments-charges', filters, page, scopeVersion],
     queryFn: () => fetchCrudList<ChargeRow>('payments/charges', { page, pageSize: PAGE_SIZE, ...filters }),
   })
@@ -451,7 +452,15 @@ export function ChargesTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('payments.charges.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('payments.charges.errors.load')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             emptyState={<p className="text-muted-foreground text-sm">{t('payments.charges.empty')}</p>}
             onRowClick={(row: ChargeRow) => {
               router.push(chargeHref(row.id))

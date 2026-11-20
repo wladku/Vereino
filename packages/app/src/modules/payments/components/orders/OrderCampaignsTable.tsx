@@ -14,7 +14,8 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import type { CampaignStatus } from '../../lib/order-campaigns'
-import { errorMessage, formatMoney, type TableColumns, type Translate } from '../client-helpers'
+import { TableLoadError } from '@vereino/ui'
+import { formatMoney, type TableColumns, type Translate } from '../client-helpers'
 import { ORDERS_HREF, STAGE_VARIANTS, campaignHref, type CampaignRow } from './orders-client'
 
 const PAGE_SIZE = 50
@@ -105,7 +106,7 @@ export function OrderCampaignsTable() {
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['payments-order-campaigns', search, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<CampaignRow>('payments/order-campaigns', {
@@ -136,7 +137,15 @@ export function OrderCampaignsTable() {
       columns={columns}
       data={data?.items ?? []}
       isLoading={isLoading}
-      error={error ? errorMessage(error, t('payments.orders.errors.load')) : null}
+      error={
+        error ? (
+          <TableLoadError
+            message={t('payments.orders.errors.load')}
+            retryLabel={t('payments.common.retry')}
+            onRetry={() => void refetch()}
+          />
+        ) : null
+      }
       emptyState={
         <EmptyState
           title={t('payments.orders.empty.title')}

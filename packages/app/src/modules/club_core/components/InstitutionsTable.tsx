@@ -18,6 +18,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { formatBankAccount } from '@vereino/core'
 import { INSTITUTION_TYPES } from '../data/validators'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
@@ -102,7 +103,7 @@ export function InstitutionsTable() {
   const [page, setPage] = React.useState(1)
   const [filters, setFilters] = React.useState<FilterValues>({})
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['club_core-institutions', search, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<InstitutionRow>('club_core/institutions', {
@@ -159,7 +160,15 @@ export function InstitutionsTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('club_core.institutions.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('club_core.institutions.errors.load')}
+              retryLabel={t('club_core.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('club_core.institutions.empty')}</p>}
         searchValue={search}
         searchPlaceholder={t('club_core.institutions.search')}

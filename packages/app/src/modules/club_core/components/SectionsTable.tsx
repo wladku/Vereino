@@ -26,6 +26,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { effectiveLogo, nameInitial, staffLogoUrl } from '../lib/files'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
 import { SectionInUseDialog } from './SectionInUseDialog'
 import { coordinatorName, sectionUsageOf, type SectionRow, type SectionUsageView } from './sections-shared'
@@ -154,7 +155,7 @@ export function SectionsTable() {
   const [page, setPage] = React.useState(1)
   const [inUse, setInUse] = React.useState<SectionUsageView | null>(null)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['club_core-sections', search, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<SectionRow>('club_core/sections', {
@@ -227,7 +228,15 @@ export function SectionsTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('club_core.sections.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('club_core.sections.errors.load')}
+              retryLabel={t('club_core.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={
           search ? (
             <p className="text-muted-foreground text-sm">{t('club_core.sections.emptySearch')}</p>

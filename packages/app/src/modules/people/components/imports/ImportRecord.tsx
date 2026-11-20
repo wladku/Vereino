@@ -23,6 +23,7 @@ import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primiti
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { TableLoadError } from '@vereino/ui'
 import { OWN_FORBIDDEN_STATE, errorMessage, type TableColumns, type Translate } from '../client-helpers'
 import { MatchPersonDialog } from './MatchPersonDialog'
 import {
@@ -473,7 +474,15 @@ export function ImportRecord({ id }: { id: string }) {
         columns={columns}
         data={rows?.items ?? []}
         isLoading={rowsQuery.isLoading || (!rows && rowsQuery.isFetching)}
-        error={rowsQuery.error && !rowsQuery.isFetching ? t('people.imports.errors.loadRows') : null}
+        error={
+          rowsQuery.error && !rowsQuery.isFetching ? (
+            <TableLoadError
+              message={t('people.imports.errors.loadRows')}
+              retryLabel={t('people.common.retry')}
+              onRetry={() => void rowsQuery.refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('people.imports.rows.empty')}</p>}
         pagination={{
           page,

@@ -22,7 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { useClubToday } from '@vereino/ui'
+import { TableLoadError, useClubToday } from '@vereino/ui'
 import {
   MEMBERSHIP_ROLES,
   ROSTER_VIEWS,
@@ -31,7 +31,6 @@ import {
   type PeriodStatus,
 } from '../lib/groups-rules'
 import {
-  errorMessage,
   personHref,
   personName,
   roleLabel,
@@ -370,7 +369,15 @@ export function RosterPanel({
             columns={columns}
             data={listQuery.data?.items ?? []}
             isLoading={listQuery.isLoading}
-            error={listQuery.error ? errorMessage(listQuery.error, t('groups.memberships.errors.load')) : null}
+            error={
+              listQuery.error ? (
+                <TableLoadError
+                  message={t('groups.memberships.errors.load')}
+                  retryLabel={t('groups.common.retry')}
+                  onRetry={() => void listQuery.refetch()}
+                />
+              ) : null
+            }
             emptyState={emptyState}
             rowActions={canManage ? rowActions : undefined}
             bulkActions={bulkActions}

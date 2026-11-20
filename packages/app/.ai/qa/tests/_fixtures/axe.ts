@@ -9,13 +9,13 @@ export type BlockingViolation = { id: string; impact: string; nodes: number }
 
 type ScannedNode = { html: string; target: unknown[] }
 
-// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: `CrudForm`
-// renders each field's <label> without `htmlFor` and its controls without an accessible name, and the
-// backend AppShell sidebar has low-contrast group headings and a back link whose aria-label differs from
-// its text, and its breadcrumb puts an aria-label on the role-less current-page span; the schedule family
-// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text;
-// `LookupSelect` points its search combobox at a listbox it has not rendered yet; `StepIndicator` puts
-// `aria-orientation` on its list.
+// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: the backend AppShell
+// sidebar has low-contrast group headings; the schedule family (`ScheduleView`, react-big-calendar) nests grid roles and
+// labels its date-range trigger differently from its text; `LookupSelect` points its search combobox at a listbox it has
+// not rendered yet; `StepIndicator` puts `aria-orientation` on its list.
+// `CrudForm` labels and select names, table search boxes, the AppShell breadcrumb and its brand and back links are no
+// longer listed: `PlatformA11yRepairs` (`@vereino/ui`, mounted in the backend layout) repairs them on the page (E20-S18,
+// #497), so a scan that finds them again fails.
 // Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).
 const PLATFORM_BASELINE: {
@@ -23,9 +23,6 @@ const PLATFORM_BASELINE: {
   owner: string
   matches: (node: ScannedNode, page: Page) => boolean | Promise<boolean>
 }[] = [
-  // axe shortens long attribute names, so `data-crud-focus-target` appears as `data-crud-focus-targ...`.
-  { rule: 'label', owner: 'CrudForm field', matches: (node) => node.html.includes('data-crud-focus-targ') },
-  { rule: 'button-name', owner: 'CrudForm select', matches: (node) => node.html.includes('data-crud-focus-targ') },
   {
     rule: 'color-contrast',
     owner: 'AppShell sidebar group heading',
@@ -35,24 +32,10 @@ const PLATFORM_BASELINE: {
   },
   {
     rule: 'label-content-name-mismatch',
-    // The back link (`data-testid="appshell-…"`) and the main-sidebar brand link of `AppShell.tsx` (`aria-label="Go to
-    // dashboard"`, in pl `"Przejdź do pulpitu"`, while its visible text is the brand name; first scanned on the `groups`
-    // pages, #30; the pl label since #256).
-    // Since #94 also the date-range trigger of the schedule family's `ScheduleToolbar` (`aria-label="Date range"` while
-    // its visible text is the range).
-    owner: 'AppShell back link and brand link; ScheduleToolbar date-range trigger',
-    matches: (node) =>
-      node.html.includes('data-testid="appshell-') ||
-      ((node.html.includes('aria-label="Go to dashboard"') || node.html.includes('aria-label="Przejdź do pulpitu"')) &&
-        node.html.includes('href="/backend"')) ||
-      node.html.includes('data-slot="date-range-picker-tr'),
-  },
-  {
-    rule: 'aria-prohibited-attr',
-    // The AppShell breadcrumb's current page is a `<span aria-current="page" aria-label=…>` with no role; first scanned
-    // on the dashboard `/backend` (#88).
-    owner: 'AppShell breadcrumb current page',
-    matches: (node) => node.html.includes('data-slot="breadcrumb-page"'),
+    // The date-range trigger of the schedule family's `ScheduleToolbar` (`aria-label="Date range"` while its visible
+    // text is the range; first scanned on the coordinator calendar, #94).
+    owner: 'ScheduleToolbar date-range trigger',
+    matches: (node) => node.html.includes('data-slot="date-range-picker-tr'),
   },
   // The week grid of the schedule family's `ScheduleView` is react-big-calendar, whose all-day row nests
   // `role="rowgroup"` inside `role="row"` (`.rbc-allday-cell`, `.rbc-row-content`; first scanned on the coordinator

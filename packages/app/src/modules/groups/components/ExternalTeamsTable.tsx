@@ -16,6 +16,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { GroupsNav } from './GroupsNav'
 import {
   EXTERNAL_TEAMS_HREF,
@@ -64,7 +65,7 @@ export function ExternalTeamsTable() {
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['groups-external-teams', search, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ExternalTeamRow>('groups/external-teams', {
@@ -110,7 +111,15 @@ export function ExternalTeamsTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('groups.externalTeams.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('groups.externalTeams.errors.load')}
+                retryLabel={t('groups.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={<p className="text-muted-foreground text-sm">{t('groups.externalTeams.empty')}</p>}
           searchValue={search}
           searchPlaceholder={t('groups.externalTeams.search')}

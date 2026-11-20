@@ -1180,6 +1180,8 @@
   "vector.api.errors.reindexFailed": "Vektor-Neuindizierung fehlgeschlagen",
   "vector.api.errors.searchFailed": "Vektorsuche fehlgeschlagen",
   "vector.api.errors.updateFailed": "Vektor-Einstellungen konnten nicht aktualisiert werden.",
+  "vereino.accessDenied.memberHome": "Zur Mitgliederoberfläche",
+  "vereino.accessDenied.signOut": "Abmelden und ein anderes Konto verwenden",
   "vereino.backend.memberInterface": "Member interface",
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",

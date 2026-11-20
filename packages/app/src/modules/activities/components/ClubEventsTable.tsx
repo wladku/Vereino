@@ -18,7 +18,8 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { errorMessage, sectionOptions, tolerant, type TableColumns, type Translate } from './client-helpers'
+import { TableLoadError } from '@vereino/ui'
+import { sectionOptions, tolerant, type TableColumns, type Translate } from './client-helpers'
 import {
   CLUB_EVENT_CREATE_HREF,
   clubEventDatesLabel,
@@ -129,7 +130,7 @@ export function ClubEventsTable() {
   const [page, setPage] = React.useState(1)
   const sectionId = typeof filters.sectionId === 'string' && filters.sectionId ? filters.sectionId : null
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-club-events', view, search, sectionId, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ClubEventRow>('activities/club-events', {
@@ -197,7 +198,15 @@ export function ClubEventsTable() {
                 columns={columns}
                 data={data?.items ?? []}
                 isLoading={isLoading}
-                error={error ? errorMessage(error, t('activities.clubEvents.errors.load')) : null}
+                error={
+                  error ? (
+                    <TableLoadError
+                      message={t('activities.clubEvents.errors.load')}
+                      retryLabel={t('activities.common.retry')}
+                      onRetry={() => void refetch()}
+                    />
+                  ) : null
+                }
                 emptyState={
                   <div data-testid="club-events-empty">
                     <EmptyState

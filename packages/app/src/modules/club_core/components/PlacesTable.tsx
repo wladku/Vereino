@@ -23,6 +23,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   hasPlaceFilters,
   orderParentFirst,
@@ -297,7 +298,15 @@ function PlacesList() {
         columns={columns}
         data={rows}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('club_core.places.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('club_core.places.errors.load')}
+              retryLabel={t('club_core.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={emptyState}
         searchValue={search}
         searchPlaceholder={t('club_core.places.search')}

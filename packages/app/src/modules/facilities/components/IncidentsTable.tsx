@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { TableLoadError, browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { INCIDENT_ACTIONS, INCIDENT_KINDS, INCIDENT_PHOTOS_MAX, type IncidentAction } from '../lib/incidents'
 import { ActionChoices, IncidentDialog, type DialogOutcome } from './club-facility/FacilityDialogs'
 import { BanDialog, type BanPrefill } from './BansTable'
@@ -453,7 +453,7 @@ export function IncidentsTable() {
   const timeZone = useClubTimeZone() ?? browserTimeZone()
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [INCIDENTS_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<IncidentRow>(INCIDENTS_API, {
@@ -541,7 +541,15 @@ export function IncidentsTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.incidents.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.incidents.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             filters={filterDefs}
             filterValues={filters}
             onFiltersApply={(values: FilterValues) => {
