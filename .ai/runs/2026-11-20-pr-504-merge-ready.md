@@ -13,7 +13,7 @@
 ## Decisions
 
 - Did not add an exclude for the backup scripts: they are Vereino tooling with their own tests, so they belong under the 100 % rule (as on `main`).
-- The covered set grows from 17 to 20 files (the three backup scripts that #474 already covered on `main`).
+- The covered set is 22 files: the three backup scripts that #474 already covered on `main` join the 19 of the previous merge.
 
 ## Commands and results
 
