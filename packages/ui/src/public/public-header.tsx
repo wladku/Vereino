@@ -34,7 +34,7 @@ export type PublicHeaderProps = {
 }
 
 const NAV_LINK_CLASS =
-  'focus-visible:shadow-focus inline-flex min-h-11 items-center rounded-md px-2 text-sm whitespace-nowrap outline-none'
+  'focus-visible:focus-indicator inline-flex min-h-11 items-center rounded-md px-2 text-sm whitespace-nowrap outline-none'
 const NAV_CURRENT_CLASS = `${NAV_LINK_CLASS} text-foreground font-semibold underline underline-offset-4`
 const NAV_IDLE_CLASS = `${NAV_LINK_CLASS} text-muted-foreground hover:text-foreground`
 

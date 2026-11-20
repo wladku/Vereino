@@ -1184,6 +1184,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "Access denied: you do not have permission for this. If you need it, ask the club administrator.",
+  "vereino.flash.accessDeniedFeature": "Access denied: you are missing the permission \"{features}\". If you need it, ask the club administrator.",
+  "vereino.flash.sessionExpired": "Session expired. Redirecting to sign in…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

@@ -129,8 +129,9 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/src/app/start/page.tsx`, `packages/app/src/components/DemoFeedbackWidget.tsx` | Design tokens instead of hard-coded sizes and colours; `/start` answers 404 in production | `ds:check`; #485 |
 | `packages/app/src/components/BackendHeaderChrome.tsx` | "Member interface" link for staff linked to a person; organization scope seeded from cookies before the first render; token width | #260, #334 |
 | `packages/app/src/components/OrganizationSwitcher.tsx` | Announces scope changes through `organizationScopeSeed` (`@vereino/ui`) so admin lists load once | #334; lesson `admin-lists-load-once-scope-seed` |
+| `packages/app/src/components/AppProviders.tsx` | Mounts `PlatformFlashTranslator`, which shows the platform's English-only toasts (access denied, session expired) in the page language until Open Mercato translates them | #483; epic #479 owner decision 7 |
 | `packages/app/src/components/ClientBootstrap.tsx` | A `member` profile: `/club` pages load translations, injection and the `payments` client registries | S4.3; #32, #110 |
-| `packages/app/src/i18n/{en,pl,de,es,ko}.json` | Vereino brand for the app shell, sign-in page and tab titles; dashboard empty state; `vereino.*` keys of the platform-owned components above | #260, #261, #485 |
+| `packages/app/src/i18n/{en,pl,de,es,ko}.json` | Vereino brand for the app shell, sign-in page and tab titles; dashboard empty state; `vereino.*` keys of the platform-owned components above (`vereino.flash.*`: the translated platform toasts) | #260, #261, #483, #485 |
 | `packages/app/public/open-mercato.svg` | The Vereino mark in place of the platform logo: a copy of `public/vereino-mark.svg` in the `--primary` token colours | #261, #485 |
 | `packages/app/public/file.svg`, `globe.svg`, `window.svg` | Removed: unused scaffold images with colours outside the tokens | #485 |
 | `packages/app/scripts/ds-check.mjs` | Also scans `public/*.svg` for colours outside the design tokens (`scripts/vereino-svg-tokens.mjs`) | #485 |
@@ -138,7 +139,7 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/.env.example` | E-mail delivery settings of the `foundation` dispatch (`OM_TEST_MODE`, `OM_DISABLE_EMAIL_DELIVERY`); `VEREINO_HOME_CLUB_SLUG`; `DEMO_MODE` default off | #71, #485 |
 | `Dockerfile`, `.dockerignore`, `docker-compose*.yml`, `docker/scripts/dev-entrypoint.sh`, `scripts/railway-start.sh`, `scripts/railway-worker.sh`, `.railwayignore` | Paths moved to the `packages/app` workspace; image installs only `@vereino/app` and copies the shared packages; `DEMO_MODE` defaults to off in `docker-compose.fullapp*.yml` and the production image (`Dockerfile`) | Monorepo; #485 |
 
-Files Vereino added inside platform-owned folders (for example `packages/app/src/components/BackendGreeting.tsx`, `ClubTimeZone.tsx`, `SidebarNavBadges.tsx`, `use-staff-person.ts` and `packages/app/src/__tests__/`) are Vereino code, not patches; an upgrade keeps them as they are.
+Files Vereino added inside platform-owned folders (for example `packages/app/src/components/BackendGreeting.tsx`, `ClubTimeZone.tsx`, `SidebarNavBadges.tsx`, `PlatformFlashTranslator.tsx`, `use-staff-person.ts`, `packages/app/src/lib/platform-flash.ts` and `packages/app/src/__tests__/`) are Vereino code, not patches; an upgrade keeps them as they are.
 
 ## Questions
 
