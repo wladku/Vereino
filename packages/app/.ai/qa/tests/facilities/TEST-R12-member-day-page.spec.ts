@@ -245,7 +245,12 @@ async function legendSwatchContrasts(page: Page): Promise<{ label: string; ratio
     if (!context) throw new Error('no 2d canvas')
     const rgba = (colour: string): number[] => {
       context.clearRect(0, 0, 1, 1)
+      // A colour the canvas cannot parse leaves `fillStyle` unchanged: start from a sentinel and fail on it.
+      context.fillStyle = '#010203'
       context.fillStyle = colour
+      if (context.fillStyle === '#010203' && colour.replace(/\s/g, '') !== 'rgb(1,2,3)') {
+        throw new Error(`unparsed colour ${colour}`)
+      }
       context.fillRect(0, 0, 1, 1)
       return [...context.getImageData(0, 0, 1, 1).data]
     }

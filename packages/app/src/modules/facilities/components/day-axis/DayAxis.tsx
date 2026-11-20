@@ -22,7 +22,7 @@ import {
   type Span,
 } from '../../lib/day-axis'
 import { ZONES } from '../../lib/zones'
-import { KIND_TAGS, ZONE_TAGS } from './tags'
+import { KIND_TAGS, ZONE_TAGS, type AxisTone } from './tags'
 import {
   ENTRY_KINDS,
   entryRange,
@@ -36,7 +36,7 @@ import {
 import { dayEntryText } from './DayEntries'
 
 /** The status tokens of each `Tag` variant, for the blocks, bands and swatches (the classes `Tag` itself uses). */
-const TONES: Record<string, string> = {
+const TONES: Record<AxisTone, string> = {
   success: 'border-status-success-border bg-status-success-bg text-status-success-text',
   warning: 'border-status-warning-border bg-status-warning-bg text-status-warning-text',
   error: 'border-status-error-border bg-status-error-bg text-status-error-text',
@@ -48,7 +48,7 @@ const TONES: Record<string, string> = {
  * The legend swatches (#495): the pale fill of the block with an edge in the variant's icon token, so every swatch
  * stands out from the page by at least 3:1 (WCAG 1.4.11) in both schemes; the word next to it names it.
  */
-const SWATCHES: Record<string, string> = {
+const SWATCHES: Record<AxisTone, string> = {
   success: 'border-status-success-icon bg-status-success-bg',
   warning: 'border-status-warning-icon bg-status-warning-bg',
   error: 'border-status-error-icon bg-status-error-bg',

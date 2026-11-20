@@ -32,6 +32,12 @@ measure at least 3:1 with a word next to each; `/club/places/[id]` does not scro
 7. TEST-R12 extended: 768 px and 320 px overflow checks, legend swatch variants, swatch contrast ≥ 3:1 light and dark.
    `expectNoPageOverflow` takes an optional width.
 
+8. PR #510 opened with labels and screenshot evidence; a fresh review agent approved with low/medium findings. Fixed:
+   `KIND_TAGS`/`ZONE_TAGS` typed `Record<…, AxisTone>` (no `pink`/`brand`), so restoring `maintenance: 'pink'` fails
+   the typecheck (checked: `TS2322: Type '"pink"' is not assignable to type 'AxisTone'`); the `tags.ts` comment no
+   longer calls the mockup's requests grey; the contrast helper fails on a colour the canvas cannot parse. Left as
+   follow-ups: requests in the mockup's dashed amber, and four neutral legend entries told apart only by border style.
+
 ## Decisions
 
 - Zones are recoloured too: the issue's "closed grey" covers the closed zone, and the mockup's public/club colours are
