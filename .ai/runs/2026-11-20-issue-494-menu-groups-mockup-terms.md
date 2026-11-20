@@ -81,3 +81,17 @@ seven module catalog pairs; `src/modules.ts`; `scripts/check-glossary.mjs`, its 
 - Native-reader review of the reworded Polish values (spec phase 3 exit gate).
 - Platform: when the Facility group is last, its last item ("Raport dla gminy") sits under the sidebar's "scroll to
   bottom" chevron. Worth a follow-up issue if it bothers users with a short screen.
+
+## Follow-up run 2026-11-20: CI failure on PR #513 (om-auto-fix-pr)
+
+- Trigger: required checks `integration (shard 5/6)` and `integration` failed on PR #513.
+- Cause (test bug, not a flake: the same assertion failed on the retry): TEST-046 "treasurer: a finance-only role, menu
+  and dashboard" still expected the old Finance order (`…/bank`, `…/cash-custody`, `…/orders`). The PR moves Cash to
+  settle after Order campaigns, as TEST-N01 already asserts.
+- Steps: detached HEAD at `origin/fix/issue-494-menu-groups-mockup-terms`; merged `origin/main` (no conflicts, signed
+  off); updated TEST-046 to the mockup order; grepped `packages/app/.ai/qa/tests` for other assertions on the moved
+  hrefs (TEST-C10 and TEST-N04 do not depend on the order and passed).
+- Lesson `changed-ui-contract-search-older-tests-for-testid` updated with this second occurrence and promoted to an
+  `AGENTS.md` rule, as the project memory rules require.
+- Results: `yarn test:integration:vereino --filter TEST-046` 2 passed; `--filter TEST-N01` 2 passed; `--filter ISSUE-481`
+  (new on main, checks sidebar group headings) 1 passed; `yarn lessons:check` valid; `yarn verify` all 18 steps passed.
