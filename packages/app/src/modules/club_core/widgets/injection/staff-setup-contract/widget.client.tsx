@@ -8,11 +8,10 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { STAFF_STEP_VARIANT, isActiveAt, periodStep } from '@vereino/core'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 import type { ContractRow } from '../../../components/contracts-shared'
 
 /** What `people`'s person record passes as the spot context. */
@@ -57,7 +56,7 @@ export default function StaffSetupContractWidget({
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{t('club_core.staffSetup.contract')}</span>
           {query.isSuccess ? (
-            <StatusBadge variant={STAFF_STEP_VARIANT[step]}>{t(`club_core.staffSetup.step.${step}`)}</StatusBadge>
+            <StatusTag status={STAFF_STEP_VARIANT[step]}>{t(`club_core.staffSetup.step.${step}`)}</StatusTag>
           ) : null}
         </span>
         <span className="text-muted-foreground text-xs">

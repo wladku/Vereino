@@ -10,7 +10,6 @@ import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { conflictNames } from './ConflictList'
 import { buildActivityBody, type ActivityFormValues } from './activity-form-values'
@@ -23,6 +22,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 function buildColumns(t: Translate): TableColumns<PreviewItem> {
   return [
@@ -56,13 +56,13 @@ function buildColumns(t: Translate): TableColumns<PreviewItem> {
       cell: ({ row }) =>
         row.original.conflicts.length > 0 ? (
           <span className="flex flex-col items-start gap-1">
-            <StatusBadge variant="error">{t('activities.preview.status.conflict')}</StatusBadge>
+            <StatusTag status="error">{t('activities.preview.status.conflict')}</StatusTag>
             <span className="text-muted-foreground text-xs break-words">
               {conflictNames(t, row.original.conflicts)}
             </span>
           </span>
         ) : (
-          <StatusBadge variant="success">{t('activities.preview.status.free')}</StatusBadge>
+          <StatusTag status="success">{t('activities.preview.status.free')}</StatusTag>
         ),
     },
   ]

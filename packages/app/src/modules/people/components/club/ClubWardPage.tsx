@@ -18,7 +18,6 @@ import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/ba
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClubFrame } from './ClubFrame'
@@ -35,6 +34,7 @@ import {
   type MemberWard,
   type WardConsentKind,
 } from './member-client'
+import { StatusTag } from '@vereino/ui'
 
 type ConsentState = Record<WardConsentKind, boolean>
 
@@ -160,9 +160,9 @@ function Ward({ profile, personId }: { profile: MemberProfile; personId: string 
               {t('people.club.profile.wards.age', { age: String(ward.age) })}
             </span>
           ) : null}
-          {ward.hasAccount ? <StatusBadge variant="neutral">{t('people.club.wards.hasAccount')}</StatusBadge> : null}
+          {ward.hasAccount ? <StatusTag status="neutral">{t('people.club.wards.hasAccount')}</StatusTag> : null}
           {ward.guardianship.isPrimaryPayer ? (
-            <StatusBadge variant="info">{t('people.club.ward.primaryPayer')}</StatusBadge>
+            <StatusTag status="info">{t('people.club.ward.primaryPayer')}</StatusTag>
           ) : null}
         </div>
       </div>

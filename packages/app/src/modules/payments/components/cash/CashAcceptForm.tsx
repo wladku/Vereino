@@ -14,7 +14,6 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz } from '../client-helpers'
@@ -28,7 +27,7 @@ import {
   type CashPayer,
   type CashRecorded,
 } from './cash-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function wardsLabel(payer: CashPayer): string {
   return payer.wards.map((ward) => personName(ward)).join(', ')
@@ -329,7 +328,7 @@ export function CashAcceptForm({
                     {item.remaining < item.amountDue ? (
                       <span>{t('payments.cash.ofAmount', { amount: formatMoney(item.amountDue, locale) })}</span>
                     ) : null}
-                    {item.overdue ? <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge> : null}
+                    {item.overdue ? <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag> : null}
                   </span>
                 </Label>
               </div>

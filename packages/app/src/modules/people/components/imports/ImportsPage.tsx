@@ -8,12 +8,12 @@ import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import type { TableColumns, Translate } from '../client-helpers'
 import { ImportUpload } from './ImportUpload'
 import { IMPORTS_HREF, STATUS_VARIANTS, instantLabel, type ImportRow, type Paged } from './import-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 20
 
@@ -54,9 +54,9 @@ function buildColumns(t: Translate): TableColumns<ImportRow> {
       meta: { priority: 1 },
       cell: ({ row }) => (
         <span data-testid={`people-import-status-${row.original.id}`}>
-          <StatusBadge variant={STATUS_VARIANTS[row.original.status]}>
+          <StatusTag status={STATUS_VARIANTS[row.original.status]}>
             {t(`people.imports.status.${row.original.status}`)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       ),
     },

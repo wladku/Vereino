@@ -16,7 +16,6 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOve
 import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
@@ -58,6 +57,7 @@ import {
   type RentalAction,
   type RentalRow,
 } from './rentals-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -72,9 +72,9 @@ const TAB_KEYS: Record<RentalListStatus, string> = {
 export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'needsReschedule'>; t: Translate }) {
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <StatusBadge variant={rentalStatusVariant(row.status)}>{rentalStatusLabel(t, row.status)}</StatusBadge>
+      <StatusTag status={rentalStatusVariant(row.status)}>{rentalStatusLabel(t, row.status)}</StatusTag>
       {row.needsReschedule ? (
-        <StatusBadge variant="warning">{t('facilities.rentals.flags.needsReschedule')}</StatusBadge>
+        <StatusTag status="warning">{t('facilities.rentals.flags.needsReschedule')}</StatusTag>
       ) : null}
     </span>
   )
@@ -88,9 +88,9 @@ export function RentalAmount({ row, t }: { row: RentalRow; t: Translate }) {
         {row.amount === null ? t('facilities.common.empty') : minorToAmount(row.amount)}
       </span>
       <span className="text-muted-foreground text-xs">{payeeLabel(t, row.payee)}</span>
-      <StatusBadge variant={chargeStateVariant(row.chargeState)}>
+      <StatusTag status={chargeStateVariant(row.chargeState)}>
         {t(`facilities.rentals.chargeState.${row.chargeState}`)}
-      </StatusBadge>
+      </StatusTag>
     </span>
   )
 }
