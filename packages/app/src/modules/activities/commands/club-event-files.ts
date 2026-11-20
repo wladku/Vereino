@@ -8,8 +8,8 @@
 //
 // Both commands are undoable. The undo of an add removes the new link and puts back the poster it replaced; its redo
 // links the same stored file again (the bytes are not part of the stored input, so a redo never re-uploads). The undo
-// of a delete restores the link in its place (a logo keeps its position; a restored poster replaces the one uploaded
-// since). Removing a link keeps the file in `attachments`, so every undo finds it. No events: the audit log records
+// of a delete restores the link (a logo keeps its position; a poster only while no newer poster is live, 409
+// `club_event_poster_replaced` otherwise). Removing a link keeps the file in `attachments`, so every undo finds it. No events: the audit log records
 // every change.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -313,7 +313,8 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
   /** Removes the new link and, when it is still the poster that replaced another, puts the replaced one back. */
   async undo({ ctx, logEntry }) {
     const after = logEntry.snapshotAfter as ClubEventFileSnapshot | null | undefined
-    const { file } = await authorizeFileReplay(ctx, after)
+    const { file, event } = await authorizeFileReplay(ctx, after)
+    await assertClubEventOpen(event)
     const em = ctx.transactionalEm as EntityManager
     if (file.deletedAt) return
     const now = new Date()
@@ -368,11 +369,24 @@ const deleteClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEv
   async authorizeReplay({ ctx, logEntry }) {
     await authorizeFileReplay(ctx, logEntry.snapshotBefore as ClubEventFileSnapshot | null)
   },
-  /** Restores the link in its place: a logo keeps its position; a restored poster replaces the one uploaded since. */
+  /**
+   * Restores the link: a logo with its position (within the limit). A poster comes back only while the event has no
+   * live poster: one uploaded since stays, and the undo answers 409 `club_event_poster_replaced` (replacing it here
+   * would lose it, since no log entry records the swap).
+   */
   async undo({ ctx, logEntry }) {
     const { file, event } = await authorizeFileReplay(ctx, logEntry.snapshotBefore as ClubEventFileSnapshot | null)
     await assertClubEventOpen(event)
-    await relink(ctx.transactionalEm as EntityManager, file)
+    const em = ctx.transactionalEm as EntityManager
+    if (file.deletedAt && file.kind === 'poster') {
+      const live = await em.findOne(
+        ClubEventFile,
+        { ...scopeOf(file), clubEventId: file.clubEventId, kind: 'poster', deletedAt: null, id: { $ne: file.id } },
+        { fields: ['id'] },
+      )
+      if (live) await activitiesErrors.throw('club_event_poster_replaced')
+    }
+    await relink(em, file)
   },
 }
 

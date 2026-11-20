@@ -917,6 +917,7 @@
   "activities.errors.club_event_file_too_large": "The file is too large: a poster may have up to 5 MB, a funder's logo up to 2 MB.",
   "activities.errors.club_event_file_format_unsupported": "Upload a PNG, JPEG or WebP image. SVG and PDF files are not accepted.",
   "activities.errors.club_event_funders_limit": "A club event can have at most 12 funder logos. Remove one first.",
+  "activities.errors.club_event_poster_replaced": "A newer poster was uploaded since. Remove it first to bring this poster back.",
   "activities.errors.club_event_funder_name_invalid": "Enter the funder's name (2 to 120 characters). It is shown as the logo's description.",
   "activities.clubEvents.title": "Club events",
   "activities.clubEvents.subtitle": "Tournaments and other club events with their parts by day.",

@@ -128,6 +128,7 @@ export const errorCodes = [
     messageKey: 'activities.errors.club_event_file_format_unsupported',
   },
   { code: 'club_event_funders_limit', status: 422, messageKey: 'activities.errors.club_event_funders_limit' },
+  { code: 'club_event_poster_replaced', status: 409, messageKey: 'activities.errors.club_event_poster_replaced' },
   {
     code: 'club_event_funder_name_invalid',
     status: 422,

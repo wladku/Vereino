@@ -47,6 +47,10 @@ The club administrator (and a coordinator of the event's section) uploads one po
   - run 2: 2 passed (48.2s).
 - `yarn test:integration:vereino --filter TEST-T11` (regression of the record page, which gained the Files tab): 1 passed (58.0s).
 
+## Review
+
+A fresh-eyes reviewer subagent read the diff (no serious finding) and raised two low ones, both fixed in a second commit: (1) undoing a poster's removal after a newer poster was uploaded would retire the newer one without any log entry recording it, so it could be lost — the undo now answers 409 `club_event_poster_replaced` (new error code) while another poster is live; (2) the undo of an add did not check `club_event_cancelled` like the other replays — it does now. Nit kept: a restored logo may share its position number with a newer logo (ordering breaks the tie by creation time). TEST-T08 gained the delete → new poster → undo (409) → remove the new one → undo (200) scenario. After the fixes: `yarn verify` all 18 steps passed; `--filter TEST-T08` 2 passed (47.8s).
+
 ## Open problems
 
 - `down()` of migration T2 was not run against a database (the integration runs apply `up()`).

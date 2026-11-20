@@ -917,6 +917,7 @@
   "activities.errors.club_event_file_too_large": "Plik jest za duży: plakat może mieć do 5 MB, logo fundatora do 2 MB.",
   "activities.errors.club_event_file_format_unsupported": "Wyślij obraz PNG, JPEG lub WebP. Pliki SVG i PDF nie są przyjmowane.",
   "activities.errors.club_event_funders_limit": "Impreza klubowa może mieć najwyżej 12 logo fundatorów. Najpierw usuń jedno.",
+  "activities.errors.club_event_poster_replaced": "Od tego czasu wysłano nowszy plakat. Usuń go najpierw, aby przywrócić ten plakat.",
   "activities.errors.club_event_funder_name_invalid": "Podaj nazwę fundatora (od 2 do 120 znaków). Jest opisem logo.",
   "activities.clubEvents.title": "Imprezy klubowe",
   "activities.clubEvents.subtitle": "Turnieje i inne imprezy klubu z ich częściami w kolejnych dniach.",

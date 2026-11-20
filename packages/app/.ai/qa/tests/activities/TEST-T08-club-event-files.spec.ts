@@ -115,6 +115,29 @@ test('TEST-T08 a club event keeps one poster and up to 12 named funder logos, ch
     expect(redone.status(), await redone.text()).toBe(200)
     posters = (await files(request, admin, eventId)).filter((file) => file.kind === 'poster')
     expect(posters.map((file) => file.id)).toEqual([second.body?.id])
+    // A removed poster comes back on undo only while no newer poster is live (409 `club_event_poster_replaced`).
+    const live = (await files(request, admin, eventId)).find((file) => file.kind === 'poster') as FileView
+    const removedPoster = await call(request, 'DELETE', `${path}/${live.id}`, admin, {
+      headers: { [OPTIMISTIC_LOCK_HEADER]: live.updatedAt },
+    })
+    expect(removedPoster.status, JSON.stringify(removedPoster.body)).toBe(200)
+    const third = await upload(request, admin, path, png([40, 160, 40], 32), { kind: 'poster' })
+    expect(third.status, JSON.stringify(third.body)).toBe(201)
+    expect(third.body?.replacedId).toBeNull()
+    const posterDeleteLog = await logOf(request, admin, live.id, 'activities.club_event_files.delete')
+    const refused = await undoByToken(request, admin, posterDeleteLog.undoToken)
+    expect(refused.status(), await refused.text()).toBe(409)
+    expect(JSON.stringify(await refused.json())).toContain('club_event_poster_replaced')
+    posters = (await files(request, admin, eventId)).filter((file) => file.kind === 'poster')
+    expect(posters.map((file) => file.id)).toEqual([third.body?.id])
+    const removedThird = await call(request, 'DELETE', `${path}/${String(third.body?.id)}`, admin, {
+      headers: { [OPTIMISTIC_LOCK_HEADER]: String(third.body?.updatedAt) },
+    })
+    expect(removedThird.status, JSON.stringify(removedThird.body)).toBe(200)
+    const back = await undoByToken(request, admin, posterDeleteLog.undoToken)
+    expect(back.status(), await back.text()).toBe(200)
+    posters = (await files(request, admin, eventId)).filter((file) => file.kind === 'poster')
+    expect(posters.map((file) => file.id)).toEqual([second.body?.id])
 
     // Negative cases, checked by the bytes: nothing is stored.
     const svg = await upload(request, admin, path, SVG_AS_PNG, { kind: 'poster' })
