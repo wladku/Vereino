@@ -41,11 +41,12 @@ import {
   type ClubEventDraft,
   type ClubEventDraftField,
 } from '../../lib/member-club-event'
-import { CLUB_EVENT_ADD_PLACE_SPOT_ID } from '../ClubEventForm'
+import { CLUB_EVENT_ADD_PLACE_SPOT_ID } from '../club-event-fields'
 import { ConflictList } from '../ConflictList'
 import { OWN_FORBIDDEN_STATE, type ScheduleConflict } from '../client-helpers'
 import {
   CLUB_EVENT_OPTIONS_QUERY_KEY,
+  clubEventOptionsOf,
   MEMBER_CLUB_EVENTS_HREF,
   clubEventQueryKey,
   memberClubEventHref,
@@ -449,14 +450,18 @@ function FormBody({ id, t }: { id: string | null; t: Translate }) {
     )
   }
   const event = stored.data?.status === 'ok' ? stored.data.event : null
+  const loaded = clubEventOptionsOf(options.data)
   if (
-    !options.data ||
+    !loaded ||
     (id !== null && stored.data?.status === 'denied') ||
     (event && (event.mayManage !== true || event.status !== 'planned'))
   ) {
-    // No options: the caller does not organise club events (403), or the read failed.
-    const denied = (id !== null && stored.data?.status === 'denied') || (event !== null && event.mayManage !== true)
-    if (denied || (options.data === null && !options.error)) {
+    // No options: the caller does not organise club events (403, `denied`), or the read failed (a retry, #440).
+    const denied =
+      options.data?.status === 'denied' ||
+      (id !== null && stored.data?.status === 'denied') ||
+      (event !== null && event.mayManage !== true)
+    if (denied) {
       return (
         <Alert status="information" data-testid="club-event-member-denied">
           <p>{t('activities.clubEvents.club.form.denied')}</p>
@@ -501,7 +506,7 @@ function FormBody({ id, t }: { id: string | null; t: Translate }) {
       />
     )
   }
-  return <EventForm key={event?.updatedAt ?? 'new'} options={mergedOptions(options.data, event)} event={event} t={t} />
+  return <EventForm key={event?.updatedAt ?? 'new'} options={mergedOptions(loaded, event)} event={event} t={t} />
 }
 
 function ClubEventFormContent({ id, t }: { id: string | null; t: Translate }) {

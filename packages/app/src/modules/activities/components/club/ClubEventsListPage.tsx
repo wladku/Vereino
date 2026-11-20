@@ -3,7 +3,8 @@
 // `/club/club-events`; E14-S05, #380): the upcoming events first, then the past ones, and the cancelled ones when there
 // are any, each as a card — name, dates, place with the external mark, section or "Whole club", the number of parts,
 // Public and the status — linking to the event page. **New club event** opens the form; with no event at all the page
-// says "No club events yet" and offers it. The list is `GET /api/activities/club-events?view=`, scoped by the server.
+// says "No club events yet" and offers it. The list is `GET /api/activities/club-events?view=`, scoped by the server;
+// each view shows 20 cards and **Show more** adds the next 20.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -28,31 +29,48 @@ const VIEWS = ['upcoming', 'past', 'cancelled'] as const
 type View = (typeof VIEWS)[number]
 type ListLoad = Record<View, ClubEventRow[]>
 
-/** At most this many events per view: a club holds a handful of club events a season. */
-const PAGE_SIZE = 50
+/** The rows of one view come in pages of this size, at most `MAX_PAGES` of them. */
+const FETCH_PAGE_SIZE = 200
+const MAX_PAGES = 10
+/** The cards a view shows at first and adds with each **Show more**. */
+const SHOWN_STEP = 20
+
+/**
+ * Every event of one view, upcoming soonest first and past latest first. The dates are derived from the parts, so the
+ * route cannot sort by them: the page reads all pages and sorts here, or the newest past events could fall outside an
+ * alphabetical first page (#440). An event without a part yet ends the upcoming list.
+ */
+async function fetchView(view: View): Promise<ClubEventRow[]> {
+  const rows: ClubEventRow[] = []
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const params = new URLSearchParams({
+      view,
+      page: String(page),
+      pageSize: String(FETCH_PAGE_SIZE),
+      sortField: 'name',
+      sortDir: 'asc',
+    })
+    const call = await apiCall<{ items?: ClubEventRow[]; totalPages?: number }>(
+      `/api/activities/club-events?${params.toString()}`,
+      OWN_FORBIDDEN_STATE,
+    )
+    if (!call.ok) throw new Error(String(call.status))
+    rows.push(...(call.result?.items ?? []))
+    if (page >= (call.result?.totalPages ?? 1)) break
+  }
+  return rows.sort((a, b) => {
+    const left = a.dateFrom ?? '9999-12-31'
+    const right = b.dateFrom ?? '9999-12-31'
+    return view === 'upcoming' ? left.localeCompare(right) : right.localeCompare(left)
+  })
+}
 
 function useClubEventLists() {
   return useQuery({
     queryKey: ['activities-member-club-events'],
     queryFn: async (): Promise<ListLoad> => {
-      const lists = await Promise.all(
-        VIEWS.map(async (view) => {
-          const params = new URLSearchParams({ view, pageSize: String(PAGE_SIZE), sortField: 'name', sortDir: 'asc' })
-          const call = await apiCall<{ items?: ClubEventRow[] }>(
-            `/api/activities/club-events?${params.toString()}`,
-            OWN_FORBIDDEN_STATE,
-          )
-          if (!call.ok) throw new Error(String(call.status))
-          const items = call.result?.items ?? []
-          // Upcoming soonest first, past latest first; an event without a part yet ends the upcoming list.
-          return items.sort((a, b) => {
-            const left = a.dateFrom ?? '9999-12-31'
-            const right = b.dateFrom ?? '9999-12-31'
-            return view === 'upcoming' ? left.localeCompare(right) : right.localeCompare(left)
-          })
-        }),
-      )
-      return { upcoming: lists[0], past: lists[1], cancelled: lists[2] }
+      const [upcoming, past, cancelled] = await Promise.all(VIEWS.map(fetchView))
+      return { upcoming, past, cancelled }
     },
   })
 }
@@ -94,6 +112,11 @@ function EventCard({ row, t, locale }: { row: ClubEventRow; t: Translate; locale
 function ClubEventsList({ t }: { t: Translate }) {
   const locale = useLocale()
   const query = useClubEventLists()
+  const [shown, setShown] = React.useState<Record<View, number>>({
+    upcoming: SHOWN_STEP,
+    past: SHOWN_STEP,
+    cancelled: SHOWN_STEP,
+  })
   const newButton = (
     <Button asChild className="min-h-11 w-full sm:w-auto">
       <Link href={MEMBER_CLUB_EVENT_NEW_HREF} data-testid="club-events-new">
@@ -140,11 +163,24 @@ function ClubEventsList({ t }: { t: Translate }) {
                 </p>
               ) : (
                 <ul className="flex flex-col gap-3" data-testid={`club-events-${view}`}>
-                  {rows.map((row) => (
+                  {rows.slice(0, shown[view]).map((row) => (
                     <EventCard key={row.id} row={row} t={t} locale={locale} />
                   ))}
                 </ul>
               )}
+              {rows.length > shown[view] ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full sm:w-auto sm:self-start"
+                  data-testid={`club-events-${view}-more`}
+                  onClick={() => {
+                    setShown((current) => ({ ...current, [view]: current[view] + SHOWN_STEP }))
+                  }}
+                >
+                  {t('activities.clubEvents.club.list.showMore', { shown: shown[view], total: rows.length })}
+                </Button>
+              ) : null}
             </section>
           )
         })}

@@ -29,6 +29,7 @@ import {
   CLUB_EVENTS_HREF,
   clubEventDatesLabel,
   clubEventStatusVariant,
+  clubEventOptionsOf,
   useClubEventOptions,
   type ClubEventDetail,
 } from './club-events-client'
@@ -198,7 +199,11 @@ export function ClubEventRecord({ id }: { id: string }) {
           )}
         </TabsContent>
         <TabsContent value="parts" className="pt-4">
-          <ClubEventPartsTable event={event} options={manages ? (options.data ?? null) : null} onChanged={refetch} />
+          <ClubEventPartsTable
+            event={event}
+            options={manages ? clubEventOptionsOf(options.data) : null}
+            onChanged={refetch}
+          />
         </TabsContent>
         <TabsContent value="files" className="pt-4">
           <ClubEventFilesPanel event={event} editable={editable} onChanged={refetch} />

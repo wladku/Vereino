@@ -5,7 +5,7 @@
 // `POST`/`PUT /api/activities/club-events/{id}/parts[/{partId}]` with the wall times of the club's zone as instants, and
 // the form field a coded refusal points at. Pure.
 import { isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
-import { EVENT_TYPES, localDateTime } from './activities-rules'
+import { EVENT_TYPES, MAX_CONFIRM_BY_HOURS, localDateTime } from './activities-rules'
 import {
   CLUB_EVENT_DESCRIPTION_MAX,
   CLUB_EVENT_NAME_MAX,
@@ -23,8 +23,6 @@ import { MAX_GATHERING_MINUTES } from './gathering'
 export const WHOLE_CLUB = '__club__'
 /** The select value of an open part ("No club group"). */
 export const NO_GROUP = '__none__'
-/** The largest deadline the forms take, in hours: 14 days (REQ-A07). */
-export const PART_CONFIRM_BY_MAX_HOURS = 336
 
 export type DraftProblem = 'required' | 'invalid' | 'endBeforeStart'
 
@@ -115,7 +113,7 @@ export function clubEventDraftProblems(draft: ClubEventDraft): ClubEventDraftPro
   if (!draft.placeId) problems.placeId = 'required'
   if (draft.description.trim().length > CLUB_EVENT_DESCRIPTION_MAX) problems.description = 'invalid'
   if (wholeNumberIn(draft.gatheringMinutes, MAX_GATHERING_MINUTES) === 'invalid') problems.gatheringMinutes = 'invalid'
-  if (wholeNumberIn(draft.confirmByHours, PART_CONFIRM_BY_MAX_HOURS) === 'invalid') problems.confirmByHours = 'invalid'
+  if (wholeNumberIn(draft.confirmByHours, MAX_CONFIRM_BY_HOURS) === 'invalid') problems.confirmByHours = 'invalid'
   return problems
 }
 
@@ -139,7 +137,7 @@ export function clubEventRequestBody(draft: ClubEventDraft): ClubEventRequestBod
   const slug = draft.publicSlug.trim()
   const description = draft.description.trim()
   const gathering = wholeNumberIn(draft.gatheringMinutes, MAX_GATHERING_MINUTES)
-  const hours = wholeNumberIn(draft.confirmByHours, PART_CONFIRM_BY_MAX_HOURS)
+  const hours = wholeNumberIn(draft.confirmByHours, MAX_CONFIRM_BY_HOURS)
   return {
     name: draft.name.trim(),
     ...(slug ? { publicSlug: slug } : {}),
@@ -288,7 +286,7 @@ export function partDraftProblems(draft: PartDraft, shape: PartFormShape): PartD
   if (!draft.type) problems.type = 'required'
   else if (!(EVENT_TYPES as readonly string[]).includes(draft.type)) problems.type = 'invalid'
   if (wholeNumberIn(draft.gatheringMinutes, MAX_GATHERING_MINUTES) === 'invalid') problems.gatheringMinutes = 'invalid'
-  if (wholeNumberIn(draft.confirmByHours, PART_CONFIRM_BY_MAX_HOURS) === 'invalid') problems.confirmByHours = 'invalid'
+  if (wholeNumberIn(draft.confirmByHours, MAX_CONFIRM_BY_HOURS) === 'invalid') problems.confirmByHours = 'invalid'
   return problems
 }
 
@@ -318,7 +316,7 @@ export function partRequestBody(
 ): PartRequestBody {
   const category = draft.categoryLabel.trim()
   const gathering = wholeNumberIn(draft.gatheringMinutes, MAX_GATHERING_MINUTES)
-  const hours = options.deadlineShown ? wholeNumberIn(draft.confirmByHours, PART_CONFIRM_BY_MAX_HOURS) : null
+  const hours = options.deadlineShown ? wholeNumberIn(draft.confirmByHours, MAX_CONFIRM_BY_HOURS) : null
   const body: PartRequestBody = {
     title: draft.title.trim(),
     categoryLabel: category ? category : null,

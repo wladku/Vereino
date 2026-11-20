@@ -286,12 +286,10 @@ function EditForm({
       </fieldset>
       {partOf ? (
         <div className="flex flex-col gap-1" data-testid="club-edit-place-locked">
-          <span className="text-sm font-medium" id={`${id}-place-locked`}>
-            {t('activities.fields.place')}
-          </span>
-          <p className="text-sm" aria-labelledby={`${id}-place-locked`}>
-            {occurrence.placeName ?? ''}
-          </p>
+          <dl className="flex flex-col gap-1">
+            <dt className="text-sm font-medium">{t('activities.fields.place')}</dt>
+            <dd className="text-sm">{occurrence.placeName ?? ''}</dd>
+          </dl>
           <p className="text-muted-foreground text-sm">
             {t('activities.clubEvents.club.session.placeLocked', { name: partOf.name })}
           </p>

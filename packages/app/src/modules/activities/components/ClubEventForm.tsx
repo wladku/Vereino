@@ -22,6 +22,7 @@ import { errorCodeOf } from '@vereino/core'
 import { CLUB_EVENT_DESCRIPTION_MAX, CLUB_EVENT_NAME_MAX, CLUB_EVENT_SLUG_MAX } from '../lib/club-events'
 import { MAX_GATHERING_MINUTES } from '../lib/gathering'
 import { ConflictList } from './ConflictList'
+import { CLUB_EVENT_ADD_PLACE_SPOT_ID } from './club-event-fields'
 import {
   MAX_CONFIRM_BY_HOURS,
   errorMessage,
@@ -36,13 +37,11 @@ import {
   CLUB_EVENTS_HREF,
   WHOLE_CLUB,
   clubEventHref,
+  clubEventOptionsOf,
   useClubEventOptions,
   type ClubEventDetail,
   type ClubEventOptions,
 } from './club-events-client'
-
-/** The spot `club_core` draws its "Add place" dialog on. */
-export const CLUB_EVENT_ADD_PLACE_SPOT_ID = 'vereino:activities:club-event-form:add-place'
 
 type ClubEventValues = Record<string, unknown> & {
   id?: string
@@ -301,10 +300,11 @@ function rethrow(t: Translate, error: unknown, setConflicts: (conflicts: Schedul
 function useOptionsGate(t: Translate) {
   const options = useClubEventOptions()
   if (options.isLoading) return { node: <LoadingMessage label={t('activities.clubEvents.loading')} />, options: null }
-  if (options.error || !options.data) {
+  const data = clubEventOptionsOf(options.data)
+  if (options.error || !data) {
     return { node: <ErrorMessage label={t('activities.clubEvents.errors.options')} />, options: null }
   }
-  return { node: null, options: options.data }
+  return { node: null, options: data }
 }
 
 export function ClubEventCreateForm() {

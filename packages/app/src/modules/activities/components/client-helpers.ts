@@ -429,8 +429,8 @@ export function takesDeadline(kinds: DeclarationKinds | null, type: unknown): bo
   return kinds[type] !== 'absence_only'
 }
 
-/** The largest deadline offset the forms take, in hours (14 days, REQ-A07). */
-export const MAX_CONFIRM_BY_HOURS = 336
+/** The largest deadline offset the forms take, in hours (14 days, REQ-A07); one definition in the rules. */
+export { MAX_CONFIRM_BY_HOURS } from '../lib/activities-rules'
 
 export const NO_COACH = 'none'
 
