@@ -2,7 +2,9 @@
 // `screenPublicEvents`; #263): the one-off activities (matches, sparrings, tournaments, camps) of public groups in public
 // sections. "Upcoming": the event ends today or later, soonest first. "Past": it ended before today and started at most
 // 60 days ago, newest first. Each event carries its club-zone dates and times, its place, a map link for an external
-// venue, its section and its type. Pure: the service passes the rows, the places, the sections and the club day; no
+// venue, its section and its type. A published club event with a live part is one entry of its own (club events spec
+// REQ-T10, DD-T12; #381): its name, the span of its parts, its place, the number of its parts and its poster; its parts
+// are never listed one by one. Pure: the service passes the rows, the places, the sections and the club day; no
 // participant, roster or coach ever enters these lists.
 import { addCalendarDays, type CalendarDate } from '@vereino/core'
 import { localDateTime } from './activities-rules'
@@ -28,6 +30,7 @@ export type PublicEventPlace = {
 }
 
 export type PublicEventItem = {
+  kind: 'event' | 'club_event'
   name: string
   type: string
   /** Club-zone start and end dates (a camp ends days later) and `HH:mm` times. */
@@ -40,8 +43,12 @@ export type PublicEventItem = {
   mapUrl: string | null
   cancelled: boolean
   past: boolean
-  /** The public section's slug; `club_core` adds its name and logo. */
-  sectionSlug: string
+  /** The public section's slug; `club_core` adds its name and logo. Null: the club's (a whole-club event). */
+  sectionSlug: string | null
+  /** A club event's public slug, its number of live parts and its poster file; null for a one-off event. */
+  clubEventSlug: string | null
+  partsCount: number | null
+  posterFileId: string | null
 }
 
 export type PublicEventLists = { upcoming: PublicEventItem[]; past: PublicEventItem[] }
@@ -94,6 +101,7 @@ export function publicEventLists(
     const venue = session.venue ?? null
     const place = !venue && session.placeId ? places.get(session.placeId) : undefined
     const item: PublicEventItem = {
+      kind: 'event',
       name: event.name,
       type: event.type,
       date: start.date,
@@ -105,9 +113,121 @@ export function publicEventLists(
       cancelled: session.status === 'cancelled',
       past: isPast,
       sectionSlug,
+      clubEventSlug: null,
+      partsCount: null,
+      posterFileId: null,
     }
     if (isPast) past.push(item)
     else upcoming.push(item)
   }
   return { upcoming: upcoming.slice(0, PUBLIC_EVENTS_LIMIT), past: past.reverse().slice(0, PUBLIC_EVENTS_LIMIT) }
+}
+
+// --- Club events on P-06 (club events spec REQ-T10, DD-T12, TEST-T10; #381) ---
+
+/** A published club event as the service reads it. */
+export type PublicClubEventRow = {
+  id: string
+  name: string
+  slug: string
+  /** Null: a whole-club event. */
+  sectionId: string | null
+  placeId: string
+  status: string
+}
+
+/** One live part of a club event: its span (its session's, or an open part's own) and its group (null: open part). */
+export type PublicClubEventSpan = { clubEventId: string; startAt: Date; endAt: Date; groupId: string | null }
+
+export type PublicClubEventEntryInput = {
+  events: readonly PublicClubEventRow[]
+  spans: readonly PublicClubEventSpan[]
+  /** The live poster file of each event, by event id. */
+  posters: ReadonlyMap<string, string>
+  /** The public sections the page shows: id → slug. */
+  sectionSlugs: ReadonlyMap<string, string>
+  /** The public groups of those sections. */
+  publicGroupIds: ReadonlySet<string>
+  /** Whether `?section=` narrowed the page to one section. */
+  filtered: boolean
+  places: ReadonlyMap<string, PublicEventPlace>
+  timeZone: string
+  today: CalendarDate
+}
+
+/**
+ * The section slug a club event's entry carries, or undefined when the page leaves it out: an event of a section shown
+ * on the page carries its slug; unfiltered, an event of a section that is not public and a whole-club event carry null
+ * (the club's); filtered, an event of another section is left out and a whole-club event is listed only when one of
+ * its parts is a public group of the shown section.
+ */
+function clubEventSection(
+  event: PublicClubEventRow,
+  spans: readonly PublicClubEventSpan[],
+  input: PublicClubEventEntryInput,
+): string | null | undefined {
+  if (event.sectionId) {
+    const slug = input.sectionSlugs.get(event.sectionId)
+    if (slug !== undefined) return slug
+    return input.filtered ? undefined : null
+  }
+  if (!input.filtered) return null
+  return spans.some((span) => span.groupId !== null && input.publicGroupIds.has(span.groupId)) ? null : undefined
+}
+
+/**
+ * One entry per published club event with at least one live part: the span from its first part's start to its last
+ * part's end, "past" once that end is before today and kept while the first part started at most 60 days ago (the
+ * rule of a single event); the place with a map link only for an external one; cancelled with the event.
+ */
+export function publicClubEventItems(input: PublicClubEventEntryInput): PublicEventItem[] {
+  const from = pastEventsFrom(input.today)
+  const items: PublicEventItem[] = []
+  for (const event of input.events) {
+    const spans = input.spans.filter((span) => span.clubEventId === event.id)
+    if (spans.length === 0) continue
+    const sectionSlug = clubEventSection(event, spans, input)
+    if (sectionSlug === undefined) continue
+    const startAt = new Date(Math.min(...spans.map((span) => span.startAt.getTime())))
+    const endAt = new Date(Math.max(...spans.map((span) => span.endAt.getTime())))
+    const start = localDateTime(startAt, input.timeZone)
+    const end = localDateTime(endAt, input.timeZone)
+    const isPast = end.date < input.today
+    if (isPast && start.date < from) continue
+    const place = input.places.get(event.placeId)
+    items.push({
+      kind: 'club_event',
+      name: event.name,
+      type: 'club_event',
+      date: start.date,
+      endDate: end.date,
+      startTime: shortTime(start.time),
+      endTime: shortTime(end.time),
+      place: place?.name ?? null,
+      mapUrl: place ? publicMapUrl(place) : null,
+      cancelled: event.status === 'cancelled',
+      past: isPast,
+      sectionSlug,
+      clubEventSlug: event.slug,
+      partsCount: spans.length,
+      posterFileId: input.posters.get(event.id) ?? null,
+    })
+  }
+  return items
+}
+
+const startKey = (item: PublicEventItem): string => `${item.date} ${item.startTime}`
+
+/**
+ * The one-off events' lists with the club event entries added: "Upcoming" soonest first, "Past" newest first (a tie
+ * keeps the one-off event first), each at most `PUBLIC_EVENTS_LIMIT` long.
+ */
+export function withClubEvents(lists: PublicEventLists, clubEvents: readonly PublicEventItem[]): PublicEventLists {
+  const upcoming = [...lists.upcoming, ...clubEvents.filter((item) => !item.past)].sort((a, b) =>
+    startKey(a).localeCompare(startKey(b)),
+  )
+  const past = [...lists.past, ...clubEvents.filter((item) => item.past)].sort((a, b) =>
+    startKey(b).localeCompare(startKey(a)),
+  )
+  return { upcoming: upcoming.slice(0, PUBLIC_EVENTS_LIMIT), past: past.slice(0, PUBLIC_EVENTS_LIMIT) }
 }
