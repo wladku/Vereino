@@ -35,3 +35,17 @@
 
 - Follow-up #519: wire the backup job to the E18-S04 heartbeat once #474 and #476 are both on `main`.
 - Merge stays with the merge train / `om-approve-merge-pr`.
+
+## Second run: `integration` failed, `merge-train-failed` (2026-11-20, cezar task 82f8b96f, `--ci-only`)
+
+- Trigger: the merge train labelled the PR `merge-train-failed`; the required check `integration` concluded FAILURE
+  on `5bf5d4ea` (run 44786831578).
+- Cause: `integration (shard 2/6)` was cancelled by its 45-minute job timeout (`##[error]The operation was
+  canceled.`) after 11 of 53 tests had passed and none had failed. The runner was slow: the production build alone took
+  18 minutes, and tests ran 1–4.5 minutes each. On `main` the same shard takes 18–19 minutes in total (runs
+  44786759147, 44771064640, 44761435885). The other five shards passed.
+- Classification: infra (runner timeout). The PR changes no app code and no integration test (backup scripts,
+  Docker image, drill workflow, docs), so nothing in the diff can slow shard 2. `origin/main` had not advanced past the
+  PR's last base merge, so no new merge was needed.
+- Action: no code change; this log entry is the commit that restarts CI on a fresh runner. No test was weakened and
+  no check was disabled.
