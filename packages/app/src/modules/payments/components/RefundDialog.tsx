@@ -11,20 +11,14 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MAX_REASON_LENGTH } from '../lib/charge-ledger'
 import { errorCode, errorMessage, formatMoney, fromGrosz, toGrosz, type PaymentRow } from './client-helpers'
+import { DialogContent } from '@/components/ui/dialog'
 
 type Field = 'amount' | 'reason'
 

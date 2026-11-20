@@ -4,16 +4,10 @@
 // groups first". The section stays as it was.
 import Link from 'next/link'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { SectionUsageView } from './sections-shared'
+import { DialogContent } from '@/components/ui/dialog'
 
 const GROUPS_HREF = '/backend/groups/groups'
 
