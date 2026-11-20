@@ -35,9 +35,12 @@ import {
   sessionEditDraft,
   sessionEditFieldOfError,
   sessionEditProblems,
+  sessionEditRefusal,
+  sessionEditRefusalOfCode,
   type SessionEditDraft,
   type SessionEditField,
   type SessionEditProblem,
+  type SessionEditRefusal,
 } from '../../lib/session-edit'
 import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
 import { ConflictList } from '../ConflictList'
@@ -45,6 +48,7 @@ import { OWN_FORBIDDEN_STATE, takesDeadline, type DeclarationKinds, type Schedul
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import {
   CALENDAR_QUERY_KEY,
+  CLUB_CALENDAR_HREF,
   SESSION_QUERY_KEY,
   sessionHref,
   useMemberSession,
@@ -87,6 +91,29 @@ const FIELD_ORDER: readonly SessionEditField[] = [
   'confirmByDate',
   'confirmByTime',
 ]
+
+/**
+ * Why the session cannot be edited, worded for the reader's case, with the way forward (E20-S10, #489): a session
+ * outside the caller's groups and sections points at the calendar; a part session at its club event's organisers; a
+ * coach's series session at the section coordinator; a cancelled or settled one back to the session.
+ */
+function EditRefusal({ reason, clubEventName }: { reason: SessionEditRefusal; clubEventName: string | null }) {
+  const t = useT()
+  return (
+    <Alert status="information" data-testid="club-edit-denied" data-reason={reason}>
+      <p className="max-w-prose">{t(`activities.club.edit.refusal.${reason}`, { name: clubEventName ?? '' })}</p>
+      {reason === 'not_yours' ? (
+        <Link
+          href={CLUB_CALENDAR_HREF}
+          className="text-primary inline-flex min-h-11 items-center text-sm underline"
+          data-testid="club-edit-denied-calendar"
+        >
+          {t('activities.club.edit.refusal.calendar')}
+        </Link>
+      ) : null}
+    </Alert>
+  )
+}
 
 function FieldProblem({ id, text }: { id: string; text: string | undefined }) {
   if (!text) return null
@@ -131,6 +158,7 @@ function EditForm({
   const [problems, setProblems] = React.useState<Partial<Record<SessionEditField, string>>>({})
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [refusal, setRefusal] = React.useState<SessionEditRefusal | null>(null)
   const [pending, setPending] = React.useState(false)
   // REQ-A07: the deadline for a `confirm` kind, and always when the session already has one.
   const deadlineShown =
@@ -176,6 +204,7 @@ function EditForm({
     }
     setPending(true)
     setError(null)
+    setRefusal(null)
     setConflicts(null)
     let call: Awaited<ReturnType<typeof apiCall<SaveAnswer>>>
     try {
@@ -218,7 +247,8 @@ function EditForm({
       return
     }
     if (call.status === 403) {
-      setError(t('activities.club.edit.denied'))
+      // The rights changed since the read: the same refusal as the read's, with the way forward.
+      setRefusal(sessionEditRefusalOfCode(code))
       return
     }
     const message = call.status === 422 && typeof answer.error === 'string' && answer.error ? answer.error : null
@@ -430,6 +460,7 @@ function EditForm({
         </fieldset>
       ) : null}
       {conflicts ? <ConflictList conflicts={conflicts} linkSessions={false} /> : null}
+      {refusal ? <EditRefusal reason={refusal} clubEventName={partOf?.name ?? null} /> : null}
       {error && !conflicts ? (
         <Alert status="error" data-testid="club-edit-error">
           <p>{error}</p>
@@ -457,6 +488,18 @@ function EditSession({ id, t }: { id: string; t: Translate }) {
   const options = useEditOptions()
   let body: React.ReactNode
   const load = session.data
+  const refusal =
+    load?.status === 'forbidden'
+      ? sessionEditRefusal({ status: 'forbidden' })
+      : load?.status === 'ok'
+        ? sessionEditRefusal({
+            status: 'ok',
+            mayEdit: load.entry.mayEdit === true,
+            planned: load.entry.occurrence.status === 'planned',
+            partOfClubEvent: Boolean(load.entry.occurrence.clubEvent),
+            as,
+          })
+        : null
   if ((!load && session.isFetching) || (!options.data && options.isFetching)) {
     body = <MemberSkeleton shape="fields" label={t('activities.club.edit.loading')} />
   } else if (load?.status === 'not_found') {
@@ -465,14 +508,12 @@ function EditSession({ id, t }: { id: string; t: Translate }) {
         <p>{t('activities.club.edit.notFound')}</p>
       </Alert>
     )
-  } else if (
-    load?.status === 'forbidden' ||
-    (load?.status === 'ok' && (load.entry.mayEdit !== true || load.entry.occurrence.status !== 'planned'))
-  ) {
+  } else if (refusal) {
     body = (
-      <Alert status="information" data-testid="club-edit-denied">
-        <p>{t('activities.club.edit.denied')}</p>
-      </Alert>
+      <EditRefusal
+        reason={refusal}
+        clubEventName={load?.status === 'ok' ? (load.entry.occurrence.clubEvent?.name ?? null) : null}
+      />
     )
   } else if (load?.status === 'ok' && options.data) {
     body = <EditForm entry={load.entry} timeZone={load.entry.timeZone} options={options.data} as={as} />

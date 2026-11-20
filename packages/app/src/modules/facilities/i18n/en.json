@@ -456,7 +456,7 @@
   "facilities.places.maintenance.intro": "The tasks of the places you maintain: what is due, what is planned and what is done.",
   "facilities.places.maintenance.loading": "Loading the tasks…",
   "facilities.places.maintenance.empty": "No tasks on your places",
-  "facilities.places.maintenance.forbidden": "This list is for the people who maintain a place.",
+  "facilities.places.maintenance.forbidden": "This list is for the people who maintain a place. The club administrator names a place’s maintainer in the panel: Facilities → Maintenance → Maintainers — ask them to assign you if you look after a place.",
   "facilities.places.maintenance.groups.due": "Due",
   "facilities.places.maintenance.groups.planned": "Planned",
   "facilities.places.maintenance.groups.done": "Done",

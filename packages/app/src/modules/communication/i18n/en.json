@@ -131,6 +131,8 @@
   "communication.direct.body": "Message",
   "communication.direct.cancel": "Cancel",
   "communication.direct.empty": "Your household takes part in no group with a coach or a coordinator today, so there is nobody to write to.",
+  "communication.direct.emptyStaff": "Here members and guardians write to the coach. You write to your group with an announcement: Session → “Message the group”, or “New announcement” in Messages.",
+  "communication.direct.emptyStaff.inbox": "Go to Messages",
   "communication.direct.errors.forbidden": "You cannot write about this person or to this group.",
   "communication.direct.errors.invalid": "Check the subject and the message.",
   "communication.direct.errors.load": "The list of groups could not be loaded.",
