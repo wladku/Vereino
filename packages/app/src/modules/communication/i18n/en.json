@@ -269,5 +269,6 @@
   "communication.tile.noNew": "No new messages.",
   "communication.tile.open": "Open the messages",
   "communication.tile.title": "Messages",
-  "communication.tile.unread": "{count} unread"
+  "communication.tile.unread": "{count} unread",
+  "communication.club.nav.clubEvents": "Club events"
 }

@@ -20,6 +20,8 @@ export const CLUB_FACILITY_TODAY_HREF = '/club/facility'
 export const CLUB_ORDERS_HREF = '/club/orders'
 export const CLUB_GROUP_PAYMENTS_HREF = '/club/coach/payments'
 export const CLUB_CASH_HREF = '/club/cash'
+/** The club events a section coordinator or the administrator organises from the phone (club events spec REQ-T12). */
+export const CLUB_CLUB_EVENTS_HREF = '/club/club-events'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -45,6 +47,7 @@ export type MemberShellLabels = {
   groupPayments: string
   acceptCash: string
   groups: string
+  clubEvents: string
   backend: string
   signOut: string
   context: string
@@ -72,6 +75,7 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'groupPayments',
   'acceptCash',
   'groups',
+  'clubEvents',
   'backend',
   'signOut',
   'context',
@@ -130,6 +134,8 @@ export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
   { href: CLUB_ORDERS_HREF, label: 'orders', features: ['payments.orders.place'], available: true },
   { href: CLUB_GROUP_PAYMENTS_HREF, label: 'groupPayments', features: ['payments.groups.view'], available: true },
   { href: CLUB_CASH_HREF, label: 'acceptCash', features: ['payments.cash.record'], available: true },
+  // Tournaments and other club events with their parts (club events spec REQ-T12, E14-S05 #380).
+  { href: CLUB_CLUB_EVENTS_HREF, label: 'clubEvents', features: ['activities.manage'], available: true },
 ]
 
 /** The fixed feature list the frames check once per session (`useMemberNavFeatures`). */

@@ -11,10 +11,18 @@ export const CLUB_EVENT_CREATE_HREF = `${CLUB_EVENTS_HREF}/create`
 export const clubEventHref = (id: string, tab?: string) =>
   `${CLUB_EVENTS_HREF}/${encodeURIComponent(id)}${tab ? `?tab=${encodeURIComponent(tab)}` : ''}`
 
-/** The select value of a whole-club event (a select item cannot hold an empty or null value). */
-export const WHOLE_CLUB = '__club__'
-/** The select value of an open part ("No club group"). */
-export const NO_GROUP = '__none__'
+/** The phone pages of club events (REQ-T12, #380). */
+export const MEMBER_CLUB_EVENTS_HREF = '/club/club-events'
+export const MEMBER_CLUB_EVENT_NEW_HREF = `${MEMBER_CLUB_EVENTS_HREF}/new`
+export const memberClubEventHref = (id: string) => `${MEMBER_CLUB_EVENTS_HREF}/${encodeURIComponent(id)}`
+export const memberClubEventEditHref = (id: string) => `${memberClubEventHref(id)}/edit`
+export const memberPartNewHref = (id: string, copyOf?: string | null) =>
+  `${memberClubEventHref(id)}/parts/new${copyOf ? `?copyOf=${encodeURIComponent(copyOf)}` : ''}`
+export const memberPartEditHref = (id: string, partId: string) =>
+  `${memberClubEventHref(id)}/parts/${encodeURIComponent(partId)}/edit`
+
+/** The select values of a whole-club event and of an open part, shared with the phone forms (#380). */
+export { NO_GROUP, WHOLE_CLUB } from '../lib/member-club-event'
 
 export type ClubEventRow = {
   id: string
@@ -142,4 +150,27 @@ export function clubEventStatusVariant(status: string | null | undefined): 'info
   if (status === 'planned') return 'info'
   if (status === 'cancelled') return 'error'
   return 'neutral'
+}
+
+export type ClubEventLoad = { status: 'ok'; event: ClubEventDetail } | { status: 'not_found' } | { status: 'denied' }
+
+/** The query key of one club event (the panel record and the phone pages share it). */
+export const clubEventQueryKey = (id: string) => ['activities-club-event', id]
+
+/** One club event with its parts and files (`GET /api/activities/club-events/{id}`): 404 and 403 as states. */
+export function useClubEvent(id: string, enabled = true) {
+  return useQuery({
+    queryKey: clubEventQueryKey(id),
+    enabled,
+    queryFn: async (): Promise<ClubEventLoad> => {
+      const call = await apiCall<ClubEventDetail>(
+        `/api/activities/club-events/${encodeURIComponent(id)}`,
+        OWN_FORBIDDEN_STATE,
+      )
+      if (call.status === 404) return { status: 'not_found' }
+      if (call.status === 403) return { status: 'denied' }
+      if (!call.ok || !call.result) throw new Error(String(call.status))
+      return { status: 'ok', event: call.result }
+    },
+  })
 }

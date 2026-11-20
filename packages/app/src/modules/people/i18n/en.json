@@ -817,6 +817,7 @@
   "people.notifications.accountAgeReached.body": "Your ward reached the club account age. Ask the club for an own account.",
   "people.notifications.accountAgeReachedAdmin.title": "A child may get an account",
   "people.notifications.accountAgeReachedAdmin.body": "A child reached the club account age and has no account. Open the list.",
+  "people.club.nav.clubEvents": "Club events",
   "people.person.formerMember": "Former member",
   "people.errors.anonymize_blocked": "This person cannot be anonymised yet.",
   "people.errors.confirmation_mismatch": "The last name does not match.",

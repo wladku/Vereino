@@ -1068,5 +1068,6 @@
   "payments.cashCustody.history.columns.from": "Od kogo",
   "payments.cashCustody.history.columns.receipts": "Pokwitowania",
   "payments.cashCustody.history.columns.receivedBy": "Przyjął(a)",
-  "payments.cashCustody.history.columns.amount": "Kwota"
+  "payments.cashCustody.history.columns.amount": "Kwota",
+  "payments.club.nav.clubEvents": "Imprezy klubowe"
 }

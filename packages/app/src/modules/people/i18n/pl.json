@@ -817,6 +817,7 @@
   "people.notifications.accountAgeReached.body": "Twój podopieczny osiągnął klubowy wiek konta. Poproś klub o własne konto.",
   "people.notifications.accountAgeReachedAdmin.title": "Dziecko może dostać konto",
   "people.notifications.accountAgeReachedAdmin.body": "Dziecko osiągnęło klubowy wiek konta i nie ma konta. Otwórz listę.",
+  "people.club.nav.clubEvents": "Imprezy klubowe",
   "people.person.formerMember": "Były członek",
   "people.errors.anonymize_blocked": "Tej osoby nie można jeszcze zanonimizować.",
   "people.errors.confirmation_mismatch": "Nazwisko się nie zgadza.",

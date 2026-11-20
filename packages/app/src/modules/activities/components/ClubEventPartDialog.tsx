@@ -84,7 +84,7 @@ function useExternalTeams() {
 }
 
 /** The visiting teams as chips, a picker of the remaining teams and **Add team**. */
-function VisitingTeamsField({
+export function VisitingTeamsField({
   id,
   value,
   disabled,
