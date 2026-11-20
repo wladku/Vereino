@@ -125,7 +125,7 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/src/app/(backend)/backend/page.tsx` | `BackendGreeting` above the platform dashboard | #260 |
 | `packages/app/src/app/page.tsx` | `/` leads a guest to the published club page of `VEREINO_HOME_CLUB_SLUG`, else to `/login`; never to `/start` | #485 |
 | `packages/app/src/app/layout.tsx`, `packages/app/src/lib/metadata.ts`, `packages/app/src/app/(frontend)/[...slug]/page.tsx` | Tab titles "Vereino" / "{page} — Vereino", club pages "{club} — {page}"; Vereino mark as the icon; `DEMO_MODE` off unless `true` | #485 |
-| `packages/app/src/app/login/page.tsx` | Club header above the platform sign-in form; Vereino page title | #261 |
+| `packages/app/src/app/login/page.tsx` | Club header above the platform sign-in form; Vereino page title (absolute, outside the root template) | #261, #485 |
 | `packages/app/src/app/start/page.tsx`, `packages/app/src/components/DemoFeedbackWidget.tsx` | Design tokens instead of hard-coded sizes and colours; `/start` answers 404 in production | `ds:check`; #485 |
 | `packages/app/src/components/BackendHeaderChrome.tsx` | "Member interface" link for staff linked to a person; organization scope seeded from cookies before the first render; token width | #260, #334 |
 | `packages/app/src/components/OrganizationSwitcher.tsx` | Announces scope changes through `organizationScopeSeed` (`@vereino/ui`) so admin lists load once | #334; lesson `admin-lists-load-once-scope-seed` |
@@ -136,7 +136,7 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/scripts/ds-check.mjs` | Also scans `public/*.svg` for colours outside the design tokens (`scripts/vereino-svg-tokens.mjs`) | #485 |
 | `packages/app/.ds-check-ignore` | Bounded baseline of scaffold styling that `ds:check` accepts in platform-owned files, each entry with a reason | `ds:check` |
 | `packages/app/.env.example` | E-mail delivery settings of the `foundation` dispatch (`OM_TEST_MODE`, `OM_DISABLE_EMAIL_DELIVERY`); `VEREINO_HOME_CLUB_SLUG`; `DEMO_MODE` default off | #71, #485 |
-| `Dockerfile`, `.dockerignore`, `docker-compose*.yml`, `docker/scripts/dev-entrypoint.sh`, `scripts/railway-start.sh`, `scripts/railway-worker.sh`, `.railwayignore` | Paths moved to the `packages/app` workspace; image installs only `@vereino/app` and copies the shared packages; `DEMO_MODE` defaults to off in `docker-compose.fullapp*.yml` | Monorepo; #485 |
+| `Dockerfile`, `.dockerignore`, `docker-compose*.yml`, `docker/scripts/dev-entrypoint.sh`, `scripts/railway-start.sh`, `scripts/railway-worker.sh`, `.railwayignore` | Paths moved to the `packages/app` workspace; image installs only `@vereino/app` and copies the shared packages; `DEMO_MODE` defaults to off in `docker-compose.fullapp*.yml` and the production image (`Dockerfile`) | Monorepo; #485 |
 
 Files Vereino added inside platform-owned folders (for example `packages/app/src/components/BackendGreeting.tsx`, `ClubTimeZone.tsx`, `SidebarNavBadges.tsx`, `use-staff-person.ts` and `packages/app/src/__tests__/`) are Vereino code, not patches; an upgrade keeps them as they are.
 

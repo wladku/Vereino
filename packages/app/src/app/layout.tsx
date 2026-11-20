@@ -3,6 +3,7 @@ import './globals.css'
 import '@/lib/i18n/register-dictionary-loader'
 import { AppProviders } from '@/components/AppProviders'
 import { resolveLocalizedAppMetadata } from '@/lib/metadata'
+import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 
 import { THEME_INIT_SCRIPT } from '@open-mercato/ui/theme/theme-init-script'
 import { detectLocale, loadDictionary, resolveSupportedLocalesForRequest } from '@open-mercato/shared/lib/i18n/server'
@@ -27,8 +28,8 @@ export default async function RootLayout({
   const locale = await detectLocale({ supportedLocales })
   const dict = await loadDictionary(locale)
   const localeLocked = resolveForcedLocale(process.env) !== null
-  // The demo widgets are opt-in (`DEMO_MODE=true`); a club instance never shows them by default (#485).
-  const demoModeEnabled = process.env.DEMO_MODE === 'true'
+  // The demo widgets are opt-in (`DEMO_MODE=true`, or `1`/`yes`/`on`); a club instance never shows them by default (#485).
+  const demoModeEnabled = parseBooleanWithDefault(process.env.DEMO_MODE, false)
   const noticeBarsEnabled = process.env.OM_INTEGRATION_TEST !== 'true'
   const devRuntime = resolveDevRuntimeLayoutConfig(process.env)
   return (

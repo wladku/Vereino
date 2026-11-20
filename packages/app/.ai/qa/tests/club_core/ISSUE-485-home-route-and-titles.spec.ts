@@ -87,6 +87,8 @@ test('ISSUE-485 "/" leads to the club or the sign-in page, /start is gone and ti
     await page.goto(`/p/${HOME_SLUG}/sections/no-such-section`)
     await expect(page.getByTestId('public-not-found')).toBeVisible()
     expect(await page.title()).not.toContain(clubName)
+    await page.goto(`/p/${HOME_SLUG}/events/no-such-event`)
+    expect(await page.title()).not.toContain(clubName)
 
     // A signed-in administrator at `/` goes into the panel: "Vereino" on the dashboard, "{page} — Vereino" on a page,
     // and the Vereino mark in the sidebar while the club has no logo.
@@ -98,9 +100,10 @@ test('ISSUE-485 "/" leads to the club or the sign-in page, /start is gone and ti
         await page.setViewportSize(viewport)
         await page.goto('/')
         await expect(page).toHaveURL(/\/backend(?:\?|$)/)
-        await expect(page).toHaveTitle('Vereino')
+        const product = uiTextIn(locale, 'app.metadata.title')
+        await expect(page).toHaveTitle(product)
         await page.goto('/backend/club/publication')
-        await expect(page).toHaveTitle(`${uiTextIn(locale, 'club_core.publication.title')} — Vereino`)
+        await expect(page).toHaveTitle(`${uiTextIn(locale, 'club_core.publication.title')} — ${product}`)
         await expect(page.locator('img[src*="vereino-mark.svg"]').first()).toBeAttached()
         await expectNoTemplate(page, locale)
       }

@@ -12,7 +12,8 @@ export const SVG_TOKEN_RULE = Object.freeze({
 })
 
 const COLOUR_FUNCTION = String.raw`(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^)]*\)`
-const HEX = String.raw`#[0-9a-fA-F]{3,8}\b`
+// A colour is 3, 4, 6 or 8 hex digits, never an element reference (`url(#id)`, `href="#id"`).
+const HEX = String.raw`(?<!url\(\s*['"]?|href\s*=\s*['"])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b`
 const PAINT_PROPERTIES = String.raw`fill|stroke|stop-color|flood-color|lighting-color|color`
 const ALLOWED_KEYWORDS = new Set([
   'none',

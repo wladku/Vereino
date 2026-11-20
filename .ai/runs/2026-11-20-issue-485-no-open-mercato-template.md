@@ -42,6 +42,15 @@
 
 - PR #503 CI: `integration (shard 2/6)` failed — `E02-S05-public-pages.spec.ts:139` `expect(getByText('Klub Sportowy Delfin')).toHaveCount(0)`, received 1: the title of a missing section of a published club named the club. Fix: the frontend catch-all names the club only when the section (`sectionPage`) or club event (`publicClubEvent`) itself resolves; `ISSUE-485` now asserts it. Local: `yarn verify --from typecheck` all 17 passed; `--filter E02-S05-public-pages` 2 passed; `--filter ISSUE-485` 1 passed (a first attempt died on `EADDRINUSE :::5133`, a port taken by another run on the server; the re-run passed).
 
+- Review (independent subagent, verdict "request changes", nothing blocking). Fixed:
+  - the platform setup code (`auth/lib/setup-app`, `attachments/lib/partitions`) still treats an unset `DEMO_MODE` as on, so the production `Dockerfile` image now sets `DEMO_MODE=false` and the BC note says so;
+  - the SVG scan read element references (`url(#fade)`, `href="#cafe"`) as colours, and accepted 5- and 7-digit hex; both fixed and unit-tested;
+  - the root layout now parses `DEMO_MODE` like the backend layout (`parseBooleanWithDefault`);
+  - `ISSUE-485` now also checks a missing club event and takes "Vereino" from the catalog;
+  - the `login/page.tsx` patch row carries #485.
+
+  Then: `yarn verify` all 18 passed, `--filter ISSUE-485` 1 passed.
+
 ## Open problems / next steps
 
 - Operators must set `VEREINO_HOME_CLUB_SLUG` on each instance for `/` to reach the club page (documented in `.env.example` and the PR).

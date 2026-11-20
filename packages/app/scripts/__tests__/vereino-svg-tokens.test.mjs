@@ -83,6 +83,15 @@ test('svgColours finds hex, functional and named paints, and skips the allowed k
   assert.equal(source.slice(named.offset, named.offset + 5), 'white')
 })
 
+test('svgColours never reads an element reference as a colour, nor 5 or 7 hex digits', () => {
+  const source =
+    '<svg><rect fill="url(#fade)" clip-path="url( \'#bad\')"/><use href="#cafe" xlink:href=\'#beef\'/><g fill="#12345"/></svg>'
+  assert.deepEqual(
+    svgColours(source).map((colour) => colour.value),
+    ['#12345'],
+  )
+})
+
 test('publicSvgFiles lists only SVG files directly in public/, and nothing without the folder', () => {
   const root = writeApp('files', { files: { 'b.svg': '<svg/>', 'A.SVG': '<svg/>', 'c.png': 'x' }, dirs: ['d.svg'] })
   assert.deepEqual(
