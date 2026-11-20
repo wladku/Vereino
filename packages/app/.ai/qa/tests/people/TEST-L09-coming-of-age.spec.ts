@@ -238,7 +238,7 @@ test.describe('TEST-L09: on the 18th birthday the guardianships end, the consent
       expect(dry.counts.turns18Soon).toBe(1)
       expect(await dispatchCount(club, 'people:turns-18-soon:')).toBe(0)
       const first = lifeCycle(club, tMinus30)
-      expect(first.steps).toEqual(['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts'])
+      expect(first.steps).toEqual(['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts', 'erasure_names'])
       expect(first.counts.turns18Soon).toBe(1)
       expect(first.counts.cameOfAge).toBe(0)
       expect(lifeCycle(club, tMinus30).counts.turns18Soon).toBe(0)

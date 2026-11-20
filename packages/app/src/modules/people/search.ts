@@ -19,7 +19,10 @@ function text(value: unknown): string {
 
 async function presenter(record: Record<string, unknown>): Promise<SearchResultPresenter> {
   const { t } = await resolveTranslations()
-  const name = [text(record.first_name), text(record.last_name)].filter(Boolean).join(' ')
+  // An anonymised person (#308) reads "Former member": a name kept under the retention hold is never shown here.
+  const name = record.anonymized_at
+    ? t('people.person.formerMember', 'Former member')
+    : [text(record.first_name), text(record.last_name)].filter(Boolean).join(' ')
   return { title: name || text(record.id), icon: 'user', badge: t('people.search.person.badge', 'Person') }
 }
 

@@ -85,6 +85,14 @@ export const errorCodes = [
   // The person's photo (people life-cycle spec REQ-L12, *API* row `/api/people/persons/{id}/photo`; #312).
   { code: 'person_photo_format_unsupported', status: 422, messageKey: 'people.errors.person_photo_format_unsupported' },
   { code: 'person_photo_too_large', status: 422, messageKey: 'people.errors.person_photo_too_large' },
+  // Erasure and removal (people life-cycle spec REQ-L05, DD-L06, DD-L07; phase L6, #308): an anonymisation refused by
+  // a precondition (`reasons` names each, with the record to open), a typed last name that does not match, a person
+  // with history that cannot be deleted (`reasons`), and a change to an anonymised person (a return, an edit, an undo
+  // that would bring personal data back).
+  { code: 'anonymize_blocked', status: 409, messageKey: 'people.errors.anonymize_blocked' },
+  { code: 'confirmation_mismatch', status: 422, messageKey: 'people.errors.confirmation_mismatch' },
+  { code: 'person_in_use', status: 409, messageKey: 'people.errors.person_in_use' },
+  { code: 'person_anonymized', status: 409, messageKey: 'people.errors.person_anonymized' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

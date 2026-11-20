@@ -27,6 +27,8 @@ export type PersonListRow = {
   hasAccount: boolean
   /** The last day in the club (people life-cycle spec REQ-L03, #306); absent in responses before it. */
   leftOn?: string | null
+  /** When the person was anonymised (REQ-L05, #308); the name then reads "Former member" unless kept for the reader. */
+  anonymizedAt?: string | null
   createdAt: string | null
   updatedAt: string | null
 }
@@ -50,6 +52,8 @@ export type PersonDetail = PersonListRow & {
   userId?: string | null
   /** The login e-mail of the person's account (full view, #84). */
   accountEmail?: string | null
+  /** The retention hold of an anonymised person's name (with `people.manage`, #308). */
+  erasureHoldUntil?: string | null
   /** The account state read from the platform user (full view, #303). */
   account?: PersonAccount
   pesel?: string | null

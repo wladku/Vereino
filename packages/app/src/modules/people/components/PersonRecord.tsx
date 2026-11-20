@@ -175,6 +175,11 @@ export function PersonRecord({ id }: { id: string }) {
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
+          {person.anonymizedAt ? (
+            <StatusBadge variant="neutral" data-testid="person-record-anonymised">
+              {t('people.erasure.anonymised')}
+            </StatusBadge>
+          ) : null}
           {person.leftOn && person.leftOn <= today ? (
             <StatusBadge variant="neutral" data-testid="person-record-former">
               {t('people.leaving.leftOn', { date: person.leftOn })}
@@ -244,7 +249,7 @@ export function PersonRecord({ id }: { id: string }) {
         ) : null}
         {hasLeavingTab ? (
           <TabsContent value="leaving" className="pt-4">
-            <LeavingPanel person={person} onChanged={refetch} />
+            <LeavingPanel person={person} onChanged={refetch} canAnonymize={features['people.persons.anonymize']} />
           </TabsContent>
         ) : null}
       </Tabs>

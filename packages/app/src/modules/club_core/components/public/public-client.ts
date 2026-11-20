@@ -3,7 +3,8 @@
 // tells a missing page (404 `public_page_not_found`) from a club that does not publish one (404
 // `public_page_disabled`) and from a failed request. The provider blocks (#91): `groups` (`groups.publicCatalog`) and
 // `schedule` (`activities.publicSchedule`: the groups' schedule on a section page); the Events page P-06 (#263);
-// `prices` (`payments.publicPrices`, #112: each public group's fees and sibling discount on a section page).
+// `prices` (`payments.publicPrices`, #112: each public group's fees and sibling discount on a section page); the
+// tournament page P-T1 of a published club event (club events spec REQ-T09, #381).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 
@@ -27,8 +28,9 @@ export type PublicSession = {
   cancelled: boolean
 }
 
-/** An event of the public Events page P-06 (#263). */
+/** An entry of the public Events page P-06 (#263): a one-off event, or a club event with its own page (#381). */
 export type PublicEvent = {
+  kind: 'event' | 'club_event'
   name: string
   type: string
   date: string
@@ -39,8 +41,52 @@ export type PublicEvent = {
   mapUrl: string | null
   cancelled: boolean
   past: boolean
-  section: { name: string; slug: string }
+  /** Null for a club event of the whole club (its logo is the club's). */
+  section: { name: string; slug: string } | null
   sectionLogo: PublicLogo
+  clubEventSlug: string | null
+  partsCount: number | null
+  posterUrl: string | null
+}
+
+/** Our team of a part on P-T1: a public group with its section, the club's name, or none (an open part). */
+export type PublicClubEventOurTeam =
+  { groupName: string; section: { name: string; slug: string } } | { clubName: string } | null
+
+export type PublicClubEventPart = {
+  title: string
+  category: string | null
+  type: string
+  date: string
+  startTime: string
+  endTime: string
+  cancelled: boolean
+  ourTeam: PublicClubEventOurTeam
+  visitingTeams: { name: string; clubName: string | null }[]
+}
+
+/** The tournament page P-T1 (#381). */
+export type PublicClubEventPage = {
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
+  event: {
+    name: string
+    slug: string
+    status: 'planned' | 'cancelled'
+    dateFrom: string
+    dateTo: string
+    description: string | null
+    place: { name: string; address: string | null; mapUrl: string | null } | null
+    poster: { url: string } | null
+    funders: { name: string; logoUrl: string }[]
+    days: { date: string; parts: PublicClubEventPart[] }[]
+  }
 }
 
 export type PublicEventsPage = {
@@ -150,6 +196,10 @@ export const clubHref = (clubSlug: string): string => `/p/${encodeURIComponent(c
 export const sectionHref = (clubSlug: string, sectionSlug: string): string =>
   `${clubHref(clubSlug)}/sections/${encodeURIComponent(sectionSlug)}`
 
+/** The tournament page P-T1 of a club event (#381). */
+export const clubEventHref = (clubSlug: string, eventSlug: string): string =>
+  `${clubHref(clubSlug)}/events/${encodeURIComponent(eventSlug)}`
+
 /** P-06, optionally filtered to one section (`?section=`, #263). */
 export const eventsHref = (clubSlug: string, sectionSlug?: string | null): string =>
   `${clubHref(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`
@@ -190,6 +240,21 @@ export function usePublicEvents(clubSlug: string, sectionSlug: string | null) {
     queryFn: () =>
       loadPublic<PublicEventsPage>(
         `/api/club_core/public/${encodeURIComponent(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`,
+      ),
+    retry: false,
+  })
+}
+
+/**
+ * P-T1 (#381): `disabled` while the club does not publish its page or its events, `not_found` for an unknown club,
+ * an unknown event or one that is not published.
+ */
+export function usePublicClubEvent(clubSlug: string, eventSlug: string) {
+  return useQuery({
+    queryKey: ['club_core-public-club-event', clubSlug, eventSlug],
+    queryFn: () =>
+      loadPublic<PublicClubEventPage>(
+        `/api/club_core/public/${encodeURIComponent(clubSlug)}/events/${encodeURIComponent(eventSlug)}`,
       ),
     retry: false,
   })
@@ -238,6 +303,15 @@ export function formatPublicDate(date: string, locale: string): string {
   const parsed = new Date(`${date}T00:00:00Z`)
   if (Number.isNaN(parsed.getTime())) return date
   return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    parsed,
+  )
+}
+
+/** A club-zone calendar date as a day heading (`2026-11-21` → "Saturday, 21 November"), in the reader's locale. */
+export function formatPublicDay(date: string, locale: string): string {
+  const parsed = new Date(`${date}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime())) return date
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
     parsed,
   )
 }

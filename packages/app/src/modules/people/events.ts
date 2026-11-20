@@ -39,6 +39,10 @@ const events = [
   // birthday. Payload `{ id, tenantId, organizationId, birthday }` (ids and the date of the change only); `activities`
   // makes the person's `pending_guardian` declarations of sessions from that day final.
   { id: 'people.person.came_of_age', label: 'Person came of age', entity: 'person', category: 'lifecycle' },
+  // People life-cycle spec phase L6 (REQ-L05; #308): a former person was anonymised. Payload `{ id, tenantId,
+  // organizationId }` (ids only); the `people` search tokens are dropped and `facilities` clears the person's contact
+  // snapshots on rentals. `people.person.deleted` (above) is emitted for the first time by `people.persons.delete`.
+  { id: 'people.person.anonymized', label: 'Person anonymised', entity: 'person', category: 'lifecycle' },
   {
     id: 'people.role_assignment.created',
     label: 'Role assignment created',

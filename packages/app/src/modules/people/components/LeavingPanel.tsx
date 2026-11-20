@@ -8,6 +8,9 @@
 // Phase L5 (REQ-L04, J-L03; #307): for a leaving coach the section "Sessions and activities" lists each group with its
 // future sessions and default-coach activities and a choice — hand over to a coach or leave unassigned; "Confirm
 // leaving" waits for a choice per group. Cash the coach still holds is a blocker with the amount and a link to B-33.
+// Phase L6 (REQ-L05, J-L04; #308): on a former person "Anonymise" (`ErasurePanel.tsx`, with `people.persons.anonymize`)
+// next to "Return to the club"; an anonymised person shows the date and the retention hold and nothing else to do;
+// "Delete person" for a person created by mistake closes the tab.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -34,6 +37,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { useClubToday } from '@vereino/ui'
 import { errorMessage, personName, textOrNull, type PersonDetail, type Translate } from './client-helpers'
+import { AnonymiseAction, AnonymisedState, DeleteAction } from './ErasurePanel'
 
 type PlanItem = {
   module: string
@@ -160,13 +164,29 @@ function warningText(warning: PlanNotice, t: Translate): string {
   return t('people.leaving.blocker.other', { code: warning.code })
 }
 
-export function LeavingPanel({ person, onChanged }: { person: PersonDetail; onChanged: () => Promise<void> }) {
+export function LeavingPanel({
+  person,
+  onChanged,
+  canAnonymize = false,
+}: {
+  person: PersonDetail
+  onChanged: () => Promise<void>
+  canAnonymize?: boolean
+}) {
   const t = useT()
   const locale = useLocale()
   const today = useClubToday()
   const leftOn = person.leftOn ?? null
   const [opened, setOpened] = React.useState<{ lastDay: string | null; key: number } | null>(null)
 
+  if (person.anonymizedAt) {
+    return (
+      <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-label={t('people.leaving.title')}>
+        <SectionHeader title={t('people.leaving.title')} />
+        <AnonymisedState person={person} />
+      </section>
+    )
+  }
   return (
     <section className="bg-card flex flex-col gap-4 rounded-lg border p-4" aria-label={t('people.leaving.title')}>
       <SectionHeader title={t('people.leaving.title')} />
@@ -177,7 +197,13 @@ export function LeavingPanel({ person, onChanged }: { person: PersonDetail; onCh
         }}
       />
       {leftOn ? (
-        <LeftSection person={person} leftOn={leftOn} former={leftOn <= today} onChanged={onChanged} />
+        <LeftSection
+          person={person}
+          leftOn={leftOn}
+          former={leftOn <= today}
+          canAnonymize={canAnonymize}
+          onChanged={onChanged}
+        />
       ) : (
         <DepartureSection
           key={opened?.key ?? 0}
@@ -188,6 +214,7 @@ export function LeavingPanel({ person, onChanged }: { person: PersonDetail; onCh
           onDone={onChanged}
         />
       )}
+      <DeleteAction person={person} onChanged={onChanged} />
     </section>
   )
 }
@@ -196,11 +223,13 @@ function LeftSection({
   person,
   leftOn,
   former,
+  canAnonymize,
   onChanged,
 }: {
   person: PersonDetail
   leftOn: string
   former: boolean
+  canAnonymize: boolean
   onChanged: () => Promise<void>
 }) {
   const t = useT()
@@ -236,10 +265,11 @@ function LeftSection({
         </StatusBadge>
       </div>
       {former ? (
-        <div>
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={busy} onClick={() => void returnToClub()}>
             {t('people.leaving.return.action')}
           </Button>
+          {canAnonymize ? <AnonymiseAction person={person} onDone={onChanged} /> : null}
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">{t('people.leaving.undoHint')}</p>

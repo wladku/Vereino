@@ -74,6 +74,11 @@ describe('club_core error codes', () => {
       { code: 'public_page_not_found', status: 404, messageKey: 'club_core.errors.public_page_not_found' },
       { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
       { code: 'public_events_disabled', status: 404, messageKey: 'club_core.errors.public_events_disabled' },
+      {
+        code: 'public_club_event_not_found',
+        status: 404,
+        messageKey: 'club_core.errors.public_club_event_not_found',
+      },
     ])
   })
 })

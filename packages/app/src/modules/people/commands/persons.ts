@@ -16,6 +16,7 @@ import { personCreateSchema, personUpdateSchema } from '../data/validators'
 import { personExternalId, personPesel } from '../encryption'
 import { isValidPesel } from '../lib/people-rules'
 import {
+  assertNotAnonymized,
   assertPhoneAllowed,
   inWriteTransaction,
   isUniqueViolation,
@@ -118,6 +119,8 @@ async function authorizePersonReplay(
   const { entity } = await authorizeScoped(personReplaySpec(ctx, allowedKinds), { id: personId }, ctx, em, {
     mode: 'replay',
   })
+  // An undo never writes an anonymised person's data back (#308).
+  await assertNotAnonymized(entity)
   return entity as Person
 }
 
@@ -224,6 +227,7 @@ const updatePersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
           em,
         )
         const person = authorized.entity as Person
+        await assertNotAnonymized(person)
         const before = personSnapshot(person)
         const patch = authorized.parsed
         if (patch.firstName !== undefined) person.firstName = patch.firstName
