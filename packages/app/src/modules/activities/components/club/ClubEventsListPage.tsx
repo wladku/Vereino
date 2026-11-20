@@ -11,9 +11,8 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { OWN_FORBIDDEN_STATE } from '../client-helpers'
 import {
   MEMBER_CLUB_EVENT_NEW_HREF,
@@ -82,27 +81,27 @@ function EventCard({ row, t, locale }: { row: ClubEventRow; t: Translate; locale
     <li>
       <Link
         href={memberClubEventHref(row.id)}
-        className="bg-card hover:bg-muted/50 focus-visible:ring-ring flex min-h-11 flex-col gap-1 rounded-lg border p-4 focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-card hover:bg-muted/50 focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-lg border p-4"
         data-testid="club-events-card"
       >
         <span className="flex items-start justify-between gap-2">
           <span className={`font-semibold break-words ${cancelled ? 'line-through' : ''}`}>{row.name}</span>
-          <StatusBadge variant={clubEventStatusVariant(row.status)}>
+          <StatusTag status={clubEventStatusVariant(row.status)}>
             {t(`activities.clubEvents.status.${cancelled ? 'cancelled' : 'planned'}`)}
-          </StatusBadge>
+          </StatusTag>
         </span>
         <span className="text-muted-foreground text-sm">{dates ?? t('activities.clubEvents.record.noDates')}</span>
         <span className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span>{row.placeName ?? t('activities.common.empty')}</span>
           {row.placeExternal ? (
-            <StatusBadge variant="neutral">{t('activities.clubEvents.place.external')}</StatusBadge>
+            <StatusTag status="neutral">{t('activities.clubEvents.place.external')}</StatusTag>
           ) : null}
           <span aria-hidden>·</span>
           <span>{row.sectionId ? (row.sectionName ?? '') : t('activities.clubEvents.section.wholeClub')}</span>
         </span>
         <span className="flex flex-wrap items-center gap-2 text-sm">
           <span>{t('activities.clubEvents.club.list.parts', { count: row.partsCount ?? 0 })}</span>
-          {row.isPublic ? <StatusBadge variant="success">{t('activities.clubEvents.public.yes')}</StatusBadge> : null}
+          {row.isPublic ? <StatusTag status="success">{t('activities.clubEvents.public.yes')}</StatusTag> : null}
         </span>
       </Link>
     </li>

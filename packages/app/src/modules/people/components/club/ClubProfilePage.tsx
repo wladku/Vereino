@@ -30,7 +30,6 @@ import { FormField } from '@open-mercato/ui/primitives/form-field'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { resolveLocaleLabel } from '@open-mercato/shared/lib/i18n/locale-label'
 import { useLocale, useSupportedLocales, useT } from '@open-mercato/shared/lib/i18n/context'
@@ -55,6 +54,7 @@ import {
   type MemberWard,
   type SelfConsent,
 } from './member-client'
+import { StatusTag } from '@vereino/ui'
 
 /** The language select's value for "the club's default" (Radix `Select` items cannot carry an empty value). */
 const CLUB_DEFAULT = 'club_default'
@@ -345,12 +345,12 @@ function WardEntry({ ward, timeZone, texts }: { ward: MemberWard; timeZone: stri
               {t('people.club.profile.wards.age', { age: String(ward.age) })}
             </span>
           ) : null}
-          <StatusBadge variant="neutral">
+          <StatusTag status="neutral">
             {t(ward.hasAccount ? 'people.club.wards.hasAccount' : 'people.club.profile.wards.noAccount')}
-          </StatusBadge>
+          </StatusTag>
           {ward.guardianship.isPrimaryPayer ? (
             <span data-testid="club-profile-ward-primary-payer">
-              <StatusBadge variant="info">{t('people.guardianships.primaryPayer')}</StatusBadge>
+              <StatusTag status="info">{t('people.guardianships.primaryPayer')}</StatusTag>
             </span>
           ) : null}
         </span>

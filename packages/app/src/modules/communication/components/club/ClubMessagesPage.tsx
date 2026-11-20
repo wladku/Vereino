@@ -14,10 +14,10 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { composePreset, memberComposerKinds } from '../../lib/member-inbox'
 import {
   CLUB_MESSAGE_NEW_HREF,
@@ -220,7 +220,7 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
           <li key={thread.id}>
             <Link
               href={clubThreadHref(thread.id)}
-              className="bg-card hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col gap-1 rounded-lg border p-3 outline-none"
+              className="bg-card hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-lg border p-3 outline-none"
               data-testid="club-thread"
               data-unread={thread.unread ? 'true' : 'false'}
               data-case={thread.isCase ? 'true' : 'false'}
@@ -228,12 +228,12 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
               <span className="flex flex-wrap items-center gap-2">
                 {thread.unread ? (
                   <span data-testid="club-thread-unread">
-                    <StatusBadge variant="info">{t('communication.club.unread')}</StatusBadge>
+                    <StatusTag status="info">{t('communication.club.unread')}</StatusTag>
                   </span>
                 ) : null}
                 {thread.isCase ? (
                   <span data-testid="club-thread-case">
-                    <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+                    <StatusTag status="warning">{t('communication.cases.badge')}</StatusTag>
                   </span>
                 ) : null}
                 <span className={thread.unread ? 'font-semibold break-words' : 'break-words'}>{thread.subject}</span>

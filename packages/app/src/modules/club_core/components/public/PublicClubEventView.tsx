@@ -11,9 +11,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { PublicFrame, PublicNotice } from './PublicFrame'
 import {
   clubHref,
@@ -70,9 +69,9 @@ function PartCard({ clubSlug, part }: { clubSlug: string; part: PublicClubEventP
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h4 className="text-base font-semibold">{part.cancelled ? <s>{title}</s> : title}</h4>
         {part.cancelled ? (
-          <StatusBadge variant="neutral">{t('club_core.public.clubEvent.partCancelled')}</StatusBadge>
+          <StatusTag status="canceled">{t('club_core.public.clubEvent.partCancelled')}</StatusTag>
         ) : (
-          <StatusBadge variant="info">{t(`club_core.public.events.type.${part.type}`)}</StatusBadge>
+          <StatusTag status="info">{t(`club_core.public.events.type.${part.type}`)}</StatusTag>
         )}
       </div>
       {part.category ? <p className="text-muted-foreground text-sm">{part.category}</p> : null}
@@ -124,7 +123,7 @@ function ClubEventBody({ page }: { page: PublicClubEventPage }) {
           <h1 id="public-club-event-title" className="text-2xl font-semibold" data-testid="public-club-event-name">
             {cancelled ? <s>{event.name}</s> : event.name}
           </h1>
-          {cancelled ? <StatusBadge variant="neutral">{t('club_core.public.clubEvent.cancelled')}</StatusBadge> : null}
+          {cancelled ? <StatusTag status="canceled">{t('club_core.public.clubEvent.cancelled')}</StatusTag> : null}
         </div>
         <p className="font-medium" data-testid="public-club-event-dates">
           {dates}

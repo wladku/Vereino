@@ -59,7 +59,7 @@ export type AudiencePickerViewProps = Pick<
 }
 
 const CONTROL_CLASS_NAME =
-  'border-input bg-background focus-visible:shadow-focus min-h-11 w-full rounded-md border px-3 text-sm outline-none disabled:cursor-not-allowed'
+  'border-input bg-background focus-visible:focus-indicator min-h-11 w-full rounded-md border px-3 text-sm outline-none disabled:cursor-not-allowed'
 
 /** The stateless view: renders one state of the field; `AudiencePicker` owns the state and the requests. */
 export function AudiencePickerView({

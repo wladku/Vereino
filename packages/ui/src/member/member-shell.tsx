@@ -55,14 +55,14 @@ const ICONS: Record<MemberTabIcon, React.ComponentType<{ className?: string; 'ar
 }
 
 const TAB_CLASS =
-  'focus-visible:shadow-focus flex min-h-14 min-w-12 flex-1 cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-md px-1 text-xs outline-none [&::-webkit-details-marker]:hidden'
+  'focus-visible:focus-indicator flex min-h-14 min-w-12 flex-1 cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-md px-1 text-xs outline-none [&::-webkit-details-marker]:hidden'
 const TAB_CURRENT_CLASS = `${TAB_CLASS} text-primary font-semibold`
 const TAB_IDLE_CLASS = `${TAB_CLASS} text-muted-foreground hover:text-foreground`
 const MAIN_CLASS = 'mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6'
 // The fixed bottom bar must not cover the end of the page.
 const MAIN_WITH_BAR_CLASS = `${MAIN_CLASS} pb-28`
 const MORE_ITEM_CLASS =
-  'hover:bg-accent focus-visible:shadow-focus flex min-h-12 w-full items-center gap-2 rounded-md px-3 text-sm outline-none'
+  'hover:bg-accent focus-visible:focus-indicator flex min-h-12 w-full items-center gap-2 rounded-md px-3 text-sm outline-none'
 
 function TabContent({ icon, label }: { icon: MemberTabIcon; label: string }) {
   const Icon = ICONS[icon]

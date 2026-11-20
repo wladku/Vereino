@@ -6,17 +6,11 @@ import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, personName } from '../client-helpers'
 import { acceptHandover, type CustodyCollector } from './cash-custody-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 export function formatDay(day: string, locale: string): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString(locale, { timeZone: 'UTC' })

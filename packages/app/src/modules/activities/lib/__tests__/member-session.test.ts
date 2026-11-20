@@ -17,7 +17,10 @@ describe('sessionPerspectives', () => {
       member: 'guardian',
       staff: 'coach',
     })
-    expect(sessionPerspectives('coach', { hasWards: false, coaches: true })).toEqual({ member: 'self', staff: 'coach' })
+    expect(sessionPerspectives('coach', { hasWards: false, coaches: true, isParticipant: true })).toEqual({
+      member: 'self',
+      staff: 'coach',
+    })
     expect(sessionPerspectives('guardian', { hasWards: true, coaches: true })).toEqual({
       member: 'guardian',
       staff: 'coach',
@@ -25,11 +28,15 @@ describe('sessionPerspectives', () => {
   })
 
   it('reads as the section coordinator when the link asks for it, or for a coordinator who does not coach', () => {
-    expect(sessionPerspectives('coordinator', { hasWards: false, coaches: true, coordinates: true })).toEqual({
+    expect(
+      sessionPerspectives('coordinator', { hasWards: false, coaches: true, coordinates: true, isParticipant: true }),
+    ).toEqual({
       member: 'self',
       staff: 'coordinator',
     })
-    expect(sessionPerspectives('coach', { hasWards: false, coaches: true, coordinates: true })).toEqual({
+    expect(
+      sessionPerspectives('coach', { hasWards: false, coaches: true, coordinates: true, isParticipant: true }),
+    ).toEqual({
       member: 'self',
       staff: 'coach',
     })
@@ -40,6 +47,23 @@ describe('sessionPerspectives', () => {
     expect(sessionPerspectives('coordinator', { hasWards: false, coaches: false, coordinates: false })).toEqual({
       member: 'self',
       staff: null,
+    })
+  })
+
+  it('makes no member read for staff without a member side unless the link asks for one (#483)', () => {
+    expect(sessionPerspectives('coach', { hasWards: false, coaches: true })).toEqual({ member: null, staff: 'coach' })
+    expect(sessionPerspectives(null, { hasWards: false, coaches: false, coordinates: true })).toEqual({
+      member: null,
+      staff: 'coordinator',
+    })
+    expect(sessionPerspectives(null, { hasWards: false, coaches: true, isParticipant: false })).toEqual({
+      member: null,
+      staff: 'coach',
+    })
+    expect(sessionPerspectives('self', { hasWards: false, coaches: true })).toEqual({ member: 'self', staff: 'coach' })
+    expect(sessionPerspectives('guardian', { hasWards: false, coaches: true })).toEqual({
+      member: 'guardian',
+      staff: 'coach',
     })
   })
 })

@@ -25,7 +25,6 @@ import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActi
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
@@ -69,6 +68,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -85,15 +85,15 @@ const ACTION_LABELS: Record<SessionInlineAction, string> = {
 export function OccurrenceBadges({ row, t }: { row: OccurrenceRow; t: Translate }) {
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <StatusBadge variant={statusVariant(row.status)}>{statusLabel(t, row.status)}</StatusBadge>
+      <StatusTag status={statusVariant(row.status)}>{statusLabel(t, row.status)}</StatusTag>
       {isUnsettled(row, new Date()) ? (
         <span data-testid="occurrence-unsettled">
-          <StatusBadge variant="warning">{t('activities.occurrences.flags.unsettled')}</StatusBadge>
+          <StatusTag status="warning">{t('activities.occurrences.flags.unsettled')}</StatusTag>
         </span>
       ) : null}
-      {row.isDetached ? <StatusBadge variant="info">{t('activities.occurrences.flags.moved')}</StatusBadge> : null}
+      {row.isDetached ? <StatusTag status="info">{t('activities.occurrences.flags.moved')}</StatusTag> : null}
       {row.needsReschedule ? (
-        <StatusBadge variant="warning">{t('activities.occurrences.flags.needsReschedule')}</StatusBadge>
+        <StatusTag status="warning">{t('activities.occurrences.flags.needsReschedule')}</StatusTag>
       ) : null}
     </span>
   )
@@ -105,7 +105,7 @@ export function OccurrenceCoach({ row, t }: { row: OccurrenceRow; t: Translate }
   if (badge === 'needs_coach') {
     return (
       <span data-testid="occurrence-needs-coach">
-        <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+        <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
       </span>
     )
   }

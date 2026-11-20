@@ -12,14 +12,7 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -28,6 +21,7 @@ import { ageCategoryRangeInverted, formatBirthYears, parseUInput, type BirthYear
 import { GroupsNav } from './GroupsNav'
 import { DICTIONARIES_HREF, errorMessage, seasonOptions, type TableColumns, type Translate } from './client-helpers'
 import { useHasFeature } from './useCanManageGroups'
+import { DialogContent } from '@/components/ui/dialog'
 
 export const AGE_CATEGORIES_URL = '/api/groups/age-categories'
 

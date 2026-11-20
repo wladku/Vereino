@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
+import { formatDayHeading, MemberSkeleton, StatusTag } from '@vereino/ui'
 import { INCIDENT_PHOTOS_MAX } from '../../lib/incidents'
 import { HEADCOUNT_MAX } from '../../lib/logs'
 import { FacilitiesClubFrame } from '../club-places/FacilitiesClubFrame'
@@ -164,7 +164,7 @@ function EntryCard({
           <span className="font-medium tabular-nums">{entryTimes(entry, today.timeZone)}</span>
           <Tag variant={KIND_TAGS[entry.kind]}>{t(`facilities.places.kind.${entry.kind}`)}</Tag>
           {entry.kind === 'rental' ? (
-            <Tag variant="neutral">{t(`facilities.rentals.status.${entry.status}`)}</Tag>
+            <StatusTag status="neutral">{t(`facilities.rentals.status.${entry.status}`)}</StatusTag>
           ) : null}
         </div>
         <h3 id={`${ids}-label`} className="font-semibold break-words">
