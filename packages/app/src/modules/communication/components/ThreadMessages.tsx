@@ -16,7 +16,7 @@ import { StatusTag } from '@vereino/ui'
 const MESSAGE_MAX_LENGTH = 10000
 
 const TEXTAREA_CLASS =
-  'border-input bg-background focus-visible:shadow-focus min-h-24 w-full rounded-md border p-3 text-sm outline-none'
+  'border-input bg-background focus-visible:focus-indicator min-h-24 w-full rounded-md border p-3 text-sm outline-none'
 
 /** The inline editor of one's own message: the text, "Save" and "Cancel" (Escape cancels too). */
 function MessageEditor({

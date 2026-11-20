@@ -37,7 +37,7 @@ function RentalCard({ rental, placeName, timeZone }: { rental: RentalRow; placeN
     <li>
       <Link
         href={clubRentalHref(rental.id)}
-        className="hover:bg-muted/50 focus-visible:ring-ring flex flex-col gap-1 rounded-md border p-4 focus-visible:ring-2 focus-visible:outline-none"
+        className="hover:bg-muted/50 focus-visible:focus-indicator flex flex-col gap-1 rounded-md border p-4"
         data-testid={`club-facility-rental-${rental.id}`}
       >
         <span className="font-medium tabular-nums">{slotLabel(rental.startsAt, rental.endsAt, timeZone)}</span>

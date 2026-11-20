@@ -61,7 +61,7 @@ test('a loaded page renders the table in a focusable named scroll region with on
   assert.match(html, /data-status="loaded" aria-busy="false">/)
   assert.match(
     html,
-    /<div role="region" aria-label="Delivery status" tabindex="0" class="focus-visible:shadow-focus overflow-x-auto rounded-md border outline-none"><table/,
+    /<div role="region" aria-label="Delivery status" tabindex="0" class="focus-visible:focus-indicator overflow-x-auto rounded-md border outline-none"><table/,
   )
   for (const column of ['Recipient', 'Reason', 'Channel', 'Status', 'Last attempt']) {
     assert.match(html, new RegExp(`<th[^>]*scope="col"[^>]*>${column}</th>`))

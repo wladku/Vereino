@@ -82,7 +82,8 @@ export type ClubTodayContext = {
 }
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
-const LINK_CLASS = 'hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
+const LINK_CLASS =
+  'hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
 const PENDING_WINDOW_DAYS = 13
 /** How far back the coach tile looks for unsettled sessions (the same two weeks the pending decisions cover). */
 const UNSETTLED_WINDOW_DAYS = 13

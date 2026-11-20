@@ -78,6 +78,23 @@ const ORM_IMPORT_RESTRICTION = {
     '`@mikro-orm/*` may be imported only in data/**, commands/**, services/**, setup.ts, di.ts and migrations (foundation spec REQ-F16).',
 }
 
+// Dialogs and sheets return focus to their opener on close (E20-S02, #481, WCAG 2.4.3): Vereino code takes their
+// content from `src/components/ui/dialog.tsx`, which wraps the platform one; the other parts still come from the platform.
+export const DIALOG_CONTENT_RESTRICTIONS = [
+  {
+    name: '@open-mercato/ui/primitives/dialog',
+    importNames: ['DialogContent'],
+    message:
+      'Import `DialogContent` from `@/components/ui/dialog`: it returns focus to the element that opened the dialog (#481).',
+  },
+  {
+    name: '@open-mercato/ui/primitives/sheet',
+    importNames: ['SheetContent'],
+    message:
+      'Import `SheetContent` from `@/components/ui/dialog`: it returns focus to the element that opened the sheet (#481).',
+  },
+]
+
 /** The foundation module's public entry, the only file of another Vereino module a module may import by value. */
 export const FOUNDATION_PUBLIC_ENTRY = 'src/modules/foundation/index.ts'
 
@@ -130,7 +147,10 @@ export function vereinoModuleBoundaryConfigs({ boundaries, moduleIds }) {
             })),
           },
         ],
-        'no-restricted-imports': ['error', { patterns: [MODULE_ALIAS_RESTRICTION, ORM_IMPORT_RESTRICTION] }],
+        'no-restricted-imports': [
+          'error',
+          { paths: DIALOG_CONTENT_RESTRICTIONS, patterns: [MODULE_ALIAS_RESTRICTION, ORM_IMPORT_RESTRICTION] },
+        ],
       },
     },
     {
@@ -139,7 +159,12 @@ export function vereinoModuleBoundaryConfigs({ boundaries, moduleIds }) {
           allowed.endsWith('/**') ? `src/modules/${id}/${allowed}/*.{ts,tsx}` : `src/modules/${id}/${allowed}`,
         ),
       ),
-      rules: { 'no-restricted-imports': ['error', { patterns: [MODULE_ALIAS_RESTRICTION] }] },
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          { paths: DIALOG_CONTENT_RESTRICTIONS, patterns: [MODULE_ALIAS_RESTRICTION] },
+        ],
+      },
     },
     {
       files: moduleIds.map((id) => `src/modules/${id}/lib/**/*.{ts,tsx}`),

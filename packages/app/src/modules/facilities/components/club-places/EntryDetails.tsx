@@ -8,17 +8,11 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatDayHeading, StatusTag } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { dayEntryText } from '../day-axis/DayEntries'
 import { KIND_TAGS } from '../day-axis/tags'
 import { rentalHref } from '../rentals-client'

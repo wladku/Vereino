@@ -81,7 +81,7 @@ function EventCard({ row, t, locale }: { row: ClubEventRow; t: Translate; locale
     <li>
       <Link
         href={memberClubEventHref(row.id)}
-        className="bg-card hover:bg-muted/50 focus-visible:ring-ring flex min-h-11 flex-col gap-1 rounded-lg border p-4 focus-visible:ring-2 focus-visible:outline-none"
+        className="bg-card hover:bg-muted/50 focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-lg border p-4"
         data-testid="club-events-card"
       >
         <span className="flex items-start justify-between gap-2">

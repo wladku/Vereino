@@ -130,7 +130,7 @@ export function DeliveryStatusListView({
           aria-label={labels.tableLabel}
           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a horizontally scrolling region must be keyboard-focusable (WCAG 2.1.1, axe `scrollable-region-focusable` at 375 px)
           tabIndex={0}
-          className="focus-visible:shadow-focus overflow-x-auto rounded-md border outline-none"
+          className="focus-visible:focus-indicator overflow-x-auto rounded-md border outline-none"
         >
           <Table>
             <TableHeader>

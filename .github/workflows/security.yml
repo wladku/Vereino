@@ -1,0 +1,55 @@
+# Dependency security checks (engineering standards S14.1, S16.3, S16.4; ENG-12). Weekly, on demand and when
+# yarn.lock changes on main: the licence check (`yarn licenses:check`, production dependencies of every workspace
+# against the S16.1 allowlist) and the vulnerability audit (`yarn npm audit`, high and critical advisories fail).
+# Not a required check: findings become issues (S16.3), they do not block merges. Read-only token, no secrets;
+# third-party actions pinned by commit SHA with the release tag in a comment (S14.2), updated by Renovate.
+name: Security
+
+on:
+  schedule:
+    # Monday 04:00 UTC, before the Renovate window (S16.2) closes, so its pull requests start from a known state.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - yarn.lock
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  licenses:
+    name: licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - name: Install dependencies
+        # The licence check reads the installed packages. The npm registry sometimes answers Yarn's hardened-mode
+        # metadata requests with 409; retry once.
+        run: yarn install --immutable || (sleep 20 && yarn install --immutable)
+      - run: yarn licenses:check
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # Reads yarn.lock; no install needed. Every workspace, transitive dependencies included.
+      - run: yarn npm audit --all --recursive --severity high

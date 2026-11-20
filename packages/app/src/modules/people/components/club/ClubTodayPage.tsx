@@ -21,7 +21,7 @@ import {
 import { StatusTag } from '@vereino/ui'
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
-const LINK_TILE_CLASS = `${TILE_CLASS} hover:bg-accent focus-visible:shadow-focus min-h-11 outline-none`
+const LINK_TILE_CLASS = `${TILE_CLASS} hover:bg-accent focus-visible:focus-indicator min-h-11 outline-none`
 
 function WardCard({ ward, locale }: { ward: MemberWard; locale: string }) {
   const t = useT()

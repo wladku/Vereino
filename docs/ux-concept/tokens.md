@@ -1,6 +1,6 @@
 # Vereino — design tokens
 
-**Version:** 0.1 · **Date:** 2026-10-29 · **Status:** proposal accepted by the product owner on 2026-10-29; conflicts C1–C4 open; not yet implemented (`globals.css` and Storybook are a separate, separately approved step)
+**Version:** 0.1 · **Date:** 2026-10-29 · **Status:** proposal accepted by the product owner on 2026-10-29; conflicts C1 and C2 decided by the owner on 2026-11-20 (#479) and built in #481, C3 and C4 open; not yet implemented (`globals.css` and Storybook are a separate, separately approved step)
 
 **Inputs:** the accepted decisions in [`references.md`](references.md) (rows R01–R07) and engineering standards S7.1, S7.4 and S7.9 ([`.ai/specs/2026-10-21-engineering-standards-and-patterns.md`](../../.ai/specs/2026-10-21-engineering-standards-and-patterns.md)).
 
@@ -22,7 +22,7 @@
 | `--muted-foreground` | semantic | `oklch(0.545 0 0)` #707070 | `oklch(0.708 0 0)` #a1a1a1 | R03.1 | secondary text: dates, hints, counts | essential text on `--muted` (4.54:1 in light) | existing |
 | `--primary` / `--primary-foreground` | semantic | #171717 / #fafafa | #e5e5e5 / #171717 | R03.1, S7.9 Hick | the one primary action per page and dialog | status, club brand | existing |
 | `--destructive` | semantic | #e7000b | #ff6467 | R03.1, R04.1 | destructive actions, field error text | "Not attending" (not an error) | existing |
-| `--input` | semantic | `oklch(0.922 0 0)` #e5e5e5 | `oklch(1 0 0 / 15%)` | R03.1, R03.6 | form-field border | — | existing — **fails 3:1, see C1** |
+| `--input` | semantic | `oklch(0.64 0 0)` #8c8c8c (Vereino override; platform `oklch(0.922 0 0)`) | `oklch(0.56 0 0)` #747474 (override; platform `oklch(1 0 0 / 15%)`) | R03.1, R03.6, C1 | form-field and checkbox border | — | existing, overridden in `globals.css` (C1, #481) |
 | `--status-success-*` | semantic | bg #f0fdf4, text #0d542b, icon #00a63e | bg #032e15, text #7bf1a8, icon #00c950 | R01.2, R01.8 | always with a word and an icon: `CircleCheck` + "Attending" / "Confirmed" / "Paid" / "Nothing to pay" | colour alone | existing |
 | `--status-warning-*` | semantic | bg #fffbeb, text #7b3306, icon #e17100 | bg #461901, text #ffd230, icon #fe9a00 | R02.2 | `Clock` + "Confirm by Fri 18:00" / "Due soon" | colour alone | existing |
 | `--status-error-*` | semantic | bg #fef2f2, text #82181a, icon #e7000b | bg #460809, text #ffa2a2, icon #fb2c36 | R01.8, R02.4 | `CircleAlert` + "Overdue"; `CircleX` + "Session canceled" | "Not attending" | existing |
@@ -30,7 +30,7 @@
 | `--status-info-*` | semantic | bg #eef2ff, text #312c85, icon #4f39f6 | bg #1e1a4d, text #a3b3ff, icon #615fff | R02.3 | `Users` + "Called up"; information notes | colour alone | existing |
 | `--club-accent` | semantic (runtime) | from club settings; default `var(--primary)` | same | R06.2, REQ-028 | header strip, public hero, logo background | status, the primary action; text on the page unless ≥ 4.5:1 against the current theme's background (else `--foreground`) | **new** |
 | `--club-accent-foreground` | semantic (computed at runtime) | #000000 or #ffffff, whichever contrasts more with `--club-accent` | same | R06.2, S7.4 | text and icons on `--club-accent` | — | **new** |
-| `--focus-indicator` | semantic | `var(--foreground)` → 19.79:1 | `var(--foreground)` → 18.96:1 | S7.4, R07.2, C1 | 2 px focus outline with 2 px offset on Vereino components | replacing `shadow-focus` in Open Mercato components (C1) | **new** |
+| `--focus-indicator` | semantic | `var(--foreground)` → 19.79:1 | `var(--foreground)` → 18.96:1 | S7.4, R07.2, C1 | 2 px focus outline with 2 px offset on Vereino components (`focus-visible:focus-indicator`, `focus-indicator-inset` inside clipped cells) and on any element without its own focus style | — (Open Mercato components keep `shadow-focus`, whose outer ring `--focus-ring-outer` is overridden to `var(--foreground)`) | **new** (#481) |
 | `--spacing-related` | semantic (`@theme` → `gap-related`) | `calc(var(--spacing) * 2)` = 8 px | same | R07.3 | label ↔ field, icon ↔ text, chips in one group | between groups | **new** |
 | `--spacing-group` | semantic (`gap-group`) | `calc(var(--spacing) * 4)` = 16 px | same | R07.3 | between field groups; between cards in a list | inside a group | **new** |
 | `--spacing-card` | semantic (`p-card`) | `calc(var(--spacing) * 4)` = 16 px | same | R07.3 | padding inside a card or panel on member and public pages | the panel (`/backend`) | **new** |
@@ -59,9 +59,10 @@ Thresholds: 4.5:1 for text, 3:1 for icons, field borders and focus indicators (S
 | `--primary` button edge on `--background` | 17.91 | ok |
 | focused field border (`--foreground`) on `--background` | 19.79 | ok |
 | checkbox fill `--accent-indigo` on `--background`; tick on fill | 4.47; 4.47 | ok |
-| **`--input` field border on `--background` / `--card`** | **1.26** | **fail** — proposed `oklch(0.64 0 0)` #8c8c8c: 3.36 on white, 3.08 on `--muted` (C1) |
-| **`--ring` on `--background`** | **2.59** | **fail** — proposed `oklch(0.64 0 0)`: 3.36 (C1) |
-| **`shadow-focus` outer ring (`--focus-ring-outer`, 16 % grey) on `--background`; inner ring equals the page** | **1.14** | **fail** — proposed `--focus-ring-outer: var(--foreground)`: 19.79 (C1) |
+| `--input` field border on `--background` / `--card`; on `--muted` | 3.36; 3.08 | ok — overridden to `oklch(0.64 0 0)` #8c8c8c (was 1.26, C1, #481) |
+| `--ring` on `--background` | 3.36 | ok — overridden to `oklch(0.64 0 0)` (was 2.59, C1, #481) |
+| `shadow-focus` outer ring (`--focus-ring-outer`) on `--background`; inner ring equals the page | 19.79 | ok — overridden to `var(--foreground)` (was a 16 % grey, 1.14, C1, #481) |
+| AppShell sidebar group heading (`--muted-foreground`) on `--sidebar` | 4.75 | ok — Vereino rule in `globals.css` (was `text-muted-foreground/70`, 2.77, C2, #481) |
 
 ### Dark (`.dark`)
 
@@ -78,8 +79,9 @@ Thresholds: 4.5:1 for text, 3:1 for icons, field borders and focus indicators (S
 | focused field border on `--background` | 18.96 | ok |
 | `--ring` on `--background` | 4.18 | ok |
 | checkbox fill on `--background`; tick on fill | 5.14; 3.85 | ok |
-| **`--input` field border on `--background` / `--card`** | **1.47 / 1.57** | **fail** — proposed `oklch(0.56 0 0)` #747474: 4.25 / 3.85, 3.25 on `--muted` (C1) |
-| **`shadow-focus` outer ring on `--background` / `--card`** | **1.64 / 1.75** | **fail** — proposed `--focus-ring-outer: var(--foreground)` (C1) |
+| `--input` field border on `--background` / `--card` / `--muted` | 4.25 / 3.85 / 3.25 | ok — overridden to `oklch(0.56 0 0)` #747474 (was 1.47 / 1.57, C1, #481) |
+| `shadow-focus` outer ring on `--background` / `--card` | 18.96 / 17.16 | ok — overridden to `var(--foreground)` (was 1.64 / 1.75, C1, #481) |
+| AppShell sidebar group heading (`--muted-foreground`) on `--sidebar` | 6.91 | ok — Vereino rule in `globals.css` (C2, #481) |
 
 The mockup audit's estimates are confirmed on the app values: ring 2.59 (≈ 2.6), field border 1.26 (≈ 1.3), grey on grey 4.54 (≈ 4.5). New finding: Open Mercato button focus is nearly invisible (1.14 / 1.64).
 
@@ -124,7 +126,7 @@ The mockup audit's estimates are confirmed on the app values: ring 2.59 (≈ 2.6
 | R01.2, R01.8 status with word and icon | component | member, public, panel | Vereino component `StatusTag` (`@vereino/ui`, on the OM `Badge`; lint rejects a bare `StatusBadge`, #482) + OM as is (`Alert`) |
 | R03.1 tokens, R03.2 panel components and density, R03.3 Lucide icons | component | all | OM as is |
 | R03.4 `CrudForm` labels without `htmlFor` | component | panel | OM component change — **costly** (C3) |
-| R03.5 AppShell sidebar contrast and link name | component | panel | OM component change — **costly** (C2) |
+| R03.5 AppShell sidebar contrast and link name | component | panel | heading contrast: Vereino CSS override (C2, #481); link name: OM component change, axe baseline |
 
 Inconsistency to fix in the UX concept: M-02 in [`README.md`](README.md) describes a "grid of 4 tiles"; R01.5 allows at most three.
 
@@ -132,7 +134,7 @@ Inconsistency to fix in the UX concept: M-02 in [`README.md`](README.md) describ
 
 | ID | Conflict with | Options | Status |
 |---|---|---|---|
-| C1 | "Open Mercato look unchanged" (2026-10-27); S7.4 | Change `--input` (light `oklch(0.64 0 0)`, dark `oklch(0.56 0 0)`), `--ring` (light `oklch(0.64 0 0)`) and `--focus-ring-outer` (both themes `var(--foreground)`). Without them form fields and the panel's button focus fail WCAG 1.4.11. Vereino components avoid the focus problem with `--focus-indicator`, but not the field border, because fields are Open Mercato `Input`. Alternatives: keep the values and record the gap, or report upstream and wait. | open |
-| C2 | "Open Mercato look unchanged"; S7.4 | AppShell sidebar group headings fail text contrast: report upstream and keep the axe baseline, or override in Vereino CSS. | open |
+| C1 | "Open Mercato look unchanged" (2026-10-27); S7.4 | Change `--input` (light `oklch(0.64 0 0)`, dark `oklch(0.56 0 0)`), `--ring` (light `oklch(0.64 0 0)`) and `--focus-ring-outer` (both themes `var(--foreground)`). Without them form fields and the panel's button focus fail WCAG 1.4.11. Vereino components avoid the focus problem with `--focus-indicator`, but not the field border, because fields are Open Mercato `Input`. Alternatives: keep the values and record the gap, or report upstream and wait. | decided 2026-11-20 (#479, owner decision 1): override the three tokens; built in #481 |
+| C2 | "Open Mercato look unchanged"; S7.4 | AppShell sidebar group headings fail text contrast: report upstream and keep the axe baseline, or override in Vereino CSS. | decided 2026-11-20 (#479, owner decision 1): override in Vereino CSS; built in #481 |
 | C3 | cost of an Open Mercato component change | `CrudForm` labels: report upstream and keep the node-level axe baseline (current state), or eject `CrudForm`. | open |
 | C4 | S7.1 "Vereino keeps no separate copy" | Where the nine new tokens live. **Recommended:** a separate file `packages/app/src/app/vereino-tokens.css` imported by `globals.css`, holding only the new tokens and no copy of Open Mercato tokens, so an Open Mercato upgrade diffs cleanly. Alternative: a marked Vereino block inside `globals.css`. | open |

@@ -9,14 +9,7 @@ import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
@@ -24,6 +17,7 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { addDays } from '@vereino/core'
 import { browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { HEADCOUNT_MAX, LOG_TEXT_MAX_LENGTH } from '../lib/logs'
 import { ConditionField, Problem, TimeField, submitOnCtrlEnter } from './club-facility/FacilityDialogs'
 import { clubInstant, clubTime, createLog, writeErrorMessage, type GroupPresent } from './club-facility/facility-client'

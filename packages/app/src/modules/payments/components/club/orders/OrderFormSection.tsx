@@ -361,7 +361,7 @@ export function OrderFormSection({
                     scroll={false}
                     aria-current={current ? 'page' : undefined}
                     className={cn(
-                      'focus-visible:shadow-focus inline-flex min-h-11 items-center gap-1 rounded-full border px-4 text-sm font-medium outline-none',
+                      'focus-visible:focus-indicator inline-flex min-h-11 items-center gap-1 rounded-full border px-4 text-sm font-medium outline-none',
                       current ? 'bg-primary text-primary-foreground border-primary' : 'bg-card hover:bg-accent',
                     )}
                     data-testid="order-child-chip"
