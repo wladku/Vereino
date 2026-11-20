@@ -195,16 +195,27 @@ test('E02-S03 ward accounts: below the threshold 422; at the threshold an own ac
     // The app: profile and calendar entry points, no wards section, no payments tile and no payments screen.
     page.setDefaultTimeout(30_000)
     await signInBrowser(page, request, club, teenUserId, teenEmail)
-    // The coach tile's read must have answered (403) before "no payments text" is asserted, or the check passes early.
-    const coachTileRead = page.waitForResponse((response) => response.url().includes('/api/payments/group-charges'))
+    // The coach tile asks the feature check first and, without `payments.groups.view`, reads nothing (#483): the page
+    // must have settled before "no payments text" is asserted, or the check passes early, and it made no refused read.
+    const groupChargesReads: string[] = []
+    page.on('request', (sent) => {
+      if (sent.url().includes('/api/payments/group-charges')) groupChargesReads.push(sent.url())
+    })
+    const featureCheck = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/auth/feature-check') &&
+        (response.request().postData() ?? '').includes('payments.groups.view'),
+    )
     await page.goto('/club')
-    expect((await coachTileRead).status()).toBe(403)
+    expect((await featureCheck).status()).toBe(200)
     await expect(
       page.getByRole('heading', { level: 1, name: uiText('people.club.today.title', { params: { name: 'Zuzia' } }) }),
     ).toBeVisible()
     await expect(page.getByTestId('club-tile-calendar')).toBeVisible()
     await expect(page.getByTestId('club-tile-profile')).toBeVisible()
     await expect(page.getByTestId('club-wards')).toHaveCount(0)
+    await page.waitForLoadState('networkidle')
+    expect(groupChargesReads).toEqual([])
     await expect(page.getByText(uiText('people.club.tiles.payments.title'))).toHaveCount(0)
     // `/club/payments` (#110): with the feature granted by hand she reaches the page, which refuses her (R10) and
     // shows no charge and no payment form.

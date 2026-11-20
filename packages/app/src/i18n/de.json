@@ -1186,6 +1186,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "Zugriff verweigert: Dafür fehlt dir die Berechtigung. Wenn du sie brauchst, wende dich an die Vereinsverwaltung.",
+  "vereino.flash.accessDeniedFeature": "Zugriff verweigert: Dir fehlt die Berechtigung „{features}“. Wenn du sie brauchst, wende dich an die Vereinsverwaltung.",
+  "vereino.flash.sessionExpired": "Sitzung abgelaufen. Weiterleitung zur Anmeldung…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

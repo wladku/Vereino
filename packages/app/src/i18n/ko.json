@@ -1186,6 +1186,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "접근 거부: 이 작업에 대한 권한이 없습니다. 필요하면 클럽 관리자에게 요청하세요.",
+  "vereino.flash.accessDeniedFeature": "접근 거부: \"{features}\" 권한이 없습니다. 필요하면 클럽 관리자에게 요청하세요.",
+  "vereino.flash.sessionExpired": "세션이 만료되었습니다. 로그인 페이지로 이동합니다…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }
