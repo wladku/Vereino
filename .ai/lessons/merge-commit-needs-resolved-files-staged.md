@@ -1,7 +1,7 @@
 ---
 title: "Stage every resolved conflict file and check the merge commit's tree before pushing"
 modules: ["platform"]
-areas: ["delivery"]
+areas: ["debugging"]
 topics: ["git-merge", "conflicts", "ci"]
 ---
 
