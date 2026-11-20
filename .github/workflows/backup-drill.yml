@@ -1,0 +1,50 @@
+# Restore drill of the nightly off-site backup (ENG-TEST-10, issue #464, docs/ops/backups.md): builds the job image
+# and runs dump and restore end to end against Testcontainers PostgreSQL 17 and an S3-compatible server. It runs
+# only when the backup job, its image or the drill change, plus once a week so a moved base image or package is
+# noticed before the next real drill. Not a required check: the unit tests in `yarn verify` hold the coverage.
+name: Backup drill
+
+on:
+  pull_request:
+    paths:
+      - scripts/backup-*.mjs
+      - docker/backup/**
+      - railway.backup.toml
+      - packages/app/scripts/__tests__/backup-drill.e2e.mjs
+      - .github/workflows/backup-drill.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/backup-*.mjs
+      - docker/backup/**
+      - railway.backup.toml
+      - packages/app/scripts/__tests__/backup-drill.e2e.mjs
+      - .github/workflows/backup-drill.yml
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-drill-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backup-drill:
+    name: backup-drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - name: Install dependencies
+        # The npm registry sometimes answers Yarn's hardened-mode metadata requests with 409; retry once.
+        run: yarn install --immutable || (sleep 20 && yarn install --immutable)
+      - run: yarn test:backup

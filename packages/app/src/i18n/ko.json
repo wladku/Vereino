@@ -20,8 +20,8 @@
   "app.exampleBlogPost": "예제 블로그 게시물",
   "app.examplePage": "예제 페이지",
   "app.goToLogin": "로그인으로 이동",
-  "app.metadata.description": "제품 및 서비스 기업을 위한 AI 지원 모듈형 ERP 기반",
-  "app.metadata.title": "Open Mercato",
+  "app.metadata.description": "Vereino — 스포츠 클럽 운영 앱",
+  "app.metadata.title": "Vereino",
   "app.page.activeModules.title": "활성 모듈",
   "app.page.dbStatus.connected": "연결됨",
   "app.page.dbStatus.error": "오류: {message}",
@@ -1184,6 +1184,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "접근 거부: 이 작업에 대한 권한이 없습니다. 필요하면 클럽 관리자에게 요청하세요.",
+  "vereino.flash.accessDeniedFeature": "접근 거부: \"{features}\" 권한이 없습니다. 필요하면 클럽 관리자에게 요청하세요.",
+  "vereino.flash.sessionExpired": "세션이 만료되었습니다. 로그인 페이지로 이동합니다…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }
