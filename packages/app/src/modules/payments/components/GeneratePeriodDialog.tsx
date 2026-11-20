@@ -5,20 +5,14 @@
 import * as React from 'react'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { isBillingPeriod } from '../lib/payments-rules'
 import { errorCode, errorMessage, type GenerationSummary } from './client-helpers'
 import { monthOf, useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 
 export function GeneratePeriodDialog({
   open,

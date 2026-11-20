@@ -12,18 +12,12 @@ import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { errorMessage, type RoleAssignmentRow } from './client-helpers'
 
 export type RoleAssignmentDialogMode = 'edit' | 'end'

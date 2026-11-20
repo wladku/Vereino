@@ -1,7 +1,8 @@
 # The merge train (SDLC.md "Validation gate"): one PR at a time takes `main` in, runs CI and merges when the required
 # checks are green, around the clock. It needs the `MERGE_TRAIN_TOKEN` secret, a fine-grained token of the owner with
-# Contents, Pull requests and Workflows write on this repository: an update or a merge made with the workflow's own
-# GITHUB_TOKEN would not start the CI it waits for. Without the secret the job only logs a notice.
+# Contents, Pull requests, Issues and Workflows write on this repository: an update or a merge made with the workflow's
+# own GITHUB_TOKEN would not start the CI it waits for. Issues write mirrors the train's labels onto the issue named in
+# the PR's branch (`issue-N`); without it that step logs a warning. Without the secret the job only logs a notice.
 # It runs `main`'s copy of the scripts and never checks out PR code.
 name: Merge train
 

@@ -10,14 +10,7 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
@@ -25,6 +18,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MANUAL_PAYMENT_METHODS, MAX_REFERENCE_LENGTH, type ManualPaymentMethod } from '../lib/charge-ledger'
 import { errorMessage, fromGrosz, toGrosz, type ChargeDetail } from './client-helpers'
 import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 
 type RecordResult = { chargeStatus?: string }
 

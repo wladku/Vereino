@@ -12,6 +12,7 @@ import { AuthFooter } from '@open-mercato/ui/frontend/AuthFooter'
 import { ClientBootstrapProvider, resolveClientBootstrapProfile } from '@/components/ClientBootstrap'
 import { GlobalNoticeBars } from '@/components/GlobalNoticeBars'
 import { ComponentOverridesBootstrap } from '@/components/ComponentOverridesBootstrap'
+import { PlatformFlashTranslator } from '@/components/PlatformFlashTranslator'
 
 type AppProvidersProps = {
   children: ReactNode
@@ -31,6 +32,7 @@ export function AppProviders({ children, locale, dict, localeLocked, supportedLo
         <ComponentOverridesBootstrap profile={profile}>
           <ThemeProvider>
             <QueryProvider>
+              <PlatformFlashTranslator />
               <FrontendLayout footer={<AuthFooter />}>{children}</FrontendLayout>
               {noticeBarsEnabled ? <GlobalNoticeBars demoModeEnabled={demoModeEnabled} /> : null}
             </QueryProvider>
