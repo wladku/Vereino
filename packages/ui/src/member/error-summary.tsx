@@ -1,8 +1,9 @@
 // `ErrorSummary` and `FieldErrorMessage` (R04.1–R04.3 of `docs/ux-concept/references.md`; #490): a member or public
 // form does not disable its submit button while input is missing. A submit with problems shows this summary at the top
 // of the form — a heading and one link per problem, the same text as under the field — and the form moves the focus
-// to the first field to fix (`focusFirstProblem`). A link moves the focus to its field. Texts come in already
-// translated, from the module's catalog.
+// to the first field to fix (`focusFirstProblem`), whose `aria-describedby` reads its error. The summary is a labelled
+// section, not a live region: its list follows the typing after a failed send, and an alert would be read out again on
+// every key. A link moves the focus to its field. Texts come in already translated, from the module's catalog.
 import * as React from 'react'
 import { fieldErrorId, focusOnClick, type FieldProblem } from '#src/member/error-summary-model'
 
@@ -19,8 +20,7 @@ export function ErrorSummary({ title, problems, className, 'data-testid': testId
   const id = React.useId()
   if (problems.length === 0) return null
   return (
-    <div
-      role="alert"
+    <section
       aria-labelledby={`${id}-title`}
       className={['border-destructive bg-background rounded-lg border-2 p-4', className].filter(Boolean).join(' ')}
       data-testid={testId}
@@ -42,7 +42,7 @@ export function ErrorSummary({ title, problems, className, 'data-testid': testId
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   )
 }
 

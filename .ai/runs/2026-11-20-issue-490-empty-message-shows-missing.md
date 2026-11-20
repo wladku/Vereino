@@ -23,13 +23,18 @@
 
 ## Decisions
 
-- Focus goes to the first invalid field, as the issue's acceptance criterion says, not to the summary (R04.2's default); the summary is a `role="alert"` region, so it is still announced.
+- Focus goes to the first invalid field, as the issue's acceptance criterion says, not to the summary (R04.2's default). The focused field reads its own error through `aria-describedby`.
+- The summary is a labelled `section`, not `role="alert"`: an independent review found that its list follows the typing after a failed send, so an alert would be read out again on every keystroke.
+- Required fields carry `aria-required`.
 - Forms set `noValidate`, so the browser's own (English, unstyled) required bubbles never replace the summary.
 - New catalog keys in `communication` and `people` (en + pl).
 
 ## Commands and results
 
-See the PR body for the final gate and integration results.
+- `yarn verify`: all 18 steps passed (before the review fix and again after it).
+- `yarn test:integration:vereino --filter TEST-M13`: 1 passed; `TEST-M10`: 1 passed; `TEST-L05`: 1 passed; `TEST-L13`: 2 passed. TEST-M13 and TEST-L05 were run again after the review fix.
+- Screenshots come from a TEST-M13 run with temporary screenshot lines (not committed). They are on the branch `qa-evidence-issue-490`.
+- PR #507; the review was done by an independent subagent. It found no blocking defects and four minor points; the alert re-reading point and the `aria-required` point were fixed.
 
 ## Open problems / next steps
 

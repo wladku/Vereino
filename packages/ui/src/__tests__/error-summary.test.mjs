@@ -30,11 +30,11 @@ function fakeRoot(ids) {
   }
 }
 
-test('the summary: an alert with the title and one link per problem, in order', () => {
+test('the summary: a section labelled by the title and one link per problem, in order', () => {
   const html = renderToStaticMarkup(h(ErrorSummary, { title: 'Check the form', problems, 'data-testid': 'summary' }))
   assert.match(
     html,
-    /^<div role="alert" aria-labelledby="(.+?)-title" class="border-destructive [^"]*" data-testid="summary" data-error-summary="">/,
+    /^<section aria-labelledby="(.+?)-title" class="border-destructive [^"]*" data-testid="summary" data-error-summary="">/,
   )
   assert.match(html, /<h2 id="[^"]+-title" class="text-base font-semibold">Check the form<\/h2>/)
   assert.ok(html.indexOf('href="#subject"') < html.indexOf('href="#body"'))

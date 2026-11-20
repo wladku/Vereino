@@ -268,6 +268,7 @@ export function ReplyBox({
         className={TEXTAREA_CLASS}
         value={body}
         maxLength={MESSAGE_MAX_LENGTH}
+        aria-required="true"
         {...fieldProblemProps(problems, fieldId, hint ? `${id}-hint` : undefined)}
         onChange={(event) => {
           setBody(event.target.value)

@@ -243,6 +243,7 @@ function Composer({ options }: { options: DirectOption[] }) {
           className="min-h-11"
           value={subject}
           maxLength={SUBJECT_MAX}
+          aria-required="true"
           {...fieldProblemProps(problems, `${id}-subject`)}
           onChange={(event) => {
             setSubject(event.target.value)
@@ -262,6 +263,7 @@ function Composer({ options }: { options: DirectOption[] }) {
           className="min-h-32"
           value={body}
           maxLength={BODY_MAX}
+          aria-required="true"
           {...fieldProblemProps(problems, `${id}-body`)}
           onChange={(event) => {
             setBody(event.target.value)
