@@ -5,6 +5,7 @@
 // "Zgłoszenie: {renter} (czeka na akceptację)", "Zamknięte: {note}").
 import * as React from 'react'
 import { Tag } from '@open-mercato/ui/primitives/tag'
+import { StatusTag } from '@vereino/ui'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { KIND_TAGS } from './tags'
 import { entryLabel, entryRange, type CalendarEntry, type Translate } from '../club-places/places-client'
@@ -101,7 +102,7 @@ export function DayEntries({
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag variant={KIND_TAGS[entry.kind]}>{t(`facilities.places.kind.${entry.kind}`)}</Tag>
                     {entry.needsReschedule ? (
-                      <Tag variant="warning">{t('facilities.places.entry.needsReschedule')}</Tag>
+                      <StatusTag status="warning">{t('facilities.places.entry.needsReschedule')}</StatusTag>
                     ) : null}
                     {entry.placeId !== placeId && entry.placeName ? (
                       <span className="text-muted-foreground text-xs break-words">

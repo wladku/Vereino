@@ -31,11 +31,10 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 import { errorMessage, personName, textOrNull, type PersonDetail, type Translate } from './client-helpers'
 import { AnonymiseAction, AnonymisedState, DeleteAction } from './ErasurePanel'
 
@@ -260,9 +259,9 @@ function LeftSection({
   return (
     <div className="flex flex-col gap-3" data-testid="people-leaving-left">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge variant={former ? 'neutral' : 'warning'}>
+        <StatusTag status={former ? 'neutral' : 'warning'}>
           {t(former ? 'people.leaving.leftOn' : 'people.leaving.leavesOn', { date: formatDay(leftOn, locale) })}
-        </StatusBadge>
+        </StatusTag>
       </div>
       {former ? (
         <div className="flex flex-wrap gap-2">

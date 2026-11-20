@@ -1,7 +1,7 @@
 // @vereino/ui: shared React components (engineering standards S3.10, S4.10, S7; AGENTS.md package table).
 import tseslint from 'typescript-eslint'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
-import { vereinoTypeScriptConfigs } from '../../eslint.vereino.mjs'
+import { vereinoStatusPillConfigs, vereinoTypeScriptConfigs } from '../../eslint.vereino.mjs'
 
 const files = ['src/**/*.{ts,tsx}']
 // Storybook config and stories are linted with the same TypeScript and accessibility rules.
@@ -30,4 +30,5 @@ export default [
       ],
     },
   },
+  ...vereinoStatusPillConfigs({ files: ['src/**/*.tsx', 'stories/**/*.tsx'] }),
 ]

@@ -21,10 +21,10 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } fr
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import type { PersonDetail, Translate } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 
 /** One reason of a 409 `anonymize_blocked` or `person_in_use` (`lib/erasure-rules.ts`). */
@@ -110,9 +110,9 @@ export function AnonymisedState({ person }: { person: PersonDetail }) {
   return (
     <div className="flex flex-col gap-2" data-testid="people-erasure-anonymised">
       <div>
-        <StatusBadge variant="neutral">
+        <StatusTag status="neutral">
           {t('people.erasure.anonymisedOn', { date: formatDay(person.anonymizedAt, locale) })}
-        </StatusBadge>
+        </StatusTag>
       </div>
       <p className="text-sm" data-testid="people-erasure-hold">
         {person.erasureHoldUntil

@@ -5,7 +5,6 @@
 // (#309): a consent shows the club's own text when the club changed it (DD-39), a consent given before that change
 // reads "given to an earlier wording" and stays valid (DD-L11), and `ConsentEffect` states what withdrawing changes.
 import * as React from 'react'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { givenToEarlierWording } from '../../lib/people-rules'
 import {
@@ -17,6 +16,7 @@ import {
   type WardConsentKind,
   type WardConsents,
 } from './member-client'
+import { StatusTag } from '@vereino/ui'
 
 /** The club's own text of a consent, else the built-in text under `builtInKey` (club spec DD-39). */
 export function useConsentLabel(texts: ConsentTexts | undefined) {
@@ -39,7 +39,7 @@ export function EarlierWording({
   if (!givenToEarlierWording(consent, texts?.[textKey]?.changedAt)) return null
   return (
     <span data-testid={`club-consent-earlier-${textKey}`}>
-      <StatusBadge variant="warning">{t('people.club.consents.earlierWording')}</StatusBadge>
+      <StatusTag status="warning">{t('people.club.consents.earlierWording')}</StatusTag>
     </span>
   )
 }
@@ -98,9 +98,9 @@ export function ConsentList({
             data-testid={`club-consent-${kind}`}
           >
             <span className="font-medium">{label(kind, `people.guardianships.consents.${kind}`)}</span>
-            <StatusBadge variant={consent.granted ? 'success' : 'neutral'}>
+            <StatusTag status={consent.granted ? 'success' : 'neutral'}>
               {t(consent.granted ? 'people.club.consents.granted' : 'people.club.consents.notGranted')}
-            </StatusBadge>
+            </StatusTag>
             {consent.at ? <span className="text-muted-foreground text-xs">{status(consent)}</span> : null}
             <EarlierWording consent={consent} textKey={kind} texts={texts} />
           </li>

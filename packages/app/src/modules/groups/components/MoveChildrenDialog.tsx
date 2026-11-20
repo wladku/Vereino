@@ -17,8 +17,8 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { StatusTag } from '@vereino/ui'
 import { MOVE_MANY_LIMIT, moveDateBounds, type MoveOutcome } from '../lib/groups-rules'
 import { personName, type GroupRow, type MembershipRow, type Translate } from './client-helpers'
 import { FormFrame, buttonClass, type FormSurface } from './MembershipDialogs'
@@ -442,7 +442,7 @@ export function MoveChildrenDialog({
                       {note ? <span className="text-muted-foreground text-sm">{note}</span> : null}
                     </Label>
                     {item?.fitsTarget === true && target ? (
-                      <Tag variant="success">{t('groups.memberships.moveMany.fitsTag')}</Tag>
+                      <StatusTag status="success">{t('groups.memberships.moveMany.fitsTag')}</StatusTag>
                     ) : null}
                   </li>
                 )

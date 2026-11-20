@@ -17,7 +17,6 @@ import { deleteCrud } from '@open-mercato/ui/backend/utils/crud'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
@@ -34,6 +33,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
+import { StatusTag } from '@vereino/ui'
 
 type ActivityLoad =
   { status: 'ok'; activity: ActivityDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
@@ -159,9 +159,9 @@ export function ActivityRecord({ id }: { id: string }) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge variant={activity.isActive ? 'success' : 'neutral'}>
+          <StatusTag status={activity.isActive ? 'success' : 'neutral'}>
             {activity.isActive ? t('activities.common.active') : t('activities.common.inactive')}
-          </StatusBadge>
+          </StatusTag>
           {editable ? (
             <Button
               type="button"
