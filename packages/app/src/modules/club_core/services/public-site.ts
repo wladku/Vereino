@@ -6,7 +6,9 @@
 // `not_found`; a club whose page is off answers `disabled` and nothing else about it. The public places (#124) need the
 // `places_calendar` block too (`disabled` without it) and `is_public_schedule` on an active, live place with a slug
 // (DD-29); a place's photos and regulations PDF are served under its public slug. The Events page P-06 (#263) needs the
-// `events` block (`disabled` without it) and reads its lists from the optional `activities.publicEvents` contribution.
+// `events` block (`disabled` without it) and reads its lists from the optional `activities.publicEvents` contribution;
+// so does the tournament page P-T1 of a published club event and its poster and funder logos (club events spec DD-T11;
+// #381), read by the event's slug inside the club found by its own slug — no other system-scope lookup.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
@@ -40,7 +42,10 @@ import {
   type PublicBlockContext,
   type PublicBlockProvider,
   type PublicClubBlockContext,
+  type PublicClubEvent,
+  type PublicClubEventPart,
   type PublicEventEntry,
+  type PublicEventsContext,
   type PublicEventsProvider,
   type PublicSectionBlockContext,
 } from './public-blocks'
@@ -142,10 +147,39 @@ export type PublicPlaceDetail = PublicPlace & {
   regulationsUrl: string | null
 }
 
-/** An event of P-06 (#263): the `activities.publicEvents` entry with its public section's name and logo. */
-export type PublicEvent = Omit<PublicEventEntry, 'sectionSlug'> & {
-  section: { name: string; slug: string }
+/**
+ * An entry of P-06 (#263): the `activities.publicEvents` entry with its public section's name and logo; a club event
+ * (#381) also with its poster's URL, and without a section (null, the club's logo) when it is a whole-club event or its
+ * section is not public.
+ */
+export type PublicEvent = Omit<PublicEventEntry, 'sectionSlug' | 'posterFileId'> & {
+  section: { name: string; slug: string } | null
   sectionLogo: PublicLogo
+  posterUrl: string | null
+}
+
+/** Our team of a part on P-T1: a public group with its public section, the club's name, or none (an open part). */
+export type PublicClubEventOurTeam =
+  { groupName: string; section: { name: string; slug: string } } | { clubName: string } | null
+
+/** The tournament page P-T1 (club events spec REQ-T09, DD-T11; #381): the club header and the published event. */
+export type PublicClubEventPage = {
+  club: {
+    name: string
+    slug: string
+    logo: PublicLogo
+    contact: PublicClubContact
+    links: PublicClubLinks
+    nav: PublicClubNav
+  }
+  event: Omit<PublicClubEvent, 'posterFileId' | 'funders' | 'days'> & {
+    poster: { url: string } | null
+    funders: { name: string; logoUrl: string }[]
+    days: {
+      date: string
+      parts: (Omit<PublicClubEventPart, 'ourTeam'> & { ourTeam: PublicClubEventOurTeam })[]
+    }[]
+  }
 }
 
 /**
@@ -179,6 +213,14 @@ export type ClubCorePublicSite = {
    * its page or the `events` block, `not_found` for an unknown club.
    */
   publicEvents(clubSlug: string, sectionSlug: string | null): Promise<PublicSiteResult<PublicEventsPage>>
+  /**
+   * The tournament page P-T1 of a published club event (#381): `disabled` while the club does not publish its page or
+   * the `events` block; `not_found` with the club's `frame` while the event is unknown, not public or without a live
+   * part (or the contribution is missing or fails); `not_found` alone for an unknown club.
+   */
+  publicClubEvent(clubSlug: string, eventSlug: string): Promise<PublicSiteResult<PublicClubEventPage>>
+  /** A poster or funder logo of a published club event; `not_found` for anything else. */
+  clubEventFile(clubSlug: string, eventSlug: string, fileId: string): Promise<PublicSiteResult<PublicFileRef>>
   clubLogo(clubSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
    * The club behind a public slug — its trusted tenant and organization and the header of its public pages — for a
@@ -252,6 +294,9 @@ export const publicSectionPath = (clubSlug: string, sectionSlug: string): string
 
 export const publicPlaceFilePath = (clubSlug: string, placeSlug: string, fileId: string): string =>
   `${publicClubPath(clubSlug)}/places/${encodeURIComponent(placeSlug)}/files/${fileId}`
+
+export const publicClubEventFilePath = (clubSlug: string, eventSlug: string, fileId: string): string =>
+  `${publicClubPath(clubSlug)}/events/${encodeURIComponent(eventSlug)}/files/${fileId}`
 
 export function createClubCorePublicSite(getEm: () => EntityManager, container: AwilixContainer): ClubCorePublicSite {
   const em = (): EntityManager => getEm().fork()
@@ -341,13 +386,14 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     )
   }
 
-  /** The `activities.publicEvents` lists; none without the registration, and none (logged) when it fails. */
+  /**
+   * The `activities.publicEvents` lists; none without the registration, and none (logged) when it fails. Called also
+   * without a public section: a published club event needs none (DD-T12).
+   */
   async function eventLists(
-    context: PublicClubBlockContext,
+    context: PublicEventsContext,
   ): Promise<{ upcoming: PublicEventEntry[]; past: PublicEventEntry[] }> {
-    if (context.sections.length === 0 || !container.hasRegistration(PUBLIC_EVENTS_PROVIDER_TOKEN)) {
-      return { upcoming: [], past: [] }
-    }
+    if (!container.hasRegistration(PUBLIC_EVENTS_PROVIDER_TOKEN)) return { upcoming: [], past: [] }
     try {
       return await container.resolve<PublicEventsProvider>(PUBLIC_EVENTS_PROVIDER_TOKEN).events(context)
     } catch (error: unknown) {
@@ -489,6 +535,43 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     }
   }
 
+  /** The club found by its slug, with its Events page published (`disabled` otherwise, as P-06). */
+  async function findEventsClub(db: EntityManager, clubSlug: string): Promise<PublicSiteResult<FoundClub>> {
+    const found = await findClub(db, clubSlug)
+    if (found.status !== 'ok') return found
+    if (found.value.publication.blocks.events) return found
+    return DISABLED
+  }
+
+  /** The `activities.publicEvents` contribution when registered (`clubEvent` and `clubEventFile` are optional). */
+  function eventsProvider(): PublicEventsProvider | null {
+    return container.hasRegistration(PUBLIC_EVENTS_PROVIDER_TOKEN)
+      ? container.resolve<PublicEventsProvider>(PUBLIC_EVENTS_PROVIDER_TOKEN)
+      : null
+  }
+
+  /** The context of the club event reads: the club's scope and all its public sections. */
+  async function clubEventContext(
+    db: EntityManager,
+    club: FoundClub,
+  ): Promise<{
+    context: PublicClubBlockContext
+    sections: Section[]
+  }> {
+    const sections = await publicSections(db, club)
+    return {
+      context: {
+        ...blockContext(club),
+        sections: sections.map((section) => ({
+          id: section.id,
+          name: section.name,
+          slug: section.publicSlug as string,
+        })),
+      },
+      sections,
+    }
+  }
+
   return {
     async clubPage(clubSlug) {
       const db = em()
@@ -601,14 +684,25 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
           name: section.name,
           slug: section.publicSlug as string,
         })),
+        filtered: selected !== null,
       })
       const bySlug = new Map(shown.map((section) => [section.publicSlug as string, section]))
       const decorate = (entries: readonly PublicEventEntry[]): PublicEvent[] =>
-        entries.flatMap(({ sectionSlug: slug, ...entry }) => {
+        entries.flatMap(({ sectionSlug: slug, posterFileId, ...entry }): PublicEvent[] => {
+          const posterUrl =
+            posterFileId && entry.clubEventSlug
+              ? publicClubEventFilePath(club.slug, entry.clubEventSlug, posterFileId)
+              : null
+          if (slug === null) return [{ ...entry, section: null, sectionLogo: clubLogo, posterUrl }]
           const section = bySlug.get(slug)
           if (!section) return []
           return [
-            { ...entry, section: { name: section.name, slug }, sectionLogo: sectionLogoOf(club, section, clubLogo) },
+            {
+              ...entry,
+              section: { name: section.name, slug },
+              sectionLogo: sectionLogoOf(club, section, clubLogo),
+              posterUrl,
+            },
           ]
         })
       return {
@@ -627,6 +721,74 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
           upcoming: decorate(lists.upcoming),
           past: decorate(lists.past),
         },
+      }
+    },
+
+    async publicClubEvent(clubSlug, eventSlug) {
+      const db = em()
+      const found = await findEventsClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const club = found.value
+      const frame = await frameOf(db, club)
+      const notFound = { status: 'not_found', frame } as const
+      const provider = eventsProvider()
+      if (!provider?.clubEvent) return notFound
+      const { context, sections } = await clubEventContext(db, club)
+      let event: PublicClubEvent | null
+      try {
+        event = await provider.clubEvent(context, eventSlug)
+      } catch (error: unknown) {
+        logger.error('The public club event contribution failed; the page answers 404', { err: error })
+        return notFound
+      }
+      if (!event) return notFound
+      const sectionNames = new Map(sections.map((section) => [section.publicSlug as string, section.name]))
+      const fileUrl = (fileId: string) => publicClubEventFilePath(club.slug, event.slug, fileId)
+      const { posterFileId, funders, days, ...facts } = event
+      return {
+        status: 'ok',
+        value: {
+          club: frame.club,
+          event: {
+            ...facts,
+            poster: posterFileId ? { url: fileUrl(posterFileId) } : null,
+            funders: funders.map((funder) => ({ name: funder.name, logoUrl: fileUrl(funder.fileId) })),
+            days: days.map((day) => ({
+              date: day.date,
+              parts: day.parts.map(({ ourTeam, ...part }) => {
+                let team: PublicClubEventOurTeam = null
+                if (ourTeam && 'club' in ourTeam) team = { clubName: frame.club.name }
+                else if (ourTeam) {
+                  const name = sectionNames.get(ourTeam.sectionSlug)
+                  team =
+                    name === undefined
+                      ? { clubName: frame.club.name }
+                      : { groupName: ourTeam.groupName, section: { name, slug: ourTeam.sectionSlug } }
+                }
+                return { ...part, ourTeam: team }
+              }),
+            })),
+          },
+        },
+      }
+    },
+
+    async clubEventFile(clubSlug, eventSlug, fileId) {
+      if (!UUID_PATTERN.test(fileId)) return NOT_FOUND
+      const db = em()
+      const found = await findEventsClub(db, clubSlug)
+      if (found.status !== 'ok') return NOT_FOUND
+      const club = found.value
+      const provider = eventsProvider()
+      if (!provider?.clubEventFile) return NOT_FOUND
+      const { context } = await clubEventContext(db, club)
+      try {
+        const file = await provider.clubEventFile(context, eventSlug, fileId)
+        if (!file) return NOT_FOUND
+        return { status: 'ok', value: { tenantId: club.tenantId, organizationId: club.organizationId, ...file } }
+      } catch (error: unknown) {
+        logger.error('The public club event file contribution failed; the file answers 404', { err: error })
+        return NOT_FOUND
       }
     },
 

@@ -4,8 +4,12 @@
 // "No events planned." when empty) and "Past (last 60 days)" (newest first, each with the "took place" badge, hidden when
 // empty). Each event: the section logo, its name, date and start, the place with a map link for an external venue, the
 // section and the type. States: loading, error with retry, 404 and "the club does not publish events" with the club page
-// link. Dates are club-zone dates, formatted in the reader's locale.
+// link. Dates are club-zone dates, formatted in the reader's locale. A published club event (club events spec REQ-T10,
+// DD-T12; #381) is one card: its poster thumbnail (else the section's or the club's logo), its name linking to its
+// tournament page, its date range, its place (a map link for an external place), "{n} parts" and its section (none for
+// a whole-club event); struck through when cancelled.
 import * as React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
@@ -14,7 +18,10 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton } from '@vereino/ui'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
+import { pluralForm } from '../../lib/public-page'
+import { useEventDates } from './PublicClubEventView'
 import {
+  clubEventHref,
   clubHref,
   eventsHref,
   formatPublicDate,
@@ -33,10 +40,90 @@ function EventBadge({ event }: { event: PublicEvent }) {
   return <StatusBadge variant="info">{t(`club_core.public.events.type.${event.type}`)}</StatusBadge>
 }
 
+/** The map link of an external place on a card. */
+function MapLink({ event }: { event: PublicEvent }) {
+  const t = useT()
+  if (!event.mapUrl) return null
+  return (
+    <span>
+      ·{' '}
+      <a
+        className={LINK_CLASS}
+        href={event.mapUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={t('club_core.public.events.mapLabel', { place: event.place ?? '' })}
+        data-testid="public-event-map"
+      >
+        {t('club_core.public.events.map')}
+      </a>
+    </span>
+  )
+}
+
+/** A club event's card (#381): poster or logo, name linking to its page, dates, place, parts count, section. */
+function ClubEventCard({ clubSlug, event }: { clubSlug: string; event: PublicEvent }) {
+  const t = useT()
+  const locale = useLocale()
+  const dates = useEventDates(event.date, event.endDate)
+  const count = event.partsCount ?? 0
+  const href = clubEventHref(clubSlug, event.clubEventSlug ?? '')
+  return (
+    <li
+      className="bg-card flex gap-3 rounded-lg border p-4"
+      data-testid="public-event"
+      data-kind="club_event"
+      data-past={String(event.past)}
+      data-cancelled={String(event.cancelled)}
+    >
+      {event.posterUrl ? (
+        <Image
+          src={event.posterUrl}
+          alt=""
+          width={56}
+          height={80}
+          unoptimized
+          className="bg-muted h-20 w-14 shrink-0 rounded-md object-cover"
+          data-testid="public-event-poster"
+        />
+      ) : (
+        <LogoMark logo={event.sectionLogo} />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h3 className="text-base font-semibold">
+            <Link className={LINK_CLASS} href={href} data-testid="public-event-link">
+              {event.cancelled ? <s>{event.name}</s> : event.name}
+            </Link>
+          </h3>
+          <EventBadge event={event} />
+        </div>
+        <p className="text-muted-foreground flex flex-wrap items-center gap-x-1 text-sm">
+          <span>{dates}</span>
+          {event.place ? <span>· {event.place}</span> : null}
+          <MapLink event={event} />
+          <span data-testid="public-event-parts">
+            · {t(`club_core.public.events.parts.${pluralForm(locale, count)}`, { count })}
+          </span>
+          {event.section ? (
+            <span>
+              ·{' '}
+              <Link className={LINK_CLASS} href={sectionHref(clubSlug, event.section.slug)}>
+                {event.section.name}
+              </Link>
+            </span>
+          ) : null}
+        </p>
+      </div>
+    </li>
+  )
+}
+
 /** One event card: the section logo, name, date and start, place (map link for an external venue), section, badge. */
 export function PublicEventCard({ clubSlug, event }: { clubSlug: string; event: PublicEvent }) {
   const t = useT()
   const locale = useLocale()
+  if (event.kind === 'club_event') return <ClubEventCard clubSlug={clubSlug} event={event} />
   const date = formatPublicDate(event.date, locale)
   const when =
     event.endDate !== event.date
@@ -57,27 +144,15 @@ export function PublicEventCard({ clubSlug, event }: { clubSlug: string; event: 
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-1 text-sm">
           <span>{when}</span>
           {event.place ? <span>· {event.place}</span> : null}
-          {event.mapUrl ? (
+          <MapLink event={event} />
+          {event.section ? (
             <span>
               ·{' '}
-              <a
-                className={LINK_CLASS}
-                href={event.mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t('club_core.public.events.mapLabel', { place: event.place ?? '' })}
-                data-testid="public-event-map"
-              >
-                {t('club_core.public.events.map')}
-              </a>
+              <Link className={LINK_CLASS} href={sectionHref(clubSlug, event.section.slug)}>
+                {event.section.name}
+              </Link>
             </span>
           ) : null}
-          <span>
-            ·{' '}
-            <Link className={LINK_CLASS} href={sectionHref(clubSlug, event.section.slug)}>
-              {event.section.name}
-            </Link>
-          </span>
         </p>
       </div>
     </li>

@@ -72,6 +72,9 @@ export const errorCodes = [
   { code: 'public_page_disabled', status: 404, messageKey: 'club_core.errors.public_page_disabled' },
   // The Events page P-06 (navigation spec REQ-N13, #263) while the club does not publish its page or the `events` block.
   { code: 'public_events_disabled', status: 404, messageKey: 'club_core.errors.public_events_disabled' },
+  // The tournament page P-T1 (club events spec REQ-T09, #381): an unknown slug, an event that is not public and one
+  // without a live part answer the same 404.
+  { code: 'public_club_event_not_found', status: 404, messageKey: 'club_core.errors.public_club_event_not_found' },
 ] as const satisfies ErrorCodeTable
 
 export type ClubCoreErrorCode = (typeof errorCodes)[number]['code']
