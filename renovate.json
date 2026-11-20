@@ -1,0 +1,85 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Engineering standards S16.2 and ADR-016: weekly grouped updates, 5-day release-age gate, weekly lock-file maintenance, majors in their own pull requests, P1/P2 packages ignored, no automerge.",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitScope(deps)"
+  ],
+  "timezone": "Europe/Warsaw",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "minimumReleaseAge": "5 days",
+  "internalChecksFilter": "strict",
+  "separateMajorMinor": true,
+  "automerge": false,
+  "labels": [
+    "dependencies",
+    "priority-low"
+  ],
+  "commitBody": "Signed-off-by: {{{gitAuthor}}}",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "P1: Open Mercato packages move only in an upgrade run (chore/upgrade-open-mercato-<version>), never through Renovate.",
+      "matchPackageNames": [
+        "@open-mercato/**"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "P2: exact scaffold pins and platform-coupled packages move only together with a P1 upgrade.",
+      "matchPackageNames": [
+        "next",
+        "react",
+        "react-dom",
+        "eslint-config-next",
+        "pg",
+        "date-fns",
+        "@mikro-orm/**",
+        "awilix",
+        "zod"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Development dependencies, minor and patch updates, in one pull request.",
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "development dependencies (non-major)"
+    },
+    {
+      "description": "GitHub Actions, pinned by commit SHA (S14.2), in one pull request.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Docker base image digests (S14.8) in one pull request.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pin",
+        "pinDigest"
+      ],
+      "groupName": "Docker digests"
+    }
+  ]
+}
