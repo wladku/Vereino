@@ -51,6 +51,8 @@
 
   Then: `yarn verify` all 18 passed, `--filter ISSUE-485` 1 passed.
 
+- Merge-train conflict (`om-auto-fix-pr 503`): merged `origin/main` (with #481, #483, #446, #449) into the branch. The only conflict was the platform-patch table in `CONTRIBUTING.md`; the resolution keeps the #485 rows and adds the #483 `vereino.flash.*` keys to the i18n row. The i18n catalogs auto-merged, and all five parse as JSON. Then: `yarn verify` all 18 passed, `--filter ISSUE-485` 1 passed (37.1s).
+
 ## Open problems / next steps
 
 - Operators must set `VEREINO_HOME_CLUB_SLUG` on each instance for `/` to reach the club page (documented in `.env.example` and the PR).
