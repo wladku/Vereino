@@ -128,13 +128,14 @@ test('E06-S08 groups list: filters, perspectives in the URL, coaches and partici
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 375, height: 812 })
 
-    // The tab order: Groups, External teams, Seasons.
+    // The tab order: Groups, External teams, Seasons, Age categories (REQ-L16, #384).
     await page.goto('/backend/groups/groups')
     const navTabs = page.getByRole('tablist', { name: /Groups, seasons and external teams|Grupy, sezony/ })
     await expect(navTabs.getByRole('tab')).toHaveText([
       uiText('groups.club.wardGroups.title', { exact: true }),
       uiText('groups.externalTeams.title'),
       uiText('groups.nav.tabs.seasons', { exact: true }),
+      uiText('groups.nav.tabs.ageCategories', { exact: true }),
     ])
 
     // A section filter in the URL survives a reload; the counts and coaches are shown.

@@ -140,6 +140,9 @@ export type CalendarPerson = {
   guardianOnly: boolean
 }
 
+/** The club event a part session belongs to; `publicPath` is null until the event and the club page are public. */
+export type ClubEventRef = { id: string; name: string; publicPath: string | null }
+
 export type CalendarOccurrence = {
   id: string
   activityId: string
@@ -179,6 +182,8 @@ export type CalendarOccurrence = {
   substituteForName?: string | null
   opponentName: string | null
   invitedTeamNames: string[]
+  /** The club event of a part session (club events spec REQ-T03): its name and, once published, its public page. */
+  clubEvent?: ClubEventRef | null
   status: 'planned' | 'done' | 'cancelled'
   cancelReason: string | null
   isDetached: boolean
@@ -722,6 +727,8 @@ export function toCalendarItem(
     section: occurrence.sectionName ? { id: occurrence.sectionId, label: occurrence.sectionName } : null,
     coach: occurrence.coachName,
     subtitle,
+    // Club events spec REQ-T03 (M-02, M-03): the event's name, linked to its public page once it is published.
+    partOf: occurrence.clubEvent ? { label: occurrence.clubEvent.name, href: occurrence.clubEvent.publicPath } : null,
     notes: deadlineNotes(entry, as, t, formatAt),
     href: sessionHref(occurrence.id, as),
     badges,

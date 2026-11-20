@@ -1,9 +1,11 @@
 // Club events and their parts through the API (club events spec phase 1, #376): the event and part routes, and the
 // example of the spec — the academy section with its groups, an external hall and a club place.
 import { expect, type APIRequestContext } from '@playwright/test'
-import type { CodedError } from './activities'
-import { OPTIMISTIC_LOCK_HEADER, call, type Club } from './club'
+import { addDays, zoneInstant, type CodedError } from './activities'
+import { memberAccount, type Family } from './attendance'
+import { OPTIMISTIC_LOCK_HEADER, birthDateTurning, calendarDate, call, createPerson, type Club } from './club'
 import { create as createStructure } from './club-structure'
+import { addMembership, createGroup } from './groups'
 
 export type ClubEventBody = CodedError & {
   id?: string
@@ -177,4 +179,68 @@ export async function partIds(
     activityId: added.body?.activityId ?? null,
     occurrenceId: added.body?.occurrenceId ?? null,
   }
+}
+
+/**
+ * The family example of the member pages (club events spec TEST-T03, TEST-T13; #382): `familyFor`'s academy with a
+ * club event at the external hall. The Żaki part (tomorrow 9:00–14:00, confirm by two hours before, coach Marek, three
+ * visiting teams) concerns the guardian's wards; a Trampkarz part of the same event concerns nobody in the family; Ola,
+ * an adult participant of the pool group only, is in no part.
+ */
+export async function partFamily(request: APIRequestContext, club: Club, family: Family) {
+  const admin = club.adminToken
+  const { hall } = await examplePlaces(request, club)
+  const trampkarz = await createGroup(request, admin, { sectionId: family.academy, name: 'Trampkarz', kind: 'team' })
+  const teams: string[] = []
+  for (const name of ['Wisła Liszki', 'Orzeł Kryspinów', 'CIS Czernichów']) {
+    const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
+      data: { name, clubName: name },
+    })
+    expect(team.status, JSON.stringify(team.body)).toBe(201)
+    teams.push(String(team.body?.id))
+  }
+  const olaId = await createPerson(request, admin, {
+    firstName: 'Ola',
+    lastName: 'Pływak',
+    birthDate: birthDateTurning(20),
+  })
+  await addMembership(request, admin, {
+    groupId: family.poolGroup,
+    personId: olaId,
+    role: 'participant',
+    validFrom: addDays(calendarDate(), -30),
+  })
+  const ola = await memberAccount(request, club, olaId, 'ola')
+  const coordinator = family.academyCoordinator.token
+  const eventId = await clubEventId(request, coordinator, {
+    name: 'GWIAZDA CUP 2026',
+    sectionId: family.academy,
+    placeId: hall,
+  })
+  const day = addDays(calendarDate(), 1)
+  const zakiPart = await partIds(request, coordinator, eventId, {
+    title: 'Turniej Żaków',
+    groupId: family.zaki,
+    coachPersonId: family.coach.personId,
+    startsAt: zoneInstant(day, '09:00'),
+    endsAt: zoneInstant(day, '14:00'),
+    confirmByMinutesBefore: 120,
+    visitingTeamIds: teams,
+  })
+  const trampkarzPart = await partIds(request, coordinator, eventId, {
+    title: 'Turniej Trampkarza',
+    groupId: trampkarz,
+    startsAt: zoneInstant(day, '14:30'),
+    endsAt: zoneInstant(day, '16:30'),
+  })
+  return { eventId, day, hall, ola, zakiPart, trampkarzPart }
+}
+
+/** Makes the club event public (the club page and its `events` block are published separately). */
+export async function makePublic(request: APIRequestContext, token: string, eventId: string): Promise<string> {
+  const current = await readClubEvent(request, token, eventId)
+  expect(current.status, JSON.stringify(current.body)).toBe(200)
+  const updated = await updateClubEvent(request, token, { id: eventId, isPublic: true }, current.body?.updatedAt)
+  expect(updated.status, JSON.stringify(updated.body)).toBe(200)
+  return String(current.body?.publicSlug)
 }

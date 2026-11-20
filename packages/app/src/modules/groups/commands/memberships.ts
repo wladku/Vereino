@@ -9,6 +9,7 @@
 // `groups:sync-member-roles` subscriber recomputes the person's `auth` roles (an adult participant is a payer).
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { LockMode } from '@mikro-orm/core'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
 import { isInvertedPeriod, type Scope } from '@vereino/core'
@@ -20,15 +21,28 @@ import {
   type TargetLock,
 } from '@/modules/foundation'
 import { groupsErrors } from '../api/errors'
-import { type Group, GroupMembership } from '../data/entities'
+import { Group, GroupMembership } from '../data/entities'
 import {
   membershipCreateSchema,
   membershipDeleteSchema,
   membershipEndSchema,
+  membershipMoveManySchema,
   membershipMoveSchema,
   membershipUpdateSchema,
+  type MembershipMoveManyInput,
 } from '../data/validators'
-import { endRefused, firstOverlapping, mayRemoveMembership, planMove, type MembershipRole } from '../lib/groups-rules'
+import {
+  endRefused,
+  firstOverlapping,
+  fitsAgeRange,
+  mayRemoveMembership,
+  moveManyProblem,
+  moveOutcome,
+  planMove,
+  type MembershipRole,
+  type MoveOutcome,
+} from '../lib/groups-rules'
+import { checkRolloverToken, issueRolloverToken } from '../lib/rollover-token'
 import { clubToday } from '../services/club-clock'
 import { findPersons } from '../services/directory'
 import { groupUsageContract } from '../services/group-usage'
@@ -561,8 +575,372 @@ const moveMembershipCommand: CommandHandler<Record<string, unknown>, MembershipM
   },
 }
 
+/** The source and the target group of a bulk move, row-locked in id order (as the single move locks them). */
+type LockedMoveGroups = { from: Group; target: Group | null; updatedAt: Date }
+
+/**
+ * The scope target of a bulk move is the source group (its section); the target group is checked against the same
+ * grants with `assertInScope`. No lock token: the preview token stands for the versions the caller saw.
+ */
+function moveManySpec(
+  ctx: CommandRuntimeContext,
+): AuthorizeScopedSpec<typeof membershipMoveManySchema, LockedMoveGroups> {
+  return {
+    input: membershipMoveManySchema,
+    resourceKind: MEMBERSHIP_RESOURCE_KIND,
+    allowedKinds: GROUP_WRITE_KINDS,
+    lock: 'none',
+    loadTarget: async (parsed, em) => {
+      const tenantId = trustedTenantId(ctx)
+      if (!tenantId) return null
+      const source = await em.findOne(Group, { id: parsed.fromGroupId, tenantId, deletedAt: null })
+      if (!source) return null
+      const scope = { tenantId: source.tenantId, organizationId: source.organizationId }
+      const locked = new Map<string, Group | null>()
+      for (const groupId of [...new Set([source.id, parsed.toGroupId])].sort()) {
+        locked.set(groupId, await lockGroup(em, scope, groupId))
+      }
+      const from = locked.get(source.id)
+      if (!from) return null
+      return { from, target: locked.get(parsed.toGroupId) ?? null, updatedAt: from.updatedAt }
+    },
+    resolveTarget: (_parsed, entity) => groupTarget((entity as LockedMoveGroups).from),
+  }
+}
+
+/** One child of a bulk move preview (*API* row `groups.memberships.move_many`). */
+export type MoveManyItem = {
+  membershipId: string
+  personId: string
+  person: { firstName: string; lastName: string } | null
+  outcome: MoveOutcome
+  /** The declarations for the old group's sessions from `date` on that the move drops. */
+  futureDeclarations: number
+  /** `month_charged_once` for a moved child: the month's fee is charged once, in the group of the reference day. */
+  feeNote: 'month_charged_once' | null
+  /** The age-fit rule on `date` against the target group's age range; null without a range or a birth date. */
+  fitsTarget: boolean | null
+}
+
+export type MoveManyPreview = {
+  fromGroupId: string
+  toGroupId: string
+  date: string
+  items: MoveManyItem[]
+  moved: number
+  skipped: number
+  futureDeclarations: number
+}
+
+type BuiltMoveMany = {
+  view: MoveManyPreview
+  rows: Map<string, GroupMembership>
+  lastDay: Map<string, string>
+  declarations: Map<string, string[]>
+  binding: unknown
+}
+
+/** 422 for a refused request (Q-L08, Q-L22), the same before the preview and the apply. */
+async function assertMoveManyRequest(
+  parsed: MembershipMoveManyInput,
+  target: Group | null,
+  today: string,
+): Promise<void> {
+  const problem = moveManyProblem(
+    {
+      fromGroupId: parsed.fromGroupId,
+      toGroupId: parsed.toGroupId,
+      date: parsed.date,
+      count: parsed.membershipIds.length,
+    },
+    today,
+  )
+  if (problem) await groupsErrors.throw(`move_${problem}`)
+  if (!target || !target.isActive) await groupsErrors.throw('move_target_inactive', { field: 'toGroupId' })
+}
+
+/**
+ * Reads what a bulk move would do (REQ-L15): the listed participant memberships of the source group, per child the
+ * outcome of the single move's rule, an overlapping participant membership of the target group (skipped, Q-L24), the
+ * declarations the move drops and the age fit. `forUpdate` row-locks the memberships (the apply). The binding is what
+ * the preview token confirms: a membership changed since, or a declaration made or dropped, makes the apply stale.
+ */
+async function buildMoveMany(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  groups: { from: Group; target: Group },
+  parsed: MembershipMoveManyInput,
+  today: string,
+  forUpdate: boolean,
+): Promise<BuiltMoveMany> {
+  const { from, target } = groups
+  const scope = { tenantId: from.tenantId, organizationId: from.organizationId }
+  const found = await em.find(
+    GroupMembership,
+    {
+      ...scope,
+      id: { $in: parsed.membershipIds },
+      groupId: from.id,
+      role: 'participant',
+      deletedAt: null,
+    },
+    forUpdate ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {},
+  )
+  if (found.length !== parsed.membershipIds.length) {
+    await groupsErrors.throw('groups_reference_invalid', { field: 'membershipIds' })
+  }
+  const rows = new Map(found.map((row) => [row.id, row]))
+  const personIds = [...new Set(found.map((row) => row.personId))]
+  const inTarget = await em.find(
+    GroupMembership,
+    { ...scope, groupId: target.id, personId: { $in: personIds }, role: 'participant', deletedAt: null },
+    { fields: ['id', 'personId', 'validFrom', 'validTo'] },
+  )
+  const persons = await findPersons(ctx.container, scope, personIds, em)
+  const lastDay = new Map<string, string>()
+  const outcomes = new Map<string, MoveOutcome>()
+  for (const id of parsed.membershipIds) {
+    const row = rows.get(id) as GroupMembership
+    const plan = planMove(
+      { groupId: row.groupId, validFrom: row.validFrom, validTo: row.validTo ?? null },
+      { toGroupId: target.id, date: parsed.date },
+      today,
+    )
+    const periods = inTarget
+      .filter((other) => other.personId === row.personId)
+      .map((other) => ({ validFrom: other.validFrom, validTo: other.validTo ?? null }))
+    const outcome = moveOutcome(plan, plan.ok && firstOverlapping(plan.next, periods) !== null)
+    outcomes.set(id, outcome)
+    if (plan.ok && outcome === 'move') lastDay.set(id, plan.lastDay)
+  }
+  const movingPersons = [...lastDay.keys()].map((id) => (rows.get(id) as GroupMembership).personId)
+  const usage = groupUsageContract(ctx.container)
+  const declarations = usage
+    ? await usage.pendingDeclarations(em, {
+        ...scope,
+        groupId: from.id,
+        personIds: movingPersons,
+        from: parsed.date,
+      })
+    : new Map<string, string[]>()
+  const items: MoveManyItem[] = parsed.membershipIds.map((id) => {
+    const row = rows.get(id) as GroupMembership
+    const outcome = outcomes.get(id) as MoveOutcome
+    const person = persons.get(row.personId)
+    const moving = outcome === 'move'
+    return {
+      membershipId: id,
+      personId: row.personId,
+      person: person ? { firstName: person.firstName, lastName: person.lastName } : null,
+      outcome,
+      futureDeclarations: moving ? (declarations.get(row.personId)?.length ?? 0) : 0,
+      feeNote: moving ? 'month_charged_once' : null,
+      fitsTarget: fitsAgeRange(person?.birthDate ?? null, parsed.date, {
+        ageFrom: target.ageFrom ?? null,
+        ageTo: target.ageTo ?? null,
+      }),
+    }
+  })
+  const moved = items.filter((item) => item.outcome === 'move').length
+  return {
+    view: {
+      fromGroupId: from.id,
+      toGroupId: target.id,
+      date: parsed.date,
+      items,
+      moved,
+      skipped: items.length - moved,
+      futureDeclarations: items.reduce((sum, item) => sum + item.futureDeclarations, 0),
+    },
+    rows,
+    lastDay,
+    declarations,
+    binding: items.map((item) => ({
+      membershipId: item.membershipId,
+      outcome: item.outcome,
+      validTo: rows.get(item.membershipId)?.validTo ?? null,
+      updatedAt: (rows.get(item.membershipId) as GroupMembership).updatedAt.toISOString(),
+      declarations: item.outcome === 'move' ? (declarations.get(item.personId) ?? []) : [],
+    })),
+  }
+}
+
+/** What the preview token binds besides the content: the request as sent, without the token itself. */
+function moveManyPlan(parsed: MembershipMoveManyInput) {
+  return {
+    kind: 'groups.memberships.move_many',
+    fromGroupId: parsed.fromGroupId,
+    toGroupId: parsed.toGroupId,
+    date: parsed.date,
+    membershipIds: parsed.membershipIds,
+  }
+}
+
+/**
+ * The preview of a bulk move (`POST /api/groups/memberships/move-many` with `dryRun`): authorized like the move, read
+ * in a transaction that writes nothing; the token (15 minutes, the season rollover's token) binds the scope, the
+ * actor, the request and what the preview showed.
+ */
+export async function previewMoveMany(
+  ctx: CommandRuntimeContext,
+  rawInput: unknown,
+  now: Date = new Date(),
+): Promise<{ preview: MoveManyPreview; previewToken: string }> {
+  return inWriteTransaction(ctx, 'groups.memberships.move_many.preview', async (em) => {
+    const authorized = await authorizeScoped(moveManySpec(ctx), rawInput, ctx, em)
+    const { from, target } = authorized.entity as LockedMoveGroups
+    const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+    const today = await clubToday(ctx.container, scope, now)
+    await assertMoveManyRequest(authorized.parsed, target, today)
+    const targetGroup = target as Group
+    await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))
+    const built = await buildMoveMany(em, ctx, { from, target: targetGroup }, authorized.parsed, today, false)
+    const previewToken = issueRolloverToken(
+      { ...scope, actorUserId: ctx.auth?.sub ?? '', plan: moveManyPlan(authorized.parsed), content: built.binding },
+      now.getTime(),
+    )
+    return { preview: built.view, previewToken }
+  })
+}
+
+/** One moved child in the log: the old membership as it was, the started one and the declarations dropped. */
+export type MoveManyMoveSnapshot = { ended: MembershipSnapshot; startedId: string; droppedDeclarationIds: string[] }
+
+export type MoveManySnapshot = {
+  fromGroupId: string
+  toGroupId: string
+  date: string
+  moves: MoveManyMoveSnapshot[]
+  skipped: number
+}
+
+export type MoveManyResult = GroupsCommandResult<Group, MoveManySnapshot> & {
+  ended: GroupMembership[]
+  started: GroupMembership[]
+  snapshot: MoveManySnapshot
+}
+
+/**
+ * `groups.memberships.move_many` (people life-cycle spec REQ-L15, DD-L16, *API* row; #383): moves every child the
+ * preview listed as movable, or none, in one transaction — for each the single move's rule (the old membership ends
+ * the day before `date`, one of the same role starts in the target group on `date`) and its effects (REQ-L11): the
+ * old group's unmarked declarations from `date` on are dropped here, in the same transaction, and the month's fee is
+ * charged once by the generation (`payments/lib/charge-plan.ts`). One `groups.membership.*` event pair per moved
+ * child; one undo restores both groups and the dropped declarations together. 409 `move_preview_stale` when anything
+ * the preview showed changed (or the token expired); 422 `move_same_group`, `move_target_inactive`,
+ * `move_date_in_past`, `move_too_many`; 403 outside the section scope of either group.
+ */
+const moveManyMembershipsCommand: CommandHandler<Record<string, unknown>, MoveManyResult> = {
+  id: 'groups.memberships.move_many',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'groups.memberships.move_many', async (em) => {
+      const authorized = await authorizeScoped(moveManySpec(ctx), rawInput, ctx, em)
+      const { from, target } = authorized.entity as LockedMoveGroups
+      const { parsed } = authorized
+      const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      const today = await clubToday(ctx.container, scope)
+      await assertMoveManyRequest(parsed, target, today)
+      const targetGroup = target as Group
+      await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))
+      const built = await buildMoveMany(em, ctx, { from, target: targetGroup }, parsed, today, true)
+      const binding = {
+        ...scope,
+        actorUserId: ctx.auth?.sub ?? '',
+        plan: moveManyPlan(parsed),
+        content: built.binding,
+      }
+      const replaying = ctx.replayTransactionGuard !== undefined
+      if (!replaying && checkRolloverToken(parsed.previewToken ?? '', binding, Date.now()) !== 'valid') {
+        await groupsErrors.throw('move_preview_stale')
+      }
+      const usage = groupUsageContract(ctx.container)
+      const ended: GroupMembership[] = []
+      const started: GroupMembership[] = []
+      const moves: MoveManyMoveSnapshot[] = []
+      for (const [id, lastDay] of built.lastDay) {
+        const row = built.rows.get(id) as GroupMembership
+        const before = membershipSnapshot(row)
+        const next = { validFrom: parsed.date, validTo: row.validTo ?? null }
+        const key = { ...scope, groupId: targetGroup.id, personId: row.personId, role: row.role }
+        await assertNoOverlap(em, key, next, null)
+        row.validTo = lastDay
+        row.updatedAt = new Date()
+        const created = em.create(GroupMembership, {
+          id: randomUUID(),
+          ...scope,
+          groupId: targetGroup.id,
+          personId: row.personId,
+          role: row.role,
+          validFrom: next.validFrom,
+          validTo: next.validTo,
+        })
+        em.persist(created)
+        const pending = built.declarations.get(row.personId) ?? []
+        const dropped = usage && pending.length > 0 ? await usage.dropDeclarations(em, scope, pending) : []
+        ended.push(row)
+        started.push(created)
+        moves.push({ ended: before, startedId: created.id, droppedDeclarationIds: dropped })
+      }
+      await flushMembership(em)
+      const snapshot: MoveManySnapshot = {
+        fromGroupId: from.id,
+        toGroupId: targetGroup.id,
+        date: parsed.date,
+        moves,
+        skipped: built.view.skipped,
+      }
+      return { entity: from, actingRole: authorized.actingRole, before: snapshot, ended, started, snapshot }
+    })
+    for (const [index, ended] of result.ended.entries()) {
+      await emitGroupsSideEffects(ctx, ended, 'updated', membershipEvents)
+      const started = result.started.at(index)
+      if (started) await emitGroupsSideEffects(ctx, started, 'created', membershipEvents)
+    }
+    return result
+  },
+  buildLog: ({ result }) =>
+    groupsLog({
+      result,
+      resourceKind: 'groups.group',
+      labelKey: 'groups.audit.memberships.moveMany',
+      fallback: 'Move children to another group',
+      after: result.snapshot,
+    }),
+  async authorizeReplay({ ctx, logEntry }) {
+    const snapshot = logEntry.snapshotBefore as MoveManySnapshot | null | undefined
+    for (const move of snapshot?.moves ?? []) {
+      await authorizeMembershipReplay(ctx, move.ended.id)
+      await authorizeMembershipReplay(ctx, move.startedId)
+    }
+  },
+  async undo({ ctx, logEntry }) {
+    const snapshot = logEntry.snapshotBefore as MoveManySnapshot | null | undefined
+    if (!snapshot) throw new Error('[internal] missing bulk move snapshot for undo')
+    const em = ctx.transactionalEm as EntityManager
+    const usage = groupUsageContract(ctx.container)
+    for (const move of snapshot.moves) {
+      const { membership: started } = await authorizeMembershipReplay(ctx, move.startedId)
+      started.deletedAt = new Date()
+      started.updatedAt = new Date()
+      await em.flush()
+      await emitGroupsSideEffects(ctx, started, 'deleted', membershipEvents, true)
+      await restoreMembership(ctx, move.ended)
+      if (usage && move.droppedDeclarationIds.length > 0) {
+        await usage.restoreDeclarations(
+          em,
+          { tenantId: move.ended.tenantId, organizationId: move.ended.organizationId },
+          move.droppedDeclarationIds,
+        )
+      }
+    }
+  },
+}
+
 registerCommand(createMembershipCommand)
 registerCommand(updateMembershipCommand)
 registerCommand(endMembershipCommand)
 registerCommand(deleteMembershipCommand)
 registerCommand(moveMembershipCommand)
+registerCommand(moveManyMembershipsCommand)

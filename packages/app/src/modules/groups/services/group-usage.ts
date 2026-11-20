@@ -10,6 +10,11 @@ export const ACTIVITIES_GROUP_USAGE = 'activities.groupUsage'
 
 export type GroupUsageQuery = { tenantId: string; organizationId: string; groupId: string }
 
+export type GroupsUsageScope = { tenantId: string; organizationId: string }
+
+/** The persons of a group whose declarations from `from` on (inclusive) a move would drop. */
+export type PendingDeclarationsQuery = GroupUsageQuery & { personIds: readonly string[]; from: string }
+
 /** A membership's person and period (inclusive calendar days; `to` null = open-ended) in its group (REQ-A03). */
 export type MembershipUsageQuery = GroupUsageQuery & { personId: string; from: string; to: string | null }
 
@@ -24,6 +29,23 @@ export type GroupUsageContract = {
    * whose slot day lies within the period. Reads with `em` inside the command's transaction.
    */
   membershipUsed(em: EntityManager, query: MembershipUsageQuery): Promise<boolean>
+  /**
+   * The declarations a group move drops (people life-cycle spec REQ-L11, REQ-L15; #383): per person, the ids of their
+   * live attendance rows without an actual mark in the group's live sessions on or after `from`. Reads with `em` inside
+   * the command's transaction; a person without such rows is absent.
+   */
+  pendingDeclarations(em: EntityManager, query: PendingDeclarationsQuery): Promise<Map<string, string[]>>
+  /**
+   * Drops (soft-deletes) those of `attendanceIds` that are still live and unmarked, in the caller's transaction; the ids
+   * dropped. The `activities` subscriber on `groups.membership.updated` would drop the same rows after the commit; a
+   * bulk move drops them in its own transaction so its undo can restore exactly them.
+   */
+  dropDeclarations(em: EntityManager, scope: GroupsUsageScope, attendanceIds: readonly string[]): Promise<string[]>
+  /**
+   * Restores dropped rows among `attendanceIds` (the undo of a bulk move): a row still unmarked comes back unless the
+   * person declared the same session again since. The number restored.
+   */
+  restoreDeclarations(em: EntityManager, scope: GroupsUsageScope, attendanceIds: readonly string[]): Promise<number>
 }
 
 /** The registered contract, or null when `activities` is not enabled. */
