@@ -16,6 +16,7 @@ import {
 } from '../lib/policy'
 import { confirmByIso, deadlinePassed } from '../lib/confirm-by'
 import { gatheringIso } from '../lib/gathering'
+import { clubEventRefs, type ClubEventRef } from '../services/club-events'
 import { activityLabels, nameMaps } from '../services/read'
 import { substituteForOf } from '../services/substitutions'
 
@@ -150,6 +151,8 @@ export type ActivityListItem = ReturnType<typeof activityListItem> & {
   sectionName?: string | null
   placeName?: string | null
   coachName?: string | null
+  /** The club event of a part's activity (#378: "Part of {event}" on B-13); null for any other activity. */
+  clubEvent?: ClubEventRef | null
 }
 
 /** The gathering instant of a list row (DD-43), or null. */
@@ -216,13 +219,21 @@ export async function attachActivityNames(payload: { items?: unknown[] }, ctx: C
   const items = (payload.items ?? []) as ActivityListItem[]
   const scope = trustedScope(ctx)
   if (items.length === 0 || !scope) return
-  const names = await nameMaps(ctx.container, scope, {
-    groupIds: items.flatMap((item) => (item.groupId ? [item.groupId] : [])),
-    sectionIds: items.flatMap((item) => (item.sectionId ? [item.sectionId] : [])),
-    placeIds: items.flatMap((item) => (item.placeId ? [item.placeId] : [])),
-    personIds: items.flatMap((item) => (item.coachPersonId ? [item.coachPersonId] : [])),
-  })
+  const [names, clubEvents] = await Promise.all([
+    nameMaps(ctx.container, scope, {
+      groupIds: items.flatMap((item) => (item.groupId ? [item.groupId] : [])),
+      sectionIds: items.flatMap((item) => (item.sectionId ? [item.sectionId] : [])),
+      placeIds: items.flatMap((item) => (item.placeId ? [item.placeId] : [])),
+      personIds: items.flatMap((item) => (item.coachPersonId ? [item.coachPersonId] : [])),
+    }),
+    clubEventRefs(
+      ctx.container,
+      scope,
+      items.flatMap((item) => (item.clubEventId ? [item.id] : [])),
+    ),
+  ])
   for (const item of items) {
+    item.clubEvent = clubEvents.get(item.id) ?? null
     item.groupName = item.groupId ? (names.groups.get(item.groupId) ?? null) : null
     item.groupKind = item.groupId ? (names.groupKinds.get(item.groupId) ?? null) : null
     item.sectionName = item.sectionId ? (names.sections.get(item.sectionId) ?? null) : null
@@ -355,6 +366,9 @@ export const activityListItemSchema = z.object({
     .describe(
       'The club event this one-off activity is a part of (club events spec DD-T01); null for any other activity.',
     ),
+  clubEvent: clubEventRefSchema
+    .optional()
+    .describe('The club event this activity is a part of, with its name (#378); null for any other activity.'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })

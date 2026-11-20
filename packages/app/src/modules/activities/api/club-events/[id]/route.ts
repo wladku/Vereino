@@ -12,7 +12,12 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { clubEventTarget } from '../../../services/club-event-scope'
-import { clubEventDerived, clubEventPartViews, findClubEvent } from '../../../services/club-events'
+import {
+  clubEventDerived,
+  clubEventPartViews,
+  clubEventPublicPathOf,
+  findClubEvent,
+} from '../../../services/club-events'
 import { attendanceSettings } from '../../../services/directory'
 import { CLUB_EVENT_READ_KINDS, CLUB_EVENT_READ_OPTIONS, clubEventListItemSchema } from '../../club-event-shared'
 import { errorSchema } from '../../shared'
@@ -48,7 +53,13 @@ const partSchema = z.object({
   updatedAt: z.string().describe('The part’s lock token.'),
 })
 
-const responseSchema = clubEventListItemSchema.extend({ parts: z.array(partSchema) })
+const responseSchema = clubEventListItemSchema.extend({
+  publicPath: z
+    .string()
+    .nullable()
+    .describe('The path of the tournament page while the event is published and the club page is public; else null.'),
+  parts: z.array(partSchema),
+})
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
@@ -61,9 +72,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const grants = await scopeContract.resolve(ctx)
     await assertInScope(grants, CLUB_EVENT_READ_KINDS, clubEventTarget(row), CLUB_EVENT_READ_OPTIONS)
     const { timeZone } = await attendanceSettings(ctx.container, scope)
-    const [derived, parts] = await Promise.all([
+    const [derived, parts, publicPath] = await Promise.all([
       clubEventDerived(ctx.container, scope, grants, [row], timeZone),
       clubEventPartViews(ctx.container, scope, row.id),
+      clubEventPublicPathOf(ctx.container, scope, row),
     ])
     return Response.json({
       id: row.id,
@@ -80,6 +92,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       ...derived.get(row.id),
+      publicPath,
       parts,
     })
   } catch (error: unknown) {

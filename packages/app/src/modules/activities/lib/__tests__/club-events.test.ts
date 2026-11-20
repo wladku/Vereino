@@ -6,10 +6,13 @@ import {
   clubEventPublicPath,
   futurePlannedSessions,
   isClubEventSlug,
+  minutesBefore,
   openPartProblem,
+  partActions,
   partCopyPrefill,
   partKind,
   partSectionProblem,
+  partsByDay,
   partsLimitReached,
   proposeClubEventSlug,
   sectionChangeProblem,
@@ -150,5 +153,73 @@ describe('partCopyPrefill', () => {
       groupId: null,
     })
     expect(prefill.visitingTeamIds).not.toBe(teams)
+  })
+})
+
+// #378: the panel's Parts tab.
+describe('partsByDay', () => {
+  it('groups the parts by day in date order, keeping their order inside a day', () => {
+    const parts = [
+      { id: 'b', day: '2026-11-22' },
+      { id: 'a', day: '2026-11-21' },
+      { id: 'c', day: '2026-11-21' },
+      { id: 'x', day: '' },
+      { id: 'd', day: '2026-11-28' },
+    ]
+    expect(partsByDay(parts, (part) => part.day)).toEqual([
+      { date: '2026-11-21', parts: [parts[1], parts[2]] },
+      { date: '2026-11-22', parts: [parts[0]] },
+      { date: '2026-11-28', parts: [parts[4]] },
+      { date: '', parts: [parts[3]] },
+    ])
+  })
+
+  it('puts a part without a day last even when it comes first', () => {
+    const parts = [{ day: '' }, { day: '2026-11-21' }]
+    expect(partsByDay(parts, (part) => part.day).map((day) => day.date)).toEqual(['2026-11-21', ''])
+  })
+
+  it('answers no day for no part', () => {
+    expect(partsByDay([], () => '2026-11-21')).toEqual([])
+  })
+})
+
+describe('partActions', () => {
+  const managed = { mayManage: true, status: 'planned' }
+
+  it('offers every action on a planned part with a group, and no Move on an open part', () => {
+    expect(partActions({ kind: 'group', status: 'planned' }, managed)).toEqual([
+      'edit',
+      'copy',
+      'move',
+      'cancel',
+      'remove',
+    ])
+    expect(partActions({ kind: 'open', status: 'planned' }, managed)).toEqual(['edit', 'copy', 'cancel', 'remove'])
+  })
+
+  it('offers Copy on a cancelled or done part, and Remove on a cancelled open part', () => {
+    expect(partActions({ kind: 'group', status: 'cancelled' }, managed)).toEqual(['copy'])
+    expect(partActions({ kind: 'group', status: 'done' }, managed)).toEqual(['copy'])
+    expect(partActions({ kind: 'open', status: 'cancelled' }, managed)).toEqual(['copy', 'remove'])
+  })
+
+  it('offers nothing to a reader who does not manage the event, or on a cancelled event', () => {
+    expect(partActions({ kind: 'group', status: 'planned' }, { mayManage: false, status: 'planned' })).toEqual([])
+    expect(partActions({ kind: 'group', status: 'planned' }, { mayManage: true, status: 'cancelled' })).toEqual([])
+  })
+})
+
+describe('minutesBefore', () => {
+  it('answers the whole minutes between an earlier instant and the start', () => {
+    expect(minutesBefore('2026-11-21T08:30:00.000Z', '2026-11-21T09:00:00.000Z')).toBe(30)
+    expect(minutesBefore('2026-11-21T09:00:00.000Z', '2026-11-21T09:00:00.000Z')).toBe(0)
+  })
+
+  it('answers null without both instants, for an invalid one, or when the first is after the start', () => {
+    expect(minutesBefore(null, '2026-11-21T09:00:00.000Z')).toBeNull()
+    expect(minutesBefore('2026-11-21T09:00:00.000Z', undefined)).toBeNull()
+    expect(minutesBefore('nope', '2026-11-21T09:00:00.000Z')).toBeNull()
+    expect(minutesBefore('2026-11-21T10:00:00.000Z', '2026-11-21T09:00:00.000Z')).toBeNull()
   })
 })
