@@ -37,5 +37,9 @@ export async function publicPlacesMetadata(clubSlug: string): Promise<Metadata |
     club: club.name,
   })
   // Absolute: the club names the tab, so the root layout's "{page} — Vereino" template must not apply (#485).
-  return { title: { absolute: title }, description, openGraph: { title, description, siteName: club.name, type: 'website' } }
+  return {
+    title: { absolute: title },
+    description,
+    openGraph: { title, description, siteName: club.name, type: 'website' },
+  }
 }

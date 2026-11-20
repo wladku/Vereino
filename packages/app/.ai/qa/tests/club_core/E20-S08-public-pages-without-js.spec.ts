@@ -172,18 +172,24 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
     const page = await context.newPage()
     await page.goto(`/p/e20s08-missing-${uniqueSuffix()}`)
     await expect(page.getByTestId('public-not-found')).toBeVisible()
-    await expect(page).toHaveTitle(`${uiTextIn('en', 'club_core.public.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`)
+    await expect(page).toHaveTitle(
+      `${uiTextIn('en', 'club_core.public.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`,
+    )
     // No Open Graph title: the route's own metadata only (a count, so nothing waits for a tag that never comes).
     await expect(page.locator('meta[property="og:title"]')).toHaveCount(0)
     expect((await putSettings(request, admin, { publication: { enabled: false } })).status).toBe(200)
     await page.goto(`/p/${slug}`)
     await expect(page.getByTestId('public-disabled')).toBeVisible()
     await expect(page.getByText(clubName)).toHaveCount(0)
-    await expect(page).toHaveTitle(`${uiTextIn('en', 'club_core.public.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`)
+    await expect(page).toHaveTitle(
+      `${uiTextIn('en', 'club_core.public.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`,
+    )
     await page.goto(`/p/${slug}/events/${eventSlug}`)
     await expect(page.getByTestId('public-club-event-not-found')).toBeVisible()
     await expect(page.getByText('PUCHAR BEZ SKRYPTU 2026')).toHaveCount(0)
-    await expect(page).toHaveTitle(`${uiTextIn('en', 'club_core.public.clubEvent.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`)
+    await expect(page).toHaveTitle(
+      `${uiTextIn('en', 'club_core.public.clubEvent.pageTitle')} — ${uiTextIn('en', 'app.metadata.title')}`,
+    )
   } finally {
     for (const context of contexts) await context.close()
     await club.cleanup()
