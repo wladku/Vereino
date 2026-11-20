@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page, type TestInfo } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { createUserFixture } from '@open-mercato/core/helpers/integration/authFixtures'
 import { createActivity } from '../_fixtures/activities'
@@ -10,7 +10,7 @@ import { createGroup, signedInStaff } from '../_fixtures/groups'
 import { setUserFeatures } from '../_fixtures/members'
 import { postCampaign } from '../_fixtures/orders'
 import { importStatement } from '../_fixtures/payments'
-import { uiText } from '../_fixtures/ui-text'
+import { uiText, uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-N04 (navigation spec phase 6, REQ-N03, REQ-N04, AC-N03, AC-N04, DD-N05; issue #260; mockup `backendShell`,
 // `screenDashboard`). One session of the academy without a coach in the next days, two unmatched bank transfers, one
@@ -24,6 +24,9 @@ import { uiText } from '../_fixtures/ui-text'
 // - Greeting and link: the administrator linked to a person is greeted by first name with today's date, and "Member
 //   interface" links to `/club` (also in the "More" menu under 768 px); an account linked to no person gets the
 //   greeting without a name and no link. axe at 1280 px in English and Polish, light and dark.
+// - Tiles (#484, E20-S05): the greeting is the only page heading, and every tile title and description of the
+//   administrator's layout is in the page's locale — Polish and English at 1280 and 375 px,
+//   with light and dark screenshots of each.
 test.describe.configure({ timeout: 420_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -45,6 +48,63 @@ function sessionsQuery(): string {
     from: calendarDate(),
     to: calendarDate(14),
   }).toString()
+}
+
+/** The administrator's layout (role table of the spec): every Vereino widget built so far, no platform widget. */
+const ADMIN_WIDGETS = [
+  'activities.dashboard.sessionsNeedingCoach',
+  'activities.dashboard.unsettledSessions',
+  'facilities.dashboard.requestsAwaitingApproval',
+  'facilities.dashboard.todayAtFacility',
+  'payments.dashboard.bank',
+  'payments.dashboard.orderCampaigns',
+  'payments.dashboard.overdue',
+  'payments.dashboard.withoutPayer',
+  'people.dashboard.departureRequests',
+  'people.dashboard.peopleNeedingAttention',
+  'people.dashboard.sectionsWithoutCoordinator',
+]
+
+/** A tile's title or description in one locale, by the first catalog key `DashboardScreen` resolves (#484). */
+function tileText(locale: 'en' | 'pl', widgetId: string, field: 'title' | 'description'): string {
+  const parts = widgetId.split('.')
+  const last = parts.pop() ?? widgetId
+  const keys = [`${parts.join('.')}.widgets.${last}.${field}`, `${widgetId}.${field}`]
+  for (const key of keys) {
+    try {
+      return uiTextIn(locale, key)
+    } catch {
+      // not this form of the key; try the next one
+    }
+  }
+  throw new Error(`tileText: no ${locale} ${field} for ${widgetId}`)
+}
+
+/** #484: one heading above the tiles (the greeting), and every tile title and description in the page's locale. */
+async function expectTileTexts(page: Page, locale: 'en' | 'pl', greeting: string) {
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText([greeting])
+  const dashboard = page.getByTestId('backend-dashboard')
+  for (const widgetId of ADMIN_WIDGETS) {
+    for (const field of ['title', 'description'] as const) {
+      await expect(
+        dashboard.getByText(tileText(locale, widgetId, field), { exact: true }).first(),
+        widgetId,
+      ).toBeVisible()
+    }
+  }
+}
+
+/**
+ * #484 browser evidence: full-page screenshots of B-01 in the light and the dark scheme. Like `scanInColorSchemes`,
+ * each scheme reloads the page (the theme is read on load) and waits for the tile texts before the shot.
+ */
+async function shootInColorSchemes(page: Page, testInfo: TestInfo, locale: 'en' | 'pl', name: string) {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await page.reload()
+    await expectTileTexts(page, locale, uiTextIn(locale, 'vereino.dashboard.greeting').replace('{name}', 'Ada'))
+    await page.screenshot({ path: testInfo.outputPath(`${name}-${colorScheme}.png`), fullPage: true })
+  }
 }
 
 type LayoutBody = { layout?: { items?: { widgetId: string }[] } }
@@ -173,19 +233,7 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
     const adminWidgets = await layoutWidgets(request, admin)
     // The administrator: widgets 1, 2, 4, 5, 7, 8 and 9 of the role table built so far, bank and campaigns (3, 6), and
     // the departure requests of `people` (#121) and its "People needing attention" (row 11, #310); no platform widget.
-    expect(adminWidgets).toEqual([
-      'activities.dashboard.sessionsNeedingCoach',
-      'activities.dashboard.unsettledSessions',
-      'facilities.dashboard.requestsAwaitingApproval',
-      'facilities.dashboard.todayAtFacility',
-      'payments.dashboard.bank',
-      'payments.dashboard.orderCampaigns',
-      'payments.dashboard.overdue',
-      'payments.dashboard.withoutPayer',
-      'people.dashboard.departureRequests',
-      'people.dashboard.peopleNeedingAttention',
-      'people.dashboard.sectionsWithoutCoordinator',
-    ])
+    expect(adminWidgets).toEqual(ADMIN_WIDGETS)
     for (const coordinator of [krystyna, marek]) {
       expect(await layoutWidgets(request, coordinator.token)).toEqual([
         'activities.dashboard.sessionsNeedingCoach',
@@ -285,6 +333,8 @@ test('TEST-N04 UI: menu counts, the dashboard of each role, the greeting and the
     const violations: Record<string, unknown> = {}
     for (const locale of ['pl', 'en'] as const) {
       await setLocale(page, locale)
+      await page.goto('/backend')
+      await expectTileTexts(page, locale, uiTextIn(locale, 'vereino.dashboard.greeting').replace('{name}', 'Ada'))
       Object.assign(
         violations,
         await scanInColorSchemes(
@@ -300,13 +350,18 @@ test('TEST-N04 UI: menu counts, the dashboard of each role, the greeting and the
           { platformBaseline: true },
         ),
       )
-      await page.screenshot({ path: testInfo.outputPath(`b01-admin-${locale}.png`), fullPage: true })
+      await shootInColorSchemes(page, testInfo, locale, `b01-admin-${locale}-1280`)
     }
     expect(violations).toEqual({})
 
     // Under 768 px the link moves into the top bar's "More" menu.
     await page.setViewportSize({ width: 375, height: 800 })
-    await page.goto('/backend')
+    for (const locale of ['pl', 'en'] as const) {
+      await setLocale(page, locale)
+      await page.goto('/backend')
+      await expectTileTexts(page, locale, uiTextIn(locale, 'vereino.dashboard.greeting').replace('{name}', 'Ada'))
+      await shootInColorSchemes(page, testInfo, locale, `b01-admin-${locale}-375`)
+    }
     await page.getByRole('button', { name: uiText('appShell.moreActions', { exact: true }) }).click()
     await expect(
       page.getByRole('link', { name: uiText('vereino.backend.memberInterface', { exact: true }) }),

@@ -762,6 +762,18 @@ TODO: Fix that latter to have reference by the package names
   min-height: 0;
 }
 
+/* B-01 (#484): one heading above the tiles. The greeting (`BackendGreeting`) is the page heading, so the platform
+   `DashboardScreen` title block ("Dashboard" and its subtitle) is hidden and its Customize button stays on the right.
+   The selectors follow `ui/backend/dashboard/DashboardScreen.tsx` (root `div.space-y-6` > header row > title block);
+   TEST-N04 checks that exactly one level-1 heading shows — check this rule when an upgrade changes that markup. */
+.vereino-dashboard > .space-y-6 > :first-child {
+  justify-content: flex-end;
+}
+
+.vereino-dashboard > .space-y-6 > :first-child > :first-child {
+  display: none;
+}
+
 .schedule-calendar .rbc-calendar {
   height: 40rem;
   font-family: var(--font-sans);
