@@ -8,11 +8,13 @@ import { publicGet, publish, putSectionPublic, putSettings } from '../_fixtures/
 import { uiTextIn } from '../_fixtures/ui-text'
 
 // E20-S08 (#487): the public club pages are rendered on the server. With JavaScript off, a guest at 375 px and on
-// desktop, in Polish and English, light and dark, sees on P-01 the club's name, description and section tile, on P-02
-// the section, on P-03 the club's facility, on P-06 the published tournament and on P-T1 the tournament with its part;
-// each page's title is "{club} — {page}" (P-T1: the club and the event), with the same Open Graph title and a public
-// description. A club that does not publish its page, and a slug of no club, answer the same notices as before, under
-// the route's own title. The HTML the server sends (what a link preview reads) already holds the club and event names.
+// desktop, in Polish and English, sees on P-01 the club's name, description and section tile, on P-02 the section, on
+// P-03 the club's facility, on P-06 the published tournament and on P-T1 the tournament with its part; each page's
+// title is "{club} — {page}" (P-T1: the club and the event), with the same Open Graph title and a public description.
+// Without JavaScript the theme script does not run, so those pages are light; with JavaScript, in the dark scheme, the
+// same pages hydrate from the server's state and show the same content. A club that does not publish its page, and a
+// slug of no club, answer the same notices as before, under the route's own title. The HTML the server sends (what a
+// link preview reads) already holds the club and event names.
 test.describe.configure({ timeout: 600_000 })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
@@ -22,8 +24,19 @@ const VIEWPORTS = [
   { name: 'desktop', size: { width: 1440, height: 900 } },
 ] as const
 
-async function noScriptContext(browser: Browser, locale: 'pl' | 'en', viewport: { width: number; height: number }) {
-  const context = await browser.newContext({ baseURL: BASE_URL, javaScriptEnabled: false, viewport, locale })
+async function guestContext(
+  browser: Browser,
+  locale: 'pl' | 'en',
+  viewport: { width: number; height: number },
+  scripts: 'off' | 'dark' = 'off',
+) {
+  const context = await browser.newContext({
+    baseURL: BASE_URL,
+    javaScriptEnabled: scripts !== 'off',
+    colorScheme: scripts === 'dark' ? 'dark' : 'light',
+    viewport,
+    locale,
+  })
   await context.addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
   return context
 }
@@ -119,7 +132,7 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
         },
       ]
       for (const viewport of VIEWPORTS) {
-        const context = await noScriptContext(browser, locale, viewport.size)
+        const context = await guestContext(browser, locale, viewport.size)
         contexts.push(context)
         const page = await context.newPage()
         for (const entry of pages) {
@@ -130,20 +143,31 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
           await expect(page).toHaveTitle(entry.title)
           expect(await ogTitle(page)).toBe(entry.title)
           expect(await page.locator('meta[name="description"]').getAttribute('content')).toBe(entry.description)
-          for (const scheme of ['light', 'dark'] as const) {
-            await page.emulateMedia({ colorScheme: scheme })
-            await testInfo.attach(`${entry.id}-${locale}-${viewport.name}-${scheme}`, {
-              body: await page.screenshot({ fullPage: true }),
-              contentType: 'image/png',
-            })
+          await testInfo.attach(`${entry.id}-${locale}-${viewport.name}-no-js`, {
+            body: await page.screenshot({ fullPage: true }),
+            contentType: 'image/png',
+          })
+        }
+        // With JavaScript, dark: the page hydrates from the server's state (its browser query stays off).
+        const scripted = await guestContext(browser, locale, viewport.size, 'dark')
+        contexts.push(scripted)
+        const dark = await scripted.newPage()
+        for (const entry of pages) {
+          await dark.goto(entry.path)
+          for (const visible of entry.visible) {
+            await expect(dark.getByText(visible).first(), `${entry.id} ${locale} ${viewport.name} dark`).toBeVisible()
           }
-          await page.emulateMedia({ colorScheme: 'light' })
+          await expect(dark).toHaveTitle(entry.title)
+          await testInfo.attach(`${entry.id}-${locale}-${viewport.name}-dark`, {
+            body: await dark.screenshot({ fullPage: true }),
+            contentType: 'image/png',
+          })
         }
       }
     }
 
     // Negative: a slug of no club, and a club that stops publishing its page — the notices of before, untitled.
-    const context = await noScriptContext(browser, 'en', VIEWPORTS[1].size)
+    const context = await guestContext(browser, 'en', VIEWPORTS[1].size)
     contexts.push(context)
     const page = await context.newPage()
     await page.goto(`/p/e20s08-missing-${uniqueSuffix()}`)

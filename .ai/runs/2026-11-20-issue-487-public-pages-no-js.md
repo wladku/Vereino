@@ -67,10 +67,20 @@
   - run 2: `getByTestId('public-disabled')` not found after `publication.enabled = false` — the stale page described
     under Decisions (reproduced against a live app: API 404, page HTML still the club page); fixed in the views.
   - run 3: `1 passed (39.0s)`.
-- Regression runs of the existing public page tests and the full `yarn verify`: see the PR.
+  - run 4 (after merging `origin/main`, fresh build): `1 passed (38.2s)`; its light and dark screenshots were
+    byte-identical — without JavaScript the theme script does not run, so the no-JS pages are light. The test now takes
+    the no-JS screenshots once and adds a JavaScript-enabled dark pass over the same pages (hydration from the server's
+    state with the browser query off): run 5 `1 passed (41.5s)`, 40 screenshots (5 pages × 2 locales × 2 widths ×
+    no-JS/dark).
+- Regression, same build (`--no-build`): `E02-S05` 3 passed, `TEST-N14` 1 passed, `TEST-T14` 1 passed, `TEST-R16`
+  1 passed, `TEST-037` 2 passed.
+- `yarn verify` (after merging `origin/main`): `all 18 step(s) passed`.
+- The server log line `Error: The destination stream closed early.` appears once in run 5 and three times in the
+  unchanged `TEST-T14` run: a navigation that leaves a streamed response early, not a failure.
 
 ## Open problems / next steps
 
+- The language select in the public header shows no value without JavaScript (a client widget); outside #487.
 - Report the module-level `QueryClient` of `@open-mercato/ui` `QueryProvider` (shared across server requests) upstream.
 - P-04 (facility calendar) and the session page `/p/[clubSlug]/s/[occurrenceId]` still render on the client; they were
   outside the issue's list.
