@@ -19,7 +19,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
@@ -28,7 +27,7 @@ import {
 } from '@open-mercato/shared/modules/payment_gateways/client'
 import type { EmbeddedPaymentGatewayClientSession } from '@open-mercato/shared/modules/payment_gateways/types'
 import { formatBankAccount } from '@vereino/core'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { formatZloty } from '../../lib/charge-ledger'
 import { CLUB_PAYMENTS_HREF, PaymentsClubFrame } from './PaymentsClubFrame'
 
@@ -175,9 +174,9 @@ function ChargeRow({
         ) : null}
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{formatZloty(charge.remaining)}</span>
-          {charge.overdue ? <StatusBadge variant="error">{t('payments.club.charges.overdue')}</StatusBadge> : null}
+          {charge.overdue ? <StatusTag status="error">{t('payments.club.charges.overdue')}</StatusTag> : null}
           {charge.status === 'partially_paid' ? (
-            <StatusBadge variant="warning">{t('payments.club.charges.status.partially_paid')}</StatusBadge>
+            <StatusTag status="warning">{t('payments.club.charges.status.partially_paid')}</StatusTag>
           ) : null}
         </span>
         {hint ? (
@@ -251,9 +250,9 @@ function CampaignCard() {
     >
       <span className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold break-words">{campaign.name}</span>
-        <StatusBadge variant="info">
+        <StatusTag status="info">
           {t('payments.club.campaign.until', { date: formatDate(campaign.closesOn, locale, true) })}
-        </StatusBadge>
+        </StatusTag>
       </span>
       <span className="text-muted-foreground text-sm">
         {t(toOrder ? 'payments.club.campaign.orderForChild' : 'payments.club.campaign.seeOrders')}
@@ -550,7 +549,7 @@ function Payments() {
                 </span>
                 <span className="flex items-center gap-2">
                   <span>{formatZloty(charge.amountDue)}</span>
-                  <StatusBadge variant="success">{t('payments.club.charges.status.paid')}</StatusBadge>
+                  <StatusTag status="success">{t('payments.club.charges.status.paid')}</StatusTag>
                 </span>
               </li>
             ))}

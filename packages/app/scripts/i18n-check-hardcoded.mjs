@@ -174,6 +174,12 @@ async function strictFindings(findings) {
   return findings.filter((finding) => prefixes.some((prefix) => finding.file.startsWith(prefix)))
 }
 
+async function widgetTitleFindings() {
+  const { APP_ROOT, readVereinoModuleIds } = await import('./vereino-paths.mjs')
+  const { checkWidgetTitles, formatWidgetTitleFinding } = await import('./vereino-widget-titles.mjs')
+  return checkWidgetTitles(APP_ROOT, readVereinoModuleIds()).map(formatWidgetTitleFinding)
+}
+
 async function runCli() {
   const json = process.argv.slice(2).includes('--json')
   const strict = process.argv.slice(2).includes('--strict')
@@ -194,7 +200,14 @@ async function runCli() {
   if (blocking.length > 0) {
     process.stderr.write(`[i18n:check-hardcoded] --strict: ${blocking.length} findings in Vereino modules must be translated or allowlisted with a reason.\n`)
   }
-  process.exitCode = result.errors.length > 0 || blocking.length > 0 ? 1 : 0
+  // Vereino local patch (#484): every dashboard widget of a Vereino module has its title and description in each
+  // catalog of the module; otherwise the platform dashboard shows the literal `metadata.title`.
+  const widgetTitles = strict ? await widgetTitleFindings() : []
+  for (const line of widgetTitles) process.stderr.write(`${line}\n`)
+  if (widgetTitles.length > 0) {
+    process.stderr.write(`[i18n:check-hardcoded] --strict: ${widgetTitles.length} dashboard widget titles or descriptions lack catalog keys.\n`)
+  }
+  process.exitCode = result.errors.length > 0 || blocking.length > 0 || widgetTitles.length > 0 ? 1 : 0
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await runCli()

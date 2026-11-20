@@ -22,7 +22,6 @@ import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/in
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CORRECTABLE_RENTAL_STATUSES } from '../lib/rental-record'
 import { UNPAID_EXPIRY_REASON } from '../lib/rentals'
@@ -49,6 +48,7 @@ import {
   type RentalCorrection,
   type RentalRow,
 } from './rentals-client'
+import { StatusTag } from '@vereino/ui'
 
 type RentalLoad = { status: 'ok'; rental: RentalRow } | { status: 'not_found' } | { status: 'denied' }
 
@@ -384,9 +384,9 @@ export function RentalRecord({ id, variant = 'panel' }: { id: string; variant?: 
             </Fact>
             <Fact label={t('facilities.rentals.record.fields.payee')}>{payeeLabel(t, rental.payee)}</Fact>
             <Fact label={t('facilities.rentals.record.fields.chargeState')} testId="facilities-rental-record-charge">
-              <StatusBadge variant={chargeStateVariant(rental.chargeState)}>
+              <StatusTag status={chargeStateVariant(rental.chargeState)}>
                 {t(`facilities.rentals.chargeState.${rental.chargeState}`)}
-              </StatusBadge>
+              </StatusTag>
             </Fact>
           </Section>
           <Section title={t('facilities.rentals.record.sections.history')} testId="facilities-rental-record-history">

@@ -14,7 +14,6 @@ import { AccessDeniedMessage, ErrorMessage } from '@open-mercato/ui/backend/deta
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { ListEmptyState } from './FacilitiesControls'
@@ -31,6 +30,7 @@ import {
   useRequestQueuePages,
   type RequestQueueItem,
 } from './requests-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 25
 
@@ -90,9 +90,9 @@ function RequestCard({
           </p>
         </div>
         <span className="flex flex-col items-end gap-0.5 text-end" data-testid={`facilities-request-expiry-${item.id}`}>
-          <StatusBadge variant="warning">
+          <StatusTag status="warning">
             {t('facilities.requests.card.expires', { at: expiresAtLabel(item.holdExpiresAt, timeZone, locale) })}
-          </StatusBadge>
+          </StatusTag>
           <span className="text-muted-foreground text-xs tabular-nums">
             {t('facilities.requests.card.timeLeft', { left: expiryLabel(t, item.holdExpiresAt, now) })}
           </span>
@@ -145,24 +145,24 @@ function RequestCard({
       <ul className="flex flex-wrap gap-2" aria-label={t('facilities.requests.card.checks')}>
         {item.conflicts.length === 0 ? (
           <li data-testid={`facilities-request-no-conflict-${item.id}`}>
-            <StatusBadge variant="success">{t('facilities.requests.card.noConflict')}</StatusBadge>
+            <StatusTag status="success">{t('facilities.requests.card.noConflict')}</StatusTag>
           </li>
         ) : null}
         <li data-testid={`facilities-request-ban-${item.id}`}>
           {item.entryBanMatch ? (
-            <StatusBadge variant="error">{t('facilities.requests.card.banMatch')}</StatusBadge>
+            <StatusTag status="error">{t('facilities.requests.card.banMatch')}</StatusTag>
           ) : (
-            <StatusBadge variant="success">{t('facilities.requests.card.noBan')}</StatusBadge>
+            <StatusTag status="success">{t('facilities.requests.card.noBan')}</StatusTag>
           )}
         </li>
         {item.regulationsAcceptedAt ? (
           <li data-testid={`facilities-request-rules-${item.id}`}>
-            <StatusBadge variant="neutral">{t('facilities.requests.card.rulesAccepted')}</StatusBadge>
+            <StatusTag status="neutral">{t('facilities.requests.card.rulesAccepted')}</StatusTag>
           </li>
         ) : null}
         {item.emailVerifiedAt ? (
           <li data-testid={`facilities-request-email-${item.id}`}>
-            <StatusBadge variant="neutral">{t('facilities.requests.card.emailConfirmed')}</StatusBadge>
+            <StatusTag status="neutral">{t('facilities.requests.card.emailConfirmed')}</StatusTag>
           </li>
         ) : null}
       </ul>

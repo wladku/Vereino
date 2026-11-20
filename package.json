@@ -62,6 +62,7 @@
     "glossary:check": "yarn workspace @vereino/app glossary:check",
     "qa-texts:check": "yarn workspace @vereino/app qa-texts:check",
     "di-commands:check": "yarn workspace @vereino/app di-commands:check",
+    "test:backup": "yarn workspace @vereino/app test:backup",
     "test:scripts": "yarn workspace @vereino/app test:scripts"
   },
   "resolutions": {

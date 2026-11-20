@@ -14,7 +14,6 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz } from '../client-helpers'
@@ -28,7 +27,7 @@ import {
   type CashPayer,
   type CashRecorded,
 } from './cash-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function wardsLabel(payer: CashPayer): string {
   return payer.wards.map((ward) => personName(ward)).join(', ')
@@ -217,7 +216,7 @@ export function CashAcceptForm({
                 <button
                   type="button"
                   data-testid="cash-payer-option"
-                  className="hover:bg-muted focus-visible:ring-ring flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left focus-visible:ring-2 focus-visible:outline-none"
+                  className="hover:bg-muted focus-visible:focus-indicator flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left"
                   onClick={() => {
                     setChosen(item)
                     setToggled([])
@@ -329,7 +328,7 @@ export function CashAcceptForm({
                     {item.remaining < item.amountDue ? (
                       <span>{t('payments.cash.ofAmount', { amount: formatMoney(item.amountDue, locale) })}</span>
                     ) : null}
-                    {item.overdue ? <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge> : null}
+                    {item.overdue ? <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag> : null}
                   </span>
                 </Label>
               </div>

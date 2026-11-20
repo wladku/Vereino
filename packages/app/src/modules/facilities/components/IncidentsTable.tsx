@@ -19,21 +19,14 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { browserTimeZone, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { INCIDENT_ACTIONS, INCIDENT_KINDS, INCIDENT_PHOTOS_MAX, type IncidentAction } from '../lib/incidents'
 import { ActionChoices, IncidentDialog, type DialogOutcome } from './club-facility/FacilityDialogs'
 import { BanDialog, type BanPrefill } from './BansTable'
@@ -133,7 +126,7 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
         <span className="flex flex-col items-start gap-1">
           <span>{actionsLabel(t, row.original.actionTaken)}</span>
           {row.original.banIssued ? (
-            <StatusBadge variant="success">{t('facilities.records.incidents.banIssued')}</StatusBadge>
+            <StatusTag status="success">{t('facilities.records.incidents.banIssued')}</StatusTag>
           ) : null}
         </span>
       ),

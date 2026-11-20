@@ -22,9 +22,9 @@ export function BackendGreeting() {
       {loading ? (
         <div className="bg-muted h-8 w-64 animate-pulse rounded-md" aria-hidden="true" />
       ) : (
-        <p className="text-2xl font-semibold tracking-tight" data-testid="backend-greeting-title">
+        <h1 className="text-2xl font-semibold tracking-tight" data-testid="backend-greeting-title">
           {person ? t('vereino.dashboard.greeting', { name: person.firstName }) : t('vereino.dashboard.greetingNoName')}
-        </p>
+        </h1>
       )}
       <p className="text-muted-foreground text-sm" data-testid="backend-greeting-subtitle">
         {t('vereino.dashboard.subtitle', { date })}

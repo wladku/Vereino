@@ -66,7 +66,7 @@ export type PickerSelectViewProps = Omit<PickerSelectProps, 'onChange' | 'loadOp
 }
 
 const SELECT_CLASS_NAME =
-  'border-input bg-background focus-visible:shadow-focus min-h-11 w-full rounded-md border px-3 text-sm outline-none disabled:cursor-not-allowed'
+  'border-input bg-background focus-visible:focus-indicator min-h-11 w-full rounded-md border px-3 text-sm outline-none disabled:cursor-not-allowed'
 
 /** The stateless view of one state of the field. */
 export function PickerSelectView({

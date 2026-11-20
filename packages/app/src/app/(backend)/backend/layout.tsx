@@ -126,7 +126,7 @@ export default async function BackendLayout({
 
   const collapsedCookie = cookieStore.get('om_sidebar_collapsed')?.value
   const initialCollapsed = collapsedCookie === '1'
-  const demoModeEnabled = parseBooleanWithDefault(process.env.DEMO_MODE, true)
+  const demoModeEnabled = parseBooleanWithDefault(process.env.DEMO_MODE, false)
   const hideBackendFooter = parseBooleanWithDefault(process.env.OM_HIDE_BACKEND_FOOTER, false)
   const deployEnv = process.env.DEPLOY_ENV
   const grantedFeatures = Array.isArray(auth?.features)
@@ -136,7 +136,7 @@ export default async function BackendLayout({
     grantedFeatures,
     unrestricted: auth?.isSuperAdmin === true,
   })
-  const baseProductName = translate('appShell.productName', 'Open Mercato')
+  const baseProductName = translate('appShell.productName', 'Vereino')
   const productName =
     deployEnv && deployEnv !== 'local'
       ? `${baseProductName} (${deployEnv.charAt(0).toUpperCase() + deployEnv.slice(1)})`
@@ -165,7 +165,8 @@ export default async function BackendLayout({
     >
       <AppShell
         productName={productName}
-        logo={clubChrome.logo}
+        // Without a club logo the shell shows the neutral Vereino mark in `--primary` (#485), never the platform logo.
+        logo={clubChrome.logo ?? { src: '/vereino-mark.svg', alt: productName, preserveAspectRatio: true }}
         email={auth?.email}
         canManageUpgradeActions={canManageUpgradeActions}
         groups={[]}

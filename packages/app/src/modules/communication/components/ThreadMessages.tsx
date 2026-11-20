@@ -10,16 +10,16 @@
 // just closes the editor.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { FieldErrorMessage, fieldProblemProps, focusField } from '@vereino/ui'
 import { mayEditMessage } from '../lib/case-rules'
 import { formatDateTime, roleLabel, type ThreadMessageItem } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 const MESSAGE_MAX_LENGTH = 10000
 
 const TEXTAREA_CLASS =
-  'border-input bg-background focus-visible:shadow-focus min-h-24 w-full rounded-md border p-3 text-sm outline-none'
+  'border-input bg-background focus-visible:focus-indicator min-h-24 w-full rounded-md border p-3 text-sm outline-none'
 
 /** The inline editor of one's own message: the text, "Save" and "Cancel" (Escape cancels too). */
 function MessageEditor({
@@ -144,7 +144,7 @@ export function MessageList({
               <span data-testid="thread-message-edited">· {t('communication.message.edited')}</span>
             ) : null}
             {message.audience === 'staff' ? (
-              <StatusBadge variant="neutral">{t('communication.message.staffOnly')}</StatusBadge>
+              <StatusTag status="neutral">{t('communication.message.staffOnly')}</StatusTag>
             ) : null}
           </p>
           {message.deleted ? (
