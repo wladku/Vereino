@@ -253,17 +253,26 @@ export type ReminderCandidate = {
   lastRemindedOn: CalendarDate | null
 }
 
+/** One payer's reminder today: the charges the message lists, and those of them whose marker moves on. */
+export type ReminderBatch = {
+  /** Every overdue charge of the payer still below the cap, by due date, then id. */
+  listed: ReminderCandidate[]
+  /** The listed charges due a reminder today (`reminderDue`), in the same order; never empty. */
+  reminded: ReminderCandidate[]
+}
+
 /**
  * The reminders the job sends today, one per payer (DD-C09): a payer is reminded when at least one of their charges is
- * due a reminder (`reminderDue`), and the message lists every overdue charge of theirs that is still below the cap —
- * so all listed charges share one 7-day cadence afterwards. Rental charges (paid to the facility owner) and charges
- * without a payer are never reminded; a charge is overdue while `open` or `partially_paid` with something remaining
- * after its due date. Payers in id order, charges by due date, then id.
+ * due a reminder (`reminderDue`), and the message lists every overdue charge of theirs that is still below the cap.
+ * Only the charges due a reminder count it (#404): each charge keeps its own 7-day cadence and its own four
+ * reminders, however many other charges the message also lists. Rental charges (paid to the facility owner) and
+ * charges without a payer are never reminded; a charge is overdue while `open` or `partially_paid` with something
+ * remaining after its due date. Payers in id order, charges by due date, then id.
  */
 export function reminderBatches(
   charges: readonly ReminderCandidate[],
   today: CalendarDate,
-): Map<string, ReminderCandidate[]> {
+): Map<string, ReminderBatch> {
   const byPayer = new Map<string, ReminderCandidate[]>()
   for (const charge of charges) {
     const overdue =
@@ -275,14 +284,14 @@ export function reminderBatches(
     if (!overdue || !charge.payerPersonId) continue
     byPayer.set(charge.payerPersonId, [...(byPayer.get(charge.payerPersonId) ?? []), charge])
   }
-  const batches = new Map<string, ReminderCandidate[]>()
+  const batches = new Map<string, ReminderBatch>()
   for (const payer of [...byPayer.keys()].sort()) {
-    const listed = byPayer.get(payer) as ReminderCandidate[]
-    if (!listed.some((charge) => reminderDue(charge, today))) continue
-    batches.set(
-      payer,
-      [...listed].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id)),
+    const listed = [...(byPayer.get(payer) as ReminderCandidate[])].sort(
+      (a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id),
     )
+    const reminded = listed.filter((charge) => reminderDue(charge, today))
+    if (reminded.length === 0) continue
+    batches.set(payer, { listed, reminded })
   }
   return batches
 }
