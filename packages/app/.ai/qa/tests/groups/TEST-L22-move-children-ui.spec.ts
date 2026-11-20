@@ -37,7 +37,10 @@ async function chooseTarget(dialog: Locator, page: Page): Promise<void> {
 
 const FITS = uiText('groups.memberships.moveMany.fits.range', { params: { group: 'Skrzaty', from: 6, to: 7 } })
 
-test('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
+// Quarantined (https://github.com/wladku/Vereino/issues/433): the axe scan of the move dialog / phone sheet reports a
+// serious color-contrast violation in a different locale/theme combination on each CI run (runs 44646659366,
+// 44642262124, on unrelated PRs). Find the cause, fix the test or the UI, then turn this back into `test(`.
+test.fixme('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
   page,
   request,
 }, testInfo) => {
