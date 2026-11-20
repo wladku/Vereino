@@ -40,6 +40,7 @@ import {
 import { ownNotice, wardNotices, type OwnNotice, type WardNotice } from '../lib/life-cycle-rules'
 import {
   clubConsentTexts,
+  clubAccentOf,
   clubLogoUrl,
   clubSettings,
   clubToday,
@@ -117,7 +118,14 @@ export type MemberProfile = {
   /** The resolved interface locale of the member (DD-34). */
   locale: string
   /** Club content (`shortName`) stays in the club's language; dates show in the club's time zone. */
-  club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
+  club: {
+    shortName: string | null
+    defaultLocale: string
+    timezone: string
+    logoUrl: string | null
+    /** The club's colour and the text colour on it (#486); null uses the default. */
+    accent: { color: string; foreground: '#000000' | '#ffffff' } | null
+  }
   /** R10: false for a minor, a user without `payments.view_own` or without a person. */
   paymentsVisible: boolean
   /** An active participant membership today (spec N, REQ-N07); always false without `groups`. */
@@ -355,6 +363,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
       defaultLocale: settings.defaultLocale,
       timezone: settings.timezone,
       logoUrl: await clubLogoUrl(ctx.container, scope),
+      accent: await clubAccentOf(ctx.container, scope),
     },
     paymentsVisible: payments.access === 'allowed',
     isParticipant,

@@ -12,7 +12,7 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton, PublicHeader } from '@vereino/ui'
+import { MemberSkeleton, PublicHeader, ClubAccentRoot } from '@vereino/ui'
 import { phoneHref, type PublicPlacesView } from './public-client'
 
 type FrameClub = PublicPlacesView['club']
@@ -31,7 +31,7 @@ export function PublicFacilitiesFrame({
   const pathname = usePathname()
   const width = wide ? 'max-w-5xl' : 'max-w-3xl'
   return (
-    <div className="bg-background text-foreground min-h-svh">
+    <ClubAccentRoot accent={club?.accent} className="bg-background text-foreground min-h-svh">
       <PublicHeader
         club={club}
         title={t('facilities.public.title')}
@@ -101,7 +101,7 @@ export function PublicFacilitiesFrame({
           </div>
         </footer>
       ) : null}
-    </div>
+    </ClubAccentRoot>
   )
 }
 

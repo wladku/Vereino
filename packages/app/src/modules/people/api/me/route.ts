@@ -157,6 +157,12 @@ const memberProfileSchema = z.object({
     defaultLocale: z.string(),
     timezone: z.string(),
     logoUrl: z.string().nullable().describe('The club logo (#29); null shows the club name only'),
+    accent: z
+      .object({ color: z.string(), foreground: z.enum(['#000000', '#ffffff']) })
+      .nullable()
+      .describe(
+        "The club's colour (`#rrggbb`) of the member header bar and the text colour on it; null uses the default (#486)",
+      ),
   }),
   paymentsVisible: z.boolean().describe('False for a minor (R10) and without payments.view_own'),
   isParticipant: z.boolean().describe('An active participant membership today; false without the groups module'),

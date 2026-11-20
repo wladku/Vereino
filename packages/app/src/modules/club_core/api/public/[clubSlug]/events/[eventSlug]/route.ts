@@ -15,6 +15,7 @@ import {
   PUBLIC_RATE_LIMIT,
   jsonResponse,
   notOkResponse,
+  publicClubAccentSchema,
   publicClubLinksSchema,
   publicClubNavSchema,
   publicErrorSchema,
@@ -75,6 +76,7 @@ const clubEventPageSchema = z.object({
     logo: publicLogoSchema,
     contact: z.object({ phone: z.string() }).nullable().describe('Only with the `contact` block'),
     links: publicClubLinksSchema,
+    accent: publicClubAccentSchema,
     nav: publicClubNavSchema,
   }),
   event: z.object({

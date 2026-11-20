@@ -721,5 +721,8 @@
   "club_core.externalPlace.picked": "{name} selected",
   "club_core.externalPlace.errors.fields": "Enter a name of 2–160 characters and an address of 5–500 characters.",
   "club_core.externalPlace.errors.existsUnavailable": "This place is already on the list, but it is inactive or divided into parts, so it cannot be picked here. Ask the administrator.",
-  "club_core.externalPlace.errors.save": "The place could not be added. Try again."
+  "club_core.externalPlace.errors.save": "The place could not be added. Try again.",
+  "club_core.errors.accent_color_invalid": "Enter a colour as # and six hex digits, e.g. #1b8f3a",
+  "club_core.settings.fields.accentColor": "Club colour",
+  "club_core.settings.fields.accentColor.description": "A hex colour, e.g. #1b8f3a. It fills the header bar of the member app, the top of the public page and the logo box when there is no logo; text on it is black or white, whichever reads better. Leave empty for the default colour."
 }

@@ -33,7 +33,15 @@ const render = (props) =>
 
 test('the club: its initial and name linking to its page, the links in one labelled nav', () => {
   const html = render({ headerEnd: h('span', { id: 'switcher' }, 'PL') })
-  assert.match(html, /^<header class="bg-card border-b" data-testid="public-header">/)
+  assert.match(
+    html,
+    /^<header class="bg-card border-b" data-testid="public-header"><div aria-hidden="true" class="bg-club-accent h-1" data-testid="public-header-accent"><\/div>/,
+  )
+  // The initial sits on the club's colour (#486), never on grey.
+  assert.match(
+    html,
+    /<span aria-hidden="true" class="bg-club-accent text-club-accent-foreground [^"]*" data-testid="public-logo-initial"/,
+  )
   assert.match(html, /<div class="mx-auto flex max-w-3xl /)
   assert.match(
     html,
