@@ -9,10 +9,11 @@ export type BlockingViolation = { id: string; impact: string; nodes: number }
 
 type ScannedNode = { html: string; target: unknown[] }
 
-// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: the backend AppShell
-// sidebar has low-contrast group headings; the schedule family (`ScheduleView`, react-big-calendar) nests grid roles and
-// labels its date-range trigger differently from its text; `LookupSelect` points its search combobox at a listbox it has
-// not rendered yet; `StepIndicator` puts `aria-orientation` on its list.
+// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: the schedule family
+// (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text;
+// `LookupSelect` points its search combobox at a listbox it has not rendered yet; `StepIndicator` puts
+// `aria-orientation` on its list.
+// The AppShell sidebar's low-contrast group headings are fixed by a Vereino override in `globals.css` since #481.
 // `CrudForm` labels and select names, table search boxes, the AppShell breadcrumb and its brand and back links are no
 // longer listed: `PlatformA11yRepairs` (`@vereino/ui`, mounted in the backend layout) repairs them on the page (E20-S18,
 // #497), so a scan that finds them again fails.
@@ -23,13 +24,6 @@ const PLATFORM_BASELINE: {
   owner: string
   matches: (node: ScannedNode, page: Page) => boolean | Promise<boolean>
 }[] = [
-  {
-    rule: 'color-contrast',
-    owner: 'AppShell sidebar group heading',
-    // axe reports the shortest unique selector, which names `[data-sidebar-group]` for some headings only and changes
-    // when a module adds a sidebar group (#35), so the heading is matched by its ancestor in the page.
-    matches: (node, page) => insideSidebarGroup(node, page),
-  },
   {
     rule: 'label-content-name-mismatch',
     // The date-range trigger of the schedule family's `ScheduleToolbar` (`aria-label="Date range"` while its visible
@@ -59,16 +53,6 @@ const PLATFORM_BASELINE: {
     matches: (node) => node.html.includes('role="combobox"') && node.html.includes('aria-autocomplete="list"'),
   },
 ]
-
-// Whether a scanned node sits inside an AppShell sidebar group (`[data-sidebar-group]`) of the current page.
-async function insideSidebarGroup(node: ScannedNode, page: Page): Promise<boolean> {
-  if (node.target.length !== 1) return false
-  return page
-    .locator(`css=${String(node.target[0])}`)
-    .first()
-    .evaluate((element) => element.closest('[data-sidebar-group]') !== null)
-    .catch(() => false)
-}
 
 // Call before navigating: a scan taken during a CSS transition reports the half-faded colours as a
 // contrast violation (seen as a flaky `color-contrast` on the sign-in page).

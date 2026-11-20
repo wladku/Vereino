@@ -41,7 +41,7 @@ import { useCanPost } from './useCanPost'
 const PAGE_SIZE = 50
 
 const CONTROL_CLASS_NAME =
-  'border-input bg-background focus-visible:shadow-focus min-h-11 w-full rounded-md border px-3 text-sm outline-none'
+  'border-input bg-background focus-visible:focus-indicator min-h-11 w-full rounded-md border px-3 text-sm outline-none'
 
 function buildColumns(t: Translate, locale: string): DataTableProps<ThreadListItem>['columns'] {
   return [
