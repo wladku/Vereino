@@ -4,16 +4,23 @@ import { isActiveAt, type Validity } from '#src/validity'
 import type { CalendarDate } from '#src/calendar-date'
 
 /**
- * Phase 1 roles (foundation spec Q17), and the facility attendant `facility_operator` of phase 5 (#126; its assignment
- * names a place); `treasurer` arrives with phase 4. `member`, `payer` and `maintenance_planner` are derived roles,
- * never assigned: the last one (facilities spec DD-36, #128) carries only `facilities.maintenance.manage` and is held
- * while the person maintains at least one place.
+ * Phase 1 roles (foundation spec Q17), the facility attendant `facility_operator` of phase 5 (#126; its assignment
+ * names a place) and the treasurer `treasurer` of phase 4 (payments spec REQ-034, DD-33; #245). `member`, `payer` and
+ * `maintenance_planner` are derived roles, never assigned: the last one (facilities spec DD-36, #128) carries only
+ * `facilities.maintenance.manage` and is held while the person maintains at least one place.
  */
 export type VereinoRole =
-  'club_admin' | 'coordinator' | 'coach' | 'facility_operator' | 'member' | 'payer' | 'maintenance_planner'
+  | 'club_admin'
+  | 'coordinator'
+  | 'coach'
+  | 'facility_operator'
+  | 'treasurer'
+  | 'member'
+  | 'payer'
+  | 'maintenance_planner'
 
 /** Roles a `people_role_assignments` row can carry. */
-export type AssignableRole = 'club_admin' | 'coordinator' | 'coach' | 'facility_operator'
+export type AssignableRole = 'club_admin' | 'coordinator' | 'coach' | 'facility_operator' | 'treasurer'
 
 export const VEREINO_AUTH_ROLE_PREFIX = 'vereino_'
 
@@ -114,6 +121,24 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     implies: ['member'],
     requiresScope: 'place',
   },
+  treasurer: {
+    authRole: 'vereino_treasurer',
+    // The treasurer (payments spec REQ-034, DD-33; #245): the club's finances only — fee schedules and discounts,
+    // charges and overdue amounts, statement imports, cash and its handovers, order campaigns — and none of `people.*`,
+    // `groups.*`, `activities.*`, `club_core.manage` or `facilities.*`. The panel shows the dashboard and Finance only
+    // (owner approval of 2026-11-19 on #245); the coach units report and coach settlement stay the administrator's.
+    features: [
+      'payments.view',
+      'payments.manage',
+      'payments.bank.import',
+      'payments.cash.record',
+      'payments.cash.settle',
+      'payments.orders.manage',
+      'dashboards.view',
+    ],
+    implies: ['member'],
+    requiresScope: null,
+  },
   member: {
     authRole: 'vereino_member',
     features: ['people.self', 'activities.attendance.declare', 'communication.view'],
@@ -137,6 +162,7 @@ export const VEREINO_ROLES: readonly VereinoRole[] = [
   'coordinator',
   'coach',
   'facility_operator',
+  'treasurer',
   'member',
   'payer',
   'maintenance_planner',

@@ -25,6 +25,7 @@ import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES, payerDisplayName } from '
 import type { ChargeStatus } from '../lib/payments-rules'
 import { AcceptCashButton } from './AcceptCashButton'
 import { AssignPayerDialog } from './AssignPayerDialog'
+import { usePeopleRecordAccess } from './useRecordLinks'
 import { ChargeStatusBadge, OverdueBadge } from './ChargesTable'
 import { ReasonDialog } from './ReasonDialog'
 import { RecordPaymentDialog } from './RecordPaymentDialog'
@@ -77,6 +78,7 @@ function reversible(payment: PaymentRow): boolean {
 
 export function ChargeRecord({ id }: { id: string }) {
   const t = useT()
+  const linkPersons = usePeopleRecordAccess()
   const locale = useLocale()
   const queryClient = useQueryClient()
   const [recording, setRecording] = React.useState(false)
@@ -224,7 +226,7 @@ export function ChargeRecord({ id }: { id: string }) {
               >
                 {t('payments.assignPayer.action')}
               </Button>
-              {charge.personId ? (
+              {charge.personId && linkPersons ? (
                 <Link
                   href={personGuardianshipHref(charge.personId)}
                   className="text-sm underline underline-offset-2"

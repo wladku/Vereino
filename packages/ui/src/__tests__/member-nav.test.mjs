@@ -211,7 +211,7 @@ test('Groups is behind More for `groups.view` (a coordinator, a coach) and curre
 })
 
 test('offers the admin panel to a staff context only, never to a coach (E06-S15 #97)', () => {
-  for (const context of ['club_admin', 'coordinator', 'facility_operator']) {
+  for (const context of ['club_admin', 'coordinator', 'facility_operator', 'treasurer']) {
     assert.deepEqual(nav({ contexts: ['self', context] }).more.items.at(-1), {
       href: BACKEND_HREF,
       label: 't:people.club.nav.backend',
@@ -222,6 +222,7 @@ test('offers the admin panel to a staff context only, never to a coach (E06-S15 
   assert.equal(hasStaffContext(['self', 'coach']), false)
   assert.equal(hasStaffContext(['coach', 'coordinator']), true)
   assert.equal(hasStaffContext(['self', 'facility_operator']), true)
+  assert.equal(hasStaffContext(['self', 'treasurer']), true)
   assert.equal(moreOf(nav({ contexts: ['self', 'coach'], features: COACH })).includes(BACKEND_HREF), false)
 })
 

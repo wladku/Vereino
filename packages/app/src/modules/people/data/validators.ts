@@ -17,7 +17,7 @@ const notesSchema = z.string().max(4000)
 /** An identifier from an import file for a person without a PESEL (#28). */
 const externalIdSchema = z.string().trim().min(1).max(100)
 
-export const ASSIGNABLE_ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
+export const ASSIGNABLE_ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator', 'treasurer'] as const
 
 const personFields = {
   firstName: nameSchema,

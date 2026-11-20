@@ -41,6 +41,7 @@ describe('constants', () => {
       'coordinator',
       'coach',
       'facility_operator',
+      'treasurer',
       'guardian',
       'participant',
     ])
@@ -317,8 +318,16 @@ describe('personRoleBadges', () => {
     ])
   })
 
+  it('shows the treasurer after the attendant (#245)', () => {
+    expect(personRoleBadges({ roles: ['treasurer', 'club_admin'], hasWards: true })).toEqual([
+      'club_admin',
+      'treasurer',
+      'guardian',
+    ])
+  })
+
   it('ignores an unknown role', () => {
-    expect(personRoleBadges({ roles: ['treasurer'], hasWards: false })).toEqual([])
+    expect(personRoleBadges({ roles: ['accountant'], hasWards: false })).toEqual([])
   })
 })
 

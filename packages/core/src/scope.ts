@@ -3,11 +3,11 @@
 // predicate here fails closed.
 
 /**
- * Grant kinds of club spec phase 1, plus two place kinds. Q17 of the foundation spec limits phase 1 to the roles
- * `vereino_club_admin`, `vereino_coordinator`, `vereino_coach`, `vereino_member` and `vereino_payer`, so the kind
- * `treasurer` (with its `modules` payload) arrives with phase 4 and is not part of this union yet.
- * `maintenance_planner` (facilities spec DD-36, #128) carries the places a person maintains; `facility_operator`
- * (#126) the places of the attendant's active assignments with their descendants (`place_ids`).
+ * Grant kinds of club spec phase 1, plus two place kinds and the treasurer. `maintenance_planner` (facilities spec
+ * DD-36, #128) carries the places a person maintains; `facility_operator` (#126) the places of the attendant's active
+ * assignments with their descendants (`place_ids`). `treasurer` (payments spec DD-33, #245) carries no ids: it covers
+ * the whole club, but only where a call lists it among its allowed kinds — only `payments` does — so it is club-wide
+ * for the club's finances and grants nothing anywhere else.
  */
 export type GrantKind =
   | 'club_admin'
@@ -19,6 +19,7 @@ export type GrantKind =
   | 'system_job'
   | 'maintenance_planner'
   | 'facility_operator'
+  | 'treasurer'
 
 export const GRANT_KINDS: readonly GrantKind[] = [
   'club_admin',
@@ -30,6 +31,7 @@ export const GRANT_KINDS: readonly GrantKind[] = [
   'system_job',
   'maintenance_planner',
   'facility_operator',
+  'treasurer',
 ]
 
 /** Kinds a registered scope provider may return; `self_user` and `system_job` are computed by the foundation. */
@@ -41,6 +43,7 @@ export const PROVIDER_GRANT_KINDS: readonly GrantKind[] = [
   'self',
   'maintenance_planner',
   'facility_operator',
+  'treasurer',
 ]
 
 export type ScopeGrant = {
@@ -53,7 +56,15 @@ export type Scope = readonly ScopeGrant[]
 
 /** The role recorded as `acting_role`: the kind of the grant that allowed the action. */
 export type ActingRole =
-  'club_admin' | 'coordinator' | 'coach' | 'guardian' | 'self' | 'system' | 'maintenance_planner' | 'facility_operator'
+  | 'club_admin'
+  | 'coordinator'
+  | 'coach'
+  | 'guardian'
+  | 'self'
+  | 'system'
+  | 'maintenance_planner'
+  | 'facility_operator'
+  | 'treasurer'
 
 /** Target fields a grant can match, and the fields a list column map can name. */
 export type ScopeTargetField = 'sectionId' | 'groupId' | 'occurrenceId' | 'placeId' | 'personId' | 'userId'
@@ -71,8 +82,11 @@ export type ScopeColumnMap = { readonly [field in ScopeTargetField]?: string }
 /** A plain MikroORM-style filter object for `makeCrudRoute`'s `list.buildFilters`. */
 export type WhereFragment = Record<string, unknown>
 
-/** Grants of these kinds cover every record of the organization the scope was resolved for. */
-const CLUB_WIDE_KINDS: ReadonlySet<GrantKind> = new Set<GrantKind>(['club_admin', 'system_job'])
+/**
+ * Grants of these kinds cover every record of the organization the scope was resolved for — for a call that allows
+ * the kind at all: `treasurer` is allowed by the `payments` calls only (DD-33).
+ */
+const CLUB_WIDE_KINDS: ReadonlySet<GrantKind> = new Set<GrantKind>(['club_admin', 'system_job', 'treasurer'])
 
 /** Which target fields a grant of each id-carrying kind matches. */
 const KIND_TARGET_FIELDS: Readonly<Record<GrantKind, readonly ScopeTargetField[]>> = {
@@ -85,6 +99,7 @@ const KIND_TARGET_FIELDS: Readonly<Record<GrantKind, readonly ScopeTargetField[]
   self_user: ['userId'],
   maintenance_planner: ['placeId'],
   facility_operator: ['placeId'],
+  treasurer: [],
 }
 
 const ACTING_ROLES: Readonly<Record<GrantKind, ActingRole>> = {
@@ -97,6 +112,7 @@ const ACTING_ROLES: Readonly<Record<GrantKind, ActingRole>> = {
   system_job: 'system',
   maintenance_planner: 'maintenance_planner',
   facility_operator: 'facility_operator',
+  treasurer: 'treasurer',
 }
 
 /**

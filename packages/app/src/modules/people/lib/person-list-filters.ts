@@ -13,13 +13,14 @@ export type PersonListView = (typeof PERSON_LIST_VIEWS)[number]
 
 /**
  * The roles the list filters by: the assignable roles (the facility attendant `facility_operator` since #262,
- * navigation spec REQ-N12), a guardian (has wards) and a participant (a membership).
+ * navigation spec REQ-N12; the treasurer since #245), a guardian (has wards) and a participant (a membership).
  */
 export const PERSON_FILTER_ROLES = [
   'club_admin',
   'coordinator',
   'coach',
   'facility_operator',
+  'treasurer',
   'guardian',
   'participant',
 ] as const
@@ -201,7 +202,14 @@ export function intersectIdSets(sets: ReadonlyArray<ReadonlySet<string> | null>)
 }
 
 /** The badges of the Roles column, in a stable order; each carries text (never colour alone). */
-export const PERSON_ROLE_BADGES = ['club_admin', 'coordinator', 'coach', 'facility_operator', 'guardian'] as const
+export const PERSON_ROLE_BADGES = [
+  'club_admin',
+  'coordinator',
+  'coach',
+  'facility_operator',
+  'treasurer',
+  'guardian',
+] as const
 export type PersonRoleBadge = (typeof PERSON_ROLE_BADGES)[number]
 
 /**

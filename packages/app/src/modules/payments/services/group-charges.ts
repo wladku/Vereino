@@ -83,7 +83,10 @@ export type GroupChild = PersonName & {
   charges: GroupCharge[]
 }
 
-/** The coach's fee access in force for the caller (the club administrator is not bound by the setting). */
+/**
+ * The coach's fee access in force for the caller. The club administrator and the treasurer (DD-33, #245) are not bound
+ * by the setting: both may record any cash in the panel anyway.
+ */
 export async function feeAccessFor(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -95,7 +98,7 @@ export async function feeAccessFor(
     setting,
     access: effectiveFeeAccess(
       setting,
-      grants.some((grant) => grant.kind === 'club_admin'),
+      grants.some((grant) => grant.kind === 'club_admin' || grant.kind === 'treasurer'),
     ),
   }
 }

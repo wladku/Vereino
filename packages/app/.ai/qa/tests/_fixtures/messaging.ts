@@ -69,15 +69,29 @@ export function runProbe(scope: { tenantId: string; organizationId: string }, st
     })
     const stdout = run.stdout
     const lines = stdout.trimEnd().split(/\r?\n/)
-    const last = lines.pop() ?? ''
-    if (run.status !== 0 || !last.startsWith('{')) {
+    // The result is the last line holding a probe result. Under load the app's JSON logger can still write a line
+    // after it, before the probe exits (#432, J-003 in CI), so the last line alone is not enough.
+    const index = run.status === 0 ? lines.findLastIndex(isResultLine) : -1
+    if (index < 0) {
       throw new Error(
         `[internal] the messaging probe exited ${String(run.status)}: ${run.stderr}\n${stdout.slice(-4000)}`,
       )
     }
-    return { result: JSON.parse(last) as ProbeResult, log: `${lines.join('\n')}\n${run.stderr}` }
+    const [resultLine] = lines.splice(index, 1)
+    return { result: JSON.parse(resultLine) as ProbeResult, log: `${lines.join('\n')}\n${run.stderr}` }
   } finally {
     fs.rmSync(queueDir, { recursive: true, force: true })
+  }
+}
+
+/** A stdout line that is the probe's result (`failure` and `outputs`), not one of the app's JSON log lines. */
+function isResultLine(line: string): boolean {
+  if (!line.startsWith('{')) return false
+  try {
+    const parsed = JSON.parse(line) as Record<string, unknown>
+    return 'failure' in parsed && Array.isArray(parsed.outputs)
+  } catch {
+    return false
   }
 }
 
