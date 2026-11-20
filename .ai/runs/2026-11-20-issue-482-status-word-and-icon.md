@@ -67,3 +67,16 @@ pill and names the file.
 ## Open problems / next steps
 
 - The mockup's `.badge` (docs/ux-concept/mockups) still shows no icon; see the decisions above.
+
+## Follow-up run: merge main (om-auto-fix-pr, 2026-11-20)
+
+- Trigger: PR #500 was `CONFLICTING` with `main` after #502 (E20-S02) moved `DialogContent`/`SheetContent` to
+  `@/components/ui/dialog`.
+- Worked on a detached HEAD at `origin/feat/issue-482-status-word-and-icon`; merged `origin/main` (no rebase, no
+  force-push). Eight files conflicted, all in import lines only (ClubEventDetailPage, CoachSessionBlock,
+  ClubMessagesPage, BansTable, IncidentsTable, EntryDetails, OrderCampaignPage, ErasurePanel): kept main's
+  `DialogContent`/`SheetContent` from `@/components/ui/dialog` and this PR's `StatusTag` from `@vereino/ui`, and dropped
+  the `StatusBadge` value imports. No value import of `StatusBadge` is left in Vereino code.
+- `yarn verify`: all 18 steps passed.
+- `yarn test:integration:vereino --filter E20-S03`: 1 passed (42.2 s).
+- `yarn test:integration:vereino --filter ISSUE-481` (the dialog area that conflicted): 1 passed (46.6 s).
