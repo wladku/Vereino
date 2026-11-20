@@ -217,7 +217,7 @@ export function CashAcceptForm({
                 <button
                   type="button"
                   data-testid="cash-payer-option"
-                  className="hover:bg-muted focus-visible:ring-ring flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left focus-visible:ring-2 focus-visible:outline-none"
+                  className="hover:bg-muted focus-visible:focus-indicator flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left"
                   onClick={() => {
                     setChosen(item)
                     setToggled([])

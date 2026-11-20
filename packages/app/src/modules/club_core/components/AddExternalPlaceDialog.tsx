@@ -4,17 +4,11 @@
 // the answered place, the polite live region next to the dialog announces it, and a place with the same name and
 // address is offered for picking. Cmd/Ctrl+Enter saves, Escape closes.
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { AddExternalPlaceFields } from './AddExternalPlaceFields'
 import { useAddExternalPlace, type AddedExternalPlace } from './useAddExternalPlace'
+import { DialogContent } from '@/components/ui/dialog'
 
 export type { AddedExternalPlace } from './useAddExternalPlace'
 
