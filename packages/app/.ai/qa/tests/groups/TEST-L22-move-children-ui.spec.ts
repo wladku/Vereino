@@ -37,7 +37,10 @@ async function chooseTarget(dialog: Locator, page: Page): Promise<void> {
 
 const FITS = uiText('groups.memberships.moveMany.fits.range', { params: { group: 'Skrzaty', from: 6, to: 7 } })
 
-test('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
+// Quarantined (#433): the axe scan of the panel dialog reports 1–2 serious color-contrast nodes in a different
+// locale/theme on each attempt, in CI runs that share no PR, so the train fails unrelated PRs. Find the cause (likely
+// a scan taken during the dialog's open transition), fix the test or the UI, then turn this back into `test`.
+test.fixme('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
   page,
   request,
 }, testInfo) => {
