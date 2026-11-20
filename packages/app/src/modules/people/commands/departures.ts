@@ -45,6 +45,7 @@ import { notifyDepartureConfirmed } from '../services/departure-notices'
 import { buildDeparturePlan, planBindingContent, type DeparturePlan } from '../services/departure-plan'
 import {
   actorPersonId,
+  assertNotAnonymized,
   guardianshipEvents,
   inWriteTransaction,
   isUniqueViolation,
@@ -418,6 +419,9 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
     const scope = { tenantId: before.tenantId, organizationId: before.organizationId }
     const today = await clubToday(ctx.container, scope)
     if (isDepartureUndoExpired(before.lastDay, today)) await peopleErrors.throw('departure_undo_expired')
+    // A person anonymised on the last day keeps their departure: the undo would hand an erased person back (#308).
+    const anonymized = await em.count(Person, { ...scope, id: { $in: before.personIds }, anonymizedAt: { $ne: null } })
+    if (anonymized > 0) await peopleErrors.throw('person_anonymized')
     const restored = await restoreDeparture(em, ctx, before)
     await emitRows(ctx, restored.roles, 'updated', 'role', true)
     await emitRows(ctx, restored.guardianships, 'updated', 'guardianship', true)
@@ -588,6 +592,7 @@ const returnCommand: CommandHandler<Record<string, unknown>, ReturnCommandResult
         em,
       )
       const person = authorized.entity as Person
+      await assertNotAnonymized(person)
       if (!person.leftOn) return peopleErrors.throw('person_not_left')
       const leftOn = person.leftOn
       person.leftOn = null

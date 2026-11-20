@@ -67,17 +67,35 @@ function decryptionScope(ctx: CommandRuntimeContext, job: boolean) {
   return { tenantId: scope?.tenantId ?? null, organizationId: scope?.organizationId ?? null }
 }
 
-/** Loads and row-locks a person of the trusted tenant (decrypted); null when absent or outside the tenant. */
+/**
+ * Loads and row-locks a person of the trusted tenant (decrypted); null when absent or outside the tenant. `deleted`
+ * loads a soft-deleted person instead (the undo of `people.persons.delete`, #308).
+ */
 export async function loadPersonLocked(
   em: EntityManager,
   ctx: CommandRuntimeContext,
   id: string,
   lock: TargetLock,
   job = false,
+  deleted = false,
 ): Promise<Person | null> {
   const tenantId = trustedTenantId(ctx, job)
   if (!tenantId) return null
-  return findOneWithDecryption(em, Person, { id, tenantId, deletedAt: null }, lock, decryptionScope(ctx, job))
+  return findOneWithDecryption(
+    em,
+    Person,
+    { id, tenantId, deletedAt: deleted ? { $ne: null } : null },
+    lock,
+    decryptionScope(ctx, job),
+  )
+}
+
+/**
+ * 409 `person_anonymized`: an anonymised person's data is never written again — no return to the club, no edit, and
+ * no undo of an earlier command that would bring an erased value back (#308).
+ */
+export async function assertNotAnonymized(person: Pick<Person, 'anonymizedAt'> | null | undefined): Promise<void> {
+  if (person?.anonymizedAt) await peopleErrors.throw('person_anonymized')
 }
 
 export async function loadRoleAssignmentLocked(

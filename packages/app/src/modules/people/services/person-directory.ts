@@ -24,13 +24,19 @@ import {
 } from '../lib/people-rules'
 import { holdersBySectionDay, sectionDaysSpan, type SectionDay } from '../lib/section-role-holders'
 import type { ClubScope } from './club-clock'
+import { formerMemberLabel } from './former-member'
 
-/** The display data of a person a consumer may show next to the record it authorized. */
+/**
+ * The display data of a person a consumer may show next to the record it authorized. An anonymised person (#308) reads
+ * as the localised "Former member" in `firstName` with an empty `lastName` (a `first last` join reads well) and
+ * `anonymized: true`; the name kept under the retention hold never leaves `people` through the directory.
+ */
 export type PersonDirectoryEntry = {
   id: string
   firstName: string
   lastName: string
   birthDate: string | null
+  anonymized?: boolean
 }
 
 export type PersonDirectory = {
@@ -150,14 +156,20 @@ export async function findPersons(
     em,
     Person,
     { id: { $in: unique }, ...scope, deletedAt: null },
-    { fields: ['id', 'firstName', 'lastName', 'birthDate'] },
+    { fields: ['id', 'firstName', 'lastName', 'birthDate', 'anonymizedAt'] },
     scope,
   )
+  const formerMember = rows.some((row) => row.anonymizedAt) ? await formerMemberLabel() : ''
   return new Map(
-    rows.map((row) => [
-      row.id,
-      { id: row.id, firstName: row.firstName, lastName: row.lastName, birthDate: row.birthDate ?? null },
-    ]),
+    rows.map((row) => {
+      if (!row.anonymizedAt) {
+        return [
+          row.id,
+          { id: row.id, firstName: row.firstName, lastName: row.lastName, birthDate: row.birthDate ?? null },
+        ]
+      }
+      return [row.id, { id: row.id, firstName: formerMember, lastName: '', birthDate: null, anonymized: true }]
+    }),
   )
 }
 
@@ -376,7 +388,16 @@ export async function searchPersonIds(em: EntityManager, scope: ClubScope, term:
     fields: ['first_name', 'last_name'],
     scope,
   })
-  return result.matched ? new Set(result.ids) : null
+  if (!result.matched) return null
+  if (result.ids.length === 0) return new Set()
+  // A name kept under the retention hold keeps its tokens until the job clears it: never a match (#308).
+  const anonymized = await em.find(
+    Person,
+    { id: { $in: result.ids }, ...scope, anonymizedAt: { $ne: null } },
+    { fields: ['id'] },
+  )
+  const hidden = new Set(anonymized.map((row) => row.id))
+  return new Set(result.ids.filter((id) => !hidden.has(id)))
 }
 
 /**

@@ -8,9 +8,13 @@ export const PERSON_PHOTO_FORMATS: readonly FileFormat[] = ['png', 'jpeg', 'webp
 /** 5 MB: a phone photo. */
 export const PERSON_PHOTO_MAX_BYTES = 5 * 1024 * 1024
 
-/** Attachment owner (the person) and assignment of the photo; the scoped read names exactly this file. */
+/**
+ * Attachment owner of the photo (the person). The upload adds the owner as the file's only assignment, so the scoped
+ * read names it and the erasure can release the file (#308; lesson `attachment-owner-assignment-and-release`). Photos
+ * stored before #308 also carry the assignment `people:person_photo`: they are still read, but `releaseScoped` refuses
+ * to delete them (the erasure clears the pointer and reports the file as kept).
+ */
 export const PERSON_PHOTO_OWNER_ENTITY = 'people:person'
-export const PERSON_PHOTO_ASSIGNMENT = 'people:person_photo'
 /** The private partition the photo is stored in. */
 export const PERSON_PHOTO_PARTITION = 'privateAttachments'
 

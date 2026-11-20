@@ -10,6 +10,7 @@ export const PEOPLE_UI_FEATURES = [
   'people.roles.manage',
   'people.accounts.manage',
   'people.pesel.view',
+  'people.persons.anonymize',
   'club_core.manage',
 ] as const
 

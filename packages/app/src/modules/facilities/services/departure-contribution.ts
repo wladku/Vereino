@@ -10,7 +10,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { DepartureChange, DepartureContributor, DepartureSubject } from '../../people/services/departure'
 import { emitAfterCommit } from '../commands/shared'
-import { PlaceMaintainer } from '../data/entities'
+import { InternalBooking, PlaceMaintainer, Rental } from '../data/entities'
 import type { PlaceDirectoryEntry } from '../../club_core/services/directory'
 import { findPlaces } from './directory'
 
@@ -131,13 +131,12 @@ export function createDepartureContribution(container: AwilixContainer): Departu
       }
     },
 
+    // A mistaken person has no maintainer row, rental or internal booking, ever (*Mistaken person*; phase L6, #308).
     async hasHistory(em, subject) {
-      const count = await em.count(PlaceMaintainer, {
-        tenantId: subject.tenantId,
-        organizationId: subject.organizationId,
-        personId: subject.personId,
-      })
-      return count > 0
+      const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+      if ((await em.count(PlaceMaintainer, { ...scope, personId: subject.personId })) > 0) return true
+      if ((await em.count(Rental, { ...scope, renterType: 'person', renterId: subject.personId })) > 0) return true
+      return (await em.count(InternalBooking, { ...scope, bookedByPersonId: subject.personId })) > 0
     },
   }
 }

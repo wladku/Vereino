@@ -62,9 +62,14 @@ export type PersonBasicView = {
   hasAccount: boolean
   /** The last day in the club (people life-cycle spec REQ-L03, #306); the coordinator's basic read gains it too. */
   leftOn: string | null
+  /** When the person was anonymised (REQ-L05, #308); the name then reads "Former member" unless kept for the reader. */
+  anonymizedAt: string | null
   createdAt: string | null
   updatedAt: string | null
 }
+
+/** The name a reader sees (`visibleName`, `lib/erasure-rules.ts`); the stored name when absent. */
+export type ShownName = { firstName: string; lastName: string }
 
 export type PersonView = PersonBasicView & {
   email: string | null
@@ -82,26 +87,32 @@ export type PersonView = PersonBasicView & {
   sharePresenceWithGuardiansAt: string | null
   /** Whether the person has a photo (#312). */
   hasPhoto: boolean
+  /** The retention hold of an anonymised person's name (DD-L07, #308); only for a reader with `people.manage`. */
+  erasureHoldUntil?: string | null
 }
 
-export function personBasicView(person: Person): PersonBasicView {
+export function personBasicView(person: Person, name?: ShownName): PersonBasicView {
   return {
     id: person.id,
     access: 'basic',
-    firstName: person.firstName,
-    lastName: person.lastName,
+    firstName: name?.firstName ?? person.firstName,
+    lastName: name?.lastName ?? person.lastName,
     preferredLocale: person.preferredLocale ?? null,
     birthDate: person.birthDate ?? null,
     hasAccount: Boolean(person.userId),
     leftOn: person.leftOn ?? null,
+    anonymizedAt: iso(person.anonymizedAt),
     createdAt: iso(person.createdAt),
     updatedAt: iso(person.updatedAt),
   }
 }
 
-export function personView(person: Person, options: { withPesel: boolean; account?: AccountView }): PersonView {
+export function personView(
+  person: Person,
+  options: { withPesel: boolean; account?: AccountView; name?: ShownName; withHold?: boolean },
+): PersonView {
   return {
-    ...personBasicView(person),
+    ...personBasicView(person, options.name),
     access: 'full',
     email: person.email ?? null,
     phone: person.phone ?? null,
@@ -114,6 +125,7 @@ export function personView(person: Person, options: { withPesel: boolean; accoun
     shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
     sharePresenceWithGuardiansAt: iso(person.sharePresenceWithGuardiansAt),
     hasPhoto: Boolean(person.photoAttachmentId),
+    ...(options.withHold ? { erasureHoldUntil: person.erasureHoldUntil ?? null } : {}),
   }
 }
 
@@ -129,6 +141,7 @@ export function personListItem(row: Record<string, unknown>) {
     userId: text(row.user_id),
     hasAccount: typeof row.user_id === 'string',
     leftOn: text(row.left_on)?.slice(0, 10) ?? null,
+    anonymizedAt: iso(row.anonymized_at as Date | string | null),
     createdAt: iso(row.created_at as Date | string | null),
     updatedAt: iso(row.updated_at as Date | string | null),
   }
@@ -246,6 +259,16 @@ export const personViewSchema = z.object({
     .boolean()
     .optional()
     .describe('Full view only: the person has a photo (`GET /api/people/persons/{id}/photo`, #312)'),
+  anonymizedAt: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('When the person was anonymised (#308); the name then reads "Former member" unless kept for the reader'),
+  erasureHoldUntil: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('With people.manage only: the last day the name of an anonymised person is kept (#308)'),
   holdsOwnConsents: z
     .boolean()
     .optional()
