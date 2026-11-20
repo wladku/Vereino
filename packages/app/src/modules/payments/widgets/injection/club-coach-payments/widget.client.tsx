@@ -4,11 +4,15 @@
 // spot does not enforce the widget's `features`, so the tile stays hidden until the read answers and for a caller the
 // API refuses (no `payments.groups.view`, e.g. a ward) or who has no groups; any other failed read keeps the link
 // with the plain description. The link opens M-18 on the coach's group with "To pay" (`?group=&due=1`; REQ-C12, #300).
+// The platform feature check runs first, so a caller without `payments.groups.view` (a guardian, an attendant) makes no
+// read the route refuses; the load error keeps its status off `status`, so the query cache's global 403 handler shows
+// no "Access denied" toast for a tile that simply stays hidden (#483).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { grantsFeature } from '@vereino/ui'
 import { formatZloty } from '../../../lib/charge-ledger'
 import { coachPaymentsHref, tileGroupOf } from '../../../lib/group-charges'
 import type { GroupChargesView } from '../../../components/club/coach/coach-client'
@@ -17,9 +21,11 @@ const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
 const LINK_CLASS =
   'hover:bg-accent focus-visible:shadow-focus -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
 
+const GROUPS_VIEW_FEATURE = 'payments.groups.view'
+
 class CoachTileLoadError extends Error {
-  constructor(readonly status: number) {
-    super(String(status))
+  constructor(readonly httpStatus: number) {
+    super(String(httpStatus))
   }
 }
 
@@ -28,7 +34,14 @@ export default function ClubCoachPaymentsWidget() {
   const query = useQuery({
     queryKey: ['payments-coach', 'tile'],
     retry: false,
-    queryFn: async () => {
+    queryFn: async (): Promise<GroupChargesView | null> => {
+      const check = await apiCall<{ granted?: unknown[] }>('/api/auth/feature-check', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ features: [GROUPS_VIEW_FEATURE] }),
+      })
+      const granted = check.ok && Array.isArray(check.result?.granted) ? check.result.granted.map(String) : []
+      if (!grantsFeature(granted, GROUPS_VIEW_FEATURE)) return null
       // Without the header `apiFetch` throws `ForbiddenError` on the 403 before the status check below (lesson
       // `apifetch-403-throws-before-page-branch`) and a ward gets the tile with the plain description.
       const call = await apiCall<GroupChargesView>('/api/payments/group-charges', {
@@ -39,8 +52,8 @@ export default function ClubCoachPaymentsWidget() {
     },
   })
   const view = query.data
-  if (query.isPending) return null
-  if (query.error instanceof CoachTileLoadError && (query.error.status === 401 || query.error.status === 403)) {
+  if (query.isPending || query.data === null) return null
+  if (query.error instanceof CoachTileLoadError && (query.error.httpStatus === 401 || query.error.httpStatus === 403)) {
     return null
   }
   if (view && view.groups.length === 0) return null

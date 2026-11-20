@@ -3,11 +3,14 @@
 // that still takes orders and covers the caller's children, its name, "orders until {date}" and, per child, "ordered —
 // {amount}" or "not ordered", as a link to the order page. The spot does not enforce the widget's `features`, so the
 // tile stays hidden until the read answers, when nothing applies, and when the read fails (a minor gets 403
-// `payments_minor`): the Today page never shows an empty or broken order tile.
+// `payments_minor`): the Today page never shows an empty or broken order tile. The read runs only when the Today
+// page's profile (the spot context) says the R10 gate opens the caller's own payments (`paymentsVisible`): staff
+// without a payer grant would only get 403 `scope_denied` or `scope_unlinked` (#483).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { todayOrderCampaigns } from '../../../lib/orders'
 import { formatMoney } from '../../../components/client-helpers'
@@ -25,12 +28,18 @@ function formatDate(value: string, locale: string): string {
   )
 }
 
-export default function ClubTodayOrderWidget() {
+/** The slice of `people`'s member profile the Today page passes as the spot context. */
+export type ClubTodayOrderContext = { profile?: { paymentsVisible?: boolean } }
+
+export default function ClubTodayOrderWidget({
+  context,
+}: InjectionWidgetComponentProps<ClubTodayOrderContext, Record<string, unknown>>) {
   const t = useT()
   const locale = useLocale()
   const query = useQuery({
     queryKey: MY_ORDERS_QUERY_KEY,
     retry: false,
+    enabled: context?.profile?.paymentsVisible === true,
     queryFn: async () => {
       // Without the header `apiFetch` throws `ForbiddenError` on a minor's 403 (lesson
       // `apifetch-403-throws-before-page-branch`).

@@ -8,21 +8,26 @@ export type MemberSessionPerspective = 'self' | 'guardian'
 /** The staff read of the page: the coach's (`as=coach`) or the section coordinator's (`as=coordinator`, E10-S08). */
 export type StaffSessionPerspective = 'coach' | 'coordinator'
 
-export type SessionPerspectives = { member: MemberSessionPerspective; staff: StaffSessionPerspective | null }
+export type SessionPerspectives = { member: MemberSessionPerspective | null; staff: StaffSessionPerspective | null }
 
 /**
  * The reads the page makes: the member perspective (`guardian` when asked for, or by default for a guardian; `self`
  * otherwise) and a staff read — the coordinator's when the link asks for `as=coordinator` and the person coordinates
- * (or coordinates without coaching), else the coach's whenever the person coaches, whatever `?as=` names.
+ * (or coordinates without coaching), else the coach's whenever the person coaches, whatever `?as=` names. A staff
+ * member with no member side (no wards, no participant membership) makes no member read unless the link asks for one:
+ * their own calendar holds no session, so the read could only answer 404 (#483).
  */
 export function sessionPerspectives(
   requested: string | null,
-  profile: { hasWards: boolean; coaches: boolean; coordinates?: boolean },
+  profile: { hasWards: boolean; coaches: boolean; coordinates?: boolean; isParticipant?: boolean },
 ): SessionPerspectives {
+  const coordinator = profile.coordinates === true && (requested === 'coordinator' || !profile.coaches)
+  const staff: StaffSessionPerspective | null = coordinator ? 'coordinator' : profile.coaches ? 'coach' : null
+  const asked = requested === 'self' || requested === 'guardian'
+  if (staff !== null && !asked && !profile.hasWards && profile.isParticipant !== true) return { member: null, staff }
   const member: MemberSessionPerspective =
     requested === 'guardian' || (requested !== 'self' && profile.hasWards) ? 'guardian' : 'self'
-  const coordinator = profile.coordinates === true && (requested === 'coordinator' || !profile.coaches)
-  return { member, staff: coordinator ? 'coordinator' : profile.coaches ? 'coach' : null }
+  return { member, staff }
 }
 
 /** The state of one read: `off` when the page does not make it. */
