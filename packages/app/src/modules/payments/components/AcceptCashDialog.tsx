@@ -4,12 +4,13 @@
 // with the payer chosen when the screen names one (B-22) and passes the screen as `origin` to the audit context.
 // Ctrl/Cmd+Enter saves, Escape closes. The caller refreshes its screen once cash is recorded.
 import * as React from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { CashOrigin } from '../lib/cash'
 import { CashAcceptForm } from './cash/CashAcceptForm'
 import { CashTodayList } from './cash/CashTodayList'
 import type { CashRecorded } from './cash/cash-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 export function AcceptCashDialog({
   open,

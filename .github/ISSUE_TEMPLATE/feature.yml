@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose something new or a change to how Vereino works.
+title: 'feat: '
+labels: ['feature']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. New capabilities are specified before they are built (see [CONTRIBUTING.md](https://github.com/wladku/Vereino/blob/main/CONTRIBUTING.md#how-a-change-gets-to-main)), so describe the problem first and the solution second.
+  - type: textarea
+    id: change
+    attributes:
+      label: 🎯 Change
+      description: Who has which problem today, and what should become possible.
+      placeholder: As a treasurer, I cannot … so I …; I want to …
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 📋 Scope
+      description: The affected area and the smallest change that solves the problem. Name what is explicitly not part of it.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: ✅ Done when
+      description: Observable outcomes that prove the request is met, including a permission or failure case.
+      placeholder: '- Given …, When …, Then …'
+    validations:
+      required: true
+  - type: textarea
+    id: spec
+    attributes:
+      label: 📝 Spec
+      description: A covering spec in `.ai/specs/` and its requirement ids, or "none yet".
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: 🔍 Implementation notes
+      description: Optional hints for whoever builds it — entry points, similar features, constraints.
+    validations:
+      required: false
+  - type: textarea
+    id: questions
+    attributes:
+      label: ⚠️ Open questions
+      description: Each unresolved question, marked blocking or non-blocking.
+    validations:
+      required: false

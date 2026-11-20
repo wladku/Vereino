@@ -108,7 +108,7 @@ test('the title is a link only when both the link component and the href are giv
   const linked = render({ days: days(item({ href: '/club/sessions/occ-1' })), Link })
   assert.match(
     linked,
-    /<a href="\/club\/sessions\/occ-1" class="font-semibold focus-visible:shadow-focus rounded-sm outline-none">Training<\/a>/,
+    /<a href="\/club\/sessions\/occ-1" class="font-semibold focus-visible:focus-indicator rounded-sm outline-none">Training<\/a>/,
   )
   assert.match(render({ days: days(item({ href: '/club/sessions/occ-1' })) }), /<p class="font-semibold">Training<\/p>/)
   assert.match(render({ days: days(item()), Link }), /<p class="font-semibold">Training<\/p>/)
