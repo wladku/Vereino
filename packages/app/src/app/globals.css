@@ -676,9 +676,57 @@ TODO: Fix that latter to have reference by the package names
   --status-pink-solid-foreground: #ffffff;
 }
 
+/* ═══ Vereino: focus and control contrast (E20-S02, #481; tokens.md C1, C2; owner decision 1 in #479) ═══
+   Overrides of Open Mercato tokens, kept in one block so a platform upgrade of the values above diffs cleanly.
+   Thresholds (S7.4, WCAG 1.4.11 and 1.4.3): 3:1 for field borders and focus indicators, 4.5:1 for text.
+   - `--focus-indicator` (new): the one focus colour; Vereino components draw it as a 2 px outline with a 2 px offset
+     through the `focus-indicator` utility below (19.79:1 light, 18.96:1 dark).
+   - `--focus-ring-outer`: the outer ring of the platform's `shadow-focus` (buttons, fields, tabs, switches) was a 16 %
+     grey (1.14:1 light, 1.64:1 dark); it is now the foreground, so the platform ring reads as the same 2 px indicator.
+   - `--input` (field and checkbox borders): 1.26:1 light, 1.47:1 dark before; 3.36:1 on white, 3.08:1 on `--muted`
+     (light) and 4.25:1 on the page, 3.85:1 on a card (dark) after.
+   - `--ring` (light): 2.59:1 before, 3.36:1 after; dark keeps 4.18:1. */
+:root {
+  --focus-indicator: var(--foreground);
+  --focus-ring-outer: var(--foreground);
+  --input: oklch(0.64 0 0);
+  --ring: oklch(0.64 0 0);
+}
+
+.dark {
+  --focus-indicator: var(--foreground);
+  --focus-ring-outer: var(--foreground);
+  --input: oklch(0.56 0 0);
+}
+
+/* The AppShell sidebar group headings (`[data-sidebar-group]` toggles, `text-muted-foreground/70`: 2.77:1) read in
+   `--muted-foreground` (≥ 4.5:1 on the sidebar in both themes). Unlayered, so it wins over the platform utility; check
+   this selector when an upgrade changes the AppShell markup. */
+[data-sidebar-group] > button[aria-expanded] {
+  color: var(--muted-foreground);
+}
+
+/* The Vereino focus indicator: `focus-visible:focus-indicator` on any interactive element Vereino renders. */
+@utility focus-indicator {
+  outline: 2px solid var(--focus-indicator);
+  outline-offset: 2px;
+}
+
+/* The same indicator drawn inside the element, for cells and rows a scroll container would clip. */
+@utility focus-indicator-inset {
+  outline: 2px solid var(--focus-indicator);
+  outline-offset: -2px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Any element without its own focus style (plain links, summaries, scroll regions) shows the Vereino indicator.
+     Components with a focus utility (`outline-none` + `shadow-focus`, `focus-indicator`) override it. */
+  :focus-visible {
+    outline: 2px solid var(--focus-indicator);
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground;
@@ -841,13 +889,13 @@ TODO: Fix that latter to have reference by the package names
 }
 
 .schedule-calendar .rbc-calendar .rbc-event:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus-indicator);
   outline-offset: 2px;
 }
 
 /* The scroll regions the coordinator calendar makes focusable (#248); the ring sits inside the clipped grid. */
 .schedule-calendar .rbc-calendar :is(.rbc-time-content, .rbc-agenda-content):focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus-indicator);
   outline-offset: -2px;
 }
 

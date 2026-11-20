@@ -19,14 +19,7 @@ import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
@@ -47,6 +40,7 @@ import {
   type CalendarEntry,
   type SubstitutionHistoryEntry,
 } from './club-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 /** One line of the substitution history: "17.11.2026, 20:14 — Marek N. reported an absence" (M-04). */
 function HistoryLine({ entry, timeZone }: { entry: SubstitutionHistoryEntry; timeZone: string }) {

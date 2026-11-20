@@ -10,14 +10,7 @@ import * as React from 'react'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
@@ -48,6 +41,7 @@ import {
   type MaintenanceTaskRow,
   type MaintenanceWriteResult,
 } from './maintenance-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 const NOTES_MAX_LENGTH = 2000
 

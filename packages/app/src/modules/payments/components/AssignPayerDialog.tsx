@@ -11,17 +11,11 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, personGuardianshipHref, personName, type ChargeDetail } from './client-helpers'
 import { usePeopleRecordAccess } from './useRecordLinks'
+import { DialogContent } from '@/components/ui/dialog'
 
 export function AssignPayerDialog({
   charge,
