@@ -60,3 +60,12 @@ Every interactive element on the main `/club` pages has a hit area of at least 4
 - Review of the PR diff: no blocking findings.
 - `yarn verify` on the merge result → all 18 steps passed.
 - `yarn test:integration:vereino --filter E20-S12-member` on the merge result → 1 passed (1.0m).
+
+## Follow-up run 2026-11-20 (2): second `main` merge into PR #512 (om-auto-fix-pr)
+
+- Trigger: the merge train flagged #512 as conflicting again after E20-S03 (#500, `StatusTag`) landed. Detached HEAD at `origin/fix/issue-491-touch-target-44px-member-pages`; merged `origin/main` (no rebase, no force-push).
+- Conflicts: imports only, in `CashAcceptForm.tsx`, `CoachPaymentsPage.tsx`, `ClubProfilePage.tsx` and `ClubWardPage.tsx`. This PR replaced the platform `SwitchField` with `MemberSwitchField`; `main` replaced `StatusBadge` with `StatusTag`. Neither old import is used any more, so both are dropped and `MemberSwitchField` and `StatusTag` come from one `@vereino/ui` import per file. `StatusTag` is not interactive, so the touch-target check does not count it.
+- Review: no open review findings on the PR; no new ones on the merge result.
+- `yarn verify` on the merge result → all 18 steps passed.
+- `yarn test:integration:vereino --filter E20-S12-member` → 1 passed (58.3s).
+- `yarn test:integration:vereino --filter E20-S03` → 1 passed (40.8s).
