@@ -55,7 +55,7 @@ describe('CalendarList', () => {
   it('links the title when a link component and an href are given', () => {
     const html = render({ days: days(item({ href: '/club/sessions/occ-1' })), Link })
     expect(html).toContain(
-      '<a href="/club/sessions/occ-1" class="font-semibold focus-visible:shadow-focus rounded-sm outline-none">Training</a>',
+      '<a href="/club/sessions/occ-1" class="font-semibold focus-visible:focus-indicator rounded-sm outline-none">Training</a>',
     )
   })
 

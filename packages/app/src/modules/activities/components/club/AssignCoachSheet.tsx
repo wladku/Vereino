@@ -5,17 +5,11 @@
 // 44 px targets. The save ends with the toast "{name} assigned"; a coach busy meanwhile answers the 409 with the
 // collision in the sheet.
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@open-mercato/ui/primitives/sheet'
+import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@open-mercato/ui/primitives/sheet'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CoachPickerFields } from '../CoachPickerFields'
 import { useAssignCoach, type StaffableOccurrence } from '../useAssignCoach'
+import { SheetContent } from '@/components/ui/dialog'
 
 export function AssignCoachSheet({
   occurrence,

@@ -20,8 +20,8 @@
   "app.exampleBlogPost": "Beispiel-Blogbeitrag",
   "app.examplePage": "Beispielseite",
   "app.goToLogin": "Zum Login",
-  "app.metadata.description": "KI-unterstützte, modulare ERP-Basis für Produkt- und Dienstleistungsunternehmen",
-  "app.metadata.title": "Open Mercato",
+  "app.metadata.description": "Vereino — die App für die Führung eines Sportvereins",
+  "app.metadata.title": "Vereino",
   "app.page.activeModules.title": "Aktive Module",
   "app.page.dbStatus.connected": "Verbunden",
   "app.page.dbStatus.error": "Fehler: {message}",
@@ -1184,6 +1184,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "Zugriff verweigert: Dafür fehlt dir die Berechtigung. Wenn du sie brauchst, wende dich an die Vereinsverwaltung.",
+  "vereino.flash.accessDeniedFeature": "Zugriff verweigert: Dir fehlt die Berechtigung „{features}“. Wenn du sie brauchst, wende dich an die Vereinsverwaltung.",
+  "vereino.flash.sessionExpired": "Sitzung abgelaufen. Weiterleitung zur Anmeldung…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

@@ -9,14 +9,7 @@ import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -24,6 +17,7 @@ import { errorCodeOf } from '@vereino/core'
 import { CANCEL_REASON_MAX_LENGTH, isCancelReasonValid } from '../lib/occurrence-list'
 import { ConflictList } from './ConflictList'
 import { errorMessage, scheduleConflictsOf, type ScheduleConflict } from './client-helpers'
+import { DialogContent } from '@/components/ui/dialog'
 
 export type RestorableOccurrence = { id: string; updatedAt: string | null }
 

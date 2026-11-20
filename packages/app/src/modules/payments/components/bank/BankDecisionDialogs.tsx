@@ -7,14 +7,7 @@ import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
@@ -23,6 +16,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { BANK_SKIP_REASONS, MAX_SKIP_NOTE_LENGTH, type BankSkipReason } from '../../lib/bank-matching'
 import { errorMessage, formatMoney, personName } from '../client-helpers'
 import { decide, useBankPayers, type BankTransfer } from './bank-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 type DialogProps = {
   transfer: BankTransfer | null
@@ -133,7 +127,7 @@ export function BankAssignDialog({ transfer, onClose, onDone }: DialogProps) {
                     type="button"
                     data-testid="bank-assign-option"
                     disabled={pending}
-                    className="hover:bg-muted focus-visible:ring-ring flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                    className="hover:bg-muted focus-visible:focus-indicator flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md border p-3 text-left disabled:opacity-50"
                     onClick={() => {
                       void assign(payer.payerPersonId)
                     }}
