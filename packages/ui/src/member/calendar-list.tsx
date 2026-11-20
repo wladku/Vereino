@@ -102,6 +102,17 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
       ) : (
         <p className={titleClassName}>{item.title}</p>
       )}
+      {item.partOf ? (
+        <p className="text-sm font-medium" data-testid="calendar-item-part-of">
+          {item.partOf.href ? (
+            <a href={item.partOf.href} className="text-primary inline-flex min-h-11 items-center underline">
+              {item.partOf.label}
+            </a>
+          ) : (
+            item.partOf.label
+          )}
+        </p>
+      ) : null}
       {item.subtitle ? <p className="text-muted-foreground text-sm">{item.subtitle}</p> : null}
       {item.group ? <p className="text-muted-foreground text-sm">{item.group}</p> : null}
       {item.coach ? (

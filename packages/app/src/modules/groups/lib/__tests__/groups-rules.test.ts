@@ -8,7 +8,17 @@ import {
   GROUP_KINDS,
   MEMBERSHIP_ROLES,
   PZPN_AGE_CATEGORIES,
+  AGE_U_MAX,
+  AGE_U_MIN,
+  ageCategoryRangeInverted,
   ageRangeInverted,
+  birthYearsOf,
+  fitsAgeCategory,
+  formatBirthYears,
+  parseUInput,
+  proposedAgeRange,
+  referenceYear,
+  shouldProposeAgeRange,
   disallowedTeamFields,
   parseAgeInput,
   firstOverlapping,
@@ -24,6 +34,11 @@ import {
   mayRemoveMembership,
   membershipActions,
   moveDateBounds,
+  MOVE_MANY_LIMIT,
+  MOVE_OUTCOMES,
+  fitsAgeRange,
+  moveManyProblem,
+  moveOutcome,
   planMove,
   rosterRoleOrder,
   rosterRoleRankSql,
@@ -91,7 +106,91 @@ describe('PZPN age categories', () => {
     ])
     expect(PZPN_AGE_CATEGORIES.find((category) => category.value === 'orlik')?.label).toBe('Orlik (U10–U11)')
     // The academy's youngest group (people life-cycle spec phase L3): first, so new clubs list it youngest first.
-    expect(PZPN_AGE_CATEGORIES[0]).toEqual({ value: 'kids', label: 'Kids (U4–U5)' })
+    expect(PZPN_AGE_CATEGORIES[0]).toEqual({ value: 'kids', label: 'Kids (U4–U5)', range: { uFrom: 4, uTo: 5 } })
+  })
+
+  it('gives every seeded category its "U" range, contiguous from Kids U4 to an open Senior U20 (REQ-L16)', () => {
+    expect(PZPN_AGE_CATEGORIES.map((category) => [category.value, category.range.uFrom, category.range.uTo])).toEqual([
+      ['kids', 4, 5],
+      ['skrzat', 6, 7],
+      ['zak', 8, 9],
+      ['orlik', 10, 11],
+      ['mlodzik', 12, 13],
+      ['trampkarz', 14, 15],
+      ['junior_mlodszy', 16, 17],
+      ['junior_starszy', 18, 19],
+      ['senior', 20, null],
+    ])
+    for (const category of PZPN_AGE_CATEGORIES) expect(ageCategoryRangeInverted(category.range)).toBe(false)
+  })
+})
+
+describe('birth-year ranges of the age categories (REQ-L16, DD-L17, Q-L25, Q-L26; #384)', () => {
+  const orlik = { uFrom: 10, uTo: 11 }
+  const orlikMlodszy = { uFrom: 10, uTo: 10 }
+  const senior = { uFrom: 20, uTo: null }
+
+  it('bounds a "U" year to 1…99', () => {
+    expect([AGE_U_MIN, AGE_U_MAX]).toEqual([1, 99])
+  })
+
+  it('reads a typed "U" year: blank is open, 1…99 a year, anything else invalid', () => {
+    expect(parseUInput(' ')).toBeNull()
+    expect(parseUInput(' 10 ')).toBe(10)
+    expect(parseUInput('99')).toBe(99)
+    expect(parseUInput('0')).toBe('invalid')
+    expect(parseUInput('100')).toBe('invalid')
+    expect(parseUInput('U10')).toBe('invalid')
+  })
+
+  it('refuses "U od" above "U do" and accepts an equal or open upper bound', () => {
+    expect(ageCategoryRangeInverted({ uFrom: 11, uTo: 10 })).toBe(true)
+    expect(ageCategoryRangeInverted(orlikMlodszy)).toBe(false)
+    expect(ageCategoryRangeInverted(orlik)).toBe(false)
+    expect(ageCategoryRangeInverted(senior)).toBe(false)
+  })
+
+  it('takes the year the season starts as the reference year, else the year of the fallback date', () => {
+    expect(referenceYear('2026-09-01', '2027-03-15')).toBe(2026)
+    expect(referenceYear(null, '2027-03-15')).toBe(2027)
+  })
+
+  it('maps a range to its birth years in the reference year: Orlik U10–U11 in 2026 → 2016–2017', () => {
+    expect(birthYearsOf(orlik, 2026)).toEqual({ from: 2016, to: 2017 })
+    expect(birthYearsOf(orlikMlodszy, 2026)).toEqual({ from: 2017, to: 2017 })
+    expect(birthYearsOf(senior, 2026)).toEqual({ from: null, to: 2007 })
+  })
+
+  it('places a child by birth year, whatever the birthday', () => {
+    expect([2015, 2016, 2017, 2018].map((year) => fitsAgeCategory(year, orlik, 2026))).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ])
+    expect([2016, 2017, 2018].map((year) => fitsAgeCategory(year, orlikMlodszy, 2026))).toEqual([false, true, false])
+    expect([1980, 2007, 2008].map((year) => fitsAgeCategory(year, senior, 2026))).toEqual([true, true, false])
+  })
+
+  it('proposes "Wiek od" u_from − 1 and "Wiek do" u_to, open stays open, within 0…99', () => {
+    expect(proposedAgeRange(orlikMlodszy)).toEqual({ ageFrom: 9, ageTo: 10 })
+    expect(proposedAgeRange(orlik)).toEqual({ ageFrom: 9, ageTo: 11 })
+    expect(proposedAgeRange(senior)).toEqual({ ageFrom: 19, ageTo: null })
+    expect(proposedAgeRange({ uFrom: 1, uTo: 99 })).toEqual({ ageFrom: 0, ageTo: 99 })
+    expect(proposedAgeRange({ uFrom: 0, uTo: 120 })).toEqual({ ageFrom: 0, ageTo: 99 })
+  })
+
+  it('proposes only for a ranged category while both age fields are empty', () => {
+    expect(shouldProposeAgeRange(orlik, null, null)).toBe(true)
+    expect(shouldProposeAgeRange(null, null, null)).toBe(false)
+    expect(shouldProposeAgeRange(orlik, 9, null)).toBe(false)
+    expect(shouldProposeAgeRange(orlik, null, 11)).toBe(false)
+  })
+
+  it('writes the birth years as a span, one year or an open bound', () => {
+    expect(formatBirthYears({ from: 2016, to: 2017 })).toBe('2016–2017')
+    expect(formatBirthYears({ from: 2017, to: 2017 })).toBe('2017')
+    expect(formatBirthYears({ from: null, to: 2007 })).toBe('≤ 2007')
   })
 })
 
@@ -176,6 +275,14 @@ describe('groups error codes', () => {
       ['rollover_record_unknown', 422],
       ['rollover_record_action_duplicate', 422],
       ['rollover_copy_invalid', 422],
+      ['move_preview_stale', 409],
+      ['move_same_group', 422],
+      ['move_target_inactive', 422],
+      ['move_date_in_past', 422],
+      ['move_too_many', 422],
+      ['age_range_inverted', 422],
+      ['age_category_name_taken', 409],
+      ['age_categories_missing', 422],
     ])
     for (const entry of errorCodes) expect(entry.messageKey).toBe(`groups.errors.${entry.code}`)
   })
@@ -350,5 +457,44 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', false)).toBe(true)
     expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', true)).toBe(false)
     expect(mayRemoveMembership({ validFrom: '2026-09-01' }, '2026-11-17', null)).toBe(false)
+  })
+  it('refuses a bulk move of more than 100 children, to the same group or on a past day (REQ-L15, Q-L08, Q-L22)', () => {
+    const move = { fromGroupId: 'a', toGroupId: 'b', date: '2026-12-01', count: 7 }
+    expect(MOVE_MANY_LIMIT).toBe(100)
+    expect(moveManyProblem(move, '2026-11-19')).toBeNull()
+    expect(moveManyProblem({ ...move, count: 100 }, '2026-11-19')).toBeNull()
+    expect(moveManyProblem({ ...move, count: 101 }, '2026-11-19')).toBe('too_many')
+    expect(moveManyProblem({ ...move, toGroupId: 'a' }, '2026-11-19')).toBe('same_group')
+    expect(moveManyProblem({ ...move, date: '2026-11-18' }, '2026-11-19')).toBe('date_in_past')
+    expect(moveManyProblem({ ...move, date: '2026-11-19' }, '2026-11-19')).toBeNull()
+  })
+
+  it('tells per child whether a bulk move moves it or skips it with a reason (Q-L24)', () => {
+    const open = { groupId: 'a', validFrom: '2026-09-01', validTo: null }
+    const movable = planMove(open, { toGroupId: 'b', date: '2026-12-01' }, '2026-11-19')
+    expect(MOVE_OUTCOMES).toEqual(['move', 'skip_already_member', 'skip_not_active'])
+    expect(moveOutcome(movable, false)).toBe('move')
+    expect(moveOutcome(movable, true)).toBe('skip_already_member')
+    const upcoming = planMove(
+      { ...open, validFrom: '2026-12-01' },
+      { toGroupId: 'b', date: '2026-12-01' },
+      '2026-11-19',
+    )
+    expect(moveOutcome(upcoming, false)).toBe('skip_not_active')
+    expect(moveOutcome(upcoming, true)).toBe('skip_not_active')
+  })
+
+  it("fits a child by the age on the move date within the target group's range (REQ-L15)", () => {
+    const skrzaty = { ageFrom: 6, ageTo: 7 }
+    // Six on 1 September, still five the day before.
+    expect(fitsAgeRange('2020-09-01', '2026-09-01', skrzaty)).toBe(true)
+    expect(fitsAgeRange('2020-09-01', '2026-08-31', skrzaty)).toBe(false)
+    expect(fitsAgeRange('2018-09-02', '2026-09-01', skrzaty)).toBe(true)
+    expect(fitsAgeRange('2018-09-01', '2026-09-01', skrzaty)).toBe(false)
+    expect(fitsAgeRange('2015-01-01', '2026-09-01', { ageFrom: 6, ageTo: null })).toBe(true)
+    expect(fitsAgeRange('2024-01-01', '2026-09-01', { ageFrom: null, ageTo: 7 })).toBe(true)
+    expect(fitsAgeRange('2010-01-01', '2026-09-01', { ageFrom: null, ageTo: 7 })).toBe(false)
+    expect(fitsAgeRange('2020-01-01', '2026-09-01', { ageFrom: null, ageTo: null })).toBeNull()
+    expect(fitsAgeRange(null, '2026-09-01', skrzaty)).toBeNull()
   })
 })

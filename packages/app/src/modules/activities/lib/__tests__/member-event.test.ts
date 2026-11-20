@@ -63,14 +63,14 @@ describe('eventPlaceOptions', () => {
         { id: 'p-3', name: 'Kompleks', parentName: null, isLeaf: false },
         { id: 'p-2', name: 'Boisko B', parentName: 'Kompleks', isLeaf: true },
         { id: 'p-1', name: 'Boisko A', parentName: 'Kompleks', isLeaf: true },
-        { id: 'p-5', name: 'Basen', parentName: null, isLeaf: true },
-        { id: 'p-4', name: 'Basen', parentName: null, isLeaf: true },
+        { id: 'p-5', name: 'Basen', parentName: null, isLeaf: true, isExternal: false },
+        { id: 'p-4', name: 'Basen', parentName: null, isLeaf: true, isExternal: true },
       ]),
     ).toEqual([
-      { id: 'p-4', label: 'Basen' },
-      { id: 'p-5', label: 'Basen' },
-      { id: 'p-1', label: 'Kompleks › Boisko A' },
-      { id: 'p-2', label: 'Kompleks › Boisko B' },
+      { id: 'p-4', label: 'Basen', isExternal: true },
+      { id: 'p-5', label: 'Basen', isExternal: false },
+      { id: 'p-1', label: 'Kompleks › Boisko A', isExternal: false },
+      { id: 'p-2', label: 'Kompleks › Boisko B', isExternal: false },
     ])
   })
 })

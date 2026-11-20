@@ -15,15 +15,10 @@ import { z } from 'zod'
 import { authorizeScoped } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Activity, Occurrence } from '../data/entities'
-import { lockSchedule } from '../data/queries'
 import { eventCreateSchema } from '../data/validators'
-import { EVENT_TYPES, localDateTime } from '../lib/activities-rules'
-import { confirmByAt } from '../lib/confirm-by'
-import { eventOutsideOpeningHours, openingLine } from '../lib/opening-hours'
 import { awayByDefault, chooseLocation } from '../lib/venue'
-import { clubClock, placeOpeningHours } from '../services/directory'
-import { assertNoConflicts, findConflicts } from '../services/schedule'
 import { activitySnapshot, ACTIVITY_RESOURCE_KIND, type ActivitySnapshot } from './activities'
+import { writeOneOffEvent } from './one-off-event'
 import {
   COACH_KINDS,
   activitiesLog,
@@ -83,85 +78,26 @@ const createEventCommand: CommandHandler<Record<string, unknown>, EventCommandRe
           ...(parsed.opponentExternalTeamId ? [parsed.opponentExternalTeamId] : []),
         ],
       })
-      const activeGroup = group as NonNullable<typeof group>
-      // `match` / `sparring` on a class group already answered 422 `activity_type_requires_team` above.
-      if (!EVENT_TYPES.includes(parsed.type)) {
-        await activitiesErrors.throw('event_type_not_allowed', { type: parsed.type })
-      }
-      const startAt = new Date(parsed.startsAt)
-      const endAt = new Date(parsed.endsAt)
-      if (endAt.getTime() <= startAt.getTime()) await activitiesErrors.throw('activity_times_inverted')
-      // REQ-A07: the event's own deadline must still be ahead (a series default is not checked: it is an offset).
-      const confirmBy = confirmByAt(startAt, parsed.confirmByMinutesBefore)
-      if (confirmBy && confirmBy.getTime() < Date.now()) await activitiesErrors.throw('occurrence_confirm_by_in_past')
-      const { timeZone } = await clubClock(ctx.container, scope)
-      const start = localDateTime(startAt, timeZone)
-      const end = localDateTime(endAt, timeZone)
-      // REQ-R19 (DD-R15): a club place's opening hours bound the event; a typed venue has no place and no hours.
-      if (placeId) {
-        const hours = (await placeOpeningHours(ctx.container, scope, [placeId], em)).get(placeId) ?? null
-        const opening = eventOutsideOpeningHours(hours, startAt, endAt, timeZone)
-        if (opening) {
-          await activitiesErrors.throw('event_place_closed', {
-            field: 'startsAt',
-            opening,
-            hours: openingLine(opening),
-          })
-        }
-      }
-      await lockSchedule(em, organizationId)
-      await assertNoConflicts(
-        await findConflicts(
-          ctx.container,
-          em,
-          scope,
-          { candidates: [{ key: occurrenceId, startAt, endAt }], placeId, coachPersonId },
-          'save',
-        ),
-      )
-      const row = em.create(Activity, {
+      const row = await writeOneOffEvent(ctx, em, scope, {
         id,
-        ...scope,
-        sectionId: activeGroup.sectionId,
-        groupId: activeGroup.id,
+        occurrenceId,
+        group: group as NonNullable<typeof group>,
         name: parsed.name,
         type: parsed.type,
-        defaultPlaceId: placeId,
-        venueName: venue?.name ?? null,
-        venueAddress: venue?.address ?? null,
-        defaultCoachPersonId: coachPersonId,
-        opponentExternalTeamId: parsed.opponentExternalTeamId ?? null,
-        invitedExternalTeamIds: [...new Set(parsed.invitedExternalTeamIds ?? [])],
-        recurrenceRule: null,
-        startsOn: start.date,
-        endsOn: end.date,
-        defaultStartTime: start.time,
-        defaultEndTime: end.time,
+        placeId,
+        venue,
+        coachPersonId,
+        startAt: new Date(parsed.startsAt),
+        endAt: new Date(parsed.endsAt),
         gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
         confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
         description: parsed.description ?? null,
-        isActive: true,
+        opponentExternalTeamId: parsed.opponentExternalTeamId ?? null,
+        invitedExternalTeamIds: parsed.invitedExternalTeamIds ?? [],
         isAway: awayByDefault(venue, parsed.isAway),
+        clubEventId: null,
+        coachOnly: false,
       })
-      em.persist(row)
-      em.persist(
-        em.create(Occurrence, {
-          id: occurrenceId,
-          ...scope,
-          activityId: id,
-          groupId: activeGroup.id,
-          sectionId: activeGroup.sectionId,
-          occurrenceDate: start.date,
-          startAt,
-          endAt,
-          placeId,
-          venueName: venue?.name ?? null,
-          venueAddress: venue?.address ?? null,
-          coachPersonId,
-          gatheringMinutesBefore: parsed.gatheringMinutesBefore ?? null,
-          confirmByMinutesBefore: parsed.confirmByMinutesBefore ?? null,
-        }),
-      )
       return { entity: row, actingRole: authorized.actingRole, before: null, occurrenceId }
     })
     const scope = { tenantId: result.entity.tenantId, organizationId: result.entity.organizationId }

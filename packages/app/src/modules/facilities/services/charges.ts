@@ -44,6 +44,18 @@ export type PaymentsChargeService = {
     input: { sourceType: 'rental'; sourceId: string; outcome: ChargeOutcome },
     ctx: CommandRuntimeContext,
   ): Promise<{ warning?: 'charge_paid'; afterCommit?: () => Promise<void> }>
+  /**
+   * A move rewrites the charge's due date, description, amount and payee while no payment was recorded on it; one that
+   * holds a payment is left as it is and answers `charge_paid` (#221 L2).
+   */
+  rescheduleForSource(
+    em: EntityManager,
+    input: Pick<
+      RentalChargeInput,
+      'sourceType' | 'sourceId' | 'payeeInstitutionId' | 'amount' | 'dueDate' | 'description'
+    >,
+    ctx: CommandRuntimeContext,
+  ): Promise<{ warning?: 'charge_paid' }>
   /** The stored status of each charge of the caller's organization; unknown or foreign ids are absent (#279). */
   statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext): Promise<Map<string, string>>
 }

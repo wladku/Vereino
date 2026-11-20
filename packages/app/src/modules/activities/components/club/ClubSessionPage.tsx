@@ -354,7 +354,8 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
   }
   if (occurrence.invitedTeamNames.length > 0) {
     rows.push([
-      t('activities.club.session.invitedTeams'),
+      // Club events spec REQ-T03, REQ-T04 (M-04): a part's teams are the tournament's visiting teams.
+      t(occurrence.clubEvent ? 'activities.club.session.visitingTeams' : 'activities.club.session.invitedTeams'),
       <ul key="teams" className="flex flex-col gap-1" data-testid="club-session-invited-teams">
         {occurrence.invitedTeamNames.map((name, index) => (
           <li key={`${String(index)}:${name}`}>{name}</li>

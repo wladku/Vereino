@@ -122,6 +122,27 @@ export function placeOptions(
   return clubCoreDirectory(container).placeOptions(scope, em)
 }
 
+/** The live active sections of the club, by name: all (`sectionIds` null) or those among `sectionIds` (#376). */
+export function listSectionsAmong(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionIds: readonly string[] | null,
+  em?: EntityManager,
+): Promise<SectionDirectoryEntry[]> {
+  return clubCoreDirectory(container).listSections(scope, sectionIds, em)
+}
+
+/** The live active groups of the club, by name: all (`sectionIds` null) or those of `sectionIds` (#376). */
+export function listGroupsInSections(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  sectionIds: readonly string[] | null,
+  em?: EntityManager,
+): Promise<GroupDirectoryEntry[]> {
+  if (sectionIds && sectionIds.length === 0) return Promise.resolve([])
+  return groupDirectory(container).listGroups(scope, sectionIds ? { sectionIds } : null, em)
+}
+
 /** The live active groups among `groupIds`, by name (the coach's own groups of the event form, #140). */
 export function listGroupsAmong(
   container: AwilixContainer,

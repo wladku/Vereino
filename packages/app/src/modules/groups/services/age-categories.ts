@@ -3,6 +3,7 @@
 // edited by the club administrator on the platform dictionaries page. `groups` stores only the entry id
 // (`age_category_entry_id`, scalar, no cross-module relation) and reads the entries here, always within the trusted
 // tenant and organization. Entries are hard-deleted by the platform; a group whose entry was removed shows no category.
+import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Dictionary, DictionaryEntry } from '@open-mercato/core/modules/dictionaries/data/entities'
@@ -11,14 +12,25 @@ import {
   sortDictionaryEntries,
 } from '@open-mercato/core/modules/dictionaries/lib/entrySort'
 import { normalizeDictionaryValue } from '@open-mercato/core/modules/dictionaries/lib/utils'
-import { AGE_CATEGORY_DICTIONARY_KEY, PZPN_AGE_CATEGORIES } from '../lib/groups-rules'
+import type { CalendarDate } from '@vereino/core'
+import { AgeCategoryRange, Season } from '../data/entities'
+import {
+  AGE_CATEGORY_DICTIONARY_KEY,
+  PZPN_AGE_CATEGORIES,
+  birthYearsOf,
+  referenceYear,
+  type BirthYears,
+} from '../lib/groups-rules'
 import type { GroupsScope } from './directory'
 
 export type AgeCategoryOption = { id: string; value: string; label: string }
 
-function findDictionary(em: EntityManager, scope: GroupsScope): Promise<Dictionary | null> {
+/** The club's age category dictionary (live), read in the caller's EntityManager. */
+export function findAgeCategoryDictionary(em: EntityManager, scope: GroupsScope): Promise<Dictionary | null> {
   return em.findOne(Dictionary, { ...scope, key: AGE_CATEGORY_DICTIONARY_KEY, deletedAt: null })
 }
+
+const findDictionary = findAgeCategoryDictionary
 
 /** The entries of the club's age category dictionary in the dictionary's own sort order (empty without one). */
 export async function listAgeCategories(container: AwilixContainer, scope: GroupsScope): Promise<AgeCategoryOption[]> {
@@ -89,17 +101,29 @@ export async function seedAgeCategoryDictionary(container: AwilixContainer, scop
   PZPN_AGE_CATEGORIES.forEach((category, position) => {
     // One millisecond apart, so `created_at_asc` keeps the PZPN order (youngest first).
     const createdAt = new Date(now + position)
+    // The id is set here, not by the database default, so the range can name its entry before the flush.
+    const entry = em.create(DictionaryEntry, {
+      id: randomUUID(),
+      ...scope,
+      dictionary,
+      value: category.value,
+      normalizedValue: normalizeDictionaryValue(category.value),
+      label: category.label,
+      color: null,
+      icon: null,
+      position,
+      isDefault: false,
+      createdAt,
+      updatedAt: createdAt,
+    })
+    em.persist(entry)
+    // Each seeded category starts with its PZPN "U" range (REQ-L16, #384).
     em.persist(
-      em.create(DictionaryEntry, {
+      em.create(AgeCategoryRange, {
         ...scope,
-        dictionary,
-        value: category.value,
-        normalizedValue: normalizeDictionaryValue(category.value),
-        label: category.label,
-        color: null,
-        icon: null,
-        position,
-        isDefault: false,
+        entryId: entry.id,
+        uFrom: category.range.uFrom,
+        uTo: category.range.uTo,
         createdAt,
         updatedAt: createdAt,
       }),
@@ -107,4 +131,81 @@ export async function seedAgeCategoryDictionary(container: AwilixContainer, scop
   })
   await em.flush()
   return true
+}
+
+/** The live ranges of the given entries, by entry id, read in the caller's EntityManager. */
+export async function rangesByEntry(
+  em: EntityManager,
+  scope: GroupsScope,
+  entryIds: readonly string[],
+): Promise<Map<string, AgeCategoryRange>> {
+  if (entryIds.length === 0) return new Map()
+  const rows = await em.find(AgeCategoryRange, { ...scope, entryId: { $in: [...entryIds] }, deletedAt: null })
+  return new Map(rows.map((row) => [row.entryId, row]))
+}
+
+/** The season of `seasonId`, or else the live season that contains `today` (the latest start when several do). */
+export async function seasonForReference(
+  em: EntityManager,
+  scope: GroupsScope,
+  seasonId: string | null,
+  today: CalendarDate,
+): Promise<Season | null> {
+  if (seasonId) return em.findOne(Season, { id: seasonId, ...scope, deletedAt: null })
+  const found = await em.find(
+    Season,
+    { ...scope, deletedAt: null, startsOn: { $lte: today }, endsOn: { $gte: today } },
+    { orderBy: { startsOn: 'desc' }, limit: 1 },
+  )
+  return found.at(0) ?? null
+}
+
+export type AgeCategoryWithRange = AgeCategoryOption & {
+  uFrom: number | null
+  uTo: number | null
+  birthYears: BirthYears | null
+  updatedAt: string | null
+}
+
+export type AgeCategoryRangeList = {
+  items: AgeCategoryWithRange[]
+  referenceYear: number
+  season: { id: string; name: string; startsOn: string } | null
+}
+
+/**
+ * The club's categories in the dictionary's order with their "U" ranges and the birth years in the reference year of
+ * `seasonId` — or of the season of `today`, or `today`'s year without one (Q-L25). An unknown `seasonId` answers null.
+ */
+export async function listAgeCategoryRanges(
+  container: AwilixContainer,
+  scope: GroupsScope,
+  seasonId: string | null,
+  today: CalendarDate,
+): Promise<AgeCategoryRangeList | null> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const season = await seasonForReference(em, scope, seasonId, today)
+  if (seasonId && !season) return null
+  const year = referenceYear(season?.startsOn ?? null, today)
+  const categories = await listAgeCategories(container, scope)
+  const ranges = await rangesByEntry(
+    em,
+    scope,
+    categories.map((category) => category.id),
+  )
+  return {
+    referenceYear: year,
+    season: season ? { id: season.id, name: season.name, startsOn: season.startsOn } : null,
+    items: categories.map((category) => {
+      const range = ranges.get(category.id)
+      if (!range) return { ...category, uFrom: null, uTo: null, birthYears: null, updatedAt: null }
+      const bounds = { uFrom: range.uFrom, uTo: range.uTo ?? null }
+      return {
+        ...category,
+        ...bounds,
+        birthYears: birthYearsOf(bounds, year),
+        updatedAt: range.updatedAt.toISOString(),
+      }
+    }),
+  }
 }

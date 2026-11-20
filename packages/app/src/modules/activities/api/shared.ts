@@ -101,6 +101,14 @@ export const scoreSchema = z
   .nullable()
   .describe('The recorded score of a match or sparring (REQ-A15), or null.')
 
+/** The club event of a part session (club events spec REQ-T03, #376); null for any other session. */
+export const clubEventRefSchema = z
+  .object({ id: z.uuid(), name: z.string(), publicPath: z.string().nullable() })
+  .nullable()
+  .describe(
+    'The club event this session is a part of, with the path of its public page while it is published; null for any other session.',
+  )
+
 /** The response shape of a typed venue (REQ-A08, DD-A03). */
 export const venueResponseSchema = z
   .object({ name: z.string(), address: z.string() })
@@ -130,6 +138,7 @@ export function activityListItem(row: Row) {
     description: text(row.description),
     isActive: bool(row.is_active),
     isAway: bool(row.is_away),
+    clubEventId: text(row.club_event_id),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -254,8 +263,8 @@ export async function attachOccurrenceNames(payload: { items?: unknown[] }, ctx:
       ctx.container,
       grants,
       items.flatMap((item) =>
-        item.sectionId && item.groupId
-          ? [{ id: item.id, ...scope, sectionId: item.sectionId, groupId: item.groupId }]
+        item.sectionId && item.groupId && item.activityId
+          ? [{ id: item.id, ...scope, sectionId: item.sectionId, groupId: item.groupId, activityId: item.activityId }]
           : [],
       ),
     ),
@@ -340,6 +349,12 @@ export const activityListItemSchema = z.object({
   description: z.string().nullable(),
   isActive: z.boolean(),
   isAway: z.boolean().describe('An away trip: its sessions count as trips in the coach units report (#96).'),
+  clubEventId: z
+    .uuid()
+    .nullable()
+    .describe(
+      'The club event this one-off activity is a part of (club events spec DD-T01); null for any other activity.',
+    ),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
@@ -511,6 +526,7 @@ export const calendarEntrySchema = z.object({
       score: scoreSchema,
       opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
       invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
+      clubEvent: clubEventRefSchema,
       updatedAt: z.string(),
     }),
   declarationKind: z.enum(DECLARATION_KINDS).describe('The club setting for the activity type (D-026)'),

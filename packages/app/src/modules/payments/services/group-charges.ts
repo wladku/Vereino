@@ -449,8 +449,8 @@ async function groupCampaigns(
 
 /**
  * "Cash with you" (DD-31): the live cash payments the person collected, by receipt, with the payers' names, the total
- * and the number of payments; reversed payments count for nothing. Until the treasurer's handover (E07-S11, #118) the
- * collector holds every payment they collected.
+ * and the number of payments; reversed payments count for nothing, and a payment handed over to the club (B-33,
+ * E07-S11, #118) is no longer held.
  */
 export async function cashHeldBy(
   container: AwilixContainer,
@@ -468,6 +468,7 @@ export async function cashHeldBy(
       collectedByPersonId: personId,
       receiptNumber: { $ne: null },
       reversesPaymentId: null,
+      cashHandoverId: null,
     },
     { orderBy: { createdAt: 'asc', id: 'asc' } },
   )

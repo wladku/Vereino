@@ -28,6 +28,8 @@ import { gatheringOffset } from '../lib/gathering'
 import { chooseLocation, storedVenue } from '../lib/venue'
 import { sessionChangeOf, type SessionChange, type SessionFacts } from '../lib/session-change'
 import { assertNoConflicts, findConflicts } from '../services/schedule'
+import { clubEventManagerRole, partEventOf, partEventsOf, type PartEvent } from '../services/club-event-scope'
+import { findPlaces } from '../services/directory'
 import {
   COACH_KINDS,
   PLAN_KINDS,
@@ -182,7 +184,17 @@ async function confirmKind(ctx: CommandRuntimeContext, row: Occurrence, activity
  * DD-A05: a caller who edits a session only as a coach of its group (no coordinator or administrator grant on it) edits
  * the session of a one-off event, never one of a series — 403 `coach_edit_series_session`.
  */
-async function assertCoachMayEdit(grants: Scope, row: Occurrence, activity: SessionActivity): Promise<void> {
+async function assertCoachMayEdit(
+  grants: Scope,
+  row: Occurrence,
+  activity: SessionActivity,
+  part: PartEvent | null,
+): Promise<void> {
+  if (part) {
+    // DD-T06: a part session is moved only by who manages its club event.
+    if (!clubEventManagerRole(grants, part)) await activitiesErrors.throw('club_event_part_managed_by_event')
+    return
+  }
   if (!mayEditSession(grants, row, Boolean(activity.recurrenceRule))) {
     await activitiesErrors.throw('coach_edit_series_session')
   }
@@ -197,7 +209,10 @@ export function mayEditSession(
   grants: Scope,
   row: Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>,
   recurring: boolean,
+  part: PartEvent | null = null,
 ): boolean {
+  // DD-T06: the session of a club event's part is edited only by who manages the event.
+  if (part) return clubEventManagerRole(grants, part) !== null
   const target = scheduleTarget(row, row.id)
   if (findActingRole(grants, PLAN_KINDS, target)) return true
   return !recurring && findActingRole(grants, COACH_KINDS, target) !== null
@@ -218,12 +233,17 @@ async function authorizeSessionEditReplay(
     { mode: 'replay' },
   )
   const row = authorized.entity as Occurrence
-  await assertCoachMayEdit(authorized.scope, row, await sessionActivity(em, row))
-  return { row, scope: authorized.scope, actingRole: authorized.actingRole }
+  const part = await partEventOf(em, { tenantId: row.tenantId, organizationId: row.organizationId }, row.activityId)
+  await assertCoachMayEdit(authorized.scope, row, await sessionActivity(em, row), part)
+  return {
+    row,
+    scope: authorized.scope,
+    actingRole: (part && clubEventManagerRole(authorized.scope, part)) || authorized.actingRole,
+  }
 }
 
 /** The facts of a session a notice compares (REQ-A09), read before a write changes them. */
-function sessionFacts(row: Occurrence): SessionFacts {
+export function sessionFacts(row: Occurrence): SessionFacts {
   return {
     status: row.status,
     startAt: row.startAt,
@@ -240,7 +260,7 @@ function sessionFacts(row: Occurrence): SessionFacts {
  * a restore) the `change` with the values before it, who made it and in which role, and the version it wrote — the
  * key of the notices. An event without `change` (a coach or deadline change, the `needs_reschedule` flag) is silent.
  */
-function emitSessionUpdated(
+export function emitSessionUpdated(
   row: Occurrence,
   change: SessionChange | null,
   actor: { userId: string | null; personId: string | null; actingRole: string },
@@ -261,9 +281,32 @@ function emitSessionUpdated(
   )
 }
 
+/**
+ * DD-T07 (Q-T11): a part session at an external place is checked for its coach only; every other session keeps the
+ * full check of its place tree.
+ */
+export async function partAtExternalPlace(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Pick<Occurrence, 'tenantId' | 'organizationId' | 'activityId' | 'placeId'>,
+  part?: PartEvent | null,
+): Promise<boolean> {
+  if (!row.placeId) return false
+  const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+  const event = part === undefined ? await partEventOf(em, scope, row.activityId) : part
+  if (!event) return false
+  return (await findPlaces(ctx.container, scope, [row.placeId], em)).get(row.placeId)?.isExternal === true
+}
+
 /** The session's place tree and coach must stay free for its (new) time — 409 with the list otherwise. */
-async function assertSessionFits(ctx: CommandRuntimeContext, em: EntityManager, row: Occurrence): Promise<void> {
+export async function assertSessionFits(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Occurrence,
+  part?: PartEvent | null,
+): Promise<void> {
   if (row.status !== 'planned') return
+  const coachOnly = await partAtExternalPlace(ctx, em, row, part)
   await lockSchedule(em, row.organizationId)
   await assertNoConflicts(
     await findConflicts(
@@ -272,7 +315,7 @@ async function assertSessionFits(ctx: CommandRuntimeContext, em: EntityManager, 
       { tenantId: row.tenantId, organizationId: row.organizationId },
       {
         candidates: [{ key: row.id, startAt: row.startAt, endAt: row.endAt }],
-        placeId: row.placeId,
+        placeId: coachOnly ? null : row.placeId,
         coachPersonId: row.coachPersonId ?? null,
         ignoreIds: [row.id],
       },
@@ -295,10 +338,16 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       )
       const row = authorized.entity as Occurrence
       const patch = authorized.parsed
-      const activity = await sessionActivity(em, row)
-      await assertCoachMayEdit(authorized.scope, row, activity)
-      if (row.status !== 'planned') await activitiesErrors.throw('occurrence_not_planned', { status: row.status })
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
+      const activity = await sessionActivity(em, row)
+      const part = await partEventOf(em, scope, row.activityId)
+      await assertCoachMayEdit(authorized.scope, row, activity, part)
+      // DD-T05: a part takes place at its club event's place; only the event's place change moves it.
+      if (part && (patch.venue !== undefined || (patch.placeId !== undefined && patch.placeId !== row.placeId))) {
+        await activitiesErrors.throw('club_event_part_place_fixed')
+      }
+      const actingRole = (part && clubEventManagerRole(authorized.scope, part)) || authorized.actingRole
+      if (row.status !== 'planned') await activitiesErrors.throw('occurrence_not_planned', { status: row.status })
       // REQ-A08: a submitted place or venue replaces the other; untouched, the session stays where it is.
       const relocated = patch.placeId !== undefined || patch.venue !== undefined
       const chosen = chooseLocation(
@@ -347,10 +396,10 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
       row.isDetached = true
       row.needsReschedule = false
       row.updatedAt = new Date()
-      await assertSessionFits(ctx, em, row)
+      await assertSessionFits(ctx, em, row, part)
       return {
         entity: row,
-        actingRole: authorized.actingRole,
+        actingRole,
         before,
         change: sessionChangeOf(beforeFacts, sessionFacts(row), row.updatedAt),
         actorPersonId: selfPersonId(authorized.scope),
@@ -406,11 +455,12 @@ export async function cancelRoleOf(
   container: AwilixContainer,
   grants: Scope,
   row: CancelTargetRow,
+  em?: EntityManager,
 ): Promise<ActingRole | null> {
-  return (await cancelRolesOf(container, grants, [row])).get(row.id) ?? null
+  return (await cancelRolesOf(container, grants, [row], em)).get(row.id) ?? null
 }
 
-type CancelTargetRow = Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId'>
+type CancelTargetRow = Pick<Occurrence, 'id' | 'tenantId' | 'organizationId' | 'sectionId' | 'groupId' | 'activityId'>
 
 /**
  * `cancelRoleOf` for the sessions of one club page (#215): the role per session id, reading the club setting
@@ -420,10 +470,24 @@ export async function cancelRolesOf(
   container: AwilixContainer,
   grants: Scope,
   rows: CancelTargetRow[],
+  em?: EntityManager,
 ): Promise<Map<string, ActingRole | null>> {
   const roles = new Map<string, ActingRole | null>()
+  if (rows.length === 0) return roles
+  const first = rows[0]
+  const parts = await partEventsOf(
+    em ?? container.resolve<EntityManager>('em').fork(),
+    { tenantId: first.tenantId, organizationId: first.organizationId },
+    rows.map((row) => row.activityId),
+  )
   let mayCancel: Promise<boolean> | undefined
   for (const row of rows) {
+    // DD-T06: a part session is cancelled only by who manages its club event.
+    const part = parts.get(row.activityId)
+    if (part) {
+      roles.set(row.id, clubEventManagerRole(grants, part))
+      continue
+    }
     const target = scheduleTarget(row, row.id)
     // The command's own check (`COACH_KINDS` on the schedule target), so a read never promises more than it accepts.
     const actingRole = findActingRole(grants, COACH_KINDS, target)
@@ -450,7 +514,9 @@ const cancelOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         em,
       )
       const row = authorized.entity as Occurrence
-      const actingRole = await cancelRoleOf(ctx.container, authorized.scope, row)
+      const part = await partEventOf(em, { tenantId: row.tenantId, organizationId: row.organizationId }, row.activityId)
+      const actingRole = await cancelRoleOf(ctx.container, authorized.scope, row, em)
+      if (!actingRole && part) return activitiesErrors.throw('club_event_part_managed_by_event')
       if (!actingRole) return activitiesErrors.throw('coach_cancel_disabled', { setting: 'coach_may_cancel' })
       await assertTransition(sessionTransitions, row.status, 'cancelled')
       const before = occurrenceSnapshot(row)
