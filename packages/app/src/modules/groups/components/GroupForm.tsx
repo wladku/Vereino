@@ -4,6 +4,7 @@
 // team, and the form clears them when the kind is a class group; the server refuses team fields on a class group with 422 anyway.
 // The level fits both kinds; beside the age category, a link to the club dictionary for those who edit it (parity spec
 // REQ-A02, #266). Turning a team with matches into a class group answers 409 `group_has_matches` on the kind field.
+// Under the category, its birth years in the team's season (people life-cycle spec REQ-L16, #384).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -13,6 +14,7 @@ import { createCrud, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { GROUP_KINDS } from '../lib/groups-rules'
 import { pickerSelectField } from '@vereino/ui'
+import { AgeCategoryYearsHint } from './AgeCategoryHint'
 import { DICTIONARIES_HREF, GROUPS_HREF, textOrNull, type GroupDetail, type Translate } from './client-helpers'
 import { ageCategoryPicker, seasonPicker, sectionPicker, useGroupsPickerFeatures } from './pickers'
 
@@ -68,6 +70,13 @@ function useGroupFields(t: Translate) {
         description: t('groups.groups.fields.ageCategory.help'),
         visibleWhen: { field: 'kind', equals: 'team' },
       }),
+      {
+        id: 'ageCategoryYears',
+        label: '',
+        type: 'custom',
+        component: AgeCategoryYearsHint,
+        visibleWhen: { field: 'kind', equals: 'team' },
+      } satisfies CrudField,
       ...(canCreateCategory
         ? [
             {
@@ -106,7 +115,7 @@ function useGroupFields(t: Translate) {
         title: t('groups.groups.groups.team'),
         description: t('groups.groups.groups.team.help'),
         column: 2,
-        fields: ['ageCategoryEntryId', 'ageCategoriesLink', 'league', 'seasonId'],
+        fields: ['ageCategoryEntryId', 'ageCategoryYears', 'ageCategoriesLink', 'league', 'seasonId'],
       },
     ],
     [t],

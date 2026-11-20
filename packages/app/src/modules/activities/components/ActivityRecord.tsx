@@ -5,6 +5,7 @@
 // page explains to deactivate it instead. The server decides the scope: an activity outside it answers 403 and the
 // page shows the permission-denied state.
 import * as React from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
@@ -25,6 +26,7 @@ import { ActivitySessions } from './OccurrencesTable'
 import {
   OWN_FORBIDDEN_STATE,
   ACTIVITIES_HREF,
+  clubEventRecordHref,
   errorMessage,
   scheduleSummary,
   typeLabel,
@@ -111,6 +113,9 @@ export function ActivityRecord({ id }: { id: string }) {
   if (load.status === 'denied') return <AccessDeniedMessage label={t('activities.activities.errors.denied')} />
 
   const activity = load.activity
+  // #378: a part of a club event is changed and removed through its club event (409 `activity_is_club_event_part`).
+  const clubEvent = activity.clubEvent ?? null
+  const editable = features.manage && !activity.clubEventId
 
   const remove = async () => {
     const confirmed = await confirm({
@@ -157,7 +162,7 @@ export function ActivityRecord({ id }: { id: string }) {
           <StatusBadge variant={activity.isActive ? 'success' : 'neutral'}>
             {activity.isActive ? t('activities.common.active') : t('activities.common.inactive')}
           </StatusBadge>
-          {features.manage ? (
+          {editable ? (
             <Button
               type="button"
               variant="destructive"
@@ -173,6 +178,16 @@ export function ActivityRecord({ id }: { id: string }) {
           ) : null}
         </div>
       </header>
+      {clubEvent ? (
+        <Alert status="information" data-testid="activity-club-event">
+          <AlertTitle>
+            <Link className="underline underline-offset-4" href={clubEventRecordHref(clubEvent.id)}>
+              {t('activities.clubEvents.partOf', { name: clubEvent.name })}
+            </Link>
+          </AlertTitle>
+          <AlertDescription>{t('activities.clubEvents.partOf.help')}</AlertDescription>
+        </Alert>
+      ) : null}
       {hasSessions ? (
         <Alert status="warning" data-testid="activity-has-sessions">
           <AlertTitle>{t('activities.activities.hasSessions.title')}</AlertTitle>
@@ -187,7 +202,7 @@ export function ActivityRecord({ id }: { id: string }) {
           </TabsList>
         </div>
         <TabsContent value="details" className="pt-4">
-          {features.manage ? (
+          {editable ? (
             <ActivityDetailsForm activity={activity} onSaved={refetch} />
           ) : (
             <ReadOnlyDetails activity={activity} t={t} />

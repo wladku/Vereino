@@ -25,6 +25,7 @@ import { findPlaces } from '../../../services/directory'
 import { substituteForOf, substitutionHistory } from '../../../services/substitutions'
 import { countMoveNotified } from '../../../services/session-notice'
 import { sessionActionFlags } from '../../../services/calendar'
+import { sessionClubEvent } from '../../../services/club-events'
 import { selfPersonId } from '../../../commands/shared'
 import {
   SCHEDULE_READ_KINDS,
@@ -34,6 +35,7 @@ import {
   scoreSchema,
   substitutionHistorySchema,
   updateResponseSchema,
+  clubEventRefSchema,
 } from '../../shared'
 import { CHECK_OFF_KINDS, checkOffTarget } from '../../../commands/check-off'
 import { scoreView, showsScore } from '../../../lib/score'
@@ -63,6 +65,7 @@ const detailSchema = occurrenceListItemSchema.extend({
   activityRecurring: z.boolean().describe('The session belongs to a weekly series (not a one-off activity).'),
   opponentName: z.string().nullable().describe('The opponent of a match or sparring (an external team).'),
   invitedTeamNames: z.array(z.string()).describe('The invited external teams of a tournament or another event.'),
+  clubEvent: clubEventRefSchema,
   substitutions: substitutionHistorySchema,
   isAway: z.boolean().describe('The activity is an away trip (the score lists the club’s team second in `away`).'),
   score: scoreSchema,
@@ -124,6 +127,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       cancelRoleOf(ctx.container, grants, row),
       findPlaces(ctx.container, scope, row.placeId ? [row.placeId] : []),
     ])
+    // Club events spec REQ-T03, DD-T06 (#376): the club event of a part session, and its managers' flags.
+    const { part, clubEvent } = await sessionClubEvent(ctx.container, scope, row.activityId)
     const place = row.placeId ? places.get(row.placeId) : undefined
     // Restore (#268): the club administrator only, a cancelled session that has not ended — the command's own checks.
     const mayRestore =
@@ -176,6 +181,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       updatedAt: row.updatedAt.toISOString(),
       opponentName: activityTeam?.opponentName ?? null,
       invitedTeamNames: activityTeam?.invitedTeamNames ?? [],
+      clubEvent,
       substitutions,
       isAway: activity?.isAway ?? false,
       score: scoreView(row),
@@ -193,6 +199,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         { status: row.status, coachPersonId: row.coachPersonId ?? null, endAt: row.endAt },
         activity?.recurring ?? false,
         new Date(),
+        part,
       ),
     })
   } catch (error: unknown) {

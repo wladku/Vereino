@@ -7,6 +7,8 @@
 // edits the role and dates, ends a membership on a chosen day and removes one entered by mistake. A started membership
 // that was used cannot be removed (409 `membership_in_use`): the confirmation then offers End. An active membership
 // also offers "Move…" to another group (spec L REQ-L11; #312). An upcoming membership offers Edit and Remove only. A removed row comes back through the platform's undo.
+// In the Active view rows can be selected: the bulk action "Move to another group" opens the several-children move
+// (spec L REQ-L15, J-L09; #383) with the selection ticked; its success notice offers Undo for the whole move.
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -38,6 +40,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
+import { MoveChildrenDialog, MoveChildrenNotice, type MoveChildrenResult } from './MoveChildrenDialog'
 import {
   EndMembershipDialog,
   MembershipDialog,
@@ -141,6 +144,7 @@ type Dialogs =
   | { kind: 'edit'; row: MembershipRow }
   | { kind: 'end'; row: MembershipRow }
   | { kind: 'move'; row: MembershipRow }
+  | { kind: 'moveMany'; selectedIds: string[] }
   | null
 
 export function RosterPanel({
@@ -162,6 +166,7 @@ export function RosterPanel({
   const view = viewFrom(searchParams.get('status'))
   const [page, setPage] = React.useState(1)
   const [dialog, setDialog] = React.useState<Dialogs>(null)
+  const [moveResult, setMoveResult] = React.useState<MoveChildrenResult | null>(null)
 
   const listQuery = useQuery({
     queryKey: ['groups-roster', groupId, view, page],
@@ -279,6 +284,23 @@ export function RosterPanel({
     [t, groupKind, today, canViewPeople],
   )
   const counts = countsQuery.data
+  // Several participants move together (REQ-L15); coaches and assistants move one by one with "Move…" (Q-L23).
+  const bulkActions =
+    canManage && view === 'active'
+      ? [
+          {
+            id: 'move-many',
+            label: t('groups.memberships.moveMany.action'),
+            onExecute: (rows: MembershipRow[]) => {
+              setDialog({
+                kind: 'moveMany',
+                selectedIds: rows.filter((row) => row.role === 'participant').map((row) => row.id),
+              })
+              return false
+            },
+          },
+        ]
+      : undefined
   const addButton = canManage ? (
     <Button
       type="button"
@@ -310,6 +332,19 @@ export function RosterPanel({
 
   return (
     <section className="flex flex-col gap-3" aria-label={t('groups.memberships.title')}>
+      {moveResult ? (
+        <MoveChildrenNotice
+          result={moveResult}
+          onDismiss={() => {
+            setMoveResult(null)
+          }}
+          onUndone={async () => {
+            setMoveResult(null)
+            flash(t('groups.memberships.moveMany.undone'), 'success')
+            await refresh()
+          }}
+        />
+      ) : null}
       <Tabs value={view} onValueChange={selectView}>
         <TabsList aria-label={t('groups.memberships.views.label')} className="max-w-full overflow-x-auto">
           {ROSTER_VIEWS.map((status) => (
@@ -324,6 +359,11 @@ export function RosterPanel({
           ))}
         </TabsList>
         <TabsContent value={view}>
+          {bulkActions ? (
+            <p className="text-muted-foreground mb-2 text-sm" data-testid="roster-move-many-hint">
+              {t('groups.memberships.moveMany.selectHint')}
+            </p>
+          ) : null}
           <DataTable<MembershipRow>
             title={t('groups.memberships.title')}
             actions={addButton}
@@ -333,6 +373,8 @@ export function RosterPanel({
             error={listQuery.error ? errorMessage(listQuery.error, t('groups.memberships.errors.load')) : null}
             emptyState={emptyState}
             rowActions={canManage ? rowActions : undefined}
+            bulkActions={bulkActions}
+            selectionScopeKey={`${view}:${String(page)}`}
             // The query time ("… in 326ms") cannot shrink and widens the page past 320 px in Polish (WCAG 1.4.10).
             showQueryTime={false}
             pagination={{
@@ -383,6 +425,19 @@ export function RosterPanel({
             await refresh()
           }}
           onRefresh={() => void refresh()}
+        />
+      ) : null}
+      {dialog?.kind === 'moveMany' ? (
+        <MoveChildrenDialog
+          open
+          onOpenChange={close}
+          groupId={groupId}
+          today={today}
+          initialSelectedIds={dialog.selectedIds}
+          onMoved={async (result) => {
+            setMoveResult(result)
+            await refresh()
+          }}
         />
       ) : null}
       {ConfirmDialogElement}

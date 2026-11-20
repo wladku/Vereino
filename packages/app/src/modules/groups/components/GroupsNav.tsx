@@ -1,18 +1,19 @@
 'use client'
 // The tabs of the groups list (club spec UI table: "tabs External teams and Seasons" of `/backend/groups/groups`; README
-// B-11 order Groups / External teams / Seasons, E06-S08 #90): each
+// B-11 order Groups / External teams / Seasons, E06-S08 #90; Age categories after Seasons, REQ-L16 #384): each
 // tab is its own page, so a tab change navigates and the URL stays shareable. The page content is the active tab's
 // panel, so the selected tab's `aria-controls` points at it.
 import type * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { EXTERNAL_TEAMS_HREF, GROUPS_HREF, SEASONS_HREF } from './client-helpers'
+import { AGE_CATEGORIES_HREF, EXTERNAL_TEAMS_HREF, GROUPS_HREF, SEASONS_HREF } from './client-helpers'
 
 const TABS = [
   { value: 'groups', href: GROUPS_HREF, labelKey: 'groups.nav.tabs.groups' },
   { value: 'external-teams', href: EXTERNAL_TEAMS_HREF, labelKey: 'groups.nav.tabs.externalTeams' },
   { value: 'seasons', href: SEASONS_HREF, labelKey: 'groups.nav.tabs.seasons' },
+  { value: 'age-categories', href: AGE_CATEGORIES_HREF, labelKey: 'groups.nav.tabs.ageCategories' },
 ] as const
 
 export type GroupsTab = (typeof TABS)[number]['value']

@@ -26,6 +26,7 @@ import {
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
 import { CASH_ORIGINS, MAX_CASH_CHARGES } from '../lib/cash'
+import { MAX_HANDOVER_PAYMENTS } from '../lib/cash-handovers'
 import { BANK_FORMATS } from '../lib/bank-statement'
 import { BANK_SKIP_REASONS, BANK_TRANSACTION_STATUSES, MAX_SKIP_NOTE_LENGTH } from '../lib/bank-matching'
 import {
@@ -146,6 +147,15 @@ export const discountRuleListQuerySchema = z.object({
 
 export const chargeGenerateSchema = z.object({ period: billingPeriodSchema }).strict()
 
+/** `payments.charge_generations.undo` (#403): the generation; its lock token travels in the platform header. */
+export const chargeGenerationUndoSchema = z.object({ id: z.uuid() }).strict()
+
+/** `GET /api/payments/charge-generations` (#403): the club's generations, newest first. */
+export const chargeGenerationListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
 const flagSchema = z.enum(['1', '0', 'true', 'false'])
 
 /** True for a set query flag (`1` or `true`). */
@@ -212,6 +222,27 @@ export const cashRecordSchema = z
       .describe('The screen the dialog was opened from (DD-C03); kept in the audit context, changes nothing else'),
   })
   .strict()
+
+// --- Cash handovers (#118, REQ-033, B-33) ---
+
+/** `POST /api/payments/cash-handovers`: the club receives the selected cash payments of one collector. */
+export const cashHandoverAcceptSchema = z
+  .object({
+    collectorPersonId: z.uuid().describe('The person handing the cash over'),
+    paymentIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_HANDOVER_PAYMENTS)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each payment may be selected once' })
+      .describe("The collector's cash payments received in this handover"),
+  })
+  .strict()
+
+/** `GET /api/payments/cash-handovers`: the handover history, newest first. */
+export const cashHandoverListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
 
 // --- "My groups' payments" (#117, REQ-033, DD-31, DD-32) ---
 

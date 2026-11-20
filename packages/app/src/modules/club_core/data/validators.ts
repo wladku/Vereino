@@ -10,7 +10,15 @@ import {
   type FacilityTermField,
 } from '../lib/contracts'
 import { CONSENT_TEXT_KEYS } from '../lib/consent-texts'
-import { PLACE_KINDS, placeContactsSchema } from '../lib/places'
+import {
+  EXTERNAL_PLACE_ADDRESS_MAX,
+  EXTERNAL_PLACE_ADDRESS_MIN,
+  EXTERNAL_PLACE_DEFAULT_KIND,
+  EXTERNAL_PLACE_NAME_MAX,
+  EXTERNAL_PLACE_NAME_MIN,
+  PLACE_KINDS,
+  placeContactsSchema,
+} from '../lib/places'
 import { PLACE_FILE_KINDS } from '../lib/files'
 import { publicLinkUrlSchema, publicSlugSchema, publicationPatchSchema } from '../lib/publication'
 import { clubSettingsPatchSchema } from '../lib/settings'
@@ -212,6 +220,19 @@ const placeFields = {
 
 export const placeCreateSchema = z.object(placeFields).strict()
 
+/**
+ * `club_core.places.add_external` (club events spec REQ-T06, DD-T08; #377): the four fields a coordinator may set on a
+ * place added from a club event form; every other field takes its default in the command.
+ */
+export const placeAddExternalSchema = z
+  .object({
+    name: z.string().trim().min(EXTERNAL_PLACE_NAME_MIN).max(EXTERNAL_PLACE_NAME_MAX),
+    address: z.string().trim().min(EXTERNAL_PLACE_ADDRESS_MIN).max(EXTERNAL_PLACE_ADDRESS_MAX),
+    kind: z.enum(PLACE_KINDS).default(EXTERNAL_PLACE_DEFAULT_KIND),
+    ownerInstitutionId: z.uuid().nullable().optional(),
+  })
+  .strict()
+
 export const placeUpdateSchema = z
   .object({ ...placeFields, id: z.uuid(), kind: placeFields.kind.optional(), name: nameSchema.optional() })
   .strict()
@@ -338,6 +359,7 @@ export type SectionUpdateInput = z.output<typeof sectionUpdateSchema>
 export type SectionPublicUpdateInput = z.output<typeof sectionPublicUpdateSchema>
 export type LogoTarget = z.output<typeof logoTargetSchema>
 export type PlaceCreateInput = z.output<typeof placeCreateSchema>
+export type PlaceAddExternalInput = z.output<typeof placeAddExternalSchema>
 export type PlaceUpdateInput = z.output<typeof placeUpdateSchema>
 export type InstitutionCreateInput = z.output<typeof institutionCreateSchema>
 export type InstitutionUpdateInput = z.output<typeof institutionUpdateSchema>
