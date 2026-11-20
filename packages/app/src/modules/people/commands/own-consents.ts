@@ -25,7 +25,14 @@ import {
   type StoredConsents,
 } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
-import { actorPersonId, inWriteTransaction, loadPersonLocked, personEvents, personTarget } from './shared'
+import {
+  actorPersonId,
+  assertNotAnonymized,
+  inWriteTransaction,
+  loadPersonLocked,
+  personEvents,
+  personTarget,
+} from './shared'
 
 const RESOURCE_KIND = 'people.person'
 /** `/me`: only the person's own grant. */
@@ -102,6 +109,8 @@ async function authorizeReplay(
     em,
     { mode: 'replay' },
   )
+  // An undo never writes an anonymised person's data back (#308).
+  await assertNotAnonymized(entity as Person)
   return entity as Person
 }
 

@@ -26,6 +26,11 @@ decorateScopedEntityBase({ PrimaryKey, Property })
 @Index({ name: 'people_persons_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({ name: 'people_persons_org_left_on_idx', properties: ['organizationId', 'leftOn'] })
 @Index({
+  name: 'people_persons_org_erasure_hold_idx',
+  expression:
+    'create index "people_persons_org_erasure_hold_idx" on "people_persons" ("organization_id", "erasure_hold_until") where erasure_hold_until is not null',
+})
+@Index({
   name: 'people_persons_org_pesel_hash_unique',
   expression:
     'create unique index "people_persons_org_pesel_hash_unique" on "people_persons" ("organization_id", "pesel_hash") where deleted_at is null and pesel_hash is not null',
@@ -59,6 +64,8 @@ export class Person extends ScopedEntityBase {
     | 'leftOn'
     | 'consents'
     | 'photoAttachmentId'
+    | 'anonymizedAt'
+    | 'erasureHoldUntil'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -139,6 +146,21 @@ export class Person extends ScopedEntityBase {
    */
   @Property({ name: 'photo_attachment_id', type: 'uuid', nullable: true })
   photoAttachmentId?: string | null
+
+  /**
+   * When the person was anonymised (people life-cycle spec REQ-L05, DD-L07; #308): set once by
+   * `people.persons.anonymize`, never cleared. From then on every screen shows "Former member" in place of the name.
+   */
+  @Property({ name: 'anonymized_at', type: Date, nullable: true })
+  anonymizedAt?: Date | null
+
+  /**
+   * The retention hold (DD-L07): the last day the name of an anonymised person is kept because a payment on a charge
+   * naming them as debtor or payer is accounting evidence; null when there is none or once the daily job has cleared
+   * the name (step 5). The name is readable only with `people.manage` meanwhile.
+   */
+  @Property({ name: 'erasure_hold_until', type: 'date', nullable: true })
+  erasureHoldUntil?: string | null
 }
 
 /**

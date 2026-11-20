@@ -2,7 +2,8 @@
 // `people_persons.photo_attachment_id`, *API* row `/api/people/persons/{id}/photo`; #312): the person's photo, written
 // by the club administrator (the routes require `people.manage`). The route checks the format (PNG, JPEG, WebP — no
 // SVG) and the size (5 MB) by the file's bytes; the bytes go to the platform `attachments` module through its public
-// `attachmentService` (private partition, owner and assignment set, so the scoped read names exactly this file) and
+// `attachmentService` (private partition; the owner is the file's only assignment, so the scoped read names exactly
+// this file and the erasure of #308 can release it) and
 // the pointer is written in the upload transaction (`persistLink`), after the person row is locked again. A new upload
 // replaces the pointer; earlier files stay in `attachments`, so the undo of a removal always finds its file.
 //
@@ -18,8 +19,8 @@ import type { ActingRole } from '@vereino/core'
 import { z } from 'zod'
 import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import type { Person } from '../data/entities'
-import { PERSON_PHOTO_ASSIGNMENT, PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION } from '../lib/person-photo'
-import { inWriteTransaction, loadPersonLocked, personTarget } from './shared'
+import { PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION } from '../lib/person-photo'
+import { assertNotAnonymized, inWriteTransaction, loadPersonLocked, personTarget } from './shared'
 
 const RESOURCE_KIND = 'people.person'
 const PHOTO_KINDS = ['club_admin'] as const
@@ -75,6 +76,8 @@ async function authorizePhoto(
   mode: 'execute' | 'replay' = 'execute',
 ) {
   const authorized = await authorizeScoped(photoSpec(ctx), rawInput, ctx, em, { mode })
+  // An anonymised person gets no photo again, and the undo of a removal brings none back (#308).
+  await assertNotAnonymized(authorized.entity as Person)
   return { person: authorized.entity as Person, actingRole: authorized.actingRole }
 }
 
@@ -120,7 +123,6 @@ const setPhotoCommand: CommandHandler<Record<string, unknown>, PhotoCommandResul
       fileName: upload.fileName,
       declaredMimeType: upload.mimeType,
       buffer: upload.buffer,
-      assignments: [{ type: PERSON_PHOTO_ASSIGNMENT, id: probe.person.id }],
       persistLink: async (tx, attachmentId) => {
         const { person, actingRole } = await authorizePhoto(rawInput, ctx, tx)
         const before = photoSnapshot(person)

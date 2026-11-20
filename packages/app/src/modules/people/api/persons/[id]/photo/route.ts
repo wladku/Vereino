@@ -20,7 +20,6 @@ import {
 } from '@/modules/foundation'
 import { withPhotoUpload, type PhotoCommandResult, type PhotoUpload } from '../../../../commands/photos'
 import {
-  PERSON_PHOTO_ASSIGNMENT,
   PERSON_PHOTO_OWNER_ENTITY,
   PERSON_PHOTO_PARTITION,
   checkPersonPhoto,
@@ -132,7 +131,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
       attachmentId: person.photoAttachmentId,
       auth: ctx.auth,
       expectedOwner: { entityId: PERSON_PHOTO_OWNER_ENTITY, recordId: person.id },
-      expectedAssignment: { type: PERSON_PHOTO_ASSIGNMENT, id: person.id },
+      expectedAssignment: { type: PERSON_PHOTO_OWNER_ENTITY, id: person.id },
       expectedPartitionCode: PERSON_PHOTO_PARTITION,
       requirePrivatePartition: true,
     })

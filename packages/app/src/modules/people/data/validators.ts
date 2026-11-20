@@ -333,6 +333,17 @@ export const departureSchema = z
 /** `people.persons.return` (`POST /api/people/persons/{id}/return`). */
 export const personReturnSchema = z.object({ id: z.uuid() }).strict()
 
+/**
+ * `people.persons.anonymize` (`POST /api/people/persons/{id}/anonymize`, REQ-L05; #308): the recorded erasure request
+ * and the person's last name typed to confirm.
+ */
+export const personAnonymizeSchema = z
+  .object({ id: z.uuid(), requestId: z.uuid(), confirmLastName: z.string().max(200) })
+  .strict()
+
+/** `people.persons.delete` (`DELETE /api/people/persons/{id}`, REQ-L05; #308). */
+export const personDeleteSchema = z.object({ id: z.uuid() }).strict()
+
 /** `POST /api/people/me/departure-requests`: the member names themself and/or their wards. */
 export const memberDepartureRequestSchema = z
   .object({
