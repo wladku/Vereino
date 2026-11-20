@@ -4,7 +4,8 @@
 // to the coordinators of its section ("To"), a subject and a message. The options come from
 // `GET /api/communication/direct`; `POST` starts the thread and the page opens it. States: loading, error with retry,
 // empty (no group to write to), and the refusals 403 (outside the household), 422 (nobody to address) and 429 (the
-// daily limit). Phone-first.
+// daily limit). "Send" stays enabled: a send without a subject or a message shows the error summary and the field errors
+// and moves the focus to the first field to fill (R04.1–R04.3; #490). Phone-first.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,7 +20,15 @@ import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import {
+  ErrorSummary,
+  FieldErrorMessage,
+  MemberSkeleton,
+  fieldProblemProps,
+  focusFirstProblem,
+  problemOf,
+  type FieldProblem,
+} from '@vereino/ui'
 import {
   CLUB_MESSAGES_HREF,
   OWN_FORBIDDEN_STATE,
@@ -83,6 +92,16 @@ function sendError(t: Translate, status: number, code: string | null): string {
   return t('communication.direct.errors.send')
 }
 
+/** What is missing before a send, in the order of the fields: the subject, then the message. */
+function problemsOf(t: Translate, id: string, subject: string, body: string): FieldProblem[] {
+  return [
+    ...(subject.trim()
+      ? []
+      : [{ fieldId: `${id}-subject`, message: t('communication.direct.errors.subjectRequired') }]),
+    ...(body.trim() ? [] : [{ fieldId: `${id}-body`, message: t('communication.direct.errors.bodyRequired') }]),
+  ]
+}
+
 function Composer({ options }: { options: DirectOption[] }) {
   const t = useT()
   const router = useRouter()
@@ -96,6 +115,8 @@ function Composer({ options }: { options: DirectOption[] }) {
   const [body, setBody] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  // After the first send the problems follow the typing, so a fixed field loses its error at once.
+  const [attempted, setAttempted] = React.useState(false)
 
   if (subjects.length === 0) {
     return (
@@ -109,10 +130,17 @@ function Composer({ options }: { options: DirectOption[] }) {
   }
 
   const recipient = recipients.find((entry) => entry.key === recipientKey) ?? null
-  const ready = Boolean(recipient) && subject.trim().length > 0 && body.trim().length > 0
+  const problems = attempted ? problemsOf(t, id, subject, body) : []
 
   const send = async () => {
-    if (!recipient || !ready) return
+    const found = problemsOf(t, id, subject, body)
+    if (found.length > 0) {
+      setAttempted(true)
+      setError(null)
+      focusFirstProblem(found)
+      return
+    }
+    if (!recipient) return
     setPending(true)
     setError(null)
     let call: Awaited<ReturnType<typeof apiCall<{ threadId?: string; code?: string }>>>
@@ -147,11 +175,17 @@ function Composer({ options }: { options: DirectOption[] }) {
     <form
       className="flex flex-col gap-4"
       data-testid="club-direct-form"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         void send()
       }}
     >
+      <ErrorSummary
+        title={t('communication.direct.errors.summary')}
+        problems={problems}
+        data-testid="club-direct-problems"
+      />
       <p className="text-muted-foreground max-w-prose text-sm">{t('communication.direct.intro')}</p>
       {subjects.length > 1 ? (
         <div className="flex flex-col gap-1">
@@ -209,10 +243,16 @@ function Composer({ options }: { options: DirectOption[] }) {
           className="min-h-11"
           value={subject}
           maxLength={SUBJECT_MAX}
+          {...fieldProblemProps(problems, `${id}-subject`)}
           onChange={(event) => {
             setSubject(event.target.value)
           }}
           data-testid="club-direct-subject"
+        />
+        <FieldErrorMessage
+          fieldId={`${id}-subject`}
+          message={problemOf(problems, `${id}-subject`)}
+          data-testid="club-direct-subject-error"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -222,10 +262,16 @@ function Composer({ options }: { options: DirectOption[] }) {
           className="min-h-32"
           value={body}
           maxLength={BODY_MAX}
+          {...fieldProblemProps(problems, `${id}-body`)}
           onChange={(event) => {
             setBody(event.target.value)
           }}
           data-testid="club-direct-body"
+        />
+        <FieldErrorMessage
+          fieldId={`${id}-body`}
+          message={problemOf(problems, `${id}-body`)}
+          data-testid="club-direct-body-error"
         />
       </div>
       {error ? (
@@ -234,7 +280,7 @@ function Composer({ options }: { options: DirectOption[] }) {
         </Alert>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" className="min-h-11" disabled={pending || !ready} data-testid="club-direct-send">
+        <Button type="submit" className="min-h-11" disabled={pending} data-testid="club-direct-send">
           {pending ? t('communication.direct.sending') : t('communication.direct.send')}
         </Button>
         <Button asChild variant="outline" className="min-h-11">

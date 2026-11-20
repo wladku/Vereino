@@ -5,11 +5,14 @@
 // marker on a member's reply. Club text is shown as written (line breaks kept, never as markup). The admin page adds
 // its own part under each message (`renderFooter`: the delivery status and "Delete message", B-19). With `onEdit`
 // the author edits their own message in place (B-19, M-07; people life-cycle spec REQ-L12, #304): never another
-// author's, a deleted or a system message, nor any message of a case.
+// author's, a deleted or a system message, nor any message of a case. "Save" and "Send reply" stay enabled: an empty
+// text shows the error under the field and takes the focus back to it (R04.1, R04.3; #490); saving an unchanged text
+// just closes the editor.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { FieldErrorMessage, fieldProblemProps, focusField } from '@vereino/ui'
 import { mayEditMessage } from '../lib/case-rules'
 import { formatDateTime, roleLabel, type ThreadMessageItem } from './client-helpers'
 
@@ -32,35 +35,48 @@ function MessageEditor({
   const id = React.useId()
   const [body, setBody] = React.useState(message.body ?? '')
   const [pending, setPending] = React.useState(false)
+  const [attempted, setAttempted] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   // The editor opens on the reader's "Edit", so the text takes the focus.
   React.useEffect(() => {
     textareaRef.current?.focus()
   }, [])
   const text = body.trim()
+  const fieldId = `${id}-edit`
+  const problems = attempted && !text ? [{ fieldId, message: t('communication.message.edit.errors.bodyRequired') }] : []
   return (
     <form
       className="flex flex-col gap-2"
       aria-label={t('communication.message.edit.label')}
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
-        if (!text) return
+        if (!text) {
+          setAttempted(true)
+          focusField(fieldId)
+          return
+        }
+        if (text === message.body) {
+          onCancel()
+          return
+        }
         setPending(true)
         void onSave(text).finally(() => {
           setPending(false)
         })
       }}
     >
-      <label htmlFor={`${id}-edit`} className="sr-only">
+      <label htmlFor={fieldId} className="sr-only">
         {t('communication.message.edit.label')}
       </label>
       <textarea
-        id={`${id}-edit`}
+        id={fieldId}
         ref={textareaRef}
         className={TEXTAREA_CLASS}
         value={body}
         maxLength={MESSAGE_MAX_LENGTH}
-        required
+        aria-required="true"
+        {...fieldProblemProps(problems, fieldId)}
         disabled={pending}
         onChange={(event) => {
           setBody(event.target.value)
@@ -73,14 +89,13 @@ function MessageEditor({
         }}
         data-testid="thread-message-edit-body"
       />
+      <FieldErrorMessage
+        fieldId={fieldId}
+        message={problems[0]?.message ?? null}
+        data-testid="thread-message-edit-error"
+      />
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          size="sm"
-          className="min-h-11"
-          disabled={pending || !text || text === message.body}
-          data-testid="thread-message-edit-save"
-        >
+        <Button type="submit" size="sm" className="min-h-11" disabled={pending} data-testid="thread-message-edit-save">
           {t('communication.message.edit.save')}
         </Button>
         <Button type="button" variant="outline" size="sm" className="min-h-11" disabled={pending} onClick={onCancel}>
@@ -217,19 +232,30 @@ export function ReplyBox({
   const t = useT()
   const id = React.useId()
   const [body, setBody] = React.useState('')
+  const [attempted, setAttempted] = React.useState(false)
+  const fieldId = `${id}-reply`
+  const problems = attempted && !body.trim() ? [{ fieldId, message: t('communication.reply.errors.bodyRequired') }] : []
   return (
     <form
       className="flex flex-col gap-2"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         const text = body.trim()
-        if (!text) return
+        if (!text) {
+          setAttempted(true)
+          focusField(fieldId)
+          return
+        }
         void onSend(text).then((sent) => {
-          if (sent) setBody('')
+          if (sent) {
+            setBody('')
+            setAttempted(false)
+          }
         })
       }}
     >
-      <label htmlFor={`${id}-reply`} className="text-sm font-medium">
+      <label htmlFor={fieldId} className="text-sm font-medium">
         {t('communication.reply.label')}
       </label>
       {hint ? (
@@ -238,23 +264,19 @@ export function ReplyBox({
         </p>
       ) : null}
       <textarea
-        id={`${id}-reply`}
+        id={fieldId}
         className={TEXTAREA_CLASS}
         value={body}
         maxLength={MESSAGE_MAX_LENGTH}
-        aria-describedby={hint ? `${id}-hint` : undefined}
+        {...fieldProblemProps(problems, fieldId, hint ? `${id}-hint` : undefined)}
         onChange={(event) => {
           setBody(event.target.value)
         }}
         data-testid="thread-reply-body"
       />
+      <FieldErrorMessage fieldId={fieldId} message={problems[0]?.message ?? null} data-testid="thread-reply-error" />
       <div>
-        <Button
-          type="submit"
-          className="min-h-11"
-          disabled={pending || body.trim().length === 0}
-          data-testid="thread-reply-send"
-        >
+        <Button type="submit" className="min-h-11" disabled={pending} data-testid="thread-reply-send">
           {t('communication.reply.send')}
         </Button>
       </div>
