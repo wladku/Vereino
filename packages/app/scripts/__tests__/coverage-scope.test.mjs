@@ -19,6 +19,7 @@ const COVERED_GLOBS = [
   { cwd: REPO_ROOT, glob: 'scripts/check-spec-changelogs.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/check-licenses.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/check-lessons.mjs' },
+  { cwd: REPO_ROOT, glob: 'scripts/check-secrets.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/merge-train-plan.mjs' },
   { cwd: REPO_ROOT, glob: 'scripts/ci-failure-ledger-plan.mjs' },
   { cwd: REPO_ROOT, glob: 'eslint.vereino.mjs' },
@@ -26,7 +27,7 @@ const COVERED_GLOBS = [
 
 test('every file under the 100 % rule is loaded by the test run', async () => {
   const files = COVERED_GLOBS.flatMap(({ cwd, glob }) => fs.globSync(glob, { cwd }).map((file) => path.join(cwd, file)))
-  assert.ok(files.length >= 12, `expected the tooling files, found ${String(files.length)}`)
+  assert.ok(files.length >= 13, `expected the tooling files, found ${String(files.length)}`)
   for (const file of files) await import(pathToFileURL(file).href)
 })
 
@@ -43,6 +44,7 @@ test('the coverage globs match the test:scripts script', () => {
     '../../scripts/check-spec-changelogs.mjs',
     '../../scripts/check-licenses.mjs',
     '../../scripts/check-lessons.mjs',
+    '../../scripts/check-secrets.mjs',
     '../../scripts/merge-train-plan.mjs',
     '../../scripts/ci-failure-ledger-plan.mjs',
     '../../eslint.vereino.mjs',
