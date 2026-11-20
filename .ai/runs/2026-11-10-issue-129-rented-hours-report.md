@@ -1,7 +1,7 @@
 # Run — issue #129: rented-hours report (E08-S09)
 
 - **Goal and trigger:** cezar task 398cfa2e (`om-auto-fix-issue 129`), unattended. Build the rented-hours report (REQ-038, TEST-053) for places flagged `rented_by_club`, with CSV export.
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5 step 10); #129 (epic #119); `feat/issue-129-rented-hours-report`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (phase 5 step 10); #129 (epic #119); `feat/issue-129-rented-hours-report`.
 - **Approval:** nothing Ask First. No migration (`club_core_places.rented_by_club` exists), no new module or dependency. The route `/api/facilities/reports/rented-hours` was already listed as a protected surface by the club spec. The DI service methods are additive.
 
 ## Steps
@@ -36,7 +36,7 @@
   - `api/reports/rented-hours/route.ts`, `backend/facilities/reports/rented-hours/page.tsx`, `page.meta.ts`
   - `components/RentedHoursReport.tsx`, `i18n/en.json`, `i18n/pl.json`
 - `packages/app/.ai/qa/tests/facilities/TEST-053-rented-hours.spec.ts`
-- `.ai/specs/2026-10-27-vereino-facilities.md`, `.ai/specs/changelog/2026-10-27-vereino-facilities/2026-11-10-issue-129-rented-hours-report.md`
+- `.ai/specs/implemented/2026-10-27-vereino-facilities.md`, `.ai/specs/changelog/2026-10-27-vereino-facilities/2026-11-10-issue-129-rented-hours-report.md`
 - this log
 
 ## Commands and results

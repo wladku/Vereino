@@ -28,7 +28,7 @@
   - `research/decisions/D-001…D-028`;
   - `research/2026-10-23-benchmark-competitors.md` (13 products) and `research/2026-10-20-business-case.md` (revised 2026-10-23);
   - `research/2026-10-23-benchmark-sportbm.md` (screens of another club's app);
-  - `.ai/specs/2026-10-20-vereino-club-management.md` (phases 1–3; phase 1 ready), `.ai/specs/2026-10-27-vereino-club-payments.md` (phase 4) and `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5) — split by D28.
+  - `.ai/specs/2026-10-20-vereino-club-management.md` (phases 1–3; phase 1 ready), `.ai/specs/2026-10-27-vereino-club-payments.md` (phase 4) and `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (phase 5) — split by D28.
 
 ## Decision summary
 
@@ -153,7 +153,7 @@ Checking SportBM's public page and pricing, and ProTrainUp's facilities module i
 
 ## Scope
 
-- **Now (1.0):** the Must set of the club specifications (REQ-001…REQ-039 with Must priority), delivered in five phases: phases 1–3 in `.ai/specs/2026-10-20-vereino-club-management.md`, phase 4 in `.ai/specs/2026-10-27-vereino-club-payments.md`, phase 5 in `.ai/specs/2026-10-27-vereino-facilities.md` (D28). Since D28 the facility module no longer requires payments.
+- **Now (1.0):** the Must set of the club specifications (REQ-001…REQ-039 with Must priority), delivered in five phases: phases 1–3 in `.ai/specs/2026-10-20-vereino-club-management.md`, phase 4 in `.ai/specs/2026-10-27-vereino-club-payments.md`, phase 5 in `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (D28). Since D28 the facility module no longer requires payments.
   - The 1.0 scope is D01 as extended by D13, D17 and D23: people and roles, sections and groups, activities and calendars, attendance, substitutions, announcements, fees with online payment, facility and bookings, public club page, cash and bank reconciliation, order campaigns, treasurer role, a bilingual interface, and facility maintenance planned in the facility calendar (D17); D27 adds sign-in with Google and Facebook for account holders as Should.
   - Added by D23: bulk import of people from a spreadsheet and a guardians' contact list for coaches (Must); integration with PZPN / Łączy nas piłka and an hours report for the school halls the club rents (Should).
   - Club settings with defaults (D22): the age for a child's own account (16), who pays the online payment commission (the club), the sibling discount, the coach settlement model, the attendance declaration model, whether guardians see other children called up, and the sales document for order campaigns (none).

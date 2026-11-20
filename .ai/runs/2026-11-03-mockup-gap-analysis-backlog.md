@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), a side session started by the design session. Four read-only analysis subagents, then `om-backlog` with `om-prepare-issue`'s body template, labels and label-rationale comment.
 - **Trigger:** the product owner reported that the sandbox lacks many functions the clickable mockup shows, and asked: "specify everything that was in the mockup and prepare it for implementation".
 - **Spec / issue / branch:**
-  - Sources: `docs/ux-concept/README.md`, `docs/ux-concept/mockups/app.ts`, `.ai/specs/2026-10-20-vereino-club-management.md`, `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/2026-10-27-vereino-facilities.md`.
+  - Sources: `docs/ux-concept/README.md`, `docs/ux-concept/mockups/app.ts`, `.ai/specs/2026-10-20-vereino-club-management.md`, `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/implemented/2026-10-27-vereino-facilities.md`.
   - Issues: epics #82 (E06), #106 (E07), #119 (E08) and 45 children (#83–#105, #107–#118, #120–#129); a comment on the parked epic #24.
   - Branch: `docs/backlog-mockup-parity`.
 - **Status:** completed. Issues filed; this branch records the backlog.
