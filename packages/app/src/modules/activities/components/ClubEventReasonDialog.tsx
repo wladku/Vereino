@@ -4,18 +4,12 @@
 // and either closes the dialog or answers the message to show; Cmd/Ctrl+Enter confirms, Escape closes.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CLUB_EVENT_REASON_MAX, CLUB_EVENT_REASON_MIN } from '../lib/club-events'
+import { DialogContent } from '@/components/ui/dialog'
 
 export function ClubEventReasonDialog({
   open,

@@ -95,14 +95,7 @@ function TabPanel({ value, strip, children }: { value: string; strip: boolean; c
       }
     : {}
   return (
-    <div
-      {...panel}
-      className={
-        strip
-          ? 'ring-offset-background focus-visible:ring-ring pt-4 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
-          : undefined
-      }
-    >
+    <div {...panel} className={strip ? 'focus-visible:focus-indicator pt-4' : undefined}>
       {children}
     </div>
   )
