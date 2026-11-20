@@ -83,6 +83,11 @@ test('ISSUE-485 "/" leads to the club or the sign-in page, /start is gone and ti
       }
     }
 
+    // A missing section of the published club carries no club data, not even in the title (E02-S05).
+    await page.goto(`/p/${HOME_SLUG}/sections/no-such-section`)
+    await expect(page.getByTestId('public-not-found')).toBeVisible()
+    expect(await page.title()).not.toContain(clubName)
+
     // A signed-in administrator at `/` goes into the panel: "Vereino" on the dashboard, "{page} — Vereino" on a page,
     // and the Vereino mark in the sidebar while the club has no logo.
     const email = club.tenant.email

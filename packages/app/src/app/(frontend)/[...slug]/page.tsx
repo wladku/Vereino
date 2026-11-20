@@ -52,23 +52,32 @@ export async function generateMetadata({ params }: FrontendParams): Promise<Meta
   return resolveLocalizedTitleMetadata({
     title: match.route.title,
     titleKey: match.route.titleKey,
-    clubName: await publicClubName(match.params?.clubSlug),
+    clubName: await publicClubName(match.params ?? {}),
   })
 }
 
 /**
  * The club of a public page under `/p/[clubSlug]` for its tab title ("{club} — {page}", #485), read through the
- * approved public slug lookup of `clubCorePublicSite`; null for any other page, a club that does not publish its page,
- * or on any failure (the title then names the product).
+ * approved public slug lookup of `clubCorePublicSite`. A section or club event page names the club only when that
+ * section or event is public itself, so a not-found page never carries club data (E02-S05). Null for any other page,
+ * a club that does not publish its page, or on any failure (the title then names the product).
  */
-async function publicClubName(clubSlug: unknown): Promise<string | null> {
-  if (typeof clubSlug !== 'string' || !clubSlug) return null
+async function publicClubName(params: Record<string, unknown>): Promise<string | null> {
+  const text = (value: unknown): string | null => (typeof value === 'string' && value ? value : null)
+  const clubSlug = text(params.clubSlug)
+  if (!clubSlug) return null
   try {
     await ensureServerBootstrap()
     const container = await createRequestContainer()
     if (!container.hasRegistration('clubCorePublicSite')) return null
-    const frame = await container.resolve<ClubCorePublicSite>('clubCorePublicSite').clubFrame(clubSlug)
-    return frame.status === 'ok' ? frame.value.club.name : null
+    const site = container.resolve<ClubCorePublicSite>('clubCorePublicSite')
+    const frame = await site.clubFrame(clubSlug)
+    if (frame.status !== 'ok') return null
+    const sectionSlug = text(params.sectionSlug)
+    if (sectionSlug && (await site.sectionPage(clubSlug, sectionSlug)).status !== 'ok') return null
+    const eventSlug = text(params.eventSlug)
+    if (eventSlug && (await site.publicClubEvent(clubSlug, eventSlug)).status !== 'ok') return null
+    return frame.value.club.name
   } catch {
     return null
   }

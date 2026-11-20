@@ -40,6 +40,8 @@
 - Browser evidence: ephemeral app, pl/en × 375/1440 px × light/dark for `/` as a guest (lands on `/login`, title "Vereino") and `/backend/club/publication` (title "Publikacja strony klubu — Vereino" / "Club page publication — Vereino", sidebar shows the Vereino mark); `/start` → 404. The seeded admin could not publish the club page (`publication_forbidden`), so the published-club landing is evidenced by the integration test only.
 - Final `yarn verify`: all 18 steps passed (generate, typecheck ×3, lint, format:check, ds:check, i18n, contracts, settings-prefixes, glossary, qa-texts, di-commands, lessons, spec-changelogs, test, test:scripts, build).
 
+- PR #503 CI: `integration (shard 2/6)` failed — `E02-S05-public-pages.spec.ts:139` `expect(getByText('Klub Sportowy Delfin')).toHaveCount(0)`, received 1: the title of a missing section of a published club named the club. Fix: the frontend catch-all names the club only when the section (`sectionPage`) or club event (`publicClubEvent`) itself resolves; `ISSUE-485` now asserts it. Local: `yarn verify --from typecheck` all 17 passed; `--filter E02-S05-public-pages` 2 passed; `--filter ISSUE-485` 1 passed (a first attempt died on `EADDRINUSE :::5133`, a port taken by another run on the server; the re-run passed).
+
 ## Open problems / next steps
 
 - Operators must set `VEREINO_HOME_CLUB_SLUG` on each instance for `/` to reach the club page (documented in `.env.example` and the PR).
