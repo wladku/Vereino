@@ -36,5 +36,6 @@ export async function publicPlacesMetadata(clubSlug: string): Promise<Metadata |
   const description = t('facilities.public.places.metaDescription', 'Facilities of {club} and their calendars.', {
     club: club.name,
   })
-  return { title, description, openGraph: { title, description, siteName: club.name, type: 'website' } }
+  // Absolute: the club names the tab, so the root layout's "{page} — Vereino" template must not apply (#485).
+  return { title: { absolute: title }, description, openGraph: { title, description, siteName: club.name, type: 'website' } }
 }

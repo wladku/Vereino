@@ -89,6 +89,7 @@ ARG OPEN_MERCATO_DOCKER_REGISTRY_HOST=host.docker.internal
 ARG INSTALL_CHROMIUM=0
 
 ENV NODE_ENV=production \
+    DEMO_MODE=false \
     NEXT_TELEMETRY_DISABLED=1 \
     PATH=/app/packages/app/node_modules/.bin:/app/node_modules/.bin:$PATH \
     PORT=${CONTAINER_PORT} \

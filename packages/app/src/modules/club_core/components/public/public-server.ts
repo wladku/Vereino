@@ -81,7 +81,8 @@ export async function publicPageMetadata(input: {
   const title = t('club_core.public.documentTitle', '{club} — {page}', { club: input.club, page: input.page })
   const description = previewText(input.description) ?? undefined
   return {
-    title,
+    // Absolute: the club names the tab, so the root layout's "{page} — Vereino" template must not apply (#485).
+    title: { absolute: title },
     description,
     openGraph: { title, description, siteName: input.club, type: 'website' },
   }
