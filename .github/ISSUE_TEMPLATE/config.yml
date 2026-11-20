@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/wladku/Vereino/security/advisories/new
+    about: Never in a public issue. Report vulnerabilities privately as described in SECURITY.md.
+  - name: Security policy (SECURITY.md)
+    url: https://github.com/wladku/Vereino/blob/main/SECURITY.md
+    about: How we handle vulnerability reports, supported versions and response times.
+  - name: Contribution guide (CONTRIBUTING.md)
+    url: https://github.com/wladku/Vereino/blob/main/CONTRIBUTING.md
+    about: Setup, the yarn verify gate, signed-off commits and how a pull request gets merged.
