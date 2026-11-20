@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Vereino does not work as it should.
+title: 'fix: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **A security vulnerability never goes here**: follow [SECURITY.md](https://github.com/wladku/Vereino/blob/main/SECURITY.md).
+        Never paste real personal data (children's names, phone numbers, bank details): use made-up values.
+  - type: textarea
+    id: change
+    attributes:
+      label: 🎯 Change
+      description: Who meets the problem, what happens (reported behaviour) and what should happen instead (expected behaviour).
+      placeholder: As a coach, when I … I see … but I expected …
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence of steps, with the role you were signed in as.
+      placeholder: |
+        1. Sign in as …
+        2. Open …
+        3. Click …
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 📋 Scope
+      description: Affected area (module, page, route), version or commit, browser and screen size, and what is out of scope.
+    validations:
+      required: false
+  - type: textarea
+    id: done
+    attributes:
+      label: ✅ Done when
+      description: Observable outcomes that prove the bug is fixed, including the regression case.
+      placeholder: '- Given …, When …, Then …'
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 📸 Evidence
+      description: Screenshots, console errors or log lines, with personal data removed.
+    validations:
+      required: false
+  - type: textarea
+    id: questions
+    attributes:
+      label: ⚠️ Open questions
+      description: Anything you are unsure about; mark each as blocking or non-blocking.
+    validations:
+      required: false

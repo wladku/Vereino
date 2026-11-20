@@ -1,14 +1,35 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
+import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { homeClubSlug, homeRedirect } from '@/modules/club_core/lib/home-route'
+import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
 
 function isAutoLoginEnabled(): boolean {
   return Boolean(process.env.OM_AUTOLOGIN_EMAIL?.trim() && process.env.OM_AUTOLOGIN_PASSWORD)
 }
 
-// The home route is a pure router: it never renders. Unless the visitor has
-// dismissed the start page, it sends them there; otherwise into the app
-// (backend when authenticated, login otherwise).
+/**
+ * The configured club (`VEREINO_HOME_CLUB_SLUG`) when its public page is published, read through the approved public
+ * slug lookup of `clubCorePublicSite`; null otherwise, and on any failure, so `/` still reaches the sign-in page.
+ */
+async function publishedHomeClubSlug(): Promise<string | null> {
+  const slug = homeClubSlug(process.env)
+  if (!slug) return null
+  try {
+    const { bootstrap } = await import('@/bootstrap')
+    bootstrap()
+    const container = await createRequestContainer()
+    if (!container.hasRegistration('clubCorePublicSite')) return null
+    const frame = await container.resolve<ClubCorePublicSite>('clubCorePublicSite').clubFrame(slug)
+    return frame.status === 'ok' ? slug : null
+  } catch {
+    return null
+  }
+}
+
+// The home route is a pure router: it never renders (#485; owner decision 4 of epic #479). The platform start page is
+// no landing any more: a guest goes to the club's public page while it is published, otherwise to the sign-in page; a
+// signed-in visitor goes into the app.
 export default async function Home() {
   const auth = await getAuthFromCookies()
 
@@ -21,12 +42,5 @@ export default async function Home() {
     redirect('/api/auth/autologin')
   }
 
-  const cookieStore = await cookies()
-  const startPageDismissed = cookieStore.get('start_page_dismissed')?.value === '1'
-
-  if (!startPageDismissed) {
-    redirect('/start')
-  }
-
-  redirect(auth ? '/backend' : '/login')
+  redirect(homeRedirect({ authenticated: Boolean(auth), publishedClubSlug: auth ? null : await publishedHomeClubSlug() }))
 }
