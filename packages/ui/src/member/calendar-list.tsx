@@ -96,7 +96,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
         </p>
       ) : null}
       {Link && item.href ? (
-        <Link href={item.href} className={`${titleClassName} focus-visible:shadow-focus rounded-sm outline-none`}>
+        <Link href={item.href} className={`${titleClassName} focus-visible:focus-indicator rounded-sm outline-none`}>
           {item.title}
         </Link>
       ) : (
@@ -179,7 +179,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
             <Link
               key={link.id}
               href={link.href}
-              className="border-input bg-background hover:bg-accent focus-visible:shadow-focus inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium outline-none"
+              className="border-input bg-background hover:bg-accent focus-visible:focus-indicator inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium outline-none"
             >
               {link.label}
             </Link>
