@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['facilities.manage'],
   pageTitle: 'Edit rental rate',
   pageTitleKey: 'facilities.rates.edit.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   navHidden: true,
   breadcrumb: [

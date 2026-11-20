@@ -2,9 +2,9 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['facilities.view'],
-  pageTitle: 'Facility calendar',
-  pageTitleKey: 'facilities.calendar.title',
-  pageGroup: 'Facilities',
+  pageTitle: 'Calendar',
+  pageTitleKey: 'facilities.nav.calendar',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 10,
   icon: 'calendar-clock',

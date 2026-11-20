@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['groups.view'],
   pageTitle: 'Group',
   pageTitleKey: 'groups.groups.record.title',
-  pageGroup: 'Groups',
+  pageGroup: 'Classes',
   pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [

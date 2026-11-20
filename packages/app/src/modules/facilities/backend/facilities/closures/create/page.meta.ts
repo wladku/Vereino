@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['facilities.manage'],
   pageTitle: 'New closure',
   pageTitleKey: 'facilities.closures.create.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   navHidden: true,
   breadcrumb: [

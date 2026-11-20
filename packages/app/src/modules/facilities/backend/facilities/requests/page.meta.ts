@@ -2,9 +2,9 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['facilities.view', 'facilities.rentals.approve'],
-  pageTitle: 'Requests awaiting approval',
-  pageTitleKey: 'facilities.requests.title',
-  pageGroup: 'Facilities',
+  pageTitle: 'Requests',
+  pageTitleKey: 'facilities.nav.requests',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 16,
   icon: 'inbox',
