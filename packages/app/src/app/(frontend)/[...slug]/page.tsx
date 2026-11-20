@@ -13,6 +13,7 @@ import { Organization } from '@open-mercato/core/modules/directory/data/entities
 import type { Metadata } from 'next'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { resolveLocalizedTitleMetadata } from '@/lib/metadata'
+import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
 import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middleware/page-executor'
 import { frontendMiddlewareEntries } from '@/.mercato/generated/frontend-middleware.generated'
 
@@ -51,7 +52,35 @@ export async function generateMetadata({ params }: FrontendParams): Promise<Meta
   return resolveLocalizedTitleMetadata({
     title: match.route.title,
     titleKey: match.route.titleKey,
+    clubName: await publicClubName(match.params ?? {}),
   })
+}
+
+/**
+ * The club of a public page under `/p/[clubSlug]` for its tab title ("{club} — {page}", #485), read through the
+ * approved public slug lookup of `clubCorePublicSite`. A section or club event page names the club only when that
+ * section or event is public itself, so a not-found page never carries club data (E02-S05). Null for any other page,
+ * a club that does not publish its page, or on any failure (the title then names the product).
+ */
+async function publicClubName(params: Record<string, unknown>): Promise<string | null> {
+  const text = (value: unknown): string | null => (typeof value === 'string' && value ? value : null)
+  const clubSlug = text(params.clubSlug)
+  if (!clubSlug) return null
+  try {
+    await ensureServerBootstrap()
+    const container = await createRequestContainer()
+    if (!container.hasRegistration('clubCorePublicSite')) return null
+    const site = container.resolve<ClubCorePublicSite>('clubCorePublicSite')
+    const frame = await site.clubFrame(clubSlug)
+    if (frame.status !== 'ok') return null
+    const sectionSlug = text(params.sectionSlug)
+    if (sectionSlug && (await site.sectionPage(clubSlug, sectionSlug)).status !== 'ok') return null
+    const eventSlug = text(params.eventSlug)
+    if (eventSlug && (await site.publicClubEvent(clubSlug, eventSlug)).status !== 'ok') return null
+    return frame.value.club.name
+  } catch {
+    return null
+  }
 }
 
 export default async function SiteCatchAll({ params }: FrontendParams) {
