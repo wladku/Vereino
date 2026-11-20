@@ -325,6 +325,33 @@ test('TEST-C14 generation, overdue reminders and the two sweeps run on a schedul
       )
       .toBeGreaterThanOrEqual(1)
 
+    // Charges overdue on different days keep their own cadence (#404): the message lists every overdue charge, but
+    // only the charges due a reminder count it. Adam's first three charges are capped, so they are no longer listed.
+    const firstDue = addDays(due, 30)
+    const secondDue = addDays(due, 33)
+    const staggered = [
+      (await addCharge(request, admin, { personId: adam, description: 'Obóz zimowy', amount: 9000, dueDate: firstDue }))
+        .chargeId,
+      (
+        await addCharge(request, admin, {
+          personId: adam,
+          description: 'Strój klubowy',
+          amount: 6000,
+          dueDate: secondDue,
+        })
+      ).chargeId,
+    ]
+    expect(remind(addDays(firstDue, 1)).counts).toMatchObject({ payers: 1, reminded: 1, charges: 1, failed: 0 })
+    expect(remind(addDays(secondDue, 1)).counts).toMatchObject({ payers: 1, reminded: 1, charges: 1, failed: 0 })
+    const staggeredMails = await awaitEmails(adamEmail, 'Adam Dorosły', 6)
+    expect(staggeredMails.at(-1)?.text).toContain('Obóz zimowy')
+    expect(staggeredMails.at(-1)?.text).toContain('Strój klubowy')
+    expect(Object.values(await reminderCounts(staggered))).toEqual([1, 1])
+    // A week after its own first reminder the first charge is reminded again; the second waits for its own week.
+    expect(remind(addDays(firstDue, 8)).counts).toMatchObject({ payers: 1, reminded: 1, charges: 1 })
+    const afterWeek = await reminderCounts(staggered)
+    expect(staggered.map((id) => afterWeek[id])).toEqual([2, 1])
+
     // --- Generation: never in migration B's month; in the next months on the generation day, once ---
     const anna = await createPerson(request, admin, {
       firstName: 'Anna',

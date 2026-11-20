@@ -115,7 +115,45 @@ describe('reminderBatches', () => {
       '2026-12-11',
     )
     expect([...batches.keys()]).toEqual(['p0', 'p1'])
-    expect(batches.get('p1')?.map((charge) => charge.id)).toEqual(['c1', 'c2', 'c3'])
+    expect(batches.get('p1')?.listed.map((charge) => charge.id)).toEqual(['c1', 'c2', 'c3'])
+    expect(batches.get('p1')?.reminded.map((charge) => charge.id)).toEqual(['c2', 'c3'])
+  })
+
+  it('counts a reminder only on the charges due one, so each keeps its own cadence (#404)', () => {
+    // A, B and C fall overdue on days 1, 4 and 9 of December; each is reminded the day after.
+    let charges = [
+      candidate({ id: 'A', dueDate: '2026-12-01' }),
+      candidate({ id: 'B', dueDate: '2026-12-04' }),
+      candidate({ id: 'C', dueDate: '2026-12-09' }),
+    ]
+    const runs: Record<string, { listed: string[]; reminded: string[] }> = {}
+    for (let day = 2; day <= 31; day += 1) {
+      const today = `2026-12-${String(day).padStart(2, '0')}`
+      const batch = reminderBatches(charges, today).get('p1')
+      if (!batch) continue
+      const reminded = new Set(batch.reminded.map((charge) => charge.id))
+      runs[today] = { listed: batch.listed.map((c) => c.id), reminded: [...reminded] }
+      charges = charges.map((charge) =>
+        reminded.has(charge.id)
+          ? { ...charge, reminderCount: charge.reminderCount + 1, lastRemindedOn: today }
+          : charge,
+      )
+    }
+    expect(runs).toEqual({
+      '2026-12-02': { listed: ['A'], reminded: ['A'] },
+      '2026-12-05': { listed: ['A', 'B'], reminded: ['B'] },
+      '2026-12-09': { listed: ['A', 'B'], reminded: ['A'] },
+      '2026-12-10': { listed: ['A', 'B', 'C'], reminded: ['C'] },
+      '2026-12-12': { listed: ['A', 'B', 'C'], reminded: ['B'] },
+      '2026-12-16': { listed: ['A', 'B', 'C'], reminded: ['A'] },
+      '2026-12-17': { listed: ['A', 'B', 'C'], reminded: ['C'] },
+      '2026-12-19': { listed: ['A', 'B', 'C'], reminded: ['B'] },
+      '2026-12-23': { listed: ['A', 'B', 'C'], reminded: ['A'] },
+      '2026-12-24': { listed: ['B', 'C'], reminded: ['C'] },
+      '2026-12-26': { listed: ['B', 'C'], reminded: ['B'] },
+      '2026-12-31': { listed: ['C'], reminded: ['C'] },
+    })
+    expect(charges.map((charge) => charge.reminderCount)).toEqual([4, 4, 4])
   })
 
   it('skips a payer none of whose charges is due a reminder today', () => {
