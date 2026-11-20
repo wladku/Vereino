@@ -14,14 +14,7 @@ import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
@@ -44,6 +37,7 @@ import {
   type InstitutionType,
   type RequestQueueItem,
 } from './requests-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 /** A request decided or expired meanwhile: the dialog closes and the queue reloads. */
 const GONE_CODES = new Set(['invalid_transition', 'request_hold_expired'])

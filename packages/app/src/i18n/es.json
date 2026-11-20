@@ -20,8 +20,8 @@
   "app.exampleBlogPost": "Entrada de blog de ejemplo",
   "app.examplePage": "Página de ejemplo",
   "app.goToLogin": "Ir a iniciar sesión",
-  "app.metadata.description": "Base ERP modular compatible con IA para empresas de productos y servicios",
-  "app.metadata.title": "Open Mercato",
+  "app.metadata.description": "Vereino — la aplicación para gestionar un club deportivo",
+  "app.metadata.title": "Vereino",
   "app.page.activeModules.title": "Módulos activos",
   "app.page.dbStatus.connected": "Conectado",
   "app.page.dbStatus.error": "Error: {message}",
@@ -1184,6 +1184,9 @@
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",
   "vereino.dashboard.subtitle": "{date} · what needs action today",
+  "vereino.flash.accessDenied": "Acceso denegado: no tienes permiso para esto. Si lo necesitas, pídeselo al administrador del club.",
+  "vereino.flash.accessDeniedFeature": "Acceso denegado: te falta el permiso «{features}». Si lo necesitas, pídeselo al administrador del club.",
+  "vereino.flash.sessionExpired": "La sesión ha caducado. Redirigiendo al inicio de sesión…",
   "vereino.login.clubLoading": "Loading the club…",
   "vereino.login.tagline": "One account for parents, players and coaches"
 }

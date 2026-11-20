@@ -27,7 +27,7 @@ The required checks appear in the ruleset picker only after they have run once. 
   - [ ] Require linear history.
   - [ ] Require a pull request before merging — required approvals **0** for now; allowed merge method **Squash**.
     - [ ] Require review from Code Owners — turn on only after the second maintainer's handle is in `.github/CODEOWNERS` (a sole owner cannot approve their own pull request).
-  - [ ] Require status checks to pass, **Require branches to be up to date** — add: `gate`, `integration`, `browser-smoke`, `pr-title`, `DCO`. Do **not** add `perf` yet (advisory until the first member page, S7.6) or `dependency-review` (S14.3: findings are triaged before merge).
+  - [ ] Require status checks to pass, **Require branches to be up to date** — add exactly `gate`, `integration`, `browser-smoke` (checked against the live ruleset 2026-11-20). The merge train reads this list to decide when a PR is green, so a check outside it never holds the train. Do **not** add `perf` (advisory, S7.6) or `dependency-review` (S14.3: findings are triaged before merge); `pr-title` and `DCO` still run on every PR but are not required.
   - [ ] Block force pushes.
 
 ## 3. DCO app
@@ -50,7 +50,13 @@ The required checks appear in the ruleset picker only after they have run once. 
 - [ ] Workflow permissions: **Read repository contents and packages permissions**.
 - [ ] Fork pull request workflows: require approval for first-time contributors.
 
-## 6. Verify (ENG-TEST-02)
+## 6. Merge train token
+
+*Settings → Secrets and variables → Actions → `MERGE_TRAIN_TOKEN`* (`.github/workflows/merge-train.yml`, SDLC.md "Validation gate")
+
+- [ ] A fine-grained token of the owner for `wladku/Vereino` only, with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write. Pull requests write covers labels and comments on PRs; adding a label to an issue (the train mirrors `merge-train-failed` / `merge-train-conflict` onto the issue named by `issue-N` in the PR's branch) needs **Issues** write. Without it the train logs a warning for that step and keeps merging.
+
+## 7. Verify (ENG-TEST-02)
 
 Open three draft pull requests against `main` and confirm that each one cannot be merged, then close them:
 

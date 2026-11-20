@@ -27,14 +27,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { useIsMobile } from '@open-mercato/ui/hooks/useIsMobile'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { StepIndicator, type StepIndicatorStep } from '@open-mercato/ui/primitives/step-indicator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
@@ -57,6 +50,7 @@ import {
   type MissingChildRow,
   type SupplierSummaryView,
 } from './orders-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 type CampaignLoad = { status: 'ok'; campaign: CampaignDetail } | { status: 'not_found' } | { status: 'denied' }
 

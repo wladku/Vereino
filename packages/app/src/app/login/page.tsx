@@ -9,10 +9,10 @@ import { SIGN_IN_CLUB_COOKIE, signInClub } from '@/modules/club_core/lib/sign-in
 type LoginRouteProps = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 // The sign-in page (M-01; navigation spec REQ-N10, #261) never names the platform: the app catalog overrides its brand
-// keys and `public/open-mercato.svg` carries the Vereino mark.
+// keys and `public/vereino-mark.svg` (copied into `public/open-mercato.svg`) carries the Vereino mark.
 export async function generateMetadata(): Promise<Metadata> {
   const { translate } = await resolveTranslations()
-  return { title: translate('auth.login.brandName', 'Vereino') }
+  return { title: { absolute: translate('auth.login.brandName', 'Vereino') } }
 }
 
 export default async function LoginRoutePage({ searchParams }: LoginRouteProps) {
