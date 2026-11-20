@@ -23,6 +23,13 @@ export const errorCodes = [
   { code: 'activity_times_inverted', status: 422, messageKey: 'activities.errors.activity_times_inverted' },
   { code: 'activity_dates_inverted', status: 422, messageKey: 'activities.errors.activity_dates_inverted' },
   { code: 'activity_no_sessions', status: 422, messageKey: 'activities.errors.activity_no_sessions' },
+  // A leaving coach's sessions handed over to a person who is not a coach of the club on the day after the last day
+  // (people life-cycle spec *Hand-over choice*; #307), with `details.groupIds`.
+  {
+    code: 'departure_handover_coach_invalid',
+    status: 422,
+    messageKey: 'activities.errors.departure_handover_coach_invalid',
+  },
   { code: 'activities_reference_invalid', status: 422, messageKey: 'activities.errors.activities_reference_invalid' },
   { code: 'activity_group_inactive', status: 422, messageKey: 'activities.errors.activity_group_inactive' },
   // A typed venue (REQ-A08, #270): a club place or a typed venue, exactly one; a venue only on a one-off activity.

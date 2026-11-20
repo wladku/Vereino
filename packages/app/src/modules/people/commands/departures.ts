@@ -6,6 +6,9 @@
 // end its records (`people.departure.<module>`, e.g. the `groups` memberships) and closes the open requests of the
 // persons. The accounts close the day after the last day (the daily role sync, `services/departure-accounts.ts`). The
 // departure is undoable until its last day (Q-L20); "Return to the club" clears `left_on` and restores nothing else.
+// Phase L5 (REQ-L04, #307): a leaving coach's groups need a hand-over choice each (422 `departure_handover_required`);
+// the choices go to the contributors with the deciding person, and a contributor's blocker (cash held, `payments`)
+// refuses the departure like `people`'s own.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -17,17 +20,24 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { addDays, type ActingRole, type CalendarDate } from '@vereino/core'
-import { authorizeScoped } from '@/modules/foundation'
+import { authorizeScoped, foundationErrors, scopeDenialCode } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { DepartureRequest, Guardianship, Person, RoleAssignment } from '../data/entities'
 import { departurePreviewSchema, departureSchema, personReturnSchema } from '../data/validators'
 import { emitPeopleEvent } from '../events'
-import { isDepartureDateInPast, isDepartureUndoExpired, missingPayerChoices } from '../lib/departure-rules'
+import {
+  invalidHandOvers,
+  isDepartureDateInPast,
+  isDepartureUndoExpired,
+  missingHandOvers,
+  missingPayerChoices,
+} from '../lib/departure-rules'
 import { checkPreviewToken, issuePreviewToken } from '../lib/departure-token'
 import { clubToday } from '../services/club-clock'
 import {
   departureContributors,
   type DepartureChange,
+  type DepartureChoices,
   type DepartureContributorModule,
   type DepartureSubject,
 } from '../services/departure'
@@ -272,6 +282,22 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
         const choices = plan.persons.flatMap((person) => person.choicesNeeded)
         const missing = missingPayerChoices(choices, input.nextPayer ?? [])
         if (missing.length > 0) await peopleErrors.throw('departure_payer_required', { wardPersonIds: missing })
+        // A leaving coach's groups (phase L5, #307): a choice per group, never a person who leaves too.
+        const handOver = input.handOver ?? []
+        const needs = plan.persons.flatMap((person) => person.handOvers)
+        const unanswered = missingHandOvers(needs, handOver)
+        if (unanswered.length > 0) await peopleErrors.throw('departure_handover_required', { groupIds: unanswered })
+        const invalid = invalidHandOvers(handOver, personIds)
+        if (invalid.length > 0) await peopleErrors.throw('departure_handover_invalid', { groupIds: invalid })
+        const decidedByPersonId = actorPersonId(authorized.scope)
+        // A substitution entry names who decided: an account without its own person cannot hand sessions over.
+        if (needs.length > 0 && !decidedByPersonId) await foundationErrors.throw(scopeDenialCode(authorized.scope))
+        const neededGroups = new Set(needs.map((need) => need.groupId))
+        const choicesForContributors: DepartureChoices = {
+          handOver: handOver.filter((entry) => neededGroups.has(entry.groupId)),
+          decidedByPersonId,
+          actingRole: authorized.actingRole,
+        }
 
         const snapshot: DepartureSnapshot = {
           departureId,
@@ -305,7 +331,7 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
         const subject: DepartureSubject = { ...scope, personIds, lastDay: input.lastDay }
         const changes: DepartureCommandResult['changes'] = {}
         for (const { module, contributor } of departureContributors(ctx.container)) {
-          const applied = await contributor.apply(em, subject, {})
+          const applied = await contributor.apply(em, subject, choicesForContributors)
           snapshot.contributors[module] = applied.snapshot
           changes[module] = applied.changes
         }
@@ -315,10 +341,9 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
           status: 'open',
           deletedAt: null,
         })
-        const actor = actorPersonId(authorized.scope)
         for (const request of requests) {
           request.status = 'done'
-          request.decidedByPersonId = actor
+          request.decidedByPersonId = decidedByPersonId
           request.decidedAt = new Date()
           request.updatedAt = new Date()
           snapshot.requestIds.push(request.id)

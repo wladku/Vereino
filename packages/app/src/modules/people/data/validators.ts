@@ -320,6 +320,12 @@ export const departureSchema = z
       .array(z.object({ wardPersonId: z.uuid(), guardianPersonId: z.uuid() }).strict())
       .max(DEPARTURE_MAX_PERSONS)
       .optional(),
+    // Phase L5 (#307): per group of a leaving coach, the coach who takes the sessions over, or null to leave them
+    // without a coach.
+    handOver: z
+      .array(z.object({ groupId: z.uuid(), toPersonId: z.uuid().nullable() }).strict())
+      .max(100)
+      .optional(),
     requestBatchId: z.uuid().optional(),
   })
   .strict()

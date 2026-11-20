@@ -237,6 +237,10 @@ test('TEST-L23 the age categories carry their PZPN birth years and a team propos
       uiText('groups.nav.tabs.ageCategories', { exact: true }),
     )
     await page.locator('#age-categories-season').selectOption({ label: '2026/27' })
+    // The season's list loads under a new query key: until it answers, the table shows the previous rows (with the same
+    // birth years) and then remounts its editors, which drops a value typed before (#431). Its reference line comes
+    // with the new list.
+    await expect(page.getByTestId('age-categories-reference')).toContainText('2026/27')
     await expect(page.getByTestId('age-birth-years-orlik')).toHaveText('2016–2017')
     const skrzat = page.getByTestId('age-range-editor-skrzat')
     await skrzat.locator('input').nth(1).fill('5')
