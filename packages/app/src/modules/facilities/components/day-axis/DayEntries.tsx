@@ -87,7 +87,7 @@ export function DayEntries({
                   {onOpen ? (
                     <button
                       type="button"
-                      className="hover:bg-muted focus-visible:ring-ring -mx-1 min-h-11 rounded-md px-1 text-start text-sm break-words underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                      className="hover:bg-muted focus-visible:focus-indicator -mx-1 min-h-11 rounded-md px-1 text-start text-sm break-words underline-offset-2 hover:underline"
                       onClick={() => {
                         onOpen(entry)
                       }}

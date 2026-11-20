@@ -11,14 +11,7 @@
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
@@ -47,6 +40,7 @@ import {
   type FacilityToday,
   type WriteResult,
 } from './facility-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 /**
  * What a dialog reports to the page: the success message (a warning when part of it failed, e.g. a photo upload), or a
