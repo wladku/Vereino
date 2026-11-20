@@ -10,23 +10,19 @@ import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { EmptyState } from '@open-mercato/ui/primitives/empty-state'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import type { CampaignStatus } from '../../lib/order-campaigns'
 import { TableLoadError } from '@vereino/ui'
 import { formatMoney, type TableColumns, type Translate } from '../client-helpers'
 import { ORDERS_HREF, STAGE_VARIANTS, campaignHref, type CampaignRow } from './orders-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
 export function CampaignStageBadge({ status, t }: { status: CampaignStatus | null; t: Translate }) {
   if (!status) return null
-  return (
-    <StatusBadge variant={STAGE_VARIANTS[status]} dot>
-      {t(`payments.orders.stage.${status}`)}
-    </StatusBadge>
-  )
+  return <StatusTag status={STAGE_VARIANTS[status]}>{t(`payments.orders.stage.${status}`)}</StatusTag>
 }
 
 function buildColumns(t: Translate, locale: string): TableColumns<CampaignRow> {

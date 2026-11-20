@@ -21,7 +21,6 @@ import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import { withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { effectiveLogo, nameInitial, staffLogoUrl } from '../lib/files'
@@ -31,6 +30,7 @@ import { errorMessage, type TableColumns, type Translate } from './client-helper
 import { SectionInUseDialog } from './SectionInUseDialog'
 import { coordinatorName, sectionUsageOf, type SectionRow, type SectionUsageView } from './sections-shared'
 import { useCanEditSectionContent, useCanManageClub } from './useCanManageClub'
+import { StatusTag } from '@vereino/ui'
 
 type ClubBranding = { shortName: string | null; logoAttachmentId: string | null }
 
@@ -92,9 +92,7 @@ function buildColumns(t: Translate, club: ClubBranding | null): TableColumns<Sec
               <span key={coordinator.assignmentId}>{coordinatorName(coordinator)}</span>
             ))}
             {enrichment.coordinatorMissing ? (
-              <StatusBadge variant="warning" dot>
-                {t('club_core.sections.noCoordinator')}
-              </StatusBadge>
+              <StatusTag status="warning">{t('club_core.sections.noCoordinator')}</StatusTag>
             ) : null}
           </span>
         )
@@ -120,9 +118,9 @@ function buildColumns(t: Translate, club: ClubBranding | null): TableColumns<Sec
       enableSorting: false,
       meta: { priority: 4 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isPublic ? 'info' : 'neutral'}>
+        <StatusTag status={row.original.isPublic ? 'info' : 'neutral'}>
           {row.original.isPublic ? t('club_core.sections.public.yes') : t('club_core.sections.public.no')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
     {
@@ -130,9 +128,9 @@ function buildColumns(t: Translate, club: ClubBranding | null): TableColumns<Sec
       header: t('club_core.sections.columns.status'),
       meta: { priority: 3 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isActive ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.isActive ? 'success' : 'neutral'}>
           {row.original.isActive ? t('club_core.common.active') : t('club_core.common.inactive')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
   ]

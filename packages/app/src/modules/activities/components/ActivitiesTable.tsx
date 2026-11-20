@@ -16,7 +16,6 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOve
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { TableLoadError } from '@vereino/ui'
@@ -38,6 +37,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -91,14 +91,14 @@ function buildColumns(t: Translate): TableColumns<ActivityRow> {
       meta: { priority: 4 },
       cell: ({ row }) =>
         row.original.type ? (
-          <StatusBadge variant="neutral">
+          <StatusTag status="neutral">
             {t(
               typeLabelKey(
                 row.original.type as ActivityType,
                 row.original.groupKind === 'class_group' ? 'class_group' : null,
               ),
             )}
-          </StatusBadge>
+          </StatusTag>
         ) : (
           typeLabel(t, null)
         ),
@@ -130,9 +130,9 @@ function buildColumns(t: Translate): TableColumns<ActivityRow> {
       enableSorting: false,
       meta: { priority: 4 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isActive ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.isActive ? 'success' : 'neutral'}>
           {row.original.isActive ? t('activities.common.active') : t('activities.common.inactive')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
     {

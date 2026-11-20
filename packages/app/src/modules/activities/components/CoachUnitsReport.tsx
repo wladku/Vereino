@@ -17,7 +17,6 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { monthRange, shiftMonth } from '../lib/coach-units'
@@ -30,7 +29,7 @@ import {
   type CoachUnitsReportData,
   type CoachUnitsRow,
 } from './coach-units-client'
-import { TableLoadError, monthOf, useClubToday } from '@vereino/ui'
+import { TableLoadError, monthOf, StatusTag, useClubToday } from '@vereino/ui'
 
 const ALL_SECTIONS = '__all'
 
@@ -65,10 +64,10 @@ function buildColumns(
       cell: ({ row }) => {
         const { amount, contractState } = row.original
         if (contractState === 'no_contract') {
-          return <StatusBadge variant="warning">{t('activities.reports.coachUnits.noContract')}</StatusBadge>
+          return <StatusTag status="warning">{t('activities.reports.coachUnits.noContract')}</StatusTag>
         }
         if (amount === null || amount === undefined) {
-          return <StatusBadge variant="warning">{t('activities.reports.coachUnits.incompleteContract')}</StatusBadge>
+          return <StatusTag status="warning">{t('activities.reports.coachUnits.incompleteContract')}</StatusTag>
         }
         return <span className="tabular-nums">{formatAmount(amount, report.currency, locale)}</span>
       },

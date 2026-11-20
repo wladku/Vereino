@@ -11,10 +11,9 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { campaignDeadlineLine, childPaymentState, type ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
 import { STAGE_VARIANTS } from '../../orders/orders-client'
@@ -89,9 +88,9 @@ function Campaigns() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">{campaign.name}</h2>
                 <span data-testid="club-order-stage" data-stage={campaign.status}>
-                  <StatusBadge variant={STAGE_VARIANTS[campaign.status]} dot>
+                  <StatusTag status={STAGE_VARIANTS[campaign.status]}>
                     {t(`payments.orders.stage.${campaign.status}`)}
-                  </StatusBadge>
+                  </StatusTag>
                 </span>
               </div>
               <p className="text-sm" data-testid="club-order-deadline">
@@ -119,18 +118,18 @@ function Campaigns() {
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
                       <span data-testid="club-order-child-payment" data-state={payment}>
-                        <StatusBadge variant={STATE_VARIANT[payment]}>
+                        <StatusTag status={STATE_VARIANT[payment]}>
                           {t(`payments.orders.club.state.${payment}`)}
-                        </StatusBadge>
+                        </StatusTag>
                       </span>
                       {payment === 'to_pay' ? (
                         <span className="text-sm">{formatMoney(child.remaining, locale)}</span>
                       ) : null}
                       {child.state === 'picked_up' ? (
                         <span data-testid="club-order-child-picked-up">
-                          <StatusBadge variant={STATE_VARIANT.picked_up}>
+                          <StatusTag status={STATE_VARIANT.picked_up}>
                             {t('payments.orders.club.state.picked_up')}
-                          </StatusBadge>
+                          </StatusTag>
                         </span>
                       ) : null}
                       <Button asChild variant={child.orderId ? 'outline' : 'default'} className="min-h-11">

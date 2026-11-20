@@ -13,7 +13,6 @@ import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
@@ -29,6 +28,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { useCanManageGroups, useHasFeature } from './useCanManageGroups'
+import { StatusTag } from '@vereino/ui'
 
 /** The record's tabs in the mockup's order (B-12). */
 const GROUP_RECORD_TABS = ['details', 'roster', 'public'] as const
@@ -183,9 +183,9 @@ export function GroupRecord({ id }: { id: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <RecordHeaderLinks group={group} t={t} />
-          <StatusBadge variant={group.isActive ? 'success' : 'neutral'}>
+          <StatusTag status={group.isActive ? 'success' : 'neutral'}>
             {group.isActive ? t('groups.common.active') : t('groups.common.inactive')}
-          </StatusBadge>
+          </StatusTag>
         </div>
       </header>
       <Tabs value={tab} onValueChange={selectTab} variant="underline">

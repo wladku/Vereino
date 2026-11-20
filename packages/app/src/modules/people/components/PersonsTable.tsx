@@ -15,11 +15,10 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOve
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { TableLoadError } from '@vereino/ui'
+import { StatusTag, TableLoadError } from '@vereino/ui'
 import {
   PERSON_ATTENTION_FILTERS,
   PERSON_FILTER_ROLES,
@@ -94,9 +93,9 @@ function buildColumns(t: Translate): TableColumns<PersonListItemRow> {
         return (
           <span className="flex flex-wrap gap-1">
             {badges.map((badge) => (
-              <StatusBadge key={badge} variant="info">
+              <StatusTag key={badge} status="info">
                 {t(`people.persons.roleBadges.${badge}`)}
-              </StatusBadge>
+              </StatusTag>
             ))}
           </span>
         )
@@ -128,9 +127,9 @@ function buildColumns(t: Translate): TableColumns<PersonListItemRow> {
       enableSorting: false,
       meta: { priority: 3 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.hasAccount ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.hasAccount ? 'success' : 'neutral'}>
           {row.original.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
     {
