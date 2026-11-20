@@ -53,3 +53,13 @@
 - V-L03: audit snapshots written before an erasure keep old values (encrypted); needs a platform purge contract (upstream).
 - A photo stored before #308 cannot be released by `releaseScoped` (second assignment); its pointer is cleared and the audit context counts it as kept.
 - The global search still lists an anonymised person under hold as a "Former member" hit for an old-name query (tokens remain until step 5).
+
+## Run 2 — merge-train failure (om-auto-fix-pr, 2026-11-20)
+
+- Trigger: PR #437 labelled `merge-train-failed`; `integration (shard 6/6)` failed on the up-to-date head (run 44672672908).
+- Failure, verbatim: `TEST-L09-coming-of-age.spec.ts:241` — `expect(first.steps).toEqual(['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts'])` received an extra `"erasure_names"` (both attempts).
+- Cause: a test bug, not a product bug. This PR registers life-cycle step 5 `erasure_names` (`people/lib/life-cycle-rules.ts`), and TEST-L09 pins the exact step list of the job. The run 1 regression set (L03, L18) did not include L09.
+- Fix: TEST-L09 now expects the five steps in `LIFE_CYCLE_STEPS` order. No other spec asserts the full list (`grep '\.steps)'`).
+- Base: `origin/main` (9f036b5c) was already merged into the head; nothing to merge.
+- `sg docker -c "yarn test:integration:vereino --filter TEST-L09"` — **1 passed** (18.9 s). `yarn typecheck:qa` and `yarn lessons:check` pass.
+- Lesson: `life-cycle-step-added-update-test-l09` (new).
