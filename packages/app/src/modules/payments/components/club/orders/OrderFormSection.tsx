@@ -23,11 +23,10 @@ import { CheckboxField } from '@open-mercato/ui/primitives/checkbox-field'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { cn } from '@open-mercato/shared/lib/utils'
-import { useClubTimeZone } from '@vereino/ui'
+import { StatusTag, useClubTimeZone } from '@vereino/ui'
 import { unitPrice } from '../../../lib/order-campaigns'
 import { NOT_ORDERING, ORDERING, PRINT_NAME_MAX, orderPickup, type ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
@@ -321,9 +320,9 @@ export function OrderFormSection({
             {form.campaign.name}
           </h1>
           <span data-testid="order-stage" data-stage={form.campaign.status}>
-            <StatusBadge variant={STAGE_VARIANTS[form.campaign.status]} dot>
+            <StatusTag status={STAGE_VARIANTS[form.campaign.status]}>
               {t(`payments.orders.stage.${form.campaign.status}`)}
-            </StatusBadge>
+            </StatusTag>
           </span>
         </div>
         {form.campaign.description ? (
@@ -362,7 +361,7 @@ export function OrderFormSection({
                     scroll={false}
                     aria-current={current ? 'page' : undefined}
                     className={cn(
-                      'focus-visible:shadow-focus inline-flex min-h-11 items-center gap-1 rounded-full border px-4 text-sm font-medium outline-none',
+                      'focus-visible:focus-indicator inline-flex min-h-11 items-center gap-1 rounded-full border px-4 text-sm font-medium outline-none',
                       current ? 'bg-primary text-primary-foreground border-primary' : 'bg-card hover:bg-accent',
                     )}
                     data-testid="order-child-chip"
@@ -398,9 +397,7 @@ export function OrderFormSection({
             <h2 className="text-lg font-semibold">
               {t('payments.orders.club.summary.title', { child: child.firstName })}
             </h2>
-            <StatusBadge variant={STATE_VARIANT[order.state]}>
-              {t(`payments.orders.club.state.${order.state}`)}
-            </StatusBadge>
+            <StatusTag status={STATE_VARIANT[order.state]}>{t(`payments.orders.club.state.${order.state}`)}</StatusTag>
           </div>
           <p className="text-muted-foreground text-sm" data-testid="order-summary-time">
             {t('payments.orders.club.summary.orderOf', { at: formatMoment(order.submittedAt, locale, timeZone) })}

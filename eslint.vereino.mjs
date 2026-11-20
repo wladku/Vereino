@@ -78,6 +78,23 @@ const ORM_IMPORT_RESTRICTION = {
     '`@mikro-orm/*` may be imported only in data/**, commands/**, services/**, setup.ts, di.ts and migrations (foundation spec REQ-F16).',
 }
 
+// Dialogs and sheets return focus to their opener on close (E20-S02, #481, WCAG 2.4.3): Vereino code takes their
+// content from `src/components/ui/dialog.tsx`, which wraps the platform one; the other parts still come from the platform.
+export const DIALOG_CONTENT_RESTRICTIONS = [
+  {
+    name: '@open-mercato/ui/primitives/dialog',
+    importNames: ['DialogContent'],
+    message:
+      'Import `DialogContent` from `@/components/ui/dialog`: it returns focus to the element that opened the dialog (#481).',
+  },
+  {
+    name: '@open-mercato/ui/primitives/sheet',
+    importNames: ['SheetContent'],
+    message:
+      'Import `SheetContent` from `@/components/ui/dialog`: it returns focus to the element that opened the sheet (#481).',
+  },
+]
+
 /** The foundation module's public entry, the only file of another Vereino module a module may import by value. */
 export const FOUNDATION_PUBLIC_ENTRY = 'src/modules/foundation/index.ts'
 
@@ -130,7 +147,10 @@ export function vereinoModuleBoundaryConfigs({ boundaries, moduleIds }) {
             })),
           },
         ],
-        'no-restricted-imports': ['error', { patterns: [MODULE_ALIAS_RESTRICTION, ORM_IMPORT_RESTRICTION] }],
+        'no-restricted-imports': [
+          'error',
+          { paths: DIALOG_CONTENT_RESTRICTIONS, patterns: [MODULE_ALIAS_RESTRICTION, ORM_IMPORT_RESTRICTION] },
+        ],
       },
     },
     {
@@ -139,7 +159,12 @@ export function vereinoModuleBoundaryConfigs({ boundaries, moduleIds }) {
           allowed.endsWith('/**') ? `src/modules/${id}/${allowed}/*.{ts,tsx}` : `src/modules/${id}/${allowed}`,
         ),
       ),
-      rules: { 'no-restricted-imports': ['error', { patterns: [MODULE_ALIAS_RESTRICTION] }] },
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          { paths: DIALOG_CONTENT_RESTRICTIONS, patterns: [MODULE_ALIAS_RESTRICTION] },
+        ],
+      },
     },
     {
       files: moduleIds.map((id) => `src/modules/${id}/lib/**/*.{ts,tsx}`),
@@ -167,4 +192,32 @@ export function vereinoModuleBoundaryConfigs({ boundaries, moduleIds }) {
 export function vereinoReactConfigs({ moduleIds }) {
   if (moduleIds.length === 0) return []
   return [{ files: moduleIds.map((id) => `src/modules/${id}/**/*.{ts,tsx}`), rules: VEREINO_REACT_RULES }]
+}
+
+// Every status shows its word and its icon (docs/ux-concept/tokens.md R01.2, R01.8; #482): Vereino code renders a status
+// pill only through `StatusTag` from `@vereino/ui`. A bare platform `StatusBadge`, or a `Tag`/`Badge` given a status
+// tone as a literal, is a status without its icon. Category tags (a `Tag` whose variant comes from a kind map, a filter
+// chip) are labels, not statuses, and stay allowed.
+const STATUS_TONE_LITERAL = '/^(success|warning|error|info|neutral)$/'
+const STATUS_PILL_MESSAGE =
+  'A status shows its word and its icon: use `StatusTag` from `@vereino/ui` (docs/ux-concept/tokens.md R01.2, R01.8).'
+export const STATUS_PILL_RESTRICTIONS = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector:
+        "ImportDeclaration[source.value='@open-mercato/ui/primitives/status-badge'] > ImportSpecifier[imported.name='StatusBadge']",
+      message: STATUS_PILL_MESSAGE,
+    },
+    {
+      selector: `JSXOpeningElement[name.name=/^(Tag|Badge)$/] > JSXAttribute[name.name='variant'][value.value=${STATUS_TONE_LITERAL}]`,
+      message: STATUS_PILL_MESSAGE,
+    },
+  ],
+}
+
+// The status-pill rule for the given Vereino UI files.
+export function vereinoStatusPillConfigs({ files, ignores = [] }) {
+  if (files.length === 0) return []
+  return [{ name: 'vereino/status-pill', files, ignores, rules: STATUS_PILL_RESTRICTIONS }]
 }

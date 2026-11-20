@@ -5,18 +5,12 @@
 // "Busy: {session}"; an optional reason of up to 200 characters. The state and the save live in `useAssignCoach`,
 // which the phone's bottom sheet shares (E10-S08 #273).
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CoachPickerFields } from './CoachPickerFields'
 import { dateLabel, instantDate, instantTime } from './client-helpers'
 import { useAssignCoach, type StaffableOccurrence } from './useAssignCoach'
+import { DialogContent } from '@/components/ui/dialog'
 
 export type { StaffableOccurrence } from './useAssignCoach'
 

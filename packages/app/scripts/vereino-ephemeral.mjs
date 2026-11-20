@@ -116,6 +116,8 @@ export function buildAppEnv({
     OM_EVENTS_SINGLE_DELIVERY: 'false',
     AUTO_SPAWN_SCHEDULER: 'false',
     DEMO_MODE: 'false',
+    // The club `/` leads a guest to (#485); the test of the home route publishes a club under this slug.
+    VEREINO_HOME_CLUB_SLUG: 'qa-home-club',
     TENANT_DATA_ENCRYPTION_FALLBACK_KEY: 'vereino-ephemeral-fallback-key',
     DB_POOL_MIN: '2',
     DB_POOL_MAX: '20',

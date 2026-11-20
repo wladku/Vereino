@@ -52,6 +52,7 @@
     "lessons:check": "node ./scripts/check-lessons.mjs",
     "lessons:list": "node ./scripts/check-lessons.mjs --list",
     "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",
+    "licenses:check": "node ./scripts/check-licenses.mjs",
     "typecheck:packages": "yarn workspaces foreach -Apt --include '@vereino/core' --include '@vereino/db' --include '@vereino/ui' run typecheck",
     "verify": "node ./scripts/verify.mjs",
     "format": "yarn workspace @vereino/app format",
@@ -61,6 +62,7 @@
     "glossary:check": "yarn workspace @vereino/app glossary:check",
     "qa-texts:check": "yarn workspace @vereino/app qa-texts:check",
     "di-commands:check": "yarn workspace @vereino/app di-commands:check",
+    "test:backup": "yarn workspace @vereino/app test:backup",
     "test:scripts": "yarn workspace @vereino/app test:scripts"
   },
   "resolutions": {

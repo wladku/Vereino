@@ -157,9 +157,9 @@ export function partDayLabel(t: Translate, locale: string, date: string): string
   }).format(new Date(`${date}T00:00:00Z`))
 }
 
-export function clubEventStatusVariant(status: string | null | undefined): 'info' | 'error' | 'neutral' {
+export function clubEventStatusVariant(status: string | null | undefined): 'info' | 'canceled' | 'neutral' {
   if (status === 'planned') return 'info'
-  if (status === 'cancelled') return 'error'
+  if (status === 'cancelled') return 'canceled'
   return 'neutral'
 }
 
