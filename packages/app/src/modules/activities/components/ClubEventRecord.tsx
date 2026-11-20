@@ -3,8 +3,8 @@
 // record — a header with the dates, the place (external mark) and the section, the status, the Public page link while
 // the event is published and **Cancel club event** (a reason; it says how many planned parts' families will be told,
 // and the toast how many people were). Tabs Details and Parts under `?tab=`, default Parts. A reader who does not
-// manage the event (a coordinator of another section, or of a whole-club event) sees both read-only. The Files tab
-// comes with E14-S04.
+// manage the event (a coordinator of another section, or of a whole-club event) sees them read-only. The Files tab
+// holds the poster and the funder logos (E14-S04, #379).
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -20,6 +20,7 @@ import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { ClubEventFilesPanel } from './ClubEventFilesPanel'
 import { ClubEventDetailsForm } from './ClubEventForm'
 import { ClubEventPartsTable } from './ClubEventPartsTable'
 import { ClubEventReasonDialog } from './ClubEventReasonDialog'
@@ -34,7 +35,7 @@ import {
 
 type Load = { status: 'ok'; event: ClubEventDetail } | { status: 'not_found' } | { status: 'denied' }
 
-const TABS = ['details', 'parts'] as const
+const TABS = ['details', 'parts', 'files'] as const
 type Tab = (typeof TABS)[number]
 
 function tabFrom(value: string | null): Tab {
@@ -184,6 +185,9 @@ export function ClubEventRecord({ id }: { id: string }) {
             <TabsTrigger value="parts">
               {t('activities.clubEvents.record.parts', { count: event.parts.length })}
             </TabsTrigger>
+            <TabsTrigger value="files">
+              {t('activities.clubEvents.record.files', { count: event.files?.length ?? 0 })}
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="details" className="pt-4">
@@ -195,6 +199,9 @@ export function ClubEventRecord({ id }: { id: string }) {
         </TabsContent>
         <TabsContent value="parts" className="pt-4">
           <ClubEventPartsTable event={event} options={manages ? (options.data ?? null) : null} onChanged={refetch} />
+        </TabsContent>
+        <TabsContent value="files" className="pt-4">
+          <ClubEventFilesPanel event={event} editable={editable} onChanged={refetch} />
         </TabsContent>
       </Tabs>
       {editable ? (

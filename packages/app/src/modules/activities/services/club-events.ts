@@ -6,8 +6,9 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
-import { Activity, Attendance, ClubEvent, ClubEventPart, Occurrence } from '../data/entities'
+import { Activity, Attendance, ClubEvent, ClubEventFile, ClubEventPart, Occurrence } from '../data/entities'
 import { pastClubEventIds } from '../data/queries'
+import { sortClubEventFiles, staffImageUrl, type ClubEventFileKind } from '../lib/club-event-files'
 import { clubEventDates, clubEventPublicPath, partKind } from '../lib/club-events'
 import { gatheringIso } from '../lib/gathering'
 import { confirmByIso } from '../lib/confirm-by'
@@ -300,4 +301,46 @@ export async function sessionClubEvent(
     clubEventRefs(container, scope, [activityId], em),
   ])
   return { part, clubEvent: refs.get(activityId) ?? null }
+}
+
+/** A file of a club event as the record shows it (REQ-T08, #379): the staff preview goes through the image route. */
+export type ClubEventFileView = {
+  id: string
+  kind: ClubEventFileKind
+  funderName: string | null
+  fileName: string
+  mimeType: string
+  fileSize: number
+  position: number
+  url: string
+  createdAt: string
+  updatedAt: string
+}
+
+export function clubEventFileView(row: ClubEventFile): ClubEventFileView {
+  return {
+    id: row.id,
+    kind: row.kind,
+    funderName: row.funderName ?? null,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    fileSize: row.fileSize,
+    position: row.position,
+    url: staffImageUrl(row.attachmentId),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+/** The live poster and funder logos of a club event: the poster first, then the logos in upload order. */
+export async function clubEventFileViews(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  eventId: string,
+): Promise<ClubEventFileView[]> {
+  const rows = await container
+    .resolve<EntityManager>('em')
+    .fork()
+    .find(ClubEventFile, { ...scope, clubEventId: eventId, deletedAt: null })
+  return sortClubEventFiles(rows).map(clubEventFileView)
 }
