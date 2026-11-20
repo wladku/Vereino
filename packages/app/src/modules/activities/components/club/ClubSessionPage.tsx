@@ -196,13 +196,16 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     hasWards: profile.wards.length > 0,
     coaches: profile.contexts.includes('coach'),
     coordinates: memberStaffScopes(profile).includes('coordinator'),
+    isParticipant: profile.isParticipant === true,
   })
-  const as: Perspective = perspectives.member
+  // Staff without a member side make no member read: their own calendar holds no session (#483).
+  const memberRead = perspectives.member !== null
+  const as: Perspective = perspectives.member ?? 'self'
   const personId = searchParams.get('personId')
-  const query = useMemberSession(id, as, personId)
+  const query = useMemberSession(id, as, personId, memberRead)
   const staffAs = perspectives.staff ?? 'coach'
   const coachQuery = useMemberSession(id, staffAs, null, perspectives.staff !== null)
-  const view = sessionPageView(readState(true, query), readState(perspectives.staff !== null, coachQuery))
+  const view = sessionPageView(readState(memberRead, query), readState(perspectives.staff !== null, coachQuery))
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
 
@@ -243,7 +246,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             variant="outline"
             className="min-h-11"
             onClick={() => {
-              void query.refetch()
+              if (memberRead) void query.refetch()
               if (perspectives.staff) void coachQuery.refetch()
             }}
           >

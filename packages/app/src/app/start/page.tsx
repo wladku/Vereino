@@ -18,6 +18,7 @@ import { User } from '@open-mercato/core/modules/auth/data/entities'
 import { Tenant, Organization } from '@open-mercato/core/modules/directory/data/entities'
 import { buildHomeQuickLinks } from '@/lib/homeQuickLinks'
 import { Fragment } from 'react'
+import { notFound } from 'next/navigation'
 
 // Every other route that builds a request container bootstraps first, and this page needs it
 // twice over: `createRequestContainer` throws outright until `registerDiRegistrars` has run, and
@@ -60,6 +61,9 @@ for (const route of apiRouteMetadata) {
 }
 
 export default async function StartPage() {
+  // The platform start page (database counters, the demo password hint) is a local-development aid only: production
+  // answers 404 and `/` never leads here (#485; owner decision 4 of epic #479).
+  if (process.env.NODE_ENV === 'production') notFound()
   const { t } = await resolveTranslations()
   const quickLinks = buildHomeQuickLinks(modules)
 
