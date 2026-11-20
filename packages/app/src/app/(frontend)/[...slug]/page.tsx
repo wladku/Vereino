@@ -18,7 +18,18 @@ import { frontendMiddlewareEntries } from '@/.mercato/generated/frontend-middlew
 
 registerFrontendRouteManifests(frontendRoutes)
 
-type FrontendParams = { params: Promise<{ slug: string[] }> }
+type SearchParams = Record<string, string | string[] | undefined>
+
+type FrontendParams = { params: Promise<{ slug: string[] }>; searchParams?: Promise<SearchParams> }
+
+/**
+ * A module page may carry its own document metadata as a static `generateMetadata` on its default export (the route
+ * loader hands over only the default export): the Vereino public club pages title themselves with the club's name and
+ * add Open Graph tags (#487). Null keeps the route's own title.
+ */
+type PageWithMetadata = {
+  generateMetadata?: (props: { params: Record<string, string | string[]>; searchParams: SearchParams }) => Promise<Metadata | null>
+}
 
 async function ensureServerBootstrap() {
   const { bootstrap } = await import('@/bootstrap')
@@ -40,7 +51,7 @@ async function renderAccessDenied() {
   )
 }
 
-export async function generateMetadata({ params }: FrontendParams): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: FrontendParams): Promise<Metadata> {
   const p = await params
   const pathname = '/' + (p.slug?.join('/') ?? '')
   const match = findRouteManifestMatch(getFrontendRouteManifests(), pathname)
@@ -48,14 +59,20 @@ export async function generateMetadata({ params }: FrontendParams): Promise<Meta
     return {}
   }
 
-  return resolveLocalizedTitleMetadata({
+  const routeMetadata = await resolveLocalizedTitleMetadata({
     title: match.route.title,
     titleKey: match.route.titleKey,
   })
+  if (match.route.requireAuth || match.route.requireCustomerAuth) return routeMetadata
+  const Component = (await match.route.load()) as PageWithMetadata
+  if (typeof Component.generateMetadata !== 'function') return routeMetadata
+  const pageMetadata = await Component.generateMetadata({ params: match.params, searchParams: (await searchParams) ?? {} })
+  return pageMetadata ? { ...routeMetadata, ...pageMetadata } : routeMetadata
 }
 
-export default async function SiteCatchAll({ params }: FrontendParams) {
+export default async function SiteCatchAll({ params, searchParams }: FrontendParams) {
   const p = await params
+  const query = (await searchParams) ?? {}
   const pathname = '/' + (p.slug?.join('/') ?? '')
   const match = findRouteManifestMatch(getFrontendRouteManifests(), pathname)
   if (!match) return notFound()
@@ -139,5 +156,5 @@ export default async function SiteCatchAll({ params }: FrontendParams) {
   })
   if (middlewareRedirect) redirect(middlewareRedirect)
   const Component = await match.route.load()
-  return <Component params={match.params} />
+  return <Component params={match.params} searchParams={query} />
 }

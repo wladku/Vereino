@@ -24,6 +24,7 @@ import {
   usePublicClubEvent,
   type PublicClubEventPage,
   type PublicClubEventPart,
+  type PublicLoad,
 } from './public-client'
 
 const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6'
@@ -201,10 +202,19 @@ function ClubEventBody({ page }: { page: PublicClubEventPage }) {
   )
 }
 
-export function PublicClubEventView({ clubSlug, eventSlug }: { clubSlug: string; eventSlug: string }) {
+/** `initial`: the state the server already read (#487), so the page's HTML holds its content without JavaScript. */
+export function PublicClubEventView({
+  clubSlug,
+  eventSlug,
+  initial,
+}: {
+  clubSlug: string
+  eventSlug: string
+  initial?: PublicLoad<PublicClubEventPage>
+}) {
   const t = useT()
-  const query = usePublicClubEvent(clubSlug, eventSlug)
-  const load = query.data
+  const query = usePublicClubEvent(clubSlug, eventSlug, !initial)
+  const load = initial ?? query.data
 
   if (!load && query.isFetching) {
     return (
