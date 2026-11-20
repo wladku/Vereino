@@ -8,7 +8,7 @@ import type { AwilixContainer } from 'awilix'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { CalendarDate } from '@vereino/core'
-import { DepartureRequest, Guardianship, Person, PersonImportRow, RoleAssignment } from '../data/entities'
+import { DepartureRequest, Guardianship, PersonImportRow, RoleAssignment, type Person } from '../data/entities'
 import type { ContributorNotice, OwnHistory } from '../lib/erasure-rules'
 import { PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION } from '../lib/person-photo'
 import { departureContributors } from './departure'
@@ -109,8 +109,8 @@ export async function modulesWithHistory(
   personId: string,
 ): Promise<string[]> {
   const modules: string[] = []
-  for (const { module, contributor } of departureContributors(container)) {
-    if (await contributor.hasHistory(em, { ...scope, personId })) modules.push(module)
+  for (const entry of departureContributors(container)) {
+    if (await entry.contributor.hasHistory(em, { ...scope, personId })) modules.push(entry.module)
   }
   return modules
 }
@@ -204,7 +204,13 @@ export async function photoFileIds(
     'actionLogService',
   )
   for (let page = 1; page <= 10; page += 1) {
-    const { items } = await logs.list({ ...scope, resourceKind: 'people.person', resourceId: personId, page, pageSize: 200 })
+    const { items } = await logs.list({
+      ...scope,
+      resourceKind: 'people.person',
+      resourceId: personId,
+      page,
+      pageSize: 200,
+    })
     for (const entry of items) {
       for (const id of [photoIdOf(entry.snapshotBefore), photoIdOf(entry.snapshotAfter)]) if (id) ids.add(id)
     }

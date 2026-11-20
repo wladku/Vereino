@@ -19,11 +19,7 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { withPhotoUpload, type PhotoCommandResult, type PhotoUpload } from '../../../../commands/photos'
-import {
-  PERSON_PHOTO_OWNER_ENTITY,
-  PERSON_PHOTO_PARTITION,
-  checkPersonPhoto,
-} from '../../../../lib/person-photo'
+import { PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION, checkPersonPhoto } from '../../../../lib/person-photo'
 import { findPerson } from '../../../../services/people-read'
 import { peopleErrors } from '../../../errors'
 import { PEOPLE_READ_OPTIONS, PERSON_READ_KINDS, errorSchema, isBasicRead } from '../../../shared'

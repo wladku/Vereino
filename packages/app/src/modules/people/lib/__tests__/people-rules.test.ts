@@ -356,6 +356,10 @@ describe('people error codes', () => {
       ['people_filter_failed', 503],
       ['person_photo_format_unsupported', 422],
       ['person_photo_too_large', 422],
+      ['anonymize_blocked', 409],
+      ['confirmation_mismatch', 422],
+      ['person_in_use', 409],
+      ['person_anonymized', 409],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })

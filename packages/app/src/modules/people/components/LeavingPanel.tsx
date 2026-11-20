@@ -214,7 +214,7 @@ export function LeavingPanel({
           onDone={onChanged}
         />
       )}
-      <DeleteAction person={person} />
+      <DeleteAction person={person} onChanged={onChanged} />
     </section>
   )
 }

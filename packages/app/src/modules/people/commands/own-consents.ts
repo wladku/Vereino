@@ -110,7 +110,7 @@ async function authorizeReplay(
     { mode: 'replay' },
   )
   // An undo never writes an anonymised person's data back (#308).
-  await assertNotAnonymized(entity as Person)
+  await assertNotAnonymized(entity)
   return entity as Person
 }
 

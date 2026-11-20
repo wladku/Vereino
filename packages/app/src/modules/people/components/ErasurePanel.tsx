@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import {
@@ -89,7 +90,7 @@ function ReasonList({ personId, reasons, title }: { personId: string; reasons: R
           {reasons.map((reason, index) => {
             const href = reasonHref(personId, reason)
             return (
-              <li key={`${reason.code}-${reason.module ?? ''}-${index}`} data-reason={reason.code}>
+              <li key={`${reason.code}-${reason.module ?? ''}-${String(index)}`} data-reason={reason.code}>
                 {reasonText(reason, t)}
                 {href ? (
                   <>
@@ -149,9 +150,8 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
     },
   })
   const candidates = requests.data ?? []
-  React.useEffect(() => {
-    if (!requestId && candidates.length > 0) setRequestId(candidates[0].id)
-  }, [candidates, requestId])
+  // The first recorded request is chosen until the administrator picks another.
+  const chosenRequestId = requestId || candidates[0]?.id || ''
 
   const close = () => {
     setOpen(false)
@@ -170,9 +170,10 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
         `/api/people/persons/${encodeURIComponent(person.id)}/anonymize`,
         {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          // The person's version as the page loaded it: a change since answers 409 and the page reloads.
+          headers: { 'content-type': 'application/json', ...buildOptimisticLockHeader(person.updatedAt) },
           // Without a recorded request the server answers 409 with `request_missing` among the reasons.
-          body: JSON.stringify({ requestId: requestId || person.id, confirmLastName: lastName }),
+          body: JSON.stringify({ requestId: chosenRequestId || person.id, confirmLastName: lastName }),
         },
       )
       if (call.ok) {
@@ -184,7 +185,11 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
       const code = errorCodeOf(call.result)
       if (code === 'confirmation_mismatch') setMismatch(true)
       else if (code === 'anonymize_blocked') setReasons(reasonsOf(call.result))
-      else flash(t('people.erasure.errors.anonymise'), 'error')
+      else if (call.status === 409) {
+        flash(t('people.leaving.flash.stale'), 'warning')
+        close()
+        await onDone()
+      } else flash(t('people.erasure.errors.anonymise'), 'error')
     } finally {
       setBusy(false)
     }
@@ -192,10 +197,23 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
 
   return (
     <>
-      <Button type="button" variant="destructive" onClick={() => setOpen(true)} data-testid="people-erasure-anonymise">
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={() => {
+          setOpen(true)
+        }}
+        data-testid="people-erasure-anonymise"
+      >
         {t('people.erasure.anonymise.action')}
       </Button>
-      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) setOpen(true)
+          else close()
+        }}
+      >
         <DialogContent
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
@@ -214,7 +232,7 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
             <div className="flex flex-col gap-1">
               <Label htmlFor="people-erasure-request">{t('people.erasure.anonymise.request')}</Label>
               {candidates.length > 0 ? (
-                <Select value={requestId} onValueChange={setRequestId}>
+                <Select value={chosenRequestId} onValueChange={setRequestId}>
                   <SelectTrigger id="people-erasure-request">
                     <SelectValue />
                   </SelectTrigger>
@@ -279,7 +297,7 @@ export function AnonymiseAction({ person, onDone }: { person: PersonDetail; onDo
 }
 
 /** "Delete person" for a person created by mistake; with history, the reasons and the way out (Leaving the club). */
-export function DeleteAction({ person }: { person: PersonDetail }) {
+export function DeleteAction({ person, onChanged }: { person: PersonDetail; onChanged: () => Promise<void> }) {
   const t = useT()
   const router = useRouter()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
@@ -296,7 +314,7 @@ export function DeleteAction({ person }: { person: PersonDetail }) {
     try {
       const call = await apiCall<{ code?: string; reasons?: Reason[] }>(
         `/api/people/persons/${encodeURIComponent(person.id)}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', headers: buildOptimisticLockHeader(person.updatedAt) },
       )
       if (call.ok) {
         flash(t('people.erasure.flash.deleted'), 'success')
@@ -304,7 +322,10 @@ export function DeleteAction({ person }: { person: PersonDetail }) {
         return
       }
       if (errorCodeOf(call.result) === 'person_in_use') setReasons(reasonsOf(call.result))
-      else flash(t('people.erasure.errors.delete'), 'error')
+      else if (call.status === 409) {
+        flash(t('people.leaving.flash.stale'), 'warning')
+        await onChanged()
+      } else flash(t('people.erasure.errors.delete'), 'error')
     } finally {
       setBusy(false)
     }

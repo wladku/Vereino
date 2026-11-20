@@ -249,11 +249,7 @@ export function PersonRecord({ id }: { id: string }) {
         ) : null}
         {hasLeavingTab ? (
           <TabsContent value="leaving" className="pt-4">
-            <LeavingPanel
-              person={person}
-              onChanged={refetch}
-              canAnonymize={features['people.persons.anonymize'] === true}
-            />
+            <LeavingPanel person={person} onChanged={refetch} canAnonymize={features['people.persons.anonymize']} />
           </TabsContent>
         ) : null}
       </Tabs>

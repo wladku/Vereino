@@ -104,7 +104,7 @@ export const openApi: OpenApiRouteDoc = {
     DELETE: {
       summary: 'Delete a person created by mistake',
       description:
-        'Soft-deletes a person without any history: no membership, guardianship, role assignment, account, departure request, attendance, session, contract, charge, payment, rental or booking, ever. Emits `people.person.deleted`. A person with history answers 409 `person_in_use` with `reasons` (each `{ code, module?, params? }`); such a person leaves the club instead. Undoable through the audit log.',
+        'Soft-deletes a person without any history: no membership, guardianship, role assignment, account, departure request, attendance, session, contract, charge, payment, rental or booking, ever. Emits `people.person.deleted`. A person with history answers 409 `person_in_use` with `reasons` (each `{ code, module?, params? }`); such a person leaves the club instead. Send the person record `updatedAt` in the platform optimistic-lock header (400 `lock_token_required` without it, 409 when stale). Undoable through the audit log.',
       responses: [{ status: 204, description: 'Deleted' }],
       errors: [
         { status: 403, description: 'scope_denied', schema: errorSchema },

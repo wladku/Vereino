@@ -25,7 +25,7 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import type { ActingRole, CalendarDate } from '@vereino/core'
 import { authorizeScoped } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { Person } from '../data/entities'
+import type { Person } from '../data/entities'
 import { personAnonymizeSchema, personDeleteSchema } from '../data/validators'
 import { emitPeopleEvent } from '../events'
 import { anonymizeBlockers, lastNameConfirmed, nameKeptUntil, personInUseReasons } from '../lib/erasure-rules'
@@ -42,7 +42,14 @@ import {
   retentionHold,
   type ErasureCounts,
 } from '../services/erasure'
-import { inWriteTransaction, isUniqueViolation, loadPersonLocked, personEvents, personIndexer, personTarget } from './shared'
+import {
+  inWriteTransaction,
+  isUniqueViolation,
+  loadPersonLocked,
+  personEvents,
+  personIndexer,
+  personTarget,
+} from './shared'
 
 const logger = createLogger('people').child({ component: 'erasure' })
 
@@ -114,12 +121,14 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       const keepNameUntil = nameKeptUntil(await retentionHold(em, ctx.container, scope, person.id), today)
       const photoIds = await photoFileIds(ctx.container, scope, person.id, person.photoAttachmentId ?? null)
       const counts = await erasePersonData(em, scope, person, keepNameUntil, now)
-      if (request && request.status === 'open') {
+      // `anonymizeBlockers` refused a missing request above (`request_missing`).
+      if (!request) throw new Error('[internal] anonymisation without a recorded request')
+      if (request.status === 'open') {
         request.status = 'done'
         request.decidedAt = now
         request.updatedAt = now
       }
-      return { person, request: request!, keepNameUntil, counts, photoIds, actingRole: authorized.actingRole }
+      return { person, request, keepNameUntil, counts, photoIds, actingRole: authorized.actingRole }
     })
     const { person } = result
     const scope = { tenantId: person.tenantId, organizationId: person.organizationId }
@@ -181,7 +190,12 @@ export type DeletePersonCommandResult = {
   actingRole: ActingRole
 }
 
-async function loadDeletable(ctx: CommandRuntimeContext, em: EntityManager, rawInput: unknown, mode: 'execute' | 'replay') {
+async function loadDeletable(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  rawInput: unknown,
+  mode: 'execute' | 'replay',
+) {
   return authorizeScoped(
     {
       input: personDeleteSchema,

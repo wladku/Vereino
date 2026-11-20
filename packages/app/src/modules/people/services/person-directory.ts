@@ -163,7 +163,10 @@ export async function findPersons(
   return new Map(
     rows.map((row) => {
       if (!row.anonymizedAt) {
-        return [row.id, { id: row.id, firstName: row.firstName, lastName: row.lastName, birthDate: row.birthDate ?? null }]
+        return [
+          row.id,
+          { id: row.id, firstName: row.firstName, lastName: row.lastName, birthDate: row.birthDate ?? null },
+        ]
       }
       return [row.id, { id: row.id, firstName: formerMember, lastName: '', birthDate: null, anonymized: true }]
     }),

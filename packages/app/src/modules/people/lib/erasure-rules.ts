@@ -107,7 +107,7 @@ export function personInUseReasons(own: OwnHistory, modulesWithHistory: readonly
   if (own.departureRequests > 0) {
     reasons.push({ code: 'departure_requests', params: { count: own.departureRequests } })
   }
-  for (const module of modulesWithHistory) reasons.push({ code: 'history', module })
+  for (const moduleId of modulesWithHistory) reasons.push({ code: 'history', module: moduleId })
   return reasons
 }
 

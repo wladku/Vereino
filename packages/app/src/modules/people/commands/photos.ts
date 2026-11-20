@@ -77,7 +77,7 @@ async function authorizePhoto(
 ) {
   const authorized = await authorizeScoped(photoSpec(ctx), rawInput, ctx, em, { mode })
   // An anonymised person gets no photo again, and the undo of a removal brings none back (#308).
-  await assertNotAnonymized(authorized.entity as Person)
+  await assertNotAnonymized(authorized.entity)
   return { person: authorized.entity as Person, actingRole: authorized.actingRole }
 }
 
