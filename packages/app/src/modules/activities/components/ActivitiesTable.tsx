@@ -26,6 +26,7 @@ import {
   EVENTS_CREATE_HREF,
   OCCURRENCES_HREF,
   activityHref,
+  clubEventRecordHref,
   errorMessage,
   groupOptions,
   ruleSummary,
@@ -49,9 +50,24 @@ function buildColumns(t: Translate): TableColumns<ActivityRow> {
       enableSorting: false,
       meta: { priority: 1 },
       cell: ({ row }) => (
-        <Link className="font-medium underline-offset-4 hover:underline" href={activityHref(row.original.id)}>
-          {row.original.name ?? t('activities.common.empty')}
-        </Link>
+        <span className="flex flex-col gap-0.5">
+          <Link className="font-medium underline-offset-4 hover:underline" href={activityHref(row.original.id)}>
+            {row.original.name ?? t('activities.common.empty')}
+          </Link>
+          {row.original.clubEvent ? (
+            // #378: a part of a club event is changed through its club event (B-T3), not here.
+            <Link
+              className="text-muted-foreground text-xs underline-offset-4 hover:underline"
+              href={clubEventRecordHref(row.original.clubEvent.id)}
+              data-testid="activity-club-event-link"
+              onClick={(event) => {
+                event.stopPropagation()
+              }}
+            >
+              {t('activities.clubEvents.partOf', { name: row.original.clubEvent.name })}
+            </Link>
+          ) : null}
+        </span>
       ),
     },
     {
@@ -283,7 +299,20 @@ export function ActivitiesTable() {
           setPage(1)
         }}
         rowActions={(row: ActivityRow) => (
-          <RowActions items={[{ id: 'open', label: t('activities.common.open'), href: activityHref(row.id) }]} />
+          <RowActions
+            items={[
+              { id: 'open', label: t('activities.common.open'), href: activityHref(row.id) },
+              ...(row.clubEvent
+                ? [
+                    {
+                      id: 'club-event',
+                      label: t('activities.clubEvents.partOf', { name: row.clubEvent.name }),
+                      href: clubEventRecordHref(row.clubEvent.id),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
         onRowClick={(row: ActivityRow) => {
           router.push(activityHref(row.id))

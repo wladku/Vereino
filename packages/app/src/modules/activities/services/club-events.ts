@@ -261,6 +261,16 @@ export async function clubEventPartViews(
   return views.sort((a, b) => (a.startAt ?? '').localeCompare(b.startAt ?? '') || a.title.localeCompare(b.title, 'pl'))
 }
 
+/** The tournament page of a club event while it is published (#378: the record's "Public page" link), or null. */
+export async function clubEventPublicPathOf(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  event: Pick<ClubEvent, 'publicSlug' | 'isPublic'>,
+): Promise<string | null> {
+  if (!event.isPublic) return null
+  return clubEventPublicPath(await publishedClubSlug(container, scope), event.publicSlug, true)
+}
+
 /** A live club event of the organization, or null (the record route). */
 export function findClubEvent(
   container: AwilixContainer,

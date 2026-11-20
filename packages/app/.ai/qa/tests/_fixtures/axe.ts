@@ -153,13 +153,13 @@ export async function switchColorScheme(page: Page, colorScheme: 'light' | 'dark
   await waitForTransitions(page)
 }
 
-// Waits until no CSS transition runs on the page. A control that was disabled while a preview reloaded fades its opacity
-// back for a moment after it is enabled again, and a scan in that moment reports the half-faded colours as contrast
-// violations (TEST-L22 on #431); `reducedMotion` does not stop it.
-export async function waitForTransitions(page: Page): Promise<void> {
+// Waits until no CSS transition runs on the page. Two frames first, so a style change just made is styled and its
+// transitions exist before they are read. `reducedMotion` does not stop Tailwind's `transition-*` classes: a button
+// re-enabled after a refetch fades its opacity back, and a scan during that fade reports the half-faded colours as a
+// contrast violation (TEST-L22 on CI, #430: the move dialog's buttons after the age chip refetched the preview).
+async function waitForTransitions(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
-    // Two frames: a style change just made is applied and its transitions are created before they are read.
     await frame()
     await frame()
     for (;;) {

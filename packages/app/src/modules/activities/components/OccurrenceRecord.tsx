@@ -34,6 +34,7 @@ import {
   OWN_FORBIDDEN_STATE,
   OCCURRENCES_HREF,
   activityHref,
+  clubEventRecordHref,
   dateLabel,
   instantDate,
   instantTime,
@@ -268,6 +269,16 @@ export function OccurrenceRecord({ id }: { id: string }) {
               .join(' · ')}
           </span>
           <OccurrenceBadges row={occurrence} t={t} />
+          {occurrence.clubEvent ? (
+            // #378: a part session links to its club event (B-T3), where its organisers change it.
+            <Link
+              className="text-sm underline underline-offset-4"
+              href={clubEventRecordHref(occurrence.clubEvent.id)}
+              data-testid="occurrence-club-event-link"
+            >
+              {t('activities.clubEvents.partOf', { name: occurrence.clubEvent.name })}
+            </Link>
+          ) : null}
         </div>
         {canMove || canCancel || canOpenAttendance || canStaff || canRestore ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -401,6 +412,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
           <h2 className="text-lg font-semibold">{t('activities.occurrences.move.title')}</h2>
           <p className="text-muted-foreground text-sm">{t('activities.occurrences.move.help')}</p>
           <MoveOccurrenceForm
+            lockedPlace={occurrence.clubEvent ? { label: occurrence.placeName ?? '' } : null}
             key={occurrence.updatedAt ?? occurrence.id}
             occurrence={occurrence}
             onCancel={() => {
