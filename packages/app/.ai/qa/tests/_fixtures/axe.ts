@@ -15,7 +15,7 @@ type ScannedNode = { html: string; target: unknown[] }
 // `aria-orientation` on its list.
 // The AppShell sidebar's low-contrast group headings are fixed by a Vereino override in `globals.css` since #481.
 // `CrudForm` labels and select names, table search boxes, the AppShell breadcrumb and its brand and back links are no
-// longer listed: `PlatformA11yRepairs` (`@vereino/ui`, mounted in the backend layout) repairs them on the page (E20-S18,
+// longer listed: `PlatformA11yRepairs` (`@vereino/ui`, mounted in the backend and frontend layouts) repairs them on the page (E20-S18,
 // #497), so a scan that finds them again fails.
 // Each entry is matched by rule and node, so the same rule on Vereino markup still fails.
 // Remove an entry once the platform fixes it (lesson `platform-crudform-labels-axe-baseline`).

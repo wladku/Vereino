@@ -1,4 +1,4 @@
-// `PlatformA11yRepairs` (E20-S18, #497): mounted once in the backend layout, it keeps the accessibility repairs of
+// `PlatformA11yRepairs` (E20-S18, #497): mounted once in the backend and frontend layouts, it keeps the accessibility repairs of
 // `platform-a11y.ts` applied to the platform markup (`CrudForm` labels, table search boxes, `AppShell` breadcrumb and
 // links) while the page renders. It renders nothing.
 import * as React from 'react'
