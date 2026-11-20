@@ -63,8 +63,21 @@ seven module catalog pairs; `src/modules.ts`; `scripts/check-glossary.mjs`, its 
 - `node scripts/check-glossary.mjs` → `24 Polish and English catalog(s), 0 problem(s)`.
 - New check against the `origin/main` catalogs → 58 findings, among them every case the issue names.
 - `node --test scripts/__tests__/check-glossary.test.mjs` → 15 pass, `check-glossary.mjs` 100 % lines/branches/functions.
-- `yarn verify` and `yarn test:integration:vereino --filter TEST-N01`: see below.
+- `yarn verify`: first run failed at `format:check` (`TEST-N01-club-sidebar-group.spec.ts`,
+  `check-glossary.test.mjs` "is not formatted"); after `yarn format`, `yarn verify --from format:check` passed all 13
+  remaining steps, and a final full `yarn verify` ran before the push (result in the PR body).
+- `yarn test:integration:vereino --filter <ID>`, one id per run: TEST-N01 2 passed (the new groups-and-items case
+  included); TEST-A12 1 passed; TEST-L06 1 passed; TEST-N04 2 passed; TEST-A08 1 passed; TEST-N03 failed first:
+  `locator.click: Timeout 30000ms exceeded … sidebar-scroll-chevron … subtree intercepts pointer events` on "Municipality
+  report". With the mockup order the Facility group is last, and its last item sits under the platform's
+  "scroll to bottom" chevron. Scrolling the item to the middle did not help, because it is the last item. The test
+  now opens the menu item from the keyboard (focus + Enter) and passes (1 passed).
+- Browser evidence: a temporary, uncommitted Playwright spec through the same runner captured the panel (1440 px and
+  375 px, drawer) and M-10 in pl and en, light and dark, with no console errors. The club's default language decides
+  the panel's language for a person on "club default"; the `locale` cookie and `/api/auth/locale` do not override it.
 
 ## Open problems / next steps
 
 - Native-reader review of the reworded Polish values (spec phase 3 exit gate).
+- Platform: when the Facility group is last, its last item ("Raport dla gminy") sits under the sidebar's "scroll to
+  bottom" chevron. Worth a follow-up issue if it bothers users with a short screen.
