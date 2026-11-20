@@ -3,8 +3,8 @@
 // charges without a payer), "Charges without a payer" (the count, the first five and how many more), "Bank statements
 // and cash" (transfers to decide with `payments.bank.import`, charges to refund) and "Order campaigns" (each running
 // campaign with its progress, with `payments.orders.manage`). `?only=counts` answers spec N's menu counts alone: the
-// transfers to decide and the running campaigns, each only with its feature. The club administrator's view, like the
-// charge list (`payments.view` and the `club_admin` grant).
+// transfers to decide and the running campaigns, each only with its feature. The club administrator's and the
+// treasurer's view, like the charge list (`payments.view` and the `club_admin` or `treasurer` grant, #245).
 import { z } from 'zod'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'

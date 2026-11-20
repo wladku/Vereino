@@ -3,7 +3,7 @@
 // - `POST` accepts the selected cash payments of one collector under one `RG/YYYY/MM/NNN` number; the payments leave
 //   the collector's "Cash with you". 409 `cash_already_settled` when a payment is already in a handover;
 // - `GET` is the handover history, newest first.
-// The club administrator's (`payments.cash.settle`) until the treasurer role (#245).
+// The club administrator's and the treasurer's (`payments.cash.settle`; DD-33, #245).
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'

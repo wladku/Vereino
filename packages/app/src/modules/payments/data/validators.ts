@@ -297,6 +297,25 @@ export const cashPayersQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 })
 
+/**
+ * `GET /api/payments/lookups` (#245): the names a Finance form offers — `kind` groups (optionally of one section),
+ * activities, sections or persons (`search` of three letters or more; a shorter one finds no person).
+ */
+export const lookupsQuerySchema = z.object({
+  kind: z.enum(['groups', 'activities', 'sections', 'persons']),
+  search: z.string().trim().max(100).optional(),
+  sectionId: z.uuid().optional(),
+  ids: z
+    .string()
+    .trim()
+    .max(4000)
+    .optional()
+    .transform((value) => (value ? value.split(',').filter((id) => id.length > 0) : undefined))
+    .pipe(z.array(z.uuid()).max(100).optional()),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+})
+
 /** `payments.charges.cancel`: the charge `id` with a required reason. */
 export const chargeCancelSchema = z.object({ id: z.uuid(), reason: reasonSchema }).strict()
 

@@ -1,7 +1,7 @@
 // `GET /api/payments/cash-custody` — B-33 "Cash to settle" (payments spec UI table → `/backend/payments/cash-custody`;
 // REQ-033, TEST-046; issue #118 E07-S11): the cash held by collectors — per person their cash payments with the `KP`
-// receipt numbers, the oldest day and the total — that no handover settled yet. The club administrator's
-// (`payments.cash.settle`) until the treasurer role (#245).
+// receipt numbers, the oldest day and the total — that no handover settled yet. The club administrator's and the
+// treasurer's (`payments.cash.settle`; DD-33, #245).
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {

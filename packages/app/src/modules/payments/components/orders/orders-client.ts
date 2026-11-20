@@ -2,6 +2,7 @@
 // types as the API returns them, links, the stage badge colours and the option loaders of the form. Authorization
 // stays on the routes and commands.
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
+import { lookupRows } from '../client-helpers'
 import type { CampaignAction, CampaignKpis, CampaignStatus, ProductKind } from '../../lib/order-campaigns'
 
 export const ORDERS_HREF = '/backend/payments/orders'
@@ -127,24 +128,14 @@ export function pluralKey(locale: string, count: number): 'one' | 'few' | 'many'
 
 /** The club's active sections, by name. */
 export async function sectionOptions(): Promise<Option[]> {
-  const data = await fetchCrudList<{ id: string; name: string | null }>('club_core/sections', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-  })
-  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+  const rows = await lookupRows('sections')
+  return rows.map((item) => ({ value: item.id, label: item.label }))
 }
 
 /** The active groups of a section, by name (the campaign's group chips). */
 export async function sectionGroups(sectionId: string): Promise<Option[]> {
-  const data = await fetchCrudList<{ id: string; name: string | null }>('groups/groups', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-    isActive: 'true',
-    sectionId,
-  })
-  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+  const rows = await lookupRows('groups', { sectionId })
+  return rows.map((item) => ({ value: item.id, label: item.label }))
 }
 
 /** The club's campaigns a new form may copy, newest first. */

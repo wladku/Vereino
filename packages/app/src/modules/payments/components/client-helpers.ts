@@ -2,7 +2,7 @@
 // returns them, links, money in grosz, option loaders and error text. Authorization stays on the routes and commands.
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
-import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { PaymentSource } from '../lib/charge-ledger'
 
@@ -171,40 +171,52 @@ export function fromGrosz(grosz: number | null | undefined): string {
   return grosz % 100 === 0 ? String(grosz / 100) : (grosz / 100).toFixed(2)
 }
 
+export type LookupRow = { id: string; label: string; sectionId: string | null; sectionName: string | null }
+
+/**
+ * The names a Finance form offers, read through `payments` (`GET /api/payments/lookups`, #245): the treasurer holds
+ * no feature of the modules that own groups, activities, sections and persons.
+ */
+export async function lookupRows(
+  kind: 'groups' | 'activities' | 'sections' | 'persons',
+  params: { search?: string; sectionId?: string; ids?: readonly string[]; pageSize?: number } = {},
+): Promise<LookupRow[]> {
+  const query = new URLSearchParams({ kind, pageSize: String(params.pageSize ?? 100) })
+  if (params.search?.trim()) query.set('search', params.search.trim())
+  if (params.sectionId) query.set('sectionId', params.sectionId)
+  if (params.ids && params.ids.length > 0) query.set('ids', params.ids.join(','))
+  const data = await readApiResultOrThrow<{ items?: LookupRow[] }>(`/api/payments/lookups?${query.toString()}`)
+  return data.items ?? []
+}
+
 /** The club's active groups, by name (the fee form's group field). */
 export async function groupOptions(): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<{ id: string; name: string | null; sectionName?: string | null }>('groups/groups', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-    isActive: 'true',
-  })
-  return data.items.map((item) => ({
+  const rows = await lookupRows('groups')
+  return rows.map((item) => ({
     value: item.id,
-    label: item.sectionName ? `${item.name ?? item.id} — ${item.sectionName}` : (item.name ?? item.id),
+    label: item.sectionName ? `${item.label} — ${item.sectionName}` : item.label,
   }))
 }
 
 /** The club's activities, by name (the fee form's activity field; a camp is an activity). */
 export async function activityOptions(): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<{ id: string; name: string | null }>('activities/activities', {
-    pageSize: 100,
-    sortField: 'name',
-    sortDir: 'asc',
-  })
-  return data.items.map((item) => ({ value: item.id, label: item.name ?? item.id }))
+  const rows = await lookupRows('activities')
+  return rows.map((item) => ({ value: item.id, label: item.label }))
 }
 
-/** The club's persons, filtered by the typed last name (the custom discount rule's persons). */
+/**
+ * The club's persons (the custom discount rule's persons, the manual charge's person): those matching the typed name
+ * (three letters or more), else the persons the club already charges.
+ */
 export async function personOptions(query?: string): Promise<CrudFieldOption[]> {
-  const data = await fetchCrudList<{ id: string; firstName?: string | null; lastName?: string | null }>(
-    'people/persons',
-    { pageSize: 50, ...(query ? { lastName: query } : {}) },
-  )
-  return data.items.map((item) => ({
-    value: item.id,
-    label: personName({ firstName: item.firstName ?? '', lastName: item.lastName ?? '' }) || item.id,
-  }))
+  const rows = await lookupRows('persons', { search: query, pageSize: 50 })
+  return rows.map((item) => ({ value: item.id, label: item.label }))
+}
+
+/** The label of one person (a saved selection outside the offered persons). */
+export async function personLabelOf(id: string): Promise<string> {
+  const [row] = await lookupRows('persons', { ids: [id], pageSize: 1 })
+  return row?.label ?? id
 }
 
 /** An option loader that offers nothing instead of failing. */

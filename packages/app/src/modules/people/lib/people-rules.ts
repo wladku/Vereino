@@ -145,12 +145,14 @@ export type PersonScopeInput = {
  * active `coach`/`assistant` memberships (#30 — a `coach` role assignment alone grants only the `auth` role, not a
  * group); `guardian` with the wards of the active guardianships; `maintenance_planner` with the places the person
  * maintains (#128); `facility_operator` with the places of the active facility attendant assignments and their
- * descendants (#126); `self` always.
+ * descendants (#126); `treasurer` for an active treasurer assignment — club-wide where `payments` allows it, nowhere
+ * else (payments spec DD-33, #245); `self` always.
  */
 export function personScope(input: PersonScopeInput, today: CalendarDate): Scope {
   const active = input.assignments.filter((assignment) => isActiveAt(assignment, today))
   const grants: ScopeGrant[] = []
   if (active.some((assignment) => assignment.role === 'club_admin')) grants.push({ kind: 'club_admin' })
+  if (active.some((assignment) => assignment.role === 'treasurer')) grants.push({ kind: 'treasurer' })
   const sectionIds = uniqueSorted(
     active.filter((assignment) => assignment.role === 'coordinator').map((assignment) => assignment.sectionId),
   )

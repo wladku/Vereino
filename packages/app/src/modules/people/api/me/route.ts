@@ -149,7 +149,7 @@ const memberProfileSchema = z.object({
   contexts: z
     .array(z.string())
     .describe(
-      'Acting contexts of the signed-in person (self, guardian, coach, coordinator, club_admin, facility_operator)',
+      'Acting contexts of the signed-in person (self, guardian, coach, coordinator, club_admin, facility_operator, treasurer)',
     ),
   locale: z.string().describe('The resolved interface locale: preferred → club default → request → en'),
   club: z.object({

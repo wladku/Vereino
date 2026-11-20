@@ -32,7 +32,7 @@ import { useGrantedFeatures } from './useGrantedFeatures'
 import { RoleAssignmentDialog, type RoleAssignmentDialogMode } from './RoleAssignmentDialog'
 import { StaffSetupChecklist } from './StaffSetupChecklist'
 
-const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator'] as const
+const ROLES = ['club_admin', 'coordinator', 'coach', 'facility_operator', 'treasurer'] as const
 
 type SectionItem = { id: string; name: string | null }
 

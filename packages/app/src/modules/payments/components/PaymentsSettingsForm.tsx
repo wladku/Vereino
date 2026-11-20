@@ -21,6 +21,7 @@ import { ONLINE_METHODS, type OnlineConnection } from '../lib/online-payment'
 import { COACH_FEE_ACCESS, MAX_GENERATION_DAY, MIN_GENERATION_DAY } from '../lib/payments-rules'
 import { PaymentsNav } from './PaymentsNav'
 import { errorMessage } from './client-helpers'
+import { useClubSettingsAccess } from './useRecordLinks'
 
 const SETTINGS_API = '/api/payments/settings'
 /** Club settings B-02, where the online fee is set (Q-C01). */
@@ -49,6 +50,7 @@ const methodField = (method: string) => `method_${method}`
 
 function OnlinePaymentFacts({ settings }: { settings: SettingsResponse }) {
   const t = useT()
+  const linkSettings = useClubSettingsAccess()
   // A `<dl>` holds only `dt`/`dd` groups (axe `definition-list`), so the hint sits after it.
   return (
     <div className="space-y-3 text-sm">
@@ -68,11 +70,13 @@ function OnlinePaymentFacts({ settings }: { settings: SettingsResponse }) {
               ? t(`payments.settings.online.feeMode.${settings.onlineFeeMode}`)
               : t('payments.settings.online.feeMode.unknown')}
           </dd>
-          <dd>
-            <Link className="text-primary underline underline-offset-2" href={CLUB_SETTINGS_HREF}>
-              {t('payments.settings.online.feeMode.link')}
-            </Link>
-          </dd>
+          {linkSettings ? (
+            <dd>
+              <Link className="text-primary underline underline-offset-2" href={CLUB_SETTINGS_HREF}>
+                {t('payments.settings.online.feeMode.link')}
+              </Link>
+            </dd>
+          ) : null}
         </div>
       </dl>
       <p className="text-muted-foreground text-xs">{t('payments.settings.online.keysHint')}</p>

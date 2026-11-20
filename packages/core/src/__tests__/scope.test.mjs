@@ -16,7 +16,7 @@ const ORG = { tenantId: 't1', organizationId: 'o1' }
 const SECTION_A = 'section-a'
 const SECTION_B = 'section-b'
 
-test('the grant kinds exclude treasurer; maintenance_planner arrives with #128, facility_operator with #126', () => {
+test('the grant kinds: maintenance_planner arrives with #128, facility_operator with #126, treasurer with #245', () => {
   assert.deepEqual([...GRANT_KINDS].sort(), [
     'club_admin',
     'coach',
@@ -27,7 +27,9 @@ test('the grant kinds exclude treasurer; maintenance_planner arrives with #128, 
     'self',
     'self_user',
     'system_job',
+    'treasurer',
   ])
+  assert.equal(PROVIDER_GRANT_KINDS.includes('treasurer'), true)
   assert.equal(PROVIDER_GRANT_KINDS.includes('maintenance_planner'), true)
   assert.equal(PROVIDER_GRANT_KINDS.includes('facility_operator'), true)
   assert.equal(PROVIDER_GRANT_KINDS.includes('self_user'), false)
@@ -44,6 +46,19 @@ test('actingRoleFor maps self_user to self and system_job to system', () => {
   assert.equal(actingRoleFor('system_job'), 'system')
   assert.equal(actingRoleFor('maintenance_planner'), 'maintenance_planner')
   assert.equal(actingRoleFor('facility_operator'), 'facility_operator')
+  assert.equal(actingRoleFor('treasurer'), 'treasurer')
+})
+
+test('a treasurer grant is club-wide where a call allows it and grants nothing elsewhere (DD-33, #245)', () => {
+  const scope = [{ kind: 'treasurer' }, { kind: 'self', ids: ['p1'] }]
+  const target = { id: 'charge', ...ORG, personId: 'p2' }
+  assert.equal(findActingRole(scope, ['club_admin', 'treasurer'], target), 'treasurer')
+  assert.deepEqual(scopeWhere(scope, ['club_admin', 'treasurer'], {}), {})
+  assert.equal(findActingRole(scope, ['club_admin', 'coordinator'], target), null)
+  assert.deepEqual(scopeWhere(scope, ['club_admin', 'coordinator'], { sectionId: 'section_id' }), {
+    id: { $exists: false },
+  })
+  assert.deepEqual(sanitizeProviderGrants([{ kind: 'treasurer', ids: ['ignored'] }]), [{ kind: 'treasurer' }])
 })
 
 test('unionScopes concatenates and hasKind finds a kind', () => {
@@ -151,7 +166,7 @@ test('sanitizeProviderGrants keeps well-formed provider kinds only', () => {
       { kind: 'club_admin', ids: ['ignored'] },
       { kind: 'system_job' },
       { kind: 'self_user', ids: ['u1'] },
-      { kind: 'treasurer' },
+      { kind: 'unknown_kind' },
       { kind: 'coordinator' },
       { kind: 'coordinator', ids: 'section-a' },
       { kind: 'coordinator', ids: ['', 7, SECTION_A] },

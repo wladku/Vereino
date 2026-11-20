@@ -1,6 +1,6 @@
 // Shared pieces of the `payments` routes: the grant kinds every read allows, list-item serializers, the name
-// enrichment of the lists and OpenAPI schemas. Phase 4 runs without the treasurer role (D-030): fees, discounts,
-// settings and charges are club-wide records the club administrator reads; `scopeWhere` with `club_admin` and no
+// enrichment of the lists and OpenAPI schemas. Fees, discounts, settings and charges are club-wide records the club
+// administrator and the treasurer (payments spec DD-33, #245) read; `scopeWhere` with `treasurer` or `club_admin` and no
 // columns admits every row of the club to them and none to anyone else.
 import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -9,7 +9,7 @@ import type { CampaignKpis } from '../lib/order-campaigns'
 import { findActivities, findGroups, findPersons, type PaymentsScope } from '../services/directory'
 import { campaignNames, campaignsKpis } from '../services/order-campaigns'
 
-export const PAYMENTS_READ_KINDS: readonly GrantKind[] = ['club_admin']
+export const PAYMENTS_READ_KINDS: readonly GrantKind[] = ['treasurer', 'club_admin']
 export const CLUB_WIDE_COLUMNS: ScopeColumnMap = {}
 
 /** Query-engine entity ids (`<module>:<snake_case class>`). */
