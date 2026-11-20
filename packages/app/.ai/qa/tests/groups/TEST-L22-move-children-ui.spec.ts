@@ -111,6 +111,9 @@ test('TEST-L22 several children move to another group from the roster and the ph
       await chooseTarget(dialog, page)
       await dialog.getByRole('button', { name: FITS }).click()
       await expect(child(dialog, 'Bartek Mały')).toBeChecked()
+      // The chip reloads the preview, which disables the chip and the move button until it answers.
+      await expect(dialog.getByRole('button', { name: FITS })).toBeEnabled()
+      await expect(dialog.getByTestId('groups-move-many-save')).toBeEnabled()
       return dialog
     }
 
@@ -176,6 +179,8 @@ test('TEST-L22 several children move to another group from the roster and the ph
       await sheet.getByRole('button', { name: FITS }).click()
       await expect(child(sheet, 'Ala Mała')).toBeChecked()
       await expect(child(sheet, 'Bartek Mały')).toBeChecked()
+      await expect(sheet.getByRole('button', { name: FITS })).toBeEnabled()
+      await expect(sheet.getByTestId('groups-move-many-save')).toBeEnabled()
       return sheet
     }
     for (const locale of ['en', 'pl'] as const) {

@@ -150,9 +150,16 @@ export async function switchColorScheme(page: Page, colorScheme: 'light' | 'dark
     (dark) => document.documentElement.classList.contains('dark') === dark,
     colorScheme === 'dark',
   )
+  await waitForTransitions(page)
+}
+
+// Waits until no CSS transition runs on the page. A control that was disabled while a preview reloaded fades its opacity
+// back for a moment after it is enabled again, and a scan in that moment reports the half-faded colours as contrast
+// violations (TEST-L22 on #431); `reducedMotion` does not stop it.
+export async function waitForTransitions(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
-    // Two frames: the class change is styled and its transitions are created before they are read.
+    // Two frames: a style change just made is applied and its transitions are created before they are read.
     await frame()
     await frame()
     for (;;) {
@@ -199,6 +206,7 @@ export async function scanBlockingViolations(
   await page.evaluate(async () => {
     await document.fonts.ready
   })
+  await waitForTransitions(page)
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
   await testInfo.attach('axe-results', { body: JSON.stringify(results, null, 2), contentType: 'application/json' })
   const blocking: BlockingViolation[] = []
