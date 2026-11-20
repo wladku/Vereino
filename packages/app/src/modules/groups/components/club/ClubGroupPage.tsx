@@ -6,7 +6,9 @@
 // on a chosen last day and removes a mistake, each in a bottom sheet with the panel's forms and rules (E10-S02: 409
 // overlap, 409 `membership_in_use` with End offered instead, 422 `membership_not_started`, 409 version). A coach reads
 // the roster without actions. The group read decides the page: another section's group is "not yours" (403), an
-// unknown one "not found". States: loading, error with retry, empty ("This group has no members yet" with Add).
+// unknown one "not found". States: loading, error with retry, empty ("This group has no members yet" with Add). The
+// coordinator also moves several children to another group in one previewed step (spec L REQ-L15, J-L09 step 6; #383):
+// "Move to another group" opens the panel's bulk move as a full-screen sheet; the success notice offers Undo.
 import * as React from 'react'
 import Link from 'next/link'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -31,6 +33,7 @@ import {
   type Translate,
 } from '../client-helpers'
 import { EndMembershipDialog, MembershipDialog } from '../MembershipDialogs'
+import { MoveChildrenDialog, MoveChildrenNotice, type MoveChildrenResult } from '../MoveChildrenDialog'
 import { useCanManageGroups } from '../useCanManageGroups'
 import { useRemoveMembership } from '../useRemoveMembership'
 import { GroupsClubFrame } from './GroupsClubFrame'
@@ -79,7 +82,12 @@ function datesLine(t: Translate, row: MembershipRow, locale: string): string {
     : t('groups.club.roster.since', { from })
 }
 
-type Sheets = { kind: 'add' } | { kind: 'edit'; row: MembershipRow } | { kind: 'end'; row: MembershipRow } | null
+type Sheets =
+  | { kind: 'add' }
+  | { kind: 'edit'; row: MembershipRow }
+  | { kind: 'end'; row: MembershipRow }
+  | { kind: 'moveMany' }
+  | null
 
 function MemberCard({
   row,
@@ -152,6 +160,7 @@ function Roster({ group }: { group: GroupDetail }) {
   const queryClient = useQueryClient()
   const [view, setView] = React.useState<PeriodStatus>('active')
   const [sheet, setSheet] = React.useState<Sheets>(null)
+  const [moveResult, setMoveResult] = React.useState<MoveChildrenResult | null>(null)
 
   const list = useInfiniteQuery({
     queryKey: ['groups-club-roster', group.id, view],
@@ -282,7 +291,37 @@ function Roster({ group }: { group: GroupDetail }) {
           </p>
         )}
       </header>
-      {canManage && rows.length > 0 ? addButton : null}
+      {moveResult ? (
+        <MoveChildrenNotice
+          result={moveResult}
+          onDismiss={() => {
+            setMoveResult(null)
+          }}
+          onUndone={async () => {
+            setMoveResult(null)
+            flash(t('groups.memberships.moveMany.undone'), 'success')
+            await refresh()
+          }}
+        />
+      ) : null}
+      {canManage && rows.length > 0 ? (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {addButton}
+          {view === 'active' ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+              data-testid="club-roster-move-many"
+              onClick={() => {
+                setSheet({ kind: 'moveMany' })
+              }}
+            >
+              {t('groups.memberships.moveMany.action')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <Tabs
         value={view}
         onValueChange={(value) => {
@@ -333,6 +372,20 @@ function Roster({ group }: { group: GroupDetail }) {
             await refresh()
           }}
           onRefresh={() => void refresh()}
+        />
+      ) : null}
+      {sheet?.kind === 'moveMany' ? (
+        <MoveChildrenDialog
+          open
+          surface="sheet"
+          onOpenChange={close}
+          groupId={group.id}
+          today={today}
+          initialSelectedIds={[]}
+          onMoved={async (result) => {
+            setMoveResult(result)
+            await refresh()
+          }}
         />
       ) : null}
       {ConfirmDialogElement}

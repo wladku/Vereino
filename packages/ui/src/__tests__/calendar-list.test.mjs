@@ -292,3 +292,18 @@ test('renders the secondary links of an item through the link component', () => 
   assert.doesNotMatch(render({ days: days(linked) }), /Attendance list/)
   assert.doesNotMatch(render({ days: days(item()), Link }), /Attendance list/)
 })
+
+test('renders what an item is a part of under its title, linked only when it has a page (club events REQ-T03)', () => {
+  const linked = render({ days: days(item({ partOf: { label: 'GWIAZDA CUP 2026', href: '/p/gwiazda/events/cup' } })) })
+  assert.match(
+    linked,
+    /<p class="text-sm font-medium" data-testid="calendar-item-part-of"><a href="\/p\/gwiazda\/events\/cup" class="[^"]*">GWIAZDA CUP 2026<\/a><\/p>/,
+  )
+  assert.equal(
+    render({ days: days(item({ partOf: { label: 'GWIAZDA CUP 2026', href: null } })) }).includes(
+      '<p class="text-sm font-medium" data-testid="calendar-item-part-of">GWIAZDA CUP 2026</p>',
+    ),
+    true,
+  )
+  assert.doesNotMatch(render({ days: days(item()) }), /calendar-item-part-of/)
+})

@@ -3,7 +3,15 @@
 // commands (the kind of an update comes from the stored row), so a class group with team fields answers 422.
 import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
-import { GROUP_AGE_MAX, GROUP_AGE_MIN, GROUP_KINDS, MEMBERSHIP_ROLES, ROSTER_VIEWS } from '../lib/groups-rules'
+import {
+  AGE_U_MAX,
+  AGE_U_MIN,
+  GROUP_AGE_MAX,
+  GROUP_AGE_MIN,
+  GROUP_KINDS,
+  MEMBERSHIP_ROLES,
+  ROSTER_VIEWS,
+} from '../lib/groups-rules'
 import { ROLLOVER_GROUP_ACTIONS, ROLLOVER_RECORD_ACTIONS } from '../lib/season-rollover'
 
 const nameSchema = z.string().trim().min(1).max(200)
@@ -118,6 +126,28 @@ export const membershipMoveSchema = z
   })
   .strict()
 
+/**
+ * Moves several participants of one roster to another group from `date` (people life-cycle spec REQ-L15, *API* row
+ * `groups.memberships.move_many`; #383). The list is capped by the command (422 `move_too_many` above 100), so the
+ * schema accepts a little more to answer with that code; `dryRun` previews, the apply sends the preview's token.
+ */
+export const membershipMoveManySchema = z
+  .object({
+    fromGroupId: z.uuid(),
+    toGroupId: z.uuid(),
+    date: calendarDateSchema,
+    membershipIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(1000)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'membershipIds must be unique' }),
+    dryRun: z.boolean().optional(),
+    previewToken: z.string().max(200).optional(),
+  })
+  .strict()
+
+export type MembershipMoveManyInput = z.infer<typeof membershipMoveManySchema>
+
 /** Removes a membership entered by mistake (`?id=`, parity spec REQ-A03). */
 export const membershipDeleteSchema = z.object({ id: z.uuid() }).strict()
 
@@ -160,6 +190,32 @@ export const seasonListQuerySchema = z.object({
   sortField: z.enum(['name', 'startsOn', 'createdAt', 'updatedAt']).optional(),
   search: searchQuery,
 })
+
+// --- Age category ranges (people life-cycle spec REQ-L16, *API* rows; #384) ---
+
+const uYear = z.number().int().min(AGE_U_MIN).max(AGE_U_MAX)
+
+/** `PUT /api/groups/age-categories/{entryId}/range`: the entry id from the path, the range and the row's lock token. */
+export const ageCategoryRangeSetSchema = z
+  .object({
+    entryId: z.uuid(),
+    uFrom: uYear,
+    uTo: uYear.nullable().optional(),
+    /** The range's `updatedAt` as read; omitted when the category had no range yet. */
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict()
+
+/** `POST /api/groups/age-categories`: a new entry of the club's dictionary with its range, in one transaction. */
+export const ageCategoryCreateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(150),
+    uFrom: uYear,
+    uTo: uYear.nullable().optional(),
+  })
+  .strict()
+
+export const ageCategoryListQuerySchema = z.object({ seasonId: z.uuid().optional() })
 
 // --- Season rollover (people life-cycle spec REQ-L08, *Vocabulary* → "Season rollover plan"; #311) ---
 

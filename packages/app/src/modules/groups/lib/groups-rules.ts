@@ -3,6 +3,7 @@
 // parameter (engineering standards S3.5); nothing here reads the database.
 import {
   addCalendarDays,
+  ageOn,
   endsBefore,
   isActiveAt,
   isInvertedPeriod,
@@ -77,25 +78,99 @@ export function needsMatchGuard(from: GroupKind, to: GroupKind): boolean {
 /** The key of the club dictionary (`dictionaries` module) that holds the age categories of `team` groups. */
 export const AGE_CATEGORY_DICTIONARY_KEY = 'groups.age_categories'
 
-export type AgeCategorySeed = { readonly value: string; readonly label: string }
+/**
+ * The PZPN "U" range of an age category (people life-cycle spec REQ-L16, DD-L17; #384): a child belongs to
+ * "U{from}–U{to}" in a reference year R when `R − birth year + 1` lies in the range. `uTo` null is open (Senior).
+ */
+export type AgeCategoryRange = { readonly uFrom: number; readonly uTo: number | null }
+
+/** The bounds of a "U" year, as typed by the club administrator. */
+export const AGE_U_MIN = 1
+export const AGE_U_MAX = 99
+
+export type AgeCategorySeed = { readonly value: string; readonly label: string; readonly range: AgeCategoryRange }
 
 /**
  * The PZPN (Polish Football Association) age categories the club's age category dictionary starts with (club spec
  * REQ-019, #92), youngest first, preceded by the academy's youngest group "Kids" (ages 4–5, the mockup's `g-kids`;
  * people life-cycle spec phase L3, approved on #255). Labels are the names with their age groups; the club
  * administrator edits them. Seeded only for a new club: an existing club adds "Kids" in place from the group form.
+ * Each carries its "U" range (REQ-L16, #384); migration E gives existing clubs the same ranges for the entries that
+ * still carry these values.
  */
 export const PZPN_AGE_CATEGORIES: readonly AgeCategorySeed[] = [
-  { value: 'kids', label: 'Kids (U4–U5)' },
-  { value: 'skrzat', label: 'Skrzat (U6–U7)' },
-  { value: 'zak', label: 'Żak (U8–U9)' },
-  { value: 'orlik', label: 'Orlik (U10–U11)' },
-  { value: 'mlodzik', label: 'Młodzik (U12–U13)' },
-  { value: 'trampkarz', label: 'Trampkarz (U14–U15)' },
-  { value: 'junior_mlodszy', label: 'Junior młodszy (U16–U17)' },
-  { value: 'junior_starszy', label: 'Junior starszy (U18–U19)' },
-  { value: 'senior', label: 'Senior' },
+  { value: 'kids', label: 'Kids (U4–U5)', range: { uFrom: 4, uTo: 5 } },
+  { value: 'skrzat', label: 'Skrzat (U6–U7)', range: { uFrom: 6, uTo: 7 } },
+  { value: 'zak', label: 'Żak (U8–U9)', range: { uFrom: 8, uTo: 9 } },
+  { value: 'orlik', label: 'Orlik (U10–U11)', range: { uFrom: 10, uTo: 11 } },
+  { value: 'mlodzik', label: 'Młodzik (U12–U13)', range: { uFrom: 12, uTo: 13 } },
+  { value: 'trampkarz', label: 'Trampkarz (U14–U15)', range: { uFrom: 14, uTo: 15 } },
+  { value: 'junior_mlodszy', label: 'Junior młodszy (U16–U17)', range: { uFrom: 16, uTo: 17 } },
+  { value: 'junior_starszy', label: 'Junior starszy (U18–U19)', range: { uFrom: 18, uTo: 19 } },
+  { value: 'senior', label: 'Senior', range: { uFrom: 20, uTo: null } },
 ]
+
+/** A "U" year as typed in a form: blank → null (open), a whole number 1…99 → the number, anything else → `invalid`. */
+export function parseUInput(value: string): number | null | 'invalid' {
+  const text = value.trim()
+  if (text === '') return null
+  if (!/^\d{1,2}$/.test(text)) return 'invalid'
+  const year = Number(text)
+  return year >= AGE_U_MIN ? year : 'invalid'
+}
+
+/** True when both "U" bounds are set and "U od" is above "U do" (422 `age_range_inverted`). */
+export function ageCategoryRangeInverted(range: AgeCategoryRange): boolean {
+  return range.uTo !== null && range.uFrom > range.uTo
+}
+
+/**
+ * The reference year of the birth-year rule (Q-L25, confirmed 2026-11-19): the calendar year in which the season
+ * starts (2026/27 → 2026); without a season, the year of `fallbackDate` (the move date or today).
+ */
+export function referenceYear(seasonStartsOn: CalendarDate | null, fallbackDate: CalendarDate): number {
+  return Number((seasonStartsOn ?? fallbackDate).slice(0, 4))
+}
+
+/** The birth years of a range in reference year R: `R − u_to + 1` … `R − u_from + 1`; `from` null when open. */
+export type BirthYears = { readonly from: number | null; readonly to: number }
+
+export function birthYearsOf(range: AgeCategoryRange, year: number): BirthYears {
+  return { from: range.uTo === null ? null : year - range.uTo + 1, to: year - range.uFrom + 1 }
+}
+
+/** Whether a child born in `birthYear` belongs to the range in reference year R (DD-L17: by birth year, not by day). */
+export function fitsAgeCategory(birthYear: number, range: AgeCategoryRange, year: number): boolean {
+  const u = year - birthYear + 1
+  return u >= range.uFrom && (range.uTo === null || u <= range.uTo)
+}
+
+/**
+ * The public age range a team is proposed from its category (Q-L26, confirmed 2026-11-19): "Wiek od" = u_from − 1,
+ * "Wiek do" = u_to (open stays open), kept within the publishable ages `GROUP_AGE_MIN`…`GROUP_AGE_MAX`.
+ */
+export function proposedAgeRange(range: AgeCategoryRange): { ageFrom: number; ageTo: number | null } {
+  const clamp = (age: number) => Math.min(GROUP_AGE_MAX, Math.max(GROUP_AGE_MIN, age))
+  return { ageFrom: clamp(range.uFrom - 1), ageTo: range.uTo === null ? null : clamp(range.uTo) }
+}
+
+/**
+ * Whether the public age form proposes the category's range: the category has one and both age fields are still
+ * empty — a value already set is never overwritten.
+ */
+export function shouldProposeAgeRange(
+  range: AgeCategoryRange | null,
+  ageFrom: number | null,
+  ageTo: number | null,
+): range is AgeCategoryRange {
+  return range !== null && ageFrom === null && ageTo === null
+}
+
+/** The birth years as text: "2016–2017", one year "2017", open "≤ 2006". */
+export function formatBirthYears(years: BirthYears): string {
+  if (years.from === null) return `≤ ${String(years.to)}`
+  return years.from === years.to ? String(years.to) : `${String(years.from)}–${String(years.to)}`
+}
 
 /** A season's last day may equal its first day, never precede it. */
 export function seasonDatesInverted(startsOn: CalendarDate, endsOn: CalendarDate): boolean {
@@ -235,6 +310,55 @@ export function moveDateBounds(
   const [year, month] = today.split('-').map(Number)
   const next = month === 12 ? `${String(year + 1)}-01-01` : `${String(year)}-${String(month + 1).padStart(2, '0')}-01`
   return { min, initial: next > min ? next : min }
+}
+
+/** The most children one bulk move takes (people life-cycle spec Q-L22: one roster, one target group, up to 100). */
+export const MOVE_MANY_LIMIT = 100
+
+export type MoveManyProblem = 'too_many' | 'same_group' | 'date_in_past'
+
+/**
+ * Why a bulk move (`groups.memberships.move_many`, REQ-L15, DD-L16) is refused before any child is looked at, or null:
+ * more than `MOVE_MANY_LIMIT` children (422 `move_too_many`), the same group (422 `move_same_group`), a first day before
+ * `today` in the club zone (422 `move_date_in_past`, Q-L08).
+ */
+export function moveManyProblem(
+  move: { fromGroupId: string; toGroupId: string; date: CalendarDate; count: number },
+  today: CalendarDate,
+): MoveManyProblem | null {
+  if (move.count > MOVE_MANY_LIMIT) return 'too_many'
+  if (move.fromGroupId === move.toGroupId) return 'same_group'
+  if (move.date < today) return 'date_in_past'
+  return null
+}
+
+export const MOVE_OUTCOMES = ['move', 'skip_already_member', 'skip_not_active'] as const
+export type MoveOutcome = (typeof MOVE_OUTCOMES)[number]
+
+/**
+ * What a bulk move does with one child (REQ-L15, Q-L24): a membership the single move cannot move on `date` (not
+ * started by then, or over before it) is `skip_not_active`; a child whose participant membership of the target group
+ * overlaps the new period is `skip_already_member` (the others still move); every other child is moved.
+ */
+export function moveOutcome(plan: MovePlan, alreadyMember: boolean): MoveOutcome {
+  if (!plan.ok) return 'skip_not_active'
+  return alreadyMember ? 'skip_already_member' : 'move'
+}
+
+/**
+ * The age-fit rule of the roster's **Fits {group}** filter (REQ-L15): a child fits the target group when their age in
+ * completed years on the move date lies within the group's `age_from`–`age_to` (either bound may be open). Null when
+ * it cannot be told: the group has no age range, or the child has no birth date.
+ */
+export function fitsAgeRange(
+  birthDate: CalendarDate | null,
+  date: CalendarDate,
+  range: { ageFrom: number | null; ageTo: number | null },
+): boolean | null {
+  if (range.ageFrom === null && range.ageTo === null) return null
+  if (!birthDate) return null
+  const age = ageOn(birthDate, date)
+  return (range.ageFrom === null || age >= range.ageFrom) && (range.ageTo === null || age <= range.ageTo)
 }
 
 /**

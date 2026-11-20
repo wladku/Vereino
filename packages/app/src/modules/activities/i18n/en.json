@@ -223,6 +223,7 @@
   "activities.club.session.group": "Group",
   "activities.club.session.guardianOnly": "Your guardian declares for this session.",
   "activities.club.session.invitedTeams": "Invited teams",
+  "activities.club.session.visitingTeams": "Visiting teams",
   "activities.club.session.loading": "Loading the session…",
   "activities.club.session.map": "Open the map",
   "activities.club.session.needsCoach": "Needs a coach",
