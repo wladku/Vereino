@@ -1,7 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
-import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
+import {
+  expectNoPageOverflow,
+  prepareForAccessibilityScan,
+  scanInColorSchemes,
+  switchColorScheme,
+} from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import {
@@ -21,7 +26,9 @@ import { uiText } from '../_fixtures/ui-text'
 // at once on "For a group (event)" with 09:00–10:30 and the staff line; he saves a tournament, which is on the axis and
 // in "Wpisy dnia" after a reload, and a tap on it opens the details sheet. A rental of KS Sąsiedzi shows the renter's
 // name but no phone number (DD-R18). His own general booking is cancelled after a confirmation. Four parallel entries
-// scroll sideways inside the axis, never the page. English and Polish, light and dark.
+// scroll sideways inside the axis, never the page. English and Polish, light and dark. #495 (E20-S16): the axis takes the
+// mockup's colours (sessions green, closures and maintenance grey), every legend swatch stands out from the page by at
+// least 3:1, and the page fits at 320, 375 and 768 px.
 test.describe.configure({ timeout: 360_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -108,6 +115,10 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(
       0,
     )
+    // #495: at 768 px the chips and the "Other day" field share a row, which once stuck out of the page by 15 px.
+    await expectNoPageOverflow(page, 768)
+    await expectNoPageOverflow(page)
+    await page.setViewportSize({ width: 375, height: 812 })
 
     // One tap on 09:00: the dialog at once, "For a group (event)", 09:00–10:30, the staff line; a tournament saved.
     const dialog = page.getByTestId('facilities-slot-dialog')
@@ -194,6 +205,22 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
     await page.goto(`/club/places/${pitch}?date=${saturday}`)
     await expect(page.getByTestId('facilities-day-entries')).toContainText('Entries for the day')
     expect(await scanInColorSchemes(page, testInfo, '/club/places/[placeId] (en)', ready)).toEqual({})
+    // #495: the mockup's colours on the legend, and every swatch at least 3:1 against the page, light and dark.
+    const legend = page.getByTestId('facilities-axis-legend')
+    for (const [kind, swatch] of [
+      ['session', 'success'],
+      ['booking', 'info'],
+      ['rental', 'warning'],
+      ['closure', 'neutral'],
+      ['maintenance', 'neutral'],
+    ]) {
+      await expect(legend.locator(`[data-legend="${kind}"] [data-swatch]`)).toHaveAttribute('data-swatch', swatch)
+    }
+    for (const scheme of ['light', 'dark'] as const) {
+      await switchColorScheme(page, scheme)
+      const weak = (await legendSwatchContrasts(page)).filter((item) => item.ratio < 3)
+      expect(weak, `legend swatches under 3:1 (${scheme})`).toEqual([])
+    }
     await page.emulateMedia({ colorScheme: 'light' })
     await page.getByTestId('facilities-axis-hour-11:00').click()
     await expect(dialog.getByTestId('facilities-slot-kind')).toContainText('For a group (event)')
@@ -204,3 +231,49 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
     await club.cleanup()
   }
 })
+
+/**
+ * The contrast of each legend swatch with the surface behind it (WCAG 1.4.11): the stronger of its edge and its fill,
+ * colours resolved to sRGB through a 1 px canvas, so `oklch()` tokens measure like any other colour.
+ */
+async function legendSwatchContrasts(page: Page): Promise<{ label: string; ratio: number }[]> {
+  return page.getByTestId('facilities-axis-legend').evaluate((legend) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) throw new Error('no 2d canvas')
+    const rgba = (colour: string): number[] => {
+      context.clearRect(0, 0, 1, 1)
+      context.fillStyle = colour
+      context.fillRect(0, 0, 1, 1)
+      return [...context.getImageData(0, 0, 1, 1).data]
+    }
+    const surface = (element: Element): number[] => {
+      for (let node: Element | null = element; node; node = node.parentElement) {
+        const colour = rgba(getComputedStyle(node).backgroundColor)
+        if (colour[3] === 255) return colour
+      }
+      return [255, 255, 255, 255]
+    }
+    const luminance = ([r, g, b]: number[]): number => {
+      const [lr, lg, lb] = [r, g, b].map((value) => {
+        const channel = value / 255
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
+    }
+    const contrast = (one: number[], two: number[]): number => {
+      const [high, low] = [luminance(one), luminance(two)].sort((a, b) => b - a)
+      return (high + 0.05) / (low + 0.05)
+    }
+    return [...legend.querySelectorAll('li')].map((item) => {
+      const swatch = item.querySelector('[data-swatch]')
+      if (!swatch) throw new Error(`no swatch in ${item.textContent}`)
+      const style = getComputedStyle(swatch)
+      const back = surface(item)
+      const ratio = Math.max(contrast(rgba(style.borderTopColor), back), contrast(rgba(style.backgroundColor), back))
+      return { label: item.textContent.trim(), ratio: Math.round(ratio * 100) / 100 }
+    })
+  })
+}
