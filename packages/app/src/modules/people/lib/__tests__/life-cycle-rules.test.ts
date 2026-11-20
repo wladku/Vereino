@@ -36,7 +36,13 @@ describe('constants', () => {
   it('announces 30 days ahead and runs steps 1–4 (step 5 joins with phase L6)', () => {
     expect(TURNS_18_NOTICE_DAYS).toBe(30)
     expect(CAME_OF_AGE_CARD_DAYS).toBe(30)
-    expect(LIFE_CYCLE_STEPS).toEqual(['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts'])
+    expect(LIFE_CYCLE_STEPS).toEqual([
+      'turns_18_soon',
+      'came_of_age',
+      'account_age',
+      'departed_accounts',
+      'erasure_names',
+    ])
   })
 })
 

@@ -19,7 +19,7 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { endsBefore, isInvertedPeriod, type ActingRole, type GrantKind, type Scope } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { Guardianship } from '../data/entities'
+import { Guardianship, Person } from '../data/entities'
 import {
   guardianshipConsentsSchema,
   guardianshipCreateSchema,
@@ -211,7 +211,16 @@ async function authorizeGuardianshipReplay(
   if (!em || !id) throw new Error('[internal] guardianship replay needs the replay transaction and the id')
   const spec = existingSpec(z.object({ id: z.uuid() }), ctx, allowedKinds)
   const { entity } = await authorizeScoped(spec, { id }, ctx, em, { mode: 'replay' })
-  return entity as Guardianship
+  const row = entity as Guardianship
+  // An undo never writes consents back onto an anonymised ward's guardianship, nor revives a link of one (#308).
+  const anonymized = await em.count(Person, {
+    tenantId: row.tenantId,
+    organizationId: row.organizationId,
+    id: { $in: [row.guardianPersonId, row.wardPersonId] },
+    anonymizedAt: { $ne: null },
+  })
+  if (anonymized > 0) await peopleErrors.throw('person_anonymized')
+  return row
 }
 
 async function buildGuardianshipLog(result: GuardianshipCommandResult, labelKey: string, fallback: string) {

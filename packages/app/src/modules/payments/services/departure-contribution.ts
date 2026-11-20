@@ -71,18 +71,23 @@ export const departureContribution: DepartureContributor = {
         status: { $in: [...OPEN_CHARGE_STATUSES] },
         $or: [{ personId: { $in: [...subject.personIds] } }, { payerPersonId: { $in: [...subject.personIds] } }],
       },
-      { fields: ['id', 'personId', 'payerPersonId'] },
+      { fields: ['id', 'personId', 'payerPersonId'], orderBy: { createdAt: 'asc' } },
     )
-    const warnings: DepartureNotice[] = [
-      ...openChargesByPerson(
-        charges.map((row) => ({
-          id: row.id,
-          personId: row.personId ?? null,
-          payerPersonId: row.payerPersonId ?? null,
-        })),
-        subject.personIds,
-      ).entries(),
-    ].map(([personId, count]) => ({ module: 'payments', code: 'open_charges', personId, params: { count } }))
+    const facts = charges.map((row) => ({
+      id: row.id,
+      personId: row.personId ?? null,
+      payerPersonId: row.payerPersonId ?? null,
+    }))
+    // `recordId` is the person's oldest open charge: the erasure's refusal links to it (phase L6, #308).
+    const warnings: DepartureNotice[] = [...openChargesByPerson(facts, subject.personIds).entries()].map(
+      ([personId, count]) => ({
+        module: 'payments',
+        code: 'open_charges',
+        personId,
+        recordId: facts.find((charge) => charge.personId === personId || charge.payerPersonId === personId)?.id,
+        params: { count },
+      }),
+    )
     return { items: [], warnings, blockers }
   },
 

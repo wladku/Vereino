@@ -9,7 +9,9 @@
 //      sync (`people:sync-auth-roles` on the guardianship events and the daily `people:sync-role-expiry`);
 //   3. the account age: `people.account_age_reached` to the guardians and `…_admin` to the administrators, once per
 //      person — any earlier account-age key counts, so a lowered threshold reaches only the newly eligible;
-//   4. dated departures: the accounts of persons who left before today close (`closeDepartedAccounts`).
+//   4. dated departures: the accounts of persons who left before today close (`closeDepartedAccounts`);
+//   5. erasure step two (phase L6, #308): the name of an anonymised person whose retention hold ended before today is
+//      cleared with the hold date (`clearHeldName`), one person per transaction, and the person reindexed.
 // Every notice is "sent once" through its dispatch idempotency key; a person's failure is logged, reported as
 // `people.life_cycle.failed` and retried by the next run. A dry run reads the same candidates and changes nothing.
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -50,6 +52,7 @@ import { yearsBefore } from '../lib/person-list-filters'
 import { guardianshipEvents, personEvents, personIndexer } from '../commands/shared'
 import { clubSettings, type ClubScope } from './club-clock'
 import { closeDepartedAccounts } from './departure-accounts'
+import { clearHeldName } from './erasure'
 import { roleHolderIdsOn } from './person-directory'
 
 const FOUNDATION_DISPATCH = 'foundationDispatch'
@@ -67,6 +70,8 @@ export type LifeCycleCounts = {
   accountAge: number
   /** Step 4: accounts of former persons closed. */
   accountsClosed: number
+  /** Step 5: names of anonymised persons cleared after the retention hold (#308). */
+  namesErased: number
   /** Persons whose step failed this run; the next run retries them. */
   failed: number
 }
@@ -506,7 +511,15 @@ export async function runLifeCycle(
   options: Options,
 ): Promise<LifeCycleRun> {
   const run: LifeCycleRun = {
-    counts: { turns18Soon: 0, cameOfAge: 0, guardianshipsEnded: 0, accountAge: 0, accountsClosed: 0, failed: 0 },
+    counts: {
+      turns18Soon: 0,
+      cameOfAge: 0,
+      guardianshipsEnded: 0,
+      accountAge: 0,
+      accountsClosed: 0,
+      namesErased: 0,
+      failed: 0,
+    },
     withoutBirthDate: [],
     cameOfAgePersonIds: [],
   }
@@ -531,5 +544,55 @@ export async function runLifeCycle(
     run.counts.accountsClosed = accounts.closed
     run.counts.failed += accounts.failed
   }
+  run.counts.namesErased = await stepErasureNames(ctx, scope, reader, step)
   return run
+}
+
+/**
+ * Step 5 (DD-L07; #308): the names whose retention hold ended before `today` (missed days caught up: `<`). Each person
+ * is cleared in its own transaction under a row lock, re-checked there, so a concurrent run clears it once. A dry run
+ * counts.
+ */
+async function stepErasureNames(
+  ctx: CommandRuntimeContext,
+  scope: JobScope,
+  reader: Reader,
+  options: Options,
+): Promise<number> {
+  const due = await reader.em.find(
+    Person,
+    { ...scope, deletedAt: null, anonymizedAt: { $ne: null }, erasureHoldUntil: { $lt: options.today } },
+    { fields: ['id'] },
+  )
+  if (options.dryRun) return due.length
+  let erased = 0
+  for (const { id } of due) {
+    try {
+      const em = ctx.container.resolve<EntityManager>('em').fork()
+      const person = await em.transactional(async (tx) => {
+        const row = await tx.findOne(
+          Person,
+          { id, ...scope, deletedAt: null, anonymizedAt: { $ne: null }, erasureHoldUntil: { $lt: options.today } },
+          { lockMode: LockMode.PESSIMISTIC_WRITE },
+        )
+        if (!row) return null
+        clearHeldName(row, new Date())
+        await tx.flush()
+        return row
+      })
+      if (!person) continue
+      erased += 1
+      await emitCrudSideEffects({
+        dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),
+        action: 'updated',
+        entity: person,
+        identifiers: { id: person.id, tenantId: person.tenantId, organizationId: person.organizationId },
+        events: personEvents,
+        indexer: personIndexer,
+      })
+    } catch (error: unknown) {
+      options.onFailure(error, 'erasure_names')
+    }
+  }
+  return erased
 }

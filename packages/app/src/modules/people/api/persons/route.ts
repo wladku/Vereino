@@ -24,8 +24,10 @@ import { foundationErrors, scopeContract } from '@/modules/foundation'
 import { Person } from '../../data/entities'
 import { ASSIGNABLE_ROLES, personCreateSchema, personListQuerySchema, personUpdateSchema } from '../../data/validators'
 import { PERSON_ENTITY_ID } from '../../encryption'
+import { visibleName } from '../../lib/erasure-rules'
 import { PERSON_FILTER_ID_LIMIT, intersectIdSets, personListPlan } from '../../lib/person-list-filters'
 import { clubSettings, clubToday, type ClubScope } from '../../services/club-clock'
+import { formerMemberLabel } from '../../services/former-member'
 import {
   PersonFilterProblem,
   loadPersonListColumns,
@@ -87,6 +89,8 @@ async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope:
     return peopleErrors.throw('people_filter_failed')
   }
   if (query.search) {
+    // A name search never finds an anonymised person, even while the name is kept under the hold (#308).
+    predicates.push({ anonymized_at: { $exists: false } } as Where)
     const found = await searchPersonIds(ctx.container, clubScope, query.search)
     // The token index was not consulted (no word of three characters or more): match the last name as before.
     if (found) ids = intersectIdSets([ids, found])
@@ -102,10 +106,34 @@ async function filterPredicates(query: PersonListQuery, ctx: CrudCtx, clubScope:
 /** Adds the own columns (`roles`, `hasWards`, `guardians`) to the listed rows; a guardian is named only when readable. */
 async function attachOwnColumns(payload: { items?: unknown[] }, ctx: CrudCtx): Promise<void> {
   const items = (payload.items ?? []) as Array<
-    { id: string; birthDate?: string | null; age?: number | null } & Partial<PersonListColumns>
+    {
+      id: string
+      birthDate?: string | null
+      age?: number | null
+      firstName?: string | null
+      lastName?: string | null
+      anonymizedAt?: string | null
+    } & Partial<PersonListColumns>
   >
   const clubScope = clubScopeOf(ctx)
   if (items.length === 0 || !clubScope) return
+  // An anonymised person reads "Former member"; a name kept under the hold only with `people.manage` (#308).
+  if (items.some((item) => item.anonymizedAt)) {
+    const userId = ctx.auth?.sub
+    const rbac = ctx.container.resolve<RbacService>('rbacService')
+    const mayReadHeldName = !!userId && (await rbac.userHasAllFeatures(userId, ['people.manage'], clubScope))
+    const formerMember = await formerMemberLabel()
+    for (const item of items) {
+      if (!item.anonymizedAt) continue
+      const name = visibleName(
+        { firstName: item.firstName ?? '', lastName: item.lastName ?? '', anonymizedAt: item.anonymizedAt },
+        formerMember,
+        mayReadHeldName,
+      )
+      item.firstName = name.firstName
+      item.lastName = name.lastName
+    }
+  }
   const scope = await scopeContract.resolve(ctx)
   const today = await clubToday(ctx.container, clubScope)
   const canReadPerson = (personId: string) =>
@@ -154,6 +182,7 @@ export const { metadata, GET, POST, PUT } = makeCrudRoute({
       'birth_date',
       'user_id',
       'left_on',
+      'anonymized_at',
       'tenant_id',
       'organization_id',
       'created_at',
@@ -212,6 +241,10 @@ const listItemSchema = z.object({
     .string()
     .nullable()
     .describe('The last day in the club (people life-cycle spec REQ-L03); null while a member'),
+  anonymizedAt: z
+    .string()
+    .nullable()
+    .describe('When the person was anonymised (#308); the name then reads "Former member" unless kept for the reader'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   age: z.number().int().nullable().describe('Completed years on the club date; null without a birth date'),

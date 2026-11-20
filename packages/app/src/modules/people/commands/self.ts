@@ -23,6 +23,7 @@ import { Person } from '../data/entities'
 import { selfUpdateSchema } from '../data/validators'
 import { applySelfConsent, type SelfConsentKind } from '../lib/member-rules'
 import {
+  assertNotAnonymized,
   assertPhoneAllowed,
   inWriteTransaction,
   loadPersonLocked,
@@ -118,6 +119,8 @@ async function authorizeSelfReplay(ctx: CommandRuntimeContext, personId: string 
     em,
     { mode: 'replay' },
   )
+  // An undo never writes an anonymised person's data back (#308).
+  await assertNotAnonymized(entity)
   return entity as Person
 }
 
