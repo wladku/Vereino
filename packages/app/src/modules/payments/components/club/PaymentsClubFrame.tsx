@@ -41,7 +41,12 @@ export type PaymentsProfile = {
   paymentsVisible: boolean
   /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
   isParticipant?: boolean
-  club: { shortName: string | null; timezone: string; logoUrl: string | null }
+  club: {
+    shortName: string | null
+    timezone: string
+    logoUrl: string | null
+    accent?: { color: string; foreground: '#000000' | '#ffffff' } | null
+  }
 }
 
 type ProfileLoad = { status: 'ok'; profile: PaymentsProfile } | { status: 'not_linked' }
@@ -167,7 +172,11 @@ export function PaymentsClubFrame({
 
   return (
     <MemberShell
-      brand={{ name: profile?.club.shortName ?? t('payments.club.title'), logoUrl: profile?.club.logoUrl ?? null }}
+      brand={{
+        name: profile?.club.shortName ?? t('payments.club.title'),
+        logoUrl: profile?.club.logoUrl ?? null,
+        accent: profile?.club.accent ?? null,
+      }}
       nav={nav}
       navLabel={labels.nav}
       signOutLabel={labels.signOut}

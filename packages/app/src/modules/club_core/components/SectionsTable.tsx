@@ -55,7 +55,7 @@ function SectionLogo({ row, club }: { row: SectionRow; club: ClubBranding | null
       className="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded text-sm font-semibold"
       data-logo-source="initial"
     >
-      {nameInitial(club?.shortName)}
+      {nameInitial(row.name)}
     </span>
   )
 }

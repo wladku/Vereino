@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../../.mercato/generated/module-package-sources.css";
+@import "./vereino-tokens.css";
 
 /*
 Include workspace packages in Tailwind content scanning

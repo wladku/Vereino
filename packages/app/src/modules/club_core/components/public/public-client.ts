@@ -16,6 +16,9 @@ export type PublicClubContact = { phone: string } | null
 /** The club's rules and privacy policy in the page footer; each null while the club has not set it (#195). */
 export type PublicClubLinks = { rules: string | null; privacyPolicy: string | null }
 
+/** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+export type PublicClubAccent = { color: string; foreground: '#000000' | '#ffffff' } | null
+
 /** Which optional links the public header shows: Facilities and Events, each while the club publishes it (#261). */
 export type PublicClubNav = { facilities: boolean; events: boolean }
 
@@ -73,6 +76,7 @@ export type PublicClubEventPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    accent: PublicClubAccent
     nav: PublicClubNav
   }
   event: {
@@ -96,6 +100,7 @@ export type PublicEventsPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    accent: PublicClubAccent
     nav: PublicClubNav
   }
   sections: { name: string; slug: string }[]
@@ -112,6 +117,7 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    accent: PublicClubAccent
     nav: PublicClubNav
   }
   sections: { name: string; slug: string; logo: PublicLogo; shortDescription: string | null }[]
@@ -174,6 +180,7 @@ export type PublicSectionPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    accent: PublicClubAccent
     nav: PublicClubNav
   }
   section: { name: string; slug: string; logo: PublicLogo }

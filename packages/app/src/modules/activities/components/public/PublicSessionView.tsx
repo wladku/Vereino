@@ -18,6 +18,7 @@ import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
+  ClubAccentRoot,
   formatClockTime,
   formatDayHeading,
   formatTimeRange,
@@ -38,6 +39,8 @@ type PublicSessionPage = {
     logo: { url: string | null; source: 'section' | 'club' | 'initial'; initial: string }
     contact: { phone: string } | null
     links: { rules: string | null; privacyPolicy: string | null }
+    /** The club's colour and the text colour on it (#486); null uses the default. */
+    accent: { color: string; foreground: '#000000' | '#ffffff' } | null
     nav: { facilities: boolean; events: boolean }
   }
   session: {
@@ -132,7 +135,7 @@ function Frame({ club = null, children }: { club?: PublicSessionPage['club'] | n
   const t = useT()
   const pathname = usePathname()
   return (
-    <div className="bg-background text-foreground min-h-svh">
+    <ClubAccentRoot accent={club?.accent} className="bg-background text-foreground min-h-svh">
       <PublicHeader
         club={club}
         title={t('activities.publicSession.title')}
@@ -150,7 +153,7 @@ function Frame({ club = null, children }: { club?: PublicSessionPage['club'] | n
       />
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
       {club ? <Footer club={club} /> : null}
-    </div>
+    </ClubAccentRoot>
   )
 }
 
