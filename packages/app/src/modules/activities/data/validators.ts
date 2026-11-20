@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES, type ActivityType } from '../lib/activities-rules'
+import { CLUB_EVENT_FILE_KINDS } from '../lib/club-event-files'
 import {
   CLUB_EVENT_DESCRIPTION_MAX,
   CLUB_EVENT_NAME_MAX,
@@ -495,3 +496,18 @@ export const clubEventPartDeleteSchema = z.object({ clubEventId: z.uuid(), id: z
 export const clubEventPartCancelSchema = z
   .object({ clubEventId: z.uuid(), id: z.uuid(), reason: clubEventReasonSchema })
   .strict()
+
+/**
+ * `POST /api/activities/club-events/{id}/files` (#379): the kind of an upload, and the funder's name of a logo. The
+ * name's presence and length are checked by the command (422 `club_event_funder_name_invalid`), so the form's raw text
+ * passes here; the bytes travel beside the input, never in it.
+ */
+export const clubEventFileAddSchema = z
+  .object({
+    clubEventId: z.uuid(),
+    kind: z.enum(CLUB_EVENT_FILE_KINDS),
+    funderName: z.string().max(1000).nullable().optional(),
+  })
+  .strict()
+
+export const clubEventFileDeleteSchema = z.object({ clubEventId: z.uuid(), id: z.uuid() }).strict()
