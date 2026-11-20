@@ -13,6 +13,7 @@ import { Organization } from '@open-mercato/core/modules/directory/data/entities
 import type { Metadata } from 'next'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { resolveLocalizedTitleMetadata } from '@/lib/metadata'
+import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
 import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middleware/page-executor'
 import { frontendMiddlewareEntries } from '@/.mercato/generated/frontend-middleware.generated'
 
@@ -51,7 +52,26 @@ export async function generateMetadata({ params }: FrontendParams): Promise<Meta
   return resolveLocalizedTitleMetadata({
     title: match.route.title,
     titleKey: match.route.titleKey,
+    clubName: await publicClubName(match.params?.clubSlug),
   })
+}
+
+/**
+ * The club of a public page under `/p/[clubSlug]` for its tab title ("{club} — {page}", #485), read through the
+ * approved public slug lookup of `clubCorePublicSite`; null for any other page, a club that does not publish its page,
+ * or on any failure (the title then names the product).
+ */
+async function publicClubName(clubSlug: unknown): Promise<string | null> {
+  if (typeof clubSlug !== 'string' || !clubSlug) return null
+  try {
+    await ensureServerBootstrap()
+    const container = await createRequestContainer()
+    if (!container.hasRegistration('clubCorePublicSite')) return null
+    const frame = await container.resolve<ClubCorePublicSite>('clubCorePublicSite').clubFrame(clubSlug)
+    return frame.status === 'ok' ? frame.value.club.name : null
+  } catch {
+    return null
+  }
 }
 
 export default async function SiteCatchAll({ params }: FrontendParams) {
