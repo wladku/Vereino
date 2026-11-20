@@ -22,6 +22,10 @@ on:
         description: Log the plan without changing anything
         type: boolean
         default: false
+      batch_size:
+        description: Batch size the dry run plans with (empty = the MERGE_TRAIN_BATCH_SIZE variable, unset = 1)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -52,3 +56,4 @@ jobs:
           GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
           MERGE_TRAIN_SKIP_LABELS: ${{ vars.MERGE_TRAIN_SKIP_LABELS }}
           MERGE_TRAIN_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          MERGE_TRAIN_BATCH_SIZE: ${{ inputs.batch_size || vars.MERGE_TRAIN_BATCH_SIZE }}
