@@ -13,6 +13,8 @@
 5. Fix: `_fixtures/axe.ts` gets `waitForTransitions` (extracted from `switchColorScheme`), and `scanBlockingViolations` calls it before `analyze()`; TEST-L22 waits for the chip and the move button to be enabled before each scan (panel dialog and phone sheet).
 6. Lesson `axe-after-color-scheme-and-react-query-error-refetch` extended with case (6) and the rule.
 
+7. Pushed f1742b17; CI run 44655962809: TEST-L22 passed, but shard 4/6 failed on TEST-L23 (from main, #424; passed on the first run): `locator.click: Timeout 30000ms exceeded` on the Skrzat row's Save after `fill('8')` — the button detached and came back disabled. Cause: choosing the season changes the react-query key, the table shows the loading state and remounts every `RangeEditor` when the new list arrives; the test's birth-years check already matched the previous season's rows (same years), so typing raced the reload. Fix: TEST-L23 waits for `age-categories-reference` to name 2026/27 (rendered only with the new list) before editing.
+
 ## Decisions
 
 - Fix in the shared scan fixture rather than only in TEST-L22: every axe scan is exposed to the same fade; the extra wait only waits (no assertion is relaxed, no rule baselined).
@@ -22,6 +24,7 @@
 
 - `packages/app/.ai/qa/tests/_fixtures/axe.ts`
 - `packages/app/.ai/qa/tests/groups/TEST-L22-move-children-ui.spec.ts`
+- `packages/app/.ai/qa/tests/groups/TEST-L23-age-category-birth-years.spec.ts`
 - `.ai/lessons/axe-after-color-scheme-and-react-query-error-refetch.md`
 - `.ai/runs/2026-11-20-pr-431-integration-shard-4.md`
 
@@ -32,6 +35,7 @@
 - `yarn test:integration:vereino --filter TEST-L06` (this PR's test, after the main merge) — 1 passed (39.4s).
 - `yarn test:integration:vereino --filter TEST-A12` (uses `switchColorScheme`, refactored) — 1 passed (44.0s).
 - `yarn verify` — all 18 steps passed.
+- `yarn test:integration:vereino --filter TEST-L23` (after the second fix) — 1 passed (44.7s).
 
 ## Open problems / next steps
 
