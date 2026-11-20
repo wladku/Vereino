@@ -1,5 +1,5 @@
 import { OptionalProps } from '@mikro-orm/core'
-import { Check, Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
+import { Check, Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import {
   AppendOnlyEntityBase,
   ScopedEntityBase,
@@ -10,6 +10,7 @@ import {
   tokenLinkColumns,
 } from '@vereino/db'
 import type { ActivityType, OccurrenceStatus } from '../lib/activities-rules'
+import type { ClubEventFileKind } from '../lib/club-event-files'
 import type { ClubEventStatus } from '../lib/club-events'
 import type { SubstitutionKind } from '../lib/substitutions'
 import type {
@@ -299,6 +300,61 @@ export class ClubEventPart extends ScopedEntityBase {
 
   @Property({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason?: string | null
+}
+
+/**
+ * A file of a club event (club events spec DD-T10, REQ-T08, *Data Models* → `activities_club_event_files`; migration
+ * T2; #379): the poster (one live per event, partial unique index `activities_club_event_files_poster_unique`) or a
+ * funder's logo with the funder's name (check `activities_club_event_files_funder_name`), on the place-files pattern of
+ * `club_core`: the bytes live in the platform `attachments` module (owner `activities:club_event`, assignment
+ * `activities:club_event_file`), this row keeps the attachment id, a snapshot of the name, type and size, and the
+ * logos' upload order.
+ */
+@Entity({ tableName: 'activities_club_event_files' })
+@Check({
+  name: 'activities_club_event_files_funder_name',
+  expression: `(kind = 'funder_logo') = (funder_name IS NOT NULL)`,
+})
+@Index({
+  name: 'activities_club_event_files_poster_unique',
+  expression:
+    'create unique index "activities_club_event_files_poster_unique" on "activities_club_event_files" ("organization_id", "club_event_id") where kind = \'poster\' and deleted_at is null',
+})
+@Unique({ name: 'activities_club_event_files_attachment_unique', properties: ['attachmentId'] })
+@Index({
+  name: 'activities_club_event_files_org_event_kind_idx',
+  properties: ['organizationId', 'clubEventId', 'kind'],
+})
+@Index({ name: 'activities_club_event_files_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ClubEventFile extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'funderName' | 'position'
+
+  @Property({ name: 'club_event_id', type: 'uuid' })
+  clubEventId!: string
+
+  @Property({ name: 'attachment_id', type: 'uuid' })
+  attachmentId!: string
+
+  /** `poster` | `funder_logo`. */
+  @Property({ name: 'kind', type: 'varchar', length: 16 })
+  kind!: ClubEventFileKind
+
+  /** The funder's name (2–120), the logo's alternative text; null for the poster. */
+  @Property({ name: 'funder_name', type: 'text', nullable: true })
+  funderName?: string | null
+
+  @Property({ name: 'file_name', type: 'text' })
+  fileName!: string
+
+  @Property({ name: 'mime_type', type: 'text' })
+  mimeType!: string
+
+  @Property({ name: 'file_size', type: 'int' })
+  fileSize!: number
+
+  /** The logos' upload order, 0-based; 0 for the poster. */
+  @Property({ name: 'position', type: 'int', default: 0 })
+  position: number = 0
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   rescheduleTemplate,
 } from './emails/templates'
 import notificationTypes from './notifications'
+import { FACILITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
 import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
 import { createPublicPlacesBlock } from './services/public-schedule'
@@ -63,6 +64,10 @@ export function register(container: AppContainer) {
     [FACILITIES_PUBLIC_PLACES]: asFunction(() => createPublicPlacesBlock(container)).scoped(),
     [FACILITIES_REQUEST_LINKS]: asValue(requestLinkService),
     [FACILITIES_RENTAL_LINKS]: asValue(rentalLinkService),
+    // `people.departure.facilities` (people life-cycle spec REQ-L04, #307): the departure contributor `people` reads
+    // with `hasRegistration` — a leaving person's place maintainer rows are removed, with the undo, the maintainer
+    // events and the role sync after the commit.
+    [FACILITIES_DEPARTURE_CONTRIBUTOR]: asFunction(() => createDepartureContribution(container)).scoped(),
     // #128 (DD-36): the places a person maintains, read by `people` for the scope grant and the derived role.
     [FACILITIES_MAINTAINER_SCOPE_PROVIDER]: asValue(createMaintainerScopeProvider()),
   })

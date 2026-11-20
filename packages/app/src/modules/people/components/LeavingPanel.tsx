@@ -5,6 +5,9 @@
 // last day, the preview (what ends, warnings, blockers, the next payer of a staying ward) reloaded on every change,
 // and "Confirm leaving" (Ctrl/Cmd+Enter), disabled while a blocker or a choice remains; a stale preview (409) reloads.
 // After the departure the tab shows the last day and, from that day on, "Return to the club".
+// Phase L5 (REQ-L04, J-L03; #307): for a leaving coach the section "Sessions and activities" lists each group with its
+// future sessions and default-coach activities and a choice — hand over to a coach or leave unassigned; "Confirm
+// leaving" waits for a choice per group. Cash the coach still holds is a blocker with the amount and a link to B-33.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -41,7 +44,21 @@ type PlanItem = {
   until: string | null
   label: Record<string, string | null>
 }
-type PlanNotice = { module: string; code: string; personId: string; wardPersonId?: string; leftOn?: string }
+type PlanNotice = {
+  module: string
+  code: string
+  personId: string
+  wardPersonId?: string
+  leftOn?: string
+  params?: Record<string, string | number | null>
+}
+type HandOverNeed = {
+  personId: string
+  groupId: string
+  groupName: string | null
+  sessions: number
+  activities: number
+}
 type PlanPerson = {
   id: string
   name: string
@@ -50,6 +67,7 @@ type PlanPerson = {
   warnings: PlanNotice[]
   blockers: PlanNotice[]
   choicesNeeded: Array<{ wardPersonId: string; personId: string; candidateGuardianPersonIds: string[] }>
+  handOvers: HandOverNeed[]
 }
 type Plan = {
   lastDay: string
@@ -74,6 +92,16 @@ type DepartureRequestRow = {
   otherGuardianCount: number
   createdAt: string
   updatedAt: string
+}
+
+/** B-33 "Cash to settle", where the cash a leaving coach holds is accepted (#118). */
+const CASH_CUSTODY_HREF = '/backend/payments/cash-custody'
+
+/** The hand-over choice that leaves a group's sessions without a coach (the select's value). */
+const UNASSIGNED = 'unassigned'
+
+function formatAmount(grosz: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(grosz / 100)
 }
 
 function formatDay(day: string | null, locale: string): string {
@@ -101,6 +129,13 @@ function itemText(item: PlanItem, names: Record<string, string>, t: Translate, l
     const role = t(`people.leaving.membershipRole.${item.label.role ?? 'participant'}`)
     return `${item.label.groupName ?? t('people.common.empty')} — ${role} — ${until}`
   }
+  if (item.kind === 'contract') {
+    const kind = t(`club_core.contracts.kind.${item.label.contractKind ?? 'other'}`)
+    return `${t('people.leaving.item.contract', { kind })} — ${until}`
+  }
+  if (item.kind === 'place_maintainer') {
+    return t('people.leaving.item.placeMaintainer', { place: item.label.placeName ?? t('people.common.empty') })
+  }
   return `${item.kind} — ${until}`
 }
 
@@ -112,7 +147,17 @@ function blockerText(blocker: PlanNotice, names: Record<string, string>, t: Tran
     return t('people.leaving.blocker.already_left', { date: formatDay(blocker.leftOn ?? null, locale) })
   }
   if (blocker.code === 'last_club_admin') return t('people.leaving.blocker.last_club_admin')
+  if (blocker.code === 'cash_held') {
+    return t('people.leaving.blocker.cash_held', { amount: formatAmount(Number(blocker.params?.amount ?? 0), locale) })
+  }
   return t('people.leaving.blocker.other', { code: blocker.code })
+}
+
+function warningText(warning: PlanNotice, t: Translate): string {
+  if (warning.code === 'open_charges') {
+    return t('people.leaving.warning.open_charges', { count: Number(warning.params?.count ?? 0) })
+  }
+  return t('people.leaving.blocker.other', { code: warning.code })
 }
 
 export function LeavingPanel({ person, onChanged }: { person: PersonDetail; onChanged: () => Promise<void> }) {
@@ -503,6 +548,7 @@ function DepartureSection({
   const [selected, setSelected] = React.useState<string[]>([person.id])
   const [lastDay, setLastDay] = React.useState(initialLastDay)
   const [nextPayer, setNextPayer] = React.useState<Record<string, string>>({})
+  const [handOver, setHandOver] = React.useState<Record<string, string>>({})
   const [busy, setBusy] = React.useState(false)
   const [offered, setOffered] = React.useState<Record<string, string>>({})
   const firstBlockerRef = React.useRef<HTMLDivElement | null>(null)
@@ -534,7 +580,18 @@ function DepartureSection({
   }, [plan?.blocked])
 
   const choices = plan?.persons.flatMap((row) => row.choicesNeeded) ?? []
-  const missingChoice = choices.some((choice) => !nextPayer[choice.wardPersonId])
+  const handOvers = plan?.persons.flatMap((row) => row.handOvers) ?? []
+  const handOverGroups = [...new Set(handOvers.map((need) => need.groupId))]
+  // The coach lookup of the hand-over (any coach of the club), without the persons who leave now.
+  const coaches = useQuery({
+    queryKey: ['people-departure-coaches'],
+    enabled: handOvers.length > 0,
+    queryFn: () =>
+      readApiResultOrThrow<{ items: Array<{ id: string; name: string }> }>('/api/activities/options/coaches'),
+  })
+  const coachOptions = (coaches.data?.items ?? []).filter((coach) => !sortedIds.includes(coach.id))
+  const missingChoice =
+    choices.some((choice) => !nextPayer[choice.wardPersonId]) || handOverGroups.some((groupId) => !handOver[groupId])
   const canConfirm = Boolean(plan) && !plan?.blocked && !missingChoice && !busy && !preview.isFetching
 
   // Ctrl/Cmd+Enter confirms (B-10 keyboard contract) while the tab is open.
@@ -576,6 +633,14 @@ function DepartureSection({
             wardPersonId: choice.wardPersonId,
             guardianPersonId: nextPayer[choice.wardPersonId],
           })),
+          ...(handOverGroups.length > 0
+            ? {
+                handOver: handOverGroups.map((groupId) => ({
+                  groupId,
+                  toPersonId: handOver[groupId] === UNASSIGNED ? null : handOver[groupId],
+                })),
+              }
+            : {}),
         }),
       })
       if (call.status === 409 && errorCodeOf(call.result) === 'departure_preview_stale') {
@@ -686,7 +751,7 @@ function DepartureSection({
                   {plan.persons.flatMap((row) =>
                     row.warnings.map((warning) => (
                       <li key={`${row.id}:${warning.code}:${warning.wardPersonId ?? ''}`}>
-                        {row.name}: {t('people.leaving.blocker.other', { code: warning.code })}
+                        {row.name}: {warningText(warning, t)}
                       </li>
                     )),
                   )}
@@ -704,6 +769,14 @@ function DepartureSection({
                       row.blockers.map((blocker) => (
                         <li key={`${row.id}:${blocker.code}:${blocker.wardPersonId ?? ''}`}>
                           {row.name}: {blockerText(blocker, plan.names, t, locale)}
+                          {blocker.code === 'cash_held' ? (
+                            <>
+                              {' '}
+                              <a className="underline" href={CASH_CUSTODY_HREF} data-testid="people-leaving-cash-link">
+                                {t('people.leaving.blocker.cashLink')}
+                              </a>
+                            </>
+                          ) : null}
                         </li>
                       )),
                     )}
@@ -711,6 +784,68 @@ function DepartureSection({
                 </AlertDescription>
               </Alert>
             </div>
+          ) : null}
+          {handOvers.length > 0 ? (
+            <table className="w-full text-sm" data-testid="people-leaving-handover">
+              <caption className="text-muted-foreground mb-2 text-left text-xs">
+                {t('people.leaving.handOver.title')}
+              </caption>
+              <thead>
+                <tr className="text-left">
+                  <th scope="col" className="py-1 pr-4 font-medium">
+                    {t('people.leaving.handOver.group')}
+                  </th>
+                  <th scope="col" className="py-1 pr-4 font-medium">
+                    {t('people.leaving.handOver.future')}
+                  </th>
+                  <th scope="col" className="py-1 font-medium">
+                    {t('people.leaving.handOver.choice')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {handOvers.map((need) => (
+                  <tr key={`${need.personId}:${need.groupId}`} className="border-t align-top">
+                    <th scope="row" className="py-1 pr-4 text-left font-normal">
+                      {need.groupName ?? t('people.common.empty')}
+                    </th>
+                    <td className="py-1 pr-4">
+                      {t('people.leaving.handOver.counts', { sessions: need.sessions, activities: need.activities })}
+                    </td>
+                    <td className="py-1">
+                      <Select
+                        value={handOver[need.groupId] ?? ''}
+                        onValueChange={(value) => {
+                          setHandOver((current) => ({ ...current, [need.groupId]: value }))
+                        }}
+                        disabled={busy}
+                      >
+                        <SelectTrigger
+                          id={`people-leaving-handover-${need.groupId}`}
+                          aria-label={t('people.leaving.handOver.choiceFor', {
+                            group: need.groupName ?? t('people.common.empty'),
+                          })}
+                          data-testid="people-leaving-handover-choice"
+                        >
+                          <SelectValue placeholder={t('people.leaving.handOver.placeholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={UNASSIGNED}>{t('people.leaving.handOver.unassigned')}</SelectItem>
+                          {coachOptions.map((coach) => (
+                            <SelectItem key={coach.id} value={coach.id}>
+                              {t('people.leaving.handOver.to', { name: coach.name })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          {handOvers.length > 0 && coaches.error ? (
+            <p className="text-muted-foreground text-sm">{t('people.leaving.handOver.coachesFailed')}</p>
           ) : null}
           {choices.map((choice) => (
             <div key={choice.wardPersonId} className="flex max-w-md flex-col gap-1">

@@ -36,7 +36,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Preview leaving the club',
       description:
-        'Lists per person what ends on the last day (role assignments, guardianships, group memberships; the account closes the day after), the warnings, the blockers (a staying minor without a guardian, the last administrator, a person who already left), the payer hand-overs needed and the persons it suggests. The `previewToken` confirms exactly this plan for 15 minutes.',
+        'Lists per person what ends on the last day (role assignments, guardianships, group memberships, contracts, place maintainer assignments; the account closes the day after), the warnings, the blockers (a staying minor without a guardian, the last administrator, a person who already left, cash a coach still holds), the payer hand-overs needed, the groups of a leaving coach that need a hand-over choice (`handOvers`: future sessions and default-coach activities per group) and the persons it suggests. The `previewToken` confirms exactly this plan for 15 minutes.',
       requestBody: { contentType: 'application/json', schema: departurePreviewSchema },
       responses: [
         { status: 200, description: 'The plan', schema: departurePlanSchema.extend({ previewToken: z.string() }) },
