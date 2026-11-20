@@ -64,12 +64,22 @@ export type ActivityRow = {
   isActive: boolean
   /** An away trip (#96). */
   isAway: boolean
+  /** The club event this one-off activity is a part of (club events spec DD-T01), or null. */
+  clubEventId?: string | null
+  /** Its name, for "Part of {event}" (#378). */
+  clubEvent?: ClubEventRef | null
   createdAt: string | null
   updatedAt: string | null
 }
 
 /** `GET /api/activities/activities/{id}`: the activity with the role the caller reads it as. */
 export type ActivityDetail = ActivityRow & { actingRole: string }
+
+/** The club event a part's activity or session belongs to (club events spec REQ-T03). */
+export type ClubEventRef = { id: string; name: string; publicPath: string | null }
+
+/** The club event record in the panel (B-T3, #378). */
+export const clubEventRecordHref = (id: string) => `/backend/activities/club-events/${encodeURIComponent(id)}`
 
 export type OccurrenceRow = {
   id: string
@@ -138,6 +148,8 @@ export type OccurrenceDetail = OccurrenceRow & {
   isAway?: boolean
   /** The recorded score of a match or sparring (REQ-A15), or null. */
   score?: { home: number; away: number; note: string | null } | null
+  /** The club event of a part session (club events spec REQ-T03), or null. */
+  clubEvent?: ClubEventRef | null
   /** The caller may record the score: a started match or sparring (REQ-A15, #272). */
   mayScore?: boolean
 }

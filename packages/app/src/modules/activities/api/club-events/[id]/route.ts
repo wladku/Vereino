@@ -11,8 +11,15 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
+import { CLUB_EVENT_FILE_KINDS } from '../../../lib/club-event-files'
 import { clubEventTarget } from '../../../services/club-event-scope'
-import { clubEventDerived, clubEventPartViews, findClubEvent } from '../../../services/club-events'
+import {
+  clubEventDerived,
+  clubEventFileViews,
+  clubEventPartViews,
+  clubEventPublicPathOf,
+  findClubEvent,
+} from '../../../services/club-events'
 import { attendanceSettings } from '../../../services/directory'
 import { CLUB_EVENT_READ_KINDS, CLUB_EVENT_READ_OPTIONS, clubEventListItemSchema } from '../../club-event-shared'
 import { errorSchema } from '../../shared'
@@ -48,7 +55,29 @@ const partSchema = z.object({
   updatedAt: z.string().describe('The part’s lock token.'),
 })
 
-const responseSchema = clubEventListItemSchema.extend({ parts: z.array(partSchema) })
+const clubEventFileSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(CLUB_EVENT_FILE_KINDS),
+  funderName: z.string().nullable().describe('The funder’s name, the logo’s alternative text; null for the poster.'),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSize: z.number().int(),
+  position: z.number().int().describe('The logos’ upload order.'),
+  url: z.string().describe('The authenticated image route `/api/attachments/image/{id}`.'),
+  createdAt: z.string(),
+  updatedAt: z.string().describe('The file’s lock token (DELETE).'),
+})
+
+const responseSchema = clubEventListItemSchema.extend({
+  publicPath: z
+    .string()
+    .nullable()
+    .describe('The path of the tournament page while the event is published and the club page is public; else null.'),
+  parts: z.array(partSchema),
+  files: z
+    .array(clubEventFileSchema)
+    .describe('The poster first, then the funder logos in upload order (REQ-T08); staff image URLs.'),
+})
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
@@ -61,9 +90,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const grants = await scopeContract.resolve(ctx)
     await assertInScope(grants, CLUB_EVENT_READ_KINDS, clubEventTarget(row), CLUB_EVENT_READ_OPTIONS)
     const { timeZone } = await attendanceSettings(ctx.container, scope)
-    const [derived, parts] = await Promise.all([
+    const [derived, parts, publicPath, files] = await Promise.all([
       clubEventDerived(ctx.container, scope, grants, [row], timeZone),
       clubEventPartViews(ctx.container, scope, row.id),
+      clubEventPublicPathOf(ctx.container, scope, row),
+      clubEventFileViews(ctx.container, scope, row.id),
     ])
     return Response.json({
       id: row.id,
@@ -80,7 +111,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       ...derived.get(row.id),
+      publicPath,
       parts,
+      files,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.club_events.detail')
@@ -94,7 +127,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read a club event with its parts',
       description:
-        'Returns the club event when the caller is a coordinator or the club administrator of the club (Q-T18), with its dates, place, `mayManage` and its parts in time order.',
+        'Returns the club event when the caller is a coordinator or the club administrator of the club (Q-T18), with its dates, place, `mayManage`, its parts in time order and its poster and funder logos.',
       responses: [{ status: 200, description: 'The club event', schema: responseSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

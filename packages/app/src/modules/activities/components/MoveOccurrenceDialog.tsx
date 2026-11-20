@@ -4,7 +4,8 @@
 // the session record ("Move") and the "Move" row button of the sessions list (B-15, `MoveOccurrenceDialog`). The move
 // detaches the session from its series and clears "needs a new time"; one that overbooks a place or a coach is refused
 // with 409 and its conflict list is shown above the fields. The coach changes only through the substitute dialog, so
-// every change of the coach is in the history (#95).
+// every change of the coach is in the history (#95). A part of a club event takes place at the event's place (DD-T05):
+// its Move shows the place read-only and never sends one (`lockedPlace`, club events spec B-T3; #378).
 import * as React from 'react'
 import { CrudForm, type CrudField } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -79,10 +80,13 @@ export function MoveOccurrenceForm({
   occurrence,
   onDone,
   onCancel,
+  lockedPlace,
 }: {
   occurrence: MovableOccurrence
   onDone: () => Promise<void>
   onCancel: () => void
+  /** The place a part of a club event keeps (DD-T05): shown read-only, never sent. */
+  lockedPlace?: { label: string } | null
 }) {
   const t = useT()
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
@@ -107,20 +111,32 @@ export function MoveOccurrenceForm({
             timeField('confirmByTime', t('activities.occurrences.fields.confirmByTime'), { layout: 'half' }),
           ]
         : []),
-      {
-        id: 'placeId',
-        label: t('activities.fields.place'),
-        type: 'select',
-        // A session of an away match may sit at an external place, so the move offers every bookable leaf. A session
-        // at a typed venue (REQ-A08) keeps it unless a club place is chosen here.
-        loadOptions: tolerant(() => placeOptions()),
-        required: !occurrence.venue,
-        ...(occurrence.venue
-          ? { description: t('activities.occurrences.move.venue', { venue: occurrence.venue.name }) }
-          : {}),
-      },
+      lockedPlace
+        ? ({
+            id: 'placeId',
+            label: t('activities.fields.place'),
+            type: 'custom',
+            description: t('activities.occurrences.move.placeLocked'),
+            component: ({ id }) => (
+              <p id={id} className="text-sm" data-testid="occurrence-move-place-locked">
+                {lockedPlace.label}
+              </p>
+            ),
+          } satisfies CrudField)
+        : {
+            id: 'placeId',
+            label: t('activities.fields.place'),
+            type: 'select',
+            // A session of an away match may sit at an external place, so the move offers every bookable leaf. A session
+            // at a typed venue (REQ-A08) keeps it unless a club place is chosen here.
+            loadOptions: tolerant(() => placeOptions()),
+            required: !occurrence.venue,
+            ...(occurrence.venue
+              ? { description: t('activities.occurrences.move.venue', { venue: occurrence.venue.name }) }
+              : {}),
+          },
     ],
-    [t, showDeadline, occurrence.venue],
+    [t, showDeadline, occurrence.venue, lockedPlace],
   )
   const initialValues = React.useMemo<MoveValues>(
     () => ({
@@ -194,7 +210,7 @@ export function MoveOccurrenceForm({
                   startAt,
                   endAt,
                   // A place is sent when chosen; an empty one keeps a typed venue (REQ-A08).
-                  ...(values.placeId ? { placeId: values.placeId } : {}),
+                  ...(values.placeId && !lockedPlace ? { placeId: values.placeId } : {}),
                   ...(gatheringChanged ? { gatheringAt } : {}),
                   ...(confirmByChanged ? { confirmBy } : {}),
                 }),
@@ -238,11 +254,13 @@ export function MoveOccurrenceDialog({
   open,
   onOpenChange,
   onDone,
+  lockedPlace,
 }: {
   occurrence: MovableOccurrence
   open: boolean
   onOpenChange: (open: boolean) => void
   onDone: () => Promise<void>
+  lockedPlace?: { label: string } | null
 }) {
   const t = useT()
   return (
@@ -260,6 +278,7 @@ export function MoveOccurrenceDialog({
         </DialogHeader>
         <MoveOccurrenceForm
           occurrence={occurrence}
+          lockedPlace={lockedPlace}
           onCancel={() => {
             onOpenChange(false)
           }}

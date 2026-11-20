@@ -341,6 +341,8 @@ describe('people error codes', () => {
       ['departure_blocked', 409],
       ['departure_preview_stale', 409],
       ['departure_payer_required', 422],
+      ['departure_handover_required', 422],
+      ['departure_handover_invalid', 422],
       ['departure_undo_expired', 409],
       ['person_not_left', 409],
       ['departure_request_exists', 409],

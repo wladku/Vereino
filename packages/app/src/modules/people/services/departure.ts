@@ -49,14 +49,47 @@ export type DepartureNotice = {
   params?: Record<string, string | number | null>
 }
 
+/**
+ * A group whose future sessions or default-coach activities a leaving coach leads (phase L5, #307; *Hand-over
+ * choice*): the departure needs a choice per group — hand over to a coach, or leave unassigned. Counts and names only.
+ */
+export type DepartureHandOverNeed = {
+  module: string
+  personId: string
+  groupId: string
+  groupName: string | null
+  sessions: number
+  activities: number
+}
+
 export type DeparturePreviewPart = {
   items: DepartureItem[]
   warnings: DepartureNotice[]
   blockers: DepartureNotice[]
+  /** The hand-over choices the departure needs (`activities`); absent = none. */
+  handOvers?: DepartureHandOverNeed[]
 }
 
-/** What a contributor changed, for its own `afterCommit` (events, cache, search). */
-export type DepartureChange = { kind: string; recordId: string; action: 'updated' | 'deleted' | 'created' }
+/** One hand-over choice: the group's sessions go to `toPersonId`, or stay without a coach when it is null. */
+export type DepartureHandOverChoice = { groupId: string; toPersonId: string | null }
+
+/** What `people` passes to every contributor's `apply`: the choices and who decided (the actor's own person). */
+export type DepartureChoices = {
+  handOver: readonly DepartureHandOverChoice[]
+  decidedByPersonId: string | null
+  actingRole: string
+}
+
+/**
+ * What a contributor changed, for its own `afterCommit` (events, cache, search). `refs` carries ids a hard-deleted row
+ * no longer gives after the commit (e.g. a removed place maintainer's place and person).
+ */
+export type DepartureChange = {
+  kind: string
+  recordId: string
+  action: 'updated' | 'deleted' | 'created'
+  refs?: Record<string, string>
+}
 
 export type DepartureApplyResult = { snapshot: unknown; changes: DepartureChange[] }
 
@@ -66,7 +99,7 @@ export type DepartureContributor = {
   /** What the departure would end, warn about or be blocked by. Read only. */
   preview(em: EntityManager, subject: DepartureSubject): Promise<DeparturePreviewPart>
   /** Ends the records in the caller's transaction; throws to roll the whole departure back. */
-  apply(em: EntityManager, subject: DepartureSubject, choices: Record<string, unknown>): Promise<DepartureApplyResult>
+  apply(em: EntityManager, subject: DepartureSubject, choices: DepartureChoices): Promise<DepartureApplyResult>
   /** Restores from the snapshot `apply` returned, in the caller's transaction (until the last day only). */
   undo(em: EntityManager, subject: DepartureSubject, snapshot: unknown): Promise<DepartureChange[]>
   /** After the commit: the module's events, cache invalidation and reindex. A failure is logged, never rolled back. */
@@ -76,6 +109,13 @@ export type DepartureContributor = {
     em: EntityManager,
     subject: { tenantId: string; organizationId: string; personId: string },
   ): Promise<boolean>
+  /**
+   * `payments` only (DD-L07, phase L6): the last day the person's name must be kept for a booked payment, or null.
+   */
+  retentionHoldUntil?(
+    em: EntityManager,
+    subject: { tenantId: string; organizationId: string; personId: string },
+  ): Promise<CalendarDate | null>
 }
 
 /** The registered contributors in `DEPARTURE_CONTRIBUTOR_MODULES` order; a module that is absent contributes nothing. */

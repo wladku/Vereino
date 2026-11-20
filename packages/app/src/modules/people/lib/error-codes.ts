@@ -25,6 +25,10 @@ export const errorCodes = [
   { code: 'departure_blocked', status: 409, messageKey: 'people.errors.departure_blocked' },
   { code: 'departure_preview_stale', status: 409, messageKey: 'people.errors.departure_preview_stale' },
   { code: 'departure_payer_required', status: 422, messageKey: 'people.errors.departure_payer_required' },
+  // Phase L5 (REQ-L04; #307): a leaving coach's group without a hand-over choice (`details.groupIds`), and a choice
+  // that names a person who leaves too or two choices for one group.
+  { code: 'departure_handover_required', status: 422, messageKey: 'people.errors.departure_handover_required' },
+  { code: 'departure_handover_invalid', status: 422, messageKey: 'people.errors.departure_handover_invalid' },
   { code: 'departure_undo_expired', status: 409, messageKey: 'people.errors.departure_undo_expired' },
   { code: 'person_not_left', status: 409, messageKey: 'people.errors.person_not_left' },
   { code: 'departure_request_exists', status: 409, messageKey: 'people.errors.departure_request_exists' },

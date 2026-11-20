@@ -34,6 +34,11 @@ import {
   mayRemoveMembership,
   membershipActions,
   moveDateBounds,
+  MOVE_MANY_LIMIT,
+  MOVE_OUTCOMES,
+  fitsAgeRange,
+  moveManyProblem,
+  moveOutcome,
   planMove,
   rosterRoleOrder,
   rosterRoleRankSql,
@@ -270,6 +275,11 @@ describe('groups error codes', () => {
       ['rollover_record_unknown', 422],
       ['rollover_record_action_duplicate', 422],
       ['rollover_copy_invalid', 422],
+      ['move_preview_stale', 409],
+      ['move_same_group', 422],
+      ['move_target_inactive', 422],
+      ['move_date_in_past', 422],
+      ['move_too_many', 422],
       ['age_range_inverted', 422],
       ['age_category_name_taken', 409],
       ['age_categories_missing', 422],
@@ -447,5 +457,44 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', false)).toBe(true)
     expect(mayRemoveMembership({ validFrom: '2026-11-17' }, '2026-11-17', true)).toBe(false)
     expect(mayRemoveMembership({ validFrom: '2026-09-01' }, '2026-11-17', null)).toBe(false)
+  })
+  it('refuses a bulk move of more than 100 children, to the same group or on a past day (REQ-L15, Q-L08, Q-L22)', () => {
+    const move = { fromGroupId: 'a', toGroupId: 'b', date: '2026-12-01', count: 7 }
+    expect(MOVE_MANY_LIMIT).toBe(100)
+    expect(moveManyProblem(move, '2026-11-19')).toBeNull()
+    expect(moveManyProblem({ ...move, count: 100 }, '2026-11-19')).toBeNull()
+    expect(moveManyProblem({ ...move, count: 101 }, '2026-11-19')).toBe('too_many')
+    expect(moveManyProblem({ ...move, toGroupId: 'a' }, '2026-11-19')).toBe('same_group')
+    expect(moveManyProblem({ ...move, date: '2026-11-18' }, '2026-11-19')).toBe('date_in_past')
+    expect(moveManyProblem({ ...move, date: '2026-11-19' }, '2026-11-19')).toBeNull()
+  })
+
+  it('tells per child whether a bulk move moves it or skips it with a reason (Q-L24)', () => {
+    const open = { groupId: 'a', validFrom: '2026-09-01', validTo: null }
+    const movable = planMove(open, { toGroupId: 'b', date: '2026-12-01' }, '2026-11-19')
+    expect(MOVE_OUTCOMES).toEqual(['move', 'skip_already_member', 'skip_not_active'])
+    expect(moveOutcome(movable, false)).toBe('move')
+    expect(moveOutcome(movable, true)).toBe('skip_already_member')
+    const upcoming = planMove(
+      { ...open, validFrom: '2026-12-01' },
+      { toGroupId: 'b', date: '2026-12-01' },
+      '2026-11-19',
+    )
+    expect(moveOutcome(upcoming, false)).toBe('skip_not_active')
+    expect(moveOutcome(upcoming, true)).toBe('skip_not_active')
+  })
+
+  it("fits a child by the age on the move date within the target group's range (REQ-L15)", () => {
+    const skrzaty = { ageFrom: 6, ageTo: 7 }
+    // Six on 1 September, still five the day before.
+    expect(fitsAgeRange('2020-09-01', '2026-09-01', skrzaty)).toBe(true)
+    expect(fitsAgeRange('2020-09-01', '2026-08-31', skrzaty)).toBe(false)
+    expect(fitsAgeRange('2018-09-02', '2026-09-01', skrzaty)).toBe(true)
+    expect(fitsAgeRange('2018-09-01', '2026-09-01', skrzaty)).toBe(false)
+    expect(fitsAgeRange('2015-01-01', '2026-09-01', { ageFrom: 6, ageTo: null })).toBe(true)
+    expect(fitsAgeRange('2024-01-01', '2026-09-01', { ageFrom: null, ageTo: 7 })).toBe(true)
+    expect(fitsAgeRange('2010-01-01', '2026-09-01', { ageFrom: null, ageTo: 7 })).toBe(false)
+    expect(fitsAgeRange('2020-01-01', '2026-09-01', { ageFrom: null, ageTo: null })).toBeNull()
+    expect(fitsAgeRange(null, '2026-09-01', skrzaty)).toBeNull()
   })
 })

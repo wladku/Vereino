@@ -23,6 +23,13 @@ export const errorCodes = [
   { code: 'activity_times_inverted', status: 422, messageKey: 'activities.errors.activity_times_inverted' },
   { code: 'activity_dates_inverted', status: 422, messageKey: 'activities.errors.activity_dates_inverted' },
   { code: 'activity_no_sessions', status: 422, messageKey: 'activities.errors.activity_no_sessions' },
+  // A leaving coach's sessions handed over to a person who is not a coach of the club on the day after the last day
+  // (people life-cycle spec *Hand-over choice*; #307), with `details.groupIds`.
+  {
+    code: 'departure_handover_coach_invalid',
+    status: 422,
+    messageKey: 'activities.errors.departure_handover_coach_invalid',
+  },
   { code: 'activities_reference_invalid', status: 422, messageKey: 'activities.errors.activities_reference_invalid' },
   { code: 'activity_group_inactive', status: 422, messageKey: 'activities.errors.activity_group_inactive' },
   // A typed venue (REQ-A08, #270): a club place or a typed venue, exactly one; a venue only on a one-off activity.
@@ -119,6 +126,21 @@ export const errorCodes = [
     messageKey: 'activities.errors.club_event_part_managed_by_event',
   },
   { code: 'club_event_part_place_fixed', status: 422, messageKey: 'activities.errors.club_event_part_place_fixed' },
+  // The poster and the funder logos of a club event (DD-T10, REQ-T08, #379): checked by the file's bytes.
+  { code: 'club_event_file_missing', status: 422, messageKey: 'activities.errors.club_event_file_missing' },
+  { code: 'club_event_file_too_large', status: 422, messageKey: 'activities.errors.club_event_file_too_large' },
+  {
+    code: 'club_event_file_format_unsupported',
+    status: 422,
+    messageKey: 'activities.errors.club_event_file_format_unsupported',
+  },
+  { code: 'club_event_funders_limit', status: 422, messageKey: 'activities.errors.club_event_funders_limit' },
+  { code: 'club_event_poster_replaced', status: 409, messageKey: 'activities.errors.club_event_poster_replaced' },
+  {
+    code: 'club_event_funder_name_invalid',
+    status: 422,
+    messageKey: 'activities.errors.club_event_funder_name_invalid',
+  },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']
