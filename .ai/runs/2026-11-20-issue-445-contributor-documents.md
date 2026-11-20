@@ -18,7 +18,7 @@ A contributor finds `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issu
 4. **Code of Conduct:** the issue asked for Contributor Covenant 2.1, but S17.1 (the governing spec) says 3.0 with two named contacts. Used the official 3.0 text (downloaded from `EthicalSource/contributor_covenant`, branch `release`), filled the reporting placeholder with the two maintainers and a private-contact path that publishes no e-mail address, and removed the template's editor note above the enforcement ladder. Recorded in the spec changelog file.
 5. **Security policy:** S17.6 values (private reporting, latest release supported, 3 working days, 90 days, coordinated disclosure, no bounty, safe harbour). Private vulnerability reporting is **not yet enabled** on the repository (`GET /repos/wladku/Vereino/private-vulnerability-reporting` → `{"enabled":false}`), which is an owner action in the epic; `SECURITY.md` gives a fallback ("Security contact request" issue without details).
 6. **Issue templates:** `bug.yml` and `feature.yml` use the sections `om-prepare-issue` writes (🎯 Change, 📋 Scope, ✅ Done when, 📝 Spec, 🔍 Implementation notes, ⚠️ Open questions; bug adds steps and 📸 Evidence) and apply the `bug` / `feature` category labels; `config.yml` disables blank issues and sends security reports to the private advisory form and `SECURITY.md`.
-7. **`.vscode/extensions.json`:** writing it was denied by the session's permission mode (Write and Bash on `.vscode/extensions.json`), so the file is **not** in this run; its intended content is in the pull request body for the owner to add.
+7. **`.vscode/extensions.json`:** writing it was denied by the session's permission mode (Write and Bash on `.vscode/extensions.json`), so the file is **not** in this run; a retry after the owner's "continue" was denied the same way. `CONTRIBUTING.md` lists the extensions by hand instead of linking a missing file, and follow-up #456 carries the exact content.
 8. `README.md` links the documents in the status line and a new *Contributing* section. Spec changelog file added; ENG-AC-13 stays unchecked (repository settings pending).
 
 ## Files changed
@@ -35,5 +35,6 @@ A contributor finds `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issu
 
 ## Open problems and next steps
 
-- Owner: add `.vscode/extensions.json` (content in the PR body), enable private vulnerability reporting, secret scanning with push protection and Dependabot alerts (epic #442), and decide whether to publish contact e-mails in `CODE_OF_CONDUCT.md`.
+- #456: add `.vscode/extensions.json`.
+- Owner: enable private vulnerability reporting, secret scanning with push protection and Dependabot alerts (epic #442), and decide whether to publish contact e-mails in `CODE_OF_CONDUCT.md`.
 - Kacper Kuć's GitHub handle is unknown to the repository (CODEOWNERS has only `@wladku`); add it to `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` when known.
