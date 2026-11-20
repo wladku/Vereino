@@ -63,7 +63,25 @@ export type ClubEventPart = {
   updatedAt: string
 }
 
-export type ClubEventDetail = ClubEventRow & { publicPath?: string | null; parts: ClubEventPart[] }
+/** A poster or funder logo of a club event (REQ-T08, #379); `url` is the authenticated staff image route. */
+export type ClubEventFileItem = {
+  id: string
+  kind: 'poster' | 'funder_logo'
+  funderName: string | null
+  fileName: string
+  mimeType: string
+  fileSize: number
+  position: number
+  url: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ClubEventDetail = ClubEventRow & {
+  publicPath?: string | null
+  parts: ClubEventPart[]
+  files?: ClubEventFileItem[]
+}
 
 export type ClubEventGroupOption = {
   id: string
