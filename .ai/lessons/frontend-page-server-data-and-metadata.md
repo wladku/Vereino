@@ -33,6 +33,10 @@ service directly would bypass the API route's response mapping and its rate limi
   read for.
 - The catch-all forwards `searchParams` to the page component; prove "works without JavaScript" with a Playwright
   context created with `javaScriptEnabled: false` (`E20-S08-public-pages-without-js.spec.ts`).
+- Before moving a page to server data, grep `.ai/qa/tests` for tests that hold or mock that page's browser read
+  (`page.route` on its API path) and wait for a skeleton or loading state: the browser no longer sends the read, so
+  they wait for nothing. In #509 TEST-N16 failed CI shard 6 this way; rewrite such a step to assert the content arrives
+  without a loading state and with no browser read.
 
 **Applies to**: `packages/app/src/app/(frontend)/[...slug]/page.tsx`, `packages/app/src/modules/*/frontend/**/page.tsx`,
 `foundation/services/public-route-load.ts`, the public pages P-01, P-02, P-03, P-06 and P-T1.
