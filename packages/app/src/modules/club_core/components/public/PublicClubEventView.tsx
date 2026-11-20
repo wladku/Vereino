@@ -115,7 +115,7 @@ function ClubEventBody({ page }: { page: PublicClubEventPage }) {
           width={1200}
           height={1600}
           unoptimized
-          className="bg-muted h-auto max-h-[80svh] w-full rounded-lg object-contain"
+          className="bg-muted h-auto max-h-160 w-full rounded-lg object-contain"
           data-testid="public-club-event-poster"
         />
       ) : null}
