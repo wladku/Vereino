@@ -238,7 +238,8 @@ function PartForm({
       return
     }
     if (call.status === 409 && part) {
-      setError(t('activities.clubEvents.club.form.changed'))
+      // The form is keyed by the stored version, so the reload remounts it; a flash survives that.
+      flash(t('activities.clubEvents.club.form.changed'), 'warning')
       await queryClient.invalidateQueries({ queryKey: clubEventQueryKey(event.id) })
       return
     }

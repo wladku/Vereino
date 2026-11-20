@@ -201,8 +201,9 @@ function EventForm({ options, event, t }: { options: ClubEventOptions; event: Cl
       return
     }
     if (call.status === 409 && event) {
-      // Changed meanwhile (the panel, another phone): reload the event before editing again.
-      setError(t('activities.clubEvents.club.form.changed'))
+      // Changed meanwhile (the panel, another phone): reload the event before editing again. The form is
+      // keyed by the stored version, so the reload remounts it; a flash survives that, local state does not.
+      flash(t('activities.clubEvents.club.form.changed'), 'warning')
       await queryClient.invalidateQueries({ queryKey: clubEventQueryKey(event.id) })
       return
     }

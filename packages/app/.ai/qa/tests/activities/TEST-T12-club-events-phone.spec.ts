@@ -3,7 +3,7 @@ import { addDays, nextWeekday } from '../_fixtures/activities'
 import { familyFor } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, call, createClub } from '../_fixtures/club'
-import { readClubEvent } from '../_fixtures/club-events'
+import { readClubEvent, updateClubEvent } from '../_fixtures/club-events'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { createGroup } from '../_fixtures/groups'
 import { png } from '../_fixtures/publication'
@@ -230,6 +230,26 @@ test('TEST-T12 the section coordinator sets up and runs a club event on the phon
       }
     }
     expect(violations).toEqual({})
+
+    // --- A stale version: changed in the panel meanwhile, the phone save is refused with a message and the form
+    // reloads the current version (the form remounts on the new version, so the message is a flash) ---
+    await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+    await page.goto(`/club/club-events/${eventId}/edit`)
+    await expect(page.getByTestId('club-event-member-form')).toBeVisible()
+    const beforeStale = await readClubEvent(request, admin, eventId)
+    const changedMeanwhile = await updateClubEvent(
+      request,
+      admin,
+      { id: eventId, description: 'Zmienione w panelu' },
+      beforeStale.body?.updatedAt,
+    )
+    expect(changedMeanwhile.status, JSON.stringify(changedMeanwhile.body)).toBe(200)
+    await page.getByTestId('club-event-member-description').fill('Zmienione na telefonie')
+    await page.getByTestId('club-event-form-submit').click()
+    await expect(page.getByText(uiText('activities.clubEvents.club.form.changed')).first()).toBeVisible()
+    await expect(page).toHaveURL(new RegExp(`/club/club-events/${eventId}/edit$`))
+    await expect(page.getByTestId('club-event-member-description')).toHaveValue('Zmienione w panelu')
 
     // --- Cancel club event with a reason: the toast names the people told ---
     await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
