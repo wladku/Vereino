@@ -22,7 +22,13 @@ import {
 } from '../lib/departure-rules'
 import { listDisplayName } from '../lib/person-list-filters'
 import type { ClubScope } from './club-clock'
-import { departureContributors, type DepartureItem, type DepartureNotice, type DepartureSubject } from './departure'
+import {
+  departureContributors,
+  type DepartureHandOverNeed,
+  type DepartureItem,
+  type DepartureNotice,
+  type DepartureSubject,
+} from './departure'
 
 /** A blocker as the preview shows it: `people`'s own (DD-L04) or a contributor's notice. */
 export type DeparturePlanBlocker = {
@@ -43,6 +49,8 @@ export type DeparturePlanPerson = {
   warnings: DepartureNotice[]
   blockers: DeparturePlanBlocker[]
   choicesNeeded: PayerChoice[]
+  /** The groups of a leaving coach that need a hand-over choice (phase L5, #307). */
+  handOvers: DepartureHandOverNeed[]
 }
 
 export type DeparturePlan = {
@@ -59,17 +67,27 @@ export type DeparturePlan = {
 
 const PEOPLE_MODULE = 'people'
 
-/** The plan's content the preview token binds: ids, actions, blockers and choices — no names. */
+/** Tuples in a fixed order: the rows' read order (no `ORDER BY`, rows updated since) must not make a token stale. */
+function sortedTuples(tuples: unknown[][]): unknown[][] {
+  return tuples
+    .map((tuple) => ({ tuple, key: JSON.stringify(tuple) }))
+    .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+    .map((entry) => entry.tuple)
+}
+
+/** The plan's content the preview token binds: ids, actions, blockers and choices — no names, in a fixed order. */
 export function planBindingContent(plan: DeparturePlan): unknown {
   return plan.persons.map((person) => ({
     id: person.id,
-    ends: person.ends.map((item) => [item.module, item.kind, item.recordId, item.action, item.until]),
-    blockers: person.blockers.map((blocker) => [
-      blocker.module,
-      blocker.code,
-      blocker.wardPersonId ?? blocker.recordId,
-    ]),
-    choices: person.choicesNeeded.map((choice) => [choice.wardPersonId, choice.candidateGuardianPersonIds]),
+    ends: sortedTuples(person.ends.map((item) => [item.module, item.kind, item.recordId, item.action, item.until])),
+    blockers: sortedTuples(
+      person.blockers.map((blocker) => [blocker.module, blocker.code, blocker.wardPersonId ?? blocker.recordId]),
+    ),
+    choices: sortedTuples(
+      person.choicesNeeded.map((choice) => [choice.wardPersonId, choice.candidateGuardianPersonIds]),
+    ),
+    // The groups only: a session the daily generator adds after the preview does not make it stale.
+    handOvers: [...new Set(person.handOvers.map((need) => need.groupId))].sort(),
   }))
 }
 
@@ -197,6 +215,7 @@ export async function buildDeparturePlan(
     items: [] as DepartureItem[],
     warnings: [] as DepartureNotice[],
     blockers: [] as DepartureNotice[],
+    handOvers: [] as DepartureHandOverNeed[],
   }
   // One contributor at a time: `em` may be the command's transaction, a single connection.
   for (const { contributor } of departureContributors(container)) {
@@ -204,6 +223,7 @@ export async function buildDeparturePlan(
     contributed.items.push(...part.items)
     contributed.warnings.push(...part.warnings)
     contributed.blockers.push(...part.blockers)
+    contributed.handOvers.push(...(part.handOvers ?? []))
   }
 
   const persons: DeparturePlanPerson[] = leaving
@@ -266,6 +286,7 @@ export async function buildDeparturePlan(
         warnings: contributed.warnings.filter((warning) => warning.personId === person.id),
         blockers,
         choicesNeeded: choices.filter((choice) => choice.personId === person.id),
+        handOvers: contributed.handOvers.filter((need) => need.personId === person.id),
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name))

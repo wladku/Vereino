@@ -36,6 +36,20 @@ export const departurePlanSchema = z.object({
       choicesNeeded: z.array(
         z.object({ wardPersonId: z.uuid(), personId: z.uuid(), candidateGuardianPersonIds: z.array(z.uuid()) }),
       ),
+      handOvers: z
+        .array(
+          z.object({
+            module: z.string(),
+            personId: z.uuid(),
+            groupId: z.uuid(),
+            groupName: z.string().nullable(),
+            sessions: z.number().int(),
+            activities: z.number().int(),
+          }),
+        )
+        .describe(
+          'The groups of a leaving coach that need a hand-over choice: future sessions and default-coach activities',
+        ),
     }),
   ),
   suggestedPersons: z.array(
