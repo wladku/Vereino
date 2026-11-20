@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import tseslint from 'typescript-eslint'
 import boundaries from 'eslint-plugin-boundaries'
 import {
+  DIALOG_CONTENT_RESTRICTIONS,
   FOUNDATION_PUBLIC_ENTRY,
   FRAMEWORK_FREE_IMPORT_RESTRICTIONS,
   ORM_ALLOWED_MODULE_PATHS,
@@ -52,6 +53,15 @@ test('module boundaries build one policy per module', () => {
   assert.deepEqual(policies[0].disallow.dependency, { kind: 'value' })
   assert.equal(boundaryConfig.settings['boundaries/elements'][0].pattern, FOUNDATION_PUBLIC_ENTRY)
   assert.equal(boundaryConfig.rules['no-restricted-imports'][1].patterns.length, 2)
+  assert.equal(boundaryConfig.rules['no-restricted-imports'][1].paths, DIALOG_CONTENT_RESTRICTIONS)
+  assert.equal(ormConfig.rules['no-restricted-imports'][1].paths, DIALOG_CONTENT_RESTRICTIONS)
+  assert.deepEqual(
+    DIALOG_CONTENT_RESTRICTIONS.map((restriction) => [restriction.name, restriction.importNames]),
+    [
+      ['@open-mercato/ui/primitives/dialog', ['DialogContent']],
+      ['@open-mercato/ui/primitives/sheet', ['SheetContent']],
+    ],
+  )
   const libPatterns = libConfig.rules['no-restricted-imports'][1].patterns
   assert.equal(libPatterns.length, FRAMEWORK_FREE_IMPORT_RESTRICTIONS['no-restricted-imports'][1].patterns.length + 1)
   assert.deepEqual(consoleConfig.rules, { 'no-console': 'error' })

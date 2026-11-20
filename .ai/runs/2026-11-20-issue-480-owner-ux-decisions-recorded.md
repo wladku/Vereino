@@ -37,3 +37,10 @@
 ## Open problems / next steps
 
 - The application changes of D-033 are the other stories of epic #479 (#481–#497).
+
+## Follow-up run — merge main after #481 (om-auto-fix-pr, 2026-11-20)
+
+- **Trigger:** PR #499 was `CONFLICTING` with `main` after #502 (E20-S02, #481) landed; worked on a detached HEAD at `origin/docs/issue-480-owner-ux-decisions-recorded`, merged `origin/main` (9c811e6c) without rewriting history.
+- **Conflict:** `docs/ux-concept/tokens.md` only — #481 recorded C1 and C2 as built, C3 and C4 open; this PR records C1–C4 resolved by D-033.
+- **Resolution:** kept the D-033 resolutions and the status icon map; took #481's facts that are now true on `main` (the `--input`, `--ring`, `--focus-ring-outer` overrides and `--focus-indicator` are built in `globals.css`, with `focus-indicator-inset`; tables show the overridden values with the platform value as "was …"); marked the checkbox on `--primary` (D-033 §6) as still *to be built* (`main` keeps `accent-color: var(--accent-indigo)`); C4 notes that the #481 overrides sit in a marked Vereino block in `globals.css` today.
+- **Decision — sidebar heading surface:** #481 measured the C2 heading on `--sidebar` (4.75 / 6.91), but the AppShell aside is `bg-background` (`asideClassesBase = 'border-r bg-background py-4'` in `@open-mercato/ui/src/backend/AppShell.tsx`), so `tokens.md` keeps this PR's values on `--background`: 2.78 → 4.96 light, 4.20 → 7.63 dark. Both pass 4.5:1, so the built rule stays correct.

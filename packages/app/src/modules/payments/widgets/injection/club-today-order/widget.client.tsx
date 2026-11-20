@@ -15,7 +15,7 @@ import { MY_ORDERS_QUERY_KEY, clubOrderHref, type MyCampaign } from '../../../co
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
 const LINK_CLASS =
-  'hover:bg-accent focus-visible:shadow-focus -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
+  'hover:bg-accent focus-visible:focus-indicator -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
 
 class OrderTileLoadError extends Error {}
 
