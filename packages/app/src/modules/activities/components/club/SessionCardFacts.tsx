@@ -5,9 +5,8 @@
 // shared calendar marker rule, so a section keeps its colour across the member pages.
 import * as React from 'react'
 import { ChartLegendDot } from '@open-mercato/ui/primitives/chart-legend'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { sectionMarkerColors } from '@vereino/ui'
+import { sectionMarkerColors, StatusTag } from '@vereino/ui'
 import { cardMapHref } from '../../lib/venue'
 import type { CalendarOccurrence } from './club-client'
 
@@ -56,7 +55,7 @@ export function SessionCardFacts({
       ) : null}
       {occurrence.activityType ? (
         <span data-testid="session-facts-type">
-          <StatusBadge variant="neutral">{t(`activities.types.${occurrence.activityType}`)}</StatusBadge>
+          <StatusTag status="neutral">{t(`activities.types.${occurrence.activityType}`)}</StatusTag>
         </span>
       ) : null}
       {occurrence.sectionName ? (

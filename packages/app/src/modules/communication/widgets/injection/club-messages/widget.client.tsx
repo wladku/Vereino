@@ -9,9 +9,8 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import {
   CLUB_MESSAGES_HREF,
   clubThreadHref,
@@ -69,9 +68,7 @@ export default function ClubMessagesTileWidget() {
             {unread && unread.count > 0 ? (
               <div className="flex flex-col gap-1">
                 <span data-testid="club-tile-messages-unread" data-count={String(unread.count)}>
-                  <StatusBadge variant="info">
-                    {t('communication.tile.unread', { count: String(unread.count) })}
-                  </StatusBadge>
+                  <StatusTag status="info">{t('communication.tile.unread', { count: String(unread.count) })}</StatusTag>
                 </span>
                 {unread.newest ? (
                   <Link

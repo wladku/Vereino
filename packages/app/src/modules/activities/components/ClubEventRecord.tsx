@@ -16,7 +16,6 @@ import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-merc
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
@@ -33,6 +32,7 @@ import {
   useClubEventOptions,
   type ClubEventDetail,
 } from './club-events-client'
+import { StatusTag } from '@vereino/ui'
 
 type Load = { status: 'ok'; event: ClubEventDetail } | { status: 'not_found' } | { status: 'denied' }
 
@@ -138,16 +138,16 @@ export function ClubEventRecord({ id }: { id: string }) {
             <span aria-hidden>·</span>
             <span>{event.placeName ?? t('activities.common.empty')}</span>
             {event.placeExternal ? (
-              <StatusBadge variant="neutral">{t('activities.clubEvents.place.external')}</StatusBadge>
+              <StatusTag status="neutral">{t('activities.clubEvents.place.external')}</StatusTag>
             ) : null}
             <span aria-hidden>·</span>
             <span>{event.sectionId ? (event.sectionName ?? '') : t('activities.clubEvents.section.wholeClub')}</span>
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge variant={clubEventStatusVariant(event.status)}>
+          <StatusTag status={clubEventStatusVariant(event.status)}>
             {t(`activities.clubEvents.status.${planned ? 'planned' : 'cancelled'}`)}
-          </StatusBadge>
+          </StatusTag>
           {event.publicPath ? (
             <Button asChild variant="outline">
               <Link href={event.publicPath} target="_blank" rel="noopener" data-testid="club-event-public-link">

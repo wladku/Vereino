@@ -11,7 +11,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading } from '@vereino/ui'
+import { formatDayHeading, StatusTag } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 import { dayEntryText } from '../day-axis/DayEntries'
 import { KIND_TAGS } from '../day-axis/tags'
@@ -104,7 +104,7 @@ export function EntryDetails({
           ) : null}
           {entry.needsReschedule ? (
             <div>
-              <Tag variant="warning">{t('facilities.places.entry.needsReschedule')}</Tag>
+              <StatusTag status="warning">{t('facilities.places.entry.needsReschedule')}</StatusTag>
             </div>
           ) : null}
         </dl>

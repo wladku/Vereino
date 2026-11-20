@@ -22,7 +22,6 @@ import { deleteCrud, fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
@@ -54,6 +53,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { useCanManageGroups, useHasFeature } from './useCanManageGroups'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -84,9 +84,9 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       enableSorting: false,
       meta: { priority: 5 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.kind === 'team' ? 'info' : 'neutral'}>
+        <StatusTag status={row.original.kind === 'team' ? 'info' : 'neutral'}>
           {kindLabel(t, row.original.kind)}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
     {
@@ -130,9 +130,9 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       enableSorting: false,
       meta: { priority: 6 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isActive ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.isActive ? 'success' : 'neutral'}>
           {row.original.isActive ? t('groups.common.active') : t('groups.common.inactive')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
     {
@@ -141,9 +141,9 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       enableSorting: false,
       meta: { priority: 9 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isPublic ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.isPublic ? 'success' : 'neutral'}>
           {row.original.isPublic ? t('groups.common.yes') : t('groups.common.no')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
   ]
