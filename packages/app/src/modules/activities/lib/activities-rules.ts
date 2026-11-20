@@ -87,6 +87,9 @@ export function isPinnedSession(status: OccurrenceStatus, actedOn: boolean): boo
 /** The generation horizon in weeks (club spec DD-10; foundation II keeps the constant, no club setting). */
 export const HORIZON_WEEKS = 16
 
+/** The largest declaration deadline the forms take, in hours before the start: 14 days (REQ-A07). */
+export const MAX_CONFIRM_BY_HOURS = 336
+
 /** The last day of the horizon that starts on `today`. */
 export function horizonEnd(today: CalendarDate): CalendarDate {
   return addCalendarDays(today, HORIZON_WEEKS * 7)

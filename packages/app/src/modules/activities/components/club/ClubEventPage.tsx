@@ -27,7 +27,7 @@ import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
 import { MemberSkeleton } from '@vereino/ui'
-import { EVENT_TYPES, eventTypesForGroupKind, takesOpponent } from '../../lib/activities-rules'
+import { EVENT_TYPES, MAX_CONFIRM_BY_HOURS, eventTypesForGroupKind, takesOpponent } from '../../lib/activities-rules'
 import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
 import {
   EVENT_NAME_MAX,
@@ -562,7 +562,7 @@ export function ClubEventForm({
               type="number"
               inputMode="numeric"
               min={1}
-              max={336}
+              max={MAX_CONFIRM_BY_HOURS}
               className="min-h-11"
               value={draft.confirmByHours ?? ''}
               aria-invalid={invalid('confirmByHours')}

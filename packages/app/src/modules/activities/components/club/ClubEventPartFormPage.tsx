@@ -35,7 +35,7 @@ import {
   type PartDraft,
   type PartDraftField,
 } from '../../lib/member-club-event'
-import { VisitingTeamsField } from '../ClubEventPartDialog'
+import { VisitingTeamsField } from '../club-event-fields'
 import { ConflictList } from '../ConflictList'
 import { NO_COACH, OWN_FORBIDDEN_STATE, coachOptions, takesDeadline, type ScheduleConflict } from '../client-helpers'
 import {
@@ -43,6 +43,7 @@ import {
   memberClubEventHref,
   partDayLabel,
   useClubEvent,
+  clubEventOptionsOf,
   useClubEventOptions,
   type ClubEventDetail,
   type ClubEventOptions,
@@ -84,13 +85,11 @@ function useCoaches(enabled: boolean, t: Translate) {
 }
 
 function ReadOnly({
-  prefix,
   field,
   label,
   text,
   action,
 }: {
-  prefix: string
   field: string
   label: string
   text: string
@@ -98,12 +97,10 @@ function ReadOnly({
 }) {
   return (
     <div className="flex flex-col gap-1" data-testid={`club-event-part-member-${field}`}>
-      <span className="text-sm font-medium" id={`${prefix}-${field}-label`}>
-        {label}
-      </span>
-      <p className="text-sm" aria-labelledby={`${prefix}-${field}-label`}>
-        {text}
-      </p>
+      <dl className="flex flex-col gap-1">
+        <dt className="text-sm font-medium">{label}</dt>
+        <dd className="text-sm">{text}</dd>
+      </dl>
       {action}
     </div>
   )
@@ -288,7 +285,6 @@ function PartForm({
       </MemberField>
       {part?.kind === 'group' ? (
         <ReadOnly
-          prefix={id}
           field="when"
           label={t('activities.clubEvents.part.fields.when')}
           text={`${partDayLabel(t, locale, draft.date)}, ${partTimeRangeInZone(part.startAt, part.endAt, timeZone)}`}
@@ -352,7 +348,6 @@ function PartForm({
       )}
       {part ? (
         <ReadOnly
-          prefix={id}
           field="group"
           label={t('activities.clubEvents.part.fields.group')}
           text={
@@ -434,7 +429,6 @@ function PartForm({
       </MemberField>
       {part?.kind === 'group' ? (
         <ReadOnly
-          prefix={id}
           field="coach"
           label={t('activities.fields.coach')}
           text={part.coachName ?? t('activities.clubEvents.part.noCoach')}
@@ -586,7 +580,9 @@ function PartBody({
   }
   const event = load?.status === 'ok' ? load.event : null
   const part = event && partId ? (event.parts.find((entry) => entry.id === partId) ?? null) : null
-  if (load?.status === 'denied' || (event && event.mayManage !== true) || (event && options.data === null)) {
+  // Options answered 403: the caller organises no club events; a failed options read falls to the retry (#440).
+  const loaded = clubEventOptionsOf(options.data)
+  if (load?.status === 'denied' || (event && event.mayManage !== true) || options.data?.status === 'denied') {
     return (
       <Alert status="information" data-testid="club-event-part-member-denied">
         <p>{t('activities.clubEvents.club.form.denied')}</p>
@@ -606,7 +602,7 @@ function PartBody({
       </Alert>
     )
   }
-  if (!event || !options.data) {
+  if (!event || !loaded) {
     return (
       <ErrorMessage
         label={t('activities.clubEvents.errors.loadOne')}
@@ -633,7 +629,7 @@ function PartBody({
       <PartForm
         key={`${part?.updatedAt ?? 'new'}-${copy?.id ?? ''}`}
         event={event}
-        options={options.data}
+        options={loaded}
         part={part}
         copy={copy}
         timeZone={timeZone}

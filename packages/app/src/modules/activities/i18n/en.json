@@ -1091,6 +1091,7 @@
   "activities.clubEvents.club.list.intro": "The tournaments and other club events you organise, with their parts by day.",
   "activities.clubEvents.club.list.parts": "Parts: {count}",
   "activities.clubEvents.club.list.noUpcoming": "No upcoming club event.",
+  "activities.clubEvents.club.list.showMore": "Show more ({shown} of {total})",
   "activities.clubEvents.club.form.editTitle": "Edit club event",
   "activities.clubEvents.club.form.chooseSection": "Choose a section",
   "activities.clubEvents.club.form.saving": "Saving…",

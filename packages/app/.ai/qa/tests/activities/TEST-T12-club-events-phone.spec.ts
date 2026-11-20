@@ -85,6 +85,20 @@ test('TEST-T12 the section coordinator sets up and runs a club event on the phon
     await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
     await signInBrowser(page, request, club, coordinator.userId, coordinator.email)
 
+    // --- #440: a failed read of the form options (500) offers Try again, it does not say "denied" ---
+    let optionsFail = true
+    const optionsRoute = '**/api/activities/club-events/options'
+    await page.route(optionsRoute, (route) =>
+      optionsFail ? route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) : route.fallback(),
+    )
+    await page.goto('/club/club-events/new')
+    await expect(page.getByText(uiText('activities.clubEvents.errors.options'))).toBeVisible()
+    await expect(page.getByTestId('club-event-member-denied')).toHaveCount(0)
+    optionsFail = false
+    await page.getByRole('button', { name: uiText('activities.club.actions.retry', { exact: true }) }).click()
+    await expect(page.getByTestId('club-event-member-name')).toBeVisible()
+    await page.unroute(optionsRoute)
+
     // --- J-T01 step 1: More → Club events → the empty list → New club event ---
     await page.goto('/club')
     await page.getByTestId('club-bottom-bar').getByText(MORE).click()

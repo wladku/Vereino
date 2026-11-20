@@ -110,14 +110,25 @@ export type ClubEventOptions = {
 
 export const CLUB_EVENT_OPTIONS_QUERY_KEY = ['activities-club-event-options']
 
-/** The option sources of the club event and part forms (`GET /api/activities/club-events/options`). */
+export type ClubEventOptionsLoad = { status: 'ok'; options: ClubEventOptions } | { status: 'denied' }
+
+/** The options when the read answered them; null while loading, on 403 and on a failed read. */
+export const clubEventOptionsOf = (load: ClubEventOptionsLoad | undefined): ClubEventOptions | null =>
+  load?.status === 'ok' ? load.options : null
+
+/**
+ * The option sources of the club event and part forms (`GET /api/activities/club-events/options`): 403 is the
+ * `denied` state (the caller organises no club events); any other failure throws, so the page shows a retry (#440).
+ */
 export function useClubEventOptions(enabled = true) {
   return useQuery({
     queryKey: CLUB_EVENT_OPTIONS_QUERY_KEY,
     enabled,
-    queryFn: async (): Promise<ClubEventOptions | null> => {
+    queryFn: async (): Promise<ClubEventOptionsLoad> => {
       const call = await apiCall<ClubEventOptions>('/api/activities/club-events/options', OWN_FORBIDDEN_STATE)
-      return call.ok ? (call.result ?? null) : null
+      if (call.status === 403) return { status: 'denied' }
+      if (!call.ok || !call.result) throw new Error(String(call.status))
+      return { status: 'ok', options: call.result }
     },
   })
 }

@@ -5,16 +5,19 @@
 // From REQ-A08 (#270) it also takes a typed venue instead of a club place ("Other address"), an opponent for a
 // sparring or a match, "away" and a gathering time. Pure.
 import { isCalendarDate, isLocalTime, zonedInstant } from '@vereino/core'
-import { EVENT_TYPES, takesOpponent, type ActivityType, type GroupKindLike } from './activities-rules'
+import {
+  EVENT_TYPES,
+  MAX_CONFIRM_BY_HOURS,
+  takesOpponent,
+  type ActivityType,
+  type GroupKindLike,
+} from './activities-rules'
 import { MAX_GATHERING_MINUTES } from './gathering'
 import { VENUE_ADDRESS_MAX, VENUE_ADDRESS_MIN, VENUE_NAME_MAX, VENUE_NAME_MIN, type TypedVenue } from './venue'
 
 /** The limits of the event's name and note, as `eventCreateSchema` sets them. */
 export const EVENT_NAME_MAX = 200
 export const EVENT_NOTE_MAX = 4000
-/** The largest deadline the phone form takes, in hours: 14 days (REQ-A07). */
-export const EVENT_CONFIRM_BY_MAX_HOURS = 336
-
 export type EventGroupSource = { id: string; name: string; kind: GroupKindLike; sectionId: string; isActive: boolean }
 export type EventGroupOption = { id: string; name: string; kind: GroupKindLike; sectionName: string | null }
 
@@ -111,7 +114,7 @@ export type EventDraftProblems = Partial<Record<EventDraftField, EventDraftProbl
 /** Whole hours 1–336 as a number, or null. */
 function confirmByHours(text: string): number | null {
   const hours = Number(text)
-  return Number.isInteger(hours) && hours >= 1 && hours <= EVENT_CONFIRM_BY_MAX_HOURS ? hours : null
+  return Number.isInteger(hours) && hours >= 1 && hours <= MAX_CONFIRM_BY_HOURS ? hours : null
 }
 
 function isEventType(value: string): value is ActivityType {

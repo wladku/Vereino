@@ -1091,6 +1091,7 @@
   "activities.clubEvents.club.list.intro": "Turnieje i inne imprezy klubowe, które organizujesz, z częściami według dni.",
   "activities.clubEvents.club.list.parts": "Części: {count}",
   "activities.clubEvents.club.list.noUpcoming": "Brak nadchodzących imprez klubowych.",
+  "activities.clubEvents.club.list.showMore": "Pokaż więcej ({shown} z {total})",
   "activities.clubEvents.club.form.editTitle": "Edytuj imprezę klubową",
   "activities.clubEvents.club.form.chooseSection": "Wybierz sekcję",
   "activities.clubEvents.club.form.saving": "Zapisywanie…",
