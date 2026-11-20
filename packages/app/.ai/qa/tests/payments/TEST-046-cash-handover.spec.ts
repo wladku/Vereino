@@ -171,9 +171,11 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     await page.getByTestId('custody-accept').click()
     await expect(page.getByTestId('handover-payment')).toHaveCount(3)
     await page.getByTestId('handover-confirm').click()
-    const toast = page.getByText(/RG\/\d{4}\/\d{2}\/001/)
-    await expect(toast).toBeVisible()
-    const number = String((await toast.textContent())?.match(/RG\/\d{4}\/\d{2}\/\d{3}/)?.[0])
+    // The number is read from the history row: the toast text matches the same pattern and
+    // both are on screen together, so a page-wide getByText is ambiguous (strict mode).
+    const handoverNumber = page.getByTestId('handover-number')
+    await expect(handoverNumber).toHaveText([/RG\/\d{4}\/\d{2}\/001/])
+    const number = String((await handoverNumber.textContent())?.match(/RG\/\d{4}\/\d{2}\/\d{3}/)?.[0])
     expect(number).toMatch(RG)
     expect(number.slice(3, 10)).toBe(`${today.slice(0, 4)}/${today.slice(5, 7)}`)
     await expect(page.getByText(uiText('payments.cashCustody.accept.done', { params: { number } }))).toBeVisible()
