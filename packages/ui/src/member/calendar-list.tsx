@@ -7,7 +7,7 @@ import * as React from 'react'
 import { calendarSections, type CalendarDay, type CalendarItem } from '@vereino/core'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { ChartLegend, ChartLegendDot, type ChartLegendColor } from '@open-mercato/ui/primitives/chart-legend'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
+import { StatusTag } from '#tsx/status/status-tag'
 import {
   actionButtonVariant,
   badgeVariant,
@@ -83,7 +83,9 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
             {formatTimeRange(item.startsAt, item.endsAt, locale, timeZone)}
           </time>
         </span>
-        {statusLabel !== null ? <StatusBadge variant={tone.badge}>{statusLabel}</StatusBadge> : null}
+        {statusLabel !== null ? (
+          <StatusTag status={item.status === 'cancelled' ? 'canceled' : tone.badge}>{statusLabel}</StatusTag>
+        ) : null}
       </div>
       {item.section ? (
         <p
@@ -149,9 +151,9 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
       {badges.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {badges.map((badge) => (
-            <StatusBadge key={badge.id} variant={badgeVariant(badge.tone)}>
+            <StatusTag key={badge.id} status={badgeVariant(badge.tone)}>
               {badge.label}
-            </StatusBadge>
+            </StatusTag>
           ))}
         </div>
       ) : null}

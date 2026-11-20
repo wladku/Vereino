@@ -21,10 +21,9 @@ import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-merc
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { DeliveryStatusList, type DeliveryPage } from '@vereino/ui'
+import { type DeliveryPage, DeliveryStatusList, StatusTag } from '@vereino/ui'
 import {
   OWN_FORBIDDEN_STATE,
   errorMessage,
@@ -297,23 +296,23 @@ function DeliveryCountsLine({ counts }: { counts: DeliveryCounts }) {
       data-queued={counts.queued}
     >
       <span className="sr-only">{t('communication.deliveries.summary.label')}:</span>
-      <StatusBadge variant="success">
+      <StatusTag status="success">
         {t('communication.deliveries.summary.sent', { count: String(counts.sent) })}
-      </StatusBadge>
+      </StatusTag>
       {counts.failed > 0 ? (
-        <StatusBadge variant="error">
+        <StatusTag status="error">
           {t('communication.deliveries.summary.failed', { count: String(counts.failed) })}
-        </StatusBadge>
+        </StatusTag>
       ) : null}
       {counts.skipped > 0 ? (
-        <StatusBadge variant="neutral" appearance="stroke">
+        <StatusTag status="neutral" appearance="stroke">
           {t('communication.deliveries.summary.skipped', { count: String(counts.skipped) })}
-        </StatusBadge>
+        </StatusTag>
       ) : null}
       {counts.queued > 0 ? (
-        <StatusBadge variant="neutral">
+        <StatusTag status="neutral">
           {t('communication.deliveries.summary.queued', { count: String(counts.queued) })}
-        </StatusBadge>
+        </StatusTag>
       ) : null}
     </div>
   )
@@ -557,10 +556,10 @@ export function ThreadRecord({ id }: { id: string }) {
           <span>{formatDateTime(thread.createdAt, locale)}</span>
           {thread.isCase ? (
             <span data-testid="thread-case-badge">
-              <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+              <StatusTag status="warning">{t('communication.cases.badge')}</StatusTag>
             </span>
           ) : null}
-          {thread.unread ? <StatusBadge variant="info">{t('communication.threads.unread')}</StatusBadge> : null}
+          {thread.unread ? <StatusTag status="info">{t('communication.threads.unread')}</StatusTag> : null}
         </p>
       </header>
       {thread.isCase ? <CaseBanner thread={thread} /> : null}

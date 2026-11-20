@@ -15,9 +15,8 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { composePreset, memberComposerKinds } from '../../lib/member-inbox'
 import {
   CLUB_MESSAGE_NEW_HREF,
@@ -228,12 +227,12 @@ function Inbox({ profile }: { profile: MessagesProfile }) {
               <span className="flex flex-wrap items-center gap-2">
                 {thread.unread ? (
                   <span data-testid="club-thread-unread">
-                    <StatusBadge variant="info">{t('communication.club.unread')}</StatusBadge>
+                    <StatusTag status="info">{t('communication.club.unread')}</StatusTag>
                   </span>
                 ) : null}
                 {thread.isCase ? (
                   <span data-testid="club-thread-case">
-                    <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+                    <StatusTag status="warning">{t('communication.cases.badge')}</StatusTag>
                   </span>
                 ) : null}
                 <span className={thread.unread ? 'font-semibold break-words' : 'break-words'}>{thread.subject}</span>

@@ -121,7 +121,7 @@ The mockup audit's estimates are confirmed on the app values: ring 2.59 (≈ 2.6
 | R04.2 error summary | component | member, public | Vereino component |
 | R06.1 club header with logo and name | component | member, public | Vereino component |
 | R07.2 attendance toggle | component | member | Vereino component |
-| R01.2, R01.8 status with word and icon | component | member | OM as is (`StatusBadge`, `Alert`) |
+| R01.2, R01.8 status with word and icon | component | member, public, panel | Vereino component `StatusTag` (`@vereino/ui`, on the OM `Badge`; lint rejects a bare `StatusBadge`, #482) + OM as is (`Alert`) |
 | R03.1 tokens, R03.2 panel components and density, R03.3 Lucide icons | component | all | OM as is |
 | R03.4 `CrudForm` labels without `htmlFor` | component | panel | OM component change — **costly** (C3) |
 | R03.5 AppShell sidebar contrast and link name | component | panel | OM component change — **costly** (C2) |

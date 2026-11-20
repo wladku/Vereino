@@ -19,10 +19,9 @@ import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActi
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 import {
   MEMBERSHIP_ROLES,
   ROSTER_VIEWS,
@@ -133,7 +132,7 @@ function buildColumns(
       meta: { priority: 2 },
       cell: ({ row }) => {
         const status = rowStatus(row.original, today)
-        return <StatusBadge variant={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusBadge>
+        return <StatusTag status={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusTag>
       },
     },
   ]

@@ -23,15 +23,15 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   badgeVariant,
   formatClockTime,
   formatDayHeading,
   formatTimeRange,
-  memberStaffScopes,
   MemberSkeleton,
+  memberStaffScopes,
+  StatusTag,
 } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
@@ -91,9 +91,9 @@ function PersonDeclaration({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{fullName(person)}</span>
         <span data-testid="club-session-declaration">
-          <StatusBadge variant={badgeVariant(state.tone)}>
+          <StatusTag status={badgeVariant(state.tone)}>
             {declarationLabel(t, entry.declarationKind, person.declaration)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       </div>
       {person.guardianOnly ? (
@@ -173,7 +173,7 @@ function CoachName({ occurrence }: { occurrence: CalendarEntry['occurrence'] }) 
   if (badge === 'needs_coach') {
     return (
       <span data-testid="club-session-coach-needed">
-        <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+        <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
       </span>
     )
   }
@@ -378,11 +378,11 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
           className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
         />
         <div className="flex flex-wrap gap-2">
-          <StatusBadge variant="neutral">{t(`activities.club.kind.${entry.declarationKind}`)}</StatusBadge>
+          <StatusTag status="neutral">{t(`activities.club.kind.${entry.declarationKind}`)}</StatusTag>
           {occurrence.status !== 'planned' ? (
-            <StatusBadge variant={occurrence.status === 'cancelled' ? 'error' : 'success'}>
+            <StatusTag status={occurrence.status === 'cancelled' ? 'canceled' : 'success'}>
               {t(`activities.occurrences.status.${occurrence.status}`)}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
         </div>
       </div>
@@ -493,7 +493,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             <ul className="flex flex-wrap gap-2" data-testid="club-session-called-up">
               {entry.calledUpChildren.map((child) => (
                 <li key={child.personId}>
-                  <StatusBadge variant="neutral">{fullName(child)}</StatusBadge>
+                  <StatusTag status="neutral">{fullName(child)}</StatusTag>
                 </li>
               ))}
             </ul>

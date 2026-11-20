@@ -15,13 +15,13 @@ import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ONLINE_METHODS, type OnlineConnection } from '../lib/online-payment'
 import { COACH_FEE_ACCESS, MAX_GENERATION_DAY, MIN_GENERATION_DAY } from '../lib/payments-rules'
 import { PaymentsNav } from './PaymentsNav'
 import { errorMessage } from './client-helpers'
 import { useClubSettingsAccess } from './useRecordLinks'
+import { StatusTag } from '@vereino/ui'
 
 const SETTINGS_API = '/api/payments/settings'
 /** Club settings B-02, where the online fee is set (Q-C01). */
@@ -58,9 +58,9 @@ function OnlinePaymentFacts({ settings }: { settings: SettingsResponse }) {
         <div className="flex flex-wrap items-center gap-2">
           <dt className="text-muted-foreground">{t('payments.settings.online.connection')}</dt>
           <dd data-testid="payments-online-connection" data-connection={settings.onlineConnection}>
-            <StatusBadge variant={CONNECTION_VARIANTS[settings.onlineConnection]} dot>
+            <StatusTag status={CONNECTION_VARIANTS[settings.onlineConnection]}>
               {t(`payments.settings.online.connection.${settings.onlineConnection}`)}
-            </StatusBadge>
+            </StatusTag>
           </dd>
         </div>
         <div className="flex flex-wrap items-center gap-2">

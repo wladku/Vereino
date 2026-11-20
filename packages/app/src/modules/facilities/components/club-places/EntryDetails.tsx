@@ -18,7 +18,7 @@ import {
 } from '@open-mercato/ui/primitives/dialog'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading } from '@vereino/ui'
+import { formatDayHeading, StatusTag } from '@vereino/ui'
 import { dayEntryText } from '../day-axis/DayEntries'
 import { KIND_TAGS } from '../day-axis/tags'
 import { rentalHref } from '../rentals-client'
@@ -110,7 +110,7 @@ export function EntryDetails({
           ) : null}
           {entry.needsReschedule ? (
             <div>
-              <Tag variant="warning">{t('facilities.places.entry.needsReschedule')}</Tag>
+              <StatusTag status="warning">{t('facilities.places.entry.needsReschedule')}</StatusTag>
             </div>
           ) : null}
         </dl>

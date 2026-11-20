@@ -32,7 +32,6 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -59,7 +58,7 @@ import {
   type IncidentRow,
 } from './records-client'
 import { searchInstitutions, searchPersons } from './rentals-client'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 const REASON_MAX_LENGTH = 2000
@@ -143,11 +142,11 @@ function buildColumns(t: Translate): TableColumns<BanRow> {
       cell: ({ row }) =>
         row.original.revokedAt ? (
           <span className="flex flex-col">
-            <StatusBadge variant="neutral">{t('facilities.records.bans.state.revoked')}</StatusBadge>
+            <StatusTag status="neutral">{t('facilities.records.bans.state.revoked')}</StatusTag>
             <span className="text-muted-foreground text-xs tabular-nums">{instantLabel(row.original.revokedAt)}</span>
           </span>
         ) : (
-          <StatusBadge variant="error">{t('facilities.records.bans.state.active')}</StatusBadge>
+          <StatusTag status="error">{t('facilities.records.bans.state.active')}</StatusTag>
         ),
     },
   ]

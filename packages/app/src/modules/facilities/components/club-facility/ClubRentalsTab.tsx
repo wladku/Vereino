@@ -10,9 +10,8 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { minorToAmount, placeLabel, usePlaceOptions } from '../facilities-client'
 import { CLUB_PLACES_HREF } from '../club-places/places-client'
 import { rentalStatusLabel, rentalStatusVariant, slotLabel, useRentalTimeZone, type RentalRow } from '../rentals-client'
@@ -46,9 +45,9 @@ function RentalCard({ rental, placeName, timeZone }: { rental: RentalRow; placeN
           {`${rental.renterDisplayName ?? t('facilities.places.entry.unnamed')} · ${placeName}`}
         </span>
         <span className="flex flex-wrap items-center gap-2 text-sm">
-          <StatusBadge variant={rentalStatusVariant(rental.status)}>{rentalStatusLabel(t, rental.status)}</StatusBadge>
+          <StatusTag status={rentalStatusVariant(rental.status)}>{rentalStatusLabel(t, rental.status)}</StatusTag>
           {rental.needsReschedule ? (
-            <StatusBadge variant="warning">{t('facilities.rentals.views.to_move')}</StatusBadge>
+            <StatusTag status="warning">{t('facilities.rentals.views.to_move')}</StatusTag>
           ) : null}
           {rental.amount !== null ? <span className="tabular-nums">{minorToAmount(rental.amount)}</span> : null}
         </span>
