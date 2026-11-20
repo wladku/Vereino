@@ -7,14 +7,7 @@
 import * as React from 'react'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
@@ -22,6 +15,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { amountToMinor, codedMessage, errorMessage, minorToAmount } from './facilities-client'
 import { completeMaintenanceTask, kindLabel, type MaintenanceTaskRow } from './maintenance-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 const NOTES_MAX_LENGTH = 2000
 

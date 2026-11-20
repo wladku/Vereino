@@ -45,7 +45,7 @@ function GroupCard({ group }: { group: GroupListRow }) {
   return (
     <Link
       href={clubGroupHref(group.id)}
-      className="bg-card hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col gap-1 rounded-lg border p-3 outline-none"
+      className="bg-card hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-lg border p-3 outline-none"
       data-testid="club-group"
       data-group-id={group.id}
     >

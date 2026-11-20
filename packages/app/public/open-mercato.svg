@@ -1,6 +1,13 @@
-<svg width="176" height="176" viewBox="0 0 176 176" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="vereino-mark-title">
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="vereino-mark-title">
 <title id="vereino-mark-title">Vereino</title>
-<rect width="176" height="176" rx="24" fill="#1D4ED8"/>
-<path d="M44 48H66L88 110L110 48H132L99 132H77L44 48Z" fill="#FFFFFF"/>
-<circle cx="88" cy="36" r="10" fill="#FACC15"/>
+<style>
+.mark-bg { fill: oklch(0.205 0 0); }
+.mark-fg { fill: oklch(0.985 0 0); }
+@media (prefers-color-scheme: dark) {
+  .mark-bg { fill: oklch(0.922 0 0); }
+  .mark-fg { fill: oklch(0.205 0 0); }
+}
+</style>
+<rect class="mark-bg" width="40" height="40" rx="9"/>
+<path class="mark-fg" d="M10.5 11H15.2L20 24.6L24.8 11H29.5L22.3 29H17.7L10.5 11Z"/>
 </svg>
