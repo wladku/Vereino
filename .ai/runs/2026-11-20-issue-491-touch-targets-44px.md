@@ -52,3 +52,11 @@ Every interactive element on the main `/club` pages has a hit area of at least 4
 ## Open problems / next steps
 
 - Upstream report draft (with E20-S18): the platform `Switch` (32 × 20 px), `Radio` (20 × 20 px) and `Alert` dismiss (20 × 20 px) have no touch-size variant; a `size="touch"` (44 px hit area) would let apps drop the wrappers.
+
+## Follow-up run 2026-11-20: PR #512 brought up to date with `main` (om-auto-fix-pr)
+
+- Trigger: the merge train flagged #512 as conflicting with `main`. Worked on a detached HEAD at `origin/fix/issue-491-touch-target-44px-member-pages`; merged `origin/main` (no rebase, no force-push).
+- Conflict: `CONTRIBUTING.md` only, in the platform-patch table. Kept this PR's `globals.css` row (toast dismiss hit area, #491) and `main`'s `backend/layout.tsx` row (#485). `globals.css`, `ClubMessagesPage.tsx`, `CashAcceptForm.tsx` and `packages/ui/src/index.ts` merged automatically. `main`'s focus work (#481) changes nothing in this PR's controls: the platform `Switch` inside `MemberSwitchField` draws `shadow-focus`, which #481 recoloured, and no file of this PR imports the platform `DialogContent`.
+- Review of the PR diff: no blocking findings.
+- `yarn verify` on the merge result → all 18 steps passed.
+- `yarn test:integration:vereino --filter E20-S12-member` on the merge result → 1 passed (1.0m).
