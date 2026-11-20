@@ -8,10 +8,9 @@
 // never mounts it. A failed read falls back to the tile's plain description.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { formatZloty } from '../../../lib/charge-ledger'
 
 type Summary =
@@ -83,7 +82,7 @@ export default function ClubTodayPaymentsWidget() {
         <span className="text-muted-foreground text-sm" data-testid="club-tile-payments-due">
           {t('payments.club.tile.due', { date: formatDate(data.nearestDueDate, locale) })}
         </span>
-        {data.overdue ? <StatusBadge variant="error">{t('payments.club.charges.overdue')}</StatusBadge> : null}
+        {data.overdue ? <StatusTag status="error">{t('payments.club.charges.overdue')}</StatusTag> : null}
       </span>
       {/* The whole tile is the link; "Pay" reads as its call to action, not a second control. */}
       <span className="bg-primary text-primary-foreground inline-flex min-h-11 w-fit items-center rounded-md px-4 text-sm font-medium">

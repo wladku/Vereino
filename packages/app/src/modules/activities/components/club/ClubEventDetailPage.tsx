@@ -23,10 +23,9 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from '@open-mercato/ui/primitives/sheet'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { SheetContent } from '@/components/ui/dialog'
 import { partActions, partsByDay, type PartAction } from '../../lib/club-events'
 import { partDayInZone, partTimeRangeInZone } from '../../lib/member-club-event'
@@ -95,7 +94,7 @@ function PartCard({
           {part.categoryLabel ? <span>{part.categoryLabel}</span> : null}
           {part.categoryLabel ? <span aria-hidden>·</span> : null}
           {part.kind === 'open' ? (
-            <StatusBadge variant="neutral">{t('activities.clubEvents.part.noGroup')}</StatusBadge>
+            <StatusTag status="neutral">{t('activities.clubEvents.part.noGroup')}</StatusTag>
           ) : (
             <span>{part.groupName}</span>
           )}
@@ -105,9 +104,9 @@ function PartCard({
           </span>
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          <StatusBadge variant={statusVariant(part.status)}>{statusLabel(t, part.status)}</StatusBadge>
+          <StatusTag status={statusVariant(part.status)}>{statusLabel(t, part.status)}</StatusTag>
           {part.kind === 'group' && !part.coachName && part.status === 'planned' ? (
-            <StatusBadge variant="warning">{t('activities.clubEvents.part.needsCoach')}</StatusBadge>
+            <StatusTag status="warning">{t('activities.clubEvents.part.needsCoach')}</StatusTag>
           ) : null}
         </span>
       </div>
@@ -242,15 +241,15 @@ function EventView({ event, timeZone, t }: { event: ClubEventDetail; timeZone: s
           <h1 className="text-2xl font-semibold break-words">
             {event.name ?? t('activities.clubEvents.record.title')}
           </h1>
-          <StatusBadge variant={clubEventStatusVariant(event.status)}>
+          <StatusTag status={clubEventStatusVariant(event.status)}>
             {t(`activities.clubEvents.status.${planned ? 'planned' : 'cancelled'}`)}
-          </StatusBadge>
+          </StatusTag>
         </div>
         <p className="text-muted-foreground text-sm">{dates ?? t('activities.clubEvents.record.noDates')}</p>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span>{event.placeName ?? t('activities.common.empty')}</span>
           {event.placeExternal ? (
-            <StatusBadge variant="neutral">{t('activities.clubEvents.place.external')}</StatusBadge>
+            <StatusTag status="neutral">{t('activities.clubEvents.place.external')}</StatusTag>
           ) : null}
           {mapHref ? (
             <a

@@ -16,9 +16,15 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton, PublicHeader, formatClockTime, formatDayHeading, formatTimeRange } from '@vereino/ui'
+import {
+  formatClockTime,
+  formatDayHeading,
+  formatTimeRange,
+  MemberSkeleton,
+  PublicHeader,
+  StatusTag,
+} from '@vereino/ui'
 import { linkRequestOpen, linkRequestPath } from '../../lib/declaration-links'
 
 type PublicSessionPage = {
@@ -216,9 +222,9 @@ export function PublicSessionView({ clubSlug, occurrenceId }: { clubSlug: string
           data-status={session.status}
         >
           <span className="text-muted-foreground text-sm">{t('activities.publicSession.status')}</span>
-          <StatusBadge variant={cancelled ? 'error' : session.status === 'done' ? 'success' : 'info'}>
+          <StatusTag status={cancelled ? 'canceled' : session.status === 'done' ? 'success' : 'info'}>
             {t(`activities.occurrences.status.${session.status}`)}
-          </StatusBadge>
+          </StatusTag>
         </p>
       </section>
       {linkRequestOpen(session, new Date()) ? (

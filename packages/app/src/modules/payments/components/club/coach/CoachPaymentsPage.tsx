@@ -18,7 +18,6 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
@@ -38,15 +37,15 @@ import {
   type CoachChild,
   type GroupChargesView,
 } from './coach-client'
-import { clubToday, useClubTimeZone, useClubToday, MemberSkeleton } from '@vereino/ui'
+import { clubToday, MemberSkeleton, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function statusBadge(charge: CoachCharge, t: Translate) {
-  if (charge.overdue) return <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge>
-  if (charge.status === 'paid') return <StatusBadge variant="success">{t('payments.charges.status.paid')}</StatusBadge>
+  if (charge.overdue) return <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag>
+  if (charge.status === 'paid') return <StatusTag status="success">{t('payments.charges.status.paid')}</StatusTag>
   if (charge.status === 'partially_paid') {
-    return <StatusBadge variant="warning">{t('payments.charges.status.partially_paid')}</StatusBadge>
+    return <StatusTag status="warning">{t('payments.charges.status.partially_paid')}</StatusTag>
   }
-  return <StatusBadge variant="neutral">{t('payments.charges.status.open')}</StatusBadge>
+  return <StatusTag status="neutral">{t('payments.charges.status.open')}</StatusTag>
 }
 
 function useRefresh() {
@@ -319,7 +318,7 @@ function ChargeRow({
       ) : null}
       {order?.handedOverAt ? (
         <span data-testid="coach-kit-handed-over">
-          <StatusBadge variant="success">
+          <StatusTag status="success">
             {t('payments.coach.handOver.handedOverAt', {
               at: new Intl.DateTimeFormat(locale, {
                 dateStyle: 'short',
@@ -327,7 +326,7 @@ function ChargeRow({
                 timeZone: timeZone ?? undefined,
               }).format(new Date(order.handedOverAt)),
             })}
-          </StatusBadge>
+          </StatusTag>
         </span>
       ) : null}
       {order?.canHandOver ? (
@@ -421,9 +420,9 @@ function ChildCard({
           {child.due > 0 ? (
             <span className="font-semibold">{formatMoney(child.due, locale)}</span>
           ) : (
-            <StatusBadge variant="success">{t('payments.coach.paid')}</StatusBadge>
+            <StatusTag status="success">{t('payments.coach.paid')}</StatusTag>
           )}
-          {child.overdue ? <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge> : null}
+          {child.overdue ? <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag> : null}
         </span>
       </div>
       {child.payerMissing ? (

@@ -8,10 +8,10 @@
 // author's, a deleted or a system message, nor any message of a case.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { mayEditMessage } from '../lib/case-rules'
 import { formatDateTime, roleLabel, type ThreadMessageItem } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 const MESSAGE_MAX_LENGTH = 10000
 
@@ -129,7 +129,7 @@ export function MessageList({
               <span data-testid="thread-message-edited">· {t('communication.message.edited')}</span>
             ) : null}
             {message.audience === 'staff' ? (
-              <StatusBadge variant="neutral">{t('communication.message.staffOnly')}</StatusBadge>
+              <StatusTag status="neutral">{t('communication.message.staffOnly')}</StatusTag>
             ) : null}
           </p>
           {message.deleted ? (

@@ -85,7 +85,7 @@ test('renders subtitle, group, place with its address and the badges as muted li
   assert.match(html, /<p class="text-muted-foreground text-sm">Boisko<span class="block">ul. Sportowa 1<\/span><\/p>/)
   assert.match(
     html,
-    /<div class="flex flex-wrap gap-2"><div data-slot="badge" data-variant="success"[^>]*>Present<\/div><\/div>/,
+    /<div class="flex flex-wrap gap-2"><div data-slot="badge" data-variant="success"[^>]*data-status-tag="success"><span data-slot="badge-leading-icon" aria-hidden="true"[^>]*><svg[^>]*lucide-circle-check.*?<\/svg><\/span>Present<\/div><\/div>/,
   )
   // A place without an address renders the name alone.
   assert.match(
@@ -97,10 +97,16 @@ test('renders subtitle, group, place with its address and the badges as muted li
 test('a done item is muted with a "Done" badge; a cancelled one is struck through with a "Cancelled" badge', () => {
   const done = render({ days: days(item({ status: 'done' })) })
   assert.match(done, /<time dateTime="2026-11-03T16:00:00.000Z" class="text-muted-foreground">/)
-  assert.match(done, /<div data-slot="badge" data-variant="success"[^>]*>Done<\/div>/)
+  assert.match(
+    done,
+    /<div data-slot="badge" data-variant="success"[^>]*data-status-tag="success">.*?lucide-circle-check.*?<\/span>Done<\/div>/,
+  )
   assert.match(done, /<p class="font-semibold text-muted-foreground">Training<\/p>/)
   const cancelled = render({ days: days(item({ status: 'cancelled' })) })
-  assert.match(cancelled, /<div data-slot="badge" data-variant="error"[^>]*>Cancelled<\/div>/)
+  assert.match(
+    cancelled,
+    /<div data-slot="badge" data-variant="error"[^>]*data-status-tag="canceled">.*?lucide-circle-x.*?<\/span>Cancelled<\/div>/,
+  )
   assert.match(cancelled, /<p class="font-semibold line-through">Training<\/p>/)
 })
 
