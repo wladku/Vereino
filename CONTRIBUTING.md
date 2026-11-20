@@ -120,7 +120,7 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/scripts/dev-runtime-supervisor.mjs` | Exposes `appendDiagnosticLine`, which `scripts/dev.mjs` calls while a banner recovery action runs; without it `yarn dev` exits with a `TypeError` | S3.1; lesson `dev-runtime-recovery-action-crash` |
 | `packages/app/next.config.ts` | `transpilePackages` for `@vereino/*`; `Referrer-Policy: no-referrer` (and `Cache-Control: no-store`) on the token pages and APIs: declaration links, booking request confirmation, rental cancellation | Monorepo; #192, #125, #286 |
 | `packages/app/src/modules.ts` | Registers the Vereino modules (`{ id, from: '@app' }`) | `AGENTS.md` |
-| `packages/app/src/app/globals.css` | `@source` for `@vereino/ui`; sign-in page body rule; focus ring for the coordinator calendar's scroll regions | Monorepo; #261, #248 |
+| `packages/app/src/app/globals.css` | `@source` for `@vereino/ui`; sign-in page body rule; focus ring for the coordinator calendar's scroll regions; 44 px hit area of the toast's dismiss button | Monorepo; #261, #248, #491 |
 | `packages/app/src/app/(backend)/backend/layout.tsx` | Club logo and club time zone from the optional `clubCoreSettings` service; `ClubTimeZone` and `SidebarNavBadges` | #29, #231, #260 |
 | `packages/app/src/app/(backend)/backend/page.tsx` | `BackendGreeting` above the platform dashboard | #260 |
 | `packages/app/src/app/login/page.tsx` | Club header above the platform sign-in form; Vereino page title | #261 |

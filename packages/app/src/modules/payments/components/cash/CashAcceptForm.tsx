@@ -15,7 +15,6 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz } from '../client-helpers'
 import { cashSelection, type CashOrigin } from '../../lib/cash'
@@ -28,7 +27,7 @@ import {
   type CashPayer,
   type CashRecorded,
 } from './cash-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, useClubTimeZone, useClubToday, MemberSwitchField } from '@vereino/ui'
 
 function wardsLabel(payer: CashPayer): string {
   return payer.wards.map((ward) => personName(ward)).join(', ')
@@ -379,7 +378,7 @@ export function CashAcceptForm({
         </div>
       </div>
 
-      <SwitchField
+      <MemberSwitchField
         id={`${ids.amount}-notify`}
         label={t('payments.cash.notify')}
         checked={notify}

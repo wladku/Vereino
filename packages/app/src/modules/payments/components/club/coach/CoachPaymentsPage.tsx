@@ -19,7 +19,6 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz, type Translate } from '../../client-helpers'
@@ -38,7 +37,7 @@ import {
   type CoachChild,
   type GroupChargesView,
 } from './coach-client'
-import { clubToday, useClubTimeZone, useClubToday, MemberSkeleton } from '@vereino/ui'
+import { clubToday, useClubTimeZone, useClubToday, MemberSkeleton, MemberSwitchField } from '@vereino/ui'
 
 function statusBadge(charge: CoachCharge, t: Translate) {
   if (charge.overdue) return <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge>
@@ -237,7 +236,7 @@ function CashForm({
           />
         </div>
       </div>
-      <SwitchField
+      <MemberSwitchField
         id={`${ids.amount}-notify`}
         label={t('payments.coach.cash.notify')}
         checked={notify}

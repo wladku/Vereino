@@ -31,10 +31,10 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { resolveLocaleLabel } from '@open-mercato/shared/lib/i18n/locale-label'
 import { useLocale, useSupportedLocales, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
+import { MemberSwitchField } from '@vereino/ui'
 import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
@@ -186,6 +186,8 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
         <FormField label={t('people.club.profile.fields.email')} disabled={busy}>
           <Input
             type="email"
+            className="h-12"
+            inputClassName="self-stretch"
             autoComplete="email"
             value={state.email}
             onChange={(event) => {
@@ -201,6 +203,8 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
         >
           <Input
             type="tel"
+            className="h-12"
+            inputClassName="self-stretch"
             autoComplete="tel"
             value={state.phone}
             onChange={(event) => {
@@ -249,7 +253,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
           <h2 id="club-profile-consents" className="text-lg font-semibold">
             {t('people.club.profile.consents.title')}
           </h2>
-          <SwitchField
+          <MemberSwitchField
             id="club-consent-share-contact"
             label={label('share_contact_with_coaches', 'people.club.profile.consents.shareContactWithCoaches')}
             description={consentDescription(profile.person.consents.shareContactWithCoaches)}
@@ -266,7 +270,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
               setState((current) => ({ ...current, shareContactWithCoaches: checked }))
             }}
           />
-          <SwitchField
+          <MemberSwitchField
             id="club-consent-share-presence"
             label={label('share_presence_with_guardians', 'people.club.profile.consents.sharePresenceWithGuardians')}
             description={consentDescription(profile.person.consents.sharePresenceWithGuardians)}
@@ -296,7 +300,7 @@ function ProfileForm({ profile }: { profile: MemberProfile }) {
           <h2 id="club-profile-public-name" className="text-lg font-semibold">
             {t('people.club.profile.publicName.title')}
           </h2>
-          <SwitchField
+          <MemberSwitchField
             id="club-consent-publish-name"
             label={label('publish_name_consent', 'people.club.profile.consents.publishNameConsent', {
               name: publicNamePreview(profile.person.firstName, profile.person.lastName),

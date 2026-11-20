@@ -714,6 +714,19 @@ TODO: Fix that latter to have reference by the package names
   min-height: 0;
 }
 
+/* The toast's "Dismiss" button (E20-S12, #491; R05.1): the platform's `FlashMessages` renders an `Alert` whose dismiss
+   button (`data-slot="alert-dismiss"`) is a 20 × 20 px icon. This gives it a 44 × 44 px hit area around the same icon;
+   the negative margins hand the extra size back, so the toast's layout does not move. Check this rule when an upgrade
+   changes `FlashMessages` (the `z-toast` container) or the `Alert` dismiss markup. */
+.z-toast [data-slot="alert-dismiss"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: -0.75rem;
+}
+
 .schedule-calendar .rbc-calendar {
   height: 40rem;
   font-family: var(--font-sans);

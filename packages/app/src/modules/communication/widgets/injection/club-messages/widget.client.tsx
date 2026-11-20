@@ -20,7 +20,7 @@ import {
 } from '../../../components/client-helpers'
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-3 rounded-lg border p-4'
-const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4'
+const LINK_CLASS = 'inline-flex min-h-11 min-w-11 items-center underline underline-offset-4'
 
 /** The same key the member thread page invalidates after it marks a thread read. */
 const UNREAD_COUNT_QUERY_KEY = ['communication-unread-count'] as const
