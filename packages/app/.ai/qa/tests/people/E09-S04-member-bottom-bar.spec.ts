@@ -300,6 +300,8 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
       expect.stringMatching(uiText('people.club.nav.facilitiesMore', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.orders', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.groupPayments', { exact: true })),
+      // A section coordinator organises club events from the phone (E14-S05, #380).
+      expect.stringMatching(uiText('people.club.nav.clubEvents', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.backend', { exact: true })),
     ])
     // The places belong to More while Payments is the tab.
@@ -340,6 +342,7 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
     expect(adminBar.more).toEqual(
       expect.arrayContaining([
         expect.stringMatching(uiText('people.club.nav.acceptCash', { exact: true })),
+        expect.stringMatching(uiText('people.club.nav.clubEvents', { exact: true })),
         expect.stringMatching(uiText('people.club.nav.backend', { exact: true })),
       ]),
     )
