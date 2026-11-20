@@ -37,3 +37,10 @@
 ## Open problems / next steps
 
 - None known. Phones and PESEL numbers are in the review checklist line but not scanned (too many false positives for a regex on numbers); a later rule can add them.
+
+## Second main merge (PR #514 conflict, merge-train-conflict)
+
+- Merged `origin/main` at `93f4c329` (off-site backup #464, QA scenarios #453) into the PR head on a detached HEAD; history not rewritten.
+- Conflict in `packages/app/package.json` `test:scripts`: kept main's `test:backup` script and `backup-*.mjs` coverage include together with this PR's `check-secrets.mjs` include.
+- `node scripts/check-secrets.mjs` on the merged tree then FAILED on a file main added: `packages/app/scripts/__tests__/backup-drill.e2e.mjs:100 [secret-assignment] POSTGR***` — the throwaway Testcontainers database password of the backup drill. Allow-listed with `match` (same class as the `vereino-ephemeral.mjs` entry); 14 entries now. Rerun: `No secrets or real e-mail addresses found`.
+- `yarn verify` on the merge result: all 19 steps passed.
