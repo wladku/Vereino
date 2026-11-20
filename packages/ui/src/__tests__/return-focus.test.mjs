@@ -7,8 +7,14 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { Dialog, DialogContent as PlatformDialogContent } from '@open-mercato/ui/primitives/dialog'
 import { Sheet, SheetContent as PlatformSheetContent } from '@open-mercato/ui/primitives/sheet'
 import { I18nProvider } from '@open-mercato/shared/lib/i18n/context'
-import { createReturnFocus, focusedElement, withReturnFocus } from '../admin/return-focus.ts'
-import { useReturnFocus, withReturnFocusContent } from '../admin/return-focus-content.ts'
+import {
+  createReturnFocus,
+  dialogOpen,
+  focusedElement,
+  recordOpenerEffect,
+  withReturnFocus,
+} from '../admin/return-focus.ts'
+import { OpenerProbe, useReturnFocus, withReturnFocusContent } from '../admin/return-focus-content.ts'
 
 const h = React.createElement
 
@@ -170,4 +176,52 @@ test('a wrapped content passes the composed handlers and the ref to the platform
     renderToStaticMarkup(inI18n(h(Dialog, { open: true }, h(DialogContent, { closeAriaLabel: 'Close' }, 'Body')))),
   )
   assert.doesNotThrow(() => renderToStaticMarkup(inI18n(h(Sheet, { open: true }, h(SheetContent, null, 'Body')))))
+})
+
+test('another open dialog: none outside a browser; asked by role and state', () => {
+  assert.equal(dialogOpen(), false)
+  const selectors = []
+  const open = withDocument({ querySelector: (selector) => (selectors.push(selector), {}) }, () => dialogOpen())
+  assert.equal(open, true)
+  assert.deepEqual(selectors, ['[role="dialog"][data-state="open"]'])
+  assert.equal(
+    withDocument({ querySelector: () => null }, () => dialogOpen()),
+    false,
+  )
+})
+
+test('the opener recorded at mount wins over a later auto-focus; another open dialog keeps focus where it is', () => {
+  const trigger = focusable()
+  const field = focusable()
+  let active = trigger
+  const handlers = createReturnFocus(() => active)
+  recordOpenerEffect(handlers)()
+  active = field
+  handlers.onOpenAutoFocus(autoFocusEvent())
+  const close = autoFocusEvent()
+  handlers.onCloseAutoFocus(close)
+  assert.equal(trigger.focused, 1)
+  assert.equal(field.focused, 0)
+
+  const next = createReturnFocus(
+    () => trigger,
+    () => true,
+  )
+  next.recordOpener()
+  const handoff = autoFocusEvent()
+  next.onCloseAutoFocus(handoff)
+  assert.equal(handoff.defaultPrevented, false)
+  assert.equal(trigger.focused, 1)
+})
+
+test('the probe renders nothing and the wrapped content renders it before the children', () => {
+  const handlers = createReturnFocus(() => null)
+  assert.equal(renderToStaticMarkup(h(OpenerProbe, { handlers })), '')
+  const seen = []
+  const Content = React.forwardRef(function Content(props, ref) {
+    seen.push(React.Children.toArray(props.children).map((child) => (typeof child === 'string' ? child : child.type)))
+    return h('div', { ref }, props.children)
+  })
+  renderToStaticMarkup(h(withReturnFocusContent(Content, 'Probe'), null, 'Body'))
+  assert.deepEqual(seen[0], [OpenerProbe, 'Body'])
 })

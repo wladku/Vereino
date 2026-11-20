@@ -3,6 +3,7 @@ import { addDays, weekdayOf } from '../_fixtures/activities'
 import { prepareForAccessibilityScan } from '../_fixtures/axe'
 import { familyFor, oneOff } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
+import { clubEventId } from '../_fixtures/club-events'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { uiText } from '../_fixtures/ui-text'
 
@@ -56,20 +57,26 @@ async function focusIndicator(page: Page, target: Locator, indicator: Locator = 
       const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x)
       return ((high ?? 0) + 0.05) / ((low ?? 0) + 0.05)
     }
-    let background = rgba(getComputedStyle(document.body).backgroundColor)
+    // Composites a colour with alpha over an opaque one (`getImageData` returns un-premultiplied RGBA).
+    const over = (top: number[], bottom: number[]): number[] => {
+      const alpha = (top[3] ?? 0) / 255
+      return [0, 1, 2].map((i) => (top[i] ?? 0) * alpha + (bottom[i] ?? 0) * (1 - alpha)).concat(255)
+    }
+    // The translucent backgrounds up to the first opaque one, composited from the bottom up (white below the page).
+    const layers: number[][] = []
     for (let parent = element.parentElement; parent; parent = parent.parentElement) {
       const color = rgba(getComputedStyle(parent).backgroundColor)
-      if ((color[3] ?? 0) > 0) {
-        background = color
-        break
-      }
+      if ((color[3] ?? 0) === 0) continue
+      layers.push(color)
+      if (color[3] === 255) break
     }
+    const background = layers.reduceRight<number[]>((below, layer) => over(layer, below), [255, 255, 255, 255])
     const style = getComputedStyle(element)
     const outlineWidth = parseFloat(style.outlineWidth)
     if (style.outlineStyle !== 'none' && outlineWidth >= 2) {
       return {
         focusVisible,
-        ratio: contrast(rgba(style.outlineColor), background),
+        ratio: contrast(over(rgba(style.outlineColor), background), background),
         width: outlineWidth,
         kind: 'outline',
         raw: `${style.outlineWidth} ${style.outlineStyle} ${style.outlineColor}`,
@@ -82,7 +89,7 @@ async function focusIndicator(page: Page, target: Locator, indicator: Locator = 
       const lengths = shadow.replace(color ?? '', '').match(/-?[\d.]+px/g) ?? []
       const spread = parseFloat(lengths[3] ?? '0')
       if (!color || spread < 2) continue
-      const ratio = contrast(rgba(color), background)
+      const ratio = contrast(over(rgba(color), background), background)
       if (ratio > best.ratio) best = { ratio, width: spread }
     }
     return { focusVisible, ...best, kind: 'box-shadow', raw: style.boxShadow }
@@ -111,15 +118,21 @@ async function colorContrast(target: Locator, property: 'borderTopColor' | 'colo
       }
       return 0.2126 * channel(color[0] ?? 0) + 0.7152 * channel(color[1] ?? 0) + 0.0722 * channel(color[2] ?? 0)
     }
-    let background = rgba(getComputedStyle(document.body).backgroundColor)
+    // Composites a colour with alpha over an opaque one (`getImageData` returns un-premultiplied RGBA).
+    const over = (top: number[], bottom: number[]): number[] => {
+      const alpha = (top[3] ?? 0) / 255
+      return [0, 1, 2].map((i) => (top[i] ?? 0) * alpha + (bottom[i] ?? 0) * (1 - alpha)).concat(255)
+    }
+    // The translucent backgrounds up to the first opaque one, composited from the bottom up (white below the page).
+    const layers: number[][] = []
     for (let parent = element.parentElement; parent; parent = parent.parentElement) {
       const color = rgba(getComputedStyle(parent).backgroundColor)
-      if ((color[3] ?? 0) > 0) {
-        background = color
-        break
-      }
+      if ((color[3] ?? 0) === 0) continue
+      layers.push(color)
+      if (color[3] === 255) break
     }
-    const own = rgba(getComputedStyle(element)[key])
+    const background = layers.reduceRight<number[]>((below, layer) => over(layer, below), [255, 255, 255, 255])
+    const own = over(rgba(getComputedStyle(element)[key]), background)
     const [high, low] = [luminance(own), luminance(background)].sort((x, y) => y - x)
     return ((high ?? 0) + 0.05) / ((low ?? 0) + 0.05)
   }, property)
@@ -159,6 +172,12 @@ test('ISSUE-481 focus is visible on a button, a card link and a field in light a
       end: '18:00',
     })
     const sessionId = session.session.id
+    // Created before the browser sign-ins: signing in as the administrator ends the admin API token.
+    const eventId = await clubEventId(request, club.adminToken, {
+      name: 'Turniej Orlika',
+      sectionId: null,
+      placeId: family.pitch,
+    })
 
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
@@ -208,6 +227,20 @@ test('ISSUE-481 focus is visible on a button, a card link and a field in light a
     await page.setViewportSize({ width: 1280, height: 900 })
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     for (const colorScheme of SCHEMES) {
+      // A CrudForm dialog focuses its first field itself (native `autoFocus`, so Radix skips `onOpenAutoFocus`): Esc
+      // still returns focus to the "Add part" button (review finding on #502).
+      await page.goto(`/backend/activities/club-events/${eventId}?tab=parts`)
+      await applyScheme(page, colorScheme)
+      const addPart = page.getByTestId('club-event-add-part')
+      await addPart.focus()
+      await page.keyboard.press('Enter')
+      const partDialog = page.getByTestId('club-event-part-dialog')
+      await expect(partDialog).toBeVisible()
+      await expect(partDialog.locator('[data-crud-field-id="title"] input')).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(partDialog).toBeHidden()
+      await expect(addPart, `${colorScheme} add part regains focus`).toBeFocused()
+
       await page.goto('/backend/club/sections/create')
       await applyScheme(page, colorScheme)
       const headings = page.locator('[data-sidebar-group] > button[aria-expanded]')

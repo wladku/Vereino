@@ -1,7 +1,7 @@
 // Focus return for dialogs and sheets (E20-S02, #481; WCAG 2.4.3). Radix returns focus on close only to a
 // `DialogTrigger`; a dialog opened from state (`open={…}`) has none, so after Esc or a footer button focus fell to
 // `<body>`. These framework-free helpers record the element focused when the dialog opens and focus it again when the
-// dialog closes; `dialog-content.tsx` wires them into the platform `DialogContent` and `SheetContent`.
+// dialog closes; `withReturnFocusContent` (`return-focus-content.ts`) wires them into the platform contents.
 
 /** The element focus returns to: anything with `focus()`; `isConnected` is false once React has removed it. */
 export type ReturnFocusTarget = { readonly focus: () => void; readonly isConnected?: boolean }
@@ -12,6 +12,8 @@ export type AutoFocusEvent = { readonly defaultPrevented?: boolean; preventDefau
 export type AutoFocusHandler = (event: AutoFocusEvent) => void
 
 export type ReturnFocusHandlers = {
+  /** Records the opener when the dialog content mounts, before a field's native `autoFocus` moves focus inside. */
+  readonly recordOpener: () => void
   readonly onOpenAutoFocus: AutoFocusHandler
   readonly onCloseAutoFocus: AutoFocusHandler
 }
@@ -23,21 +25,33 @@ export function focusedElement(): ReturnFocusTarget | null {
   return element && element !== document.body ? element : null
 }
 
+/** Whether a dialog is open; asked once the closing dialog has left the page, so an open one is another dialog. */
+export function dialogOpen(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.querySelector('[role="dialog"][data-state="open"]') !== null
+}
+
 /**
- * Handlers for one dialog: on open they remember what had focus (Radix fires `onOpenAutoFocus` before it moves focus
- * into the dialog), on close they focus it again unless it has left the page, in which case Radix's own behaviour
- * stays.
+ * Handlers for one dialog. The opener is recorded when the content mounts (`recordOpener`, before a native `autoFocus`
+ * moves focus inside, in which case Radix skips `onOpenAutoFocus`) or, failing that, in `onOpenAutoFocus` (fired before
+ * Radix moves focus). On close focus goes back to it, unless it has left the page or another dialog is open (a footer
+ * button that closes one dialog and opens the next); then Radix's own behaviour stays.
  */
-export function createReturnFocus(getActive: () => ReturnFocusTarget | null = focusedElement): ReturnFocusHandlers {
+export function createReturnFocus(
+  getActive: () => ReturnFocusTarget | null = focusedElement,
+  otherDialogOpen: () => boolean = dialogOpen,
+): ReturnFocusHandlers {
   let target: ReturnFocusTarget | null = null
+  const record = () => {
+    target ??= getActive()
+  }
   return {
-    onOpenAutoFocus: () => {
-      target = getActive()
-    },
+    recordOpener: record,
+    onOpenAutoFocus: record,
     onCloseAutoFocus: (event) => {
       const element = target
       target = null
-      if (!element || element.isConnected === false) return
+      if (!element || element.isConnected === false || otherDialogOpen()) return
       event.preventDefault()
       element.focus()
     },
@@ -68,5 +82,13 @@ export function withReturnFocus<
       if (event.defaultPrevented === true) return
       handlers.onCloseAutoFocus(event)
     },
+  }
+}
+
+/** The insertion effect of the opener probe: records the opener as the dialog content mounts. */
+export function recordOpenerEffect(handlers: Pick<ReturnFocusHandlers, 'recordOpener'>): () => undefined {
+  return () => {
+    handlers.recordOpener()
+    return undefined
   }
 }

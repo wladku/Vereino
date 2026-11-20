@@ -35,6 +35,16 @@ See the PR diff; main ones: `packages/app/src/app/globals.css`, `packages/app/sr
 - Axe tests touched by the baseline change, `--no-build`: `ENG-TEST-25` 1 passed, `E03-S02` 4 passed, `ISSUE-139` 1 passed.
 - `yarn verify` — first run failed at `lint` (`react-hooks/rules-of-hooks` on the test helper `useScheme`, renamed `applyScheme`), then at `test` (`src/__tests__/ui/calendar-list.test.tsx` asserted the old `focus-visible:shadow-focus` class, updated); resumed from each step to green, then one full green run.
 
+## Review round (PR #502)
+
+An independent review (subagent, read-only) found:
+1. **High, fixed:** a dialog whose first field has native `autoFocus` (CrudForm, e.g. "Add part" in `ClubEventPartDialog`) opens with focus already inside, so Radix's FocusScope skips `onOpenAutoFocus`; the opener was never recorded and Esc dropped focus on `<body>`. Fix: `OpenerProbe`, rendered inside the content, records the opener in an insertion effect (before React applies the commit's DOM changes and autofocus); `onOpenAutoFocus` stays as a fallback and does not overwrite it.
+2. **Low, fixed:** a footer button that closes one dialog and opens another would focus the page opener behind the new modal; `onCloseAutoFocus` now leaves focus alone while another dialog is open.
+3. **Low, fixed:** the test's contrast helpers ignored alpha; colours and translucent backgrounds are now composited, so a regression to a translucent token (the old dark `--input`) fails.
+4. **Nit, kept:** the unlayered sidebar heading rule also fixes the hover text colour; harmless.
+
+ISSUE-481 now also opens "Add part" on a club event in the panel, checks that its title field is focused, presses Esc, and expects "Add part" to have focus, in light and dark. Its first runs failed in the new test code: 401 (the club event was created with the admin token after the admin's browser sign-in ended it) and 400 (`sectionId` is required, `null` for a club-wide event). After those fixes: `ISSUE-481` 1 passed, `TEST-T11` 1 passed, `yarn verify` all 18 steps passed.
+
 ## Open problems
 
 - Platform bugs worked around here (focus ring colour, sidebar heading contrast, controlled dialogs losing focus) are to be reported upstream to Open Mercato (owner decision 7).

@@ -5,6 +5,7 @@
 import * as React from 'react'
 import {
   createReturnFocus,
+  recordOpenerEffect,
   withReturnFocus,
   type AutoFocusEvent,
   type ReturnFocusHandlers,
@@ -18,6 +19,16 @@ export function useReturnFocus(): ReturnFocusHandlers {
 type ContentProps = {
   onOpenAutoFocus?: (event: AutoFocusEvent) => void
   onCloseAutoFocus?: (event: AutoFocusEvent) => void
+  children?: React.ReactNode
+}
+
+/**
+ * Rendered inside the content, so it mounts each time the dialog opens. Insertion effects run before React applies the
+ * DOM changes of the commit, so focus is still on the opener even when a field of the dialog has `autoFocus`.
+ */
+export function OpenerProbe({ handlers }: { handlers: ReturnFocusHandlers }): null {
+  React.useInsertionEffect(recordOpenerEffect(handlers), [handlers])
+  return null
 }
 
 /**
@@ -28,7 +39,12 @@ export function withReturnFocusContent<C extends (props: never) => unknown>(Cont
   const Inner = Content as unknown as React.ComponentType<ContentProps & React.RefAttributes<unknown>>
   const Wrapped = React.forwardRef<unknown, ContentProps>(function ReturnFocusContent(props, ref) {
     const handlers = useReturnFocus()
-    return React.createElement(Inner, { ...withReturnFocus(props, handlers), ref })
+    return React.createElement(
+      Inner,
+      { ...withReturnFocus(props, handlers), ref },
+      React.createElement(OpenerProbe, { handlers }),
+      props.children,
+    )
   })
   Wrapped.displayName = displayName
   return Wrapped as unknown as C
