@@ -1,0 +1,11 @@
+# Railway cron service of the nightly off-site backup (docs/ops/backups.md, issue #464). The service runs in the
+# same Railway project as the database, so DATABASE_URL never leaves Railway; it starts at 02:30 UTC, runs
+# backup-dump.mjs once and exits. A failed run is not retried here: the alert fires and the next night retries.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/backup/Dockerfile"
+
+[deploy]
+cronSchedule = "30 2 * * *"
+restartPolicyType = "NEVER"
+startCommand = "node scripts/backup-dump.mjs"
