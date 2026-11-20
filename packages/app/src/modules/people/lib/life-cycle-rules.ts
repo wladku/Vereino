@@ -12,10 +12,10 @@ export const TURNS_18_NOTICE_DAYS = 30
 export const CAME_OF_AGE_CARD_DAYS = 30
 
 /**
- * The steps of the job in the order they run. Step 5 (erasure step two) is registered by phase L6 (gap c9), which
- * adds the columns it reads; until then the job reports no count for it.
+ * The steps of the job in the order they run. Step 5 (erasure step two: the name of an anonymised person is cleared the
+ * day after the retention hold) was registered by phase L6 (gap c9, #308), which adds the columns it reads.
  */
-export const LIFE_CYCLE_STEPS = ['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts'] as const
+export const LIFE_CYCLE_STEPS = ['turns_18_soon', 'came_of_age', 'account_age', 'departed_accounts', 'erasure_names'] as const
 export type LifeCycleStep = (typeof LIFE_CYCLE_STEPS)[number]
 
 /** The birth date as a calendar date, or null when it is unknown or malformed. */
