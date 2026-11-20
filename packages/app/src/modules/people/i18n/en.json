@@ -813,5 +813,6 @@
   "people.notifications.accountAgeReached.title": "An own account is possible",
   "people.notifications.accountAgeReached.body": "Your ward reached the club account age. Ask the club for an own account.",
   "people.notifications.accountAgeReachedAdmin.title": "A child may get an account",
-  "people.notifications.accountAgeReachedAdmin.body": "A child reached the club account age and has no account. Open the list."
+  "people.notifications.accountAgeReachedAdmin.body": "A child reached the club account age and has no account. Open the list.",
+  "people.club.nav.clubEvents": "Club events"
 }

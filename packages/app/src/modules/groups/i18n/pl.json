@@ -507,5 +507,6 @@
   "groups.ageCategories.birthYearsInSeason": "Rocznik {years} w sezonie {season}.",
   "groups.ageCategories.birthYearsInYear": "Rocznik {years} w roku {year}.",
   "groups.ageCategories.proposal": "Wiek {from}–{to} lat zaproponowano z kategorii {category}; w razie potrzeby zmień go i zapisz.",
-  "groups.ageCategories.proposalOpen": "Wiek od {from} lat zaproponowano z kategorii {category}; w razie potrzeby zmień go i zapisz."
+  "groups.ageCategories.proposalOpen": "Wiek od {from} lat zaproponowano z kategorii {category}; w razie potrzeby zmień go i zapisz.",
+  "groups.club.nav.clubEvents": "Imprezy klubowe"
 }

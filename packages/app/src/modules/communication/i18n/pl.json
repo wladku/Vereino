@@ -269,5 +269,6 @@
   "communication.tile.noNew": "Brak nowych wiadomości.",
   "communication.tile.open": "Otwórz wiadomości",
   "communication.tile.title": "Wiadomości",
-  "communication.tile.unread": "Nieprzeczytane: {count}"
+  "communication.tile.unread": "Nieprzeczytane: {count}",
+  "communication.club.nav.clubEvents": "Imprezy klubowe"
 }

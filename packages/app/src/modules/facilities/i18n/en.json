@@ -1375,5 +1375,6 @@
   "facilities.reports.owner.paymentsSource.charges": "Source: the rentals’ charges ({count} paid)",
   "facilities.reports.owner.paymentsSource.mixed": "Source: the rentals’ charges and the rental register ({count} rentals)",
   "facilities.reports.owner.partiallyPaid": "{count} partly paid, not in the sum",
-  "facilities.nav.badge.waiting": "{count} waiting"
+  "facilities.nav.badge.waiting": "{count} waiting",
+  "facilities.places.nav.clubEvents": "Club events"
 }

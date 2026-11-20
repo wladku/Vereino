@@ -10,6 +10,8 @@
 // E10-S08 (#273, REQ-A10): opened with `?as=coordinator`, the form reads the session as the section's coordinator (any
 // planned session of their sections) and returns to the session page in that perspective; the toast names how many
 // people the move told, and a move clears "Needs a new time".
+// Club events (REQ-T05, REQ-T12, E14-S05 #380): a part session keeps the club event's place, so the form shows it
+// read-only ("the club event's place") and never sends a place or a venue; the event page's Move opens this form.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -111,6 +113,8 @@ function EditForm({
   const queryClient = useQueryClient()
   const id = React.useId()
   const { occurrence } = entry
+  // A part session's place belongs to its club event (DD-T05): shown read-only, never sent.
+  const partOf = occurrence.clubEvent ?? null
   const session = React.useMemo(
     () => ({
       startAt: occurrence.startAt,
@@ -280,103 +284,119 @@ function EditForm({
         </div>
         <p className="text-muted-foreground text-sm">{t('activities.club.event.zone', { zone: timeZone })}</p>
       </fieldset>
-      <fieldset className="flex flex-col gap-2">
-        <legend id={`${id}-mode`} className="mb-1 text-sm font-medium">
-          {t('activities.venue.mode.label')}
-        </legend>
-        <RadioGroup
-          aria-labelledby={`${id}-mode`}
-          className="flex flex-col gap-2 sm:flex-row"
-          value={draft.venueMode}
-          onValueChange={(value) => {
-            update('venueMode', (value === 'venue' ? 'venue' : 'place') satisfies VenueMode)
-            setProblems((current) => ({
-              ...current,
-              placeId: undefined,
-              venueName: undefined,
-              venueAddress: undefined,
-            }))
-          }}
-        >
-          {(['place', 'venue'] as const).map((mode) => (
-            <label
-              key={mode}
-              htmlFor={`${id}-mode-${mode}`}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2"
-              data-testid={`club-edit-venue-mode-${mode}`}
-            >
-              <Radio id={`${id}-mode-${mode}`} value={mode} />
-              <span className="text-sm font-medium">{t(`activities.venue.mode.${mode}`)}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </fieldset>
-      {venueShown ? (
-        <>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-venue-name`}>{t('activities.venue.name')}</Label>
-            <Input
-              id={`${id}-venue-name`}
-              className="min-h-11"
-              value={draft.venueName}
-              maxLength={VENUE_NAME_MAX}
-              aria-invalid={invalid('venueName')}
-              aria-describedby={describedBy('venueName')}
-              onChange={(event) => {
-                update('venueName', event.target.value)
-              }}
-              data-testid="club-edit-venue-name"
-            />
-            <FieldProblem id={`${id}-venueName-problem`} text={problems.venueName} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-venue-address`}>{t('activities.venue.address')}</Label>
-            <Input
-              id={`${id}-venue-address`}
-              className="min-h-11"
-              value={draft.venueAddress}
-              maxLength={VENUE_ADDRESS_MAX}
-              aria-invalid={invalid('venueAddress')}
-              aria-describedby={[`${id}-venue-address-help`, describedBy('venueAddress')].filter(Boolean).join(' ')}
-              onChange={(event) => {
-                update('venueAddress', event.target.value)
-              }}
-              data-testid="club-edit-venue-address"
-            />
-            <p id={`${id}-venue-address-help`} className="text-muted-foreground text-sm">
-              {t('activities.venue.address.help')}
-            </p>
-            <FieldProblem id={`${id}-venueAddress-problem`} text={problems.venueAddress} />
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${id}-place`}>{t('activities.fields.place')}</Label>
-          <Select
-            value={draft.placeId}
-            onValueChange={(value) => {
-              update('placeId', value)
-            }}
-          >
-            <SelectTrigger
-              id={`${id}-place`}
-              className="min-h-11 w-full sm:w-96"
-              aria-invalid={invalid('placeId')}
-              aria-describedby={describedBy('placeId')}
-              data-testid="club-edit-place"
-            >
-              <SelectValue placeholder={t('activities.club.event.choosePlace')} />
-            </SelectTrigger>
-            <SelectContent>
-              {places.map((place) => (
-                <SelectItem key={place.id} value={place.id}>
-                  {place.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldProblem id={`${id}-placeId-problem`} text={problems.placeId} />
+      {partOf ? (
+        <div className="flex flex-col gap-1" data-testid="club-edit-place-locked">
+          <span className="text-sm font-medium" id={`${id}-place-locked`}>
+            {t('activities.fields.place')}
+          </span>
+          <p className="text-sm" aria-labelledby={`${id}-place-locked`}>
+            {occurrence.placeName ?? ''}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {t('activities.clubEvents.club.session.placeLocked', { name: partOf.name })}
+          </p>
         </div>
+      ) : (
+        <>
+          <fieldset className="flex flex-col gap-2">
+            <legend id={`${id}-mode`} className="mb-1 text-sm font-medium">
+              {t('activities.venue.mode.label')}
+            </legend>
+            <RadioGroup
+              aria-labelledby={`${id}-mode`}
+              className="flex flex-col gap-2 sm:flex-row"
+              value={draft.venueMode}
+              onValueChange={(value) => {
+                update('venueMode', (value === 'venue' ? 'venue' : 'place') satisfies VenueMode)
+                setProblems((current) => ({
+                  ...current,
+                  placeId: undefined,
+                  venueName: undefined,
+                  venueAddress: undefined,
+                }))
+              }}
+            >
+              {(['place', 'venue'] as const).map((mode) => (
+                <label
+                  key={mode}
+                  htmlFor={`${id}-mode-${mode}`}
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2"
+                  data-testid={`club-edit-venue-mode-${mode}`}
+                >
+                  <Radio id={`${id}-mode-${mode}`} value={mode} />
+                  <span className="text-sm font-medium">{t(`activities.venue.mode.${mode}`)}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          </fieldset>
+          {venueShown ? (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`${id}-venue-name`}>{t('activities.venue.name')}</Label>
+                <Input
+                  id={`${id}-venue-name`}
+                  className="min-h-11"
+                  value={draft.venueName}
+                  maxLength={VENUE_NAME_MAX}
+                  aria-invalid={invalid('venueName')}
+                  aria-describedby={describedBy('venueName')}
+                  onChange={(event) => {
+                    update('venueName', event.target.value)
+                  }}
+                  data-testid="club-edit-venue-name"
+                />
+                <FieldProblem id={`${id}-venueName-problem`} text={problems.venueName} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`${id}-venue-address`}>{t('activities.venue.address')}</Label>
+                <Input
+                  id={`${id}-venue-address`}
+                  className="min-h-11"
+                  value={draft.venueAddress}
+                  maxLength={VENUE_ADDRESS_MAX}
+                  aria-invalid={invalid('venueAddress')}
+                  aria-describedby={[`${id}-venue-address-help`, describedBy('venueAddress')].filter(Boolean).join(' ')}
+                  onChange={(event) => {
+                    update('venueAddress', event.target.value)
+                  }}
+                  data-testid="club-edit-venue-address"
+                />
+                <p id={`${id}-venue-address-help`} className="text-muted-foreground text-sm">
+                  {t('activities.venue.address.help')}
+                </p>
+                <FieldProblem id={`${id}-venueAddress-problem`} text={problems.venueAddress} />
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-place`}>{t('activities.fields.place')}</Label>
+              <Select
+                value={draft.placeId}
+                onValueChange={(value) => {
+                  update('placeId', value)
+                }}
+              >
+                <SelectTrigger
+                  id={`${id}-place`}
+                  className="min-h-11 w-full sm:w-96"
+                  aria-invalid={invalid('placeId')}
+                  aria-describedby={describedBy('placeId')}
+                  data-testid="club-edit-place"
+                >
+                  <SelectValue placeholder={t('activities.club.event.choosePlace')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {places.map((place) => (
+                    <SelectItem key={place.id} value={place.id}>
+                      {place.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldProblem id={`${id}-placeId-problem`} text={problems.placeId} />
+            </div>
+          )}
+        </>
       )}
       {deadlineShown ? (
         <fieldset className="flex flex-col gap-2">

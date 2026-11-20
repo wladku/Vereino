@@ -507,5 +507,6 @@
   "groups.ageCategories.birthYearsInSeason": "Birth years {years} in season {season}.",
   "groups.ageCategories.birthYearsInYear": "Birth years {years} in {year}.",
   "groups.ageCategories.proposal": "Ages {from}–{to} are proposed from the category {category}; change them if needed and save.",
-  "groups.ageCategories.proposalOpen": "Ages from {from} are proposed from the category {category}; change them if needed and save."
+  "groups.ageCategories.proposalOpen": "Ages from {from} are proposed from the category {category}; change them if needed and save.",
+  "groups.club.nav.clubEvents": "Club events"
 }
