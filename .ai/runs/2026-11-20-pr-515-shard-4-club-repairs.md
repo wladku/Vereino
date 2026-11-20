@@ -37,3 +37,11 @@
 ## Open problems / next steps
 
 - Other shards (1, 2, 5, 6) were still running on the old head when this run started; the push re-runs them all.
+
+## Follow-up (same run)
+
+- CI run 44762924667 on f06276e2: every job green, including all six integration shards.
+- `main` then advanced (2ea3122b, #485) and the PR became `CONFLICTING`. Merged `origin/main` again; the only conflict was
+  the `CONTRIBUTING.md` app-files table (backend layout row): kept both changes and added a row for
+  `(frontend)/layout.tsx`. `yarn generate && yarn typecheck` exit 0;
+  `yarn test:integration:vereino --filter E20-S18` — `1 passed (1.1m)`, exit 0.
