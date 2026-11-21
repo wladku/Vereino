@@ -7,7 +7,7 @@ topics: ["yarn-verify", "eslint", "integration-tests"]
 
 # Delete the local Playwright report before running yarn verify
 
-**Context**: #311: after a local `yarn test:integration:vereino --filter TEST-L16`, `yarn verify` failed at `lint` with 162 `react-hooks/rules-of-hooks` errors, all in `packages/app/.ai/qa/test-results/html/trace/*.js` (the minified Playwright trace viewer).
+**Context**: #311: after a local `yarn test:integration:vereino --filter TEST-L16`, `yarn verify` failed at `lint` with 162 `react-hooks/rules-of-hooks` errors, all in `packages/app/.ai/qa/test-results/html/trace/*.js` (the minified Playwright trace viewer). It happened again on #495 (2026-11-20) after TEST-R12 and TEST-R03 runs: a third occurrence, so an ESLint ignore for `.ai/qa/test-results/**` was proposed to the owner in that PR.
 
 **Problem**: `.ai/qa/test-results/` is gitignored but `yarn lint` still walks it, so a report left behind by an integration run fails the gate locally while CI (a clean checkout) passes.
 
