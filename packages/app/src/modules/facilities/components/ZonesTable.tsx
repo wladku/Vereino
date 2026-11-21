@@ -20,6 +20,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { ZONES, ZONE_SOURCES } from '../lib/zones'
 import { AvailabilityDialog, AvailabilitySaveSummary, type BulkResult } from './AvailabilityDialog'
 import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
@@ -125,7 +126,7 @@ export function ZonesTable() {
   const [saved, setSaved] = React.useState<BulkResult | null>(null)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [ZONE_RULES_KEY, 'list', selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ZoneRuleRow>(ZONE_RULES_API, {
@@ -237,7 +238,15 @@ export function ZonesTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('facilities.zones.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('facilities.zones.errors.load')}
+                retryLabel={t('facilities.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           filters={filterDefs}
           filterValues={filters}
           onFiltersApply={(values: FilterValues) => {

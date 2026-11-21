@@ -18,6 +18,7 @@ import { BackendHeaderChrome } from '@/components/BackendHeaderChrome'
 import { SidebarNavBadges } from '@/components/SidebarNavBadges'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { ClubTimeZone } from '@/components/ClubTimeZone'
+import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
 
 type ClubChromeSettings = {
   get(scope: { tenantId: string; organizationId: string }): Promise<{
@@ -201,6 +202,7 @@ export default async function BackendLayout({
         {demoModeEnabled ? <DemoFeedbackWidget demoModeEnabled={demoModeEnabled} /> : null}
         <BrowserTelemetry config={browserTelemetryConfig} />
         <SidebarNavBadges />
+        <PlatformA11yRepairs />
       </AppShell>
     </I18nProvider>
   )
