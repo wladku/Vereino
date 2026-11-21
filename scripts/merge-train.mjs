@@ -32,6 +32,7 @@ import {
   verdictOf,
 } from './merge-train-plan.mjs'
 import {
+  BATCHED_LABEL,
   BATCH_BRANCH,
   BUILD_BRANCH,
   DROP_REASONS,
@@ -89,12 +90,16 @@ async function ok(method, path, body) {
   return result.body
 }
 
+// The required checks: MERGE_TRAIN_REQUIRED_CHECKS when set (the ruleset API answers 403 on a private repository
+// without rulesets, such as the rehearsal repository), else the ruleset's.
 async function rulesetChecks(branch) {
+  const override = requiredChecks([], process.env.MERGE_TRAIN_REQUIRED_CHECKS)
+  if (override.length) return override
   const rules = await ok('GET', `/repos/${repo}/rules/branches/${branch}`)
   const names = rules
     .filter((rule) => rule.type === 'required_status_checks')
     .flatMap((rule) => rule.parameters.required_status_checks.map((check) => check.context))
-  return requiredChecks([...new Set(names)], process.env.MERGE_TRAIN_REQUIRED_CHECKS)
+  return [...new Set(names)]
 }
 
 async function headRuns(sha) {
@@ -329,6 +334,8 @@ async function mergeBatch(current, prs, baseBranch) {
       return false
     }
     merged.push(entry.number)
+    // A merged PR leaves the queue, so the label sync no longer reaches it.
+    await api('DELETE', `/repos/${repo}/issues/${entry.number}/labels/${BATCHED_LABEL}`)
     const mainTree = (await ok('GET', `/repos/${repo}/branches/${baseBranch}`)).commit.commit.tree.sha
     const expected = intermediateAfter(trees, index + 1, batch.prs.length)
     const match = treeMatches(mainTree, expected)
@@ -400,7 +407,7 @@ async function batchTrain(baseBranch, required) {
     const built = await buildBatch(plan, baseSha)
     batched = built ? built.prs : []
   } else if (settled.next === 'build') {
-    summary('no batch: no PR is green on its own head')
+    summary('no batch: no PR in the queue can join one (see the reasons above)')
   }
   const { queue } = trainQueue(prs, skipLabels)
   await syncLabels(batchLabels(queue, batched.map((entry) => entry.number)))
