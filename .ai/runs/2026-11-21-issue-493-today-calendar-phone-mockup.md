@@ -36,7 +36,10 @@ M-02 Today: at most three tiles in the mockup's order (Calendar → Attendance �
 - `npx jest src/modules/activities/lib/__tests__/member-calendar.test.ts` — 11 passed.
 - `typecheck:qa`, `contracts:check`, `glossary:check`, `qa-texts:check`, `ds:check`, `spec-changelogs:check`, `i18n:check-hardcoded --strict` — all 0 (early feedback; the gate is `yarn verify`).
 - `yarn test:integration:vereino --filter ISSUE-493` — 1 passed (1.1 min).
-- Batch with `--no-build` and the full gate: see the PR body for the final results.
+- Integration, all local and green (`yarn test:integration:vereino [--no-build] --filter <ID>`): ISSUE-493 (twice, the second after the header change, with screenshots), E06-S18, E06-S19, E09-S05, TEST-014, TEST-A16, ISSUE-140, J-002, E03-S04, TEST-489, E07-S04, J-001, ISSUE-481, TEST-C12, E02-S03 (7), ISSUE-483, TEST-N16, TEST-C13, E06-S15, E06-S13, TEST-A10, TEST-A19, TEST-T13, TEST-N15, TEST-M10, E06-S16.
+- E06-S16 failed once: `expect(locator).toBeVisible() failed … element(s) not found` at `calendarTile.getByRole('link', { name: openCalendar })` — the link moved into the Calendar tile's header, outside the `club-tile-calendar` part; the test now scopes it to `club-today-calendar-tile` and passes.
+- `yarn verify` failed once at `lint`: `React Hook "useLocale" may be executed more than once` in the new spec (a Playwright helper named `use*`); renamed to `switchLocale`. Final full `yarn verify`: all 18 steps passed.
+- Lesson: `.ai/lessons/injection-spot-widgets-share-the-host-layout.md`.
 
 ## Open problems / next steps
 
