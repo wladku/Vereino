@@ -1,0 +1,1 @@
+| 2026-11-21 | Review round 1 on #540: the contact-access-log rows that name the subject and the substitution entries where the subject is a coach are now exported (reason flagged for review), not just counted; TEST-X01 covers both |
