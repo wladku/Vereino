@@ -9,6 +9,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import type { OpeningHours } from '@vereino/core'
 import type { PublicSlot, PublicSlotState } from '../../lib/public-schedule'
 import type { PublicPlacesView, PublicScheduleDay, PublicScheduleView } from '../../services/public-schedule'
+import { publicFacilitiesLoadOf, type PublicFacilitiesLoad as PublicFacilitiesLoadOf } from '../../lib/public-load'
 
 export type { PublicPlacesView, PublicScheduleDay, PublicScheduleView, PublicSlot, PublicSlotState, OpeningHours }
 
@@ -19,11 +20,7 @@ export type PublicClub = PublicPlacesView['club']
  * A public read's result. A page with nothing to show still carries the club's header (`club`) while the club
  * publishes its page, so every state renders inside the club's frame (#289); null for an unknown club.
  */
-export type PublicFacilitiesLoad<T> =
-  | { status: 'ok'; page: T }
-  | { status: 'not_found'; club: PublicClub | null }
-  | { status: 'disabled'; club: PublicClub | null }
-  | { status: 'month_invalid'; club: PublicClub | null }
+export type PublicFacilitiesLoad<T> = PublicFacilitiesLoadOf<T, PublicClub>
 
 /** The states in the order the legend lists them: the free ones first, then the taken ones. */
 export const LEGEND_STATES: readonly PublicSlotState[] = [
@@ -66,24 +63,23 @@ export const placeHref = (clubSlug: string, placeSlug: string, month?: string | 
   `${placesHref(clubSlug)}/${encodeURIComponent(placeSlug)}${month ? `?month=${encodeURIComponent(month)}` : ''}`
 
 async function loadPublic<T>(url: string): Promise<PublicFacilitiesLoad<T>> {
-  const call = await apiCall<T & { code?: string; club?: PublicClub }>(url)
-  if (call.ok && call.result) return { status: 'ok', page: call.result }
-  const club = call.result?.club ?? null
-  if (call.status === 404) {
-    return call.result?.code === 'public_places_disabled' ? { status: 'disabled', club } : { status: 'not_found', club }
-  }
-  // A month outside the readable range (a stale permalink): the page offers the current month instead.
-  if (call.status === 400 && call.result?.code === 'public_schedule_month_invalid') {
-    return { status: 'month_invalid', club }
-  }
-  throw new Error(`[internal] public facilities request failed with ${String(call.status)}`)
+  const call = await apiCall<T>(url)
+  // A month outside the readable range (a stale permalink) answers `month_invalid`: the page offers the current month.
+  const load = publicFacilitiesLoadOf<T, PublicClub>({ ok: call.ok, status: call.status, body: call.result })
+  if (!load) throw new Error(`[internal] public facilities request failed with ${String(call.status)}`)
+  return load
 }
 
-export function usePublicPlaces(clubSlug: string) {
+/**
+ * P-03; `enabled: false` when the server already read the page (#487): the view shows the server's state and never
+ * seeds it into the query cache, which on the server is one client shared by every request.
+ */
+export function usePublicPlaces(clubSlug: string, enabled = true) {
   return useQuery({
     queryKey: ['facilities-public-places', clubSlug],
     queryFn: () => loadPublic<PublicPlacesView>(`/api/facilities/public/${encodeURIComponent(clubSlug)}/places`),
     retry: false,
+    enabled,
   })
 }
 

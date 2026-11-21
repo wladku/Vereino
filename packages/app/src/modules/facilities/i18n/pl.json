@@ -526,6 +526,8 @@
   "facilities.public.disabled.message": "Zapytaj klub o wolne terminy.",
   "facilities.public.disabled.call": "Zadzwoń, aby zapytać o wolne terminy.",
   "facilities.public.places.pageTitle": "Obiekty",
+  "facilities.public.documentTitle": "{club} — {page}",
+  "facilities.public.places.metaDescription": "Obiekty klubu {club} i ich kalendarze.",
   "facilities.public.places.title": "Obiekty",
   "facilities.public.places.back": "Wróć do: {club}",
   "facilities.public.places.intro": "Zobacz zajętość.",

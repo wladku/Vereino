@@ -526,6 +526,8 @@
   "facilities.public.disabled.message": "Ask the club about free slots.",
   "facilities.public.disabled.call": "Call to ask about free slots.",
   "facilities.public.places.pageTitle": "Facilities",
+  "facilities.public.documentTitle": "{club} — {page}",
+  "facilities.public.places.metaDescription": "Facilities of {club} and their calendars.",
   "facilities.public.places.title": "Facilities",
   "facilities.public.places.back": "Back to {club}",
   "facilities.public.places.intro": "See the occupancy.",
