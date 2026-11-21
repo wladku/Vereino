@@ -39,7 +39,7 @@ async function evidence(page: Page, name: string): Promise<void> {
 }
 
 /** The member pages follow the club's default locale, so it is set together with the cookie. */
-async function useLocale(page: Page, request: APIRequestContext, club: Club, locale: 'en' | 'pl') {
+async function switchLocale(page: Page, request: APIRequestContext, club: Club, locale: 'en' | 'pl') {
   const settings = await updateClubSettings(request, club.adminToken, { defaultLocale: locale })
   expect(settings.status, JSON.stringify(settings.body)).toBe(200)
   await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
@@ -83,7 +83,7 @@ test('ISSUE-493 Today holds at most three tiles under the club header and the ca
       ['en', 1440],
     ] as const) {
       await page.setViewportSize({ width, height: 900 })
-      await useLocale(page, request, club, locale)
+      await switchLocale(page, request, club, locale)
 
       // --- The guardian of two wards: the header, three tiles in order, the rows under them ---
       await page.goto('/club')
@@ -168,7 +168,7 @@ test('ISSUE-493 Today holds at most three tiles under the club header and the ca
       ['en', 1440],
     ] as const) {
       await page.setViewportSize({ width, height: 900 })
-      await useLocale(page, request, club, locale)
+      await switchLocale(page, request, club, locale)
       await page.goto('/club')
       await expect(page.getByTestId('club-today-header')).toBeVisible()
       await expectTiles(page, TILE_ORDER)
