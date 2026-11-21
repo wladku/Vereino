@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { createUserFixture, setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
@@ -32,7 +33,11 @@ import { uiText, uiTextIn } from '../_fixtures/ui-text'
 // search finds nothing, an undo of an earlier edit and a return are refused (409 `person_anonymized`), a second
 // anonymisation too, and another organization's person is untouched; the daily job run after the hold clears the
 // name. A former person without payments loses the name at once (`erasureHoldUntil` null) — done in the browser
-// through the Leaving tab (typed confirmation, wrong name first). TEST-L08 — a person without history is deleted (204)
+// through the Leaving tab (typed confirmation, wrong name first).
+// S9.6 (#528): the same anonymisation clears the person's order contacts, print name and notes, a typed payer label,
+// their deliveries and their rental contact snapshots, while the charge's amount and payments stay and the control
+// person's rows are untouched; its audit entry names every table touched and the kept categories with their legal
+// basis, never an erased value. TEST-L08 — a person without history is deleted (204)
 // and the undo restores them; a person with a charge or a guardianship answers 409 `person_in_use` with the reasons.
 // TEST-L20 — both routes fail closed for another organization, and a user with `people.manage` but without
 // `people.persons.anonymize` gets 403 on the anonymisation.
@@ -134,6 +139,85 @@ async function listIds(request: APIRequestContext, token: string, query: string)
   return (result.body?.items ?? []).map((item) => item.id)
 }
 
+type ErasureSeed = { orderId: string; deliveryId: string; rentalId: string }
+
+/**
+ * Rows of other modules naming `personId` (S9.6, #528), written straight into the test database the way their
+ * commands store them: an order they placed for themself, a sent delivery, a past rental they booked by phone, and a
+ * typed payer label on `chargeId`.
+ */
+async function seedErasureRows(club: Club, personId: string, chargeId: string | null): Promise<ErasureSeed> {
+  const scope = [club.tenant.tenantId, club.tenant.organizationId]
+  const seed: ErasureSeed = { orderId: randomUUID(), deliveryId: randomUUID(), rentalId: randomUUID() }
+  await withClient(async (client) => {
+    await client.query(
+      `insert into payments_orders (id, tenant_id, organization_id, created_at, updated_at, campaign_id,
+         participant_person_id, ordered_by_person_id, contact_email, contact_phone, print_name, print_number, notes,
+         charge_id)
+       values ($1, $2, $3, now(), now(), $4, $5, $5, 'buyer@example.org', '+48600700800', 'KASIA', 7, 'Size M', $6)`,
+      [seed.orderId, ...scope, randomUUID(), personId, chargeId ?? randomUUID()],
+    )
+    await client.query(
+      `insert into foundation_deliveries (id, tenant_id, organization_id, created_at, updated_at, dispatch_id,
+         person_id, channel, email_hash, locale, status, sent_at)
+       values ($1, $2, $3, now(), now(), $4, $5, 'email', 'hash-of-address', 'pl', 'sent', now())`,
+      [seed.deliveryId, ...scope, randomUUID(), personId],
+    )
+    await client.query(
+      `insert into facilities_rentals (id, tenant_id, organization_id, created_at, updated_at, place_id, renter_type,
+         renter_id, renter_display_name, renter_category, contact_name, contact_phone, contact_email, requested_via,
+         starts_at, ends_at, units, amount, status)
+       values ($1, $2, $3, now(), now(), $4, 'person', $5, 'Renter', 'member', 'Renter', '+48600900100',
+         'renter@example.org', 'phone', now() - interval '30 days', now() - interval '30 days' + interval '1 hour', 1,
+         0, 'cancelled')`,
+      [seed.rentalId, ...scope, randomUUID(), personId],
+    )
+    if (chargeId) {
+      await client.query(`update payments_charges set payer_label = 'Typed payer' where tenant_id = $1 and id = $2`, [
+        club.tenant.tenantId,
+        chargeId,
+      ])
+    }
+  })
+  return seed
+}
+
+type ErasureRows = {
+  order: Record<string, unknown>
+  delivery: Record<string, unknown>
+  rental: Record<string, unknown>
+}
+
+async function erasureRows(club: Club, seed: ErasureSeed): Promise<ErasureRows> {
+  return withClient(async (client) => {
+    const tenant = club.tenant.tenantId
+    const order = await client.query(
+      `select contact_email, contact_phone, print_name, notes, print_number from payments_orders
+        where tenant_id = $1 and id = $2`,
+      [tenant, seed.orderId],
+    )
+    const delivery = await client.query(
+      `select person_id, email_hash, status from foundation_deliveries where tenant_id = $1 and id = $2`,
+      [tenant, seed.deliveryId],
+    )
+    const rental = await client.query(
+      `select contact_name, contact_phone, contact_email from facilities_rentals where tenant_id = $1 and id = $2`,
+      [tenant, seed.rentalId],
+    )
+    return { order: order.rows[0], delivery: delivery.rows[0], rental: rental.rows[0] }
+  })
+}
+
+async function payerLabelOf(club: Club, chargeId: string): Promise<string | null> {
+  return withClient(async (client) => {
+    const rows = await client.query<{ payer_label: string | null }>(
+      `select payer_label from payments_charges where tenant_id = $1 and id = $2`,
+      [club.tenant.tenantId, chargeId],
+    )
+    return rows.rows[0]?.payer_label ?? null
+  })
+}
+
 const FORMER_MEMBER = [uiTextIn('en', 'people.person.formerMember'), uiTextIn('pl', 'people.person.formerMember')]
 
 test('TEST-L07 anonymising a former person: refusals, the retention hold, Former member, the job', async ({
@@ -220,6 +304,11 @@ test('TEST-L07 anonymising a former person: refusals, the retention hold, Former
     expect(mismatch.body?.code).toBe('confirmation_mismatch')
     expect((await personRow(club, kasia)).email).not.toBeNull()
 
+    // Rows of other modules (S9.6, #528): Kasia's order, delivery, rental and a payer label; the same for the control.
+    const paidBefore = await getCharge(request, admin, paidCharge)
+    const kasiaRows = await seedErasureRows(club, kasia, paidCharge)
+    const controlRows = await seedErasureRows(club, control, null)
+
     // Anonymised: contact and identity data null at once, the name kept until 31 December five years on.
     const holdUntil = `${String(Number(calendarDate().slice(0, 4)) + 5)}-12-31`
     const done = await anonymize(request, admin, kasia, { requestId, confirmLastName: ` ${lastName.toUpperCase()} ` })
@@ -237,6 +326,58 @@ test('TEST-L07 anonymising a former person: refusals, the retention hold, Former
     })
     expect(row.anonymized_at).not.toBeNull()
     expect(row.first_name).not.toBeNull()
+    // The other modules' personal data went in the same transaction; the accounting stays (negative case).
+    expect(await erasureRows(club, kasiaRows)).toEqual({
+      order: { contact_email: null, contact_phone: null, print_name: null, notes: null, print_number: 7 },
+      delivery: { person_id: null, email_hash: null, status: 'sent' },
+      rental: { contact_name: null, contact_phone: null, contact_email: null },
+    })
+    expect(await payerLabelOf(club, paidCharge)).toBeNull()
+    const paidAfter = await getCharge(request, admin, paidCharge)
+    expect(paidAfter).toMatchObject({ amount: paidBefore.amount, paid: paidBefore.paid, status: paidBefore.status })
+    expect(paidAfter.payments.map((payment) => [payment.id, payment.amount])).toEqual(
+      paidBefore.payments.map((payment) => [payment.id, payment.amount]),
+    )
+    expect(await erasureRows(club, controlRows)).toEqual({
+      order: {
+        contact_email: 'buyer@example.org',
+        contact_phone: '+48600700800',
+        print_name: 'KASIA',
+        notes: 'Size M',
+        print_number: 7,
+      },
+      delivery: { person_id: control, email_hash: 'hash-of-address', status: 'sent' },
+      rental: { contact_name: 'Renter', contact_phone: '+48600900100', contact_email: 'renter@example.org' },
+    })
+    // The audit entry (S9.6): every table touched with its row count, the kept categories with their basis.
+    const erasureLog = (await actionLogEntries(request, admin, kasia)).find(
+      (entry) => entry.commandId === 'people.persons.anonymize',
+    )
+    expect(erasureLog?.context?.tablesTouched).toEqual(
+      expect.arrayContaining([
+        { table: 'people_persons', rows: 1 },
+        { table: 'payments_orders', rows: 1 },
+        { table: 'payments_charges', rows: 1 },
+        { table: 'facilities_rentals', rows: 1 },
+        { table: 'foundation_deliveries', rows: 1 },
+      ]),
+    )
+    const keptData = (erasureLog?.context?.keptData ?? []) as { category: string; basis: string }[]
+    expect(keptData.map((entry) => entry.category)).toEqual(
+      expect.arrayContaining(['accounting_records', 'erasure_request_and_decision', 'name_under_retention_hold']),
+    )
+    expect(keptData.find((entry) => entry.category === 'accounting_records')?.basis).toContain('6(1)(c)')
+    const logText = JSON.stringify(erasureLog?.context ?? {})
+    for (const erased of [
+      'buyer@example.org',
+      '+48600700800',
+      'renter@example.org',
+      `kasia-${suffix}`,
+      'Typed payer',
+    ]) {
+      expect(logText).not.toContain(erased)
+    }
+
     const forAdmin = (await getPerson(request, admin, kasia)).body as Record<string, unknown>
     expect(forAdmin).toMatchObject({ firstName: 'Kasia', lastName, erasureHoldUntil: holdUntil, email: null })
     expect(forAdmin.anonymizedAt).toBeTruthy()

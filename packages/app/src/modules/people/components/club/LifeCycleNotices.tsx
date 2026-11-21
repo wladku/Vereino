@@ -4,8 +4,8 @@
 // (`GET /api/people/me` → `wards[].notices`), and on the member's own profile a card before and after their 18th
 // birthday (`notice`). Text carries the meaning; the icon is decorative.
 import * as React from 'react'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { Notice } from '@vereino/ui'
 import { formatCalendarDate, type MemberProfile, type MemberWard, type WardNotice } from './member-client'
 
 function noticeText(
@@ -31,9 +31,9 @@ export function WardNotices({ ward }: { ward: MemberWard }) {
     <ul className="flex flex-col gap-2" data-testid="club-ward-notices">
       {notices.map((notice) => (
         <li key={notice.kind} data-testid={`club-ward-notice-${notice.kind}`}>
-          <Alert status="information">
+          <Notice>
             <p className="max-w-prose text-sm">{noticeText(notice, ward, t, locale)}</p>
-          </Alert>
+          </Notice>
         </li>
       ))}
     </ul>
@@ -50,7 +50,7 @@ export function OwnLifeCycleNotice({ profile }: { profile: MemberProfile }) {
   const turns18 = notice.kind === 'turns_18'
   return (
     <section aria-labelledby="club-profile-life-cycle" data-testid={`club-profile-notice-${notice.kind}`}>
-      <Alert status="information">
+      <Notice>
         <h2 id="club-profile-life-cycle" className="text-base font-semibold">
           {t(turns18 ? 'people.club.profile.notice.turns18.title' : 'people.club.profile.notice.cameOfAge.title', {
             date,
@@ -61,7 +61,7 @@ export function OwnLifeCycleNotice({ profile }: { profile: MemberProfile }) {
             date,
           })}
         </p>
-      </Alert>
+      </Notice>
     </section>
   )
 }

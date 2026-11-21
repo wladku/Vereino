@@ -41,7 +41,7 @@ export function ConflictList({
 }) {
   const t = useT()
   return (
-    <Alert status="error" data-testid="activities-conflicts">
+    <Alert style="light" status="error" data-testid="activities-conflicts">
       <AlertTitle>{title ?? t('activities.conflicts.title')}</AlertTitle>
       <AlertDescription className="flex flex-col gap-2">
         <span>{t('activities.conflicts.help')}</span>

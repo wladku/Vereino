@@ -12,7 +12,7 @@ import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import { formatZloty } from '../../lib/charge-ledger'
 import {
   RETURN_POLL_INTERVAL_MS,
@@ -96,7 +96,7 @@ function Result({ checkoutId }: { checkoutId: string }) {
   if (state === 'received') {
     return (
       <>
-        <Alert status="success" data-testid="club-payment-return" data-state="received">
+        <Alert style="light" status="success" data-testid="club-payment-return" data-state="received">
           <div className="flex flex-col gap-1">
             <p className="font-semibold">{t('payments.club.return.received.title')}</p>
             <p>{t('payments.club.return.received.body')}</p>
@@ -119,7 +119,7 @@ function Result({ checkoutId }: { checkoutId: string }) {
   if (state === 'interrupted') {
     return (
       <>
-        <Alert status="warning" data-testid="club-payment-return" data-state="interrupted">
+        <Alert style="light" status="warning" data-testid="club-payment-return" data-state="interrupted">
           <div className="flex flex-col gap-1">
             <p className="font-semibold">{t('payments.club.return.interrupted.title')}</p>
             <p>{t('payments.club.return.interrupted.body')}</p>
@@ -132,12 +132,12 @@ function Result({ checkoutId }: { checkoutId: string }) {
   const polling = shouldAutoRefresh('in_progress', elapsed)
   return (
     <>
-      <Alert status="information" data-testid="club-payment-return" data-state="in_progress">
+      <Notice data-testid="club-payment-return" data-state="in_progress">
         <div className="flex flex-col gap-1" aria-live="polite">
           <p className="font-semibold">{t('payments.club.return.inProgress.title')}</p>
           <p>{polling ? t('payments.club.return.inProgress.polling') : t('payments.club.return.inProgress.stopped')}</p>
         </div>
-      </Alert>
+      </Notice>
       {!polling ? (
         <div>
           <Button

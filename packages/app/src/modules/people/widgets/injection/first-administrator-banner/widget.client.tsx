@@ -17,7 +17,7 @@ export default function FirstAdministratorBanner() {
   const status = useFirstAdministratorStatus(!onPage)
   if (onPage || !status.data || status.data.administrator) return null
   return (
-    <Alert status="warning" className="mb-4" data-testid="people-first-administrator-banner">
+    <Alert style="light" status="warning" className="mb-4" data-testid="people-first-administrator-banner">
       <AlertTitle>{t('people.firstAdministrator.banner.title')}</AlertTitle>
       <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span>{t('people.firstAdministrator.banner.body')}</span>

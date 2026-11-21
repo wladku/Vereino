@@ -6,6 +6,8 @@
 // same person was assigned to the place again since. After the commit `facilities.place_maintainer.deleted` (undo:
 // `…created`) runs per row. The person's derived role follows through the `people` role sync, which the departure's own
 // `people.*` events start: a synchronous `people.roleSync` call here would wait on the departure's row locks.
+// `erase` (S9.6, #528) clears the contact snapshots of the person's rentals in the anonymisation's transaction, so its
+// audit entry names the table; the `facilities:person-anonymized` subscriber then sets the renter's display name.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { DepartureChange, DepartureContributor, DepartureSubject } from '../../people/services/departure'
@@ -137,6 +139,26 @@ export function createDepartureContribution(container: AwilixContainer): Departu
       if ((await em.count(PlaceMaintainer, { ...scope, personId: subject.personId })) > 0) return true
       if ((await em.count(Rental, { ...scope, renterType: 'person', renterId: subject.personId })) > 0) return true
       return (await em.count(InternalBooking, { ...scope, bookedByPersonId: subject.personId })) > 0
+    },
+
+    async erase(em, subject) {
+      const rows = await em.nativeUpdate(
+        Rental,
+        {
+          tenantId: subject.tenantId,
+          organizationId: subject.organizationId,
+          renterType: 'person',
+          renterId: subject.personId,
+          $or: [
+            { contactName: { $ne: null } },
+            { contactPhone: { $ne: null } },
+            { contactEmail: { $ne: null } },
+            { contactLocale: { $ne: null } },
+          ],
+        },
+        { contactName: null, contactPhone: null, contactEmail: null, contactLocale: null, updatedAt: new Date() },
+      )
+      return { touched: [{ table: 'facilities_rentals', rows }], kept: [] }
     },
   }
 }
