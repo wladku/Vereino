@@ -58,6 +58,7 @@
   "activities.audit.jobs.expire": "Wygaś oczekujące potwierdzenia opiekunów",
   "activities.audit.jobs.generate": "Generowanie terminów",
   "activities.audit.jobs.sendReminders": "Wysłanie przypomnień o deklaracjach",
+  "activities.audit.jobs.purgeDeclarationLinks": "Usunięcie linków do deklaracji nieważnych od 30 dni",
   "activities.audit.occurrences.assignCoach": "Wskazanie prowadzącego termin",
   "activities.audit.occurrences.cancel": "Odwołanie terminu",
   "activities.audit.occurrences.reportAbsence": "Zgłoszona nieobecność prowadzącego",

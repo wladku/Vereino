@@ -1,7 +1,14 @@
 // TEST-F07 (unit part; foundation spec P-10): the raw-token shape, the expiry of a new link, the constant-time hash
 // comparison and the state of a stored link under both use policies.
 import { describe, expect, it } from '@jest/globals'
-import { expiryFor, hashesMatch, isWellFormedToken, tokenLinkState } from '../token-link'
+import {
+  DEAD_LINK_RETENTION_DAYS,
+  deadLinkCutoff,
+  expiryFor,
+  hashesMatch,
+  isWellFormedToken,
+  tokenLinkState,
+} from '../token-link'
 
 const NOW = new Date('2026-11-05T10:00:00.000Z')
 const LATER = new Date('2026-11-05T11:00:00.000Z')
@@ -57,5 +64,12 @@ describe('tokenLinkState', () => {
     expect(tokenLinkState({ expiresAt: LATER }, 'until_expiry', NOW)).toBe('active')
     expect(tokenLinkState({ expiresAt: NOW }, 'until_expiry', NOW)).toBe('expired')
     expect(tokenLinkState({ expiresAt: EARLIER }, 'until_expiry', NOW)).toBe('expired')
+  })
+})
+
+describe('deadLinkCutoff', () => {
+  it('lies DEAD_LINK_RETENTION_DAYS (30) days of 24 hours before now (S9.5)', () => {
+    expect(DEAD_LINK_RETENTION_DAYS).toBe(30)
+    expect(deadLinkCutoff(new Date('2026-11-21T04:00:00.000Z')).toISOString()).toBe('2026-10-22T04:00:00.000Z')
   })
 })

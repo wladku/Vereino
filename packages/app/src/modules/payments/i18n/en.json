@@ -1034,6 +1034,7 @@
   "payments.audit.jobs.remindOverdue": "Remind the payers of overdue charges",
   "payments.audit.jobs.reconcileCheckouts": "Reconcile unfinished online payments",
   "payments.audit.jobs.closeOrderCampaigns": "Close the order campaigns past their deadline",
+  "payments.audit.jobs.purgeOrderLinks": "Delete the order links dead for 30 days",
   "payments.settings.groups.automation": "Automatic charges and reminders",
   "payments.settings.fields.autoGenerateCharges": "Generate the month’s charges automatically",
   "payments.settings.fields.autoGenerateCharges.help": "Every morning the system checks whether the month’s membership fees are due and generates them once, on the day below. A month undone by hand is not generated again.",
