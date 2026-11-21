@@ -191,7 +191,13 @@ describe('BT-TEST-03: batchLabels', () => {
 
 describe('BT-TEST-03: pauseIssue', () => {
   it('describes a tree mismatch with the PRs already merged', () => {
-    const issue = pauseIssue({ reason: 'tree-mismatch', pr: 2, merged: [1, 2], batchHead: sha(9), runUrl: 'https://run' })
+    const issue = pauseIssue({
+      reason: 'tree-mismatch',
+      pr: 2,
+      merged: [1, 2],
+      batchHead: sha(9),
+      runUrl: 'https://run',
+    })
     assert.equal(issue.title, 'Merge train paused: tree-mismatch at #2')
     assert.deepEqual(issue.labels, [PAUSED_LABEL, 'priority-high'])
     assert.match(issue.body, /after merging #2, `main`'s tree differs/)
