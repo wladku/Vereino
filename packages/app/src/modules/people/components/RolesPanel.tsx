@@ -17,16 +17,16 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, periodLabel, periodStatus, type PersonAccount, type RoleAssignmentRow } from './client-helpers'
 import {
-  PickerEmptyHint,
   browserFocusTarget,
+  PickerEmptyHint,
   pickerEmptyState,
-  reloadOnFocusEffect,
-  useClubToday,
   type PickerEmptyState,
+  reloadOnFocusEffect,
+  StatusTag,
+  useClubToday,
 } from '@vereino/ui'
 import { useGrantedFeatures } from './useGrantedFeatures'
 import { RoleAssignmentDialog, type RoleAssignmentDialogMode } from './RoleAssignmentDialog'
@@ -234,9 +234,9 @@ export function RolesPanel({
                   <span className="font-medium">{title}</span>
                   <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                     <span data-testid="people-role-period">{periodLabel(t, row.validFrom, row.validTo)}</span>
-                    <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
+                    <StatusTag status={status === 'active' ? 'success' : 'neutral'}>
                       {t(`people.common.${status}`)}
-                    </StatusBadge>
+                    </StatusTag>
                   </span>
                 </span>
                 {canManage ? (

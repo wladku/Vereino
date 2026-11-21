@@ -16,9 +16,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { emailDeliverySummary } from '../../lib/member-inbox'
 import { CLUB_MESSAGES_HREF, scopeLabel, type ThreadMessageItem, type Translate } from '../client-helpers'
 import { MessageList, ReplyBox } from '../ThreadMessages'
@@ -161,7 +160,7 @@ function Thread({ id }: { id: string }) {
           <span data-testid="club-thread-scope">{scopeLabel(t, thread)}</span>
           {thread.isCase ? (
             <span data-testid="club-thread-case">
-              <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+              <StatusTag status="warning">{t('communication.cases.badge')}</StatusTag>
             </span>
           ) : null}
         </div>

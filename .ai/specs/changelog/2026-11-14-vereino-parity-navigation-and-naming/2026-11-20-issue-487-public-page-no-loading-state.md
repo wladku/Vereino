@@ -1,0 +1,1 @@
+| 2026-11-20 | TEST-N16 (REQ-N15, AC-N15): the public club page is read on the server since #487 (PR #509), so it has no loading state; the test now checks that `/p/[slug]` shows the club with no skeleton and no loading text while the browser read is held, and that the browser never reads the club itself. Member pages keep their skeletons. |

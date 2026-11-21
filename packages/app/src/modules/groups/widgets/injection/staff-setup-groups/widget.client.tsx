@@ -9,11 +9,10 @@ import { useQuery } from '@tanstack/react-query'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { STAFF_STEP_VARIANT, periodStep } from '@vereino/core'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 import { isCoachingRole, type MembershipRole } from '../../../lib/groups-rules'
 import { GROUPS_HREF, type GroupRow, type MembershipRow } from '../../../components/client-helpers'
 import { useCanManageGroups } from '../../../components/useCanManageGroups'
@@ -84,7 +83,7 @@ export default function StaffSetupGroupsWidget({
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{t('groups.staffSetup.title')}</span>
           {query.isSuccess ? (
-            <StatusBadge variant={STAFF_STEP_VARIANT[step]}>{t(`groups.staffSetup.step.${step}`)}</StatusBadge>
+            <StatusTag status={STAFF_STEP_VARIANT[step]}>{t(`groups.staffSetup.step.${step}`)}</StatusTag>
           ) : null}
         </span>
         <span className="text-muted-foreground text-xs">{query.isLoading ? t('groups.common.loading') : detail}</span>

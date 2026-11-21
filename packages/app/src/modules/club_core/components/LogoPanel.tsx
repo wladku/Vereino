@@ -13,10 +13,10 @@ import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/ba
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { FileUploadArea } from '@open-mercato/ui/primitives/file-upload'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { LOGO_MAX_BYTES, type LogoSource } from '../lib/files'
 import { errorMessage } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 export type LogoPanelProps = {
   title: string
@@ -98,9 +98,9 @@ export function LogoPanel(props: LogoPanelProps) {
           </span>
         )}
         <span data-testid={`${props.testId}-source`}>
-          <StatusBadge variant={props.source === 'initial' ? 'neutral' : 'info'}>
+          <StatusTag status={props.source === 'initial' ? 'neutral' : 'info'}>
             {t(`club_core.logo.source.${props.source}`)}
-          </StatusBadge>
+          </StatusTag>
         </span>
         {props.canEdit && props.removable ? (
           <Button type="button" variant="outline" disabled={busy} onClick={() => void remove()}>

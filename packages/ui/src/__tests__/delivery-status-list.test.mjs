@@ -69,17 +69,20 @@ test('a loaded page renders the table in a focusable named scroll region with on
   assert.equal((html.match(/data-testid="delivery-row"/g) ?? []).length, 4)
   assert.match(
     html,
-    /<tr[^>]*data-testid="delivery-row" data-status="sent" data-delivery-id="d1"><td[^>]*>Anna Nowak<\/td><td[^>]*>Guardian, Participant<\/td><td[^>]*>E-mail<\/td><td[^>]*><span class="flex flex-wrap items-center gap-2"><div[^>]*data-variant="success"[^>]*>Sent<\/div><\/span><\/td><td[^>]*>2026-11-02<\/td><\/tr>/,
+    /<tr[^>]*data-testid="delivery-row" data-status="sent" data-delivery-id="d1"><td[^>]*>Anna Nowak<\/td><td[^>]*>Guardian, Participant<\/td><td[^>]*>E-mail<\/td><td[^>]*><span class="flex flex-wrap items-center gap-2"><div[^>]*data-variant="success"[^>]*data-status-tag="success"><span data-slot="badge-leading-icon" aria-hidden="true"[^>]*><svg[^>]*lucide-circle-check.*?<\/svg><\/span>Sent<\/div><\/span><\/td><td[^>]*>2026-11-02<\/td><\/tr>/,
   )
   assert.match(
     html,
-    /data-status="failed" data-delivery-id="d2"><td[^>]*>Unknown recipient<\/td>.*?<div[^>]*data-variant="error"[^>]*>Not delivered<\/div><span class="text-muted-foreground text-xs">Failure: bounced<\/span><\/span><\/td><td[^>]*><\/td><\/tr>/,
+    /data-status="failed" data-delivery-id="d2"><td[^>]*>Unknown recipient<\/td>.*?<div[^>]*data-variant="error"[^>]*>.*?<\/svg><\/span>Not delivered<\/div><span class="text-muted-foreground text-xs">Failure: bounced<\/span><\/span><\/td><td[^>]*><\/td><\/tr>/,
   )
   assert.match(
     html,
-    /data-status="skipped" data-delivery-id="d3">.*?<td[^>]*>Coach<\/td><td[^>]*>In app<\/td>.*?<div[^>]*data-variant="neutral"[^>]*data-appearance="stroke"[^>]*>Skipped<\/div><span class="text-muted-foreground text-xs">Skipped: no_account<\/span>/,
+    /data-status="skipped" data-delivery-id="d3">.*?<td[^>]*>Coach<\/td><td[^>]*>In app<\/td>.*?<div[^>]*data-variant="neutral"[^>]*data-appearance="stroke"[^>]*>.*?<\/svg><\/span>Skipped<\/div><span class="text-muted-foreground text-xs">Skipped: no_account<\/span>/,
   )
-  assert.match(html, /data-status="queued" data-delivery-id="d4">.*?data-variant="neutral"[^>]*>Queued<\/div><\/span>/)
+  assert.match(
+    html,
+    /data-status="queued" data-delivery-id="d4">.*?data-variant="neutral"[^>]*>.*?<\/svg><\/span>Queued<\/div><\/span>/,
+  )
   assert.doesNotMatch(html, /delivery-pagination|delivery-loading/)
 })
 
