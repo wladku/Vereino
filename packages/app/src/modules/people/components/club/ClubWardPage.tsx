@@ -136,7 +136,7 @@ function Ward({ profile, personId }: { profile: MemberProfile; personId: string 
     return (
       <>
         {back}
-        <Alert status="warning" data-testid="club-ward-missing">
+        <Alert style="light" status="warning" data-testid="club-ward-missing">
           <p className="max-w-prose">{t('people.club.ward.notYourWard')}</p>
         </Alert>
       </>

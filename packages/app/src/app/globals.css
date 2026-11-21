@@ -699,6 +699,28 @@ TODO: Fix that latter to have reference by the package names
   --input: oklch(0.56 0 0);
 }
 
+/* ═══ Vereino: checkboxes and radios fill with the primary colour (E20-S13, #492; owner decision 6 in #479) ═══
+   The platform `Checkbox` and `Radio` (Radix: `button[role=checkbox|radio]`) and the native controls filled with
+   `--accent-indigo`; they now take `--primary`, so the token is redirected on these elements only (links and other
+   indigo accents keep it). The checked fill is 17.9:1 on white (light) and 15.7:1 on the page, 14.2:1 on a card
+   (dark); the tick and the radio dot use `--primary-foreground` on it (17.9:1, 14.2:1), since the platform's white radio
+   dot would vanish on the near-white dark `--primary`. Unlayered, so it wins over the platform base layer; check these
+   selectors when an upgrade changes `primitives/checkbox.tsx` or `primitives/radio.tsx`. */
+button[role='checkbox'],
+button[role='radio'] {
+  --accent-indigo: var(--primary);
+  --accent-indigo-foreground: var(--primary-foreground);
+}
+
+button[role='radio'][data-state='checked'] [aria-hidden='true'] {
+  background-color: var(--primary-foreground);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--primary);
+}
+
 /* The AppShell sidebar group headings (`[data-sidebar-group]` toggles, `text-muted-foreground/70`: 2.77:1) read in
    `--muted-foreground` (≥ 4.5:1 on the sidebar in both themes). Unlayered, so it wins over the platform utility; check
    this selector when an upgrade changes the AppShell markup. */

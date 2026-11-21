@@ -104,7 +104,7 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
     )
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (
-      <Alert status="warning" data-testid="club-places-denied">
+      <Alert style="light" status="warning" data-testid="club-places-denied">
         <p className="max-w-prose">{t('facilities.places.errors.forbidden')}</p>
       </Alert>
     )

@@ -1,0 +1,50 @@
+# Retention schedule
+
+> **Status: draft — not approved.** Approved by the product owner on: _(date)_.
+
+Engineering standards S9.5 (and S9.6, S15.7); GDPR art. 5(1)(e) (storage limitation) and art. 30(1)(f). Every row
+names the category, the period, the legal basis for keeping it that long and **the job that enforces it** — or
+**manual** with the reason no job does (ENG-TEST-14). Facts about the code are cited by table and file (paths under
+`packages/app/src/modules/`); the legal periods come from the verified claims in
+[`legal-verification.md`](legal-verification.md). It is not legal advice.
+
+## Schedule
+
+"Job" is a scheduled command registered per club with `registerModuleSchedule`. **Gap** marks a period the standards
+set but no code enforces yet; each gap has an issue.
+
+| # | Category (tables) | Period | Legal basis for the period | Enforced by |
+|---|---|---|---|---|
+| R1 | **Accounting records**: charges, payments, cash handovers, payer reference codes, checkouts, bank imports and transactions (`payments_charges`, `payments_payments`, `payments_cash_handovers`, `payments_payer_refs`, `payments_checkouts`, `payments_bank_imports`, `payments_bank_transactions`), the statement files | **6 full years after the end of the financial year** they concern (S9.5, club setting `accounting_retention_years`, default 6) | art. 6(1)(c) GDPR; *ustawa o rachunkowości* art. 74 ust. 2–3 (at least 5 years from the start of the year after the financial year) and *Ordynacja podatkowa* art. 70 § 1, art. 86 § 1 (the sixth year) — B3 confirmed | **Gap — manual until built.** No sweep exists and the setting `accounting_retention_years` is not built (`payments_settings` has no retention column). Nothing is deleted early, so the legal minimum is kept; the risk is keeping too long. Owner: E19-S04 (#470) hands the sweep to the club spec |
+| R1a | Accounting records of a **loan, credit, commercial contract or claim pursued in civil, criminal or tax proceedings** | 5 years from the start of the year after the matter is **finally settled** | *ustawa o rachunkowości* art. 74 ust. 2 pkt 4 — B3 corrected | **Gap — manual.** The future sweep must skip them (#475); until then nothing is deleted |
+| R2 | **Name of an anonymised person who has booked payments** (`people_persons.first_name`, `last_name`) | until `erasure_hold_until`: 31 December of (year of the latest payment on a charge where the person is debtor or payer + 5) (`payments/lib/departure.ts`, `RETENTION_YEARS = 5`) | art. 6(1)(c); accounting records must stay attributable (S9.6) | **Job `people:life-cycle`** (daily 01:30), step `erasure_names` (`people/services/life-cycle.ts`). **Open item R-A:** this hold ends one year earlier than R1 (end of year N+5 instead of the end of N+6 for a payment in year N); #526 |
+| R3 | **Former participants' non-accounting data**: profile, contacts, birth date, PESEL, notes, photo, consents, guardianships, memberships, attendance, declarations (`people_persons`, `people_guardianships`, `groups_memberships`, `activities_attendances`) | anonymised **12 months after the last membership ends**, period as a club setting (ENG-Q-07, overriding club spec Q-019) | art. 6(1)(b) ends with the membership; 12 months covers settling the last season and returning members | **Gap — manual until built.** Today only on request through `people.persons.anonymize` (see [`data-subject-requests.md`](data-subject-requests.md)); the people life-cycle spec still says "no time-based deletion" and is overridden by ENG-Q-07. The sweep is E19-S05 (#471) |
+| R4 | **Platform user account** of a person who left (`auth` user linked by `people_persons.user_id`) | deleted the day after `left_on` | no basis to keep sign-in after membership | **Job `people:life-cycle`**, step `departed_accounts` (`people/services/departure-accounts.ts`); also `people:sync-role-expiry` (daily 02:00) |
+| R5 | **Import files and rows** (`people_imports.file_attachment_id`, `people_import_rows.raw`) | 30 days after the import is committed, cancelled or left in preview (`IMPORT_RETENTION_DAYS = 30`, `people/lib/import-rules.ts`) | only needed to review and correct the import | **Job `people:purge-import-rows`** (daily 04:00, `people/commands/jobs.ts`) |
+| R6 | **Unconfirmed online rental requests** (`facilities_rentals` with `email_verified_at` empty) | 1 hour (`REQUEST_VERIFICATION_TTL_MS`, `facilities/lib/requests.ts`) | the requester never confirmed the e-mail; no relation exists | **Job `facilities:expire-requests`** (every 15 min), hard delete (`facilities/commands/requests.ts`) |
+| R7 | **Expired, rejected or closed rental requests of outside renters**: contact name, phone, e-mail, purpose, notes (`facilities_rentals`) | no period set; proposal: 12 months after the rental date or the decision, accounting rows of a paid rental as R1 | art. 6(1)(b) (steps before a contract); art. 6(1)(f) for disputes | **Manual — no period decided.** Open item R-B |
+| R8 | **E-mail address of a delivery** (`foundation_deliveries.email`, `secret_params`) | until the delivery reaches a final state | needed only to send | **Job `foundation:dispatch-sweep`** (every 2 min) nulls them (`FINAL_STATE_WIPE`, `foundation/data/queries.ts`) |
+| R8a | **Delivery and dispatch rows** (`foundation_deliveries.person_id`, `email_hash`, `reasons`; `foundation_dispatches.params`) | no period set; proposal: as R3 for the person's rows | art. 6(1)(f) — proof that a notice was sent | **Manual — no period decided.** Open item R-C. An erasure (`people.persons.anonymize`, #528) clears `person_id`, `user_id` and `email_hash` of the person's deliveries |
+| R9 | **Personal-link tokens**: declaration links, order links, rental links (`activities_declaration_tokens`, `payments_order_links`, `facilities_rental_links` — SHA-256 hashes with `expires_at`) | **deleted 30 days after use or expiry** (S9.5) | the link is dead; keeping it has no purpose | **Gap — manual until built.** No job deletes them (lifetimes: 31 days, 120 days, until the rental starts). Open item R-D, #525 |
+| R10 | **Messages** (`communication_threads`, `communication_thread_messages`, participants, reads) | no period set; proposal: as R3 | art. 6(1)(b) | **Manual — no period decided.** Erasure does not touch message bodies (people life-cycle spec Q-L21). Open item R-C |
+| R11 | **Orders**: contact e-mail and phone, print name, notes (`payments_orders`) | contact and print data: as R3; the order's charge: R1 | art. 6(1)(b); R1 for the money | **Erasure** (`people.persons.anonymize`, #528) clears contact e-mail, phone, notes and print name of the person's orders; no job clears them otherwise (as R3) |
+| R12 | **Safety and operations logs**: contact access log (`activities_contact_access_log`, ids only), facility logs (`facilities_logs`), incidents and photos (`facilities_incidents`, `facilities_incident_photos`), entry bans (`facilities_entry_bans`) | no period set; proposal: 3 years (limitation of most civil claims), entry bans until they end + 12 months | art. 6(1)(f) — safety, liability (S9.2) | **Manual — no period decided.** Open item R-C |
+| R13 | **Departure requests** (`people_departure_requests`) | no period set; note and decline reason are cleared on erasure | art. 6(1)(b), 6(1)(c) where it carries an erasure request (proof of art. 17) | **Manual — no period decided.** Open item R-C |
+| R14 | **Staff contracts** (`club_core_contracts`, coach rates in `terms`) | as R1 when the contract is the basis of payments; otherwise until the contract ends + 3 years | art. 6(1)(b), 6(1)(c) | **Manual — no period decided.** Open item R-C |
+| R15 | **Audit log snapshots** (`action_logs`, platform `audit_logs`): person snapshots from create, update and consent commands hold names, birth date, e-mail, phone | no period set | art. 6(1)(f) — accountability, art. 5(2) | **Manual — gap.** Anonymisation does not purge earlier snapshots (people life-cycle spec V-L03, pending). Open item R-F |
+| R16 | **Application logs** (Railway) | 7 days (Railway Hobby; S9.5 allows 30) | art. 6(1)(f) — operation and security | **Railway platform retention** ([`monitoring.md`](../ops/monitoring.md)). Logs must hold no personal data (S15.1) |
+| R17 | **Backups** (encrypted `pg_dump` at the backup provider) | 30 daily and 12 monthly copies | art. 32(1)(c) — restore after an incident | **Job: the backup cron service** prunes older copies (`scripts/backup-dump.mjs`, [`backups.md`](../ops/backups.md)). Erased or anonymised data **persist in backups until the copy expires — up to about 13 months** through the monthly copies (S15.7 assumed 30 days); a restore must re-apply anonymisations done after the dump (open item R-G) |
+| R18 | **Stripe-side payment data** | Stripe's own retention | Stripe is an independent controller ([`processors.md`](processors.md) P-3) | **Stripe** — not under the club's control |
+| R19 | **Queue and cache** (Redis) | transient; jobs are re-derived from PostgreSQL (S15.8) | — | **Redis/BullMQ** job removal; holds ids, not personal data |
+
+## Open items
+
+| Id | What | Owner |
+|---|---|---|
+| R-A | The name hold (R2, `RETENTION_YEARS = 5` → end of year N+5) is one year shorter than the accounting period (R1, end of N+6). Decide which is right; if R1, change the constant or read `accounting_retention_years` | product owner — #526 |
+| R-B | Period for undecided, expired and rejected rental requests of outside renters | product owner, club |
+| R-C | Periods for delivery rows, messages, safety logs, departure requests and staff contracts (R8a, R10, R12–R14); E19-S04 (#470) writes them into the club spec | product owner, #470 |
+| R-D | Job deleting dead link tokens 30 days after use or expiry (S9.5) | #525 |
+| R-E | ~~Order contact data are not cleared on anonymisation~~ — cleared since #528 | #528 |
+| R-F | Audit snapshots keep erased data (V-L03) | people life-cycle spec |
+| R-G | Backups keep erased data up to ~13 months; the restore runbook must re-apply later anonymisations, and the privacy notice (E19-S03, #469) must say so | product owner, #469 |

@@ -5,9 +5,9 @@ export const metadata = {
   requireFeatures: ['activities.reports.view'],
   pageTitle: 'Coach units report',
   pageTitleKey: 'activities.reports.coachUnits.title',
-  pageGroup: 'Schedule',
-  pageGroupKey: 'activities.nav.group',
-  pageOrder: 25,
+  pageGroup: 'Classes',
+  pageGroupKey: 'groups.nav.group',
+  pageOrder: 40,
   icon: 'calculator',
   breadcrumb: [{ label: 'Coach units report', labelKey: 'activities.reports.coachUnits.title' }],
 }

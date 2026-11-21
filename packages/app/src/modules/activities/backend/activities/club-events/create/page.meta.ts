@@ -3,8 +3,8 @@ export const metadata = {
   requireFeatures: ['activities.manage'],
   pageTitle: 'New club event',
   pageTitleKey: 'activities.clubEvents.create.title',
-  pageGroup: 'Schedule',
-  pageGroupKey: 'activities.nav.group',
+  pageGroup: 'Classes',
+  pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [
     { label: 'Club events', labelKey: 'activities.clubEvents.title', href: '/backend/activities/club-events' },

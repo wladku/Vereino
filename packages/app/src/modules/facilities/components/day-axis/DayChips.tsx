@@ -21,6 +21,7 @@ export function ChipRow({
   onSelect,
   onKeyDown,
   testId,
+  className = '',
 }: {
   label: string
   chips: readonly Chip[]
@@ -29,6 +30,8 @@ export function ChipRow({
   onSelect: (value: string) => void
   onKeyDown?: (event: React.KeyboardEvent) => void
   testId: string
+  /** Extra layout classes for the row (the day chips share a row with the date field from `md`). */
+  className?: string
 }) {
   const currentRef = React.useRef<HTMLButtonElement | null>(null)
   React.useEffect(() => {
@@ -38,7 +41,7 @@ export function ChipRow({
     <div
       role="group"
       aria-label={label}
-      className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap"
+      className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap ${className}`}
       data-testid={testId}
     >
       {chips.map((chip) => {
@@ -119,8 +122,11 @@ export function DayChips({
           onSelect={onSelect}
           onKeyDown={moveByArrow}
           testId="facilities-calendar-day"
+          className="md:min-w-0 md:flex-1"
         />
-        <div className="flex items-center gap-2">
+        {/* From `md` the chips wrap in the space the date field leaves; the field keeps its width (#495: at 768 px it
+            stuck out of the page by 13 px). */}
+        <div className="flex items-center gap-2 md:shrink-0">
           <Label htmlFor={`${id}-other`} className="shrink-0">
             {t('facilities.calendar.otherDay')}
           </Label>

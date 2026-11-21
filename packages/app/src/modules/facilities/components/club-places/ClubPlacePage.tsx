@@ -22,7 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
-import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
+import { formatDayHeading, MemberSkeleton, Notice } from '@vereino/ui'
 import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
 import { flashFlagged } from '../maintenance-client'
 import { RENTALS_KEY } from '../rentals-client'
@@ -122,7 +122,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
     body = <MemberSkeleton shape="rows" label={t('facilities.places.loading')} data-testid="club-place-loading" />
   } else if (!calendar && calendarErrorStatus(query.error) === 403) {
     body = (
-      <Alert status="warning" data-testid="club-place-denied">
+      <Alert style="light" status="warning" data-testid="club-place-denied">
         <p className="max-w-prose">{t('facilities.places.errors.forbidden')}</p>
       </Alert>
     )
@@ -141,9 +141,9 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
     body = (
       <>
         {!day || day.zones.length === 0 ? (
-          <Alert status="information" data-testid="club-place-no-zones">
+          <Notice data-testid="club-place-no-zones">
             <p className="max-w-prose">{t('facilities.places.noZones')}</p>
-          </Alert>
+          </Notice>
         ) : null}
         <DayAxis
           date={date}

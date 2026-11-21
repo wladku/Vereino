@@ -19,6 +19,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { CONTRACT_KINDS, contractRateColumns } from '../lib/contracts'
 import { errorMessage, type TableColumns, type Translate } from './client-helpers'
 import { formatRate, type ContractRow } from './contracts-shared'
@@ -110,7 +111,7 @@ export function ContractsTable() {
     setPage(1)
   }
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['club_core-contracts', filters, page, scopeVersion, institutionId],
     queryFn: () =>
       fetchCrudList<ContractRow>('club_core/contracts', {
@@ -193,7 +194,15 @@ export function ContractsTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('club_core.contracts.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('club_core.contracts.errors.load')}
+              retryLabel={t('club_core.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('club_core.contracts.empty')}</p>}
         filters={filterDefs}
         filterValues={filters}

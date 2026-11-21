@@ -8,7 +8,7 @@
 
 ## Goal
 
-Resolve V-7, V-10 and V-13 of `.ai/specs/2026-10-27-vereino-facilities.md` against the installed `@open-mercato/*` 0.9.0 packages and record where opening hours live.
+Resolve V-7, V-10 and V-13 of `.ai/specs/implemented/2026-10-27-vereino-facilities.md` against the installed `@open-mercato/*` 0.9.0 packages and record where opening hours live.
 
 ## Findings
 
@@ -24,7 +24,7 @@ Resolve V-7, V-10 and V-13 of `.ai/specs/2026-10-27-vereino-facilities.md` again
 
 ## Files changed
 
-- `.ai/specs/2026-10-27-vereino-facilities.md`: status line; DD-21, DD-36, new DD-41; *Opening hours* vocabulary row; the CRUD, public request and verify-token API rows; TEST-024, TEST-036; phase readiness, deliverables and steps 1, 2, 9; Final Compliance Report rows and verdict; Open Questions V-7, V-10, V-13; changelog.
+- `.ai/specs/implemented/2026-10-27-vereino-facilities.md`: status line; DD-21, DD-36, new DD-41; *Opening hours* vocabulary row; the CRUD, public request and verify-token API rows; TEST-024, TEST-036; phase readiness, deliverables and steps 1, 2, 9; Final Compliance Report rows and verdict; Open Questions V-7, V-10, V-13; changelog.
 - `.ai/specs/2026-10-20-vereino-club-management.md`: the three opening-hours mentions point at DD-41; changelog.
 - This run log.
 

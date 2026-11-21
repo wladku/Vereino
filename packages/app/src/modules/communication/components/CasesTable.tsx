@@ -14,6 +14,7 @@ import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   errorMessage,
   formatDateTime,
@@ -125,6 +126,15 @@ export function CasesTable() {
         columns={columns}
         data={items}
         isLoading={query.isFetching}
+        error={
+          query.error ? (
+            <TableLoadError
+              message={t('communication.cases.errors.load')}
+              retryLabel={t('communication.actions.retry')}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null
+        }
         onRowClick={(row: ThreadListItem) => {
           router.push(threadHref(row.id))
         }}

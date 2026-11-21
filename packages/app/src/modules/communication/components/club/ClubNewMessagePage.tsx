@@ -38,7 +38,8 @@ import {
 } from '../client-helpers'
 import { BODY_MAX, SUBJECT_MAX } from '../../lib/thread-rules'
 import { INBOX_QUERY_KEY } from './ClubMessagesPage'
-import { MessagesClubFrame } from './MessagesClubFrame'
+import { isStaff } from '../../lib/member-inbox'
+import { MessagesClubFrame, type MessagesProfile } from './MessagesClubFrame'
 import { hasStaff, useDirectOptions } from './useDirectOptions'
 
 type Recipient = { key: string; groupId: string; to: 'coaches' | 'coordinator'; label: string; names: string }
@@ -92,6 +93,25 @@ function sendError(t: Translate, status: number, code: string | null): string {
   return t('communication.direct.errors.send')
 }
 
+/**
+ * Nobody to write to (E20-S10, #489): staff write to a group with an announcement — from the session ("Message the
+ * group") or "New announcement" in the inbox — so they get that way forward instead of the household's text; a
+ * member who is also a guardian or a participant still reads why their household has nobody to write to.
+ */
+function NobodyToWrite({ staff }: { staff: boolean }) {
+  const t = useT()
+  return (
+    <div className="flex flex-col items-start gap-2" data-testid="club-direct-empty" data-staff={staff ? '1' : '0'}>
+      <p className="text-muted-foreground max-w-prose">
+        {t(staff ? 'communication.direct.emptyStaff' : 'communication.direct.empty')}
+      </p>
+      <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
+        {t(staff ? 'communication.direct.emptyStaff.inbox' : 'communication.club.back')}
+      </Link>
+    </div>
+  )
+}
+
 /** What is missing before a send, in the order of the fields: the subject, then the message. */
 function problemsOf(t: Translate, id: string, subject: string, body: string): FieldProblem[] {
   return [
@@ -102,7 +122,7 @@ function problemsOf(t: Translate, id: string, subject: string, body: string): Fi
   ]
 }
 
-function Composer({ options }: { options: DirectOption[] }) {
+function Composer({ options, staff }: { options: DirectOption[]; staff: boolean }) {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -118,16 +138,7 @@ function Composer({ options }: { options: DirectOption[] }) {
   // After the first send the problems follow the typing, so a fixed field loses its error at once.
   const [attempted, setAttempted] = React.useState(false)
 
-  if (subjects.length === 0) {
-    return (
-      <div className="flex flex-col items-start gap-2" data-testid="club-direct-empty">
-        <p className="text-muted-foreground">{t('communication.direct.empty')}</p>
-        <Link href={CLUB_MESSAGES_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
-          {t('communication.club.back')}
-        </Link>
-      </div>
-    )
-  }
+  if (subjects.length === 0) return <NobodyToWrite staff={staff} />
 
   const recipient = recipients.find((entry) => entry.key === recipientKey) ?? null
   const problems = attempted ? problemsOf(t, id, subject, body) : []
@@ -278,7 +289,7 @@ function Composer({ options }: { options: DirectOption[] }) {
         />
       </div>
       {error ? (
-        <Alert status="error" data-testid="club-direct-error">
+        <Alert style="light" status="error" data-testid="club-direct-error">
           <p>{error}</p>
         </Alert>
       ) : null}
@@ -294,7 +305,7 @@ function Composer({ options }: { options: DirectOption[] }) {
   )
 }
 
-function NewMessage() {
+function NewMessage({ profile }: { profile: MessagesProfile }) {
   const t = useT()
   const query = useDirectOptions()
   let body: React.ReactNode
@@ -312,7 +323,7 @@ function NewMessage() {
       />
     )
   } else {
-    body = <Composer options={query.data} />
+    body = <Composer options={query.data} staff={isStaff(profile.contexts)} />
   }
   return (
     <>
@@ -326,5 +337,5 @@ function NewMessage() {
 }
 
 export function ClubNewMessagePage() {
-  return <MessagesClubFrame skeleton="fields">{() => <NewMessage />}</MessagesClubFrame>
+  return <MessagesClubFrame skeleton="fields">{(profile) => <NewMessage profile={profile} />}</MessagesClubFrame>
 }

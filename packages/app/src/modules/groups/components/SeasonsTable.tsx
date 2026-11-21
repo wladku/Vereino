@@ -17,6 +17,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { GroupsNav } from './GroupsNav'
 import { SEASONS_HREF, errorMessage, type SeasonRow, type TableColumns, type Translate } from './client-helpers'
 import { useCanManageGroups } from './useCanManageGroups'
@@ -54,7 +55,7 @@ export function SeasonsTable() {
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['groups-seasons', search, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<SeasonRow>('groups/seasons', {
@@ -105,7 +106,15 @@ export function SeasonsTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('groups.seasons.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('groups.seasons.errors.load')}
+                retryLabel={t('groups.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={<p className="text-muted-foreground text-sm">{t('groups.seasons.empty')}</p>}
           searchValue={search}
           searchPlaceholder={t('groups.seasons.search')}

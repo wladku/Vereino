@@ -125,7 +125,7 @@ function RequestCard({
       </div>
 
       {item.conflicts.length > 0 ? (
-        <Alert status="error" data-testid={`facilities-request-conflicts-${item.id}`}>
+        <Alert style="light" status="error" data-testid={`facilities-request-conflicts-${item.id}`}>
           <AlertTitle>{t('facilities.requests.card.conflict')}</AlertTitle>
           <AlertDescription>
             <ul className="list-disc ps-4">

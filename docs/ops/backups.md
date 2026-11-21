@@ -17,8 +17,9 @@ after data loss.
 ## How it works
 
 - **Job image** `docker/backup/Dockerfile`: Node 24 Alpine with the PostgreSQL 17 client, `age` and `rclone`, plus
-  `scripts/backup-dump.mjs`, `scripts/backup-restore.mjs` and `scripts/backup-common.mjs`. No application code, no npm
-  dependency.
+  `scripts/backup-dump.mjs`, `scripts/backup-restore.mjs`, `scripts/backup-common.mjs` and the dependency-free
+  operations-signal helper `packages/app/scripts/vereino-ops-signal.mjs` of the E18-S04 alerts. No application code,
+  no npm dependency.
 - **Dump** (`scripts/backup-dump.mjs`): `pg_dump` streams straight into `age`, so the unencrypted dump never touches a
   disk; the ciphertext is uploaded with `rclone`, the first copy of a month is uploaded a second time as the monthly
   copy, and copies beyond 30 daily and 12 monthly are deleted. Only files named `vereino-…dump.age` in `daily/` and
@@ -39,18 +40,26 @@ after data loss.
 | `BACKUP_S3_REGION` | optional; the provider's region when its endpoint needs one |
 | `BACKUP_S3_PREFIX` | optional folder inside the bucket, for example `production` |
 | `BACKUP_AGE_RECIPIENTS_FILE` | optional; defaults to `docker/backup/age-recipients.txt` in the image |
+| `VEREINO_OPS_BACKUP_HEARTBEAT_URL` | optional; the ping URL of the backup heartbeat check (`docs/ops/monitoring.md` → *Heartbeat checks*). Unset, the job pings nothing |
 
 The job refuses to start when a variable is missing (it logs the variable names, never their values) or when the
 recipients file holds no `age1…` key, so it can never upload an unencrypted or unreadable dump.
 
 ### Logs and the alert
 
-Every line the job prints is one JSON object with `"job":"backup:dump"`. A successful run ends with
-`"msg":"backup.dump.succeeded"` (object key, size in bytes, copies pruned, duration). Any failure prints one line at
+Every line the job prints is one JSON object. Its own lines carry `"job":"backup:dump"`: a successful run ends with
+`"msg":"backup.dump.succeeded"` (object key, size in bytes, copies pruned, duration); any failure prints one line at
 level `error` with `"msg":"backup.dump.failed"` and a `reason` (`missing-variable`, `no-recipient`, `dump-failed`,
-`upload-failed`, `list-failed`, `prune-failed`, `unexpected`) and exits 1. The Railway log alert of E18-S04 (#465)
-watches `backup.dump.failed`, and a missing `backup.dump.succeeded` for 26 hours (S15.5). Logs never hold a
-connection string, a credential or row data; tool messages are cut to their headline with URLs and passwords redacted.
+`upload-failed`, `list-failed`, `prune-failed`, `unexpected`) and exits 1.
+
+Railway Hobby has no log-match alerts (`docs/ops/monitoring.md`), so the alert is the **backup heartbeat check** of
+E18-S04 (#465, #519). At the end of every run the job writes one operations line (`"signal":"vereino.ops.backup.succeeded"`
+or `"signal":"vereino.ops.backup.failed"` with the failed `step`, the documented log filter) and, when
+`VEREINO_OPS_BACKUP_HEARTBEAT_URL` is set, pings `<url>` after a successful dump or `<url>/fail` after a failed one.
+The check alerts at once on a `/fail` ping and after 26 hours without a success ping (period 1 day + grace 2 h,
+S15.5), which also catches a run that never started. A refused ping is logged as `"msg":"backup.heartbeat.failed"`
+and does not change the exit code. Logs never hold a connection string, a credential, the heartbeat URL or row data;
+tool messages are cut to their headline with URLs and passwords redacted.
 
 ## Owner setup (once)
 
@@ -62,7 +71,9 @@ connection string, a credential or row data; tool messages are cut to their head
    To rotate the key, add the new public key, keep the old private key until the last copy encrypted to it has
    expired (12 months), then remove the old public key.
 4. In the Railway project add a service from this repository with the config file `railway.backup.toml` and the
-   variables above. Run it once by hand ("Run now") and check the log for `backup.dump.succeeded`.
+   variables above, including `VEREINO_OPS_BACKUP_HEARTBEAT_URL` once the heartbeat check exists
+   (`docs/ops/monitoring.md` → *Owner setup*). Run it once by hand ("Run now") and check the log for
+   `backup.dump.succeeded` and the check for its first success ping.
 
 ## Restore drill (ENG-TEST-10)
 

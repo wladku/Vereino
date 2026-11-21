@@ -28,6 +28,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { OCCURRENCE_STATUSES } from '../lib/activities-rules'
 import {
   OCCURRENCE_PERSPECTIVES,
@@ -55,7 +56,6 @@ import {
   OCCURRENCES_HREF,
   activityHref,
   dateLabel,
-  errorMessage,
   groupOptions,
   occurrenceHref,
   sectionOptions,
@@ -348,7 +348,7 @@ function SessionsList({
   const [moving, setMoving] = React.useState<OccurrenceRow | null>(null)
   const pinned = perspectiveQuery(perspective)
 
-  const { data, isLoading, error, dataUpdatedAt } = useQuery({
+  const { data, isLoading, error, dataUpdatedAt, refetch } = useQuery({
     queryKey: ['activities-occurrences', perspective, activityId, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<OccurrenceRow>('activities/occurrences', {
@@ -464,7 +464,15 @@ function SessionsList({
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('activities.occurrences.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('activities.occurrences.errors.load')}
+              retryLabel={t('activities.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<ViewEmptyState perspective={perspective} canCreate={features.manage} t={t} />}
         filters={filterDefs}
         filterValues={filters}
@@ -597,7 +605,7 @@ export function ActivitySessions({ activityId }: { activityId: string }) {
   const router = useRouter()
   const [page, setPage] = React.useState(1)
   const rowActions = useOccurrenceRowActions(t)
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-occurrences', 'activity', activityId, page],
     queryFn: () =>
       fetchCrudList<OccurrenceRow>('activities/occurrences', {
@@ -619,7 +627,15 @@ export function ActivitySessions({ activityId }: { activityId: string }) {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('activities.occurrences.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('activities.occurrences.errors.load')}
+              retryLabel={t('activities.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('activities.activities.record.sessionsEmpty')}</p>}
         actions={
           <Button asChild variant="outline" size="sm">

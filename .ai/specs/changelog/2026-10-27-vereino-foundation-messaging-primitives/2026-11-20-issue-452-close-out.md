@@ -1,0 +1,1 @@
+| 2026-11-20 | E17-S01 (#452): close-out — 13 of 14 acceptance criteria ticked with merged-PR and test evidence; without evidence: AC-M11 (the club, payments and facilities spec amendments landed in #45, but no test or scripted audit proves them); status In progress |

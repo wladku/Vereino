@@ -6,7 +6,7 @@ export const metadata = {
   requireFeatures: ['facilities.log.write'],
   pageTitle: 'Log and incidents',
   pageTitleKey: 'facilities.records.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 55,
   icon: 'triangle-alert',

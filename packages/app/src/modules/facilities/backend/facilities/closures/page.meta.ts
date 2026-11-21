@@ -6,7 +6,7 @@ export const metadata = {
   requireFeatures: ['facilities.view'],
   pageTitle: 'Zones and rates',
   pageTitleKey: 'facilities.rules.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 30,
   icon: 'calendar-off',

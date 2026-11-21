@@ -18,6 +18,7 @@ import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { ACTIVITY_TYPES, typeLabelKey, type ActivityType } from '../lib/activities-rules'
 import { perspectiveHref } from '../lib/occurrence-list'
 import {
@@ -26,7 +27,6 @@ import {
   OCCURRENCES_HREF,
   activityHref,
   clubEventRecordHref,
-  errorMessage,
   groupOptions,
   ruleSummary,
   sectionOptions,
@@ -184,7 +184,7 @@ export function ActivitiesTable() {
   })
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-activities', search, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ActivityRow>('activities/activities', {
@@ -264,7 +264,15 @@ export function ActivitiesTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('activities.activities.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('activities.activities.errors.load')}
+              retryLabel={t('activities.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={
           <div data-testid="activities-empty">
             <EmptyState

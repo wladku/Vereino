@@ -19,6 +19,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   RENTAL_LIST_STATUSES,
   RENTAL_VIEWS,
@@ -31,14 +32,7 @@ import {
 import { ListEmptyState } from './FacilitiesControls'
 import { useRentalActions } from './RentalRowActions'
 import { SlotDialog } from './slot/SlotDialog'
-import {
-  minorToAmount,
-  placeLabel,
-  usePlaceOptions,
-  errorMessage,
-  type TableColumns,
-  type Translate,
-} from './facilities-client'
+import { minorToAmount, placeLabel, usePlaceOptions, type TableColumns, type Translate } from './facilities-client'
 import {
   REQUESTS_HREF,
   RENTALS_API,
@@ -205,7 +199,7 @@ export function RentalsTable() {
   const [createKey, setCreateKey] = React.useState(0)
 
   const query = rentalListQuery(state)
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [RENTALS_KEY, 'list', query, state.page, scopeVersion],
     queryFn: () =>
       fetchCrudList<RentalRow>(RENTALS_API, {
@@ -386,7 +380,15 @@ export function RentalsTable() {
                 columns={columns}
                 data={data?.items ?? []}
                 isLoading={isLoading}
-                error={error ? errorMessage(error, t('facilities.rentals.errors.load')) : null}
+                error={
+                  error ? (
+                    <TableLoadError
+                      message={t('facilities.rentals.errors.load')}
+                      retryLabel={t('facilities.common.retry')}
+                      onRetry={() => void refetch()}
+                    />
+                  ) : null
+                }
                 filters={filterDefs}
                 filterValues={{ placeId: state.placeId }}
                 onFiltersApply={(values: FilterValues) => {

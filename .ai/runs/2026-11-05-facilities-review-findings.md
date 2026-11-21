@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` (documentation route), cezar worktree `145c8ae5`
 - **Trigger:** cezar task "167"
 - **Issue / branch:** #167, `docs/issue-167-facilities-review-findings` from `main` at `75d999a`
-- **Spec:** `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5, E08 #119)
+- **Spec:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (phase 5, E08 #119)
 - **Status:** completed, PR open for review
 
 ## Goal
@@ -40,7 +40,7 @@ Resolve every facilities-related finding of the 2026-10-26 architectural review 
 
 ## Files changed
 
-- `.ai/specs/2026-10-27-vereino-facilities.md`
+- `.ai/specs/implemented/2026-10-27-vereino-facilities.md`
 - `.ai/specs/2026-10-27-vereino-club-payments.md`
 - `.ai/runs/2026-10-26-spec-architectural-review.md`
 - `.ai/runs/2026-11-05-facilities-review-findings.md` (this log)

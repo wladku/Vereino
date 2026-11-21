@@ -5,9 +5,9 @@ export const metadata = {
   requireFeatures: ['activities.view'],
   pageTitle: 'Declaration policies',
   pageTitleKey: 'activities.policies.title',
-  pageGroup: 'Schedule',
-  pageGroupKey: 'activities.nav.group',
-  pageOrder: 30,
+  pageGroup: 'Classes',
+  pageGroupKey: 'groups.nav.group',
+  pageOrder: 50,
   icon: 'shield-check',
   breadcrumb: [{ label: 'Declaration policies', labelKey: 'activities.policies.title' }],
 }
