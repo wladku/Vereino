@@ -457,7 +457,7 @@
   "facilities.places.maintenance.intro": "Zadania miejsc, którymi się opiekujesz: co jest do zrobienia, co zaplanowane, a co wykonane.",
   "facilities.places.maintenance.loading": "Wczytywanie zadań…",
   "facilities.places.maintenance.empty": "Brak zadań na Twoich miejscach",
-  "facilities.places.maintenance.forbidden": "Ta lista jest dla osób, które opiekują się miejscem.",
+  "facilities.places.maintenance.forbidden": "Ta lista jest dla osób, które opiekują się miejscem. Opiekuna miejsca wyznacza administrator klubu w panelu: Obiekty → Konserwacja → Opiekunowie — poproś go o przypisanie, jeśli dbasz o miejsce.",
   "facilities.places.maintenance.groups.due": "Do zrobienia",
   "facilities.places.maintenance.groups.planned": "Zaplanowane",
   "facilities.places.maintenance.groups.done": "Wykonane",

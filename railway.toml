@@ -3,6 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# ADR-013, S14.5: migrations and the role-ACL sync run once per deploy, before the new release takes traffic. A failure
+# fails the deploy and the previous release keeps serving. The start command never runs `yarn initialize`.
+preDeployCommand = ["sh ./scripts/railway-predeploy.sh"]
 healthcheckPath = "/api/healthz"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

@@ -167,3 +167,30 @@ const FIELD_OF_CODE: ReadonlyMap<string, SessionEditField> = new Map([
 export function sessionEditFieldOfError(code: string | null): SessionEditField | null {
   return code ? (FIELD_OF_CODE.get(code) ?? null) : null
 }
+
+/**
+ * Why the edit form refuses a session, so the refusal names the way forward for the reader's case (E20-S10, #489):
+ * `not_yours` — the session is outside the caller's groups and sections (a 403 read, or the coordinator's read that
+ * offers no edit); `not_planned` — cancelled or settled; `club_event_part` — a part session, moved by the club event's
+ * organisers; `coach_series` — a coach's session of a series, moved by the section coordinator. Null: the form shows.
+ */
+export type SessionEditRefusal = 'not_yours' | 'not_planned' | 'club_event_part' | 'coach_series'
+
+export function sessionEditRefusal(
+  read:
+    | { status: 'forbidden' }
+    | { status: 'ok'; mayEdit: boolean; planned: boolean; partOfClubEvent: boolean; as: 'coach' | 'coordinator' },
+): SessionEditRefusal | null {
+  if (read.status === 'forbidden') return 'not_yours'
+  if (!read.planned) return 'not_planned'
+  if (read.mayEdit) return null
+  if (read.partOfClubEvent) return 'club_event_part'
+  return read.as === 'coach' ? 'coach_series' : 'not_yours'
+}
+
+/** The refusal of a 403 save, by its code: the same reasons as the read's (`scope_denied` and any other code: not yours). */
+export function sessionEditRefusalOfCode(code: string | null): SessionEditRefusal {
+  if (code === 'coach_edit_series_session') return 'coach_series'
+  if (code === 'club_event_part_managed_by_event') return 'club_event_part'
+  return 'not_yours'
+}
