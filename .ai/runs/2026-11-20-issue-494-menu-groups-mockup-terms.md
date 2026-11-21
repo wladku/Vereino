@@ -107,3 +107,19 @@ seven module catalog pairs; `src/modules.ts`; `scripts/check-glossary.mjs`, its 
   the session). "Trener" stays in `refusal.coach_series`, where it names the role.
 - Results: `node scripts/check-glossary.mjs` 0 problems; `yarn verify` all 18 steps passed;
   `yarn test:integration:vereino --filter TEST-489` 1 passed; `--filter TEST-A16` 1 passed.
+
+## Follow-up run 2026-11-21: merge-train failure on PR #513, shard 2/6 (om-auto-fix-pr)
+
+- Trigger: label `merge-train-failed`; required checks `integration (shard 2/6)` and `integration` failed (run
+  44854256673).
+- Cause (test bug, not a flake): ISSUE-485, which arrived from `main` with #509 (#485), expects the window title of
+  `/backend/club/publication` to be `club_core.publication.title` ("Club page publication — Vereino"). This PR gives
+  the page the mockup's short label `club_core.nav.publication` ("Publication — Vereino") on purpose; the heading and
+  breadcrumb keep the long title. The retry failed differently only because the first attempt had already published
+  the club page (`/` led to `/p/qa-home-club`, not `/login`).
+- Steps: detached HEAD at `origin/fix/issue-494-menu-groups-mockup-terms` (already contained `origin/main`); updated
+  ISSUE-485 to the page's `pageTitleKey`; grepped `packages/app/.ai/qa/tests` for the four `pageTitleKey` values this PR
+  replaces (`club_core.publication.title`, `club_core.settings.title`, `facilities.calendar.title`,
+  `facilities.requests.title`): no other test asserts them.
+- Lesson `changed-ui-contract-search-older-tests-for-testid` and its `AGENTS.md` rule extended to `pageTitleKey` and to
+  repeating the grep after every merge of `main` (third occurrence in this PR).
