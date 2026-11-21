@@ -1,7 +1,8 @@
 // The rules of erasure and removal (people life-cycle spec REQ-L05, DD-L06, DD-L07, *Anonymised person*, *Retention
 // hold*, *Mistaken person*; phase L6, #308): when an anonymisation is refused, the typed last name that confirms it,
-// how long the name stays under the retention hold, when the daily job clears it, why a person cannot be deleted, and
-// the name a screen shows for an anonymised person. Pure: `today` is the club's calendar date (S3.5).
+// how long the name stays under the retention hold, when the daily job clears it, why a person cannot be deleted, the
+// name a screen shows for an anonymised person, and the audit record of what an anonymisation touched and kept
+// (S9.6, #528). Pure: `today` is the club's calendar date (S3.5).
 import type { CalendarDate } from '@vereino/core'
 
 /** One reason an anonymisation or a deletion is refused; `recordId` names the record that resolves it. */
@@ -127,4 +128,79 @@ export function visibleName(
   const kept = person.firstName.trim() !== '' || person.lastName.trim() !== ''
   if (kept && mayReadHeldName) return { firstName: person.firstName, lastName: person.lastName }
   return { firstName: formerMember, lastName: '' }
+}
+
+// --- The anonymisation's audit record (engineering standards S9.6; #528) ---
+
+/** One table an erasure wrote to and how many of its rows changed (never the values). */
+export type ErasureTouched = { table: string; rows: number }
+
+/**
+ * One category of data an erasure keeps on purpose: the tables, the legal basis for keeping it and the row of the
+ * retention schedule (`docs/compliance/retention.md`) that sets how long.
+ */
+export type ErasureKept = { category: string; basis: string; retention: string; tables: string[] }
+
+/** What one module's part of an erasure touched and kept. */
+export type ErasurePart = { touched: ErasureTouched[]; kept: ErasureKept[] }
+
+/** What the anonymisation's audit entry records under S9.6: every table touched and every kept category's basis. */
+export type ErasureAudit = { tablesTouched: ErasureTouched[]; keptData: ErasureKept[] }
+
+/** What `people`'s own part of the erasure changed (counts only). */
+export type PeopleErasureCounts = { guardianships: number; departureRequests: number; importRows: number }
+
+/**
+ * `people`'s own part: the person row, the ward's guardianships, the departure requests and staged import rows the
+ * erasure wrote to (a table with no changed row is left out), and what it keeps — the request and decision as the
+ * proof that the club answered, and the name while the retention hold (DD-L07) keeps it.
+ */
+export function peopleErasurePart(counts: PeopleErasureCounts, keepNameUntil: CalendarDate | null): ErasurePart {
+  const touched: ErasureTouched[] = [
+    { table: 'people_persons', rows: 1 },
+    { table: 'people_guardianships', rows: counts.guardianships },
+    { table: 'people_departure_requests', rows: counts.departureRequests },
+    { table: 'people_import_rows', rows: counts.importRows },
+  ].filter((entry) => entry.rows > 0)
+  const kept: ErasureKept[] = [
+    {
+      category: 'erasure_request_and_decision',
+      basis: 'GDPR art. 6(1)(c), art. 5(2) — proof that the request was answered',
+      retention: 'R13',
+      tables: ['people_departure_requests'],
+    },
+  ]
+  if (keepNameUntil) {
+    kept.push({
+      category: 'name_under_retention_hold',
+      basis: 'GDPR art. 6(1)(c) — accounting records stay attributable until the hold date',
+      retention: 'R2',
+      tables: ['people_persons'],
+    })
+  }
+  return { touched, kept }
+}
+
+/**
+ * Joins the parts of the modules into one audit record, in the order given: rows of a table named twice are added
+ * up, a table with no changed row is left out, and a kept category named twice keeps its first basis and joins the
+ * tables (each once).
+ */
+export function erasureAudit(parts: readonly ErasurePart[]): ErasureAudit {
+  const touched = new Map<string, number>()
+  const kept = new Map<string, ErasureKept>()
+  for (const part of parts) {
+    for (const entry of part.touched) {
+      if (entry.rows > 0) touched.set(entry.table, (touched.get(entry.table) ?? 0) + entry.rows)
+    }
+    for (const entry of part.kept) {
+      const known = kept.get(entry.category)
+      if (!known) kept.set(entry.category, { ...entry, tables: [...new Set(entry.tables)] })
+      else known.tables = [...new Set([...known.tables, ...entry.tables])]
+    }
+  }
+  return {
+    tablesTouched: [...touched].map(([table, rows]) => ({ table, rows })),
+    keptData: [...kept.values()],
+  }
 }

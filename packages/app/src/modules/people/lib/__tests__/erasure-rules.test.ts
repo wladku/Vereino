@@ -1,9 +1,11 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   anonymizeBlockers,
+  erasureAudit,
   lastNameConfirmed,
   nameErasureDue,
   nameKeptUntil,
+  peopleErasurePart,
   personInUseReasons,
   visibleName,
   type AnonymizeFacts,
@@ -163,5 +165,67 @@ describe('visibleName', () => {
       firstName: label,
       lastName: '',
     })
+  })
+})
+
+describe('peopleErasurePart', () => {
+  it('names the person row and every table with changed rows, and keeps the request', () => {
+    const part = peopleErasurePart({ guardianships: 2, departureRequests: 1, importRows: 0 }, null)
+    expect(part.touched).toEqual([
+      { table: 'people_persons', rows: 1 },
+      { table: 'people_guardianships', rows: 2 },
+      { table: 'people_departure_requests', rows: 1 },
+    ])
+    expect(part.kept.map((entry) => entry.category)).toEqual(['erasure_request_and_decision'])
+    expect(part.kept[0]).toMatchObject({ retention: 'R13', tables: ['people_departure_requests'] })
+  })
+
+  it('keeps the name with its basis while the retention hold lasts', () => {
+    const part = peopleErasurePart({ guardianships: 0, departureRequests: 0, importRows: 3 }, '2031-12-31')
+    expect(part.touched).toEqual([
+      { table: 'people_persons', rows: 1 },
+      { table: 'people_import_rows', rows: 3 },
+    ])
+    expect(part.kept[1]).toMatchObject({ category: 'name_under_retention_hold', retention: 'R2' })
+    expect(part.kept[1].basis).toContain('6(1)(c)')
+  })
+})
+
+describe('erasureAudit', () => {
+  const accounting = { category: 'accounting_records', basis: 'art. 6(1)(c)', retention: 'R1', tables: ['a', 'b'] }
+
+  it('joins the parts in order, adds rows of a repeated table and drops tables without rows', () => {
+    expect(
+      erasureAudit([
+        { touched: [{ table: 'people_persons', rows: 1 }], kept: [] },
+        {
+          touched: [
+            { table: 'payments_orders', rows: 2 },
+            { table: 'payments_charges', rows: 0 },
+          ],
+          kept: [accounting],
+        },
+        { touched: [{ table: 'payments_orders', rows: 1 }], kept: [] },
+      ]),
+    ).toEqual({
+      tablesTouched: [
+        { table: 'people_persons', rows: 1 },
+        { table: 'payments_orders', rows: 3 },
+      ],
+      keptData: [accounting],
+    })
+  })
+
+  it('keeps the first basis of a repeated category and joins its tables once each', () => {
+    const audit = erasureAudit([
+      { touched: [], kept: [{ ...accounting, tables: ['a', 'a'] }] },
+      { touched: [], kept: [{ ...accounting, basis: 'other', tables: ['b', 'c'] }] },
+    ])
+    expect(audit.keptData).toEqual([{ ...accounting, tables: ['a', 'b', 'c'] }])
+    expect(audit.tablesTouched).toEqual([])
+  })
+
+  it('records nothing for no parts', () => {
+    expect(erasureAudit([])).toEqual({ tablesTouched: [], keptData: [] })
   })
 })

@@ -370,3 +370,21 @@ export function createDispatchService(container: AwilixContainer): DispatchServi
     countsOf: (dispatchIds, ctx, options) => deliveryCounts(dispatchIds, { ...ctx, container }, options),
   }
 }
+
+/**
+ * Erasure of one person (engineering standards S9.6, people life-cycle spec *Security → Erasure*; #528): the
+ * person's deliveries lose the person and account ids, the address with its hash and the secret parameters, in the
+ * caller's transaction (`people.persons.anonymize`). The delivery stays as a count on its dispatch; a queued one has no
+ * address left and ends `failed`. Returns how many deliveries changed.
+ */
+export async function eraseRecipientDeliveries(
+  em: EntityManager,
+  scope: DispatchScope,
+  personId: string,
+): Promise<number> {
+  return em.nativeUpdate(
+    Delivery,
+    { tenantId: scope.tenantId, organizationId: scope.organizationId, personId },
+    { personId: null, userId: null, email: null, emailHash: null, secretParams: null, updatedAt: new Date() },
+  )
+}
