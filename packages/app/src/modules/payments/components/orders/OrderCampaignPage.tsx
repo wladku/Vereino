@@ -519,7 +519,7 @@ function SummaryTab({ campaign, t }: { campaign: CampaignDetail; t: Translate })
   return (
     <div className="flex flex-col gap-4" data-testid="order-campaign-summary">
       {campaign.status === 'open' ? (
-        <Alert status="warning" data-testid="order-campaign-summary-collecting">
+        <Alert style="light" status="warning" data-testid="order-campaign-summary-collecting">
           <div className="flex flex-col gap-1">
             <strong>{t('payments.orders.summary.collectingTitle')}</strong>
             <span>{t('payments.orders.summary.collectingText')}</span>

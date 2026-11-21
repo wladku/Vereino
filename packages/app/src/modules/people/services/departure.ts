@@ -8,6 +8,9 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
+import type { ErasurePart } from '../lib/erasure-rules'
+
+export type { ErasureKept, ErasurePart, ErasureTouched } from '../lib/erasure-rules'
 
 /** The modules that may contribute, in the order their parts are applied and shown. */
 export const DEPARTURE_CONTRIBUTOR_MODULES = ['groups', 'activities', 'payments', 'club_core', 'facilities'] as const
@@ -116,6 +119,15 @@ export type DepartureContributor = {
     em: EntityManager,
     subject: { tenantId: string; organizationId: string; personId: string },
   ): Promise<CalendarDate | null>
+  /**
+   * Optional (engineering standards S9.6, #528): erases the module's personal data of a person being anonymised, in
+   * the caller's transaction (`people.persons.anonymize`), and reports the tables it wrote to with row counts and the
+   * categories it keeps with their legal basis — never the values. Throws to roll the whole anonymisation back.
+   */
+  erase?(
+    em: EntityManager,
+    subject: { tenantId: string; organizationId: string; personId: string },
+  ): Promise<ErasurePart>
 }
 
 /** The registered contributors in `DEPARTURE_CONTRIBUTOR_MODULES` order; a module that is absent contributes nothing. */

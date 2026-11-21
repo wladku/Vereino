@@ -366,7 +366,7 @@ export function MoveChildrenDialog({
         </div>
 
         {staleNotice ? (
-          <Alert status="warning" data-testid="groups-move-many-stale">
+          <Alert style="light" status="warning" data-testid="groups-move-many-stale">
             <AlertDescription>{t('groups.memberships.moveMany.stale')}</AlertDescription>
           </Alert>
         ) : null}
@@ -546,7 +546,7 @@ export function MoveChildrenNotice({
     }
   }
   return (
-    <Alert status={failed ? 'error' : 'success'} data-testid="groups-move-many-notice">
+    <Alert style="light" status={failed ? 'error' : 'success'} data-testid="groups-move-many-notice">
       <AlertDescription>
         <span className="flex flex-wrap items-center gap-2">
           <span role="status">
