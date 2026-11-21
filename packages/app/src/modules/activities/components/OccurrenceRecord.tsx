@@ -349,7 +349,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
         ) : null}
       </header>
       {occurrence.status === 'cancelled' ? (
-        <Alert status="warning" data-testid="occurrence-cancelled">
+        <Alert style="light" status="warning" data-testid="occurrence-cancelled">
           <AlertTitle>{t('activities.occurrences.cancelled.title')}</AlertTitle>
           <AlertDescription className="break-words whitespace-pre-wrap">
             {occurrence.cancelReason
@@ -359,7 +359,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
         </Alert>
       ) : null}
       {occurrence.needsReschedule && planned ? (
-        <Alert status="warning">
+        <Alert style="light" status="warning">
           <AlertDescription>{t('activities.occurrences.needsReschedule.help')}</AlertDescription>
         </Alert>
       ) : null}

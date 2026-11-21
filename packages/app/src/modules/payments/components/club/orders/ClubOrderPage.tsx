@@ -15,7 +15,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
 import { OrderFormSection } from './OrderFormSection'
 import { appEndpoints, clubOrderHref, orderFormQueryKey, type OrderForm } from './order-client'
@@ -120,7 +120,7 @@ function SignedOut({ campaignId, clubSlug }: { campaignId: string; clubSlug: str
             </h2>
             <p className="text-muted-foreground max-w-prose text-sm">{t('payments.orders.club.signedOut.linkHint')}</p>
             {state === 'sent' ? (
-              <Alert status="success" data-testid="order-link-sent">
+              <Alert style="light" status="success" data-testid="order-link-sent">
                 <p>{t('payments.orders.club.signedOut.sent')}</p>
               </Alert>
             ) : (
@@ -205,9 +205,9 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
       {() => {
         if (query.data?.status === 'not_found') {
           return (
-            <Alert status="information" data-testid="order-not-found">
+            <Notice data-testid="order-not-found">
               <p>{t('payments.orders.club.notFound')}</p>
-            </Alert>
+            </Notice>
           )
         }
         if (query.data?.status !== 'ok') {

@@ -123,7 +123,7 @@ export function RequestWarnings({ item, timeZone }: { item: RequestQueueItem; ti
   return (
     <>
       {item.conflicts.length > 0 ? (
-        <Alert status="warning" data-testid="facilities-request-conflicts">
+        <Alert style="light" status="warning" data-testid="facilities-request-conflicts">
           <AlertTitle>{t('facilities.requests.conflicts.title', { count: item.conflicts.length })}</AlertTitle>
           <AlertDescription>
             <ul className="list-disc ps-4">
@@ -141,7 +141,7 @@ export function RequestWarnings({ item, timeZone }: { item: RequestQueueItem; ti
         </Alert>
       ) : null}
       {item.entryBanMatch ? (
-        <Alert status="error" data-testid="facilities-request-ban">
+        <Alert style="light" status="error" data-testid="facilities-request-ban">
           <AlertTitle>{t('facilities.requests.ban.title')}</AlertTitle>
           <AlertDescription>{t('facilities.requests.ban.text')}</AlertDescription>
         </Alert>

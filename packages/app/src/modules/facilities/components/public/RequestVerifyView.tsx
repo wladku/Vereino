@@ -135,7 +135,7 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
     const until = zonedInstantLabel(outcome.summary.holdExpiresAt, outcome.summary.timeZone, locale)
     body = (
       <>
-        <Alert status="success" data-testid="public-verify-awaiting">
+        <Alert style="light" status="success" data-testid="public-verify-awaiting">
           <AlertTitle>{t('facilities.public.verify.awaiting.title')}</AlertTitle>
           <AlertDescription>{t('facilities.public.verify.awaiting.text', { until })}</AlertDescription>
         </Alert>
@@ -147,7 +147,7 @@ export function RequestVerifyView({ clubSlug, token }: { clubSlug: string; token
   } else if (outcome.status === 'expired' || outcome.status === 'taken') {
     body = (
       <>
-        <Alert status="warning" data-testid={`public-verify-${outcome.status}`}>
+        <Alert style="light" status="warning" data-testid={`public-verify-${outcome.status}`}>
           <AlertTitle>{t(`facilities.public.verify.${outcome.status}.title`)}</AlertTitle>
           <AlertDescription>{t(`facilities.public.verify.${outcome.status}.text`)}</AlertDescription>
         </Alert>

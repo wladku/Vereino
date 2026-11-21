@@ -120,7 +120,7 @@ export function ImportUpload() {
         onFilesSelected={(files) => void select(files)}
       />
       {problem ? (
-        <Alert status="error" data-testid="people-import-problem">
+        <Alert style="light" status="error" data-testid="people-import-problem">
           <AlertDescription>{problem}</AlertDescription>
         </Alert>
       ) : null}

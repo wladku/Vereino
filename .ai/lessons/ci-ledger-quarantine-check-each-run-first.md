@@ -1,0 +1,16 @@
+---
+title: "Before quarantining a CI-ledger test, explain each failed run by its own branch"
+modules: ["platform"]
+areas: ["testing", "debugging"]
+topics: ["ci-failure-ledger", "quarantine", "flaky-tests"]
+---
+
+# Before quarantining a CI-ledger test, explain each failed run by its own branch
+
+**Context**: #516 asked to quarantine `TEST-046` because it failed in two CI runs that share no PR (runs 44661770663 and 44745858856). The two runs failed different tests that share the `TEST-046` prefix of one spec file, and each failure was caused by the PR it ran on: the B-33 test hit a strict-mode locator on #422's own branch, which #422 fixed before it merged; the treasurer test failed on #513, which moves "Cash to settle" after "Kit orders" (`pageOrder` 26 → 40) without updating the sidebar order TEST-046 asserts.
+
+**Problem**: `scripts/ci-failure-ledger-plan.mjs` keys a failure by the test id a title starts with (`testIdOf`), so several tests in one file count as one, and it cannot tell a PR's own pre-merge failure from a flake. A quarantine on such an issue hides a real regression (#513) and disables a test that is green on `main`.
+
+**Rule**: For each run a ledger issue lists, read the failed test's full title and error (`gh run view <id> --log-failed`), then check whether the run's branch changed the test file or the behaviour it asserts (the PR diff) and whether `main` has since fixed it (`git log -S` on the test). Quarantine only a failure no PR explains; otherwise comment the explanation on the issue and on the PR that must fix its own test.
+
+**Applies to**: `ci-failure-ledger` quarantine issues, `scripts/ci-failure-ledger-plan.mjs`, `packages/app/.ai/qa/tests/**`.

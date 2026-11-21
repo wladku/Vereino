@@ -31,6 +31,7 @@ import {
   formatTimeRange,
   MemberSkeleton,
   memberStaffScopes,
+  Notice,
   StatusTag,
 } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
@@ -260,7 +261,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     return (
       <>
         {back}
-        <Alert status="warning" data-testid="club-session-missing">
+        <Alert style="light" status="warning" data-testid="club-session-missing">
           <p className="max-w-prose">
             {t(view.kind === 'not_yours' ? 'activities.club.session.notYours' : 'activities.club.session.notFound')}
           </p>
@@ -390,7 +391,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
         </div>
       </div>
       {occurrence.status === 'cancelled' ? (
-        <Alert status="error" data-testid="club-session-cancelled">
+        <Alert style="light" status="error" data-testid="club-session-cancelled">
           <p className="max-w-prose">
             {occurrence.cancelReason
               ? t('activities.occurrences.cancelled.reason', { reason: occurrence.cancelReason })
@@ -428,9 +429,9 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
         />
       ) : null}
       {!entry.declarationsOpen && occurrence.status === 'planned' ? (
-        <Alert status="information" data-testid="club-session-closed">
+        <Notice data-testid="club-session-closed">
           <p className="max-w-prose">{t('activities.club.session.closed')}</p>
-        </Alert>
+        </Notice>
       ) : null}
       {memberEntry ? (
         <section aria-labelledby="club-session-declarations" className="flex flex-col gap-3">
@@ -438,11 +439,11 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             {t('activities.club.session.declarations')}
           </h2>
           {occurrence.deadlinePassed && entry.declarationsOpen ? (
-            <Alert status="information" data-testid="club-session-deadline-passed">
+            <Notice data-testid="club-session-deadline-passed">
               <p className="max-w-prose">
                 {t(as === 'self' ? 'activities.deadline.passedHintSelf' : 'activities.deadline.passedHint')}
               </p>
-            </Alert>
+            </Notice>
           ) : null}
           <ul className="flex flex-col gap-3">
             {entry.persons.map((person) => (

@@ -201,7 +201,7 @@ export function RentedHoursReport() {
   let body: React.ReactNode
   if (error) {
     body = (
-      <Alert status="error" data-testid="rented-hours-error">
+      <Alert style="light" status="error" data-testid="rented-hours-error">
         {codedMessage(error, t) ?? t('facilities.reports.owner.errors.load')}
       </Alert>
     )

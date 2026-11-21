@@ -9,11 +9,10 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { TokenPageShell, type MemberLinkProps, type TokenPageState } from '@vereino/ui'
+import { type MemberLinkProps, Notice, TokenPageShell, type TokenPageState } from '@vereino/ui'
 import { OrderFormSection } from './OrderFormSection'
 import { CLUB_ORDERS_HREF, linkEndpoints, orderLinkHref, orderLinkQueryKey, type OrderLinkForm } from './order-client'
 
@@ -71,14 +70,14 @@ export function OrderLinkPage({ token }: { token: string }) {
     >
       {form ? (
         <div className="flex flex-col gap-6">
-          <Alert status="information" data-testid="order-link-guardian">
+          <Notice data-testid="order-link-guardian">
             <p className="font-medium">
               {t('payments.orders.link.personalLink', {
                 name: `${form.guardian.firstName} ${form.guardian.lastName}`.trim(),
               })}
             </p>
             <p>{t('payments.orders.link.personalLinkText')}</p>
-          </Alert>
+          </Notice>
           <OrderFormSection
             form={form}
             mode="link"

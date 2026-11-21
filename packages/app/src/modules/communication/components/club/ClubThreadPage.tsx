@@ -183,7 +183,7 @@ function Thread({ id }: { id: string }) {
         </div>
       ) : null}
       {refusal ? (
-        <Alert status="error" data-testid="club-thread-refusal">
+        <Alert style="light" status="error" data-testid="club-thread-refusal">
           <AlertDescription>{refusal}</AlertDescription>
         </Alert>
       ) : null}

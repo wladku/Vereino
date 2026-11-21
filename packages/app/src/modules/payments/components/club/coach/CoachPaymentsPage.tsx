@@ -332,7 +332,7 @@ function ChargeRow({
       {order?.canHandOver ? (
         <div className="flex flex-col gap-2">
           {warning ? (
-            <Alert status="warning" data-testid="coach-hand-over-warning">
+            <Alert style="light" status="warning" data-testid="coach-hand-over-warning">
               <div className="flex flex-col gap-2">
                 <p>{t('payments.coach.handOver.unpaidWarning', { amount: formatMoney(charge.remaining, locale) })}</p>
                 <div className="flex flex-wrap gap-2">
@@ -582,7 +582,7 @@ function CoachPayments() {
   if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('payments.coach.loading')} />
   if (query.error instanceof GroupChargesLoadError && query.error.status === 403) {
     return (
-      <Alert status="error" data-testid="coach-forbidden">
+      <Alert style="light" status="error" data-testid="coach-forbidden">
         <div className="flex flex-col gap-2">
           <p>{t('payments.coach.errors.forbidden')}</p>
           <div>
