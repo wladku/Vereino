@@ -17,6 +17,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { PaymentsNav } from './PaymentsNav'
 import {
   DISCOUNTS_HREF,
@@ -83,7 +84,7 @@ export function DiscountRulesTable() {
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['payments-discounts', page, scopeVersion],
     queryFn: () =>
       fetchCrudList<DiscountRuleRow>('payments/discount-rules', {
@@ -126,7 +127,15 @@ export function DiscountRulesTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('payments.discounts.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('payments.discounts.errors.load')}
+                retryLabel={t('payments.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={<p className="text-muted-foreground text-sm">{t('payments.discounts.empty')}</p>}
           rowActions={(row: DiscountRuleRow) => (
             <RowActions

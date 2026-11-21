@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { errorCodeOf } from '@vereino/core'
+import { TableLoadError } from '@vereino/ui'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import {
   codedMessage,
@@ -237,7 +238,7 @@ export function PlaceMaintainers() {
   const [adding, setAdding] = React.useState(0)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [MAINTAINERS_KEY, 'list', selectedPlace, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<PlaceMaintainerRow>(
@@ -342,7 +343,15 @@ export function PlaceMaintainers() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.maintenance.maintainers.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.maintenance.maintainers.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             rowActions={(row: PlaceMaintainerRow) => (
               <span data-testid={`facilities-maintainer-actions-${row.id}`}>
                 <RowActions

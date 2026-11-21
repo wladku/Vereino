@@ -147,6 +147,7 @@
   "people.common.open": "Open",
   "people.common.period.closed": "{from} – {to}",
   "people.common.period.open": "from {from}",
+  "people.common.retry": "Try again",
   "people.common.save": "Save",
   "people.common.select": "Select",
   "people.common.selected": "Selected",

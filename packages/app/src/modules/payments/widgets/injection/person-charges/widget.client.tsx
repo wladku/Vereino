@@ -13,7 +13,8 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { AddChargeDialog } from '../../../components/AddChargeDialog'
 import { chargeColumns } from '../../../components/ChargesTable'
-import { chargeHref, errorMessage, type ChargeRow } from '../../../components/client-helpers'
+import { TableLoadError } from '@vereino/ui'
+import { chargeHref, type ChargeRow } from '../../../components/client-helpers'
 
 /** What `people`'s person record passes as the spot context. */
 export type PersonChargesContext = { personId?: string }
@@ -59,7 +60,15 @@ export default function PersonChargesWidget({
         columns={columns}
         data={query.data?.items ?? []}
         isLoading={query.isLoading}
-        error={query.error ? errorMessage(query.error, t('payments.charges.errors.load')) : null}
+        error={
+          query.error ? (
+            <TableLoadError
+              message={t('payments.charges.errors.load')}
+              retryLabel={t('payments.common.retry')}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null
+        }
         emptyState={
           <p className="text-muted-foreground text-sm" data-testid="person-charges-empty">
             {t('payments.personCharges.empty')}

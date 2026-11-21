@@ -20,6 +20,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { LOG_TEXT_MAX_LENGTH } from '../lib/logs'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import { LogCreateDialog } from './LogCreateDialog'
@@ -311,7 +312,7 @@ export function LogsTable() {
   const [createKey, setCreateKey] = React.useState(0)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [LOGS_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<LogRow>(LOGS_API, {
@@ -387,7 +388,15 @@ export function LogsTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.logs.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.logs.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             filters={filterDefs}
             filterValues={filters}
             onFiltersApply={(values: FilterValues) => {

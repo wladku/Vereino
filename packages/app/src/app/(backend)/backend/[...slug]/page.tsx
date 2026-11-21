@@ -1,6 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import Link from 'next/link'
 import { findRouteManifestMatch, getBackendRouteManifests, registerBackendRouteManifests } from '@open-mercato/shared/modules/registry'
 import { backendRouteFacades } from '@/.mercato/generated/backend-route-shards.generated'
 import { bootstrap } from '@/bootstrap'
@@ -8,6 +7,7 @@ import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
 import type { AuthContext } from '@open-mercato/shared/lib/auth/server'
 import { ApplyBreadcrumb } from '@open-mercato/ui/backend/AppShell'
 import { AccessDeniedMessage } from '@open-mercato/ui/backend/detail'
+import { AccessDeniedActions } from '@/components/AccessDeniedActions'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { resolveFeatureCheckContext } from '@open-mercato/core/modules/directory/utils/organizationScope'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
@@ -32,9 +32,11 @@ async function renderAccessDenied() {
       label={translate('auth.accessDenied.title', 'Access Denied')}
       description={translate('auth.accessDenied.message', 'You do not have permission to view this page. Please contact your administrator.')}
       action={
-        <Link href="/backend" className="text-sm underline hover:opacity-80">
-          {translate('auth.accessDenied.dashboard', 'Go to Dashboard')}
-        </Link>
+        <AccessDeniedActions
+          homeHref="/backend"
+          homeLabel={translate('auth.accessDenied.dashboard', 'Go to Dashboard')}
+          signOutLabel={translate('vereino.accessDenied.signOut', 'Sign out and use another account')}
+        />
       }
     />
   )
