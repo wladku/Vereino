@@ -51,3 +51,16 @@ export function sessionPageView(member: SessionReadState, coach: SessionReadStat
   if (member === 'error' || coach === 'error') return { kind: 'error' }
   return coach === 'forbidden' ? { kind: 'not_yours' } : { kind: 'not_found' }
 }
+
+/**
+ * Whether the person coaches a group today (the acting context `coach`): the coach's "New event" creates an event for
+ * one of their own groups only, so it is offered only then (E20-S10, #489).
+ */
+export function coachesAGroup(contexts: readonly string[]): boolean {
+  return contexts.includes('coach')
+}
+
+/** Whether the person organises club events (a section coordinator or the club administrator; club events spec). */
+export function organizesClubEvents(contexts: readonly string[]): boolean {
+  return contexts.includes('coordinator') || contexts.includes('club_admin')
+}

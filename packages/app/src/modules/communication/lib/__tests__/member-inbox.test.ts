@@ -3,6 +3,7 @@ import {
   MEMBER_COMPOSER_KINDS,
   composePreset,
   emailDeliverySummary,
+  isStaff,
   memberComposerKinds,
   wardThreadsOf,
 } from '../member-inbox'
@@ -84,5 +85,15 @@ describe('composePreset (E10-S07, REQ-A13)', () => {
       kind: 'occurrence',
       ids: [id],
     })
+  })
+})
+
+describe('isStaff (E20-S10, #489)', () => {
+  it('names the coaches, the coordinators and the club administrator, not the members or the attendant', () => {
+    expect(isStaff(['self', 'coach'])).toBe(true)
+    expect(isStaff(['coordinator'])).toBe(true)
+    expect(isStaff(['club_admin'])).toBe(true)
+    expect(isStaff(['self', 'guardian'])).toBe(false)
+    expect(isStaff(['self', 'facility_operator', 'treasurer'])).toBe(false)
   })
 })

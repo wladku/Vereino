@@ -131,6 +131,8 @@
   "communication.direct.body": "Wiadomość",
   "communication.direct.cancel": "Anuluj",
   "communication.direct.empty": "Nikt z Twojej rodziny nie należy dziś do grupy z trenerem lub koordynatorem, więc nie ma do kogo napisać.",
+  "communication.direct.emptyStaff": "Tu członkowie i opiekunowie piszą do trenera. Do swojej grupy napiszesz ogłoszeniem: Termin → „Napisz do grupy” albo „Nowe ogłoszenie” w Wiadomościach.",
+  "communication.direct.emptyStaff.inbox": "Przejdź do Wiadomości",
   "communication.direct.errors.forbidden": "Nie możesz pisać w sprawie tej osoby ani do tej grupy.",
   "communication.direct.errors.invalid": "Sprawdź temat i treść wiadomości.",
   "communication.direct.errors.load": "Nie udało się wczytać listy grup.",
