@@ -46,4 +46,19 @@ error, attendant (M-12) messages and the M-16 empty state.
 
 ## Commands and results
 
-(filled in below as they run)
+- `yarn verify`: first run passed generate, typecheck, typecheck:packages, typecheck:qa and lint, then failed at
+  `format:check` (`E08-S06-facility-day.spec.ts` and `ClubOrdersPage.tsx` not formatted). After `yarn format`,
+  `yarn verify --from format:check` passed every remaining step (format:check … build); `yarn typecheck:qa` re-run
+  on the final test edits: exit 0.
+- `yarn test:integration:vereino --filter E08-S06`: `1 passed (41.1s)`.
+- `node scripts/vereino-ephemeral.mjs test --filter TEST-047 --no-build`: `2 passed (47.2s)`.
+- Browser evidence: a temporary spec (not committed) on the same production build captured 64 screenshots — login
+  error, M-02, M-08 error (`/api/people/me` forced to 500), M-16, B-30, B-31, M-12 today and rentals — in pl and en,
+  375 and 1440 px, light and dark; Cezar asset `issue-496-evidence.html`. Console errors: only the deliberate 401 of
+  the wrong password and the injected 500s. Its first English pass failed with 401 on `PUT` club settings: the admin
+  token had been ended by `signInBrowser` (lesson `sign-in-browser-ends-the-api-token`); fixed by taking a fresh token.
+
+## Open problems / next steps
+
+- None for this issue. The M-12 "Rentals" tab trigger looks clipped at 375 px in the screenshots (pre-existing, not
+  part of this issue).
