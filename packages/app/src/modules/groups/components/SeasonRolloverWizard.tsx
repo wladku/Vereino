@@ -10,6 +10,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { Notice } from '@vereino/ui'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
@@ -33,7 +34,7 @@ type ConflictEntry = {
   blocks?: Array<{ reason?: string }>
 }
 type Conflict = { module: string; recordId: string; label: LabelMap; conflicts: ConflictEntry[] }
-type Notice = { module: string; code: string }
+type RolloverNotice = { module: string; code: string }
 type Preview = {
   fromSeason: { id: string; name: string; startsOn: string; endsOn: string }
   toSeason: { id: string | null; name: string; startsOn: string; endsOn: string; created: boolean }
@@ -42,7 +43,7 @@ type Preview = {
   candidates: Candidate[]
   items: Item[]
   conflicts: Conflict[]
-  notices: Notice[]
+  notices: RolloverNotice[]
   previewToken: string
 }
 type Summary = {
@@ -372,7 +373,7 @@ export function SeasonRolloverWizard() {
         ))}
       </ol>
       {error ? (
-        <Alert status="error" data-testid="groups-rollover-error">
+        <Alert style="light" status="error" data-testid="groups-rollover-error">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
@@ -773,12 +774,12 @@ export function SeasonRolloverWizard() {
             })}
           </p>
           {preview.notices.map((notice) => (
-            <Alert key={`${notice.module}:${notice.code}`} status="information">
+            <Notice key={`${notice.module}:${notice.code}`}>
               <AlertDescription>{t(`groups.rollover.notice.${notice.code}`)}</AlertDescription>
-            </Alert>
+            </Notice>
           ))}
           {preview.conflicts.length > 0 ? (
-            <Alert status="error" data-testid="groups-rollover-conflicts">
+            <Alert style="light" status="error" data-testid="groups-rollover-conflicts">
               <AlertTitle>{t('groups.rollover.conflicts.title')}</AlertTitle>
               <AlertDescription className="flex flex-col gap-2">
                 <span>{t('groups.rollover.conflicts.help')}</span>

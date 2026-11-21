@@ -61,6 +61,7 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
   ttlMs: DECLARATION_LINK_TTL_MS,
+  dedicatedTable: true,
 })
 
 export function register(container: AppContainer) {

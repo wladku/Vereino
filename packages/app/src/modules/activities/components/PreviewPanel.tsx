@@ -22,7 +22,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
-import { StatusTag } from '@vereino/ui'
+import { Notice, StatusTag } from '@vereino/ui'
 
 function buildColumns(t: Translate): TableColumns<PreviewItem> {
   return [
@@ -147,7 +147,7 @@ export function PreviewPanel({
         </Button>
       </div>
       {problem ? (
-        <Alert status="error" data-testid="activities-preview-error">
+        <Alert style="light" status="error" data-testid="activities-preview-error">
           <AlertTitle>{t('activities.preview.errors.title')}</AlertTitle>
           <AlertDescription>
             <ul className="flex flex-col gap-1">
@@ -168,18 +168,18 @@ export function PreviewPanel({
             })}
           </p>
           {!stale && result.total > 0 && result.conflictCount === 0 ? (
-            <Alert status="success" data-testid="activities-preview-clear">
+            <Alert style="light" status="success" data-testid="activities-preview-clear">
               <AlertTitle>{t('activities.preview.clear.title')}</AlertTitle>
               <AlertDescription>{t('activities.preview.clear.text')}</AlertDescription>
             </Alert>
           ) : null}
           {stale ? (
-            <Alert status="information">
+            <Notice>
               <AlertDescription>{t('activities.preview.stale')}</AlertDescription>
-            </Alert>
+            </Notice>
           ) : null}
           {result.providerFailed ? (
-            <Alert status="warning" data-testid="activities-preview-provider-failed">
+            <Alert style="light" status="warning" data-testid="activities-preview-provider-failed">
               <AlertDescription>{t('activities.preview.providerFailed')}</AlertDescription>
             </Alert>
           ) : null}

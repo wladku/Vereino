@@ -1035,6 +1035,7 @@
   "payments.audit.jobs.remindOverdue": "Przypomnienie płatnikom o zaległościach",
   "payments.audit.jobs.reconcileCheckouts": "Uzgodnienie niedokończonych płatności online",
   "payments.audit.jobs.closeOrderCampaigns": "Zamknięcie zamówień po terminie",
+  "payments.audit.jobs.purgeOrderLinks": "Usunięcie linków do zamówień nieważnych od 30 dni",
   "payments.settings.groups.automation": "Automatyczne naliczanie i przypomnienia",
   "payments.settings.fields.autoGenerateCharges": "Naliczaj opłaty miesiąca automatycznie",
   "payments.settings.fields.autoGenerateCharges.help": "Co rano system sprawdza, czy składki bieżącego miesiąca są do naliczenia, i nalicza je raz, od dnia podanego niżej. Miesiąc cofnięty ręcznie nie zostanie naliczony ponownie.",

@@ -12,6 +12,7 @@
   "facilities.audit.rentals.create": "Wprowadź wynajem",
   "facilities.audit.rentals.confirm": "Potwierdź wynajem",
   "facilities.audit.rentals.cancel": "Anuluj wynajem",
+  "facilities.audit.jobs.purgeRentalLinks": "Usunięcie linków do wynajmów nieważnych od 30 dni",
   "facilities.audit.internalBookings.create": "Zarezerwuj miejsce",
   "facilities.audit.internalBookings.cancel": "Anuluj rezerwację",
   "facilities.audit.rentals.move": "Przenieś wynajem",

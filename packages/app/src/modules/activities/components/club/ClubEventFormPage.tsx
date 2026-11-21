@@ -18,14 +18,13 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import {
   CLUB_EVENT_DESCRIPTION_MAX,
   CLUB_EVENT_NAME_MAX,
@@ -444,9 +443,9 @@ function FormBody({ id, t }: { id: string | null; t: Translate }) {
   if (loading) return <MemberSkeleton shape="fields" label={t('activities.clubEvents.loading')} />
   if (id !== null && stored.data?.status === 'not_found') {
     return (
-      <Alert status="information" data-testid="club-event-member-not-found">
+      <Notice data-testid="club-event-member-not-found">
         <p>{t('activities.clubEvents.errors.notFound')}</p>
-      </Alert>
+      </Notice>
     )
   }
   const event = stored.data?.status === 'ok' ? stored.data.event : null
@@ -463,16 +462,16 @@ function FormBody({ id, t }: { id: string | null; t: Translate }) {
       (event !== null && event.mayManage !== true)
     if (denied) {
       return (
-        <Alert status="information" data-testid="club-event-member-denied">
+        <Notice data-testid="club-event-member-denied">
           <p>{t('activities.clubEvents.club.form.denied')}</p>
-        </Alert>
+        </Notice>
       )
     }
     if (event && event.status !== 'planned') {
       return (
-        <Alert status="information" data-testid="club-event-member-cancelled">
+        <Notice data-testid="club-event-member-cancelled">
           <p>{t('activities.clubEvents.cancelled.title')}</p>
-        </Alert>
+        </Notice>
       )
     }
     return (

@@ -41,14 +41,14 @@ export function AvailabilitySaveSummary({ result }: { result: BulkResult }) {
   const { clubOccurrencesInWindows, pendingRequestsOutside } = result.warnings
   return (
     <div className="flex flex-col gap-2" data-testid="facilities-availability-result">
-      <Alert status="success">
+      <Alert style="light" status="success">
         <AlertTitle>{t('facilities.availability.saved.title')}</AlertTitle>
         <AlertDescription>
           {t('facilities.availability.saved.counts', { created: result.created, removed: result.removed })}
         </AlertDescription>
       </Alert>
       {clubOccurrencesInWindows > 0 || pendingRequestsOutside > 0 ? (
-        <Alert status="warning">
+        <Alert style="light" status="warning">
           <AlertTitle>{t('facilities.availability.warnings.title')}</AlertTitle>
           <AlertDescription>
             <ul className="flex flex-col gap-1">

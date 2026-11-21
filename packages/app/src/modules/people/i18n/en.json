@@ -120,7 +120,6 @@
   "people.club.tiles.profile.title": "Profile and consents",
   "people.club.title": "Club",
   "people.club.today.pageTitle": "Today",
-  "people.club.today.tiles": "Your club",
   "people.club.today.title": "Hello, {name}",
   "people.club.ward.actions.save": "Save consents",
   "people.club.ward.back": "Back to Today",
@@ -872,5 +871,6 @@
   "people.erasure.module.club_core": "contracts",
   "people.erasure.module.facilities": "facilities",
   "people.club.leave.errors.summary": "Check the request",
-  "people.club.leave.errors.whoRequired": "Choose at least one person."
+  "people.club.leave.errors.whoRequired": "Choose at least one person.",
+  "people.club.today.shortcuts": "Shortcuts"
 }

@@ -9,11 +9,10 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { MemberSkeleton, Notice, StatusTag } from '@vereino/ui'
 import { campaignDeadlineLine, childPaymentState, type ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
 import { STAGE_VARIANTS } from '../../orders/orders-client'
@@ -73,9 +72,9 @@ function Campaigns() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">{t('payments.orders.club.listTitle')}</h1>
       {query.data.length === 0 ? (
-        <Alert status="information" data-testid="club-orders-empty">
+        <Notice data-testid="club-orders-empty">
           <p className="max-w-prose">{t('payments.orders.club.empty')}</p>
-        </Alert>
+        </Notice>
       ) : null}
       <ul className="flex flex-col gap-4" data-testid="club-orders">
         {query.data.map((campaign) => (

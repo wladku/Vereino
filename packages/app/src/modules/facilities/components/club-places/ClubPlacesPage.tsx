@@ -61,7 +61,10 @@ function PlaceCard({ place, calendar, today }: { place: CalendarPlace; calendar:
     <li className="flex flex-col gap-3 rounded-md border p-4" data-testid={`club-places-card-${place.id}`}>
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold break-words">
-          <Link className="underline-offset-4 hover:underline" href={placeHref(place.id)}>
+          <Link
+            className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+            href={placeHref(place.id)}
+          >
             {place.name}
           </Link>
         </h2>
@@ -101,7 +104,7 @@ function PlacesList({ profile }: { profile: PlacesProfile }) {
     )
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (
-      <Alert status="warning" data-testid="club-places-denied">
+      <Alert style="light" status="warning" data-testid="club-places-denied">
         <p className="max-w-prose">{t('facilities.places.errors.forbidden')}</p>
       </Alert>
     )

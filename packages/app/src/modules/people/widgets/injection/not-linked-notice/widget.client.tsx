@@ -3,8 +3,8 @@
 // leaves the page. The text comes from the catalog, never from the URL.
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { Notice } from '@vereino/ui'
 import { hasNotLinkedNotice } from '../../../lib/member-rules'
 
 export default function NotLinkedNotice() {
@@ -13,8 +13,7 @@ export default function NotLinkedNotice() {
   const [dismissed, setDismissed] = React.useState(false)
   if (dismissed || !hasNotLinkedNotice(search)) return null
   return (
-    <Alert
-      status="information"
+    <Notice
       className="mb-4"
       dismissible
       onDismiss={() => {
@@ -23,6 +22,6 @@ export default function NotLinkedNotice() {
       data-testid="people-not-linked-notice"
     >
       {t('people.club.notLinked.notice')}
-    </Alert>
+    </Notice>
   )
 }
