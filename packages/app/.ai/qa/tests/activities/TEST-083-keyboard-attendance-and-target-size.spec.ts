@@ -192,7 +192,7 @@ test('TEST-083 the coach checks off every participant and saves the attendance l
 // focus by Tab is scrolled only to the bottom edge of the viewport, where the sticky action bar
 // (`club-attendance-actions`, `sticky bottom-24`, ClubAttendancePage.tsx) covers it entirely — e.g. the radio at
 // 46,600 20×20 under the bar at 0,595 375×121 (WCAG 2.4.11 Focus Not Obscured). The page sets no `scroll-padding-bottom`
-// (or `scroll-margin-bottom` on the rows) for the bar. Un-fixme once the focused element stays clear of the bar.
+// (or `scroll-margin-bottom` on the rows) for the bar. Un-fixme once the focused element stays clear of the bar (#547).
 test.fixme('TEST-083 the element focused by Tab on the attendance list is never hidden behind the sticky action bar', async ({
   page,
   request,
@@ -253,7 +253,7 @@ test("TEST-083 every interactive target on the coach's Today and attendance list
 // contact e-mail and phone fields (`order-email`, `order-phone`; OrderFormSection.tsx, the `Input`s under the contact
 // legend) put `min-h-11` on the platform `Input` wrapper only; the inner `<input>` stays 20 px high (317×20 at 375 px)
 // and a tap on the wrapper outside it does not focus the field, so the target is below 24 × 24 px (WCAG 2.5.8). E20-S12
-// (#491) fixed the same case on the profile pages with `inputClassName="self-stretch"`. Un-fixme once fixed.
+// (#491) fixed the same case on the profile pages with `inputClassName="self-stretch"`. Un-fixme once fixed (#548).
 test.fixme("TEST-083 every interactive target on the guardian's kit order form is at least 24 × 24 px", async ({
   page,
   request,
