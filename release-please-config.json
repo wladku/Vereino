@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/v17.6.0/schemas/config.json",
+  "release-type": "node",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "bump-minor-pre-major": true,
+  "draft-pull-request": true,
+  "pull-request-title-pattern": "chore: release ${version}",
+  "packages": {
+    ".": {
+      "package-name": "vereino",
+      "initial-version": "0.1.0",
+      "extra-label": "documentation,priority-low,risk-low",
+      "extra-files": [
+        { "type": "json", "path": "packages/app/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/db/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/ui/package.json", "jsonpath": "$.version" }
+      ],
+      "changelog-sections": [
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "revert", "section": "Reverts" },
+        { "type": "docs", "section": "Documentation" },
+        { "type": "refactor", "section": "Other" },
+        { "type": "test", "section": "Other" },
+        { "type": "build", "section": "Other" },
+        { "type": "ci", "section": "Other" },
+        { "type": "chore", "section": "Other" }
+      ]
+    }
+  }
+}
