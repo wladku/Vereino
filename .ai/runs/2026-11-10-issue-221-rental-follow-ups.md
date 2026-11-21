@@ -1,7 +1,7 @@
 # Run — issue #221: E08-S02 follow-ups from PR #210 (closure replay locking, rental nits)
 
 - **Goal and trigger:** cezar task e0e78147 (`om-auto-fix-issue 221`), unattended. Issue #221 lists the non-blocking review findings of PR #210 (E08-S02 staff rentals).
-- **Spec / issue / branch:** facilities spec `.ai/specs/2026-10-27-vereino-facilities.md` (no change); #221; `fix/issue-221-rental-follow-ups`.
+- **Spec / issue / branch:** facilities spec `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (no change); #221; `fix/issue-221-rental-follow-ups`.
 - **Approval:** nothing Ask First was done — no migration, dependency, module, contract or foundation API change.
 
 ## Steps

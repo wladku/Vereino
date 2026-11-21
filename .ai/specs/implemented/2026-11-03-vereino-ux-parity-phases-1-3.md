@@ -59,7 +59,7 @@ Who has it: the club administrator; a section coordinator (club-wide basic peopl
 - Export, bulk actions and saved custom views on these lists (not in the mockup).
 - Sorting the people list by name: names are encrypted without a sortable index (`people/encryption.ts:11-18`), and the list keeps its `createdAt` default.
 - Widening any read scope: coordinators keep the club-wide **basic** read; a coach still reads only themselves in the panel.
-- Public use of place photos and regulations, and the place fields "public schedule" and "accepts requests". Both are phase 5 (`.ai/specs/2026-10-27-vereino-facilities.md`, E08-S04 #124).
+- Public use of place photos and regulations, and the place fields "public schedule" and "accepts requests". Both are phase 5 (`.ai/specs/implemented/2026-10-27-vereino-facilities.md`, E08-S04 #124).
 - The person record's Groups tab (E06-S02 #84) and the dashboard widget (E06-S06 #88): their own stories, built on the existing memberships API and the existing coordinators enricher.
 - Treasurer and facility-operator roles in the role filter (phases 4 and 5).
 

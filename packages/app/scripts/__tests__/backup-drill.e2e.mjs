@@ -3,7 +3,9 @@
 // server (Versity S3 Gateway) in Testcontainers, and runs the real scripts with the real pg_dump, age and rclone:
 //   - the dump job uploads an encrypted dump; a restore into a fresh database reproduces every table's row count;
 //   - a wrong key fails with a clear message and leaves the target database untouched;
-//   - without bucket credentials the job exits non-zero and logs only the missing variable names.
+//   - without bucket credentials the job exits non-zero and logs only the missing variable names;
+//   - the job pings the E18-S04 backup heartbeat (#519): `<url>` after a successful dump, `<url>/fail` after a failed
+//     one, against a recording HTTP server on the drill network.
 // Not part of `test:scripts` (it needs Docker); the unit tests in `backup.test.mjs` hold the coverage.
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -39,6 +41,24 @@ create table public.empty_table (id int);
 `
 
 const state = { keysDir: '', network: null, containers: [] }
+
+// A recording heartbeat monitor: every request path is kept, `GET /seen` returns them as JSON.
+const HEARTBEAT_SERVER = `
+const seen = []
+require('node:http')
+  .createServer((request, response) => {
+    if (request.url === '/seen') return response.end(JSON.stringify(seen))
+    seen.push(request.url)
+    response.end('OK')
+  })
+  .listen(8080, () => console.log('heartbeat listening'))
+`
+const HEARTBEAT = { VEREINO_OPS_BACKUP_HEARTBEAT_URL: 'http://heartbeat:8080/ping/drill-check' }
+
+async function heartbeatsSeen() {
+  const response = await fetch(`http://${state.heartbeat.getHost()}:${state.heartbeat.getMappedPort(8080)}/seen`)
+  return response.json()
+}
 
 function docker(args, { input } = {}) {
   const result = spawnSync('docker', args, { encoding: 'utf8', input, maxBuffer: 64 * 1024 * 1024 })
@@ -120,6 +140,14 @@ before(async () => {
     .start()
   state.containers.push(s3)
   state.db = db
+  state.heartbeat = await new GenericContainer(IMAGE)
+    .withNetwork(state.network)
+    .withNetworkAliases('heartbeat')
+    .withCommand(['node', '-e', HEARTBEAT_SERVER])
+    .withExposedPorts(8080)
+    .withWaitStrategy(Wait.forLogMessage(/heartbeat listening/))
+    .start()
+  state.containers.push(state.heartbeat)
 
   const seeded = await db.exec(['psql', '-v', 'ON_ERROR_STOP=1', '-U', 'vereino', '-d', 'vereino_test', '-c', SEED_SQL])
   assert.equal(seeded.exitCode, 0, seeded.output)
@@ -157,9 +185,17 @@ after(async () => {
   if (state.keysDir) fs.rmSync(state.keysDir, { recursive: true, force: true })
 })
 
-test('ENG-TEST-10 the nightly dump restores into a fresh database with equal row counts', () => {
-  const dump = job({ ...BUCKET, DATABASE_URL: SOURCE_URL, BACKUP_AGE_RECIPIENTS_FILE: '/keys/recipients.txt' })
+test('ENG-TEST-10 the nightly dump restores into a fresh database with equal row counts', async () => {
+  const dump = job({
+    ...BUCKET,
+    ...HEARTBEAT,
+    DATABASE_URL: SOURCE_URL,
+    BACKUP_AGE_RECIPIENTS_FILE: '/keys/recipients.txt',
+  })
   assert.equal(dump.code, 0, dump.stderr)
+  assert.deepEqual(await heartbeatsSeen(), ['/ping/drill-check'])
+  assert.match(dump.stdout, /"signal":"vereino\.ops\.backup\.succeeded"/)
+  assert.doesNotMatch(dump.stdout + dump.stderr, /drill-check/)
   const lines = dump.stdout
     .trim()
     .split('\n')
@@ -174,7 +210,11 @@ test('ENG-TEST-10 the nightly dump restores into a fresh database with equal row
   // A second run on the same day replaces the daily copy and keeps the existing monthly copy.
   const again = job({ ...BUCKET, DATABASE_URL: SOURCE_URL, BACKUP_AGE_RECIPIENTS_FILE: '/keys/recipients.txt' })
   assert.equal(again.code, 0, again.stderr)
-  assert.equal(JSON.parse(again.stdout.trim().split('\n').at(-1)).monthlyKey, null)
+  const againLines = again.stdout
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+  assert.equal(againLines.find((line) => line.msg === 'backup.dump.succeeded').monthlyKey, null)
 
   const source = restore(['--counts-only', '--target', SOURCE_URL])
   assert.equal(source.code, 0, source.stderr)
@@ -197,11 +237,21 @@ test('a wrong key fails with a clear message and touches no database', () => {
   assert.match(untouched.stdout, /^0 tables$/m)
 })
 
-test('without bucket credentials the job exits non-zero and logs only the missing variable names', () => {
-  const missing = job({ DATABASE_URL: SOURCE_URL, BACKUP_S3_BUCKET: BUCKET.BACKUP_S3_BUCKET })
+test('without bucket credentials the job exits non-zero, logs only the missing variable names and pings /fail', async () => {
+  const earlier = await heartbeatsSeen()
+  const missing = job({ ...HEARTBEAT, DATABASE_URL: SOURCE_URL, BACKUP_S3_BUCKET: BUCKET.BACKUP_S3_BUCKET })
   assert.notEqual(missing.code, 0)
   assert.equal(missing.stdout, '')
-  assert.deepEqual(JSON.parse(missing.stderr.trim()), {
+  const [failed, signal, ...rest] = missing.stderr
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+  assert.deepEqual(rest, [])
+  assert.equal(signal.signal, 'vereino.ops.backup.failed')
+  assert.equal(signal.step, 'missing-variable')
+  assert.deepEqual((await heartbeatsSeen()).slice(earlier.length), ['/ping/drill-check/fail'])
+  assert.doesNotMatch(missing.stderr, /drill-check/)
+  assert.deepEqual(failed, {
     level: 'error',
     job: 'backup:dump',
     msg: 'backup.dump.failed',
