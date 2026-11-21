@@ -3,8 +3,8 @@ export const metadata = {
   requireFeatures: ['activities.view'],
   pageTitle: 'Activity',
   pageTitleKey: 'activities.activities.record.title',
-  pageGroup: 'Schedule',
-  pageGroupKey: 'activities.nav.group',
+  pageGroup: 'Classes',
+  pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [
     { label: 'Activities', labelKey: 'activities.activities.title', href: '/backend/activities/activities' },

@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['payments.manage'],
   pageTitle: 'Generations',
   pageTitleKey: 'payments.generations.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   navHidden: true,
   breadcrumb: [

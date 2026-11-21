@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['payments.manage'],
   pageTitle: 'Fees and discounts',
   pageTitleKey: 'payments.fees.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   pageOrder: 10,
   icon: 'wallet',
