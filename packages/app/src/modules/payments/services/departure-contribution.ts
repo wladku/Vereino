@@ -5,11 +5,15 @@
 //   "Cash to settle" counts them) is a blocker with the amount — it clears only when the cash is accepted on B-33, with
 //   no "settled outside" override (Q-L05); the open charges naming them as debtor or payer are a warning;
 // - apply and undo change nothing; after the commit nothing is emitted;
-// - `retentionHoldUntil` gives phase L6 the last day a name must be kept for a booked payment (DD-L07).
+// - `retentionHoldUntil` gives phase L6 the last day a name must be kept for a booked payment (DD-L07);
+// - `erase` (S9.6, #528), in the anonymisation's transaction: the orders the person placed lose the contact e-mail,
+//   phone and notes, the orders for them as participant lose the print name and notes, and the charges naming them
+//   as debtor or payer lose a typed payer label. Amounts, payments, receipts and payer reference codes stay: they are
+//   accounting records (retention schedule R1).
 // Reads use the caller's EntityManager, one query at a time (it may be the departure's transaction).
-import type { EntityManager } from '@mikro-orm/postgresql'
+import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import type { DepartureContributor, DepartureNotice } from '../../people/services/departure'
-import { Charge, Payment } from '../data/entities'
+import { Charge, Order, Payment } from '../data/entities'
 import { custodyByCollector } from '../lib/cash-handovers'
 import { OPEN_CHARGE_STATUSES } from '../lib/charge-ledger'
 import { openChargesByPerson, retentionHoldUntil } from '../lib/departure'
@@ -52,6 +56,22 @@ async function cashHeld(em: EntityManager, scope: Scope, personIds: readonly str
     })),
     new Set(reversals.map((row) => row.reversesPaymentId as string)),
   ).items
+}
+
+/** The accounting records an anonymisation keeps (retention schedule R1); they hold the person id, never contacts. */
+export const PAYMENTS_KEPT_ON_ERASURE = {
+  category: 'accounting_records',
+  basis: 'GDPR art. 6(1)(c); Accounting Act (ustawa o rachunkowości) art. 74; Tax Ordinance art. 86',
+  retention: 'R1',
+  tables: [
+    'payments_charges',
+    'payments_payments',
+    'payments_cash_handovers',
+    'payments_payer_refs',
+    'payments_checkouts',
+    'payments_bank_transactions',
+    'payments_orders',
+  ],
 }
 
 export const departureContribution: DepartureContributor = {
@@ -129,5 +149,47 @@ export const departureContribution: DepartureContributor = {
       { fields: ['id', 'paidOn'], orderBy: { paidOn: 'desc' }, limit: 1 },
     )
     return retentionHoldUntil(latest[0] ? calendarDate(latest[0].paidOn) : null)
+  },
+
+  async erase(em, subject) {
+    const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+    const now = new Date()
+    const idsOf = async (where: Record<string, unknown>) =>
+      (await em.find(Order, { ...scope, ...where } as FilterQuery<Order>, { fields: ['id'] })).map((row) => row.id)
+    // An order the person placed for themself is in both lists; the audit counts it once.
+    const placed = await idsOf({
+      orderedByPersonId: subject.personId,
+      $or: [{ contactEmail: { $ne: null } }, { contactPhone: { $ne: null } }, { notes: { $ne: null } }],
+    })
+    const forThem = await idsOf({
+      participantPersonId: subject.personId,
+      $or: [{ printName: { $ne: null } }, { notes: { $ne: null } }],
+    })
+    if (placed.length > 0) {
+      await em.nativeUpdate(
+        Order,
+        { ...scope, id: { $in: placed } },
+        { contactEmail: null, contactPhone: null, notes: null, updatedAt: now },
+      )
+    }
+    if (forThem.length > 0) {
+      await em.nativeUpdate(Order, { ...scope, id: { $in: forThem } }, { printName: null, notes: null, updatedAt: now })
+    }
+    const labelled = await em.nativeUpdate(
+      Charge,
+      {
+        ...scope,
+        payerLabel: { $ne: null },
+        $or: [{ personId: subject.personId }, { payerPersonId: subject.personId }],
+      },
+      { payerLabel: null, updatedAt: now },
+    )
+    return {
+      touched: [
+        { table: 'payments_orders', rows: new Set([...placed, ...forThem]).size },
+        { table: 'payments_charges', rows: labelled },
+      ],
+      kept: [PAYMENTS_KEPT_ON_ERASURE],
+    }
   },
 }
