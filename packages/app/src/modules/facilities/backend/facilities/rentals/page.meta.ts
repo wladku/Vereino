@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['facilities.rentals.manage'],
   pageTitle: 'Rentals',
   pageTitleKey: 'facilities.rentals.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 15,
   icon: 'ticket',

@@ -15,9 +15,9 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { TableLoadError } from '@vereino/ui'
 import {
   BANK_PERSPECTIVES,
   DEFAULT_BANK_PERSPECTIVE,
@@ -31,6 +31,7 @@ import { BankAssignDialog, BankSkipDialog } from './BankDecisionDialogs'
 import { BankImportHistory } from './BankImportHistory'
 import { BankImportPanel } from './BankImportPanel'
 import { BANK_PAGE_SIZE, BANK_QUERY_KEY, decide, useBankTransfers, type BankTransfer } from './bank-client'
+import { StatusTag } from '@vereino/ui'
 
 const STATUS_VARIANTS: Record<BankTransfer['status'], 'success' | 'warning' | 'info' | 'neutral'> = {
   booked: 'success',
@@ -160,9 +161,7 @@ function buildColumns(t: Translate, locale: string): TableColumns<BankTransfer> 
           data-testid={`bank-status-${row.original.status}`}
           data-auto-booked={row.original.status === 'booked' && row.original.autoBooked ? 'true' : undefined}
         >
-          <StatusBadge variant={STATUS_VARIANTS[row.original.status]} dot>
-            {statusText(row.original, t)}
-          </StatusBadge>
+          <StatusTag status={STATUS_VARIANTS[row.original.status]}>{statusText(row.original, t)}</StatusTag>
         </span>
       ),
     },
@@ -265,7 +264,15 @@ export function BankStatementPage() {
             columns={columns}
             data={transfers.data?.items ?? []}
             isLoading={transfers.isLoading}
-            error={transfers.error ? errorMessage(transfers.error, t('payments.bank.errors.load')) : null}
+            error={
+              transfers.error ? (
+                <TableLoadError
+                  message={t('payments.bank.errors.load')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void transfers.refetch()}
+                />
+              ) : null
+            }
             emptyState={
               <p className="text-muted-foreground text-sm" data-testid="bank-empty">
                 {t(`payments.bank.empty.${perspective}`)}

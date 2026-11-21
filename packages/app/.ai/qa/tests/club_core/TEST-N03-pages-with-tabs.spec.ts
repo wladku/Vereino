@@ -147,7 +147,11 @@ test('TEST-N03 five admin pages with tabs: two clicks, tab routes, ?tab= aliases
       for (const tab of tabbed.tabs) {
         await page.goto('/backend')
         await chromeReady(page)
-        await page.getByTestId('sidebar').getByRole('link', { name: tabbed.menu }).click()
+        // The Facility group is the last of the mockup's group order (#494): its last item sits under the platform's
+        // "scroll to bottom" chevron, which takes the pointer, so the item is opened from the keyboard.
+        const item = page.getByTestId('sidebar').getByRole('link', { name: tabbed.menu })
+        await item.focus()
+        await page.keyboard.press('Enter')
         await expect(page).toHaveURL(new RegExp(`${tabbed.tabs[0].path}$`))
         const strip = page.getByRole('tablist', { name: tabbed.title })
         await expect(strip.getByRole('tab')).toHaveText(tabbed.tabs.map((entry) => entry.name))

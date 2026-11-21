@@ -5,9 +5,9 @@ export const metadata = {
   requireFeatures: ['payments.cash.settle'],
   pageTitle: 'Cash to settle',
   pageTitleKey: 'payments.cashCustody.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
-  pageOrder: 26,
+  pageOrder: 40,
   icon: 'hand-coins',
   breadcrumb: [{ label: 'Cash to settle', labelKey: 'payments.cashCustody.title' }],
 }

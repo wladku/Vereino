@@ -9,6 +9,7 @@ import { FeatureTogglesService } from '@open-mercato/core/modules/feature_toggle
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { AccessDeniedMessage } from '@open-mercato/ui/backend/detail'
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
 
 type LayoutProps = {
   children: React.ReactNode
@@ -60,7 +61,14 @@ export default async function FrontendLayout({ children }: LayoutProps) {
 
   const portalMatch = pathname.match(/^\/([^/]+)\/portal(?:\/|$)/)
   if (!portalMatch) {
-    return <>{children}</>
+    // The member and public pages (`/club/...`) render platform `CrudForm`s too: the accessibility repairs of the backend
+    // layout run here as well (E20-S18, #497).
+    return (
+      <>
+        {children}
+        <PlatformA11yRepairs />
+      </>
+    )
   }
 
   const orgSlug = portalMatch[1]
@@ -175,6 +183,7 @@ export default async function FrontendLayout({ children }: LayoutProps) {
       customerAuth={authenticatedChrome ? customerAuth : null}
     >
       {children}
+      <PlatformA11yRepairs />
     </PortalLayoutShell>
   )
 }

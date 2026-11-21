@@ -9,10 +9,10 @@
 import * as React from 'react'
 import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { STAFF_STEP_VARIANT, accountStep, periodStep, type StaffStep } from '@vereino/core'
 import type { PersonAccount, RoleAssignmentRow } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 /** The injection spot of the checklist's module rows (`groups`, `club_core` injection tables). */
 export const STAFF_SETUP_SPOT_ID = 'vereino:people:person-record:staff-setup'
@@ -40,7 +40,7 @@ function StepRow({
       <span className="flex flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{label}</span>
-          <StatusBadge variant={STAFF_STEP_VARIANT[step]}>{t(`people.staffSetup.step.${step}`)}</StatusBadge>
+          <StatusTag status={STAFF_STEP_VARIANT[step]}>{t(`people.staffSetup.step.${step}`)}</StatusTag>
         </span>
         {detail ? <span className="text-muted-foreground text-xs">{detail}</span> : null}
       </span>

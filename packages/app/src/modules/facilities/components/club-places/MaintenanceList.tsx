@@ -15,10 +15,9 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { MAINTENANCE_LIST_GROUPS, maintenanceListGroup, type MaintenanceListGroup } from '../../lib/maintenance'
 import { instantLabel } from '../facilities-client'
 import { MaintenanceCompleteDialog } from '../MaintenanceCompleteDialog'
@@ -65,9 +64,9 @@ function TaskCard({
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold break-words">{kindLabel(t, task.kind)}</h3>
-          <StatusBadge variant={group === 'due' ? 'warning' : statusVariant(task.status)}>
+          <StatusTag status={group === 'due' ? 'warning' : statusVariant(task.status)}>
             {t(`facilities.places.maintenance.groups.${group}`)}
-          </StatusBadge>
+          </StatusTag>
         </div>
         <p className="text-sm break-words">{place}</p>
         <p className="text-muted-foreground text-sm break-words tabular-nums" data-testid="club-maintenance-schedule">

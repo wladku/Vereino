@@ -9,19 +9,13 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { ComboboxInput, type ComboboxOption } from '@open-mercato/ui/backend/inputs'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { addCalendarDays } from '@vereino/core'
 import { useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 import { MAX_MANUAL_DESCRIPTION_LENGTH, MIN_MANUAL_DESCRIPTION_LENGTH, manualDueRange } from '../lib/manual-charges'
 import { MAX_AMOUNT } from '../lib/payments-rules'
 import { errorCode, errorMessage, lookupRows, toGrosz } from './client-helpers'

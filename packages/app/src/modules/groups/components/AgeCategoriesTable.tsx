@@ -12,22 +12,17 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { ageCategoryRangeInverted, formatBirthYears, parseUInput, type BirthYears } from '../lib/groups-rules'
 import { GroupsNav } from './GroupsNav'
 import { DICTIONARIES_HREF, errorMessage, seasonOptions, type TableColumns, type Translate } from './client-helpers'
 import { useHasFeature } from './useCanManageGroups'
+import { DialogContent } from '@/components/ui/dialog'
 
 export const AGE_CATEGORIES_URL = '/api/groups/age-categories'
 
@@ -340,7 +335,7 @@ export function AgeCategoriesTable() {
     queryKey: ['groups-age-categories-seasons', scopeVersion],
     queryFn: () => seasonOptions(),
   })
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['groups-age-categories', seasonId, scopeVersion],
     queryFn: () => fetchAgeCategoryRanges(seasonId || null),
   })
@@ -407,7 +402,15 @@ export function AgeCategoriesTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('groups.ageCategories.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('groups.ageCategories.errors.load')}
+                retryLabel={t('groups.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={
             <p className="text-muted-foreground text-sm">
               {canEdit ? t('groups.ageCategories.emptyAdmin') : t('groups.ageCategories.empty')}

@@ -20,9 +20,9 @@ import { readApiResultOrThrow, withScopedApiRequestHeaders } from '@open-mercato
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   hasPlaceFilters,
   orderParentFirst,
@@ -33,6 +33,7 @@ import {
 import { PLACE_KINDS } from '../lib/places'
 import { enumOptions, errorMessage, type TableColumns, type Translate } from './client-helpers'
 import type { PlaceRow } from './places-shared'
+import { StatusTag } from '@vereino/ui'
 
 const LIST_HREF = '/backend/club/places'
 const PAGE_SIZE = 50
@@ -61,9 +62,9 @@ async function parentOptions(): Promise<CrudFieldOption[]> {
 /** A yes/no badge of the public calendar switches (#124): status tokens, the word carries the meaning. */
 function YesNo({ value, t }: { value: boolean; t: Translate }) {
   return (
-    <StatusBadge variant={value ? 'success' : 'neutral'}>
+    <StatusTag status={value ? 'success' : 'neutral'}>
       {value ? t('club_core.places.public.yes') : t('club_core.places.public.no')}
-    </StatusBadge>
+    </StatusTag>
   )
 }
 
@@ -94,7 +95,7 @@ function buildColumns(t: Translate): TableColumns<PlaceTableRow> {
               </span>
             ) : null}
             <span className="font-medium">{place.name ?? '—'}</span>
-            {place.isExternal ? <StatusBadge variant="info">{t('club_core.places.external')}</StatusBadge> : null}
+            {place.isExternal ? <StatusTag status="info">{t('club_core.places.external')}</StatusTag> : null}
           </span>
         )
       },
@@ -140,9 +141,9 @@ function buildColumns(t: Translate): TableColumns<PlaceTableRow> {
       enableSorting: false,
       meta: { priority: 3 },
       cell: ({ row }) => (
-        <StatusBadge variant={row.original.isActive ? 'success' : 'neutral'}>
+        <StatusTag status={row.original.isActive ? 'success' : 'neutral'}>
           {row.original.isActive ? t('club_core.common.active') : t('club_core.common.inactive')}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
   ]
@@ -297,7 +298,15 @@ function PlacesList() {
         columns={columns}
         data={rows}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('club_core.places.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('club_core.places.errors.load')}
+              retryLabel={t('club_core.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={emptyState}
         searchValue={search}
         searchPlaceholder={t('club_core.places.search')}

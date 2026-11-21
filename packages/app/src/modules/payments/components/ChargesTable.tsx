@@ -19,10 +19,10 @@ import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   DEFAULT_CHARGE_PERSPECTIVE,
   PAYEES,
@@ -51,6 +51,7 @@ import {
   type TableColumns,
   type Translate,
 } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 const EXPORT_PAGE_SIZE = 100
@@ -66,17 +67,13 @@ const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'error' | 'info' |
 
 export function ChargeStatusBadge({ status, t }: { status: string | null; t: Translate }) {
   if (!status) return null
-  return (
-    <StatusBadge variant={STATUS_VARIANTS[status] ?? 'neutral'} dot>
-      {t(`payments.charges.status.${status}`)}
-    </StatusBadge>
-  )
+  return <StatusTag status={STATUS_VARIANTS[status] ?? 'neutral'}>{t(`payments.charges.status.${status}`)}</StatusTag>
 }
 
 export function OverdueBadge({ t }: { t: Translate }) {
   return (
     <span data-testid="charge-overdue">
-      <StatusBadge variant="error">{t('payments.charges.overdue')}</StatusBadge>
+      <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag>
     </span>
   )
 }
@@ -286,7 +283,7 @@ export function ChargesTable() {
     [perspective, period, payee, state.search],
   )
 
-  const { data, isLoading, error } = useQuery<ChargeList>({
+  const { data, isLoading, error, refetch } = useQuery<ChargeList>({
     queryKey: ['payments-charges', filters, page, scopeVersion],
     queryFn: () => fetchCrudList<ChargeRow>('payments/charges', { page, pageSize: PAGE_SIZE, ...filters }),
   })
@@ -451,7 +448,15 @@ export function ChargesTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('payments.charges.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('payments.charges.errors.load')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             emptyState={<p className="text-muted-foreground text-sm">{t('payments.charges.empty')}</p>}
             onRowClick={(row: ChargeRow) => {
               router.push(chargeHref(row.id))

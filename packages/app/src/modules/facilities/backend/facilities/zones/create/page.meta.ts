@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['facilities.manage'],
   pageTitle: 'New zone rule',
   pageTitleKey: 'facilities.zones.create.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   navHidden: true,
   breadcrumb: [

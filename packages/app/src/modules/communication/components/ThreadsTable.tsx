@@ -14,9 +14,9 @@ import { DataTable, type DataTableProps } from '@open-mercato/ui/backend/DataTab
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   NO_THREAD_FILTERS,
   OWN_FORBIDDEN_STATE,
@@ -36,11 +36,12 @@ import {
   type Translate,
 } from './client-helpers'
 import { useCanPost } from './useCanPost'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
 const CONTROL_CLASS_NAME =
-  'border-input bg-background focus-visible:shadow-focus min-h-11 w-full rounded-md border px-3 text-sm outline-none'
+  'border-input bg-background focus-visible:focus-indicator min-h-11 w-full rounded-md border px-3 text-sm outline-none'
 
 function buildColumns(t: Translate, locale: string): DataTableProps<ThreadListItem>['columns'] {
   return [
@@ -60,12 +61,12 @@ function buildColumns(t: Translate, locale: string): DataTableProps<ThreadListIt
           </Link>
           {row.original.isCase ? (
             <span data-testid="thread-case">
-              <StatusBadge variant="warning">{t('communication.cases.badge')}</StatusBadge>
+              <StatusTag status="warning">{t('communication.cases.badge')}</StatusTag>
             </span>
           ) : null}
           {row.original.unread ? (
             <span data-testid="thread-unread">
-              <StatusBadge variant="info">{t('communication.threads.unread')}</StatusBadge>
+              <StatusTag status="info">{t('communication.threads.unread')}</StatusTag>
             </span>
           ) : null}
         </span>
@@ -282,6 +283,15 @@ export function ThreadsTable() {
           columns={columns}
           data={items}
           isLoading={query.isFetching}
+          error={
+            query.error ? (
+              <TableLoadError
+                message={t('communication.threads.errors.load')}
+                retryLabel={t('communication.actions.retry')}
+                onRetry={() => void query.refetch()}
+              />
+            ) : null
+          }
           onRowClick={(row: ThreadListItem) => {
             router.push(threadHref(row.id))
           }}

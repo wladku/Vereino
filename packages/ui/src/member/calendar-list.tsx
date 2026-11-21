@@ -7,7 +7,7 @@ import * as React from 'react'
 import { calendarSections, type CalendarDay, type CalendarItem } from '@vereino/core'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { ChartLegend, ChartLegendDot, type ChartLegendColor } from '@open-mercato/ui/primitives/chart-legend'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
+import { StatusTag } from '#tsx/status/status-tag'
 import {
   actionButtonVariant,
   badgeVariant,
@@ -83,7 +83,9 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
             {formatTimeRange(item.startsAt, item.endsAt, locale, timeZone)}
           </time>
         </span>
-        {statusLabel !== null ? <StatusBadge variant={tone.badge}>{statusLabel}</StatusBadge> : null}
+        {statusLabel !== null ? (
+          <StatusTag status={item.status === 'cancelled' ? 'canceled' : tone.badge}>{statusLabel}</StatusTag>
+        ) : null}
       </div>
       {item.section ? (
         <p
@@ -96,7 +98,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
         </p>
       ) : null}
       {Link && item.href ? (
-        <Link href={item.href} className={`${titleClassName} focus-visible:shadow-focus rounded-sm outline-none`}>
+        <Link href={item.href} className={`${titleClassName} focus-visible:focus-indicator rounded-sm outline-none`}>
           {item.title}
         </Link>
       ) : (
@@ -149,9 +151,9 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
       {badges.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {badges.map((badge) => (
-            <StatusBadge key={badge.id} variant={badgeVariant(badge.tone)}>
+            <StatusTag key={badge.id} status={badgeVariant(badge.tone)}>
               {badge.label}
-            </StatusBadge>
+            </StatusTag>
           ))}
         </div>
       ) : null}
@@ -179,7 +181,7 @@ function CalendarListItem({ item, locale, timeZone, labels, Link, onAction, busy
             <Link
               key={link.id}
               href={link.href}
-              className="border-input bg-background hover:bg-accent focus-visible:shadow-focus inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium outline-none"
+              className="border-input bg-background hover:bg-accent focus-visible:focus-indicator inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium outline-none"
             >
               {link.label}
             </Link>

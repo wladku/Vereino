@@ -7,6 +7,9 @@
 // tournament page P-T1 of a published club event (club events spec REQ-T09, #381).
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { publicLoadOf, type PublicLoad } from '../../lib/public-load'
+
+export type { PublicLoad }
 
 export type PublicLogo = { url: string | null; source: 'section' | 'club' | 'initial'; initial: string }
 
@@ -189,8 +192,6 @@ export type PublicSectionPage = {
   }
 }
 
-export type PublicLoad<T> = { status: 'ok'; page: T } | { status: 'not_found' } | { status: 'disabled' }
-
 export const clubHref = (clubSlug: string): string => `/p/${encodeURIComponent(clubSlug)}`
 
 export const sectionHref = (clubSlug: string, sectionSlug: string): string =>
@@ -205,24 +206,27 @@ export const eventsHref = (clubSlug: string, sectionSlug?: string | null): strin
   `${clubHref(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`
 
 async function loadPublic<T>(url: string): Promise<PublicLoad<T>> {
-  const call = await apiCall<T & { code?: string }>(url)
-  if (call.ok && call.result) return { status: 'ok', page: call.result }
-  if (call.status === 404)
-    return call.result?.code === 'public_page_disabled' || call.result?.code === 'public_events_disabled'
-      ? { status: 'disabled' }
-      : { status: 'not_found' }
-  throw new Error(`[internal] public page request failed with ${String(call.status)}`)
+  const call = await apiCall<T>(url)
+  const load = publicLoadOf<T>({ ok: call.ok, status: call.status, body: call.result })
+  if (!load) throw new Error(`[internal] public page request failed with ${String(call.status)}`)
+  return load
 }
 
-export function usePublicClub(clubSlug: string) {
+/**
+ * The browser reads of the public pages. `enabled: false` when the server already read the page (#487): the view shows
+ * the server's state as it is and never seeds it into the query cache — on the server that cache is one client shared
+ * by every request (`@open-mercato/ui` `QueryProvider`), where seeded data would outlive the request.
+ */
+export function usePublicClub(clubSlug: string, enabled = true) {
   return useQuery({
     queryKey: ['club_core-public-club', clubSlug],
     queryFn: () => loadPublic<PublicClubPage>(`/api/club_core/public/${encodeURIComponent(clubSlug)}`),
     retry: false,
+    enabled,
   })
 }
 
-export function usePublicSection(clubSlug: string, sectionSlug: string) {
+export function usePublicSection(clubSlug: string, sectionSlug: string, enabled = true) {
   return useQuery({
     queryKey: ['club_core-public-section', clubSlug, sectionSlug],
     queryFn: () =>
@@ -230,11 +234,12 @@ export function usePublicSection(clubSlug: string, sectionSlug: string) {
         `/api/club_core/public/${encodeURIComponent(clubSlug)}/sections/${encodeURIComponent(sectionSlug)}`,
       ),
     retry: false,
+    enabled,
   })
 }
 
 /** P-06 (#263): `disabled` while the club does not publish its page or its events. */
-export function usePublicEvents(clubSlug: string, sectionSlug: string | null) {
+export function usePublicEvents(clubSlug: string, sectionSlug: string | null, enabled = true) {
   return useQuery({
     queryKey: ['club_core-public-events', clubSlug, sectionSlug],
     queryFn: () =>
@@ -242,6 +247,7 @@ export function usePublicEvents(clubSlug: string, sectionSlug: string | null) {
         `/api/club_core/public/${encodeURIComponent(clubSlug)}/events${sectionSlug ? `?section=${encodeURIComponent(sectionSlug)}` : ''}`,
       ),
     retry: false,
+    enabled,
   })
 }
 
@@ -249,7 +255,7 @@ export function usePublicEvents(clubSlug: string, sectionSlug: string | null) {
  * P-T1 (#381): `disabled` while the club does not publish its page or its events, `not_found` for an unknown club,
  * an unknown event or one that is not published.
  */
-export function usePublicClubEvent(clubSlug: string, eventSlug: string) {
+export function usePublicClubEvent(clubSlug: string, eventSlug: string, enabled = true) {
   return useQuery({
     queryKey: ['club_core-public-club-event', clubSlug, eventSlug],
     queryFn: () =>
@@ -257,6 +263,7 @@ export function usePublicClubEvent(clubSlug: string, eventSlug: string) {
         `/api/club_core/public/${encodeURIComponent(clubSlug)}/events/${encodeURIComponent(eventSlug)}`,
       ),
     retry: false,
+    enabled,
   })
 }
 

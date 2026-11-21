@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['payments.view'],
   pageTitle: 'Charges',
   pageTitleKey: 'payments.charges.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   pageOrder: 20,
   icon: 'receipt',

@@ -23,12 +23,12 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge, type StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
+import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { accountAgePolicy, errorCodeOf } from '@vereino/core'
 import { retryAfterMinutes } from '../lib/account-limits'
 import { errorMessage, textOrNull, type PersonAccount, type PersonDetail } from './client-helpers'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 
 const STATE_VARIANT: Record<PersonAccount['state'], StatusBadgeVariant> = {
   none: 'neutral',
@@ -174,7 +174,7 @@ function ExistingAccount({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge variant={STATE_VARIANT[account.state]}>{t(STATE_LABEL[account.state])}</StatusBadge>
+        <StatusTag status={STATE_VARIANT[account.state]}>{t(STATE_LABEL[account.state])}</StatusTag>
       </div>
       {account.email ? (
         <p className="text-sm break-words">{t('people.account.login', { email: account.email })}</p>
@@ -325,14 +325,12 @@ function CreateAccount({
       <p className="text-sm">{t('people.account.none')}</p>
       {!person.birthDate ? (
         <div>
-          <StatusBadge variant="warning">{t('people.account.birthDateRequired')}</StatusBadge>
+          <StatusTag status="warning">{t('people.account.birthDateRequired')}</StatusTag>
         </div>
       ) : null}
       {belowThreshold ? (
         <div>
-          <StatusBadge variant="warning">
-            {t('people.account.belowThreshold', { threshold: String(threshold) })}
-          </StatusBadge>
+          <StatusTag status="warning">{t('people.account.belowThreshold', { threshold: String(threshold) })}</StatusTag>
         </div>
       ) : null}
       <form

@@ -5,7 +5,7 @@ export const metadata = {
   requireFeatures: ['facilities.reports.view'],
   pageTitle: 'Municipality report',
   pageTitleKey: 'facilities.reports.owner.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   pageOrder: 70,
   icon: 'file-bar-chart',

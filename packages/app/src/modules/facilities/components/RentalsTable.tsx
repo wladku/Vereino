@@ -16,10 +16,10 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOve
 import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   RENTAL_LIST_STATUSES,
   RENTAL_VIEWS,
@@ -32,14 +32,7 @@ import {
 import { ListEmptyState } from './FacilitiesControls'
 import { useRentalActions } from './RentalRowActions'
 import { SlotDialog } from './slot/SlotDialog'
-import {
-  minorToAmount,
-  placeLabel,
-  usePlaceOptions,
-  errorMessage,
-  type TableColumns,
-  type Translate,
-} from './facilities-client'
+import { minorToAmount, placeLabel, usePlaceOptions, type TableColumns, type Translate } from './facilities-client'
 import {
   REQUESTS_HREF,
   RENTALS_API,
@@ -58,6 +51,7 @@ import {
   type RentalAction,
   type RentalRow,
 } from './rentals-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -72,9 +66,9 @@ const TAB_KEYS: Record<RentalListStatus, string> = {
 export function RentalBadges({ row, t }: { row: Pick<RentalRow, 'status' | 'needsReschedule'>; t: Translate }) {
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <StatusBadge variant={rentalStatusVariant(row.status)}>{rentalStatusLabel(t, row.status)}</StatusBadge>
+      <StatusTag status={rentalStatusVariant(row.status)}>{rentalStatusLabel(t, row.status)}</StatusTag>
       {row.needsReschedule ? (
-        <StatusBadge variant="warning">{t('facilities.rentals.flags.needsReschedule')}</StatusBadge>
+        <StatusTag status="warning">{t('facilities.rentals.flags.needsReschedule')}</StatusTag>
       ) : null}
     </span>
   )
@@ -88,9 +82,9 @@ export function RentalAmount({ row, t }: { row: RentalRow; t: Translate }) {
         {row.amount === null ? t('facilities.common.empty') : minorToAmount(row.amount)}
       </span>
       <span className="text-muted-foreground text-xs">{payeeLabel(t, row.payee)}</span>
-      <StatusBadge variant={chargeStateVariant(row.chargeState)}>
+      <StatusTag status={chargeStateVariant(row.chargeState)}>
         {t(`facilities.rentals.chargeState.${row.chargeState}`)}
-      </StatusBadge>
+      </StatusTag>
     </span>
   )
 }
@@ -205,7 +199,7 @@ export function RentalsTable() {
   const [createKey, setCreateKey] = React.useState(0)
 
   const query = rentalListQuery(state)
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [RENTALS_KEY, 'list', query, state.page, scopeVersion],
     queryFn: () =>
       fetchCrudList<RentalRow>(RENTALS_API, {
@@ -386,7 +380,15 @@ export function RentalsTable() {
                 columns={columns}
                 data={data?.items ?? []}
                 isLoading={isLoading}
-                error={error ? errorMessage(error, t('facilities.rentals.errors.load')) : null}
+                error={
+                  error ? (
+                    <TableLoadError
+                      message={t('facilities.rentals.errors.load')}
+                      retryLabel={t('facilities.common.retry')}
+                      onRetry={() => void refetch()}
+                    />
+                  ) : null
+                }
                 filters={filterDefs}
                 filterValues={{ placeId: state.placeId }}
                 onFiltersApply={(values: FilterValues) => {

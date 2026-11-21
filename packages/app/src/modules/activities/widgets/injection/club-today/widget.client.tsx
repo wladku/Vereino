@@ -24,7 +24,6 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { ButtonGroup } from '@open-mercato/ui/primitives/button-group'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { SessionCardFacts } from '../../../components/club/SessionCardFacts'
@@ -35,6 +34,7 @@ import {
   formatTimeRange,
   memberSideScope,
   MemberSkeleton,
+  StatusTag,
   useMemberContext,
 } from '@vereino/ui'
 import {
@@ -67,6 +67,7 @@ import {
 } from '../../../components/club/club-client'
 import { needsCoach } from '../../../lib/activities-rules'
 import { formatDeadline } from '../../../lib/confirm-by'
+import { coachesAGroup } from '../../../lib/member-session'
 import { unsettledEntries } from '../../../lib/substitutions'
 import { SECTION_COUNT_VIEWS, sectionCalendarHref, type SectionListView } from '../../../lib/coordinator-sessions'
 
@@ -82,7 +83,8 @@ export type ClubTodayContext = {
 }
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
-const LINK_CLASS = 'hover:bg-accent focus-visible:shadow-focus flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
+const LINK_CLASS =
+  'hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
 const PENDING_WINDOW_DAYS = 13
 /** How far back the coach tile looks for unsettled sessions (the same two weeks the pending decisions cover). */
 const UNSETTLED_WINDOW_DAYS = 13
@@ -158,6 +160,7 @@ function CoachTile({
   onRetry,
   today,
   timeZone,
+  offersNewEvent,
 }: {
   entries: CalendarEntry[]
   unsettled: CalendarEntry[]
@@ -166,6 +169,8 @@ function CoachTile({
   onRetry: () => void
   today: string
   timeZone: string
+  /** The person coaches a group: the coach's "New event" creates an event for an own group only (E20-S10, #489). */
+  offersNewEvent: boolean
 }) {
   const t = useT()
   let body: React.ReactNode
@@ -201,11 +206,11 @@ function CoachTile({
             />
             <div className="flex flex-wrap items-center gap-2 px-2">
               {entry.occurrence.status === 'cancelled' ? (
-                <StatusBadge variant="error">{t('activities.occurrences.status.cancelled')}</StatusBadge>
+                <StatusTag status="canceled">{t('activities.occurrences.status.cancelled')}</StatusTag>
               ) : null}
               {needsCoach(entry.occurrence) ? (
                 <span data-testid="club-today-needs-coach">
-                  <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+                  <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
                 </span>
               ) : null}
               {entry.occurrence.status !== 'cancelled' ? (
@@ -230,11 +235,13 @@ function CoachTile({
         <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
           {t('activities.club.today.openCalendar')}
         </Link>
-        <Button asChild size="sm" variant="outline" className="min-h-11">
-          <Link href={newEventHref()} data-testid="club-today-new-event">
-            {t('activities.club.event.new')}
-          </Link>
-        </Button>
+        {offersNewEvent ? (
+          <Button asChild size="sm" variant="outline" className="min-h-11">
+            <Link href={newEventHref()} data-testid="club-today-new-event">
+              {t('activities.club.event.new')}
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   )
@@ -313,9 +320,9 @@ function PersonDeclaration({
       <div className="flex flex-wrap items-center gap-2">
         {named ? <span className="text-sm font-medium">{person.firstName}</span> : null}
         <span data-testid="club-today-declaration">
-          <StatusBadge variant={badgeVariant(state.tone)}>
+          <StatusTag status={badgeVariant(state.tone)}>
             {declarationLabel(t, entry.declarationKind, person.declaration)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       </div>
       {person.guardianOnly ? (
@@ -510,13 +517,13 @@ export default function ClubTodayTilesWidget({
               ))}
               {notice ? (
                 <span className="px-2" data-testid="club-today-notice" data-notice={notice.kind}>
-                  <StatusBadge variant={notice.kind === 'cancelled' ? 'error' : 'neutral'}>
+                  <StatusTag status={notice.kind === 'cancelled' ? 'canceled' : 'closed'}>
                     {notice.kind === 'closed'
                       ? t('activities.club.today.closed')
                       : notice.reason
                         ? t('activities.club.today.cancelledReason', { reason: notice.reason })
                         : t('activities.occurrences.status.cancelled')}
-                  </StatusBadge>
+                  </StatusTag>
                 </span>
               ) : null}
               {occurrence.status === 'cancelled'
@@ -560,6 +567,7 @@ export default function ClubTodayTilesWidget({
               onRetry={() => void coachQuery.refetch()}
               today={today}
               timeZone={timeZone}
+              offersNewEvent={coachesAGroup(profile?.contexts ?? [])}
             />
           </li>
         ) : null}

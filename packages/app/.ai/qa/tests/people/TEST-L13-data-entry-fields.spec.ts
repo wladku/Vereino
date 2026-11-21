@@ -24,7 +24,8 @@ import { uiText, uiTextIn } from '../_fixtures/ui-text'
 // external id another person has (409 `external_id_duplicate` at the field) and then a free one (B-10 Details); and
 // renames a section material without a new upload, a stale version answering 409 (B-05). The author edits their own
 // message in the panel (B-19) and on the phone (M-07, 375 px, both locales, light and dark, axe): the text changes with
-// the "edited" mark, others' messages offer no edit, and a case offers none and answers 409 `case_immutable`.
+// the "edited" mark, others' messages offer no edit, and a case offers none and answers 409 `case_immutable`; an
+// emptied text shows its error under the field with "Save" enabled (#490).
 test.describe.configure({ timeout: 600_000 })
 
 type Assignment = { id: string; validFrom: string; validTo: string | null; updatedAt: string }
@@ -271,7 +272,16 @@ test('TEST-L13 author edits their own message in the panel and on the phone, bot
     await expect(page.getByTestId('thread-message-edit')).toHaveCount(1)
     await expect(messageIn(announcementId).getByTestId('thread-message-edited')).toBeVisible()
     await own.getByTestId('thread-message-edit').click()
+    // An emptied text (#490): "Save" stays enabled, the error stands under the field and the focus goes back to it.
+    await own.getByTestId('thread-message-edit-body').fill('')
+    await expect(own.getByTestId('thread-message-edit-save')).toBeEnabled()
+    await own.getByTestId('thread-message-edit-save').click()
+    await expect(own.getByTestId('thread-message-edit-error')).toHaveText(
+      uiTextIn('pl', 'communication.message.edit.errors.bodyRequired'),
+    )
+    await expect(own.getByTestId('thread-message-edit-body')).toBeFocused()
     await own.getByTestId('thread-message-edit-body').fill('Kuba będzie z bratem.')
+    await expect(own.getByTestId('thread-message-edit-error')).toHaveCount(0)
     await own.getByTestId('thread-message-edit-save').click()
     await expect(own.getByTestId('thread-message-body')).toHaveText('Kuba będzie z bratem.')
     await expect(own.getByTestId('thread-message-edited')).toContainText(uiTextIn('pl', 'communication.message.edited'))

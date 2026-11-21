@@ -6,12 +6,15 @@ import { createClub } from '../_fixtures/club'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { getThread, listThreads } from '../_fixtures/communication'
 import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
+import { uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-M13 (foundation III REQ-M12, DD-M18, AC-M12; #138) on the TEST-M12 fixture (the TEST-008 family): Anna opens
 // `/club/messages` → "Write to the coach", picks Hania and the coaches of Żaki with the keyboard, writes and sends; the
 // new thread opens with her message and the inbox lists it. The page passes axe in light and dark mode at 375 px with
 // no horizontal overflow, in Polish (the club's language) and in English (Anna's preference). A member of the club in
-// no group (the academy coordinator) gets no action and sees the empty state.
+// no group (the academy coordinator) gets no action and sees the empty state. "Send" stays enabled (#490): sending an
+// empty form shows the error summary and the field errors and moves the focus to the subject; the error state passes
+// axe too.
 test.describe.configure({ timeout: 600_000 })
 
 test('TEST-M13 write to the coach: inbox action, pick the member and the coaches, keyboard send, the thread opens, both locales, axe at 375 px, empty state', async ({
@@ -53,6 +56,42 @@ test('TEST-M13 write to the coach: inbox action, pick the member and the coaches
     await scan('/club/messages/new (pl)', async () => {
       await expect(page.getByTestId('club-direct-form')).toBeVisible()
     })
+
+    // An empty send (#490): the button is enabled, the summary lists both fields, the focus lands on the subject.
+    const sendEmpty = async (locale: 'en' | 'pl') => {
+      await expect(page.getByTestId('club-direct-send')).toBeEnabled()
+      await page.getByTestId('club-direct-send').click()
+      const summary = page.getByTestId('club-direct-problems')
+      await expect(summary).toBeVisible()
+      await expect(summary.getByRole('heading')).toHaveText(uiTextIn(locale, 'communication.direct.errors.summary'))
+      await expect(summary.getByRole('link')).toHaveText([
+        uiTextIn(locale, 'communication.direct.errors.subjectRequired'),
+        uiTextIn(locale, 'communication.direct.errors.bodyRequired'),
+      ])
+      await expect(page.getByTestId('club-direct-subject')).toBeFocused()
+      await expect(page.getByTestId('club-direct-subject')).toHaveAttribute('aria-invalid', 'true')
+      await expect(page.getByTestId('club-direct-subject-error')).toHaveText(
+        uiTextIn(locale, 'communication.direct.errors.subjectRequired'),
+      )
+      await expect(page.getByTestId('club-direct-body-error')).toHaveText(
+        uiTextIn(locale, 'communication.direct.errors.bodyRequired'),
+      )
+    }
+    await scan('/club/messages/new (pl, empty send)', async () => {
+      await sendEmpty('pl')
+    })
+    // A summary link takes the focus to its field; a filled field drops out of the summary as it is typed.
+    await page.getByTestId('club-direct-problems').getByRole('link').nth(1).click()
+    await expect(page.getByTestId('club-direct-body')).toBeFocused()
+    await page.getByTestId('club-direct-subject').fill('Temat')
+    await expect(page.getByTestId('club-direct-problems').getByRole('link')).toHaveText([
+      uiTextIn('pl', 'communication.direct.errors.bodyRequired'),
+    ])
+    await expect(page.getByTestId('club-direct-subject-error')).toHaveCount(0)
+    await page.getByTestId('club-direct-send').click()
+    await expect(page.getByTestId('club-direct-body')).toBeFocused()
+    await expect(page).toHaveURL(/\/club\/messages\/new$/)
+    await page.getByTestId('club-direct-subject').fill('')
 
     // About: Hania (Anna has two wards with groups); To: the coaches of Żaki, chosen with the keyboard.
     await page.getByTestId('club-direct-about').click()
@@ -104,6 +143,9 @@ test('TEST-M13 write to the coach: inbox action, pick the member and the coaches
     await expect(page.getByRole('radio', { name: /^Coaches of / }).first()).toBeVisible()
     await scan('/club/messages/new (en)', async () => {
       await expect(page.getByTestId('club-direct-form')).toBeVisible()
+    })
+    await scan('/club/messages/new (en, empty send)', async () => {
+      await sendEmpty('en')
     })
 
     // A member in no group (the academy coordinator): no action in the inbox, the empty state on the page.

@@ -6,7 +6,7 @@
 // region (axe `scrollable-region-focusable` at 375 px). All logic lives in `delivery-status-model.ts`.
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
+import { StatusTag } from '#tsx/status/status-tag'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
 import {
   DELIVERY_STATUS_LIST_INITIAL_STATE,
@@ -60,9 +60,9 @@ function DeliveryStatusRow({ row, labels, formatTime }: RowProps) {
       <TableCell>{cells.channel}</TableCell>
       <TableCell>
         <span className="flex flex-wrap items-center gap-2">
-          <StatusBadge variant={cells.badge.variant} appearance={cells.badge.appearance}>
+          <StatusTag status={cells.badge.variant} appearance={cells.badge.appearance}>
             {cells.status}
-          </StatusBadge>
+          </StatusTag>
           {cells.detail !== null ? <span className="text-muted-foreground text-xs">{cells.detail}</span> : null}
         </span>
       </TableCell>
@@ -130,7 +130,7 @@ export function DeliveryStatusListView({
           aria-label={labels.tableLabel}
           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a horizontally scrolling region must be keyboard-focusable (WCAG 2.1.1, axe `scrollable-region-focusable` at 375 px)
           tabIndex={0}
-          className="focus-visible:shadow-focus overflow-x-auto rounded-md border outline-none"
+          className="focus-visible:focus-indicator overflow-x-auto rounded-md border outline-none"
         >
           <Table>
             <TableHeader>
