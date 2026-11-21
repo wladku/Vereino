@@ -11,7 +11,7 @@
 //   as debtor or payer lose a typed payer label. Amounts, payments, receipts and payer reference codes stay: they are
 //   accounting records (retention schedule R1).
 // Reads use the caller's EntityManager, one query at a time (it may be the departure's transaction).
-import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
+import type { EntityManager } from '@mikro-orm/postgresql'
 import type { DepartureContributor, DepartureNotice } from '../../people/services/departure'
 import { Charge, Order, Payment } from '../data/entities'
 import { custodyByCollector } from '../lib/cash-handovers'
@@ -155,7 +155,7 @@ export const departureContribution: DepartureContributor = {
     const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
     const now = new Date()
     const idsOf = async (where: Record<string, unknown>) =>
-      (await em.find(Order, { ...scope, ...where } as FilterQuery<Order>, { fields: ['id'] })).map((row) => row.id)
+      (await em.find(Order, { ...scope, ...where }, { fields: ['id'] })).map((row) => row.id)
     // An order the person placed for themself is in both lists; the audit counts it once.
     const placed = await idsOf({
       orderedByPersonId: subject.personId,
