@@ -47,7 +47,7 @@ import {
   type CampaignDetail,
   type Option,
 } from './orders-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, Notice, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'payments:order_campaign'
 const FORM_ID = 'order-campaign-form'
@@ -778,7 +778,7 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
   if (query.error) return <ErrorMessage label={errorMessage(query.error, t('payments.orders.errors.load'))} />
   if (detail && !isCampaignEditable(detail.status)) {
     return (
-      <Alert status="warning" data-testid="order-campaign-locked">
+      <Alert style="light" status="warning" data-testid="order-campaign-locked">
         <div className="flex flex-col items-start gap-2">
           <strong>{t('payments.orders.edit.lockedTitle')}</strong>
           <span>{t('payments.orders.edit.lockedText')}</span>
@@ -798,14 +798,14 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       {collecting > 0 ? (
-        <Alert status="information" data-testid="order-campaign-collecting">
+        <Notice data-testid="order-campaign-collecting">
           <div className="flex flex-col gap-1">
             <strong>
               {t(`payments.orders.edit.collectingTitle.${pluralKey(locale, collecting)}`, { count: collecting })}
             </strong>
             <span>{t('payments.orders.edit.collectingText')}</span>
           </div>
-        </Alert>
+        </Notice>
       ) : null}
       <CrudForm<CampaignFormValues>
         key={detail ? detail.updatedAt : 'loading'}

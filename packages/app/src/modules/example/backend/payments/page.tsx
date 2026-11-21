@@ -433,7 +433,7 @@ export default function PaymentGatewayDemoPage() {
 
           {/* Error Display */}
           {error && (
-            <Alert status="error">
+            <Alert style="light" status="error">
               <AlertTitle>{t('example.payments.error.title', 'Error')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -441,7 +441,7 @@ export default function PaymentGatewayDemoPage() {
 
           {/* Action Result */}
           {actionResult && (
-            <Alert status="success">
+            <Alert style="light" status="success">
               <AlertTitle>{t('example.payments.success.title', 'Success')}</AlertTitle>
               <AlertDescription>{actionResult}</AlertDescription>
             </Alert>

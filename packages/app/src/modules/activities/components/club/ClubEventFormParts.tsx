@@ -86,7 +86,7 @@ export function FormError({
 }) {
   if (!error) return null
   return (
-    <Alert status="error" data-testid="club-event-form-error">
+    <Alert style="light" status="error" data-testid="club-event-form-error">
       <div className="flex flex-col gap-2">
         <p>{error}</p>
         {offline ? (

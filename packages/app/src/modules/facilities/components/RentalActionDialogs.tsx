@@ -8,6 +8,7 @@
 import * as React from 'react'
 import type { CrudFieldOption } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { Notice } from '@vereino/ui'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -164,7 +165,7 @@ export function CancelRentalDialog({
         <div className="flex flex-col gap-4">
           <RentalSummary row={row} placeName={placeName} />
           {late ? (
-            <Alert status="warning" data-testid="facilities-rental-cancel-forfeited">
+            <Alert style="light" status="warning" data-testid="facilities-rental-cancel-forfeited">
               <AlertTitle>{t('facilities.rentals.cancel.late.title')}</AlertTitle>
               <AlertDescription>
                 {deadline
@@ -173,14 +174,14 @@ export function CancelRentalDialog({
               </AlertDescription>
             </Alert>
           ) : (
-            <Alert status="information" data-testid="facilities-rental-cancel-free">
+            <Notice data-testid="facilities-rental-cancel-free">
               <AlertTitle>{t('facilities.rentals.cancel.free.title')}</AlertTitle>
               <AlertDescription>
                 {deadline
                   ? t('facilities.rentals.cancel.free.text', { deadline })
                   : t('facilities.rentals.cancel.free.textNoDeadline')}
               </AlertDescription>
-            </Alert>
+            </Notice>
           )}
           <div className="flex flex-col gap-1">
             <Label htmlFor={reasonId}>{t('facilities.rentals.cancel.reason')}</Label>

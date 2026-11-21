@@ -774,7 +774,7 @@ function DepartureSection({
             </table>
           )}
           {plan.persons.some((row) => row.warnings.length > 0) ? (
-            <Alert status="warning">
+            <Alert style="light" status="warning">
               <AlertDescription>
                 <ul className="list-disc pl-4">
                   {plan.persons.flatMap((row) =>
@@ -790,7 +790,7 @@ function DepartureSection({
           ) : null}
           {plan.blocked ? (
             <div ref={firstBlockerRef} tabIndex={-1} role="alert" data-testid="people-leaving-blockers">
-              <Alert status="error">
+              <Alert style="light" status="error">
                 <AlertDescription>
                   <p className="font-semibold">{t('people.leaving.preview.blocks')}</p>
                   <ul className="list-disc pl-4">

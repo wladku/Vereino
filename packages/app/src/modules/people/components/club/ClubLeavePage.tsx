@@ -22,7 +22,14 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, errorCodeOf } from '@vereino/core'
-import { ErrorSummary, FieldErrorMessage, fieldErrorId, focusFirstProblem, type FieldProblem } from '@vereino/ui'
+import {
+  ErrorSummary,
+  fieldErrorId,
+  FieldErrorMessage,
+  type FieldProblem,
+  focusFirstProblem,
+  Notice,
+} from '@vereino/ui'
 import { retryAfterMinutes } from '../../lib/account-limits'
 import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { ClubFrame } from './ClubFrame'
@@ -78,9 +85,9 @@ function LeaveContent({ profile }: { profile: MemberProfile }) {
     return (
       <div className="flex flex-col gap-4">
         {header}
-        <Alert status="information" data-testid="club-leave-minor">
+        <Notice data-testid="club-leave-minor">
           <p className="max-w-prose">{t('people.club.leave.minor')}</p>
-        </Alert>
+        </Notice>
       </div>
     )
   }
@@ -108,7 +115,7 @@ function LeaveContent({ profile }: { profile: MemberProfile }) {
     <div className="flex flex-col gap-4">
       {header}
       {declined.map((row) => (
-        <Alert key={row.id} status="warning" data-testid="club-leave-declined">
+        <Alert style="light" key={row.id} status="warning" data-testid="club-leave-declined">
           <p className="max-w-prose">{t('people.club.leave.declined', { reason: row.declineReason ?? '' })}</p>
         </Alert>
       ))}
@@ -352,7 +359,7 @@ function LeaveForm({
         <p className="text-muted-foreground text-sm">{t('people.club.leave.clubDecides')}</p>
       </div>
       {problem ? (
-        <Alert status="error" data-testid="club-leave-problem">
+        <Alert style="light" status="error" data-testid="club-leave-problem">
           <p>{problem}</p>
         </Alert>
       ) : null}
