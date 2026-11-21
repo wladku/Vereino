@@ -73,7 +73,12 @@ test('E06-S16 a guardian declares from Today: next session, per-tile retry, repo
     await page.goto('/club')
     const calendarTile = page.getByTestId('club-tile-calendar')
     await expect(calendarTile.getByTestId('club-today-empty')).toHaveText(nextSessionText(later, '16:00', 'Basen'))
-    await expect(calendarTile.getByRole('link', { name: uiText('activities.club.today.openCalendar') })).toBeVisible()
+    // E20-S14 (#493): the link sits in the Calendar tile's header, next to its title.
+    await expect(
+      page
+        .getByTestId('club-today-calendar-tile')
+        .getByRole('link', { name: uiText('activities.club.today.openCalendar') }),
+    ).toBeVisible()
 
     // The calendar read fails: its tile offers "Try again", the messages tile still works; the retry recovers.
     await page.route('**/api/activities/calendar?*', (route) => route.abort())

@@ -9,8 +9,10 @@ import { getSettings, publicGet, publish, putSectionPublic, putSettings } from '
 
 // E06-S07b (issue #195; README 3.1, B-03): the club administrator enters the URLs of the club's rules and privacy
 // policy on the publication page, and the footer of every public page — club, section, session and facilities — links
-// to each one only while it is set (owner decision on #195, option 2). The API refuses an address that is not an
-// absolute http(s) URL, so the page never puts `javascript:` or a relative path in an `href`.
+// to the rules only while they are set (owner decision on #195, option 2). Since E19-S03 (#469) the privacy link is
+// always there: the club's address while set, else the default notice `/p/<slug>/privacy`. The API still sends
+// `privacyPolicy: null` while unset and refuses an address that is not an absolute http(s) URL, so the page never puts
+// `javascript:` or a relative path the club typed in an `href`.
 test.describe.configure({ timeout: 300_000 })
 
 const RULES = 'https://klub-delfin.example/regulamin.pdf'
@@ -131,18 +133,20 @@ test('E06-S07b footer links to the club rules and privacy policy, only when set'
     await expect(polish.getByRole('link', { name: 'Regulamin' })).toHaveAttribute('href', RULES)
     await expect(polish.getByRole('link', { name: 'Polityka prywatności' })).toHaveAttribute('href', PRIVACY)
 
-    // Only the rules: the privacy link disappears; then neither: no link list at all.
+    // Only the rules: the privacy link falls back to the default notice; then neither: only that link is left (#469).
     expect((await putSettings(request, admin, { privacyPolicyUrl: null })).status).toBe(200)
     for (const path of paths) expect(await linksOf(request, path), path).toEqual({ rules: RULES, privacyPolicy: null })
     await page.goto(`/p/${slug}/sections/basen`)
     await expect(page.getByTestId('public-footer-rules')).toHaveAttribute('href', RULES)
-    await expect(page.getByTestId('public-footer-privacy')).toHaveCount(0)
+    await expect(page.getByTestId('public-footer-privacy')).toHaveAttribute('href', `/p/${slug}/privacy`)
+    await expect(page.getByTestId('public-footer-privacy')).toHaveAttribute('data-source', 'default')
     expect((await putSettings(request, admin, { rulesUrl: '' })).status).toBe(200)
     for (const path of paths) expect(await linksOf(request, path), path).toEqual({ rules: null, privacyPolicy: null })
     for (const pagePath of [`/p/${slug}`, `/p/${slug}/s/${occurrenceId}`, `/p/${slug}/places`]) {
       await page.goto(pagePath)
       await expect(page.getByTestId('public-footer-club'), pagePath).toHaveText('Klub Delfin')
-      await expect(page.getByTestId('public-footer-links'), pagePath).toHaveCount(0)
+      await expect(page.getByTestId('public-footer-rules'), pagePath).toHaveCount(0)
+      await expect(page.getByTestId('public-footer-privacy'), pagePath).toHaveAttribute('href', `/p/${slug}/privacy`)
     }
   } finally {
     await club.cleanup()
