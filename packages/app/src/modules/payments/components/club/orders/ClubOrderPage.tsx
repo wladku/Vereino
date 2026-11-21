@@ -201,7 +201,7 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
     )
   }
   return (
-    <PaymentsClubFrame skeleton="fields">
+    <PaymentsClubFrame skeleton="fields" loadErrorKey="payments.orders.club.errors.load">
       {() => {
         if (query.data?.status === 'not_found') {
           return (

@@ -131,7 +131,7 @@
   "people.club.ward.notYourWard": "This person is not one of your wards.",
   "people.club.ward.pageTitle": "Ward",
   "people.club.ward.primaryPayer": "You are the primary payer",
-  "people.club.wards.birthDate": "Born {date}",
+  "people.club.wards.birthDate": "Date of birth: {date}",
   "people.club.wards.consentsSummary": "Consents: {granted} of {total}",
   "people.club.wards.hasAccount": "Own account",
   "people.club.wards.title": "Your wards",

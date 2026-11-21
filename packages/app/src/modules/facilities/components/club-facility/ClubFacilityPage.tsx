@@ -551,7 +551,8 @@ function FacilityDay({ today, onRefresh }: { today: FacilityToday; onRefresh: ()
         ) : null}
         {today.entries.length === 0 ? (
           <p className="text-muted-foreground" data-testid="club-facility-empty">
-            {t('facilities.facility.entries.empty')}
+            {/* The Rentals tab exists only with the rental grant (`noShow`); without it the day just says it is empty. */}
+            {t(noShowAllowed ? 'facilities.facility.entries.emptyRentals' : 'facilities.facility.entries.empty')}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="club-facility-entries">
