@@ -58,6 +58,19 @@ error, attendant (M-12) messages and the M-16 empty state.
   the wrong password and the injected 500s. Its first English pass failed with 401 on `PUT` club settings: the admin
   token had been ended by `signInBrowser` (lesson `sign-in-browser-ends-the-api-token`); fixed by taking a fresh token.
 
+## Review round 1 (independent reviewer, changes requested)
+
+- Important: the M-12 empty day pointed every user to the Rentals tab, which only `facilities.rentals.manage` shows.
+  Fix: `facilities.facility.entries.empty` is plain again ("Na obiekcie nic dziś nie zaplanowano."); the new
+  `facilities.facility.entries.emptyRentals` carries the hint and `FacilityDay` uses it only when `noShow` (the
+  Rentals tab) is granted. E08-S06 (administrator) expects `emptyRentals`.
+- `yarn verify`: all 18 steps passed. `yarn test:integration:vereino --filter E08-S06`: `1 passed` (at 11:25 the test
+  books an evening rental, so its empty branch did not run). A temporary spec (not committed) on the same build
+  checked both branches at 375 px: administrator → `emptyRentals`; `feature-check` answered without
+  `facilities.rentals.manage` → no tabs and the plain text: `1 passed`; screenshots in the Cezar assets.
+- Minor findings (screenshots attached to GitHub, stale `ClubRentalsTab.tsx` header comment) left for the reviewer's
+  call: the review round fixes Blocking and Important findings only.
+
 ## Open problems / next steps
 
 - None for this issue. The M-12 "Rentals" tab trigger looks clipped at 375 px in the screenshots (pre-existing, not

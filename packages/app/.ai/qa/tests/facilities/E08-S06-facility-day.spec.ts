@@ -85,8 +85,9 @@ test('E08-S06 facility day: open, groups, incident with 422, close; log, inciden
     await expect(page.getByTestId('club-facility-place-name')).toHaveText('Boisko A')
     await expect(page.getByTestId('club-facility-state')).toHaveText('The facility has not been opened today.')
     if (!rentalId)
+      // The administrator has the Rentals tab, so the empty day points to it (#496).
       await expect(page.getByTestId('club-facility-empty')).toHaveText(
-        uiText('facilities.facility.entries.empty', { exact: true }),
+        uiText('facilities.facility.entries.emptyRentals', { exact: true }),
       )
 
     // "Open facility": the condition before is required; then "Facility opened {time}".
