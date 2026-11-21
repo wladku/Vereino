@@ -1,7 +1,7 @@
 ---
 title: "A scratch-repository rehearsal of a GitHub automation needs its rule overrides, synced scripts and a lag allowance"
 modules: ["platform"]
-areas: ["ci", "testing"]
+areas: ["integration", "testing"]
 topics: ["merge-train", "rehearsal", "github-api"]
 ---
 
