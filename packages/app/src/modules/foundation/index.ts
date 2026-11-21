@@ -70,6 +70,12 @@ export { parseRecurrence, type ParseRecurrenceInput } from './services/recurrenc
 export { registerModuleSchedule, type ModuleScheduleRegistration } from './services/register-module-schedule'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {
+  loadPublicRoute,
+  type PublicRouteAnswer,
+  type PublicRouteHandler,
+  type PublicRouteLoadInput,
+} from './services/public-route-load'
+export {
   desiredRoles,
   rolesForAssignments,
   seedRoles,

@@ -16,7 +16,6 @@ import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { partActions, partsByDay, type PartAction } from '../lib/club-events'
@@ -36,6 +35,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { partDayLabel, type ClubEventDetail, type ClubEventOptions, type ClubEventPart } from './club-events-client'
+import { StatusTag } from '@vereino/ui'
 
 const ACTION_LABELS: Record<PartAction, string> = {
   edit: 'activities.clubEvents.part.actions.edit',
@@ -90,7 +90,7 @@ function buildColumns(t: Translate): TableColumns<ClubEventPart> {
       meta: { priority: 2 },
       cell: ({ row }) =>
         row.original.kind === 'open' ? (
-          <StatusBadge variant="neutral">{t('activities.clubEvents.part.noGroup')}</StatusBadge>
+          <StatusTag status="neutral">{t('activities.clubEvents.part.noGroup')}</StatusTag>
         ) : (
           `${row.original.groupName ?? ''}${row.original.sectionName ? ` (${row.original.sectionName})` : ''}`
         ),
@@ -120,7 +120,7 @@ function buildColumns(t: Translate): TableColumns<ClubEventPart> {
       cell: ({ row }) =>
         row.original.coachName ??
         (row.original.kind === 'group' && row.original.status === 'planned' ? (
-          <StatusBadge variant="warning">{t('activities.clubEvents.part.needsCoach')}</StatusBadge>
+          <StatusTag status="warning">{t('activities.clubEvents.part.needsCoach')}</StatusTag>
         ) : (
           dash
         )),
@@ -131,7 +131,7 @@ function buildColumns(t: Translate): TableColumns<ClubEventPart> {
       enableSorting: false,
       meta: { priority: 2 },
       cell: ({ row }) => (
-        <StatusBadge variant={statusVariant(row.original.status)}>{statusLabel(t, row.original.status)}</StatusBadge>
+        <StatusTag status={statusVariant(row.original.status)}>{statusLabel(t, row.original.status)}</StatusTag>
       ),
     },
   ]

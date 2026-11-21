@@ -644,9 +644,18 @@
     'file-text': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    'circle-alert': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    'circle-x': '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+    'circle-dashed': '<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',
+    'calendar-x': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   }
   const icon = (name        )         => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`
-  const badge = (text        , kind                                                       = 'neutral')         => `<span class="badge ${kind}">${esc(text)}</span>`
+  // A status is a word and an icon (tokens.md "Status icons", D-033 §2): each kind has a default icon; a status may name its own.
+                                                                       
+  const BADGE_ICON                            = { success: 'circle-check', warning: 'clock', error: 'circle-alert', neutral: 'circle-dashed', info: 'info' }
+  const badge = (text        , kind            = 'neutral', ico         = BADGE_ICON[kind])         => `<span class="badge ${kind}">${icon(ico)}${esc(text)}</span>`
   const btn = (label        , action        , attrs                         = {}, cls = '')         =>
     `<button type="button" class="btn ${cls}" data-action="${action}" ${Object.entries(attrs).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ')}>${label}</button>`
   const link = (label        , href        , cls = 'btn')         => `<a class="${cls}" href="#${href}">${label}</a>`
@@ -690,24 +699,26 @@
 
   function statusBadge(s        )         {
     // Status → badge colour; the label is t(`ui.statusBadge.${status}`).
-    const map                                                                       = {
+    const map                            = {
       planned: 'neutral', done: 'success', cancelled: 'error',
       open: 'warning', partially_paid: 'warning', paid: 'success', forfeited: 'error',
       pending_verification: 'neutral', pending_approval: 'warning', requested: 'info',
       confirmed: 'success', rejected: 'error', expired: 'neutral', superseded: 'neutral',
       cancelled_free: 'neutral', cancelled_late: 'error', no_show: 'error',
     }
-    return map[s] ? badge(t(`ui.statusBadge.${s}`), map[s]) : badge(s, 'neutral')
+    // Own icons from the tokens.md map; the rest take their kind's default.
+    const own                         = { cancelled: 'circle-x', rejected: 'circle-x' }
+    return map[s] ? badge(t(`ui.statusBadge.${s}`), map[s], own[s]) : badge(s, 'neutral')
   }
 
   const declKind = (o            )           => db.settings.declarationKinds[o.type]
 
   function declBadge(a                        , kind           = 'confirm')         {
-    if (kind === 'absence_only') return a?.declared === 'no' ? badge(t('ui.declBadge.absent'), 'error') : badge(t('ui.declBadge.expected'), 'neutral')
+    if (kind === 'absence_only') return a?.declared === 'no' ? badge(t('ui.declBadge.absent'), 'error', 'x') : badge(t('ui.declBadge.expected'), 'neutral')
     if (!a || a.declared === 'unknown') return badge(t('ui.declBadge.none'), 'neutral')
     if (a.status === 'pending_guardian') return badge(t('ui.declBadge.pendingGuardian'), 'warning')
-    if (a.status === 'rejected_by_guardian') return badge(t('ui.declBadge.rejectedByGuardian'), 'error')
-    return a.declared === 'yes' ? badge(t('ui.declBadge.yes'), 'success') : badge(t('ui.declBadge.no'), 'error')
+    if (a.status === 'rejected_by_guardian') return badge(t('ui.declBadge.rejectedByGuardian'), 'error', 'circle-x')
+    return a.declared === 'yes' ? badge(t('ui.declBadge.yes'), 'success') : badge(t('ui.declBadge.no'), 'error', 'x')
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -864,7 +875,7 @@
     const dis = c.closed ? 'disabled' : ''
     if (kind === 'absence_only') {
       return a?.declared === 'no'
-        ? `<div class="row">${badge(t('m.occCard.absenceReported'), 'error')}<button type="button" class="btn sm" ${data} data-val="unknown" ${dis} aria-label="${esc(t('m.occCard.undoAbsenceAria', { name: c.name }))}">${esc(t('m.occCard.undoAbsence'))}</button></div>`
+        ? `<div class="row">${badge(t('m.occCard.absenceReported'), 'error', 'x')}<button type="button" class="btn sm" ${data} data-val="unknown" ${dis} aria-label="${esc(t('m.occCard.undoAbsenceAria', { name: c.name }))}">${esc(t('m.occCard.undoAbsence'))}</button></div>`
         : `<button type="button" class="btn sm" ${data} data-val="no" ${dis} aria-label="${esc(t('m.occCard.reportAbsenceAria', { name: c.name }))}">${esc(t('m.occCard.reportAbsence'))}</button>`
     }
     const yes = a?.declared === 'yes', no = a?.declared === 'no'
@@ -893,8 +904,8 @@
       <a class="title" href="#/club/occurrences/${o.id}"><span class="dot sec-${s.color}" aria-hidden="true"></span>${esc(o.name)}</a>
       ${o.gather && o.status === 'planned' ? `<div class="gather">${icon('clock')}${esc(t('m.occCard.gather', { time: o.gather }))}</div>` : ''}
       <div class="meta">${esc(g.name)} · ${esc(s.name)} · ${esc(placeName(db, o.place))}${place?.external ? ` · <a href="${esc(mapUrl(db, o.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a>` : ''}${o.coach && o.coach !== o.defaultCoach ? ` · ${esc(t('m.occCard.substitute', { name: pName(o.coach) }))}` : ''}</div>
-      ${o.status === 'cancelled' ? `<div style="margin-top:4px">${badge(t('m.occCard.cancelled', { reason: o.cancelReason || '' }), 'error')}</div>` : ''}
-      ${o.confirmBy && o.status === 'planned' && x.who.length && !started(o) ? `<div class="deadline small">${late ? `${badge(t('m.occCard.deadlinePassed', { at: deadlineLabel(o.confirmBy) }), 'neutral')} <span class="muted">${esc(t('m.occCard.deadlinePassedHint'))}</span>` : `<span class="muted">${esc(t('m.occCard.confirmBy', { at: deadlineLabel(o.confirmBy) }))}</span>`}</div>` : ''}
+      ${o.status === 'cancelled' ? `<div style="margin-top:4px">${badge(t('m.occCard.cancelled', { reason: o.cancelReason || '' }), 'error', 'circle-x')}</div>` : ''}
+      ${o.confirmBy && o.status === 'planned' && x.who.length && !started(o) ? `<div class="deadline small">${late ? `${badge(t('m.occCard.deadlinePassed', { at: deadlineLabel(o.confirmBy) }), 'neutral', 'calendar-x')} <span class="muted">${esc(t('m.occCard.deadlinePassedHint'))}</span>` : `<span class="muted">${esc(t('m.occCard.confirmBy', { at: deadlineLabel(o.confirmBy) }))}</span>`}</div>` : ''}
       ${started(o) && o.status === 'planned' && x.who.length ? `<div style="margin-top:4px">${badge(t('m.occCard.declClosed'), 'neutral')}</div>` : ''}
       <div class="decl">${decl}</div>${coachLine}</div></div>`
   }
@@ -951,12 +962,12 @@
     const closed = started(o)
     const pend = who.filter((w) => w !== pid && db.attendance[o.id]?.[w]?.status === 'pending_guardian')
     const subs = db.substitutions.filter((x) => x.occ === o.id)
-    return `<div class="card"><div class="row between"><span class="badge info">${esc(typeLabel(o.type, g.kind))}</span>${statusBadge(o.status)}</div>
+    return `<div class="card"><div class="row between">${badge(typeLabel(o.type, g.kind), 'info')}${statusBadge(o.status)}</div>
       <h2 style="margin:8px 0 2px;font-size:18px">${esc(o.name)}</h2>
       <p class="muted" style="margin:0">${esc(dLong(o.date))}, ${o.start}–${o.end}</p>
       <ul class="list small" style="margin-top:8px"><li><b>${t('common.place')}:</b> ${esc(placeName(db, o.place))}, ${esc((db.places.find((x) => x.id === o.place) || { address: '' }).address)} · <a href="${esc(mapUrl(db, o.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a></li>
       ${o.gather ? `<li><b>${t('m.screenOccurrence.gather')}:</b> ${o.gather}</li>` : ''}
-      ${o.confirmBy ? `<li><b>${t('m.screenOccurrence.confirmBy')}:</b> ${esc(deadlineLabel(o.confirmBy))}${confirmPassed(o) ? ` ${badge(t('m.screenOccurrence.deadlineOver'), 'neutral')}` : ''}</li>` : ''}<li><b>${t('common.group')}:</b> ${esc(g.name)} · ${esc(s.name)}</li><li><b>${g.kind === 'team' ? t('common.coach') : t('m.screenOccurrence.instructor')}:</b> ${o.coach ? esc(pName(o.coach)) : badge(t('m.screenOccurrence.needsCoach'), 'warning')}${o.coach && o.coach !== o.defaultCoach ? ` ${t('m.screenOccurrence.substituteFor', { name: esc(pName(o.defaultCoach)) })}` : ''}</li>
+      ${o.confirmBy ? `<li><b>${t('m.screenOccurrence.confirmBy')}:</b> ${esc(deadlineLabel(o.confirmBy))}${confirmPassed(o) ? ` ${badge(t('m.screenOccurrence.deadlineOver'), 'neutral', 'calendar-x')}` : ''}</li>` : ''}<li><b>${t('common.group')}:</b> ${esc(g.name)} · ${esc(s.name)}</li><li><b>${g.kind === 'team' ? t('common.coach') : t('m.screenOccurrence.instructor')}:</b> ${o.coach ? esc(pName(o.coach)) : badge(t('m.screenOccurrence.needsCoach'), 'warning')}${o.coach && o.coach !== o.defaultCoach ? ` ${t('m.screenOccurrence.substituteFor', { name: esc(pName(o.defaultCoach)) })}` : ''}</li>
       ${o.opponent ? `<li><b>${t('m.screenOccurrence.opponent')}:</b> ${esc((db.externalTeams.find((et) => et.id === o.opponent) || { name: '' }).name)}</li>` : ''}
       ${o.invited?.length ? `<li><b>${t('m.screenOccurrence.invitedTeams')}:</b> ${o.invited.map((i) => esc((db.externalTeams.find((et) => et.id === i) || { name: i }).name)).join(', ')}</li>` : ''}
       ${o.status === 'cancelled' ? `<li><b>${t('m.screenOccurrence.cancelReason')}:</b> ${esc(o.cancelReason)}</li>` : ''}</ul></div>
@@ -984,8 +995,8 @@
     for (const m of ids) { const a = att[m]; if (!a || a.declared === 'unknown') counts.unknown++; else if (a.declared === 'yes') counts.yes++; else counts.no++ }
     // AC-007: `absence_only` shows expected and reported absences, `confirm` shows confirmed, declined and unanswered.
     const summary = kind === 'absence_only'
-      ? `${badge(t('m.screenAttendance.countExpected', { n: counts.yes + counts.unknown }), 'success')}${badge(t('m.screenAttendance.countAbsent', { n: counts.no }), 'error')}`
-      : `${badge(t('m.screenAttendance.countYes', { n: counts.yes }), 'success')}${badge(t('m.screenAttendance.countNo', { n: counts.no }), 'error')}${badge(t('m.screenAttendance.countUnknown', { n: counts.unknown }), 'neutral')}`
+      ? `${badge(t('m.screenAttendance.countExpected', { n: counts.yes + counts.unknown }), 'success')}${badge(t('m.screenAttendance.countAbsent', { n: counts.no }), 'error', 'x')}`
+      : `${badge(t('m.screenAttendance.countYes', { n: counts.yes }), 'success')}${badge(t('m.screenAttendance.countNo', { n: counts.no }), 'error', 'x')}${badge(t('m.screenAttendance.countUnknown', { n: counts.unknown }), 'neutral')}`
     if (o.status === 'cancelled') return `<div class="alert error"><strong>${t('m.screenAttendance.cancelledTitle')}</strong>${t('m.screenAttendance.cancelledText')}</div>`
     const rows = ids.map((m) => {
       const a = att[m]; const v = a?.actual || ''

@@ -23,15 +23,15 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   badgeVariant,
   formatClockTime,
   formatDayHeading,
   formatTimeRange,
-  memberStaffScopes,
   MemberSkeleton,
+  memberStaffScopes,
+  StatusTag,
 } from '@vereino/ui'
 import { sessionPageView, sessionPerspectives, type SessionReadState } from '../../lib/member-session'
 import { coachBadge } from '../../lib/occurrence-list'
@@ -91,9 +91,9 @@ function PersonDeclaration({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{fullName(person)}</span>
         <span data-testid="club-session-declaration">
-          <StatusBadge variant={badgeVariant(state.tone)}>
+          <StatusTag status={badgeVariant(state.tone)}>
             {declarationLabel(t, entry.declarationKind, person.declaration)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       </div>
       {person.guardianOnly ? (
@@ -173,7 +173,7 @@ function CoachName({ occurrence }: { occurrence: CalendarEntry['occurrence'] }) 
   if (badge === 'needs_coach') {
     return (
       <span data-testid="club-session-coach-needed">
-        <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+        <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
       </span>
     )
   }
@@ -196,13 +196,16 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
     hasWards: profile.wards.length > 0,
     coaches: profile.contexts.includes('coach'),
     coordinates: memberStaffScopes(profile).includes('coordinator'),
+    isParticipant: profile.isParticipant === true,
   })
-  const as: Perspective = perspectives.member
+  // Staff without a member side make no member read: their own calendar holds no session (#483).
+  const memberRead = perspectives.member !== null
+  const as: Perspective = perspectives.member ?? 'self'
   const personId = searchParams.get('personId')
-  const query = useMemberSession(id, as, personId)
+  const query = useMemberSession(id, as, personId, memberRead)
   const staffAs = perspectives.staff ?? 'coach'
   const coachQuery = useMemberSession(id, staffAs, null, perspectives.staff !== null)
-  const view = sessionPageView(readState(true, query), readState(perspectives.staff !== null, coachQuery))
+  const view = sessionPageView(readState(memberRead, query), readState(perspectives.staff !== null, coachQuery))
   const [busy, setBusy] = React.useState(false)
   const [announcement, setAnnouncement] = React.useState('')
 
@@ -243,7 +246,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             variant="outline"
             className="min-h-11"
             onClick={() => {
-              void query.refetch()
+              if (memberRead) void query.refetch()
               if (perspectives.staff) void coachQuery.refetch()
             }}
           >
@@ -378,11 +381,11 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
           className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
         />
         <div className="flex flex-wrap gap-2">
-          <StatusBadge variant="neutral">{t(`activities.club.kind.${entry.declarationKind}`)}</StatusBadge>
+          <StatusTag status="neutral">{t(`activities.club.kind.${entry.declarationKind}`)}</StatusTag>
           {occurrence.status !== 'planned' ? (
-            <StatusBadge variant={occurrence.status === 'cancelled' ? 'error' : 'success'}>
+            <StatusTag status={occurrence.status === 'cancelled' ? 'canceled' : 'success'}>
               {t(`activities.occurrences.status.${occurrence.status}`)}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
         </div>
       </div>
@@ -493,7 +496,7 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
             <ul className="flex flex-wrap gap-2" data-testid="club-session-called-up">
               {entry.calledUpChildren.map((child) => (
                 <li key={child.personId}>
-                  <StatusBadge variant="neutral">{fullName(child)}</StatusBadge>
+                  <StatusTag status="neutral">{fullName(child)}</StatusTag>
                 </li>
               ))}
             </ul>

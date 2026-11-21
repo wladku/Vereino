@@ -20,11 +20,10 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage } from './client-helpers'
 import { coordinatorName, type SectionCoordinatorView, type SectionRow } from './sections-shared'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 
 type PersonItem = { id: string; firstName: string | null; lastName: string | null; birthDate: string | null }
 
@@ -155,9 +154,7 @@ export function SectionCoordinators({
         <>
           {enrichment.coordinatorMissing ? (
             <div>
-              <StatusBadge variant="warning" dot>
-                {t('club_core.sections.noCoordinator')}
-              </StatusBadge>
+              <StatusTag status="warning">{t('club_core.sections.noCoordinator')}</StatusTag>
             </div>
           ) : null}
           {enrichment.coordinators.length === 0 ? (

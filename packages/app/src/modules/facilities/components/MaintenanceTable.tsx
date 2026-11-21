@@ -18,7 +18,6 @@ import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
@@ -48,6 +47,7 @@ import {
   type MaintenanceTaskRow,
 } from './maintenance-client'
 import { instantOfLocal, localDateTimeValue } from './records-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -95,9 +95,9 @@ function buildColumns(t: Translate, locale: string): TableColumns<MaintenanceTas
       meta: { priority: 2 },
       cell: ({ row }) => (
         <span className="flex flex-col gap-1">
-          <StatusBadge variant={statusVariant(row.original.status)}>
+          <StatusTag status={statusVariant(row.original.status)}>
             {t(`facilities.maintenance.status.${row.original.status}`)}
-          </StatusBadge>
+          </StatusTag>
           {row.original.status === 'done' && row.original.doneAt ? (
             <span className="text-muted-foreground text-xs tabular-nums">
               {row.original.doneByName

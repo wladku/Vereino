@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { sessionPageView, sessionPerspectives } from '../member-session'
+import { coachesAGroup, organizesClubEvents, sessionPageView, sessionPerspectives } from '../member-session'
 
 describe('sessionPerspectives', () => {
   it('reads a guardian as guardian unless they ask for their own view', () => {
@@ -17,7 +17,10 @@ describe('sessionPerspectives', () => {
       member: 'guardian',
       staff: 'coach',
     })
-    expect(sessionPerspectives('coach', { hasWards: false, coaches: true })).toEqual({ member: 'self', staff: 'coach' })
+    expect(sessionPerspectives('coach', { hasWards: false, coaches: true, isParticipant: true })).toEqual({
+      member: 'self',
+      staff: 'coach',
+    })
     expect(sessionPerspectives('guardian', { hasWards: true, coaches: true })).toEqual({
       member: 'guardian',
       staff: 'coach',
@@ -25,11 +28,15 @@ describe('sessionPerspectives', () => {
   })
 
   it('reads as the section coordinator when the link asks for it, or for a coordinator who does not coach', () => {
-    expect(sessionPerspectives('coordinator', { hasWards: false, coaches: true, coordinates: true })).toEqual({
+    expect(
+      sessionPerspectives('coordinator', { hasWards: false, coaches: true, coordinates: true, isParticipant: true }),
+    ).toEqual({
       member: 'self',
       staff: 'coordinator',
     })
-    expect(sessionPerspectives('coach', { hasWards: false, coaches: true, coordinates: true })).toEqual({
+    expect(
+      sessionPerspectives('coach', { hasWards: false, coaches: true, coordinates: true, isParticipant: true }),
+    ).toEqual({
       member: 'self',
       staff: 'coach',
     })
@@ -40,6 +47,23 @@ describe('sessionPerspectives', () => {
     expect(sessionPerspectives('coordinator', { hasWards: false, coaches: false, coordinates: false })).toEqual({
       member: 'self',
       staff: null,
+    })
+  })
+
+  it('makes no member read for staff without a member side unless the link asks for one (#483)', () => {
+    expect(sessionPerspectives('coach', { hasWards: false, coaches: true })).toEqual({ member: null, staff: 'coach' })
+    expect(sessionPerspectives(null, { hasWards: false, coaches: false, coordinates: true })).toEqual({
+      member: null,
+      staff: 'coordinator',
+    })
+    expect(sessionPerspectives(null, { hasWards: false, coaches: true, isParticipant: false })).toEqual({
+      member: null,
+      staff: 'coach',
+    })
+    expect(sessionPerspectives('self', { hasWards: false, coaches: true })).toEqual({ member: 'self', staff: 'coach' })
+    expect(sessionPerspectives('guardian', { hasWards: false, coaches: true })).toEqual({
+      member: 'guardian',
+      staff: 'coach',
     })
   })
 })
@@ -64,5 +88,19 @@ describe('sessionPageView', () => {
     expect(sessionPageView('not_found', 'forbidden')).toEqual({ kind: 'not_yours' })
     expect(sessionPageView('not_found', 'not_found')).toEqual({ kind: 'not_found' })
     expect(sessionPageView('not_found', 'off')).toEqual({ kind: 'not_found' })
+  })
+})
+
+describe('the staff actions a person is offered (E20-S10, #489)', () => {
+  it('offers the coach’s "New event" only to a person who coaches a group', () => {
+    expect(coachesAGroup(['self', 'coach'])).toBe(true)
+    expect(coachesAGroup(['self', 'coordinator'])).toBe(false)
+    expect(coachesAGroup(['self', 'facility_operator'])).toBe(false)
+  })
+
+  it('sends a coordinator and the club administrator to the club events', () => {
+    expect(organizesClubEvents(['self', 'coordinator'])).toBe(true)
+    expect(organizesClubEvents(['club_admin'])).toBe(true)
+    expect(organizesClubEvents(['self', 'coach'])).toBe(false)
   })
 })

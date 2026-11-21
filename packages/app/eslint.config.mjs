@@ -6,7 +6,12 @@ import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
 import tseslint from 'typescript-eslint'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 import boundaries from 'eslint-plugin-boundaries'
-import { vereinoModuleBoundaryConfigs, vereinoReactConfigs, vereinoTypeScriptConfigs } from '../../eslint.vereino.mjs'
+import {
+  vereinoModuleBoundaryConfigs,
+  vereinoReactConfigs,
+  vereinoStatusPillConfigs,
+  vereinoTypeScriptConfigs,
+} from '../../eslint.vereino.mjs'
 import { PLATFORM_FILES_IN_VEREINO_PATHS, readVereinoModuleIds } from './scripts/vereino-paths.mjs'
 
 const ignores = [
@@ -60,4 +65,8 @@ export default [
     : []),
   ...vereinoModuleBoundaryConfigs({ boundaries, moduleIds: vereinoModuleIds }),
   ...vereinoReactConfigs({ moduleIds: vereinoModuleIds }),
+  ...vereinoStatusPillConfigs({
+    files: vereinoModuleIds.map((id) => `src/modules/${id}/**/*.tsx`),
+    ignores: PLATFORM_FILES_IN_VEREINO_PATHS,
+  }),
 ]

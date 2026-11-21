@@ -18,12 +18,12 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { chargesPerspectiveHref, formatZloty } from '../lib/charge-ledger'
 import type { CampaignStatus } from '../lib/order-campaigns'
 import { AcceptCashButton } from './AcceptCashButton'
 import { BANK_HREF, CHARGES_HREF, chargeHref, type Translate } from './client-helpers'
 import { ORDERS_HREF, STAGE_VARIANTS, campaignHref, pluralKey } from './orders/orders-client'
+import { StatusTag } from '@vereino/ui'
 
 export type PaymentsWidgetKind = 'overdue' | 'withoutPayer' | 'bank' | 'orderCampaigns'
 
@@ -206,9 +206,9 @@ function OrderCampaignsBody({ data, t }: { data: PaymentsDashboardResponse; t: T
             <Link href={campaignHref(campaign.id)} className={linkClass}>
               {campaign.name}
             </Link>
-            <StatusBadge variant={STAGE_VARIANTS[campaign.status]} dot>
+            <StatusTag status={STAGE_VARIANTS[campaign.status]}>
               {t(`payments.orders.stage.${campaign.status}`)}
-            </StatusBadge>
+            </StatusTag>
           </div>
           <p className="text-muted-foreground" data-testid="payments-widget-orderCampaigns-progress">
             {t('payments.dashboard.widgets.orderCampaigns.progress', {

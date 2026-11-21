@@ -9,7 +9,6 @@ import { useQuery } from '@tanstack/react-query'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { rosterOrder } from '../../../lib/groups-rules'
@@ -21,7 +20,7 @@ import {
   rowStatus,
   type MembershipRow,
 } from '../../../components/client-helpers'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 
 /** What `people`'s person record passes as the spot context. */
 export type PersonGroupsContext = { personId?: string }
@@ -97,9 +96,9 @@ export default function PersonGroupsWidget({
                 <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                   <span>{roleLabel(t, row.role, row.group?.kind ?? null)}</span>
                   <span>{periodLabel(t, row.validFrom || null, row.validTo)}</span>
-                  <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
+                  <StatusTag status={status === 'active' ? 'success' : 'neutral'}>
                     {t(`groups.common.status.${status}`)}
-                  </StatusBadge>
+                  </StatusTag>
                 </span>
               </li>
             )

@@ -13,10 +13,10 @@ import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { errorCode, errorMessage, type TableColumns, type Translate } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 20
 
@@ -67,13 +67,11 @@ function buildColumns(t: Translate, locale: string): TableColumns<ChargeGenerati
       meta: { priority: 1 },
       cell: ({ row }) =>
         row.original.undoneAt ? (
-          <StatusBadge variant="neutral" dot>
+          <StatusTag status="neutral">
             {t('payments.generations.status.undone', { cancelled: row.original.cancelled ?? 0 })}
-          </StatusBadge>
+          </StatusTag>
         ) : (
-          <StatusBadge variant="success" dot>
-            {t('payments.generations.status.active')}
-          </StatusBadge>
+          <StatusTag status="success">{t('payments.generations.status.active')}</StatusTag>
         ),
     },
   ]
