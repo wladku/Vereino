@@ -18,6 +18,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { RENTER_CATEGORIES } from '../lib/rates'
 import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
 import {
@@ -111,7 +112,7 @@ export function RatesTable() {
   const [page, setPage] = React.useState(1)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<RateRow>(RATES_API, {
@@ -205,7 +206,15 @@ export function RatesTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('facilities.rates.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('facilities.rates.errors.load')}
+                retryLabel={t('facilities.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           filters={filterDefs}
           filterValues={filters}
           onFiltersApply={(values: FilterValues) => {

@@ -1,7 +1,7 @@
 # Run: issue #126 (E08-S06) — the facility attendant and incident photos
 
 - **Goal and trigger:** cezar task 98102a2a (`om-auto-fix-issue 126`), unattended. Build what PR #228 left open: the facility attendant (`facility_operator` role, `people_role_assignments.place_id`, the place-scoped grant over the place and its descendants) and incident photos.
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5 step 7, TEST-026), club spec *Users, Permissions, and Scope*; #126; `feat/issue-126-facility-attendant-incident-photos`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (phase 5 step 7, TEST-026), club spec *Users, Permissions, and Scope*; #126; `feat/issue-126-facility-attendant-incident-photos`.
 - **Approval:** the owner comment on #126 (2026-11-10, issuecomment-6758333424) approves the `people` migration adding the nullable `people_role_assignments.place_id` with its index and the seeded `vereino_facility_operator` role (`facilities.view`, `facilities.rentals.manage`, `facilities.log.write`, `facilities.incidents.manage`, scoped to the place and its descendants), and keeps the `facilities.rentals.manage` gate on no-show. The incident-photo link table is a `facilities_*` migration of E08, approved on #119 (2026-11-05). Nothing else (dependencies, modules, other migrations) is used.
 
 ## Steps

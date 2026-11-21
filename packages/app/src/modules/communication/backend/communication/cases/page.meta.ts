@@ -5,7 +5,7 @@ export const metadata = {
   requireFeatures: ['communication.cases.manage'],
   pageTitle: 'Threads and cases',
   pageTitleKey: 'communication.threads.page.title',
-  pageGroup: 'Messages',
+  pageGroup: 'Communication',
   pageGroupKey: 'communication.nav.group',
   pageOrder: 20,
   icon: 'archive',

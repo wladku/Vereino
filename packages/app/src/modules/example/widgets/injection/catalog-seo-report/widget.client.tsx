@@ -3,7 +3,8 @@
 import * as React from 'react'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { Notice } from '@vereino/ui'
+import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -117,7 +118,7 @@ export default function CatalogSeoReportWidget(_props: InjectionWidgetComponentP
         </ul>
       )}
 
-      <Alert className="mt-3">
+      <Notice className="mt-3">
         <AlertTitle>{t('example.widgets.catalogSeoReport.example', 'Example injection widget')}</AlertTitle>
         <AlertDescription className="text-xs">
           {t(
@@ -128,7 +129,7 @@ export default function CatalogSeoReportWidget(_props: InjectionWidgetComponentP
             {t('example.widgets.catalogSeoReport.learnMore', 'Learn more')}
           </a>
         </AlertDescription>
-      </Alert>
+      </Notice>
     </div>
   )
 }

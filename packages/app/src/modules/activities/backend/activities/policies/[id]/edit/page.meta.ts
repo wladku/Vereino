@@ -3,8 +3,8 @@ export const metadata = {
   requireFeatures: ['activities.manage'],
   pageTitle: 'Edit declaration policy',
   pageTitleKey: 'activities.policies.edit.title',
-  pageGroup: 'Schedule',
-  pageGroupKey: 'activities.nav.group',
+  pageGroup: 'Classes',
+  pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [
     { label: 'Declaration policies', labelKey: 'activities.policies.title', href: '/backend/activities/policies' },

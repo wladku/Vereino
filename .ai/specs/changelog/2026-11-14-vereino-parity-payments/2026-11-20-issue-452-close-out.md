@@ -1,0 +1,1 @@
+| 2026-11-20 | E17-S01 (#452): close-out — 14 of 16 acceptance criteria ticked with merged-PR and test evidence; without evidence: AC-C10 (no test: TEST-C11 runs M-08 at 375 px light and dark in one locale only), AC-C12 (no test: TEST-C13 runs M-15 and M-18 in one locale only); status In progress |

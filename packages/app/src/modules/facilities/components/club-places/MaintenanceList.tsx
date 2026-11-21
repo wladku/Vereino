@@ -149,7 +149,7 @@ function TaskSections({ profile }: { profile: PlacesProfile }) {
     )
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (
-      <Alert status="warning" data-testid="club-maintenance-denied">
+      <Alert style="light" status="warning" data-testid="club-maintenance-denied">
         <p className="max-w-prose">{t('facilities.places.maintenance.forbidden')}</p>
       </Alert>
     )

@@ -19,16 +19,17 @@ import {
   BACKEND_HREF,
   CLUB_HOME_HREF,
   ClubTimeZoneProvider,
-  MemberShell,
   memberContextStore,
+  type MemberLinkProps,
   memberNav,
+  MemberShell,
   memberShellLabels,
+  MemberSkeleton,
+  type MemberSkeletonShape,
   memberSwitchers,
+  Notice,
   useMemberContext,
   useMemberNavFeatures,
-  MemberSkeleton,
-  type MemberLinkProps,
-  type MemberSkeletonShape,
 } from '@vereino/ui'
 
 export const CLUB_PAYMENTS_HREF = '/club/payments'
@@ -127,7 +128,7 @@ export function PaymentsClubFrame({
     )
   } else if (query.data.status === 'not_linked') {
     body = (
-      <Alert status="warning" data-testid="club-not-linked">
+      <Alert style="light" status="warning" data-testid="club-not-linked">
         <div className="flex flex-col gap-3">
           <p className="max-w-prose">{t('payments.club.notLinked')}</p>
           <div>
@@ -140,7 +141,7 @@ export function PaymentsClubFrame({
     )
   } else if (payerOnly && !query.data.profile.paymentsVisible) {
     body = (
-      <Alert status="information" data-testid="club-payments-unavailable">
+      <Notice data-testid="club-payments-unavailable">
         <div className="flex flex-col gap-3">
           <p className="max-w-prose">{t('payments.club.unavailable')}</p>
           <div>
@@ -149,7 +150,7 @@ export function PaymentsClubFrame({
             </Button>
           </div>
         </div>
-      </Alert>
+      </Notice>
     )
   } else {
     // The club zone of the profile decides "today" on the page (#231), e.g. the date a cash payment proposes.

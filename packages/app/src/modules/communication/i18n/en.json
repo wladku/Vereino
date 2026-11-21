@@ -82,6 +82,7 @@
   "communication.club.notFound": "This conversation does not exist.",
   "communication.club.notLinked": "Your account is not linked to a person of the club. Ask the club to link it.",
   "communication.club.title": "Messages",
+  "communication.club.thread.pageTitle": "Thread",
   "communication.club.unread": "Unread",
   "communication.club.wards.all": "All",
   "communication.club.wards.empty": "No messages about {name} yet.",
@@ -131,6 +132,8 @@
   "communication.direct.body": "Message",
   "communication.direct.cancel": "Cancel",
   "communication.direct.empty": "Your household takes part in no group with a coach or a coordinator today, so there is nobody to write to.",
+  "communication.direct.emptyStaff": "Here members and guardians write to the coach. You write to your group with an announcement: Session → “Message the group”, or “New announcement” in Messages.",
+  "communication.direct.emptyStaff.inbox": "Go to Messages",
   "communication.direct.errors.forbidden": "You cannot write about this person or to this group.",
   "communication.direct.errors.invalid": "Check the subject and the message.",
   "communication.direct.errors.load": "The list of groups could not be loaded.",
@@ -192,7 +195,7 @@
   "communication.message.system": "The session was cancelled.",
   "communication.message.cancelledBy": "Cancelled by {name} ({role}): {reason}",
   "communication.message.systemReason": "Reason: {reason}",
-  "communication.nav.group": "Messages",
+  "communication.nav.group": "Communication",
   "communication.notifications.announcement.body": "Open the messages to read it.",
   "communication.notifications.announcement.title": "New message from the club",
   "communication.notifications.reply.body": "Open the messages to read it.",
@@ -270,5 +273,10 @@
   "communication.tile.open": "Open the messages",
   "communication.tile.title": "Messages",
   "communication.tile.unread": "{count} unread",
-  "communication.club.nav.clubEvents": "Club events"
+  "communication.club.nav.clubEvents": "Club events",
+  "communication.direct.errors.summary": "Check the message",
+  "communication.direct.errors.subjectRequired": "Enter a subject.",
+  "communication.direct.errors.bodyRequired": "Write the message.",
+  "communication.reply.errors.bodyRequired": "Write your reply.",
+  "communication.message.edit.errors.bodyRequired": "The message cannot be empty."
 }

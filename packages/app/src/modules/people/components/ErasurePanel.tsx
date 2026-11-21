@@ -77,7 +77,7 @@ function reasonText(reason: Reason, t: Translate): string {
 function ReasonList({ personId, reasons, title }: { personId: string; reasons: Reason[]; title: string }) {
   const t = useT()
   return (
-    <Alert status="error" data-testid="people-erasure-reasons">
+    <Alert style="light" status="error" data-testid="people-erasure-reasons">
       <AlertDescription>
         <p className="font-medium">{title}</p>
         <ul className="mt-1 list-disc pl-5">

@@ -1180,6 +1180,8 @@
   "vector.api.errors.reindexFailed": "벡터 재인덱싱에 실패했습니다",
   "vector.api.errors.searchFailed": "벡터 검색에 실패했습니다",
   "vector.api.errors.updateFailed": "벡터 설정 업데이트에 실패했습니다.",
+  "vereino.accessDenied.memberHome": "회원 화면으로 이동",
+  "vereino.accessDenied.signOut": "로그아웃하고 다른 계정 사용",
   "vereino.backend.memberInterface": "Member interface",
   "vereino.dashboard.greeting": "Hello, {name}",
   "vereino.dashboard.greetingNoName": "Hello",

@@ -5,7 +5,7 @@ export const metadata = {
   requireFeatures: ['groups.manage'],
   pageTitle: 'Start a new season',
   pageTitleKey: 'groups.rollover.title',
-  pageGroup: 'Groups',
+  pageGroup: 'Classes',
   pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [

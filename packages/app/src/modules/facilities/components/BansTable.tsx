@@ -51,7 +51,7 @@ import {
   type IncidentRow,
 } from './records-client'
 import { searchInstitutions, searchPersons } from './rentals-client'
-import { StatusTag, useClubToday } from '@vereino/ui'
+import { StatusTag, TableLoadError, useClubToday } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 50
@@ -486,7 +486,7 @@ function BansList({ tab, onCreate }: { tab: BanListTab; onCreate: () => void }) 
   const [page, setPage] = React.useState(1)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [BANS_KEY, 'list', tab, selectedPlace, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<BanRow>(ENTRY_BANS_API, {
@@ -573,7 +573,15 @@ function BansList({ tab, onCreate }: { tab: BanListTab; onCreate: () => void }) 
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.bans.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.bans.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             rowActions={(row: BanRow) =>
               row.revokedAt ? null : (
                 <span data-testid={`facilities-ban-actions-${row.id}`}>

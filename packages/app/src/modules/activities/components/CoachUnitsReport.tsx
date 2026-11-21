@@ -29,7 +29,7 @@ import {
   type CoachUnitsReportData,
   type CoachUnitsRow,
 } from './coach-units-client'
-import { monthOf, StatusTag, useClubToday } from '@vereino/ui'
+import { TableLoadError, monthOf, StatusTag, useClubToday } from '@vereino/ui'
 
 const ALL_SECTIONS = '__all'
 
@@ -94,7 +94,7 @@ export function CoachUnitsReport() {
     queryKey: ['activities-report-sections', scopeVersion],
     queryFn: () => sectionOptions().catch(() => []),
   })
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-coach-units', month, section, scopeVersion],
     queryFn: () => readApiResultOrThrow<CoachUnitsReportData>(coachUnitsUrl({ month, sectionId: section })),
     enabled: monthRange(month) !== null,
@@ -175,7 +175,7 @@ export function CoachUnitsReport() {
         </p>
       ) : null}
       {data && data.unsettledCount > 0 ? (
-        <Alert status="warning" data-testid="coach-units-unsettled">
+        <Alert style="light" status="warning" data-testid="coach-units-unsettled">
           <AlertTitle>{t('activities.reports.coachUnits.unsettled', { count: data.unsettledCount })}</AlertTitle>
           <AlertDescription>
             {t('activities.reports.coachUnits.unsettledText')}{' '}
@@ -192,7 +192,15 @@ export function CoachUnitsReport() {
         toolbar={toolbar}
         actions={actions}
         isLoading={isLoading}
-        error={error ? t('activities.reports.coachUnits.errors.load') : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('activities.reports.coachUnits.errors.load')}
+              retryLabel={t('activities.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p data-testid="coach-units-empty">{t('activities.reports.coachUnits.empty')}</p>}
         disableRowClick
       />

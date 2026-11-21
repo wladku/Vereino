@@ -31,7 +31,11 @@ export default async function BackendIndex() {
     <div className="p-6 space-y-6">
       {/* B-01 (navigation spec REQ-N04, #260): the greeting above the platform dashboard. */}
       <BackendGreeting />
-      <DashboardScreen />
+      {/* One heading above the tiles (#484): the greeting is the page heading; `.vereino-dashboard` (globals.css)
+          hides the platform `DashboardScreen` title block and keeps its Customize button on the right. */}
+      <div data-testid="backend-dashboard" className="vereino-dashboard">
+        <DashboardScreen />
+      </div>
     </div>
   )
 }

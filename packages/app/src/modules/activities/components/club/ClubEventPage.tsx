@@ -26,8 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import { EVENT_TYPES, MAX_CONFIRM_BY_HOURS, eventTypesForGroupKind, takesOpponent } from '../../lib/activities-rules'
+import { organizesClubEvents } from '../../lib/member-session'
 import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
 import {
   EVENT_NAME_MAX,
@@ -50,6 +51,7 @@ import {
   type DeclarationKinds,
   type ScheduleConflict,
 } from '../client-helpers'
+import { MEMBER_CLUB_EVENT_NEW_HREF } from '../club-events-client'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CALENDAR_QUERY_KEY, CLUB_CALENDAR_HREF, sessionHref, type ClubProfile, type Translate } from './club-client'
 
@@ -68,6 +70,8 @@ function useEventOptions() {
     queryKey: EVENT_OPTIONS_QUERY_KEY,
     queryFn: async (): Promise<EventOptions> => {
       const call = await apiCall<EventOptions>('/api/activities/events/options', OWN_FORBIDDEN_STATE)
+      // Without `activities.events.create` there is no group to create an event for: the page's own refusal (#489).
+      if (call.status === 403) return { groups: [], places: [] }
       if (!call.ok || !call.result) throw new Error(String(call.status))
       return call.result
     },
@@ -150,14 +154,6 @@ export function ClubEventForm({
   const groupKind = groups.find((group) => group.id === draft.groupId)?.kind ?? null
   const types = groupKind ? eventTypesForGroupKind(groupKind) : [...EVENT_TYPES]
   const deadlineShown = takesDeadline(options.declarationKinds ?? null, draft.type)
-
-  if (groups.length === 0) {
-    return (
-      <Alert status="information" data-testid="club-event-no-groups">
-        <p className="max-w-prose">{t('activities.club.event.noGroups')}</p>
-      </Alert>
-    )
-  }
 
   const update = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -625,7 +621,7 @@ export function ClubEventForm({
       </div>
       {conflicts ? <ConflictList conflicts={conflicts} linkSessions={false} /> : null}
       {error && !conflicts ? (
-        <Alert status="error" data-testid="club-event-error">
+        <Alert style="light" status="error" data-testid="club-event-error">
           <p>{error}</p>
         </Alert>
       ) : null}
@@ -642,6 +638,31 @@ export function ClubEventForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+/**
+ * Reached by URL without a group to create an event for (E20-S10, #489): the page names the way forward — a club event
+ * for the section when the person organises club events (a coordinator, the club administrator), otherwise the section
+ * coordinator, who adds coaches to groups.
+ */
+function NoGroups({ organizesClubEvents: organizer }: { organizesClubEvents: boolean }) {
+  const t = useT()
+  return (
+    <Notice data-testid="club-event-no-groups">
+      <p className="max-w-prose">
+        {t(organizer ? 'activities.club.event.noGroups.organizer' : 'activities.club.event.noGroups.coach')}
+      </p>
+      {organizer ? (
+        <Link
+          href={MEMBER_CLUB_EVENT_NEW_HREF}
+          className="text-primary inline-flex min-h-11 items-center text-sm underline"
+          data-testid="club-event-no-groups-club-event"
+        >
+          {t('activities.club.event.noGroups.newClubEvent')}
+        </Link>
+      ) : null}
+    </Notice>
   )
 }
 
@@ -662,6 +683,8 @@ function NewEvent({ profile, t }: { profile: ClubProfile; t: Translate }) {
         }
       />
     )
+  } else if (query.data.groups.length === 0) {
+    body = <NoGroups organizesClubEvents={organizesClubEvents(profile.contexts)} />
   } else {
     body = (
       <ClubEventForm

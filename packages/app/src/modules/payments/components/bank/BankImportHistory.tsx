@@ -9,6 +9,7 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { TableLoadError } from '@vereino/ui'
 import { errorMessage, personName, type TableColumns, type Translate } from '../client-helpers'
 import { deleteImport, useBankImports, type BankImportRow } from './bank-client'
 
@@ -98,7 +99,15 @@ export function BankImportHistory({ onDeleted }: { onDeleted: () => Promise<void
         columns={columns}
         data={imports.data?.items ?? []}
         isLoading={imports.isLoading}
-        error={imports.error ? errorMessage(imports.error, t('payments.bank.errors.history')) : null}
+        error={
+          imports.error ? (
+            <TableLoadError
+              message={t('payments.bank.errors.history')}
+              retryLabel={t('payments.common.retry')}
+              onRetry={() => void imports.refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('payments.bank.history.empty')}</p>}
         rowActions={(row: BankImportRow) =>
           row.deletable ? (

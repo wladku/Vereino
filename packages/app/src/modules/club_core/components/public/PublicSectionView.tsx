@@ -16,7 +16,14 @@ import { MemberSkeleton } from '@vereino/ui'
 import { PublicClasses } from './PublicClasses'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { phoneHref } from '../../lib/public-page'
-import { clubHref, formatFileSize, formatLabel, usePublicSection, type PublicSectionPage } from './public-client'
+import {
+  clubHref,
+  formatFileSize,
+  formatLabel,
+  usePublicSection,
+  type PublicLoad,
+  type PublicSectionPage,
+} from './public-client'
 
 function Block({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
@@ -173,10 +180,19 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
   )
 }
 
-export function PublicSectionView({ clubSlug, sectionSlug }: { clubSlug: string; sectionSlug: string }) {
+/** `initial`: the state the server already read (#487), so the page's HTML holds its content without JavaScript. */
+export function PublicSectionView({
+  clubSlug,
+  sectionSlug,
+  initial,
+}: {
+  clubSlug: string
+  sectionSlug: string
+  initial?: PublicLoad<PublicSectionPage>
+}) {
   const t = useT()
-  const query = usePublicSection(clubSlug, sectionSlug)
-  const load = query.data
+  const query = usePublicSection(clubSlug, sectionSlug, !initial)
+  const load = initial ?? query.data
 
   if (!load && query.isFetching) {
     return (

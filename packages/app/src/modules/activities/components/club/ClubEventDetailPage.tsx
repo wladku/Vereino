@@ -25,7 +25,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from '@open-mercato/ui/primitives/sheet'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { MemberSkeleton, Notice, StatusTag } from '@vereino/ui'
 import { SheetContent } from '@/components/ui/dialog'
 import { partActions, partsByDay, type PartAction } from '../../lib/club-events'
 import { partDayInZone, partTimeRangeInZone } from '../../lib/member-club-event'
@@ -287,7 +287,7 @@ function EventView({ event, timeZone, t }: { event: ClubEventDetail; timeZone: s
         ) : null}
       </header>
       {!planned ? (
-        <Alert status="error" data-testid="club-event-member-cancelled">
+        <Alert style="light" status="error" data-testid="club-event-member-cancelled">
           <AlertTitle>{t('activities.clubEvents.cancelled.title')}</AlertTitle>
           {event.cancelReason ? (
             <AlertDescription>
@@ -493,15 +493,15 @@ function EventContent({ id, timeZone, t }: { id: string; timeZone: string; t: Tr
     body = <MemberSkeleton shape="rows" label={t('activities.clubEvents.loading')} />
   } else if (load?.status === 'not_found') {
     body = (
-      <Alert status="information" data-testid="club-event-member-not-found">
+      <Notice data-testid="club-event-member-not-found">
         <p>{t('activities.clubEvents.errors.notFound')}</p>
-      </Alert>
+      </Notice>
     )
   } else if (load?.status === 'denied') {
     body = (
-      <Alert status="information" data-testid="club-event-member-denied">
+      <Notice data-testid="club-event-member-denied">
         <p>{t('activities.clubEvents.errors.denied')}</p>
-      </Alert>
+      </Notice>
     )
   } else if (load?.status === 'ok') {
     body = <EventView event={load.event} timeZone={timeZone} t={t} />

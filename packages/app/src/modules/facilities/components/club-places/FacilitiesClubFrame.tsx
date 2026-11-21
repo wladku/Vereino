@@ -120,7 +120,7 @@ export function FacilitiesClubFrame({
     )
   } else if (query.data.status === 'not_linked') {
     body = (
-      <Alert status="warning" data-testid="club-not-linked">
+      <Alert style="light" status="warning" data-testid="club-not-linked">
         <div className="flex flex-col gap-3">
           <p className="max-w-prose">{t('facilities.places.notLinked')}</p>
           <div>
