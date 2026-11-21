@@ -14,9 +14,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
 import { pluralForm } from '../../lib/public-page'
 import { useEventDates } from './PublicClubEventView'
@@ -36,9 +35,9 @@ const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset
 
 function EventBadge({ event }: { event: PublicEvent }) {
   const t = useT()
-  if (event.cancelled) return <StatusBadge variant="neutral">{t('club_core.public.classes.cancelled')}</StatusBadge>
-  if (event.past) return <StatusBadge variant="neutral">{t('club_core.public.events.tookPlace')}</StatusBadge>
-  return <StatusBadge variant="info">{t(`club_core.public.events.type.${event.type}`)}</StatusBadge>
+  if (event.cancelled) return <StatusTag status="canceled">{t('club_core.public.classes.cancelled')}</StatusTag>
+  if (event.past) return <StatusTag status="neutral">{t('club_core.public.events.tookPlace')}</StatusTag>
+  return <StatusTag status="info">{t(`club_core.public.events.type.${event.type}`)}</StatusTag>
 }
 
 /** The map link of an external place on a card. */

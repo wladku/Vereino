@@ -193,3 +193,31 @@ export function vereinoReactConfigs({ moduleIds }) {
   if (moduleIds.length === 0) return []
   return [{ files: moduleIds.map((id) => `src/modules/${id}/**/*.{ts,tsx}`), rules: VEREINO_REACT_RULES }]
 }
+
+// Every status shows its word and its icon (docs/ux-concept/tokens.md R01.2, R01.8; #482): Vereino code renders a status
+// pill only through `StatusTag` from `@vereino/ui`. A bare platform `StatusBadge`, or a `Tag`/`Badge` given a status
+// tone as a literal, is a status without its icon. Category tags (a `Tag` whose variant comes from a kind map, a filter
+// chip) are labels, not statuses, and stay allowed.
+const STATUS_TONE_LITERAL = '/^(success|warning|error|info|neutral)$/'
+const STATUS_PILL_MESSAGE =
+  'A status shows its word and its icon: use `StatusTag` from `@vereino/ui` (docs/ux-concept/tokens.md R01.2, R01.8).'
+export const STATUS_PILL_RESTRICTIONS = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector:
+        "ImportDeclaration[source.value='@open-mercato/ui/primitives/status-badge'] > ImportSpecifier[imported.name='StatusBadge']",
+      message: STATUS_PILL_MESSAGE,
+    },
+    {
+      selector: `JSXOpeningElement[name.name=/^(Tag|Badge)$/] > JSXAttribute[name.name='variant'][value.value=${STATUS_TONE_LITERAL}]`,
+      message: STATUS_PILL_MESSAGE,
+    },
+  ],
+}
+
+// The status-pill rule for the given Vereino UI files.
+export function vereinoStatusPillConfigs({ files, ignores = [] }) {
+  if (files.length === 0) return []
+  return [{ name: 'vereino/status-pill', files, ignores, rules: STATUS_PILL_RESTRICTIONS }]
+}

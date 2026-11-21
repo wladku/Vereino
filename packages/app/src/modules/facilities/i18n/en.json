@@ -996,6 +996,8 @@
   "facilities.requests.errors.decided": "This request has already been decided. The list has been refreshed.",
   "facilities.requests.errors.approve": "The request could not be approved.",
   "facilities.requests.errors.reject": "The request could not be rejected.",
+  "facilities.dashboard.widgets.requestsAwaitingApproval.title": "Requests awaiting approval",
+  "facilities.dashboard.widgets.requestsAwaitingApproval.description": "Online facility booking requests waiting for a decision, the soonest expiry first.",
   "facilities.dashboard.requests.countLabel": "awaiting approval",
   "facilities.dashboard.requests.openList": "Open list",
   "facilities.dashboard.requests.empty": "No requests awaiting approval.",

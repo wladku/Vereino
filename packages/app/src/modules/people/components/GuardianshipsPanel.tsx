@@ -26,7 +26,6 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   CONSENT_KINDS,
@@ -45,9 +44,10 @@ import {
   InlineCreateDialog,
   PickerEmptyHint,
   pickerEmptyState,
-  useClubToday,
   type PickerEmptyState,
   type PickerOption,
+  StatusTag,
+  useClubToday,
 } from '@vereino/ui'
 import { createCrud } from '@open-mercato/ui/backend/utils/crud'
 import { splitPersonName } from '../lib/person-name'
@@ -143,9 +143,9 @@ function ConsentBadges({ row, t }: { row: GuardianshipRow; t: Translate }) {
             : t('people.guardianships.consents.notGranted')
         return (
           <li key={kind}>
-            <StatusBadge variant={entry.granted ? 'success' : 'neutral'}>
+            <StatusTag status={entry.granted ? 'success' : 'neutral'}>
               {`${t(`people.guardianships.consents.${kind}`)}: ${state}`}
-            </StatusBadge>
+            </StatusTag>
           </li>
         )
       })}
@@ -196,12 +196,8 @@ function GuardianshipItem({
           <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
             <span>{t(`people.guardianships.relation.${row.relation}`)}</span>
             <span data-testid="people-guardianship-period">{periodLabel(t, row.validFrom, row.validTo)}</span>
-            <StatusBadge variant={status === 'active' ? 'success' : 'neutral'}>
-              {t(`people.common.${status}`)}
-            </StatusBadge>
-            {row.isPrimaryPayer ? (
-              <StatusBadge variant="info">{t('people.guardianships.primaryPayer')}</StatusBadge>
-            ) : null}
+            <StatusTag status={status === 'active' ? 'success' : 'neutral'}>{t(`people.common.${status}`)}</StatusTag>
+            {row.isPrimaryPayer ? <StatusTag status="info">{t('people.guardianships.primaryPayer')}</StatusTag> : null}
           </span>
         </div>
         {canManage && !editor ? (

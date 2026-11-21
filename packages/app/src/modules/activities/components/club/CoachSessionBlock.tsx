@@ -21,7 +21,6 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib/activities-rules'
@@ -40,6 +39,7 @@ import {
   type CalendarEntry,
   type SubstitutionHistoryEntry,
 } from './club-client'
+import { StatusTag } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 
 /** One line of the substitution history: "17.11.2026, 20:14 — Marek N. reported an absence" (M-04). */
@@ -253,7 +253,7 @@ export function CoachSessionBlock({
         </h2>
         {needsCoach(occurrence) ? (
           <span data-testid="club-session-needs-coach">
-            <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+            <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
           </span>
         ) : null}
       </div>
