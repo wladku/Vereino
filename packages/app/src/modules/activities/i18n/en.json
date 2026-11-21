@@ -58,6 +58,7 @@
   "activities.audit.jobs.expire": "Expire guardian confirmations",
   "activities.audit.jobs.generate": "Generate sessions",
   "activities.audit.jobs.sendReminders": "Send declaration reminders",
+  "activities.audit.jobs.purgeDeclarationLinks": "Delete the declaration links dead for 30 days",
   "activities.audit.occurrences.assignCoach": "Assign a session coach",
   "activities.audit.occurrences.cancel": "Cancel a session",
   "activities.audit.occurrences.reportAbsence": "Report a coach absence",

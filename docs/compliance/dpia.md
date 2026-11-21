@@ -46,7 +46,7 @@ a DPIA is carried out.
 | Lawful basis | art. 6(1)(b) for core processing, 6(1)(c) for accounting, 6(1)(f) for safety logs, 6(1)(a) only for optional processing (S9.2; [`ropa.md`](ropa.md)) |
 | Minimisation | a field exists only if a club spec requirement needs it; PESEL optional; public pages show no participant or guardian names; no personal data in logs, events, URLs or errors (S9.4) |
 | Accuracy | members correct their contacts themselves (`PUT /api/people/me`); staff correct the rest ([`data-subject-requests.md`](data-subject-requests.md)) |
-| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3, R9) |
+| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525) |
 | Information | privacy notices in Polish and English and a short version for children (E19-S03, #469) |
 | Data subjects' rights | [`data-subject-requests.md`](data-subject-requests.md) |
 | Processors and transfers | [`processors.md`](processors.md); DPA not yet signed (P-0) |
@@ -61,7 +61,7 @@ open measures are listed in §5.
 |---|---|---|---|---|---|
 | D-1 | Another club or an outsider reads a child's data through a scope or authorization bug | low | high | server-derived tenant and organization scope, fail closed; feature-based ACL; second-tenant and insufficient-feature tests per route (S8.3, S13.4) | low |
 | D-2 | A staff member reads more than needed (e.g. all guardians' phone numbers) | medium | medium | contacts shown to coaches only with the `share_contact_with_coaches` consent; every read logged in `activities_contact_access_log` | low |
-| D-3 | A personal link (declaration, order, rental) is forwarded or leaked and opened by someone else | medium | medium | 32-byte tokens stored as hashes, one purpose and one subject, expiry, `no-referrer`, `no-store` (S8.6, S8.7) | medium — dead tokens are not deleted (R9) |
+| D-3 | A personal link (declaration, order, rental) is forwarded or leaked and opened by someone else | medium | medium | 32-byte tokens stored as hashes, one purpose and one subject, expiry, `no-referrer`, `no-store` (S8.6, S8.7) | medium — dead tokens are deleted 30 days after use or expiry (R9, #525) |
 | D-4 | An administrator's or treasurer's account is taken over (phishing, reused password) and payment or child data is exposed or changed | medium | high | platform sign-in rate limits; audit log | **medium** — no MFA in 1.0 (ENG-Q-09) and 8-hour sessions without idle timeout (ENG-Q-12) |
 | D-5 | Data are lost (database failure, operator mistake) | low | medium | nightly encrypted off-site dump, restore drill, RTO ≤ 60 min ([`backups.md`](../ops/backups.md)) | medium — up to 24 h of data can be lost (no PITR, ENG-Q-03) |
 | D-6 | Payment data are misused (wrong person charged, fraud with account numbers from bank imports) | low | high | encrypted counterparty data; only exact payer-code matches booked automatically (S10.7); immutable payments; no card data stored | low |
