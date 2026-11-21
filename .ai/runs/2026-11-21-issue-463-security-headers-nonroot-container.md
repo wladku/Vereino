@@ -40,6 +40,13 @@
 10. Docs: `docs/ops/deploy.md` (smoke header set, ENG-TEST-11 local and staging), spec changelog file, lesson
     `csp-without-unsafe-eval-needs-zod-jitless`.
 
+11. Review round 1 (independent reviewer, verdict *changes*): finding #1 (Important) — the `CONTRIBUTING.md` local-patch
+    list lacked the new `next.config.ts` headers and a row for `src/instrumentation-client.ts`. Extended the
+    `next.config.ts` row, added the `instrumentation-client.ts` row, and named the file in the spec changelog entry (it
+    is not planned in S3.1). Minor findings #2 (public-JSON assertion in ENG-TEST-11) and #3 (no-store on authenticated
+    attachment downloads, the safe default) left as they are. Docs-only change: no integration test touched; full
+    `yarn verify` rerun.
+
 ## Decisions
 
 - **`'unsafe-eval'` removed** from the production CSP: the production build, ENG-TEST-11's browser pages, the header
