@@ -23,6 +23,12 @@ pages anyone on the Hobby plan.
 tokens (match text, not `@level:error`) for triage and the weekly digest. Re-check the Railway docs before relying on a
 plan feature, and record the date checked in `docs/ops/monitoring.md`.
 
+A runbook can also promise a signal that the job cannot send: E18-S03 and E18-S04 landed in parallel, and the backup
+job image (`docker/backup/Dockerfile`) copied only `scripts/backup-*.mjs`, so `docs/ops/backups.md` still described a
+log alert and the job never pinged its heartbeat (#519). A job that must signal calls the helper in-process and its
+image copies the helper at its repository path; the image's drill (`yarn test:backup`) runs the heartbeat against a
+recording HTTP server, and the drill workflow's `paths` include the helper.
+
 **Applies to**: `docs/ops/monitoring.md`, `docs/ops/incident.md`, `packages/app/scripts/vereino-ops-signal.mjs`,
 `packages/app/src/modules/foundation/lib/worker-heartbeat.ts`, the backup job of E18-S03 (#464), any new job that needs
-an alert.
+an alert, and the image of any job that copies a helper (`docker/backup/Dockerfile`, `.github/workflows/backup-drill.yml`).

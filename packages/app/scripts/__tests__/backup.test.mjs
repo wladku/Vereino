@@ -22,7 +22,13 @@ import {
   runPipeline,
   sanitizeStderr,
 } from '../../../../scripts/backup-common.mjs'
-import { countRecipients, main as dumpMain, REQUIRED_VARIABLES } from '../../../../scripts/backup-dump.mjs'
+import {
+  countRecipients,
+  HEARTBEAT_VARIABLE,
+  main as dumpMain,
+  REQUIRED_VARIABLES,
+} from '../../../../scripts/backup-dump.mjs'
+import { ALERT_FILTERS, matchesAlertFilter } from '../vereino-ops-signal.mjs'
 import {
   COUNTS_SQL,
   main as restoreMain,
@@ -236,15 +242,27 @@ test('dump: missing variables exit 1 and log only the names', async () => {
   const log = collector()
   const code = await dumpMain({ env: { DATABASE_URL: 'postgres://u:p@h/db' }, stderr: log.write, stdout: log.write })
   assert.equal(code, 1)
-  assert.deepEqual(log.lines, [
-    {
-      level: 'error',
-      job: 'backup:dump',
-      msg: 'backup.dump.failed',
-      reason: 'missing-variable',
-      variables: REQUIRED_VARIABLES.slice(1),
-    },
-  ])
+  assert.deepEqual(
+    log.lines.map((line) => ({ ...line, time: undefined })),
+    [
+      {
+        level: 'error',
+        job: 'backup:dump',
+        msg: 'backup.dump.failed',
+        reason: 'missing-variable',
+        variables: REQUIRED_VARIABLES.slice(1),
+        time: undefined,
+      },
+      {
+        level: 'error',
+        time: undefined,
+        name: 'ops',
+        signal: 'vereino.ops.backup.failed',
+        msg: 'Backup failed',
+        step: 'missing-variable',
+      },
+    ],
+  )
   assert.doesNotMatch(JSON.stringify(log.lines), /postgres:/)
 })
 
@@ -337,10 +355,10 @@ test('dump: streams pg_dump into age, uploads daily and first monthly copy, prun
   ])
   assert.deepEqual(
     out.lines.map((line) => line.msg),
-    ['backup.dump.started', 'backup.dump.succeeded'],
+    ['backup.dump.started', 'Backup started', 'backup.dump.succeeded', 'Backup succeeded'],
   )
   assert.deepEqual(
-    { ...out.lines[1], durationMs: undefined },
+    { ...out.lines[2], durationMs: undefined },
     {
       level: 'info',
       job: 'backup:dump',
@@ -353,7 +371,27 @@ test('dump: streams pg_dump into age, uploads daily and first monthly copy, prun
       durationMs: undefined,
     },
   )
-  assert.equal(out.lines[1].durationMs, 1000)
+  // The clock ticks once for the start, once for the ops start line and once for the end.
+  assert.equal(out.lines[2].durationMs, 2000)
+  assert.deepEqual(out.lines[1], {
+    level: 'info',
+    time: Date.UTC(2026, 10, 20, 2, 30, 2),
+    name: 'ops',
+    signal: 'vereino.ops.backup.started',
+    msg: 'Backup started',
+  })
+  assert.deepEqual(
+    { ...out.lines[3], time: undefined },
+    {
+      level: 'info',
+      time: undefined,
+      name: 'ops',
+      signal: 'vereino.ops.backup.succeeded',
+      msg: 'Backup succeeded',
+      bytes: 10,
+      durationMs: 2000,
+    },
+  )
   assert.doesNotMatch(JSON.stringify(out.lines), /postgres:|secret-value/)
   assert.deepEqual(fs.readdirSync(dir), ['recipients.txt'])
 })
@@ -366,7 +404,7 @@ test('dump: an empty bucket gets the first daily and monthly copy and nothing is
   const out = collector()
   assert.equal(await dumpMain({ env: dumpEnv(dir), run, stdout: out.write, now: clock(), tmpDir: dir }), 0)
   assert.equal(calls.filter((call) => call.steps[0].args[0] === 'copyto').length, 2)
-  assert.equal(out.lines[1].prunedDaily, 0)
+  assert.equal(out.lines[2].prunedDaily, 0)
 })
 
 test('dump: an existing monthly copy is not uploaded again', async (t) => {
@@ -377,7 +415,7 @@ test('dump: an existing monthly copy is not uploaded again', async (t) => {
   const out = collector()
   assert.equal(await dumpMain({ env: dumpEnv(dir), run, stdout: out.write, now: clock(), tmpDir: dir }), 0)
   assert.equal(calls.filter((call) => call.steps[0].args[0] === 'copyto').length, 1)
-  assert.equal(out.lines[1].monthlyKey, null)
+  assert.equal(out.lines[2].monthlyKey, null)
 })
 
 const failingCases = [
@@ -418,6 +456,8 @@ for (const [reason, respond] of failingCases) {
     assert.equal(code, 1)
     assert.equal(err.lines[0].msg, 'backup.dump.failed')
     assert.equal(err.lines[0].reason, reason)
+    assert.equal(err.lines[1].signal, 'vereino.ops.backup.failed')
+    assert.equal(err.lines[1].step, reason)
     assert.doesNotMatch(JSON.stringify(err.lines), /postgres:/)
     assert.deepEqual(fs.readdirSync(dir), ['recipients.txt'])
   })
@@ -431,7 +471,93 @@ test('dump: an unexpected error is reported without its message', async (t) => {
   }
   assert.equal(await dumpMain({ env: dumpEnv(dir), run, stdout: () => {}, stderr: err.write, tmpDir: dir }), 1)
   assert.equal(err.lines[0].reason, 'unexpected')
+  assert.equal(err.lines[1].step, 'unexpected')
   assert.doesNotMatch(JSON.stringify(err.lines), /postgres:/)
+})
+
+// A recording `fetch` for the heartbeat: answers with `status`, or throws when `status` is an Error.
+function heartbeat(status = 200) {
+  const urls = []
+  const fetchImpl = async (url) => {
+    urls.push(url)
+    if (status instanceof Error) throw status
+    return { ok: status < 300 }
+  }
+  return { fetchImpl, urls }
+}
+
+const HEARTBEAT_URL = 'https://hc-ping.example/abc-123/'
+
+test('dump: a successful run pings the backup heartbeat url once', async (t) => {
+  const dir = tempDir(t)
+  const { run } = scriptedRun(() => ({ code: 0 }))
+  const ping = heartbeat()
+  const out = collector()
+  const env = dumpEnv(dir, { [HEARTBEAT_VARIABLE]: HEARTBEAT_URL })
+  const code = await dumpMain({ env, run, stdout: out.write, now: clock(), tmpDir: dir, fetchImpl: ping.fetchImpl })
+  assert.equal(code, 0)
+  assert.equal(HEARTBEAT_VARIABLE, 'VEREINO_OPS_BACKUP_HEARTBEAT_URL')
+  assert.deepEqual(ping.urls, ['https://hc-ping.example/abc-123'])
+  assert.doesNotMatch(JSON.stringify(out.lines), /hc-ping|abc-123/)
+})
+
+test('dump: every failed run pings <url>/fail and its line matches the documented alert filter', async (t) => {
+  const dir = tempDir(t)
+  const runs = [
+    { env: { DATABASE_URL: 'postgres://h/db' } },
+    { env: { ...dumpEnv(dir), BACKUP_AGE_RECIPIENTS_FILE: path.join(dir, 'absent') } },
+    { env: dumpEnv(dir), run: scriptedRun(failingCases[1][1]).run },
+  ]
+  for (const { env, run } of runs) {
+    const ping = heartbeat()
+    const err = []
+    const code = await dumpMain({
+      env: { ...env, [HEARTBEAT_VARIABLE]: HEARTBEAT_URL },
+      run,
+      stdout: () => {},
+      stderr: (text) => err.push(text),
+      now: clock(),
+      tmpDir: dir,
+      fetchImpl: ping.fetchImpl,
+    })
+    assert.equal(code, 1)
+    assert.deepEqual(ping.urls, ['https://hc-ping.example/abc-123/fail'])
+    assert.equal(err.filter((line) => matchesAlertFilter(line, ALERT_FILTERS.backupFailed)).length, 1)
+    assert.doesNotMatch(err.join(''), /hc-ping|abc-123/)
+  }
+})
+
+test('dump: without a heartbeat url nothing is pinged', async (t) => {
+  const dir = tempDir(t)
+  const { run } = scriptedRun(() => ({ code: 0 }))
+  const ping = heartbeat()
+  const env = dumpEnv(dir, { [HEARTBEAT_VARIABLE]: '' })
+  assert.equal(await dumpMain({ env, run, stdout: () => {}, now: clock(), tmpDir: dir, fetchImpl: ping.fetchImpl }), 0)
+  assert.equal(await dumpMain({ env: {}, stdout: () => {}, stderr: () => {}, fetchImpl: ping.fetchImpl }), 1)
+  assert.deepEqual(ping.urls, [])
+})
+
+test('dump: a refused heartbeat ping is logged by variable name and keeps the exit code', async (t) => {
+  const dir = tempDir(t)
+  for (const status of [503, new Error('getaddrinfo ENOTFOUND hc-ping.example')]) {
+    const { run } = scriptedRun(() => ({ code: 0 }))
+    const ping = heartbeat(status)
+    const err = collector()
+    const env = dumpEnv(dir, { [HEARTBEAT_VARIABLE]: HEARTBEAT_URL })
+    const code = await dumpMain({
+      env,
+      run,
+      stdout: () => {},
+      stderr: err.write,
+      now: clock(),
+      tmpDir: dir,
+      fetchImpl: ping.fetchImpl,
+    })
+    assert.equal(code, 0)
+    assert.deepEqual(err.lines, [
+      { level: 'warn', job: 'backup:dump', msg: 'backup.heartbeat.failed', variable: HEARTBEAT_VARIABLE },
+    ])
+  }
 })
 
 test('restore parseArgs validates the options', () => {

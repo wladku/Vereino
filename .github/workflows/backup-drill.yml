@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - scripts/backup-*.mjs
+      - packages/app/scripts/vereino-ops-signal.mjs
       - docker/backup/**
       - railway.backup.toml
       - packages/app/scripts/__tests__/backup-drill.e2e.mjs
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - scripts/backup-*.mjs
+      - packages/app/scripts/vereino-ops-signal.mjs
       - docker/backup/**
       - railway.backup.toml
       - packages/app/scripts/__tests__/backup-drill.e2e.mjs
