@@ -1,13 +1,13 @@
 # Vereino — parity II: navigation, shells and naming
 
 **Date**: 2026-11-14
-**Status**: Ready for implementation — approved by the product owner on 2026-11-15 ([owner decisions on #251](https://github.com/wladku/Vereino/issues/251#issuecomment-6891956957), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/251#issuecomment-6891759309)): the six Ask First items approved, Q-N01…Q-N03 answered, A-N01…A-N17 confirmed, the audit gaps (c1)–(c6) fixed in this text; phase 1 partly built with #246, phase 2 built with #256. Phase 6's two payments counts wait for spec C (REQ-C09)
+**Status**: In progress — approved by the product owner on 2026-11-15 ([owner decisions on #251](https://github.com/wladku/Vereino/issues/251#issuecomment-6891956957)); left: the rest of phase 1 (`overrides.nav.groupOrder`, the shared `groups.nav.group` key, the other groups' order and labels), AC-N01, AC-N11, AC-N16 and the two generic criteria without evidence (close-out #452)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
 Sources: the parity audit of 2026-11-14 (the application on `main` at `a312199` against the clickable mockup, the specifications and `docs/ux-concept/README.md`); the owner's decisions D-029 (phone first), D-030 (the administrator does the treasurer's work) and D-031 (the mockup is the model for layout and names); issue #246 (the Club group is missing from the sidebar). Design authority: the mockup `docs/ux-concept/mockups/app.ts` (`backendShell`, `memberShell`, `publicShell`, `screenProfile`, `screenLogin`, `screenDashboard`) and its catalogs `docs/ux-concept/mockups/i18n/pl.json` and `en.json`.
 
-This spec is an addendum to `.ai/specs/2026-10-20-vereino-club-management.md` (the club spec), which owns the navigation of every role (`2026-10-27-vereino-facilities.md:137` and `2026-10-27-vereino-club-payments.md:124` both point there). It does not change that spec's status or phases. Ids carry the letter **N** (`REQ-N01`, `DD-N01`, `J-N01`, `TEST-N01`, `AC-N01`, `Q-N01`, `V-N01`), so they never collide with the club spec's ids (D-028).
+This spec is an addendum to `.ai/specs/2026-10-20-vereino-club-management.md` (the club spec), which owns the navigation of every role (`implemented/2026-10-27-vereino-facilities.md:137` and `2026-10-27-vereino-club-payments.md:124` both point there). It does not change that spec's status or phases. Ids carry the letter **N** (`REQ-N01`, `DD-N01`, `J-N01`, `TEST-N01`, `AC-N01`, `Q-N01`, `V-N01`), so they never collide with the club spec's ids (D-028).
 
 It is one of five specs of 2026-11-14. The other four cite two parts of this one and do not repeat them:
 
@@ -677,6 +677,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 1 — Sidebar structure and the Club group (closes #246)
 
+- **State:** Partly done (#313): the Club group, Settings and Publication without `pageContext`, and the `settings-prefixes:check` step (TEST-N01 Club group part, TEST-N02). Left: `overrides.nav.groupOrder` in `src/modules.ts`, the activities pages under the shared `groups.nav.group` key (the allow-list entry `activities.nav.group` "Harmonogram" waits for it), the order and menu labels of the other five groups, and TEST-N01's six-group assertion; no open issue tracks it
 - **Depends on:** none
 - **Outcome:** J-N01 steps 1–2; the sidebar equals *Menu structure* except for tabs.
 - **Why this order / value delivered:** release-blocking defect; every later phase assumes this menu.
@@ -694,6 +695,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 2 — Pages with tabs
 
+- **State:** Done (#318)
 - **Depends on:** Phase 1
 - **Outcome:** J-N01 step 3; the facility group has six items.
 - **Deliverables:** the five strips (`club_core/components/ClubInstitutionsNav.tsx`, `communication/components/ThreadsNav.tsx`, `facilities/components/FacilityRulesNav.tsx`, `FacilityRecordsNav.tsx`, `FacilityReportsNav.tsx`) mounted on their pages; `navHidden` on the secondary routes; `?tab=` aliases; tab label keys; V-N01.
@@ -704,6 +706,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 3 — The glossary in the catalogs
 
+- **State:** Done (#319), except the exit gate's native-reader review, which is not recorded on #319
 - **Depends on:** Phase 1 (menu labels already moved)
 - **Outcome:** no retired term in any Polish text; English follows the mockup where it differed.
 - **Deliverables:** value changes in `i18n/pl.json` and `i18n/en.json` of the seven modules by the three glossary tables and rules 1–5; `packages/app/scripts/check-glossary.mjs` with its allow-list `packages/app/scripts/check-glossary.allow.json` as a `yarn verify` step, enforcing exactly the retired list of *Business rules* (the script joins the unit-coverage list of `AGENTS.md` like `check-settings-prefixes.mjs`); updated test expectations; the fallback strings in code (`translate(key, fallback)`, `pageTitle`, `pageGroup`) follow the English catalog.
@@ -714,6 +717,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 4 — Member bottom bar and More
 
+- **State:** Done (#320)
 - **Depends on:** none (best after Phase 3 for the labels)
 - **Outcome:** J-N02; J-N04 step 2; no member orphan.
 - **Deliverables:** `packages/ui/src/member/member-nav.ts` (destination table, `features` input, current rules), `useMemberNavFeatures`, new label keys; the five frames pass the same input and drop their own `extraTab`; V-N04.
@@ -724,6 +728,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 5 — Context default, staff context and landing
 
+- **State:** Done (#325)
 - **Depends on:** Phase 4
 - **Outcome:** J-N03, J-N04 step 1.
 - **Deliverables:** `member-context.ts` (member side, staff context, label, `memberStaffScopes`, `memberCalendarScopes`) and the merged list in `activities/components/club` (the calendar client); `people/api/me/route.ts` (`isParticipant`, the `facility_operator` context in `people/lib/member-rules.ts`); `memberLanding` and `services/member-landing.ts`; "Admin panel" for the attendant; Today's greeting title.
@@ -734,6 +739,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 6 — Top bar link, dashboard frame and menu counts
 
+- **State:** Done (#413), all four counts included
 - **Depends on:** Phase 1; the role grants were approved by the owner on 2026-11-15 (Q-N03); the payments counts depend on spec C (REQ-C09)
 - **Outcome:** the coordinator's and attendant's dashboard; four counts.
 - **Deliverables:** `BackendHeaderChrome.tsx` (link, shown when `GET /api/people/me` resolves a person); `app/(backend)/backend/page.tsx` (greeting); `packages/core/src/roles.ts` (two grants) and the role sync; `packages/core/src/__tests__/roles.test.mjs:59` inverted (it asserts today that `vereino_coordinator` lacks `dashboards.view`) plus the same assertion for `vereino_facility_operator`; `packages/app/src/modules/activities/README.md:169` rewritten (it says the coordinator has no `dashboards.view` under D29; now the coordinator sees the two widgets for their own sections); count widgets `activities/widgets/injection/nav-badge-sessions`, `payments/widgets/injection/nav-badges` (one read of `GET /api/payments/dashboard?only=counts` serves both payments items), `facilities/widgets/injection/nav-badge-requests` with their `injection-table.ts` rows, sharing `navBadgeEffect` of `@vereino/ui`. The two payments counts read fields that spec C adds to `GET /api/payments/dashboard` (REQ-C09), so that slice follows spec C's phase. Issue #260 carries this: AC-N03's bank-statement and order-campaign counts close only after spec C's REQ-C09; #260 can merge with the sessions and requests counts and leave those two open.
@@ -744,6 +750,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 7 — Public header and sign-in branding
 
+- **State:** Done (#327)
 - **Depends on:** none
 - **Outcome:** J-N05.
 - **Deliverables:** `packages/ui/src/public/PublicHeader.tsx`; `club.nav` in `club_core/services/public-site.ts` and in the `facilities` and `activities` public responses, including request verification; both frames use the header; `packages/app/src/app/login/page.tsx` wrapper with the club header and the `vereino_club` cookie it writes and reads (attributes under *Proposed Solution*); V-N05b's answer: `packages/app/public/open-mercato.svg` replaced by the Vereino mark, and the app catalog overrides `auth.login.brandName`, `auth.login.subtitle`, `auth.login.logoAlt` and `appShell.productName` plus the new `vereino.login.tagline`, in all five app locales (`de`, `es` and `ko` with the English value as the stated fallback).
@@ -754,6 +761,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 8 — Club and people panel leftovers
 
+- **State:** Done (#323)
 - **Depends on:** Phase 2 (B-07 links)
 - **Deliverables:** the B-03, B-04, B-05, B-07, B-09 and B-10 rows of *Proposed Solution*; `publication_requests_need_calendar` in `club_core/lib/error-codes.ts`; the contracts `institutionId` filter; the new `role_requires_adult` in `people/lib/error-codes.ts` with its check in the role-assignment command (V-N05: neither exists today).
 - **Independent slices / estimated commits:** (a) publication rule; (b) sections; (c) people and contracts — 3 commits.
@@ -763,6 +771,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 9 — Public events and member tiles
 
+- **State:** Done (#324)
 - **Depends on:** Phase 7 for the "Wydarzenia" header link (`PublicHeader`, `club.nav`); P-06 itself and the member tiles do not wait
 - **Deliverables:** the P-06, P-01, P-02, B-03, M-02 and M-10 rows of *Proposed Solution*; the `events` publication block (stored in the existing `publication` JSON, no migration); the route `GET /api/club_core/public/{clubSlug}/events`; the `activities.publicEvents` contribution; the "Wydarzenia" header link driven by `club.nav.events` (the header itself is phase 7); the removal of `events[]` from the public club and section responses under the BC rule of *Architecture → Compatibility* (confirm before merging that no shared environment is deployed); a release-note line: clubs that showed events on the club page lose that list on deploy until an administrator turns the `events` block on (it is off by default, owner decision 2026-11-15).
 - **Independent slices / estimated commits:** (a) public pages; (b) member tiles — 2 commits.
@@ -772,6 +781,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 10 — Skeletons and empty states on member and public pages
 
+- **State:** Done (#333)
 - **Depends on:** Phase 4
 - **Deliverables:** `packages/ui/src/member/member-skeleton.tsx` (tiles, rows, form) on `@open-mercato/ui/primitives/skeleton`; replace `LoadingMessage` on `/club/**` and `/p/**` pages of the five modules; an empty-state sentence and action for each list of those pages that lacks one.
 - **Independent slices / estimated commits:** one per module — 5 commits.
@@ -781,6 +791,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ### Phase 11 — README corrections (docs)
 
+- **State:** Done (#332)
 - **Depends on:** Phases 1, 2, 4, 5 (it describes them)
 - **Deliverables:** `docs/ux-concept/README.md`: §1 device column (coordinator: phone for daily work, desktop for configuration; treasurer: role held back, the administrator does the work; attendant: phone), §3 diagram and §3.1 tables replaced by *Menu structure*, §3.2 folded-surface paragraph (tabs of B-07, B-18, B-26, B-27, B-28), B-02 (slug, phone and description are on B-03), B-21 (the perspective list as spec C defines it), M-01 (club branding, landing table).
 - **Requirements closed:** REQ-N16
@@ -858,20 +869,20 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 ## Acceptance Criteria
 
 - [ ] **AC-N01** — The administrator's sidebar shows, after Dashboard, the groups Klub, Ludzie, Zajęcia, Komunikacja, Finanse and Obiekt in that order with the items of *Menu structure*, in pl and en. Klub lists Sekcje, Miejsca, Instytucje i umowy, Ustawienia and Publikacja. A coordinator sees Sekcje only in Klub and no Finanse. `yarn verify` fails when a settings page shares a parent path with a regular page.
-- [ ] **AC-N02** — B-07, B-18, B-26, B-27 and B-28 each open from one menu item and show their tabs; every tab has its own URL; a tab without its feature is absent. The facility group has six items.
-- [ ] **AC-N03** — Terminy, Wyciągi bankowe, Zbiórki zamówień and Zgłoszenia show the number of waiting records in the person's scope and nothing at zero. The Wyciągi bankowe and Zbiórki zamówień counts close only after spec C's REQ-C09 (#260 records it).
-- [ ] **AC-N04** — The panel's top bar shows "Interfejs członkowski" when `GET /api/people/me` resolves a person for the signed-in user, and not to an administrator linked to no person. The dashboard greets by first name with the date. Administrator, coordinator and attendant each see exactly the widgets of the role table.
-- [ ] **AC-N05** — At 375 px, in pl and en, light and dark: every `/club` page of every module shows the same bottom bar for the same person. A guardian sees Płatności on all of them; a coach without own payments sees Obiekty; a minor sees neither.
-- [ ] **AC-N06** — At 375 px, in pl and en, light and dark: from More a guardian reaches Orders; a coach reaches My units, My groups' payments and (as tab or entry) Facilities; the attendant reaches Today at the facility; the administrator reaches Accept cash. No member page is reachable only by typing its URL.
-- [ ] **AC-N07** — At 375 px, in pl and en, light and dark: a coach-only person opens `/club` and the calendar and sees their sessions without choosing a context; no switcher is shown. A person who coordinates and has a ward sees the switcher with "jako trener / koordynator". A coach with a ward sees, in the member context, the ward's and the coached sessions in one calendar list.
-- [ ] **AC-N08** — After sign-in the attendant is on `/club/facility`, an administrator without a member side on `/backend`, every other linked person on `/club`; an explicit redirect is kept.
-- [ ] **AC-N09** — Every public page, including request verification, shows the header Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj at 375 px in both locales; "Obiekty" only when the club publishes facility calendars, "Wydarzenia" only when it publishes events.
-- [ ] **AC-N10** — `/login?club=<slug>` of a published club shows its logo, its name and "Jedno konto dla rodzica, zawodnika i trenera"; `/login` without a known club shows Vereino's name. Neither shows "Open Mercato": not in text, and the card's logo file `public/open-mercato.svg` is the Vereino mark (V-N05b). A known published slug writes the `vereino_club` cookie (`Path=/`, one year, `SameSite=Lax`, `Secure` over HTTPS) and a later `/login` shows the same club. Both at 375 px, in both locales, light and dark.
+- [x] **AC-N02** — B-07, B-18, B-26, B-27 and B-28 each open from one menu item and show their tabs; every tab has its own URL; a tab without its feature is absent. The facility group has six items. — evidence: #318; `TEST-N03-pages-with-tabs`
+- [x] **AC-N03** — Terminy, Wyciągi bankowe, Zbiórki zamówień and Zgłoszenia show the number of waiting records in the person's scope and nothing at zero. The Wyciągi bankowe and Zbiórki zamówień counts close only after spec C's REQ-C09 (#260 records it). — evidence: #413; `TEST-N04-dashboard-menu-counts`, `packages/ui/src/__tests__/nav-badge-counts.test.mjs`
+- [x] **AC-N04** — The panel's top bar shows "Interfejs członkowski" when `GET /api/people/me` resolves a person for the signed-in user, and not to an administrator linked to no person. The dashboard greets by first name with the date. Administrator, coordinator and attendant each see exactly the widgets of the role table. — evidence: #413, #416; `TEST-N04-dashboard-menu-counts`
+- [x] **AC-N05** — At 375 px, in pl and en, light and dark: every `/club` page of every module shows the same bottom bar for the same person. A guardian sees Płatności on all of them; a coach without own payments sees Obiekty; a minor sees neither. — evidence: #320; `E09-S04-member-bottom-bar`, `packages/ui/src/__tests__/member-nav.test.mjs`, `packages/app/src/__tests__/ui/member-nav-catalogs.test.ts`
+- [x] **AC-N06** — At 375 px, in pl and en, light and dark: from More a guardian reaches Orders; a coach reaches My units, My groups' payments and (as tab or entry) Facilities; the attendant reaches Today at the facility; the administrator reaches Accept cash. No member page is reachable only by typing its URL. — evidence: #320; `E09-S04-member-bottom-bar`, `packages/ui/src/__tests__/member-nav.test.mjs`
+- [x] **AC-N07** — At 375 px, in pl and en, light and dark: a coach-only person opens `/club` and the calendar and sees their sessions without choosing a context; no switcher is shown. A person who coordinates and has a ward sees the switcher with "jako trener / koordynator". A coach with a ward sees, in the member context, the ward's and the coached sessions in one calendar list. — evidence: #325; `E09-S05-staff-context-and-landing`, `packages/ui/src/__tests__/member-context.test.mjs`
+- [x] **AC-N08** — After sign-in the attendant is on `/club/facility`, an administrator without a member side on `/backend`, every other linked person on `/club`; an explicit redirect is kept. — evidence: #325; `E09-S05-staff-context-and-landing`
+- [x] **AC-N09** — Every public page, including request verification, shows the header Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj at 375 px in both locales; "Obiekty" only when the club publishes facility calendars, "Wydarzenia" only when it publishes events. — evidence: #327, #324; `TEST-N09-public-header-sign-in`, `TEST-N14-public-events-page`, `packages/ui/src/__tests__/public-nav.test.mjs`
+- [x] **AC-N10** — `/login?club=<slug>` of a published club shows its logo, its name and "Jedno konto dla rodzica, zawodnika i trenera"; `/login` without a known club shows Vereino's name. Neither shows "Open Mercato": not in text, and the card's logo file `public/open-mercato.svg` is the Vereino mark (V-N05b). A known published slug writes the `vereino_club` cookie (`Path=/`, one year, `SameSite=Lax`, `Secure` over HTTPS) and a later `/login` shows the same club. Both at 375 px, in both locales, light and dark. — evidence: #327; `TEST-N09-public-header-sign-in`
 - [ ] **AC-N11** — No Polish or English catalog value matches a pattern of the retired list (*Business rules*, "Retired term") in its scope outside `packages/app/scripts/check-glossary.allow.json`, and `yarn verify` fails when one is added. Glossary rules 1–2 and the wording of rules 3–5 are accepted by the native-reader review of phase 3, recorded on its pull request. The menu, page titles, tabs and statuses read as in the mockup's catalogs.
-- [ ] **AC-N12** — The publication form refuses online requests without facility calendars. "Add section" can assign a coordinator; only adults are offered; the section's coordinator reads the Coordinators tab. People can be filtered by the attendant role; the person header shows age and account.
-- [ ] **AC-N13** — With the events block on, P-06 lists the upcoming one-off events of public groups and those of the last 60 days, past ones marked, filtered by section, at 375 px in both locales; P-01 and P-02 list none; with the block off the menu item and the page are gone; a team card names its category; a missing section offers the club page.
-- [ ] **AC-N14** — At 375 px, in pl and en, light and dark: the Messages tile shows the unread count and the newest unread thread, or "Brak nowych wiadomości."; the primary payer's ward card carries the badge.
-- [ ] **AC-N15** — No member or public page shows a text loading message; each shows a skeleton and, when empty, a sentence with a next action.
+- [x] **AC-N12** — The publication form refuses online requests without facility calendars. "Add section" can assign a coordinator; only adults are offered; the section's coordinator reads the Coordinators tab. People can be filtered by the attendant role; the person header shows age and account. — evidence: #323; `TEST-N12-publication-requests-need-calendar`, `TEST-N13-club-and-people-leftovers`
+- [x] **AC-N13** — With the events block on, P-06 lists the upcoming one-off events of public groups and those of the last 60 days, past ones marked, filtered by section, at 375 px in both locales; P-01 and P-02 list none; with the block off the menu item and the page are gone; a team card names its category; a missing section offers the club page. — evidence: #324; `TEST-N14-public-events-page`
+- [x] **AC-N14** — At 375 px, in pl and en, light and dark: the Messages tile shows the unread count and the newest unread thread, or "Brak nowych wiadomości."; the primary payer's ward card carries the badge. — evidence: #324; `TEST-N15-today-messages-primary-payer`
+- [x] **AC-N15** — No member or public page shows a text loading message; each shows a skeleton and, when empty, a sentence with a next action. — evidence: #333; `TEST-N16-member-skeletons-empty-states`, `packages/ui/src/__tests__/member-skeleton.test.mjs`
 - [ ] **AC-N16** — `docs/ux-concept/README.md` §1, §3.1 and §3.2 agree with this spec and D-029 to D-031.
 - [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
 - [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.

@@ -308,7 +308,7 @@ Every gap listed in research A §12 is closed by at least one rule.
 
 ### S10 — Money and payments
 
-These rules apply to the `payments` and `facilities` modules, specified since D-028 in `2026-10-27-vereino-club-payments.md` and `2026-10-27-vereino-facilities.md`; the entities stay in those specifications (E5 hands the required additions over).
+These rules apply to the `payments` and `facilities` modules, specified since D-028 in `2026-10-27-vereino-club-payments.md` and `implemented/2026-10-27-vereino-facilities.md`; the entities stay in those specifications (E5 hands the required additions over).
 
 - **S10.1** Amounts are integer grosz with a currency; discount rates are `numeric`; a derived amount (discount, share) is rounded half-up once, when it is stored, and the charge records the rounding rule used.
 - **S10.2** Splitting one amount over several lines uses largest-remainder allocation and asserts that the parts sum to the whole.

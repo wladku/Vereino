@@ -1,7 +1,7 @@
 # Run — issue #123: internal bookings and `/club/places` (E08-S03)
 
 - **Goal and trigger:** cezar task 707087f2 (`om-auto-fix-issue 123`), unattended. Build facilities spec phase 5 step 4 — staff internal bookings, the occupancy service extended by them, the staff facility calendar `/club/places` with "Book" for a group (one-off event) or a general purpose, cancellation, supersession of held external requests (TEST-033).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (In progress, phase 5); #123 (epic #119, depends on #122 — merged 2026-11-07 as #210); `feat/issue-123-club-places-bookings`. The name `feat/issue-123-internal-bookings` is held by the stopped worktree of the 2026-11-07 run (`.ai/runs/2026-11-07-issue-123-internal-bookings-blocked.md`, carried into this branch).
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (In progress, phase 5); #123 (epic #119, depends on #122 — merged 2026-11-07 as #210); `feat/issue-123-club-places-bookings`. The name `feat/issue-123-internal-bookings` is held by the stopped worktree of the 2026-11-07 run (`.ai/runs/2026-11-07-issue-123-internal-bookings-blocked.md`, carried into this branch).
 - **Approval:** the owner's comment on #119/#121 (2026-11-05) approves the `facilities_*` migrations of E08 (#121–#129). Not approved and not done: new dependencies, `yarn db:migrate` against a real database.
 
 ## Steps

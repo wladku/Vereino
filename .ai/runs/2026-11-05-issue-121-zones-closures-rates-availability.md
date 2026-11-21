@@ -1,7 +1,7 @@
 # Run — issue #121: zones, closures, rates and bulk booking availability (E08-S01)
 
 - **Goal and trigger:** cezar task e69425fb (`om-auto-fix-issue 121`), unattended. Build facilities spec phase 5 step 2 — zones, closures, rates, the opening hours of DD-41 and the bulk booking availability of REQ-029 (TEST-041, TEST-022 in part).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (Ready for implementation, phase 5); #121 (epic #119); `feat/issue-121-zones-closures-rates-availability`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (Ready for implementation, phase 5); #121 (epic #119); `feat/issue-121-zones-closures-rates-availability`.
 - **Approval:** the owner's comment on #121 (2026-11-05) approves enabling the new module `facilities`, its migrations and the `club_core` migration for `club_core_places.opening_hours`. Not approved and not done: new dependencies, `yarn db:migrate` against a real database.
 
 ## Steps

@@ -33,7 +33,7 @@ Design the communication phase (E04) and the foundation underneath it — audien
 
 - `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md` — new
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phase 3 readiness and the rows above
-- `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/2026-10-27-vereino-facilities.md` — e-mail rows through `dispatch`
+- `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/implemented/2026-10-27-vereino-facilities.md` — e-mail rows through `dispatch`
 - `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` — S12.3–S12.6 1.0 amendment
 - `.ai/runs/2026-10-27-foundation-iii-spec.md` — this log
 

@@ -1,7 +1,7 @@
 # Run — issue #122: staff rentals with the quote and status management (E08-S02)
 
 - **Goal and trigger:** cezar task 0d8b4dcc (`om-auto-fix-issue 122`), unattended. Build facilities spec phase 5 step 3 — the shared occupancy lock (DD-43), staff rentals with the quote, the DD-19 charge seam, the DD-46 status table, the occupancy provider for sessions (TEST-022 rentals, TEST-023, TEST-027, TEST-058 a/b).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (In progress, phase 5); #122 (epic #119, depends on #121, merged); `feat/issue-122-staff-rentals`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (In progress, phase 5); #122 (epic #119, depends on #121, merged); `feat/issue-122-staff-rentals`.
 - **Approval:** the owner's comment on #119/#121 (2026-11-05) approves the `facilities_*` migrations of E08 (#121–#129). The issue's blocking open question (the occupancy race) is answered by DD-43 in the spec. Not approved and not done: new dependencies, `yarn db:migrate` against a real database.
 
 ## Steps

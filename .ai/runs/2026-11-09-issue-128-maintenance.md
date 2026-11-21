@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-09
 - **Trigger:** cezar task `om-auto-fix-issue 128` (unattended), after the owner decision of 2026-11-09 on #128 (the spec's UI table stands in for a mockup) and the E08 approvals of 2026-11-05 on #119 (the `facilities` migration of each phase, the derived role `vereino_maintenance_planner`).
-- **Spec:** `.ai/specs/2026-10-27-vereino-facilities.md` phase 5 step 9 (REQ-022, DD-36, DD-46; TEST-031, TEST-049, TEST-050).
+- **Spec:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` phase 5 step 9 (REQ-022, DD-36, DD-46; TEST-031, TEST-049, TEST-050).
 - **Issue / branch:** #128 / `feat/issue-128-maintenance-tasks`.
 - **Route:** feature (label `feature`), spec found → implemented directly on one implementation PR (the spec already covers the work; no spec PR).
 

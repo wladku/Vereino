@@ -1,13 +1,13 @@
 # Vereino — payments parity: rental charges, cash on every screen, the order campaign record and the payer's phone pages
 
 **Date**: 2026-11-14
-**Status**: In progress — phase 1 built in #291 (2026-11-16), phase 2 in #292 (2026-11-16), phase 3 in #293 (2026-11-18), phase 5 in #295 (2026-11-17), phase 6 in #296 (2026-11-18), phase 8 in #298 (2026-11-17), phase 9 in #299 (2026-11-18), phase 10 in #300 (2026-11-18), phase 4 in #294 (2026-11-18), phase 11 in #301 (2026-11-18), phase 7 in #297 (2026-11-19), phase 12 in #302 (2026-11-19). Ready for implementation since its approval by the product owner on 2026-11-16 ([owner decisions on #254](https://github.com/wladku/Vereino/issues/254#issuecomment-6910005798), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/254#issuecomment-6899501375)): the eleven Ask First items approved (migrations A1, A2, B, C, D; Contracts 1–6), Q-C20 and Q-C22 answered, V-C01 and V-C02 answered, Q-C01 … Q-C16 confirmed with Q-C07 amended, the audit gaps (c1)–(c8) fixed in this text. Build starts with #291 (phase 1). Cross-spec dependencies: *Dependencies on the other parity specs*
+**Status**: In progress — approved by the product owner on 2026-11-16 ([owner decisions on #254](https://github.com/wladku/Vereino/issues/254#issuecomment-6910005798)); every phase landed; left: AC-C10 and AC-C12 (no test runs M-08, M-15 and M-18 in both locales) (close-out #452)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
 Sources: the parity audit of 2026-11-14 (the application on `main` at `a312199` against the clickable mockup, the specifications and `docs/ux-concept/README.md`) and the owner's decisions D-029, D-030 and D-031 (`.ai/specs/research/decisions/`). Design authority for the screens: `docs/ux-concept/README.md` (B-01, B-10, B-20 … B-22, B-29 … B-32, M-08, M-15 … M-19) and the mockup `docs/ux-concept/mockups/app.ts` (`screenCharges`, `screenCharge`, `chargesTable`, `screenBank`, `cashForm`, `recordCash`, `screenCashMobile`, `screenKitCampaignAdmin`, `screenKitBuilder`, `kitDashboardWidget`, `screenDashboard`, `screenPerson`, `screenPayments`, `paySummary`, `kitPayHint`, `kitTodayTiles`, `screenKitList`, `kitOrderPage`, `kitOrderSummary`, `screenKitToken`, `screenGroupPayments`, `rentalCharge`) with its catalogs `i18n/pl.json` and `i18n/en.json`.
 
-This spec is an addendum to `.ai/specs/2026-10-27-vereino-club-payments.md` (phase 4), whose requirements REQ-011, REQ-012 and REQ-030 … REQ-033 it completes, and it delivers the provider side of DD-19 of `.ai/specs/2026-10-27-vereino-facilities.md` (D-028). It does not change the status or the phases of either. Ids carry the letter **C** (`REQ-C01`, `DD-C01`, `J-C01`, `TEST-C01`, `AC-C01`, `Q-C01`) so they never collide with the global ids (D-028). It is one of the five parity specifications of 2026-11-14; the other four are named where this one depends on them.
+This spec is an addendum to `.ai/specs/2026-10-27-vereino-club-payments.md` (phase 4), whose requirements REQ-011, REQ-012 and REQ-030 … REQ-033 it completes, and it delivers the provider side of DD-19 of `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (D-028). It does not change the status or the phases of either. Ids carry the letter **C** (`REQ-C01`, `DD-C01`, `J-C01`, `TEST-C01`, `AC-C01`, `Q-C01`) so they never collide with the global ids (D-028). It is one of the five parity specifications of 2026-11-14; the other four are named where this one depends on them.
 
 **Rows of the base specs this addendum supersedes.** The base specs' bodies are not edited; the changelog entry `2026-11-14-parity-c.md` in each base spec's folder points here.
 
@@ -563,6 +563,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 1 — Rental charge service
 
+- **State:** Done (#336)
 - **Depends on:** migrations A1 and A2 and Contract 1 (approved 2026-11-16). Issue #291 (S01). The facilities parity spec (R) consumes it (payee, description, confirmation in its phase 11) and can land before or after; R's phase 11 needs this phase first.
 - **Outcome:** J-C03 steps 1, 2 and 4 work; a rental has its charge.
 - **Why this order / value delivered:** it unblocks the facilities spec's promises (J-005, AC-013, AC-024) and is the only cross-module contract here.
@@ -582,6 +583,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 2 — Cash dialog on every screen; B-21 and B-22 completeness
 
+- **State:** Done (#338)
 - **Depends on:** none (the B-32 mount lands with phase 3)
 - **Outcome:** J-C01 step 4 works from B-22; B-21 and B-22 match the mockup.
 - **Why this order / value delivered:** the administrator's most frequent money action; phases 3 and 7 reuse the button.
@@ -594,6 +596,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 3 — Order campaign record and builder notices
 
+- **State:** Done (#397)
 - **Depends on:** Phase 2 (the button)
 - **Outcome:** J-C04 works end to end.
 - **Why this order / value delivered:** the largest panel gap; it replaces the coach page as the administrator's only way to hand over a kit.
@@ -606,6 +609,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 4 — Bank statements: row buttons, history, deleting an import
 
+- **State:** Done (#389)
 - **Depends on:** none
 - **Outcome:** B-29 matches the mockup; a wrong file can be removed and imported again.
 - **Why this order / value delivered:** one click less per transfer on the screen used after every statement.
@@ -618,6 +622,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 5 — Manual charge, assigning a payer, the person record's Charges tab
 
+- **State:** Done (#344)
 - **Depends on:** Contracts 4 (guardianship events assign payers), 5 and 6 (approved 2026-11-16). Spec L also edits `people/components/PersonRecord.tsx` (the Leaving tab, the staff-setup spot); no other file is shared. **Tab position:** the Charges tab sits between Groups and Leaving — the order Details, Guardians, Roles, Account, Groups, Charges, Leaving fixed by spec L. **Rebase rule:** whichever of this phase and spec L's person-record change merges second rebases on the first, keeps the other's tab and spot as they are and only inserts its own in that order.
 - **Outcome:** J-C05 steps 1–3 work.
 - **Why this order / value delivered:** removes two dead ends of the data-entry audit (a charge without a payer, no manual charge).
@@ -630,6 +635,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 6 — Refunds
 
+- **State:** Done (#391)
 - **Depends on:** none
 - **Outcome:** J-C05 step 4 works.
 - **Why this order / value delivered:** Q-049 promised a list the administrator has never seen.
@@ -642,6 +648,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 7 — Dashboard widgets
 
+- **State:** Done (#411)
 - **Depends on:** Phases 2 and 6 for the cash button and the refund count; the navigation spec decides which role sees which widget. Spec N (Ready) depends on this phase: its menu counts "Bank statements" and "Order campaigns" (N's phase 6, issue #260, AC-N03) read `bank.toDecide` and `campaignsRunning` from `GET /api/payments/dashboard?only=counts`
 - **Outcome:** the administrator's dashboard shows the four finance widgets of the mockup, and spec N's two payments counts have their source.
 - **Why this order / value delivered:** deferred since #88; the counts also feed the navigation spec's menu badges, which refresh on navigation and every 60 seconds on every panel page — hence the lean `?only=counts` read instead of a full dashboard read per minute.
@@ -654,6 +661,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 8 — Payer's page M-08
 
+- **State:** Done (#345)
 - **Depends on:** migration D and Contract 2 (approved 2026-11-16); issue #298 (S08). The bottom-bar entry is the navigation spec's
 - **Outcome:** J-C01 step 3 and J-C06 step 4 work.
 - **Why this order / value delivered:** two taps to pay; the false "Everything is paid" is gone.
@@ -666,6 +674,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 9 — Orders on the phone: M-16, M-17, M-19 and the Today tile
 
+- **State:** Done (#393)
 - **Depends on:** Phase 8 for `?pay=`
 - **Outcome:** J-C06 steps 1–3 and 5 work.
 - **Why this order / value delivered:** the guardian learns that the kit waits and who handed it over without asking the coach.
@@ -678,6 +687,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 10 — M-15 and M-18 contents
 
+- **State:** Done (#370)
 - **Depends on:** none
 - **Outcome:** the cash and coach pages match the mockup.
 - **Why this order / value delivered:** small, independent, phone-first (D-029).
@@ -690,6 +700,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 11 — Scheduled jobs
 
+- **State:** Done (#398; hardened in #417 and #419)
 - **Depends on:** migration B and Contracts 4 and 5 (approved 2026-11-16); issue #301 (S11). Spec L's REQ-L11 changes the same charge generation: whichever lands second rebases on the other
 - **Outcome:** J-C01 steps 2 and 5 happen without anyone pressing a button.
 - **Why this order / value delivered:** closes the contradiction between J-004 and the manual generation; ends four operator duties.
@@ -707,6 +718,7 @@ Validation for every phase: `yarn verify` (including `typecheck:packages`, the s
 
 ### Phase 12 — Online payment status and methods
 
+- **State:** Done (#401)
 - **Depends on:** migration C (approved 2026-11-16); issue #302 (S12). V-C01 is answered (*Domain Vocabulary*, "Online payment connection")
 - **Outcome:** the administrator sees the connection and chooses the methods.
 - **Why this order / value delivered:** last, because production needs the club's Stripe account (base spec step 1).
@@ -790,22 +802,22 @@ No new module and no new dependency (none approved, none needed). No role-catalo
 
 ## Acceptance Criteria
 
-- [ ] **AC-C01** — With `payments` and `facilities` enabled, a rental entered by staff or approved from a request has a charge payable to the facility owner in the same transaction; the charge appears under "Rentals (municipality)" on B-21, B-22 names the owner when `facilities` passes one and says "the facility owner" otherwise (the named owner is checked after spec R's phase 11), a free cancellation cancels it and a late one forfeits it, and a failing charge leaves no rental.
-- [ ] **AC-C02** — The administrator opens "Accept cash" from B-21, B-22, B-29, a B-32 order row and the dashboard; from B-22 the payer is chosen, from B-32 the orderer and the order's charge are chosen; each save issues one KP number and refreshes the screen.
-- [x] **AC-C03** — B-21 restores its perspective and filters from the URL, lists the perspectives in the mockup's order with "Rentals (municipality)" only where DD-C02 allows, sorts by period, shows "—" when nothing remains and links to the statement import; B-22 shows "bank statement" for an imported transfer.
-- [ ] **AC-C04** — On B-29 every decision is one click on a button in the row; an automatically recorded transfer says so; the history is a table; an import from which nothing was ever booked can be deleted and its file imported again, and any other answers 409.
-- [x] **AC-C05** — On B-32 the administrator reads who ordered and how, what is paid and to whom, and who handed the kit over; accepts cash and hands a kit over from the row, with a warning naming the amount for an unpaid kit; sees the guardians of every child without an order; and is told how many kits are not handed over before completing.
-- [x] **AC-C06** — The administrator adds a charge for a person in one dialog and assigns a payer to a charge without one in one dialog; only a guardian of the debtor, or the adult debtor, is accepted; marking a guardian as primary payer assigns them to the ward's open charges without a payer.
-- [x] **AC-C07** — The person record shows a "Charges" tab with every charge the person owes or pays, for users who may view charges and for nobody else.
-- [ ] **AC-C08** — An online payment can be refunded in full or in part from B-22 with a reason; a refund above the refundable part is rejected; every online overpayment is listed under "To refund" until it is refunded.
-- [ ] **AC-C09** — The dashboard shows the number of transfers waiting with links to the import and to cash, each running order campaign with its progress, the overdue total with the numbers of charges, families and charges without a payer, and the charges without a payer by name.
+- [x] **AC-C01** — With `payments` and `facilities` enabled, a rental entered by staff or approved from a request has a charge payable to the facility owner in the same transaction; the charge appears under "Rentals (municipality)" on B-21, B-22 names the owner when `facilities` passes one and says "the facility owner" otherwise (the named owner is checked after spec R's phase 11), a free cancellation cancels it and a late one forfeits it, and a failing charge leaves no rental. — evidence: #336, #385; `TEST-C01-rental-charges`, `TEST-R08-rental-charge`
+- [x] **AC-C02** — The administrator opens "Accept cash" from B-21, B-22, B-29, a B-32 order row and the dashboard; from B-22 the payer is chosen, from B-32 the orderer and the order's charge are chosen; each save issues one KP number and refreshes the screen. — evidence: #338, #397, #411; `TEST-C04-accept-cash-from-every-screen`, `TEST-C06-kit-campaign-record`, `TEST-C10-dashboard-widgets`, `TEST-043-cash-with-receipts`
+- [x] **AC-C03** — B-21 restores its perspective and filters from the URL, lists the perspectives in the mockup's order with "Rentals (municipality)" only where DD-C02 allows, sorts by period, shows "—" when nothing remains and links to the statement import; B-22 shows "bank statement" for an imported transfer. — evidence: #336, #338; `TEST-C04-accept-cash-from-every-screen`, `TEST-C01-rental-charges`
+- [x] **AC-C04** — On B-29 every decision is one click on a button in the row; an automatically recorded transfer says so; the history is a table; an import from which nothing was ever booked can be deleted and its file imported again, and any other answers 409. — evidence: #389; `TEST-C05-bank-row-buttons-and-import-delete`
+- [x] **AC-C05** — On B-32 the administrator reads who ordered and how, what is paid and to whom, and who handed the kit over; accepts cash and hands a kit over from the row, with a warning naming the amount for an unpaid kit; sees the guardians of every child without an order; and is told how many kits are not handed over before completing. — evidence: #397; `TEST-C06-kit-campaign-record`
+- [x] **AC-C06** — The administrator adds a charge for a person in one dialog and assigns a payer to a charge without one in one dialog; only a guardian of the debtor, or the adult debtor, is accepted; marking a guardian as primary payer assigns them to the ward's open charges without a payer. — evidence: #344; `TEST-C07-manual-charge-and-payer`, `TEST-C08-person-charges-tab`
+- [x] **AC-C07** — The person record shows a "Charges" tab with every charge the person owes or pays, for users who may view charges and for nobody else. — evidence: #344; `TEST-C08-person-charges-tab`
+- [x] **AC-C08** — An online payment can be refunded in full or in part from B-22 with a reason; a refund above the refundable part is rejected; every online overpayment is listed under "To refund" until it is refunded. — evidence: #391; `TEST-C09-refunds-and-to-refund`
+- [x] **AC-C09** — The dashboard shows the number of transfers waiting with links to the import and to cash, each running order campaign with its progress, the overdue total with the numbers of charges, families and charges without a payer, and the charges without a payer by name. — evidence: #411; `TEST-C10-dashboard-widgets`
 - [ ] **AC-C10** — At 375 px, in Polish and English, light and dark: a payer opens M-08 and pays everything in two taps; the fee line shows in both fee modes; a discount names its rule; a partially paid charge is paid for what remains; a guardian who is not the payer sees who pays and no amount, on the page and in the API.
-- [ ] **AC-C11** — At 375 px, in both locales, light and dark: M-16 and M-17 show the stage, the deadlines, "ready for pickup from the coach" and who handed the kit over and when; "Pay online" opens M-08 with that charge only; M-19 names the link's guardian; the Today page shows the "Order" tile while a campaign is open.
+- [x] **AC-C11** — At 375 px, in both locales, light and dark: M-16 and M-17 show the stage, the deadlines, "ready for pickup from the coach" and who handed the kit over and when; "Pay online" opens M-08 with that charge only; M-19 names the link's guardian; the Today page shows the "Order" tile while a campaign is open. — evidence: #393; `TEST-C12-guardian-orders-on-the-phone`
 - [ ] **AC-C12** — At 375 px, in both locales, light and dark: M-15 names the receiver and lists today's receipts by what was paid; M-18 opens from the Today tile on the right group with "To pay", states the club's coach mode, marks groups that are not the coach's own and shows when a kit was handed over.
-- [ ] **AC-C13** — Without any operator command, a club with fees has the month's charges on its generation day from the month after migration B's month on (nothing is generated automatically in that month), payers of overdue charges get one message on the day after the due date and at most three more a week apart, a captured checkout is booked within 15 minutes and an order campaign past its deadline is closed within 15 minutes; each switch turns its job off.
-- [x] **AC-C14** — The "Coaches and payments" tab shows whether online payment is connected and in which mode, saves the offered methods, which the next checkout uses, and shows the fee mode with a link to where it is set.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-C13** — Without any operator command, a club with fees has the month's charges on its generation day from the month after migration B's month on (nothing is generated automatically in that month), payers of overdue charges get one message on the day after the due date and at most three more a week apart, a captured checkout is booked within 15 minutes and an order campaign past its deadline is closed within 15 minutes; each switch turns its job off. — evidence: #398, #417, #419; `TEST-C14-scheduled-jobs`
+- [x] **AC-C14** — The "Coaches and payments" tab shows whether online payment is connected and in which mode, saves the offered methods, which the next checkout uses, and shows the fee mode with a link to where it is set. — evidence: #401; `TEST-C15-online-payment-methods`, `TEST-C15-online-payment-tab-ui`
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — evidence: #336, #338, #397, #389, #344, #391, #411, #370, #401; `TEST-C01-rental-charges`, `TEST-C04-accept-cash-from-every-screen`, `TEST-C05-bank-row-buttons-and-import-delete`, `TEST-C06-kit-campaign-record`, `TEST-C07-manual-charge-and-payer`, `TEST-C08-person-charges-tab`, `TEST-C09-refunds-and-to-refund`, `TEST-C10-dashboard-widgets`, `TEST-C15-online-payment-tab-ui`
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — evidence: #336, #338, #397, #389, #344, #391, #411, #345, #393, #370, #398, #401; `TEST-C01-rental-charges`, `TEST-C04-accept-cash-from-every-screen`, `TEST-C05-bank-row-buttons-and-import-delete`, `TEST-C06-kit-campaign-record`, `TEST-C07-manual-charge-and-payer`, `TEST-C08-person-charges-tab`, `TEST-C09-refunds-and-to-refund`, `TEST-C10-dashboard-widgets`, `TEST-C11-payer-page-m08`, `TEST-C12-guardian-orders-on-the-phone`, `TEST-C13-cash-and-coach-pages`, `TEST-C14-scheduled-jobs`, `TEST-C15-online-payment-methods`, `TEST-C15-online-payment-tab-ui`, `TEST-C17-undo-automatic-generation`, `yarn verify`
 
 ## Final Compliance Report
 
