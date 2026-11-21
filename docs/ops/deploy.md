@@ -55,7 +55,7 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` | tenant data encryption fallback key; never change it on a running environment |
 | `NEXT_PUBLIC_APP_URL`, `PLATFORM_PORTAL_BASE_URL` | same value as `APP_URL` |
 | `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM` | outbound e-mail (S12.6) |
-| `OM_ENABLE_ENTERPRISE_MODULES=false` | enterprise modules stay off in every environment (ADR-023) |
+| `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_INIT_ADMIN_PASSWORD` | only for the one-time initialisation below; remove it afterwards |
 
