@@ -61,9 +61,10 @@ export async function prepareForAccessibilityScan(page: Page): Promise<void> {
 }
 
 // Reflow at 320 CSS px (WCAG 1.4.10, S7.4): resizes the viewport and fails when the page itself scrolls
-// sideways. Tables, timelines and maps that scroll inside their own container do not widen the page.
-export async function expectNoPageOverflow(page: Page): Promise<void> {
-  await page.setViewportSize({ width: 320, height: 640 })
+// sideways. Tables, timelines and maps that scroll inside their own container do not widen the page. `width` checks
+// another viewport the same way (the 768 px tablet of #495), which a layout switching at `md` can break on its own.
+export async function expectNoPageOverflow(page: Page, width = 320): Promise<void> {
+  await page.setViewportSize({ width, height: width < 768 ? 640 : 1024 })
   await page.waitForLoadState('networkidle')
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -73,7 +74,7 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
   const offenders =
     overflow > 0
       ? await page.evaluate(() => {
-          const width = document.documentElement.clientWidth
+          const viewport = document.documentElement.clientWidth
           const clipped = (element: Element): boolean => {
             for (let parent = element.parentElement; parent; parent = parent.parentElement) {
               const style = getComputedStyle(parent)
@@ -84,7 +85,7 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
             return false
           }
           const wide = [...document.querySelectorAll('body *')].filter(
-            (element) => element.getBoundingClientRect().right > width + 0.5 && !clipped(element),
+            (element) => element.getBoundingClientRect().right > viewport + 0.5 && !clipped(element),
           )
           return wide
             .filter((element) => !wide.some((other) => other !== element && element.contains(other)))
@@ -104,7 +105,7 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
       : []
   expect(
     overflow,
-    `page wider than 320 px by ${String(overflow)} px${offenders.length ? `: ${offenders.join('; ')}` : ''}`,
+    `page wider than ${String(width)} px by ${String(overflow)} px${offenders.length ? `: ${offenders.join('; ')}` : ''}`,
   ).toBeLessThanOrEqual(0)
 }
 

@@ -29,6 +29,12 @@ export const DS_RULES = Object.freeze([
     stringPolicy: true,
   },
   {
+    id: 'colour-named-status-token',
+    description: 'Status tokens name a meaning (success, warning, error, info, neutral); the colour-named --status-pink-* is not in docs/ux-concept/tokens.md.',
+    pattern: String.raw`\bstatus-pink-`,
+    stringPolicy: true,
+  },
+  {
     id: 'inline-style',
     description: 'Use shared components and design tokens instead of inline style props.',
     pattern: String.raw`\bstyle\s*=`,

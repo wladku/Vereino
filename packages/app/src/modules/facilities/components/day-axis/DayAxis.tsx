@@ -6,7 +6,8 @@
 // no buttons. 40 px per hour, a 48 px hour column, lanes of at least 96 px: a wider day scrolls sideways inside the
 // axis, never the page. The blocks repeat what "Wpisy dnia" lists as text, so they are hidden from assistive
 // technology. A recorded exception to the shared components (DD-R01): colours come from the semantic status tokens of
-// `KIND_TAGS` and the zone legend, no hard-coded colours, and nothing animates under reduced motion.
+// `KIND_TAGS` and `ZONE_TAGS` (the mockup's colours, #495), no hard-coded colours, and nothing animates under reduced
+// motion.
 import * as React from 'react'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import {
@@ -21,7 +22,7 @@ import {
   type Span,
 } from '../../lib/day-axis'
 import { ZONES } from '../../lib/zones'
-import { KIND_TAGS, ZONE_TAGS } from './tags'
+import { KIND_TAGS, ZONE_TAGS, type AxisTone } from './tags'
 import {
   ENTRY_KINDS,
   entryRange,
@@ -35,13 +36,24 @@ import {
 import { dayEntryText } from './DayEntries'
 
 /** The status tokens of each `Tag` variant, for the blocks, bands and swatches (the classes `Tag` itself uses). */
-const TONES: Record<string, string> = {
+const TONES: Record<AxisTone, string> = {
   success: 'border-status-success-border bg-status-success-bg text-status-success-text',
   warning: 'border-status-warning-border bg-status-warning-bg text-status-warning-text',
   error: 'border-status-error-border bg-status-error-bg text-status-error-text',
   info: 'border-status-info-border bg-status-info-bg text-status-info-text',
   neutral: 'border-status-neutral-border bg-status-neutral-bg text-status-neutral-text',
-  pink: 'border-status-pink-border bg-status-pink-bg text-status-pink-text',
+}
+
+/**
+ * The legend swatches (#495): the pale fill of the block with an edge in the variant's icon token, so every swatch
+ * stands out from the page by at least 3:1 (WCAG 1.4.11) in both schemes; the word next to it names it.
+ */
+const SWATCHES: Record<AxisTone, string> = {
+  success: 'border-status-success-icon bg-status-success-bg',
+  warning: 'border-status-warning-icon bg-status-warning-bg',
+  error: 'border-status-error-icon bg-status-error-bg',
+  info: 'border-status-info-icon bg-status-info-bg',
+  neutral: 'border-status-neutral-icon bg-status-neutral-bg',
 }
 
 /** A second cue besides the colour: a dashed request, a double closure, a dotted maintenance window. */
@@ -69,16 +81,21 @@ export function AxisLegend() {
       </h3>
       <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
         {ZONES.map((zone) => (
-          <li key={zone} className="flex items-center gap-1.5">
-            <span aria-hidden="true" className={`inline-block size-3 rounded-sm border ${TONES[ZONE_TAGS[zone]]}`} />
+          <li key={zone} className="flex items-center gap-1.5" data-legend={zone}>
+            <span
+              aria-hidden="true"
+              className={`inline-block size-3 shrink-0 rounded-sm border-2 ${SWATCHES[ZONE_TAGS[zone]]}`}
+              data-swatch={ZONE_TAGS[zone]}
+            />
             {t(`facilities.zones.zone.${zone}`)}
           </li>
         ))}
         {ENTRY_KINDS.map((kind) => (
-          <li key={kind} className="flex items-center gap-1.5">
+          <li key={kind} className="flex items-center gap-1.5" data-legend={kind}>
             <span
               aria-hidden="true"
-              className={`inline-block size-3 rounded-sm border ${TONES[KIND_TAGS[kind]]} ${KIND_BORDERS[kind]}`}
+              className={`inline-block size-3 shrink-0 rounded-sm border-2 ${SWATCHES[KIND_TAGS[kind]]} ${KIND_BORDERS[kind]}`}
+              data-swatch={KIND_TAGS[kind]}
             />
             {t(`facilities.axis.legend.${kind}`)}
           </li>

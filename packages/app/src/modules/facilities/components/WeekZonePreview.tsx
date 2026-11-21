@@ -3,22 +3,16 @@
 // with the effective zone segments (`dayZoneSegments` — the higher priority wins). Every segment names its zone in
 // text, so the preview and its legend do not rely on color; on a phone the days stack as a list. The rentals and the
 // "New rental" buttons it showed on the calendar moved to the day axis (facilities parity spec B-23, #276); the zones
-// tab keeps the preview.
+// tab keeps the preview. The zone colours are the day axis's (`ZONE_TAGS`, the mockup's colours; #495).
 import * as React from 'react'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { Tag, type TagMap } from '@open-mercato/ui/primitives/tag'
+import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { addDays, isoWeekdayOf } from '@vereino/core'
-import { ZONES, dayZoneSegments, weekDates, type Zone, type ZoneRuleShape } from '../lib/zones'
+import { ZONES, dayZoneSegments, weekDates, type ZoneRuleShape } from '../lib/zones'
 import { zoneLabel, type ZoneRuleRow } from './facilities-client'
+import { ZONE_TAGS } from './day-axis/tags'
 import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
-
-const ZONE_TAGS: TagMap<Zone> = {
-  public_free: 'success',
-  club_training: 'info',
-  reservable_paid: 'warning',
-  closed: 'error',
-}
 
 /** The rows the preview can place: a zone, a source and a start of validity are present. */
 export function previewRules(rows: readonly ZoneRuleRow[]): ZoneRuleShape[] {
