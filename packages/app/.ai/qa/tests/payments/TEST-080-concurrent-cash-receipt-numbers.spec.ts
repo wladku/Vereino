@@ -17,7 +17,7 @@ import { acceptCash, getCharge, type CodedBody } from '../_fixtures/payments'
 // resolves more work through the container (`clubClock` → settings service, `callerSettlesCash` → `rbacService`,
 // before `lockReceiptNumbering`) — needing a second connection while holding the first, so 20 open transactions starve
 // the pool until the acquire timeout. Below the pool size the same scenario passes (the second test, N = 15), which
-// proves the numbering itself. Unfix when 50 concurrent acceptances all answer 201.
+// proves the numbering itself. Unfix when 50 concurrent acceptances all answer 201 (#549).
 test.describe.configure({ timeout: 300_000 })
 
 const KP = /^KP\/(\d{4})\/(\d{2})\/(\d{3})$/
