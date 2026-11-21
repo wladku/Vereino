@@ -94,11 +94,14 @@ export function PaymentsClubFrame({
   children,
   payerOnly = true,
   skeleton = 'rows',
+  loadErrorKey = 'payments.club.errors.load',
 }: {
   children: (profile: PaymentsProfile) => React.ReactNode
   payerOnly?: boolean
   /** The shape of the page's content while the profile loads (REQ-N15): `fields` on a form, `tiles` on cards. */
   skeleton?: MemberSkeletonShape
+  /** The catalog key of the load error: it names what the page shows (payments by default, orders on M-16/M-17). */
+  loadErrorKey?: string
 }) {
   const t = useT()
   const pathname = usePathname()
@@ -112,7 +115,7 @@ export function PaymentsClubFrame({
   } else if (!query.data) {
     body = (
       <ErrorMessage
-        label={t('payments.club.errors.load')}
+        label={t(loadErrorKey)}
         action={
           <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
             {t('payments.club.retry')}
