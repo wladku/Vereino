@@ -95,3 +95,15 @@ seven module catalog pairs; `src/modules.ts`; `scripts/check-glossary.mjs`, its 
   `AGENTS.md` rule, as the project memory rules require.
 - Results: `yarn test:integration:vereino --filter TEST-046` 2 passed; `--filter TEST-N01` 2 passed; `--filter ISSUE-481`
   (new on main, checks sidebar group headings) 1 passed; `yarn lessons:check` valid; `yarn verify` all 18 steps passed.
+
+## Follow-up run 2026-11-21: merge-train conflict on PR #513 (om-auto-fix-pr)
+
+- Trigger: PR #513 was `CONFLICTING` and labelled `merge-train-conflict` after #508 (E20-S10) landed on `main`.
+- Steps: detached HEAD at `origin/fix/issue-494-menu-groups-mockup-terms`; merged `origin/main` (signed off). One
+  conflict in `activities/i18n/pl.json`: the branch reworded the session-edit texts to "termin", `main` replaced
+  `activities.club.edit.denied` with five `activities.club.edit.refusal.*` keys written with "zajęcia".
+- Decision: keep the branch's wording, take `main`'s keys (dropping `denied`, which `main` removed) and reword them to
+  glossary rule 1 ("termin" where English says session) and rule 2 ("prowadzący" for "its coach", the person running
+  the session). "Trener" stays in `refusal.coach_series`, where it names the role.
+- Results: `node scripts/check-glossary.mjs` 0 problems; `yarn verify` all 18 steps passed;
+  `yarn test:integration:vereino --filter TEST-489` 1 passed; `--filter TEST-A16` 1 passed.
