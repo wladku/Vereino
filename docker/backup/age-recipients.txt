@@ -1,0 +1,4 @@
+# age recipients of the nightly off-site backup (docs/ops/backups.md, ENG-Q-04).
+# One public key per line (`age1…`). The matching private key is kept only in the password managers of the owner
+# and a second person; it is never stored in Railway, in the bucket or in this repository.
+# Until the owner adds the public key here, the backup job refuses to run (`"reason":"no-recipient"`).

@@ -9,6 +9,9 @@ export const DEFAULT_SKIP_LABELS = ['do-not-merge', 'blocked', 'in-progress', 'c
 /** Labels the train sets so the state is visible on the PR list; they never block by themselves. */
 export const FAILED_LABEL = 'merge-train-failed'
 export const CONFLICT_LABEL = 'merge-train-conflict'
+/** Hidden marker of the one comment the train leaves on a PR it holds for manual QA (MT-D02). */
+export const QA_HOLD_MARKER = '<!-- merge-train:qa-hold -->'
+export const QA_HOLD_REASON = 'risk-high and needs-qa without qa: waits for the owner\'s manual QA (MT-D02)'
 
 const FAILED_CONCLUSIONS = new Set(['failure', 'timed_out', 'cancelled', 'startup_failure', 'action_required'])
 
@@ -35,6 +38,28 @@ export function checksState(runs, required) {
   return pending ? 'pending' : 'success'
 }
 
+/**
+ * MT-D02 (`.ai/specs/2026-11-18-merge-throughput.md`): a `risk-high` PR that asks for manual QA (`needs-qa`) stays out
+ * of the train until the owner sets `qa`. Any other risk merges on green; `needs-qa` alone stays advisory.
+ */
+export function qaHold(labels) {
+  return labels.includes('risk-high') && labels.includes('needs-qa') && !labels.includes('qa')
+}
+
+/**
+ * The issue a PR works on, read from its head branch: `feat/issue-123-x` → 123. `null` when the branch names none.
+ * The train mirrors its labels onto that issue, so an issue-label automation (Cezar) reacts to a broken PR at once.
+ */
+export function linkedIssue(branch) {
+  const match = /(?:^|\/)issue-(\d+)(?=-|$)/.exec(branch ?? '')
+  return match ? Number(match[1]) : null
+}
+
+/** Whether the train still owes a held PR its one QA-hold comment; `comments` are the PR's comment bodies. */
+export function needsQaHoldComment(comments) {
+  return !comments.some((body) => body.includes(QA_HOLD_MARKER))
+}
+
 /** Higher priority first (`priority-high`, then `priority-medium`), then the oldest PR. */
 function byQueueOrder(left, right) {
   const rank = (pr) => (pr.labels.includes('priority-high') ? 0 : pr.labels.includes('priority-medium') ? 1 : 2)
@@ -42,26 +67,39 @@ function byQueueOrder(left, right) {
 }
 
 /**
- * Plans one step of the train over the open PRs. Each PR is `{ number, draft, labels, behindBy, conflict, checks }`,
- * where `checks` is `checksState` of its head. The answer is one of:
+ * Today's queue: drafts, PRs with a skip label and PRs held by the MT-D02 QA rule left out, then priority and age.
+ * `held` names each held PR with its reason.
+ */
+function trainQueue(prs, skipLabels) {
+  const eligible = prs.filter((pr) => !pr.draft && !pr.labels.some((label) => skipLabels.includes(label)))
+  const held = eligible.filter((pr) => qaHold(pr.labels)).map((pr) => ({ pr: pr.number, reason: QA_HOLD_REASON }))
+  const queue = eligible.filter((pr) => !qaHold(pr.labels)).sort(byQueueOrder)
+  return { queue, held }
+}
+
+/**
+ * Plans one step of the train over the open PRs. Each PR is
+ * `{ number, draft, labels, behindBy, conflict, checks, branch }`, where `checks` is `checksState` of its head and
+ * `branch` its head branch. The answer is one of:
  * - `{ type: 'merge', pr }` — an up-to-date PR is green;
  * - `{ type: 'wait', pr }` — an up-to-date PR is still running its checks (the PR in flight);
  * - `{ type: 'update', pr }` — nothing is in flight, so the next PR takes `main` in and starts its CI;
  * - `{ type: 'idle' }` — no PR can move.
- * `labels` lists the train labels to add or remove on every PR so they match its state.
+ * `labels` lists the train labels to add or remove on every PR so they match its state; a change carries `issue` when
+ * the PR's branch names one (`linkedIssue`), and the same change applies to that issue. `held` lists the PRs kept out
+ * by the MT-D02 QA rule (`qaHold`), `{ pr, reason }`, so the run log names each one and why.
  *
  * A PR that failed on a head behind `main` gets one update (its failure may come from an old `main`); one that failed
  * while up to date waits for a new commit from its author.
  */
 export function planMergeTrain(prs, { skipLabels = DEFAULT_SKIP_LABELS } = {}) {
-  const queue = prs
-    .filter((pr) => !pr.draft && !pr.labels.some((label) => skipLabels.includes(label)))
-    .sort(byQueueOrder)
+  const { queue, held } = trainQueue(prs, skipLabels)
   const labels = []
   const sync = (pr, label, wanted) => {
     const has = pr.labels.includes(label)
-    if (wanted && !has) labels.push({ pr: pr.number, label, add: true })
-    if (!wanted && has) labels.push({ pr: pr.number, label, add: false })
+    if (wanted === has) return
+    const issue = linkedIssue(pr.branch)
+    labels.push({ pr: pr.number, label, add: wanted, ...(issue ? { issue } : {}) })
   }
   for (const pr of queue) {
     sync(pr, CONFLICT_LABEL, pr.conflict)
@@ -70,11 +108,144 @@ export function planMergeTrain(prs, { skipLabels = DEFAULT_SKIP_LABELS } = {}) {
   const movable = queue.filter((pr) => !pr.conflict)
   const upToDate = movable.filter((pr) => pr.behindBy === 0)
   const green = upToDate.find((pr) => pr.checks === 'success')
-  if (green) return { type: 'merge', pr: green.number, labels }
+  if (green) return { type: 'merge', pr: green.number, labels, held }
   const inFlight = upToDate.find((pr) => pr.checks === 'pending')
-  if (inFlight) return { type: 'wait', pr: inFlight.number, labels }
+  if (inFlight) return { type: 'wait', pr: inFlight.number, labels, held }
   const behind = movable.filter((pr) => pr.behindBy > 0)
   const next = behind.find((pr) => pr.checks !== 'failure') ?? behind[0]
-  if (next) return { type: 'update', pr: next.number, labels }
-  return { type: 'idle', labels }
+  if (next) return { type: 'update', pr: next.number, labels, held }
+  return { type: 'idle', labels, held }
+}
+
+// Batch train, phase 1 (`.ai/specs/2026-11-18-batch-merge-train.md`): planning and judging only, dark. Nothing below
+// builds, merges or labels anything yet; `scripts/merge-train.mjs` prints the batch in a dry run.
+
+/** Commit status the train sets on a PR head whose batch of one failed (REQ-BT03); a new push clears it. */
+export const VERDICT_STATUS = 'merge-train/verdict'
+/** The size the owner sets with `MERGE_TRAIN_BATCH_SIZE` at the switch-on (phase 3). */
+export const DEFAULT_BATCH_SIZE = 4
+/** Upper bound of `MERGE_TRAIN_BATCH_SIZE`; a larger or invalid value falls back to 1. */
+export const MAX_BATCH_SIZE = 8
+/** A batch whose head has no verdict after this long is rebuilt (REQ-BT02). */
+export const BATCH_MAX_AGE_MINUTES = 90
+/** Why a PR of the queue is not in the batch, as the dry run and the job summary print it. */
+export const BATCH_SKIP_REASONS = {
+  fork: 'from a fork: forks never join a batch (BT-D05)',
+  verdict: `its head carries ${VERDICT_STATUS} = failure: waits for a new push (REQ-BT03)`,
+  conflict: 'conflicts with main',
+  failure: 'a required check failed on its own head',
+  pending: 'its own head is not green yet',
+}
+
+/**
+ * `MERGE_TRAIN_BATCH_SIZE`: an integer from 1 to `MAX_BATCH_SIZE`. Unset, empty or invalid means 1, today's
+ * one-PR train, so the batch train stays dark until the owner sets the variable (spec phase 3).
+ */
+export function parseBatchSize(value) {
+  const size = Number(String(value ?? '').trim() || 1)
+  return Number.isInteger(size) && size >= 1 && size <= MAX_BATCH_SIZE ? size : 1
+}
+
+/**
+ * The train's verdict on a head: the state of the newest `merge-train/verdict` status (`failure`, `success`, …), or
+ * `null` when there is none. `statuses` are the head's commit statuses, `{ context, state, id }`.
+ */
+export function verdictOf(statuses) {
+  let newest = null
+  for (const status of statuses) {
+    if (status.context === VERDICT_STATUS && (!newest || status.id > newest.id)) newest = status
+  }
+  return newest ? newest.state : null
+}
+
+/**
+ * Whether a PR must form a batch alone (BT-D05): it changes CI (`.github/`) or the train itself
+ * (`scripts/merge-train*`). Unknown files count as such a change, so a PR whose files were not read never shares a batch.
+ */
+export function batchesAlone(pr) {
+  if (!Array.isArray(pr.files)) return true
+  return pr.files.some((path) => path.startsWith('.github/') || path.startsWith('scripts/merge-train'))
+}
+
+function batchSkipReason(pr) {
+  if (pr.fork) return 'fork'
+  if (pr.verdict === 'failure') return 'verdict'
+  if (pr.conflict) return 'conflict'
+  if (pr.checks !== 'success') return pr.checks
+  return null
+}
+
+/**
+ * Plans the next batch (REQ-BT01, REQ-BT03) over the same PRs as `planMergeTrain`, each also carrying `headSha`,
+ * `fork`, `files` (changed paths) and `verdict` (`verdictOf` its head). The queue is today's; a batch is its first
+ * `size` PRs that are green on their own head, do not conflict, are no fork and carry no failure verdict on their
+ * current head. A PR that `batchesAlone` ends the batch: it goes alone when it is first, else it waits to be first.
+ *
+ * During a bisection `suspects` lists the PRs of a red batch not yet proven good or bad (`Merge-Train-Suspects`); the
+ * batch is then the first half of those still batchable, and the other PRs wait. Suspects that left the queue or are no
+ * longer batchable drop out; when none is left the plan is the ordinary one.
+ *
+ * The answer is `{ batch, suspects, skipped, held, update }`: `batch` the PRs in order as `{ number, sha }`, `suspects`
+ * the suspects still open (or `null`), `skipped` the queue PRs left out as `{ pr, reason }` (`BATCH_SKIP_REASONS`),
+ * `held` as in `planMergeTrain`, and `update` the first PR that is red on its own head while behind `main` and gets one
+ * `update-branch`, as today (its failure may come from an old `main`), or `null`.
+ */
+export function planBatch(prs, { skipLabels = DEFAULT_SKIP_LABELS, size = 1, suspects = null } = {}) {
+  const { queue, held } = trainQueue(prs, skipLabels)
+  const ready = []
+  const skipped = []
+  for (const pr of queue) {
+    const reason = batchSkipReason(pr)
+    if (reason) skipped.push({ pr: pr.number, reason })
+    else ready.push(pr)
+  }
+  let candidates = ready
+  let open = null
+  const suspected = (suspects ?? []).map((number) => ready.find((pr) => pr.number === number)).filter(Boolean)
+  if (suspected.length) {
+    open = suspected.map((pr) => pr.number)
+    candidates = suspected.slice(0, Math.ceil(suspected.length / 2))
+  }
+  const batch = []
+  for (const pr of candidates) {
+    if (batch.length === size) break
+    if (batchesAlone(pr)) {
+      if (!batch.length) batch.push(pr)
+      break
+    }
+    batch.push(pr)
+  }
+  const update = queue.find((pr) => batchSkipReason(pr) === 'failure' && pr.behindBy > 0)
+  return {
+    batch: batch.map((pr) => ({ number: pr.number, sha: pr.headSha })),
+    suspects: open,
+    skipped,
+    held,
+    update: update ? update.number : null,
+  }
+}
+
+/**
+ * Judges the batch under test (REQ-BT02, REQ-BT03). `batch` is the parsed trailers of the batch head
+ * (`parseTrailers`), `headSha` that head, `runs` check runs as `{ name, status, conclusion, id, headSha }`: only runs
+ * of the current head count, so a run of an older head (cancelled by CI's concurrency group) never decides.
+ * `ageMinutes` is how long the head has waited for its checks. The answer is one of:
+ * - `{ type: 'wait' }` — the checks still run;
+ * - `{ type: 'rebuild', reason: 'stale' }` — no verdict after `BATCH_MAX_AGE_MINUTES`;
+ * - `{ type: 'merge', prs, suspects }` — green: merge `prs` in order; `suspects` are those still to test (or `null`);
+ * - `{ type: 'culprit', pr, sha }` — a batch of one is red: mark that head (`merge-train/verdict` failure and
+ *   `merge-train-failed`); the other suspects return to the ordinary queue;
+ * - `{ type: 'bisect', suspects }` — a batch of several is red: they become the suspects, the next batch is their
+ *   first half (`planBatch`).
+ */
+export function judgeBatch(batch, { headSha, runs, required, ageMinutes, maxAgeMinutes = BATCH_MAX_AGE_MINUTES }) {
+  const state = checksState(runs.filter((run) => run.headSha === headSha), required)
+  if (state === 'pending') return ageMinutes >= maxAgeMinutes ? { type: 'rebuild', reason: 'stale' } : { type: 'wait' }
+  const numbers = batch.prs.map((pr) => pr.number)
+  if (state === 'success') {
+    const remaining = (batch.suspects ?? []).filter((number) => !numbers.includes(number))
+    return { type: 'merge', prs: batch.prs, suspects: remaining.length ? remaining : null }
+  }
+  if (batch.prs.length === 1) return { type: 'culprit', pr: batch.prs[0].number, sha: batch.prs[0].sha }
+  return { type: 'bisect', suspects: numbers }
 }

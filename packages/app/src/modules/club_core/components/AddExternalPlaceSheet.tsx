@@ -4,18 +4,12 @@
 // (`useAddExternalPlace`) and full-width buttons with 44 px targets. The host selects the answered place and the
 // polite live region next to the sheet announces it; a place with the same name and address is offered for picking.
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@open-mercato/ui/primitives/sheet'
+import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@open-mercato/ui/primitives/sheet'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { AddExternalPlaceProps } from './AddExternalPlaceDialog'
 import { AddExternalPlaceFields } from './AddExternalPlaceFields'
 import { useAddExternalPlace } from './useAddExternalPlace'
+import { SheetContent } from '@/components/ui/dialog'
 
 export function AddExternalPlaceSheet(props: AddExternalPlaceProps) {
   const t = useT()

@@ -9,7 +9,8 @@
 // the shared conflict bar, and a coded 422 points at its field. The submit bar stays above the bottom navigation.
 // E10-S08 (#273, REQ-A10): opened with `?as=coordinator`, the form reads the session as the section's coordinator (any
 // planned session of their sections) and returns to the session page in that perspective; the toast names how many
-// people the move told, and a move clears "Needs a new time".
+// people the move told, and a move clears "Needs a new time". Opened without `?as=`, a coordinator who does not coach
+// reads it as the coordinator too, so the form never asks for a coach read the API refuses (#483).
 // Club events (REQ-T05, REQ-T12, E14-S05 #380): a part session keeps the club event's place, so the form shows it
 // read-only ("the club event's place") and never sends a place or a venue; the event page's Move opens this form.
 import * as React from 'react'
@@ -28,7 +29,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { memberStaffScopes, MemberSkeleton } from '@vereino/ui'
 import type { EventPlaceOption, VenueMode } from '../../lib/member-event'
 import {
   sessionEditBody,
@@ -43,6 +44,7 @@ import {
   type SessionEditRefusal,
 } from '../../lib/session-edit'
 import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
+import { sessionPerspectives } from '../../lib/member-session'
 import { ConflictList } from '../ConflictList'
 import { OWN_FORBIDDEN_STATE, takesDeadline, type DeclarationKinds, type ScheduleConflict } from '../client-helpers'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
@@ -53,6 +55,7 @@ import {
   sessionHref,
   useMemberSession,
   type CalendarEntry,
+  type ClubProfile,
   type Translate,
 } from './club-client'
 
@@ -482,8 +485,19 @@ function EditForm({
   )
 }
 
-function EditSession({ id, t }: { id: string; t: Translate }) {
-  const as = useSearchParams().get('as') === 'coordinator' ? 'coordinator' : 'coach'
+/** The staff read of the form: the one the link names, else the session page's staff perspective for this person. */
+function editPerspective(requested: string | null, profile: ClubProfile): 'coach' | 'coordinator' {
+  if (requested === 'coordinator' || requested === 'coach') return requested
+  const staff = sessionPerspectives(null, {
+    hasWards: profile.wards.length > 0,
+    coaches: profile.contexts.includes('coach'),
+    coordinates: memberStaffScopes(profile).includes('coordinator'),
+  }).staff
+  return staff ?? 'coach'
+}
+
+function EditSession({ id, t, profile }: { id: string; t: Translate; profile: ClubProfile }) {
+  const as = editPerspective(useSearchParams().get('as'), profile)
   const session = useMemberSession(id, as, null)
   const options = useEditOptions()
   let body: React.ReactNode
@@ -550,5 +564,9 @@ function EditSession({ id, t }: { id: string; t: Translate }) {
 
 export function ClubSessionEditPage({ id }: { id: string }) {
   const t = useT()
-  return <ActivitiesClubFrame skeleton="fields">{() => <EditSession id={id} t={t} />}</ActivitiesClubFrame>
+  return (
+    <ActivitiesClubFrame skeleton="fields">
+      {(profile) => <EditSession id={id} t={t} profile={profile} />}
+    </ActivitiesClubFrame>
+  )
 }

@@ -26,9 +26,15 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { CLUB_HOME_HREF, formatClockTime, formatDayHeading, formatTimeRange, MemberSkeleton } from '@vereino/ui'
+import {
+  CLUB_HOME_HREF,
+  formatClockTime,
+  formatDayHeading,
+  formatTimeRange,
+  MemberSkeleton,
+  StatusTag,
+} from '@vereino/ui'
 import {
   closesEarly,
   groupRosterHref,
@@ -99,9 +105,9 @@ function AttendanceRowItem({
           {name}
         </span>
         <span data-testid="club-attendance-expectation">
-          <StatusBadge variant={EXPECTATION_VARIANT[row.expectation]}>
+          <StatusTag status={EXPECTATION_VARIANT[row.expectation]}>
             {t(`activities.club.attendance.expectation.${row.expectation}`)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       </div>
       {!row.onRoster ? <p className="text-muted-foreground text-sm">{t('activities.club.attendance.guest')}</p> : null}
@@ -344,15 +350,15 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
           {occurrence.placeName ? ` · ${occurrence.placeName}` : ''}
         </p>
         <div className="flex flex-wrap gap-2">
-          <StatusBadge variant="neutral">{t(`activities.club.kind.${list.declarationKind}`)}</StatusBadge>
+          <StatusTag status="neutral">{t(`activities.club.kind.${list.declarationKind}`)}</StatusTag>
           {occurrence.status !== 'planned' ? (
-            <StatusBadge variant={occurrence.status === 'cancelled' ? 'error' : 'success'}>
+            <StatusTag status={occurrence.status === 'cancelled' ? 'canceled' : 'success'}>
               {t(`activities.occurrences.status.${occurrence.status}`)}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
           {needsCoach(occurrence) ? (
             <span data-testid="club-attendance-needs-coach">
-              <StatusBadge variant="warning">{t('activities.club.session.needsCoach')}</StatusBadge>
+              <StatusTag status="warning">{t('activities.club.session.needsCoach')}</StatusTag>
             </span>
           ) : null}
         </div>

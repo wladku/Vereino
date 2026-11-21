@@ -20,11 +20,10 @@ import { useQuery } from '@tanstack/react-query'
 import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState } from '@open-mercato/ui/backend/detail'
 import { InjectionSpot, useInjectionWidgets } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 import { personAge } from '../lib/people-rules'
 import { AccountPanel } from './AccountPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
@@ -176,18 +175,18 @@ export function PersonRecord({ id }: { id: string }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {person.anonymizedAt ? (
-            <StatusBadge variant="neutral" data-testid="person-record-anonymised">
+            <StatusTag status="neutral" data-testid="person-record-anonymised">
               {t('people.erasure.anonymised')}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
           {person.leftOn && person.leftOn <= today ? (
-            <StatusBadge variant="neutral" data-testid="person-record-former">
+            <StatusTag status="neutral" data-testid="person-record-former">
               {t('people.leaving.leftOn', { date: person.leftOn })}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
-          <StatusBadge variant={person.hasAccount ? 'success' : 'neutral'}>
+          <StatusTag status={person.hasAccount ? 'success' : 'neutral'}>
             {person.hasAccount ? t('people.persons.account.yes') : t('people.persons.account.no')}
-          </StatusBadge>
+          </StatusTag>
         </div>
       </header>
       <Tabs value={tab} onValueChange={selectTab} variant="underline">
