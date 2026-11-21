@@ -240,7 +240,8 @@ function Composer({ options }: { options: DirectOption[] }) {
         <Label htmlFor={`${id}-subject`}>{t('communication.direct.subject')}</Label>
         <Input
           id={`${id}-subject`}
-          className="min-h-11"
+          className="h-12"
+          inputClassName="self-stretch"
           value={subject}
           maxLength={SUBJECT_MAX}
           aria-required="true"

@@ -20,7 +20,6 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
-import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
 import { formatDayHeading, MemberSkeleton } from '@vereino/ui'
@@ -189,7 +188,7 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
         </p>
       </div>
       <DayChips today={today} date={date} onSelect={goTo} />
-      <div className="flex min-h-11 items-center gap-2">
+      <label htmlFor={filterId} className="flex min-h-11 cursor-pointer items-center gap-2 self-start pr-2">
         <Checkbox
           id={filterId}
           checked={toMove}
@@ -198,8 +197,8 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
           }}
           data-testid="club-place-to-move"
         />
-        <Label htmlFor={filterId}>{t('facilities.places.toMoveFilter')}</Label>
-      </div>
+        <span className="text-sm font-medium">{t('facilities.places.toMoveFilter')}</span>
+      </label>
       {canBook ? (
         <p className="text-muted-foreground text-sm" data-testid="club-place-hint">
           {t('facilities.places.clickHint')}

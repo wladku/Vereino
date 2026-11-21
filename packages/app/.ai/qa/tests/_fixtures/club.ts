@@ -95,16 +95,21 @@ export async function call<T = Record<string, unknown>>(
   return { status: response.status(), body: await readJsonSafe<T>(response), response }
 }
 
-/** `YYYY-MM-DD` of today (plus `offsetDays`) in the club zone. */
+/**
+ * `YYYY-MM-DD` of today (plus `offsetDays` calendar days) in the club zone. The offset is added to the zone's
+ * calendar date, never to the clock as `offsetDays × 24 h`: across a DST change that lands on the wrong day in the
+ * last hour before midnight (TEST-L21 on PR #512, lesson `calendar-date-offsets-are-calendar-days`).
+ */
 export function calendarDate(offsetDays = 0, timeZone = 'Europe/Warsaw'): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date(Date.now() + offsetDays * 86_400_000))
+  }).formatToParts(new Date())
   const byType = Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<string, string>
-  return `${byType.year}-${byType.month}-${byType.day}`
+  const day = new Date(Date.UTC(Number(byType.year), Number(byType.month) - 1, Number(byType.day) + offsetDays))
+  return day.toISOString().slice(0, 10)
 }
 
 /** The birth date of someone who turns `years` old on `calendarDate(offsetDays)`. */

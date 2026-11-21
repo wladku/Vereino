@@ -18,8 +18,8 @@ import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/ba
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSwitchField, StatusTag } from '@vereino/ui'
 import { ClubFrame } from './ClubFrame'
 import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
 import { WardNotices } from './LifeCycleNotices'
@@ -34,7 +34,6 @@ import {
   type MemberWard,
   type WardConsentKind,
 } from './member-client'
-import { StatusTag } from '@vereino/ui'
 
 type ConsentState = Record<WardConsentKind, boolean>
 
@@ -100,7 +99,7 @@ function WardConsents({ ward, timeZone, texts }: { ward: MemberWard; timeZone: s
       {WARD_CONSENT_KINDS.map((kind) => {
         return (
           <div key={kind} className="flex flex-col gap-1">
-            <SwitchField
+            <MemberSwitchField
               id={`club-ward-consent-${kind}`}
               label={label(kind, `people.guardianships.consents.${kind}`)}
               description={status(ward.guardianship.consents[kind])}
