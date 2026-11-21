@@ -44,3 +44,10 @@
 - Conflict in `packages/app/package.json` `test:scripts`: kept main's `test:backup` script and `backup-*.mjs` coverage include together with this PR's `check-secrets.mjs` include.
 - `node scripts/check-secrets.mjs` on the merged tree then FAILED on a file main added: `packages/app/scripts/__tests__/backup-drill.e2e.mjs:100 [secret-assignment] POSTGR***` — the throwaway Testcontainers database password of the backup drill. Allow-listed with `match` (same class as the `vereino-ephemeral.mjs` entry); 14 entries now. Rerun: `No secrets or real e-mail addresses found`.
 - `yarn verify` on the merge result: all 19 steps passed.
+
+## Fourth main merge (PR #514 conflict, merge-train-conflict, 2026-11-21)
+
+- Merged `origin/main` at `8122c3fa` (release workflow #447, boot-time env check #478 and later) into the PR head; history not rewritten.
+- Conflict in `docs/ops/github-settings.md`: main added section 7 "Release workflow" and renumbered Verify to 8, so this PR's security settings became section 9; the closing "Phase E2 settings (later)" line now names only the Renovate app and points to section 7 for the release workflow.
+- `node scripts/check-secrets.mjs` on the merged tree then FAILED on test files main added (#478): `packages/app/scripts/__tests__/smoke.test.mjs` (10 × `[secret-assignment]`, fake passwords `'p'`, `'pw'`, `'secret-pw'`) and `packages/app/scripts/__tests__/vereino-boot-env.test.mjs:6,15 [url-credentials]` (fake `DATABASE_URL`/`REDIS_URL` with `.internal` hosts). All fake test values; allow-listed with narrow `match` entries (18 entries now). Rerun: `No secrets or real e-mail addresses found`.
+- `yarn verify` on the merge result: all 19 steps passed.
