@@ -1,0 +1,1 @@
+| 2026-11-21 | E19-S04 (#470): ENG-AC-06 ticked — the club spec now holds amendment B (the phase E5 domain hand-over, ENG-TEST-15); one finding: `KP`/`RG` numbering meets S10.5 through a transaction-scoped advisory lock instead of a sequence row `FOR UPDATE` (#223, #421), recorded in the amendment, S10.5 wording unchanged |
