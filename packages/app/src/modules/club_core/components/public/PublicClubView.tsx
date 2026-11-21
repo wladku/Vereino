@@ -13,13 +13,14 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton } from '@vereino/ui'
 import { phoneHref, pluralForm } from '../../lib/public-page'
 import { LogoMark, PublicFrame, PublicNotice } from './PublicFrame'
-import { sectionHref, usePublicClub } from './public-client'
+import { sectionHref, usePublicClub, type PublicClubPage, type PublicLoad } from './public-client'
 
-export function PublicClubView({ clubSlug }: { clubSlug: string }) {
+/** `initial`: the state the server already read (#487), so the page's HTML holds its content without JavaScript. */
+export function PublicClubView({ clubSlug, initial }: { clubSlug: string; initial?: PublicLoad<PublicClubPage> }) {
   const t = useT()
   const locale = useLocale()
-  const query = usePublicClub(clubSlug)
-  const load = query.data
+  const query = usePublicClub(clubSlug, !initial)
+  const load = initial ?? query.data
 
   if (!load && query.isFetching) {
     return (

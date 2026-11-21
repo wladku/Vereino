@@ -662,6 +662,8 @@
   "people.club.leave.withdraw": "Wycofaj",
   "people.club.profile.leave.lead": "Poproś klub o zakończenie członkostwa Twojego lub Twoich dzieci.",
   "people.club.profile.leave.link": "Odejście z klubu",
+  "people.dashboard.widgets.departureRequests.title": "Prośby o odejście",
+  "people.dashboard.widgets.departureRequests.description": "Otwarte prośby o odejście z klubu, od najstarszej.",
   "people.dashboard.widgets.departureRequests.countLabel": "otwarte prośby o odejście",
   "people.dashboard.widgets.departureRequests.empty": "Brak próśb o odejście",
   "people.dashboard.widgets.departureRequests.error": "Nie udało się wczytać próśb.",
@@ -787,6 +789,8 @@
   "people.club.profile.notice.turns18.body": "Od tego dnia decydujesz samodzielnie: opiekunowie nie widzą już Twojego kalendarza, deklaracji ani należności, zgody, które dali, przechodzą na Ciebie, a nowe należności wskazują Ciebie jako płatnika.",
   "people.club.profile.notice.cameOfAge.title": "Od {date} decydujesz samodzielnie",
   "people.club.profile.notice.cameOfAge.body": "Zgody, które dali Twoi opiekunowie, są teraz Twoje: sprawdź je w sekcji Moje zgody i zmień, kiedy chcesz. Nowe należności wskazują Ciebie jako płatnika.",
+  "people.dashboard.widgets.peopleNeedingAttention.title": "Osoby wymagające uwagi",
+  "people.dashboard.widgets.peopleNeedingAttention.description": "Dzieci, które mogą dostać konto, 18. urodziny w ciągu 30 dni, dorośli bez kontaktu, brakujące zgody.",
   "people.dashboard.widgets.peopleNeedingAttention.empty": "Nikt nie wymaga uwagi",
   "people.dashboard.widgets.peopleNeedingAttention.error": "Nie udało się wczytać liczb.",
   "people.dashboard.widgets.peopleNeedingAttention.loading": "Wczytywanie osób…",
@@ -866,5 +870,7 @@
   "people.erasure.module.activities": "zajęcia i obecności",
   "people.erasure.module.payments": "płatności",
   "people.erasure.module.club_core": "umowy",
-  "people.erasure.module.facilities": "obiekty"
+  "people.erasure.module.facilities": "obiekty",
+  "people.club.leave.errors.summary": "Sprawdź prośbę",
+  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę."
 }

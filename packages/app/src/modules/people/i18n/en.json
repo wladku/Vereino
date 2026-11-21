@@ -662,6 +662,8 @@
   "people.club.leave.withdraw": "Withdraw",
   "people.club.profile.leave.lead": "Ask the club to end your part in the club, or your children's.",
   "people.club.profile.leave.link": "Leave the club",
+  "people.dashboard.widgets.departureRequests.title": "Departure requests",
+  "people.dashboard.widgets.departureRequests.description": "Open requests to leave the club, oldest first.",
   "people.dashboard.widgets.departureRequests.countLabel": "open requests to leave",
   "people.dashboard.widgets.departureRequests.empty": "No departure requests",
   "people.dashboard.widgets.departureRequests.error": "Could not load the requests.",
@@ -787,6 +789,8 @@
   "people.club.profile.notice.turns18.body": "From that day you decide alone: your guardians no longer see your calendar, declarations and charges, the consents they gave pass to you, and new charges name you as payer.",
   "people.club.profile.notice.cameOfAge.title": "Since {date} you decide alone",
   "people.club.profile.notice.cameOfAge.body": "The consents your guardians gave are now yours: check them under My consents and change them when you wish. New charges name you as payer.",
+  "people.dashboard.widgets.peopleNeedingAttention.title": "People needing attention",
+  "people.dashboard.widgets.peopleNeedingAttention.description": "Children who may get an account, 18th birthdays within 30 days, adults without contact, missing consents.",
   "people.dashboard.widgets.peopleNeedingAttention.empty": "Nobody needs attention",
   "people.dashboard.widgets.peopleNeedingAttention.error": "Could not load the counts.",
   "people.dashboard.widgets.peopleNeedingAttention.loading": "Loading people…",
@@ -866,5 +870,7 @@
   "people.erasure.module.activities": "classes and attendance",
   "people.erasure.module.payments": "payments",
   "people.erasure.module.club_core": "contracts",
-  "people.erasure.module.facilities": "facilities"
+  "people.erasure.module.facilities": "facilities",
+  "people.club.leave.errors.summary": "Check the request",
+  "people.club.leave.errors.whoRequired": "Choose at least one person."
 }

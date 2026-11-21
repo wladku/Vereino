@@ -17,12 +17,26 @@ import {
   PublicFacilitiesLoading,
   PublicFacilitiesNotice,
 } from './PublicFacilitiesFrame'
-import { TONE_CLASSES, clubHref, placeHref, usePublicPlaces } from './public-client'
+import {
+  TONE_CLASSES,
+  clubHref,
+  placeHref,
+  usePublicPlaces,
+  type PublicFacilitiesLoad,
+  type PublicPlacesView as PublicPlacesPage,
+} from './public-client'
 
-export function PublicPlacesView({ clubSlug }: { clubSlug: string }) {
+/** `initial`: the state the server already read (#487), so the page's HTML holds its content without JavaScript. */
+export function PublicPlacesView({
+  clubSlug,
+  initial,
+}: {
+  clubSlug: string
+  initial?: PublicFacilitiesLoad<PublicPlacesPage>
+}) {
   const t = useT()
-  const query = usePublicPlaces(clubSlug)
-  const load = query.data
+  const query = usePublicPlaces(clubSlug, !initial)
+  const load = initial ?? query.data
 
   if (!load && query.isFetching) return <PublicFacilitiesLoading />
   if (!load) return <PublicFacilitiesError onRetry={() => void query.refetch()} />

@@ -270,5 +270,10 @@
   "communication.tile.open": "Open the messages",
   "communication.tile.title": "Messages",
   "communication.tile.unread": "{count} unread",
-  "communication.club.nav.clubEvents": "Club events"
+  "communication.club.nav.clubEvents": "Club events",
+  "communication.direct.errors.summary": "Check the message",
+  "communication.direct.errors.subjectRequired": "Enter a subject.",
+  "communication.direct.errors.bodyRequired": "Write the message.",
+  "communication.reply.errors.bodyRequired": "Write your reply.",
+  "communication.message.edit.errors.bodyRequired": "The message cannot be empty."
 }
