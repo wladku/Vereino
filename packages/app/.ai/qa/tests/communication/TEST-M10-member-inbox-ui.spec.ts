@@ -5,10 +5,12 @@ import { familyFor } from '../_fixtures/attendance'
 import { createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { getThread, markRead, postThread, unreadCount } from '../_fixtures/communication'
+import { uiText } from '../_fixtures/ui-text'
 
 // TEST-M10 (foundation III REQ-M10, AC-M10): a guardian with three threads, one unread. The "Messages" tile on `/club`
 // shows 1; `/club/messages` lists the three with the unread marker on one; opening it clears the marker and the tile;
-// the guardian replies with the keyboard. `/club`, the inbox and the thread pass axe in light and dark mode at 375 px
+// the guardian replies with the keyboard (an empty reply first shows its error and keeps the focus on the field, #490).
+// `/club`, the inbox and the thread pass axe in light and dark mode at 375 px
 // with no horizontal overflow.
 test.describe.configure({ timeout: 600_000 })
 
@@ -78,6 +80,15 @@ test('TEST-M10 member inbox: tile count 1 then 0, unread marker cleared on open,
     await expect(page.getByTestId('club-thread-subject')).toHaveText('Zmiana godziny treningu')
     await expect.poll(async () => unreadCount(request, annaToken), { timeout: 20_000 }).toBe(0)
 
+    // An empty reply (#490): "Send reply" is enabled, the error stands under the field and the focus goes back to it.
+    await expect(page.getByTestId('thread-reply-send')).toBeEnabled()
+    await page.getByTestId('thread-reply-send').click()
+    await expect(page.getByTestId('thread-reply-error')).toHaveText(
+      uiText('communication.reply.errors.bodyRequired', { exact: true }),
+    )
+    await expect(page.getByTestId('thread-reply-body')).toBeFocused()
+    await expect(page.getByTestId('thread-reply-body')).toHaveAttribute('aria-invalid', 'true')
+
     // Reply with the keyboard only.
     const reply = 'Będziemy, dziękuję.'
     await page.getByTestId('thread-reply-body').focus()
@@ -86,6 +97,7 @@ test('TEST-M10 member inbox: tile count 1 then 0, unread marker cleared on open,
     await expect(page.getByTestId('thread-reply-send')).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByTestId('thread-message-body').filter({ hasText: reply })).toBeVisible()
+    await expect(page.getByTestId('thread-reply-error')).toHaveCount(0)
     const stored = await getThread(request, annaToken, unreadId)
     expect(stored.body?.messages.at(-1)).toMatchObject({ body: reply, audience: 'staff', own: true })
     await scan('/club/messages/[threadId]', async () => {

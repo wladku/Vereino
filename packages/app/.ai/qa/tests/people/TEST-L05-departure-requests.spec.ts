@@ -22,7 +22,8 @@ import { uiText } from '../_fixtures/ui-text'
 // B-10's Leaving tab and in the administrator's list (the "Departure requests" widget's source); the administrator
 // declines one with a reason, which the member reads; a member withdraws their own request; with the limiter on, the
 // sixth request in 24 hours answers 429 with `Retry-After`. The phone page `/club/profile/leave` at 375 px, in Polish
-// and English, light and dark (axe), and the profile of a minor without the link. TEST-L20 — the request routes fail
+// and English, light and dark (axe), and the profile of a minor without the link; sending with nobody chosen shows
+// the error summary and focuses the first person (#490). TEST-L20 — the request routes fail
 // closed for a member (the administrator's list and decision) and for another organization.
 test.describe.configure({ timeout: 420_000 })
 
@@ -265,6 +266,23 @@ test('TEST-L05 members ask to leave from the phone; the club sees, declines and 
       ),
     )
     await expectNoPageOverflow(page)
+    // Nobody chosen (#490): "Send" stays enabled, the summary says what is missing and the focus lands on the first
+    // person; choosing again clears it.
+    const me = page.locator('[id^="club-leave-who-"]').first()
+    await me.click()
+    await expect(me).not.toBeChecked()
+    await expect(page.getByTestId('club-leave-send')).toBeEnabled()
+    await page.getByTestId('club-leave-send').click()
+    await expect(page.getByTestId('club-leave-problems').getByRole('link')).toHaveText([
+      uiText('people.club.leave.errors.whoRequired', { exact: true }),
+    ])
+    await expect(page.getByTestId('club-leave-who-error')).toHaveText(
+      uiText('people.club.leave.errors.whoRequired', { exact: true }),
+    )
+    await expect(me).toBeFocused()
+    await expect(page.getByTestId('club-leave-open')).toHaveCount(0)
+    await me.click()
+    await expect(page.getByTestId('club-leave-problems')).toHaveCount(0)
     // The guardian sends it again from the phone.
     await page.getByTestId('club-leave-send').click()
     await expect(page.getByTestId('club-leave-open')).toBeVisible()

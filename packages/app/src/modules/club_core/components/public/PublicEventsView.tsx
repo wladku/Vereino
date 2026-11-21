@@ -28,6 +28,7 @@ import {
   usePublicEvents,
   type PublicEvent,
   type PublicEventsPage,
+  type PublicLoad,
 } from './public-client'
 
 const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6'
@@ -241,11 +242,24 @@ function EventsBody({ page }: { page: PublicEventsPage }) {
   )
 }
 
-export function PublicEventsView({ clubSlug }: { clubSlug: string }) {
+/**
+ * `initial`: the state the server already read for the section filter `initialSection` (#487), so the page's HTML holds
+ * its content without JavaScript; another filter is read in the browser.
+ */
+export function PublicEventsView({
+  clubSlug,
+  initial,
+  initialSection = null,
+}: {
+  clubSlug: string
+  initial?: PublicLoad<PublicEventsPage>
+  initialSection?: string | null
+}) {
   const t = useT()
   const sectionSlug = useSearchParams()?.get('section') || null
-  const query = usePublicEvents(clubSlug, sectionSlug)
-  const load = query.data
+  const fromServer = sectionSlug === initialSection ? initial : undefined
+  const query = usePublicEvents(clubSlug, sectionSlug, !fromServer)
+  const load = fromServer ?? query.data
 
   if (!load && query.isFetching) {
     return (
