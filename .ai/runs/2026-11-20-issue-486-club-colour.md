@@ -51,3 +51,11 @@ The club sets its colour on B-02; it paints the member header bar on `/club`, th
 
 - The `/club` screenshot hides the platform's English "Access denied" flash toast, which sits over the header on Today (E20 audit; its own story).
 - tokens.md still marks `--club-accent` as *new*/*to be built* (owned by PR #499); a later docs change can mark it built.
+
+## 2026-11-21 — third main merge (cezar run 3f202bbe, `om-auto-fix-pr`)
+
+- Trigger: PR #506 CONFLICTING again after #454, #528, #469 (privacy notice) and #493 (Today header) landed on `main`.
+- Merged `origin/main` (a6b50f5e) on a detached HEAD. Seven conflicts, all resolved as unions: `PublicFrame.tsx` and `PublicFacilitiesFrame.tsx` imports (`ClubAccentRoot` + `privacyPolicyHref`), `club_core` `en.json`/`pl.json` (accent keys + `club_core.privacy.*`), `people/services/club-clock.ts` (`clubAccentOf` + `clubOrganizationName`), the member profile type in `member-profile.ts` and `member-client.ts` (`club.name` + `club.accent`).
+- Checked: the new `/p/[clubSlug]/privacy` page renders through `PublicFrame`, so it gets the club colour from the public club API; the #493 Today header is page content under the `MemberShell` accent bar, no overlap.
+- `yarn install` (new resolutions from #454), then `yarn verify`: all 18 steps passed.
+- Integration: `--filter E20-S07` 1 passed, `E19-S03` 1 passed, `ISSUE-493` 1 passed, `E06-S07b` 1 passed.
