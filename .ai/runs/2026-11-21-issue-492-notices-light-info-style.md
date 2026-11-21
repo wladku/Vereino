@@ -52,7 +52,14 @@ Information notices render on `--status-info-bg` instead of the platform `<Alert
   function; styled Alert, Notice, Alert parts and a comment pass, a `style` on a `<div>` is still `inline-style`).
 - `node --test src/__tests__/notice.test.mjs` (`@vereino/ui`) — 2 pass.
 - `node scripts/ds-check.mjs` — before the conversion 127 `alert-without-style` findings; after: `1632 files passed`.
-- `yarn verify` and `yarn test:integration:vereino --filter E20-S13`: see below.
+- `yarn verify`: first run failed at `format:check` (`E20-S13-notices-and-checkboxes.spec.ts is not formatted`, the
+  spec was written after `yarn format`); after `yarn format`, `yarn verify --from typecheck:qa` → `all 15 step(s)
+  passed` (generate, typecheck, typecheck:packages had passed in the first run). Lint warnings on touched files are
+  pre-existing `no-unnecessary-condition` on unchanged lines.
+- `yarn test:integration:vereino --filter E20-S13` → `1 passed (45.2s)`; 24 screenshots (B-23, M-05, M-08 ×
+  1440/375 × pl/en × light/dark) posted on the PR.
+- Observation: the member pages (M-05, M-08) stay Polish in the `en` variants — the member area does not follow the
+  `/api/auth/locale` switch this test (like E20-S03's) uses; the admin page B-23 switches. Not caused by this change.
 
 ## Open problems / next steps
 
