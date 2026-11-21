@@ -251,7 +251,6 @@
   "activities.club.today.emptyNext": "No sessions today or tomorrow. Next session: {day} {time} {section}",
   "activities.club.today.loading": "Loading the sessions…",
   "activities.club.today.openCalendar": "Open the calendar",
-  "activities.club.today.title": "Your sessions",
   "activities.club.today.today": "Today",
   "activities.club.today.tomorrow": "Tomorrow",
   "activities.club.today.waiting": "{name}: {activity}, {when} — waiting for you",
@@ -1114,5 +1113,12 @@
   "activities.clubEvents.club.files.camera": "Take a photo",
   "activities.clubEvents.club.files.file": "Choose a file",
   "activities.clubEvents.club.part.gone": "This part is no longer planned or was removed.",
-  "activities.clubEvents.club.session.placeLocked": "The club event's place ({name}): it changes on the club event."
+  "activities.clubEvents.club.session.placeLocked": "The club event's place ({name}): it changes on the club event.",
+  "activities.club.today.nothingWaits": "Nothing is waiting for your decision.",
+  "activities.club.calendar.viewUpcoming": "Upcoming",
+  "activities.club.calendar.rangeUpcoming": "Two weeks",
+  "activities.club.calendar.previousUpcoming": "Previous two weeks",
+  "activities.club.calendar.thisUpcoming": "From today",
+  "activities.club.calendar.nextUpcoming": "Next two weeks",
+  "activities.club.calendar.emptyUpcoming": "No sessions in the next two weeks."
 }
