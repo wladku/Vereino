@@ -63,7 +63,10 @@ CI runs on `merge-train/batch`: `8abfc7e` success (#1-#3), `f6f34c2` success (#4
 - `node --test --experimental-test-coverage … scripts/__tests__/merge-train*.test.mjs` (in `packages/app`): 84 tests pass; `merge-train-guard.mjs`, `merge-train-plan.mjs`, `merge-train-trailers.mjs` 100 % lines, branches, functions.
 - First rehearsal run of scenario 2 failed: `Error: GET /repos/wladku/vereino-merge-train-rehearsal/rules/branches/main → 403 {"message":"Upgrade to GitHub Pro or make this repository public to enable this feature."…}` — the rehearsal repository's `main` still held the scripts from before the override fix, and `git pull` had replaced the local copy. Fixed by syncing the scripts into the rehearsal `main`.
 - First pause check: the train did not see an issue labelled `merge-train-paused` seconds after it was created (the label filter of the issues list lags); 20 s later the issue was listed and the train paused.
-- `yarn verify`: see the PR (green before opening it).
+- `yarn verify` (first run): `FAIL  format:check` — `packages/app/scripts/__tests__/merge-train-guard.test.mjs is not formatted (run yarn format)`; fixed with `yarn format`.
+- `yarn verify --from format:check`: `FAIL  lessons:check` — `.ai/lessons/rehearse-github-automation-in-a-scratch-repository.md: areas contain a value outside the standalone router taxonomy` (`ci`); changed to `integration`.
+- `yarn verify` (final full run): `[verify] all 18 step(s) passed`.
+- No integration test added or edited (repository tooling only), so no `yarn test:integration:vereino` run applies.
 
 ## Open problems
 
