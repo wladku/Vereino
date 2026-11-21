@@ -7,12 +7,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { CrudForm, type CrudCustomFieldRenderProps, type CrudField } from '@open-mercato/ui/backend/CrudForm'
+import { Notice } from '@vereino/ui'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { PERSONS_HREF, errorMessage } from './client-helpers'
 
@@ -73,7 +74,7 @@ function UserField({ value, setValue, disabled, error }: CrudCustomFieldRenderPr
 function AdministratorExists({ administrator }: { administrator: { personId: string; name: string } }) {
   const t = useT()
   return (
-    <Alert data-testid="people-first-administrator-exists">
+    <Notice data-testid="people-first-administrator-exists">
       <AlertTitle>{t('people.firstAdministrator.exists.title')}</AlertTitle>
       <AlertDescription>
         {t('people.firstAdministrator.exists.body', { name: administrator.name })}{' '}
@@ -81,7 +82,7 @@ function AdministratorExists({ administrator }: { administrator: { personId: str
           {t('people.firstAdministrator.exists.open')}
         </Link>
       </AlertDescription>
-    </Alert>
+    </Notice>
   )
 }
 

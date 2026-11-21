@@ -43,3 +43,43 @@ test('the semantic status tokens and a comment naming status-pink pass', () => {
   assert.deepEqual(result.findings, [])
   assert.equal(result.ok, true)
 })
+
+// #492 (E20-S13): `<Alert>` defaults to the heavy `light` look, so every Alert names its `style`; an information notice
+// is the `Notice` component. That `style` is the Alert's look, not an inline CSS style.
+test('an Alert without a style is a finding, even past an arrow function in its props', () => {
+  const result = scanApp(
+    'alert-missing',
+    [
+      'export const A = () => <Alert status="error">x</Alert>',
+      'export const B = () => <Alert onDismiss={() => go(a > b)}',
+      '  status="warning">x</Alert>',
+      'export const C = () => <Alert onDismiss={() => go()} style="light">x</Alert>',
+      '',
+    ].join('\n'),
+  )
+  assert.equal(result.ok, false)
+  assert.deepEqual(
+    result.findings.map(({ rule, line, match }) => ({ rule, line, match })),
+    [
+      { rule: 'alert-without-style', line: 1, match: '<Alert' },
+      { rule: 'alert-without-style', line: 2, match: '<Alert' },
+    ],
+  )
+})
+
+test('an Alert with a style, a Notice and the Alert parts pass; a style on any other tag is still inline-style', () => {
+  const result = scanApp(
+    'alert-styled',
+    [
+      "export const A = () => <Alert style={free ? 'lighter' : 'light'} status=\"information\"><AlertTitle>t</AlertTitle></Alert>",
+      'export const B = () => <Notice><AlertDescription>d</AlertDescription></Notice>',
+      '// <Alert status="error"> in a comment is no finding',
+      'export const C = () => <div style={{ color: x }} />',
+      '',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    result.findings.map(({ rule, line }) => ({ rule, line })),
+    [{ rule: 'inline-style', line: 4 }],
+  )
+})
