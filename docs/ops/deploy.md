@@ -116,9 +116,9 @@ release; a second run registers nothing twice.
 
 | Module | Command | Registers | Since |
 |---|---|---|---|
-| `activities` | `yarn mercato activities set-up-club --tenant <id> --org <id>` | occurrence generation, guardian confirmation expiry, declaration reminders, unassigned-session warnings | #192 |
-| `payments` | `yarn mercato payments set-up-club --tenant <id> --org <id>` | charge generation (06:00), overdue reminders (09:00), checkout reconciliation and order-campaign closing (every 15 minutes) | #301, #405 |
-| `facilities` | `yarn mercato facilities set-up-club --tenant <id> --org <id>` | rental lifecycle and request expiry (every 15 minutes), maintenance reminders (06:00) | #122, #125, #128, #221 |
+| `activities` | `yarn mercato activities set-up-club --tenant <id> --org <id>` | occurrence generation, guardian confirmation expiry, declaration reminders, unassigned-session warnings, dead declaration-link purge (daily) | #192, #525 |
+| `payments` | `yarn mercato payments set-up-club --tenant <id> --org <id>` | charge generation (06:00), overdue reminders (09:00), checkout reconciliation and order-campaign closing (every 15 minutes), dead order-link purge (daily) | #301, #405, #525 |
+| `facilities` | `yarn mercato facilities set-up-club --tenant <id> --org <id>` | rental lifecycle and request expiry (every 15 minutes), maintenance reminders (06:00), dead rental-link purge (daily) | #122, #125, #128, #221, #525 |
 
 The commands print what they registered; every entry under `schedules` must be `true`. A later change of the club's time zone
 re-registers the time-zoned schedules on its own (`activities:reregister-schedule`, `payments:reregister-schedules`).

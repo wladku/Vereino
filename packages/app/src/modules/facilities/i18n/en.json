@@ -12,6 +12,7 @@
   "facilities.audit.rentals.create": "Enter a rental",
   "facilities.audit.rentals.confirm": "Confirm a rental",
   "facilities.audit.rentals.cancel": "Cancel a rental",
+  "facilities.audit.jobs.purgeRentalLinks": "Delete the rental links dead for 30 days",
   "facilities.audit.internalBookings.create": "Book a place",
   "facilities.audit.internalBookings.cancel": "Cancel a booking",
   "facilities.audit.rentals.move": "Move a rental",
