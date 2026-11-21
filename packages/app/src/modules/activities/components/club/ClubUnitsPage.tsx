@@ -75,7 +75,11 @@ function MyUnits({ t }: { t: Translate }) {
       />
     )
   } else if (query.data.status === 'forbidden') {
-    body = <Alert status="warning">{t('activities.club.units.forbidden')}</Alert>
+    body = (
+      <Alert style="light" status="warning">
+        {t('activities.club.units.forbidden')}
+      </Alert>
+    )
   } else if (!row) {
     body = (
       <div className="flex flex-col items-start gap-2" data-testid="club-units-empty">
@@ -155,7 +159,7 @@ function MyUnits({ t }: { t: Translate }) {
         </Button>
       </div>
       {unsettled > 0 ? (
-        <Alert status="warning" data-testid="club-units-unsettled">
+        <Alert style="light" status="warning" data-testid="club-units-unsettled">
           {t('activities.reports.coachUnits.unsettled', { count: unsettled })}
         </Alert>
       ) : null}

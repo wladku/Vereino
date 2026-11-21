@@ -176,7 +176,7 @@ function PlaceSelect({
   const options = query.data ?? []
   if (query.error || options.length === 0) {
     return (
-      <Alert status={query.error ? 'error' : 'warning'} data-testid="activities-place-empty">
+      <Alert style="light" status={query.error ? 'error' : 'warning'} data-testid="activities-place-empty">
         <AlertDescription className="flex flex-col items-start gap-2">
           <span>{t(query.error ? 'activities.fields.place.loadFailed' : 'activities.fields.place.none')}</span>
           <span className="flex flex-wrap gap-2">
