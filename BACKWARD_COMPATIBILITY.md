@@ -6,7 +6,7 @@ This file lists the **protected contract surfaces** of this repository: what cou
 
 ## Project stage (2026-10-21)
 
-**Pre-release, pre-implementation.** Evidence: every `package.json` is `0.1.0` and `private`; no git tags, no `CHANGELOG.md`, no release workflow yet (release-please is planned for phase E2, ADR-021); README says "specification / pre-implementation"; club spec is `Status: Draft`; `packages/app/vereino-modules.json` lists `"modules": []`, so **no Vereino module exists yet**. `railway.toml` and `railway.worker.toml` exist, but no environment is documented as live (`docs/ops/deploy.md` is planned for E4, S14.4). There is no known external API consumer.
+**Pre-release, pre-implementation.** Evidence: every `package.json` is `0.1.0` and `private`; no git tags and no `CHANGELOG.md` yet; the release workflow (`.github/workflows/release.yml`, release-please, ADR-021) exists since #447 and creates both when the owner merges its first release pull request (`v0.1.0`); README says "specification / pre-implementation"; club spec is `Status: Draft`; `packages/app/vereino-modules.json` lists `"modules": []`, so **no Vereino module exists yet**. `railway.toml` and `railway.worker.toml` exist, but no environment is documented as live (`docs/ops/deploy.md` is planned for E4, S14.4). There is no known external API consumer.
 
 | Tier | When it starts | Surfaces |
 |---|---|---|
@@ -21,7 +21,7 @@ This file lists the **protected contract surfaces** of this repository: what cou
 1. **Prefer additive.** New field, new route, new ID, alias. Additive changes need none of the steps below.
 2. **Bridge.** Keep the old name, path, field or ID working next to the new one for at least one minor release (S6.9); mark it `@deprecated` with the target removal version (S3.7) and, for routes, `deprecated: true` in `openApi`.
 3. **Mark it.** Conventional Commit with `!` and a `BREAKING CHANGE:` footer (S1.3); release-please bumps the major version, or the minor while below `1.0.0` (S6.10).
-4. **Document it.** `CHANGELOG.md` entry with operator upgrade notes (ADR-021). **Gap:** `CHANGELOG.md` does not exist yet; until release-please lands (E2) record the change in the PR description and the governing spec's Changelog.
+4. **Document it.** `CHANGELOG.md` entry with operator upgrade notes (ADR-021). release-please writes the entry from the Conventional Commit title and its `BREAKING CHANGE:` footer; until the first release pull request has created `CHANGELOG.md`, also record the change in the PR description and the governing spec's changelog.
 5. **Spec.** A Changelog row in the governing spec (S1.6) and a *Rollout, Migration, and Rollback* note; tick the PR template box "Contract surface changed?" (`.github/PULL_REQUEST_TEMPLATE.md`).
 6. **Ask first.** Public contracts, migrations and DB targets are Ask First (`AGENTS.md`).
 
@@ -110,7 +110,7 @@ Stable IDs per `.ai/review-checklist.md` and `.ai/guides/contracts.md` → *Froz
 - [ ] Additive alternative considered and rejected for a stated reason.
 - [ ] Bridge in place for at least one minor release; `@deprecated` / `deprecated: true` with target version.
 - [ ] Commit/PR title uses `!` and a `BREAKING CHANGE:` footer.
-- [ ] `CHANGELOG.md` entry with operator upgrade notes (or PR description until E2).
+- [ ] `CHANGELOG.md` entry with operator upgrade notes (the `BREAKING CHANGE:` footer release-please copies; plus the PR description until the first release).
 - [ ] Governing spec updated: Changelog row and *Rollout, Migration, and Rollback* note.
 - [ ] Migrations: new corrective migration, expand/contract, no edit to a merged migration, SQL in the PR.
 - [ ] Consumers updated in the same PR: code, `ci.yml`, `AGENTS.md`, `.ai/agentic.config.json`, README, `docs/ops/`.

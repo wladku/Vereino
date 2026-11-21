@@ -56,7 +56,23 @@ The required checks appear in the ruleset picker only after they have run once. 
 
 - [ ] A fine-grained token of the owner for `wladku/Vereino` only, with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write. Pull requests write covers labels and comments on PRs; adding a label to an issue (the train mirrors `merge-train-failed` / `merge-train-conflict` onto the issue named by `issue-N` in the PR's branch) needs **Issues** write. Without it the train logs a warning for that step and keeps merging.
 
-## 7. Verify (ENG-TEST-02)
+## 7. Release workflow
+
+*Settings → Actions → General → Workflow permissions* (`.github/workflows/release.yml`, ADR-021, ENG-12)
+
+- [ ] **Allow GitHub Actions to create and approve pull requests — on.** release-please opens the release pull request with the workflow's own `GITHUB_TOKEN`; without this setting its run fails with "GitHub Actions is not permitted to create or approve pull requests". The default token permission stays read-only (section 5): the workflow asks for `contents`, `issues` and `pull-requests` write in its own job.
+- No secret. The release pull request is written with `GITHUB_TOKEN`, and GitHub starts no workflow for a push made with that token, so the release pull request has **no CI run** of its own. The workflow keeps it a draft (the merge train skips drafts) and turns it back into a draft whenever release-please updates it.
+
+**Cutting a release** (the owner decides when; there is no fixed cadence):
+
+1. Open the pull request titled `chore: release X.Y.Z` (labels `autorelease: pending`, `documentation`, `priority-low`, `risk-low`) and read the version and the `CHANGELOG.md` section it proposes.
+2. **Close and reopen** it. A reopen by a person starts CI on its head.
+3. When `gate`, `integration` and `browser-smoke` are green, mark it **Ready for review**. The merge train merges it like any other pull request.
+4. The `Release` run on the merge commit creates the tag `vX.Y.Z` and the GitHub release, and relabels the pull request `autorelease: tagged`.
+
+If a pull request merges between steps 2 and 3, release-please rewrites the release pull request and the workflow makes it a draft again: start over at step 2. Never remove the `autorelease: pending` label: release-please finds the release pull request to tag by it. `DCO` reports a failure on the release commits (the bot does not sign off); it is not a required check.
+
+## 8. Verify (ENG-TEST-02)
 
 Open three draft pull requests against `main` and confirm that each one cannot be merged, then close them:
 
@@ -68,4 +84,4 @@ Record the result (screenshots or links) in the E1 run log.
 
 ## Phase E2 settings (later)
 
-Private vulnerability reporting, secret scanning with push protection, Dependabot alerts, the Renovate app and the release workflow are configured in phase E2 and will be added to this page then.
+Private vulnerability reporting, secret scanning with push protection, Dependabot alerts and the Renovate app are configured in phase E2 and will be added to this page then. The release workflow is section 7.
