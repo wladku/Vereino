@@ -13,8 +13,8 @@ import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MemberSwitchField } from '@vereino/ui'
 import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
 import {
   MEMBER_PROFILE_QUERY_KEY,
@@ -102,7 +102,7 @@ export function OwnConsentsSection({ profile }: { profile: MemberProfile }) {
               className="flex flex-col gap-1 border-t pt-4 first:border-t-0 first:pt-0"
               data-testid={`club-own-consent-${kind}`}
             >
-              <SwitchField
+              <MemberSwitchField
                 id={`club-own-consent-${kind}-switch`}
                 label={labelOf(kind)}
                 description={consent.at ? status(consent) : t('people.club.ward.consents.notGiven')}
