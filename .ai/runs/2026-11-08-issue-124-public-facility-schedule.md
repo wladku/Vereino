@@ -1,7 +1,7 @@
 # Run — issue #124: the public facility list and calendar (E08-S04)
 
 - **Goal and trigger:** cezar task cf4a2314 (`om-auto-fix-issue 124`), unattended. Build facilities spec phase 5 step 5 — the place fields "public schedule" and "accepts requests" (B-06), the sessionless list of a club's facilities (P-03) and a facility's month (P-04) with zones and states and without personal data (REQ-014, TEST-024, TEST-028).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (In progress, phase 5); #124 (epic #119); `feat/issue-124-public-facility-schedule`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (In progress, phase 5); #124 (epic #119); `feat/issue-124-public-facility-schedule`.
 - **Approval:** the owner's comment on #124 (2026-11-08) approves the `club_core` migration adding `public_slug` (unique per organization), `is_public_schedule` and `accepts_online_requests` to `club_core_places`, confirms #122 merged, settles Q1 (a month via `?month=`, a grid on wide screens, a day list on a phone) and asks to build after #123 (merged as #226). Nothing else was Ask First: no dependency, no other migration, no `db:migrate`.
 
 ## Steps
