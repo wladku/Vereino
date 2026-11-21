@@ -54,3 +54,17 @@
 
 - The owner answers Q-X01 (A-2, A-3, A-4, A-9). Then `om-auto-implement-spec` builds phases X1–X3 on their own PR, which
   carries `Closes #527`.
+
+## Step 3 — review round 1 (#540)
+
+- The independent reviewer asked for changes and raised one Important finding. The contributor inventory counted two
+  `activities` tables that hold the subject's own data:
+  - `activities_contact_access_log`, which records who read a guardian's contacts (art. 15(1)(c));
+  - `activities_substitution_entries`, which holds the reason a coach gave for an absence.
+- Fixed in the spec:
+  - Both tables are now exported rows. The reader appears as a role only. The substitution `reason` is listed in
+    `reviewFields`, because it may hold health data.
+  - The free-text vocabulary row names `activities_substitution_entries.reason`.
+  - TEST-X01 now seeds both tables and also exports the guardian and the coach.
+  - A changelog file records the change.
+- Findings 2–4 (Minor, optional) are left for the reviewer and owner. The fix scope was Blocking and Important only.
