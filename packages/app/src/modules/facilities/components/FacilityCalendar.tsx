@@ -28,7 +28,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ISO_WEEKDAYS, addDays, isCalendarDate } from '@vereino/core'
-import { browserTimeZone, clubToday, formatDayHeading, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { browserTimeZone, clubToday, formatDayHeading, Notice, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { bookableWindowsByDay, chipDates, hourInPast, CHIP_DAYS } from '../lib/day-axis'
 import { earliestPastBookingDate } from '../lib/internal-bookings'
 import type { SlotKind } from '../lib/slot'
@@ -420,7 +420,7 @@ function PlaceDay({
     )
   } else if (!calendar && calendarErrorStatus(query.error) === 403) {
     body = (
-      <Alert status="warning" data-testid="facilities-calendar-denied">
+      <Alert style="light" status="warning" data-testid="facilities-calendar-denied">
         <AlertDescription>{t('facilities.calendar.errors.forbidden')}</AlertDescription>
       </Alert>
     )
@@ -439,7 +439,7 @@ function PlaceDay({
     body = (
       <>
         {rules.isSuccess && rows.length === 0 ? (
-          <Alert status="information" data-testid="facilities-calendar-empty">
+          <Notice data-testid="facilities-calendar-empty">
             <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span>{t('facilities.calendar.empty')}</span>
               {features.manage ? (
@@ -448,7 +448,7 @@ function PlaceDay({
                 </Button>
               ) : null}
             </AlertDescription>
-          </Alert>
+          </Notice>
         ) : null}
         <DayAxis
           date={date}

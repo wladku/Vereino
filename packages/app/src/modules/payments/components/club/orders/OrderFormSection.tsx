@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { cn } from '@open-mercato/shared/lib/utils'
-import { StatusTag, useClubTimeZone } from '@vereino/ui'
+import { Notice, StatusTag, useClubTimeZone } from '@vereino/ui'
 import { unitPrice } from '../../../lib/order-campaigns'
 import { NOT_ORDERING, ORDERING, PRINT_NAME_MAX, orderPickup, type ChildOrderState } from '../../../lib/orders'
 import { formatMoney } from '../../client-helpers'
@@ -132,7 +132,7 @@ function OrderPickup({ status, order }: { status: OrderForm['campaign']['status'
   const pickup = orderPickup(status, order.handedOverAt)
   if (pickup === 'ready') {
     return (
-      <Alert status="success" data-testid="order-ready">
+      <Alert style="light" status="success" data-testid="order-ready">
         <p className="font-medium">{t('payments.orders.club.readyForPickup')}</p>
         <p>{t('payments.orders.club.readyText')}</p>
       </Alert>
@@ -142,7 +142,7 @@ function OrderPickup({ status, order }: { status: OrderForm['campaign']['status'
     const at = formatMoment(order.handedOverAt, locale, timeZone)
     const by = order.handedOverBy ? `${order.handedOverBy.firstName} ${order.handedOverBy.lastName}`.trim() : ''
     return (
-      <Alert status="success" data-testid="order-picked-up">
+      <Alert style="light" status="success" data-testid="order-picked-up">
         <p className="font-medium">{t('payments.orders.club.summary.pickedUp')}</p>
         <p>{by ? t('payments.orders.club.summary.handedBy', { at, by }) : at}</p>
       </Alert>
@@ -335,16 +335,16 @@ export function OrderFormSection({
           })}
         </p>
         {!open ? (
-          <Alert status="information" data-testid="order-closed">
+          <Notice data-testid="order-closed">
             <p className="font-medium">{t('payments.orders.club.closed')}</p>
-          </Alert>
+          </Notice>
         ) : null}
       </section>
 
       {form.children.length === 0 ? (
-        <Alert status="information" data-testid="order-no-children">
+        <Notice data-testid="order-no-children">
           <p className="max-w-prose">{t('payments.orders.club.noChildren')}</p>
-        </Alert>
+        </Notice>
       ) : null}
 
       {form.children.length > 1 ? (
@@ -386,7 +386,7 @@ export function OrderFormSection({
       ) : null}
 
       {problems.form ? (
-        <Alert status="error" data-testid="order-error">
+        <Alert style="light" status="error" data-testid="order-error">
           <p>{problems.form}</p>
         </Alert>
       ) : null}

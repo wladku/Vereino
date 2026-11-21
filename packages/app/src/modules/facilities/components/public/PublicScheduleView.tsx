@@ -18,7 +18,8 @@ import * as React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { Notice } from '@vereino/ui'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
@@ -405,14 +406,14 @@ function MonthNavigation({ page, busy }: { page: ScheduleView; busy: boolean }) 
 function OnlineNotice({ owner }: { owner: string | null }) {
   const t = useT()
   return (
-    <Alert status="information" data-testid="public-place-online-notice">
+    <Notice data-testid="public-place-online-notice">
       <AlertTitle>{t('facilities.public.schedule.onlineNotice.title')}</AlertTitle>
       <AlertDescription>
         {owner
           ? t('facilities.public.schedule.onlineNotice.text', { owner })
           : t('facilities.public.schedule.onlineNotice.textClub')}
       </AlertDescription>
-    </Alert>
+    </Notice>
   )
 }
 

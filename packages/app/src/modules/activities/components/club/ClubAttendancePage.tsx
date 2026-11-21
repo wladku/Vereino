@@ -33,6 +33,7 @@ import {
   formatDayHeading,
   formatTimeRange,
   MemberSkeleton,
+  Notice,
   StatusTag,
 } from '@vereino/ui'
 import {
@@ -187,7 +188,7 @@ function Attendance({ id, selfPersonId }: { id: string; selfPersonId: string }) 
     return (
       <>
         <BackLink />
-        <Alert status="warning" data-testid="club-attendance-missing">
+        <Alert style="light" status="warning" data-testid="club-attendance-missing">
           <p className="max-w-prose">
             {t(
               query.data.status === 'forbidden'
@@ -397,7 +398,7 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
         </p>
       ) : null}
       {occurrence.status === 'cancelled' ? (
-        <Alert status="error" data-testid="club-attendance-cancelled">
+        <Alert style="light" status="error" data-testid="club-attendance-cancelled">
           <p className="max-w-prose">
             {occurrence.cancelReason
               ? t('activities.occurrences.cancelled.reason', { reason: occurrence.cancelReason })
@@ -406,18 +407,18 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
         </Alert>
       ) : null}
       {occurrence.status === 'done' ? (
-        <Alert status="success" data-testid="club-attendance-done">
+        <Alert style="light" status="success" data-testid="club-attendance-done">
           <p className="max-w-prose">{t('activities.club.attendance.done')}</p>
         </Alert>
       ) : null}
       {list.checkOff === 'not_started' ? (
-        <Alert status="information" data-testid="club-attendance-not-started">
+        <Notice data-testid="club-attendance-not-started">
           <p className="max-w-prose">
             {t('activities.club.attendance.notStarted', {
               time: formatClockTime(new Date(list.checkOffOpensAt), locale, list.timeZone),
             })}
           </p>
-        </Alert>
+        </Notice>
       ) : null}
       <section aria-labelledby="club-attendance-list" className="flex flex-col gap-3">
         <h2 id="club-attendance-list" className="text-lg font-semibold">

@@ -40,6 +40,11 @@ export const DS_RULES = Object.freeze([
     pattern: String.raw`\bstyle\s*=`,
   },
   {
+    id: 'alert-without-style',
+    description: 'Give <Alert> an explicit style; an information notice is the Notice component from @vereino/ui (light info style, #492).',
+    pattern: String.raw`<Alert\b`,
+  },
+  {
     id: 'raw-backend-table',
     description: 'Use the shared DataTable family in backend pages.',
     pattern: String.raw`<(?:table|thead|tbody|tfoot|tr|th|td)\b`,
@@ -134,7 +139,34 @@ function collectSyntaxFacts(source) {
       inlineStyleOffsets.push(match.index + styleMatch.index)
     }
   }
-  return { candidates, inlineStyleOffsets, rawTableTags }
+  // Vereino local patch (#492): `<Alert>` defaults to the heavy `light` look, so every Alert names its `style`. That
+  // `style` is the Alert's look, not an inline CSS style, so it is no `inline-style` finding.
+  const alertTags = findOpeningTags(syntax, 'Alert')
+  const insideAlertTag = (offset) => alertTags.some((tag) => offset >= tag.offset && offset < tag.offset + tag.text.length)
+  const alertsWithoutStyle = alertTags.filter((tag) => !/\sstyle\s*=/.test(tag.text)).map((tag) => tag.offset)
+  return {
+    candidates,
+    inlineStyleOffsets: inlineStyleOffsets.filter((offset) => !insideAlertTag(offset)),
+    rawTableTags,
+    alertsWithoutStyle,
+  }
+}
+
+// The JSX opening tags `<name …>` in source whose strings and comments are blanked: a `>` inside `{…}` (an arrow
+// function, a comparison) does not close the tag.
+export function findOpeningTags(syntax, name) {
+  const tags = []
+  for (const match of syntax.matchAll(new RegExp(`<${name}(?![\\w.-])`, 'g'))) {
+    let depth = 0
+    let cursor = match.index + match[0].length
+    while (cursor < syntax.length && !(syntax[cursor] === '>' && depth === 0)) {
+      if (syntax[cursor] === '{') depth += 1
+      else if (syntax[cursor] === '}') depth -= 1
+      cursor += 1
+    }
+    tags.push({ offset: match.index, text: syntax.slice(match.index, cursor + 1) })
+  }
+  return tags
 }
 
 function readIgnoreFile(root) {
@@ -211,6 +243,10 @@ export function scanDesignSystem(root = process.cwd(), options = {}) {
     const inlineStyleRule = DS_RULES.find((candidate) => candidate.id === 'inline-style')
     for (const offset of syntaxFacts.inlineStyleOffsets) {
       recordFinding(source, relativePath, inlineStyleRule, 'style=', offset)
+    }
+    const alertRule = DS_RULES.find((candidate) => candidate.id === 'alert-without-style')
+    for (const offset of syntaxFacts.alertsWithoutStyle) {
+      recordFinding(source, relativePath, alertRule, '<Alert', offset)
     }
     if (/(?:^|\/)backend(?:\/|$)/.test(relativePath)) {
       const rawTableRule = DS_RULES.find((candidate) => candidate.id === 'raw-backend-table')

@@ -41,10 +41,11 @@ import {
 import {
   CalendarList,
   memberCalendarScopes,
-  memberStaffScopes,
-  useMemberContext,
-  MemberSkeleton,
   type MemberLinkProps,
+  MemberSkeleton,
+  memberStaffScopes,
+  Notice,
+  useMemberContext,
 } from '@vereino/ui'
 import {
   CALENDAR_VIEWS,
@@ -327,11 +328,11 @@ function SectionViewList({
       {header}
       <ViewPanel view={view}>
         {query.data && query.data.total > query.data.items.length ? (
-          <Alert status="information" data-testid="club-calendar-section-more">
+          <Notice data-testid="club-calendar-section-more">
             <p className="max-w-prose">
               {t('activities.club.section.more', { shown: query.data.items.length, total: query.data.total })}
             </p>
-          </Alert>
+          </Notice>
         ) : null}
         {content}
       </ViewPanel>
@@ -566,7 +567,7 @@ function Calendar({
           {label}
         </p>
         {answered.length > 0 && failed.length > 0 ? (
-          <Alert status="warning" data-testid="club-calendar-partial">
+          <Alert style="light" status="warning" data-testid="club-calendar-partial">
             <div className="flex flex-wrap items-center gap-2">
               <p className="max-w-prose">{t('activities.club.calendar.partial')}</p>
               <Button type="button" variant="outline" className="min-h-11" onClick={retry}>
@@ -576,9 +577,9 @@ function Calendar({
           </Alert>
         ) : null}
         {servedBy?.trimmed ? (
-          <Alert status="information" data-testid="club-calendar-trimmed">
+          <Notice data-testid="club-calendar-trimmed">
             <p className="max-w-prose">{t('activities.club.calendar.trimmed', { days: CALENDAR_RANGE_MAX_DAYS })}</p>
-          </Alert>
+          </Notice>
         ) : null}
         <p className="sr-only" aria-live="polite">
           {announcement}

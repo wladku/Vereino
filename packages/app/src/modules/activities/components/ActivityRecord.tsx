@@ -33,7 +33,7 @@ import {
   type Translate,
 } from './client-helpers'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
-import { StatusTag } from '@vereino/ui'
+import { Notice, StatusTag } from '@vereino/ui'
 
 type ActivityLoad =
   { status: 'ok'; activity: ActivityDetail } | { status: 'not_found' } | { status: 'denied' } | { status: 'unlinked' }
@@ -179,17 +179,17 @@ export function ActivityRecord({ id }: { id: string }) {
         </div>
       </header>
       {clubEvent ? (
-        <Alert status="information" data-testid="activity-club-event">
+        <Notice data-testid="activity-club-event">
           <AlertTitle>
             <Link className="underline underline-offset-4" href={clubEventRecordHref(clubEvent.id)}>
               {t('activities.clubEvents.partOf', { name: clubEvent.name })}
             </Link>
           </AlertTitle>
           <AlertDescription>{t('activities.clubEvents.partOf.help')}</AlertDescription>
-        </Alert>
+        </Notice>
       ) : null}
       {hasSessions ? (
-        <Alert status="warning" data-testid="activity-has-sessions">
+        <Alert style="light" status="warning" data-testid="activity-has-sessions">
           <AlertTitle>{t('activities.activities.hasSessions.title')}</AlertTitle>
           <AlertDescription>{t('activities.activities.hasSessions.help')}</AlertDescription>
         </Alert>

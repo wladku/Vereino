@@ -343,7 +343,7 @@ export function SlotDialog({
           )}
 
           {collisions && collisions.length > 0 ? (
-            <Alert status="error" data-testid="facilities-slot-collisions">
+            <Alert style="light" status="error" data-testid="facilities-slot-collisions">
               <AlertTitle>{t('facilities.slot.slotTaken')}</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc ps-4">
