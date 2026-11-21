@@ -167,13 +167,13 @@ function StaffCalendarSwitch({ mode }: { mode: StaffCalendarMode }) {
           router.push(value === 'section' ? sectionCalendarHref('all') : `${CLUB_CALENDAR_PATH}?as=coach`)
         }}
         aria-labelledby="club-calendar-mode-label"
-        className="h-11"
+        className="h-auto"
         data-testid="club-calendar-mode"
       >
-        <SegmentedControlItem value="mine" className="h-10 px-4" data-testid="club-calendar-mode-mine">
+        <SegmentedControlItem value="mine" className="h-11 px-4" data-testid="club-calendar-mode-mine">
           {t('activities.club.section.mine')}
         </SegmentedControlItem>
-        <SegmentedControlItem value="section" className="h-10 px-4" data-testid="club-calendar-mode-section">
+        <SegmentedControlItem value="section" className="h-11 px-4" data-testid="club-calendar-mode-section">
           {t('activities.club.section.section')}
         </SegmentedControlItem>
       </SegmentedControl>
@@ -228,9 +228,9 @@ function SectionControls({
       ) : null}
       {/* The tablist of the section page's `Tabs` (`SectionTabs`); each view's content is its panel. */}
       <div className="-mx-1 overflow-x-auto px-1 pb-1" data-testid="club-calendar-section-views">
-        <TabsList aria-label={t('activities.club.section.views')} className="h-11 whitespace-nowrap">
+        <TabsList aria-label={t('activities.club.section.views')} className="h-auto whitespace-nowrap">
           {SECTION_VIEWS.map((value) => (
-            <TabsTrigger key={value} value={value} className="min-h-9">
+            <TabsTrigger key={value} value={value} className="min-h-11">
               {t(`activities.club.section.view.${value}`)}
             </TabsTrigger>
           ))}
@@ -513,14 +513,14 @@ function Calendar({
               value={linkRange ? '' : view}
               onValueChange={switchView}
               aria-labelledby="club-calendar-view-label"
-              className="h-11"
+              className="h-auto"
               data-testid="club-calendar-view"
             >
               {CALENDAR_VIEWS.map((entry) => (
                 <SegmentedControlItem
                   key={entry}
                   value={entry}
-                  className="h-10 px-4"
+                  className="h-11 px-4"
                   data-testid={`club-calendar-view-${entry}`}
                 >
                   {t(VIEW_LABELS[entry].view)}

@@ -117,7 +117,7 @@ function WardFilter({
           type="button"
           size="sm"
           variant={value === option.id ? 'default' : 'outline'}
-          className="min-h-11"
+          className="min-h-11 min-w-11"
           aria-pressed={value === option.id}
           onClick={() => {
             onChange(option.id)
