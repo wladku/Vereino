@@ -87,6 +87,7 @@ export type MemberProfile = {
   locale: string
   club: {
     shortName: string | null
+    name: string | null
     defaultLocale: string
     timezone: string
     logoUrl: string | null

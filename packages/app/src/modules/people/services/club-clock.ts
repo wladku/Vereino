@@ -48,6 +48,13 @@ export async function clubAccentOf(container: AwilixContainer, scope: ClubScope)
   return clubAccent((await service.get(scope)).publicSettings.accentColor)
 }
 
+/** The club's full name for the Today header (R06.1, E20-S14 #493): the platform organization's name, or null. */
+export async function clubOrganizationName(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return service.organizationName(scope)
+}
+
 /**
  * The club's own consent texts by key (`{ text, changedAt }`, club spec DD-39, people life-cycle spec DD-L11; #309).
  * A key without an entry uses the built-in text; without `club_core` every text is the built-in one.

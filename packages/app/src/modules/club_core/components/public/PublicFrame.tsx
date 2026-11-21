@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { PublicHeader, ClubAccentRoot, type PublicHeaderLabels } from '@vereino/ui'
+import { privacyPolicyHref, PublicHeader, ClubAccentRoot, type PublicHeaderLabels } from '@vereino/ui'
 import { phoneHref } from '../../lib/public-page'
 import type { PublicClubAccent, PublicClubContact, PublicClubLinks, PublicClubNav, PublicLogo } from './public-client'
 
@@ -57,11 +57,16 @@ export function LogoMark({
 
 /**
  * The footer of every public club page (README 3.1, E06-S07 #89): the club name and its published phone, which the
- * API sends only with the `contact` block, and the club's rules and privacy-policy links, each only when the club set
- * it on B-03 (#195).
+ * API sends only with the `contact` block, the club's rules link when the club set it on B-03 (#195), and the privacy
+ * policy: the club's own address when set, else the default notice page `/p/[clubSlug]/privacy` (E19-S03, #469).
  */
-export function PublicFooter({ club }: { club: { name: string; contact: PublicClubContact; links: PublicClubLinks } }) {
+export function PublicFooter({
+  club,
+}: {
+  club: { name: string; slug: string; contact: PublicClubContact; links: PublicClubLinks }
+}) {
   const t = useT()
+  const privacy = privacyPolicyHref(club.slug, club.links.privacyPolicy)
   return (
     <footer className="bg-card border-t" data-testid="public-footer">
       <div className="text-muted-foreground mx-auto flex max-w-3xl flex-col gap-1 px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -79,36 +84,33 @@ export function PublicFooter({ club }: { club: { name: string; contact: PublicCl
             </a>
           </span>
         ) : null}
-        {club.links.rules || club.links.privacyPolicy ? (
-          <nav aria-label={t('club_core.public.footer.links')} data-testid="public-footer-links">
-            <ul className="flex flex-wrap gap-x-4">
-              {club.links.rules ? (
-                <li>
-                  <a
-                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                    href={club.links.rules}
-                    rel="noopener noreferrer"
-                    data-testid="public-footer-rules"
-                  >
-                    {t('club_core.public.footer.rules')}
-                  </a>
-                </li>
-              ) : null}
-              {club.links.privacyPolicy ? (
-                <li>
-                  <a
-                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                    href={club.links.privacyPolicy}
-                    rel="noopener noreferrer"
-                    data-testid="public-footer-privacy"
-                  >
-                    {t('club_core.public.footer.privacyPolicy')}
-                  </a>
-                </li>
-              ) : null}
-            </ul>
-          </nav>
-        ) : null}
+        <nav aria-label={t('club_core.public.footer.links')} data-testid="public-footer-links">
+          <ul className="flex flex-wrap gap-x-4">
+            {club.links.rules ? (
+              <li>
+                <a
+                  className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                  href={club.links.rules}
+                  rel="noopener noreferrer"
+                  data-testid="public-footer-rules"
+                >
+                  {t('club_core.public.footer.rules')}
+                </a>
+              </li>
+            ) : null}
+            <li>
+              <a
+                className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                href={privacy.href}
+                rel="noopener noreferrer"
+                data-testid="public-footer-privacy"
+                data-source={privacy.source}
+              >
+                {t('club_core.public.footer.privacyPolicy')}
+              </a>
+            </li>
+          </ul>
+        </nav>
       </div>
     </footer>
   )

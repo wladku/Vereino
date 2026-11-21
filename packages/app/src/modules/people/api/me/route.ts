@@ -154,6 +154,7 @@ const memberProfileSchema = z.object({
   locale: z.string().describe('The resolved interface locale: preferred → club default → request → en'),
   club: z.object({
     shortName: z.string().nullable(),
+    name: z.string().nullable().describe("The club's full name (the organization's), shown next to the logo on Today"),
     defaultLocale: z.string(),
     timezone: z.string(),
     logoUrl: z.string().nullable().describe('The club logo (#29); null shows the club name only'),

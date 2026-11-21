@@ -3,7 +3,7 @@
 // `club_core` (`PublicFrame`, which another module may not import at runtime, S4.3): the public header of `@vereino/ui`
 // (the club logo and name linking to the club page, Club · Sections · Facilities · Events · Sign in and the language
 // switcher; navigation spec REQ-N09, #261), the page body and a footer with the club name, its published phone and the
-// club's rules and privacy-policy links (#195).
+// club's rules link (#195) and privacy-policy link: the club's own address, else the default notice (E19-S03, #469).
 // Also the notices of a page with nothing to show and the loading and error states with retry.
 import * as React from 'react'
 import Link from 'next/link'
@@ -12,7 +12,7 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton, PublicHeader, ClubAccentRoot } from '@vereino/ui'
+import { MemberSkeleton, privacyPolicyHref, PublicHeader, ClubAccentRoot } from '@vereino/ui'
 import { phoneHref, type PublicPlacesView } from './public-client'
 
 type FrameClub = PublicPlacesView['club']
@@ -30,6 +30,7 @@ export function PublicFacilitiesFrame({
   const t = useT()
   const pathname = usePathname()
   const width = wide ? 'max-w-5xl' : 'max-w-3xl'
+  const privacy = club ? privacyPolicyHref(club.slug, club.links.privacyPolicy) : null
   return (
     <ClubAccentRoot accent={club?.accent} className="bg-background text-foreground min-h-svh">
       <PublicHeader
@@ -49,7 +50,7 @@ export function PublicFacilitiesFrame({
         headerEnd={<LanguageSwitcher />}
       />
       <main className={`mx-auto flex ${width} flex-col gap-6 px-4 py-6`}>{children}</main>
-      {club ? (
+      {club && privacy ? (
         <footer className="bg-card border-t" data-testid="public-footer">
           <div
             className={`text-muted-foreground mx-auto flex ${width} flex-col gap-1 px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between`}
@@ -68,36 +69,33 @@ export function PublicFacilitiesFrame({
                 </a>
               </span>
             ) : null}
-            {club.links.rules || club.links.privacyPolicy ? (
-              <nav aria-label={t('facilities.public.footer.links')} data-testid="public-footer-links">
-                <ul className="flex flex-wrap gap-x-4">
-                  {club.links.rules ? (
-                    <li>
-                      <a
-                        className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                        href={club.links.rules}
-                        rel="noopener noreferrer"
-                        data-testid="public-footer-rules"
-                      >
-                        {t('facilities.public.footer.rules')}
-                      </a>
-                    </li>
-                  ) : null}
-                  {club.links.privacyPolicy ? (
-                    <li>
-                      <a
-                        className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                        href={club.links.privacyPolicy}
-                        rel="noopener noreferrer"
-                        data-testid="public-footer-privacy"
-                      >
-                        {t('facilities.public.footer.privacyPolicy')}
-                      </a>
-                    </li>
-                  ) : null}
-                </ul>
-              </nav>
-            ) : null}
+            <nav aria-label={t('facilities.public.footer.links')} data-testid="public-footer-links">
+              <ul className="flex flex-wrap gap-x-4">
+                {club.links.rules ? (
+                  <li>
+                    <a
+                      className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                      href={club.links.rules}
+                      rel="noopener noreferrer"
+                      data-testid="public-footer-rules"
+                    >
+                      {t('facilities.public.footer.rules')}
+                    </a>
+                  </li>
+                ) : null}
+                <li>
+                  <a
+                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                    href={privacy.href}
+                    rel="noopener noreferrer"
+                    data-testid="public-footer-privacy"
+                    data-source={privacy.source}
+                  >
+                    {t('facilities.public.footer.privacyPolicy')}
+                  </a>
+                </li>
+              </ul>
+            </nav>
           </div>
         </footer>
       ) : null}

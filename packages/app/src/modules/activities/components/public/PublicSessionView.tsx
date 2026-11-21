@@ -23,6 +23,7 @@ import {
   formatDayHeading,
   formatTimeRange,
   MemberSkeleton,
+  privacyPolicyHref,
   PublicHeader,
   StatusTag,
 } from '@vereino/ui'
@@ -75,10 +76,12 @@ function usePublicSession(clubSlug: string, occurrenceId: string) {
 
 /**
  * The page footer of the public club pages (club_core `PublicFrame`): the club name, the published phone and the club's
- * rules and privacy-policy links (#195).
+ * rules link (#195) and the privacy-policy link, which leads to the default notice while the club set no address of
+ * its own (E19-S03, #469).
  */
 function Footer({ club }: { club: PublicSessionPage['club'] }) {
   const t = useT()
+  const privacy = privacyPolicyHref(club.slug, club.links.privacyPolicy)
   return (
     <footer className="bg-card border-t" data-testid="public-footer">
       <div className="text-muted-foreground mx-auto flex max-w-3xl flex-col gap-1 px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -96,36 +99,33 @@ function Footer({ club }: { club: PublicSessionPage['club'] }) {
             </a>
           </span>
         ) : null}
-        {club.links.rules || club.links.privacyPolicy ? (
-          <nav aria-label={t('activities.publicSession.footer.links')} data-testid="public-footer-links">
-            <ul className="flex flex-wrap gap-x-4">
-              {club.links.rules ? (
-                <li>
-                  <a
-                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                    href={club.links.rules}
-                    rel="noopener noreferrer"
-                    data-testid="public-footer-rules"
-                  >
-                    {t('activities.publicSession.footer.rules')}
-                  </a>
-                </li>
-              ) : null}
-              {club.links.privacyPolicy ? (
-                <li>
-                  <a
-                    className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
-                    href={club.links.privacyPolicy}
-                    rel="noopener noreferrer"
-                    data-testid="public-footer-privacy"
-                  >
-                    {t('activities.publicSession.footer.privacyPolicy')}
-                  </a>
-                </li>
-              ) : null}
-            </ul>
-          </nav>
-        ) : null}
+        <nav aria-label={t('activities.publicSession.footer.links')} data-testid="public-footer-links">
+          <ul className="flex flex-wrap gap-x-4">
+            {club.links.rules ? (
+              <li>
+                <a
+                  className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                  href={club.links.rules}
+                  rel="noopener noreferrer"
+                  data-testid="public-footer-rules"
+                >
+                  {t('activities.publicSession.footer.rules')}
+                </a>
+              </li>
+            ) : null}
+            <li>
+              <a
+                className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6"
+                href={privacy.href}
+                rel="noopener noreferrer"
+                data-testid="public-footer-privacy"
+                data-source={privacy.source}
+              >
+                {t('activities.publicSession.footer.privacyPolicy')}
+              </a>
+            </li>
+          </ul>
+        </nav>
       </div>
     </footer>
   )
