@@ -3,9 +3,10 @@
 import * as React from 'react'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { apiCallOrThrow, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { Notice } from '@vereino/ui'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useAppEvent } from '@open-mercato/ui/backend/injection/useAppEvent'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -125,7 +126,7 @@ export default function SalesTodosWidget({ context }: InjectionWidgetComponentPr
 
   return (
     <div className="space-y-3 rounded-lg border bg-card p-3">
-      <Alert>
+      <Notice>
         <AlertTitle>{t('example.widgets.salesTodos.title', 'Example widget')}</AlertTitle>
         <AlertDescription>
           {t(
@@ -136,7 +137,7 @@ export default function SalesTodosWidget({ context }: InjectionWidgetComponentPr
             {t('example.widgets.salesTodos.docsLink', 'Read the docs')}
           </a>
         </AlertDescription>
-      </Alert>
+      </Notice>
       <form className="flex items-center gap-2" onSubmit={handleAdd}>
         <Input
           value={draft}

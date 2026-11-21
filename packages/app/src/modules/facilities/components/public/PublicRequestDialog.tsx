@@ -9,6 +9,7 @@
 // a refused field (422) shows its message next to the field. No session: the request goes through `public-client`.
 import * as React from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { Notice } from '@vereino/ui'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
@@ -216,7 +217,7 @@ export function PublicRequestDialog({
         </DialogHeader>
 
         {phase === 'sent' ? (
-          <Alert status="success" data-testid="public-request-sent">
+          <Alert style="light" status="success" data-testid="public-request-sent">
             <AlertTitle>{t('facilities.public.request.sent.title')}</AlertTitle>
             <AlertDescription>
               {t('facilities.public.request.sent.text', { email: contactEmail.trim() })}
@@ -225,7 +226,7 @@ export function PublicRequestDialog({
         ) : null}
 
         {phase === 'taken' ? (
-          <Alert status="warning" data-testid="public-request-taken">
+          <Alert style="light" status="warning" data-testid="public-request-taken">
             <AlertTitle>{t('facilities.public.request.taken.title')}</AlertTitle>
             <AlertDescription>{t('facilities.public.request.taken.text')}</AlertDescription>
           </Alert>
@@ -240,10 +241,10 @@ export function PublicRequestDialog({
               void submit()
             }}
           >
-            <Alert status="information" data-testid="public-request-approval-note">
+            <Notice data-testid="public-request-approval-note">
               <AlertTitle>{t('facilities.public.request.approval.title')}</AlertTitle>
               <AlertDescription>{t('facilities.public.request.approval.text')}</AlertDescription>
-            </Alert>
+            </Notice>
 
             {starts.length === 0 ? (
               <p className="text-sm" role="alert" data-testid="public-request-no-start">

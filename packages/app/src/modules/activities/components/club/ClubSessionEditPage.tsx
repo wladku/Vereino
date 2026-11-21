@@ -29,7 +29,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Radio, RadioGroup } from '@open-mercato/ui/primitives/radio'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { memberStaffScopes, MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, memberStaffScopes, Notice } from '@vereino/ui'
 import type { EventPlaceOption, VenueMode } from '../../lib/member-event'
 import {
   sessionEditBody,
@@ -103,7 +103,7 @@ const FIELD_ORDER: readonly SessionEditField[] = [
 function EditRefusal({ reason, clubEventName }: { reason: SessionEditRefusal; clubEventName: string | null }) {
   const t = useT()
   return (
-    <Alert status="information" data-testid="club-edit-denied" data-reason={reason}>
+    <Notice data-testid="club-edit-denied" data-reason={reason}>
       <p className="max-w-prose">{t(`activities.club.edit.refusal.${reason}`, { name: clubEventName ?? '' })}</p>
       {reason === 'not_yours' ? (
         <Link
@@ -114,7 +114,7 @@ function EditRefusal({ reason, clubEventName }: { reason: SessionEditRefusal; cl
           {t('activities.club.edit.refusal.calendar')}
         </Link>
       ) : null}
-    </Alert>
+    </Notice>
   )
 }
 
@@ -465,7 +465,7 @@ function EditForm({
       {conflicts ? <ConflictList conflicts={conflicts} linkSessions={false} /> : null}
       {refusal ? <EditRefusal reason={refusal} clubEventName={partOf?.name ?? null} /> : null}
       {error && !conflicts ? (
-        <Alert status="error" data-testid="club-edit-error">
+        <Alert style="light" status="error" data-testid="club-edit-error">
           <p>{error}</p>
         </Alert>
       ) : null}
@@ -518,9 +518,9 @@ function EditSession({ id, t, profile }: { id: string; t: Translate; profile: Cl
     body = <MemberSkeleton shape="fields" label={t('activities.club.edit.loading')} />
   } else if (load?.status === 'not_found') {
     body = (
-      <Alert status="information" data-testid="club-edit-not-found">
+      <Notice data-testid="club-edit-not-found">
         <p>{t('activities.club.edit.notFound')}</p>
-      </Alert>
+      </Notice>
     )
   } else if (refusal) {
     body = (

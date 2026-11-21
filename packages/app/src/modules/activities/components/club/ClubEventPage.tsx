@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import { EVENT_TYPES, MAX_CONFIRM_BY_HOURS, eventTypesForGroupKind, takesOpponent } from '../../lib/activities-rules'
 import { organizesClubEvents } from '../../lib/member-session'
 import { VENUE_ADDRESS_MAX, VENUE_NAME_MAX } from '../../lib/venue'
@@ -621,7 +621,7 @@ export function ClubEventForm({
       </div>
       {conflicts ? <ConflictList conflicts={conflicts} linkSessions={false} /> : null}
       {error && !conflicts ? (
-        <Alert status="error" data-testid="club-event-error">
+        <Alert style="light" status="error" data-testid="club-event-error">
           <p>{error}</p>
         </Alert>
       ) : null}
@@ -649,7 +649,7 @@ export function ClubEventForm({
 function NoGroups({ organizesClubEvents: organizer }: { organizesClubEvents: boolean }) {
   const t = useT()
   return (
-    <Alert status="information" data-testid="club-event-no-groups">
+    <Notice data-testid="club-event-no-groups">
       <p className="max-w-prose">
         {t(organizer ? 'activities.club.event.noGroups.organizer' : 'activities.club.event.noGroups.coach')}
       </p>
@@ -662,7 +662,7 @@ function NoGroups({ organizesClubEvents: organizer }: { organizesClubEvents: boo
           {t('activities.club.event.noGroups.newClubEvent')}
         </Link>
       ) : null}
-    </Alert>
+    </Notice>
   )
 }
 
