@@ -120,7 +120,6 @@
   "people.club.tiles.profile.title": "Profil i zgody",
   "people.club.title": "Klub",
   "people.club.today.pageTitle": "Dziś",
-  "people.club.today.tiles": "Twój klub",
   "people.club.today.title": "Dzień dobry, {name}",
   "people.club.ward.actions.save": "Zapisz zgody",
   "people.club.ward.back": "Wróć do „Dziś”",
@@ -872,5 +871,6 @@
   "people.erasure.module.club_core": "umowy",
   "people.erasure.module.facilities": "obiekty",
   "people.club.leave.errors.summary": "Sprawdź prośbę",
-  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę."
+  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
+  "people.club.today.shortcuts": "Na skróty"
 }

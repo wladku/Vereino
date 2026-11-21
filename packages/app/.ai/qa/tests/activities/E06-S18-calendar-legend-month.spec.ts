@@ -9,7 +9,8 @@ import { uiText } from '../_fixtures/ui-text'
 // E06-S18 (#100, epic #82; README M-03; club spec REQ-006, UI row `/club/calendar` "week/month calendar"): a guardian
 // with a ward in the academy and the pool reads the calendar on a phone. The week shows a legend of both sections, and
 // each card carries its section's marker with the section's name and the coach; an empty week says "No sessions this
-// week" and its "Next week" loads the next week; the Week/Month switch (owner, Q1) lists only the days of the month
+// week" and the toolbar's one "Next week" arrow loads the next week (E20-S14, #493: no second "Next week" in the empty
+// state, and the calendar opens on the upcoming list); the Week/Month switch (owner, Q1) lists only the days of the month
 // that have sessions and moves by months; a link asking for more than 62 days is answered 400 by the API and the page
 // reads the range again trimmed, with a notice; a failed read offers "Try again". Every date is relative to next
 // Monday, so the test passes on any weekday and at any hour (all sessions are in the future). Axe in light and dark at
@@ -97,7 +98,9 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     // The week of both sections: the legend lists both once; each card carries its section's marker with the name, in
     // the colour of its legend entry, and the coach's name.
     await page.goto('/club/calendar')
-    await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-checked', 'true')
+    // E20-S14 (#493, R01.7): the upcoming list is the default view; the week is the next tab.
+    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByTestId('club-calendar-previous')).toHaveCount(0)
     await showCalendarWeekOf(page, tuesday)
     const training = page.getByTestId('calendar-item').filter({ hasText: TRAINING })
     const poolClass = page.getByTestId('calendar-item').filter({ hasText: POOL_CLASS })
@@ -124,16 +127,20 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     // The other family's child is not on the guardian's cards (R15): the cards name the guardian's ward only.
     await expect(training).not.toContainText(family.other.child.firstName)
 
-    // The empty week: the message and "Next week", operated from the keyboard, loads week 3.
+    // The empty week: the message and no second "Next week" (#493); the toolbar's arrow, operated from the keyboard,
+    // loads week 3.
     await page.getByTestId('club-calendar-next').click()
     await expect(page.getByTestId('calendar-item')).toHaveCount(0)
     await expect(page.getByTestId('calendar-empty')).toHaveText(
       uiText('activities.club.calendar.emptyWeek', { exact: true }),
     )
     await expect(page.getByTestId('calendar-legend')).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: uiText('activities.club.calendar.next', { exact: true }) }),
+    ).toHaveCount(1)
     const emptyWeekLabel = String(await page.getByTestId('club-calendar-range').textContent())
-    const emptyNext = page.getByTestId('club-calendar-empty-next')
-    await expect(emptyNext).toHaveText(uiText('activities.club.calendar.next', { exact: true }))
+    const emptyNext = page.getByTestId('club-calendar-next')
+    await expect(emptyNext).toHaveAccessibleName(uiText('activities.club.calendar.next', { exact: true }))
     await emptyNext.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByTestId('club-calendar-range')).not.toHaveText(emptyWeekLabel)
@@ -158,7 +165,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(
       page.getByTestId('calendar-item').filter({ hasText: TRAINING }).getByTestId('calendar-item-section'),
     ).toHaveText(ACADEMY)
-    await expect(page.getByTestId('club-calendar-next')).toHaveText(
+    await expect(page.getByTestId('club-calendar-next')).toHaveAccessibleName(
       uiText('activities.club.calendar.nextMonth', { exact: true }),
     )
     const monthLabel = String(await page.getByTestId('club-calendar-range').textContent())
@@ -179,16 +186,18 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 
-    // The switch from the keyboard: the arrow moves between Week and Month, Space selects.
+    // The switch from the keyboard: the arrow moves from Upcoming to Week and Month, Space selects.
     await page.reload()
     // (Whether Radix also selects on the arrow depends on key timing — Playwright's instant press only moves the focus.)
-    await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-checked', 'true')
-    await page.getByTestId('club-calendar-view-week').focus()
+    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'true')
+    await page.getByTestId('club-calendar-view-upcoming').focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByTestId('club-calendar-view-week')).toBeFocused()
     await page.keyboard.press('ArrowRight')
     await expect(page.getByTestId('club-calendar-view-month')).toBeFocused()
     await page.keyboard.press('Space')
     await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByTestId('club-calendar-previous')).toHaveText(
+    await expect(page.getByTestId('club-calendar-previous')).toHaveAccessibleName(
       uiText('activities.club.calendar.previousMonth', { exact: true }),
     )
 
@@ -209,6 +218,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(page.getByTestId('club-calendar-trimmed')).toContainText(/62/)
     await expect(page.getByTestId('calendar-item')).toHaveCount(3)
     await expect(page.getByTestId('calendar-legend').getByTestId('calendar-legend-section')).toHaveText([ACADEMY, POOL])
+    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'false')
     await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-checked', 'false')
     await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'false')
     page.off('response', onResponse)

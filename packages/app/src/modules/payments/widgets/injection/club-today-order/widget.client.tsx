@@ -1,4 +1,5 @@
 'use client'
+// E20-S14 (#493): a row (`<li>`) of Today's "Shortcuts" list on the spot `vereino:club:today:more`, not a tile.
 // The "Order" tile of `/club` — Today (README M-02 → M-17; payments parity spec REQ-C11; issue #299): for each campaign
 // that still takes orders and covers the caller's children, its name, "orders until {date}" and, per child, "ordered —
 // {amount}" or "not ordered", as a link to the order page. The spot does not enforce the widget's `features`, so the
@@ -16,9 +17,10 @@ import { todayOrderCampaigns } from '../../../lib/orders'
 import { formatMoney } from '../../../components/client-helpers'
 import { MY_ORDERS_QUERY_KEY, clubOrderHref, type MyCampaign } from '../../../components/club/orders/order-client'
 
-const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
+/** A row of Today's "Shortcuts" list (E20-S14 #493): a line under it, the link at least 44 px tall. */
+const ROW_CLASS = 'border-b last:border-b-0'
 const LINK_CLASS =
-  'hover:bg-accent focus-visible:focus-indicator -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
+  'hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-md px-2 py-3 outline-none'
 
 class OrderTileLoadError extends Error {}
 
@@ -55,42 +57,37 @@ export default function ClubTodayOrderWidget({
   return (
     <>
       {campaigns.map((campaign) => (
-        <section
-          key={campaign.id}
-          aria-labelledby={`club-today-order-${campaign.id}`}
-          className="flex flex-col gap-3"
-          data-testid="club-tile-order"
-        >
-          <h2 id={`club-today-order-${campaign.id}`} className="sr-only">
-            {`${t('payments.orders.tile.title')}: ${campaign.name}`}
-          </h2>
-          <div className={TILE_CLASS}>
-            <Link href={clubOrderHref(campaign.id)} className={LINK_CLASS} data-testid="club-tile-order-link">
-              <span className="font-semibold">{t('payments.orders.tile.title')}</span>
-              <span className="font-medium">{campaign.name}</span>
-              <span className="text-muted-foreground text-sm">
-                {t('payments.orders.tile.ordersUntil', { date: formatDate(campaign.closesOn, locale) })}
-              </span>
-              <ul className="flex flex-col gap-1 text-sm">
-                {campaign.children.map((child) => (
-                  <li
-                    key={child.personId}
-                    data-testid="club-tile-order-child"
-                    data-child={child.firstName}
-                    data-ordered={child.orderId ? 'true' : 'false'}
-                  >
-                    {child.orderId
-                      ? t('payments.orders.tile.ordered', {
-                          child: child.firstName,
-                          amount: formatMoney(child.total, locale),
-                        })
-                      : t('payments.orders.tile.notOrdered', { child: child.firstName })}
-                  </li>
-                ))}
-              </ul>
-            </Link>
-          </div>
-        </section>
+        <li key={campaign.id} className={ROW_CLASS} data-testid="club-tile-order">
+          <Link
+            href={clubOrderHref(campaign.id)}
+            className={LINK_CLASS}
+            data-testid="club-tile-order-link"
+            aria-label={`${t('payments.orders.tile.title')}: ${campaign.name}`}
+          >
+            <span className="font-semibold">{t('payments.orders.tile.title')}</span>
+            <span className="font-medium">{campaign.name}</span>
+            <span className="text-muted-foreground text-sm">
+              {t('payments.orders.tile.ordersUntil', { date: formatDate(campaign.closesOn, locale) })}
+            </span>
+            <ul className="flex flex-col gap-1 text-sm">
+              {campaign.children.map((child) => (
+                <li
+                  key={child.personId}
+                  data-testid="club-tile-order-child"
+                  data-child={child.firstName}
+                  data-ordered={child.orderId ? 'true' : 'false'}
+                >
+                  {child.orderId
+                    ? t('payments.orders.tile.ordered', {
+                        child: child.firstName,
+                        amount: formatMoney(child.total, locale),
+                      })
+                    : t('payments.orders.tile.notOrdered', { child: child.firstName })}
+                </li>
+              ))}
+            </ul>
+          </Link>
+        </li>
       ))}
     </>
   )
