@@ -3,7 +3,11 @@
 // bucket as `daily/vereino-YYYY-MM-DD.dump.age` (plus `monthly/vereino-YYYY-MM.dump.age` for the first copy of a
 // month), keeping 30 daily and 12 monthly copies. Runs as the Railway cron service `railway.backup.toml`.
 // The plaintext dump never touches the disk: pg_dump streams into age, and only the ciphertext is written.
-// Every line on stdout/stderr is one JSON object; a failure is `"msg":"backup.dump.failed"` (the alert watches it).
+// Every line on stdout/stderr is one JSON object; a failure is `"msg":"backup.dump.failed"`. The outcome also goes to
+// the E18-S04 alert path (#465, #519) through `packages/app/scripts/vereino-ops-signal.mjs`, which the job image copies
+// in: one `vereino.ops.backup.*` line per run phase and, when `VEREINO_OPS_BACKUP_HEARTBEAT_URL` is set, a heartbeat
+// ping (`<url>` on success, `<url>/fail` on failure). A run that never starts sends no ping, so the heartbeat's
+// missing-ping alert catches it.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -25,6 +29,12 @@ import {
   remotePath,
   runPipeline,
 } from './backup-common.mjs'
+import {
+  HEARTBEAT_URL_VARIABLES,
+  OPS_EVENTS,
+  formatOpsLine,
+  pingHeartbeat,
+} from '../packages/app/scripts/vereino-ops-signal.mjs'
 
 export const JOB = 'backup:dump'
 export const REQUIRED_VARIABLES = ['DATABASE_URL', ...BUCKET_VARIABLES]
@@ -37,6 +47,22 @@ export function logLine(write, level, msg, fields = {}) {
 // Counts the age recipients (`age1…` public keys) in a recipients file; comments and blank lines do not count.
 export function countRecipients(text) {
   return text.split('\n').filter((line) => line.trim().startsWith('age1')).length
+}
+
+export const HEARTBEAT_VARIABLE = HEARTBEAT_URL_VARIABLES.backup
+
+// Writes the `vereino.ops.backup.*` line of `event` and, for an outcome, pings the heartbeat when its URL is set.
+// A refused ping is logged by variable name only (the URL holds the check's secret) and never changes the exit code:
+// a missing success ping still raises the heartbeat's missed-run alert.
+export async function reportOps(event, fields, { env, now, stdout, stderr, fetchImpl }) {
+  const { level, outcome } = OPS_EVENTS[event]
+  const write = level === 'error' ? stderr : stdout
+  write(`${formatOpsLine(event, fields, { now: () => now().getTime() })}\n`)
+  const url = env[HEARTBEAT_VARIABLE]
+  if (!outcome || !url) return
+  if (!(await pingHeartbeat(url, outcome, { fetchImpl }))) {
+    logLine(stderr, 'warn', 'backup.heartbeat.failed', { variable: HEARTBEAT_VARIABLE })
+  }
 }
 
 class StepError extends Error {
@@ -78,16 +104,20 @@ export async function main({
   stderr = process.stderr.write.bind(process.stderr),
   run = runPipeline,
   tmpDir = os.tmpdir(),
+  fetchImpl = fetch,
 } = {}) {
+  const ops = (event, fields = {}) => reportOps(event, fields, { env, now, stdout, stderr, fetchImpl })
   const missing = missingVariables(env, REQUIRED_VARIABLES)
   if (missing.length > 0) {
     logLine(stderr, 'error', 'backup.dump.failed', { reason: 'missing-variable', variables: missing })
+    await ops('backup.failed', { step: 'missing-variable' })
     return 1
   }
   const recipientsFile = env.BACKUP_AGE_RECIPIENTS_FILE || DEFAULT_RECIPIENTS_FILE
   const recipients = fs.existsSync(recipientsFile) ? countRecipients(fs.readFileSync(recipientsFile, 'utf8')) : 0
   if (recipients === 0) {
     logLine(stderr, 'error', 'backup.dump.failed', { reason: 'no-recipient', recipientsFile })
+    await ops('backup.failed', { step: 'no-recipient' })
     return 1
   }
 
@@ -99,10 +129,11 @@ export async function main({
   const monthlyFolder = objectKey(env.BACKUP_S3_PREFIX, MONTHLY_DIR)
   const dailyKey = `${dailyFolder}/${names.daily}`
   logLine(stdout, 'info', 'backup.dump.started', { key: dailyKey, recipients })
+  await ops('backup.started')
 
   const workDir = fs.mkdtempSync(path.join(tmpDir, 'vereino-backup-'))
   const encrypted = path.join(workDir, names.daily)
-  let code = 1
+  let outcome = { event: 'backup.failed', fields: { step: 'unexpected' } }
   try {
     const dump = await run([
       {
@@ -124,22 +155,25 @@ export async function main({
     }
     const prunedDaily = await prune(run, s3, bucket, dailyFolder, { monthly: false, keep: DAILY_KEEP })
     const prunedMonthly = await prune(run, s3, bucket, monthlyFolder, { monthly: true, keep: MONTHLY_KEEP })
+    const durationMs = now().getTime() - startedAt.getTime()
     logLine(stdout, 'info', 'backup.dump.succeeded', {
       key: dailyKey,
       monthlyKey,
       bytes,
       prunedDaily,
       prunedMonthly,
-      durationMs: now().getTime() - startedAt.getTime(),
+      durationMs,
     })
-    code = 0
+    outcome = { event: 'backup.succeeded', fields: { bytes, durationMs } }
   } catch (error) {
     const fields = error instanceof StepError ? { reason: error.message, ...error.fields } : { reason: 'unexpected' }
     logLine(stderr, 'error', 'backup.dump.failed', { key: dailyKey, ...fields })
+    outcome.fields.step = fields.reason
   }
   // The ciphertext is only a staging copy; it never outlives the run.
   fs.rmSync(workDir, { recursive: true, force: true })
-  return code
+  await ops(outcome.event, outcome.fields)
+  return outcome.event === 'backup.succeeded' ? 0 : 1
 }
 
 /* node:coverage ignore next 3 */

@@ -4,7 +4,7 @@ import type { PageMetadata } from '@open-mercato/shared/modules/registry'
 export const metadata: PageMetadata = {
   requireAuth: true,
   requireFeatures: ['people.self'],
-  title: 'Profile',
+  title: 'Profile and wards',
   titleKey: 'people.club.profile.title',
 }
 

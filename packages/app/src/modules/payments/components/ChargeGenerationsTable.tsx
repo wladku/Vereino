@@ -15,6 +15,7 @@ import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/ba
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { errorCode, errorMessage, type TableColumns, type Translate } from './client-helpers'
 import { StatusTag } from '@vereino/ui'
 
@@ -97,7 +98,7 @@ export function ChargeGenerationsTable() {
   const [page, setPage] = React.useState(1)
   const columns = React.useMemo(() => buildColumns(t, locale), [t, locale])
 
-  const { data, isLoading, error } = useQuery<GenerationList>({
+  const { data, isLoading, error, refetch } = useQuery<GenerationList>({
     queryKey: ['payments-charge-generations', page, scopeVersion],
     queryFn: async () => {
       const call = await apiCallOrThrow<GenerationList>(
@@ -150,7 +151,15 @@ export function ChargeGenerationsTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('payments.generations.errors.list')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('payments.generations.errors.list')}
+              retryLabel={t('payments.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('payments.generations.empty')}</p>}
         rowActions={(row: ChargeGenerationRow) =>
           row.undoneAt ? null : (

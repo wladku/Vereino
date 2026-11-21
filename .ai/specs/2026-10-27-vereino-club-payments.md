@@ -1,7 +1,7 @@
 # Vereino — club payments (phase 4)
 
 **Date**: 2026-10-27
-**Status**: Ready for implementation — phase 4 without the treasurer role (product owner, 2026-11-04, D30): V-5 resolved (DD-42); enabling `payment_gateways` and `gateway_stripe` with their migrations approved; the club administrator does the treasurer's work; Q-049 and Q-050 confirmed as proposed; the treasurer role and screens (REQ-034, DD-33, step 10) released by the product owner on 2026-11-19 (A02 lifted for this story, Ask First approved on #245)
+**Status**: In progress — approved by the product owner (phase 4, 2026-11-04, D30; the treasurer role on 2026-11-19, #245); left: AC-012 (no Stripe sandbox run) and phase 4 step 1's Stripe sandbox run (close-out #452)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -88,7 +88,7 @@ N/A — see `2026-10-20-vereino-club-management.md` (*Reuse and Ownership Map*).
 
 ## Architecture and Data Flow
 
-`payments` requires `groups` and `payment_gateways` (`2026-10-20-vereino-club-management.md`, *Architecture and Data Flow*). It owns `payments.chargeService` (`createForSource`, `cancelForSource`, `statusOf` inside the caller's transaction; the contract is DD-19 of `2026-10-27-vereino-facilities.md`, completed on 2026-11-05 by #167 for the architectural review) and `payments.publicPrices`.
+`payments` requires `groups` and `payment_gateways` (`2026-10-20-vereino-club-management.md`, *Architecture and Data Flow*). It owns `payments.chargeService` (`createForSource`, `cancelForSource`, `statusOf` inside the caller's transaction; the contract is DD-19 of `implemented/2026-10-27-vereino-facilities.md`, completed on 2026-11-05 by #167 for the architectural review) and `payments.publicPrices`.
 
 
 ## User Journeys
@@ -255,7 +255,20 @@ Validation, the `lib/**` unit-coverage rule and the module registration rule are
 
 | Phase | Status | Since | Gate evidence |
 |---|---|---|---|
-| 4 — Payments (`payments`) | Draft | — | V-5 resolved 2026-11-03 (DD-42); approval to enable `payment_gateways` and `gateway_stripe` asked on issue #107; treasurer role and screens held back (A02, D-021) |
+| 4 — Payments (`payments`) | In progress — steps 2–10 done; left: the Stripe sandbox run of step 1 and the exit gate's Stripe test payment | 2026-11-05 | V-5 resolved 2026-11-03 (DD-42, #148); `payment_gateways` and `gateway_stripe` enabled in #212 (D-030); the treasurer role released on 2026-11-19 and built in #432 (#245) |
+
+| Step | State |
+|---|---|
+| 1 — V-5 and the Stripe sandbox run | V-5 done (#148); the sandbox run of card, BLIK and Przelewy24 with the club's test keys not done (no sandbox configured) |
+| 2 — Fee schedules, discounts, generator, camp fee | Done (#183) |
+| 3 — Manual posting and overdue charges | Done (#202) |
+| 4 — Checkout, fulfilment, gateway subscribers, sweep, refunds | Done (#212), on the gateway test adapter |
+| 5 — `/club/payments`, widgets, payer code | Done (#212, #224) |
+| 6 — Public prices block | Done (#209) |
+| 7 — Bank statement import | Done (#229) |
+| 8 — Cash with a KP number | Done (#223) |
+| 9 — Order campaigns (administrator and guardian) | Done (#227, #233) |
+| 10 — Coach payments, cash handover, treasurer role | Done (#238, #421, #432) |
 
 ### Phase 4 — Payments (`payments`)
 
@@ -318,14 +331,14 @@ As in `2026-10-20-vereino-club-management.md` (*Rollout, Migration, and Rollback
 
 ## Acceptance Criteria
 
-- [ ] **AC-011** — Period generation is idempotent, applies the sibling discount as configured by the administrator (which child pays full, which fee kinds), and flags charges without a payer.
+- [x] **AC-011** — Period generation is idempotent, applies the sibling discount as configured by the administrator (which child pays full, which fee kinds), and flags charges without a payer. — evidence: #183; `TEST-018-fee-schedules-and-generation`, `TEST-048-camp-one-off-fee`
 - [ ] **AC-012** — The guardian pays their charges via Stripe (the club's account) and sees the "Paid" status; in `payer_pays` mode the surcharge is shown as a separate line before payment and the charge itself is paid in full; a repeated webhook does not create a second payment; someone else's charge returns 403; a minor participant with an account does not see payments (no tile or screen, API 403).
-- [ ] **AC-026** — Prices and the sibling discount appear on the section page only when the prices block is enabled.
-- [ ] **AC-030** — After a statement import, transfers with a payer code and the full amount are booked without administrator involvement (when auto-booking is enabled); the rest are in the queue with a suggestion; re-importing creates no duplicates; every booking can be undone.
-- [ ] **AC-031** — The administrator accepts cash from a parent in at most three steps (payer → charges → confirm), also on a phone; the payer receives an email with the confirmation number; an amount greater than the charges is rejected.
-- [ ] **AC-032** — The administrator creates a kit form (set and products with sizes and prices, print, deadline) and has the text with a link for Messenger in under 10 minutes; the guardian orders for a child in the app or from a personal link in under 2 minutes and immediately sees the charge; after the deadline the administrator downloads the supplier summary (quantities per product and size, prints) without manual counting.
-- [ ] **AC-033** — The coach sees in the app who in their group has membership fees or kits to pay (without discount reasons or charges of other sections), accepts cash for several of a child's charges in at most three steps, and the parent gets a confirmation; the treasurer sees how much cash each coach holds and confirms receipt with a numbered handover based on the coach's entries.
-- [ ] **AC-034** — A person with the treasurer role handles all club finances (charges, statements, cash, order campaigns, handovers with coaches), but has no access to the people records, groups, classes, club settings, or facilities.
+- [x] **AC-026** — Prices and the sibling discount appear on the section page only when the prices block is enabled. — evidence: #209; `TEST-038-public-prices`
+- [x] **AC-030** — After a statement import, transfers with a payer code and the full amount are booked without administrator involvement (when auto-booking is enabled); the rest are in the queue with a suggestion; re-importing creates no duplicates; every booking can be undone. — evidence: #229, #224; `TEST-042-bank-statement-import`
+- [x] **AC-031** — The administrator accepts cash from a parent in at most three steps (payer → charges → confirm), also on a phone; the payer receives an email with the confirmation number; an amount greater than the charges is rejected. — evidence: #223; `TEST-043-cash-with-receipts`
+- [x] **AC-032** — The administrator creates a kit form (set and products with sizes and prices, print, deadline) and has the text with a link for Messenger in under 10 minutes; the guardian orders for a child in the app or from a personal link in under 2 minutes and immediately sees the charge; after the deadline the administrator downloads the supplier summary (quantities per product and size, prints) without manual counting. — evidence: #227, #233; `E07-S08-order-campaign-admin`, `E07-S09-guardian-kit-orders`
+- [x] **AC-033** — The coach sees in the app who in their group has membership fees or kits to pay (without discount reasons or charges of other sections), accepts cash for several of a child's charges in at most three steps, and the parent gets a confirmation; the treasurer sees how much cash each coach holds and confirms receipt with a numbered handover based on the coach's entries. — evidence: #238, #421; `TEST-045-coach-group-payments`, `TEST-046-cash-handover`
+- [x] **AC-034** — A person with the treasurer role handles all club finances (charges, statements, cash, order campaigns, handovers with coaches), but has no access to the people records, groups, classes, club settings, or facilities. — evidence: #432; `TEST-046-cash-handover`
 
 ## Final Compliance Report
 
@@ -383,4 +396,4 @@ Rows up to 2026-11-05 stay in this table. Each later change is its own file in `
 | 2026-11-03 | V-5 resolved against the installed 0.9.0 packages (#107, run log `.ai/runs/2026-11-03-issue-107-verify-v5-payment-gateways.md`): new DD-42 (session through DI, embedded Payment Element, one idempotent fulfilment from the subscriber, the return page and the new sweep `payments:reconcile-checkouts`; refunds only from Vereino); the architectural review's refund and late-capture findings answered with the vocabulary rows *Checkout fulfilment* and *Online refund*, `payments_payments.reverses_payment_id`/`gateway_refund_id`/`is_overpayment`, `payments_checkouts.idempotency_key`/`amount_mismatch`/`last_checked_at`, the routes `POST /api/payments/checkouts/{id}/refresh` and `POST /api/payments/payments/{id}/refund`, event `payments.payment.refunded`, TEST-057, Q-049, Q-050 and three risk rows; the checkout response returns `clientSession` instead of `redirectUrl`; the `session.expired` subscription dropped (never emitted); Q-016, phase readiness, steps 1 and 4, compliance report and verdict updated. Fallback "mapping exclusively through `payments_checkouts`" confirmed |
 | 2026-11-04 | Status set to `Ready for implementation` for phase 4 without the treasurer role (D30): modules and migrations approved, the administrator does the treasurer's work, Q-049 and Q-050 confirmed |
 | 2026-11-05 | Phase 4 step 2 implemented (#108, run log `.ai/runs/2026-11-05-issue-108-fee-schedules-generator.md`): the charge-generation undo answered by the owner's autonomous default (the undo cancels the run's open charges; the period can be generated again); `payments_discount_rules.percent` is a whole percent (int 1–100, the issue's validation); `payments_charges` gains `generation_id`, `cancelled_at`, `cancel_reason`, and its unique index covers only live `fee` charges; new table `payments_charge_generations`; the step's note lists what shipped and what moves to E07-S02 |
-| 2026-11-05 | `payments.chargeService` points to its transaction contract, DD-19 of `2026-10-27-vereino-facilities.md` (#167): `createForSource`, `cancelForSource`, `statusOf` with the caller's `em`, no own transaction, no events before the caller's commit |
+| 2026-11-05 | `payments.chargeService` points to its transaction contract, DD-19 of `implemented/2026-10-27-vereino-facilities.md` (#167): `createForSource`, `cancelForSource`, `statusOf` with the caller's `em`, no own transaction, no events before the caller's commit |

@@ -1,13 +1,13 @@
 # Vereino — facilities parity: the day calendar, rentals, the attendant on the phone and the open promises of phase 5
 
 **Date**: 2026-11-14
-**Status**: Ready for implementation — approved by the product owner on 2026-11-16 ([owner decisions on #253](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145), answering the [pre-implementation audit](https://github.com/wladku/Vereino/issues/253#issuecomment-6899389065)): the six Ask First items approved, Q-R01, Q-R21 and Q-R22 answered, Q-R02…Q-R20 confirmed, two new answers recorded (a move keeps the agreed amount, #221; the dashboard widget follows the navigation spec's role table), the audit gaps (c1)–(c10) fixed in this text. Cross-spec dependencies: *Rollout → Order*. Phase 11 (#285) waits for phase 1 of the payments parity spec; phase 14 (#288) lands after or rebases on REQ-A08 of the groups and activities parity spec
+**Status**: In progress — approved by the product owner on 2026-11-16 ([owner decisions on #253](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145)); every phase landed; left: AC-R05 (the renter's e-mail on automatic expiry has no integration test), AC-R14 (the notice's link to the now existing "Needs a new time" view is not proven) (close-out #452)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
 Sources: the parity audit of 2026-11-14 (`main` at `a312199`) against the clickable mockup, and the owner's decisions of the same day in D-031 (`.ai/specs/research/decisions/D-031-mockup-is-the-model-and-eight-parity-decisions.md`: §1 six facility menu items with tabbed pages, §2 names, §4 the day axis), with D-029 (phone-first) and D-030. Design authority: `docs/ux-concept/README.md` (B-06, B-23…B-28, M-11, M-12, P-03…P-05, F-10) and the mockup `docs/ux-concept/mockups/app.ts` (`timeline`, `occupancy`, `dateChips`, `screenPlaces`, `screenPlace`, `availabilityCard`, `slotModal`, `screenFacilityToday`, `screenRentals`, `screenRequests`, `screenZones`, `screenLogs`, `screenOwnerReport`, `screenPublicPlaces`, `screenPublicPlace`, `screenVerify`). Every gap below was checked against the code of the worktree before it was written down.
 
-This spec is an addendum to `.ai/specs/2026-10-27-vereino-facilities.md` (phase 5). It completes that spec's requirements REQ-013…REQ-016, REQ-022…REQ-024 and REQ-029 and does not change its status or its phase table. Ids carry the letter **R** (`REQ-R01`, `DD-R01`, `J-R01`, `TEST-R01`, `AC-R01`, `Q-R01`) so they never collide with the global ids (D-028). It is one of five parity specs of 2026-11-14; the others are named by their file: navigation and naming (letter N), groups and activities (A), payments (C), people life cycle and data entry (L).
+This spec is an addendum to `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (phase 5). It completes that spec's requirements REQ-013…REQ-016, REQ-022…REQ-024 and REQ-029 and does not change its status or its phase table. Ids carry the letter **R** (`REQ-R01`, `DD-R01`, `J-R01`, `TEST-R01`, `AC-R01`, `Q-R01`) so they never collide with the global ids (D-028). It is one of five parity specs of 2026-11-14; the others are named by their file: navigation and naming (letter N), groups and activities (A), payments (C), people life cycle and data entry (L).
 
 **Rows of the facilities spec this spec supersedes** (the base spec's body is not edited; `.ai/specs/changelog/2026-10-27-vereino-facilities/2026-11-14-parity-r.md` records it):
 
@@ -569,6 +569,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 1 — Place and calendar reads
 
+- **State:** Done (#335)
 - **Depends on:** none
 - **Outcome:** every facilities picker and list reads places from the module's own source; the member list shows the bookable places with kind, surface and the family's count; the attendant's pickers are no longer empty.
 - **Why this order / value delivered:** every later screen needs these fields; it removes the attendant's first dead end.
@@ -580,6 +581,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 2 — The day axis in the panel (B-23)
 
+- **State:** Done (#337)
 - **Depends on:** Phase 1
 - **Outcome:** J-R02 steps 1–2: the administrator sees the whole day.
 - **Why this order / value delivered:** the largest gap of the audit; the component is reused by phases 4 and 9.
@@ -591,6 +593,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 3 — The slot dialog and the renter search
 
+- **State:** Done (#342)
 - **Depends on:** Phase 2
 - **Outcome:** a tap on a free hour of B-23 saves a rental, a group event or a club booking.
 - **Why this order / value delivered:** restores "New rental" from the calendar for every open hour and adds the club kinds to the panel.
@@ -602,6 +605,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 4 — The member day page (M-11)
 
+- **State:** Done (#348)
 - **Depends on:** Phase 3
 - **Outcome:** J-R03 end to end on a phone.
 - **Why this order / value delivered:** the booking path of every coach and coordinator; one tap instead of three steps.
@@ -613,6 +617,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 5 — The rental as a record (B-24)
 
+- **State:** Done (#341)
 - **Depends on:** Phase 1
 - **Outcome:** a rental can be opened and corrected; the list matches the mockup.
 - **Why this order / value delivered:** needed by the attendant's pages (phase 8) and by every later rental message.
@@ -624,6 +629,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 6 — Request cards (B-25)
 
+- **State:** Done (#351)
 - **Depends on:** Phase 1
 - **Outcome:** J-R02 steps 3–5.
 - **Why this order / value delivered:** the administrator decides within 48 hours on complete facts.
@@ -635,6 +641,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 7 — The contents of the B-26 and B-27 tabs, and entries from the panel
 
+- **State:** Done (#360)
 - **Depends on:** none for the contents (the existing routes stay the tabs' addresses); the final layout needs the navigation spec's phase 2 (the B-26 and B-27 tab shells)
 - **Outcome:** the tabs show the mockup's columns and actions; the administrator adds a log entry, an incident and a past club booking, and issues a requested ban.
 - **Why this order / value delivered:** removes the "members' pages only" dead end for records the owner report depends on.
@@ -646,6 +653,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 8 — The attendant on the phone (M-12)
 
+- **State:** Done (#354)
 - **Depends on:** Phases 3, 4 and 5; the navigation spec's phases 4–5 (the "More" entry and the attendant's landing on `/club/facility`, REQ-N08)
 - **Outcome:** J-R01 and J-R08 end to end on a phone with the role's four features.
 - **Why this order / value delivered:** D-029 for the role that has no working path today.
@@ -657,6 +665,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 9 — The maintainer's page
 
+- **State:** Done (#362)
 - **Depends on:** Phase 4
 - **Outcome:** J-R07.
 - **Why this order / value delivered:** D-029 for the last staff role with a panel-only list.
@@ -668,6 +677,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 10 — The management agreement's terms
 
+- **State:** Done (#343; the expiry e-mail with #386). Left: an integration check of the renter's e-mail on automatic expiry (AC-R05); TEST-R09 asserts the cancellation, not the e-mail
 - **Depends on:** Phase 5 (the unpaid perspective)
 - **Outcome:** the payment deadline follows the agreement; unpaid rentals are listed or expire.
 - **Why this order / value delivered:** replaces a constant with the owner's rule before charges carry due dates.
@@ -679,6 +689,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 11 — The rental charge
 
+- **State:** Done (#385; the move rules of #221 with #427)
 - **Depends on:** phase 1 of the payments parity spec (E12-S01: it registers `payments.chargeService` with `statusOf`, REQ-C01, and ships that spec's charge-column migration — `payer_institution_id`, `payee_institution_id`, `payer_label` — which needs its own approval in that spec) and its B-22 "Record payment"; Phases 5 and 10 of this spec (the charge state on the rental, the due date from the agreement). The story (#285) is conditional on that phase
 - **Outcome:** J-R04 with a charge; the owner report counts payments from charges.
 - **Why this order / value delivered:** closes AC-013 and AC-024 of the facilities spec.
@@ -690,6 +701,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 12 — The renter's e-mails and cancellation link
 
+- **State:** Done (#386)
 - **Depends on:** Phases 5 and 10; the `facilities_rental_links` migration and the sessionless cancel routes were approved on 2026-11-16 ([#253](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145), Ask First items 1 and 2); the migration's SQL from `yarn db:generate` is shown in the pull request before it is applied
 - **Outcome:** J-R06; a renter entered by staff is informed.
 - **Why this order / value delivered:** the facilities spec promised these e-mails in J-005; the link takes cancellations off the attendant's phone.
@@ -701,6 +713,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 13 — Reschedule notices to staff
 
+- **State:** Done (#387)
 - **Depends on:** Phase 1 (session fields). Not blocked by the groups and activities spec: the notice's link for a coordinator and a coach targets that spec's "Needs a new time" view (REQ-A05, REQ-A10) once it is built; until then — and as the permanent fallback when the view is not available — the link opens the place's day on M-11 (`/club/places/[placeId]?date=`), filtered "Do przeniesienia". AC-R14 records the fallback
 - **Outcome:** J-R05.
 - **Why this order / value delivered:** a flag nobody hears of is not acted on; the base spec's Events rows promised it.
@@ -712,6 +725,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 14 — Opening hours for a group event
 
+- **State:** Done (#363)
 - **Depends on:** none for the check itself; the groups and activities spec changes the same command for the typed-in venue (REQ-A08, D-031 §6). This phase (#288) lands after REQ-A08 or rebases on it, and TEST-R19's typed-in-venue case needs REQ-A08 (skipped with a reference until it is built)
 - **Outcome:** J-R03 step 4's first failure.
 - **Why this order / value delivered:** makes J-006 step 3 of the facilities spec true.
@@ -723,6 +737,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 15 — The public pages (P-03, P-04, P-05)
 
+- **State:** Done (#388)
 - **Depends on:** the navigation spec's phase 7 (the public header); the page contents can be built before it
 - **Outcome:** the three pages match the mockup inside the club's frame.
 - **Why this order / value delivered:** the renter's first contact with the club.
@@ -734,6 +749,7 @@ Phases are dependency-ordered and each is one pull request. Validation for every
 
 ### Phase 16 — The dashboard widget
 
+- **State:** Done (#416)
 - **Depends on:** Phase 1; the navigation spec's phase 6 (the dashboard frame and `dashboards.view` for the coordinator and the attendant) and its widget table (widget 8)
 - **Outcome:** the administrator's, coordinator's and attendant's dashboards start with the facility's entries in their scope (administrator and coordinator: the club's places; attendant: the assigned places).
 - **Why this order / value delivered:** the last widget of README B-01 that `facilities` owns.
@@ -837,24 +853,24 @@ No new module and no new dependency; none was approved, and none is needed. No f
 
 ## Acceptance Criteria
 
-- [ ] **AC-R01** — An administrator opens the facility calendar and sees, for one place and day, the zones and every session, club booking, rental, request, closure and maintenance window on an hour axis and in "Wpisy dnia"; the seven day chips, the place chips and the address change together, and a reload restores the view. The availability card says whether the place accepts online requests and lists the regulation windows.
-- [ ] **AC-R02** — A tap on a free open hour opens one dialog with exactly the kinds the user's features allow, prefilled with the hour and 90 minutes; each kind saves through its route; a taken slot lists the colliding entries by name and saves nothing.
-- [x] **AC-R03** — The rentals list keeps its tab and perspective in the address, shows a "Decyzja" link on a pending row, and opens a rental page that shows every saved field; contact, purpose and notes can be corrected, and an unregistered renter can be linked to a record unless that record is banned.
-- [ ] **AC-R04** — With the charge service registered, a rental's charge names the place owner as payee and the renter as payer; "Potwierdź wpłatę" leads to the charge, and recording its full payment confirms the rental exactly once, while a direct confirm of an unpaid one is refused; a cancellation cancels or forfeits the charge; a reversed payment leaves the rental `confirmed` with its charge shown `open` again; a move re-dates the payment deadline and the unpaid charge, and a move to another place re-quotes both (#221); the owner report states `charges` as the source of its payments. With the service absent, the same screens work from the rental register and say so.
+- [x] **AC-R01** — An administrator opens the facility calendar and sees, for one place and day, the zones and every session, club booking, rental, request, closure and maintenance window on an hour axis and in "Wpisy dnia"; the seven day chips, the place chips and the address change together, and a reload restores the view. The availability card says whether the place accepts online requests and lists the regulation windows. — evidence: #335, #337; `TEST-R02-place-and-calendar-reads`, `TEST-R03-day-axis`, `packages/app/src/modules/facilities/lib/__tests__/day-axis.test.ts`
+- [x] **AC-R02** — A tap on a free open hour opens one dialog with exactly the kinds the user's features allow, prefilled with the hour and 90 minutes; each kind saves through its route; a taken slot lists the colliding entries by name and saves nothing. — evidence: #342, #348; `TEST-R04-slot-dialog`, `TEST-R12-member-day-page`, `packages/app/src/modules/facilities/lib/__tests__/slot.test.ts`
+- [x] **AC-R03** — The rentals list keeps its tab and perspective in the address, shows a "Decyzja" link on a pending row, and opens a rental page that shows every saved field; contact, purpose and notes can be corrected, and an unregistered renter can be linked to a record unless that record is banned. — evidence: #341; `TEST-R06-rental-correction`, `TEST-R07-rentals-list-and-record`
+- [x] **AC-R04** — With the charge service registered, a rental's charge names the place owner as payee and the renter as payer; "Potwierdź wpłatę" leads to the charge, and recording its full payment confirms the rental exactly once, while a direct confirm of an unpaid one is refused; a cancellation cancels or forfeits the charge; a reversed payment leaves the rental `confirmed` with its charge shown `open` again; a move re-dates the payment deadline and the unpaid charge, and a move to another place re-quotes both (#221); the owner report states `charges` as the source of its payments. With the service absent, the same screens work from the rental register and say so. — evidence: #385, #427; `TEST-R08-rental-charge`
 - [ ] **AC-R05** — With an agreement of N days on the owner's contract, a new rental's payment deadline is N days before its start; without one it is 3. An unpaid rental past its deadline is on the unpaid list, and with automatic expiry it is cancelled free of charge once, with one e-mail — unless its charge is partly paid, in which case it stays on the unpaid list.
-- [ ] **AC-R06** — Each request card shows the requester, contact, purpose, indicative amount with its payee, the collisions by name or "brak kolizji", the ban check, "regulamin zaakceptowany online", "e-mail potwierdzony" and the expiry, with Approve and Reject on the card.
-- [ ] **AC-R07** — The tabs of "Strefy i cennik" and "Dziennik i incydenty" show the mockup's columns and toolbar actions. An administrator adds a log entry and an incident for a past day and a club booking up to 92 days back from the panel, and issues a ban from an incident that requested it; other roles are refused as today.
-- [ ] **AC-R08** — At 375 px, in Polish and English, in light and dark mode: `/club/places` lists only the club's own leaf places with kind, surface and today's count; on a place's day one tap on a free hour opens the booking dialog, and the saved entry appears on the axis and in "Wpisy dnia" without sideways page scroll.
-- [x] **AC-R09** — At 375 px, in both locales and modes, a user holding only the facility attendant role: sees on "Today at the facility" each session's sub-place, group and coach and each rental's contact with a phone link; enters a rental for a renter found by search from a place's day; opens that rental from the Rentals tab and corrects, confirms and cancels it.
-- [x] **AC-R10** — The attendant reads and writes nothing outside the assigned places, finds no person who never rented there, and a coach never receives a renter's phone number. An incident with a ban request notifies the administrators, at 375 px from the attendant's page.
-- [x] **AC-R11** — At 375 px, in both locales and modes, a person who maintains a place opens the reminder link, sees only the tasks of their places, plans a window from the day axis and completes a task.
-- [ ] **AC-R12** — At 375 px, in both locales and modes, the public places list, calendar and request confirmation render inside the club's frame with the mockup's intro, booking mode, approval notice with the owner, today first, the request summary shown once, and the way back to the place's calendar.
-- [x] **AC-R13** — A renter with an e-mail address receives the summary, the "moved" and the "cancelled" messages, and at 375 px in both locales and modes cancels through the link: free before the deadline, with the stated forfeit after it; a spent or late link shows no data.
-- [x] **AC-R14** — A closure or maintenance window over a session, a club booking and a rental sends exactly one message to each coordinator and coach, the booker and the administrators, and one e-mail to the renter; saving it again sends nothing; the flagged entries are listed under "Do przeniesienia". The coordinator's and the coach's notice opens on the phone at 375 px: on the groups and activities spec's "Needs a new time" view (REQ-A05, REQ-A10) when it exists, otherwise on the place's day on M-11 filtered to "Do przeniesienia" (the fallback link).
-- [x] **AC-R15** — A one-off group event on a club place outside its opening hours is refused with the day's hours, from the phone dialog at 375 px in both locales; the same event inside the hours, on a place without hours, or with a typed-in venue is accepted.
-- [ ] **AC-R16** — The dashboard shows "Dziś na obiekcie" with today's entries in the reader's scope (administrator and coordinator: the club's places; attendant: the assigned places) or its empty text, and its click opens the calendar of that place.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-R06** — Each request card shows the requester, contact, purpose, indicative amount with its payee, the collisions by name or "brak kolizji", the ban check, "regulamin zaakceptowany online", "e-mail potwierdzony" and the expiry, with Approve and Reject on the card. — evidence: #351; `TEST-R10-request-cards`
+- [x] **AC-R07** — The tabs of "Strefy i cennik" and "Dziennik i incydenty" show the mockup's columns and toolbar actions. An administrator adds a log entry and an incident for a past day and a club booking up to 92 days back from the panel, and issues a ban from an incident that requested it; other roles are refused as today. — evidence: #360; `TEST-R11-panel-tabs-and-past-records`, `packages/app/src/modules/facilities/lib/__tests__/internal-bookings.test.ts`
+- [x] **AC-R08** — At 375 px, in Polish and English, in light and dark mode: `/club/places` lists only the club's own leaf places with kind, surface and today's count; on a place's day one tap on a free hour opens the booking dialog, and the saved entry appears on the axis and in "Wpisy dnia" without sideways page scroll. — evidence: #335, #348; `TEST-R02-place-and-calendar-reads`, `TEST-R12-member-day-page`
+- [x] **AC-R09** — At 375 px, in both locales and modes, a user holding only the facility attendant role: sees on "Today at the facility" each session's sub-place, group and coach and each rental's contact with a phone link; enters a rental for a renter found by search from a place's day; opens that rental from the Rentals tab and corrects, confirms and cancels it. — evidence: #354, #342; `TEST-R13-attendant-on-the-phone`
+- [x] **AC-R10** — The attendant reads and writes nothing outside the assigned places, finds no person who never rented there, and a coach never receives a renter's phone number. An incident with a ban request notifies the administrators, at 375 px from the attendant's page. — evidence: #354, #342; `TEST-R14-attendant-scope`, `TEST-R05-renter-search`, `TEST-R13-attendant-on-the-phone`
+- [x] **AC-R11** — At 375 px, in both locales and modes, a person who maintains a place opens the reminder link, sees only the tasks of their places, plans a window from the day axis and completes a task. — evidence: #362; `TEST-R15-maintainer-on-the-phone`
+- [x] **AC-R12** — At 375 px, in both locales and modes, the public places list, calendar and request confirmation render inside the club's frame with the mockup's intro, booking mode, approval notice with the owner, today first, the request summary shown once, and the way back to the place's calendar. — evidence: #388; `TEST-R16-public-pages`
+- [x] **AC-R13** — A renter with an e-mail address receives the summary, the "moved" and the "cancelled" messages, and at 375 px in both locales and modes cancels through the link: free before the deadline, with the stated forfeit after it; a spent or late link shows no data. — evidence: #386; `TEST-R17-renter-emails-and-cancel-link`
+- [ ] **AC-R14** — A closure or maintenance window over a session, a club booking and a rental sends exactly one message to each coordinator and coach, the booker and the administrators, and one e-mail to the renter; saving it again sends nothing; the flagged entries are listed under "Do przeniesienia". The coordinator's and the coach's notice opens on the phone at 375 px: on the groups and activities spec's "Needs a new time" view (REQ-A05, REQ-A10) when it exists, otherwise on the place's day on M-11 filtered to "Do przeniesienia" (the fallback link). — partial evidence: #387; `TEST-R18-reschedule-notices` proves the messages and the fallback link only
+- [x] **AC-R15** — A one-off group event on a club place outside its opening hours is refused with the day's hours, from the phone dialog at 375 px in both locales; the same event inside the hours, on a place without hours, or with a typed-in venue is accepted. — evidence: #363; `TEST-R19-event-opening-hours`, `packages/app/src/modules/activities/lib/__tests__/opening-hours.test.ts`
+- [x] **AC-R16** — The dashboard shows "Dziś na obiekcie" with today's entries in the reader's scope (administrator and coordinator: the club's places; attendant: the assigned places) or its empty text, and its click opens the calendar of that place. — evidence: #416; `TEST-R20-today-at-facility-widget`, `packages/app/src/modules/facilities/lib/__tests__/today-at-facility.test.ts`
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — evidence: #335, #337, #342, #348, #341, #351, #360, #354, #362, #343, #385, #386, #387, #363, #388, #416; `TEST-R03-day-axis`, `TEST-R07-rentals-list-and-record`, `TEST-R10-request-cards`, `TEST-R11-panel-tabs-and-past-records`, `TEST-R13-attendant-on-the-phone`, `TEST-R16-public-pages`, `TEST-R20-today-at-facility-widget`
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — evidence: #335, #337, #342, #348, #341, #351, #360, #354, #362, #343, #385, #386, #387, #363, #388, #416, #427; `TEST-R02-place-and-calendar-reads`, `TEST-R04-slot-dialog`, `TEST-R05-renter-search`, `TEST-R06-rental-correction`, `TEST-R08-rental-charge`, `TEST-R09-agreement-terms-and-expiry`, `TEST-R14-attendant-scope`, `TEST-R17-renter-emails-and-cancel-link`, `TEST-R18-reschedule-notices`, `TEST-R19-event-opening-hours`, `TEST-R20-today-at-facility-widget`
 
 ## Final Compliance Report
 

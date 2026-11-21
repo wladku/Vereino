@@ -308,7 +308,7 @@ Every gap listed in research A §12 is closed by at least one rule.
 
 ### S10 — Money and payments
 
-These rules apply to the `payments` and `facilities` modules, specified since D-028 in `2026-10-27-vereino-club-payments.md` and `2026-10-27-vereino-facilities.md`; the entities stay in those specifications (E5 hands the required additions over).
+These rules apply to the `payments` and `facilities` modules, specified since D-028 in `2026-10-27-vereino-club-payments.md` and `implemented/2026-10-27-vereino-facilities.md`; the entities stay in those specifications (E5 hands the required additions over).
 
 - **S10.1** Amounts are integer grosz with a currency; discount rates are `numeric`; a derived amount (discount, share) is rounded half-up once, when it is stored, and the charge records the rounding rule used.
 - **S10.2** Splitting one amount over several lines uses largest-remainder allocation and asserts that the parts sum to the whole.
@@ -793,7 +793,7 @@ Every requirement maps to one phase, at least one test and one acceptance criter
 - [ ] **ENG-AC-03** — All Vereino-owned code passes the strict lint and Prettier checks, and the E1 diff changes no platform-owned file except the recorded local patches.
 - [ ] **ENG-AC-04** — A runtime import across Vereino modules, a platform import inside `lib/`, a duplicate error code and a missing catalog key each fail the gate (ENG-TEST-03, ENG-TEST-04).
 - [ ] **ENG-AC-05** — The integration runner works in CI and on a clean local clone, and a new contributor reaches a running app in at most 30 minutes (ENG-TEST-05, ENG-TEST-19).
-- [ ] **ENG-AC-06** — The club spec contains or explicitly rejects every hand-over item of phase E5 (ENG-TEST-15).
+- [x] **ENG-AC-06** — The club spec contains or explicitly rejects every hand-over item of phase E5 (ENG-TEST-15). Evidence: club spec *Amendment B* (#470) — 9 tables, 6 jobs and research TEST-C01…C19 each accepted, rejected with a reason or deferred with Q-048, Q-053, Q-054, Q-055 or foundation III Q14.
 - [ ] **ENG-AC-07** — Every E3 spike item has a recorded result and decision, ADR-008 states the RLS decision with evidence, and the ADR-001 checkpoint row exists (ENG-TEST-06, ENG-TEST-07).
 - [ ] **ENG-AC-08** — Production deploys run migrations in the pre-deploy step and never run `yarn initialize`; an empty database URL fails the deploy (ENG-TEST-13).
 - [ ] **ENG-AC-09** — A PITR restore and an off-site dump restore both succeed, with RTO ≤ 60 minutes recorded; a database or Redis outage on staging alerts both maintainers within 5 minutes (ENG-TEST-08 … ENG-TEST-10).

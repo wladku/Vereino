@@ -22,6 +22,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { Notice, TableLoadError } from '@vereino/ui'
 import { OWN_FORBIDDEN_STATE, errorMessage, type TableColumns, type Translate } from '../client-helpers'
 import { MatchPersonDialog } from './MatchPersonDialog'
 import {
@@ -426,7 +427,7 @@ export function ImportRecord({ id }: { id: string }) {
         ) : null}
       </header>
       {current.status === 'committed' ? (
-        <Alert status="success">
+        <Alert style="light" status="success">
           <AlertDescription>
             {t('people.imports.record.committed', {
               name: current.committedBy?.name ?? t('people.common.empty'),
@@ -436,18 +437,18 @@ export function ImportRecord({ id }: { id: string }) {
         </Alert>
       ) : null}
       {current.status === 'cancelled' ? (
-        <Alert status="information">
+        <Notice>
           <AlertDescription>
             {t('people.imports.record.cancelled', { at: instantLabel(current.cancelledAt) })}
           </AlertDescription>
-        </Alert>
+        </Notice>
       ) : null}
       {current.purgedAt ? (
-        <Alert status="information">
+        <Notice>
           <AlertDescription>
             {t('people.imports.record.purged', { at: instantLabel(current.purgedAt) })}
           </AlertDescription>
-        </Alert>
+        </Notice>
       ) : null}
       <SummaryTiles record={current} t={t} />
       <SegmentedControl
@@ -473,7 +474,15 @@ export function ImportRecord({ id }: { id: string }) {
         columns={columns}
         data={rows?.items ?? []}
         isLoading={rowsQuery.isLoading || (!rows && rowsQuery.isFetching)}
-        error={rowsQuery.error && !rowsQuery.isFetching ? t('people.imports.errors.loadRows') : null}
+        error={
+          rowsQuery.error && !rowsQuery.isFetching ? (
+            <TableLoadError
+              message={t('people.imports.errors.loadRows')}
+              retryLabel={t('people.common.retry')}
+              onRetry={() => void rowsQuery.refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('people.imports.rows.empty')}</p>}
         pagination={{
           page,

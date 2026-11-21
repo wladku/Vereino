@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-10
 - **Trigger:** cezar task `om-auto-fix-issue 127` (unattended). The run of 2026-11-07 stopped before claiming because #123, #126 and #128 were not merged; all three are on `main` now (#126 merged as `4566ca4` while its issue stays open for the attendant role).
-- **Spec:** `.ai/specs/2026-10-27-vereino-facilities.md` phase 5 step 8 (REQ-015, TEST-025, AC-015); README B-28, flow F-12.
+- **Spec:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` phase 5 step 8 (REQ-015, TEST-025, AC-015); README B-28, flow F-12.
 - **Issue / branch:** #127 / `feat/issue-127-owner-report`.
 - **Route:** feature (label `feature`), spec found → implemented directly on one implementation PR (the spec covers the work; no spec PR). No migration, no new module, no dependency: nothing Ask First.
 

@@ -78,12 +78,14 @@ Measured on 2026-11-20 with a production build (`next start`, `NODE_ENV=producti
 | Check | Variable (service) | Pinged by | Period / grace |
 |---|---|---|---|
 | Worker | `VEREINO_OPS_WORKER_HEARTBEAT_URL` (worker service) | the `foundation:dispatch-sweep` job after each successful sweep — the scheduler starts it every 2 minutes for every club, through the queue and the worker, and it reads PostgreSQL; at most one ping a minute per process | 3 min / 2 min |
-| Backup | `VEREINO_OPS_BACKUP_HEARTBEAT_URL` (backup job, E18-S03 #464) | `node packages/app/scripts/vereino-ops-signal.mjs backup.succeeded …` pings `<url>`; `… backup.failed …` pings `<url>/fail` | 1 day / 2 h |
+| Backup | `VEREINO_OPS_BACKUP_HEARTBEAT_URL` (backup job, E18-S03 #464) | `scripts/backup-dump.mjs` at the end of every run (#519): `<url>` after a successful dump, `<url>/fail` after a failed one, through the helpers of `packages/app/scripts/vereino-ops-signal.mjs`, which the job image copies in; by hand: `node packages/app/scripts/vereino-ops-signal.mjs backup.succeeded …` or `… backup.failed …` | 1 day / 2 h |
 
 The worker heartbeat needs at least one club with its schedules (`docs/ops/deploy.md` → *Per-club schedules*): with
 no club there is no sweep and the check alerts — on staging the demonstration club provides it. A ping carries no
-payload. A refused ping is logged by the worker as `Worker heartbeat ping failed` and by the backup job as
-`ops-signal: the heartbeat ping of VEREINO_OPS_BACKUP_HEARTBEAT_URL failed`.
+payload. A refused ping is logged by the worker as `Worker heartbeat ping failed`, by the backup job as
+`"msg":"backup.heartbeat.failed"` (with the variable name, never the URL) and by the manual helper as
+`ops-signal: the heartbeat ping of VEREINO_OPS_BACKUP_HEARTBEAT_URL failed`; a refused ping never changes the job's
+exit code. A backup that never runs pings nothing, so the missed-run alert fires after period plus grace.
 
 The `/fail` suffix is the convention of Healthchecks.io and Better Stack heartbeats; with another vendor, check that
 it accepts a failure ping at `<url>/fail` before relying on it.
@@ -96,7 +98,7 @@ JSON with a numeric `level` (50 = error); Railway documents only string levels, 
 
 | What | Filter | Written by |
 |---|---|---|
-| Backup failed | `vereino.ops.backup.failed` | `packages/app/scripts/vereino-ops-signal.mjs` (backup job) |
+| Backup failed | `vereino.ops.backup.failed` | `scripts/backup-dump.mjs` through `packages/app/scripts/vereino-ops-signal.mjs` (backup job) |
 | Backup succeeded / started | `vereino.ops.backup.succeeded`, `vereino.ops.backup.started` | the same |
 | Health probe failed | `"[healthz] Infrastructure probe failed"` | `/api/healthz` (web service) |
 | Worker alive | `"Dispatch sweep finished"` | `foundation:dispatch-sweep` (worker service), every 2 min per club |
@@ -154,7 +156,8 @@ Do it on `staging` first, run ENG-TEST-08, then repeat for `production`.
 4. In Railway set, per environment:
    - worker service: `VEREINO_OPS_WORKER_HEARTBEAT_URL=<worker ping URL>`, `TELEMETRY_BACKEND=console`;
    - web service: `TELEMETRY_BACKEND=console`;
-   - backup job (once E18-S03 lands): `VEREINO_OPS_BACKUP_HEARTBEAT_URL=<backup ping URL>`.
+   - backup job: `VEREINO_OPS_BACKUP_HEARTBEAT_URL=<backup ping URL>` (`docs/ops/backups.md` → *Variables of the
+     backup service*).
    Redeploy both services.
 5. In Railway *Project Settings → Webhooks*, add a webhook for deployment status changes and volume usage alerts to the
    alert channel (a Slack or Discord muxer, or the vendor's incoming webhook); set the volume alert at 80 % if Railway
@@ -164,6 +167,7 @@ Do it on `staging` first, run ENG-TEST-08, then repeat for `production`.
 7. Test the backup alert: in the backup job's shell run
    `node packages/app/scripts/vereino-ops-signal.mjs backup.failed step=drill` — an alert must arrive within 1 minute
    and the job log must show `vereino.ops.backup.failed`; then run the same with `backup.succeeded` to close it.
+   Then start the backup service once by hand ("Run now"): the check gets a success ping when the dump succeeds.
 8. Save the *Log filters* as bookmarks for the weekly digest.
 9. Run ENG-TEST-08 below and record the evidence.
 

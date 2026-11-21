@@ -103,7 +103,7 @@ test('ISSUE-485 "/" leads to the club or the sign-in page, /start is gone and ti
         const product = uiTextIn(locale, 'app.metadata.title')
         await expect(page).toHaveTitle(product)
         await page.goto('/backend/club/publication')
-        await expect(page).toHaveTitle(`${uiTextIn(locale, 'club_core.publication.title')} — ${product}`)
+        await expect(page).toHaveTitle(`${uiTextIn(locale, 'club_core.nav.publication')} — ${product}`)
         await expect(page.locator('img[src*="vereino-mark.svg"]').first()).toBeAttached()
         await expectNoTemplate(page, locale)
       }

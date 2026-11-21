@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['payments.orders.manage'],
   pageTitle: 'Order campaign',
   pageTitleKey: 'payments.orders.record.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   navHidden: true,
   breadcrumb: [

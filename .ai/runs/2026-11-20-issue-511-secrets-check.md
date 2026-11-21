@@ -12,7 +12,7 @@
 3. Ran it over `main` (3907 tracked files): first pass 540 hits. Tuned the rules on the false positives, then allow-listed the 13 deliberate ones.
 4. Wired it: root script `secrets:check`, step after `lint` in `scripts/verify.mjs`, coverage include in `test:scripts` and `coverage-scope.test.mjs`.
 5. Unit tests `packages/app/scripts/__tests__/check-secrets.test.mjs`: each rule one hit and one passing placeholder, allow-list, main; 100 % lines/branches/functions.
-6. Docs: review-checklist line, `docs/ops/github-settings.md` section 8 (security settings), S2.1 and S8.10 of the engineering standards spec, ENG-AC-13 ticked, `CODE_REVIEW.md` step list (it still said 13 steps), changelog entry.
+6. Docs: review-checklist line, `docs/ops/github-settings.md` section 9 (security settings; section 8 before the release workflow section landed), S2.1 and S8.10 of the engineering standards spec, ENG-AC-13 ticked, `CODE_REVIEW.md` step list (it still said 13 steps), changelog entry.
 
 ## Decisions
 

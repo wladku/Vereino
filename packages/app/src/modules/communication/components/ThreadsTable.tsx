@@ -16,6 +16,7 @@ import { apiCall, apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import {
   NO_THREAD_FILTERS,
   OWN_FORBIDDEN_STATE,
@@ -282,6 +283,15 @@ export function ThreadsTable() {
           columns={columns}
           data={items}
           isLoading={query.isFetching}
+          error={
+            query.error ? (
+              <TableLoadError
+                message={t('communication.threads.errors.load')}
+                retryLabel={t('communication.actions.retry')}
+                onRetry={() => void query.refetch()}
+              />
+            ) : null
+          }
           onRowClick={(row: ThreadListItem) => {
             router.push(threadHref(row.id))
           }}

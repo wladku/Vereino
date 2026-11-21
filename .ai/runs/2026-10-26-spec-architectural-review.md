@@ -54,7 +54,7 @@ The full report with lines and fixes was given to the owner in the session (2026
 
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phases 1–3 and the shared parts; DD-01 rewritten; pointers; Changelog row.
 - `.ai/specs/2026-10-27-vereino-club-payments.md` — new (phase 4).
-- `.ai/specs/2026-10-27-vereino-facilities.md` — new (phase 5, DD-19 rewritten).
+- `.ai/specs/implemented/2026-10-27-vereino-facilities.md` — new (phase 5, DD-19 rewritten).
 - `.ai/specs/research/decisions/D-028-split-specification-and-optional-rental-charge.md` — new.
 - `.ai/specs/product-brief.md` — D28 row, sources, *Now* scope, Coverage.
 - `.ai/specs/backlog.md` — D-028 note on the design authority of phases 4 and 5.
@@ -66,7 +66,7 @@ Not touched: `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`,
 ## Open problems
 
 - The Critical finding (link-token emails vs ids-only event payloads) and the High findings are unfixed; each now belongs to one of the three specifications.
-- Update 2026-11-05 (#167): the facilities findings are resolved in `2026-10-27-vereino-facilities.md` (*Architectural Review Resolution*; run log `.ai/runs/2026-11-05-facilities-review-findings.md`).
+- Update 2026-11-05 (#167): the facilities findings are resolved in `implemented/2026-10-27-vereino-facilities.md` (*Architectural Review Resolution*; run log `.ai/runs/2026-11-05-facilities-review-findings.md`).
 - The foundation primitives spec still describes "seven modules over five phases" in its TLDR; it is accurate and was left as is.
 
 ## Next steps

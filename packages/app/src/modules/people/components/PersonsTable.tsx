@@ -18,6 +18,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { StatusTag, TableLoadError } from '@vereino/ui'
 import {
   PERSON_ATTENTION_FILTERS,
   PERSON_FILTER_ROLES,
@@ -34,8 +35,7 @@ import {
   type PersonListUrlState,
   type PersonListView,
 } from '../lib/person-list-filters'
-import { PERSONS_HREF, errorMessage, type PersonListItemRow, type TableColumns, type Translate } from './client-helpers'
-import { StatusTag } from '@vereino/ui'
+import { PERSONS_HREF, type PersonListItemRow, type TableColumns, type Translate } from './client-helpers'
 
 import { useGrantedFeatures } from './useGrantedFeatures'
 
@@ -203,7 +203,7 @@ export function PersonsTable() {
   )
 
   const apiParams = personListApiParams(state)
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['people-persons', apiParams, state.page, scopeVersion],
     queryFn: () =>
       fetchCrudList<PersonListItemRow>('people/persons', {
@@ -352,7 +352,15 @@ export function PersonsTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('people.persons.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('people.persons.errors.load')}
+                  retryLabel={t('people.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             emptyState={emptyState}
             filterAwareEmptyState={filterAwareEmptyState}
             searchValue={search}

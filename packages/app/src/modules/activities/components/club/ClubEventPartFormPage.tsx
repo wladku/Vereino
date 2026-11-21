@@ -17,12 +17,11 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
-import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { MemberSkeleton } from '@vereino/ui'
+import { MemberSkeleton, Notice } from '@vereino/ui'
 import { EVENT_TYPES, takesOpponent } from '../../lib/activities-rules'
 import { PART_CATEGORY_MAX, PART_TITLE_MAX } from '../../lib/club-events'
 import {
@@ -573,9 +572,9 @@ function PartBody({
   const load = stored.data
   if (load?.status === 'not_found') {
     return (
-      <Alert status="information" data-testid="club-event-part-member-not-found">
+      <Notice data-testid="club-event-part-member-not-found">
         <p>{t('activities.clubEvents.errors.notFound')}</p>
-      </Alert>
+      </Notice>
     )
   }
   const event = load?.status === 'ok' ? load.event : null
@@ -584,14 +583,14 @@ function PartBody({
   const loaded = clubEventOptionsOf(options.data)
   if (load?.status === 'denied' || (event && event.mayManage !== true) || options.data?.status === 'denied') {
     return (
-      <Alert status="information" data-testid="club-event-part-member-denied">
+      <Notice data-testid="club-event-part-member-denied">
         <p>{t('activities.clubEvents.club.form.denied')}</p>
-      </Alert>
+      </Notice>
     )
   }
   if (event && (event.status !== 'planned' || (partId && (!part || part.status !== 'planned')))) {
     return (
-      <Alert status="information" data-testid="club-event-part-member-closed">
+      <Notice data-testid="club-event-part-member-closed">
         <p>
           {t(
             event.status !== 'planned'
@@ -599,7 +598,7 @@ function PartBody({
               : 'activities.clubEvents.club.part.gone',
           )}
         </p>
-      </Alert>
+      </Notice>
     )
   }
   if (!event || !loaded) {

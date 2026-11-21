@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['groups.manage'],
   pageTitle: 'Edit external team',
   pageTitleKey: 'groups.externalTeams.edit.title',
-  pageGroup: 'Groups',
+  pageGroup: 'Classes',
   pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [

@@ -81,3 +81,96 @@ test('TEST-N01 the Club group is in the main sidebar for the administrator and t
     await club.cleanup()
   }
 })
+
+// TEST-N01, groups and items part (navigation spec REQ-N01 and its glossary, D-031 §1–2; issue #494): the
+// administrator's sidebar starts with the mockup's six groups in the mockup's order — Klub, Ludzie, Zajęcia (one group
+// for groups, activities and sessions, no "Harmonogram"), Komunikacja, Finanse, Obiekt — and each item carries the
+// mockup's short menu label ("Ustawienia", not the page title "Ustawienia klubu"). Fails on `146858ee`.
+const GROUPS: { key: string; items: [string, string][] }[] = [
+  {
+    key: 'club_core.nav.group',
+    items: [
+      ['/backend/club/sections', 'club_core.sections.title'],
+      ['/backend/club/places', 'club_core.places.title'],
+      ['/backend/club/institutions', 'club_core.institutions.page.title'],
+      ['/backend/club/settings', 'club_core.nav.settings'],
+      ['/backend/club/publication', 'club_core.nav.publication'],
+    ],
+  },
+  { key: 'people.nav.group', items: [['/backend/people/persons', 'people.persons.title']] },
+  {
+    key: 'groups.nav.group',
+    items: [
+      ['/backend/groups/groups', 'groups.groups.title'],
+      ['/backend/activities/activities', 'activities.activities.title'],
+      ['/backend/activities/club-events', 'activities.clubEvents.title'],
+      ['/backend/activities/occurrences', 'activities.occurrences.title'],
+      ['/backend/activities/reports/coach-units', 'activities.reports.coachUnits.title'],
+      ['/backend/activities/policies', 'activities.policies.title'],
+    ],
+  },
+  { key: 'communication.nav.group', items: [['/backend/communication/threads', 'communication.threads.page.title']] },
+  {
+    key: 'payments.nav.group',
+    items: [
+      ['/backend/payments/fees', 'payments.fees.title'],
+      ['/backend/payments/charges', 'payments.charges.title'],
+      ['/backend/payments/bank', 'payments.bank.title'],
+      ['/backend/payments/orders', 'payments.orders.title'],
+      ['/backend/payments/cash-custody', 'payments.cashCustody.title'],
+    ],
+  },
+  {
+    key: 'facilities.nav.group',
+    items: [
+      ['/backend/facilities/calendar', 'facilities.nav.calendar'],
+      ['/backend/facilities/rentals', 'facilities.rentals.title'],
+      ['/backend/facilities/requests', 'facilities.nav.requests'],
+      ['/backend/facilities/zones', 'facilities.rules.title'],
+      ['/backend/facilities/logs', 'facilities.records.title'],
+      ['/backend/facilities/reports/owner', 'facilities.reports.owner.title'],
+    ],
+  },
+]
+
+test('TEST-N01 the sidebar has the mockup groups in the mockup order, with the menu labels', async ({
+  page,
+  request,
+}) => {
+  const club = await createClub(request, 'test-n01-sidebar-groups')
+  try {
+    page.setDefaultTimeout(30_000)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    await page.goto('/backend')
+    await expect(page.getByTestId('backend-chrome-ready')).toHaveAttribute('data-ready', 'true')
+    const groups = page.getByTestId('sidebar').locator('[data-sidebar-group="true"]')
+    // Every group's name (the first span of its toggle) and its items: href and the label span (the one without a class).
+    const sidebar = await groups.evaluateAll((elements) =>
+      elements.map((group) => ({
+        name: group.querySelector('button > span')?.textContent?.trim() ?? '',
+        items: Array.from(group.querySelectorAll('a[href]')).map((anchor) => ({
+          href: anchor.getAttribute('href'),
+          label:
+            Array.from(anchor.children)
+              .find((child) => child.tagName === 'SPAN' && !child.getAttribute('class'))
+              ?.textContent?.trim() ?? '',
+        })),
+      })),
+    )
+    expect(sidebar.length).toBeGreaterThanOrEqual(GROUPS.length)
+    GROUPS.forEach((expected, index) => {
+      const actual = sidebar[index]
+      expect(actual.name, expected.key).toMatch(uiText(expected.key, { exact: true }))
+      expect(
+        actual.items.map((item) => item.href),
+        expected.key,
+      ).toEqual(expected.items.map(([href]) => href))
+      expected.items.forEach(([href, labelKey], itemIndex) => {
+        expect(actual.items[itemIndex].label, href).toMatch(uiText(labelKey, { exact: true }))
+      })
+    })
+  } finally {
+    await club.cleanup()
+  }
+})

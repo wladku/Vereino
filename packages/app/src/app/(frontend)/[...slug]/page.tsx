@@ -1,9 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { findRouteManifestMatch, getFrontendRouteManifests, registerFrontendRouteManifests } from '@open-mercato/shared/modules/registry'
 import { frontendRoutes } from '@/.mercato/generated/frontend-routes.generated'
 import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
 import { AccessDeniedMessage } from '@open-mercato/ui/backend/detail'
+import { AccessDeniedActions } from '@/components/AccessDeniedActions'
 import type { AuthContext } from '@open-mercato/shared/lib/auth/server'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
@@ -44,9 +44,11 @@ async function renderAccessDenied() {
       label={translate('auth.accessDenied.title', 'Access Denied')}
       description={translate('auth.accessDenied.message', 'You do not have permission to view this page. Please contact your administrator.')}
       action={
-        <Link href="/" className="text-sm underline hover:opacity-80">
-          {translate('auth.accessDenied.home', 'Go to Home')}
-        </Link>
+        <AccessDeniedActions
+          homeHref="/club"
+          homeLabel={translate('vereino.accessDenied.memberHome', 'Go to the member interface')}
+          signOutLabel={translate('vereino.accessDenied.signOut', 'Sign out and use another account')}
+        />
       }
     />
   )
