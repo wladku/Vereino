@@ -4,6 +4,8 @@ import {
   sessionEditDraft,
   sessionEditFieldOfError,
   sessionEditProblems,
+  sessionEditRefusal,
+  sessionEditRefusalOfCode,
   type EditableSession,
 } from '../session-edit'
 
@@ -191,5 +193,35 @@ describe('sessionEditFieldOfError', () => {
   it('answers null without a code or for a code no field owns', () => {
     expect(sessionEditFieldOfError(null)).toBeNull()
     expect(sessionEditFieldOfError('coach_edit_series_session')).toBeNull()
+  })
+})
+
+describe('sessionEditRefusal (E20-S10, #489)', () => {
+  const ok = { status: 'ok' as const, mayEdit: true, planned: true, partOfClubEvent: false, as: 'coach' as const }
+
+  it('shows the form for a planned session the caller may edit', () => {
+    expect(sessionEditRefusal(ok)).toBeNull()
+  })
+
+  it('names a session outside the caller’s groups and sections', () => {
+    expect(sessionEditRefusal({ status: 'forbidden' })).toBe('not_yours')
+    expect(sessionEditRefusal({ ...ok, mayEdit: false, as: 'coordinator' })).toBe('not_yours')
+  })
+
+  it('names a session that is no longer planned before anything else', () => {
+    expect(sessionEditRefusal({ ...ok, planned: false })).toBe('not_planned')
+    expect(sessionEditRefusal({ ...ok, planned: false, mayEdit: false, partOfClubEvent: true })).toBe('not_planned')
+  })
+
+  it('sends a part session to the club event and a coach’s series session to the coordinator', () => {
+    expect(sessionEditRefusal({ ...ok, mayEdit: false, partOfClubEvent: true })).toBe('club_event_part')
+    expect(sessionEditRefusal({ ...ok, mayEdit: false })).toBe('coach_series')
+  })
+
+  it('maps the coded 403 of a save to the same reasons', () => {
+    expect(sessionEditRefusalOfCode('coach_edit_series_session')).toBe('coach_series')
+    expect(sessionEditRefusalOfCode('club_event_part_managed_by_event')).toBe('club_event_part')
+    expect(sessionEditRefusalOfCode('scope_denied')).toBe('not_yours')
+    expect(sessionEditRefusalOfCode(null)).toBe('not_yours')
   })
 })
