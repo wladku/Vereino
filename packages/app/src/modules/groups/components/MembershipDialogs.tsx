@@ -13,25 +13,11 @@ import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/ba
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@open-mercato/ui/primitives/sheet'
+import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@open-mercato/ui/primitives/sheet'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ROSTER_ROLE_ORDER, moveDateBounds, type MembershipRole } from '../lib/groups-rules'
 import {
@@ -42,6 +28,7 @@ import {
   type MembershipRow,
   type Translate,
 } from './client-helpers'
+import { DialogContent, SheetContent } from '@/components/ui/dialog'
 
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
 

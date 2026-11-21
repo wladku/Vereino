@@ -185,7 +185,7 @@ export function DayAxis({
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a horizontally scrolling region must be keyboard-focusable (WCAG 2.1.1, axe `scrollable-region-focusable` with four parallel entries at 375 px)
         tabIndex={0}
         aria-label={t('facilities.axis.label', { from: timeOf(bounds.from), to: timeOf(bounds.to) })}
-        className="focus-visible:ring-ring max-w-full overflow-x-auto rounded-md border focus-visible:ring-2 focus-visible:outline-none"
+        className="focus-visible:focus-indicator max-w-full overflow-x-auto rounded-md border"
         data-testid="facilities-axis-scroll"
       >
         <div
@@ -206,7 +206,7 @@ export function DayAxis({
                     <button
                       type="button"
                       aria-label={t('facilities.axis.bookFrom', { hour: String(hour / 60) })}
-                      className="hover:bg-muted focus-visible:bg-muted focus-visible:ring-ring flex-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset motion-safe:transition-colors"
+                      className="hover:bg-muted focus-visible:bg-muted focus-visible:focus-indicator-inset flex-1 motion-safe:transition-colors"
                       onClick={() => {
                         onBookHour?.(label)
                       }}

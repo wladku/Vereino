@@ -11,7 +11,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { errorMessage, formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
+import { TableLoadError } from '@vereino/ui'
+import { formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
 import { usePeopleRecordAccess } from '../useRecordLinks'
 import { AcceptHandoverDialog, formatDay } from './AcceptHandoverDialog'
 import {
@@ -217,7 +218,15 @@ export function CashCustodyPage() {
             columns={columns}
             data={custody.data?.items ?? []}
             isLoading={custody.isLoading}
-            error={custody.error ? errorMessage(custody.error, t('payments.cashCustody.errors.load')) : null}
+            error={
+              custody.error ? (
+                <TableLoadError
+                  message={t('payments.cashCustody.errors.load')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void custody.refetch()}
+                />
+              ) : null
+            }
           />
         )}
         {custody.data && custody.data.items.length > 0 ? (
@@ -238,7 +247,15 @@ export function CashCustodyPage() {
             columns={history}
             data={handovers.data?.items ?? []}
             isLoading={handovers.isLoading}
-            error={handovers.error ? errorMessage(handovers.error, t('payments.cashCustody.errors.history')) : null}
+            error={
+              handovers.error ? (
+                <TableLoadError
+                  message={t('payments.cashCustody.errors.history')}
+                  retryLabel={t('payments.common.retry')}
+                  onRetry={() => void handovers.refetch()}
+                />
+              ) : null
+            }
             pagination={{
               page,
               pageSize: HANDOVER_PAGE_SIZE,

@@ -8,7 +8,6 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClubFrame } from './ClubFrame'
 import {
@@ -19,9 +18,10 @@ import {
   type MemberProfile,
   type MemberWard,
 } from './member-client'
+import { StatusTag } from '@vereino/ui'
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
-const LINK_TILE_CLASS = `${TILE_CLASS} hover:bg-accent focus-visible:shadow-focus min-h-11 outline-none`
+const LINK_TILE_CLASS = `${TILE_CLASS} hover:bg-accent focus-visible:focus-indicator min-h-11 outline-none`
 
 function WardCard({ ward, locale }: { ward: MemberWard; locale: string }) {
   const t = useT()
@@ -35,13 +35,13 @@ function WardCard({ ward, locale }: { ward: MemberWard; locale: string }) {
           <span className="text-muted-foreground text-sm">{t('people.club.wards.birthDate', { date: birthDate })}</span>
         ) : null}
         <span className="flex flex-wrap gap-2">
-          <StatusBadge variant={granted === WARD_CONSENT_KINDS.length ? 'success' : 'warning'}>
+          <StatusTag status={granted === WARD_CONSENT_KINDS.length ? 'success' : 'warning'}>
             {t('people.club.wards.consentsSummary', {
               granted: String(granted),
               total: String(WARD_CONSENT_KINDS.length),
             })}
-          </StatusBadge>
-          {ward.hasAccount ? <StatusBadge variant="neutral">{t('people.club.wards.hasAccount')}</StatusBadge> : null}
+          </StatusTag>
+          {ward.hasAccount ? <StatusTag status="neutral">{t('people.club.wards.hasAccount')}</StatusTag> : null}
         </span>
       </Link>
     </li>

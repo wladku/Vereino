@@ -15,19 +15,13 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { LookupSelect, type LookupSelectItem } from '@open-mercato/ui/backend/inputs'
 import { createCrud, deleteCrud, fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { errorCodeOf } from '@vereino/core'
+import { TableLoadError } from '@vereino/ui'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import {
   codedMessage,
@@ -46,6 +40,7 @@ import {
   type PlaceMaintainerRow,
 } from './maintenance-client'
 import { searchPersons } from './rentals-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 50
 
@@ -243,7 +238,7 @@ export function PlaceMaintainers() {
   const [adding, setAdding] = React.useState(0)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [MAINTAINERS_KEY, 'list', selectedPlace, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<PlaceMaintainerRow>(
@@ -348,7 +343,15 @@ export function PlaceMaintainers() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.maintenance.maintainers.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.maintenance.maintainers.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             rowActions={(row: PlaceMaintainerRow) => (
               <span data-testid={`facilities-maintainer-actions-${row.id}`}>
                 <RowActions

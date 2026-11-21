@@ -14,19 +14,13 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { LOG_TEXT_MAX_LENGTH } from '../lib/logs'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import { LogCreateDialog } from './LogCreateDialog'
@@ -47,6 +41,7 @@ import {
   updateLogRecord,
   type LogRow,
 } from './records-client'
+import { DialogContent } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 50
 
@@ -317,7 +312,7 @@ export function LogsTable() {
   const [createKey, setCreateKey] = React.useState(0)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [LOGS_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<LogRow>(LOGS_API, {
@@ -393,7 +388,15 @@ export function LogsTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.logs.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.logs.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             filters={filterDefs}
             filterValues={filters}
             onFiltersApply={(values: FilterValues) => {

@@ -22,10 +22,10 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { FileUploadArea } from '@open-mercato/ui/primitives/file-upload'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MATERIAL_MAX_BYTES } from '../lib/files'
 import { errorMessage } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 type MaterialItem = {
   id: string
@@ -209,9 +209,9 @@ export function SectionMaterialsPanel({ sectionId, canEdit }: { sectionId: strin
               </span>
             )}
             <span className="flex flex-wrap items-center gap-2">
-              <StatusBadge variant={item.isPublic ? 'success' : 'neutral'}>
+              <StatusTag status={item.isPublic ? 'success' : 'neutral'}>
                 {item.isPublic ? t('club_core.materials.public') : t('club_core.materials.internal')}
-              </StatusBadge>
+              </StatusTag>
               {canEdit ? (
                 <>
                   {renaming?.id !== item.id ? (

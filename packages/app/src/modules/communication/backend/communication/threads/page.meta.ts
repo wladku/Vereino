@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['communication.post'],
   pageTitle: 'Threads and cases',
   pageTitleKey: 'communication.threads.page.title',
-  pageGroup: 'Messages',
+  pageGroup: 'Communication',
   pageGroupKey: 'communication.nav.group',
   pageOrder: 10,
   icon: 'messages-square',

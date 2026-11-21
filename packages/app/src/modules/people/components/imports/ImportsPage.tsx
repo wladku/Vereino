@@ -8,12 +8,13 @@ import { useQuery } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import type { TableColumns, Translate } from '../client-helpers'
 import { ImportUpload } from './ImportUpload'
 import { IMPORTS_HREF, STATUS_VARIANTS, instantLabel, type ImportRow, type Paged } from './import-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 20
 
@@ -54,9 +55,9 @@ function buildColumns(t: Translate): TableColumns<ImportRow> {
       meta: { priority: 1 },
       cell: ({ row }) => (
         <span data-testid={`people-import-status-${row.original.id}`}>
-          <StatusBadge variant={STATUS_VARIANTS[row.original.status]}>
+          <StatusTag status={STATUS_VARIANTS[row.original.status]}>
             {t(`people.imports.status.${row.original.status}`)}
-          </StatusBadge>
+          </StatusTag>
         </span>
       ),
     },
@@ -95,7 +96,7 @@ export function ImportsPage() {
   const router = useRouter()
   const scopeVersion = useOrganizationScopeVersion()
   const [page, setPage] = React.useState(1)
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['people-imports', page, scopeVersion],
     queryFn: async () => {
       const call = await apiCall<Paged<ImportRow>>(
@@ -127,7 +128,15 @@ export function ImportsPage() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading || (!data && isFetching)}
-          error={error && !isFetching ? t('people.imports.errors.load') : null}
+          error={
+            error && !isFetching ? (
+              <TableLoadError
+                message={t('people.imports.errors.load')}
+                retryLabel={t('people.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={<p className="text-muted-foreground text-sm">{t('people.imports.history.empty')}</p>}
           rowActions={(row: ImportRow) => (
             <RowActions items={[{ id: 'open', label: t('people.common.open'), href: `${IMPORTS_HREF}/${row.id}` }]} />

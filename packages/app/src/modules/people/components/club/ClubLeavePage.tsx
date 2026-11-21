@@ -5,7 +5,9 @@
 // `POST /api/people/me/departure-requests`. The club decides, and the page says so. An open request is shown instead
 // of the form, with "Withdraw"; a declined one shows its reason. A minor has no form (and no link on the profile). A
 // coach reads one extra line: the club hands the sessions over and settles the cash they hold. 375 px: one column,
-// the submit bar sticks above the bottom navigation; touch targets at least 44 px.
+// the submit bar sticks above the bottom navigation; touch targets at least 44 px. "Send" stays enabled: a send with
+// nobody chosen or a past last day shows the error summary and moves the focus to the first field to fix (R04.1–R04.3;
+// #490).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -20,6 +22,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, errorCodeOf } from '@vereino/core'
+import { ErrorSummary, FieldErrorMessage, fieldErrorId, focusFirstProblem, type FieldProblem } from '@vereino/ui'
 import { retryAfterMinutes } from '../../lib/account-limits'
 import { mayFileDepartureRequest } from '../../lib/departure-rules'
 import { ClubFrame } from './ClubFrame'
@@ -176,6 +179,8 @@ function OpenRequest({
   )
 }
 
+const LAST_DAY_ID = 'club-leave-last-day'
+
 function LeaveForm({
   profile,
   today,
@@ -199,9 +204,23 @@ function LeaveForm({
   const [busy, setBusy] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
   const pastDay = lastDay !== '' && lastDay < today
+  // After the first send the summary follows the choices, so a fixed field drops out of it at once.
+  const [attempted, setAttempted] = React.useState(false)
+  const whoFieldId = `club-leave-who-${profile.person.id}`
+  const found: FieldProblem[] = [
+    ...(selected.length === 0 ? [{ fieldId: whoFieldId, message: t('people.club.leave.errors.whoRequired') }] : []),
+    ...(pastDay ? [{ fieldId: LAST_DAY_ID, message: t('people.errors.departure_date_in_past') }] : []),
+  ]
+  const problems = attempted ? found : []
+  const whoProblem = problems.find((entry) => entry.fieldId === whoFieldId)?.message ?? null
 
   const submit = async () => {
-    if (selected.length === 0 || pastDay) return
+    if (found.length > 0) {
+      setAttempted(true)
+      setProblem(null)
+      focusFirstProblem(found)
+      return
+    }
     setBusy(true)
     setProblem(null)
     try {
@@ -244,12 +263,21 @@ function LeaveForm({
     <form
       className="flex flex-col gap-4 pb-24"
       data-testid="club-leave-form"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         void submit()
       }}
     >
-      <fieldset className="bg-card flex flex-col gap-2 rounded-lg border p-4">
+      <ErrorSummary
+        title={t('people.club.leave.errors.summary')}
+        problems={problems}
+        data-testid="club-leave-problems"
+      />
+      <fieldset
+        className="bg-card flex flex-col gap-2 rounded-lg border p-4"
+        aria-describedby={whoProblem ? fieldErrorId(whoFieldId) : undefined}
+      >
         <legend className="px-1 text-sm font-semibold">{t('people.club.leave.who')}</legend>
         {people.map((person) => (
           <div key={person.id} className="flex min-h-11 items-center gap-3">
@@ -266,12 +294,13 @@ function LeaveForm({
             <Label htmlFor={`club-leave-who-${person.id}`}>{person.label}</Label>
           </div>
         ))}
+        <FieldErrorMessage fieldId={whoFieldId} message={whoProblem} data-testid="club-leave-who-error" />
       </fieldset>
       <div className="bg-card flex flex-col gap-4 rounded-lg border p-4">
         <div className="flex flex-col gap-1">
-          <Label htmlFor="club-leave-last-day">{t('people.club.leave.lastDay')}</Label>
+          <Label htmlFor={LAST_DAY_ID}>{t('people.club.leave.lastDay')}</Label>
           <Input
-            id="club-leave-last-day"
+            id={LAST_DAY_ID}
             type="date"
             min={today}
             className="min-h-11"
@@ -281,9 +310,10 @@ function LeaveForm({
               setLastDay(event.target.value)
             }}
             aria-invalid={pastDay}
+            aria-describedby={pastDay ? fieldErrorId(LAST_DAY_ID) : undefined}
           />
           {pastDay ? (
-            <p className="text-destructive text-sm" role="alert">
+            <p id={fieldErrorId(LAST_DAY_ID)} className="text-destructive text-sm" role="alert">
               {t('people.errors.departure_date_in_past')}
             </p>
           ) : null}
@@ -327,12 +357,7 @@ function LeaveForm({
         </Alert>
       ) : null}
       <div className="bg-background sticky bottom-16 z-10 -mx-4 border-t px-4 py-3 sm:bottom-0">
-        <Button
-          type="submit"
-          className="min-h-11 w-full"
-          disabled={busy || selected.length === 0 || pastDay}
-          data-testid="club-leave-send"
-        >
+        <Button type="submit" className="min-h-11 w-full" disabled={busy} data-testid="club-leave-send">
           {t('people.club.leave.send')}
         </Button>
       </div>

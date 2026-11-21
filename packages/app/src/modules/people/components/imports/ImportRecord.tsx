@@ -20,9 +20,9 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { TableLoadError } from '@vereino/ui'
 import { OWN_FORBIDDEN_STATE, errorMessage, type TableColumns, type Translate } from '../client-helpers'
 import { MatchPersonDialog } from './MatchPersonDialog'
 import {
@@ -39,6 +39,7 @@ import {
   type ImportRowRow,
   type Paged,
 } from './import-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 type Filter = 'all' | 'pending' | ImportRowRow['classification']
@@ -178,9 +179,9 @@ export function ImportRecord({ id }: { id: string }) {
         meta: { priority: 1 },
         cell: ({ row }) => (
           <span data-testid={`people-import-row-${String(row.original.rowNo)}-classification`}>
-            <StatusBadge variant={CLASSIFICATION_VARIANTS[row.original.classification]}>
+            <StatusTag status={CLASSIFICATION_VARIANTS[row.original.classification]}>
               {t(`people.imports.classifications.${row.original.classification}`)}
-            </StatusBadge>
+            </StatusTag>
           </span>
         ),
       },
@@ -239,7 +240,7 @@ export function ImportRecord({ id }: { id: string }) {
               <span className="break-words">{group}</span>
               {state ? (
                 <span data-testid={`people-import-row-${String(row.original.rowNo)}-membership`}>
-                  <StatusBadge variant={state.variant}>{t(`people.imports.membership.${state.key}`)}</StatusBadge>
+                  <StatusTag status={state.variant}>{t(`people.imports.membership.${state.key}`)}</StatusTag>
                 </span>
               ) : null}
             </span>
@@ -374,9 +375,9 @@ export function ImportRecord({ id }: { id: string }) {
             })}
           </span>
           <span data-testid="people-import-status">
-            <StatusBadge variant={STATUS_VARIANTS[current.status]}>
+            <StatusTag status={STATUS_VARIANTS[current.status]}>
               {t(`people.imports.status.${current.status}`)}
-            </StatusBadge>
+            </StatusTag>
           </span>
         </div>
         {open ? (
@@ -473,7 +474,15 @@ export function ImportRecord({ id }: { id: string }) {
         columns={columns}
         data={rows?.items ?? []}
         isLoading={rowsQuery.isLoading || (!rows && rowsQuery.isFetching)}
-        error={rowsQuery.error && !rowsQuery.isFetching ? t('people.imports.errors.loadRows') : null}
+        error={
+          rowsQuery.error && !rowsQuery.isFetching ? (
+            <TableLoadError
+              message={t('people.imports.errors.loadRows')}
+              retryLabel={t('people.common.retry')}
+              onRetry={() => void rowsQuery.refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('people.imports.rows.empty')}</p>}
         pagination={{
           page,

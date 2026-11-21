@@ -64,3 +64,12 @@ export function composePreset(value: string | null | undefined): { kind: Audienc
   if (!match) return null
   return { kind: match[1] as AudienceKind, ids: [match[2].toLowerCase()] }
 }
+
+/**
+ * Whether the person acts as staff who post announcements (a coach, a section coordinator, the club administrator):
+ * they write to a group with an announcement, so `/club/messages/new` names that way instead of the household's
+ * "nobody to write to" (E20-S10, #489).
+ */
+export function isStaff(contexts: readonly string[]): boolean {
+  return contexts.some((context) => context === 'coach' || context === 'coordinator' || context === 'club_admin')
+}

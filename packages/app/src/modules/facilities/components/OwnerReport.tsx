@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@open-mercato/ui/primi
 import { EmptyState } from '@open-mercato/ui/primitives/empty-state'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { ownerReportEmpty, presetPeriod, shiftPeriod, type OwnerReport as Report } from '../lib/owner-report'
@@ -24,7 +23,7 @@ import { ZONES } from '../lib/zones'
 import { PlaceSelect } from './FacilitiesControls'
 import { codedMessage, usePlaceOptions, zoneLabel, type TableColumns, type Translate } from './facilities-client'
 import { rentalStatusLabel, rentalStatusVariant, slotLabel, useRentalTimeZone } from './rentals-client'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, useClubToday } from '@vereino/ui'
 
 type PeriodKind = 'month' | 'quarter'
 type RentalRow = Report['rentals']['items'][number]
@@ -83,9 +82,9 @@ function buildColumns(t: Translate, currency: string, locale: string, timeZone: 
       enableSorting: false,
       meta: { priority: 2 },
       cell: ({ row }) => (
-        <StatusBadge variant={rentalStatusVariant(row.original.status)}>
+        <StatusTag status={rentalStatusVariant(row.original.status)}>
           {rentalStatusLabel(t, row.original.status)}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
   ]

@@ -17,11 +17,10 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { CLUB_GROUPS_HREF, MemberSkeleton, useClubToday } from '@vereino/ui'
+import { CLUB_GROUPS_HREF, MemberSkeleton, StatusTag, useClubToday } from '@vereino/ui'
 import { ROSTER_VIEWS, membershipActions, type MembershipAction, type PeriodStatus } from '../../lib/groups-rules'
 import {
   OWN_FORBIDDEN_STATE,
@@ -118,7 +117,7 @@ function MemberCard({
         <span className="font-medium break-words" data-testid="club-roster-name">
           {name}
         </span>
-        <StatusBadge variant={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusBadge>
+        <StatusTag status={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusTag>
       </div>
       <p className="text-muted-foreground text-sm break-words">
         {[roleLabel(t, row.role, groupKind), age].filter(Boolean).join(' · ')}

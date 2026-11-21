@@ -14,11 +14,11 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOve
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { errorMessage, sectionOptions, tolerant, type TableColumns, type Translate } from './client-helpers'
+import { TableLoadError } from '@vereino/ui'
+import { sectionOptions, tolerant, type TableColumns, type Translate } from './client-helpers'
 import {
   CLUB_EVENT_CREATE_HREF,
   clubEventDatesLabel,
@@ -27,6 +27,7 @@ import {
   type ClubEventRow,
 } from './club-events-client'
 import { useActivitiesFeatures } from './useActivitiesFeatures'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -69,7 +70,7 @@ function buildColumns(t: Translate, locale: string): TableColumns<ClubEventRow> 
         <span className="flex flex-wrap items-center gap-2">
           <span>{row.original.placeName ?? t('activities.common.empty')}</span>
           {row.original.placeExternal ? (
-            <StatusBadge variant="neutral">{t('activities.clubEvents.place.external')}</StatusBadge>
+            <StatusTag status="neutral">{t('activities.clubEvents.place.external')}</StatusTag>
           ) : null}
         </span>
       ),
@@ -96,7 +97,7 @@ function buildColumns(t: Translate, locale: string): TableColumns<ClubEventRow> 
       meta: { priority: 4 },
       cell: ({ row }) =>
         row.original.isPublic ? (
-          <StatusBadge variant="success">{t('activities.clubEvents.public.yes')}</StatusBadge>
+          <StatusTag status="success">{t('activities.clubEvents.public.yes')}</StatusTag>
         ) : (
           <span className="text-muted-foreground">{t('activities.clubEvents.public.no')}</span>
         ),
@@ -107,9 +108,9 @@ function buildColumns(t: Translate, locale: string): TableColumns<ClubEventRow> 
       enableSorting: false,
       meta: { priority: 3 },
       cell: ({ row }) => (
-        <StatusBadge variant={clubEventStatusVariant(row.original.status)}>
+        <StatusTag status={clubEventStatusVariant(row.original.status)}>
           {t(`activities.clubEvents.status.${row.original.status === 'cancelled' ? 'cancelled' : 'planned'}`)}
-        </StatusBadge>
+        </StatusTag>
       ),
     },
   ]
@@ -129,7 +130,7 @@ export function ClubEventsTable() {
   const [page, setPage] = React.useState(1)
   const sectionId = typeof filters.sectionId === 'string' && filters.sectionId ? filters.sectionId : null
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-club-events', view, search, sectionId, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ClubEventRow>('activities/club-events', {
@@ -197,7 +198,15 @@ export function ClubEventsTable() {
                 columns={columns}
                 data={data?.items ?? []}
                 isLoading={isLoading}
-                error={error ? errorMessage(error, t('activities.clubEvents.errors.load')) : null}
+                error={
+                  error ? (
+                    <TableLoadError
+                      message={t('activities.clubEvents.errors.load')}
+                      retryLabel={t('activities.common.retry')}
+                      onRetry={() => void refetch()}
+                    />
+                  ) : null
+                }
                 emptyState={
                   <div data-testid="club-events-empty">
                     <EmptyState

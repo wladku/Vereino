@@ -9,14 +9,7 @@ import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@open-mercato/ui/primitives/dialog'
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { RadioGroup } from '@open-mercato/ui/primitives/radio'
@@ -28,6 +21,7 @@ import { MIN_AVAILABILITY_MINUTES } from '../lib/zones'
 import { WeekdayToggles } from './FacilitiesControls'
 import { ZONE_RULES_BULK_URL, codedMessage, errorMessage, type Translate } from './facilities-client'
 import { useClubToday } from '@vereino/ui'
+import { DialogContent } from '@/components/ui/dialog'
 
 /** `POST /api/facilities/zone-rules/bulk` → 200. */
 export type BulkResult = {

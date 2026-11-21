@@ -1,9 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { findRouteManifestMatch, getFrontendRouteManifests, registerFrontendRouteManifests } from '@open-mercato/shared/modules/registry'
 import { frontendRoutes } from '@/.mercato/generated/frontend-routes.generated'
 import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
 import { AccessDeniedMessage } from '@open-mercato/ui/backend/detail'
+import { AccessDeniedActions } from '@/components/AccessDeniedActions'
 import type { AuthContext } from '@open-mercato/shared/lib/auth/server'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
@@ -13,12 +13,24 @@ import { Organization } from '@open-mercato/core/modules/directory/data/entities
 import type { Metadata } from 'next'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { resolveLocalizedTitleMetadata } from '@/lib/metadata'
+import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
 import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middleware/page-executor'
 import { frontendMiddlewareEntries } from '@/.mercato/generated/frontend-middleware.generated'
 
 registerFrontendRouteManifests(frontendRoutes)
 
-type FrontendParams = { params: Promise<{ slug: string[] }> }
+type SearchParams = Record<string, string | string[] | undefined>
+
+type FrontendParams = { params: Promise<{ slug: string[] }>; searchParams?: Promise<SearchParams> }
+
+/**
+ * A module page may carry its own document metadata as a static `generateMetadata` on its default export (the route
+ * loader hands over only the default export): the Vereino public club pages title themselves with the club's name and
+ * add Open Graph tags (#487). Null keeps the route's own title.
+ */
+type PageWithMetadata = {
+  generateMetadata?: (props: { params: Record<string, string | string[]>; searchParams: SearchParams }) => Promise<Metadata | null>
+}
 
 async function ensureServerBootstrap() {
   const { bootstrap } = await import('@/bootstrap')
@@ -32,15 +44,17 @@ async function renderAccessDenied() {
       label={translate('auth.accessDenied.title', 'Access Denied')}
       description={translate('auth.accessDenied.message', 'You do not have permission to view this page. Please contact your administrator.')}
       action={
-        <Link href="/" className="text-sm underline hover:opacity-80">
-          {translate('auth.accessDenied.home', 'Go to Home')}
-        </Link>
+        <AccessDeniedActions
+          homeHref="/club"
+          homeLabel={translate('vereino.accessDenied.memberHome', 'Go to the member interface')}
+          signOutLabel={translate('vereino.accessDenied.signOut', 'Sign out and use another account')}
+        />
       }
     />
   )
 }
 
-export async function generateMetadata({ params }: FrontendParams): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: FrontendParams): Promise<Metadata> {
   const p = await params
   const pathname = '/' + (p.slug?.join('/') ?? '')
   const match = findRouteManifestMatch(getFrontendRouteManifests(), pathname)
@@ -48,14 +62,48 @@ export async function generateMetadata({ params }: FrontendParams): Promise<Meta
     return {}
   }
 
-  return resolveLocalizedTitleMetadata({
+  const routeMetadata = await resolveLocalizedTitleMetadata({
     title: match.route.title,
     titleKey: match.route.titleKey,
+    clubName: await publicClubName(match.params ?? {}),
   })
+  if (match.route.requireAuth || match.route.requireCustomerAuth) return routeMetadata
+  const Component = (await match.route.load()) as PageWithMetadata
+  if (typeof Component.generateMetadata !== 'function') return routeMetadata
+  const pageMetadata = await Component.generateMetadata({ params: match.params, searchParams: (await searchParams) ?? {} })
+  return pageMetadata ? { ...routeMetadata, ...pageMetadata } : routeMetadata
 }
 
-export default async function SiteCatchAll({ params }: FrontendParams) {
+/**
+ * The club of a public page under `/p/[clubSlug]` for its tab title ("{club} — {page}", #485), read through the
+ * approved public slug lookup of `clubCorePublicSite`. A section or club event page names the club only when that
+ * section or event is public itself, so a not-found page never carries club data (E02-S05). Null for any other page,
+ * a club that does not publish its page, or on any failure (the title then names the product).
+ */
+async function publicClubName(params: Record<string, unknown>): Promise<string | null> {
+  const text = (value: unknown): string | null => (typeof value === 'string' && value ? value : null)
+  const clubSlug = text(params.clubSlug)
+  if (!clubSlug) return null
+  try {
+    await ensureServerBootstrap()
+    const container = await createRequestContainer()
+    if (!container.hasRegistration('clubCorePublicSite')) return null
+    const site = container.resolve<ClubCorePublicSite>('clubCorePublicSite')
+    const frame = await site.clubFrame(clubSlug)
+    if (frame.status !== 'ok') return null
+    const sectionSlug = text(params.sectionSlug)
+    if (sectionSlug && (await site.sectionPage(clubSlug, sectionSlug)).status !== 'ok') return null
+    const eventSlug = text(params.eventSlug)
+    if (eventSlug && (await site.publicClubEvent(clubSlug, eventSlug)).status !== 'ok') return null
+    return frame.value.club.name
+  } catch {
+    return null
+  }
+}
+
+export default async function SiteCatchAll({ params, searchParams }: FrontendParams) {
   const p = await params
+  const query = (await searchParams) ?? {}
   const pathname = '/' + (p.slug?.join('/') ?? '')
   const match = findRouteManifestMatch(getFrontendRouteManifests(), pathname)
   if (!match) return notFound()
@@ -139,5 +187,5 @@ export default async function SiteCatchAll({ params }: FrontendParams) {
   })
   if (middlewareRedirect) redirect(middlewareRedirect)
   const Component = await match.route.load()
-  return <Component params={match.params} />
+  return <Component params={match.params} searchParams={query} />
 }

@@ -20,6 +20,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { POLICY_SCOPES } from '../lib/policy'
 import {
   CLUB_SETTINGS_HREF,
@@ -98,7 +99,7 @@ export function PoliciesTable() {
   const [filters, setFilters] = React.useState<FilterValues>({})
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-policies', filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<PolicyRow>(API_PATH, {
@@ -164,7 +165,15 @@ export function PoliciesTable() {
         columns={columns}
         data={data?.items ?? []}
         isLoading={isLoading}
-        error={error ? errorMessage(error, t('activities.policies.errors.load')) : null}
+        error={
+          error ? (
+            <TableLoadError
+              message={t('activities.policies.errors.load')}
+              retryLabel={t('activities.common.retry')}
+              onRetry={() => void refetch()}
+            />
+          ) : null
+        }
         emptyState={<p className="text-muted-foreground text-sm">{t('activities.policies.empty')}</p>}
         filters={filterDefs}
         filterValues={filters}

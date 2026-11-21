@@ -1,15 +1,30 @@
 {
-  "$comment": "Allow-list of scripts/check-glossary.mjs (navigation spec REQ-N11): Polish catalog values that may keep a retired term. Each entry names the key, the retired pattern exactly as the script lists it, and the reason. An entry that matches no value fails the check.",
+  "$comment": "Allow-list of scripts/check-glossary.mjs (navigation spec REQ-N11, #494): Polish or English catalog values that may keep a matched term. Each entry names the key, the rule's pattern exactly as the script lists it, and the reason. An entry that matches no value fails the check.",
   "entries": [
-    {
-      "key": "activities.nav.group",
-      "pattern": "harmonogram",
-      "reason": "The group name belongs to phase 1 (E09-S01, #246): the activities pages move under the shared group key groups.nav.group (\"Zajęcia\"), which retires this key. Until then a second \"Zajęcia\" group would stand next to \"Grupy\"."
-    },
     {
       "key": "club_core.places.links.calendar",
       "pattern": "obiekt",
       "reason": "The place form link names the facility calendar page (B-23) by its title, \"Kalendarz obiektu\" (facilities.calendar.title; facilities parity spec B-06 row, mockup README B-06), so the link reads like the page it opens (#276)."
+    },
+    {
+      "key": "activities.club.today.coachEmpty",
+      "pattern": "zaję(?:cia|ć|ciach|ciom|ciami)(?!\\p{L})",
+      "reason": "Glossary rule 1 keeps \"zajęcia\" in the mockup's everyday phrases on Today (m.screenToday.noClassesToday, noClassesTomorrow, nothingToday: \"Dziś bez zajęć.\")."
+    },
+    {
+      "key": "activities.club.today.emptyNext",
+      "pattern": "zaję(?:cia|ć|ciach|ciom|ciami)(?!\\p{L})",
+      "reason": "Glossary rule 1 keeps \"zajęcia\" in the mockup's everyday phrases on Today (m.screenToday.noClassesToday, noClassesTomorrow, nothingToday: \"Dziś bez zajęć.\")."
+    },
+    {
+      "key": "facilities.axis.legend.session",
+      "pattern": "zaję(?:cia|ć|ciach|ciom|ciami)(?!\\p{L})",
+      "reason": "Glossary rule 1 keeps \"zajęcia\" in the calendar legend (mockup ui.timeline.legendSessions: \"zajęcia\")."
+    },
+    {
+      "key": "facilities.places.kind.session",
+      "pattern": "zaję(?:cia|ć|ciach|ciom|ciami)(?!\\p{L})",
+      "reason": "Glossary rule 1 keeps \"zajęcia\" in the calendar legend (mockup ui.timeline.legendSessions: \"zajęcia\"). The tag names the kind of an entry on the place calendar, the same word as its legend."
     }
   ]
 }

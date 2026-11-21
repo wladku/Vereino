@@ -5,7 +5,7 @@ export const metadata = {
   requireFeatures: ['payments.bank.import'],
   pageTitle: 'Bank statements',
   pageTitleKey: 'payments.bank.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   pageOrder: 25,
   icon: 'landmark',
