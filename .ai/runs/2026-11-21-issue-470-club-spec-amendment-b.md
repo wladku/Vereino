@@ -11,6 +11,7 @@
 4. Wrote amendment B into the club spec: REQ-041 (retention sweep, Q-019), REQ-042 (link-token purge), REQ-043 (invariant check); the club setting `former_participant_retention_months`; three job rows; TEST-077…TEST-088; traceability rows; AC-041…AC-043; Q-053…Q-055; Q-019 resolved; the decision tables under *Requirement Traceability → Amendment B*.
 5. Ticked ENG-AC-06 in the engineering standards with the evidence; one changelog file per spec.
 6. Filed follow-ups #531 (build `payments:verify-invariants`) and #532 (build TEST-077…TEST-085).
+7. Review round 1 (independent reviewer, changes requested): the Important finding fixed. TEST-079 expected net amounts (67.00, 50.00) from `discountOn`, which returns the discount (`payments/lib/payments-rules.ts`). It now expects the discounts 33.00 and 50.00, which leave charges of 67.00 and 49.99; the issue #532 body was corrected to match. The minor findings (open issues worded "built by", TEST-003/TEST-F04 without a PR number, purge ownership wording) were left as the review allows, because the instruction was to fix only Blocking and Important findings.
 
 ## Decisions
 
