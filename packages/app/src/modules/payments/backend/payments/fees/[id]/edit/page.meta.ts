@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['payments.manage'],
   pageTitle: 'Edit fee schedule',
   pageTitleKey: 'payments.fees.edit.title',
-  pageGroup: 'Payments',
+  pageGroup: 'Finance',
   pageGroupKey: 'payments.nav.group',
   navHidden: true,
   breadcrumb: [

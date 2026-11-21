@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { SVG_TOKEN_RULE, scanPublicSvgs } from './vereino-svg-tokens.mjs'
 
 export const UI_POLICY_PATTERN_SOURCES = Object.freeze({
   palette: String.raw`(?:^|\s)(?:[a-z-]+:)*(?:text|bg|border|ring)-(?:red|green|emerald|blue|amber|orange|yellow|rose|lime|cyan|teal|indigo|violet|purple|pink)-\d{2,3}(?:\/\d+)?\b`,
@@ -25,6 +26,12 @@ export const DS_RULES = Object.freeze([
     id: 'manual-dark-override',
     description: 'Semantic and status tokens already provide their dark-mode values.',
     pattern: UI_POLICY_PATTERN_SOURCES.darkMode,
+    stringPolicy: true,
+  },
+  {
+    id: 'colour-named-status-token',
+    description: 'Status tokens name a meaning (success, warning, error, info, neutral); the colour-named --status-pink-* is not in docs/ux-concept/tokens.md.',
+    pattern: String.raw`\bstatus-pink-`,
     stringPolicy: true,
   },
   {
@@ -213,12 +220,18 @@ export function scanDesignSystem(root = process.cwd(), options = {}) {
     }
   }
 
+  // Vereino local patch (#485): the SVGs in public/ use only design-token colours.
+  const svgScan = scanPublicSvgs(normalizedRoot)
+  for (const { file, source, match, offset } of svgScan.findings) {
+    recordFinding(source, file, SVG_TOKEN_RULE, match, offset)
+  }
+
   const staleIgnores = ignore.entries
     .filter((entry) => !entry.matched)
     .map((entry) => ({ file: entry.file, rule: entry.rule, match: entry.match, line: entry.line ?? null }))
   return {
     ok: findings.length === 0 && staleIgnores.length === 0 && ignore.errors.length === 0,
-    filesScanned: sourceFiles.length,
+    filesScanned: sourceFiles.length + svgScan.filesScanned,
     findings,
     staleIgnores,
     errors: ignore.errors,

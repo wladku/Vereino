@@ -18,7 +18,6 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MANUAL_PAYMENT_METHODS, OPEN_CHARGE_STATUSES, payerDisplayName } from '../lib/charge-ledger'
@@ -39,6 +38,7 @@ import {
   type PaymentRow,
   type Translate,
 } from './client-helpers'
+import { StatusTag } from '@vereino/ui'
 
 type ChargeLoad = { status: 'ok'; charge: ChargeDetail } | { status: 'not_found' } | { status: 'denied' }
 
@@ -58,13 +58,13 @@ function Tile({ label, children, testId }: { label: string; children: React.Reac
 function RefundBadge({ payment, t }: { payment: PaymentRow; t: Translate }) {
   if (payment.method !== 'online' || payment.reversesPaymentId) return null
   if (payment.overpayment && payment.refundable > 0) {
-    return <StatusBadge variant="warning">{t('payments.ledger.payments.toRefund')}</StatusBadge>
+    return <StatusTag status="warning">{t('payments.ledger.payments.toRefund')}</StatusTag>
   }
   if (payment.refunds.length === 0) return null
   return (
-    <StatusBadge variant="neutral">
+    <StatusTag status="neutral">
       {payment.refundable > 0 ? t('payments.ledger.payments.partlyRefunded') : t('payments.ledger.payments.refunded')}
-    </StatusBadge>
+    </StatusTag>
   )
 }
 
@@ -277,10 +277,10 @@ export function ChargeRecord({ id }: { id: string }) {
                       <span className="flex flex-wrap items-center gap-1">
                         {t(`payments.ledger.method.${payment.method}`)}
                         {payment.reversesPaymentId ? (
-                          <StatusBadge variant="neutral">{t('payments.ledger.payments.reversal')}</StatusBadge>
+                          <StatusTag status="neutral">{t('payments.ledger.payments.reversal')}</StatusTag>
                         ) : null}
                         {payment.reversed && payment.method !== 'online' ? (
-                          <StatusBadge variant="warning">{t('payments.ledger.payments.reversed')}</StatusBadge>
+                          <StatusTag status="warning">{t('payments.ledger.payments.reversed')}</StatusTag>
                         ) : null}
                         <RefundBadge payment={payment} t={t} />
                       </span>

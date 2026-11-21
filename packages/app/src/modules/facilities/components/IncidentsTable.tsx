@@ -23,10 +23,9 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } fr
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
-import { browserTimeZone, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { TableLoadError, browserTimeZone, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 import { INCIDENT_ACTIONS, INCIDENT_KINDS, INCIDENT_PHOTOS_MAX, type IncidentAction } from '../lib/incidents'
 import { ActionChoices, IncidentDialog, type DialogOutcome } from './club-facility/FacilityDialogs'
@@ -127,7 +126,7 @@ function buildColumns(t: Translate): TableColumns<IncidentRow> {
         <span className="flex flex-col items-start gap-1">
           <span>{actionsLabel(t, row.original.actionTaken)}</span>
           {row.original.banIssued ? (
-            <StatusBadge variant="success">{t('facilities.records.incidents.banIssued')}</StatusBadge>
+            <StatusTag status="success">{t('facilities.records.incidents.banIssued')}</StatusTag>
           ) : null}
         </span>
       ),
@@ -447,7 +446,7 @@ export function IncidentsTable() {
   const timeZone = useClubTimeZone() ?? browserTimeZone()
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [INCIDENTS_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<IncidentRow>(INCIDENTS_API, {
@@ -535,7 +534,15 @@ export function IncidentsTable() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.incidents.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.incidents.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             filters={filterDefs}
             filterValues={filters}
             onFiltersApply={(values: FilterValues) => {

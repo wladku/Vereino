@@ -18,10 +18,10 @@ import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { MAINTENANCE_STATUSES } from '../lib/maintenance'
 import { ALL_PLACES, ListEmptyState, PlaceSelect } from './FacilitiesControls'
 import { MaintenanceCompleteDialog } from './MaintenanceCompleteDialog'
@@ -48,6 +48,7 @@ import {
   type MaintenanceTaskRow,
 } from './maintenance-client'
 import { instantOfLocal, localDateTimeValue } from './records-client'
+import { StatusTag } from '@vereino/ui'
 
 const PAGE_SIZE = 50
 
@@ -95,9 +96,9 @@ function buildColumns(t: Translate, locale: string): TableColumns<MaintenanceTas
       meta: { priority: 2 },
       cell: ({ row }) => (
         <span className="flex flex-col gap-1">
-          <StatusBadge variant={statusVariant(row.original.status)}>
+          <StatusTag status={statusVariant(row.original.status)}>
             {t(`facilities.maintenance.status.${row.original.status}`)}
-          </StatusBadge>
+          </StatusTag>
           {row.original.status === 'done' && row.original.doneAt ? (
             <span className="text-muted-foreground text-xs tabular-nums">
               {row.original.doneByName
@@ -152,7 +153,7 @@ function TasksList() {
   const selectedStatus = status === ALL_STATUSES ? null : status
   const placeOptions = places.data?.options ?? []
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [MAINTENANCE_KEY, 'list', selectedPlace, selectedStatus, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<MaintenanceTaskRow>(
@@ -275,7 +276,15 @@ function TasksList() {
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.maintenance.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.maintenance.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             rowActions={(row: MaintenanceTaskRow) =>
               row.status !== 'planned' ? null : (
                 <span data-testid={`facilities-maintenance-actions-${row.id}`}>

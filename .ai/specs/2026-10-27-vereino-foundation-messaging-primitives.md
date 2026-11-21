@@ -1,11 +1,11 @@
 # Vereino foundation III — audience, dispatch and messaging primitives, with E04 (#23) as the consumer
 
 **Date**: 2026-10-27
-**Status**: Ready for implementation — phase A (approved by the product owner: PR #45 merged on 2026-10-27; the start of E04, with enabling the e-mail modules in #71's scope, approved on 2026-11-01; phase A is issue #71); phases B (#35) and C (#36) follow phase A; phase D (#138, a member starts a direct thread with the coach) approved by the product owner on 2026-11-03
+**Status**: In progress — approved by the product owner (PR #45, 2026-10-27; E04 start 2026-11-01; phase D 2026-11-03); left: AC-M11 without test evidence (close-out #452)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
-Sources: issue #23 (E04 — Communication) and its stories #35 (announcements with notification, e-mail and share text) and #36 (cases); `.ai/specs/backlog.md`; `.ai/specs/product-brief.md` (D09, N02, N03, R01, R09, R15, A07, D21); `.ai/specs/2026-10-20-vereino-club-management.md` (phase 3: REQ-009, REQ-010, REQ-017, DD-16, DD-17, DD-35, J-003, the `communication` data model and API rows, TEST-015…017, V-4); the e-mail consumers of `.ai/specs/2026-10-27-vereino-club-payments.md` and `.ai/specs/2026-10-27-vereino-facilities.md`; foundation I (`2026-10-27-vereino-foundation-primitives.md`: P-01…P-19, `authorizeScoped`, `scopeWhere`, phase C token links) and foundation II (`2026-10-27-vereino-foundation-scheduling-primitives.md`: P-12, P-27, P-28) as amended by PRs #43 and #44; the architectural review of 2026-10-26 (`.ai/runs/2026-10-26-spec-architectural-review.md`: the Critical link-token e-mail finding and the High "`communication` as an e-mail hub with a dependency cycle" finding); the installed `@open-mercato/*` 0.9.0 packages (V-M01…V-M05).
+Sources: issue #23 (E04 — Communication) and its stories #35 (announcements with notification, e-mail and share text) and #36 (cases); `.ai/specs/backlog.md`; `.ai/specs/product-brief.md` (D09, N02, N03, R01, R09, R15, A07, D21); `.ai/specs/2026-10-20-vereino-club-management.md` (phase 3: REQ-009, REQ-010, REQ-017, DD-16, DD-17, DD-35, J-003, the `communication` data model and API rows, TEST-015…017, V-4); the e-mail consumers of `.ai/specs/2026-10-27-vereino-club-payments.md` and `.ai/specs/implemented/2026-10-27-vereino-facilities.md`; foundation I (`2026-10-27-vereino-foundation-primitives.md`: P-01…P-19, `authorizeScoped`, `scopeWhere`, phase C token links) and foundation II (`2026-10-27-vereino-foundation-scheduling-primitives.md`: P-12, P-27, P-28) as amended by PRs #43 and #44; the architectural review of 2026-10-26 (`.ai/runs/2026-10-26-spec-architectural-review.md`: the Critical link-token e-mail finding and the High "`communication` as an e-mail hub with a dependency cycle" finding); the installed `@open-mercato/*` 0.9.0 packages (V-M01…V-M05).
 
 ## TLDR
 
@@ -349,6 +349,7 @@ Validation for every phase: `yarn verify`; `yarn test:integration:vereino --filt
 - **Tests:** TEST-M01 … TEST-M04
 - **Validation:** as above
 - **Exit gate:** the four tests green on a fresh tenant; e-mails in the capture in two languages; no secret in events or logs.
+- **State:** Done (#73, issue #71).
 
 ### Phase B — Announcements, cancellation thread, share text and the inbox (consumer: #35)
 
@@ -362,6 +363,7 @@ Validation for every phase: `yarn verify`; `yarn test:integration:vereino --filt
 - **Tests:** TEST-M05 … TEST-M08, TEST-M10; the club spec's TEST-015 and TEST-012 (re-run with e-mail), TEST-047 (e-mails per locale)
 - **Validation:** as above; both locales, 375 px, light and dark, console clean
 - **Exit gate:** #35's acceptance criteria pass except the link-request criteria that belong to REQ-017; e-mails in the test mailbox in the recipient's language.
+- **State:** Done (#74, issue #35; J-003 without the REQ-017 steps in #79).
 
 ### Phase C — Cases (consumer: #36)
 
@@ -374,6 +376,7 @@ Validation for every phase: `yarn verify`; `yarn test:integration:vereino --filt
 - **Tests:** TEST-M09; the club spec's TEST-016
 - **Validation:** as above
 - **Exit gate:** #36's acceptance criteria pass.
+- **State:** Done (#77, issue #36).
 
 ### Phase D — A member starts a direct thread with the coach (consumer: #138)
 
@@ -386,8 +389,9 @@ Validation for every phase: `yarn verify`; `yarn test:integration:vereino --filt
 - **Tests:** TEST-M12, TEST-M13; TEST-M06, TEST-M09, TEST-M10 re-run
 - **Validation:** `yarn verify`; `yarn test:integration:vereino --filter TEST-M12` and `--filter TEST-M13`
 - **Exit gate:** #138's acceptance criteria pass.
+- **State:** Done (#177, issue #138; refusals covered in #232).
 
-REQ-M11 lands with this spec's PR (*Rollout*). Deferred by design: bounce webhooks (Q7), a generic seal (Q9), a shared public reference (Q10), REQ-017 (foundation I phase C).
+REQ-M11 lands with this spec's PR (*Rollout*) — done in #45; no scripted audit or test exists for it. Deferred by design: bounce webhooks (Q7), a generic seal (Q9), a shared public reference (Q10), REQ-017 (foundation I phase C).
 
 ## Requirement Traceability
 
@@ -429,20 +433,20 @@ REQ-M11 lands with this spec's PR (*Rollout*). Deferred by design: bounce webhoo
 
 ## Acceptance Criteria
 
-- [ ] **AC-M01** — An audience of each kind resolves to the expected recipients: minors' active guardians added and minors with an account kept, `persons` outside the author's scope refused, one delivery per person and channel, account holders on two channels, others on e-mail, unreachable counted, an unregistered kind refused with 422.
-- [ ] **AC-M02** — A dispatch is created once per key inside the caller's transaction, sends nothing when that transaction rolls back, retries a transient failure up to five times under either queue strategy and fails a permanent one at once, sends at most 8 e-mails per second, delivers at least once with at most one resend after a lost lease, never reads a row outside the job's tenant and organization, ends each delivery in a final state, and emits one ids-only event per final failure.
-- [ ] **AC-M03** — A raw token reaches the e-mail and appears in no event, job payload or log; the delivery's secret is null after its final state.
-- [ ] **AC-M04** — Each recipient gets the e-mail in their locale inside `EmailLayout`, club text verbatim and escaped; every phase 3 template is non-opt-out and a `preferences` template is refused until its opt-out exists (Q15 = B); no Vereino type is e-mailed by the platform's notification channel, even with an operator override; in-app notifications carry no subject or text.
-- [ ] **AC-M05** — `AudiencePicker` offers only the kinds and targets the author's grants allow, with live counts; `DeliveryStatusList` shows every recipient's status with "not delivered" and a "problems only" filter; both keyboard-operable, light and dark, 375 px.
-- [ ] **AC-M06** — An announcement to a group reaches its members with an account, the guardians of its minors and its coaches on the right channels and languages; a staff reply reaches every participant, a member's reply the staff only and no other family sees it; a coach posting to a section gets 403; the acting role is recorded; no `communication` command is undoable.
-- [ ] **AC-M07** — A cancellation creates one session thread (also under concurrent delivery) with a system message and one e-mail per recipient; a replayed event sends nothing more; no second in-app notification appears.
-- [ ] **AC-M08** — The share text of a session carries the public session URL and that of a thread the sign-in URL; the page shows only the activity name, date, time and status; an id under another club's slug returns 404 without detail.
-- [ ] **AC-M09** — A case refuses edit and deletion with 409 `case_immutable`, cannot be unmarked (no command, no undo; marking twice → 409 `case_already_open`), keeps its history, and is visible to the section's coordinator and the administrator only, besides its participants.
-- [ ] **AC-M10** — `/club/messages` lists the member's threads with unread markers; the "Messages" tile shows the unread count; reading clears it.
+- [x] **AC-M01** — An audience of each kind resolves to the expected recipients: minors' active guardians added and minors with an account kept, `persons` outside the author's scope refused, one delivery per person and channel, account holders on two channels, others on e-mail, unreachable counted, an unregistered kind refused with 422. — evidence: #73; `TEST-M01-audience`
+- [x] **AC-M02** — A dispatch is created once per key inside the caller's transaction, sends nothing when that transaction rolls back, retries a transient failure up to five times under either queue strategy and fails a permanent one at once, sends at most 8 e-mails per second, delivers at least once with at most one resend after a lost lease, never reads a row outside the job's tenant and organization, ends each delivery in a final state, and emits one ids-only event per final failure. — evidence: #73; `TEST-M02-dispatch`
+- [x] **AC-M03** — A raw token reaches the e-mail and appears in no event, job payload or log; the delivery's secret is null after its final state. — evidence: #73; `TEST-M03-secrets`
+- [x] **AC-M04** — Each recipient gets the e-mail in their locale inside `EmailLayout`, club text verbatim and escaped; every phase 3 template is non-opt-out and a `preferences` template is refused until its opt-out exists (Q15 = B); no Vereino type is e-mailed by the platform's notification channel, even with an operator override; in-app notifications carry no subject or text. — evidence: #73; `TEST-M04-templates`
+- [x] **AC-M05** — `AudiencePicker` offers only the kinds and targets the author's grants allow, with live counts; `DeliveryStatusList` shows every recipient's status with "not delivered" and a "problems only" filter; both keyboard-operable, light and dark, 375 px. — evidence: #74; `TEST-M05-composer-and-delivery-ui`
+- [x] **AC-M06** — An announcement to a group reaches its members with an account, the guardians of its minors and its coaches on the right channels and languages; a staff reply reaches every participant, a member's reply the staff only and no other family sees it; a coach posting to a section gets 403; the acting role is recorded; no `communication` command is undoable. — evidence: #74; `TEST-M06-announcements`
+- [x] **AC-M07** — A cancellation creates one session thread (also under concurrent delivery) with a system message and one e-mail per recipient; a replayed event sends nothing more; no second in-app notification appears. — evidence: #74; `TEST-M07-session-cancellation`
+- [x] **AC-M08** — The share text of a session carries the public session URL and that of a thread the sign-in URL; the page shows only the activity name, date, time and status; an id under another club's slug returns 404 without detail. — evidence: #74; `TEST-M08-share-text`
+- [x] **AC-M09** — A case refuses edit and deletion with 409 `case_immutable`, cannot be unmarked (no command, no undo; marking twice → 409 `case_already_open`), keeps its history, and is visible to the section's coordinator and the administrator only, besides its participants. — evidence: #77; `TEST-M09-TEST-016-cases`
+- [x] **AC-M10** — `/club/messages` lists the member's threads with unread markers; the "Messages" tile shows the unread count; reading clears it. — evidence: #74; `TEST-M10-member-inbox-ui`
 - [ ] **AC-M11** — The club spec reads `Ready for implementation` for phase 3's REQ-009 and REQ-010 with V-4 and DD-16 recorded and the e-mail-hub wording replaced; REQ-017 points at foundation I phase C; the payments and facilities specs no longer name `communication` as an e-mail sender.
-- [ ] **AC-M12** — A guardian starts a thread to the coaches of their ward's group and the coaches get the in-app notice and the e-mail while no other family sees it; a participant aged 14 with an account starts one and her guardian is in the audience; a group or a person outside the household gives 403; a direct thread marked as a case refuses the parent's edit with 409 `case_immutable`; the 21st direct thread of one member in 24 hours gives 429.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-M12** — A guardian starts a thread to the coaches of their ward's group and the coaches get the in-app notice and the e-mail while no other family sees it; a participant aged 14 with an account starts one and her guardian is in the audience; a group or a person outside the household gives 403; a direct thread marked as a case refuses the parent's edit with 409 `case_immutable`; the 21st direct thread of one member in 24 hours gives 429. — evidence: #177, #232; `TEST-M12-member-direct-thread`, `TEST-M13-member-direct-thread-ui`
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — evidence: #74, #77, #177; `TEST-M05-composer-and-delivery-ui`, `TEST-M10-member-inbox-ui`, `TEST-M09-TEST-016-cases`, `TEST-M13-member-direct-thread-ui`
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — evidence: #73, #74, #77, #177; `TEST-M01-audience` … `TEST-M04-templates`, `TEST-M05-composer-and-delivery-ui` … `TEST-M10-member-inbox-ui`, `TEST-M12-member-direct-thread`, `TEST-M13-member-direct-thread-ui`; `yarn verify`
 
 ## Final Compliance Report
 

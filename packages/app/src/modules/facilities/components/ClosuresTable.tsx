@@ -19,6 +19,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { CLOSURE_REASONS } from '../lib/closures'
 import { ALL_PLACES, ListEmptyState, PlaceCalendarLink, PlaceSelect } from './FacilitiesControls'
 import {
@@ -100,7 +101,7 @@ export function ClosuresTable() {
   const [now] = React.useState(() => new Date().toISOString())
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY, selectedPlace, filters, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<ClosureRow>(CLOSURES_API, {
@@ -194,7 +195,15 @@ export function ClosuresTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('facilities.closures.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('facilities.closures.errors.load')}
+                retryLabel={t('facilities.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           filters={filterDefs}
           filterValues={filters}
           onFiltersApply={(values: FilterValues) => {

@@ -1,7 +1,7 @@
 # Run: issue #126 (E08-S06) — facility log, incidents, bans (attendant role left open)
 
 - **Goal and trigger:** cezar task 504668e1 (`om-auto-fix-issue 126`), unattended. Build facilities spec phase 5 step 7: the attendant's day (open/close, today's use, no-show), incidents, the log and entry bans (REQ-016, TEST-026; M-12, B-27).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (In progress, phase 5); #126 (epic #119, depends on #122 — merged as #210); `feat/issue-126-attendant-log-incidents-bans`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (In progress, phase 5); #126 (epic #119, depends on #122 — merged as #210); `feat/issue-126-attendant-log-incidents-bans`.
 - **Approval:** the owner's comment on #119 (2026-11-05) approves the `facilities_*` migrations of E08. Not approved: a `people` migration, any dependency, `yarn db:migrate` against a real database.
 
 ## Steps
@@ -27,7 +27,7 @@
 
 - `packages/app/src/modules/facilities/**` (lib, data, commands, api, services/today.ts, migrations, acl, events, encryption, i18n, components, backend and frontend pages).
 - `packages/app/.ai/qa/tests/facilities/TEST-026-log-incidents-bans.spec.ts`, `E08-S06-facility-day.spec.ts`.
-- `.ai/specs/2026-10-27-vereino-facilities.md`, `.ai/specs/changelog/2026-10-27-vereino-facilities/2026-11-08-issue-126-log-incidents-bans.md`, this log.
+- `.ai/specs/implemented/2026-10-27-vereino-facilities.md`, `.ai/specs/changelog/2026-10-27-vereino-facilities/2026-11-08-issue-126-log-incidents-bans.md`, this log.
 
 ## Commands and results
 

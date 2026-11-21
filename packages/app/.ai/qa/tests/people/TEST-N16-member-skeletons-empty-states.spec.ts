@@ -8,8 +8,9 @@ import { uiText } from '../_fixtures/ui-text'
 
 // TEST-N16 (navigation spec REQ-N15, AC-N15; issue #264, E09-S10): while a member or public page waits for its first
 // read (held by a route), it shows a skeleton in the shape of its content — tiles on Today and on Facilities, rows on
-// Messages and Payments, rows on the public club page — inside an `aria-busy` region whose pieces are `aria-hidden`,
-// and the loading text is only the visually hidden status line. With empty fixtures the inbox names its next step
+// Messages and Payments — inside an `aria-busy` region whose pieces are `aria-hidden`, and the loading text is only the
+// visually hidden status line. The public club page is read on the server since #487, so it arrives with its content
+// and shows no loading state at all, even while the browser's own read would be slow. With empty fixtures the inbox names its next step
 // ("Write to the coach"), the public club page without public sections offers to ask the club and the Events page
 // without upcoming events links the sections. Every page at 375 px, in pl and en, light and dark, without blocking axe
 // violations.
@@ -102,11 +103,21 @@ test('TEST-N16 member and public pages load with a skeleton, and empty lists nam
           await expect(page.getByTestId(target.ready)).toBeVisible()
           await expect(page.locator('[aria-busy="true"][data-skeleton]')).toHaveCount(0)
         }
+        // The public club page is read on the server (#487): its HTML already holds the club, so it has no loading
+        // state at all — no skeleton, no loading text — and the browser never reads the club itself.
+        const browserReads: string[] = []
+        const countRead = (request: { url: () => string }) => {
+          if (isPublicClub(new URL(request.url()).pathname)) browserReads.push(request.url())
+        }
+        page.on('request', countRead)
         const release = await holdRequests(page, isPublicClub)
         await page.goto(`/p/${slug}`, { waitUntil: 'commit' })
-        await expectSkeleton(page, 'rows')
-        await release()
         await expect(page.getByTestId('public-club-name')).toBeVisible()
+        await expect(page.locator('[data-skeleton]')).toHaveCount(0)
+        await expect(page.locator('main .animate-spin')).toHaveCount(0)
+        await release()
+        page.off('request', countRead)
+        expect(browserReads).toEqual([])
       }
       await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 

@@ -1,0 +1,66 @@
+# Release pull request and tags (engineering standards ADR-021, S14.1; ENG-12; issue #447). On every push to main,
+# release-please reads the Conventional Commit titles merged since the last tag and opens or updates one release pull
+# request (`release-please-config.json`, `.release-please-manifest.json`) that bumps the version and writes
+# `CHANGELOG.md`. Merging that pull request makes the next run tag the merge commit `vX.Y.Z` and publish a GitHub
+# release. Idempotent: every run recomputes the pull request from the commit history.
+#
+# The release pull request is opened as a draft and carries `documentation`, `priority-low` and `risk-low`, so the merge
+# train leaves it alone until the owner wants a version (docs/ops/github-settings.md, section 7). It is written with the
+# workflow's own GITHUB_TOKEN, and GitHub starts no workflow for a push made with that token: the release pull request
+# has no CI run until the owner closes and reopens it. The step after release-please therefore turns an updated release
+# pull request back into a draft, so the train never waits on a head that has no checks.
+# Third-party actions pinned by commit SHA with the release tag in a comment (S14.2), updated by Renovate.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    if: github.repository == 'wladku/Vereino'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - name: Keep the release pull request a draft
+        if: steps.release.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+        run: |
+          if [ "$(gh pr view "$PR_NUMBER" --json isDraft --jq .isDraft)" = "false" ]; then
+            gh pr ready "$PR_NUMBER" --undo
+            echo "::notice::#$PR_NUMBER changed without a CI run, so it is a draft again; close and reopen it to start CI."
+          fi
+      - name: Summary
+        env:
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          if [ "$RELEASE_CREATED" = "true" ]; then
+            echo "Released $TAG_NAME." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$PR_JSON" ]; then
+            echo "Release pull request #$(echo "$PR_JSON" | jq -r .number) opened or updated." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release-worthy change since the last run." >> "$GITHUB_STEP_SUMMARY"
+          fi

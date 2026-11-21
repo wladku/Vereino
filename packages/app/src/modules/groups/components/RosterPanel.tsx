@@ -19,10 +19,9 @@ import { RowActions, type RowActionItem } from '@open-mercato/ui/backend/RowActi
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, TableLoadError, useClubToday } from '@vereino/ui'
 import {
   MEMBERSHIP_ROLES,
   ROSTER_VIEWS,
@@ -31,7 +30,6 @@ import {
   type PeriodStatus,
 } from '../lib/groups-rules'
 import {
-  errorMessage,
   personHref,
   personName,
   roleLabel,
@@ -133,7 +131,7 @@ function buildColumns(
       meta: { priority: 2 },
       cell: ({ row }) => {
         const status = rowStatus(row.original, today)
-        return <StatusBadge variant={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusBadge>
+        return <StatusTag status={STATUS_VARIANT[status]}>{t(`groups.common.status.${status}`)}</StatusTag>
       },
     },
   ]
@@ -370,7 +368,15 @@ export function RosterPanel({
             columns={columns}
             data={listQuery.data?.items ?? []}
             isLoading={listQuery.isLoading}
-            error={listQuery.error ? errorMessage(listQuery.error, t('groups.memberships.errors.load')) : null}
+            error={
+              listQuery.error ? (
+                <TableLoadError
+                  message={t('groups.memberships.errors.load')}
+                  retryLabel={t('groups.common.retry')}
+                  onRetry={() => void listQuery.refetch()}
+                />
+              ) : null
+            }
             emptyState={emptyState}
             rowActions={canManage ? rowActions : undefined}
             bulkActions={bulkActions}

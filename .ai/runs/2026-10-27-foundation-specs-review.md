@@ -31,7 +31,7 @@ Find contradictions, mutually exclusive decisions, anti-patterns and needless co
 
 ## Files changed
 
-- PR #43: `.ai/specs/2026-10-27-vereino-facilities.md`, `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-20-vereino-club-management.md` (DD-20)
+- PR #43: `.ai/specs/implemented/2026-10-27-vereino-facilities.md`, `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-20-vereino-club-management.md` (DD-20)
 - This branch: `.ai/specs/2026-10-27-vereino-foundation-primitives.md`, `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-27-vereino-social-sign-in.md` (rename, `execute`), `.ai/specs/2026-10-20-vereino-club-management.md` (reuse row, role events rows, declaration token hash), `.ai/specs/2026-10-27-vereino-club-payments.md` (order-link hash), `.ai/lessons/retarget-stacked-pr-before-merge.md` + `.ai/lessons.md`, this log
 
 ## Commands and results

@@ -2,8 +2,9 @@
 // - id: module id (plural snake_case; special cases: 'auth')
 // - from: '@open-mercato/core' | '@app' | custom alias/path in future
 import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
+import type { ModuleOverrides } from '@open-mercato/shared/modules/overrides'
 
-export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string }
+export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string; overrides?: ModuleOverrides }
 
 export const enabledModules: ModuleEntry[] = [
   { id: 'auth', from: '@open-mercato/core' },
@@ -41,7 +42,24 @@ enabledModules.push(
 enabledModules.push({ id: 'dictionaries', from: '@open-mercato/core' })
 // Vereino-owned modules (listed in vereino-modules.json).
 enabledModules.push({ id: 'foundation', from: '@app' })
-enabledModules.push({ id: 'club_core', from: '@app' })
+// The sidebar groups in the mockup's order (D-031 §1; navigation spec REQ-N01, V-N02, #494): the platform puts these
+// group ids first, in this order, ahead of its own groups. Sidebar ordering is one app-wide decision, declared here only.
+enabledModules.push({
+  id: 'club_core',
+  from: '@app',
+  overrides: {
+    nav: {
+      groupOrder: [
+        'club_core.nav.group',
+        'people.nav.group',
+        'groups.nav.group',
+        'communication.nav.group',
+        'payments.nav.group',
+        'facilities.nav.group',
+      ],
+    },
+  },
+})
 enabledModules.push({ id: 'people', from: '@app' })
 // `groups` requires `people` and `club_core` (club spec phase 2 step 2, #30; enabling approved by the product owner).
 enabledModules.push({ id: 'groups', from: '@app' })

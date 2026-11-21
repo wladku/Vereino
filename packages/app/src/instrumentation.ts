@@ -8,6 +8,16 @@ export async function register(): Promise<void> {
     process.env.NEXT_RUNTIME === 'nodejs'
     && process.env.NEXT_PHASE !== 'phase-production-build'
   ) {
+    // Vereino local patch (engineering standards S8.10, issue #462): refuse to start when a required variable is
+    // missing or malformed, naming the variables (never their values) on stderr. Same check as the Railway start
+    // scripts run before the server (`scripts/vereino-boot-env.mjs`).
+    const { findBootEnvProblems, formatBootEnvProblems } = await import('../scripts/vereino-boot-env.mjs')
+    const bootEnvMessage = formatBootEnvProblems(findBootEnvProblems(process.env))
+    if (bootEnvMessage !== null) {
+      const nodeProcess = process
+      nodeProcess.stderr.write(`${bootEnvMessage}\n`)
+      nodeProcess.exit(1)
+    }
     const { assertJwtSecretPolicy } = await import('@open-mercato/shared/lib/auth/jwt')
     try {
       assertJwtSecretPolicy()

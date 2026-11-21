@@ -2,8 +2,8 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['club_core.manage', 'club_core.publication.manage'],
-  pageTitle: 'Club page publication',
-  pageTitleKey: 'club_core.publication.title',
+  pageTitle: 'Publication',
+  pageTitleKey: 'club_core.nav.publication',
   pageGroup: 'Club',
   pageGroupKey: 'club_core.nav.group',
   pageOrder: 60,

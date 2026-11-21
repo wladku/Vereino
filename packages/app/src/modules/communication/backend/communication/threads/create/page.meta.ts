@@ -3,7 +3,7 @@ export const metadata = {
   requireFeatures: ['communication.post'],
   pageTitle: 'New announcement',
   pageTitleKey: 'communication.threads.create.title',
-  pageGroup: 'Messages',
+  pageGroup: 'Communication',
   pageGroupKey: 'communication.nav.group',
   navHidden: true,
   breadcrumb: [

@@ -3,15 +3,18 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import tseslint from 'typescript-eslint'
 import boundaries from 'eslint-plugin-boundaries'
+import { Linter } from 'eslint'
 import {
   DIALOG_CONTENT_RESTRICTIONS,
   FOUNDATION_PUBLIC_ENTRY,
   FRAMEWORK_FREE_IMPORT_RESTRICTIONS,
   ORM_ALLOWED_MODULE_PATHS,
+  STATUS_PILL_RESTRICTIONS,
   VEREINO_REACT_RULES,
   VEREINO_TYPESCRIPT_RULES,
   vereinoModuleBoundaryConfigs,
   vereinoReactConfigs,
+  vereinoStatusPillConfigs,
   vereinoTypeScriptConfigs,
 } from '../../../../eslint.vereino.mjs'
 
@@ -85,4 +88,66 @@ test('React rules re-enable the scaffold overrides for Vereino modules', () => {
   const [config] = vereinoReactConfigs({ moduleIds: ['a'] })
   assert.deepEqual(config.files, ['src/modules/a/**/*.{ts,tsx}'])
   assert.deepEqual(config.rules, VEREINO_REACT_RULES)
+})
+
+test('the status-pill rule is empty without files and scoped to the given files', () => {
+  assert.deepEqual(vereinoStatusPillConfigs({ files: [] }), [])
+  const [config] = vereinoStatusPillConfigs({ files: ['src/**/*.tsx'] })
+  assert.deepEqual(config.files, ['src/**/*.tsx'])
+  assert.deepEqual(config.ignores, [])
+  assert.equal(config.rules, STATUS_PILL_RESTRICTIONS)
+  assert.deepEqual(vereinoStatusPillConfigs({ files: ['a.tsx'], ignores: ['b.tsx'] })[0].ignores, ['b.tsx'])
+})
+
+// #482: a bare status pill fails lint (and so `yarn verify`) with the file and line; `StatusTag`, type imports and
+// category tags pass.
+const lintStatusPills = (code) =>
+  new Linter({ configType: 'flat' }).verify(
+    code,
+    [
+      {
+        files: ['**/*.tsx'],
+        languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
+        rules: STATUS_PILL_RESTRICTIONS,
+      },
+    ],
+    'src/modules/payments/components/Bad.tsx',
+  )
+
+test('the status-pill rule rejects StatusBadge and Tag or Badge with a literal status tone', () => {
+  const messages = lintStatusPills(
+    [
+      "import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'",
+      "import { Tag } from '@open-mercato/ui/primitives/tag'",
+      "import { Badge } from '@open-mercato/ui/primitives/badge'",
+      'export const A = () => <StatusBadge variant="error">Overdue</StatusBadge>',
+      'export const B = () => <Tag variant="warning">Due soon</Tag>',
+      'export const C = () => <Badge variant="success">Paid</Badge>',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    messages.map((message) => [message.ruleId, message.line]),
+    [
+      ['no-restricted-syntax', 1],
+      ['no-restricted-syntax', 5],
+      ['no-restricted-syntax', 6],
+    ],
+  )
+  assert.match(messages[0].message, /use `StatusTag` from `@vereino\/ui`/)
+})
+
+test('the status-pill rule allows StatusTag, type imports and category tags', () => {
+  const messages = lintStatusPills(
+    [
+      "import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badge'",
+      "import { Tag } from '@open-mercato/ui/primitives/tag'",
+      "import { StatusTag } from '@vereino/ui'",
+      "const KIND: Record<string, 'info'> = { class: 'info' }",
+      "export const tone: StatusBadgeVariant = 'error'",
+      'export const A = () => <StatusTag status="canceled">Cancelled</StatusTag>',
+      'export const B = () => <Tag variant={KIND.class}>Class</Tag>',
+      'export const C = () => <Tag>Filter</Tag>',
+    ].join('\n'),
+  )
+  assert.deepEqual(messages, [])
 })

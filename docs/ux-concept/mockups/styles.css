@@ -26,6 +26,11 @@
   --status-neutral-bg: oklch(0.97 0 0);
   --status-neutral-text: oklch(0.371 0 0);
   --status-neutral-border: oklch(0.922 0 0);
+  --status-error-icon: #e7000b;
+  --status-success-icon: #00a63e;
+  --status-warning-icon: #e17100;
+  --status-info-icon: #4f39f6;
+  --status-neutral-icon: #737373;
   --zone-public: oklch(0.95 0.03 230);
   --zone-club: oklch(0.93 0.05 150);
   --zone-paid: oklch(0.96 0.05 90);
@@ -61,6 +66,11 @@
   --status-neutral-bg: oklch(0.205 0 0);
   --status-neutral-text: oklch(0.872 0 0);
   --status-neutral-border: oklch(0.371 0 0);
+  --status-error-icon: #fb2c36;
+  --status-success-icon: #00c950;
+  --status-warning-icon: #fe9a00;
+  --status-info-icon: #615fff;
+  --status-neutral-icon: #a1a1a1;
   --zone-public: oklch(0.32 0.05 230);
   --zone-club: oklch(0.33 0.06 150);
   --zone-paid: oklch(0.35 0.06 85);
@@ -95,6 +105,11 @@
     --status-neutral-bg: oklch(0.205 0 0);
     --status-neutral-text: oklch(0.872 0 0);
     --status-neutral-border: oklch(0.371 0 0);
+    --status-error-icon: #fb2c36;
+    --status-success-icon: #00c950;
+    --status-warning-icon: #fe9a00;
+    --status-info-icon: #615fff;
+    --status-neutral-icon: #a1a1a1;
     --zone-public: oklch(0.32 0.05 230);
     --zone-club: oklch(0.33 0.06 150);
     --zone-paid: oklch(0.35 0.06 85);
@@ -242,6 +257,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .badge.warning { background: var(--status-warning-bg); color: var(--status-warning-text); border-color: var(--status-warning-border); }
 .badge.error { background: var(--status-error-bg); color: var(--status-error-text); border-color: var(--status-error-border); }
 .badge.info { background: var(--status-info-bg); color: var(--status-info-text); border-color: var(--status-info-border); }
+/* The status icon (tokens.md "Status icons", D-033 §2): decorative, in the kind's icon colour. */
+.badge .i { width: 12px; height: 12px; vertical-align: 0; }
+.badge.neutral .i { color: var(--status-neutral-icon); }
+.badge.success .i { color: var(--status-success-icon); }
+.badge.warning .i { color: var(--status-warning-icon); }
+.badge.error .i { color: var(--status-error-icon); }
+.badge.info .i { color: var(--status-info-icon); }
 
 .alert { border: 1px solid; border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
 .alert.info { background: var(--status-info-bg); color: var(--status-info-text); border-color: var(--status-info-border); }

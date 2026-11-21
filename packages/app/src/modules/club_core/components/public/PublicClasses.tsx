@@ -8,7 +8,6 @@
 // events have their own page P-06 (`PublicEventsView.tsx`). Only what the API sends is shown: a block the club switched
 // off never reaches the browser. Dates are formatted in the reader's locale; they are already club-zone dates.
 import * as React from 'react'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import {
   formatPublicAmount,
@@ -19,6 +18,7 @@ import {
   type PublicGroupSchedule,
   type PublicSession,
 } from './public-client'
+import { StatusTag } from '@vereino/ui'
 
 type Translate = ReturnType<typeof useT>
 
@@ -80,13 +80,13 @@ function GroupCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="text-base font-semibold">{card.name}</h3>
         <div className="flex flex-wrap gap-1">
-          {age ? <StatusBadge variant="info">{age}</StatusBadge> : null}
+          {age ? <StatusTag status="info">{age}</StatusTag> : null}
           {card.ageCategory ? (
-            <StatusBadge variant="info">
+            <StatusTag status="info">
               {t('club_core.public.classes.category', { category: card.ageCategory })}
-            </StatusBadge>
+            </StatusTag>
           ) : null}
-          {card.level ? <StatusBadge variant="neutral">{card.level}</StatusBadge> : null}
+          {card.level ? <StatusTag status="neutral">{card.level}</StatusTag> : null}
         </div>
       </div>
       {card.description ? <p className="text-sm whitespace-pre-line">{card.description}</p> : null}

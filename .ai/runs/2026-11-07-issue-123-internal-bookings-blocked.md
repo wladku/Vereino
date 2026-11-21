@@ -1,7 +1,7 @@
 # Run: issue #123 (E08-S03) — internal bookings, stopped on a dependency
 
 - **Goal and trigger:** cezar task, `om-auto-fix-issue 123` — staff internal bookings and the `/club/places` facility calendar (facilities spec phase 5 step 4, TEST-033).
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-facilities.md` (Ready for implementation, phase 5 in progress); #123 (epic #119, depends on #122); `feat/issue-123-internal-bookings`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-facilities.md` (Ready for implementation, phase 5 in progress); #123 (epic #119, depends on #122); `feat/issue-123-internal-bookings`.
 
 ## Steps
 

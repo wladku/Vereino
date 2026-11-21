@@ -408,13 +408,14 @@ test('TEST-046 treasurer: a finance-only role, menu and dashboard; handovers as 
     const hrefs = await sidebarLinks.evaluateAll((anchors) =>
       anchors.map((anchor) => anchor.getAttribute('href') ?? ''),
     )
-    // The sidebar is the Finance group alone (the dashboard is the panel's home, `/backend`).
+    // The sidebar is the Finance group alone (the dashboard is the panel's home, `/backend`),
+    // in the mockup's order: cash to settle comes after order campaigns (#494).
     expect(hrefs).toEqual([
       '/backend/payments/fees',
       '/backend/payments/charges',
       '/backend/payments/bank',
-      '/backend/payments/cash-custody',
       '/backend/payments/orders',
+      '/backend/payments/cash-custody',
     ])
     // The finance dashboard: the payment widgets the treasurer's features offer.
     await expect(page.getByTestId('payments-widget-overdue')).toBeVisible()

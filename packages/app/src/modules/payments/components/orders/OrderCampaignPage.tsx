@@ -28,12 +28,12 @@ import { useIsMobile } from '@open-mercato/ui/hooks/useIsMobile'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { StepIndicator, type StepIndicatorStep } from '@open-mercato/ui/primitives/step-indicator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@open-mercato/ui/primitives/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
+import { TableLoadError } from '@vereino/ui'
 import { CAMPAIGN_STATUSES, isCampaignEditable, type CampaignAction } from '../../lib/order-campaigns'
 import { AcceptCashButton } from '../AcceptCashButton'
 import { ChargeStatusBadge } from '../ChargesTable'
@@ -50,6 +50,7 @@ import {
   type MissingChildRow,
   type SupplierSummaryView,
 } from './orders-client'
+import { StatusTag } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 
 type CampaignLoad = { status: 'ok'; campaign: CampaignDetail } | { status: 'not_found' } | { status: 'denied' }
@@ -182,13 +183,11 @@ function PaymentCell({ row, t, locale }: { row: CampaignOrderRow; t: Translate; 
   const amount = formatMoney(row.remaining, locale)
   const badge =
     row.chargeStatus === 'open' ? (
-      <StatusBadge variant={row.overdue ? 'error' : 'info'} dot>
-        {t('payments.orders.orders.toPay', { amount })}
-      </StatusBadge>
+      <StatusTag status={row.overdue ? 'error' : 'info'}>{t('payments.orders.orders.toPay', { amount })}</StatusTag>
     ) : row.chargeStatus === 'partially_paid' ? (
-      <StatusBadge variant={row.overdue ? 'error' : 'warning'} dot>
+      <StatusTag status={row.overdue ? 'error' : 'warning'}>
         {t('payments.orders.orders.partlyPaid', { amount })}
-      </StatusBadge>
+      </StatusTag>
     ) : (
       <ChargeStatusBadge status={row.chargeStatus} t={t} />
     )
@@ -219,9 +218,7 @@ function HandoverCell({ row, t, locale }: { row: CampaignOrderRow; t: Translate;
       data-testid="order-row-handover"
       title={row.handedOverAt ? formatMoment(row.handedOverAt, locale) : undefined}
     >
-      <StatusBadge variant="success" dot>
-        {t('payments.orders.orders.handedOver')}
-      </StatusBadge>
+      <StatusTag status="success">{t('payments.orders.orders.handedOver')}</StatusTag>
       {row.handedOverBy ? <span className="text-muted-foreground text-sm">{personName(row.handedOverBy)}</span> : null}
     </div>
   )
@@ -472,7 +469,15 @@ function OrdersTab({
       columns={columns}
       data={query.data?.items ?? []}
       isLoading={query.isLoading}
-      error={query.error ? t('payments.orders.orders.error') : null}
+      error={
+        query.error ? (
+          <TableLoadError
+            message={t('payments.orders.orders.error')}
+            retryLabel={t('payments.common.retry')}
+            onRetry={() => void refetch()}
+          />
+        ) : null
+      }
       emptyState={
         <div className="flex flex-col items-center gap-2 text-center" data-testid="order-campaign-orders-empty">
           <p className="font-medium">{t('payments.orders.orders.empty')}</p>

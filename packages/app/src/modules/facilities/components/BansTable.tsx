@@ -25,7 +25,6 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
-import { StatusBadge } from '@open-mercato/ui/primitives/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -52,7 +51,7 @@ import {
   type IncidentRow,
 } from './records-client'
 import { searchInstitutions, searchPersons } from './rentals-client'
-import { useClubToday } from '@vereino/ui'
+import { StatusTag, TableLoadError, useClubToday } from '@vereino/ui'
 import { DialogContent } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 50
@@ -137,11 +136,11 @@ function buildColumns(t: Translate): TableColumns<BanRow> {
       cell: ({ row }) =>
         row.original.revokedAt ? (
           <span className="flex flex-col">
-            <StatusBadge variant="neutral">{t('facilities.records.bans.state.revoked')}</StatusBadge>
+            <StatusTag status="neutral">{t('facilities.records.bans.state.revoked')}</StatusTag>
             <span className="text-muted-foreground text-xs tabular-nums">{instantLabel(row.original.revokedAt)}</span>
           </span>
         ) : (
-          <StatusBadge variant="error">{t('facilities.records.bans.state.active')}</StatusBadge>
+          <StatusTag status="error">{t('facilities.records.bans.state.active')}</StatusTag>
         ),
     },
   ]
@@ -487,7 +486,7 @@ function BansList({ tab, onCreate }: { tab: BanListTab; onCreate: () => void }) 
   const [page, setPage] = React.useState(1)
   const selectedPlace = placeId === ALL_PLACES ? null : placeId
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [BANS_KEY, 'list', tab, selectedPlace, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<BanRow>(ENTRY_BANS_API, {
@@ -574,7 +573,15 @@ function BansList({ tab, onCreate }: { tab: BanListTab; onCreate: () => void }) 
             columns={columns}
             data={data?.items ?? []}
             isLoading={isLoading}
-            error={error ? errorMessage(error, t('facilities.records.bans.errors.load')) : null}
+            error={
+              error ? (
+                <TableLoadError
+                  message={t('facilities.records.bans.errors.load')}
+                  retryLabel={t('facilities.common.retry')}
+                  onRetry={() => void refetch()}
+                />
+              ) : null
+            }
             rowActions={(row: BanRow) =>
               row.revokedAt ? null : (
                 <span data-testid={`facilities-ban-actions-${row.id}`}>

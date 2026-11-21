@@ -6,7 +6,7 @@ export const metadata = {
   requireFeatures: ['groups.view'],
   pageTitle: 'Age categories',
   pageTitleKey: 'groups.ageCategories.title',
-  pageGroup: 'Groups',
+  pageGroup: 'Classes',
   pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [

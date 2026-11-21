@@ -10,7 +10,7 @@ status: confirmed
 1. **Split (DD-01).** The club management specification is split into three, so that each has its own status, readiness and lifecycle:
    - `.ai/specs/2026-10-20-vereino-club-management.md` keeps phases 1–3 (`club_core` + `people`, `groups` + `activities`, `communication`) and everything the modules share: the vocabulary of people, places and sessions, roles and features, `people.scopeService`, club settings, the public page shell, DD-35 and i18n. Phase 1 stays `Ready for implementation`.
    - `.ai/specs/2026-10-27-vereino-club-payments.md` holds phase 4 (`payments`).
-   - `.ai/specs/2026-10-27-vereino-facilities.md` holds phase 5 (`facilities`).
+   - `.ai/specs/implemented/2026-10-27-vereino-facilities.md` holds phase 5 (`facilities`).
    - Ids (REQ, DD, J, TEST, AC, Q, V) stay global and are never renumbered.
    - This supersedes the per-phase readiness amendment of DD-01 made on the same day (PR #39); per-phase readiness stays inside each specification.
 2. **Optional rental charge (DD-19).** `facilities` requires only `activities`.

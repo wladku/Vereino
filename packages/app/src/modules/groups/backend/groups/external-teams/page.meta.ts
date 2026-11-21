@@ -5,7 +5,7 @@ export const metadata = {
   requireFeatures: ['groups.view'],
   pageTitle: 'External teams',
   pageTitleKey: 'groups.externalTeams.title',
-  pageGroup: 'Groups',
+  pageGroup: 'Classes',
   pageGroupKey: 'groups.nav.group',
   navHidden: true,
   breadcrumb: [

@@ -4,7 +4,7 @@ export const metadata = {
   requireFeatures: ['facilities.rentals.manage'],
   pageTitle: 'Rental',
   pageTitleKey: 'facilities.rentals.record.title',
-  pageGroup: 'Facilities',
+  pageGroup: 'Facility',
   pageGroupKey: 'facilities.nav.group',
   navHidden: true,
   breadcrumb: [

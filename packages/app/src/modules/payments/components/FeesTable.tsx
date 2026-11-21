@@ -17,6 +17,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
+import { TableLoadError } from '@vereino/ui'
 import { PaymentsNav } from './PaymentsNav'
 import { FEES_HREF, errorMessage, formatMoney, type FeeRow, type TableColumns, type Translate } from './client-helpers'
 
@@ -87,7 +88,7 @@ export function FeesTable() {
   const [search, setSearch] = React.useState('')
   const [page, setPage] = React.useState(1)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['payments-fees', search, page, scopeVersion],
     queryFn: () =>
       fetchCrudList<FeeRow>('payments/fees', {
@@ -131,7 +132,15 @@ export function FeesTable() {
           columns={columns}
           data={data?.items ?? []}
           isLoading={isLoading}
-          error={error ? errorMessage(error, t('payments.fees.errors.load')) : null}
+          error={
+            error ? (
+              <TableLoadError
+                message={t('payments.fees.errors.load')}
+                retryLabel={t('payments.common.retry')}
+                onRetry={() => void refetch()}
+              />
+            ) : null
+          }
           emptyState={<p className="text-muted-foreground text-sm">{t('payments.fees.empty')}</p>}
           searchValue={search}
           searchPlaceholder={t('payments.fees.search')}
