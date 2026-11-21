@@ -52,6 +52,7 @@
     "lessons:check": "node ./scripts/check-lessons.mjs",
     "lessons:list": "node ./scripts/check-lessons.mjs --list",
     "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",
+    "dockerfiles:check": "node ./scripts/check-dockerfiles.mjs",
     "licenses:check": "node ./scripts/check-licenses.mjs",
     "typecheck:packages": "yarn workspaces foreach -Apt --include '@vereino/core' --include '@vereino/db' --include '@vereino/ui' run typecheck",
     "verify": "node ./scripts/verify.mjs",
