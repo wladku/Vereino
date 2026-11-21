@@ -1,4 +1,5 @@
 'use client'
+// E20-S14 (#493): a row (`<li>`) of Today's "Shortcuts" list on the spot `vereino:club:today:more`, not a tile.
 // The "My groups' payments" tile of `/club` — Today (README M-02 → M-18; payments spec REQ-033; issue #117): a link to
 // `/club/coach/payments` with the people to pay and overdue in the coach's groups and the cash the coach holds. The
 // spot does not enforce the widget's `features`, so the tile stays hidden until the read answers and for a caller the
@@ -17,9 +18,10 @@ import { formatZloty } from '../../../lib/charge-ledger'
 import { coachPaymentsHref, tileGroupOf } from '../../../lib/group-charges'
 import type { GroupChargesView } from '../../../components/club/coach/coach-client'
 
-const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
+/** A row of Today's "Shortcuts" list (E20-S14 #493): a line under it, the link at least 44 px tall. */
+const ROW_CLASS = 'border-b last:border-b-0'
 const LINK_CLASS =
-  'hover:bg-accent focus-visible:focus-indicator -m-2 flex min-h-11 flex-col gap-2 rounded-md p-2 outline-none'
+  'hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col gap-1 rounded-md px-2 py-3 outline-none'
 
 const GROUPS_VIEW_FEATURE = 'payments.groups.view'
 
@@ -60,28 +62,23 @@ export default function ClubCoachPaymentsWidget() {
   const people = view ? view.groups.reduce((sum, group) => sum + group.peopleToPay, 0) : null
   const overdue = view ? view.groups.reduce((sum, group) => sum + group.peopleOverdue, 0) : null
   return (
-    <section aria-labelledby="club-today-coach-payments" className="flex flex-col gap-3">
-      <h2 id="club-today-coach-payments" className="sr-only">
-        {t('payments.coach.title')}
-      </h2>
-      <div className={TILE_CLASS}>
-        <Link
-          href={coachPaymentsHref({ groupId: view ? tileGroupOf(view.groups) : null, due: true })}
-          className={LINK_CLASS}
-          data-testid="club-tile-coach-payments"
-        >
-          <span className="font-semibold">{t('payments.coach.title')}</span>
-          <span className="text-muted-foreground max-w-prose text-sm" data-testid="club-tile-coach-payments-state">
-            {view && people !== null && overdue !== null
-              ? t('payments.coach.tile.state', {
-                  people,
-                  overdue,
-                  cash: formatZloty(view.cash.total),
-                })
-              : t('payments.coach.help')}
-          </span>
-        </Link>
-      </div>
-    </section>
+    <li className={ROW_CLASS}>
+      <Link
+        href={coachPaymentsHref({ groupId: view ? tileGroupOf(view.groups) : null, due: true })}
+        className={LINK_CLASS}
+        data-testid="club-tile-coach-payments"
+      >
+        <span className="font-semibold">{t('payments.coach.title')}</span>
+        <span className="text-muted-foreground max-w-prose text-sm" data-testid="club-tile-coach-payments-state">
+          {view && people !== null && overdue !== null
+            ? t('payments.coach.tile.state', {
+                people,
+                overdue,
+                cash: formatZloty(view.cash.total),
+              })
+            : t('payments.coach.help')}
+        </span>
+      </Link>
+    </li>
   )
 }

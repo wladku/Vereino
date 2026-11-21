@@ -2,7 +2,14 @@
 // Events links, the sign-in link carrying the club's slug and the current page's link.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PUBLIC_HEADER_LABEL_KEYS, publicClubHref, publicNavLinks, publicSignInHref } from '../public/public-nav.ts'
+import {
+  PUBLIC_HEADER_LABEL_KEYS,
+  privacyPolicyHref,
+  publicClubHref,
+  publicNavLinks,
+  publicPrivacyHref,
+  publicSignInHref,
+} from '../public/public-nav.ts'
 
 const labels = Object.fromEntries(PUBLIC_HEADER_LABEL_KEYS.map((key) => [key, `label:${key}`]))
 const links = (pathname, nav = { facilities: false, events: false }, slug = 'ks-avocado') =>
@@ -15,6 +22,16 @@ const current = (pathname, nav) =>
 test('hrefs of the club page and the club sign-in encode the slug', () => {
   assert.equal(publicClubHref('ks-avocado'), '/p/ks-avocado')
   assert.equal(publicSignInHref('a b'), '/login?club=a%20b')
+})
+
+test('the privacy link leads to the club address when set, else to the default notice (#469)', () => {
+  assert.equal(publicPrivacyHref('a b'), '/p/a%20b/privacy')
+  assert.deepEqual(privacyPolicyHref('ks-avocado', null), { href: '/p/ks-avocado/privacy', source: 'default' })
+  assert.deepEqual(privacyPolicyHref('ks-avocado', ''), { href: '/p/ks-avocado/privacy', source: 'default' })
+  assert.deepEqual(privacyPolicyHref('ks-avocado', 'https://club.example/privacy'), {
+    href: 'https://club.example/privacy',
+    source: 'club',
+  })
 })
 
 test('without the optional blocks: Club, Sections, Sign in', () => {

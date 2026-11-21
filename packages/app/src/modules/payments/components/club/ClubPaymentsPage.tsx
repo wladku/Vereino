@@ -27,7 +27,7 @@ import {
 } from '@open-mercato/shared/modules/payment_gateways/client'
 import type { EmbeddedPaymentGatewayClientSession } from '@open-mercato/shared/modules/payment_gateways/types'
 import { formatBankAccount } from '@vereino/core'
-import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { MemberSkeleton, Notice, StatusTag } from '@vereino/ui'
 import { formatZloty } from '../../lib/charge-ledger'
 import { CLUB_PAYMENTS_HREF, PaymentsClubFrame } from './PaymentsClubFrame'
 
@@ -294,9 +294,15 @@ function PaymentForm({ started, onCancel }: { started: Started; onCancel: () => 
       {Renderer && props ? (
         React.createElement(Renderer, props)
       ) : (
-        <Alert status="error">{t('payments.club.form.unavailable')}</Alert>
+        <Alert style="light" status="error">
+          {t('payments.club.form.unavailable')}
+        </Alert>
       )}
-      {error ? <Alert status="error">{error}</Alert> : null}
+      {error ? (
+        <Alert style="light" status="error">
+          {error}
+        </Alert>
+      ) : null}
       <div>
         <Button type="button" variant="outline" className="min-h-11" onClick={onCancel}>
           {t('payments.club.form.back')}
@@ -450,14 +456,14 @@ function Payments() {
       </div>
       {started ? null : <CampaignCard />}
       {inProgress && !started ? (
-        <Alert status="information" data-testid="club-payments-in-progress">
+        <Notice data-testid="club-payments-in-progress">
           <div className="flex flex-col gap-2">
             <p>{t('payments.club.inProgressBanner', { total: formatZloty(inProgress.total) })}</p>
             <Link href={returnHref(inProgress.id)} className="text-primary inline-flex min-h-11 items-center underline">
               {t('payments.club.inProgressLink')}
             </Link>
           </div>
-        </Alert>
+        </Notice>
       ) : null}
       {started ? (
         <PaymentForm
@@ -501,12 +507,12 @@ function Payments() {
             >
               {quote.data ? <QuoteLines quote={quote.data} /> : null}
               {quote.isError ? (
-                <Alert status="error">
+                <Alert style="light" status="error">
                   {quote.error instanceof Error ? quote.error.message : t('payments.club.errors.quote')}
                 </Alert>
               ) : null}
               {startError ? (
-                <Alert status="error" data-testid="club-payments-error">
+                <Alert style="light" status="error" data-testid="club-payments-error">
                   {startError}
                 </Alert>
               ) : null}

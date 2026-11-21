@@ -41,6 +41,7 @@ import { ownNotice, wardNotices, type OwnNotice, type WardNotice } from '../lib/
 import {
   clubConsentTexts,
   clubLogoUrl,
+  clubOrganizationName,
   clubSettings,
   clubToday,
   type ClubConsentTexts,
@@ -117,7 +118,14 @@ export type MemberProfile = {
   /** The resolved interface locale of the member (DD-34). */
   locale: string
   /** Club content (`shortName`) stays in the club's language; dates show in the club's time zone. */
-  club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
+  club: {
+    shortName: string | null
+    /** The club's full name (the platform organization's), shown next to the logo on Today (R06.1, #493). */
+    name: string | null
+    defaultLocale: string
+    timezone: string
+    logoUrl: string | null
+  }
   /** R10: false for a minor, a user without `payments.view_own` or without a person. */
   paymentsVisible: boolean
   /** An active participant membership today (spec N, REQ-N07); always false without `groups`. */
@@ -352,6 +360,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     locale,
     club: {
       shortName: settings.shortName ?? null,
+      name: await clubOrganizationName(ctx.container, scope),
       defaultLocale: settings.defaultLocale,
       timezone: settings.timezone,
       logoUrl: await clubLogoUrl(ctx.container, scope),

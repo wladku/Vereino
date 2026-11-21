@@ -170,7 +170,7 @@ export function ClubEventRecord({ id }: { id: string }) {
         </div>
       </header>
       {!planned ? (
-        <Alert status="error" data-testid="club-event-cancelled">
+        <Alert style="light" status="error" data-testid="club-event-cancelled">
           <AlertTitle>{t('activities.clubEvents.cancelled.title')}</AlertTitle>
           {event.cancelReason ? (
             <AlertDescription>
