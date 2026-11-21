@@ -288,7 +288,7 @@ function Composer({ options, staff }: { options: DirectOption[]; staff: boolean 
         />
       </div>
       {error ? (
-        <Alert status="error" data-testid="club-direct-error">
+        <Alert style="light" status="error" data-testid="club-direct-error">
           <p>{error}</p>
         </Alert>
       ) : null}

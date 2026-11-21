@@ -175,7 +175,7 @@ export function CoachUnitsReport() {
         </p>
       ) : null}
       {data && data.unsettledCount > 0 ? (
-        <Alert status="warning" data-testid="coach-units-unsettled">
+        <Alert style="light" status="warning" data-testid="coach-units-unsettled">
           <AlertTitle>{t('activities.reports.coachUnits.unsettled', { count: data.unsettledCount })}</AlertTitle>
           <AlertDescription>
             {t('activities.reports.coachUnits.unsettledText')}{' '}

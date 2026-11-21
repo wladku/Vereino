@@ -133,7 +133,7 @@ function UnsettledAlerts({ entries, timeZone }: { entries: CalendarEntry[]; time
     <ul className="flex flex-col gap-2" data-testid="club-today-unsettled">
       {entries.map((entry) => (
         <li key={entry.occurrence.id}>
-          <Alert status="warning" data-testid="club-today-unsettled-session">
+          <Alert style="light" status="warning" data-testid="club-today-unsettled-session">
             <div className="flex flex-col gap-2">
               <p className="text-sm">
                 <span className="font-semibold">{t('activities.substitutions.unsettled.title')}</span>{' '}
