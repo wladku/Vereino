@@ -21,6 +21,7 @@ export const STEPS = [
   { name: 'di-commands:check', args: ['di-commands:check'] },
   { name: 'lessons:check', args: ['lessons:check'] },
   { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
+  { name: 'dockerfiles:check', args: ['dockerfiles:check'] },
   { name: 'test', args: ['test'] },
   { name: 'test:scripts', args: ['test:scripts'] },
   { name: 'build', args: ['build'] },

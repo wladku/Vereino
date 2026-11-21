@@ -22,6 +22,10 @@ const nodeProtocolResolveAlias = Object.fromEntries(
     .map((name) => [`node:${name}`, name]),
 )
 
+// Local patch (engineering standards S8.4, #463): the production CSP drops `'unsafe-eval'` — the production build and
+// the integration suite run without it. Development keeps it, because React's development build and Fast Refresh
+// evaluate code at runtime; `src/instrumentation-client.ts` turns off zod's eval probe in the browser. A nonce-based
+// CSP (no `'unsafe-inline'`) is deferred: it forces dynamic rendering.
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -31,10 +35,27 @@ const contentSecurityPolicy = [
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
   "img-src 'self' data: blob: https:",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://js.stripe.com`,
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https: ws: wss:",
 ].join('; ')
+
+// S8.4 headers added on top of the scaffold's. HSTS only in production: a browser ignores it over plain HTTP, but a
+// development server behind local HTTPS would pin `localhost` for two years. `preload` waits for the production domain
+// (club research D-012).
+const strictTransportSecurity = 'max-age=63072000; includeSubDomains'
+const permissionsPolicy = 'camera=(), microphone=(), geolocation=(), browsing-topics=()'
+
+// S8.4: authenticated responses are not cacheable. Dynamic pages already get Next.js's `private, no-store`; API
+// responses get no `Cache-Control` from the platform (spike #448, item 12). A request that carries a session cookie,
+// a bearer token or an API key is authenticated; the sessionless public JSON routes (`public, s-maxage=60`) keep
+// their shared caching for anonymous visitors.
+const AUTHENTICATED_REQUEST_MARKERS = [
+  { type: 'cookie', key: 'auth_token' },
+  { type: 'cookie', key: 'session_token' },
+  { type: 'header', key: 'authorization' },
+  { type: 'header', key: 'x-api-key' },
+] as const
 
 const nextConfig: NextConfig & { agentRules?: boolean } = {
   distDir: '.mercato/next',
@@ -117,8 +138,15 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Permissions-Policy', value: permissionsPolicy },
+          ...(isDevelopment ? [] : [{ key: 'Strict-Transport-Security', value: strictTransportSecurity }]),
         ],
       },
+      ...AUTHENTICATED_REQUEST_MARKERS.map((marker) => ({
+        source: '/api/:path*',
+        has: [marker],
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
+      })),
       {
         // Attachment file downloads set their own restrictive CSP (sandbox)
         // in the route handler — override the global app CSP so it is not

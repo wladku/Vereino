@@ -126,7 +126,8 @@ test('TEST-L20 the first-administrator and institution-options routes fail close
       club.adminToken,
     )
     expect(options.status).toBe(200)
-    expect(options.response.headers()['cache-control']).toBe('no-store')
+    // `next.config.ts` sets `private, no-store` on every authenticated API response (S8.4, #463).
+    expect(options.response.headers()['cache-control']).toMatch(/\bno-store\b/)
     expect(options.body?.items).toEqual([{ id: institutionId, name: 'Gmina L20' }])
     const searched = await call<{ items?: unknown[] }>(
       request,
