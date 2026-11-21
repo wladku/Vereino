@@ -869,5 +869,7 @@
   "people.erasure.module.activities": "zajęcia i obecności",
   "people.erasure.module.payments": "płatności",
   "people.erasure.module.club_core": "umowy",
-  "people.erasure.module.facilities": "obiekty"
+  "people.erasure.module.facilities": "obiekty",
+  "people.club.leave.errors.summary": "Sprawdź prośbę",
+  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę."
 }
