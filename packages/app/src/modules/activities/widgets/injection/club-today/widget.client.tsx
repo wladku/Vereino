@@ -67,6 +67,7 @@ import {
 } from '../../../components/club/club-client'
 import { needsCoach } from '../../../lib/activities-rules'
 import { formatDeadline } from '../../../lib/confirm-by'
+import { coachesAGroup } from '../../../lib/member-session'
 import { unsettledEntries } from '../../../lib/substitutions'
 import { SECTION_COUNT_VIEWS, sectionCalendarHref, type SectionListView } from '../../../lib/coordinator-sessions'
 
@@ -159,6 +160,7 @@ function CoachTile({
   onRetry,
   today,
   timeZone,
+  offersNewEvent,
 }: {
   entries: CalendarEntry[]
   unsettled: CalendarEntry[]
@@ -167,6 +169,8 @@ function CoachTile({
   onRetry: () => void
   today: string
   timeZone: string
+  /** The person coaches a group: the coach's "New event" creates an event for an own group only (E20-S10, #489). */
+  offersNewEvent: boolean
 }) {
   const t = useT()
   let body: React.ReactNode
@@ -231,11 +235,13 @@ function CoachTile({
         <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
           {t('activities.club.today.openCalendar')}
         </Link>
-        <Button asChild size="sm" variant="outline" className="min-h-11">
-          <Link href={newEventHref()} data-testid="club-today-new-event">
-            {t('activities.club.event.new')}
-          </Link>
-        </Button>
+        {offersNewEvent ? (
+          <Button asChild size="sm" variant="outline" className="min-h-11">
+            <Link href={newEventHref()} data-testid="club-today-new-event">
+              {t('activities.club.event.new')}
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   )
@@ -561,6 +567,7 @@ export default function ClubTodayTilesWidget({
               onRetry={() => void coachQuery.refetch()}
               today={today}
               timeZone={timeZone}
+              offersNewEvent={coachesAGroup(profile?.contexts ?? [])}
             />
           </li>
         ) : null}

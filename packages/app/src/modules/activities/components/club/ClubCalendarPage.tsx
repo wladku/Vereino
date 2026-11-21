@@ -57,6 +57,7 @@ import {
   type CalendarView,
 } from '../../lib/member-calendar'
 import { formatDeadline } from '../../lib/confirm-by'
+import { coachesAGroup } from '../../lib/member-session'
 import {
   CLUB_CALENDAR_PATH,
   SECTION_VIEWS,
@@ -492,7 +493,8 @@ function Calendar({
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t('activities.club.calendar.title')}</h1>
-        {selection.role === 'staff' ? (
+        {/* E20-S10 (#489): the coach's form creates an event for an own group only, so only a coach is offered it. */}
+        {selection.role === 'staff' && coachesAGroup(profile.contexts) ? (
           <Button asChild className="min-h-11">
             <Link href={newEventHref()} data-testid="club-calendar-new-event">
               {t('activities.club.event.new')}
