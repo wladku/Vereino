@@ -20,18 +20,22 @@ test.use({ timezoneId: 'Europe/Warsaw' })
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 const TILE_ORDER = ['club-today-calendar-tile', 'club-today-attendance-tile', 'club-today-messages-tile']
 
-/** With `EVIDENCE_DIR` set, the page is saved in both schemes at the current width; without it, nothing is written. */
+/** With `EVIDENCE_DIR` set, the page is saved at 375 and 1440 px in both schemes; without it, nothing is written. */
 async function evidence(page: Page, name: string): Promise<void> {
   const dir = process.env.EVIDENCE_DIR
   if (!dir) return
-  const width = page.viewportSize()?.width ?? 0
-  for (const colorScheme of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
-    // Evidence only (never in CI): let the colour transitions of the scheme switch settle before the picture.
-    await page.waitForTimeout(500)
-    await page.screenshot({ path: `${dir}/${name}-${String(width)}-${colorScheme}.png`, fullPage: true })
+  const size = page.viewportSize()
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      // Evidence only (never in CI): let the colour transitions of the scheme switch settle before the picture.
+      await page.waitForTimeout(500)
+      await page.screenshot({ path: `${dir}/${name}-${String(width)}-${colorScheme}.png`, fullPage: true })
+    }
   }
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+  if (size) await page.setViewportSize(size)
 }
 
 /** The member pages follow the club's default locale, so it is set together with the cookie. */

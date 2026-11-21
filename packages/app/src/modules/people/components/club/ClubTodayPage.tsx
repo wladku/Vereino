@@ -57,20 +57,20 @@ function ClubHeader({ profile }: { profile: MemberProfile }) {
   const t = useT()
   const name = profile.club.name ?? profile.club.shortName ?? t('people.club.title')
   return (
-    <div className="flex items-center gap-3" data-testid="club-today-header">
+    <div className="flex items-center justify-end gap-2 text-sm" data-testid="club-today-header">
       {profile.club.logoUrl ? (
         // The name stands next to the logo, so the image is decorative.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={profile.club.logoUrl}
           alt=""
-          width={40}
-          height={40}
-          className="size-10 shrink-0 rounded-md object-contain"
+          width={24}
+          height={24}
+          className="size-6 shrink-0 rounded-full object-contain"
           data-testid="club-today-logo"
         />
       ) : null}
-      <p className="text-muted-foreground font-semibold" data-testid="club-today-club-name">
+      <p className="text-muted-foreground" data-testid="club-today-club-name">
         {name}
       </p>
     </div>

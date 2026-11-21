@@ -147,7 +147,7 @@ The mockup audit's estimates are confirmed on the app values: ring 2.59 (≈ 2.6
 | R03.4 `CrudForm` labels without `htmlFor` | component | panel | OM as is + Vereino workaround and upstream report (C3, D-033 §7) |
 | R03.5 AppShell sidebar contrast and link name | component | panel | heading contrast: Vereino CSS override (C2, D-033 §1, built in #481); link name: worked around on the Vereino side and reported upstream (D-033 §7), axe baseline until then |
 
-Inconsistency to fix in the UX concept: M-02 in [`README.md`](README.md) describes a "grid of 4 tiles"; R01.5 allows at most three.
+Inconsistency fixed in the UX concept (E20-S14, #493): M-02 in [`README.md`](README.md) described a "grid of 4 tiles"; it now holds at most three, as R01.5 allows.
 
 ## Conflicts for the owner's decision
 
