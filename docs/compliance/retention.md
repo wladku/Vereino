@@ -47,4 +47,4 @@ set but no code enforces yet; each gap has an issue.
 | R-D | Job deleting dead link tokens 30 days after use or expiry (S9.5) | #525 |
 | R-E | ~~Order contact data are not cleared on anonymisation~~ — cleared since #528 | #528 |
 | R-F | Audit snapshots keep erased data (V-L03) | people life-cycle spec |
-| R-G | Backups keep erased data up to ~13 months; the restore runbook must re-apply later anonymisations, and the privacy notice (E19-S03, #469) must say so | product owner, #469 |
+| R-G | Backups keep erased data up to ~13 months; the restore runbook must re-apply later anonymisations, and the privacy notice (E19-S03, #469) must say so — the default notice now does (`club_core.privacy.retention.item4`) | product owner, #469 |
