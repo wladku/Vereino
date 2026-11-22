@@ -51,6 +51,7 @@ export function createRentalLinkService(): RentalLinkService {
   return createTokenLinkService<'single', RentalLinkRow>(RentalLink as never, {
     use: 'single',
     ttlMs: RENTAL_LINK_TTL_MS,
+    dedicatedTable: true,
   })
 }
 

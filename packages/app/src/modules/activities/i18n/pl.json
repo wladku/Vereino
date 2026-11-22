@@ -58,6 +58,7 @@
   "activities.audit.jobs.expire": "Wygaś oczekujące potwierdzenia opiekunów",
   "activities.audit.jobs.generate": "Generowanie terminów",
   "activities.audit.jobs.sendReminders": "Wysłanie przypomnień o deklaracjach",
+  "activities.audit.jobs.purgeDeclarationLinks": "Usunięcie linków do deklaracji nieważnych od 30 dni",
   "activities.audit.occurrences.assignCoach": "Wskazanie prowadzącego termin",
   "activities.audit.occurrences.cancel": "Odwołanie terminu",
   "activities.audit.occurrences.reportAbsence": "Zgłoszona nieobecność prowadzącego",
@@ -251,7 +252,6 @@
   "activities.club.today.emptyNext": "Brak zajęć dziś i jutro. Najbliższy termin: {day} {time} {section}",
   "activities.club.today.loading": "Wczytywanie terminów…",
   "activities.club.today.openCalendar": "Otwórz kalendarz",
-  "activities.club.today.title": "Twoje terminy",
   "activities.club.today.today": "Dziś",
   "activities.club.today.tomorrow": "Jutro",
   "activities.club.today.waiting": "{name}: {activity}, {when} — czeka na Ciebie",
@@ -1114,5 +1114,12 @@
   "activities.clubEvents.club.files.camera": "Zrób zdjęcie",
   "activities.clubEvents.club.files.file": "Wybierz plik",
   "activities.clubEvents.club.part.gone": "Ta część nie jest już zaplanowana albo została usunięta.",
-  "activities.clubEvents.club.session.placeLocked": "Miejsce imprezy klubowej ({name}): zmienia się je w imprezie klubowej."
+  "activities.clubEvents.club.session.placeLocked": "Miejsce imprezy klubowej ({name}): zmienia się je w imprezie klubowej.",
+  "activities.club.today.nothingWaits": "Nic nie czeka na Twoją decyzję.",
+  "activities.club.calendar.viewUpcoming": "Najbliższe",
+  "activities.club.calendar.rangeUpcoming": "Dwa tygodnie",
+  "activities.club.calendar.previousUpcoming": "Poprzednie dwa tygodnie",
+  "activities.club.calendar.thisUpcoming": "Od dziś",
+  "activities.club.calendar.nextUpcoming": "Kolejne dwa tygodnie",
+  "activities.club.calendar.emptyUpcoming": "Brak terminów w najbliższych dwóch tygodniach."
 }

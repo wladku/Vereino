@@ -151,5 +151,9 @@ function Campaigns() {
 }
 
 export function ClubOrdersPage() {
-  return <PaymentsClubFrame skeleton="tiles">{() => <Campaigns />}</PaymentsClubFrame>
+  return (
+    <PaymentsClubFrame skeleton="tiles" loadErrorKey="payments.orders.club.errors.load">
+      {() => <Campaigns />}
+    </PaymentsClubFrame>
+  )
 }

@@ -2,7 +2,7 @@
 // payments spec *Events* row `payments:reconcile-checkouts` (DD-42; #110): late captures are booked, `created`
 // checkouts older than 24 hours expire. `close-order-campaigns` is the `payments:close-order-campaigns` sweep of order
 // campaigns (#115). Both shipped as commands run by hand; since #301 (payments parity spec DD-C08) the scheduler runs
-// them every 15 minutes, and the two commands stay for operators. `set-up-club` registers the club's four schedules
+// them every 15 minutes, and the two commands stay for operators. `set-up-club` registers the club's six schedules
 // (the backfill for a club created before them) and `run-job` runs one scheduled job now, optionally with `--now`.
 import { parseArgs } from 'node:util'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -68,7 +68,7 @@ function readOptions(argv: string[], names: readonly string[]): Record<string, s
 }
 
 /**
- * `payments set-up-club --tenant <id> --org <id>`: re-runs the club's `payments` setup — the four schedules — and
+ * `payments set-up-club --tenant <id> --org <id>`: re-runs the club's `payments` setup — the six schedules — and
  * prints what it registered. Idempotent (an upsert of each schedule); the backfill for a club created before #301.
  */
 const setUpClub: ModuleCli = {
@@ -93,6 +93,8 @@ const JOB_COMMANDS: Readonly<Record<string, string>> = {
   'overdue-reminders': 'payments.charges.remind_overdue',
   'reconcile-checkouts': 'payments.checkouts.reconcile',
   'close-order-campaigns': 'payments.order_campaigns.close_due',
+  'purge-order-links': 'payments.order_links.purge_dead',
+  'verify-invariants': 'payments.invariants.verify',
 }
 
 /**

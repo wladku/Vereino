@@ -4,7 +4,7 @@ import ClubCoachPaymentsWidget from './widget.client'
 /**
  * The "My groups' payments" tile of `/club` (README M-02 → M-18; payments spec REQ-033; issue #117 E07-S10): how many
  * children of the coach's first group have something to pay, how many are overdue and the cash the coach holds, as a
- * link to `/club/coach/payments`, on the spot `vereino:club:today:sections` of `people`'s Today page.
+ * link to `/club/coach/payments`, on the spot `vereino:club:today:more` of `people`'s Today page (a row, #493).
  */
 const widget: InjectionWidgetModule<Record<string, unknown>, Record<string, unknown>> = {
   metadata: {

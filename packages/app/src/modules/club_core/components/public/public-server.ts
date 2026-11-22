@@ -143,3 +143,16 @@ export async function publicClubEventMetadata(clubSlug: string, eventSlug: strin
       t('club_core.public.meta.clubEvent', '{event} — an event of {club}.', { event: event.name, club: club.name }),
   })
 }
+
+/** `/p/[clubSlug]/privacy` (#469): "{club} — Privacy policy", described without any personal data. */
+export async function publicPrivacyMetadata(clubSlug: string): Promise<Metadata | null> {
+  const load = await loadPublicClub(clubSlug)
+  if (load?.status !== 'ok') return null
+  const { t } = await resolveTranslations()
+  const club = load.page.club
+  return publicPageMetadata({
+    club: club.name,
+    page: t('club_core.privacy.title', 'Privacy policy'),
+    description: t('club_core.privacy.meta.description', 'How {club} processes personal data.', { club: club.name }),
+  })
+}

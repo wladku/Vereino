@@ -82,6 +82,16 @@ Open three draft pull requests against `main` and confirm that each one cannot b
 
 Record the result (screenshots or links) in the E1 run log.
 
+## 9. Security settings (phase E2)
+
+*Settings → Code security* (<https://github.com/wladku/Vereino/settings/security_analysis>) — enabled by the owner, checked 2026-11-20 (ENG-AC-13, S8.10, S17.6):
+
+- [x] Secret scanning — on, with **Push protection** on.
+- [x] Private vulnerability reporting — on (`SECURITY.md` and the issue template config point reporters to it).
+- [x] Dependabot alerts — on. Dependabot security-update pull requests stay off: Renovate owns dependency updates.
+
+Secret scanning only knows provider token formats (Stripe, GitHub, AWS …). Its generic patterns (passwords, private keys, connection strings) are not available for a user-owned repository, so the `yarn verify` step `secrets:check` (`scripts/check-secrets.mjs`) covers them, plus e-mail addresses outside reserved example/test domains. Known false positives go into `scripts/secrets-allowlist.json` with a reason.
+
 ## Phase E2 settings (later)
 
-Private vulnerability reporting, secret scanning with push protection, Dependabot alerts and the Renovate app are configured in phase E2 and will be added to this page then. The release workflow is section 7.
+The Renovate app is configured in phase E2 and will be added to this page then. The release workflow is section 7.

@@ -2,14 +2,16 @@
 // `people.persons.anonymize` and `people.persons.delete` decide on, read with the caller's EntityManager in the
 // command's transaction, and the writes of the erasure itself. Other modules are reached only through the departure
 // contributors (`people.departure.<module>`): `payments` reports open charges and cash held and gives the retention
-// hold; every contributor answers `hasHistory`.
+// hold; every contributor answers `hasHistory`, and a contributor with `erase` clears its own part of the person's
+// data in the same transaction (S9.6, #528). The person's deliveries are cleared through the `foundation` helper.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { CalendarDate } from '@vereino/core'
+import { eraseRecipientDeliveries } from '@/modules/foundation'
 import { DepartureRequest, Guardianship, PersonImportRow, RoleAssignment, type Person } from '../data/entities'
-import type { ContributorNotice, OwnHistory } from '../lib/erasure-rules'
+import type { ContributorNotice, ErasurePart, OwnHistory, PeopleErasureCounts } from '../lib/erasure-rules'
 import { PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION } from '../lib/person-photo'
 import { departureContributors } from './departure'
 
@@ -116,7 +118,7 @@ export async function modulesWithHistory(
 }
 
 /** What the erasure wrote besides the person row (counts only, for the audit entry). */
-export type ErasureCounts = { guardianships: number; departureRequests: number; importRows: number }
+export type ErasureCounts = PeopleErasureCounts
 
 /**
  * Erases the person's data at once (*Security → Erasure*): phone, e-mail, notes, PESEL and its hash, external id and
@@ -169,6 +171,26 @@ export async function erasePersonData(
     { raw: null },
   )
   return { guardianships, departureRequests, importRows }
+}
+
+/**
+ * The other modules' parts of the erasure (S9.6, #528), in the caller's transaction: every registered contributor
+ * with `erase`, in the contributor order, then the person's deliveries (`foundation_deliveries`). A throw rolls the
+ * whole anonymisation back.
+ */
+export async function eraseContributorData(
+  em: EntityManager,
+  container: AwilixContainer,
+  scope: ClubScope,
+  personId: string,
+): Promise<ErasurePart[]> {
+  const parts: ErasurePart[] = []
+  for (const entry of departureContributors(container)) {
+    if (entry.contributor.erase) parts.push(await entry.contributor.erase(em, { ...scope, personId }))
+  }
+  const deliveries = await eraseRecipientDeliveries(em, scope, personId)
+  parts.push({ touched: [{ table: 'foundation_deliveries', rows: deliveries }], kept: [] })
+  return parts
 }
 
 /** Step 5 of the daily job: the name of an anonymised person whose hold has passed is cleared with the hold date. */
