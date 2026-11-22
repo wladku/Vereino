@@ -1,0 +1,1 @@
+| 2026-11-22 | Close-out III (#568): AC-N16 ticked, verified by reading (stale treasurer and Club events facts filed as #604); the UI-states criterion ticked (#513, TEST-N03, #502); AC-N01 #602, AC-N11 #603 (native-reader review), coverage criterion linked |

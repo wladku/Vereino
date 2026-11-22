@@ -7,7 +7,7 @@
   - The product owner had approved epic #23 on 2026-11-01, to start after epic #22: enabling `communication_channels`, `progress`, `integrations`, `messages` and `channel_resend`, the new `communication` module and their migrations.
   - Phase A of the foundation III spec had no issue, so it was filed as #71 through `om-prepare-issue`.
 - **Spec / issue / branch:**
-  - Spec: `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase A* (REQ-M01…REQ-M04, P-29…P-31, TEST-M01…TEST-M04, AC-M01…AC-M04).
+  - Spec: `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase A* (REQ-M01…REQ-M04, P-29…P-31, TEST-M01…TEST-M04, AC-M01…AC-M04).
   - Issue: #71, consumer #35, epic #23.
   - Branch: `feat/issue-71-foundation-messaging-a`.
 - **Status:** completed, PR open for review.

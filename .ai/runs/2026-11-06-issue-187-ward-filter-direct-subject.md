@@ -8,7 +8,7 @@
 
 1. Read issue #187. It names two fixes: **A** (a new `subject_person_id` column, which is a migration) and **B** (a participant row for a subject without an account, which is a privacy/product decision). The issue doesn't approve either one.
 2. Read `communication/data/queries.ts` (`visibleThreadHeaders`, ward clause), `data/entities.ts` and `commands/threads.ts` (`start_direct` set `scopeId: null`).
-3. Found a no-migration option, **C**: store the subject person in `scope_id` for member direct threads. It reverses the "`scope_id` null" text of DD-M18 (`2026-10-27-vereino-foundation-messaging-primitives.md`), so the run first stopped and asked on the issue (https://github.com/wladku/Vereino/issues/187#issuecomment-6693689718), without claiming it.
+3. Found a no-migration option, **C**: store the subject person in `scope_id` for member direct threads. It reverses the "`scope_id` null" text of DD-M18 (`implemented/2026-10-27-vereino-foundation-messaging-primitives.md`), so the run first stopped and asked on the issue (https://github.com/wladku/Vereino/issues/187#issuecomment-6693689718), without claiming it.
 4. The owner told the run to continue without asking. Claimed the issue (assignee, `in-progress`, claim comment https://github.com/wladku/Vereino/issues/187#issuecomment-6693745792) and implemented C.
 5. Implementation:
    - `commands/threads.ts`: `start_direct` writes `scopeId: parsed.personId`.
