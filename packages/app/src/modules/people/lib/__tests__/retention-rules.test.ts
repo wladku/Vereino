@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   ERASURE_REQUEST_REASON,
+  OPEN_END,
   RETENTION_SWEEP_REASON,
   emptyRetentionSweepCounts,
   latestEnd,
@@ -42,12 +43,13 @@ describe('retention sweep rule (REQ-041, #471)', () => {
   })
 
   it('takes the latest end of the periods, an open one first', () => {
+    expect(OPEN_END > '2999-12-31').toBe(true)
     expect(latestEnd([])).toBeNull()
     expect(latestEnd([{ validTo: '2025-01-01' }, { validTo: '2025-06-30' }, { validTo: '2025-03-01' }])).toBe(
       '2025-06-30',
     )
-    expect(latestEnd([{ validTo: '2025-01-01' }, { validTo: null }, { validTo: '2025-06-30' }])).toBe('open')
-    expect(latestEnd([{}])).toBe('open')
+    expect(latestEnd([{ validTo: '2025-01-01' }, { validTo: null }, { validTo: '2025-06-30' }])).toBe(OPEN_END)
+    expect(latestEnd([{}])).toBe(OPEN_END)
   })
 
   it('anonymises a person who left 13 months ago with nothing reaching past the cutoff', () => {
@@ -81,7 +83,7 @@ describe('retention sweep rule (REQ-041, #471)', () => {
         facts({
           leftOn: null,
           hasAccount: true,
-          rolesUntil: 'open',
+          rolesUntil: OPEN_END,
           guardianshipsUntil: '2026-01-01',
           recordsAfterCutoff: 2,
           contributorNotices: [
@@ -101,7 +103,7 @@ describe('retention sweep rule (REQ-041, #471)', () => {
       'open_charges',
       'cash_held',
     ])
-    expect(retentionKeepReasons(facts({ guardianshipsUntil: 'open' }), CUTOFF_12)).toEqual([
+    expect(retentionKeepReasons(facts({ guardianshipsUntil: OPEN_END }), CUTOFF_12)).toEqual([
       'guardianship_within_period',
     ])
   })

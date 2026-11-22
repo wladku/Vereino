@@ -32,15 +32,15 @@ export function monthsBefore(today: CalendarDate, months: number): CalendarDate 
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-/** A period's end: a calendar date, or `open` while it has none. */
-export type PeriodEnd = CalendarDate | 'open'
+/** The end a period without an end date reaches: later than any cutoff. */
+export const OPEN_END: CalendarDate = '9999-12-31'
 
-/** The latest end among the periods (`open` wins); null without any period. */
-export function latestEnd(periods: ReadonlyArray<{ validTo?: CalendarDate | null }>): PeriodEnd | null {
+/** The latest end among the periods (`OPEN_END` for one without an end date); null without any period. */
+export function latestEnd(periods: ReadonlyArray<{ validTo?: CalendarDate | null }>): CalendarDate | null {
   let latest: CalendarDate | null = null
   for (const period of periods) {
     const end = period.validTo ?? null
-    if (end === null) return 'open'
+    if (end === null) return OPEN_END
     if (latest === null || end > latest) latest = end
   }
   return latest
@@ -52,9 +52,9 @@ export type RetentionFacts = {
   anonymizedAt: Date | null
   hasAccount: boolean
   /** The latest end of the person's role assignments (`latestEnd`). */
-  rolesUntil: PeriodEnd | null
+  rolesUntil: CalendarDate | null
   /** The latest end of the guardianships where the person is the guardian or the ward. */
-  guardianshipsUntil: PeriodEnd | null
+  guardianshipsUntil: CalendarDate | null
   /** Records other modules (memberships, contracts, maintainers, coached groups) hold for the person past the cutoff. */
   recordsAfterCutoff: number
   /** The `payments` notices for the person: an open charge or cash held keeps them (the retention hold). */
@@ -74,8 +74,8 @@ export type RetentionKeepReason =
 
 const HOLDING_NOTICES = new Set<RetentionKeepReason>(['open_charges', 'cash_held'])
 
-function reachesPast(end: PeriodEnd | null, cutoff: CalendarDate): boolean {
-  return end !== null && (end === 'open' || end > cutoff)
+function reachesPast(end: CalendarDate | null, cutoff: CalendarDate): boolean {
+  return end !== null && end > cutoff
 }
 
 /**
