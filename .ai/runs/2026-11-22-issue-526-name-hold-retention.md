@@ -30,3 +30,10 @@
 
 - #470: store `accounting_retention_years` and pass it to `retentionHoldUntil`.
 - Owner: decide whether holds written before this change (N+5) are moved to N+6.
+
+## Follow-up run 2026-11-22: merge-train conflict (om-auto-fix-pr #562)
+
+- Trigger: PR #562 labelled `merge-train-conflict` (DIRTY) after #561 (#475) merged.
+- Merged `origin/main` on a detached HEAD; conflicts only in `docs/compliance/retention.md` (R1a, R2) and the club spec's Q-053 row. Kept main's R1a (#475 deferred to #560, open item R-H) and this PR's R2 (N+6); Q-053 records both answers.
+- No code in `payments`/`people` or TEST-L07 changed on main since the branch point, so no integration rerun was needed.
+- `yarn spec-changelogs:check`, `lessons:check`, `secrets:check`, `glossary:check` passed; `yarn guard` — no blocking findings.
