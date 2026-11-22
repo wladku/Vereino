@@ -26,8 +26,9 @@
 
 - `node --test … guard.test.mjs`: 26 tests pass; `yarn test:scripts`: 445 pass, `guard.mjs` 100 % lines/branches/functions.
 - `yarn guard` on this branch: no blocking findings; warnings for `.github/workflows/ci.yml`, `AGENTS.md`, `scripts/guard.mjs`.
-- Acceptance checks: see the PR body.
-- `yarn verify`: see the PR body.
+- First `yarn guard` after the commit blocked the PR itself: `guard.test.mjs:39 [test-only]` (a fixture held the literal marker). Fixed by building it from parts; lesson `yarn-guard-blocking-finding-means-stop`.
+- Acceptance checks on temporary edits of `packages/app/src/__tests__/i18n/member-nav-labels.test.ts`: added skip → exit 1 `[test-skip]` with `file:45`; added only → exit 1 `[test-only]`; `fixme` with `// quarantine: #545` (open, `bug`) → exit 0; quarantine pointing at #520 (no `bug`) → exit 1; `fixme` without quarantine → exit 1; file deleted → exit 1 `[test-deleted]`; new `resolutions` entry → exit 1 `package.json:78 [new-dependency]`; `AGENTS.md` change → warning, exit 0. A worktree of `origin/main` (bef479f1): "No blocking findings", exit 0. The `guard-approved` pass is covered by the unit test with a stubbed `gh`; CI shows it live once the owner labels a blocked PR.
+- `yarn verify`: first run failed at `format:check` (`guard.test.mjs is not formatted`); after `yarn format`, `yarn verify --from format:check` passed all 13 remaining steps (the first 6 had passed).
 
 ## Open problems / next steps
 

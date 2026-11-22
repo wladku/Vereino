@@ -114,7 +114,11 @@ test('parseDiff numbers added and removed lines and skips deleted files', () => 
   const files = parseDiff(diff)
   assert.deepEqual([...files.keys()], ['a.ts', 'with space.ts'])
   assert.deepEqual(files.get('a.ts'), {
-    added: [{ line: 3, text: 'new' }, { line: 4, text: 'newer' }, { line: 12, text: 'tail' }],
+    added: [
+      { line: 3, text: 'new' },
+      { line: 4, text: 'newer' },
+      { line: 12, text: 'tail' },
+    ],
     removed: [{ line: 3, text: 'old' }],
   })
   assert.deepEqual(files.get('with space.ts').added, [{ line: 1, text: 'hi' }])
@@ -128,10 +132,13 @@ test('checkDeletedTests blocks a deleted or renamed-away test and allows a moved
     { status: 'R', from: 'src/c.test.ts', path: 'src/__tests__/c.test.ts' },
     { status: 'M', path: 'src/d.test.ts' },
   ])
-  assert.deepEqual(findings.map((f) => [f.rule, f.file]), [
-    ['test-deleted', 'src/a.test.ts'],
-    ['test-deleted', 'src/b.test.ts'],
-  ])
+  assert.deepEqual(
+    findings.map((f) => [f.rule, f.file]),
+    [
+      ['test-deleted', 'src/a.test.ts'],
+      ['test-deleted', 'src/b.test.ts'],
+    ],
+  )
   assert.match(findings[1].message, /renamed away to src\/b\.ts/)
 })
 
@@ -145,12 +152,15 @@ test('checkTestMarkers blocks skip, only and x-prefixed tests in test files only
     { line: 6, text: 'const box = fixit(1)' },
   ]
   const io = { readLines: () => [], issueOf: noIssue }
-  assert.deepEqual(checkTestMarkers('src/a.test.ts', added, io).map((f) => [f.rule, f.line]), [
-    ['test-skip', 1],
-    ['test-skip', 2],
-    ['test-only', 3],
-    ['test-skip', 4],
-  ])
+  assert.deepEqual(
+    checkTestMarkers('src/a.test.ts', added, io).map((f) => [f.rule, f.line]),
+    [
+      ['test-skip', 1],
+      ['test-skip', 2],
+      ['test-only', 3],
+      ['test-skip', 4],
+    ],
+  )
   assert.deepEqual(checkTestMarkers('src/a.ts', added, io), [])
   assert.deepEqual(checkTestMarkers('src/__tests__/notes.md', added, io), [])
 })
@@ -165,9 +175,10 @@ test('checkTestMarkers allows a fixme quarantined by an open bug issue and block
   const added = [1, 3, 4].map((line) => ({ line, text: lines[line - 1] }))
   const issues = { 7: openBug(), 8: openBug() }
   const io = { readLines: () => lines, issueOf: (n) => issues[n] ?? null }
-  assert.deepEqual(checkTestMarkers('a.spec.ts', added, io).map((f) => [f.rule, f.line, f.message]), [
-    ['test-fixme', 4, 'fixme without `// quarantine: #<open bug issue>`'],
-  ])
+  assert.deepEqual(
+    checkTestMarkers('a.spec.ts', added, io).map((f) => [f.rule, f.line, f.message]),
+    [['test-fixme', 4, 'fixme without `// quarantine: #<open bug issue>`']],
+  )
   const closed = { readLines: () => lines, issueOf: () => ({ state: 'CLOSED', labels: ['bug'] }) }
   assert.match(checkTestMarkers('a.spec.ts', added.slice(0, 1), closed)[0].message, /#7 is not open/)
 })
@@ -192,10 +203,13 @@ test('checkCoverage blocks a lowered or removed threshold and allows an unchange
     removed: [{ line: 21, text: '{ lines: 100, branches: 100, functions: 100, statements: 100 }' }],
     added: [{ line: 21, text: '{ lines: 90, branches: 100, functions: 100 }' }],
   })
-  assert.deepEqual(lowered.map((f) => [f.rule, f.line, f.message]), [
-    ['coverage-threshold', 21, '`lines` threshold lowered from 100 to 90'],
-    ['coverage-threshold', 21, '`statements` threshold removed (was 100)'],
-  ])
+  assert.deepEqual(
+    lowered.map((f) => [f.rule, f.line, f.message]),
+    [
+      ['coverage-threshold', 21, '`lines` threshold lowered from 100 to 90'],
+      ['coverage-threshold', 21, '`statements` threshold removed (was 100)'],
+    ],
+  )
   assert.equal(lowered[1].oldLine, true)
   assert.deepEqual(
     checkCoverage('packages/app/jest.config.cjs', {
@@ -205,14 +219,23 @@ test('checkCoverage blocks a lowered or removed threshold and allows an unchange
     [],
   )
   const flags = checkCoverage('packages/app/package.json', {
-    removed: [{ line: 34, text: '"test:scripts": "node --test --test-coverage-lines=100 --test-coverage-branches=100"' }],
+    removed: [
+      { line: 34, text: '"test:scripts": "node --test --test-coverage-lines=100 --test-coverage-branches=100"' },
+    ],
     added: [{ line: 34, text: '"test:scripts": "node --test --test-coverage-lines=95 --test-coverage-branches=100"' }],
   })
-  assert.deepEqual(flags.map((f) => f.message), ['`lines` threshold lowered from 100 to 95'])
+  assert.deepEqual(
+    flags.map((f) => f.message),
+    ['`lines` threshold lowered from 100 to 95'],
+  )
   assert.deepEqual(
     checkCoverage('jest.config.cjs', {
       removed: [{ line: 1, text: 'lines: 100,' }],
-      added: [{ line: 1, text: 'lines: 100,' }, { line: 9, text: 'lines: 80,' }, { line: 12, text: 'lines: 90,' }],
+      added: [
+        { line: 1, text: 'lines: 100,' },
+        { line: 9, text: 'lines: 80,' },
+        { line: 12, text: 'lines: 90,' },
+      ],
     }).map((f) => [f.line, f.message]),
     [[9, '`lines` threshold lowered from 100 to 80']],
   )
@@ -220,12 +243,16 @@ test('checkCoverage blocks a lowered or removed threshold and allows an unchange
 })
 
 test('checkCoverage blocks a new exclusion and allows an unchanged one', () => {
-  const script = (excludes) => `"test:scripts": "node --test ${excludes.map((e) => `--test-coverage-exclude=\\"${e}\\"`).join(' ')}"`
+  const script = (excludes) =>
+    `"test:scripts": "node --test ${excludes.map((e) => `--test-coverage-exclude=\\"${e}\\"`).join(' ')}"`
   const added = checkCoverage('packages/app/package.json', {
     removed: [{ line: 34, text: script(['../../scripts/a.mjs']) }],
     added: [{ line: 34, text: script(['../../scripts/a.mjs', '../../scripts/b.mjs']) }],
   })
-  assert.deepEqual(added.map((f) => [f.rule, f.message]), [['coverage-exclusion', 'new exclusion `../../scripts/b.mjs`']])
+  assert.deepEqual(
+    added.map((f) => [f.rule, f.message]),
+    [['coverage-exclusion', 'new exclusion `../../scripts/b.mjs`']],
+  )
   const jest = checkCoverage('jest.config.js', {
     removed: [{ line: 5, text: "testPathIgnorePatterns: ['/node_modules/']," }],
     added: [
@@ -234,11 +261,14 @@ test('checkCoverage blocks a new exclusion and allows an unchanged one', () => {
       { line: 7, text: "coveragePathIgnorePatterns: ['/generated/']," },
     ],
   })
-  assert.deepEqual(jest.map((f) => [f.line, f.message]), [
-    [5, 'new exclusion `/payments/`'],
-    [6, 'new exclusion `!src/legacy/**`'],
-    [7, 'new exclusion `/generated/`'],
-  ])
+  assert.deepEqual(
+    jest.map((f) => [f.line, f.message]),
+    [
+      [5, 'new exclusion `/payments/`'],
+      [6, 'new exclusion `!src/legacy/**`'],
+      [7, 'new exclusion `/generated/`'],
+    ],
+  )
 })
 
 test('checkPackageJson blocks a new dependency and allows a version change', () => {
@@ -248,10 +278,13 @@ test('checkPackageJson blocks a new dependency and allows a version change', () 
     null,
     2,
   )
-  assert.deepEqual(checkPackageJson('package.json', before, after).map((f) => [f.rule, f.line, f.message]), [
-    ['new-dependency', 4, '`c` added to `dependencies`'],
-    ['new-dependency', 10, '`d` added to `resolutions`'],
-  ])
+  assert.deepEqual(
+    checkPackageJson('package.json', before, after).map((f) => [f.rule, f.line, f.message]),
+    [
+      ['new-dependency', 4, '`c` added to `dependencies`'],
+      ['new-dependency', 10, '`d` added to `resolutions`'],
+    ],
+  )
   assert.deepEqual(checkPackageJson('package.json', before, before.replace('1.0.0', '1.0.1')), [])
   assert.deepEqual(checkPackageJson('package.json', '{ broken', '{ broken'), [])
   assert.equal(checkPackageJson('packages/new/package.json', '', '{"dependencies":{"x":"1"}}').length, 1)
@@ -276,25 +309,49 @@ test('lockPackages reads every top-level descriptor of a Yarn Berry lockfile', (
     '  version: 0.0.0',
     'bare:',
   ].join('\n')
-  assert.deepEqual([...lockPackages(lock)], [['@babel/core', 4], ['lodash', 7], ['vereino', 9], ['bare', 11]])
+  assert.deepEqual(
+    [...lockPackages(lock)],
+    [
+      ['@babel/core', 4],
+      ['lodash', 7],
+      ['vereino', 9],
+      ['bare', 11],
+    ],
+  )
 })
 
 test('checkLockfile blocks a new package and allows a version bump', () => {
   const before = '"a@npm:^1.0.0":\n  version: 1.0.0\n'
   assert.deepEqual(checkLockfile('yarn.lock', before, '"a@npm:^1.1.0":\n  version: 1.1.0\n'), [])
   assert.deepEqual(
-    checkLockfile('yarn.lock', before, `${before}"b@npm:^2.0.0":\n  version: 2.0.0\n`).map((f) => [f.rule, f.line, f.message]),
+    checkLockfile('yarn.lock', before, `${before}"b@npm:^2.0.0":\n  version: 2.0.0\n`).map((f) => [
+      f.rule,
+      f.line,
+      f.message,
+    ]),
     [['new-lock-package', 3, '`b` is new in the lockfile']],
   )
 })
 
 test('checkSecretsInDiff reuses the secrets matcher and its allow-list on added lines', () => {
   const secret = j('const password = ', "'hunter2'")
-  const added = [{ line: 4, text: secret }, { line: 5, text: 'const password = process.env.X' }]
-  assert.deepEqual(checkSecretsInDiff('src/a.ts', added, []).map((f) => [f.rule, f.line]), [['secret:secret-assignment', 4]])
-  assert.deepEqual(checkSecretsInDiff('src/a.ts', added, [{ path: 'src/a.ts', rule: 'secret-assignment', reason: 'r' }]), [])
+  const added = [
+    { line: 4, text: secret },
+    { line: 5, text: 'const password = process.env.X' },
+  ]
+  assert.deepEqual(
+    checkSecretsInDiff('src/a.ts', added, []).map((f) => [f.rule, f.line]),
+    [['secret:secret-assignment', 4]],
+  )
+  assert.deepEqual(
+    checkSecretsInDiff('src/a.ts', added, [{ path: 'src/a.ts', rule: 'secret-assignment', reason: 'r' }]),
+    [],
+  )
   assert.deepEqual(checkSecretsInDiff('yarn.lock', added, []), [])
-  assert.deepEqual(checkSecretsInDiff('.env.local', [{ line: 1, text: j('AUTH_SECRET', '=A1b2C3d4E5f6') }], []).length, 1)
+  assert.deepEqual(
+    checkSecretsInDiff('.env.local', [{ line: 1, text: j('AUTH_SECRET', '=A1b2C3d4E5f6') }], []).length,
+    1,
+  )
 })
 
 test('checkAgentRules warns once per changed rule file, never for lessons', () => {
@@ -320,15 +377,22 @@ test('collectFindings combines every rule', () => {
     'yarn.lock': '"x@npm:1":\n  version: 1\n',
   }
   const result = collectFindings({
-    nameStatus: 'M\0src/a.test.ts\0M\0package.json\0M\0yarn.lock\0D\0src/b.test.ts\0M\0AGENTS.md\0R100\0old/package.json\0new/package.json\0',
+    nameStatus:
+      'M\0src/a.test.ts\0M\0package.json\0M\0yarn.lock\0D\0src/b.test.ts\0M\0AGENTS.md\0R100\0old/package.json\0new/package.json\0',
     diff: ['+++ src/a.test.ts', '@@ -0,0 +1 @@', `+${SKIP}'a', () => {})`].join('\n'),
     readOld: (file) => (file === 'old/package.json' ? '{"dependencies":{"y":"1"}}' : ''),
     readNew: (file) => files[file] ?? (file === 'new/package.json' ? '{"dependencies":{"y":"1"}}' : ''),
     issueOf: noIssue,
     allowlist: [],
   })
-  assert.deepEqual(result.blocking.map((f) => f.rule), ['test-deleted', 'test-skip', 'new-dependency', 'new-lock-package'])
-  assert.deepEqual(result.warnings.map((w) => w.file), ['AGENTS.md'])
+  assert.deepEqual(
+    result.blocking.map((f) => f.rule),
+    ['test-deleted', 'test-skip', 'new-dependency', 'new-lock-package'],
+  )
+  assert.deepEqual(
+    result.warnings.map((w) => w.file),
+    ['AGENTS.md'],
+  )
 })
 
 test('renderReport passes clean, blocks findings and honours the approval label', () => {
@@ -339,7 +403,12 @@ test('renderReport passes clean, blocks findings and honours the approval label'
   const removed = { rule: 'coverage-threshold', file: 'jest.config.cjs', line: 2, message: 'm', oldLine: true }
   const deleted = { rule: 'test-deleted', file: 'b.test.ts', message: 'm' }
   const warning = { rule: 'agent-rules', file: 'AGENTS.md', message: 'w' }
-  const blocked = renderReport({ blocking: [finding, removed, deleted], warnings: [warning], approved: false, base: 'abc' })
+  const blocked = renderReport({
+    blocking: [finding, removed, deleted],
+    warnings: [warning],
+    approved: false,
+    base: 'abc',
+  })
   assert.equal(blocked.exitCode, 1)
   assert.match(blocked.markdown, /`a\.test\.ts:3` \[test-skip\]/)
   assert.match(blocked.markdown, /`jest\.config\.cjs:2 \(base\)`/)
@@ -354,14 +423,23 @@ test('renderReport passes clean, blocks findings and honours the approval label'
 
 test('parseArgs reads base, pr and root and rejects anything else', () => {
   assert.deepEqual(parseArgs([]), { base: undefined, pr: undefined, root: process.cwd() })
-  assert.deepEqual(parseArgs(['--base', 'HEAD^1', '--pr', '12', '--root', '/tmp']), { base: 'HEAD^1', pr: '12', root: path.resolve('/tmp') })
+  assert.deepEqual(parseArgs(['--base', 'HEAD^1', '--pr', '12', '--root', '/tmp']), {
+    base: 'HEAD^1',
+    pr: '12',
+    root: path.resolve('/tmp'),
+  })
   assert.throws(() => parseArgs(['--base']), /Usage/)
   assert.throws(() => parseArgs(['--nope', 'x']), /Usage/)
 })
 
 test('makeGh parses JSON and turns every failure into null', () => {
   assert.deepEqual(makeGh('/', () => '{"a":1}')(['x']), { a: 1 })
-  assert.equal(makeGh('/', () => { throw new Error('no gh') })(['x']), null)
+  assert.equal(
+    makeGh('/', () => {
+      throw new Error('no gh')
+    })(['x']),
+    null,
+  )
 })
 
 test('issueReader caches lookups and maps labels to names', () => {
@@ -377,9 +455,20 @@ test('issueReader caches lookups and maps labels to names', () => {
 })
 
 test('prLabels reads the PR labels, or none without a PR or a readable PR', () => {
-  assert.deepEqual(prLabels(() => ({ labels: [{ name: APPROVAL_LABEL }] }), '3'), [APPROVAL_LABEL])
-  assert.deepEqual(prLabels(() => null, '3'), [])
-  assert.deepEqual(prLabels(() => { throw new Error('not called') }, undefined), [])
+  assert.deepEqual(
+    prLabels(() => ({ labels: [{ name: APPROVAL_LABEL }] }), '3'),
+    [APPROVAL_LABEL],
+  )
+  assert.deepEqual(
+    prLabels(() => null, '3'),
+    [],
+  )
+  assert.deepEqual(
+    prLabels(() => {
+      throw new Error('not called')
+    }, undefined),
+    [],
+  )
 })
 
 // A throwaway repository with `main` as `origin/main`, for end-to-end runs of `main()`.
@@ -441,7 +530,13 @@ test('main blocks a skipped test, a deleted test and a new dependency until the 
   git('add', '-A')
   git('commit', '-q', '-m', 'weaken')
   const err = []
-  const code = main({ args: ['--root', root, '--pr', '9'], log: () => {}, logError: (text) => err.push(text), env: {}, exec: execWith({}) })
+  const code = main({
+    args: ['--root', root, '--pr', '9'],
+    log: () => {},
+    logError: (text) => err.push(text),
+    env: {},
+    exec: execWith({}),
+  })
   assert.equal(code, 1)
   const report = err.join('')
   assert.match(report, /`src\/a\.test\.ts:2` \[test-skip\]/)
@@ -468,12 +563,40 @@ test('main allows a quarantined fixme, reads an explicit base and treats an unre
   git('add', '-A')
   git('commit', '-q', '-m', 'quarantine')
   const exec = execWith({ 'issue view 41': { state: 'OPEN', labels: [{ name: 'bug' }] } })
-  assert.equal(main({ args: ['--root', root], log: () => {}, logError: () => assert.fail('quarantine must pass'), env: {}, exec }), 0)
+  assert.equal(
+    main({ args: ['--root', root], log: () => {}, logError: () => assert.fail('quarantine must pass'), env: {}, exec }),
+    0,
+  )
   const err = []
-  assert.equal(main({ args: ['--root', root, '--base', 'main'], log: () => {}, logError: (text) => err.push(text), env: {}, exec: execWith({}) }), 1)
+  assert.equal(
+    main({
+      args: ['--root', root, '--base', 'main'],
+      log: () => {},
+      logError: (text) => err.push(text),
+      env: {},
+      exec: execWith({}),
+    }),
+    1,
+  )
   assert.match(err.join(''), /#41 could not be read/)
-  const missing = { args: ['--root', root], log: () => {}, logError: (text) => err.push(text), env: {}, exec, exists: () => false }
+  const missing = {
+    args: ['--root', root],
+    log: () => {},
+    logError: (text) => err.push(text),
+    env: {},
+    exec,
+    exists: () => false,
+  }
   assert.equal(main(missing), 1)
   assert.match(err.at(-1), /fixme without/)
-  assert.equal(main({ args: ['--root', root, '--base', 'HEAD'], log: () => {}, logError: () => assert.fail('empty diff passes'), env: {}, exec: execWith({}) }), 0)
+  assert.equal(
+    main({
+      args: ['--root', root, '--base', 'HEAD'],
+      log: () => {},
+      logError: () => assert.fail('empty diff passes'),
+      env: {},
+      exec: execWith({}),
+    }),
+    0,
+  )
 })
