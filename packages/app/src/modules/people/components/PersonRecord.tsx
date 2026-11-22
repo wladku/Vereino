@@ -47,6 +47,8 @@ import { useGrantedFeatures } from './useGrantedFeatures'
 const GROUPS_SPOT_ID = 'vereino:people:person-record:groups'
 /** The injection spot of the "Charges" tab (`payments/widgets/injection-table.ts`). */
 const CHARGES_SPOT_ID = 'vereino:people:person-record:charges'
+/** The person's sign-in methods below the account (`foundation`'s social sign-in, #566), so `people` never imports it. */
+const SIGN_IN_SPOT_ID = 'vereino:people:person-record:sign-in'
 
 /** The tab of `?tab=` when it is shown, else Details (always shown). */
 function tabFrom(value: string | null, allowed: readonly PersonRecordTab[]): PersonRecordTab {
@@ -235,6 +237,7 @@ export function PersonRecord({ id }: { id: string }) {
         </TabsContent>
         <TabsContent value="account" className="pt-4">
           <AccountPanel person={person} canManage={canManageAccount} onChanged={refetch} />
+          <InjectionSpot spotId={SIGN_IN_SPOT_ID} context={{ personId: person.id }} />
         </TabsContent>
         {hasGroupsTab ? (
           <TabsContent value="groups" className="pt-4">
