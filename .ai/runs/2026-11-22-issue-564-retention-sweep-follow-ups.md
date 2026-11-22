@@ -65,4 +65,4 @@ Item 4 (the payment checks running twice, cost, low) is left as the issue allows
 
 - This PR merges into #563's branch. If #563 is squash-merged into `main` first, retarget this PR to `main` and rebase it onto `main`.
 - Item 4 of #564 (the payment checks run twice per anonymisation) is not done, as the issue allows.
-- About 30 other `process.exitCode = 1` usage errors in Vereino module CLIs also exit 0. Filed as a follow-up issue (see the PR).
+- About 30 other `process.exitCode = 1` usage errors in Vereino module CLIs also exit 0. Filed as #642.
