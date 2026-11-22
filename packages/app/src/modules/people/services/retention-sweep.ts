@@ -7,8 +7,9 @@
 //     coached group) — so `people` never imports another module — plus the `payments` notices (open charge, cash held);
 //   - each person due is anonymised by `people.persons.anonymize` with the reason `retention_sweep`, one command and one
 //     transaction per person, so one audit entry each and accounting rows kept and linked (S9.6).
-// Idempotent: an anonymised person is no longer a candidate. A failure is reported and retried by the next run. Logs and
-// returns counts only, never ids or names.
+// Idempotent: an anonymised person is no longer a candidate, and a person the command refuses on the locked row (409
+// `anonymize_blocked`, e.g. an overlapping run anonymised them first) counts as kept (#564). Any other failure is
+// reported and retried by the next run. Logs and returns counts only, never ids or names.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -18,6 +19,7 @@ import type { ContributorNotice } from '../lib/erasure-rules'
 import {
   RETENTION_SWEEP_REASON,
   emptyRetentionSweepCounts,
+  isRetentionRefusal,
   latestEnd,
   monthsBefore,
   retentionKeepReasons,
@@ -155,6 +157,11 @@ export async function runRetentionSweep(
         })
         counts.anonymized += 1
       } catch (error: unknown) {
+        // Refused by the rule on the locked row (an overlapping run, or a change since the read): kept, not a fault.
+        if (isRetentionRefusal(error)) {
+          counts.kept += 1
+          continue
+        }
         counts.failed += 1
         options.onFailure(error)
       }

@@ -147,9 +147,9 @@ const lifeCycle: ModuleCli = {
     const today = typeof values.today === 'string' ? values.today : undefined
     const dryRun = values['dry-run'] === true
     const register = values['register-schedule'] === true
-    if (!tenant || !org || (dryRun && register)) {
+    if (!tenant || !org || (dryRun && register) || (today && !dryRun)) {
       process.stderr.write(
-        'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
+        'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--dry-run [--today YYYY-MM-DD] | --register-schedule]\n',
       )
       process.exitCode = 1
       return
@@ -168,9 +168,9 @@ const lifeCycle: ModuleCli = {
 }
 
 /**
- * `people retention-sweep --tenant <id> --org <id> [--today YYYY-MM-DD] [--dry-run] [--register-schedule]`: one run of
+ * `people retention-sweep --tenant <id> --org <id> [--dry-run [--today YYYY-MM-DD]] [--register-schedule]`: one run of
  * the daily former participants' retention sweep (club spec REQ-041; #471). `--dry-run` prints the counts and changes
- * nothing (the run leaves only its audit entry); `--register-schedule` registers the daily `people:retention-sweep`
+ * nothing (the run leaves only its audit entry); `--today` previews another day and only with `--dry-run` (#564); `--register-schedule` registers the daily `people:retention-sweep`
  * schedule after a real run — the confirmed first run on an existing club (`docs/ops/deploy.md`). Prints the job's
  * result as JSON (counts only).
  */
@@ -194,12 +194,13 @@ const retentionSweep: ModuleCli = {
     const today = typeof values.today === 'string' ? values.today : undefined
     const dryRun = values['dry-run'] === true
     const register = values['register-schedule'] === true
-    if (!tenant || !org || (dryRun && register)) {
+    // A thrown error is what makes `mercato` exit 1: it ends with `process.exit(0)` after a command that returns, so a
+    // `process.exitCode` set here is lost (lesson `mercato-module-cli-exit-code`, #564).
+    if (!tenant || !org || (dryRun && register) || (today && !dryRun)) {
       process.stderr.write(
-        'Usage: mercato people retention-sweep --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
+        'Usage: mercato people retention-sweep --tenant <tenantId> --org <organizationId> [--dry-run [--today YYYY-MM-DD] | --register-schedule]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people retention-sweep: invalid options')
     }
     const scope = { tenantId: tenant, organizationId: org }
     await runJobCommand('people.persons.retention_sweep', scope, {
@@ -209,7 +210,7 @@ const retentionSweep: ModuleCli = {
     if (register) {
       const registered = await registerRetentionSweepSchedule(await createRequestContainer(), scope)
       process.stdout.write(`${JSON.stringify({ scheduleRegistered: registered })}\n`)
-      if (!registered) process.exitCode = 1
+      if (!registered) throw new Error('[internal] people:retention-sweep schedule not registered')
     }
   },
 }

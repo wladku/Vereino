@@ -88,6 +88,22 @@ export async function erasureRequest(
   })
 }
 
+/**
+ * The person's open erasure requests, oldest first: the retention sweep closes them when it anonymises the person, so
+ * none stays in the administrator's queue for a person already anonymised (#564).
+ */
+export async function openErasureRequests(
+  em: EntityManager,
+  scope: ClubScope,
+  personId: string,
+): Promise<DepartureRequest[]> {
+  return em.find(
+    DepartureRequest,
+    { ...scope, subjectPersonId: personId, erasureRequested: true, status: 'open', deletedAt: null },
+    { orderBy: { createdAt: 'asc', id: 'asc' } },
+  )
+}
+
 /** The person's own records in `people` that make them more than a mistaken entry (*Mistaken person*). */
 export async function ownHistory(em: EntityManager, scope: ClubScope, person: Person): Promise<OwnHistory> {
   const personId = person.id
