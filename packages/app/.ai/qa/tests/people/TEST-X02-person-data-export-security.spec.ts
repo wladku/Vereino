@@ -4,7 +4,6 @@ import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import {
   assignRole,
   birthDateTurning,
-  call,
   createClub,
   createPerson,
   createSecondOrganization,
@@ -13,7 +12,7 @@ import {
   type Club,
 } from '../_fixtures/club'
 import { create } from '../_fixtures/club-structure'
-import { editRoleFeatures, exportLogRows, exportPerson, section } from '../_fixtures/data-export'
+import { documentOf, editRoleFeatures, exportLogRows, exportPerson, section } from '../_fixtures/data-export'
 
 // Person data export spec (#527): TEST-X02 — the export fails closed. Another organization's person and another
 // tenant's person answer 404 with no log row; the org A export holds none of the subject's rows stored under
@@ -74,7 +73,7 @@ test('TEST-X02 the export is organization- and tenant-scoped and refuses every c
     // The org A export: the subject's own delivery, never the one stored under organization B.
     const exported = await exportPerson(request, admin, subject)
     expect(exported.status, JSON.stringify(exported.body)).toBe(200)
-    const deliveries = section(exported.body!, 'foundation_deliveries').rows.map((row) => row.id)
+    const deliveries = section(documentOf(exported), 'foundation_deliveries').rows.map((row) => row.id)
     expect(deliveries).toContain(ownDelivery)
     expect(deliveries).not.toContain(foreignDelivery)
     expect(JSON.stringify(exported.body)).not.toContain('secret-hash')

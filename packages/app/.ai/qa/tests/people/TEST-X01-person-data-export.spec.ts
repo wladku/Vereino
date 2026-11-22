@@ -4,7 +4,14 @@ import { getOccurrence } from '../_fixtures/activities'
 import { bothSeries, declare, familyFor, firstSession } from '../_fixtures/attendance'
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub } from '../_fixtures/club'
 import { markRead, postReply, postThread } from '../_fixtures/communication'
-import { allKeys, exportLogRows, exportPerson, section, type ExportDocument } from '../_fixtures/data-export'
+import {
+  allKeys,
+  documentOf,
+  exportLogRows,
+  exportPerson,
+  section,
+  type ExportDocument,
+} from '../_fixtures/data-export'
 import { getMe, putMe } from '../_fixtures/members'
 import { postEntryBan } from '../_fixtures/facilities'
 import { seedOrder } from '../_fixtures/orders'
@@ -132,7 +139,7 @@ test('TEST-X01 the administrator exports one person: every module part, other pe
       /^attachment; filename="person-data-\d{4}-\d{2}-\d{2}\.json"$/,
     )
     expect(wardExport.response.headers()['cache-control']).toContain('no-store')
-    const ward = wardExport.body!
+    const ward = documentOf(wardExport)
     expect(ward).toMatchObject({ format: 'vereino.person-data-export', version: 1 })
     expect(ward.subject).toMatchObject({ id: younger, firstName: family.younger.firstName })
     expect(section(ward, 'people_guardianships').rows).toContainEqual(
@@ -179,7 +186,7 @@ test('TEST-X01 the administrator exports one person: every module part, other pe
     // --- The guardian: both wards, the coach's read of the contacts as a role only, the charge as payer ---
     const guardianExport = await exportPerson(request, admin, guardian.personId)
     expect(guardianExport.status, JSON.stringify(guardianExport.body)).toBe(200)
-    const parent = guardianExport.body!
+    const parent = documentOf(guardianExport)
     const wards = section(parent, 'people_guardianships').rows.map((row) => row.other)
     expect(wards).toContainEqual({ relation: 'ward', name: `${family.younger.firstName} ${family.younger.lastName}` })
     expect(section(parent, 'activities_contact_access_log').rows).toContainEqual(
@@ -199,7 +206,7 @@ test('TEST-X01 the administrator exports one person: every module part, other pe
     // --- The elder ward: own message only, the administrator's counted ---
     const elderExport = await exportPerson(request, admin, elder.personId)
     expect(elderExport.status, JSON.stringify(elderExport.body)).toBe(200)
-    const kuba = elderExport.body!
+    const kuba = documentOf(elderExport)
     const messages = section(kuba, 'communication_thread_messages')
     expect(messages.rows.map((row) => row.body)).toEqual([replyBody])
     expect(messages.omittedOtherAuthors).toBe(1)
@@ -211,7 +218,7 @@ test('TEST-X01 the administrator exports one person: every module part, other pe
     // --- The coach: the substitution with its decrypted reason for review, the contract, sessions coached ---
     const coachExport = await exportPerson(request, admin, family.coach.personId)
     expect(coachExport.status, JSON.stringify(coachExport.body)).toBe(200)
-    const coach = coachExport.body!
+    const coach = documentOf(coachExport)
     const substitution = section(coach, 'activities_substitution_entries')
     expect(substitution.reviewFields).toContain('reason')
     const entry = substitution.rows.find((row) => row.reason === reason)

@@ -31,6 +31,16 @@ export async function exportPerson(request: APIRequestContext, token: string, pe
   return call<ExportDocument & { code?: string }>(request, 'GET', `/api/people/persons/${personId}/data-export`, token)
 }
 
+/** The document of a 200 export (fails the test otherwise). */
+export function documentOf(result: {
+  status: number
+  body: (ExportDocument & { code?: string }) | null
+}): ExportDocument {
+  expect(result.status, JSON.stringify(result.body)).toBe(200)
+  if (!result.body) throw new Error('[test] the export returned no document')
+  return result.body
+}
+
 /** The section of one table (fails the test when it is missing). */
 export function section(document: ExportDocument, table: string): ExportSection {
   const found = document.sections.find((entry) => entry.table === table)
