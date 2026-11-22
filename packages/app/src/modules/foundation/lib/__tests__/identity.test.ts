@@ -86,6 +86,35 @@ describe('identityProviderConfig', () => {
     ).toBeNull()
   })
 
+  it('accepts plain-HTTP provider endpoints on a loopback host only', () => {
+    for (const host of ['localhost:6001', '[::1]:6001']) {
+      expect(
+        identityProviderConfig(
+          'google',
+          { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_TOKEN_URL: `http://${host}/token` },
+          APP_URL,
+        )?.tokenUrl,
+      ).toBe(`http://${host}/token`)
+    }
+    expect(
+      identityProviderConfig(
+        'google',
+        { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_TOKEN_URL: 'http://idp.example.com/token' },
+        APP_URL,
+      ),
+    ).toBeNull()
+    expect(
+      identityProviderConfig(
+        'google',
+        { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL: 'http://idp.example.com/authorize' },
+        APP_URL,
+      ),
+    ).toBeNull()
+    expect(identityProviderConfig('google', GOOGLE_ENV, 'http://club.example')?.redirectUri).toBe(
+      'http://club.example/api/foundation/identity/google/callback',
+    )
+  })
+
   it('ships no Facebook configuration in phase 1', () => {
     expect(
       identityProviderConfig(

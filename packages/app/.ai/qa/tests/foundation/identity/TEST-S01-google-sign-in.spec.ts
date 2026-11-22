@@ -154,6 +154,10 @@ test('TEST-S01 Google sign-in links, signs in and refuses every other path witho
     const noCookieAnswer = await http.get(noCookie.callbackUrl, new CookieJar())
     expect(appPath(location(noCookieAnswer))).toBe('/login?identity=invalid')
     expect(noCookieAnswer.setCookie).not.toContain('auth_token=')
+    // A malformed state cookie (a bare `%`) is refused like a missing one, not answered with a 500.
+    const malformed = await http.get(noCookie.callbackUrl, new CookieJar({ [STATE_COOKIE]: '%' }))
+    expect(malformed.status).toBe(303)
+    expect(appPath(location(malformed))).toBe('/login?identity=invalid')
 
     // The provider refuses; the token endpoint fails; it times out (5 s); the id token names another client.
     for (const behaviour of ['deny', 'error', 'hang', 'foreign_audience'] as const) {

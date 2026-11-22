@@ -23,7 +23,7 @@ import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { IDENTITY_PROVIDERS, canRemoveMethod } from '../lib/identity'
 import { authorizeScoped } from '../services/authorize-scoped'
-import { identityEventPayload, userHasPassword } from '../services/identity-links'
+import { identityEventPayload, lockedSignInMethods } from '../services/identity-links'
 
 export const IDENTITY_RESOURCE_KIND = 'foundation.identity_link'
 
@@ -172,8 +172,8 @@ const unlinkIdentityCommand: CommandHandler<Record<string, unknown>, IdentityCom
       )
       const link = authorized.entity as IdentityLink
       const scope = { tenantId: link.tenantId, organizationId: link.organizationId }
-      const linkCount = await em.count(IdentityLink, { ...scope, userId: link.userId, deletedAt: null })
-      if (!canRemoveMethod(await userHasPassword(em, scope, link.userId), linkCount)) {
+      const methods = await lockedSignInMethods(em, scope, link.userId)
+      if (!canRemoveMethod(methods.hasPassword, methods.linkCount)) {
         return foundationErrors.throw('identity_last_method')
       }
       const removed = {

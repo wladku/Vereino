@@ -78,9 +78,11 @@ export async function storeStateMarker(
 }
 
 /**
- * Consumes the marker of `state` once: read, then delete — the delete's answer decides, so of two concurrent
- * callbacks only the one that removed the key proceeds. Null for a missing, used or unreadable marker and when the
- * store is unreachable.
+ * Consumes the marker of `state` once: read, then delete; a callback that finds no marker or whose delete reports
+ * nothing removed stops. The platform cache offers no atomic get-and-delete (its redis `delete` is GET then DEL), so
+ * two callbacks racing on the same state within milliseconds may both pass here; the second still fails, because the
+ * provider exchanges an authorization code once (with its PKCE verifier) and answers the replay with an error
+ * (`identity=failed`). Null for a missing, used or unreadable marker and when the store is unreachable.
  */
 export async function consumeStateMarker(container: AwilixContainer, state: string): Promise<StateMarker | null> {
   try {
@@ -136,7 +138,13 @@ export function stateCookieOf(request: Request): string | null {
   if (!header) return null
   for (const part of header.split(';')) {
     const [name, ...rest] = part.trim().split('=')
-    if (name === STATE_COOKIE) return decodeURIComponent(rest.join('='))
+    if (name !== STATE_COOKIE) continue
+    try {
+      return decodeURIComponent(rest.join('='))
+    } catch {
+      // A malformed escape (`%`) is a tampered cookie: no state, so the callback answers `identity=invalid`.
+      return null
+    }
   }
   return null
 }

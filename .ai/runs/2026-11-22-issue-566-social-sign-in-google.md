@@ -55,6 +55,15 @@ See the PR diff: `packages/app/src/modules/foundation/**` (entity, migration, li
 - `yarn verify` → `all 20 step(s) passed`.
 - `yarn guard` → blocking: `arctic` added to `packages/app/package.json` and the lockfile packages `arctic`, `@oslojs/asn1`, `@oslojs/binary`, `@oslojs/crypto`, `@oslojs/encoding`, `@oslojs/jwt` — the dependency the owner approved on #566; the PR explains it and asks the owner for `guard-approved`. Warning: `AGENTS.md` changed (the new bootstrap-profile rule).
 
+## Review round (independent review task d4bb0a69, verdict `changes`)
+
+- F1 (medium): concurrent unlinks of two links of a password-less user could both pass the last-method check → `lockedSignInMethods` locks the user row `FOR UPDATE` before counting (no per-link locks, so no deadlock). Not reachable in phase 1 (one provider, one link per user); no concurrency test until a second provider exists.
+- F2 (low-medium): the platform cache's redis `delete` is GET then DEL, so the consume is not atomic → comment corrected; a raced second callback still fails at the provider's single-use code exchange (`identity=failed`).
+- F3 (low): a malformed state cookie (`%`) made the callback throw (500) → `stateCookieOf` returns null; TEST-S01 asserts `/login?identity=invalid`.
+- F4 (low): `http:` endpoint overrides would void the TLS premise of V-S04 → provider endpoints must be `https:` except on a loopback host (unit-tested).
+- Info: Google sign-in skips the `auth/login` after-interceptors (`people.member-landing`); it lands on `/club` as the spec says — noted on the PR.
+- After the fixes: TEST-S01 (fresh build), TEST-S02, TEST-S04 → `1 passed` each; `yarn verify` → `all 20 step(s) passed`.
+
 ## Open problems / next steps
 
 - The state-store-down path (503 `identity_unavailable`) is not driven by an integration test: a running app's cache cannot be stopped from a test.

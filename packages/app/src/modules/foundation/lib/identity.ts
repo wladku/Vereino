@@ -44,14 +44,32 @@ function envValue(env: Env, name: string): string | null {
   return value ? value : null
 }
 
-function absoluteHttpUrl(value: string | null): string | null {
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
+
+function absoluteUrl(value: string | null, httpOnLoopbackOnly: boolean): string | null {
   if (!value) return null
   try {
     const url = new URL(value)
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString().replace(/\/$/, '') : null
+    const allowed =
+      url.protocol === 'https:' ||
+      (url.protocol === 'http:' && (!httpOnLoopbackOnly || LOOPBACK_HOSTS.has(url.hostname)))
+    return allowed ? url.toString().replace(/\/$/, '') : null
   } catch {
     return null
   }
+}
+
+/** The app's own base: `https:`, or `http:` for a local instance. */
+function absoluteHttpUrl(value: string | null): string | null {
+  return absoluteUrl(value, false)
+}
+
+/**
+ * A provider endpoint: `https:` only, except `http:` on a loopback host (the integration runner's fake). The id token
+ * is trusted because it comes from the token endpoint over TLS (V-S04), so a plain-HTTP endpoint elsewhere is refused.
+ */
+function providerEndpoint(value: string | null): string | null {
+  return absoluteUrl(value, true)
 }
 
 /**
@@ -69,10 +87,10 @@ export function identityProviderConfig(
   const clientId = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_ID')
   const clientSecret = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_SECRET')
   const base = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_REDIRECT_BASE_URL') ?? appUrl)
-  const authorizationUrl = absoluteHttpUrl(
+  const authorizationUrl = providerEndpoint(
     envValue(env, 'VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL') ?? GOOGLE_AUTHORIZATION_URL,
   )
-  const tokenUrl = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_GOOGLE_TOKEN_URL') ?? GOOGLE_TOKEN_URL)
+  const tokenUrl = providerEndpoint(envValue(env, 'VEREINO_OAUTH_GOOGLE_TOKEN_URL') ?? GOOGLE_TOKEN_URL)
   if (!clientId || !clientSecret || !base || !authorizationUrl || !tokenUrl) return null
   return {
     id: provider,

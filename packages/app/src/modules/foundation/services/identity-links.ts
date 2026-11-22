@@ -1,6 +1,7 @@
 // Identity-link reads shared by the identity commands and routes (#566): whether a user
 // has a password, and a user's link list with the last-method rule. No `next/server`, cache or provider code, so the
 // commands (loaded by the CLI too) stay light.
+import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { User } from '@open-mercato/core/modules/auth/data/entities'
@@ -26,6 +27,25 @@ export type IdentityList = {
   items: IdentityLinkView[]
   canUnlink: boolean
   providers: Array<{ id: IdentityProvider; enabled: boolean; linked: boolean }>
+}
+
+/**
+ * The user's sign-in methods inside the unlink transaction: the user row is locked `FOR UPDATE` first, so two
+ * concurrent unlinks of the same user's links run one after the other and the second counts what the first left
+ * (it never removes the last method). Locking the single user row cannot deadlock the way locking each link would.
+ */
+export async function lockedSignInMethods(
+  em: EntityManager,
+  scope: IdentityScope,
+  userId: string,
+): Promise<{ hasPassword: boolean; linkCount: number }> {
+  const user = await em.findOne(
+    User,
+    { id: userId, ...scope, deletedAt: null },
+    { fields: ['id', 'passwordHash'], lockMode: LockMode.PESSIMISTIC_WRITE },
+  )
+  const linkCount = await em.count(IdentityLink, { ...scope, userId, deletedAt: null })
+  return { hasPassword: typeof user?.passwordHash === 'string' && user.passwordHash.length > 0, linkCount }
 }
 
 /** True when the user of `scope` has a password (a sign-in method besides the links). */
