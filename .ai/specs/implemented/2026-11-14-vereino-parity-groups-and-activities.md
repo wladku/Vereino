@@ -7,7 +7,7 @@
 
 Sources: the parity audit of 2026-11-14 (`main` at `a312199`) against the clickable mockup, and the owner's decisions in `.ai/specs/research/decisions/D-031-mockup-is-the-model-and-eight-parity-decisions.md` (§3, §5, §6 and §7 shape this spec; §1 and §2 are applied by the navigation spec). Binding as before: D-029 (phone-first) and D-030. Design authority: `docs/ux-concept/README.md` (B-11…B-17, M-02…M-05, M-07, flow F-03) and the mockup `docs/ux-concept/mockups/app.ts` (`screenGroups`, `screenGroup`, `screenActivities`, `screenActivityCreate`, `screenOccurrences`, `screenUnits`, `screenPolicies`, `screenToday`, `screenCalendar`, `occCard`, `screenOccurrence`, `screenAttendance`, `screenThread`) with `i18n/pl.json`.
 
-This spec is an addendum. It completes `.ai/specs/2026-10-20-vereino-club-management.md` (REQ-004…REQ-009, REQ-020, REQ-027, REQ-039, DD-43, J-002, J-003) and `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md` (REQ-M07). It does not edit their bodies or change their status. What it supersedes there is listed under *Compatibility* in *Architecture and Data Flow* and recorded in one changelog entry per base spec. Ids carry the letter **A** (`REQ-A01`, `DD-A01`, `J-A01`, `TEST-A01`, `AC-A01`, `Q-A01`), so they never collide with the base specs' ids (D-028).
+This spec is an addendum. It completes `.ai/specs/2026-10-20-vereino-club-management.md` (REQ-004…REQ-009, REQ-020, REQ-027, REQ-039, DD-43, J-002, J-003) and `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md` (REQ-M07). It does not edit their bodies or change their status. What it supersedes there is listed under *Compatibility* in *Architecture and Data Flow* and recorded in one changelog entry per base spec. Ids carry the letter **A** (`REQ-A01`, `DD-A01`, `J-A01`, `TEST-A01`, `AC-A01`, `Q-A01`), so they never collide with the base specs' ids (D-028).
 
 Names follow the mockup (D-031 §2). The full Polish and English rename table is the **"Glossary (D-031 §2)"** of `.ai/specs/2026-11-14-vereino-parity-navigation-and-naming.md`; this spec cites it and does not repeat it. In this text an *activity* is the recurring series or a one-off event, a *session* is one meeting, and the *coach* is the person running it (Polish "Prowadzący" in the glossary).
 
@@ -257,7 +257,7 @@ Job activities:warn-unassigned-sessions (every 15 min) -> notification activitie
     - *Events*: `activities.occurrence.updated` gains its consumers (REQ-A09); J-003 gains the moved-session path (J-A03);
     - *Data Models*, `Occurrence`: `score_*` and the notes become `score_home`, `score_away`, `result_note` (REQ-A15); `place_id` nullable with `venue_*`;
     - row `/backend/groups/groups/[id]/fixtures` and REQ-039: not scheduled (Non-goals, Q-A05).
-  - **Superseded in foundation III** (`.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`): REQ-M07 "Cancelling a session creates or extends the session thread and e-mails the session audience" is extended to a moved and a restored session (REQ-A09).
+  - **Superseded in foundation III** (`.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`): REQ-M07 "Cancelling a session creates or extends the session thread and e-mails the session audience" is extended to a moved and a restored session (REQ-A09).
 
 ### Dependencies on the other parity specs
 

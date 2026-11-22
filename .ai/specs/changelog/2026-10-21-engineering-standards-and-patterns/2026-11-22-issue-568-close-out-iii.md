@@ -1,0 +1,1 @@
+| 2026-11-22 | Close-out III (#568): ENG-AC-04 ticked (vereino-lint and vereino-contracts script tests); the backend-surface criterion ticked as N/A; every other open criterion linked to its gap issue (#575–#582, or #460, #461, #463, #557); the release workflow fails on the repository setting (#581) |

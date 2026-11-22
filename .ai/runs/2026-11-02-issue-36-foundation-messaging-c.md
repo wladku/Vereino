@@ -4,7 +4,7 @@
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` with the repo-local override applied, one implementation subagent, and the coordinator's own review and gate
 - **Trigger:** `/om-auto-fix-issue 36`, the last story of epic #23, after phase B (#35) was built.
 - **Spec / issue / branch:**
-  - Spec: `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase C* (REQ-M09, J-M03, TEST-M09, AC-M09), with the club spec's phase 3 step 3 (REQ-010, TEST-016, AC-010, R01).
+  - Spec: `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase C* (REQ-M09, J-M03, TEST-M09, AC-M09), with the club spec's phase 3 step 3 (REQ-010, TEST-016, AC-010, R01).
   - Issue: #36 (E04-S02), epic #23.
   - Branch: `feat/issue-36-cases`, cut from #35's branch; merged with `main` after PR #74 (#35) merged.
 - **Status:** completed, PR open for review (#74 merged on 2026-11-02).
