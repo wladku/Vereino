@@ -29,8 +29,8 @@ async function seedDelivery(club: Club, organizationId: string, personId: string
     await client.query(
       `insert into foundation_dispatches (id, tenant_id, organization_id, created_at, updated_at, template_id,
          source_module, source_type, source_id, idempotency_key, params, acting_role, status)
-       values ($1, $2, $3, now(), now(), 'test.export', 'people', 'test', $1, $1, '{}', 'club_admin', 'done')`,
-      [dispatchId, club.tenant.tenantId, organizationId],
+       values ($1, $2, $3, now(), now(), 'test.export', 'people', 'test', $1, $4, '{}', 'club_admin', 'done')`,
+      [dispatchId, club.tenant.tenantId, organizationId, `test-export-${dispatchId}`],
     )
     await client.query(
       `insert into foundation_deliveries (id, tenant_id, organization_id, created_at, updated_at, dispatch_id,
@@ -44,6 +44,8 @@ async function seedDelivery(club: Club, organizationId: string, personId: string
 
 test('TEST-X02 the export is organization- and tenant-scoped and refuses every caller but the club administrator', async ({
   request,
+  playwright,
+  baseURL,
 }) => {
   const club = await createClub(request, 'test-x02-export-scope')
   const otherClub = await createClub(request, 'test-x02-export-tenant')
@@ -105,9 +107,14 @@ test('TEST-X02 the export is organization- and tenant-scoped and refuses every c
       .poll(async () => (await exportPerson(request, coordinatorToken, subject)).body?.code, { timeout: 20_000 })
       .toBe('scope_denied')
 
-    // Unauthenticated: 401.
-    const anonymous = await request.get(`/api/people/persons/${subject}/data-export`)
-    expect(anonymous.status()).toBe(401)
+    // Unauthenticated (a fresh context: `request` keeps the cookies of the sign-ins above): 401.
+    const anonymousContext = await playwright.request.newContext({ baseURL })
+    try {
+      const anonymous = await anonymousContext.get(`/api/people/persons/${subject}/data-export`)
+      expect(anonymous.status()).toBe(401)
+    } finally {
+      await anonymousContext.dispose()
+    }
 
     // Only the administrator's export left a log row for the subject.
     expect(await exportLogRows(subject)).toEqual([
