@@ -179,7 +179,10 @@ test('checkLicenses accepts AGPL workspaces but still rejects an AGPL dependency
     'packages/app/node_modules/copyleft/package.json': { name: 'copyleft', version: '1.0.0', license: 'AGPL-3.0-only' },
   })
   const { violations } = checkLicenses(root, { exceptions: {} })
-  assert.deepEqual(violations.map(({ name, license }) => `${name}:${license}`), ['copyleft:AGPL-3.0-only'])
+  assert.deepEqual(
+    violations.map(({ name, license }) => `${name}:${license}`),
+    ['copyleft:AGPL-3.0-only'],
+  )
 })
 
 test('exceptionFor matches an exact name first, then the longest prefix pattern', () => {
