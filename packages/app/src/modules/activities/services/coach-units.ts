@@ -261,7 +261,8 @@ export async function readCoachUnits(
     const person = persons.get(row.personId)
     const item: CoachUnitsReportRow = {
       personId: row.personId,
-      coachName: person ? `${person.firstName} ${person.lastName}` : null,
+      // An anonymised coach reads "Former member" with an empty last name (#599): no trailing space.
+      coachName: person ? `${person.firstName} ${person.lastName}`.trim() : null,
       planned: row.planned,
       handedOver: row.handedOver,
       takenOver: row.takenOver,
