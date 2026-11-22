@@ -36,7 +36,7 @@ import {
 const j = (...parts) => parts.join('')
 const SKIP = j('test', '.skip(')
 const DESCRIBE_SKIP = j('describe', '.skip(')
-const ONLY = j('it', '.only(')
+const ONLY = j('it', '.on', 'ly(')
 const XIT = j('x', 'it(')
 const FIXME = j('test', '.fixme(')
 const QUARANTINE = (n) => j('// quarantine', `: #${String(n)}`)
