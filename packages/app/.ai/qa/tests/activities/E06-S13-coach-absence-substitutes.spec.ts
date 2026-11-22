@@ -253,11 +253,21 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     await page.goto('/backend/activities/occurrences?perspective=unassigned')
     const row = page.getByRole('row').filter({ hasText: 'Trening Żaków' })
     await expect(row.getByTestId('occurrence-needs-coach')).toBeVisible()
-    await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
-    await page
-      .getByRole('menuitem', { name: uiText('activities.substitutions.assign.action', { exact: true }) })
-      .click()
     const assignDialog = page.getByTestId('assign-coach-dialog')
+    // The table re-renders its rows when its query settles and can unmount a menu opened before
+    // that, so open the menu and pick the item in one retried step (lesson
+    // datatable-row-menu-detaches-on-rerender).
+    const assignItem = page.getByRole('menuitem', {
+      name: uiText('activities.substitutions.assign.action', { exact: true }),
+    })
+    await expect(async () => {
+      if (await assignDialog.isVisible()) return
+      if (!(await assignItem.isVisible())) {
+        await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click({ timeout: 2_000 })
+      }
+      await assignItem.click({ timeout: 2_000 })
+      await expect(assignDialog).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
     const irena = assignDialog.getByTestId('assign-coach-option').and(page.locator('[data-busy="true"]'))
     await expect(irena).toHaveCount(1)
     await expect(irena).toBeDisabled()
