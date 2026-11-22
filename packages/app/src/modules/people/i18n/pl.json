@@ -130,7 +130,7 @@
   "people.club.ward.notYourWard": "Ta osoba nie jest Twoim podopiecznym.",
   "people.club.ward.pageTitle": "Podopieczny",
   "people.club.ward.primaryPayer": "Jesteś głównym płatnikiem",
-  "people.club.wards.birthDate": "Urodzony(-a) {date}",
+  "people.club.wards.birthDate": "Data urodzenia: {date}",
   "people.club.wards.consentsSummary": "Zgody: {granted} z {total}",
   "people.club.wards.hasAccount": "Własne konto",
   "people.club.wards.title": "Twoi podopieczni",
