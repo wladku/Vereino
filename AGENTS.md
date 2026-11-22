@@ -48,6 +48,7 @@ Route first; never probe unmatched context.
 
 ## Never
 
+- Never add or remove the `guard-approved` label and never bypass or work around `yarn guard` (no renamed markers, no moved tests, no edits to the guard to let a change through). Run `yarn guard` before pushing; a blocking finding means stop, explain it in the PR and ask the owner (SDLC.md "Validation gate").
 - Never leak tenants, trust payload scope, or treat missing scope as unrestricted.
 - Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.

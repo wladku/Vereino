@@ -3,7 +3,9 @@
 # Contents, Pull requests, Issues and Workflows write on this repository: an update or a merge made with the workflow's
 # own GITHUB_TOKEN would not start the CI it waits for. Issues write mirrors the train's labels onto the issue named in
 # the PR's branch (`issue-N`); without it that step logs a warning. Without the secret the job only logs a notice.
-# It runs `main`'s copy of the scripts and never checks out PR code.
+# It runs `main`'s copy of the scripts and never checks out PR code. With MERGE_TRAIN_BATCH_SIZE 2 or more it is the batch
+# train (`.ai/specs/2026-11-18-batch-merge-train.md`): it builds `merge-train/batch` server-side, which then also needs
+# Commit statuses write (`merge-train/verified`, `merge-train/verdict`) and Issues write (the pause issue).
 name: Merge train
 
 on:
@@ -23,7 +25,7 @@ on:
         type: boolean
         default: false
       batch_size:
-        description: Batch size the dry run plans with (empty = the MERGE_TRAIN_BATCH_SIZE variable, unset = 1)
+        description: Batch size a dry run plans with (empty = the MERGE_TRAIN_BATCH_SIZE variable, unset = 1); ignored without dry run
         type: string
         default: ''
 
@@ -56,4 +58,7 @@ jobs:
           GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
           MERGE_TRAIN_SKIP_LABELS: ${{ vars.MERGE_TRAIN_SKIP_LABELS }}
           MERGE_TRAIN_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
-          MERGE_TRAIN_BATCH_SIZE: ${{ inputs.batch_size || vars.MERGE_TRAIN_BATCH_SIZE }}
+          # Only a dry run takes the input: a real run with size 2 or more is the batch train, which the owner switches
+          # on with the variable (spec phase 3).
+          MERGE_TRAIN_BATCH_SIZE: ${{ (inputs.dry_run && inputs.batch_size) || vars.MERGE_TRAIN_BATCH_SIZE }}
+          MERGE_TRAIN_REQUIRED_CHECKS: ${{ vars.MERGE_TRAIN_REQUIRED_CHECKS }}

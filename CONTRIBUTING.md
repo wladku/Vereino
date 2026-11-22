@@ -116,14 +116,16 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 
 | Platform-owned file | Local patch | Rule / origin |
 |---|---|---|
-| `packages/app/package.json` | Vereino scripts (`format`, `format:check`, `contracts:check`, `typecheck:qa`, `test:scripts`, `test:integration:vereino`, `glossary:check`, `qa-texts:check`, `di-commands:check`, …) and development tools | S2.1 |
+| `packages/app/package.json` | Vereino scripts (`format`, `format:check`, `contracts:check`, `typecheck:qa`, `test:scripts`, `test:integration:vereino`, `glossary:check`, `qa-texts:check`, `di-commands:check`, …) and development tools; `@open-mercato/enterprise` removed from `dependencies` (commercial licence; `yarn forbidden-packages:check` keeps it out) | S2.1; ADR-023, ENG-Q-10, #466 |
 | `packages/app/scripts/i18n-check-hardcoded.mjs` | `--strict` mode for Vereino module paths | S2.4 |
 | `packages/app/eslint.config.mjs` | Vereino-path rules, package boundaries, re-enabled React rules | S3.10, ADR-018 |
 | `packages/app/jest.config.cjs` | 100 % coverage thresholds for the `lib/` folders of the listed Vereino modules; `react` mapped to the app's single copy so `@vereino/ui` components render in tests | S13.6 |
 | `packages/app/scripts/dev-runtime-supervisor.mjs` | Exposes `appendDiagnosticLine`, which `scripts/dev.mjs` calls while a banner recovery action runs; without it `yarn dev` exits with a `TypeError` | S3.1; lesson `dev-runtime-recovery-action-crash` |
 | `packages/app/next.config.ts` | `transpilePackages` for `@vereino/*`; `Referrer-Policy: no-referrer` (and `Cache-Control: no-store`) on the token pages and APIs: declaration links, booking request confirmation, rental cancellation; S8.4 headers: `Strict-Transport-Security` (production only), `Permissions-Policy`, production CSP without `'unsafe-eval'`, and `Cache-Control: private, no-store` on `/api/*` requests carrying the `auth_token` or `session_token` cookie, an `Authorization` header or `x-api-key` | Monorepo; #192, #125, #286; S8.4, #463 |
 | `packages/app/src/instrumentation-client.ts` | Added: `z.config({ jitless: true })` in the browser, so zod's eval probe raises no violation under the CSP without `'unsafe-eval'` | S8.4, #463; lesson `csp-without-unsafe-eval-needs-zod-jitless` |
-| `packages/app/src/modules.ts` | Registers the Vereino modules (`{ id, from: '@app' }`) | `AGENTS.md` |
+| `packages/app/src/modules.ts` | Registers the Vereino modules (`{ id, from: '@app' }`); the scaffold's `OM_ENABLE_ENTERPRISE_MODULES*` blocks removed with the enterprise package | `AGENTS.md`; #466 |
+| `packages/app/src/modules/agent_examples/` | Deleted: the scaffold example imported `@open-mercato/enterprise` (the only import, spike #448) | ENG-Q-10, #466 |
+| `packages/app/.env.example` | The `OM_ENABLE_ENTERPRISE_MODULES*` switches replaced by a note that the package is not installed | #466 |
 | `packages/app/src/app/globals.css` | `@source` for `@vereino/ui`; sign-in page body rule; focus ring for the coordinator calendar's scroll regions; 44 px hit area of the toast's dismiss button | Monorepo; #261, #248, #491 |
 | `packages/app/src/app/(backend)/backend/layout.tsx` | Club logo and club time zone from the optional `clubCoreSettings` service; `ClubTimeZone`, `SidebarNavBadges` and `PlatformA11yRepairs` (names `CrudForm` controls by their labels and table search boxes by their placeholders, gives the AppShell breadcrumb page a role, starts the AppShell link names with their visible text); the Vereino mark without a club logo; `DEMO_MODE` defaults to off | #29, #231, #260, #485, #497 |
 | `packages/app/src/app/(frontend)/layout.tsx` | Mounts `PlatformA11yRepairs` on the member, public and portal pages too | #497 |
