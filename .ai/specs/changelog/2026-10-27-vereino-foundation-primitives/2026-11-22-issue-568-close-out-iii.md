@@ -1,0 +1,1 @@
+| 2026-11-22 | Close-out III (#568): no criterion ticked; AC-F02, F04, F08, F11, F13, F14 and the two generic criteria linked to #583–#587 (owner decisions on the invitation locale #584 and the shared wizard and page shell #587) |
