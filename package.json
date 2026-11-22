@@ -49,6 +49,7 @@
     "harness:fixture": "node ./scripts/prepare-agent-harness-fixture.mjs",
     "harness:release": "node ./scripts/run-agent-harness-release.mjs",
     "harness:validate-knowledge-change": "node ./scripts/validate-knowledge-change.mjs",
+    "forbidden-packages:check": "node ./scripts/check-forbidden-packages.mjs",
     "lessons:check": "node ./scripts/check-lessons.mjs",
     "lessons:list": "node ./scripts/check-lessons.mjs --list",
     "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",

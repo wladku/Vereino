@@ -76,7 +76,6 @@
     "@open-mercato/content": "0.9.0",
     "@open-mercato/core": "0.9.0",
     "@open-mercato/documents": "0.9.0",
-    "@open-mercato/enterprise": "0.9.0",
     "@open-mercato/events": "0.9.0",
     "@open-mercato/gateway-stripe": "0.9.0",
     "@open-mercato/onboarding": "0.9.0",
