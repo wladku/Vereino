@@ -26,6 +26,19 @@ test('TEST-X04 the administrator exports a person from the record; the panel is 
       birthDate: birthDateTurning(25),
       email: 'zosia-eksportowa@example.org',
     })
+    // A coordinator (set up before the browser sign-in, which ends the administrator's API token).
+    const sectionId = await create(request, club.adminToken, 'sections', { name: 'Sekcja panelu' })
+    const coordinator = await createStaff(request, club, {
+      firstName: 'Celina',
+      lastName: 'Koordynatorka',
+      birthDate: birthDateTurning(44),
+    })
+    await assignRole(request, club.adminToken, {
+      personId: coordinator.personId,
+      role: 'coordinator',
+      sectionId,
+      validFrom: '2020-01-01',
+    })
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 375, height: 800 })
@@ -65,18 +78,6 @@ test('TEST-X04 the administrator exports a person from the record; the panel is 
     expect(violations).toEqual({})
 
     // A coordinator reads the record without the panel.
-    const sectionId = await create(request, club.adminToken, 'sections', { name: 'Sekcja panelu' })
-    const coordinator = await createStaff(request, club, {
-      firstName: 'Celina',
-      lastName: 'Koordynatorka',
-      birthDate: birthDateTurning(44),
-    })
-    await assignRole(request, club.adminToken, {
-      personId: coordinator.personId,
-      role: 'coordinator',
-      sectionId,
-      validFrom: '2020-01-01',
-    })
     await signOutBrowser(page)
     await signInBrowser(page, request, club, coordinator.userId, coordinator.email)
     await page.goto(`/backend/people/persons/${person}?tab=details`)
