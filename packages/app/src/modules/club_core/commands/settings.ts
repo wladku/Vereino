@@ -154,6 +154,7 @@ function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
   row.showCalledUpChildren = values.showCalledUpChildren
   row.coachMayCancel = values.coachMayCancel
   row.orderSalesDocument = values.orderSalesDocument
+  row.formerParticipantRetentionMonths = values.formerParticipantRetentionMonths
   row.updatedAt = new Date()
 }
 
@@ -177,6 +178,10 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   row.showCalledUpChildren = text(before.showCalledUpChildren, row.showCalledUpChildren)
   if (typeof before.coachMayCancel === 'boolean') row.coachMayCancel = before.coachMayCancel
   row.orderSalesDocument = text(before.orderSalesDocument, row.orderSalesDocument)
+  row.formerParticipantRetentionMonths = integer(
+    before.formerParticipantRetentionMonths,
+    row.formerParticipantRetentionMonths,
+  )
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone
@@ -239,7 +244,7 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
             const before = snapshot(row)
             const current = resolveStoredSettings(row, row.organizationId).values
             const patch = authorized.parsed
-            // An unknown zone or a threshold outside 13–18 → 422 with a field error (#87).
+            // An unknown zone, a threshold outside 13–18 or a retention period outside 1–120 → 422 with a field error (#87, #471).
             const rule = clubSettingsRuleProblem(patch)
             if (rule) await throwFieldError(rule.code, rule.field)
             // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.

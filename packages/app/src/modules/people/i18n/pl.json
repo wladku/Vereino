@@ -782,6 +782,7 @@
   "people.persons.filters.attention.turns_18_soon": "Kończy 18 lat w ciągu 30 dni",
   "people.persons.filters.attention.adult_without_contact": "Dorosły bez kontaktu",
   "people.audit.jobs.life_cycle": "Uruchom cykl życia osób",
+  "people.audit.jobs.retention_sweep": "Anonimizuj byłych uczestników",
   "people.club.wards.notices.mayHaveAccount": "Może mieć własne konto — zapytaj klub",
   "people.club.wards.notices.turns18": "Kończy 18 lat {date}: od tego dnia {name} decyduje samodzielnie",
   "people.club.profile.notice.turns18.title": "{date} kończysz 18 lat",

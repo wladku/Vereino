@@ -119,6 +119,7 @@ release; a second run registers nothing twice.
 | `activities` | `yarn mercato activities set-up-club --tenant <id> --org <id>` | occurrence generation, guardian confirmation expiry, declaration reminders, unassigned-session warnings, dead declaration-link purge (daily) | #192, #525 |
 | `payments` | `yarn mercato payments set-up-club --tenant <id> --org <id>` | charge generation (06:00), overdue reminders (09:00), checkout reconciliation and order-campaign closing (every 15 minutes), dead order-link purge (daily), invariant check (03:00) | #301, #405, #525, #531 |
 | `facilities` | `yarn mercato facilities set-up-club --tenant <id> --org <id>` | rental lifecycle and request expiry (every 15 minutes), maintenance reminders (06:00), dead rental-link purge (daily) | #122, #125, #128, #221, #525 |
+| `people` | `yarn mercato people retention-sweep --tenant <id> --org <id> --dry-run`; when the club confirms the counts, `yarn mercato people retention-sweep --tenant <id> --org <id> --register-schedule` | former participants' retention sweep (03:00, club spec REQ-041): the first real run anonymises everyone who left the club `former_participant_retention_months` ago or earlier (default 12), so it runs only after the dry run; it prints `scheduleRegistered: true` | #471 |
 
 The commands print what they registered; every entry under `schedules` must be `true`. A later change of the club's time zone
 re-registers the time-zoned schedules on its own (`activities:reregister-schedule`, `payments:reregister-schedules`).
