@@ -20,7 +20,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { GrantKind, Recipient } from '@vereino/core'
-import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
+import { authorizeScoped, contactResolver, trustedScopeOf, type DispatchService } from '@/modules/foundation'
 import type { GroupDirectoryEntry } from '../../groups/services/group-directory'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Order, OrderCampaign, Payment } from '../data/entities'
@@ -30,7 +30,14 @@ import { amountDueOf, paidTotal, remainingOf } from '../lib/charge-ledger'
 import { coachCashRefusal, handOverRefusal, overdueByPayer } from '../lib/group-charges'
 import { clubClock, findGroups, findPersons, type PaymentsScope } from '../services/directory'
 import { childGroupCharges, feeAccessFor, groupParticipants } from '../services/group-charges'
-import { acceptCashOnCharges, afterCashCommit, enqueueConfirmation, selfPersonId, type CashPaymentLine } from './cash'
+import {
+  acceptCashOnCharges,
+  afterCashCommit,
+  callerSettlesCash,
+  enqueueConfirmation,
+  selfPersonId,
+  type CashPaymentLine,
+} from './cash'
 import { PAYMENT_RESOURCE_KIND } from './ledger'
 import { ORDER_RESOURCE_KIND } from './orders'
 import { emitAfterCommit, inWriteTransaction, paymentsLog, trustedTenantId, type PaymentsCommandResult } from './shared'
@@ -110,11 +117,15 @@ const collectCashCommand: CommandHandler<Record<string, unknown>, GroupCashResul
   id: 'payments.cash.collect',
   isUndoable: false,
   async execute(rawInput, ctx) {
+    // Read on its own pooled connection, so before the transaction holds one (#549).
+    const trusted = trustedScopeOf(ctx)
+    const settlesCash = trusted ? await callerSettlesCash(ctx, trusted) : false
     const result = await inWriteTransaction(ctx, 'payments.cash.collect', async (em) => {
       const {
         authorized,
         parsed,
         scope,
+        today,
         access,
         charges: shown,
       } = await authorizeGroupChild(groupCashSchema, rawInput, ctx, em)
@@ -136,6 +147,7 @@ const collectCashCommand: CommandHandler<Record<string, unknown>, GroupCashResul
         amount: parsed.amount,
         paidOn: parsed.paidOn,
         collectorPersonId,
+        facts: { today, settlesCash },
       })
       const payerOf = new Map(locked.map((charge) => [charge.id, charge.payerPersonId as string]))
       const payerPersonIds = [...new Set(lines.map((line) => payerOf.get(line.chargeId) as string))]

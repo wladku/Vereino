@@ -347,12 +347,16 @@ export function mondayOf(date: string): string {
 }
 
 /**
- * Moves the member calendar (`/club/calendar`) from this week to the week of `date`. The calendar opens on the
- * Monday–Sunday week of today and keeps its week in component state, so a session "tomorrow" is next week when today
- * is a Sunday. Call it after every navigation or reload; each step waits for the range label to change.
+ * Moves the member calendar (`/club/calendar`) to the week of `date`. The calendar opens on the upcoming list (E20-S14,
+ * #493), so this first picks the Week tab — the Monday–Sunday week of today — and keeps the week in component state, so
+ * a session "tomorrow" is next week when today is a Sunday. Call it after every navigation or reload; each step waits
+ * for the range label to change.
  */
 export async function showCalendarWeekOf(page: Page, date: string): Promise<void> {
   const weeks = Math.round((Date.parse(mondayOf(date)) - Date.parse(mondayOf(calendarDate()))) / (7 * 86_400_000))
+  const week = page.getByTestId('club-calendar-view-week')
+  if ((await week.getAttribute('aria-checked')) !== 'true') await week.click()
+  await expect(week).toHaveAttribute('aria-checked', 'true')
   const range = page.getByTestId('club-calendar-range')
   for (let step = 0; step < weeks; step += 1) {
     await expect(range).not.toBeEmpty()

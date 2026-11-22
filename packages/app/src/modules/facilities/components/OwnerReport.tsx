@@ -268,7 +268,7 @@ export function OwnerReport() {
     body = <EmptyState title={t('facilities.reports.owner.noPlaces')} />
   } else if (error) {
     body = (
-      <Alert status="error" data-testid="owner-report-error">
+      <Alert style="light" status="error" data-testid="owner-report-error">
         {codedMessage(error, t) ?? t('facilities.reports.owner.errors.load')}
       </Alert>
     )

@@ -1,0 +1,61 @@
+// The nightly invariant check of `payments` (club spec REQ-043, AC-043, TEST-088; engineering standards S10.6;
+// #531): reads every charge with the net sum of its payments and every `KP` and `RG` number of one club, judges them
+// with the pure rules of `lib/invariants.ts`, and reports the outcome as an operations signal (S15.5,
+// `docs/ops/monitoring.md`): drift is an `error` log line with the alert token `vereino.ops.payments.invariants.drift`
+// and a `/fail` ping of the heartbeat check `VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL`; a clean run logs at
+// `info` and pings the check, so a check that never runs alerts too. It writes nothing.
+import type { EntityManager } from '@mikro-orm/postgresql'
+import { createLogger } from '@open-mercato/shared/lib/logger'
+import { chargeLedgerTotals, handoverNumbers, receiptNumberIssues } from '../data/queries'
+import {
+  INVARIANTS_HEARTBEAT_URL_VARIABLE,
+  alertFields,
+  hasDrift,
+  heartbeatUrl,
+  invariantsReport,
+  type InvariantsReport,
+} from '../lib/invariants'
+import type { PaymentsScope } from './directory'
+
+const logger = createLogger('payments').child({ component: 'verify-invariants' })
+
+const HEARTBEAT_TIMEOUT_MS = 5_000
+
+/** Reads the club's ledger totals and numbers and builds the report; read-only. */
+export async function readPaymentsInvariants(em: EntityManager, scope: PaymentsScope): Promise<InvariantsReport> {
+  const charges = await chargeLedgerTotals(em, scope)
+  const receipts = await receiptNumberIssues(em, scope)
+  const handovers = await handoverNumbers(em, scope)
+  return invariantsReport({
+    charges,
+    receipts,
+    handovers: handovers.map((row) => ({ number: row.number, issueKey: row.id, issuedOn: null })),
+  })
+}
+
+/** `skipped`: no heartbeat check configured; `sent`: the monitor accepted the ping; `failed`: refused or unreachable. */
+export type InvariantsHeartbeat = 'skipped' | 'sent' | 'failed'
+
+/**
+ * Writes the run's log line and pings the heartbeat check. A refused ping is logged and never fails the job: the
+ * log line already carries the alert.
+ */
+export async function reportPaymentsInvariants(
+  scope: PaymentsScope,
+  report: InvariantsReport,
+): Promise<InvariantsHeartbeat> {
+  const drift = hasDrift(report)
+  const fields = { tenantId: scope.tenantId, organizationId: scope.organizationId, ...alertFields(report) }
+  if (drift) logger.error('Payments invariants drift', fields)
+  else logger.info('Payments invariants verified', fields)
+  const url = heartbeatUrl(process.env[INVARIANTS_HEARTBEAT_URL_VARIABLE], drift)
+  if (!url) return 'skipped'
+  try {
+    const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEARTBEAT_TIMEOUT_MS) })
+    if (response.ok) return 'sent'
+  } catch {
+    // Unreachable: logged below, like a refusal.
+  }
+  logger.warn('Payments invariants heartbeat ping failed', { variable: INVARIANTS_HEARTBEAT_URL_VARIABLE })
+  return 'failed'
+}

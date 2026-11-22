@@ -4,7 +4,7 @@ import ClubTodayOrderWidget from './widget.client'
 /**
  * The "Order" tile of `/club` (README M-02 → M-17; payments parity spec REQ-C11; issue #299 E12-S09): for each kit
  * order campaign that still takes orders and covers the caller's children, its name, the orders deadline and each
- * child's state, as a link to `/club/orders/{id}`, on the spot `vereino:club:today:sections` of `people`'s Today page.
+ * child's state, as a link to `/club/orders/{id}`, on the spot `vereino:club:today:more` of `people`'s Today page (a row, #493).
  */
 const widget: InjectionWidgetModule<Record<string, unknown>, Record<string, unknown>> = {
   metadata: {

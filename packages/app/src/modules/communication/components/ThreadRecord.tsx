@@ -19,11 +19,11 @@ import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
-import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
+import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { type DeliveryPage, DeliveryStatusList, StatusTag } from '@vereino/ui'
+import { type DeliveryPage, DeliveryStatusList, Notice, StatusTag } from '@vereino/ui'
 import {
   OWN_FORBIDDEN_STATE,
   errorMessage,
@@ -189,7 +189,7 @@ export function CaseBanner({ thread }: { thread: ThreadDetail }) {
   const locale = useLocale()
   const opened = thread.caseOpenedAt ? formatDateTime(thread.caseOpenedAt, locale) : ''
   return (
-    <Alert status="information" data-testid="thread-case-banner">
+    <Notice data-testid="thread-case-banner">
       <AlertTitle>{t('communication.cases.banner.title')}</AlertTitle>
       <AlertDescription>
         <p>{t('communication.cases.banner.text')}</p>
@@ -199,7 +199,7 @@ export function CaseBanner({ thread }: { thread: ThreadDetail }) {
             : t('communication.cases.banner.opened', { date: opened })}
         </p>
       </AlertDescription>
-    </Alert>
+    </Notice>
   )
 }
 

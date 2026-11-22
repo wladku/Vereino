@@ -4,10 +4,15 @@ import { createClub, mercato } from '../_fixtures/club'
 
 // Issue #221 L4 (E08-S02 follow-ups): a club set up before a `facilities` schedule existed — here a club created
 // through the API, which runs no `seedDefaults` — gets the rental lifecycle, request expiry and maintenance reminder
-// schedules from `facilities set-up-club`; a second run registers nothing twice, and another club is untouched.
+// schedules (and, since #525, the daily rental-link purge) from `facilities set-up-club`; a second run registers nothing twice, and another club is untouched.
 test.describe.configure({ timeout: 300_000 })
 
-const JOB_NAMES = ['facilities:expire-requests', 'facilities:maintenance-reminders', 'facilities:rental-lifecycle']
+const JOB_NAMES = [
+  'facilities:expire-requests',
+  'facilities:maintenance-reminders',
+  'facilities:purge-rental-links',
+  'facilities:rental-lifecycle',
+]
 
 async function schedulesOf(organizationId: string) {
   return withClient(async (client) => {
@@ -20,7 +25,7 @@ async function schedulesOf(organizationId: string) {
   })
 }
 
-test('ISSUE-221 facilities set-up-club registers the three schedules of a club once', async ({ request }) => {
+test('ISSUE-221 facilities set-up-club registers the schedules of a club once', async ({ request }) => {
   const club = await createClub(request, 'issue-221-set-up')
   const other = await createClub(request, 'issue-221-other')
   try {
@@ -29,7 +34,12 @@ test('ISSUE-221 facilities set-up-club registers the three schedules of a club o
     const scope = ['--tenant', club.tenant.tenantId, '--org', orgId]
     for (let run = 0; run < 2; run += 1) {
       expect(mercato(['facilities', 'set-up-club', ...scope])).toEqual({
-        schedules: { 'rental-lifecycle': true, 'expire-requests': true, 'maintenance-reminders': true },
+        schedules: {
+          'rental-lifecycle': true,
+          'expire-requests': true,
+          'maintenance-reminders': true,
+          'purge-rental-links': true,
+        },
       })
     }
     const schedules = await schedulesOf(orgId)

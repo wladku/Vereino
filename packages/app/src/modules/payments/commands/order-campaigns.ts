@@ -38,6 +38,7 @@ import {
 } from '../lib/order-campaigns'
 import { activeGuardians, clubClock, findGroups, findSections, type PaymentsScope } from '../services/directory'
 import { campaignMissing, campaignProducts, closeOrderCampaigns, usedProductIds } from '../services/order-campaigns'
+import { orderLinkService } from '../services/order-links'
 import {
   PAYMENTS_WRITE_KINDS,
   authorizePaymentsJob,
@@ -595,8 +596,41 @@ const closeDueCampaignsCommand: CommandHandler<Record<string, unknown>, CloseDue
         }),
 }
 
+// --- payments.order_links.purge_dead (the `payments:purge-order-links` job; engineering standards S9.5; #525) ---
+
+export type PurgeOrderLinksResult = { job: PaymentsJobScope; deleted: number }
+
+/**
+ * `payments.order_links.purge_dead`: deletes the club's order links that expired (or were deleted) at least 30 days
+ * ago (`DEAD_LINK_RETENTION_DAYS`); a valid link, or one dead for less, is kept. Daily from the scheduler; a repeated
+ * run deletes nothing more. Not undoable: the link is dead and its raw token exists nowhere.
+ */
+const purgeOrderLinksCommand: CommandHandler<Record<string, unknown>, PurgeOrderLinksResult> = {
+  id: 'payments.order_links.purge_dead',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const job = await authorizePaymentsJob(ctx, 'payments.order_links.purge_dead.authorize', rawInput)
+    const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
+    const deleted = await inWriteTransaction(ctx, 'payments.order_links.purge_dead', (em) =>
+      orderLinkService(ctx.container).purgeDead(em, scope, job.now),
+    )
+    return { job, deleted }
+  },
+  // A run that deleted nothing leaves no audit entry (#405).
+  buildLog: ({ result }) =>
+    sweepChangedNothing({ deleted: result.deleted })
+      ? null
+      : paymentsJobLog({
+          job: result.job,
+          labelKey: 'payments.audit.jobs.purgeOrderLinks',
+          fallback: 'Delete the order links dead for 30 days',
+          context: { deleted: result.deleted },
+        }),
+}
+
 registerCommand(createCampaignCommand)
 registerCommand(updateCampaignCommand)
 registerCommand(transitionCampaignCommand)
 registerCommand(remindCampaignCommand)
 registerCommand(closeDueCampaignsCommand)
+registerCommand(purgeOrderLinksCommand)

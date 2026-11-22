@@ -83,7 +83,7 @@ export function GuardianContacts({ occurrenceId }: { occurrenceId: string }) {
     )
   } else if (query.data.status === 'forbidden') {
     body = (
-      <Alert status="warning" data-testid="club-contacts-forbidden">
+      <Alert style="light" status="warning" data-testid="club-contacts-forbidden">
         <p className="max-w-prose">{t('activities.club.contacts.forbidden')}</p>
       </Alert>
     )

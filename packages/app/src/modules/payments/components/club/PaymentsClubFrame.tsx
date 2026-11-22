@@ -19,16 +19,17 @@ import {
   BACKEND_HREF,
   CLUB_HOME_HREF,
   ClubTimeZoneProvider,
-  MemberShell,
   memberContextStore,
+  type MemberLinkProps,
   memberNav,
+  MemberShell,
   memberShellLabels,
+  MemberSkeleton,
+  type MemberSkeletonShape,
   memberSwitchers,
+  Notice,
   useMemberContext,
   useMemberNavFeatures,
-  MemberSkeleton,
-  type MemberLinkProps,
-  type MemberSkeletonShape,
 } from '@vereino/ui'
 
 export const CLUB_PAYMENTS_HREF = '/club/payments'
@@ -94,11 +95,14 @@ export function PaymentsClubFrame({
   children,
   payerOnly = true,
   skeleton = 'rows',
+  loadErrorKey = 'payments.club.errors.load',
 }: {
   children: (profile: PaymentsProfile) => React.ReactNode
   payerOnly?: boolean
   /** The shape of the page's content while the profile loads (REQ-N15): `fields` on a form, `tiles` on cards. */
   skeleton?: MemberSkeletonShape
+  /** The catalog key of the load error: it names what the page shows (payments by default, orders on M-16/M-17). */
+  loadErrorKey?: string
 }) {
   const t = useT()
   const pathname = usePathname()
@@ -112,7 +116,7 @@ export function PaymentsClubFrame({
   } else if (!query.data) {
     body = (
       <ErrorMessage
-        label={t('payments.club.errors.load')}
+        label={t(loadErrorKey)}
         action={
           <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
             {t('payments.club.retry')}
@@ -122,7 +126,7 @@ export function PaymentsClubFrame({
     )
   } else if (query.data.status === 'not_linked') {
     body = (
-      <Alert status="warning" data-testid="club-not-linked">
+      <Alert style="light" status="warning" data-testid="club-not-linked">
         <div className="flex flex-col gap-3">
           <p className="max-w-prose">{t('payments.club.notLinked')}</p>
           <div>
@@ -135,7 +139,7 @@ export function PaymentsClubFrame({
     )
   } else if (payerOnly && !query.data.profile.paymentsVisible) {
     body = (
-      <Alert status="information" data-testid="club-payments-unavailable">
+      <Notice data-testid="club-payments-unavailable">
         <div className="flex flex-col gap-3">
           <p className="max-w-prose">{t('payments.club.unavailable')}</p>
           <div>
@@ -144,7 +148,7 @@ export function PaymentsClubFrame({
             </Button>
           </div>
         </div>
-      </Alert>
+      </Notice>
     )
   } else {
     // The club zone of the profile decides "today" on the page (#231), e.g. the date a cash payment proposes.

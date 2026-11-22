@@ -7,8 +7,11 @@
 // payer while open, they hold no cash, no guardianship is active and the request is recorded; 422
 // `confirmation_mismatch` for another last name. Contact and identity data go at once; the name stays while a payment
 // is under the retention hold (`erasure_hold_until`, from `payments`), and the daily job clears it after (step 5).
-// The request becomes `done`. Not undoable; the audit entry carries ids, dates and counts, never the erased values.
-// After the commit: `people.person.anonymized` (the `facilities` subscriber clears rental contact snapshots), the
+// The request becomes `done`. In the same transaction every departure contributor with `erase` clears its part
+// (`payments`: order contacts, print names and notes, typed payer labels; `facilities`: rental contact snapshots) and
+// the person's deliveries are cleared (S9.6, #528). Not undoable; the audit entry carries ids, dates, every table
+// touched with its row count and the kept categories with their legal basis (S9.6), never the erased values.
+// After the commit: `people.person.anonymized` (the `facilities` subscriber sets the renter's display name), the
 // person reindexed, and the photo files released.
 //
 // `people.persons.delete` — a person created by mistake, with no history in `people` or in any contributor
@@ -28,10 +31,19 @@ import { peopleErrors } from '../api/errors'
 import type { Person } from '../data/entities'
 import { personAnonymizeSchema, personDeleteSchema } from '../data/validators'
 import { emitPeopleEvent } from '../events'
-import { anonymizeBlockers, lastNameConfirmed, nameKeptUntil, personInUseReasons } from '../lib/erasure-rules'
+import {
+  anonymizeBlockers,
+  erasureAudit,
+  lastNameConfirmed,
+  nameKeptUntil,
+  peopleErasurePart,
+  personInUseReasons,
+  type ErasureAudit,
+} from '../lib/erasure-rules'
 import { clubToday } from '../services/club-clock'
 import {
   activeGuardianshipCount,
+  eraseContributorData,
   erasePersonData,
   erasureRequest,
   modulesWithHistory,
@@ -64,6 +76,7 @@ export type AnonymizeCommandResult = {
   anonymizedAt: string
   erasureHoldUntil: CalendarDate | null
   counts: ErasureCounts
+  audit: ErasureAudit
   photoFiles: { released: number; kept: number }
   actingRole: ActingRole
 }
@@ -121,6 +134,10 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       const keepNameUntil = nameKeptUntil(await retentionHold(em, ctx.container, scope, person.id), today)
       const photoIds = await photoFileIds(ctx.container, scope, person.id, person.photoAttachmentId ?? null)
       const counts = await erasePersonData(em, scope, person, keepNameUntil, now)
+      const audit = erasureAudit([
+        peopleErasurePart(counts, keepNameUntil),
+        ...(await eraseContributorData(em, ctx.container, scope, person.id)),
+      ])
       // `anonymizeBlockers` refused a missing request above (`request_missing`).
       if (!request) throw new Error('[internal] anonymisation without a recorded request')
       if (request.status === 'open') {
@@ -128,7 +145,7 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
         request.decidedAt = now
         request.updatedAt = now
       }
-      return { person, request, keepNameUntil, counts, photoIds, actingRole: authorized.actingRole }
+      return { person, request, keepNameUntil, counts, audit, photoIds, actingRole: authorized.actingRole }
     })
     const { person } = result
     const scope = { tenantId: person.tenantId, organizationId: person.organizationId }
@@ -158,6 +175,7 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       anonymizedAt: (person.anonymizedAt as Date).toISOString(),
       erasureHoldUntil: result.keepNameUntil,
       counts: result.counts,
+      audit: result.audit,
       photoFiles,
       actingRole: result.actingRole,
     }
@@ -178,6 +196,8 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
         ...result.counts,
         photoFilesReleased: result.photoFiles.released,
         photoFilesKept: result.photoFiles.kept,
+        tablesTouched: result.audit.tablesTouched,
+        keptData: result.audit.keptData,
       },
     }
   },

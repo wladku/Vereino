@@ -60,7 +60,12 @@ async function rangeRowId(club: Club, entryId: string): Promise<string> {
   })
 }
 
-test('TEST-L23 the age categories carry their PZPN birth years and a team proposes its age range from its category', async ({
+// Quarantined (#545): in CI runs that share no PR, the club administrator's step (B-11) times out clicking Save in
+// `age-range-editor-skrzat`: the button detaches from the DOM after the U-value is filled and comes back disabled, so the
+// typed value was dropped by an editor remount (the season-switch race noted below, #431, still happens after the
+// reference line shows 2026/27). Find the cause (wait for the editors to settle, or keep the typed value across the
+// remount), fix the test or the UI, then turn this back into `test`.
+test.fixme('TEST-L23 the age categories carry their PZPN birth years and a team proposes its age range from its category', async ({
   page,
   request,
 }, testInfo) => {

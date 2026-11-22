@@ -18,7 +18,6 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-import { SwitchField } from '@open-mercato/ui/primitives/switch-field'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz, type Translate } from '../../client-helpers'
@@ -37,7 +36,7 @@ import {
   type CoachChild,
   type GroupChargesView,
 } from './coach-client'
-import { clubToday, MemberSkeleton, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, MemberSkeleton, MemberSwitchField, StatusTag, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 function statusBadge(charge: CoachCharge, t: Translate) {
   if (charge.overdue) return <StatusTag status="error">{t('payments.charges.overdue')}</StatusTag>
@@ -236,7 +235,7 @@ function CashForm({
           />
         </div>
       </div>
-      <SwitchField
+      <MemberSwitchField
         id={`${ids.amount}-notify`}
         label={t('payments.coach.cash.notify')}
         checked={notify}
@@ -332,7 +331,7 @@ function ChargeRow({
       {order?.canHandOver ? (
         <div className="flex flex-col gap-2">
           {warning ? (
-            <Alert status="warning" data-testid="coach-hand-over-warning">
+            <Alert style="light" status="warning" data-testid="coach-hand-over-warning">
               <div className="flex flex-col gap-2">
                 <p>{t('payments.coach.handOver.unpaidWarning', { amount: formatMoney(charge.remaining, locale) })}</p>
                 <div className="flex flex-wrap gap-2">
@@ -582,7 +581,7 @@ function CoachPayments() {
   if (!query.data && query.isFetching) return <MemberSkeleton shape="rows" label={t('payments.coach.loading')} />
   if (query.error instanceof GroupChargesLoadError && query.error.status === 403) {
     return (
-      <Alert status="error" data-testid="coach-forbidden">
+      <Alert style="light" status="error" data-testid="coach-forbidden">
         <div className="flex flex-col gap-2">
           <p>{t('payments.coach.errors.forbidden')}</p>
           <div>

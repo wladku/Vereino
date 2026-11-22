@@ -251,7 +251,8 @@ function Composer({ options, staff }: { options: DirectOption[]; staff: boolean 
         <Label htmlFor={`${id}-subject`}>{t('communication.direct.subject')}</Label>
         <Input
           id={`${id}-subject`}
-          className="min-h-11"
+          className="h-12"
+          inputClassName="self-stretch"
           value={subject}
           maxLength={SUBJECT_MAX}
           aria-required="true"
@@ -288,7 +289,7 @@ function Composer({ options, staff }: { options: DirectOption[]; staff: boolean 
         />
       </div>
       {error ? (
-        <Alert status="error" data-testid="club-direct-error">
+        <Alert style="light" status="error" data-testid="club-direct-error">
           <p>{error}</p>
         </Alert>
       ) : null}
