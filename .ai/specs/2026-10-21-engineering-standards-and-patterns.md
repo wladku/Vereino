@@ -89,7 +89,7 @@ Versions are those installed in `packages/app/node_modules` on 2026-10-21.
 | Database | PostgreSQL | 17 (`pgvector/pgvector:pg17-trixie` locally) | production image chosen in E3/E4 (S15.7) |
 | Cache and queue | Redis | 7 (`redis:7-alpine` locally) | P3 |
 | DI | Awilix (platform container, `InjectionMode.CLASSIC`) | 13.0.5 | P2 |
-| Validation | Zod | 4.4.3 (root `resolutions`) | P2 + P4 |
+| Validation | Zod | 4.6.7 (root `resolutions`; P6, #454) | P2 + P4 |
 | Styling | Tailwind CSS + shadcn/ui through `@open-mercato/ui` | 4.3.3 | P3 |
 | Dates and time zones | `date-fns`, `date-fns-tz` | 4.4.0 (exact), `^3.2.0` | P2 for `date-fns`, P3 for `date-fns-tz` |
 | Unit tests | Jest + ts-jest (`scripts/jest-mikroorm-transformer.cjs`) | 30.5.2 / ts-jest 29.4.15 | P3 |
