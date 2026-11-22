@@ -90,15 +90,17 @@ We don't know (method):
 1.0 scope: see `2026-10-20-moscow.md`, decisions D-001…D-013 and the spec `.ai/specs/2026-10-20-vereino-club-management.md`. In short: people and roles, groups, activities/sessions, calendars, attendance, announcements with push, membership fees with online payment, facility (Orlik) with a public schedule and bookings. — **confirmed**
 
 Open-source specifics of 1.0 — **option, to decide** (section 5):
-- one instance per club (DD-02: 1 tenant + 1 organization per instance) — **confirmed** in the spec;
+- ~~one instance per club (DD-02: 1 tenant + 1 organization per instance)~~ — **superseded 2026-11-22 by D-034:** many clubs on one shared instance, updated with one deploy (epic E22, #626);
 - installation documented well enough that a club without an IT person can get an instance — **assumption** that this is needed in 1.0;
-- the hosting model for such clubs — **open** (D-012).
+- the hosting model for such clubs — **decided 2026-11-22 (D-034):** the maintainers host one shared instance.
 
 Vision (beyond 1.0, to verify): many clubs on one instance for a municipality; projects and grants; shop; online booking for renters; player development history; a hosted Vereino service run by the maintainers or a partner.
 
 We deliberately do not build: training diagrams, an exercise library, a medical module, scouting, individual statistics, Messenger/WhatsApp integration (no API for groups). — **confirmed**
 
-## 5. How does an open-source Vereino stay alive? (options — none chosen)
+## 5. How does an open-source Vereino stay alive? (options)
+
+**Chosen 2026-11-22 (D-034):** option B on one shared instance for many clubs; option C stays possible as a dedicated instance built from the same image. Pricing is not decided yet.
 
 | Option | Who runs the instance | Who pays | Fits the segment? | Main risk |
 |---|---|---|---|---|
@@ -177,3 +179,4 @@ Status of this section: **assumption / option**. Nothing here is decided; it ref
 | 2026-10-20 | First version (Władek Kuć). |
 | 2026-10-23 | Revision drafted by Claude: status labels; value/payer/time table for an open-source product; competition from the 13-product benchmark and license cost avoided for ~200 players; open-source pros and cons; new unknowns (instance cost, admin time, Stripe fee, municipality); hosting options A–D; open-source risks; decisions this case waits for. Original sections 1–4 kept. Not yet confirmed by Władek. |
 | 2026-10-23 | Section 7 added by Claude: the revenue model read through the Karwatka Brothers Framework (external e-book provided by Władek), Open Mercato's own MIT + enterprise + partner model verified on its repository, option E in section 5, decision 5. Assessment only; not yet confirmed by Władek. |
+| 2026-11-22 | D-034: many clubs on one shared instance; option B chosen (section 5); the 1.0 shape no longer says one instance per club. |
