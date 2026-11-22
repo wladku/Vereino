@@ -18,7 +18,13 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { Recipient, Scope } from '@vereino/core'
-import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
+import {
+  authorizeScoped,
+  contactResolver,
+  prefetchSessionScope,
+  trustedScopeOf,
+  type DispatchService,
+} from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Payment } from '../data/entities'
 import { lastReceiptNumber, lockReceiptNumbering } from '../data/queries'
@@ -156,6 +162,22 @@ export async function callerSettlesCash(
   return ctx.container.resolve<RbacService>('rbacService').userHasAllFeatures(userId, ['payments.cash.settle'], scope)
 }
 
+/** What an acceptance reads through other services: the club's today and whether the caller settles cash. */
+export type CashAcceptanceFacts = { today: string; settlesCash: boolean }
+
+/**
+ * Reads the facts of an acceptance through the settings and RBAC services, each on its own pooled connection. Call it
+ * before the write transaction opens: inside it, every concurrent acceptance would hold its transaction's connection
+ * while waiting for a second one, and a pool's worth of them waits until the acquire timeout (#549).
+ */
+export async function cashAcceptanceFacts(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+): Promise<CashAcceptanceFacts> {
+  const [{ today }, settlesCash] = await Promise.all([clubClock(ctx.container, scope), callerSettlesCash(ctx, scope)])
+  return { today, settlesCash }
+}
+
 /**
  * Pays the row-locked `charges` with `amount` of cash received on `paidOn` (oldest first) under one new receipt
  * number: refuses a cancelled, forfeited or paid charge (409), an amount above what remains (422) and a future day
@@ -168,7 +190,7 @@ export async function acceptCashOnCharges(
   em: EntityManager,
   scope: { tenantId: string; organizationId: string },
   charges: readonly Charge[],
-  input: { amount: number; paidOn: string; collectorPersonId: string | null },
+  input: { amount: number; paidOn: string; collectorPersonId: string | null; facts: CashAcceptanceFacts },
 ): Promise<CashAcceptance> {
   const chargeIds = charges.map((charge) => charge.id)
   // An online overpayment "to refund" (#110, Q-049) is not a payment of the charge, as in `ledgerOf`.
@@ -188,8 +210,12 @@ export async function acceptCashOnCharges(
     createdAt: charge.createdAt.toISOString(),
     remaining: charge.status === 'cancelled' ? 0 : remainingOf(amountDueOf(charge), paidByCharge.get(charge.id) ?? 0),
   }))
-  const { today } = await clubClock(ctx.container, scope)
-  const refusal = cashRefusal({ charges: selection, amount: input.amount, paidOn: input.paidOn, today })
+  const refusal = cashRefusal({
+    charges: selection,
+    amount: input.amount,
+    paidOn: input.paidOn,
+    today: input.facts.today,
+  })
   if (refusal === 'cash_exceeds_selected') {
     const selected = selectedTotal(selection)
     await paymentsErrors.throw(refusal, { selected: formatZloty(selected), selectedAmount: selected })
@@ -198,7 +224,7 @@ export async function acceptCashOnCharges(
   }
 
   // Cash accepted by someone who settles cash is with the club at once (#118): no collector holds it.
-  const collectedByPersonId = (await callerSettlesCash(ctx, scope)) ? null : input.collectorPersonId
+  const collectedByPersonId = input.facts.settlesCash ? null : input.collectorPersonId
   await lockReceiptNumbering(em, scope.organizationId)
   const last = await lastReceiptNumber(em, scope, receiptPrefix(input.paidOn))
   const receiptNumber = nextReceiptNumber(input.paidOn, (last && receiptSequence(last)) || 0)
@@ -267,6 +293,12 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
   isUndoable: false,
   async execute(rawInput, ctx) {
     const receiptId = randomUUID()
+    // Everything read on another pooled connection is read before the transaction holds one (#549): the session
+    // scope and the acceptance facts. Without a trusted scope `authorizeScoped` refuses inside the transaction.
+    const trusted = trustedScopeOf(ctx)
+    const [sessionScope, facts] = trusted
+      ? await Promise.all([prefetchSessionScope(ctx), cashAcceptanceFacts(ctx, trusted)])
+      : [null, null]
     const result = await inWriteTransaction(ctx, 'payments.cash.record', async (em) => {
       const authorized = await authorizeScoped(
         {
@@ -278,6 +310,7 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         rawInput,
         ctx,
         em,
+        { sessionScope },
       )
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
@@ -299,6 +332,8 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         amount: parsed.amount,
         paidOn: parsed.paidOn,
         collectorPersonId,
+        // `authorizeScoped` passed, so the session named this scope and the facts were read for it.
+        facts: facts as CashAcceptanceFacts,
       })
 
       const dispatchId = parsed.notify
