@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { addDays, nextWeekday, zoneInstant } from '../_fixtures/activities'
+import { addDays, nextWeekday, readNotifications, zoneInstant } from '../_fixtures/activities'
+import { familyFor } from '../_fixtures/attendance'
 import { calendarDate, call, createClub } from '../_fixtures/club'
 import {
   addPart,
@@ -7,6 +8,7 @@ import {
   clubEventId,
   createClubEvent,
   examplePlaces,
+  partIds,
   readClubEvent,
   updateClubEvent,
   type ClubEventRecord,
@@ -20,7 +22,9 @@ import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 // the description with the lock token; he reads the administrator's whole-club event (`mayManage: false`) but cannot
 // change it; a coach reads no club event. Cancelling with a reason cancels the planned future part sessions
 // (`cancelledSessions`), after which an update and a new part answer 409 `club_event_cancelled`. Another club's
-// administrator gets 404 for every route on the event and an empty list.
+// administrator gets 404 for every route on the event and an empty list. The second test (#605) cancels a whole-club
+// event with a Żaki part and a pool part and counts the session notices per recipient: each family of a part's group
+// is told once per part, nobody twice for one part.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
@@ -196,6 +200,74 @@ test('TEST-T01 a coordinator creates, edits and cancels the club event of his se
     expect(untouched.body).toMatchObject({ status: 'planned', partsCount: 0, description: null })
   } finally {
     await other.cleanup()
+    await club.cleanup()
+  }
+})
+
+const SESSION_NOTICE = 'activities.occurrence_cancelled'
+
+test('TEST-T01 cancelling a club event with two parts tells each family of a part group once per part', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'test-t01-notices')
+  try {
+    const admin = club.adminToken
+    // Anna guards Hania (14, no account; Żaki and the pool group) and Kuba (16, own account; Żaki); Piotr guards
+    // Stanisław (Żaki); Marek coaches Żaki, Irena the pool group.
+    const family = await familyFor(request, club)
+    const { hall } = await examplePlaces(request, club)
+    const eventId = await clubEventId(request, admin, { name: 'Dzień sportu', sectionId: null, placeId: hall })
+    const day = addDays(calendarDate(), 3)
+    const zakiPart = await partIds(request, admin, eventId, {
+      title: 'Turniej Żaków',
+      groupId: family.zaki,
+      coachPersonId: family.coach.personId,
+      startsAt: zoneInstant(day, '09:00'),
+      endsAt: zoneInstant(day, '12:00'),
+    })
+    const poolPart = await partIds(request, admin, eventId, {
+      title: 'Zawody pływackie',
+      groupId: family.poolGroup,
+      startsAt: zoneInstant(day, '13:00'),
+      endsAt: zoneInstant(day, '15:00'),
+    })
+    const zakiSession = String(zakiPart.occurrenceId)
+    const poolSession = String(poolPart.occurrenceId)
+    expect(zakiPart.occurrenceId).toBeTruthy()
+    expect(poolPart.occurrenceId).toBeTruthy()
+
+    const current = await readClubEvent(request, admin, eventId)
+    const cancelled = await cancelClubEvent(request, admin, eventId, 'Burza w prognozie', current.body?.updatedAt)
+    expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200)
+    // Żaki: Hania, Kuba, Stanisław, Anna, Piotr, Marek (6); the pool group: Hania, Anna, Irena (3).
+    expect(cancelled.body).toMatchObject({ status: 'cancelled', cancelledSessions: 2, notified: 9 })
+
+    // The session notices each recipient holds, counted per part session.
+    const noticesPerSession = async (token: string) => {
+      const counts: Record<string, number> = {}
+      for (const notice of await readNotifications(request, token, `&type=${SESSION_NOTICE}`)) {
+        const key =
+          notice.sourceEntityId === zakiSession ? 'zaki' : notice.sourceEntityId === poolSession ? 'pool' : 'other'
+        counts[key] = (counts[key] ?? 0) + 1
+      }
+      return counts
+    }
+    const expected: Array<[string, string, Record<string, number>]> = [
+      // Anna's family is in both parts: one notice per part, not one per ward (Hania and Kuba are both in Żaki).
+      ['Anna (guardian in both parts)', family.guardian.token, { zaki: 1, pool: 1 }],
+      ['Kuba (own account, Żaki)', family.elder.token, { zaki: 1 }],
+      ['Piotr (guardian, Żaki only)', family.other.guardian.token, { zaki: 1 }],
+      ['Marek (coach of Żaki)', family.coach.token, { zaki: 1 }],
+      ['Irena (coach of the pool group)', family.instructor.token, { pool: 1 }],
+    ]
+    for (const [who, token, counts] of expected) {
+      await expect
+        .poll(() => noticesPerSession(token), { timeout: 60_000, message: `${who} has one notice per part` })
+        .toEqual(counts)
+    }
+    // The administrator who cancelled is not told.
+    expect(await noticesPerSession(admin)).toEqual({})
+  } finally {
     await club.cleanup()
   }
 })

@@ -1,0 +1,1 @@
+| 2026-11-22 | AC-T04 (#606): the coach half gets its evidence — `ISSUE-606-coach-part-attendance-score` signs in the part's coach, saves the attendance and records the score on a match part session, reads both back and asserts `mayEdit`/`mayCancel` stay false. Test only; the status line and AC tick are left to the close-out. |
