@@ -203,6 +203,22 @@ describe('discountOn', () => {
   })
 })
 
+// Club management spec TEST-079 (amendment B, research TEST-C05; REQ-011): the percent discount is rounded once,
+// half-up, to the grosz, and the charge is the amount less that discount.
+describe('TEST-079', () => {
+  it('grants 33.00 on 100.00 at 33 %, so the charge is 67.00', () => {
+    const discount = discountOn(10000, { percent: 33, amount: null })
+    expect(discount).toBe(3300)
+    expect(10000 - discount).toBe(6700)
+  })
+
+  it('rounds the 49.995 discount on 99.99 at 50 % half-up once to 50.00, so the charge is 49.99', () => {
+    const discount = discountOn(9999, { percent: 50, amount: null })
+    expect(discount).toBe(5000)
+    expect(9999 - discount).toBe(4999)
+  })
+})
+
 describe('billing periods', () => {
   it('recognizes YYYY-MM', () => {
     expect(isBillingPeriod('2026-12')).toBe(true)
