@@ -147,9 +147,9 @@ const lifeCycle: ModuleCli = {
     const today = typeof values.today === 'string' ? values.today : undefined
     const dryRun = values['dry-run'] === true
     const register = values['register-schedule'] === true
-    if (!tenant || !org || (dryRun && register) || (today && !dryRun)) {
+    if (!tenant || !org || (dryRun && register)) {
       process.stderr.write(
-        'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--dry-run [--today YYYY-MM-DD] | --register-schedule]\n',
+        'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
       )
       process.exitCode = 1
       return
