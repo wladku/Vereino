@@ -1,0 +1,1 @@
+| 2026-11-22 | #589: AC-G02 evidence — `TEST-G03-expiry-race-skipped` races `activities.attendance.expire` against a guardian decision (test-held row lock) and proves `skipped`, `changedIds` without the lost row and the decision's lock token; AC-G02 stays open on #588 |
