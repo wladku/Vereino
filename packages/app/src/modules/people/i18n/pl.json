@@ -873,5 +873,12 @@
   "people.club.leave.errors.summary": "Sprawdź prośbę",
   "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
   "people.club.today.shortcuts": "Na skróty",
-  "people.errors.person_not_found": "Nie znaleziono tej osoby w klubie."
+  "people.errors.person_not_found": "Nie znaleziono tej osoby w klubie.",
+  "people.dataExport.title": "Wnioski o dane",
+  "people.dataExport.description": "Pobierz wszystkie dane tej osoby przechowywane w Vereino, aby odpowiedzieć na wniosek o dostęp lub przeniesienie danych. Pobranie jest rejestrowane.",
+  "people.dataExport.action": "Eksportuj dane osobowe",
+  "people.dataExport.flash.done": "Eksport został pobrany i zapisany w rejestrze. Pola do sprawdzenia pod kątem danych innych osób przed wysłaniem: {count}.",
+  "people.dataExport.errors.notFound": "Nie znaleziono tej osoby w klubie.",
+  "people.dataExport.errors.denied": "Tylko administrator klubu może eksportować dane osoby.",
+  "people.dataExport.errors.failed": "Nie udało się wyeksportować danych. Nic nie zostało pobrane. Spróbuj ponownie."
 }

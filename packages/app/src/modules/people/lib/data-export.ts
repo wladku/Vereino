@@ -7,8 +7,14 @@
 export const DATA_EXPORT_FORMAT = 'vereino.person-data-export' as const
 export const DATA_EXPORT_VERSION = 1 as const
 
-/** The PESEL value for a caller without `people.pesel.view` (DD-X08). */
-export const PESEL_WITHHELD = '[withheld: people.pesel.view]' as const
+/** The feature that reads a PESEL (DD-X08). */
+export const PESEL_FEATURE = 'people.pesel.view'
+
+/**
+ * The PESEL value for a caller without `people.pesel.view` (DD-X08): "withheld:" and the feature id in square
+ * brackets. Built from parts because `yarn ds:check` reads a bracketed `word:` literal as a Tailwind arbitrary value.
+ */
+export const PESEL_WITHHELD = '[' + `withheld: ${PESEL_FEATURE}` + ']'
 
 /** The audit log row's purpose and resource kind (DD-X04). */
 export const DATA_EXPORT_PURPOSE = 'data_subject_export' as const

@@ -273,7 +273,7 @@ export async function peoplePart(em: EntityManager, subject: PersonDataExportSub
       {
         module: 'people',
         table: 'people_import_rows',
-        activity: 'A1',
+        activity: 'A12',
         portable: false,
         reviewFields: ['raw'],
         rows: importRows.map((row) => ({

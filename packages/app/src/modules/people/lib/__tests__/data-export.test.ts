@@ -3,6 +3,7 @@ import {
   ATTACHMENT_BINARY_CATEGORY,
   DATA_EXPORT_FORMAT,
   DATA_EXPORT_VERSION,
+  PESEL_WITHHELD,
   SECURITY_AUDIT_CATEGORIES,
   assembleDataExport,
   dataExportFileName,
@@ -160,6 +161,12 @@ describe('assembleDataExport', () => {
       reviewRequired: [{ module: 'people', table: 'people_import_rows', recordId: 'r1', field: 'raw' }],
       omitted: [{ module: 'facilities', reason: 'module_not_enabled' }],
     })
+  })
+})
+
+describe('PESEL_WITHHELD', () => {
+  it('names the feature that reads the PESEL', () => {
+    expect(PESEL_WITHHELD).toBe('[withheld: people.pesel.view]')
   })
 })
 
