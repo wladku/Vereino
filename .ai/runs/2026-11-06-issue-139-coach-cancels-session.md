@@ -3,7 +3,7 @@
 - **Date:** 2026-11-06
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` with the repo-local override applied, run unattended under cezar (task 290e40fa); no subagents
 - **Trigger:** `/om-auto-fix-issue 139`, then the owner's instruction to continue autonomously with reasonable assumptions
-- **Spec / issue / branch:** #139; club spec `.ai/specs/2026-10-20-vereino-club-management.md` (glossary *Session cancellation*, *UI architecture*, API table; REQ-009, R01, DD-37); messaging spec `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md` (REQ-M07, *Thread message*, data model, events); `feat/issue-139-coach-cancels-session` from `main` at e646c15; follow-up #199
+- **Spec / issue / branch:** #139; club spec `.ai/specs/2026-10-20-vereino-club-management.md` (glossary *Session cancellation*, *UI architecture*, API table; REQ-009, R01, DD-37); messaging spec `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md` (REQ-M07, *Thread message*, data model, events); `feat/issue-139-coach-cancels-session` from `main` at e646c15; follow-up #199
 - **Status:** implemented; PR for review
 
 ## Goal
@@ -89,7 +89,7 @@ On M-04 and M-05, the coach has "Cancel session" ("the session will not take pla
   - `components/ThreadMessages.tsx`
   - `i18n/en.json`, `i18n/pl.json`, `README.md`
 - `packages/app/.ai/qa/tests/activities/ISSUE-139-coach-cancels-session.spec.ts` (new), `activities/E06-S15-coach-runs-session.spec.ts`, `communication/TEST-M07-session-cancellation.spec.ts`, `journeys/J-003-cancellation-announcement-case.spec.ts`
-- `.ai/specs/2026-10-20-vereino-club-management.md`, `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`, plus one changelog file for each
+- `.ai/specs/2026-10-20-vereino-club-management.md`, `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`, plus one changelog file for each
 
 - `.ai/lessons/audit-actions-list-needs-view-tenant.md` and `.ai/lessons/notification-variables-are-not-translated.md` (new), each with a catalog row; a recurrence note in `.ai/lessons/sign-in-browser-ends-the-api-token.md`
 

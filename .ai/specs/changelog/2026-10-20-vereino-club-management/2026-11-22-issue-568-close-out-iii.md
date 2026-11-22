@@ -1,0 +1,1 @@
+| 2026-11-22 | Close-out III (#568): AC-042 ticked (#541, ISSUE-525-dead-link-purge) and AC-043 ticked (#555, TEST-088-payments-invariants); AC-004 #592, AC-039 #593 (owner decision), AC-040 #566/#567, AC-041 #471 (PR #563), generic criteria linked |

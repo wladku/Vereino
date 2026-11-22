@@ -6,7 +6,7 @@
 // platform dictionary page for renaming, reordering and deleting; everyone else reads the tab.
 import * as React from 'react'
 import Link from 'next/link'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -301,7 +301,11 @@ function buildColumns(t: Translate, canEdit: boolean, onSaved: () => Promise<voi
       meta: { priority: 2 },
       cell: ({ row }) =>
         canEdit ? (
-          <RangeEditor key={row.original.updatedAt ?? 'new'} row={row.original} onSaved={onSaved} />
+          <RangeEditor
+            key={`${row.original.entryId}:${row.original.updatedAt ?? 'new'}`}
+            row={row.original}
+            onSaved={onSaved}
+          />
         ) : (
           <RangeText row={row.original} />
         ),
@@ -338,6 +342,11 @@ export function AgeCategoriesTable() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['groups-age-categories', seasonId, scopeVersion],
     queryFn: () => fetchAgeCategoryRanges(seasonId || null),
+    // A new key (another season, or the scope the organization switcher announces after the session's first backend
+    // page loads) keeps the rows on screen until it answers: swapping them for the loading row would remount every
+    // range editor and drop what the administrator is typing (#545). A row's editor key holds its entry and version,
+    // so a changed range or another club's row still starts fresh.
+    placeholderData: keepPreviousData,
   })
 
   const refresh = React.useCallback(async () => {
