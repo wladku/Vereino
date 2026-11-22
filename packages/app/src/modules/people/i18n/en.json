@@ -872,5 +872,6 @@
   "people.erasure.module.facilities": "facilities",
   "people.club.leave.errors.summary": "Check the request",
   "people.club.leave.errors.whoRequired": "Choose at least one person.",
-  "people.club.today.shortcuts": "Shortcuts"
+  "people.club.today.shortcuts": "Shortcuts",
+  "people.errors.person_not_found": "This person was not found in the club."
 }

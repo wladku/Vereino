@@ -872,5 +872,6 @@
   "people.erasure.module.facilities": "obiekty",
   "people.club.leave.errors.summary": "Sprawdź prośbę",
   "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
-  "people.club.today.shortcuts": "Na skróty"
+  "people.club.today.shortcuts": "Na skróty",
+  "people.errors.person_not_found": "Nie znaleziono tej osoby w klubie."
 }

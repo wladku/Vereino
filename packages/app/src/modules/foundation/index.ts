@@ -123,6 +123,11 @@ export {
   type PagedDeliveries,
 } from './services/dispatch'
 export { bareAddressKey, type BareAddress } from './lib/dispatch-rules'
+export {
+  personDeliveriesForExport,
+  type PersonDeliveriesExport,
+  type PersonDeliveryExportRow,
+} from './services/data-export'
 export { EMAIL_SENDER_TOKEN, defaultEmailSender, type EmailSender } from './services/email-sender'
 export {
   clubText,
