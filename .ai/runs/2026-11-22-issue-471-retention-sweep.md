@@ -38,8 +38,10 @@ A club setting "anonymise former participants after N months" (default 12, 1–1
 
 - `yarn typecheck` — exit 0.
 - `npx jest src/modules/people/lib src/modules/club_core/lib` — after updating `error-codes.test.ts` for the new code: all suites pass; `retention-rules.ts`, `erasure-rules.ts`, `settings.ts` at 100 % lines/branches/functions.
-- `yarn test:integration:vereino --filter TEST-086` — see the PR body for the result.
-- `yarn verify` — see the PR body for the result.
+- `yarn test:integration:vereino --filter TEST-086` — first run failed on an exact label match (the label carries the required marker " *"); second on the audit read (a job entry needs `audit_logs.view_tenant`, lesson updated); third run: 1 passed (43.6 s).
+- Older tests touched by the change, one id per run: TEST-L07, TEST-078, E02-S01, TEST-F09, ENG-TEST-25 — all passed.
+- `yarn verify` — first run failed at `lint` (`CalendarDate | 'open'` is a redundant union; replaced by the `OPEN_END` date); after the fix a full run passed all 19 steps.
+- `yarn guard` — no blocking findings.
 
 ## Open problems / next steps
 
