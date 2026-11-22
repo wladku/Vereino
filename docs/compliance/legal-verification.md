@@ -249,7 +249,8 @@ has no MCC table on its page, so nothing is restricted there.
 ## Follow-up issues
 
 - #475 — the accounting retention sweep keeps records of claims pursued in proceedings until 5 years after the year the
-  proceedings end (B3).
+  proceedings end (B3). Answered 2026-11-22: deferred, since the club pursues no dues in court; the build is #560
+  (retention schedule R1a, open item R-H).
 
 No other conclusion changes a default or a requirement: B1 and B12 are confirmed, and the corrections of B2 and B10
 change only which source the DPIA and the privacy notices cite.
