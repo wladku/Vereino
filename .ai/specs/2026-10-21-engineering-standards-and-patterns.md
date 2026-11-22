@@ -788,7 +788,7 @@ Every requirement maps to one phase, at least one test and one acceptance criter
 
 ## Acceptance Criteria
 
-- [ ] **ENG-AC-01** — `yarn verify` is the only gate command named in `AGENTS.md`, `.ai/agentic.config.json`, CI and the club spec; it exits non-zero at the expected step for each seeded violation and 0 on a clean tree (ENG-TEST-01). — gap: #575
+- [x] **ENG-AC-01** — `yarn verify` is the only gate command named in `AGENTS.md`, `.ai/agentic.config.json`, CI and the club spec; it exits non-zero at the expected step for each seeded violation and 0 on a clean tree (ENG-TEST-01). — evidence: #575, `.ai/runs/2026-11-22-issue-575-verify-seeded-violations.md` (six seeded runs stop at i18n:check-hardcoded, lint, format:check, ds:check, contracts:check and test; the clean tree passes all 20 steps)
 - [ ] **ENG-AC-02** — No one, administrators included, can merge to `main` without green `gate`, `integration`, `browser-smoke`, `pr-title` and DCO checks (ENG-TEST-02). — gap: #576
 - [ ] **ENG-AC-03** — All Vereino-owned code passes the strict lint and Prettier checks, and the E1 diff changes no platform-owned file except the recorded local patches. — gap: #577
 - [x] **ENG-AC-04** — A runtime import across Vereino modules, a platform import inside `lib/`, a duplicate error code and a missing catalog key each fail the gate (ENG-TEST-03, ENG-TEST-04). — evidence: `0ec4da9d`, `af05a50e`; ENG-TEST-03 `packages/app/scripts/__tests__/vereino-lint.test.mjs` (cross-module runtime import and platform import in `lib/` fail, type-only import passes), ENG-TEST-04 `packages/app/scripts/__tests__/vereino-contracts.test.mjs` (duplicate code, missing `pl`/`en` key); `yarn verify` steps `lint`, `contracts:check`
