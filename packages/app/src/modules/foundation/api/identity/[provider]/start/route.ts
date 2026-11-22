@@ -77,7 +77,11 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'Signed in without `foundation.identity.self`', schema: identityErrorSchema },
         { status: 404, description: '`identity_provider_disabled`', schema: identityErrorSchema },
         { status: 429, description: 'Too many requests', schema: identityErrorSchema },
-        { status: 503, description: '`identity_unavailable` (the state store is unreachable)', schema: identityErrorSchema },
+        {
+          status: 503,
+          description: '`identity_unavailable` (the state store is unreachable)',
+          schema: identityErrorSchema,
+        },
       ],
     },
   },

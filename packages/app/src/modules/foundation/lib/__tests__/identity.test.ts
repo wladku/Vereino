@@ -10,6 +10,7 @@ import {
   callbackPath,
   canRemoveMethod,
   idTokenIdentity,
+  identityEventPayload,
   identityProviderConfig,
   isIdentityProvider,
   isWellFormedState,
@@ -24,7 +25,7 @@ import {
 
 const GOOGLE_ENV = {
   VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'client-1',
-  VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'secret-1',
+  VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-secret',
 }
 const APP_URL = 'https://club.example'
 
@@ -42,7 +43,7 @@ describe('identityProviderConfig', () => {
     expect(identityProviderConfig('google', GOOGLE_ENV, APP_URL)).toEqual({
       id: 'google',
       clientId: 'client-1',
-      clientSecret: 'secret-1',
+      clientSecret: 'fake-secret',
       authorizationUrl: GOOGLE_AUTHORIZATION_URL,
       tokenUrl: GOOGLE_TOKEN_URL,
       redirectUri: 'https://club.example/api/foundation/identity/google/callback',
@@ -70,12 +71,18 @@ describe('identityProviderConfig', () => {
   it('is disabled without a client id, without a secret, without a usable base or with a broken endpoint', () => {
     expect(identityProviderConfig('google', { VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'c' }, APP_URL)).toBeNull()
     expect(identityProviderConfig('google', { VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 's' }, APP_URL)).toBeNull()
-    expect(identityProviderConfig('google', { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_CLIENT_ID: '  ' }, APP_URL)).toBeNull()
+    expect(
+      identityProviderConfig('google', { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_CLIENT_ID: '  ' }, APP_URL),
+    ).toBeNull()
     expect(identityProviderConfig('google', GOOGLE_ENV, null)).toBeNull()
     expect(identityProviderConfig('google', GOOGLE_ENV, 'not a url')).toBeNull()
     expect(identityProviderConfig('google', GOOGLE_ENV, 'ftp://club.example')).toBeNull()
     expect(
-      identityProviderConfig('google', { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_TOKEN_URL: 'javascript:alert(1)' }, APP_URL),
+      identityProviderConfig(
+        'google',
+        { ...GOOGLE_ENV, VEREINO_OAUTH_GOOGLE_TOKEN_URL: 'javascript:alert(1)' },
+        APP_URL,
+      ),
     ).toBeNull()
   })
 
@@ -100,7 +107,14 @@ describe('idTokenIdentity', () => {
   const now = Date.parse('2026-11-22T10:00:00Z')
   const exp = now / 1000 + 300
   const expected = { issuers: GOOGLE_ISSUERS, clientId: 'client-1' }
-  const valid = { iss: 'https://accounts.google.com', aud: 'client-1', exp, sub: '1234', email: 'a@x.test', email_verified: true }
+  const valid = {
+    iss: 'https://accounts.google.com',
+    aud: 'client-1',
+    exp,
+    sub: '1234',
+    email: 'a@x.test',
+    email_verified: true,
+  }
 
   it('returns the subject and the verified e-mail of a valid token', () => {
     expect(idTokenIdentity(valid, expected, now)).toEqual({ subject: '1234', email: 'a@x.test' })
@@ -111,12 +125,17 @@ describe('idTokenIdentity', () => {
   })
 
   it('drops an unverified or missing e-mail but keeps the identity', () => {
-    expect(idTokenIdentity({ ...valid, email_verified: false }, expected, now)).toEqual({ subject: '1234', email: null })
+    expect(idTokenIdentity({ ...valid, email_verified: false }, expected, now)).toEqual({
+      subject: '1234',
+      email: null,
+    })
     expect(idTokenIdentity({ ...valid, email: undefined }, expected, now)).toEqual({ subject: '1234', email: null })
   })
 
   it('accepts several audiences only when our client is the authorized party', () => {
-    expect(idTokenIdentity({ ...valid, aud: ['other', 'client-1'], azp: 'client-1' }, expected, now)?.subject).toBe('1234')
+    expect(idTokenIdentity({ ...valid, aud: ['other', 'client-1'], azp: 'client-1' }, expected, now)?.subject).toBe(
+      '1234',
+    )
     expect(idTokenIdentity({ ...valid, aud: ['other', 'client-1'], azp: 'other' }, expected, now)).toBeNull()
     expect(idTokenIdentity({ ...valid, aud: ['client-1'] }, expected, now)?.subject).toBe('1234')
   })
@@ -178,8 +197,12 @@ describe('parseStateMarker', () => {
     expect(parseStateMarker({ ...signIn, purpose: null })).toBeNull()
     expect(parseStateMarker({ ...signIn, purpose: { kind: 'other' } })).toBeNull()
     expect(parseStateMarker({ ...link, purpose: { kind: 'link', userId: 'u', tenantId: 't' } })).toBeNull()
-    expect(parseStateMarker({ ...link, purpose: { kind: 'link', userId: '', tenantId: 't', organizationId: 'o' } })).toBeNull()
-    expect(parseStateMarker({ ...link, purpose: { kind: 'link', userId: 'u', tenantId: 1, organizationId: 'o' } })).toBeNull()
+    expect(
+      parseStateMarker({ ...link, purpose: { kind: 'link', userId: '', tenantId: 't', organizationId: 'o' } }),
+    ).toBeNull()
+    expect(
+      parseStateMarker({ ...link, purpose: { kind: 'link', userId: 'u', tenantId: 1, organizationId: 'o' } }),
+    ).toBeNull()
     expect(parseStateMarker({ ...signIn, verifier: '' })).toBeNull()
     expect(parseStateMarker({ ...signIn, redirect: 3 })).toBeNull()
     expect(parseStateMarker({ ...signIn, expiresAt: '10' })).toBeNull()
@@ -187,7 +210,13 @@ describe('parseStateMarker', () => {
 })
 
 describe('markerAccepted', () => {
-  const marker: StateMarker = { provider: 'google', purpose: { kind: 'sign_in' }, verifier: 'v', redirect: '/club', expiresAt: 100 }
+  const marker: StateMarker = {
+    provider: 'google',
+    purpose: { kind: 'sign_in' },
+    verifier: 'v',
+    redirect: '/club',
+    expiresAt: 100,
+  }
 
   it('accepts its own provider before the expiry only', () => {
     expect(markerAccepted(marker, 'google', 99)).toBe(true)
@@ -222,6 +251,13 @@ describe('withTimeout', () => {
   it('passes a timely result and a timely failure through', async () => {
     await expect(withTimeout(Promise.resolve('ok'), 50)).resolves.toBe('ok')
     await expect(withTimeout(Promise.reject(new Error('boom')), 50)).rejects.toThrow('boom')
+    // A non-Error rejection (a thenable that rejects with a string) is wrapped in an Error.
+    const plain = {
+      then(_resolve: (value: string) => void, fail: (reason: unknown) => void) {
+        fail('plain')
+      },
+    } as unknown as Promise<string>
+    await expect(withTimeout(plain, 50)).rejects.toThrow('plain')
   })
 
   it('fails with IdentityTimeoutError when the promise is slower than the limit', async () => {
@@ -229,5 +265,26 @@ describe('withTimeout', () => {
     const pending = withTimeout(new Promise<string>(() => undefined), 5000)
     jest.advanceTimersByTime(5000)
     await expect(pending).rejects.toBeInstanceOf(IdentityTimeoutError)
+  })
+})
+
+describe('identityEventPayload', () => {
+  it('keeps ids and the provider and drops the subject and the e-mail', () => {
+    const link = {
+      id: 'l',
+      userId: 'u',
+      provider: 'google' as const,
+      tenantId: 't',
+      organizationId: 'o',
+      subject: '1234',
+      emailAtLink: 'a@x.test',
+    }
+    expect(identityEventPayload(link)).toEqual({
+      id: 'l',
+      userId: 'u',
+      provider: 'google',
+      tenantId: 't',
+      organizationId: 'o',
+    })
   })
 })

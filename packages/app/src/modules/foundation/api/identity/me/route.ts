@@ -17,7 +17,12 @@ export async function GET(request: Request): Promise<Response> {
     const ctx = await commandContextForRequest(request)
     const scope = ctx ? trustedScopeOf(ctx) : null
     if (!ctx?.auth || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const list = await listIdentities(ctx.container, scope, ctx.auth.sub, (provider) => providerConfig(provider) !== null)
+    const list = await listIdentities(
+      ctx.container,
+      scope,
+      ctx.auth.sub,
+      (provider) => providerConfig(provider) !== null,
+    )
     return Response.json(list, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error: unknown) {
     return errorResponse(error, 'foundation.identity.me')

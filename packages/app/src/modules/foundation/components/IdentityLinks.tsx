@@ -5,6 +5,7 @@
 // account holder, "Connect …" per enabled provider not yet linked (a link to `start`, which links with the session).
 // Loading, empty, error with retry, 409 (last method, stale version) and the round-trip outcome are announced politely.
 import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
@@ -27,21 +28,22 @@ type Props = {
 }
 
 function useIdentityList(url: string) {
-  const [state, setState] = React.useState<{ data: IdentityListResponse | null; loading: boolean; failed: boolean }>({
-    data: null,
-    loading: true,
-    failed: false,
+  const query = useQuery({
+    queryKey: ['foundation-identity-links', url],
+    queryFn: async (): Promise<IdentityListResponse> => {
+      const call = await apiCall<IdentityListResponse>(url)
+      if (!call.ok || !call.result) throw new Error(String(call.status))
+      return call.result
+    },
   })
-  const load = React.useCallback(async () => {
-    setState((current) => ({ ...current, loading: true, failed: false }))
-    const call = await apiCall<IdentityListResponse>(url).catch(() => null)
-    if (!call?.ok || !call.result) setState({ data: null, loading: false, failed: true })
-    else setState({ data: call.result, loading: false, failed: false })
-  }, [url])
-  React.useEffect(() => {
-    void load()
-  }, [load])
-  return { ...state, reload: load }
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    failed: query.isError,
+    reload: async () => {
+      await query.refetch()
+    },
+  }
 }
 
 function unlinkErrorKey(code: string | null): string {
@@ -118,7 +120,9 @@ export function IdentityLinks({ url, own, initialOutcome = null }: Props) {
                   <span className="break-words">{link.emailAtLink ?? t('foundation.identity.noEmail')}</span>
                   <span className="text-muted-foreground text-xs">
                     {t('foundation.identity.linkedOn', { date: formatDate(link.linkedAt) })}
-                    {link.lastSignedInAt ? ` · ${t('foundation.identity.lastSignIn', { date: formatDate(link.lastSignedInAt) })}` : ''}
+                    {link.lastSignedInAt
+                      ? ` · ${t('foundation.identity.lastSignIn', { date: formatDate(link.lastSignedInAt) })}`
+                      : ''}
                   </span>
                 </div>
                 <Button

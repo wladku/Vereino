@@ -81,6 +81,36 @@ export async function findFreePort({ isFree = isPortFree, random = Math.random }
   )
 }
 
+/**
+ * A port the operating system hands out for 127.0.0.1 (its ephemeral range, outside DEFAULT_PORT's range), for the
+ * in-process Google fake of the social sign-in tests (#566).
+ */
+export function findEphemeralPort({ createServer = net.createServer } = {}) {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address()
+      server.close(() => resolve(port))
+    })
+  })
+}
+
+/**
+ * Social sign-in in test runs (#566, spec *Integration Coverage*): a test-only Google client whose endpoints point at
+ * the OAuth fake a spec starts on `VEREINO_QA_OAUTH_FAKE_PORT` (`.ai/qa/tests/foundation/identity/_fixtures/`).
+ */
+export function oauthFakeEnv(port) {
+  const base = `http://127.0.0.1:${String(port)}`
+  return {
+    VEREINO_QA_OAUTH_FAKE_PORT: String(port),
+    VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'vereino-qa-google-client',
+    VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-qa-google-secret',
+    VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL: `${base}/authorize`,
+    VEREINO_OAUTH_GOOGLE_TOKEN_URL: `${base}/token`,
+  }
+}
+
 // Environment of the ephemeral app: test-only values, never real secrets.
 export function buildAppEnv({
   databaseUrl,
@@ -88,10 +118,12 @@ export function buildAppEnv({
   stateDir,
   baseEnv = process.env,
   secret = randomBytes(32).toString('hex'),
+  oauthFakePort = null,
 }) {
   const baseUrl = `http://127.0.0.1:${String(port)}`
   return {
     ...baseEnv,
+    ...(oauthFakePort === null ? {} : oauthFakeEnv(oauthFakePort)),
     NODE_ENV: 'production',
     PORT: String(port),
     DATABASE_URL: databaseUrl,
@@ -229,6 +261,7 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
     stopImpl = stopProcessTree,
     waitForSignalImpl = waitForSignal,
     findFreePortImpl = findFreePort,
+    findEphemeralPortImpl = findEphemeralPort,
     image = process.env.VEREINO_IT_POSTGRES_IMAGE,
     stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-ephemeral-')),
   } = deps
@@ -238,7 +271,9 @@ export async function runEphemeral({ argv, deps = {}, log = console.log }) {
   try {
     // `start` keeps DEFAULT_PORT, which CI and the docs rely on (BACKWARD_COMPATIBILITY.md); `test` takes a free port.
     const port = options.port ?? (options.mode === 'start' ? DEFAULT_PORT : await findFreePortImpl())
-    const env = buildAppEnv({ databaseUrl: database.databaseUrl, port, stateDir })
+    // Only `test` runs the specs that start the Google fake; `start` keeps social sign-in disabled.
+    const oauthFakePort = options.mode === 'test' ? await findEphemeralPortImpl() : null
+    const env = buildAppEnv({ databaseUrl: database.databaseUrl, port, stateDir, oauthFakePort })
     for (const step of options.build ? ['initialize', 'build'] : ['initialize']) {
       log(`[ephemeral] yarn ${step}`)
       if (runYarnImpl([step], { env }) !== 0) throw new Error(`[internal] yarn ${step} failed`)

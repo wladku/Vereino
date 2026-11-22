@@ -2,12 +2,11 @@
 // asks to connect a provider. Refuses a disabled provider (404 `identity_provider_disabled`) and a provider already
 // linked to this user (409 `identity_already_linked`); otherwise answers 303 to `start`, which — with this session —
 // runs the round trip with the `link` purpose, and the callback runs the command `foundation.identity.link`.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { buildSafeRedirectResponse } from '@open-mercato/core/modules/auth/lib/requestRedirect'
 import { foundationErrors } from '../../../errors'
-import { IdentityLink } from '../../../../data/entities'
 import { trustedScopeOf } from '../../../../services/authorize-scoped'
+import { ownLinkCount } from '../../../../services/identity-links'
 import { providerConfig } from '../../../../services/identity-providers'
 import { commandContextForRequest, errorResponse } from '../../../../services/route-context'
 import { identityErrorSchema, providerParamsSchema } from '../../shared'
@@ -23,12 +22,12 @@ export async function POST(request: Request, context: { params: Promise<{ provid
     if (!ctx?.auth || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const params = providerParamsSchema.safeParse(await context.params)
     if (!params.success || !providerConfig(params.data.provider)) {
-      return foundationErrors.throw('identity_provider_disabled')
+      return await foundationErrors.throw('identity_provider_disabled')
     }
     const provider = params.data.provider
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const own = await em.count(IdentityLink, { ...scope, userId: ctx.auth.sub, provider, deletedAt: null })
-    if (own > 0) return foundationErrors.throw('identity_already_linked')
+    if ((await ownLinkCount(ctx.container, scope, ctx.auth.sub, provider)) > 0) {
+      return await foundationErrors.throw('identity_already_linked')
+    }
     return buildSafeRedirectResponse(request, `/api/foundation/identity/${provider}/start`, 303)
   } catch (error: unknown) {
     return errorResponse(error, 'foundation.identity.link')

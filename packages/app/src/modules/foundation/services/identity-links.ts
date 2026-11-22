@@ -1,4 +1,4 @@
-// Identity-link reads shared by the identity commands and routes (#566): the ids-only event payload, whether a user
+// Identity-link reads shared by the identity commands and routes (#566): whether a user
 // has a password, and a user's link list with the last-method rule. No `next/server`, cache or provider code, so the
 // commands (loaded by the CLI too) stay light.
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -8,22 +8,7 @@ import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { IdentityLink } from '../data/entities'
 import { IDENTITY_PROVIDERS, canRemoveMethod, type IdentityProvider } from '../lib/identity'
 
-/** The ids-only payload of the `foundation.identity.*` events (S4.6). */
-export function identityEventPayload(link: {
-  id: string
-  userId: string
-  provider: IdentityProvider
-  tenantId: string
-  organizationId: string
-}) {
-  return {
-    id: link.id,
-    userId: link.userId,
-    provider: link.provider,
-    tenantId: link.tenantId,
-    organizationId: link.organizationId,
-  }
-}
+export { identityEventPayload } from '../lib/identity'
 
 export type IdentityScope = { tenantId: string; organizationId: string }
 
@@ -82,4 +67,32 @@ export async function listIdentities(
     canUnlink: canRemoveMethod(hasPassword, links.length),
     providers: IDENTITY_PROVIDERS.map((id) => ({ id, enabled: enabled(id), linked: linked.has(id) })),
   }
+}
+
+/** How many links of `provider` the user has in `scope` (the `link` route's 409 pre-check). */
+export async function ownLinkCount(
+  container: AwilixContainer,
+  scope: IdentityScope,
+  userId: string,
+  provider: IdentityProvider,
+): Promise<number> {
+  const em = container.resolve<EntityManager>('em').fork()
+  return em.count(IdentityLink, { ...scope, userId, provider, deletedAt: null })
+}
+
+/** The user a link of `scope` belongs to, or null (the unlink route's feature gate). */
+export async function linkOwner(container: AwilixContainer, scope: IdentityScope, id: string): Promise<string | null> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const link = await em.findOne(IdentityLink, { id, ...scope, deletedAt: null }, { fields: ['id', 'userId'] })
+  return link?.userId ?? null
+}
+
+/** Deletes every link of a deleted user in `scope` (the `auth.user.deleted` subscriber); a repeat deletes nothing. */
+export async function deleteUserLinks(
+  container: AwilixContainer,
+  scope: IdentityScope,
+  userId: string,
+): Promise<number> {
+  const em = container.resolve<EntityManager>('em').fork()
+  return em.nativeDelete(IdentityLink, { userId, ...scope })
 }

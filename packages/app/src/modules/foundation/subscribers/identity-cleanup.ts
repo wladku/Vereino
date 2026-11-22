@@ -1,10 +1,9 @@
 // `foundation:identity-cleanup` (social sign-in spec *Events* row `auth.user.deleted`; AC-S02; #566): a deleted
 // platform user loses its identity links, so a provider subject never stays bound to an account that is gone.
 // Persistent and idempotent: a repeat finds nothing to delete. Narrowed to the emitter's tenant and organization.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { IdentityLink } from '../data/entities'
+import { deleteUserLinks } from '../services/identity-links'
 
 export const metadata = {
   event: 'auth.user.deleted',
@@ -27,7 +26,5 @@ export default async function handle(payload: unknown, ctx: SubscriberContext): 
   const tenantId = ctx.tenantId ?? parsed.data.tenantId
   const organizationId = ctx.organizationId ?? parsed.data.organizationId
   if (!tenantId || !organizationId) return
-  const container = await createRequestContainer()
-  const em = container.resolve<EntityManager>('em').fork()
-  await em.nativeDelete(IdentityLink, { userId: parsed.data.id, tenantId, organizationId })
+  await deleteUserLinks(await createRequestContainer(), { tenantId, organizationId }, parsed.data.id)
 }

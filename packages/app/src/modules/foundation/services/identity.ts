@@ -43,7 +43,7 @@ export type IdentityFingerprint =
 /** Logs and reports a sign-in failure by its fingerprint; `details` carries codes and ids only. */
 export function reportIdentityFailure(fingerprint: IdentityFingerprint, details: Record<string, unknown> = {}): void {
   logger.warn('Social sign-in failed', { fingerprint, ...details })
-  const error = Object.assign(new Error(`[identity] ${fingerprint}`), { fingerprint })
+  const error = Object.assign(new Error(`[internal] ${fingerprint}`), { fingerprint })
   getTelemetryRuntime()?.reportError(error, { module: 'foundation', code: fingerprint })
 }
 
@@ -142,7 +142,13 @@ export function stateCookieOf(request: Request): string | null {
 }
 
 /** A link found by the sign-in lookup: its id, user and the tenant and organization every later query uses. */
-export type SignInLink = { id: string; userId: string; tenantId: string; organizationId: string; provider: IdentityProvider }
+export type SignInLink = {
+  id: string
+  userId: string
+  tenantId: string
+  organizationId: string
+  provider: IdentityProvider
+}
 
 /**
  * The one system-scope read of social sign-in (DD-S03; the D-027 entry of the DD-35 list in `AGENTS.md`): the link of
@@ -174,7 +180,7 @@ export async function findLinkForSignIn(
 async function signInUser(em: EntityManager, link: SignInLink): Promise<User | null> {
   const scope = { tenantId: link.tenantId, organizationId: link.organizationId }
   const user = await findOneWithDecryption(em, User, { id: link.userId, ...scope, deletedAt: null }, {}, scope)
-  if (!user || user.isConfirmed === false) return null
+  if (!user?.isConfirmed) return null
   return user
 }
 
@@ -203,8 +209,8 @@ export async function issueSession(
     new Date(Date.now() + ACCESS_TOKEN_MAX_AGE_SECONDS * 1000),
   )
   const token = signJwt({
-    sub: String(user.id),
-    sid: String(session.id),
+    sub: user.id,
+    sid: session.id,
     tenantId: link.tenantId,
     orgId: link.organizationId,
     email: user.email,
@@ -216,7 +222,7 @@ export async function issueSession(
     { lastSignedInAt: new Date() },
   )
   void emitAuthEvent('auth.login.success', {
-    id: String(user.id),
+    id: user.id,
     email: user.email,
     tenantId: link.tenantId,
     organizationId: link.organizationId,
@@ -224,7 +230,13 @@ export async function issueSession(
   void emitFoundationEvent('foundation.identity.signed_in', identityEventPayload(link)).catch(() => undefined)
 
   const response = buildSafeRedirectResponse(request, redirect, 303)
-  const cookie = { httpOnly: true, path: '/', sameSite: 'lax' as const, secure: secureCookies(), maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS }
+  const cookie = {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax' as const,
+    secure: secureCookies(),
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
+  }
   response.cookies.set('auth_token', token, cookie)
   response.cookies.set('session_token', refreshToken, cookie)
   return response

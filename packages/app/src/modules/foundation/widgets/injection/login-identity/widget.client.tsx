@@ -16,7 +16,9 @@ import { ProviderMark } from '../../../components/ProviderMark'
 
 const OUTCOMES = new Set(['unlinked', 'invalid', 'failed'])
 
-export default function LoginIdentityWidget({ context }: InjectionWidgetComponentProps<LoginFormWidgetContext, Record<string, unknown>>) {
+export default function LoginIdentityWidget({
+  context,
+}: InjectionWidgetComponentProps<LoginFormWidgetContext, Record<string, unknown>>) {
   const t = useT()
   const outcome = context.searchParams.get('identity')
   const redirect = context.searchParams.get('redirect')
@@ -27,10 +29,14 @@ export default function LoginIdentityWidget({ context }: InjectionWidgetComponen
   // shows no button (the password form stays).
   React.useEffect(() => {
     let active = true
-    void apiCall<{ providers?: Array<{ id: IdentityProvider; enabled: boolean }> }>('/api/foundation/identity/providers').then(
+    void apiCall<{ providers?: Array<{ id: IdentityProvider; enabled: boolean }> }>(
+      '/api/foundation/identity/providers',
+    ).then(
       (call) => {
         if (!active || !call.ok || !call.result) return
-        setProviders((call.result.providers ?? []).filter((provider) => provider.enabled).map((provider) => provider.id))
+        setProviders(
+          (call.result.providers ?? []).filter((provider) => provider.enabled).map((provider) => provider.id),
+        )
       },
       () => undefined,
     )

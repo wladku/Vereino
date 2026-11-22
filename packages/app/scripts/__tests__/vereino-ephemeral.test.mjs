@@ -9,8 +9,10 @@ import {
   DEFAULT_PORT,
   PORT_RANGE_SIZE,
   RESERVED_PORTS,
+  findEphemeralPort,
   findFreePort,
   isPortFree,
+  oauthFakeEnv,
   isShard,
   DEFAULT_POSTGRES_IMAGE,
   POSTGRES_INIT_SQL,
@@ -83,6 +85,44 @@ test('buildAppEnv defaults to the process environment and a random secret', () =
   const env = buildAppEnv({ databaseUrl: 'postgres://db', port: 1, stateDir: '/tmp' })
   assert.equal(env.JWT_SECRET.length, 64)
   assert.equal(env.PATH ?? env.Path, process.env.PATH ?? process.env.Path)
+  assert.equal(env.VEREINO_OAUTH_GOOGLE_CLIENT_ID, process.env.VEREINO_OAUTH_GOOGLE_CLIENT_ID)
+})
+
+test('oauthFakeEnv configures a test-only Google client on the fake port', () => {
+  assert.deepEqual(oauthFakeEnv(40123), {
+    VEREINO_QA_OAUTH_FAKE_PORT: '40123',
+    VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'vereino-qa-google-client',
+    VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-qa-google-secret',
+    VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL: 'http://127.0.0.1:40123/authorize',
+    VEREINO_OAUTH_GOOGLE_TOKEN_URL: 'http://127.0.0.1:40123/token',
+  })
+})
+
+test('buildAppEnv adds the Google fake when a fake port is given', () => {
+  const env = buildAppEnv({
+    databaseUrl: 'postgres://db',
+    port: 1,
+    stateDir: '/tmp',
+    baseEnv: {},
+    oauthFakePort: 40123,
+  })
+  assert.equal(env.VEREINO_OAUTH_GOOGLE_TOKEN_URL, 'http://127.0.0.1:40123/token')
+  assert.equal(env.VEREINO_QA_OAUTH_FAKE_PORT, '40123')
+})
+
+test('findEphemeralPort returns a port the system handed out and released', async () => {
+  const port = await findEphemeralPort()
+  assert.ok(Number.isInteger(port) && port > 0)
+  assert.equal(await isPortFree(port), true)
+})
+
+test('findEphemeralPort fails when the server cannot listen', async () => {
+  const failing = () => {
+    const server = new EventEmitter()
+    server.listen = () => queueMicrotask(() => server.emit('error', new Error('EACCES')))
+    return server
+  }
+  await assert.rejects(findEphemeralPort({ createServer: failing }), /EACCES/)
 })
 
 function fakeTestcontainers(calls) {
@@ -304,6 +344,7 @@ function fakeDeps(overrides = {}) {
     stopImpl: (stopped) => calls.push(['app-stop', stopped.pid]),
     waitForSignalImpl: async () => calls.push(['signal']),
     findFreePortImpl: async () => (calls.push(['port']), DEFAULT_PORT),
+    findEphemeralPortImpl: async () => (calls.push(['oauth-port']), 40123),
     image: 'pg:test',
     stateDir: fs.mkdtempSync(`${process.env.TEMP ?? '/tmp'}/vereino-ephemeral-test-`),
     ...overrides,
@@ -323,6 +364,7 @@ test('runEphemeral test mode builds, starts, runs Playwright and cleans up', asy
   assert.deepEqual(deps.calls, [
     ['db', 'pg:test'],
     ['port'],
+    ['oauth-port'],
     ['yarn', 'initialize', 'http://127.0.0.1:5001'],
     ['yarn', 'build', 'http://127.0.0.1:5001'],
     ['app'],
@@ -373,7 +415,7 @@ test('runEphemeral stops the app and the database when the browser install fails
 test('runEphemeral stops the database when a setup step fails', async () => {
   const deps = fakeDeps({ runYarnImpl: () => 1 })
   await assert.rejects(runEphemeral({ argv: ['test'], deps, log: () => undefined }), /yarn initialize failed/)
-  assert.deepEqual(deps.calls, [['db', 'pg:test'], ['port'], ['db-stop']])
+  assert.deepEqual(deps.calls, [['db', 'pg:test'], ['port'], ['oauth-port'], ['db-stop']])
 })
 
 test('runEphemeral uses the default image, state directory and console', async () => {

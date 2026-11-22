@@ -69,7 +69,9 @@ export function identityProviderConfig(
   const clientId = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_ID')
   const clientSecret = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_SECRET')
   const base = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_REDIRECT_BASE_URL') ?? appUrl)
-  const authorizationUrl = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL') ?? GOOGLE_AUTHORIZATION_URL)
+  const authorizationUrl = absoluteHttpUrl(
+    envValue(env, 'VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL') ?? GOOGLE_AUTHORIZATION_URL,
+  )
   const tokenUrl = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_GOOGLE_TOKEN_URL') ?? GOOGLE_TOKEN_URL)
   if (!clientId || !clientSecret || !base || !authorizationUrl || !tokenUrl) return null
   return {
@@ -128,8 +130,7 @@ export function isWellFormedState(value: unknown): value is string {
 
 /** What a round trip is for: a sign-in, or linking the signed-in user who started it (DD-S02). */
 export type StatePurpose =
-  | { kind: 'sign_in' }
-  | { kind: 'link'; userId: string; tenantId: string; organizationId: string }
+  { kind: 'sign_in' } | { kind: 'link'; userId: string; tenantId: string; organizationId: string }
 
 export type StateMarker = {
   provider: IdentityProvider
@@ -182,7 +183,13 @@ export function parseStateMarker(value: unknown): StateMarker | null {
   ) {
     return null
   }
-  return { provider: marker.provider, purpose, verifier: marker.verifier, redirect: marker.redirect, expiresAt: marker.expiresAt }
+  return {
+    provider: marker.provider,
+    purpose,
+    verifier: marker.verifier,
+    redirect: marker.redirect,
+    expiresAt: marker.expiresAt,
+  }
 }
 
 /** True when the consumed marker belongs to this provider's callback and has not expired. */
@@ -227,7 +234,9 @@ export class IdentityTimeoutError extends Error {
  */
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new IdentityTimeoutError(`timed out after ${String(ms)} ms`)), ms)
+    const timer = setTimeout(() => {
+      reject(new IdentityTimeoutError(`timed out after ${String(ms)} ms`))
+    }, ms)
     promise.then(
       (value) => {
         clearTimeout(timer)
@@ -235,8 +244,28 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       },
       (error: unknown) => {
         clearTimeout(timer)
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       },
     )
   })
+}
+
+/**
+ * The payload of the `foundation.identity.*` events: ids and the provider only (S4.6) — never the provider subject,
+ * the e-mail or a token, whatever else the source object carries.
+ */
+export function identityEventPayload(link: {
+  id: string
+  userId: string
+  provider: IdentityProvider
+  tenantId: string
+  organizationId: string
+}): { id: string; userId: string; provider: IdentityProvider; tenantId: string; organizationId: string } {
+  return {
+    id: link.id,
+    userId: link.userId,
+    provider: link.provider,
+    tenantId: link.tenantId,
+    organizationId: link.organizationId,
+  }
 }

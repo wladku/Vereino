@@ -2,12 +2,11 @@
 // the account holder removes an own link (`foundation.identity.self`), the club administrator any link of the
 // organization (`foundation.identity.manage`). The link's lock token (`updatedAt`) travels in the platform
 // optimistic-lock header; the last sign-in method is kept (409 `identity_last_method`). Not undoable (DD-S06).
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { z } from 'zod'
-import { IdentityLink } from '../../../data/entities'
 import { trustedScopeOf } from '../../../services/authorize-scoped'
+import { linkOwner } from '../../../services/identity-links'
 import { commandContextForRequest, errorResponse } from '../../../services/route-context'
 import { identityErrorSchema, sessionHasFeatures } from '../shared'
 
@@ -25,9 +24,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     const { id } = paramsSchema.parse(await context.params)
     // The feature gate: own links need `foundation.identity.self`, anyone else's `foundation.identity.manage`. The
     // command still checks the scope (`self_user` or `club_admin`) and answers 404 for a link of another organization.
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const link = await em.findOne(IdentityLink, { id, ...scope, deletedAt: null }, { fields: ['id', 'userId'] })
-    const feature = link && link.userId === ctx.auth.sub ? 'foundation.identity.self' : 'foundation.identity.manage'
+    const owner = await linkOwner(ctx.container, scope, id)
+    const feature = owner === ctx.auth.sub ? 'foundation.identity.self' : 'foundation.identity.manage'
     if (!(await sessionHasFeatures(ctx, [feature]))) return Response.json({ error: 'Forbidden' }, { status: 403 })
     await ctx.container.resolve<CommandBus>('commandBus').execute('foundation.identity.unlink', { input: { id }, ctx })
     return new Response(null, { status: 204 })

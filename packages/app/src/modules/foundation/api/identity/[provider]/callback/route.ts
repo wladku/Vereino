@@ -70,7 +70,10 @@ async function consumedMarker(request: Request, provider: IdentityProvider): Pro
   }
   const marker = await consumeStateMarker(await createRequestContainer(), state)
   if (!marker || !markerAccepted(marker, provider, Date.now())) {
-    reportIdentityFailure('foundation.identity.state_invalid', { provider, reason: marker ? 'foreign_or_expired' : 'missing_or_used' })
+    reportIdentityFailure('foundation.identity.state_invalid', {
+      provider,
+      reason: marker ? 'foreign_or_expired' : 'missing_or_used',
+    })
     return null
   }
   return marker
@@ -105,10 +108,12 @@ async function link(request: Request, provider: IdentityProvider, identity: Prov
     return finish(request, loginOutcomePath('invalid'))
   }
   try {
-    await ctx.container.resolve<CommandBus>('commandBus').execute<unknown, IdentityCommandResult>('foundation.identity.link', {
-      input: { provider, subject: identity.subject, email: identity.email },
-      ctx,
-    })
+    await ctx.container
+      .resolve<CommandBus>('commandBus')
+      .execute<unknown, IdentityCommandResult>('foundation.identity.link', {
+        input: { provider, subject: identity.subject, email: identity.email },
+        ctx,
+      })
     return finish(request, profileOutcomePath('linked', provider))
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'IdentitySubjectConflict') {
@@ -132,14 +137,22 @@ export async function GET(request: Request, context: { params: Promise<{ provide
   const config = providerConfig(provider)
   const code = new URL(request.url).searchParams.get('code')
   if (!config || !code) {
-    reportIdentityFailure('foundation.identity.callback_failed', { provider, stage: 'authorize', reason: config ? 'no_code' : 'disabled' })
+    reportIdentityFailure('foundation.identity.callback_failed', {
+      provider,
+      stage: 'authorize',
+      reason: config ? 'no_code' : 'disabled',
+    })
     return finish(request, failed)
   }
   let identity: ProviderIdentity | null
   try {
     identity = await exchangeCode(config, code, marker.verifier)
   } catch (error: unknown) {
-    reportIdentityFailure('foundation.identity.callback_failed', { provider, stage: 'token', reason: failureReason(error) })
+    reportIdentityFailure('foundation.identity.callback_failed', {
+      provider,
+      stage: 'token',
+      reason: failureReason(error),
+    })
     return finish(request, failed)
   }
   if (!identity) {
@@ -159,7 +172,13 @@ export const openApi: OpenApiRouteDoc = {
       summary: 'Provider callback',
       description:
         'Consumes the single-use state (it must match the HttpOnly cookie), exchanges the code with the PKCE verifier and checks the id token. A sign-in with a linked identity sets the platform session cookies and redirects to the landing path; every other sign-in outcome redirects to `/login?identity=unlinked|invalid|failed`, which all render one sentence. A link round trip redirects to `/club/profile?identity=linked|failed`. Never creates an account. Rate-limited per client IP.',
-      responses: [{ status: 303, description: 'Redirect to the landing path, `/login` or `/club/profile`', mediaType: 'text/html' }],
+      responses: [
+        {
+          status: 303,
+          description: 'Redirect to the landing path, `/login` or `/club/profile`',
+          mediaType: 'text/html',
+        },
+      ],
     },
   },
 }

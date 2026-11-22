@@ -15,8 +15,18 @@ const events = [
   },
   // Social sign-in (#566): ids only — `{ id, userId, provider, tenantId, organizationId }` (S4.6).
   { id: 'foundation.identity.linked', label: 'Sign-in identity linked', entity: 'identity_link', category: 'custom' },
-  { id: 'foundation.identity.unlinked', label: 'Sign-in identity unlinked', entity: 'identity_link', category: 'custom' },
-  { id: 'foundation.identity.signed_in', label: 'Signed in with a linked identity', entity: 'identity_link', category: 'custom' },
+  {
+    id: 'foundation.identity.unlinked',
+    label: 'Sign-in identity unlinked',
+    entity: 'identity_link',
+    category: 'custom',
+  },
+  {
+    id: 'foundation.identity.signed_in',
+    label: 'Signed in with a linked identity',
+    entity: 'identity_link',
+    category: 'custom',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'foundation', events })

@@ -5,12 +5,11 @@
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { isIdentityProvider } from '../../../lib/identity'
 import { IdentityLinks } from '../../../components/IdentityLinks'
 import { PROVIDER_NAMES } from '../../../components/identity-client'
 
-export default function ProfileIdentitiesWidget(_props: InjectionWidgetComponentProps<Record<string, never>, Record<string, unknown>>) {
+export default function ProfileIdentitiesWidget() {
   const t = useT()
   const params = useSearchParams()
   const outcome = params.get('identity')

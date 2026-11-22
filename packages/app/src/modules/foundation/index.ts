@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Vereino foundation',
   version: '0.1.0',
   description:
-    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, and the token-link service.',
+    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, the token-link service, and social sign-in.',
   author: 'Vereino',
   license: 'MIT',
 }

@@ -46,6 +46,9 @@ export async function exchangeCode(
   code: string,
   verifier: string,
 ): Promise<ProviderIdentity | null> {
-  const tokens = await withTimeout(clientFor(config).validateAuthorizationCode(config.tokenUrl, code, verifier), TOKEN_TIMEOUT_MS)
+  const tokens = await withTimeout(
+    clientFor(config).validateAuthorizationCode(config.tokenUrl, code, verifier),
+    TOKEN_TIMEOUT_MS,
+  )
   return idTokenIdentity(decodeIdToken(tokens.idToken()), config, Date.now())
 }

@@ -14,7 +14,7 @@ const providersSchema = z.object({
   providers: z.array(z.object({ id: z.enum(IDENTITY_PROVIDERS), enabled: z.boolean() })),
 })
 
-export async function GET(): Promise<Response> {
+export function GET(): Response {
   const providers = IDENTITY_PROVIDERS.map((id) => ({ id, enabled: providerConfig(id) !== null }))
   return Response.json({ providers }, { headers: { 'Cache-Control': 'no-store' } })
 }

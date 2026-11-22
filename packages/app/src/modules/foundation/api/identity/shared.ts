@@ -24,7 +24,10 @@ export async function sessionHasFeatures(ctx: CommandRuntimeContext, features: s
 export const identityLinkViewSchema = z.object({
   id: z.uuid(),
   provider: z.enum(IDENTITY_PROVIDERS),
-  emailAtLink: z.string().nullable().describe('The e-mail the provider reported when the link was made; null when none was shared'),
+  emailAtLink: z
+    .string()
+    .nullable()
+    .describe('The e-mail the provider reported when the link was made; null when none was shared'),
   emailShared: z.boolean(),
   linkedAt: z.string(),
   lastSignedInAt: z.string().nullable(),

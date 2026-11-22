@@ -47,7 +47,11 @@ export type IdentityCommandResult = {
   actingRole: ActingRole
 }
 
-async function inWriteTransaction<T>(ctx: CommandRuntimeContext, label: string, phase: (em: EntityManager) => Promise<T>): Promise<T> {
+async function inWriteTransaction<T>(
+  ctx: CommandRuntimeContext,
+  label: string,
+  phase: (em: EntityManager) => Promise<T>,
+): Promise<T> {
   const em = ctx.transactionalEm ?? ctx.container.resolve<EntityManager>('em').fork()
   const box: { value?: T } = {}
   await withAtomicFlush(
@@ -67,7 +71,8 @@ function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
-    ((error as { code?: unknown }).code === '23505' || (error as { name?: unknown }).name === 'UniqueConstraintViolationException')
+    ((error as { code?: unknown }).code === '23505' ||
+      (error as { name?: unknown }).name === 'UniqueConstraintViolationException')
   )
 }
 
