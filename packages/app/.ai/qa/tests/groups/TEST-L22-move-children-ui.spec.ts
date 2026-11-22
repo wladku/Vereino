@@ -37,10 +37,10 @@ async function chooseTarget(dialog: Locator, page: Page): Promise<void> {
 
 const FITS = uiText('groups.memberships.moveMany.fits.range', { params: { group: 'Skrzaty', from: 6, to: 7 } })
 
-// Quarantined (#433): the axe scan of the panel dialog reports 1–2 serious color-contrast nodes in a different
-// locale/theme on each attempt, in CI runs that share no PR, so the train fails unrelated PRs. Find the cause (likely
-// a scan taken during the dialog's open transition), fix the test or the UI, then turn this back into `test`.
-test.fixme('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
+// The age chip and the save button fade their colours (Tailwind `transition-*`) when the chip is pressed; a scan during
+// that fade read half-blended colours as `color-contrast` in a random locale/theme (#433). `scanBlockingViolations`
+// waits until no CSS transition runs (#430), so every scan here sees the settled colours.
+test('TEST-L22 several children move to another group from the roster and the phone, preselected by age, undone from the notice', async ({
   page,
   request,
 }, testInfo) => {
@@ -125,8 +125,7 @@ test.fixme('TEST-L22 several children move to another group from the roster and 
         await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
         const dialog = await openPanelDialog()
         await expect(dialog.getByTestId('groups-move-many-summary')).toBeVisible()
-        // The AppShell sidebar headings are a platform baseline (`_fixtures/axe.ts`), not this dialog's markup.
-        const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
+        const found = await scanBlockingViolations(page, testInfo)
         if (found.length > 0) violations[`panel dialog (${locale}, ${colorScheme})`] = found
         await page.keyboard.press('Escape')
         await expect(dialog).toBeHidden()
