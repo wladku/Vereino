@@ -2,7 +2,7 @@
 
 - **Goal / trigger:** Cezar task 24d19798, `om-auto-fix-issue 549` (label `cezar`). 25+ parallel
   `POST /api/payments/cash` answered 500/401/503 (`timeout exceeded when trying to connect`).
-- **Issue / branch:** #549 / `fix/issue-549-concurrent-cash-acceptances-exhaust-db-pool`. Route: `debugging` +
+- **Issue / PR / branch:** #549 / #553 / `fix/issue-549-concurrent-cash-acceptances-exhaust-db-pool`. Route: `debugging` +
   `module-data` (payments, foundation); `direct` (bug fix, no spec).
 
 ## Steps
@@ -55,7 +55,7 @@
 
 ## Open problems / next steps
 
-- Follow-up issue: "Accept cash" with `notify: true` still reads contacts, settings and charge descriptions on other
+- Follow-up issue #554: "Accept cash" with `notify: true` still reads contacts, settings and charge descriptions on other
   pooled connections after the receipt lock, so a burst at pool size with e-mail on can still time out.
 - #532's run un-fixmes TEST-080's 50-request case once this PR is on `main` (comment on #532).
 - Lint picks up `packages/app/.ai/qa/test-results/html` after a failed local integration run; delete it before
