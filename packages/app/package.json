@@ -115,6 +115,7 @@
     "@vereino/ui": "workspace:*",
     "@xyflow/react": "^12.11.1",
     "ai": "^7.0.83",
+    "arctic": "3.7.0",
     "awilix": "^13.0.5",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
