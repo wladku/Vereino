@@ -15,7 +15,7 @@ import { formatBankAccount } from '@vereino/core'
 import { defineEmailTemplate, type EmailRenderContext } from '@/modules/foundation'
 import { rentalCancelPath, type CancelledOutcome } from '../lib/rental-links'
 import { formatAmount, formatInstant, formatSlot } from '../lib/requests'
-import { RENTALS_TO_MOVE_HREF, RESCHEDULE_ENTRY_LIMIT, placeDayToMoveHref } from '../lib/reschedule-notice'
+import { RENTALS_TO_MOVE_HREF, RESCHEDULE_ENTRY_LIMIT, rescheduleStaffHref } from '../lib/reschedule-notice'
 
 const h = React.createElement
 
@@ -597,6 +597,11 @@ const rescheduleParams = z
     more: z.number().int().min(0).optional(),
     linkPlaceId: z.uuid(),
     linkDate: z.iso.date(),
+    /**
+     * The sections the recipient coordinates among the sessions, at most two (the link needs only "one" or "several",
+     * AC-R14); absent or empty for a coach or a booker (and in dispatches enqueued before #597).
+     */
+    linkSectionIds: z.array(z.uuid()).max(2).optional(),
   })
   .strict()
 
@@ -649,7 +654,8 @@ function rescheduleCopy(t: TranslateWithFallbackFn, params: RescheduleParams, ct
 /**
  * `facilities.reschedule_needed`: to the coordinators and coach of a flagged session and the booker of a flagged club
  * booking, in-app (the generic keys of the notification type, DD-M07) and by e-mail. It names the places, the times and
- * the kind of cause — no renter. The e-mail opens the first entry's day on M-11 filtered "Do przeniesienia".
+ * the kind of cause — no renter. The e-mail opens a coordinator's "Needs a new time" view of the section calendar, and
+ * for anyone else the first entry's day on M-11 filtered "Do przeniesienia" (AC-R14).
  */
 export const rescheduleTemplate = defineEmailTemplate<RescheduleParams>({
   id: RESCHEDULE_TEMPLATE,
@@ -666,8 +672,16 @@ export const rescheduleTemplate = defineEmailTemplate<RescheduleParams>({
     const copy = rescheduleCopy(t, params, ctx)
     return plainText(copy.lead, copy.lines)
   },
-  actionLabel: (t) => t('facilities.email.reschedule.action', 'Open the day'),
-  link: (params) => placeDayToMoveHref(params.linkPlaceId, params.linkDate),
+  actionLabel: (t, params) =>
+    params.linkSectionIds?.length
+      ? t('facilities.email.reschedule.actionSessions', 'Open sessions that need a new time')
+      : t('facilities.email.reschedule.action', 'Open the day'),
+  link: (params) =>
+    rescheduleStaffHref({
+      placeId: params.linkPlaceId,
+      date: params.linkDate,
+      coordinatedSectionIds: params.linkSectionIds,
+    }),
 })
 
 /** `facilities.reschedule_needed_rentals`: the administrators' copy, opening B-24 "Do przeniesienia". */

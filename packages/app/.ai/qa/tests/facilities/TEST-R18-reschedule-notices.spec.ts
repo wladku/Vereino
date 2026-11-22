@@ -3,7 +3,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { addDays, createEvent, nextWeekday, readNotifications, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
-import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
+import { create as createStructure, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import {
   listClosures,
   listRentals,
@@ -25,8 +25,9 @@ import { uiText } from '../_fixtures/ui-text'
 // closure tells — once each, in the app and by e-mail — the academy's coordinator and the coach (both sessions), the
 // booker (the booking), the club administrator (the rental) and e-mails the renter. Saving the closure again unchanged
 // sends nothing; maintenance planned over the same entries is a cause of its own and sends its own messages. B-24's
-// `view=to_move` lists the rental; the coordinator's e-mail link opens the place's day filtered "Do przeniesienia" on
-// the phone, in both locales, light and dark. Moving the closure to 09:00–19:00 (#394) tells the coordinators and the
+// `view=to_move` lists the rental. On the phone, in both locales, light and dark: the coordinator's e-mail link opens
+// the section calendar's "Needs a new time" view (AC-R14, REQ-A10; #597) and the coach's — who has no such view — the
+// place's day filtered "Do przeniesienia" (the fallback link). Moving the closure to 09:00–19:00 (#394) tells the coordinators and the
 // coach once more, listing only the session it adds (18:00–19:00), and sends nothing new to the booker, the
 // administrators or the renter.
 test.describe.configure({ timeout: 420_000 })
@@ -154,12 +155,15 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     expect(coordinatorMail.text).toContain('11:00–12:00')
     expect(coordinatorMail.text).not.toContain('18:00–19:00')
     expect(coordinatorMail.text).not.toContain('Jan Kontakt')
-    const dayLink = coordinatorMail.links.find((link) => link.includes(`/club/places/${setup.pitch}`))
-    expect(dayLink).toContain(`date=${saturday}`)
-    expect(dayLink).toContain('view=to_move')
+    const rescheduleLink = coordinatorMail.links.find((link) => link.includes('/club/calendar'))
+    expect(rescheduleLink).toContain(`/club/calendar?as=coordinator&view=reschedule&section=${setup.academy}`)
+    expect(coordinatorMail.links.some((link) => link.includes('/club/places/'))).toBe(false)
     const [coachMail] = await expectMails(coach.email, subject, 1)
     expect(coachMail.text).toContain('10:00–11:00')
     expect(coachMail.text).toContain('11:00–12:00')
+    const dayLink = coachMail.links.find((link) => link.includes(`/club/places/${setup.pitch}`))
+    expect(dayLink).toContain(`date=${saturday}`)
+    expect(dayLink).toContain('view=to_move')
     const [bookerMail] = await expectMails(booker.email, subject, 1)
     expect(bookerMail.text).toContain('13:00–14:30')
     expect(bookerMail.text).not.toContain('10:00–11:00')
@@ -210,7 +214,7 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     const toMove = await listRentals(request, admin, '&view=to_move')
     expect(toMove.map((row) => row.id)).toContain(String(rental.body?.id))
 
-    // The coordinator opens the e-mail's link on the phone: the day, only the entries to be moved.
+    // The coordinator opens the e-mail's link on the phone: "Needs a new time" of the academy, its flagged sessions only.
     const password = await signInBrowser(page, request, club, academyCoordinator.userId, academyCoordinator.email)
     const coordinatorToken = await getAuthToken(request, academyCoordinator.email, password)
     const me = await getMe(request, coordinatorToken)
@@ -223,6 +227,38 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto(new URL(String(rescheduleLink)).pathname + new URL(String(rescheduleLink)).search)
+    const sessionItem = (id: string) => page.locator(`[data-testid="calendar-item"][data-item-id="${id}"]`)
+    const rescheduleTab = () =>
+      page.getByRole('tab', { name: uiText('activities.club.section.view.reschedule', { exact: true }) })
+    const rescheduleReady = async () => {
+      await expect(sessionItem(sessions[0])).toBeVisible()
+    }
+    await expect(rescheduleTab()).toHaveAttribute('aria-selected', 'true')
+    await expect(sessionItem(sessions[0])).toBeVisible()
+    await expect(sessionItem(sessions[1])).toBeVisible()
+    await expect(sessionItem(sessions[2])).toHaveCount(0)
+    expect(
+      await scanInColorSchemes(page, testInfo, '/club/calendar?as=coordinator&view=reschedule (pl)', rescheduleReady),
+    ).toEqual({})
+    const now = await getMe(request, coordinatorToken)
+    const english = await putMe(request, coordinatorToken, { preferredLocale: 'en' }, now.body?.person.updatedAt)
+    expect(english.status, JSON.stringify(english.body)).toBe(200)
+    await page.reload()
+    await expect(rescheduleTab()).toHaveAttribute('aria-selected', 'true')
+    expect(
+      await scanInColorSchemes(page, testInfo, '/club/calendar?as=coordinator&view=reschedule (en)', rescheduleReady),
+    ).toEqual({})
+    await page.emulateMedia({ colorScheme: 'light' })
+    await expectNoPageOverflow(page)
+
+    // The coach opens their e-mail's link on the phone: the fallback, the day with only the entries to be moved.
+    const coachPassword = await switchBrowserUser(page, request, club, coach.userId, coach.email)
+    const coachToken = await getAuthToken(request, coach.email, coachPassword)
+    const coachMe = await getMe(request, coachToken)
+    const coachPolish = await putMe(request, coachToken, { preferredLocale: 'pl' }, coachMe.body?.person.updatedAt)
+    expect(coachPolish.status, JSON.stringify(coachPolish.body)).toBe(200)
+    await page.setViewportSize({ width: 375, height: 812 })
     await page.goto(new URL(String(dayLink)).pathname + new URL(String(dayLink)).search)
     await expect(page.getByTestId('club-place-title')).toHaveText('Boisko A')
     await expect(page.getByTestId('club-place-to-move')).toBeChecked()
@@ -233,9 +269,9 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
       await expect(page.getByTestId('facilities-day-axis')).toBeVisible()
     }
     expect(await scanInColorSchemes(page, testInfo, '/club/places/[placeId]?view=to_move (pl)', ready)).toEqual({})
-    const now = await getMe(request, coordinatorToken)
-    const english = await putMe(request, coordinatorToken, { preferredLocale: 'en' }, now.body?.person.updatedAt)
-    expect(english.status, JSON.stringify(english.body)).toBe(200)
+    const coachNow = await getMe(request, coachToken)
+    const coachEnglish = await putMe(request, coachToken, { preferredLocale: 'en' }, coachNow.body?.person.updatedAt)
+    expect(coachEnglish.status, JSON.stringify(coachEnglish.body)).toBe(200)
     await page.reload()
     await expect(page.getByTestId('club-place-to-move')).toBeChecked()
     expect(await scanInColorSchemes(page, testInfo, '/club/places/[placeId]?view=to_move (en)', ready)).toEqual({})
@@ -249,7 +285,8 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
 
     // The closure moved to 09:00–19:00 (#394): only the 18:00 session is new to it, so the academy's coordinators and
     // the coach get one more message listing it alone; the booker, the administrators and the renter get nothing new.
-    // The academy coordinator signed in above, which ended their first API token: read as `coordinatorToken`.
+    // The academy coordinator and the coach signed in above, which ended their first API tokens: read as
+    // `coordinatorToken` and `coachToken`.
     const current = (await listClosures(request, admin, `&placeId=${setup.pitch}`)).find((row) => row.id === closureId)
     const moved = await putClosure(
       request,
@@ -267,7 +304,7 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
     expect(moved.body?.flagged).toEqual({ sessions: 1, rentals: 0, bookings: 0 })
     await expectNotices(request, coordinatorToken, closureId, STAFF_TYPE, 2)
     await expectNotices(request, setup.coordinator, closureId, STAFF_TYPE, 2)
-    await expectNotices(request, coach.token, closureId, STAFF_TYPE, 2)
+    await expectNotices(request, coachToken, closureId, STAFF_TYPE, 2)
     for (const mailbox of [academyCoordinator.email, coach.email]) {
       const movedMail = (await expectMails(mailbox, subject, 3)).at(-1)
       expect(movedMail?.text).toContain('18:00–19:00')
