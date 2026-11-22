@@ -837,7 +837,7 @@
   "people.erasure.anonymise.title": "Anonymise this person?",
   "people.erasure.anonymise.irreversible": "This cannot be undone.",
   "people.erasure.anonymise.now": "Erased now: phone, e-mail, notes, PESEL, external id, photo, birth date, language and consents. Attendance, charges, payments and messages stay under \"Former member\".",
-  "people.erasure.anonymise.hold": "The name stays until 31 December of the fifth year after the latest payment on this person's charges, visible only to administrators, and is erased then. Without such a payment it is erased now.",
+  "people.erasure.anonymise.hold": "The name stays until 31 December of the sixth year after the latest payment on this person's charges, visible only to administrators, and is erased then. Without such a payment it is erased now.",
   "people.erasure.anonymise.request": "Recorded request",
   "people.erasure.anonymise.noRequest": "No request to delete data is recorded. Record one in Requests first.",
   "people.erasure.anonymise.lastName": "Type the last name to confirm",

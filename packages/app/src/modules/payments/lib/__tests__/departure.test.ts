@@ -1,11 +1,17 @@
 import { describe, expect, it } from '@jest/globals'
-import { openChargesByPerson, retentionHoldUntil } from '../departure'
+import { ACCOUNTING_RETENTION_YEARS, openChargesByPerson, retentionHoldUntil } from '../departure'
 
 describe('retentionHoldUntil', () => {
-  it('holds until the end of the fifth year after the latest payment, none without a payment', () => {
-    expect(retentionHoldUntil('2026-03-14')).toBe('2031-12-31')
-    expect(retentionHoldUntil('2026-12-31')).toBe('2031-12-31')
+  it('holds until the end of the sixth year after the latest payment, as the accounting records (#526)', () => {
+    expect(ACCOUNTING_RETENTION_YEARS).toBe(6)
+    expect(retentionHoldUntil('2026-03-14')).toBe('2032-12-31')
+    expect(retentionHoldUntil('2026-12-31')).toBe('2032-12-31')
     expect(retentionHoldUntil(null)).toBeNull()
+  })
+
+  it('follows a club retention period other than the default', () => {
+    expect(retentionHoldUntil('2026-03-14', 8)).toBe('2034-12-31')
+    expect(retentionHoldUntil(null, 8)).toBeNull()
   })
 })
 
