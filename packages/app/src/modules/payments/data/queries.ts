@@ -188,3 +188,67 @@ export async function closeExpiredCampaigns(
 export async function lockBankStatements(em: EntityManager, organizationId: string): Promise<void> {
   await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`payments.bank:${organizationId}`])
 }
+
+/**
+ * Every live charge of the club with the net sum of its live payments (reversing entries included, overpayments to
+ * refund excluded — they never count towards a charge), in one statement, so the totals are one snapshot. Read by the
+ * nightly invariant check `payments:verify-invariants` (REQ-043, #531).
+ */
+export async function chargeLedgerTotals(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+): Promise<{ id: string; status: string; amount: number; discountAmount: number; paid: number }[]> {
+  const rows = await em.execute<
+    { id: string; status: string; amount: number | string; discount_amount: number | string; paid: number | string }[]
+  >(
+    `select c.id, c.status, c.amount, c.discount_amount, coalesce(sum(p.amount), 0) as paid
+       from payments_charges c
+       left join payments_payments p
+         on p.charge_id = c.id and p.tenant_id = c.tenant_id and p.organization_id = c.organization_id
+        and p.is_overpayment = false and p.deleted_at is null
+      where c.tenant_id = ? and c.organization_id = ? and c.deleted_at is null
+      group by c.id, c.status, c.amount, c.discount_amount
+      order by c.id`,
+    [scope.tenantId, scope.organizationId],
+  )
+  return rows.map((row) => ({
+    id: row.id,
+    status: row.status,
+    amount: Number(row.amount),
+    discountAmount: Number(row.discount_amount),
+    paid: Number(row.paid),
+  }))
+}
+
+/**
+ * Every issue of a `KP` receipt number of the club: one row per number, day and acceptance (the payments of one
+ * acceptance share the number, the day and the creation instant). Soft-deleted rows count: a number once issued stays
+ * taken, as `lastReceiptNumber` reads it.
+ */
+export async function receiptNumberIssues(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+): Promise<{ number: string; issuedOn: string; issueKey: string }[]> {
+  const rows = await em.execute<{ number: string; issued_on: string; issue_key: string }[]>(
+    `select distinct receipt_number as number, to_char(paid_on, 'YYYY-MM-DD') as issued_on,
+            to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US') as issue_key
+       from payments_payments
+      where tenant_id = ? and organization_id = ? and receipt_number is not null
+      order by 1, 3`,
+    [scope.tenantId, scope.organizationId],
+  )
+  return rows.map((row) => ({ number: row.number, issuedOn: row.issued_on, issueKey: row.issue_key }))
+}
+
+/** Every `RG` handover number of the club with its id (deleted ones included: the number stays taken). */
+export async function handoverNumbers(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+): Promise<{ id: string; number: string }[]> {
+  return em.execute<{ id: string; number: string }[]>(
+    `select id, number from payments_cash_handovers
+      where tenant_id = ? and organization_id = ?
+      order by number`,
+    [scope.tenantId, scope.organizationId],
+  )
+}

@@ -1,7 +1,8 @@
-// `payments:reregister-schedules` (#405): the charge generation (06:00) and the overdue reminders (09:00) run in the
-// club's time zone, so a `club_core.settings.updated` re-registers the club's schedules — an upsert on the stable id of
-// job and organization, a no-op when the zone did not change — as `activities:reregister-schedule` does for its jobs.
-// Persistent: a failed registration throws, so the queue retries the event.
+// `payments:reregister-schedules` (#405): the charge generation (06:00), the overdue reminders (09:00) and the
+// invariant check (03:00, #531) run in the club's time zone, so a `club_core.settings.updated` re-registers the club's
+// schedules — an upsert on the stable id of job and organization, a no-op when the zone did not change — as
+// `activities:reregister-schedule` does for its jobs. Persistent: a failed registration throws, so the queue retries
+// the event.
 import { z } from 'zod'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { setUpClubPayments } from '../services/club-setup'
