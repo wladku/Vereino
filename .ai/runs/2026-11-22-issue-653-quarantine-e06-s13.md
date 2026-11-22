@@ -21,7 +21,9 @@
 
 ## Commands and results
 
-See the PR body (filled in after the runs below).
+- `yarn guard`: "No blocking findings" (the `fixme` is accepted with `// quarantine: #653`).
+- `yarn verify`: all 20 steps passed (exit 0).
+- `yarn test:integration:vereino --filter E06-S13`: `1 skipped`, exit 0 (reported as fixme, not run).
 
 ## Open problems / next steps
 
