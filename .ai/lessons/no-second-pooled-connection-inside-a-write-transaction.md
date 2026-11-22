@@ -24,9 +24,12 @@ connection, so a holder that needs a second connection after the lock deadlocks 
 `EntityManager` (scope via `prefetchSessionScope(ctx)` passed to `authorizeScoped(…, { sessionScope })`, club clock,
 RBAC features, settings) **before** `inWriteTransaction`/`withAtomicFlush` opens, and inside the transaction query
 only with the transaction's `em`. Prove it with a concurrency integration test above the pool size (ISSUE-549 sends
-50 requests against `DB_POOL_MAX=20`).
+50 requests against `DB_POOL_MAX=20`). Side effects queued in the transaction count too (#554): the contact
+resolver reads the club settings and a fresh `EntityManager` decrypts other rows, so an e-mail's recipients and texts
+are read before the transaction as well (`readConfirmations`), and the transaction keeps only `dispatch.enqueue(em, …)`.
+A value read early is used only when the transaction authorized the same scope object (`authorized.scope ===
+prefetched.scope`); otherwise the command reads it again inside, as before.
 
 **Applies to**: `packages/app/src/modules/*/commands/**`, `foundation/services/authorize-scoped.ts`
-(`prefetchSessionScope`), `payments/commands/cash.ts` (`cashAcceptanceFacts`). Still open: the confirmation e-mail of
-"Accept cash" (`notify: true`) reads contacts, settings and charge descriptions on other connections after the
-receipt lock.
+(`prefetchSessionScope`), `payments/commands/cash.ts` (`cashAcceptanceFacts`, `readConfirmations`),
+`payments/commands/group-charges.ts` (`groupChildFacts`). ISSUE-554 repeats ISSUE-549 with `notify: true`.

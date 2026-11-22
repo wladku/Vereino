@@ -70,7 +70,7 @@ function byQueueOrder(left, right) {
  * Today's queue: drafts, PRs with a skip label and PRs held by the MT-D02 QA rule left out, then priority and age.
  * `held` names each held PR with its reason.
  */
-function trainQueue(prs, skipLabels) {
+export function trainQueue(prs, skipLabels) {
   const eligible = prs.filter((pr) => !pr.draft && !pr.labels.some((label) => skipLabels.includes(label)))
   const held = eligible.filter((pr) => qaHold(pr.labels)).map((pr) => ({ pr: pr.number, reason: QA_HOLD_REASON }))
   const queue = eligible.filter((pr) => !qaHold(pr.labels)).sort(byQueueOrder)
