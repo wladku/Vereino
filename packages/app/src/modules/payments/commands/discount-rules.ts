@@ -11,6 +11,7 @@ import { isInvertedPeriod } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { DiscountRule } from '../data/entities'
+import { findPersons, type PaymentsScope } from '../services/directory'
 import { discountRuleCreateSchema, discountRuleDeleteSchema, discountRuleUpdateSchema } from '../data/validators'
 import {
   discountValueInvalid,
@@ -112,15 +113,29 @@ async function authorizeRuleReplay(
   return entity as DiscountRule
 }
 
-/** The checked value and conditions of a rule, or a coded 422. */
+/**
+ * The checked value and conditions of a rule, or a coded 422. Every person the conditions name that the rule did not
+ * name before (`known`) must be a person of the club: another club's person id answers like an unknown one (#628).
+ */
 async function checkedRule(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: PaymentsScope,
   kind: DiscountKind,
   value: { percent: number | null; amount: number | null },
   conditions: Partial<DiscountConditions> | null | undefined,
+  known: readonly string[] = [],
 ): Promise<DiscountConditions> {
   if (discountValueInvalid({ kind, ...value })) await paymentsErrors.throw('discount_value_invalid')
   const normalized = normalizeConditions(kind, conditions)
   if (!normalized) return paymentsErrors.throw('discount_conditions_invalid')
+  const added = (normalized.personIds ?? []).filter((personId) => !known.includes(personId))
+  if (added.length > 0) {
+    const persons = await findPersons(ctx.container, scope, added, em)
+    if (added.some((personId) => !persons.has(personId))) {
+      return paymentsErrors.throw('discount_conditions_invalid', { field: 'personIds' })
+    }
+  }
   return normalized
 }
 
@@ -144,7 +159,7 @@ const createRuleCommand: CommandHandler<Record<string, unknown>, DiscountRuleCom
       )
       const { parsed, tenantId, organizationId } = authorized
       const value = { percent: parsed.percent ?? null, amount: parsed.amount ?? null }
-      const conditions = await checkedRule(parsed.kind, value, parsed.conditions)
+      const conditions = await checkedRule(ctx, em, { tenantId, organizationId }, parsed.kind, value, parsed.conditions)
       const row = em.create(DiscountRule, {
         id,
         tenantId,
@@ -195,7 +210,15 @@ const updateRuleCommand: CommandHandler<Record<string, unknown>, DiscountRuleCom
       const value = valueSent
         ? { percent: patch.percent ?? null, amount: patch.amount ?? null }
         : { percent: row.percent ?? null, amount: row.amount ?? null }
-      const conditions = await checkedRule(row.kind, value, patch.conditions ?? row.conditions)
+      const conditions = await checkedRule(
+        ctx,
+        em,
+        { tenantId: row.tenantId, organizationId: row.organizationId },
+        row.kind,
+        value,
+        patch.conditions ?? row.conditions,
+        row.conditions?.personIds ?? [],
+      )
       const validFrom = patch.validFrom ?? row.validFrom
       const validTo = patch.validTo !== undefined ? patch.validTo : (row.validTo ?? null)
       if (isInvertedPeriod(validFrom, validTo)) await foundationErrors.throw('validity_inverted')

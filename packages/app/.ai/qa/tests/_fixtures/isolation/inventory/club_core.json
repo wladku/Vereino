@@ -1,0 +1,322 @@
+{
+  "$comment": "Cross-club isolation probes of the club_core routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/club_core/contracts": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:contract" } },
+        { "probe": "read", "query": { "partyId": "$B:institution" } },
+        { "probe": "read", "query": { "institutionId": "$B:institution" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "partyType": "institution", "partyId": "$B:institution", "kind": "other", "validFrom": "$A:today" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "partyType": "person", "partyId": "$B:coachPerson", "kind": "other", "validFrom": "$A:today" }
+        }
+      ],
+      "PUT": {
+        "probe": "foreign-id",
+        "body": { "id": "$B:contract", "validFrom": "$A:today" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:contract" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/contracts/[id]/attachment": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:contract" } },
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:contract" },
+        "body": { "$multipart": { "file": { "$file": "pdf" } } }
+      },
+      "DELETE": { "probe": "foreign-id", "params": { "id": "$B:contract" } }
+    },
+    "/api/club_core/institutions": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "ids": "$B:institution" } }],
+      "POST": {
+        "probe": "exempt",
+        "why": "Creates an institution in the caller's club from its own fields; the body names no other record, so it cannot address club B. The institutions are read back by the GET probes."
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "body": { "id": "$B:institution", "notes": "Probe" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:institution" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/institutions/options": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "search": "KS" } }]
+    },
+    "/api/club_core/logo": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Sets the logo of the caller's own club (the target is always the caller's organization); the request names no record."
+      },
+      "DELETE": {
+        "probe": "exempt",
+        "why": "Removes the logo of the caller's own club (the target is always the caller's organization); the request names no record."
+      }
+    },
+    "/api/club_core/options/places": {
+      "GET": { "probe": "read" }
+    },
+    "/api/club_core/places": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:place" } },
+        { "probe": "read", "query": { "parentPlaceId": "$B:place" } }
+      ],
+      "POST": [
+        { "probe": "foreign-ref", "body": { "name": "Probe", "kind": "pitch", "parentPlaceId": "$B:place" } },
+        { "probe": "foreign-ref", "body": { "name": "Probe", "kind": "pitch", "ownerInstitutionId": "$B:institution" } }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "body": { "id": "$B:place", "description": "Probe" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "id": "$A:externalPlace", "ownerInstitutionId": "$B:institution" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:externalPlaceUpdatedAt" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "id": "$A:externalPlace", "parentPlaceId": "$B:place" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:externalPlaceUpdatedAt" }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:place" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/places/external": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "name": "Hala próbna",
+          "address": "ul. Próbna 1, Miasto",
+          "kind": "hall",
+          "ownerInstitutionId": "$B:institution"
+        }
+      }
+    },
+    "/api/club_core/places/[id]/files": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:publicPlace" } },
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:publicPlace" },
+        "body": { "$multipart": { "file": { "$file": "png" }, "kind": "photo" } }
+      }
+    },
+    "/api/club_core/places/[id]/files/[fileId]": {
+      "DELETE": [
+        { "probe": "foreign-id", "params": { "id": "$B:publicPlace", "fileId": "$B:placeFile" } },
+        { "probe": "foreign-id", "params": { "id": "$A:publicPlace", "fileId": "$B:placeFile" } }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]": {
+      "GET": { "probe": "read", "roles": ["anonymous"], "params": { "clubSlug": "$A:clubSlug" } }
+    },
+    "/api/club_core/public/[clubSlug]/events": {
+      "GET": [
+        { "probe": "read", "roles": ["anonymous"], "params": { "clubSlug": "$A:clubSlug" } },
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug" },
+          "query": { "section": "$A:sectionSlug" }
+        },
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug" },
+          "query": { "section": "$B:sectionSlug" }
+        }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/events/[eventSlug]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "eventSlug": "$A:clubEventSlug" }
+        },
+        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "eventSlug": "$B:clubEventSlug" } }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/events/[eventSlug]/files/[fileId]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "eventSlug": "$A:clubEventSlug", "fileId": "$A:clubEventFile" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "eventSlug": "$A:clubEventSlug", "fileId": "$B:clubEventFile" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "eventSlug": "$B:clubEventSlug", "fileId": "$B:clubEventFile" }
+        }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/logo": {
+      "GET": { "probe": "read", "roles": ["anonymous"], "params": { "clubSlug": "$A:clubSlug" } }
+    },
+    "/api/club_core/public/[clubSlug]/places/[placeSlug]/files/[fileId]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$A:placeSlug", "fileId": "$A:placeFile" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$A:placeSlug", "fileId": "$B:placeFile" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$B:placeSlug", "fileId": "$B:placeFile" }
+        }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/sections/[sectionSlug]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$A:sectionSlug" }
+        },
+        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$B:sectionSlug" } }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/sections/[sectionSlug]/logo": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$A:sectionSlug" }
+        },
+        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$B:sectionSlug" } }
+      ]
+    },
+    "/api/club_core/public/[clubSlug]/sections/[sectionSlug]/materials/[materialId]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$A:sectionSlug", "materialId": "$A:material" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$A:sectionSlug", "materialId": "$B:material" }
+        },
+        {
+          "probe": "public",
+          "params": { "clubSlug": "$A:clubSlug", "sectionSlug": "$B:sectionSlug", "materialId": "$B:material" }
+        }
+      ]
+    },
+    "/api/club_core/sections": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:publicSection" } },
+        { "probe": "read", "query": { "ids": "$B:section" } }
+      ],
+      "POST": {
+        "probe": "exempt",
+        "why": "Creates a section in the caller's club from its own fields; the body names no other record, so it cannot address club B. The sections are read back by the GET probes."
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "body": { "id": "$B:section", "description": "Probe" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:section" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/sections/[id]/logo": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:publicSection" },
+        "body": { "$multipart": { "file": { "$file": "png" } } },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:publicSection" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/sections/[id]/materials": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:publicSection" } },
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:publicSection" },
+        "body": { "$multipart": { "file": { "$file": "pdf" }, "title": "Probe", "isPublic": "true" } }
+      }
+    },
+    "/api/club_core/sections/[id]/materials/[materialId]": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:publicSection", "materialId": "$B:material" },
+          "body": { "title": "Probe" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:publicSection", "materialId": "$B:material" },
+          "body": { "title": "Probe" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ],
+      "DELETE": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:publicSection", "materialId": "$B:material" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:publicSection", "materialId": "$B:material" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/club_core/sections/[id]/public": {
+      "PUT": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:publicSection" },
+        "body": { "shortDescription": "Probe" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/club_core/settings": {
+      "GET": { "probe": "read" },
+      "PUT": {
+        "probe": "exempt",
+        "why": "Changes the settings of the caller's own club (the row is always the caller's organization); the body names no record. The one cross-club effect, the globally unique public slug (409 public_slug_taken), concerns a slug every guest can already resolve on the public page."
+      }
+    }
+  }
+}
