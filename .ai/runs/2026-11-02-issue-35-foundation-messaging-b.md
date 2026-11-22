@@ -6,7 +6,7 @@
   - `/om-auto-fix-issue 23` continued epic #23 after phase A (#71, PR #73).
   - The product owner had approved the new `communication` module and its migration on 2026-11-01.
 - **Spec / issue / branch:**
-  - Spec: `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase B* (REQ-M05…REQ-M08, REQ-M10, P-32, J-M01, J-M02, TEST-M05…TEST-M08, TEST-M10, AC-M05…AC-M08, AC-M10), with the club spec's phase 3 (REQ-009, *Thread*, DD-17, DD-35, R01, R15).
+  - Spec: `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`, *Implementation Phases → Phase B* (REQ-M05…REQ-M08, REQ-M10, P-32, J-M01, J-M02, TEST-M05…TEST-M08, TEST-M10, AC-M05…AC-M08, AC-M10), with the club spec's phase 3 (REQ-009, *Thread*, DD-17, DD-35, R01, R15).
   - Issue: #35 (E04-S01), epic #23.
   - Branch: `feat/issue-35-announcements`, cut from phase A's branch at bd40916; its PR to `main` opens only after #73 merges (lesson from #69).
 - **Status:** completed, PR open for review.

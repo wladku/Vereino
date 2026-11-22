@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA Scenarios — since 2026-11-20</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;max-width:60rem;margin:0 auto;padding:1rem;color:#1a1a1a;background:#fff}
+a{color:#1d4ed8}code{background:#f1f1f1;padding:0 .2em;border-radius:3px;font-size:.92em}
+table{border-collapse:collapse;width:100%;font-size:.92em}th,td{border:1px solid #ccc;padding:.3rem .5rem;text-align:left;vertical-align:top}
+th{background:#f4f4f4}section{border:1px solid #ddd;border-radius:6px;padding:.25rem 1rem .75rem;margin:1rem 0}
+ul.check{list-style:none;padding-left:1rem}h4{margin:.75rem 0 .25rem}
+@media (prefers-color-scheme:dark){body{background:#121212;color:#e6e6e6}a{color:#93c5fd}code{background:#2a2a2a}th{background:#222}th,td,section{border-color:#444}}
+</style>
+</head>
+<body>
+<h1>QA Scenarios — since 2026-11-20</h1>
+<p>Report window: <strong>2026-11-20 → 2026-11-22</strong> (routes for base <code>main</code>). Issue: <a href="https://github.com/wladku/Vereino/issues/569" rel="noopener noreferrer">#569</a>.</p>
+<h2>Executive Summary</h2>
+<ul>
+<li><strong>Start with the 4 open PRs waiting for your <code>qa</code> label</strong> (<code>risk-high</code> + <code>needs-qa</code>): <a href="https://github.com/wladku/Vereino/pull/530" rel="noopener noreferrer">#530</a>, <a href="https://github.com/wladku/Vereino/pull/506" rel="noopener noreferrer">#506</a>, <a href="https://github.com/wladku/Vereino/pull/563" rel="noopener noreferrer">#563</a> and <a href="https://github.com/wladku/Vereino/pull/570" rel="noopener noreferrer">#570</a>, which was opened after the issue was written. The merge train holds each one until it gets <code>qa</code>. Each has a short section below: where to tap, what to check, and what you must see to pass it.</li>
+<li>Reviewed <strong>64 merged PRs</strong>, all into <code>main</code>, none into other branches. 1 is excluded (the previous run of this report, #473). 12 merged on 20 November and are already covered by <code>qa-scenarios-2026-11-20</code>, so this report only lists them. The other <strong>51</strong> are new here.</li>
+<li>The 51 new PRs make up <strong>22 scenarios</strong> (3 P0, 16 P1, 3 P2) covering 28 of them. The other <strong>23 PRs</strong> need no manual check (docs, tests, CI, tooling, dependency bumps).</li>
+<li>Riskiest theme: the E20 UI pass touches every screen (focus rings, status icons, touch targets, menu groups, refusals). The privacy changes erase personal data next to accounting records (anonymisation, link purge). The operator side is new too (nightly backups, alerts, start-up checks).</li>
+<li>19 of the 51 PRs merged with <code>needs-qa</code> and no recorded QA sign-off; this report is that checklist. 14 items could not be resolved against the code; they are listed under "Unresolved items".</li>
+</ul>
+<h2>How to use this report</h2>
+<ul>
+<li>Work in the sandbox with the example club and the interface switched to <strong>Polish</strong>. Every quoted label („…”) is the text the Polish catalog (<code>pl.json</code>) shows.</li>
+<li>Administrator and treasurer scenarios run on the desktop (<code>/backend</code>). Every other role runs on a phone or in a 375 px wide browser window. Operator scenarios run in a server shell on staging or a disposable database, never on production.</li>
+<li>Follow the steps, tick each "verify" bullet, and file a new issue for anything under "what can go wrong" that you see. Scenario ids (Q1 …, S01 …) are stable within this report only.</li>
+</ul>
+<h2>Recommended QA Order</h2>
+<table><thead><tr><th>Id</th><th>Priority</th><th>Role</th><th>Scenario</th><th>PRs</th></tr></thead><tbody>
+<tr><td>Q1</td><td>P0</td><td>administrator, operator</td><td>Security headers, no caching of signed-in API answers, stricter CSP (open, waits for <code>qa</code>)</td><td><a href="https://github.com/wladku/Vereino/pull/530" rel="noopener noreferrer">#530</a></td></tr>
+<tr><td>Q2</td><td>P0</td><td>administrator, member</td><td>Each club has its own colour on the member header, public page and fallback logo (open, waits for <code>qa</code>)</td><td><a href="https://github.com/wladku/Vereino/pull/506" rel="noopener noreferrer">#506</a></td></tr>
+<tr><td>Q3</td><td>P0</td><td>administrator, operator</td><td>Former participants are anonymised after the club's retention period (open, waits for <code>qa</code>)</td><td><a href="https://github.com/wladku/Vereino/pull/563" rel="noopener noreferrer">#563</a></td></tr>
+<tr><td>Q4</td><td>P0</td><td>administrator, member</td><td>The app still works after the Next.js security upgrade (open, waits for <code>qa</code>)</td><td><a href="https://github.com/wladku/Vereino/pull/570" rel="noopener noreferrer">#570</a></td></tr>
+<tr><td>S01</td><td>P0</td><td>administrator, coach</td><td>A keyboard user always sees the focus; closing a dialog returns focus to its button</td><td><a href="https://github.com/wladku/Vereino/pull/502" rel="noopener noreferrer">#502</a></td></tr>
+<tr><td>S02</td><td>P0</td><td>guardian, coach, coordinator</td><td>„Dziś” and the session page open without "Access denied" errors; a real refusal is in Polish</td><td><a href="https://github.com/wladku/Vereino/pull/501" rel="noopener noreferrer">#501</a></td></tr>
+<tr><td>S03</td><td>P0</td><td>guest, administrator</td><td>Nothing from the Open Mercato template is left: "/" leads to the club page or sign-in</td><td><a href="https://github.com/wladku/Vereino/pull/503" rel="noopener noreferrer">#503</a></td></tr>
+<tr><td>S04</td><td>P1</td><td>guardian, coach, coordinator</td><td>„Dziś” shows the club header and at most three tiles; the calendar opens on the upcoming list</td><td><a href="https://github.com/wladku/Vereino/pull/537" rel="noopener noreferrer">#537</a></td></tr>
+<tr><td>S05</td><td>P1</td><td>coach, coordinator, attendant</td><td>Staff on the phone are offered only what they may do; each refusal says why</td><td><a href="https://github.com/wladku/Vereino/pull/508" rel="noopener noreferrer">#508</a></td></tr>
+<tr><td>S06</td><td>P1</td><td>guardian, member, coach</td><td>Every control on the member pages is 44 px; Tab focus is never hidden under the attendance bar</td><td><a href="https://github.com/wladku/Vereino/pull/512" rel="noopener noreferrer">#512</a>, <a href="https://github.com/wladku/Vereino/pull/550" rel="noopener noreferrer">#550</a>, <a href="https://github.com/wladku/Vereino/pull/552" rel="noopener noreferrer">#552</a></td></tr>
+<tr><td>S07</td><td>P1</td><td>guardian</td><td>An empty message or leave request says what is missing instead of a greyed-out button</td><td><a href="https://github.com/wladku/Vereino/pull/507" rel="noopener noreferrer">#507</a></td></tr>
+<tr><td>S08</td><td>P1</td><td>guest</td><td>Public club pages show content and the club's name in the tab title even without JavaScript</td><td><a href="https://github.com/wladku/Vereino/pull/509" rel="noopener noreferrer">#509</a></td></tr>
+<tr><td>S09</td><td>P1</td><td>guest, administrator</td><td>The club's privacy notice is in every public footer and follows the language</td><td><a href="https://github.com/wladku/Vereino/pull/536" rel="noopener noreferrer">#536</a></td></tr>
+<tr><td>S10</td><td>P1</td><td>treasurer, guardian</td><td>Every status pill shows a word and an icon; cancelled sessions and events read as an error</td><td><a href="https://github.com/wladku/Vereino/pull/500" rel="noopener noreferrer">#500</a></td></tr>
+<tr><td>S11</td><td>P1</td><td>administrator</td><td>The dashboard shows every tile title in Polish under one greeting heading</td><td><a href="https://github.com/wladku/Vereino/pull/505" rel="noopener noreferrer">#505</a></td></tr>
+<tr><td>S12</td><td>P1</td><td>administrator</td><td>The panel menu has six groups in the mockup's order, short labels and the new terms</td><td><a href="https://github.com/wladku/Vereino/pull/513" rel="noopener noreferrer">#513</a></td></tr>
+<tr><td>S13</td><td>P1</td><td>administrator</td><td>Admin lists offer „Spróbuj ponownie” when loading fails; access-denied pages offer a way out</td><td><a href="https://github.com/wladku/Vereino/pull/515" rel="noopener noreferrer">#515</a></td></tr>
+<tr><td>S14</td><td>P1</td><td>administrator</td><td>Anonymisation clears order contacts and payer labels and keeps the name until the sixth year</td><td><a href="https://github.com/wladku/Vereino/pull/535" rel="noopener noreferrer">#535</a>, <a href="https://github.com/wladku/Vereino/pull/562" rel="noopener noreferrer">#562</a></td></tr>
+<tr><td>S15</td><td>P1</td><td>administrator, coach</td><td>Two people accepting cash at the same moment, e-mail on, both get a receipt</td><td><a href="https://github.com/wladku/Vereino/pull/553" rel="noopener noreferrer">#553</a>, <a href="https://github.com/wladku/Vereino/pull/556" rel="noopener noreferrer">#556</a></td></tr>
+<tr><td>S16</td><td>P1</td><td>operator, guardian</td><td>Used and expired links are deleted 30 days later; valid links keep working</td><td><a href="https://github.com/wladku/Vereino/pull/541" rel="noopener noreferrer">#541</a></td></tr>
+<tr><td>S17</td><td>P1</td><td>operator</td><td>The nightly payments check reports drift between charges, payments and receipt numbers</td><td><a href="https://github.com/wladku/Vereino/pull/555" rel="noopener noreferrer">#555</a></td></tr>
+<tr><td>S18</td><td>P1</td><td>operator</td><td>The app refuses to start without required variables; deploys never set up a new database</td><td><a href="https://github.com/wladku/Vereino/pull/478" rel="noopener noreferrer">#478</a></td></tr>
+<tr><td>S19</td><td>P1</td><td>operator</td><td>The nightly encrypted backup reaches the bucket, a failure alerts, the restore drill works</td><td><a href="https://github.com/wladku/Vereino/pull/474" rel="noopener noreferrer">#474</a>, <a href="https://github.com/wladku/Vereino/pull/476" rel="noopener noreferrer">#476</a>, <a href="https://github.com/wladku/Vereino/pull/524" rel="noopener noreferrer">#524</a></td></tr>
+<tr><td>S20</td><td>P2</td><td>administrator, coach</td><td>The day axis uses the mockup's colours; the place page fits a 768 px tablet</td><td><a href="https://github.com/wladku/Vereino/pull/510" rel="noopener noreferrer">#510</a></td></tr>
+<tr><td>S21</td><td>P2</td><td>administrator, coach, guardian</td><td>Information notices are pale blue; checkboxes and radios use the primary colour</td><td><a href="https://github.com/wladku/Vereino/pull/538" rel="noopener noreferrer">#538</a></td></tr>
+<tr><td>S22</td><td>P2</td><td>administrator, guardian, attendant</td><td>Texts promise nothing, invent no prices and say what to do next</td><td><a href="https://github.com/wladku/Vereino/pull/539" rel="noopener noreferrer">#539</a></td></tr>
+</tbody></table>
+<h2>Waiting for your <code>qa</code> label</h2>
+<p>These PRs are still open. Each carries <code>risk-high</code> and <code>needs-qa</code>, and the merge train holds it until you add <code>qa</code>. The labels and routes come from each PR's own diff, so some labels are not on <code>main</code> yet.</p>
+<section>
+<h4>Q1 · P0 — Security headers, no caching of signed-in API answers, stricter CSP</h4>
+<p><strong>PR:</strong> <a href="https://github.com/wladku/Vereino/pull/530" rel="noopener noreferrer">#530</a> (open, <code>risk-high</code>, <code>needs-qa</code>) · <strong>Issue:</strong> <a href="https://github.com/wladku/Vereino/issues/463" rel="noopener noreferrer">#463</a></p>
+<p><strong>Device:</strong> desktop. You need the browser devtools console and <code>curl -I</code>; a phone shows neither · <strong>Time:</strong> ~10 min</p>
+<p><strong>What changed:</strong> Every response now carries <code>Permissions-Policy</code>, and in production <code>Strict-Transport-Security</code>. Signed-in API answers are marked <code>private, no-store</code>. The production security policy (CSP) no longer allows <code>'unsafe-eval'</code>, so form validation could break if any code still relies on it.</p>
+<p><strong>Where to click</strong></p>
+<ol>
+<li>Use a <strong>production build</strong> (not <code>yarn dev</code>): HSTS and the CSP change apply only in production. Run <code>curl -I &lt;host&gt;/login</code>.</li>
+<li>In the browser, with the devtools console open, sign in at <code>/login</code>. Then open <code>/backend</code>, <code>/backend/people/persons/create</code> and <code>/backend/activities/occurrences</code>.</li>
+<li>On <code>/backend/people/persons/create</code>, submit the empty form, then fill in the required fields and save.</li>
+<li>In the devtools Network tab, open any <code>/api/...</code> request made while signed in and read its response headers.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ <code>curl -I</code> → <code>Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=()</code> and <code>Strict-Transport-Security: max-age=63072000; includeSubDomains</code>. The <code>Content-Security-Policy</code> contains no <code>unsafe-eval</code></li>
+<li>☐ No "Refused to evaluate…" or <code>script-src</code> CSP error appears in the console on any of the four pages</li>
+<li>☐ The form shows validation errors when empty and saves when filled in</li>
+<li>☐ A signed-in <code>/api/…</code> response has <code>Cache-Control: private, no-store</code>. An anonymous public JSON route keeps <code>public, s-maxage=60</code></li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Form validation silently does nothing because eval is blocked</li>
+<li>The online payment page breaks. Stripe is allowed by the CSP, but that page was not among the PR's checks</li>
+</ul>
+<p><strong>How to pass:</strong> add <code>qa</code> when <code>curl -I</code> shows the headers above and the console shows no CSP violation on the four pages. This is not testable on a phone. If no production build is at hand, take the ENG-TEST-11 CI run as the evidence.</p>
+</section>
+<section>
+<h4>Q2 · P0 — Each club has its own colour on the member header, public page and fallback logo</h4>
+<p><strong>PR:</strong> <a href="https://github.com/wladku/Vereino/pull/506" rel="noopener noreferrer">#506</a> (open, <code>risk-high</code>, <code>needs-qa</code>) · <strong>Issue:</strong> <a href="https://github.com/wladku/Vereino/issues/486" rel="noopener noreferrer">#486</a></p>
+<p><strong>Device:</strong> phone 375 px (visual, mobile-first) · <strong>Time:</strong> ~10 min</p>
+<p><strong>What changed:</strong> The club settings get the field „Kolor klubu” (hex; empty means the default colour). It colours the member header bar on <code>/club</code>, a thin strip and the hero on the public page, and the logo box when there is no logo. The text on it switches to black or white automatically. A section without its own logo now shows its own initial instead of the club's.</p>
+<p><strong>Where to click</strong></p>
+<ol>
+<li>„Klub” → „Ustawienia” (<code>/backend/club/settings</code>), group „Klub”, field „Kolor klubu”.</li>
+<li>Enter <code>red</code> and tap „Zapisz ustawienia”. Then enter <code>#0b2a5b</code> (navy) and save.</li>
+<li>„Klub” → „Publikacja” → „Podgląd” opens <code>/p/&lt;clubSlug&gt;</code>. Then open a section page <code>/p/&lt;clubSlug&gt;/sections/&lt;sectionSlug&gt;</code>.</li>
+<li>Sign in as a member and open <code>/club</code>.</li>
+<li>Back in the settings, enter a light colour such as <code>#ffd400</code>, save, and recheck <code>/p/&lt;clubSlug&gt;</code>. Then clear the field and save.</li>
+<li>„Klub” → „Sekcje” (<code>/backend/club/sections</code>).</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ <code>red</code> → „Podaj kolor jako # i sześć cyfr szesnastkowych, np. #1b8f3a”. Navy saves with „Ustawienia klubu zapisane”</li>
+<li>☐ Navy: the hero, the 4 px header strip and the <code>/club</code> header bar are navy with white text. Yellow gives black text</li>
+<li>☐ Text stays readable with the phone in light and dark mode</li>
+<li>☐ With the field empty, the colours fall back to the theme's primary colour, not grey</li>
+<li>☐ A section with no logo of its own and no club logo shows its own initial, not the club's</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Text on the colour is unreadable (white on yellow)</li>
+<li>The colour is missing on <code>/club</code> or on the facilities, activities, payments or messages pages</li>
+<li>Clearing the field leaves the old colour</li>
+</ul>
+<p><strong>How to pass:</strong> add <code>qa</code> when navy and yellow both render with readable text on <code>/p/…</code> and <code>/club</code> at 375 px, and the empty field falls back to the default. All of it can be checked on the phone.</p>
+</section>
+<section>
+<h4>Q3 · P0 — Former participants are anonymised after the club's retention period</h4>
+<p><strong>PR:</strong> <a href="https://github.com/wladku/Vereino/pull/563" rel="noopener noreferrer">#563</a> (open, <code>risk-high</code>, <code>needs-qa</code>) · <strong>Issue:</strong> <a href="https://github.com/wladku/Vereino/issues/471" rel="noopener noreferrer">#471</a></p>
+<p><strong>Device:</strong> phone 375 px for the setting; desktop terminal for the job, which runs only from the command line · <strong>Time:</strong> ~12 min</p>
+<p><strong>What changed:</strong> The club settings get the group „Przechowywanie danych” with „Anonimizuj byłych uczestników po (miesiącach)” (default 12, range 1–120). A daily job anonymises people who left at least that long ago and have no role, no guardianship and no unpaid charge. Their payments stay.</p>
+<p><strong>Where to click</strong></p>
+<ol>
+<li>Phone: „Klub” → „Ustawienia” (<code>/backend/club/settings</code>), scroll to „Przechowywanie danych”.</li>
+<li>Enter <code>0</code> and tap „Zapisz ustawienia”. Then try <code>121</code>, then <code>24</code>, and finally set it back to <code>12</code>.</li>
+<li>Desktop, on a <strong>local or disposable database only</strong>: <code>yarn mercato people retention-sweep --tenant &lt;id&gt; --org &lt;id&gt; --dry-run</code>. Add <code>--today &lt;a future date&gt;</code> to simulate a later day.</li>
+<li>Run the same command without <code>--dry-run</code>, then check <code>/backend/people/persons</code> and the audit log.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ <code>0</code> and <code>121</code> → „Podaj liczbę miesięcy od 1 do 120.” on the field. <code>24</code> saves with „Ustawienia klubu zapisane”</li>
+<li>☐ At 375 px the page has no horizontal scroll and the group description is readable</li>
+<li>☐ The dry run prints counts only (<code>candidates</code>, <code>anonymized</code>, <code>kept</code>, <code>failed</code>), no names, and changes nobody</li>
+<li>☐ The real run anonymises only people who left before the cutoff with everything paid. Each shows „Zanonimizowano {date}”, gets one audit entry, and keeps their payments</li>
+<li>☐ A person with an unpaid charge, or one who is still a guardian, is left unchanged. A second run anonymises nobody</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Someone with an open charge or an active guardianship is anonymised (irreversible)</li>
+<li>The job prints personal data, or a second run anonymises people again</li>
+</ul>
+<p><strong>How to pass:</strong> on the phone, the setting must validate and save. Add <code>qa</code> once the dry run and the real run behave as above on a throwaway database. If you cannot run the job, accept TEST-086 as the evidence and test only the setting.</p>
+</section>
+<section>
+<h4>Q4 · P0 — The app still works after the Next.js security upgrade</h4>
+<p><strong>PR:</strong> <a href="https://github.com/wladku/Vereino/pull/570" rel="noopener noreferrer">#570</a> (open, <code>risk-high</code>, <code>needs-qa</code>) · <strong>Issue:</strong> <a href="https://github.com/wladku/Vereino/issues/454" rel="noopener noreferrer">#454</a> (mentioned)</p>
+<p><strong>Device:</strong> phone 375 px. A smoke run through the pages; nothing visual changed · <strong>Time:</strong> ~8 min</p>
+<p><strong>What changed:</strong> The page engine (Next.js) goes from 16.3.6 to 16.4.6 to close two critical and two high advisories, one of them in image optimisation. No screen or text changed. The risk is that a page fails to render or a logo stops loading.</p>
+<p><strong>Where to click</strong></p>
+<ol>
+<li><code>/login</code>: sign in as the administrator.</li>
+<li><code>/backend</code>: wait for the dashboard and the menu.</li>
+<li>„Klub” → „Ustawienia” (<code>/backend/club/settings</code>): check the club logo, change nothing, and tap „Zapisz ustawienia”.</li>
+<li>„Klub” → „Sekcje” (<code>/backend/club/sections</code>): check the section logos or initials.</li>
+<li>„Klub” → „Publikacja” → „Podgląd” opens <code>/p/&lt;clubSlug&gt;</code>. Open one section from there.</li>
+<li>Sign in as a member and open <code>/club</code>.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Each page loads, with no blank screen and no "Application error"</li>
+<li>☐ Logos load in <code>/backend</code>, on <code>/p/…</code> and on <code>/club</code>, with no broken-image icon</li>
+<li>☐ Saving the settings shows „Ustawienia klubu zapisane”</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Logos are broken or never finish loading (image optimisation changed in 16.4.x)</li>
+<li>A white screen after sign-in, or a save that hangs (a Server Actions or router change)</li>
+</ul>
+<p><strong>How to pass:</strong> add <code>qa</code> when every step renders, logos included, and the save works. Nothing here needs a desktop. The dependency audit and the build are already CI evidence (<code>yarn verify</code>, <code>browser-smoke</code>).</p>
+</section>
+<h2>Scenarios</h2>
+<h3>P0 — every screen</h3>
+<section>
+<h4>S01 · P0 — A keyboard user always sees the focus; closing a dialog returns focus to its button</h4>
+<p><strong>Role:</strong> administrator (panel) and coach (member area) · <strong>Device:</strong> desktop; member area also in a 375 px window · <strong>Why P0:</strong> priority-high, risk-medium; the focus tokens and the dialog wrapper changed on every screen</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/502" rel="noopener noreferrer">#502</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/481" rel="noopener noreferrer">#481</a></p>
+<p><strong>Route:</strong> /backend/club/sections/create — Klub → Sekcje → „Nowa sekcja”; /club and /club/occurrences/{id} — Strefa członka → „Dziś” → a session</p>
+<p><strong>Before you start:</strong> An administrator. A coach with one planned session they lead, today or later. Test with the light theme, then the dark theme. Use only the keyboard.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As the administrator open „Nowa sekcja”. Press Tab through the sidebar, the group headings, the fields and the buttons.</li>
+<li>Switch to the dark theme and Tab through the same page again.</li>
+<li>As the coach, in a 375 px window, open „Dziś” and Tab to the profile tile and the cards.</li>
+<li>Open the session, Tab to „Odwołaj termin” and press Enter. Then Tab into „Powód”.</li>
+<li>Press Esc, then Tab once. Open the dialog again and close it with the browser's Back button.</li>
+<li>Open and close (Esc) two or three other dialogs, e.g. „Dodaj opiekuna” in Obiekty → Konserwacja → Opiekunowie.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Every focused element (link, card, button, field, tab, switch) shows a clear ring about 2 px wide with a small gap: dark in light theme, light in dark theme</li>
+<li>☐ No element is focused without a visible ring, and no ring is cut off at a card or list edge</li>
+<li>☐ Field borders and sidebar group headings („Klub”, „Finanse”) are clearly readable in both themes</li>
+<li>☐ After Esc and after Back, the focus is on „Odwołaj termin”, and the next Tab moves to the element after it</li>
+<li>☐ The same focus return works in the other dialogs. At 375 px nothing overflows sideways</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>After Esc, the focus jumps to the start of the page</li>
+<li>The ring is invisible on a dark card</li>
+<li>One module's dialog still loses the focus on close</li>
+</ul>
+</section>
+<section>
+<h4>S02 · P0 — „Dziś” and the session page open without "Access denied" errors; a real refusal is in Polish</h4>
+<p><strong>Role:</strong> guardian, coach, coordinator, facility attendant · <strong>Device:</strong> phone 375 px · <strong>Why P0:</strong> priority-high, risk-medium; the first screen every member sees</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/501" rel="noopener noreferrer">#501</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/483" rel="noopener noreferrer">#483</a></p>
+<p><strong>Route:</strong> /club, /club/occurrences/{id}, /club/occurrences/{id}/edit — Strefa członka → „Dziś” → a session → „Edytuj”</p>
+<p><strong>Before you start:</strong> A guardian with a child in a group. A coach who leads a group with sessions. A section coordinator who does not coach. A facility attendant. If you can, open the browser's Network tab.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As the guardian (Polish), open „Dziś” and wait until every tile has loaded. Repeat as the facility attendant, and as the treasurer if there is one.</li>
+<li>As the coach, open „Dziś”, then a session of their group, then „Edytuj”.</li>
+<li>As the coordinator, open a session of their section from the calendar, then „Edytuj”.</li>
+<li>As the guardian, open a panel-only address, e.g. /backend/payments/charges, and read the message.</li>
+<li>Switch the profile language to English and repeat step 4.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Guardian, attendant and treasurer: no error toast on „Dziś” and no „Płatności moich grup” tile</li>
+<li>☐ Coach: the „Płatności moich grup” tile is still there</li>
+<li>☐ Coach and coordinator: the session page and its edit form open without an error toast</li>
+<li>☐ No red 403/404 requests in the Network tab on these pages</li>
+<li>☐ A real refusal in Polish reads „Brak dostępu: nie masz uprawnień do tej czynności. Jeśli ich potrzebujesz, poproś administratora klubu.”, never English or "admin" on a Polish page</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>An English toast naming the role "admin" appears for a guardian</li>
+<li>The coach loses their own payments tile</li>
+<li>The coordinator's edit form refuses with 403</li>
+</ul>
+</section>
+<section>
+<h4>S03 · P0 — Nothing from the Open Mercato template is left: "/" leads to the club page or sign-in</h4>
+<p><strong>Role:</strong> guest, then administrator · <strong>Device:</strong> phone 375 px (guest), desktop (administrator) · <strong>Why P0:</strong> priority-high, risk-medium; the instance's entry point, a new operator setting <code>VEREINO_HOME_CLUB_SLUG</code>, demo mode now off by default</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/503" rel="noopener noreferrer">#503</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/485" rel="noopener noreferrer">#485</a></p>
+<p><strong>Route:</strong> /, /start, /login, /p/{clubSlug}, /backend, /backend/club/publication — Klub → „Publikacja”</p>
+<p><strong>Before you start:</strong> Ask the operator whether <code>VEREINO_HOME_CLUB_SLUG</code> is set on the sandbox to the example club's slug. Use an administrator who may publish the club page, and a private window for the guest steps.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As a guest, open <code>/</code>, then <code>/start</code>.</li>
+<li>Sign in as the administrator and open <code>/</code>, then Klub → „Publikacja”. Read the tab title and the sidebar mark.</li>
+<li>Publish the club page if needed, sign out, and open <code>/</code> as a guest.</li>
+<li>Switch the club page off in „Publikacja” and open <code>/</code> again as a guest.</li>
+<li>Check the sign-in page and the panel in light and dark themes.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ With the club page unpublished (or the variable unset), guest <code>/</code> → <code>/login</code>, tab title „Vereino”</li>
+<li>☐ With the page published and the variable set, guest <code>/</code> → <code>/p/{clubSlug}</code>, tab title „{club} — Strona klubu”</li>
+<li>☐ <code>/start</code> is a 404: no demo password hint, no counters, no role cards</li>
+<li>☐ A signed-in administrator at <code>/</code> lands on <code>/backend</code>. Panel tab titles read „{page} — Vereino”</li>
+<li>☐ A neutral "V" mark shows where the club has no logo. No Open Mercato logo or text and no demo banner anywhere</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Guest <code>/</code> still lands on the old template start page</li>
+<li>After the club page is switched off, <code>/</code> still sends guests to it</li>
+<li>The variable is unset on the sandbox, so <code>/</code> always goes to <code>/login</code>. That is a configuration note, not a defect</li>
+</ul>
+</section>
+<h3>P1 — member and public pages</h3>
+<section>
+<h4>S04 · P1 — „Dziś” shows the club header and at most three tiles; the calendar opens on the upcoming list</h4>
+<p><strong>Role:</strong> guardian (also coach and section coordinator) · <strong>Device:</strong> phone 375 px · <strong>Why P1:</strong> priority-medium, risk-medium; the member home page for every role and a new calendar view</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/537" rel="noopener noreferrer">#537</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/493" rel="noopener noreferrer">#493</a></p>
+<p><strong>Route:</strong> /club — Strefa członka → „Dziś”; /club/calendar — „Kalendarz”</p>
+<p><strong>Before you start:</strong> A club with a logo and one without. A guardian with two wards, sessions today and tomorrow, a pending declaration, an unread message, an open charge and an open kit order. A coach with sessions today, and a coordinator.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As the guardian open „Dziś”. Read the tiles and the rows under them, then tap each shortcut row.</li>
+<li>Repeat as the coach, then as the coordinator, then as a guardian of the club without a logo.</li>
+<li>Open „Kalendarz” and check the default view. Switch to „Tydzień” and „Miesiąc” and use the arrows. Tab through the toolbar.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ The logo (if any) and the club name sit above „Dzień dobry, {name}”. Without a logo the name still shows</li>
+<li>☐ At most three tiles, in this order: „Kalendarz”, „Obecność”, „Wiadomości”. Sessions show as rows, not nested cards. With nothing pending, „Nic nie czeka na Twoją decyzję.”</li>
+<li>☐ „Na skróty” lists „Płatności”, „Zamówienie”, „Płatności moich grup” (coach) and „Profil i zgody”, then „Twoi podopieczni”. Each row works and is at least 44 px tall</li>
+<li>☐ The calendar opens on „Najbliższe” (14 days) with no arrows. When empty: „Brak terminów w najbliższych dwóch tygodniach.”</li>
+<li>☐ In „Tydzień” and „Miesiąc” there is one row with ← „Ten tydzień” →. The 44 px arrows are announced as „Poprzedni tydzień” / „Następny tydzień”</li>
+<li>☐ No horizontal scroll at 375 px, in Polish or English</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A staff user sees more than three tiles</li>
+<li>The kit order or group payments disappear instead of moving into the shortcut rows</li>
+<li>A calendar link with a date range opens on „Najbliższe” and loses the range</li>
+</ul>
+</section>
+<section>
+<h4>S05 · P1 — Staff on the phone are offered only what they may do; each refusal says why</h4>
+<p><strong>Role:</strong> coach, section coordinator, facility attendant · <strong>Device:</strong> phone 375 px · <strong>Why P1:</strong> priority-medium, risk-medium; page guards relaxed to member level (the API guards are unchanged), so check that no action becomes reachable</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/508" rel="noopener noreferrer">#508</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/489" rel="noopener noreferrer">#489</a></p>
+<p><strong>Route:</strong> /club/occurrences/{id}/edit, /club/events/new, /club/messages/new, /club/places/maintenance — Strefa członka → „Dziś” / „Kalendarz” / „Wiadomości”</p>
+<p><strong>Before you start:</strong> A coach who leads a group with a series session and an own one-off event. A coordinator who coaches no group. A facility attendant who is not a place maintainer. Sessions: one in another group, one cancelled, one part of a club event.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As the coach, check that „Kalendarz” and „Dziś” offer „Nowe wydarzenie”. Open the own one-off event → „Edytuj”.</li>
+<li>As the coach, open <code>/club/occurrences/{id}/edit</code> by URL for: a series session, a session of another group, a cancelled session, and a club-event session.</li>
+<li>As the coordinator, look for „Nowe wydarzenie”, then open <code>/club/events/new</code> by URL.</li>
+<li>As the coach, open <code>/club/messages/new</code>. As the attendant, open <code>/club/places/maintenance</code>.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ „Nowe wydarzenie” shows only to staff who coach a group. „Edytuj” shows only when saving is allowed</li>
+<li>☐ Each refusal names its reason: another group (with „Otwórz kalendarz”), not planned („Ten termin nie jest już zaplanowany…”), club event, series session („Trener przesuwa tylko terminy własnych jednorazowych wydarzeń…”)</li>
+<li>☐ <code>/club/events/new</code> explains the refusal to the coordinator and links to „Nowa impreza klubowa”. <code>/club/messages/new</code> sends staff to „Przejdź do Wiadomości”</li>
+<li>☐ <code>/club/places/maintenance</code> names Obiekty → Konserwacja → Opiekunowie, never a bare "Access denied"</li>
+<li>☐ No refusal page lets anyone save, create or see more than before. The pages fit at 375 px</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A coordinator who opens the page by URL gets a form that then fails on save</li>
+<li>A member with no staff role gets an editable form</li>
+</ul>
+</section>
+<section>
+<h4>S06 · P1 — Every control on the member pages is 44 px; Tab focus is never hidden under the attendance bar</h4>
+<p><strong>Role:</strong> guardian, 16-year-old member, coach · <strong>Device:</strong> phone 375 px · <strong>Why P1:</strong> priority-medium; accessibility (WCAG 2.5.8, 2.4.11) on the main member pages and the kit order form</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/512" rel="noopener noreferrer">#512</a>, <a href="https://github.com/wladku/Vereino/pull/550" rel="noopener noreferrer">#550</a>, <a href="https://github.com/wladku/Vereino/pull/552" rel="noopener noreferrer">#552</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/491" rel="noopener noreferrer">#491</a>, <a href="https://github.com/wladku/Vereino/issues/548" rel="noopener noreferrer">#548</a>, <a href="https://github.com/wladku/Vereino/issues/547" rel="noopener noreferrer">#547</a></p>
+<p><strong>Route:</strong> /club/profile („Profil”), /club/wards/{id}, /club/calendar, /club/places and /club/places/{placeId} („Obiekty”), /club/messages, /club/orders/{campaignId}, /club/occurrences/{id}/attendance</p>
+<p><strong>Before you start:</strong> A guardian with a ward and an open kit order campaign. A coach with a session of at least 11 participants and an open attendance list.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>On „Profil”, tap a consent switch's label, its description, and the empty space beside it.</li>
+<li>Tap the „E-mail” and „Telefon” fields near their top and bottom edges.</li>
+<li>On the calendar and places pages, tap „Moje terminy” / „Sekcja”, the view tabs, a place name, the day chips, „Inny dzień” and „Tylko do przeniesienia”. Close a toast with its ×.</li>
+<li>In the kit order form, tap near the edges of „Imię do nadruku”, „Numer (1–99)”, „E-mail” and „Telefon”.</li>
+<li>As the coach, open the attendance list, mark all rows, then Tab through every radio and every „Wyczyść”.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ A tap anywhere on a consent row toggles the switch. A screen reader reads the label as the name and the description separately</li>
+<li>☐ Every input focuses from a tap anywhere inside its box. Every control is at least 44 px</li>
+<li>☐ On the attendance page, each focused radio and „Wyczyść” scrolls fully above the sticky bar with „Zapisz”, even when the bar wraps</li>
+<li>☐ No horizontal scroll at 375 px</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>The box is larger but the real input inside is still small, so an edge tap does nothing</li>
+<li>Focus lands under the sticky bar on the last rows. Other sticky-bar pages (payments, session edit) are out of scope: report them as a known gap</li>
+</ul>
+</section>
+<section>
+<h4>S07 · P1 — An empty message or leave request says what is missing instead of a greyed-out button</h4>
+<p><strong>Role:</strong> guardian · <strong>Device:</strong> phone 375 px · <strong>Why P1:</strong> priority-medium; form feedback and accessibility on member forms</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/507" rel="noopener noreferrer">#507</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/490" rel="noopener noreferrer">#490</a></p>
+<p><strong>Route:</strong> /club/messages/new — „Wiadomości” → „Napisz do trenera”; a thread; /club/profile/leave — „Profil” → „Odejście z klubu”</p>
+<p><strong>Before you start:</strong> A guardian whose child's group has a coach, with one thread holding their own message.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open „Napisz do trenera” and tap „Wyślij” with both fields empty. Tap the second line in the error summary.</li>
+<li>Type a subject only, then fill in the message and send.</li>
+<li>In the thread, tap „Wyślij odpowiedź” with an empty reply. Empty one of your own messages while editing and tap „Zapisz”.</li>
+<li>On „Odejście z klubu”, choose nobody and tap „Wyślij prośbę”. Then choose a person and a past „Ostatni dzień”.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ „Wyślij” is never disabled because of empty fields</li>
+<li>☐ An empty send shows „Sprawdź wiadomość” with the links „Wpisz temat.” and „Wpisz treść wiadomości.”, focuses „Temat”, and a summary link moves the focus to its field</li>
+<li>☐ A field you fill drops out of the summary as you type. Empty reply → „Wpisz treść odpowiedzi.”; emptied edit → „Wiadomość nie może być pusta.”</li>
+<li>☐ Leave form → „Sprawdź prośbę” with „Wybierz co najmniej jedną osobę.”. A past date is flagged</li>
+<li>☐ No English browser bubbles on a Polish page. A complete form still sends</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>An empty message is sent anyway</li>
+<li>The summary stays after the field is filled, or is re-read on every keystroke</li>
+</ul>
+</section>
+<section>
+<h4>S08 · P1 — Public club pages show content and the club's name in the tab title even without JavaScript</h4>
+<p><strong>Role:</strong> guest · <strong>Device:</strong> phone 375 px (also desktop) · <strong>Why P1:</strong> priority-medium, risk-medium; server rendering and caching across clubs</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/509" rel="noopener noreferrer">#509</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/487" rel="noopener noreferrer">#487</a></p>
+<p><strong>Route:</strong> /p/{clubSlug}, /p/{clubSlug}/sections/{sectionSlug}, /p/{clubSlug}/places, /p/{clubSlug}/events (also <code>?section=</code>), /p/{clubSlug}/events/{eventSlug}</p>
+<p><strong>Before you start:</strong> The published example club with a section, a place, an event and a club event. An administrator for Klub → „Publikacja”. A browser where you can turn JavaScript off.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open each public page with JavaScript on and note the content and the tab title.</li>
+<li>Turn JavaScript off and reload each page, in Polish and English. Apply a <code>?section=</code> filter on the events page.</li>
+<li>Open <code>/p/does-not-exist</code>.</li>
+<li>As the administrator, switch the club page off. Reload the club page and the tournament page as a guest.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Without JavaScript, the club name, sections, places, events and tournament parts show at once, with no grey skeleton</li>
+<li>☐ Tab titles: „{club} — Strona klubu”, „{club} — {section name}”, „{club} — Obiekty”, „{club} — Wydarzenia”, „{club} — {event name}”</li>
+<li>☐ The <code>?section=</code> filter works without JavaScript. An unknown slug shows „Nie znaleziono strony” with no club name</li>
+<li>☐ After unpublishing, „Brak strony publicznej” shows with no club or event name, already on the next reload</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>An unpublished club is still served from a cached copy</li>
+<li>One club's page appears under another club's slug</li>
+</ul>
+</section>
+<section>
+<h4>S09 · P1 — The club's privacy notice is in every public footer and follows the language</h4>
+<p><strong>Role:</strong> guest and administrator · <strong>Device:</strong> phone 375 px · <strong>Why P1:</strong> priority-medium, risk-medium</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/536" rel="noopener noreferrer">#536</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/469" rel="noopener noreferrer">#469</a></p>
+<p><strong>Route:</strong> /p/{clubSlug}/privacy; footer of /p/{clubSlug}, /p/{clubSlug}/sections/{sectionSlug}, /p/{clubSlug}/s/{occurrenceId}, /p/{clubSlug}/places; /backend/club/publication — „Klub” → „Publikacja”, field „Polityka prywatności (link)”</p>
+<p><strong>Before you start:</strong> A published club with a public section, session and place. The field „Polityka prywatności (link)” is empty.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Signed out, open /p/{clubSlug} and tap „Polityka prywatności” in the footer. Tap „Krótka wersja dla dzieci i młodzieży”.</li>
+<li>Switch the page language to English and back. Check the footer on the other three page types.</li>
+<li>As the administrator, enter <code>https://example.org/privacy</code> in „Polityka prywatności (link)” and save. Recheck the footers and /p/{clubSlug}/privacy.</li>
+<li>Clear the field, save, and check the footer once more.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ With the field empty, every footer leads to /p/{clubSlug}/privacy. The notice names the club and ends with the children's version, which mentions the UODO complaint</li>
+<li>☐ English shows no Polish leftovers and no raw keys</li>
+<li>☐ With the club's own address, every footer leads to it. /p/{clubSlug}/privacy then shows only „{club} publikuje własną politykę prywatności.” and „Przeczytaj politykę prywatności klubu”</li>
+<li>☐ After clearing the field, the default notice is back. Nothing scrolls sideways at 375 px</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A facilities or session page footer hides the link</li>
+<li>The default text shows next to the club's own policy</li>
+</ul>
+</section>
+<h3>P1 — panel</h3>
+<section>
+<h4>S10 · P1 — Every status pill shows a word and an icon; cancelled sessions and events read as an error</h4>
+<p><strong>Role:</strong> treasurer (panel), guardian (member area) · <strong>Device:</strong> desktop; phone 375 px · <strong>Why P1:</strong> priority-medium; status is no longer shown by colour alone, across 77 files</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/500" rel="noopener noreferrer">#500</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/482" rel="noopener noreferrer">#482</a></p>
+<p><strong>Route:</strong> /backend/payments/charges — Finanse → „Należności”; /club — „Dziś”; /p/{clubSlug}/events</p>
+<p><strong>Before you start:</strong> One open, one overdue and one cancelled charge. A guardian whose ward has incomplete consents. A cancelled session and a cancelled public club event.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>As the treasurer open „Należności”, view „Wszystkie”. Look at the pills in light theme, dark theme and at 375 px.</li>
+<li>As the guardian, find the consents pill on „Dziś”. Open a cancelled session and the public events page.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Every pill has an icon and a word (e.g. „Otwarta”, „Zaległa”, „Odwołane”). No colour dot appears without a word</li>
+<li>☐ Cancelled sessions and events, public ones included, show the red error style with a crossed circle. A cancelled charge stays neutral</li>
+<li>☐ A screen reader reads only the word. Nothing overflows at 375 px</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>One screen's pill has no icon, or shows both a dot and an icon</li>
+<li>Public "cancelled" pills are still grey</li>
+</ul>
+</section>
+<section>
+<h4>S11 · P1 — The dashboard shows every tile title in Polish under one greeting heading</h4>
+<p><strong>Role:</strong> administrator · <strong>Device:</strong> desktop (also a 375 px window) · <strong>Why P1:</strong> priority-medium; the first screen of the panel</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/505" rel="noopener noreferrer">#505</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/484" rel="noopener noreferrer">#484</a></p>
+<p><strong>Route:</strong> /backend — panel home</p>
+<p><strong>Before you start:</strong> An administrator with the default dashboard layout, profile language Polish.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open /backend and read every tile title and description, then the top of the page.</li>
+<li>Switch to English and repeat. Check the dark theme and a 375 px window.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Polish titles include „Prośby o odejście”, „Osoby wymagające uwagi”, „Wyciągi bankowe i gotówka”, „Zbiórki zamówień”, „Zaległe”, „Należności bez płatnika” and „Zgłoszenia do akceptacji”</li>
+<li>☐ No tile stays in English on the Polish page, or in Polish on the English page</li>
+<li>☐ „Dzień dobry, {name}” is the only main heading, and the customise button still works</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Two headings show, or the customise button disappears with the hidden platform heading</li>
+</ul>
+</section>
+<section>
+<h4>S12 · P1 — The panel menu has six groups in the mockup's order, short labels and the new terms</h4>
+<p><strong>Role:</strong> administrator · <strong>Device:</strong> desktop · <strong>Why P1:</strong> priority-medium; menu groups, labels, page titles and terms (a UI contract)</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/513" rel="noopener noreferrer">#513</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/494" rel="noopener noreferrer">#494</a></p>
+<p><strong>Route:</strong> /backend sidebar; /backend/club/settings, /backend/club/publication, /backend/facilities/calendar, /backend/facilities/requests, /backend/payments/fees, /backend/activities/occurrences/{id}, /backend/activities/reports/coach-units</p>
+<p><strong>Before you start:</strong> An administrator in the example club with sessions, an order campaign and cash to settle.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Read the sidebar groups from top to bottom, in Polish and then English. Expand „Zajęcia”.</li>
+<li>Open „Klub” → „Ustawienia” / „Publikacja” and „Obiekt” → „Kalendarz” / „Zgłoszenia”. Compare each breadcrumb and heading.</li>
+<li>In „Finanse”, check the order of the entries and open the fees page. Open a session, its change-coach action and the units report.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Six groups in this order: „Klub”, „Ludzie”, „Zajęcia”, „Komunikacja”, „Finanse”, „Obiekt”. No separate „Grupy” or „Harmonogram” group</li>
+<li>☐ Short menu labels („Ustawienia”, „Publikacja”, „Kalendarz”, „Zgłoszenia”). The headings keep their long titles („Ustawienia klubu”, „Publikacja strony klubu”, „Kalendarz obiektu”, „Zgłoszenia do akceptacji”)</li>
+<li>☐ „Gotówka do rozliczenia” comes after „Zbiórki zamówień”. The fees page reads „Cenniki i zniżki”</li>
+<li>☐ Session pages say „Zmień prowadzącego”, „Prowadzący” and „Zostaw bez prowadzącego”. English shows "Friendly", never "Sparring"</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A page sits under an old group or loses the active-group highlight</li>
+<li>A short menu label replaced the long page heading too</li>
+</ul>
+</section>
+<section>
+<h4>S13 · P1 — Admin lists offer „Spróbuj ponownie” when loading fails; access-denied pages offer a way out</h4>
+<p><strong>Role:</strong> administrator · <strong>Device:</strong> desktop · <strong>Why P1:</strong> priority-medium, risk-medium; 42 list error states, both access-denied pages, screen-reader names across the panel</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/515" rel="noopener noreferrer">#515</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/497" rel="noopener noreferrer">#497</a></p>
+<p><strong>Route:</strong> /backend/people/persons, /backend/people/persons/create, /backend/payments/fees/create, /backend/club/sections, /backend/payments/charges; a /backend or /club URL the account may not open</p>
+<p><strong>Before you start:</strong> An administrator, a second account without one /backend page permission, devtools for offline mode, and a screen reader or the accessibility tree.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open „Osoby”, go offline and reload or page. Go back online and click „Spróbuj ponownie”. Repeat on „Sekcje” and on a wide charges table scrolled sideways.</li>
+<li>With a screen reader, Tab through „Dodaj osobę” and „Nowy cennik składki”, including a select that has a value. Focus the „Osoby” search box.</li>
+<li>As the second account, open a /backend URL it may not use. As a guardian, open /club/facility.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ A failed list shows its own message (e.g. „Nie udało się wczytać sekcji.”), never "Internal error". „Spróbuj ponownie” reloads the rows and stays visible in a scrolled table</li>
+<li>☐ Every field is announced by its label, a select with a value as label + value, and the search box as „Szukaj po imieniu lub nazwisku”</li>
+<li>☐ Backend „Brak dostępu” offers „Przejdź do panelu” and „Wyloguj się i użyj innego konta”. The member version offers „Przejdź do interfejsu członkowskiego”. Signing out works and both buttons are keyboard-reachable</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>One of the 42 lists still shows the raw server error</li>
+<li>The sign-out on the access-denied page leaves the session active</li>
+</ul>
+</section>
+<section>
+<h4>S14 · P1 — Anonymisation clears order contacts and payer labels and keeps the name until the sixth year</h4>
+<p><strong>Role:</strong> administrator · <strong>Device:</strong> desktop · <strong>Why P1:</strong> priority-medium, risk-medium; erasing personal data next to accounting records</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/535" rel="noopener noreferrer">#535</a>, <a href="https://github.com/wladku/Vereino/pull/562" rel="noopener noreferrer">#562</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/528" rel="noopener noreferrer">#528</a>, <a href="https://github.com/wladku/Vereino/issues/526" rel="noopener noreferrer">#526</a></p>
+<p><strong>Route:</strong> /backend/people/persons/{id} → tab „Odejście”, section „Prośby”, „Zanonimizuj” — „Ludzie” → „Osoby”, view „Byli członkowie”; /backend/payments/orders/{id}; /backend/payments/charges; /backend/facilities/rentals/{id}</p>
+<p><strong>Before you start:</strong> Person A placed an order with a contact e-mail, phone and notes, has a charge with a booked payment (e.g. cash in 2026), and is the contact of a rental. Person B has the same history without a booked payment. Both have left, with nothing open and a recorded erasure request.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>On person A, tab „Odejście”, click „Zanonimizuj” and read the dialog. Confirm with a wrong last name, then with the right one.</li>
+<li>Open A's order, A's charge and the rental.</li>
+<li>Repeat for person B. Try „Zanonimizuj” on a former person with no recorded request.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ The dialog says the name stays until 31 December of the <strong>sixth</strong> year after the last payment. A wrong last name → „Nazwisko się nie zgadza.”</li>
+<li>☐ A shows 31 December of (last payment year + 6), e.g. 31.12.2032 for a 2026 payment. B shows „Imię i nazwisko usunięto. Ekrany pokazują „Były członek”.”</li>
+<li>☐ A's order loses the contact e-mail, phone and notes; amounts, payments and KP numbers stay. The charge's „Płatnik” no longer shows A's name. The rental shows no contact data</li>
+<li>☐ Without a recorded request: „Nie zapisano prośby o usunięcie danych. Najpierw zapisz ją w sekcji Prośby.”</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Partial erasure: the order is cleared but the rental is not</li>
+<li>An e-mail queued before anonymisation still arrives</li>
+<li>People anonymised before #562 still show year + 5. That is expected (no data migration)</li>
+</ul>
+</section>
+<section>
+<h4>S15 · P1 — Two people accepting cash at the same moment, e-mail on, both get a receipt</h4>
+<p><strong>Role:</strong> administrator and coach · <strong>Device:</strong> desktop and phone 375 px · <strong>Why P1:</strong> priority-medium, risk-medium; money and KP numbering under load</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/553" rel="noopener noreferrer">#553</a>, <a href="https://github.com/wladku/Vereino/pull/556" rel="noopener noreferrer">#556</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/549" rel="noopener noreferrer">#549</a>, <a href="https://github.com/wladku/Vereino/issues/554" rel="noopener noreferrer">#554</a></p>
+<p><strong>Route:</strong> /backend/payments/charges — „Należności” → „Przyjmij gotówkę”; /club/cash; /club/coach/payments — „Płatności moich grup” → „Przyjmij gotówkę”</p>
+<p><strong>Before you start:</strong> At least 4 payers with open charges and real inboxes. An administrator and a coach who may collect cash. Two or three devices signed in at once.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>On each device, open the cash dialog for a different payer and tick „Wyślij płatnikowi potwierdzenie e-mailem”.</li>
+<li>Click „Przyjmij {amount} zł” on all of them within about one second. Repeat with the coach and the administrator together.</li>
+<li>Repeat once with the e-mail box unticked and once with a partial amount.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Each acceptance ends with „Przyjęto {amount} gotówką od {payer} — dowód wpłaty {receipt}”. None fails</li>
+<li>☐ KP numbers are distinct and have no gaps. Each payer gets exactly one e-mail with the right amount and number</li>
+<li>☐ Other users can sign in and browse during the burst. Each charge shows the right remaining amount</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A request hangs for about 6 s and fails (the database pool ran out)</li>
+<li>An e-mail is lost or sent twice</li>
+</ul>
+</section>
+<h3>P1 — operator</h3>
+<section>
+<h4>S16 · P1 — Used and expired links are deleted 30 days later; valid links keep working</h4>
+<p><strong>Role:</strong> operator and guardian · <strong>Device:</strong> server shell and phone 375 px · <strong>Why P1:</strong> priority-medium, risk-medium; personal-data retention</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/541" rel="noopener noreferrer">#541</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/525" rel="noopener noreferrer">#525</a></p>
+<p><strong>Route:</strong> <code>yarn mercato activities purge-declaration-links --tenant &lt;id&gt; --org &lt;id&gt; [--now &lt;ISO&gt;]</code>; <code>yarn mercato payments run-job --job purge-order-links …</code>; <code>yarn mercato facilities purge-rental-links …</code>; links /club/d/{token}, /club/o/{token}, /p/{clubSlug}/rentals/cancel/{token}</p>
+<p><strong>Before you start:</strong> A test club (never production with a future <code>--now</code>) and a second club. A declaration link, an order link and a rental cancellation link with known expiry dates, plus one still-valid link.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Run <code>set-up-club</code> for activities, payments and facilities and read the schedules.</li>
+<li>Run each purge with the real time, then with <code>--now</code> 31 days after a link's expiry, then once more.</li>
+<li>Run the same purge for the second club. Open the purged links and the valid link on a phone.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Every <code>schedules</code> entry is <code>true</code>, including the three daily purges</li>
+<li>☐ With the real time, <code>deleted</code> is 0 for links that are valid or dead for less than 30 days. With the future <code>--now</code>, the expected count is deleted, and the second run deletes 0</li>
+<li>☐ The second club is untouched. A purged declaration link shows „Nieprawidłowy link”, and the valid link still opens</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>Reusable links are deleted before they expire</li>
+<li>The online-request verification link (/p/{clubSlug}/requests/verify/{token}) breaks</li>
+</ul>
+</section>
+<section>
+<h4>S17 · P1 — The nightly payments check reports drift between charges, payments and receipt numbers</h4>
+<p><strong>Role:</strong> operator · <strong>Device:</strong> server shell · <strong>Why P1:</strong> priority-medium, risk-medium; money invariants and an alert path</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/555" rel="noopener noreferrer">#555</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/531" rel="noopener noreferrer">#531</a></p>
+<p><strong>Route:</strong> <code>yarn mercato payments run-job --job verify-invariants --tenant &lt;id&gt; --org &lt;id&gt;</code>; <code>yarn mercato payments set-up-club --tenant &lt;id&gt; --org &lt;id&gt;</code>; worker logs (docs/ops/monitoring.md)</p>
+<p><strong>Before you start:</strong> A disposable environment with charges, cash receipts (KP), a reversal, a partial payment and a cash handover. <code>VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL</code> points to a test heartbeat check.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Run <code>set-up-club</code>, then <code>run-job --job verify-invariants</code> on the realistic data.</li>
+<li>On the disposable database only, create a drift (set a paid charge back to open, or remove a KP number mid-month) and run the job again.</li>
+<li>Restore the data and run the job with a heartbeat URL that refuses the request.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ The clean run logs <code>Payments invariants verified</code> and pings the heartbeat</li>
+<li>☐ The drift run logs <code>Payments invariants drift</code> with ids and counts only, no names or amounts, and the check gets <code>/fail</code> within a minute</li>
+<li>☐ The job changes no data. A refused ping is logged and does not crash it</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>False drift on normal data: free rentals, overpayments, reversals, one KP shared by several charges</li>
+</ul>
+</section>
+<section>
+<h4>S18 · P1 — The app refuses to start without required variables; deploys never set up a new database</h4>
+<p><strong>Role:</strong> operator · <strong>Device:</strong> server shell · <strong>Why P1:</strong> priority-medium, risk-high; start-up, migration and rollback behaviour</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/478" rel="noopener noreferrer">#478</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/462" rel="noopener noreferrer">#462</a></p>
+<p><strong>Route:</strong> docs/ops/deploy.md; <code>node scripts/smoke.mjs https://&lt;environment-host&gt;</code>; Railway services (<code>scripts/railway-predeploy.sh</code>, <code>scripts/railway-start.sh</code>, <code>scripts/railway-worker.sh</code>)</p>
+<p><strong>Before you start:</strong> A staging Railway project. Staging is still pending, so run this once it exists. A smoke account in <code>VEREINO_SMOKE_EMAIL</code> / <code>VEREINO_SMOKE_PASSWORD</code>.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Deploy a normal commit and run the smoke check, with and without the smoke account.</li>
+<li>Remove <code>JWT_SECRET</code> (or make <code>APP_URL</code> invalid) and deploy. Restore it.</li>
+<li>Point <code>DATABASE_URL</code> at an empty database and deploy. Restore it.</li>
+<li>Set <code>QUEUE_STRATEGY=async</code> without a Redis URL on the worker and deploy. Run the smoke check against a wrong host.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ The smoke check reports <code>health</code>, <code>sign-in page</code>, <code>security headers</code> and <code>no-store</code> and exits 0. Without the account, <code>no-store</code> is skipped</li>
+<li>☐ A missing or malformed variable fails the deploy and names the variable without its value, and the previous release keeps serving</li>
+<li>☐ With an empty database, the pre-deploy step fails and no new schema or superadmin is created</li>
+<li>☐ The worker refuses to start and names the Redis variable. Against a wrong host, the smoke check exits 1</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A secret value appears in the deploy log</li>
+<li>The start falls back to <code>.env</code> values or initialises a fresh database</li>
+</ul>
+</section>
+<section>
+<h4>S19 · P1 — The nightly encrypted backup reaches the bucket, a failure alerts, the restore drill works</h4>
+<p><strong>Role:</strong> operator (owner) · <strong>Device:</strong> server shell · <strong>Why P1:</strong> priority-medium, risk-high; the only way back after data loss</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/474" rel="noopener noreferrer">#474</a>, <a href="https://github.com/wladku/Vereino/pull/476" rel="noopener noreferrer">#476</a>, <a href="https://github.com/wladku/Vereino/pull/524" rel="noopener noreferrer">#524</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/464" rel="noopener noreferrer">#464</a>, <a href="https://github.com/wladku/Vereino/issues/465" rel="noopener noreferrer">#465</a>, <a href="https://github.com/wladku/Vereino/issues/519" rel="noopener noreferrer">#519</a></p>
+<p><strong>Route:</strong> docs/ops/backups.md (owner setup, restore drill), docs/ops/monitoring.md, docs/ops/incident.md; backup service from <code>railway.backup.toml</code>; <code>node packages/app/scripts/vereino-ops-signal.mjs backup.failed step=drill</code>; <code>node scripts/backup-restore.mjs</code></p>
+<p><strong>Before you start:</strong> The bucket and access key, the age private key, the backup service and its variables, the uptime checks with both maintainers as recipients, and Docker on a trusted machine.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Start the backup service with Railway's "Run now" button. Read the log and look in the bucket under <code>daily/</code> and <code>monthly/</code>.</li>
+<li>Send <code>backup.failed step=drill</code>, then <code>backup.succeeded</code>.</li>
+<li>Remove <code>BACKUP_S3_BUCKET</code>, run the job, and restore the variable.</li>
+<li>Run the restore drill from backups.md into an empty local PostgreSQL 17 and compare the counts. Run it once more with a wrong identity file.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ The log ends with <code>backup.dump.succeeded</code>, the heartbeat gets its ping, and <code>daily/vereino-YYYY-MM-DD.dump.age</code> exists encrypted, with no plaintext left anywhere</li>
+<li>☐ The drill alert reaches both maintainers within a minute, and <code>backup.succeeded</code> closes it</li>
+<li>☐ The missing variable gives <code>backup.dump.failed</code> with <code>missing-variable</code>, a <code>/fail</code> ping and exit 1, and only variable names are logged</li>
+<li>☐ The restore prints row counts that match. The RTO is at most 60 min and is recorded in <code>docs/ops/restore-drills.md</code>. A wrong key fails before any database is touched</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>A missed run raises no alert (check the 26 h heartbeat window)</li>
+<li>A connection string or credential appears in the job log</li>
+</ul>
+</section>
+<h3>P2 — look and wording</h3>
+<section>
+<h4>S20 · P2 — The day axis uses the mockup's colours; the place page fits a 768 px tablet</h4>
+<p><strong>Role:</strong> administrator and coach · <strong>Device:</strong> desktop; 768 / 375 / 320 px · <strong>Why P2:</strong> priority-low, risk-low; colour, contrast and layout</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/510" rel="noopener noreferrer">#510</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/495" rel="noopener noreferrer">#495</a></p>
+<p><strong>Route:</strong> /backend/facilities/calendar?place={id} — Obiekt → „Kalendarz”; /club/places/{placeId}</p>
+<p><strong>Before you start:</strong> A place with all four zone types and a day with a session, a club booking, a rental, a pending request, a closure and maintenance.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open „Kalendarz” for that day and compare the blocks with the legend, in light and dark mode.</li>
+<li>As the coach, open /club/places/{placeId} at 768, 375 and 320 px. Tap the day chips and „Inny dzień”.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Sessions are green, club bookings blue, rentals amber. Requests, closures and maintenance are grey, with dashed, double and dotted borders</li>
+<li>☐ Zone colours: public blue, club training green, bookable amber, closed grey. Nothing is pink</li>
+<li>☐ Every legend swatch has a visible edge in both themes. No horizontal scroll at any width</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>The admin calendar and the member preview show different zone colours</li>
+<li>The „Inny dzień” field sticks out at 768 px</li>
+</ul>
+</section>
+<section>
+<h4>S21 · P2 — Information notices are pale blue; checkboxes and radios use the primary colour</h4>
+<p><strong>Role:</strong> administrator, coach, guardian · <strong>Device:</strong> desktop and phone 375 px · <strong>Why P2:</strong> priority-low, risk-low; visual change across 127 notices</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/538" rel="noopener noreferrer">#538</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/492" rel="noopener noreferrer">#492</a></p>
+<p><strong>Route:</strong> /backend/facilities/calendar?place={id}; /club/occurrences/{id}/attendance; /club/payments</p>
+<p><strong>Before you start:</strong> A place without zone rules. A coach with a session that starts in more than 30 minutes. A guardian with an open charge.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open „Kalendarz” for the place without zones, in light and dark mode.</li>
+<li>As the coach, open the attendance list of the future session. As the guardian, tick and untick a charge on „Płatności”.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ „Brak reguł stref — dodaj strefy, aby umożliwić rezerwacje.” sits on a light blue background in both themes and is readable</li>
+<li>☐ The „Lista otworzy się o {time}…” notice uses the same style</li>
+<li>☐ A ticked checkbox fills with the primary colour and shows a visible tick. Radios show a visible dot in dark mode. Error, warning and success alerts are unchanged</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>The radio dot disappears in dark mode</li>
+</ul>
+</section>
+<section>
+<h4>S22 · P2 — Texts promise nothing, invent no prices and say what to do next</h4>
+<p><strong>Role:</strong> administrator, guardian, facility attendant · <strong>Device:</strong> desktop and phone 375 px · <strong>Why P2:</strong> priority-low, risk-low; wording and one template</p>
+<p><strong>PRs:</strong> <a href="https://github.com/wladku/Vereino/pull/539" rel="noopener noreferrer">#539</a> · <strong>Issues:</strong> <a href="https://github.com/wladku/Vereino/issues/496" rel="noopener noreferrer">#496</a></p>
+<p><strong>Route:</strong> /backend/payments/orders and /backend/payments/orders/create (Finanse → „Zbiórki zamówień”); /login; /club; /club/payments; /club/orders; /club/facility</p>
+<p><strong>Before you start:</strong> A club with no order campaigns. A guardian with no open kit order. A facility attendant on an empty day.</p>
+<p><strong>Steps</strong></p>
+<ol>
+<li>Open „Zbiórki zamówień” with no campaigns. Create a form from „Szablon stroju akademii” and try to save it without prices.</li>
+<li>Sign out and enter a wrong password on /login.</li>
+<li>As the guardian, open „Płatności” and the orders list offline, then the orders list online. As the attendant, open the facility day page.</li>
+</ol>
+<p><strong>What to verify</strong></p>
+<ul class="check">
+<li>☐ Empty list: „Nie ma jeszcze formularzy zamówień”. The template has no prices, says „Szablon nie ma cen: wpisz ceny swojego klubu przy każdym produkcie.”, and saving without prices is refused</li>
+<li>☐ Login error: „Nieprawidłowy email lub hasło. Jeśli nie pamiętasz hasła, wybierz „Nie pamiętasz hasła?” pod przyciskiem logowania.”</li>
+<li>☐ Offline: „Nie udało się wczytać płatności.” / „Nie udało się wczytać zamówień.” with „Spróbuj ponownie”</li>
+<li>☐ Attendant empty day: „Na obiekcie nic dziś nie zaplanowano. Wynajem przyjęty przez telefon wpiszesz w zakładce Wynajmy.”</li>
+</ul>
+<p><strong>What can go wrong</strong></p>
+<ul>
+<li>The template still shows old prices</li>
+</ul>
+</section>
+<h2>No manual check needed</h2>
+<p>Merged PRs without a user-visible change. The automated gate covers them, so they get no scenario.</p>
+<ul>
+<li><a href="https://github.com/wladku/Vereino/pull/455" rel="noopener noreferrer">#455</a> docs: contribution guide, code of conduct, security policy and issue templates — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/457" rel="noopener noreferrer">#457</a> feat(ci): check licences and vulnerabilities weekly and configure Renovate — CI workflow and Renovate config, no app change</li>
+<li><a href="https://github.com/wladku/Vereino/pull/458" rel="noopener noreferrer">#458</a> ci(merge-train): hold a risk-high PR that needs QA until qa — merge train only; you see it as the hold on Q1–Q4</li>
+<li><a href="https://github.com/wladku/Vereino/pull/459" rel="noopener noreferrer">#459</a> docs(specs): record the E3 platform spike and the ADR-001 checkpoint — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/472" rel="noopener noreferrer">#472</a> docs(specs): finished specs show what was built — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/477" rel="noopener noreferrer">#477</a> docs(compliance): legal claims checked against primary texts — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/499" rel="noopener noreferrer">#499</a> docs(ux): record the owner's UX decisions D-033 — documentation and mockup only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/504" rel="noopener noreferrer">#504</a> build: tooling scripts fall under the 100 % rule by their name — tooling only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/514" rel="noopener noreferrer">#514</a> ci(gate): fail yarn verify on hard-coded secrets and real e-mail addresses — gate step only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/517" rel="noopener noreferrer">#517</a> docs(lessons): TEST-046 needs no quarantine — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/518" rel="noopener noreferrer">#518</a> ci(merge-train): plan and judge batches of PRs, dark — merge train only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/523" rel="noopener noreferrer">#523</a> test(groups): quarantine TEST-L21 — test-only change</li>
+<li><a href="https://github.com/wladku/Vereino/pull/529" rel="noopener noreferrer">#529</a> docs(compliance): records of processing, DPIA, registers, retention — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/533" rel="noopener noreferrer">#533</a> ci(release): a merge to main produces a release pull request — CI only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/534" rel="noopener noreferrer">#534</a> docs(specs): club spec amendment B — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/540" rel="noopener noreferrer">#540</a> docs(specs): person data export for access and portability requests — documentation only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/542" rel="noopener noreferrer">#542</a> chore(deps): remove the commercially licensed @open-mercato/enterprise package — a never-enabled module removed, guarded by <code>forbidden-packages:check</code>; smoke: sign in, open /backend and /club</li>
+<li><a href="https://github.com/wladku/Vereino/pull/543" rel="noopener noreferrer">#543</a> fix(deps): force patched happy-dom, node-forge, re2js and body-parser — transitive overrides, covered by the gate and the audit; smoke: sign in, open /club</li>
+<li><a href="https://github.com/wladku/Vereino/pull/544" rel="noopener noreferrer">#544</a> ci(merge-train): build a batch branch, merge it with a tree check — merge train only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/546" rel="noopener noreferrer">#546</a> test(groups): quarantine TEST-L23 — test-only change</li>
+<li><a href="https://github.com/wladku/Vereino/pull/551" rel="noopener noreferrer">#551</a> test: amendment B test cases TEST-077…TEST-085 — test-only change</li>
+<li><a href="https://github.com/wladku/Vereino/pull/558" rel="noopener noreferrer">#558</a> feat(ci): yarn guard blocks weakened tests, new dependencies and secrets — CI only</li>
+<li><a href="https://github.com/wladku/Vereino/pull/561" rel="noopener noreferrer">#561</a> docs(compliance): record and defer the retention rule for claims in proceedings — documentation only</li>
+</ul>
+<h2>Unresolved items</h2>
+<p>Labels, routes or setup steps the research could not confirm from the code. Follow the scenario without them and report what the screen shows.</p>
+<ul>
+<li>Q1–Q4, S03, S08, S09: <code>&lt;clubSlug&gt;</code> and <code>&lt;sectionSlug&gt;</code> depend on the sandbox data. Take them from „Podgląd” in Klub → „Publikacja” or from a section's public settings</li>
+<li>Q1, S18: there is no staging host yet, so <code>&lt;host&gt;</code> must be a local production build until staging exists</li>
+<li>Q1: the online payment page was not among the PR's CSP checks, and its route was not resolved (<code>packages/app/src/modules/payments/frontend/club/</code>)</li>
+<li>Q3: no UI action was found to record a departure with a past date. Use <code>--today &lt;future date&gt;</code> to create candidates (<code>packages/app/src/modules/people/cli.ts</code>)</li>
+<li>S03: whether the sandbox sets <code>VEREINO_HOME_CLUB_SLUG</code> (<code>packages/app/.env.example</code> leaves it empty)</li>
+<li>S11: the platform heading „Pulpit” comes from the PR description, not a Vereino catalog</li>
+<li>S13: no example-club role is confirmed to lack a given /backend permission, so pick one from the role's ACL</li>
+<li>S06: the toast close button's Polish name comes from the platform (default "Dismiss"), and no Vereino key was found</li>
+<li>S21: the PR's test describes the calendar notice as "no entries on this day", while the screen key is „Brak reguł stref…”. Confirm which empty state you see</li>
+<li>S14: where the audit entry's touched tables and kept data show in the admin UI was not found (only TEST-L07 checks them)</li>
+<li>S16: no documented way for an operator to look up a club's tenant and organization ids for the CLI commands (<code>docs/ops/deploy.md</code>)</li>
+<li>S18: the local variant of the start-up checks needs the integration runner, and no single manual command is documented</li>
+<li>S19: the restore drill needs the age private key from the password manager, so it cannot run without the owner</li>
+<li>S17: the drift step needs a hand-edited disposable database; there is no seed for it</li>
+</ul>
+<h2>Appendix: Full PR Inventory</h2>
+<p>One line per merged PR in the window, grouped by merge date (UTC, newest first).</p>
+<h3>2026-11-22</h3>
+<ul>
+<li><a href="https://github.com/wladku/Vereino/pull/562" rel="noopener noreferrer">#562</a> feat(payments): the anonymised name hold follows the accounting retention period (#526) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/526" rel="noopener noreferrer">#526</a> · Scenarios: S14</li>
+<li><a href="https://github.com/wladku/Vereino/pull/542" rel="noopener noreferrer">#542</a> chore(deps): remove the commercially licensed @open-mercato/enterprise package (E18-S05, #466) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/466" rel="noopener noreferrer">#466</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/561" rel="noopener noreferrer">#561</a> docs(compliance): record and defer the retention rule for claims in proceedings (#475) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/475" rel="noopener noreferrer">#475</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/558" rel="noopener noreferrer">#558</a> feat(ci): yarn guard blocks weakened tests, new dependencies and secrets in every PR (#520) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/520" rel="noopener noreferrer">#520</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/556" rel="noopener noreferrer">#556</a> fix(payments): cash acceptances with the e-mail on no longer exhaust the DB pool (#554) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/554" rel="noopener noreferrer">#554</a> · Scenarios: S15</li>
+<li><a href="https://github.com/wladku/Vereino/pull/544" rel="noopener noreferrer">#544</a> ci(merge-train): build a batch branch, merge it with a tree check, rehearsed in a scratch repository (E16-S03, #451) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/451" rel="noopener noreferrer">#451</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/514" rel="noopener noreferrer">#514</a> ci(gate): fail yarn verify on hard-coded secrets and real e-mail addresses (#511) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/511" rel="noopener noreferrer">#511</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/555" rel="noopener noreferrer">#555</a> feat(payments): nightly invariant check reports drift between charges, payments and receipt numbers (REQ-043, #531) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/531" rel="noopener noreferrer">#531</a> · Scenarios: S17</li>
+<li><a href="https://github.com/wladku/Vereino/pull/553" rel="noopener noreferrer">#553</a> fix(payments): concurrent cash acceptances no longer exhaust the DB pool (#549) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/549" rel="noopener noreferrer">#549</a> · Scenarios: S15</li>
+<li><a href="https://github.com/wladku/Vereino/pull/552" rel="noopener noreferrer">#552</a> fix(activities): keep the Tab-focused attendance control clear of the sticky action bar at 375 px (#547) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/547" rel="noopener noreferrer">#547</a> · Scenarios: S06</li>
+<li><a href="https://github.com/wladku/Vereino/pull/551" rel="noopener noreferrer">#551</a> test: amendment B test cases TEST-077…TEST-085 (#532) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/532" rel="noopener noreferrer">#532</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/550" rel="noopener noreferrer">#550</a> fix(payments): kit order form inputs have a 44 px hit area (#548) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/548" rel="noopener noreferrer">#548</a> · Scenarios: S06</li>
+<li><a href="https://github.com/wladku/Vereino/pull/539" rel="noopener noreferrer">#539</a> fix(payments,facilities,people): texts promise nothing, invent no prices, messages name what to do (E20-S17, #496) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/496" rel="noopener noreferrer">#496</a> · Scenarios: S22</li>
+</ul>
+<h3>2026-11-21</h3>
+<ul>
+<li><a href="https://github.com/wladku/Vereino/pull/541" rel="noopener noreferrer">#541</a> feat(foundation): delete link tokens 30 days after use or expiry (S9.5, #525) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/525" rel="noopener noreferrer">#525</a> · Scenarios: S16</li>
+<li><a href="https://github.com/wladku/Vereino/pull/540" rel="noopener noreferrer">#540</a> docs(specs): person data export for access and portability requests (#527) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/546" rel="noopener noreferrer">#546</a> test(groups): quarantine TEST-L23, its Save click times out after an editor remount in CI (#545) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/512" rel="noopener noreferrer">#512</a> fix(ui): every touch target on the member pages is at least 44 × 44 px (E20-S12, #491) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/491" rel="noopener noreferrer">#491</a> · Scenarios: S06</li>
+<li><a href="https://github.com/wladku/Vereino/pull/537" rel="noopener noreferrer">#537</a> feat(club): Today holds three tiles under the club header, calendar opens on the upcoming list (E20-S14, #493) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/493" rel="noopener noreferrer">#493</a> · Scenarios: S04</li>
+<li><a href="https://github.com/wladku/Vereino/pull/536" rel="noopener noreferrer">#536</a> feat(club_core): default privacy notice in Polish and English with a children's version (E19-S03, #469) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/469" rel="noopener noreferrer">#469</a> · Scenarios: S09</li>
+<li><a href="https://github.com/wladku/Vereino/pull/535" rel="noopener noreferrer">#535</a> fix(people): anonymisation clears order contacts, payer labels, deliveries and audits tables and kept basis (S9.6, #528) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/528" rel="noopener noreferrer">#528</a> · Scenarios: S14</li>
+<li><a href="https://github.com/wladku/Vereino/pull/543" rel="noopener noreferrer">#543</a> fix(deps): force patched happy-dom, node-forge, re2js and body-parser (#454) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/534" rel="noopener noreferrer">#534</a> docs(specs): club spec amendment B takes over the domain hand-over of research C (E19-S04, #470) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/470" rel="noopener noreferrer">#470</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/538" rel="noopener noreferrer">#538</a> feat(ui): information notices use the light info style, checkboxes and radios the primary colour (E20-S13, #492) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/492" rel="noopener noreferrer">#492</a> · Scenarios: S21</li>
+<li><a href="https://github.com/wladku/Vereino/pull/517" rel="noopener noreferrer">#517</a> docs(lessons): TEST-046 needs no quarantine, each ledger failure belongs to its own PR (#516) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/533" rel="noopener noreferrer">#533</a> ci(release): a merge to main produces a release pull request with a changelog (E15-S03, #447) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/447" rel="noopener noreferrer">#447</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/529" rel="noopener noreferrer">#529</a> docs(compliance): records of processing, DPIA, registers, retention, data-subject procedure and ASVS map (E19-S02, #468) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/468" rel="noopener noreferrer">#468</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/524" rel="noopener noreferrer">#524</a> feat(ops): nightly backup pings the E18-S04 heartbeat and writes the alert token (#519) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/519" rel="noopener noreferrer">#519</a> · Scenarios: S19</li>
+<li><a href="https://github.com/wladku/Vereino/pull/472" rel="noopener noreferrer">#472</a> docs(specs): finished specs show what was built, acceptance criteria ticked from evidence (E17-S01, #452) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/452" rel="noopener noreferrer">#452</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/510" rel="noopener noreferrer">#510</a> fix(facilities): day axis in the mockup's colours, place page fits at 768 px (E20-S16, #495) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/495" rel="noopener noreferrer">#495</a> · Scenarios: S20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/513" rel="noopener noreferrer">#513</a> fix(navigation): menu groups, titles and terms follow the mockup and glossary D-031 (E20-S15, #494) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/494" rel="noopener noreferrer">#494</a> · Scenarios: S12</li>
+<li><a href="https://github.com/wladku/Vereino/pull/515" rel="noopener noreferrer">#515</a> fix(ui): work around platform accessibility gaps and report them upstream (E20-S18, #497) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/497" rel="noopener noreferrer">#497</a> · Scenarios: S13</li>
+<li><a href="https://github.com/wladku/Vereino/pull/478" rel="noopener noreferrer">#478</a> feat(ops): refuse to start without required variables, migrate in pre-deploy, never initialise on start (E18-S01, #462) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/462" rel="noopener noreferrer">#462</a> · Scenarios: S18</li>
+<li><a href="https://github.com/wladku/Vereino/pull/508" rel="noopener noreferrer">#508</a> fix(activities): staff on the phone are offered only what they may do, and refusals name the way forward (E20-S10, #489) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/489" rel="noopener noreferrer">#489</a> · Scenarios: S05</li>
+<li><a href="https://github.com/wladku/Vereino/pull/509" rel="noopener noreferrer">#509</a> feat(club_core): public club pages render on the server and carry the club's name in the title (E20-S08, #487) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/487" rel="noopener noreferrer">#487</a> · Scenarios: S08</li>
+<li><a href="https://github.com/wladku/Vereino/pull/507" rel="noopener noreferrer">#507</a> fix(communication,people): an empty message or request shows what is missing instead of a disabled button (E20-S11, #490) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/490" rel="noopener noreferrer">#490</a> · Scenarios: S07</li>
+</ul>
+<h3>2026-11-20</h3>
+<ul>
+<li><a href="https://github.com/wladku/Vereino/pull/505" rel="noopener noreferrer">#505</a> fix(i18n): translate dashboard tile titles and check for a missing key (E20-S05, #484) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/484" rel="noopener noreferrer">#484</a> · Scenarios: S11</li>
+<li><a href="https://github.com/wladku/Vereino/pull/523" rel="noopener noreferrer">#523</a> test(groups): quarantine TEST-L21, its history check fails after 23:00 across a DST change (#521) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/504" rel="noopener noreferrer">#504</a> build: tooling scripts fall under the 100 % rule by their name, so their PRs stop conflicting — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/500" rel="noopener noreferrer">#500</a> feat(ui): every status shows its word and its icon through StatusTag (E20-S03, #482) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/482" rel="noopener noreferrer">#482</a> · Scenarios: S10</li>
+<li><a href="https://github.com/wladku/Vereino/pull/499" rel="noopener noreferrer">#499</a> docs(ux): record the owner's UX decisions D-033, close tokens.md C1–C4, statuses with icons in the mockup (E20-S01, #480) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/480" rel="noopener noreferrer">#480</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/477" rel="noopener noreferrer">#477</a> docs(compliance): legal claims B1, B2, B3, B10, B12 checked against primary texts (E19-S01, #467) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/467" rel="noopener noreferrer">#467</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/476" rel="noopener noreferrer">#476</a> feat(foundation): outage and failed-backup alerts, monitoring and incident runbooks (E18-S04, #465) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/465" rel="noopener noreferrer">#465</a> · Scenarios: S19</li>
+<li><a href="https://github.com/wladku/Vereino/pull/474" rel="noopener noreferrer">#474</a> feat(ops): nightly encrypted off-site dump and restore drill (#464) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/464" rel="noopener noreferrer">#464</a> · Scenarios: S19</li>
+<li><a href="https://github.com/wladku/Vereino/pull/518" rel="noopener noreferrer">#518</a> ci(merge-train): plan and judge batches of PRs, dark (E16-S02, #450) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/450" rel="noopener noreferrer">#450</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/503" rel="noopener noreferrer">#503</a> fix(app): no Open Mercato template is left — "/" leads to the club, titles say Vereino, token mark (E20-S06, #485) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/485" rel="noopener noreferrer">#485</a> · Scenarios: S03</li>
+<li><a href="https://github.com/wladku/Vereino/pull/501" rel="noopener noreferrer">#501</a> fix(activities,payments): Today and the session page without 403/404 calls or an English toast (E20-S04, #483) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/483" rel="noopener noreferrer">#483</a> · Scenarios: S02</li>
+<li><a href="https://github.com/wladku/Vereino/pull/502" rel="noopener noreferrer">#502</a> feat(ui): visible focus on every interactive element, dialogs return focus to their opener (E20-S02, #481) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/481" rel="noopener noreferrer">#481</a> · Scenarios: S01</li>
+<li><a href="https://github.com/wladku/Vereino/pull/458" rel="noopener noreferrer">#458</a> ci(merge-train): hold a risk-high PR that needs QA until qa and mirror train labels onto the linked issue (E16-S01, #449) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/449" rel="noopener noreferrer">#449</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/457" rel="noopener noreferrer">#457</a> feat(ci): check licences and vulnerabilities weekly and configure Renovate (E15-S02) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/446" rel="noopener noreferrer">#446</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/459" rel="noopener noreferrer">#459</a> docs(specs): record the E3 platform spike and the ADR-001 checkpoint (E15-S04, #448) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/448" rel="noopener noreferrer">#448</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/455" rel="noopener noreferrer">#455</a> docs: contribution guide, code of conduct, security policy and issue templates (E15-S01, #445) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/445" rel="noopener noreferrer">#445</a> · Scenarios: no manual check</li>
+<li><a href="https://github.com/wladku/Vereino/pull/441" rel="noopener noreferrer">#441</a> feat(activities): club events on the phone — options error state, full Past list, lighter form imports (#440) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/440" rel="noopener noreferrer">#440</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/438" rel="noopener noreferrer">#438</a> feat(activities): club events on the phone — list, forms, event page with parts and files (E14-S05, #380) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/380" rel="noopener noreferrer">#380</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/432" rel="noopener noreferrer">#432</a> feat(payments): the treasurer works with a finance-only role, menu and dashboard (E07-S11b, #245) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/245" rel="noopener noreferrer">#245</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/437" rel="noopener noreferrer">#437</a> feat(people,facilities): an administrator anonymises a former person on a recorded request, with a retention hold, and deletes a person created by mistake (E13-S06, #308) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/308" rel="noopener noreferrer">#308</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/439" rel="noopener noreferrer">#439</a> feat(club_core,activities): public tournament page and one P-06 card per club event (E14-S06, #381) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/381" rel="noopener noreferrer">#381</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/422" rel="noopener noreferrer">#422</a> docs(lessons): browser tests run locally on the cezar host under sg docker — base <code>main</code> · QA: none · Issue refs: none · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/436" rel="noopener noreferrer">#436</a> feat(activities): club event poster and funder logos — Files tab, undoable uploads (E14-S04, #379) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/379" rel="noopener noreferrer">#379</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/431" rel="noopener noreferrer">#431</a> feat(people,activities,payments,club_core,facilities): a leaving coach's sessions are handed over or freed, contracts end, cash held blocks (E13-S05, #307) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/307" rel="noopener noreferrer">#307</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/430" rel="noopener noreferrer">#430</a> feat(activities): club events in the panel — list, form with Add place, record with parts by day (E14-S03, #378) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/378" rel="noopener noreferrer">#378</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/434" rel="noopener noreferrer">#434</a> test(groups): quarantine TEST-L22, its dialog axe scan fails intermittently in CI (#433) — base <code>main</code> · QA: skip-qa · Issue refs: none · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/419" rel="noopener noreferrer">#419</a> fix(payments): an overdue reminder counts only the charges due one, so each keeps its own cadence (#404) — base <code>main</code> · QA: skip-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/404" rel="noopener noreferrer">#404</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+<li><a href="https://github.com/wladku/Vereino/pull/429" rel="noopener noreferrer">#429</a> feat(groups): move several children from a roster to another group in one previewed, undoable step (E13-S11, #383) — base <code>main</code> · QA: needs-qa · Issue refs: <a href="https://github.com/wladku/Vereino/issues/383" rel="noopener noreferrer">#383</a> · Scenarios: covered in qa-scenarios-2026-11-20</li>
+</ul>
+<h3>Excluded</h3>
+<ul>
+<li>1 excluded (a previous run of this report): <a href="https://github.com/wladku/Vereino/pull/473" rel="noopener noreferrer">#473</a></li>
+</ul>
+</body>
+</html>
