@@ -253,11 +253,16 @@ test('E06-S13 a coach reports an absence, the coordinator assigns a free substit
     await page.goto('/backend/activities/occurrences?perspective=unassigned')
     const row = page.getByRole('row').filter({ hasText: 'Trening Żaków' })
     await expect(row.getByTestId('occurrence-needs-coach')).toBeVisible()
-    await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
-    await page
-      .getByRole('menuitem', { name: uiText('activities.substitutions.assign.action', { exact: true }) })
-      .click()
+    // The platform row menu is a hover menu that closes on scroll and pointer leave: on a slow runner it closed while
+    // the item was scrolled into view (PR #652, shard 1). Open it again until the item's click lands.
     const assignDialog = page.getByTestId('assign-coach-dialog')
+    await expect(async () => {
+      await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+      await page
+        .getByRole('menuitem', { name: uiText('activities.substitutions.assign.action', { exact: true }) })
+        .click({ timeout: 5_000 })
+      await expect(assignDialog).toBeVisible({ timeout: 5_000 })
+    }).toPass({ timeout: 30_000 })
     const irena = assignDialog.getByTestId('assign-coach-option').and(page.locator('[data-busy="true"]'))
     await expect(irena).toHaveCount(1)
     await expect(irena).toBeDisabled()
