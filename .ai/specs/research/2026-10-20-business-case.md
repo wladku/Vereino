@@ -13,7 +13,7 @@ Status labels used in this file, so that no discussed possibility is read as an 
 
 ## 1. What do we want to build and for whom?
 
-An open-source (MIT) system for managing a small multi-section club whose main section is a football academy (indicatively up to ~200 players; alongside it a swimming pool and extra classes), built on Open Mercato. [DOCUMENT: Władek's decision 2026-10-20, D-011; license D-012] — **confirmed**
+An open-source (AGPLv3 core and a commercial Vereino Enterprise since D-035, 2026-11-22; MIT before) system for managing a small multi-section club whose main section is a football academy (indicatively up to ~200 players; alongside it a swimming pool and extra classes), built on Open Mercato. [DOCUMENT: Władek's decision 2026-10-20, D-011; license D-012] — **confirmed**
 
 Users: section coordinator, treasurer/club administrator, coaches (often on contract), legal guardians of children, participants 13+, facility attendant. — **confirmed** (roles), [ASSUMPTION] (their priorities)
 
@@ -73,7 +73,7 @@ We know:
 - Orlik rules: hour zones, 90-min unit, fee paid to the municipality's account, 24 h to cancel, attendant, sanctions — from the regulations [DOCUMENT].
 - Competitor scope and page prices for 13 products, including ProTrainUp re-checked on 2026-10-23 — [BENCHMARK, `2026-10-23-benchmark-competitors.md`].
 - The coach settlement model at Gwiazda: base pay + training units — from Władek [DOCUMENT/board knowledge].
-- License MIT, repository public, gateway Stripe in 1.0 — D-012, D-010 — **confirmed**.
+- License ~~MIT~~ AGPL-3.0-only core plus a commercial Enterprise package (D-035, 2026-11-22), repository public, gateway Stripe in 1.0 — D-012, D-035, D-010 — **confirmed**.
 
 We don't know (method):
 - Whether coaches prefer one club tool, or PTU Coach for themselves + something for the club → conversations with 3 coaches (Mom Test).
@@ -157,7 +157,7 @@ A company is built in nine steps: find a trend entering its "tornado" (mass adop
 1. **Clubs are users and references, not the revenue base.** Hosting for small clubs can cover its own cost at best (ceiling ~250–500 zł/month per club, section 2).
 2. **The ecosystem bet is the real business case.** Vereino is an early vertical on a young platform whose authors run a partner programme for consultancies. Being the first visible sports/municipal-facility team on Open Mercato is the BitBag-on-Sylius pattern. Risk: it only pays off if Open Mercato itself gains adoption.
 3. **Municipalities and sports centres are the paying segment for certainty** (SLA, data protection, continuity), consistent with option C and the facility edge in the benchmark.
-4. **MIT stays reasonable** when revenue comes from services and certainty rather than from the code; the earlier AGPL thought matters only if the plan is to sell hosting and keep competitors from doing the same. Contributions are signed off (DCO, `git commit -s`); whether a contributor licence agreement is needed before outside contributions start is a question for a lawyer, not settled here.
+4. *(Superseded 2026-11-22 by D-035: the plan now is to sell hosting and Enterprise through partners, so the core moves to AGPLv3 with a CLA.)* **MIT stays reasonable** when revenue comes from services and certainty rather than from the code; the earlier AGPL thought matters only if the plan is to sell hosting and keep competitors from doing the same. Contributions are signed off (DCO, `git commit -s`); whether a contributor licence agreement is needed before outside contributions start is a question for a lawyer, not settled here.
 5. **Two legs for the founders.** If the maintainers need income before Vereino earns anything, the framework's answer is a paying services leg (Open Mercato implementations) that funds Vereino — not waiting for clubs to pay.
 
 Status of this section: **assumption / option**. Nothing here is decided; it reframes options A–E.
@@ -180,3 +180,4 @@ Status of this section: **assumption / option**. Nothing here is decided; it ref
 | 2026-10-23 | Revision drafted by Claude: status labels; value/payer/time table for an open-source product; competition from the 13-product benchmark and license cost avoided for ~200 players; open-source pros and cons; new unknowns (instance cost, admin time, Stripe fee, municipality); hosting options A–D; open-source risks; decisions this case waits for. Original sections 1–4 kept. Not yet confirmed by Władek. |
 | 2026-10-23 | Section 7 added by Claude: the revenue model read through the Karwatka Brothers Framework (external e-book provided by Władek), Open Mercato's own MIT + enterprise + partner model verified on its repository, option E in section 5, decision 5. Assessment only; not yet confirmed by Władek. |
 | 2026-11-22 | D-034: many clubs on one shared instance; option B chosen (section 5); the 1.0 shape no longer says one instance per club. |
+| 2026-11-22 | D-035: AGPLv3 core, commercial Vereino Enterprise, CLA, trademark and implementation partners; licence lines and section 7 point 4 updated. |
