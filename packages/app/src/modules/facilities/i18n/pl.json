@@ -1053,6 +1053,7 @@
   "facilities.email.reschedule.more": "… oraz kolejne wpisy: {count}",
   "facilities.email.reschedule.action": "Otwórz dzień",
   "facilities.email.reschedule.actionRentals": "Otwórz wynajmy do przeniesienia",
+  "facilities.email.reschedule.actionSessions": "Otwórz terminy do przełożenia",
   "facilities.email.rescheduleRenter.subject": "Twój wynajem: {place} — trzeba zmienić termin",
   "facilities.email.rescheduleRenter.lead": "Twój wynajem obiektu {place} w terminie {slot} nie może się odbyć z powodu {cause}. Klub skontaktuje się z Tobą, aby zaproponować nowy termin.",
   "facilities.places.toMoveFilter": "Tylko do przeniesienia",

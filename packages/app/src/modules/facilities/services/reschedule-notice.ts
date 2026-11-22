@@ -216,6 +216,7 @@ async function sendNotice(
     })),
     linkPlaceId: first.placeId,
     linkDate: ctx.dayOf(first.startsAt),
+    ...(notice.coordinatedSectionIds.length > 0 ? { linkSectionIds: notice.coordinatedSectionIds.slice(0, 2) } : {}),
   }
   return enqueue(
     ctx,
