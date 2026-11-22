@@ -1,8 +1,9 @@
 // Setting up a club's `activities` defaults (foundation II P-12, DD-G07): the daily `activities:generate-occurrences`
 // schedule at 03:00 in the club's time zone, the 15-minute `activities:expire-guardian-confirmations` schedule and the
 // daily `activities:send-declaration-reminders` schedule at 18:00 in the club's time zone (club spec *Events, Jobs*
-// rows; REQ-017), the 15-minute `activities:warn-unassigned-sessions` schedule (parity spec REQ-A14, #272), plus the
-// default declaration policies (#32). Idempotent (an upsert on the stable id, a
+// rows; REQ-017), the 15-minute `activities:warn-unassigned-sessions` schedule (parity spec REQ-A14, #272), the daily
+// `activities:purge-declaration-links` schedule (engineering standards S9.5, #525), plus the default declaration
+// policies (#32). Idempotent (an upsert on the stable id, a
 // find-or-create of the policies); used by `setup.ts` `seedDefaults` and re-run when the club's time zone changes.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
@@ -65,6 +66,19 @@ export async function registerWarnUnassignedSchedule(
   })
 }
 
+/** Once a day: the declaration links dead for 30 days are deleted (engineering standards S9.5; #525). */
+export const PURGE_DECLARATION_LINKS_INTERVAL = '1d' as const
+
+export async function registerPurgeLinksSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
+  return registerModuleSchedule(container, {
+    module: 'activities',
+    name: 'purge-declaration-links',
+    schedule: { interval: PURGE_DECLARATION_LINKS_INTERVAL },
+    scope,
+    description: 'Delete the declaration links that expired 30 days ago.',
+  })
+}
+
 /**
  * Seeds the default declaration policies (club spec *Declaration policy* defaults, D-006; `lib/policy.ts`
  * `DEFAULT_POLICIES`) for a club that has none of them yet — one row per scope key, never overwriting a club's own
@@ -106,12 +120,13 @@ export type ClubActivitiesSetUp = {
     expireGuardianConfirmations: boolean
     sendDeclarationReminders: boolean
     warnUnassignedSessions: boolean
+    purgeDeclarationLinks: boolean
   }
   policiesCreated: number
 }
 
 /**
- * Everything `seedDefaults` does for one club: the four schedules and the default policies. Idempotent, so the
+ * Everything `seedDefaults` does for one club: the five schedules and the default policies. Idempotent, so the
  * `activities set-up-club` command re-runs it for a club set up before a schedule existed (#192: the reminders).
  */
 export async function setUpClubActivities(
@@ -122,9 +137,16 @@ export async function setUpClubActivities(
   const expireGuardianConfirmations = await registerExpireSchedule(container, scope)
   const sendDeclarationReminders = await registerRemindersSchedule(container, scope)
   const warnUnassignedSessions = await registerWarnUnassignedSchedule(container, scope)
+  const purgeDeclarationLinks = await registerPurgeLinksSchedule(container, scope)
   const policiesCreated = await seedDefaultPolicies(container, scope)
   return {
-    schedules: { generateOccurrences, expireGuardianConfirmations, sendDeclarationReminders, warnUnassignedSessions },
+    schedules: {
+      generateOccurrences,
+      expireGuardianConfirmations,
+      sendDeclarationReminders,
+      warnUnassignedSessions,
+      purgeDeclarationLinks,
+    },
     policiesCreated,
   }
 }
