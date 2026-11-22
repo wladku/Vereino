@@ -3,16 +3,23 @@
 // and the retention hold — the last day the name of a person with a booked payment must be kept. Pure.
 import type { CalendarDate } from '@vereino/core'
 
-/** Accounting evidence is kept for five calendar years after the year of the payment (DD-L07). */
-export const RETENTION_YEARS = 5
+/**
+ * Accounting records are kept 6 full years after the end of the financial year they concern: the default of the club
+ * setting `accounting_retention_years` (S9.5, `docs/compliance/retention.md` R1). The name hold follows the same
+ * period (DD-L07, owner decision on #526). The setting is not stored yet (#470); until it is, every club uses this default.
+ */
+export const ACCOUNTING_RETENTION_YEARS = 6
 
 /**
  * The retention hold for the latest payment booked on a charge whose debtor or payer is the person (*Retention hold*):
- * 31 December of the fifth year after the payment's year; null without a payment.
+ * 31 December of the `retentionYears`-th year after the payment's year (by default the sixth); null without a payment.
  */
-export function retentionHoldUntil(latestPaidOn: CalendarDate | null): CalendarDate | null {
+export function retentionHoldUntil(
+  latestPaidOn: CalendarDate | null,
+  retentionYears: number = ACCOUNTING_RETENTION_YEARS,
+): CalendarDate | null {
   if (!latestPaidOn) return null
-  return `${String(Number(latestPaidOn.slice(0, 4)) + RETENTION_YEARS)}-12-31`
+  return `${String(Number(latestPaidOn.slice(0, 4)) + retentionYears)}-12-31`
 }
 
 export type OpenChargeFacts = { id: string; personId: string | null; payerPersonId: string | null }

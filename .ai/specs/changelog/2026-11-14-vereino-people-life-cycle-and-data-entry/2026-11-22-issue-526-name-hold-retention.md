@@ -1,0 +1,1 @@
+| 2026-11-22 | #526: DD-L07 — the name hold of an anonymised person follows the accounting retention period (31 December of the payment year + `accounting_retention_years`, default 6) instead of five years (owner decision (a)); Q-L01 notes the change; `retention.md` R2 agrees with R1 and closes R-A |
