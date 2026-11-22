@@ -37,6 +37,8 @@ marked *digest* goes into the weekly review instead.
 | Worker, scheduler or queue stopped | heartbeat `VEREINO_OPS_WORKER_HEARTBEAT_URL` | no ping for period 3 min + grace 2 min | 5 min after the last ping |
 | Backup failed | backup job pings `<VEREINO_OPS_BACKUP_HEARTBEAT_URL>/fail`; log line `vereino.ops.backup.failed` | a `/fail` ping alerts at once | < 1 min |
 | Backup missed (job never ran) | heartbeat `VEREINO_OPS_BACKUP_HEARTBEAT_URL` | period 1 day + grace 2 h (S15.5: no successful run in 26 h) | 26 h |
+| Payments invariant drift (S10.6, REQ-043) | job `payments:verify-invariants` pings `<VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL>/fail`; log line `vereino.ops.payments.invariants.drift` | a `/fail` ping alerts at once | < 1 min after the nightly run (03:00 club time) |
+| Payments invariant check missed | heartbeat `VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL` | period 1 day + grace 2 h | 26 h |
 | Deploy failed or crashed | Railway project webhook, deployment status events | every `failed` or `crashed` status | < 1 min |
 | PostgreSQL disk above 80 % | Railway project webhook, volume usage alert | threshold 80 % | as Railway sends it |
 | HTTP 5xx above 1 % for 5 minutes | log search `@httpStatus:500..599` | *digest only on Hobby* | — |
@@ -78,6 +80,7 @@ Measured on 2026-11-20 with a production build (`next start`, `NODE_ENV=producti
 | Check | Variable (service) | Pinged by | Period / grace |
 |---|---|---|---|
 | Worker | `VEREINO_OPS_WORKER_HEARTBEAT_URL` (worker service) | the `foundation:dispatch-sweep` job after each successful sweep — the scheduler starts it every 2 minutes for every club, through the queue and the worker, and it reads PostgreSQL; at most one ping a minute per process | 3 min / 2 min |
+| Payments invariants | `VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL` (worker service) | the nightly `payments:verify-invariants` job of every club (03:00 in the club's time zone, #531): `<url>` after a clean run, `<url>/fail` when a charge does not match its payments or the `KP`/`RG` numbering has a duplicate or a gap; by hand: `yarn mercato payments run-job --job verify-invariants --tenant <id> --org <id>`. With several clubs a later clean club's ping clears the check again, but the `/fail` notification has already gone out; the log line names the club | 1 day / 2 h |
 | Backup | `VEREINO_OPS_BACKUP_HEARTBEAT_URL` (backup job, E18-S03 #464) | `scripts/backup-dump.mjs` at the end of every run (#519): `<url>` after a successful dump, `<url>/fail` after a failed one, through the helpers of `packages/app/scripts/vereino-ops-signal.mjs`, which the job image copies in; by hand: `node packages/app/scripts/vereino-ops-signal.mjs backup.succeeded …` or `… backup.failed …` | 1 day / 2 h |
 
 The worker heartbeat needs at least one club with its schedules (`docs/ops/deploy.md` → *Per-club schedules*): with
@@ -103,6 +106,9 @@ JSON with a numeric `level` (50 = error); Railway documents only string levels, 
 | Health probe failed | `"[healthz] Infrastructure probe failed"` | `/api/healthz` (web service) |
 | Worker alive | `"Dispatch sweep finished"` | `foundation:dispatch-sweep` (worker service), every 2 min per club |
 | Worker heartbeat not delivered | `"Worker heartbeat ping failed"` | the same |
+| Payments invariant drift | `vereino.ops.payments.invariants.drift` | `payments:verify-invariants` (worker service), `error` line `Payments invariants drift` with `organizationId`, the counts, `chargeDrifts` (`[chargeId, kind, status, expectedStatus]`) and `numberingDrifts` (`[series, kind, month, count, numbers]`); ids and counts only, at most 50 of each |
+| Payments invariants clean | `vereino.ops.payments.invariants.verified` | the same, `info` line `Payments invariants verified` |
+| Payments invariants heartbeat not delivered | `"Payments invariants heartbeat ping failed"` | the same |
 | Scheduled or queued job failed | `"Job failed" OR "Job exhausted all attempts"` | platform queue (worker service) |
 | Error with a fingerprint | `"Application error reported"` | platform `reportError`; the line carries `error.code` = `<module>.<reason>` (S15.2) |
 | HTTP 5xx | `@httpStatus:500..599` | Railway HTTP logs |
