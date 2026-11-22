@@ -82,6 +82,21 @@ export async function chargeDescriptions(
   return new Map(rows.map((row) => [row.id, row.description]))
 }
 
+/** The payers of the club's live charges among `chargeIds` (each once); a charge without a payer adds none. */
+export async function chargePayers(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  chargeIds: readonly string[],
+): Promise<string[]> {
+  if (chargeIds.length === 0) return []
+  const rows = await freshEm(container).find(
+    Charge,
+    { id: { $in: [...chargeIds] }, ...scope, deletedAt: null },
+    { fields: ['id', 'payerPersonId'] },
+  )
+  return [...new Set(rows.flatMap((row) => (row.payerPersonId ? [row.payerPersonId] : [])))]
+}
+
 /**
  * DD-C02: whether B-21 shows "Rentals (municipality)" — `facilities` is enabled in this deployment, or the club has a
  * live rental charge (one count, only when `facilities` is not registered).
