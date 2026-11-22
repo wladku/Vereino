@@ -1,4 +1,4 @@
-// The `groups` part of the person data export (person data export spec `.ai/specs/2026-11-21-vereino-person-data-export.md`,
+// The `groups` part of the person data export (person data export spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`,
 // *Contributor inventory* → `groups`; #527, phase X2): how one of the subject's `groups_memberships` rows is shown —
 // its own id, the role, the group (id and name, a club record), the period and its status on the club's day. A
 // membership names no other person, and `groups` has no actor columns, so the part has no actor counts.

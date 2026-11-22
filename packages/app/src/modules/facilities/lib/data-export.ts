@@ -1,5 +1,5 @@
 // The `facilities` part of the person data export (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, DD-X03, DD-X06, *Contributor inventory* → `facilities`; #527,
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, DD-X03, DD-X06, *Contributor inventory* → `facilities`; #527,
 // phase X2): how the subject's rows are shown — their rentals as a person renter, the entry bans on them, the internal
 // bookings they made, their place maintainer rows and the incidents they reported (photos by metadata only). Another
 // person never appears by id: a staff actor is `{ relation: 'staff' }`, the subject acting on their own row is

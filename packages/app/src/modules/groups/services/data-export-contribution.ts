@@ -1,4 +1,4 @@
-// The `groups` person data export contributor (person data export spec `.ai/specs/2026-11-21-vereino-person-data-export.md`,
+// The `groups` person data export contributor (person data export spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`,
 // DD-X01, *Contributor inventory* → `groups`; #527, phase X2): `people` declares the contract
 // (`people/services/data-export.ts`) and reads it with `hasRegistration`; `groups` registers it in `di.ts` under
 // `people.dataExport.groups`. The part is the subject's own memberships, live ones only, each with its group's name

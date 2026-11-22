@@ -1,5 +1,5 @@
 // The `communication` part of the person data export (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `communication`, DD-X03, DD-X06;
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `communication`, DD-X03, DD-X06;
 // #527): pure mapping of the rows `services/data-export-contribution.ts` reads into the four A4 sections. The threads
 // the subject takes part in show their subject line only; the subject's own participant row shows the other
 // participants as a count; the subject's own read markers; and only the messages the subject wrote — other authors'

@@ -1,5 +1,5 @@
 // The `club_core` person data export contributor (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, DD-X01, *Contributor inventory* → `club_core`; #527, phase X2):
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, DD-X01, *Contributor inventory* → `club_core`; #527, phase X2):
 // `people` declares the contract (`people/services/data-export.ts`) and reads it with `hasRegistration`; `club_core`
 // registers it in `di.ts` under `people.dataExport.club_core`. The part is the subject's live contracts
 // (`party_type='person'`), terms decrypted, the signed PDF as metadata only. Every query filters by the subject's

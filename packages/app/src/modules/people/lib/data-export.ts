@@ -1,4 +1,4 @@
-// The person data export document (person data export spec `.ai/specs/2026-11-21-vereino-person-data-export.md`,
+// The person data export document (person data export spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`,
 // DD-X02, DD-X03, DD-X05, *Domain Vocabulary*; #527): pure rules for the art. 15/20 file — how another person is
 // shown (`redactPerson`), which parts are left out and why (`omittedParts`), which free-text fields the administrator
 // checks before sending (`reviewRequiredOf`), the secret keys no row may carry (`withoutSecrets`) and the assembly of

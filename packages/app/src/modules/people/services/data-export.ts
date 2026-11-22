@@ -1,4 +1,4 @@
-// The person data export (person data export spec `.ai/specs/2026-11-21-vereino-person-data-export.md`, DD-X01,
+// The person data export (person data export spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, DD-X01,
 // *Contributor inventory*; #527). `people` owns the contract; every other module that holds a person's data registers
 // an optional contributor under `people.dataExport.<module>`, which `people` reads with `hasRegistration` — the
 // direction of `people.departure.<module>`, so `people` never imports those modules. Contributors read with the

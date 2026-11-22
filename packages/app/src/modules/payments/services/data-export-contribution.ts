@@ -1,4 +1,4 @@
-// The `payments` data export contributor (person data export spec `.ai/specs/2026-11-21-vereino-person-data-export.md`,
+// The `payments` data export contributor (person data export spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`,
 // DD-X01, *Contributor inventory* → `payments`; phase X2, #527): `people` declares the contract
 // (`people/services/data-export.ts`) and reads it with `hasRegistration`; `payments` registers it in `di.ts` under
 // `people.dataExport.payments`. Read only, in the caller's EntityManager: every query filters by the subject's tenant

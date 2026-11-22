@@ -1,5 +1,5 @@
 // The `payments` part of the person data export (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `payments`, DD-X03, DD-X06; #527):
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `payments`, DD-X03, DD-X06; #527):
 // pure mapping of the rows `services/data-export-contribution.ts` reads into the eight `payments` sections.
 // - A charge names the subject as debtor or payer. The other party is a relation; a payer is always an active guardian
 //   of the debtor or the adult debtor (`lib/manual-charges.ts` `payerEligible`), so the other party of a charge is the

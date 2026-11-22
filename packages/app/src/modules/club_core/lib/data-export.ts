@@ -1,5 +1,5 @@
 // The `club_core` part of the person data export (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `club_core`; #527, phase X2): how
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, *Contributor inventory* → `club_core`; #527, phase X2): how
 // one of the subject's `club_core_contracts` rows (`party_type='person'`) is shown — its own id, the kind, the period,
 // the decrypted terms read as `lib/contracts.ts` reads them, and the signed PDF as metadata only (A-7: the binary is
 // never in the file). A person's contract names no other person, so the part has no actor counts.

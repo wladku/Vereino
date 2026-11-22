@@ -1,5 +1,5 @@
 // The `facilities` person data export contributor (person data export spec
-// `.ai/specs/2026-11-21-vereino-person-data-export.md`, DD-X01, DD-X03, DD-X06, *Contributor inventory* → `facilities`;
+// `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`, DD-X01, DD-X03, DD-X06, *Contributor inventory* → `facilities`;
 // #527, phase X2): `people` declares the contract (`people/services/data-export.ts`) and reads it with
 // `hasRegistration`; `facilities` registers it in `di.ts` under `people.dataExport.facilities`. The sections are the
 // subject's rentals as a person renter, the entry bans on them as a person, the internal bookings they made, their place
