@@ -170,6 +170,18 @@ test('collectPackages walks production dependencies once per installed copy, ski
   ])
 })
 
+// D-035: the repository's own packages are AGPL-3.0-only and pass, while a third-party AGPL package still fails,
+// so the code stays licensable commercially.
+test('checkLicenses accepts AGPL workspaces but still rejects an AGPL dependency', () => {
+  const root = makeRepo({
+    'package.json': { name: 'r', private: true, license: 'AGPL-3.0-only', workspaces: ['packages/*'] },
+    'packages/app/package.json': { name: '@x/app', license: 'AGPL-3.0-only', dependencies: { copyleft: '1' } },
+    'packages/app/node_modules/copyleft/package.json': { name: 'copyleft', version: '1.0.0', license: 'AGPL-3.0-only' },
+  })
+  const { violations } = checkLicenses(root, { exceptions: {} })
+  assert.deepEqual(violations.map(({ name, license }) => `${name}:${license}`), ['copyleft:AGPL-3.0-only'])
+})
+
 test('exceptionFor matches an exact name first, then the longest prefix pattern', () => {
   const exceptions = {
     pkg: { license: 'A', reason: 'exact' },
