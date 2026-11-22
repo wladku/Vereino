@@ -6,6 +6,7 @@ import { calendarDate, call, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { phoneRental, postEntryBan, postRental, rentalPitch } from '../_fixtures/facilities'
 import { getMe, putMe } from '../_fixtures/members'
+import { uiText } from '../_fixtures/ui-text'
 
 // Issue #126 (E08-S06; README M-12 "Today at the facility", B-27 "Log, incidents, bans"): the club administrator runs
 // the day at Boisko A from a phone. On `/club/facility` she opens the facility with the condition before and sees
@@ -84,7 +85,10 @@ test('E08-S06 facility day: open, groups, incident with 422, close; log, inciden
     await expect(page.getByTestId('club-facility-place-name')).toHaveText('Boisko A')
     await expect(page.getByTestId('club-facility-state')).toHaveText('The facility has not been opened today.')
     if (!rentalId)
-      await expect(page.getByTestId('club-facility-empty')).toHaveText('Nothing is scheduled at the facility today')
+      // The administrator has the Rentals tab, so the empty day points to it (#496).
+      await expect(page.getByTestId('club-facility-empty')).toHaveText(
+        uiText('facilities.facility.entries.emptyRentals', { exact: true }),
+      )
 
     // "Open facility": the condition before is required; then "Facility opened {time}".
     await page.getByTestId('club-facility-open').click()
