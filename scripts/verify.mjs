@@ -11,6 +11,7 @@ export const STEPS = [
   { name: 'typecheck:packages', args: ['typecheck:packages'] },
   { name: 'typecheck:qa', args: ['typecheck:qa'] },
   { name: 'lint', args: ['lint'] },
+  { name: 'secrets:check', args: ['secrets:check'] },
   { name: 'format:check', args: ['format:check'] },
   { name: 'ds:check', args: ['ds:check'] },
   { name: 'i18n:check-hardcoded', args: ['i18n:check-hardcoded', '--strict'] },

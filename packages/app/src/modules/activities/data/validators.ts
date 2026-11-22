@@ -271,6 +271,9 @@ export const declareByLinkSchema = declarationLinkDeclareSchema.extend({ token: 
 /** `activities.declaration_links.send_reminders` (job): `now` replays another evening (operators, tests). */
 export const sendRemindersSchema = z.object({ now: instantSchema.optional() }).strict()
 
+/** `activities.declaration_links.purge_dead` (engineering standards S9.5; #525): the operator CLI's `--now`. */
+export const purgeDeclarationLinksSchema = z.object({ now: instantSchema.optional() }).strict()
+
 /** `POST /api/activities/attendance/{id}/guardian-decision`. */
 export const guardianDecisionSchema = z.object({ id: z.uuid(), approve: z.boolean() }).strict()
 

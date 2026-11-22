@@ -53,7 +53,7 @@ export function ChipRow({
             type="button"
             size="sm"
             variant={on ? 'default' : 'outline'}
-            className="shrink-0 rounded-full"
+            className="min-h-11 shrink-0 rounded-full"
             aria-current={on ? currentKind : undefined}
             onClick={() => {
               onSelect(chip.value)
@@ -133,7 +133,8 @@ export function DayChips({
           <Input
             id={`${id}-other`}
             type="date"
-            className="w-auto"
+            className="h-12 w-auto"
+            inputClassName="self-stretch"
             value={date}
             onChange={(event) => {
               if (isCalendarDate(event.target.value)) onSelect(event.target.value)

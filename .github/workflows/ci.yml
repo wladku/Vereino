@@ -8,7 +8,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    # `merge-train/**`: the batch the merge train built with the Merges API (`.ai/specs/2026-11-18-batch-merge-train.md`);
+    # the train judges only the checks of the batch head, and a newer batch cancels the older run (concurrency below).
+    branches: [main, 'merge-train/**']
 
 permissions:
   contents: read
@@ -22,8 +24,16 @@ jobs:
     name: gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # `yarn guard` reads the PR's labels (`guard-approved`) and the state of quarantine issues.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The PR merge commit and its first parent (the base branch tip): the diff `yarn guard` checks.
+          fetch-depth: 2
       - run: corepack enable
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -34,6 +44,21 @@ jobs:
         # The npm registry sometimes answers Yarn's hardened-mode metadata requests with 409; retry once.
         run: yarn install --immutable || (sleep 20 && yarn install --immutable)
       - run: yarn verify
+      # Change guard (#520): weakened tests, new dependencies and secrets in the PR's diff block the gate unless the
+      # PR carries the owner-only label `guard-approved`. The labels are read live, so after the owner adds the label
+      # a rerun of this job passes. A push to `main` compares HEAD with itself and passes.
+      - name: Guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            yarn guard --base HEAD^1 --pr "$PR_NUMBER"
+          else
+            yarn guard --base HEAD
+          fi
 
   # The whole suite took 43-46 min in one job by 2026-11-06 (#193, #196), so it runs as Playwright shards. Each
   # shard has its own Testcontainers database and production build; the `integration` job below aggregates them

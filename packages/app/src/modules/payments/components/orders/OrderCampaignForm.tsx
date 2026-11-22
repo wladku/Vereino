@@ -47,7 +47,7 @@ import {
   type CampaignDetail,
   type Option,
 } from './orders-client'
-import { clubToday, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { clubToday, Notice, useClubTimeZone, useClubToday } from '@vereino/ui'
 
 const ENTITY_ID = 'payments:order_campaign'
 const FORM_ID = 'order-campaign-form'
@@ -129,7 +129,11 @@ function blankValues(today: string): CampaignFormValues {
 const CHILD_SIZES = '116, 128, 140, 152, 164'
 const ADULT_SIZES = 'S, M, L, XL'
 
-/** The "Academy kit" template of the mockup: shirt, shorts and socks, and the three as a set. */
+/**
+ * The "Academy kit" template of the mockup: shirt, shorts and socks, and the three as a set. It carries no prices
+ * (E20-S17, #496): an invented price would be saved by an administrator who only checks the names, so the form
+ * refuses the blank prices until the club enters its own.
+ */
 function templateValues(t: Translate, today: string): CampaignFormValues {
   const shirt = { ...blankProduct('item'), name: t('payments.orders.template.shirt') }
   const shorts = { ...blankProduct('item'), name: t('payments.orders.template.shorts') }
@@ -141,14 +145,13 @@ function templateValues(t: Translate, today: string): CampaignFormValues {
     askPrintNumber: true,
     notesLabel: t('payments.orders.template.notes'),
     products: [
-      { ...shirt, sizesChild: CHILD_SIZES, sizesAdult: ADULT_SIZES, priceChild: '60', priceAdult: '75' },
-      { ...shorts, sizesChild: CHILD_SIZES, sizesAdult: ADULT_SIZES, priceChild: '40', priceAdult: '50' },
-      { ...socks, sizesChild: '31–34, 35–38', sizesAdult: '39–42, 43–46', priceChild: '20', priceAdult: '20' },
+      { ...shirt, sizesChild: CHILD_SIZES, sizesAdult: ADULT_SIZES },
+      { ...shorts, sizesChild: CHILD_SIZES, sizesAdult: ADULT_SIZES },
+      { ...socks, sizesChild: '31–34, 35–38', sizesAdult: '39–42, 43–46' },
       {
         ...blankProduct('set'),
         name: t('payments.orders.template.set'),
         componentKeys: [shirt.key, shorts.key, socks.key],
-        priceChild: '110',
       },
     ],
   }
@@ -702,9 +705,10 @@ export function OrderCampaignCreateForm() {
     // The dates of a fresh start count from the day the choice is made in the club zone.
     const now = clubToday(new Date(), timeZone)
     if (point.kind === 'blank') setStart((prev) => ({ version: prev.version + 1, values: blankValues(now) }))
-    else if (point.kind === 'template')
+    else if (point.kind === 'template') {
       setStart((prev) => ({ version: prev.version + 1, values: templateValues(t, now) }))
-    else {
+      flash(t('payments.orders.template.pricesHint'), 'info')
+    } else {
       const call = await apiCall<CampaignDetail>(campaignApi(point.id))
       if (!call.ok || !call.result) {
         flash(t('payments.orders.errors.load'), 'error')
@@ -778,7 +782,7 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
   if (query.error) return <ErrorMessage label={errorMessage(query.error, t('payments.orders.errors.load'))} />
   if (detail && !isCampaignEditable(detail.status)) {
     return (
-      <Alert status="warning" data-testid="order-campaign-locked">
+      <Alert style="light" status="warning" data-testid="order-campaign-locked">
         <div className="flex flex-col items-start gap-2">
           <strong>{t('payments.orders.edit.lockedTitle')}</strong>
           <span>{t('payments.orders.edit.lockedText')}</span>
@@ -798,14 +802,14 @@ export function OrderCampaignEditForm({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       {collecting > 0 ? (
-        <Alert status="information" data-testid="order-campaign-collecting">
+        <Notice data-testid="order-campaign-collecting">
           <div className="flex flex-col gap-1">
             <strong>
               {t(`payments.orders.edit.collectingTitle.${pluralKey(locale, collecting)}`, { count: collecting })}
             </strong>
             <span>{t('payments.orders.edit.collectingText')}</span>
           </div>
-        </Alert>
+        </Notice>
       ) : null}
       <CrudForm<CampaignFormValues>
         key={detail ? detail.updatedAt : 'loading'}

@@ -40,3 +40,11 @@ export function tokenLinkState(link: StoredTokenLink, use: TokenLinkUse, now: Da
   if (use === 'single' && link.usedAt) return 'used'
   return link.expiresAt.getTime() > now.getTime() ? 'active' : 'expired'
 }
+
+/** Engineering standards S9.5: a used or expired link token is deleted this many days after its use or expiry. */
+export const DEAD_LINK_RETENTION_DAYS = 30
+
+/** A link that expired, was spent (single use) or was deleted at or before this instant is due for deletion. */
+export function deadLinkCutoff(now: Date): Date {
+  return new Date(now.getTime() - DEAD_LINK_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+}

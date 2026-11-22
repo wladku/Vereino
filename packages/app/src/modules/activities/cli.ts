@@ -5,7 +5,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireJobResult } from './commands/attendance'
-import type { RemindersJobResult } from './commands/declaration-links'
+import type { PurgeDeclarationLinksResult, RemindersJobResult } from './commands/declaration-links'
 import type { GenerateJobResult, WarnUnassignedJobResult } from './commands/jobs'
 import { setUpClubActivities } from './services/club-setup'
 import { checkAppendOnly, listContactAccessLog } from './services/contact-access-log'
@@ -92,6 +92,32 @@ const sendDeclarationReminders: ModuleCli = {
       { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
     )
     process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts })}\n`)
+  },
+}
+
+/**
+ * `activities purge-declaration-links --tenant <id> --org <id> [--now <ISO instant>]`: runs the daily purge of dead
+ * declaration links now (engineering standards S9.5; #525) — the same command the `activities:purge-declaration-links`
+ * job dispatches — and prints how many rows it deleted. `--now` moves the clock (an operator; the integration tests).
+ */
+const purgeDeclarationLinks: ModuleCli = {
+  command: 'purge-declaration-links',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato activities purge-declaration-links --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      process.exitCode = 1
+      return
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, PurgeDeclarationLinksResult>(
+      'activities.declaration_links.purge_dead',
+      { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, deleted: result.deleted })}\n`)
   },
 }
 
@@ -189,6 +215,7 @@ const commands: ModuleCli[] = [
   generateOccurrences,
   expireGuardianConfirmations,
   sendDeclarationReminders,
+  purgeDeclarationLinks,
   warnUnassignedSessions,
   setUpClub,
   contactAccessLogCli,

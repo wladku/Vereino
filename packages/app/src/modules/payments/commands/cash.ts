@@ -17,8 +17,14 @@ import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
-import type { Recipient, Scope } from '@vereino/core'
-import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
+import type { AudienceContact, Recipient, Scope } from '@vereino/core'
+import {
+  authorizeScoped,
+  contactResolver,
+  prefetchSessionScope,
+  trustedScopeOf,
+  type DispatchService,
+} from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Payment } from '../data/entities'
 import { lastReceiptNumber, lockReceiptNumbering } from '../data/queries'
@@ -78,6 +84,66 @@ function calendarDate(value: unknown): string {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10)
 }
 
+/** Who and what the confirmations of one acceptance are about: the payers, the selected charges and the collector. */
+export type ConfirmationSubject = {
+  grants: Scope
+  payerPersonIds: readonly string[]
+  chargeIds: readonly string[]
+  collectorPersonId: string | null
+}
+
+/** What the confirmations read through other services: the payers' contacts, the charges' texts, the collector. */
+export type ConfirmationReads = ConfirmationSubject & {
+  scope: { tenantId: string; organizationId: string }
+  contacts: ReadonlyMap<string, AudienceContact>
+  descriptions: ReadonlyMap<string, string>
+  collectorName: string | null
+}
+
+/**
+ * Reads what the confirmation e-mails of an acceptance need, each through its own service and pooled connection (the
+ * contact resolver reads the club settings, the charge texts a fresh `EntityManager`). Call it before the write
+ * transaction opens: after the receipt numbering lock, the holder would wait for a second connection while every
+ * waiter on the lock holds one, and a pool's worth of acceptances with the e-mail on answer 500 (#554). Nothing read
+ * here leaves the command unless the acceptance is then authorized in the transaction.
+ */
+export async function readConfirmations(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+  subject: ConfirmationSubject,
+): Promise<ConfirmationReads> {
+  const resolverCtx = { container: ctx.container, ...scope, scope: subject.grants }
+  const [contacts, descriptions, collectors] = await Promise.all([
+    contactResolver(ctx.container).contacts(subject.payerPersonIds, resolverCtx),
+    chargeDescriptions(ctx.container, scope, subject.chargeIds),
+    findPersons(ctx.container, scope, subject.collectorPersonId ? [subject.collectorPersonId] : []),
+  ])
+  const collector = subject.collectorPersonId ? collectors.get(subject.collectorPersonId) : undefined
+  return {
+    ...subject,
+    scope,
+    contacts: new Map(contacts.map((contact) => [contact.personId, contact])),
+    descriptions,
+    collectorName: collector ? `${collector.firstName} ${collector.lastName}` : null,
+  }
+}
+
+/** Whether `reads` were made for these grants, collector, payer and charges, so the transaction may use them. */
+function readsCover(
+  reads: ConfirmationReads | null | undefined,
+  input: Pick<ConfirmationInput, 'scope' | 'grants' | 'collectorPersonId' | 'payerPersonId' | 'lines'>,
+): reads is ConfirmationReads {
+  return (
+    !!reads &&
+    reads.scope.tenantId === input.scope.tenantId &&
+    reads.scope.organizationId === input.scope.organizationId &&
+    reads.grants === input.grants &&
+    reads.collectorPersonId === input.collectorPersonId &&
+    reads.payerPersonIds.includes(input.payerPersonId) &&
+    input.lines.every((line) => reads.chargeIds.includes(line.chargeId))
+  )
+}
+
 type ConfirmationInput = {
   ctx: CommandRuntimeContext
   em: EntityManager
@@ -90,24 +156,28 @@ type ConfirmationInput = {
   lines: { paymentId: string; chargeId: string; amount: number; remaining: number }[]
   /** One per receipt and payer: `payments:cash:<receipt>`, with `:<payer>` when a receipt has several payers. */
   idempotencyKey: string
+  /** `readConfirmations` made before the transaction (#554); read again here only when they do not cover this one. */
+  reads?: ConfirmationReads | null
 }
 
-/** Enqueues the payer's confirmation in the write transaction; null when the payer has no e-mail address. */
+/**
+ * Enqueues the payer's confirmation in the write transaction; null when the payer has no e-mail address. With
+ * matching `reads` it queries only through the transaction's `em` (the dispatch). Without them (a payer the
+ * prefetch could not foresee) it reads them here, on other pooled connections, as before #554.
+ */
 export async function enqueueConfirmation(input: ConfirmationInput): Promise<string | null> {
   const { ctx, em, scope } = input
-  const resolverCtx = { container: ctx.container, ...scope, scope: input.grants, em }
-  const contacts = await contactResolver(ctx.container).contacts([input.payerPersonId], resolverCtx)
-  const contact = contacts.find((row) => row.personId === input.payerPersonId)
+  const reads = readsCover(input.reads, input)
+    ? input.reads
+    : await readConfirmations(ctx, scope, {
+        grants: input.grants,
+        payerPersonIds: [input.payerPersonId],
+        chargeIds: input.lines.map((line) => line.chargeId),
+        collectorPersonId: input.collectorPersonId,
+      })
+  const contact = reads.contacts.get(input.payerPersonId)
   if (!contact?.email) return null
-  const [descriptions, collectors] = await Promise.all([
-    chargeDescriptions(
-      ctx.container,
-      scope,
-      input.lines.map((line) => line.chargeId),
-    ),
-    findPersons(ctx.container, scope, input.collectorPersonId ? [input.collectorPersonId] : [], em),
-  ])
-  const collector = input.collectorPersonId ? collectors.get(input.collectorPersonId) : undefined
+  const descriptions = reads.descriptions
   const recipient: Recipient = {
     personId: contact.personId,
     userId: contact.userId,
@@ -118,7 +188,7 @@ export async function enqueueConfirmation(input: ConfirmationInput): Promise<str
   }
   const params: CashReceivedParams = {
     ...input.params,
-    collectorName: collector ? `${collector.firstName} ${collector.lastName}` : null,
+    collectorName: reads.collectorName,
     lines: input.lines.map((line) => ({
       description: descriptions.get(line.chargeId) ?? '',
       amount: line.amount,
@@ -156,6 +226,22 @@ export async function callerSettlesCash(
   return ctx.container.resolve<RbacService>('rbacService').userHasAllFeatures(userId, ['payments.cash.settle'], scope)
 }
 
+/** What an acceptance reads through other services: the club's today and whether the caller settles cash. */
+export type CashAcceptanceFacts = { today: string; settlesCash: boolean }
+
+/**
+ * Reads the facts of an acceptance through the settings and RBAC services, each on its own pooled connection. Call it
+ * before the write transaction opens: inside it, every concurrent acceptance would hold its transaction's connection
+ * while waiting for a second one, and a pool's worth of them waits until the acquire timeout (#549).
+ */
+export async function cashAcceptanceFacts(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+): Promise<CashAcceptanceFacts> {
+  const [{ today }, settlesCash] = await Promise.all([clubClock(ctx.container, scope), callerSettlesCash(ctx, scope)])
+  return { today, settlesCash }
+}
+
 /**
  * Pays the row-locked `charges` with `amount` of cash received on `paidOn` (oldest first) under one new receipt
  * number: refuses a cancelled, forfeited or paid charge (409), an amount above what remains (422) and a future day
@@ -168,7 +254,7 @@ export async function acceptCashOnCharges(
   em: EntityManager,
   scope: { tenantId: string; organizationId: string },
   charges: readonly Charge[],
-  input: { amount: number; paidOn: string; collectorPersonId: string | null },
+  input: { amount: number; paidOn: string; collectorPersonId: string | null; facts: CashAcceptanceFacts },
 ): Promise<CashAcceptance> {
   const chargeIds = charges.map((charge) => charge.id)
   // An online overpayment "to refund" (#110, Q-049) is not a payment of the charge, as in `ledgerOf`.
@@ -188,8 +274,12 @@ export async function acceptCashOnCharges(
     createdAt: charge.createdAt.toISOString(),
     remaining: charge.status === 'cancelled' ? 0 : remainingOf(amountDueOf(charge), paidByCharge.get(charge.id) ?? 0),
   }))
-  const { today } = await clubClock(ctx.container, scope)
-  const refusal = cashRefusal({ charges: selection, amount: input.amount, paidOn: input.paidOn, today })
+  const refusal = cashRefusal({
+    charges: selection,
+    amount: input.amount,
+    paidOn: input.paidOn,
+    today: input.facts.today,
+  })
   if (refusal === 'cash_exceeds_selected') {
     const selected = selectedTotal(selection)
     await paymentsErrors.throw(refusal, { selected: formatZloty(selected), selectedAmount: selected })
@@ -198,7 +288,7 @@ export async function acceptCashOnCharges(
   }
 
   // Cash accepted by someone who settles cash is with the club at once (#118): no collector holds it.
-  const collectedByPersonId = (await callerSettlesCash(ctx, scope)) ? null : input.collectorPersonId
+  const collectedByPersonId = input.facts.settlesCash ? null : input.collectorPersonId
   await lockReceiptNumbering(em, scope.organizationId)
   const last = await lastReceiptNumber(em, scope, receiptPrefix(input.paidOn))
   const receiptNumber = nextReceiptNumber(input.paidOn, (last && receiptSequence(last)) || 0)
@@ -267,6 +357,23 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
   isUndoable: false,
   async execute(rawInput, ctx) {
     const receiptId = randomUUID()
+    // Everything read on another pooled connection is read before the transaction holds one (#549): the session
+    // scope and the acceptance facts. Without a trusted scope `authorizeScoped` refuses inside the transaction.
+    const trusted = trustedScopeOf(ctx)
+    const [sessionScope, facts] = trusted
+      ? await Promise.all([prefetchSessionScope(ctx), cashAcceptanceFacts(ctx, trusted)])
+      : [null, null]
+    // The confirmation's reads too, when the e-mail is on (#554); the transaction uses them only for this scope.
+    const request = cashRecordSchema.safeParse(rawInput)
+    const reads =
+      trusted && sessionScope && request.success && request.data.notify
+        ? await readConfirmations(ctx, trusted, {
+            grants: sessionScope.scope,
+            payerPersonIds: [request.data.payerPersonId],
+            chargeIds: request.data.chargeIds,
+            collectorPersonId: selfPersonId(sessionScope.scope),
+          })
+        : null
     const result = await inWriteTransaction(ctx, 'payments.cash.record', async (em) => {
       const authorized = await authorizeScoped(
         {
@@ -278,6 +385,7 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         rawInput,
         ctx,
         em,
+        { sessionScope },
       )
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
@@ -299,6 +407,8 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
         amount: parsed.amount,
         paidOn: parsed.paidOn,
         collectorPersonId,
+        // `authorizeScoped` passed, so the session named this scope and the facts were read for it.
+        facts: facts as CashAcceptanceFacts,
       })
 
       const dispatchId = parsed.notify
@@ -313,6 +423,7 @@ const recordCashCommand: CommandHandler<Record<string, unknown>, CashRecordResul
             params: { receiptNumber, amount: parsed.amount, paidOn: parsed.paidOn },
             lines,
             idempotencyKey: `payments:cash:${receiptNumber}`,
+            reads,
           })
         : null
       return {

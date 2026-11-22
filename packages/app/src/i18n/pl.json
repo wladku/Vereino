@@ -113,6 +113,7 @@
   "audit_logs.banner.undo_failed": "Nie udało się cofnąć",
   "auth.email": "Email",
   "auth.login.brandName": "Vereino",
+  "auth.login.errors.invalidCredentials": "Nieprawidłowy email lub hasło. Jeśli nie pamiętasz hasła, wybierz „Nie pamiętasz hasła?” pod przyciskiem logowania.",
   "auth.login.logoAlt": "Vereino",
   "auth.login.subtitle": "Zaloguj się na swoje konto",
   "auth.manageAuthSettings": "Zarządzaj ustawieniami uwierzytelniania.",

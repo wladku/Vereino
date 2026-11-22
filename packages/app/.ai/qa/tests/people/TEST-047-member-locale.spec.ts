@@ -24,6 +24,7 @@ import { awaitEmails } from '../_fixtures/communication'
 import { addMembership } from '../_fixtures/groups'
 import { acceptInvitation, getMe, signInThroughForm, updateClubSettings } from '../_fixtures/members'
 import { createGuardianship } from '../_fixtures/people'
+import { uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-047 (club spec *Integration Coverage*; REQ-035, DD-34, V-11), the member part of phase 1: a club whose
 // `default_locale` is `pl`, guardian A with `preferred_locale = en` and guardian B without a preference. A signs in
@@ -65,6 +66,15 @@ async function guardianWithWard(
   const userId = String(account.body?.userId)
   club.extraUserIds.push(userId)
   return { personId, userId, email, wardId }
+}
+
+/** The ward tile's birth-date label before the date, from the catalog (`people.club.wards.birthDate`). */
+function birthPrefix(locale: 'en' | 'pl'): string {
+  return uiTextIn(locale, 'people.club.wards.birthDate').split('{date}')[0]
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 test('TEST-047 member locale: preferred English in a Polish club, club default over Accept-Language, club content unchanged, switch in the profile', async ({
@@ -112,7 +122,7 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
     await expect(page.getByTestId('club-name')).toHaveText(CLUB_NAME)
     const aBirth =
       (await page
-        .getByText(/^Born /)
+        .getByText(new RegExp(`^${escapeRegExp(birthPrefix('en'))}`))
         .first()
         .textContent()) ?? ''
     expect(aBirth).toMatch(/2016/)
@@ -140,11 +150,11 @@ test('TEST-047 member locale: preferred English in a Polish club, club default o
     await expect(page.getByTestId('club-name')).toHaveText(CLUB_NAME)
     const bBirth =
       (await page
-        .getByText(/^Urodzony\(-a\) /)
+        .getByText(new RegExp(`^${escapeRegExp(birthPrefix('pl'))}`))
         .first()
         .textContent()) ?? ''
     expect(bBirth).toMatch(/2016/)
-    expect(bBirth.replace(/^Urodzony\(-a\) /, '')).not.toBe(aBirth.replace(/^Born /, ''))
+    expect(bBirth.slice(birthPrefix('pl').length)).not.toBe(aBirth.slice(birthPrefix('en').length))
   } finally {
     await club.cleanup()
   }

@@ -59,18 +59,22 @@ Vereino has **no export** that gathers a person's data across modules (`people` 
    no open charges or cash held, and a recorded request exists (`people/lib/erasure-rules.ts`). It cannot be undone.
 3. **What it erases** (`people/services/erasure.ts`): phone, e-mail, notes, PESEL and its hash, external id and hash,
    photo (files released), birth date, language, consents, ward consents on guardianships, departure-request notes,
-   matched import rows; on rentals, the renter's contact data (`facilities` subscriber of `people.person.anonymized`).
+   matched import rows; in the same transaction (#528) the contact e-mail, phone and notes of the orders the person
+   placed and the print name and notes of orders for them (`payments_orders`), a typed payer label on charges naming
+   them (`payments_charges.payer_label`), the person and account ids, address hash and secret parameters of their
+   deliveries (`foundation_deliveries`) and the contact snapshots of their rentals (`facilities_rentals`; the renter's
+   display name follows after the commit through the `facilities` subscriber of `people.person.anonymized`).
 4. **What it keeps, and why.** Accounting rows stay linked through the payer reference code (art. 17(3)(b), art.
    6(1)(c)); the **name** stays until `erasure_hold_until` (5 years after the year of the latest payment, then cleared by
    the `people:life-cycle` job — see [`retention.md`](retention.md) R2 and open item R-A).
-5. **Audit row.** The command writes an audit entry with the acting role, the request id, when, the hold date and the
-   counts of guardianships, departure requests and import rows touched, and the photo files released — never the
-   erased values. S9.6 also asks for the legal basis for what is kept and the tables touched; the entry records the hold
-   date and counts but not the basis or a table list (open item D-2).
-6. **Not erased today** (open item D-3): order contact data and print names (`payments_orders`), the typed payer label
-   (`payments_charges.payer_label`), bank counterparty data (kept as accounting records), message bodies (people
-   life-cycle spec Q-L21), entry bans and incidents (kept for safety, art. 17(3)(e)), delivery rows, earlier audit
-   snapshots (V-L03). Erased data also remain in backups until the copy expires, up to about 13 months
+5. **Audit row** (S9.6). The command writes one audit entry with the acting role (who requested is the request id),
+   when, the hold date, the counts of guardianships, departure requests and import rows touched, the photo files
+   released, `tablesTouched` (every table the erasure wrote to with its row count) and `keptData` (each kept category
+   with its legal basis, its row in [`retention.md`](retention.md) and its tables: accounting records R1, the request
+   and decision R13, the name under the hold R2) — never the erased values.
+6. **Not erased today** (open item D-3): bank counterparty data (kept as accounting records), message bodies (people
+   life-cycle spec Q-L21), entry bans and incidents (kept for safety, art. 17(3)(e)), rental purpose and notes, earlier
+   audit snapshots (V-L03). Erased data also remain in backups until the copy expires, up to about 13 months
    ([`retention.md`](retention.md) R17); tell the person so.
 7. A person entered **by mistake** and without history may be deleted instead (`people.persons.delete`, soft delete,
    only with no history in any module).
@@ -92,6 +96,6 @@ stored, history is in the audit log; the club removes any published name or imag
 | Id | What | Owner |
 |---|---|---|
 | D-1 | Person data export for access and portability (structured, machine-readable) | #527 |
-| D-2 | The anonymisation audit row records the legal basis for what is kept and the tables touched (S9.6) | #528 |
-| D-3 | Erasure gaps: order contact data, payer label, delivery rows; audit snapshots (V-L03) | #528, people life-cycle spec |
+| D-2 | ~~The anonymisation audit row records the legal basis for what is kept and the tables touched (S9.6)~~ — done (#528) | #528 |
+| D-3 | Erasure gaps: audit snapshots (V-L03); order contact data, payer label and delivery rows are cleared since #528 | people life-cycle spec |
 | D-4 | A restriction flag, or a documented manual way to restrict processing | product owner |

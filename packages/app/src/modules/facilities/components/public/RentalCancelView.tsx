@@ -99,7 +99,7 @@ function Expired({ clubSlug }: { clubSlug: string }) {
   const t = useT()
   return (
     <>
-      <Alert status="warning" data-testid="public-cancel-expired">
+      <Alert style="light" status="warning" data-testid="public-cancel-expired">
         <AlertTitle>{t('facilities.public.cancel.expired.title')}</AlertTitle>
         <AlertDescription>{t('facilities.public.cancel.expired.text')}</AlertDescription>
       </Alert>
@@ -152,7 +152,7 @@ export function RentalCancelView({ clubSlug, token }: { clubSlug: string; token:
   if (result?.status === 'ok') {
     body = (
       <>
-        <Alert status="success" data-testid={`public-cancel-done-${result.result}`}>
+        <Alert style="light" status="success" data-testid={`public-cancel-done-${result.result}`}>
           <AlertTitle>{t('facilities.public.cancel.done.title')}</AlertTitle>
           <AlertDescription>
             {result.result === 'cancelled_free'
@@ -175,7 +175,11 @@ export function RentalCancelView({ clubSlug, token }: { clubSlug: string; token:
     body = (
       <>
         <Summary preview={preview.preview} />
-        <Alert status={preview.preview.free ? 'information' : 'warning'} data-testid="public-cancel-terms">
+        <Alert
+          status={preview.preview.free ? 'information' : 'warning'}
+          style={preview.preview.free ? 'lighter' : 'light'}
+          data-testid="public-cancel-terms"
+        >
           <AlertTitle>
             {preview.preview.free ? t('facilities.public.cancel.free.title') : t('facilities.public.cancel.late.title')}
           </AlertTitle>

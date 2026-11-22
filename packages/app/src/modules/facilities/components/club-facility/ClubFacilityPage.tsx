@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { Tag } from '@open-mercato/ui/primitives/tag'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { formatDayHeading, MemberSkeleton, StatusTag } from '@vereino/ui'
+import { formatDayHeading, MemberSkeleton, Notice, StatusTag } from '@vereino/ui'
 import { INCIDENT_PHOTOS_MAX } from '../../lib/incidents'
 import { HEADCOUNT_MAX } from '../../lib/logs'
 import { FacilitiesClubFrame } from '../club-places/FacilitiesClubFrame'
@@ -58,7 +58,7 @@ import {
   type TodayIncident,
 } from './facility-client'
 
-type Notice = { status: 'success' | 'warning' | 'error'; text: string }
+type NoShowNotice = { status: 'success' | 'warning' | 'error'; text: string }
 type DialogKind = 'open' | 'close' | 'incident'
 type Translate = ReturnType<typeof useT>
 
@@ -367,7 +367,7 @@ function FacilityDay({ today, onRefresh }: { today: FacilityToday; onRefresh: ()
   const [dialog, setDialog] = React.useState<DialogKind | null>(null)
   // A new key per opening starts a dialog fresh (the time defaults to now).
   const [dialogKey, setDialogKey] = React.useState(0)
-  const [notice, setNotice] = React.useState<Notice | null>(null)
+  const [notice, setNotice] = React.useState<NoShowNotice | null>(null)
   const noShowing = React.useRef(new Set<string>())
   const place = today.place
   if (!place) return null
@@ -458,7 +458,7 @@ function FacilityDay({ today, onRefresh }: { today: FacilityToday; onRefresh: ()
     <div className="flex flex-col gap-4">
       <div aria-live="polite">
         {notice ? (
-          <Alert status={notice.status} data-testid="club-facility-notice">
+          <Alert style="light" status={notice.status} data-testid="club-facility-notice">
             <p>{notice.text}</p>
           </Alert>
         ) : null}
@@ -551,7 +551,8 @@ function FacilityDay({ today, onRefresh }: { today: FacilityToday; onRefresh: ()
         ) : null}
         {today.entries.length === 0 ? (
           <p className="text-muted-foreground" data-testid="club-facility-empty">
-            {t('facilities.facility.entries.empty')}
+            {/* The Rentals tab exists only with the rental grant (`noShow`); without it the day just says it is empty. */}
+            {t(noShowAllowed ? 'facilities.facility.entries.emptyRentals' : 'facilities.facility.entries.empty')}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="club-facility-entries">
@@ -674,9 +675,9 @@ function ClubFacility() {
   } else if (!today.place) {
     // No place in the caller's grant: an attendant without an active assignment, or a club without places.
     body = (
-      <Alert status="information" data-testid="club-facility-no-places">
+      <Notice data-testid="club-facility-no-places">
         <p>{features.manage ? t('facilities.facility.noPlaces') : t('facilities.facility.noFacilityAssigned')}</p>
-      </Alert>
+      </Notice>
     )
   } else if (!features.noShow) {
     body = <FacilityDay today={today} onRefresh={refresh} />

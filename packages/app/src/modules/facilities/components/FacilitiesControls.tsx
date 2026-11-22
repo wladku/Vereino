@@ -41,7 +41,7 @@ export function PlaceSelect({
   let hint: React.ReactNode = null
   if (status?.isError) {
     hint = (
-      <Alert status="error" id={hintId} data-testid={testId ? `${testId}-error` : undefined}>
+      <Alert style="light" status="error" id={hintId} data-testid={testId ? `${testId}-error` : undefined}>
         <div className="flex flex-wrap items-center gap-2">
           <span>{t('facilities.fields.place.loadError')}</span>
           <Button type="button" variant="outline" size="sm" onClick={status.retry}>
