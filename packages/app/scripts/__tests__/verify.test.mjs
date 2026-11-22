@@ -50,7 +50,7 @@ test('all steps pass in order and the summary reports durations', () => {
     ran,
     STEPS.map((step) => step.args[0]),
   )
-  assert.ok(lines.includes('  pass  build                  2s'))
+  assert.ok(lines.includes('  pass  build                    2s'))
   assert.equal(lines.at(-1), `[verify] all ${String(STEPS.length)} step(s) passed`)
 })
 
@@ -64,7 +64,7 @@ test('the first failing step stops the gate and its exit code is returned', () =
   const code = verify({ argv: ['--from', 'typecheck:qa'], run, log: (line) => lines.push(line), now: fakeClock() })
   assert.equal(code, 2)
   assert.deepEqual(ran, ['typecheck:qa', 'lint'])
-  assert.ok(lines.includes('  FAIL  lint                   2s'))
+  assert.ok(lines.includes('  FAIL  lint                     2s'))
   assert.equal(lines.at(-1), '[verify] failed at lint; fix it and resume with: yarn verify --from lint')
 })
 

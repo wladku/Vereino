@@ -838,7 +838,7 @@
   "people.erasure.anonymise.title": "Zanonimizować tę osobę?",
   "people.erasure.anonymise.irreversible": "Tego nie można cofnąć.",
   "people.erasure.anonymise.now": "Od razu usuwamy: telefon, e-mail, notatki, PESEL, identyfikator zewnętrzny, zdjęcie, datę urodzenia, język i zgody. Obecności, należności, wpłaty i wiadomości zostają jako „Były członek”.",
-  "people.erasure.anonymise.hold": "Imię i nazwisko zostają do 31 grudnia piątego roku po ostatniej wpłacie na należności tej osoby, widoczne tylko dla administratorów, i wtedy zostaną usunięte. Bez takiej wpłaty usuwamy je od razu.",
+  "people.erasure.anonymise.hold": "Imię i nazwisko zostają do 31 grudnia szóstego roku po ostatniej wpłacie na należności tej osoby, widoczne tylko dla administratorów, i wtedy zostaną usunięte. Bez takiej wpłaty usuwamy je od razu.",
   "people.erasure.anonymise.request": "Zapisana prośba",
   "people.erasure.anonymise.noRequest": "Nie zapisano prośby o usunięcie danych. Najpierw zapisz ją w sekcji Prośby.",
   "people.erasure.anonymise.lastName": "Wpisz nazwisko, aby potwierdzić",

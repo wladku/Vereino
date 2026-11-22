@@ -180,7 +180,9 @@ test('exceptionFor matches an exact name first, then the longest prefix pattern'
   assert.equal(exceptionFor('@img/sharp-libvips-linux-x64', exceptions).reason, 'long')
   assert.equal(exceptionFor('@img/other', exceptions).reason, 'short')
   assert.equal(exceptionFor('pkg-2', exceptions), null)
-  assert.equal(exceptionFor('@open-mercato/enterprise'), LICENSE_EXCEPTIONS['@open-mercato/enterprise'])
+  assert.equal(exceptionFor('tweetnacl'), LICENSE_EXCEPTIONS.tweetnacl)
+  // The commercial enterprise package was removed (ENG-Q-10, #466) and has no exception any more.
+  assert.equal(exceptionFor('@open-mercato/enterprise'), null)
 })
 
 test('findViolations keeps disallowed licences that are not recorded exceptions with the same licence', () => {
@@ -200,7 +202,10 @@ test('findViolations keeps disallowed licences that are not recorded exceptions 
     ['gpl', 'none', 'changed'],
   )
   assert.deepEqual(findViolations([{ name: 'x', license: 'Zlib' }], { allowed: ['Zlib'], exceptions: {} }), [])
-  assert.deepEqual(findViolations([{ name: '@open-mercato/enterprise', license: 'SEE LICENSE IN LICENSE.md' }]), [])
+  assert.deepEqual(
+    findViolations([{ name: '@open-mercato/enterprise', license: 'SEE LICENSE IN LICENSE.md' }]).map((pkg) => pkg.name),
+    ['@open-mercato/enterprise'],
+  )
 })
 
 test('every recorded exception has a licence the allowlist rejects and a reason', () => {

@@ -20,6 +20,7 @@ export const STEPS = [
   { name: 'glossary:check', args: ['glossary:check'] },
   { name: 'qa-texts:check', args: ['qa-texts:check'] },
   { name: 'di-commands:check', args: ['di-commands:check'] },
+  { name: 'forbidden-packages:check', args: ['forbidden-packages:check'] },
   { name: 'lessons:check', args: ['lessons:check'] },
   { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
   { name: 'test', args: ['test'] },
@@ -64,7 +65,7 @@ export function verify({ argv, run = runYarn, log = console.log, now = Date.now 
   }
   log('\n[verify] summary')
   for (const { name, status, duration } of results) {
-    log(`  ${status === 0 ? 'pass' : 'FAIL'}  ${name.padEnd(22)} ${formatSeconds(duration)}`)
+    log(`  ${status === 0 ? 'pass' : 'FAIL'}  ${name.padEnd(24)} ${formatSeconds(duration)}`)
   }
   const failed = results.find((result) => result.status !== 0)
   if (failed) {
