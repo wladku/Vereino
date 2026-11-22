@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { expectNoPageOverflow } from '../_fixtures/axe'
 import {
@@ -22,6 +22,7 @@ import { postCampaign } from '../_fixtures/orders'
 import { getCharge, myCharges, recordPayment } from '../_fixtures/payments'
 import { createGuardianship } from '../_fixtures/people'
 import { publish } from '../_fixtures/publication'
+import { MIN_TARGET_PX } from '../_fixtures/touch-targets'
 import { uiText } from '../_fixtures/ui-text'
 
 // E07-S09 (payments spec phase 4 step 9, REQ-032, REQ-002, the guardian's part of TEST-044; issue #116; M-16, M-17,
@@ -69,6 +70,14 @@ async function setClosesOn(campaignId: string, closesOn: string): Promise<void> 
   await withClient((client) =>
     client.query('update payments_order_campaigns set closes_on = $1 where id = $2', [closesOn, campaignId]),
   )
+}
+
+/** The element with `testId` is at least `MIN_TARGET_PX` high, so a tap anywhere on its field focuses it (#548). */
+async function expectTargetHeight(page: Page, testId: string): Promise<void> {
+  const box = await page.getByTestId(testId).boundingBox()
+  expect(box, testId).not.toBeNull()
+  expect(box?.height ?? 0, testId).toBeGreaterThanOrEqual(MIN_TARGET_PX - 0.5)
+  expect(box?.width ?? 0, testId).toBeGreaterThanOrEqual(MIN_TARGET_PX - 0.5)
 }
 
 async function expireOrderLinks(guardianPersonId: string): Promise<void> {
@@ -383,6 +392,10 @@ test('E07-S09 a guardian orders kit in the app and from a personal link', async 
     await adaRow.getByRole('link').click()
     await expect(page.getByTestId('order-form')).toBeVisible()
     await expect(page.getByTestId('order-email')).toHaveValue(kasiaEmail)
+    // #548: the text inputs themselves, not only their bordered wrappers, take the 44 px touch-target height.
+    for (const testId of ['order-print-name', 'order-print-number', 'order-email', 'order-phone']) {
+      await expectTargetHeight(page, testId)
+    }
     await page.getByTestId(`order-product-${id('Koszulka')}`).click()
     await page.getByRole('option', { name: '128', exact: true }).click()
     await page.getByTestId(`order-product-${id('Spodenki')}`).click()
@@ -402,6 +415,7 @@ test('E07-S09 a guardian orders kit in the app and from a personal link', async 
     await page.goto(`/club/orders/${campaignId}?club=${slug}`)
     await expect(page.getByTestId('order-card')).toContainText('Strój akademii 2026/27')
     await expect(page.getByTestId('order-sign-in')).toBeVisible()
+    await expectTargetHeight(page, 'order-link-email')
     await page.getByTestId('order-link-email').fill(unknownEmail)
     await page.getByTestId('order-link-request').click()
     await expect(page.getByTestId('order-link-sent')).toBeVisible()
