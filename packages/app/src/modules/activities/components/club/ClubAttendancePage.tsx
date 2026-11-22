@@ -327,6 +327,25 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [editable, busy])
+  // WCAG 2.2 SC 2.4.11 (#547): on a phone the sticky action bar covers the bottom of the viewport, so a row control
+  // focused by Tab is scrolled into view above it. The bar wraps (and grows with the "nothing to fill" hint), so its
+  // height is measured into `--attendance-actions-height` on the list rather than assumed.
+  const listRef = React.useRef<HTMLElement>(null)
+  const actionsRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const bar = actionsRef.current
+    const section = listRef.current
+    if (!bar || !section || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      section.style.setProperty('--attendance-actions-height', `${String(bar.offsetHeight)}px`)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(bar)
+    return () => {
+      observer.disconnect()
+    }
+  }, [editable])
 
   return (
     <>
@@ -420,7 +439,12 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
           </p>
         </Notice>
       ) : null}
-      <section aria-labelledby="club-attendance-list" className="flex flex-col gap-3">
+      {/* Below `sm` the bar is sticky at `bottom-24` (6 rem): a focused control keeps the bar's height + 6.5 rem below it. */}
+      <section
+        ref={listRef}
+        aria-labelledby="club-attendance-list"
+        className="flex flex-col gap-3 max-sm:[&_button]:scroll-mb-[calc(var(--attendance-actions-height,0px)+6.5rem)]"
+      >
         <h2 id="club-attendance-list" className="text-lg font-semibold">
           {t('activities.club.attendance.list')}
         </h2>
@@ -461,6 +485,7 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
         // On a phone the actions stay in view above the fixed bottom navigation (README M-05 "bottom action bar"); 6 rem
         // clears the navigation's 4 rem and a phone's safe area.
         <div
+          ref={actionsRef}
           className="bg-background sticky bottom-24 z-30 -mx-4 flex flex-wrap gap-2 border-t px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"
           data-testid="club-attendance-actions"
         >

@@ -13,7 +13,14 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import { generateAuthToken, hashAuthToken } from '@open-mercato/core/modules/auth/lib/tokenHash'
 import type { TokenLinkFields, TokenLinkUse } from '@vereino/db'
 import { foundationErrors } from '../api/errors'
-import { expiryFor, hashesMatch, isWellFormedToken, tokenLinkState, type TokenLinkState } from '../lib/token-link'
+import {
+  deadLinkCutoff,
+  expiryFor,
+  hashesMatch,
+  isWellFormedToken,
+  tokenLinkState,
+  type TokenLinkState,
+} from '../lib/token-link'
 
 /** The trusted tenant and organization a link is issued in, or the only ones a route accepts it from. */
 export type TokenLinkScope = { tenantId: string; organizationId: string }
@@ -47,6 +54,11 @@ export type TokenLinkServiceOptions<TUse extends TokenLinkUse> = {
   use: TUse
   /** Time to live of a new link in milliseconds, unless `issue` names an earlier `expiresAt`. */
   ttlMs: number
+  /**
+   * The table holds nothing but links (S9.5): `purgeDead` may delete its rows. Leave it unset for a link that lives
+   * on a business record (the facilities online request on `facilities_rentals`), whose rows are never purged here.
+   */
+  dedicatedTable?: boolean
 }
 
 export type IssueOptions = {
@@ -89,13 +101,19 @@ export type TokenLinkService<TEntity> = {
   ): Promise<{ state: TokenLinkState; view: TokenLinkView<TEntity> } | null>
   /** As `peek`, then spends the link in `em`'s transaction; a lost race answers 410 `token_link_used`. */
   redeem(em: EntityManager, rawToken: unknown, options?: LookupOptions): Promise<TokenLinkView<TEntity> | null>
+  /**
+   * Engineering standards S9.5: hard-deletes the organization's links that expired, were spent (single use) or were
+   * deleted at least `DEAD_LINK_RETENTION_DAYS` (30) before `now`; a valid link, or one dead for less, is kept.
+   * Returns the number of rows deleted. Only for a service built with `dedicatedTable: true`.
+   */
+  purgeDead(em: EntityManager, scope: TokenLinkScope, now: Date): Promise<number>
 }
 
 export function createTokenLinkService<TUse extends TokenLinkUse, TEntity extends TokenLinkEntity<TUse>>(
   Entity: EntityName<TEntity>,
   options: TokenLinkServiceOptions<TUse>,
 ): TokenLinkService<TEntity> {
-  const { use, ttlMs } = options
+  const { use, ttlMs, dedicatedTable = false } = options
   expiryFor(new Date(), ttlMs)
 
   /** The DD-35 lookup: by the unique hash only (system scope), then compared in constant time and narrowed. */
@@ -182,6 +200,23 @@ export function createTokenLinkService<TUse extends TokenLinkUse, TEntity extend
         await foundationErrors.throw('token_link_expired')
       }
       return view((await find(em, rawToken, lookup)) ?? link)
+    },
+
+    async purgeDead(em, scope, now) {
+      if (!dedicatedTable) {
+        throw new Error('[internal] purgeDead runs only on a token-link service of a dedicated link table')
+      }
+      const cutoff = deadLinkCutoff(now)
+      const where = {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        $or: [
+          { expiresAt: { $lte: cutoff } },
+          ...(use === 'single' ? [{ usedAt: { $lte: cutoff } }] : []),
+          { deletedAt: { $lte: cutoff } },
+        ],
+      } as unknown as FilterQuery<TEntity>
+      return em.nativeDelete(Entity, where)
     },
   }
 }

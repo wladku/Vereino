@@ -584,7 +584,8 @@ export function OrderFormSection({
                   <Label htmlFor={`${ids}-print-name`}>{t('payments.orders.club.printName')}</Label>
                   <Input
                     id={`${ids}-print-name`}
-                    className="min-h-11 sm:w-48"
+                    className="h-12 sm:w-48"
+                    inputClassName="self-stretch"
                     maxLength={PRINT_NAME_MAX}
                     value={draft.printName ?? ''}
                     onChange={(event) => {
@@ -604,7 +605,8 @@ export function OrderFormSection({
                     inputMode="numeric"
                     min={1}
                     max={99}
-                    className="min-h-11 sm:w-32"
+                    className="h-12 sm:w-32"
+                    inputClassName="self-stretch"
                     value={draft.printNumber ?? ''}
                     aria-invalid={numberTaken || !!problems.fields.printNumber}
                     aria-describedby={`${ids}-print-number-hint ${ids}-print-number-problem`}
@@ -642,7 +644,8 @@ export function OrderFormSection({
                 id={`${ids}-email`}
                 type="email"
                 autoComplete="email"
-                className="min-h-11 sm:w-72"
+                className="h-12 sm:w-72"
+                inputClassName="self-stretch"
                 value={draft.contactEmail}
                 onChange={(event) => {
                   update('contactEmail', event.target.value)
@@ -657,7 +660,8 @@ export function OrderFormSection({
                 id={`${ids}-phone`}
                 type="tel"
                 autoComplete="tel"
-                className="min-h-11 sm:w-48"
+                className="h-12 sm:w-48"
+                inputClassName="self-stretch"
                 value={draft.contactPhone}
                 onChange={(event) => {
                   update('contactPhone', event.target.value)

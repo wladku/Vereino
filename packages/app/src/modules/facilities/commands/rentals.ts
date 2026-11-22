@@ -25,9 +25,10 @@ import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { z } from 'zod'
-import { calendarDateInZone } from '@vereino/core'
+import { calendarDateInZone, type ActingRole } from '@vereino/core'
 import {
   advanceWhere,
   assertInScope,
@@ -84,6 +85,8 @@ import {
   throwFieldError,
   type FacilitiesCommandResult,
 } from './shared'
+
+const linkPurgeLogger = createLogger('facilities').child({ component: 'purge-rental-links' })
 
 export const RENTAL_RESOURCE_KIND = 'facilities.rental'
 
@@ -949,6 +952,61 @@ const confirmPaidCommand: CommandHandler<Record<string, unknown>, ConfirmPaidRes
   },
 }
 
+// --- The purge job (engineering standards S9.5; `docs/compliance/retention.md` row R9; #525) ---
+
+export type PurgeRentalLinksJobResult = {
+  tenantId: string
+  organizationId: string
+  actingRole: ActingRole
+  now: string
+  deleted: number
+}
+
+/**
+ * `facilities.rental_links.purge_dead` — the daily `facilities:purge-rental-links` job: deletes the club's rental links
+ * that expired (the rental started), were used (the cancellation) or were deleted at least 30 days ago
+ * (`DEAD_LINK_RETENTION_DAYS`); a valid link, or one dead for less, is kept. A repeated run deletes nothing more. Not
+ * undoable: the link is dead and its raw token exists nowhere. A run that deleted nothing leaves no audit entry.
+ */
+const purgeRentalLinksCommand: CommandHandler<Record<string, unknown>, PurgeRentalLinksJobResult> = {
+  id: 'facilities.rental_links.purge_dead',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    return inWriteTransaction(ctx, 'facilities.rental_links.purge_dead', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: lifecycleSchema,
+          resourceKind: 'facilities.organization',
+          allowedKinds: ['system_job'],
+          resolveTarget: (_parsed, _entity, trusted) => ({ id: trusted.organizationId, ...trusted }),
+          lock: 'none',
+          scopeSource: { job: true },
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const trusted = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      const now = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
+      const deleted = await rentalLinks(ctx.container).purgeDead(em, trusted, now)
+      linkPurgeLogger.info('Dead rental links purged', { ...trusted, now: now.toISOString(), deleted })
+      return { ...trusted, actingRole: authorized.actingRole, now: now.toISOString(), deleted }
+    })
+  },
+  async buildLog({ result }) {
+    if (result.deleted === 0) return null
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('facilities.audit.jobs.purgeRentalLinks', 'Delete the rental links dead for 30 days'),
+      resourceKind: 'facilities.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: { actingRole: result.actingRole, now: result.now, deleted: result.deleted },
+    }
+  },
+}
+
 registerCommand(createRentalCommand)
 registerCommand(confirmRentalCommand)
 registerCommand(cancelRentalCommand)
@@ -957,4 +1015,5 @@ registerCommand(noShowRentalCommand)
 registerCommand(moveRentalCommand)
 registerCommand(updateRentalCommand)
 registerCommand(advanceLifecycleCommand)
+registerCommand(purgeRentalLinksCommand)
 registerCommand(confirmPaidCommand)

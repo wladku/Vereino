@@ -15,7 +15,11 @@
 // and is still not closed, linking to its attendance list. E10-S08 (#273, REQ-A10, M-02): in the staff context a
 // section coordinator gets the tile "Section sessions" with the counts Needing a coach, Needs a new time and Unsettled
 // (the panel's sessions views, `pageSize=1`), each opening the section calendar in that view; the coach tile stays only
-// for a person who also coaches.
+// for a person who also coaches. E20-S14 (#493, R01.5, README M-02): the widget renders two tiles straight into Today's
+// grid, in the mockup's order — Calendar (the member's sessions and, for a person who coaches, "My sessions today and
+// tomorrow" as its second part) and Attendance (the section counts of a coordinator, the coach's unsettled sessions and
+// the guardian's waiting decisions, or "Nothing waits for you") — so with the Messages tile Today never holds more than
+// three tiles. Sessions are rows separated by a line, not cards inside the card.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -82,7 +86,9 @@ export type ClubTodayContext = {
   }
 }
 
-const TILE_CLASS = 'bg-card flex h-full flex-col gap-2 rounded-lg border p-4'
+const TILE_CLASS = 'bg-card flex h-full flex-col gap-3 rounded-lg border p-4'
+/** A session row inside a tile: a line under it, none under the last one (no card inside the card). */
+const ROW_CLASS = 'flex flex-col gap-2 border-b py-3 first:pt-0 last:border-b-0 last:pb-0'
 const LINK_CLASS =
   'hover:bg-accent focus-visible:focus-indicator flex min-h-11 flex-col rounded-md px-2 py-1 outline-none'
 const PENDING_WINDOW_DAYS = 13
@@ -152,9 +158,8 @@ function UnsettledAlerts({ entries, timeZone }: { entries: CalendarEntry[]; time
 }
 
 /** The coach's sessions of today and tomorrow (E06-S15 #97): the session page as the coach and its attendance list. */
-function CoachTile({
+function CoachSessions({
   entries,
-  unsettled,
   loading,
   failed,
   onRetry,
@@ -163,7 +168,6 @@ function CoachTile({
   offersNewEvent,
 }: {
   entries: CalendarEntry[]
-  unsettled: CalendarEntry[]
   loading: boolean
   failed: boolean
   onRetry: () => void
@@ -188,9 +192,9 @@ function CoachTile({
     body = <p className="text-muted-foreground text-sm">{t('activities.club.today.coachEmpty')}</p>
   else {
     body = (
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col">
         {entries.map((entry) => (
-          <li key={entry.occurrence.id} className="flex flex-col gap-1" data-testid="club-today-coach-session">
+          <li key={entry.occurrence.id} className={ROW_CLASS} data-testid="club-today-coach-session">
             <Link href={sessionHref(entry.occurrence.id, 'coach')} className={LINK_CLASS}>
               <SessionWhen entry={entry} today={today} timeZone={timeZone} />
               <span className="text-sm">
@@ -227,22 +231,16 @@ function CoachTile({
     )
   }
   return (
-    <div className={TILE_CLASS} data-testid="club-tile-coach">
-      <h3 className="font-semibold">{t('activities.club.today.coachSessions')}</h3>
-      <UnsettledAlerts entries={unsettled} timeZone={timeZone} />
+    <div className="flex flex-col gap-2" data-testid="club-tile-coach">
+      <h3 className="text-sm font-semibold">{t('activities.club.today.coachSessions')}</h3>
       {body}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Link href={CLUB_CALENDAR_HREF} className="text-primary inline-flex min-h-11 items-center text-sm underline">
-          {t('activities.club.today.openCalendar')}
-        </Link>
-        {offersNewEvent ? (
-          <Button asChild size="sm" variant="outline" className="min-h-11">
-            <Link href={newEventHref()} data-testid="club-today-new-event">
-              {t('activities.club.event.new')}
-            </Link>
-          </Button>
-        ) : null}
-      </div>
+      {offersNewEvent ? (
+        <Button asChild size="sm" variant="outline" className="min-h-11 self-start">
+          <Link href={newEventHref()} data-testid="club-today-new-event">
+            {t('activities.club.event.new')}
+          </Link>
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -276,12 +274,12 @@ function SectionCount({ view, today }: { view: SectionListView; today: string })
   )
 }
 
-/** The section coordinator's counts (M-02, #273): the sessions that need their action. */
-function SectionTile({ today }: { today: string }) {
+/** The section coordinator's counts (M-02, #273): the sessions that need their action, part of the Attendance tile. */
+function SectionCounts({ today }: { today: string }) {
   const t = useT()
   return (
-    <div className={TILE_CLASS} data-testid="club-tile-section">
-      <h3 className="font-semibold">{t('activities.club.section.tileTitle')}</h3>
+    <div className="flex flex-col gap-2" data-testid="club-tile-section">
+      <h3 className="text-sm font-semibold">{t('activities.club.section.tileTitle')}</h3>
       <ul className="flex flex-col gap-1">
         {SECTION_COUNT_VIEWS.map((view) => (
           <SectionCount key={view} view={view} today={today} />
@@ -478,7 +476,7 @@ export default function ClubTodayTilesWidget({
     )
   } else {
     calendarBody = (
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col">
         {soon.map((entry) => {
           const { occurrence } = entry
           const notice = todayEntryNotice(entry)
@@ -487,7 +485,7 @@ export default function ClubTodayTilesWidget({
           return (
             <li
               key={occurrence.id}
-              className="flex flex-col gap-2 rounded-md border p-2"
+              className={ROW_CLASS}
               data-testid="club-today-card"
               data-occurrence-id={occurrence.id}
             >
@@ -546,22 +544,35 @@ export default function ClubTodayTilesWidget({
     )
   }
 
+  const unsettled = coaches ? unsettledEntries(pastCoachQuery.data?.items ?? [], new Date()) : []
+  const nothingWaits = !coordinates && unsettled.length === 0 && pending.length === 0
+
   return (
-    <section aria-labelledby="club-today-activities" className="flex flex-col gap-3">
-      <h2 id="club-today-activities" className="sr-only">
-        {t('activities.club.today.title')}
-      </h2>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {coordinates ? (
-          <li>
-            <SectionTile today={today} />
-          </li>
-        ) : null}
-        {coaches ? (
-          <li>
-            <CoachTile
+    <>
+      {actingAsMember || coaches ? (
+        <section aria-labelledby="club-today-calendar" className={TILE_CLASS} data-testid="club-today-calendar-tile">
+          <div className="flex flex-wrap items-center justify-between gap-x-4">
+            <h2 id="club-today-calendar" className="font-semibold">
+              {t('activities.club.today.calendar')}
+            </h2>
+            <Link
+              href={CLUB_CALENDAR_HREF}
+              className="text-primary inline-flex min-h-11 items-center text-sm underline"
+            >
+              {t('activities.club.today.openCalendar')}
+            </Link>
+          </div>
+          {actingAsMember ? (
+            <div className="flex flex-col gap-2" data-testid="club-tile-calendar">
+              {calendarBody}
+              <p className="sr-only" aria-live="polite" data-testid="club-today-announcement">
+                {announcement}
+              </p>
+            </div>
+          ) : null}
+          {coaches ? (
+            <CoachSessions
               entries={coachQuery.data?.items ?? []}
-              unsettled={unsettledEntries(pastCoachQuery.data?.items ?? [], new Date())}
               loading={!coachQuery.data && coachQuery.isFetching}
               failed={!coachQuery.data && !coachQuery.isFetching}
               onRetry={() => void coachQuery.refetch()}
@@ -569,52 +580,42 @@ export default function ClubTodayTilesWidget({
               timeZone={timeZone}
               offersNewEvent={coachesAGroup(profile?.contexts ?? [])}
             />
-          </li>
-        ) : null}
-        {actingAsMember ? (
-          <li>
-            <div className={TILE_CLASS} data-testid="club-tile-calendar">
-              <h3 className="font-semibold">{t('activities.club.today.calendar')}</h3>
-              {calendarBody}
-              <Link
-                href={CLUB_CALENDAR_HREF}
-                className="text-primary inline-flex min-h-11 items-center text-sm underline"
-              >
-                {t('activities.club.today.openCalendar')}
-              </Link>
-              <p className="sr-only" aria-live="polite" data-testid="club-today-announcement">
-                {announcement}
-              </p>
-            </div>
-          </li>
-        ) : null}
+          ) : null}
+        </section>
+      ) : null}
+      <section aria-labelledby="club-today-attendance" className={TILE_CLASS} data-testid="club-today-attendance-tile">
+        <h2 id="club-today-attendance" className="font-semibold">
+          {t('activities.club.today.attendance')}
+        </h2>
+        {coordinates ? <SectionCounts today={today} /> : null}
+        <UnsettledAlerts entries={unsettled} timeZone={timeZone} />
         {pending.length > 0 ? (
-          <li>
-            <div className={TILE_CLASS} data-testid="club-tile-attendance">
-              <h3 className="font-semibold">{t('activities.club.today.attendance')}</h3>
-              <ul className="flex flex-col gap-2">
-                {pending.map(({ entry, person }) => (
-                  <li key={`${entry.occurrence.id}:${person.personId}`}>
-                    <Link
-                      href={sessionHref(entry.occurrence.id, 'guardian', person.personId)}
-                      className={LINK_CLASS}
-                      data-testid="club-today-pending"
-                    >
-                      <span className="text-sm">
-                        {t('activities.club.today.waiting', {
-                          name: person.firstName,
-                          activity: entry.occurrence.activityName ?? '',
-                          when: sessionMoment(new Date(entry.occurrence.startAt), locale, timeZone),
-                        })}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </li>
+          <ul className="flex flex-col" data-testid="club-tile-attendance">
+            {pending.map(({ entry, person }) => (
+              <li key={`${entry.occurrence.id}:${person.personId}`} className="border-b last:border-b-0">
+                <Link
+                  href={sessionHref(entry.occurrence.id, 'guardian', person.personId)}
+                  className={LINK_CLASS}
+                  data-testid="club-today-pending"
+                >
+                  <span className="text-sm">
+                    {t('activities.club.today.waiting', {
+                      name: person.firstName,
+                      activity: entry.occurrence.activityName ?? '',
+                      when: sessionMoment(new Date(entry.occurrence.startAt), locale, timeZone),
+                    })}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         ) : null}
-      </ul>
-    </section>
+        {nothingWaits ? (
+          <p className="text-muted-foreground text-sm" data-testid="club-today-nothing-waits">
+            {t('activities.club.today.nothingWaits')}
+          </p>
+        ) : null}
+      </section>
+    </>
   )
 }

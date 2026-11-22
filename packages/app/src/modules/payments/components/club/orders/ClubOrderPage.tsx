@@ -135,7 +135,8 @@ function SignedOut({ campaignId, clubSlug }: { campaignId: string; clubSlug: str
                     id={`${ids}-email`}
                     type="email"
                     autoComplete="email"
-                    className="min-h-11 sm:w-72"
+                    className="h-12 sm:w-72"
+                    inputClassName="self-stretch"
                     value={email}
                     aria-invalid={state === 'invalid'}
                     onChange={(event) => {
@@ -201,7 +202,7 @@ export function ClubOrderPage({ campaignId }: { campaignId: string }) {
     )
   }
   return (
-    <PaymentsClubFrame skeleton="fields">
+    <PaymentsClubFrame skeleton="fields" loadErrorKey="payments.orders.club.errors.load">
       {() => {
         if (query.data?.status === 'not_found') {
           return (

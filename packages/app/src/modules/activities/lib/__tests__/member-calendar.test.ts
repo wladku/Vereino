@@ -8,14 +8,16 @@ import {
   mergeCalendarEntries,
   requestedCalendarRange,
   shiftCalendarAnchor,
+  UPCOMING_DAYS,
   windowContains,
 } from '../member-calendar'
 
 // E06-S18 (#100): the member calendar's week and month views, the link range and the trimmed retry. Every date is a
 // fixed calendar date: nothing here depends on the weekday or the hour the test runs at.
 describe('member calendar views', () => {
-  it('knows the week and the month view only', () => {
-    expect(CALENDAR_VIEWS).toEqual(['week', 'month'])
+  it('knows the upcoming list (first, the default), the week and the month view only', () => {
+    expect(CALENDAR_VIEWS).toEqual(['upcoming', 'week', 'month'])
+    expect(isCalendarView('upcoming')).toBe(true)
     expect(isCalendarView('week')).toBe(true)
     expect(isCalendarView('month')).toBe(true)
     expect(isCalendarView('day')).toBe(false)
@@ -27,6 +29,15 @@ describe('member calendar views', () => {
     expect(calendarViewWindow('week', '2026-11-08')).toEqual({ from: '2026-11-02', to: '2026-11-08' })
     expect(calendarViewWindow('month', '2026-11-05')).toEqual({ from: '2026-11-01', to: '2026-11-30' })
     expect(calendarViewWindow('month', '2027-02-14')).toEqual({ from: '2027-02-01', to: '2027-02-28' })
+  })
+
+  it('lists today and the next 13 days, moving by 14 days (E20-S14, #493)', () => {
+    expect(UPCOMING_DAYS).toBe(14)
+    expect(calendarViewWindow('upcoming', '2026-11-21')).toEqual({ from: '2026-11-21', to: '2026-12-04' })
+    expect(calendarViewWindow('upcoming', '2026-12-25')).toEqual({ from: '2026-12-25', to: '2027-01-07' })
+    expect(shiftCalendarAnchor('upcoming', '2026-11-21', 1)).toBe('2026-12-05')
+    expect(shiftCalendarAnchor('upcoming', '2026-11-21', -1)).toBe('2026-11-07')
+    expect(shiftCalendarAnchor('upcoming', '2026-11-21', 0)).toBe('2026-11-21')
   })
 
   it('moves the anchor to the first day of the week or month a step away', () => {

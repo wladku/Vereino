@@ -26,6 +26,17 @@ export const publicClubHref = (slug: string): string => `/p/${encodeURIComponent
 /** The sign-in page that shows the club of this public slug. */
 export const publicSignInHref = (slug: string): string => `/login?club=${encodeURIComponent(slug)}`
 
+/** The club's default privacy notice page (E19-S03, #469). */
+export const publicPrivacyHref = (slug: string): string => `${publicClubHref(slug)}/privacy`
+
+/**
+ * Where the footer's privacy-policy link of every public page leads (E19-S03, #469): the club's own address when it set
+ * one on B-03 (#195), else the default notice page with the club's name.
+ */
+export function privacyPolicyHref(slug: string, clubUrl: string | null): { href: string; source: 'club' | 'default' } {
+  return clubUrl ? { href: clubUrl, source: 'club' } : { href: publicPrivacyHref(slug), source: 'default' }
+}
+
 /** `page` when `pathname` is `base` or a page below it. */
 const pageAtOrBelow = (pathname: string, base: string): PublicNavCurrent =>
   pathname === base || pathname.startsWith(`${base}/`) ? 'page' : false

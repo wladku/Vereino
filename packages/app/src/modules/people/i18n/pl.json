@@ -120,7 +120,6 @@
   "people.club.tiles.profile.title": "Profil i zgody",
   "people.club.title": "Klub",
   "people.club.today.pageTitle": "Dziś",
-  "people.club.today.tiles": "Twój klub",
   "people.club.today.title": "Dzień dobry, {name}",
   "people.club.ward.actions.save": "Zapisz zgody",
   "people.club.ward.back": "Wróć do „Dziś”",
@@ -131,7 +130,7 @@
   "people.club.ward.notYourWard": "Ta osoba nie jest Twoim podopiecznym.",
   "people.club.ward.pageTitle": "Podopieczny",
   "people.club.ward.primaryPayer": "Jesteś głównym płatnikiem",
-  "people.club.wards.birthDate": "Urodzony(-a) {date}",
+  "people.club.wards.birthDate": "Data urodzenia: {date}",
   "people.club.wards.consentsSummary": "Zgody: {granted} z {total}",
   "people.club.wards.hasAccount": "Własne konto",
   "people.club.wards.title": "Twoi podopieczni",
@@ -872,5 +871,6 @@
   "people.erasure.module.club_core": "umowy",
   "people.erasure.module.facilities": "obiekty",
   "people.club.leave.errors.summary": "Sprawdź prośbę",
-  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę."
+  "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
+  "people.club.today.shortcuts": "Na skróty"
 }

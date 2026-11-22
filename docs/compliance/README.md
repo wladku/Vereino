@@ -14,7 +14,7 @@ club, as controller, adopts the records of processing, the DPIA and the data-sub
 | [`data-subject-requests.md`](data-subject-requests.md) | data-subject request procedure | draft |
 | [`asvs-checklist.md`](asvs-checklist.md) | OWASP ASVS 5.0 level 2 map (S8.1) | draft |
 | [`legal-verification.md`](legal-verification.md) | verified legal claims (S9.10) | awaiting the owner's acceptance |
-| privacy notices | Polish, English, short version for children | E19-S03 (#469) |
+| privacy notices: the default notice at `/p/<club-slug>/privacy`, text in the `club_core.privacy.*` keys of `packages/app/src/modules/club_core/i18n/{pl,en}.json`, sections in `club_core/lib/privacy-notice.ts` | Polish, English, short version for children; shown while the club has set no privacy-policy address of its own (E19-S03, #469) | draft |
 
 Out of scope here: the data processing agreement between the host and the club (who signs it is open, ENG-Q-03).
 

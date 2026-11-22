@@ -19,7 +19,7 @@ import {
 } from '../../../components/client-helpers'
 
 const TILE_CLASS = 'bg-card flex h-full flex-col gap-3 rounded-lg border p-4'
-const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4'
+const LINK_CLASS = 'inline-flex min-h-11 min-w-11 items-center underline underline-offset-4'
 
 /** The same key the member thread page invalidates after it marks a thread read. */
 const UNREAD_COUNT_QUERY_KEY = ['communication-unread-count'] as const
@@ -44,59 +44,54 @@ export default function ClubMessagesTileWidget() {
   })
   const unread = query.data ?? null
   return (
-    <section aria-labelledby="club-today-messages" className="flex flex-col gap-3">
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <li>
-          <div className={TILE_CLASS}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="club-today-messages" className="font-semibold">
-                {t('communication.tile.title')}
-              </h2>
-              <Link href={CLUB_MESSAGES_HREF} className={`${LINK_CLASS} text-sm`} data-testid="club-tile-messages">
-                {t('communication.tile.all')}
-                <span className="sr-only"> ({t('communication.tile.open')})</span>
-              </Link>
-            </div>
-            {!unread && query.isFetching ? (
-              <MemberSkeleton
-                shape="rows"
-                count={1}
-                label={t('communication.club.loading')}
-                data-testid="club-tile-messages-loading"
-              />
-            ) : null}
-            {unread && unread.count > 0 ? (
-              <div className="flex flex-col gap-1">
-                <span data-testid="club-tile-messages-unread" data-count={String(unread.count)}>
-                  <StatusTag status="info">{t('communication.tile.unread', { count: String(unread.count) })}</StatusTag>
-                </span>
-                {unread.newest ? (
-                  <Link
-                    href={clubThreadHref(unread.newest.id)}
-                    className={`${LINK_CLASS} font-medium break-words`}
-                    data-testid="club-tile-messages-newest"
-                  >
-                    {unread.newest.subject}
-                  </Link>
-                ) : null}
-              </div>
-            ) : null}
-            {unread && unread.count === 0 ? (
-              <p className="text-muted-foreground text-sm" data-testid="club-tile-messages-none">
-                {t('communication.tile.noNew')}
-              </p>
-            ) : null}
-            {query.isError && !query.isFetching ? (
-              <div className="flex flex-col items-start gap-2" data-testid="club-tile-messages-error">
-                <p className="text-sm">{t('communication.tile.error')}</p>
-                <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
-                  {t('communication.actions.retry')}
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </li>
-      </ul>
+    // E20-S14 (#493): one tile straight in Today's grid, the third after Calendar and Attendance.
+    <section aria-labelledby="club-today-messages" className={TILE_CLASS} data-testid="club-today-messages-tile">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="club-today-messages" className="font-semibold">
+          {t('communication.tile.title')}
+        </h2>
+        <Link href={CLUB_MESSAGES_HREF} className={`${LINK_CLASS} text-sm`} data-testid="club-tile-messages">
+          {t('communication.tile.all')}
+          <span className="sr-only"> ({t('communication.tile.open')})</span>
+        </Link>
+      </div>
+      {!unread && query.isFetching ? (
+        <MemberSkeleton
+          shape="rows"
+          count={1}
+          label={t('communication.club.loading')}
+          data-testid="club-tile-messages-loading"
+        />
+      ) : null}
+      {unread && unread.count > 0 ? (
+        <div className="flex flex-col gap-1">
+          <span data-testid="club-tile-messages-unread" data-count={String(unread.count)}>
+            <StatusTag status="info">{t('communication.tile.unread', { count: String(unread.count) })}</StatusTag>
+          </span>
+          {unread.newest ? (
+            <Link
+              href={clubThreadHref(unread.newest.id)}
+              className={`${LINK_CLASS} font-medium break-words`}
+              data-testid="club-tile-messages-newest"
+            >
+              {unread.newest.subject}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+      {unread && unread.count === 0 ? (
+        <p className="text-muted-foreground text-sm" data-testid="club-tile-messages-none">
+          {t('communication.tile.noNew')}
+        </p>
+      ) : null}
+      {query.isError && !query.isFetching ? (
+        <div className="flex flex-col items-start gap-2" data-testid="club-tile-messages-error">
+          <p className="text-sm">{t('communication.tile.error')}</p>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => void query.refetch()}>
+            {t('communication.actions.retry')}
+          </Button>
+        </div>
+      ) : null}
     </section>
   )
 }

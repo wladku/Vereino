@@ -49,7 +49,11 @@ export function checkoutProviderKey(): string {
  * `payments.chargeService` (payments parity spec REQ-C01, DD-C01, #291): the rental charge service `facilities`
  * resolves with `hasRegistration` (facilities DD-19). It is stateless: every call writes through the caller's `em`.
  */
-const orderLinks = createTokenLinkService(OrderLink, { use: 'until_expiry', ttlMs: ORDER_LINK_TTL_MS })
+const orderLinks = createTokenLinkService(OrderLink, {
+  use: 'until_expiry',
+  ttlMs: ORDER_LINK_TTL_MS,
+  dedicatedTable: true,
+})
 const chargeService = createChargeService()
 
 export function register(container: AppContainer) {

@@ -14,7 +14,12 @@ import type { ActingRole, GrantKind } from '@vereino/core'
 import { authorizeScoped } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Occurrence } from '../data/entities'
-import { attendanceDeclareSchema, declareByLinkSchema, sendRemindersSchema } from '../data/validators'
+import {
+  attendanceDeclareSchema,
+  declareByLinkSchema,
+  purgeDeclarationLinksSchema,
+  sendRemindersSchema,
+} from '../data/validators'
 import { declarationLinkService, sendDeclarationReminders, type ReminderCounts } from '../services/declaration-links'
 import {
   ATTENDANCE_RESOURCE_KIND,
@@ -150,5 +155,64 @@ const sendRemindersCommand: CommandHandler<Record<string, unknown>, RemindersJob
   },
 }
 
+// --- The purge job (engineering standards S9.5; `docs/compliance/retention.md` row R9; #525) ---
+
+export type PurgeDeclarationLinksResult = {
+  tenantId: string
+  organizationId: string
+  actingRole: ActingRole
+  now: string
+  deleted: number
+}
+
+/**
+ * `activities.declaration_links.purge_dead` — the daily `activities:purge-declaration-links` job: deletes the club's
+ * declaration links that expired (or were deleted) at least 30 days ago (`DEAD_LINK_RETENTION_DAYS`); a valid link, or
+ * one dead for less, is kept. A repeated run deletes nothing more. Not undoable: the link is dead and its raw token
+ * exists nowhere. A run that deleted nothing leaves no audit entry.
+ */
+const purgeDeclarationLinksCommand: CommandHandler<Record<string, unknown>, PurgeDeclarationLinksResult> = {
+  id: 'activities.declaration_links.purge_dead',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    return inWriteTransaction(ctx, 'activities.declaration_links.purge_dead', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: purgeDeclarationLinksSchema,
+          resourceKind: 'activities.organization',
+          allowedKinds: ['system_job'],
+          resolveTarget: (_parsed, _entity, scope) => ({ id: scope.organizationId, ...scope }),
+          lock: 'none',
+          scopeSource: { job: true },
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      const now = authorized.parsed.now ? new Date(authorized.parsed.now) : new Date()
+      const deleted = await declarationLinkService(ctx.container).purgeDead(em, scope, now)
+      logger.info('Dead declaration links purged', { ...scope, now: now.toISOString(), deleted })
+      return { ...scope, actingRole: authorized.actingRole, now: now.toISOString(), deleted }
+    })
+  },
+  async buildLog({ result }) {
+    if (result.deleted === 0) return null
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate(
+        'activities.audit.jobs.purgeDeclarationLinks',
+        'Delete the declaration links dead for 30 days',
+      ),
+      resourceKind: 'activities.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: { actingRole: result.actingRole, now: result.now, deleted: result.deleted },
+    }
+  },
+}
+
 registerCommand(declareByLinkCommand)
 registerCommand(sendRemindersCommand)
+registerCommand(purgeDeclarationLinksCommand)
