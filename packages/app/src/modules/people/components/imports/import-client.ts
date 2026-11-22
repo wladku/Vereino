@@ -44,6 +44,14 @@ export type ImportRow = {
   fileAvailable: boolean
   pendingDecisions: number
   canCreateMemberships: boolean
+  /** The commit's progress job while it runs and shortly after (#585). */
+  commitProgress: {
+    jobId: string
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+    processedCount: number
+    totalCount: number | null
+    progressPercent: number
+  } | null
   updatedAt: string
 }
 
