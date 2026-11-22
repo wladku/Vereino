@@ -1,0 +1,1 @@
+| 2026-11-22 | #600: AC-L07 evidenced — `TEST-L09-coming-of-age-notices-phone` shows "Turns 18 on {date}" on the guardian's ward card and the ward page, and the own card before ("You turn 18") and after ("Since {date} you decide alone") the 18th birthday at 375 px in Polish and English, light and dark (axe); AC-L07 ticked |
