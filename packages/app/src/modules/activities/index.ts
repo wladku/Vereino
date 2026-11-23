@@ -7,7 +7,7 @@ export const metadata: ModuleInfo = {
   description:
     'Activities of both group kinds: weekly series generated for a 16-week horizon, detached sessions, place and coach conflicts, one-off events for a coach own group, and cancellations with an in-app notice (#31).',
   author: 'Vereino',
-  license: 'MIT',
+  license: 'AGPL-3.0-only',
   // Club spec *Architecture*: `activities` → `groups` → `people` → `club_core`; all are reached only through DI and ids.
   requires: ['groups', 'club_core', 'people'],
 }

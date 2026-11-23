@@ -7,7 +7,7 @@ topics: ["playwright", "data-table", "row-actions", "flaky-tests", "re-render"]
 
 # A DataTable row-actions menu opened right after page load can detach; open it and pick the item inside one toPass
 
-**Context**: PR #241 (2026-11-10): `TEST-039-request-ui.spec.ts` failed on CI run 42757613850 at `getByRole('menuitem', { name: 'Approve' }).click()` — first "element is not stable … was detached from the DOM", then on the retry the menu item never appeared. The PR did not touch the requests queue; the same test passed on `main`.
+**Context**: PR #241 (2026-11-10): `TEST-039-request-ui.spec.ts` failed on CI run 42757613850 at `getByRole('menuitem', { name: 'Approve' }).click()` — first "element is not stable … was detached from the DOM", then on the retry the menu item never appeared. The PR did not touch the requests queue; the same test passed on `main`. Recurred on PR #638 (2026-11-22, CI run 45065537955, shard 1/6): `E06-S13-coach-absence-substitutes.spec.ts` failed the same way at the "Assign substitute" menu item of the occurrences list, on both attempts, while the PR only changed a people test.
 
 **Problem**: A `DataTable` with `rowActions` (`RowActions`) re-renders its rows when its query settles or refetches. A menu opened by clicking the row's actions button just before that re-render is unmounted with the row, so the following `menuitem` click waits on a detached or missing element until the 30 s timeout. A visible row and its text do not prove the table has stopped re-rendering.
 

@@ -34,15 +34,19 @@ import {
 import {
   endRefused,
   firstOverlapping,
-  fitsAgeRange,
+  fitRuleOf,
+  fitsRule,
   mayRemoveMembership,
   moveManyProblem,
   moveOutcome,
   planMove,
+  referenceYear,
+  type FitRule,
   type MembershipRole,
   type MoveOutcome,
 } from '../lib/groups-rules'
 import { checkRolloverToken, issueRolloverToken } from '../lib/rollover-token'
+import { isAgeCategoryEntry, rangesByEntry, seasonForReference } from '../services/age-categories'
 import { clubToday } from '../services/club-clock'
 import { findPersons } from '../services/directory'
 import { groupUsageContract } from '../services/group-usage'
@@ -618,7 +622,7 @@ export type MoveManyItem = {
   futureDeclarations: number
   /** `month_charged_once` for a moved child: the month's fee is charged once, in the group of the reference day. */
   feeNote: 'month_charged_once' | null
-  /** The age-fit rule on `date` against the target group's age range; null without a range or a birth date. */
+  /** Whether the child fits the target by the preview's `fitRule`; null without a rule or a birth date. */
   fitsTarget: boolean | null
 }
 
@@ -630,6 +634,8 @@ export type MoveManyPreview = {
   moved: number
   skipped: number
   futureDeclarations: number
+  /** The rule of the **Fits {group}** filter: the team category's birth years, else the group's age range. */
+  fitRule: FitRule | null
 }
 
 type BuiltMoveMany = {
@@ -723,6 +729,7 @@ async function buildMoveMany(
         from: parsed.date,
       })
     : new Map<string, string[]>()
+  const fitRule = await targetFitRule(em, scope, target, parsed.date)
   const items: MoveManyItem[] = parsed.membershipIds.map((id) => {
     const row = rows.get(id) as GroupMembership
     const outcome = outcomes.get(id) as MoveOutcome
@@ -735,10 +742,7 @@ async function buildMoveMany(
       outcome,
       futureDeclarations: moving ? (declarations.get(row.personId)?.length ?? 0) : 0,
       feeNote: moving ? 'month_charged_once' : null,
-      fitsTarget: fitsAgeRange(person?.birthDate ?? null, parsed.date, {
-        ageFrom: target.ageFrom ?? null,
-        ageTo: target.ageTo ?? null,
-      }),
+      fitsTarget: fitsRule(person?.birthDate ?? null, parsed.date, fitRule),
     }
   })
   const moved = items.filter((item) => item.outcome === 'move').length
@@ -751,6 +755,7 @@ async function buildMoveMany(
       moved,
       skipped: items.length - moved,
       futureDeclarations: items.reduce((sum, item) => sum + item.futureDeclarations, 0),
+      fitRule,
     },
     rows,
     lastDay,
@@ -763,6 +768,26 @@ async function buildMoveMany(
       declarations: item.outcome === 'move' ? (declarations.get(item.personId) ?? []) : [],
     })),
   }
+}
+
+/**
+ * The **Fits {group}** rule of the target (AC-L16, DD-L17): a team whose live age category has a "U" range fits by birth
+ * year in the reference year of its season (or of the season holding the move date, or the move date's year, Q-L25);
+ * otherwise the group's age range on the move date.
+ */
+async function targetFitRule(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  target: Group,
+  date: string,
+): Promise<FitRule | null> {
+  const ages = { ageFrom: target.ageFrom ?? null, ageTo: target.ageTo ?? null }
+  const entryId = target.kind === 'team' ? (target.ageCategoryEntryId ?? null) : null
+  if (!entryId || !(await isAgeCategoryEntry(em, scope, entryId))) return fitRuleOf(null, 0, ages)
+  const range = (await rangesByEntry(em, scope, [entryId])).get(entryId)
+  if (!range) return fitRuleOf(null, 0, ages)
+  const season = await seasonForReference(em, scope, target.seasonId ?? null, date)
+  return fitRuleOf({ uFrom: range.uFrom, uTo: range.uTo ?? null }, referenceYear(season?.startsOn ?? null, date), ages)
 }
 
 /** What the preview token binds besides the content: the request as sent, without the token itself. */

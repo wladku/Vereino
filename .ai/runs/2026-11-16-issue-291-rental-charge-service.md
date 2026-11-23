@@ -1,7 +1,7 @@
 # Run: #291 — E12-S01 a rental creates its charge payable to the facility owner; "Rentals (municipality)" on B-21
 
 - **Goal and trigger:** unattended cezar run (task 2429255e) of `om-auto-fix-issue` on #291, queued by the `cezar` label. Feature route: payments parity spec phase 1 (REQ-C01; TEST-C01, TEST-C02 and TEST-C03 rental parts, TEST-C16; AC-C01; DD-C01, DD-C02).
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (Ready for implementation; migrations A1 and A2, Contract 1 and Contract 5 approved by the owner on 2026-11-16 on #254, Q-C20). **Issue:** #291, epic #254. **Branch:** `feat/issue-291-rental-charge-service`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (Ready for implementation; migrations A1 and A2, Contract 1 and Contract 5 approved by the owner on 2026-11-16 on #254, Q-C20). **Issue:** #291, epic #254. **Branch:** `feat/issue-291-rental-charge-service`.
 
 ## Steps
 

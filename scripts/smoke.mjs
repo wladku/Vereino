@@ -6,7 +6,8 @@
 // Checks, in order, and prints one line per check:
 //   health            GET /api/healthz answers 2xx;
 //   sign-in page      GET /login answers 200 with an HTML page;
-//   security headers  the sign-in page carries every header of SECURITY_HEADERS (E18-S02 extends the list, ENG-TEST-11);
+//   security headers  the sign-in page carries every header of SECURITY_HEADERS and a CSP without `'unsafe-eval'`
+//                     (ENG-TEST-11; HSTS, Permissions-Policy and the CSP decision from E18-S02, #463);
 //   no-store          an authenticated response (GET /api/auth/profile) carries `Cache-Control: no-store`. It needs a
 //                     test account in VEREINO_SMOKE_EMAIL and VEREINO_SMOKE_PASSWORD and is skipped without them.
 // Exits 0 when every check passed or was skipped, 1 naming each failed check, 2 on a usage error. Never prints a
@@ -14,8 +15,15 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** Response headers every page must carry today (`packages/app/next.config.ts`). */
-export const SECURITY_HEADERS = ['content-security-policy', 'referrer-policy', 'x-content-type-options', 'x-frame-options']
+/** Response headers every page of a production build must carry (`packages/app/next.config.ts`, S8.4). */
+export const SECURITY_HEADERS = [
+  'content-security-policy',
+  'referrer-policy',
+  'x-content-type-options',
+  'x-frame-options',
+  'permissions-policy',
+  'strict-transport-security',
+]
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -82,10 +90,14 @@ export async function checkSignInPage({ baseUrl, fetchImpl }) {
       ? { name: 'sign-in page', status: 'pass', detail: 'GET /login 200 text/html' }
       : { name: 'sign-in page', status: 'fail', detail: `GET /login answered ${String(response.status)} (${contentType || 'no content type'})` }
   const missing = SECURITY_HEADERS.filter((header) => !response.headers.get(header))
+  const problems = missing.length > 0 ? [`missing: ${missing.join(', ')}`] : []
+  if (/'unsafe-eval'/.test(response.headers.get('content-security-policy') ?? '')) {
+    problems.push("content-security-policy allows 'unsafe-eval'")
+  }
   const headers =
-    missing.length === 0
+    problems.length === 0
       ? { name: 'security headers', status: 'pass', detail: SECURITY_HEADERS.join(', ') }
-      : { name: 'security headers', status: 'fail', detail: `missing: ${missing.join(', ')}` }
+      : { name: 'security headers', status: 'fail', detail: problems.join('; ') }
   return /** @type {CheckResult[]} */ ([page, headers])
 }
 

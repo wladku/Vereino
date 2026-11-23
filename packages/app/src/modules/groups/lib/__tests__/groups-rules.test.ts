@@ -37,6 +37,8 @@ import {
   MOVE_MANY_LIMIT,
   MOVE_OUTCOMES,
   fitsAgeRange,
+  fitRuleOf,
+  fitsRule,
   moveManyProblem,
   moveOutcome,
   planMove,
@@ -496,5 +498,39 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(fitsAgeRange('2010-01-01', '2026-09-01', { ageFrom: null, ageTo: 7 })).toBe(false)
     expect(fitsAgeRange('2020-01-01', '2026-09-01', { ageFrom: null, ageTo: null })).toBeNull()
     expect(fitsAgeRange(null, '2026-09-01', skrzaty)).toBeNull()
+  })
+
+  it("builds the Fits rule from the team category's birth years, else from the age range (AC-L16, DD-L17)", () => {
+    const orlik = { uFrom: 10, uTo: 11 }
+    const ages = { ageFrom: 6, ageTo: 7 }
+    expect(fitRuleOf(orlik, 2026, ages)).toEqual({
+      kind: 'birth_years',
+      uFrom: 10,
+      uTo: 11,
+      referenceYear: 2026,
+      from: 2016,
+      to: 2017,
+    })
+    expect(fitRuleOf({ uFrom: 20, uTo: null }, 2026, ages)).toMatchObject({ from: null, to: 2007 })
+    expect(fitRuleOf(null, 2026, ages)).toEqual({ kind: 'age', ageFrom: 6, ageTo: 7 })
+    expect(fitRuleOf(null, 2026, { ageFrom: null, ageTo: 7 })).toEqual({ kind: 'age', ageFrom: null, ageTo: 7 })
+    expect(fitRuleOf(null, 2026, { ageFrom: null, ageTo: null })).toBeNull()
+  })
+
+  it('fits a child by birth year for a categorised team and by age otherwise (AC-L16)', () => {
+    const orlik = fitRuleOf({ uFrom: 10, uTo: 11 }, 2026, { ageFrom: 30, ageTo: 40 })
+    // By birth year, not by day: born on 31 December 2017 still fits, although only eight on the move date.
+    expect(fitsRule('2017-12-31', '2026-09-01', orlik)).toBe(true)
+    expect(fitsRule('2016-01-01', '2026-09-01', orlik)).toBe(true)
+    expect(fitsRule('2015-12-31', '2026-09-01', orlik)).toBe(false)
+    expect(fitsRule('2018-01-01', '2026-09-01', orlik)).toBe(false)
+    const senior = fitRuleOf({ uFrom: 20, uTo: null }, 2026, { ageFrom: null, ageTo: null })
+    expect(fitsRule('1970-05-05', '2026-09-01', senior)).toBe(true)
+    expect(fitsRule('2008-01-01', '2026-09-01', senior)).toBe(false)
+    const skrzaty = fitRuleOf(null, 2026, { ageFrom: 6, ageTo: 7 })
+    expect(fitsRule('2020-09-01', '2026-09-01', skrzaty)).toBe(true)
+    expect(fitsRule('2020-09-01', '2026-08-31', skrzaty)).toBe(false)
+    expect(fitsRule(null, '2026-09-01', orlik)).toBeNull()
+    expect(fitsRule('2017-01-01', '2026-09-01', null)).toBeNull()
   })
 })

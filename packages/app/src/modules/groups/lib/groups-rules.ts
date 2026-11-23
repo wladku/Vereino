@@ -362,6 +362,43 @@ export function fitsAgeRange(
 }
 
 /**
+ * The rule the roster's **Fits {group}** filter applies (REQ-L15 with REQ-L16, DD-L17, AC-L16): a team whose age
+ * category has a "U" range fits by birth year in the reference year R (`birth_years`, with the birth years shown on
+ * the chip); any other group fits by age on the move date within its `age_from`–`age_to` (`age`). Null when the group
+ * has neither.
+ */
+export type FitRule =
+  | {
+      kind: 'birth_years'
+      uFrom: number
+      uTo: number | null
+      referenceYear: number
+      from: number | null
+      to: number
+    }
+  | { kind: 'age'; ageFrom: number | null; ageTo: number | null }
+
+export function fitRuleOf(
+  category: AgeCategoryRange | null,
+  year: number,
+  ages: { ageFrom: number | null; ageTo: number | null },
+): FitRule | null {
+  if (category) {
+    const { uFrom, uTo } = category
+    return { kind: 'birth_years', uFrom, uTo, referenceYear: year, ...birthYearsOf(category, year) }
+  }
+  if (ages.ageFrom === null && ages.ageTo === null) return null
+  return { kind: 'age', ageFrom: ages.ageFrom, ageTo: ages.ageTo }
+}
+
+/** Whether a child fits the target by `rule` on the move date; null without a rule or a birth date. */
+export function fitsRule(birthDate: CalendarDate | null, date: CalendarDate, rule: FitRule | null): boolean | null {
+  if (!rule || !birthDate) return null
+  if (rule.kind === 'age') return fitsAgeRange(birthDate, date, rule)
+  return fitsAgeCategory(Number(birthDate.slice(0, 4)), rule, rule.referenceYear)
+}
+
+/**
  * Whether a membership may be removed (REQ-A03): one that has not started always; a started one only when `activities`
  * answered that it was never used. `used` is null when the usage contract is not registered.
  */

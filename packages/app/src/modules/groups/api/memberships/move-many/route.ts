@@ -35,9 +35,26 @@ const previewItemSchema = z.object({
     .boolean()
     .nullable()
     .describe(
-      "The child's age on `date` lies within the target group's age range; null without a range or a birth date.",
+      'The child fits the target by `fitRule` (birth year or age on `date`); null without a rule or a birth date.',
     ),
 })
+
+const fitRuleSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('birth_years'),
+      uFrom: z.number().int(),
+      uTo: z.number().int().nullable(),
+      referenceYear: z.number().int(),
+      from: z.number().int().nullable(),
+      to: z.number().int(),
+    }),
+    z.object({ kind: z.literal('age'), ageFrom: z.number().int().nullable(), ageTo: z.number().int().nullable() }),
+  ])
+  .nullable()
+  .describe(
+    'The rule of the Fits filter: a team whose age category has a U range fits by birth year (`from`…`to`) in the reference year of its season (or of the move date); any other group by age on `date` within its age range; null without either (AC-L16).',
+  )
 
 const previewSchema = z.object({
   fromGroupId: z.uuid(),
@@ -47,6 +64,7 @@ const previewSchema = z.object({
   moved: z.number().int(),
   skipped: z.number().int(),
   futureDeclarations: z.number().int(),
+  fitRule: fitRuleSchema,
   previewToken: z.string(),
 })
 

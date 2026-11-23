@@ -18,6 +18,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone } from '@vereino/core'
 import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { metadata as recordsPageMetadata } from '../../backend/facilities/logs/page.meta'
 import { MAINTENANCE_LIST_GROUPS, maintenanceListGroup, type MaintenanceListGroup } from '../../lib/maintenance'
 import { instantLabel } from '../facilities-client'
 import { MaintenanceCompleteDialog } from '../MaintenanceCompleteDialog'
@@ -41,6 +42,16 @@ import {
   zonedLocalInstant,
   zonedLocalValue,
 } from './places-client'
+
+// The panel path to the place maintainers, from the labels the menu itself shows (#667): the sidebar group and item
+// of the "Log and incidents" page, its "Maintenance" tab and that page's "Maintainers" tab. A renamed menu label
+// renames the hint with it.
+const MAINTAINERS_PANEL_PATH_KEYS = [
+  recordsPageMetadata.pageGroupKey,
+  recordsPageMetadata.pageTitleKey,
+  'facilities.records.tabs.maintenance',
+  'facilities.maintenance.tabs.maintainers',
+] as const
 
 function TaskCard({
   task,
@@ -150,7 +161,11 @@ function TaskSections({ profile }: { profile: PlacesProfile }) {
   } else if (!query.data && calendarErrorStatus(query.error) === 403) {
     body = (
       <Alert style="light" status="warning" data-testid="club-maintenance-denied">
-        <p className="max-w-prose">{t('facilities.places.maintenance.forbidden')}</p>
+        <p className="max-w-prose">
+          {t('facilities.places.maintenance.forbidden', {
+            path: MAINTAINERS_PANEL_PATH_KEYS.map((key) => t(key)).join(' › '),
+          })}
+        </p>
       </Alert>
     )
   } else if (!query.data) {

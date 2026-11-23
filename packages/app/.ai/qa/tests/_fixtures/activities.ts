@@ -1,8 +1,12 @@
 // Helpers of the `activities` integration tests (club spec phase 2 steps 3 and 8; TEST-007, TEST-012, TEST-034; issue
 // #31): activities, previews, sessions, one-off events and cancellations through the API, the daily generator through
 // the module CLI, the in-app notifications of a user, and club-zone (`Europe/Warsaw`) calendar and wall-time helpers.
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
-import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, calendarDate, call, mercato, type Club } from './club'
 import { create as createStructure } from './club-structure'
 import { createGroup, signedInStaff } from './groups'
 import { safeDayAfter } from '../../../../scripts/vereino-test-dates.mjs'
@@ -425,4 +429,60 @@ export function zoneInstant(date: string, time: string, timeZone = CLUB_ZONE): s
 export function juneThirtiethNextYear(today: string): { until: string; date: string } {
   const year = Number(today.slice(0, 4)) + 1
   return { until: `${String(year)}0630`, date: `${String(year)}-06-30` }
+}
+
+// --- Occupancy provider probe ---
+
+const OCCUPANCY_PROVIDER_PROBE = path.join(
+  APP_ROOT,
+  '.ai',
+  'qa',
+  'tests',
+  '_fixtures',
+  'occupancy-provider-probe',
+  'probe.mjs',
+)
+
+export type OccupancyProbeStep = {
+  provider: 'throwing' | 'absent'
+  op: 'preview' | 'create'
+  body: Record<string, unknown>
+}
+
+export type OccupancyProbeResult = {
+  /** Whether the route's container had `vereino.occupancyProvider` (null when the route never asked). */
+  registered: boolean | null
+  /** How often the throwing provider was called. */
+  calls: number
+  status: number
+  code: string | null
+  /** The response of a 2xx, else null. */
+  body: (PreviewResult & { id?: string; sessionsCreated?: number }) | null
+}
+
+/**
+ * Calls the activity preview or create route as `token` in a probe process whose containers register a throwing
+ * `vereino.occupancyProvider` or none at all (foundation II TEST-G04, #590). The probe gets its own private queue
+ * directory; one process runs every step.
+ */
+export function runOccupancyProviderProbe(token: string, steps: OccupancyProbeStep[]): OccupancyProbeResult[] {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [OCCUPANCY_PROVIDER_PROBE, JSON.stringify({ token, steps })], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the occupancy provider probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return (JSON.parse(last) as { steps: OccupancyProbeResult[] }).steps
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
 }

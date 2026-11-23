@@ -1,4 +1,7 @@
-FROM node:24-alpine AS builder
+# Base images are pinned by digest (engineering standards S14.8, #463); Renovate (`docker:pinDigests`) moves tag and
+# digest together. The deployed `runner` stage runs as the non-root `omuser`; `yarn dockerfiles:check` (in `yarn verify`)
+# fails on an unpinned base or a root final stage.
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS builder
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     PATH=/app/packages/app/node_modules/.bin:/app/node_modules/.bin:$PATH
@@ -35,7 +38,7 @@ COPY . .
 RUN yarn generate
 RUN NODE_ENV=production yarn build
 
-FROM node:24-alpine AS dev
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS dev
 
 ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -79,7 +82,7 @@ RUN chmod +x /app/docker/scripts/mcp-entrypoint.sh
 EXPOSE 3000 4101
 CMD ["/bin/sh", "/app/docker/scripts/dev-entrypoint.sh"]
 
-FROM node:24-alpine AS runner
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS runner
 
 ARG CONTAINER_PORT=3000
 ARG DOCUMENTS_COLLAB_PORT=4101

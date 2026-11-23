@@ -1,6 +1,6 @@
 # Run: issue #298 — E12-S08 a payer pays everything on the phone, a partly paid charge too, and a second guardian sees who pays
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 298`, label `cezar`): build phase 8 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C10; DD-C06, DD-C07; TEST-C11, TEST-C16 checkout shares; AC-C10).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 298`, label `cezar`): build phase 8 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C10; DD-C06, DD-C07; TEST-C11, TEST-C16 checkout shares; AC-C10).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (Q-C20: migration D and Contract 2 approved; Q-C03 and Q-C04 confirmed); issue #298; branch `feat/issue-298-payer-phone-payments`.
 
 ## Steps
