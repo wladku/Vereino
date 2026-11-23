@@ -1,11 +1,11 @@
 ---
-number: D-037
+number: D-038
 date: 2026-11-23
 owner: Władek Kuć
 source: the owner's conversations with coaches of two clubs holding a PZPN academy certificate (names in the owner's notes); the owner's answers of 2026-11-23 in a Claude Code session, after Claude read the PZPN Certification Programme documents and the medical-certificate rules; recorded with epic E24
 status: confirmed
 ---
-# D-037 Training outlines on sessions, a shared outline library, and the medical certificate expiry date
+# D-038 Training outlines on sessions, a shared outline library, and the medical certificate expiry date
 
 N01 keeps coaching tools out of 1.0: training diagrams, an exercise library, a medical module, scouting, assessments and statistics. D16 kept it after one coordinator wished for training plans for a possible PZPN bronze star. Its trigger was "the club commits to the certification and coaches confirm the need". In November 2026 the owner met coaches of two clubs that already hold a PZPN star:
 
@@ -87,7 +87,7 @@ N01 keeps coaching tools out of 1.0: training diagrams, an exercise library, a m
 
 **Applied in:**
 
-- product brief: N01 narrowed, D16 narrowed, and the D37 row;
+- product brief: N01 narrowed, D16 narrowed, and the D38 row;
 - epic E24.
 
 **To change:** a superseding record approved by the owner.

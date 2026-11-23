@@ -25,4 +25,4 @@ status: confirmed
 
 **Revisit:** at the brief refresh after the administrator's interview and the second part of the coordinator's interview.
 
-**Update 2026-11-23:** the N01 part is superseded by D-037. Coaches of two clubs holding a PZPN star confirmed the need for training outlines and the medical certificate expiry date; grants (N07) stay as decided here.
+**Update 2026-11-23:** the N01 part is superseded by D-038. Coaches of two clubs holding a PZPN star confirmed the need for training outlines and the medical certificate expiry date; grants (N07) stay as decided here.
