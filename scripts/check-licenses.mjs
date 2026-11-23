@@ -178,7 +178,8 @@ function productionDependencies(manifest) {
 
 // Every installed production package reachable from the workspaces, once per installed copy:
 // `{ name, version, license, dir }`. Workspace packages are walked through but not listed (they are this
-// repository's own code, MIT). A non-optional dependency that is not installed is reported in `missing`.
+// repository's own code, AGPL-3.0-only since D-035; third-party packages stay within the permissive
+// allowlist so the owner can still license the code commercially). A non-optional dependency that is not installed is reported in `missing`.
 export function collectPackages(rootDir) {
   const workspaces = listWorkspaces(rootDir)
   const workspaceDirs = new Set(workspaces.map((dir) => fs.realpathSync(dir)))
