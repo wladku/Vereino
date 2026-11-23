@@ -22,6 +22,7 @@ import {
   offboardingState,
 } from '../lib/club-offboarding'
 import {
+  ClubNotDueError,
   deleteClub,
   exportClub,
   readClubArchive,
@@ -195,8 +196,9 @@ const deleteSchema = settingsIdSchema.extend({ slug: z.string().min(1) }).strict
 export type DeleteClubResult = ClubLogBase & { deletedAt: string; summary: ClubDeletionSummary }
 
 /**
- * Deletes the club (`deleteClub`) once its notice period has ended — checked again here, under the settings row's
- * lock, so no caller deletes a club early (`offboarding_not_due`). Logged after the rows are gone: the entry names the
+ * Deletes the club (`deleteClub`) once its notice period has ended — checked again here (`offboarding_not_due`) and
+ * once more by `deleteClub` inside its own transaction, under the settings row's lock, so no caller deletes a club
+ * early and a notice cancelled in between stops the deletion. Logged after the rows are gone: the entry names the
  * tables and row counts, and is the club's one audit entry that stays.
  */
 const deleteClubCommand: CommandHandler<Record<string, unknown>, DeleteClubResult> = {
@@ -224,7 +226,10 @@ const deleteClubCommand: CommandHandler<Record<string, unknown>, DeleteClubResul
       ctx.container,
       { ...scope, slug: input.slug, settingsId: input.settingsId },
       { dryRun: false },
-    )
+    ).catch((error: unknown) => {
+      if (error instanceof ClubNotDueError) return clubCoreErrors.throw('offboarding_not_due')
+      throw error
+    })
     return {
       settingsId: input.settingsId,
       ...scope,

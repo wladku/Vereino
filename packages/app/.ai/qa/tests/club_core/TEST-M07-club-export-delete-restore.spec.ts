@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -15,7 +16,9 @@ import { getSettings, png, publicGet, publish, upload } from '../_fixtures/publi
 // refuse to delete before notice and during the notice period; `export-club` writes one archive with a file per module
 // and the logo file, decrypted; `delete-club` after the notice leaves only the slug's tombstone and the one deletion
 // audit entry of club A in any table with a `tenant_id`, nothing in the user-keyed tables and no logo file, while club B
-// is untouched row for row. `restore-club` brings club A back — its administrator signs in again and reads the
+// is untouched row for row. The archive carries no password hash, and a copy edited to reach another tenant or to
+// write a file outside its partition is refused. `restore-club` brings club A back — its administrator signs in again
+// (after setting a password) and reads the
 // decrypted person, the public logo is served — and the archive round-trips into an empty, freshly migrated database:
 // the export taken there equals the original apart from the audit log.
 test.describe.configure({ timeout: 900_000 })
@@ -119,6 +122,35 @@ async function archiveData(file: string): Promise<Map<string, unknown>> {
   return data
 }
 
+/**
+ * A copy of `source` at `target` with its data entries changed by `edit` and the manifest's checksums recomputed, as
+ * anyone holding the archive could do.
+ */
+async function tamperedArchive(
+  source: string,
+  target: string,
+  edit: (entries: Record<string, unknown>) => void,
+): Promise<string> {
+  const zip = await JSZip.loadAsync(fs.readFileSync(source))
+  const read = async (name: string): Promise<unknown> => {
+    const entry = zip.file(name)
+    if (!entry) throw new Error(`the archive has no ${name}`)
+    return JSON.parse(await entry.async('string')) as unknown
+  }
+  const manifest = (await read('manifest.json')) as { checksums: Record<string, string> }
+  const entries: Record<string, unknown> = {}
+  for (const name of Object.keys(manifest.checksums)) entries[name] = await read(name)
+  edit(entries)
+  for (const [name, value] of Object.entries(entries)) {
+    const text = `${JSON.stringify(value, null, 2)}\n`
+    manifest.checksums[name] = createHash('sha256').update(text).digest('hex')
+    zip.file(name, text)
+  }
+  zip.file('manifest.json', `${JSON.stringify(manifest, null, 2)}\n`)
+  fs.writeFileSync(target, await zip.generateAsync({ type: 'nodebuffer' }))
+  return target
+}
+
 async function signIn(request: APIRequestContext, superToken: string, club: Club, email: string, password: string) {
   const reset = await call(request, 'PUT', '/api/auth/users', superToken, { data: { id: club.adminUserId, password } })
   expect(reset.status, JSON.stringify(reset.body)).toBe(200)
@@ -196,7 +228,8 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
       last_name: 'Wiśniewska',
     })
     const auth = data.get('data/auth.json') as Record<string, unknown[]>
-    expect(auth.users).toEqual([expect.objectContaining({ email: emailA })])
+    // No credential leaves the instance in the archive: the password hash is cleared (*Data out*).
+    expect(auth.users).toEqual([expect.objectContaining({ email: emailA, password_hash: null })])
     expect(auth.sessions).toBeUndefined()
     expect(auth.password_resets).toBeUndefined()
     const existing = clubCli(['export-club', '--slug', slugA, '--out', archive])
@@ -270,14 +303,37 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
       expect(stagedData.get(name), name).toEqual(content)
     }
 
+    // An archive edited to reach beyond its club is refused before anything is written, even with its checksums
+    // recomputed: a row of club B's tenant, and an attachment path out of its partition.
+    const otherTenant = await tamperedArchive(archive, path.join(work, 'other-tenant.zip'), (entries) => {
+      const rows = (entries['data/people.json'] as Record<string, Record<string, unknown>[]>).people_persons
+      rows.push({ ...rows[0], id: '00000000-0000-4000-8000-000000000632', tenant_id: clubB.tenantId })
+    })
+    expect(clubCli(['restore-club', '--in', otherTenant]).output).toEqual({
+      status: 'refused',
+      reason: 'archive_out_of_scope',
+      tables: ['people_persons: a row of another tenant'],
+    })
+    const outOfPartition = await tamperedArchive(archive, path.join(work, 'out-of-partition.zip'), (entries) => {
+      const rows = (entries['data/attachments.json'] as Record<string, Record<string, unknown>[]>).attachments
+      rows[0].storage_path = '../../../m07-escaped.png'
+    })
+    expect(clubCli(['restore-club', '--in', outOfPartition]).output).toEqual({
+      status: 'refused',
+      reason: 'archive_out_of_scope',
+      tables: ['attachments: a file outside its partition'],
+    })
+    expect(await tenantRows(clubA.tenantId)).toEqual({ action_logs: 1, club_core_club_settings: 1 })
+
     // The restore on this instance: over its own tombstone; a second one is refused.
     const restored = clubCli(['restore-club', '--in', archive])
     expect(restored.exitCode, JSON.stringify(restored.output)).toBe(0)
     expect(restored.output).toMatchObject({ status: 'restored', tenantId: clubA.tenantId, files: 1 })
     expect(clubCli(['restore-club', '--in', archive]).output).toEqual({ status: 'refused', reason: 'tenant_exists' })
-    // The deletion ended the administrator's sessions; the helper's token cache would hand back the dead token.
+    // The deletion ended the administrator's sessions; the helper's token cache would hand back the dead token. The
+    // archive carries no password hash, so the administrator sets a password again (here through the superadmin).
     clearAuthTokenCache()
-    const again = await getAuthToken(request, emailA, password)
+    const again = await signIn(request, superToken, clubA, emailA, `${password}2`)
     const persons = await call<{ items: { id: string; firstName?: string; lastName?: string }[] }>(
       request,
       'GET',

@@ -187,7 +187,7 @@ line with a `status`, and a refusal exits 1 before anything is written.
    log records the export with the file name and checksum. The archive holds the club's **accounting records**
    (charges, payments, cash handovers, bank imports and statements): the club keeps them for the legal period from
    now on (`docs/compliance/retention.md` R1). Sign-in tokens, API keys, provider credentials and search indexes are
-   not exported. `missingFiles` lists attachments whose file storage no longer had; tell the club. Delete your copy
+   not exported, and the users' password hashes and the one-time link tokens of queued e-mails are cleared in it. `missingFiles` lists attachments whose file storage no longer had; tell the club. Delete your copy
    of the archive once the club confirmed it has it.
 3. **Delete the club** after the notice period:
 

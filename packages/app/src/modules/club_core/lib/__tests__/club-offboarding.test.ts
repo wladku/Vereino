@@ -2,9 +2,11 @@ import { describe, expect, it } from '@jest/globals'
 import {
   CLUB_ARCHIVE_FORMAT,
   CLUB_ARCHIVE_VERSION,
+  CLUB_EXPORT_REDACTED_COLUMNS,
   OFFBOARDING_NOTICE_DAYS_DEFAULT,
   PLATFORM_CLUB_TABLES,
   SLUG_RESERVATION_DAYS,
+  archiveScopeViolations,
   clubTables,
   countsByModule,
   fileEntryName,
@@ -19,8 +21,11 @@ import {
   parseOffboardOptions,
   parseRestoreOptions,
   parseRowJson,
+  redactExportRow,
+  safeAttachmentLocation,
   slugReleaseAt,
   uncoveredTables,
+  type ClubArchiveManifest,
 } from '../club-offboarding'
 
 const DAY = 86_400_000
@@ -28,6 +33,8 @@ const TENANT = '6bc8c0c1-59b7-4ec9-9cd0-81995d404d86'
 const ORG = 'c7fdbb54-0491-4325-a2a8-90d163c43d91'
 const FILE = '0b7e3c4a-1111-4222-8333-944455556666'
 const SUM = 'a'.repeat(64)
+const OTHER_TENANT = '9d3b1f7e-2c4a-4b6d-8e0f-1a2b3c4d5e6f'
+const USER = '1f2e3d4c-5b6a-4798-8a6b-5c4d3e2f1a0b'
 
 describe('clubTables', () => {
   it('lists the modules tables as tenant data, then the platform tables', () => {
@@ -268,5 +275,114 @@ describe('parseRowJson', () => {
 
   it('refuses a row that is not an object', () => {
     expect(() => parseRowJson('[1]')).toThrow('not a JSON object')
+  })
+})
+
+describe('redactExportRow', () => {
+  it('clears the credentials of users and queued deliveries, and leaves other tables alone (*Data out*, #677)', () => {
+    expect(CLUB_EXPORT_REDACTED_COLUMNS.users).toEqual(['password_hash'])
+    expect(redactExportRow('users', { id: USER, email: 'a@example.org', password_hash: '$2b$x' })).toEqual({
+      id: USER,
+      email: 'a@example.org',
+      password_hash: null,
+    })
+    expect(redactExportRow('foundation_deliveries', { id: FILE, secret_params: '{"token":"t"}' })).toEqual({
+      id: FILE,
+      secret_params: null,
+    })
+    // A redacted column the row does not have is not added.
+    expect(redactExportRow('users', { id: USER })).toEqual({ id: USER })
+    const person = { id: FILE, first_name: 'Zofia' }
+    expect(redactExportRow('people_persons', person)).toBe(person)
+  })
+})
+
+describe('archiveScopeViolations', () => {
+  const tables = clubTables([{ module: 'people', tables: ['people_persons'] }])
+  const manifestOf = (
+    entries: { module: string; table: string; key: 'tenant' | 'user' | 'tenant_row' }[],
+  ): ClubArchiveManifest => ({
+    format: CLUB_ARCHIVE_FORMAT,
+    version: CLUB_ARCHIVE_VERSION,
+    exportedAt: '2026-11-23T10:00:00.000Z',
+    club: { slug: 'orlik', tenantId: TENANT, organizationId: ORG },
+    tables: entries.map((entry) => ({ ...entry, rows: 1, decrypted: [] })),
+    files: [],
+    checksums: {},
+  })
+  const check = (
+    entries: { module: string; table: string; key: 'tenant' | 'user' | 'tenant_row' }[],
+    rows: Record<string, Record<string, unknown>[]>,
+  ) => archiveScopeViolations(manifestOf(entries), (table) => rows[table.table] ?? [], tables)
+
+  it('accepts the club own tables and rows', () => {
+    expect(
+      check(
+        [
+          { module: 'directory', table: 'tenants', key: 'tenant_row' },
+          { module: 'auth', table: 'users', key: 'tenant' },
+          { module: 'auth', table: 'user_roles', key: 'user' },
+          { module: 'people', table: 'people_persons', key: 'tenant' },
+        ],
+        {
+          tenants: [{ id: TENANT }],
+          users: [{ id: USER, tenant_id: TENANT }],
+          user_roles: [{ id: FILE, user_id: USER }],
+          people_persons: [{ id: FILE, tenant_id: TENANT }],
+        },
+      ),
+    ).toEqual([])
+  })
+
+  it('names a table outside the export, under another module or key, and rows of another tenant or user', () => {
+    expect(
+      check(
+        [
+          { module: 'auth', table: 'sessions', key: 'user' },
+          { module: 'auth', table: 'not_a_table', key: 'tenant' },
+          { module: 'groups', table: 'people_persons', key: 'tenant' },
+          { module: 'directory', table: 'organizations', key: 'user' },
+          { module: 'directory', table: 'tenants', key: 'tenant_row' },
+          { module: 'auth', table: 'user_roles', key: 'user' },
+          { module: 'entities', table: 'encryption_maps', key: 'tenant' },
+        ],
+        {
+          tenants: [{ id: OTHER_TENANT }],
+          user_roles: [{ id: FILE, user_id: USER }],
+          encryption_maps: [
+            { id: FILE, tenant_id: OTHER_TENANT },
+            { id: USER, tenant_id: OTHER_TENANT },
+          ],
+        },
+      ),
+    ).toEqual([
+      'encryption_maps: a row of another tenant',
+      'not_a_table: not a table of a club export',
+      'organizations: not a table of a club export',
+      'people_persons: not a table of a club export',
+      'sessions: not a table of a club export',
+      'tenants: a row of another tenant',
+      'user_roles: a row of another tenant',
+    ])
+  })
+})
+
+describe('safeAttachmentLocation', () => {
+  it('accepts a plain partition code and a relative path inside it', () => {
+    expect(safeAttachmentLocation('privateAttachments', 'org_1/2026/a.png')).toBe(true)
+    expect(safeAttachmentLocation('public-2', 'a..b/c.png')).toBe(true)
+  })
+
+  it('refuses a missing or unusual code, and an empty, absolute, parent or NUL path', () => {
+    expect(safeAttachmentLocation(null, 'a.png')).toBe(false)
+    expect(safeAttachmentLocation('../root', 'a.png')).toBe(false)
+    expect(safeAttachmentLocation('public', 7)).toBe(false)
+    expect(safeAttachmentLocation('public', '')).toBe(false)
+    expect(safeAttachmentLocation('public', 'a\0.png')).toBe(false)
+    expect(safeAttachmentLocation('public', '/etc/passwd')).toBe(false)
+    expect(safeAttachmentLocation('public', '\\server\\share')).toBe(false)
+    expect(safeAttachmentLocation('public', 'C:/x.png')).toBe(false)
+    expect(safeAttachmentLocation('public', 'a/../../x.png')).toBe(false)
+    expect(safeAttachmentLocation('public', 'a\\..\\x.png')).toBe(false)
   })
 })
