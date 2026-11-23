@@ -1,0 +1,625 @@
+{
+  "$comment": "Cross-club isolation probes of the payments order and group-charge routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/payments/order-campaigns": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "sectionId": "$B:section"
+          }
+        }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "name": "Probe kampania",
+            "sectionId": "$B:section",
+            "groupIds": ["$A:group"],
+            "closesOn": "$A:nextWeek",
+            "paymentDueOn": "$A:nextWeek",
+            "products": [
+              {
+                "key": "socks",
+                "name": "Getry",
+                "priceChild": 1500
+              }
+            ]
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "name": "Probe kampania",
+            "sectionId": "$A:section",
+            "groupIds": ["$B:group"],
+            "closesOn": "$A:nextWeek",
+            "paymentDueOn": "$A:nextWeek",
+            "products": [
+              {
+                "key": "socks",
+                "name": "Getry",
+                "priceChild": 1500
+              }
+            ]
+          }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "body": {
+            "name": "Probe kampania",
+            "sectionId": "$A:section",
+            "groupIds": ["$A:group"],
+            "closesOn": "$A:nextWeek",
+            "paymentDueOn": "$A:nextWeek",
+            "products": [
+              {
+                "key": "socks",
+                "name": "Getry",
+                "priceChild": 1500
+              }
+            ],
+            "id": "$B:orderCampaign"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:orderCampaignUpdatedAt"
+          },
+          "body": {
+            "name": "Probe kampania",
+            "sectionId": "$A:section",
+            "groupIds": ["$B:group"],
+            "closesOn": "$A:nextWeek",
+            "paymentDueOn": "$A:nextWeek",
+            "products": [
+              {
+                "id": "$A:orderProduct",
+                "key": "$A:orderProduct",
+                "name": "Getry",
+                "priceChild": 1500
+              }
+            ],
+            "id": "$A:orderCampaign"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:orderCampaignUpdatedAt"
+          },
+          "body": {
+            "name": "Probe kampania",
+            "sectionId": "$B:section",
+            "groupIds": ["$A:group"],
+            "closesOn": "$A:nextWeek",
+            "paymentDueOn": "$A:nextWeek",
+            "products": [
+              {
+                "id": "$A:orderProduct",
+                "key": "$A:orderProduct",
+                "name": "Getry",
+                "priceChild": 1500
+              }
+            ],
+            "id": "$A:orderCampaign"
+          }
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          }
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]/close": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:orderCampaign"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/order-campaigns/[id]/complete": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:orderCampaign"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/order-campaigns/[id]/mark-delivered": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:orderCampaign"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/order-campaigns/[id]/mark-ordered": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:orderCampaign"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/order-campaigns/[id]/open": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:orderCampaign"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/order-campaigns/[id]/form": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "roles": ["guardian", "member", "coordinator", "coach", "treasurer", "operator"],
+          "why": "The club administrator's bootstrap person is refused by the payments gate (403 payments_minor) before any lookup, for every id alike; the payer roles run the probe, the guardian (a real payer) first."
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          }
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]/missing": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "query": {
+            "groupId": "$B:group"
+          }
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]/remind": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "body": {}
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "body": {
+            "groupId": "$B:group"
+          },
+          "why": "groupId only narrows whom the reminder goes to (a group outside the campaign reminds nobody, like an unknown id); the answer must hold no club B count or record."
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]/share-text": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          }
+        }
+      ]
+    },
+    "/api/payments/order-campaigns/[id]/summary": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "query": {
+            "format": "csv"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "query": {
+            "format": "csv"
+          }
+        }
+      ]
+    },
+    "/api/payments/orders": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "query": {
+            "campaignId": "$B:orderCampaign"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "campaignId": "$A:orderCampaign"
+          }
+        }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "setSelected": false,
+            "choices": {},
+            "contactEmail": "probe-628@example.org",
+            "contactPhone": "600 100 200",
+            "campaignId": "$B:orderCampaign",
+            "participantPersonId": "$A:childPerson"
+          },
+          "roles": ["guardian", "member", "coordinator", "coach", "treasurer", "operator"],
+          "why": "The club administrator's bootstrap person is refused by the payments gate (403 payments_minor) before any lookup, for every id alike; the payer roles run the probe, the guardian (a real payer) first."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "setSelected": false,
+            "choices": {},
+            "contactEmail": "probe-628@example.org",
+            "contactPhone": "600 100 200",
+            "campaignId": "$A:orderCampaign",
+            "participantPersonId": "$B:childPerson"
+          },
+          "roles": ["guardian", "member", "coordinator", "coach", "treasurer", "operator"],
+          "why": "The club administrator's bootstrap person is refused by the payments gate (403 payments_minor) before any lookup, for every id alike; the payer roles run the probe, the guardian (a real payer) first. A person who is not the caller's (or the link guardian's) ward answers 403 scope_denied for a club B person and an unknown id alike (the grant check runs on ids, no existence is told); 404 once a missing person is answered as not found.",
+          "expect": [403, 404]
+        }
+      ]
+    },
+    "/api/payments/orders/[id]": {
+      "PUT": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:order"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "setSelected": false,
+          "choices": {},
+          "contactEmail": "probe-628@example.org",
+          "contactPhone": "600 100 200"
+        },
+        "roles": ["guardian", "member", "coordinator", "coach", "treasurer", "operator"],
+        "why": "The club administrator's bootstrap person is refused by the payments gate (403 payments_minor) before any lookup, for every id alike; the payer roles run the probe, the guardian (a real payer) first."
+      }
+    },
+    "/api/payments/orders/[id]/cancel": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:order"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {},
+        "roles": ["guardian", "member", "coordinator", "coach", "treasurer", "operator"],
+        "why": "The club administrator's bootstrap person is refused by the payments gate (403 payments_minor) before any lookup, for every id alike; the payer roles run the probe, the guardian (a real payer) first."
+      }
+    },
+    "/api/payments/orders/[id]/hand-over": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:order"
+          },
+          "body": {
+            "groupId": "$A:group",
+            "confirmUnpaid": true
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:order"
+          },
+          "body": {
+            "groupId": "$B:group",
+            "confirmUnpaid": true
+          },
+          "expect": [403],
+          "why": "A child, group or charge outside the caller's group answers 403 charge_out_of_scope for a club B record and an unknown id alike (the group scope check runs on ids, no existence is told)."
+        }
+      ]
+    },
+    "/api/payments/my-orders": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/payments/order-links/[token]": {
+      "GET": {
+        "probe": "read",
+        "roles": ["anonymous"],
+        "params": {
+          "token": "$A:orderLinkToken"
+        },
+        "why": "The token is a capability (D-024/D-026): club B's token showing club B's form is by design, so the probe reads club A's link without a session; the nested routes probe club B's records through club A's token."
+      }
+    },
+    "/api/payments/order-links/[token]/orders": {
+      "POST": [
+        {
+          "probe": "public",
+          "params": {
+            "token": "$A:orderLinkToken"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "setSelected": false,
+            "choices": {},
+            "contactEmail": "probe-628@example.org",
+            "contactPhone": "600 100 200",
+            "id": "$B:order"
+          }
+        },
+        {
+          "probe": "public",
+          "params": {
+            "token": "$A:orderLinkToken"
+          },
+          "body": {
+            "setSelected": false,
+            "choices": {},
+            "contactEmail": "probe-628@example.org",
+            "contactPhone": "600 100 200",
+            "participantPersonId": "$B:childPerson"
+          },
+          "expect": [403, 404],
+          "why": "A person who is not the caller's (or the link guardian's) ward answers 403 scope_denied for a club B person and an unknown id alike (the grant check runs on ids, no existence is told); 404 once a missing person is answered as not found."
+        }
+      ]
+    },
+    "/api/payments/order-links/[token]/orders/[id]/cancel": {
+      "POST": [
+        {
+          "probe": "public",
+          "params": {
+            "token": "$A:orderLinkToken",
+            "id": "$B:order"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {}
+        }
+      ]
+    },
+    "/api/payments/public/order-campaigns/[id]": {
+      "GET": [
+        {
+          "probe": "public",
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "query": {
+            "club": "$A:clubSlug"
+          }
+        },
+        {
+          "probe": "public",
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "query": {
+            "club": "$B:clubSlug"
+          }
+        },
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "query": {
+            "club": "$A:clubSlug"
+          }
+        }
+      ]
+    },
+    "/api/payments/public/order-campaigns/[id]/link-request": {
+      "POST": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "body": {
+            "email": "$A:guardianEmail",
+            "clubSlug": "$A:clubSlug"
+          },
+          "why": "The route answers 202 to every well-formed request by design (it never tells whether an address or a campaign is known), so a foreign probe cannot tell; the read proves the answer holds nothing of club B."
+        }
+      ]
+    },
+    "/api/payments/group-charges": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:group"
+          }
+        }
+      ]
+    },
+    "/api/payments/group-charges/cash": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "participantPersonId": "$A:childPerson",
+            "chargeIds": ["$A:orderCharge"],
+            "amount": 100,
+            "paidOn": "$A:today",
+            "notify": false
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "participantPersonId": "$B:childPerson",
+            "chargeIds": ["$A:orderCharge"],
+            "amount": 100,
+            "paidOn": "$A:today",
+            "notify": false
+          },
+          "expect": [403],
+          "why": "A child, group or charge outside the caller's group answers 403 charge_out_of_scope for a club B record and an unknown id alike (the group scope check runs on ids, no existence is told)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "participantPersonId": "$A:childPerson",
+            "chargeIds": ["$B:orderCharge"],
+            "amount": 100,
+            "paidOn": "$A:today",
+            "notify": false
+          },
+          "expect": [403],
+          "why": "A child, group or charge outside the caller's group answers 403 charge_out_of_scope for a club B record and an unknown id alike (the group scope check runs on ids, no existence is told)."
+        }
+      ]
+    },
+    "/api/payments/group-charges/remind": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "participantPersonId": "$A:childPerson"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "participantPersonId": "$B:childPerson"
+          },
+          "expect": [403],
+          "why": "A child, group or charge outside the caller's group answers 403 charge_out_of_scope for a club B record and an unknown id alike (the group scope check runs on ids, no existence is told)."
+        }
+      ]
+    },
+    "/api/payments/group-charges/campaigns/[id]/remind": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:orderCampaign"
+          },
+          "body": {
+            "groupId": "$A:group"
+          }
+        },
+        {
+          "probe": "read",
+          "params": {
+            "id": "$A:orderCampaign"
+          },
+          "body": {
+            "groupId": "$B:group"
+          },
+          "why": "groupId only narrows whom the reminder goes to (a group outside the campaign reminds nobody, like an unknown id); the answer must hold no club B count or record."
+        }
+      ]
+    }
+  }
+}

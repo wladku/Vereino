@@ -23,6 +23,7 @@
     "format": "node scripts/vereino-format.mjs",
     "format:check": "node scripts/vereino-format.mjs --check",
     "contracts:check": "node scripts/check-vereino-contracts.mjs",
+    "route-isolation:check": "node scripts/check-route-isolation.mjs",
     "settings-prefixes:check": "node scripts/check-settings-prefixes.mjs",
     "glossary:check": "node scripts/check-glossary.mjs",
     "qa-texts:check": "node scripts/vereino-ui-texts.mjs",
