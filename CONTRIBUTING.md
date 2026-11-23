@@ -1,6 +1,6 @@
 # Contributing to Vereino
 
-Thank you for helping. Vereino is an MIT-licensed club management application built on [Open Mercato](https://www.openmercato.com/). This guide says how to set up the repository, how a change travels from an idea to `main`, and which dependencies and platform files need special care.
+Thank you for helping. Vereino is a club management application licensed under AGPL-3.0-only (earlier releases MIT, see `NOTICE`), built on [Open Mercato](https://www.openmercato.com/). This guide says how to set up the repository, how a change travels from an idea to `main`, and which dependencies and platform files need special care.
 
 The engineering reference is [`.ai/specs/2026-10-21-engineering-standards-and-patterns.md`](.ai/specs/2026-10-21-engineering-standards-and-patterns.md) (standards S1–S19). The binding rules for every contributor — people and coding agents alike — are in [`AGENTS.md`](AGENTS.md); the delivery process is in [`SDLC.md`](SDLC.md). This page summarises them; when they disagree, those files win.
 
@@ -38,7 +38,7 @@ Every commit message has the form `type(scope): subject` in English, imperative,
 - **Scopes:** a Vereino module id (`club_core`, `people`, `groups`, `activities`, `communication`, `payments`, `facilities`, …), a package (`core`, `db`, `ui`), or `spec`, `ai`, `ci`, `deps`, `ops`, `compliance`, `i18n`, `monorepo`.
 - **Breaking change** to a contract surface: `type(scope)!: subject` and a `BREAKING CHANGE:` footer.
 
-Every commit is signed off under the [Developer Certificate of Origin](https://developercertificate.org/): commit with `git commit -s`, which adds `Signed-off-by: Your Name <you@example.com>`. The sign-off states that you wrote the change, or have the right to submit it, under the project's MIT licence. The `DCO` check blocks a pull request with an unsigned commit; to fix one, `git commit --amend -s` (last commit) or `git rebase --signoff main` on your own branch, then push.
+Every commit is signed off under the [Developer Certificate of Origin](https://developercertificate.org/): commit with `git commit -s`, which adds `Signed-off-by: Your Name <you@example.com>`. The sign-off states that you wrote the change, or have the right to submit it, under the project's licence, AGPL-3.0-only. Before the first outside contribution is merged, contributors will also sign a contributor licence agreement (CLA, D-035, #648), so the owner can offer the code under a commercial licence as well. The `DCO` check blocks a pull request with an unsigned commit; to fix one, `git commit --amend -s` (last commit) or `git rebase --signoff main` on your own branch, then push.
 
 ### The gate
 
