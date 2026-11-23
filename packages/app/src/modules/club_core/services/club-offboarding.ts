@@ -42,6 +42,8 @@ import {
   type ManifestFile,
   type ManifestTable,
 } from '../lib/club-offboarding'
+import { CLUB_EXPORT_PARTITION, supersededArchives } from '../lib/club-export'
+import { findClubExportJobs } from './club-export'
 
 export type ClubScope = { tenantId: string; organizationId: string }
 export type ClubIdentity = ClubScope & { slug: string; settingsId: string }
@@ -360,7 +362,8 @@ const TOMBSTONE_SCRUB = `
  * Deletes every row of the club from every covered table, in one transaction, children first; the club's settings row
  * stays as the slug's tombstone (`deleted_at` set, the slug, time zone and notice dates kept) until the slug is
  * released. Before it, the club's schedules are unregistered through the scheduler (which also removes their BullMQ
- * repeatables); after the commit, the attachment files are deleted from storage and the club's cache entries cleared.
+ * repeatables); after the commit, the attachment files and the administrator's export archives are deleted from
+ * storage and the club's cache entries cleared.
  * With `dryRun` it only counts. The data-encryption key is derived from the master secret and the tenant id (Q-M07), so
  * there is no key to destroy until a key store holds the keys.
  */
@@ -399,6 +402,8 @@ export async function deleteClub(
     `select id, partition_code, storage_path, file_name from attachments where tenant_id = ?`,
     [scope.tenantId],
   )
+  // The administrator's export archives (#676) are named by the club's progress jobs, which the deletion removes.
+  const exportArchives = supersededArchives(await findClubExportJobs(em, scope), '')
   await em.transactional(async (tx) => {
     await tx.execute(`update club_core_club_settings set ${TOMBSTONE_SCRUB} where id = ? and tenant_id = ?`, [
       club.settingsId,
@@ -423,6 +428,18 @@ export async function deleteClub(
       summary.filesDeleted += 1
     } catch {
       summary.filesFailed += 1
+    }
+  }
+  if (exportArchives.length > 0) {
+    const driver = await factory.resolveForPartition(CLUB_EXPORT_PARTITION)
+    for (const storagePath of exportArchives) {
+      try {
+        if (driver.deleteStrict) await driver.deleteStrict(CLUB_EXPORT_PARTITION, storagePath)
+        else await driver.delete(CLUB_EXPORT_PARTITION, storagePath)
+        summary.filesDeleted += 1
+      } catch {
+        summary.filesFailed += 1
+      }
     }
   }
   if (container.hasRegistration('cache')) {
