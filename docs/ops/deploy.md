@@ -83,8 +83,8 @@ through a club setting (below).
 2. **The demo club.** Production carries one club the maintainers own, with synthetic data and no real person in it.
    After the production deploy, the smoke check passes and the maintainer repeats the release-notes walk in this club
    before announcing anything. A behaviour behind a club setting is switched on here first and watched for at least a
-   day. Until the club-creation command of #630 exists, the demo club is created by hand once, with the per-club setup
-   commands below.
+   day. The demo club, like every club, is created with `yarn mercato club_core create-club`
+   ([`clubs.md`](clubs.md)).
 3. **Every club.** The release is announced. A behaviour behind a club setting is switched on for chosen clubs, then
    for every club, in later steps that need no deploy.
 
@@ -195,7 +195,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
 1. Deploy once; the pre-deploy command creates the schema through the migrations.
 2. From a Railway shell on the app service (`railway ssh` or the service's shell), with `OM_INIT_ADMIN_PASSWORD` set,
    run `yarn initialize --no-examples` once. It refuses to run on a database that already has users.
-3. Remove `OM_INIT_ADMIN_PASSWORD`, sign in as the superadmin and set up the club; then run the per-club setup below.
+3. Remove `OM_INIT_ADMIN_PASSWORD`. Create each club, starting with the demo club, with `yarn mercato club_core
+   create-club` ([`clubs.md`](clubs.md)); it runs the per-club setup below itself.
 
 ## After every deploy
 
