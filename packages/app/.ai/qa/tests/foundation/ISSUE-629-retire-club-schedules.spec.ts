@@ -167,6 +167,18 @@ test('many-clubs TEST-M06 retire-club-schedules moves every club onto one sweep 
     // Every club with job state gets the dispatch sweeper back too, as `seedDefaults` gives each club.
     const restored = [...CLUB_JOBS, 'foundation:dispatch-sweep'].sort()
     for (const club of clubs) expect(await perClubSchedules(club)).toEqual(restored)
+
+    // --- The dispatch sweep alone, for a club set up before the job state existed (no row) ---
+    await withClient(async (client) => {
+      await client.query('delete from foundation_club_jobs where organization_id = $1', [a.tenant.organizationId])
+    })
+    retired = true
+    mercato(['foundation', 'retire-club-schedules', '--job', 'foundation:dispatch-sweep'])
+    expect(await perClubSchedules(a)).toEqual(CLUB_JOBS)
+    expect((await jobState(a)).map((row) => row.job_key)).toEqual(CLUB_JOBS)
+    mercato(['foundation', 'restore-club-schedules', '--job', 'foundation:dispatch-sweep'])
+    retired = false
+    expect(await perClubSchedules(a)).toEqual(restored)
   } finally {
     if (retired) mercato(['foundation', 'restore-club-schedules'])
     await withClient(async (client) => {

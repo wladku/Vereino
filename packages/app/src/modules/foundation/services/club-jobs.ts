@@ -446,7 +446,7 @@ export type RetireResult = {
   clubs: number
   /** Per-club schedules removed (0 on a dry run). */
   retired: number
-  /** Job-state rows created for those clubs. */
+  /** Job-state rows created for those clubs (for the dispatch sweep: of the job types they still run per club). */
   rowsCreated: number
   sweepRegistered: boolean
 }
@@ -471,10 +471,23 @@ export async function retireClubSchedules(
     result.sweepRegistered = await sweepEnabled(container, key)
     return result
   }
-  if (declaration) {
-    for (const schedule of schedules) {
-      const clock = await clockOf(container, schedule, options.now ?? new Date())
-      if (await insertClubJob(em, schedule, key, nextClubJobDue(declaration.schedule, clock))) result.rowsCreated += 1
+  // The dispatch sweep has no row of its own, but `restore-club-schedules --job foundation:dispatch-sweep` gives the
+  // sweeper back to the clubs with job state: its clubs get the rows of the job types they still run on per-club
+  // schedules (as a club's setup creates them), so a rollback of the dispatch sweep alone leaves no club without one.
+  const seeds: Array<{ job: ClubJobDeclaration; clubs: ClubJobScope[] }> = declaration
+    ? [{ job: declaration, clubs: schedules }]
+    : []
+  if (!declaration && schedules.length > 0) {
+    const dispatchClubs = new Set(schedules.map((schedule) => schedule.organizationId))
+    for (const job of clubJobDeclarations()) {
+      const clubs = (await perClubSchedules(em, job.key)).filter((row) => dispatchClubs.has(row.organizationId))
+      seeds.push({ job, clubs })
+    }
+  }
+  for (const { job, clubs } of seeds) {
+    for (const scope of clubs) {
+      const clock = await clockOf(container, scope, options.now ?? new Date())
+      if (await insertClubJob(em, scope, job.key, nextClubJobDue(job.schedule, clock))) result.rowsCreated += 1
     }
   }
   await registerSweepSchedule(service, key)
