@@ -4,6 +4,11 @@ How Vereino is deployed to Railway, checked after a deploy and rolled back (engi
 ADR-013, S8.10). Variables appear here by name only; values live in Railway as sealed variables and never in the
 repository, a log, a spec or a transcript. Add a step here in the same pull request that makes it necessary.
 
+One production instance serves every club, and one deploy updates every club at once (owner decision D-034,
+`.ai/specs/research/decisions/D-034-many-clubs-on-one-instance.md`, epic #626). A bad release therefore reaches every
+club together: [Production release](#production-release) is the process that keeps that risk small, and its
+[checklist](#production-release-checklist) is what a maintainer runs for each release.
+
 Not covered yet: security headers and the CSP decision (E18-S02), nightly off-site backups and the restore drill
 (E18-S03), uptime monitoring and alerts (E18-S04).
 
@@ -14,7 +19,7 @@ Not covered yet: security headers and the CSP decision (E18-S02), nightly off-si
 | local | a developer machine (`yarn dev`), the integration test runner (`yarn test:integration:vereino`) | by hand | throwaway |
 | sandbox | the owner's machine (`vereino-sandbox-env/sandbox.mjs`), outside Railway | `node sandbox.mjs upgrade` | synthetic |
 | `staging` | Railway project (Hobby plan, EU West), environment `staging` | every commit on `main`, automatically | synthetic only |
-| `production` | the same Railway project, environment `production` | a maintainer deploys a release tag by hand; never automatic | the club's real data |
+| `production` | the same Railway project, environment `production` | a maintainer deploys a release tag by hand, inside the release window; never automatic | the real data of every club, plus the maintainers' demo club (synthetic) |
 
 Each Railway environment has four services: **app** (`railway.toml`), **worker** (`railway.worker.toml`), **PostgreSQL**
 and **Redis** (Railway templates). The owner runs and pays for the project (ENG-Q-03). The Hobby plan has no
@@ -63,6 +68,104 @@ Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_A
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
 table in the same pull request.
 
+## Production release
+
+A release is a `vX.Y.Z` tag cut by the release pull request ([`github-settings.md`](github-settings.md), section 7;
+ADR-021). The code of a release reaches every club in one deploy; what can still be held back per club is behaviour,
+through a club setting (below).
+
+### Stages: staging, the demo club, every club
+
+1. **Staging.** Staging runs every commit on `main`, so it runs the tag commit as soon as the release pull request
+   merges. If `main` has moved on since, redeploy the tag commit's deployment on staging (app, then worker) from
+   Railway's **Deployments** list. On staging, the smoke check passes and a maintainer walks every item of the release
+   notes as an administrator of the seeded demonstration club, in both languages.
+2. **The demo club.** Production carries one club the maintainers own, with synthetic data and no real person in it.
+   After the production deploy, the smoke check passes and the maintainer repeats the release-notes walk in this club
+   before announcing anything. A behaviour behind a club setting is switched on here first and watched for at least a
+   day. The demo club, like every club, is created with `yarn mercato club_core create-club`
+   ([`clubs.md`](clubs.md)).
+3. **Every club.** The release is announced. A behaviour behind a club setting is switched on for chosen clubs, then
+   for every club, in later steps that need no deploy.
+
+The demo-club stage cannot keep code from the other clubs: the deploy updates them all. A change that is risky for
+clubs ships behind a club setting, or waits.
+
+### Release window
+
+Production releases happen **Tuesday to Thursday, 20:30–22:30 Europe/Warsaw**: after most evening trainings, before
+the night jobs and the 06:00 and 09:00 schedules, and never on a weekend, when matches and tournaments run. No release
+on the day before a public holiday, and none when no maintainer can watch the 06:00 and 09:00 jobs the next morning
+(charge generation, maintenance and overdue reminders). Only a `priority-extreme` fix (outage, data loss, security) is
+deployed outside the window; it follows the same checklist and its notes say why it could not wait.
+
+### Release notes for club administrators
+
+`CHANGELOG.md` is written for maintainers and operators. Club administrators get their own notes, in **Polish and
+English**, published in the body of the tag's GitHub release and sent to the administrators at least one working day
+before the window:
+
+- what changes for administrators, coaches, guardians and members, in plain words and without internal ids;
+- what a club has to do, if anything (a new setting to review, a text to check);
+- what is switched on only for chosen clubs, and how a club asks for it;
+- the release window, and that the app may answer slowly for a few minutes during it.
+
+The notes carry no personal data and no club names other than the demo club. Until a message to every club's
+administrators can be sent from the app, the maintainer sends it by e-mail.
+
+### Schema changes: expand, then contract, across two releases
+
+The pre-deploy command migrates while the previous release still serves every club, and a rollback starts the previous
+release on the migrated schema (S5.4, S14.6). So every migration in a release works with the code of the release before
+it:
+
+- **Release N (expand)**: add the new table, column (nullable or with a default) or index; write both shapes or read
+  both; backfill every club idempotently and in batches, so a backfill for 1,000 clubs neither locks a table nor
+  stops halfway without a rerun.
+- **Release N+1 (contract)**: only after release N has served production for at least a week without a
+  rollback, enforce the constraint, switch the code to the new shape only, and drop the old one. Dropping a column or
+  table still needs a product-owner decision and a verified backup (S5.4).
+
+A breaking migration (rename, drop, type change, new `NOT NULL` without a default) never ships in one deploy. A pull
+request with a contract step names the release that shipped its expand step; a release whose notes list a contract
+step whose expand step is not yet in production is not cut.
+
+### A new behaviour for chosen clubs only
+
+ADR-019 still holds under D-034: **no feature-flag framework**. Its three switches cover a shared instance:
+
+- **Club settings** carry per-club behaviour. A behaviour that must reach chosen clubs first gets a setting in
+  `club_core_club_settings` (`club_core/lib/settings.ts`) whose default keeps the old behaviour. The column is an expand
+  step like any other (a migration, so Ask First), and the setting is changed in that club's settings by an
+  administrator or, for a rollout switch the club does not choose itself, by a maintainer. Once every club has it on and
+  the old path is not needed for a rollback, a later release removes the old path, and the setting too when it is not a
+  real club choice.
+- **Environment kill switches** (`VEREINO_EMAIL_SENDING_ENABLED`, `VEREINO_ONLINE_PAYMENTS_ENABLED`) stop an external
+  side effect for **every** club at once; they are incident tools, not a rollout tool. ADR-019 names them, but the app
+  does not read them yet.
+- **Module enablement** in `src/modules.ts` stays a per-instance switch for whole modules.
+
+Revisit ADR-019 when a percentage or time-based rollout is needed, or when more than three rollout switches are live
+at once; until then a new framework is out of scope (#634).
+
+### Production release checklist
+
+Run it in order and record it in the release's GitHub release or its tracking issue. Stop and roll back on any red
+step after the deploy.
+
+1. [ ] The release pull request is green and merged; `vX.Y.Z` and its GitHub release exist.
+2. [ ] Every migration in the release is an expand step, or a contract step whose expand step is already in production.
+3. [ ] Staging runs the tag (app and worker); `node scripts/smoke.mjs <staging-url>` passes.
+4. [ ] The release notes are walked on staging's demonstration club, in Polish and English.
+5. [ ] The release notes (PL + EN) are in the GitHub release and were sent to club administrators a working day ago.
+6. [ ] It is the window (Tue–Thu 20:30–22:30 Europe/Warsaw); a maintainer is free tomorrow until 10:00.
+7. [ ] Deploy the tag to production: app, wait until healthy, then the worker from the same commit.
+8. [ ] `node scripts/smoke.mjs <production-url>` passes; no new error fingerprint in the logs for 15 minutes.
+9. [ ] The release notes are walked in the production demo club.
+10. [ ] The per-club setup commands the release notes name are run for every club, every `schedules` entry `true`.
+11. [ ] New club-setting switches are on in the demo club only; the plan for chosen clubs is in the release issue.
+12. [ ] Next morning: the 06:00 and 09:00 jobs ran for every club (worker logs, `monitoring.md` checks).
+
 ## Deploy
 
 Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
@@ -81,9 +184,9 @@ The **worker** service (`sh ./scripts/railway-worker.sh`) runs the boot check an
 
 - **staging**: every commit on `main` deploys automatically; turn on Railway's "Wait for CI" so a red `main` never
   deploys.
-- **production**: only a commit with a release tag. A maintainer opens the production environment in Railway,
-  deploys the tagged commit to the app service, waits for it to turn healthy, then deploys the same commit to the
-  worker.
+- **production**: only a commit with a release tag, inside the release window, following the
+  [checklist](#production-release-checklist). A maintainer opens the production environment in Railway, deploys the
+  tagged commit to the app service, waits for it to turn healthy, then deploys the same commit to the worker.
 
 ### First deploy of a new environment (one time)
 
@@ -92,7 +195,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
 1. Deploy once; the pre-deploy command creates the schema through the migrations.
 2. From a Railway shell on the app service (`railway ssh` or the service's shell), with `OM_INIT_ADMIN_PASSWORD` set,
    run `yarn initialize --no-examples` once. It refuses to run on a database that already has users.
-3. Remove `OM_INIT_ADMIN_PASSWORD`, sign in as the superadmin and set up the club; then run the per-club setup below.
+3. Remove `OM_INIT_ADMIN_PASSWORD`. Create each club, starting with the demo club, with `yarn mercato club_core
+   create-club` ([`clubs.md`](clubs.md)); it runs the per-club setup below itself.
 
 ## After every deploy
 
@@ -127,7 +231,11 @@ re-registers the time-zoned schedules on its own (`activities:reregister-schedul
 ## Rollback
 
 Roll back to the previous release when the smoke check or the health check fails after a deploy, or when a defect
-reaches production:
+reaches production. A rollback, like a deploy, changes every club at once. Decide within 30 minutes of the defect being
+seen during the window; outside it, follow the severity levels of [`incident.md`](incident.md).
+
+When the defect sits behind a club setting, switch that setting off for the affected clubs first: it needs no deploy
+and leaves the other clubs alone. Roll back only when that is not enough:
 
 1. In Railway, open the app service's **Deployments**, pick the last good deployment and choose **Redeploy** (or
    **Rollback**); do the same for the worker. The old image starts without migrating.
@@ -137,6 +245,9 @@ reaches production:
    release, or restore the database (E18-S03 runbook) when data was damaged.
 3. Run the smoke check against the environment again and record the rollback, its reason and the release tags in the
    incident or release notes.
+4. Tell the club administrators, in Polish and English, that the release was withdrawn and what they may have seen;
+   the withdrawn release's expand steps stay in the database, and their contract steps wait until a fixed release has
+   served production for at least a week.
 
 ## Checks of this runbook
 

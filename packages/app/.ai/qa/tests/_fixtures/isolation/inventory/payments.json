@@ -1,0 +1,643 @@
+{
+  "$comment": "Cross-club isolation probes of the payments routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/payments/bank-imports": {
+      "GET": {
+        "probe": "read"
+      },
+      "POST": {
+        "probe": "exempt",
+        "why": "Imports an uploaded statement into the caller's club; the request names no record (the probe engine's fixed CSV cannot carry club B's payer code). The created import is read back by the GET probes."
+      }
+    },
+    "/api/payments/bank-imports/[id]": {
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:bankImport"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
+      }
+    },
+    "/api/payments/bank-payers": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Dorosła"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "personId": "$B:memberPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/bank-transactions": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "importId": "$B:bankImport"
+          }
+        }
+      ]
+    },
+    "/api/payments/bank-transactions/[id]/assign": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:bankUnmatched"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "payerPersonId": "$A:memberPerson"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:bankUnmatched"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:bankUnmatchedUpdatedAt"
+          },
+          "body": {
+            "payerPersonId": "$B:memberPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/bank-transactions/[id]/confirm": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:bankUnmatched"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/bank-transactions/[id]/ignore": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:bankUnmatched"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "other"
+        }
+      }
+    },
+    "/api/payments/bank-transactions/[id]/restore": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:bankIgnored"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/bank-transactions/[id]/undo": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:bankBooked"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/cash": {
+      "GET": {
+        "probe": "read"
+      },
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "payerPersonId": "$B:memberPerson",
+            "chargeIds": ["$A:charge"],
+            "amount": 100,
+            "paidOn": "$A:today",
+            "notify": false
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "payerPersonId": "$A:memberPerson",
+            "chargeIds": ["$B:charge"],
+            "amount": 100,
+            "paidOn": "$A:today",
+            "notify": false
+          }
+        }
+      ]
+    },
+    "/api/payments/cash/charges": {
+      "GET": [
+        {
+          "probe": "read",
+          "query": {
+            "payerPersonId": "$A:memberPerson"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "payerPersonId": "$B:memberPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/cash/payers": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Dorosła"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "personId": "$B:memberPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/cash-custody": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/payments/cash-handovers": {
+      "GET": {
+        "probe": "read"
+      },
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "collectorPersonId": "$B:coachPerson",
+            "paymentIds": ["$A:cashPayment"]
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "collectorPersonId": "$A:coachPerson",
+            "paymentIds": ["$B:cashPayment"]
+          }
+        }
+      ]
+    },
+    "/api/payments/charge-generations": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/payments/charge-generations/[id]/undo": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:generation"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/charges": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Dorosła"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "personId": "$B:memberPerson"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "payerPersonId": "$B:guardianPerson"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "involvesPersonId": "$B:memberPerson"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "generationId": "$B:generation"
+          }
+        }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "personId": "$B:memberPerson",
+            "description": "Probe 628",
+            "amount": 100,
+            "dueDate": "$A:nextWeek"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "personId": "$A:childPerson",
+            "description": "Probe 628",
+            "amount": 100,
+            "dueDate": "$A:nextWeek",
+            "payerPersonId": "$B:guardianPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/charges/[id]": {
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:charge"
+        }
+      }
+    },
+    "/api/payments/charges/[id]/cancel": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:charge"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe 628"
+        }
+      }
+    },
+    "/api/payments/charges/[id]/payer": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:payerlessCharge"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "payerPersonId": "$A:memberPerson"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:charge"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "payerPersonId": "$A:memberPerson"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:payerlessCharge"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:payerlessChargeUpdatedAt"
+          },
+          "body": {
+            "payerPersonId": "$B:guardianPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/charges/[id]/payments": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:charge"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "amount": 100,
+          "method": "cash",
+          "paidOn": "$A:today"
+        }
+      }
+    },
+    "/api/payments/charges/generate": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Generates the given period's charges of the caller's club; the body holds only the period and names no record. The generated charges are read back by the GET probes."
+      }
+    },
+    "/api/payments/checkout": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "chargeIds": ["$B:childCharge"]
+        },
+        "expect": [403],
+        "why": "A charge the caller does not pay answers 403 checkout_charge_forbidden, an unknown id the same (an unknown charge is someone else's too); roles without payments.pay_online get 403 before the body is read."
+      }
+    },
+    "/api/payments/checkout/quote": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "chargeIds": ["$B:childCharge"]
+        },
+        "expect": [403],
+        "why": "A charge the caller does not pay answers 403 checkout_charge_forbidden, an unknown id the same (an unknown charge is someone else's too); roles without payments.pay_online get 403 before the body is read."
+      }
+    },
+    "/api/payments/checkouts/[id]/refresh": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:checkout"
+        },
+        "expect": [403],
+        "why": "A checkout that is not the caller's answers 403 checkout_charge_forbidden, an unknown id the same; roles without payments.view_own get 403 from the feature check."
+      }
+    },
+    "/api/payments/dashboard": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "only": "counts"
+          }
+        }
+      ]
+    },
+    "/api/payments/discount-rules": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Indywidualna"
+          }
+        }
+      ],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "name": "Probe 628",
+          "kind": "custom",
+          "percent": 10,
+          "conditions": {
+            "personIds": ["$B:plainPerson"]
+          },
+          "validFrom": "$A:nextWeek"
+        }
+      },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "id": "$B:discountRule",
+            "name": "Probe 628"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:discountRuleUpdatedAt"
+          },
+          "body": {
+            "id": "$A:discountRule",
+            "conditions": {
+              "personIds": ["$B:plainPerson"]
+            }
+          }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": {
+          "id": "$B:discountRule"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
+      }
+    },
+    "/api/payments/fees": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Żaki"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:group"
+          }
+        }
+      ],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "name": "Probe 628",
+          "groupId": "$B:group",
+          "period": "monthly",
+          "amount": 100,
+          "dueDay": 10,
+          "validFrom": "$A:nextWeek"
+        }
+      },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "id": "$B:fee",
+            "name": "Probe 628"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:feeUpdatedAt"
+          },
+          "body": {
+            "id": "$A:fee",
+            "groupId": "$B:group"
+          }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": {
+          "id": "$B:fee"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
+      }
+    },
+    "/api/payments/lookups": {
+      "GET": [
+        {
+          "probe": "read",
+          "query": {
+            "kind": "groups"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "sections"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "activities"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "persons",
+            "search": "Dorosła"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "groups",
+            "sectionId": "$B:section"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "groups",
+            "ids": "$B:group"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "kind": "persons",
+            "ids": "$B:memberPerson"
+          }
+        }
+      ]
+    },
+    "/api/payments/my-charges": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/payments/my-charges/summary": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/payments/payments/[id]/refund": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:onlinePayment"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "amount": 100,
+          "reason": "Probe 628",
+          "operationId": "6280c0de-0000-4000-8000-000000000628"
+        }
+      }
+    },
+    "/api/payments/payments/[id]/reverse": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:payment"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe 628"
+        }
+      }
+    },
+    "/api/payments/settings": {
+      "GET": {
+        "probe": "read"
+      },
+      "PUT": {
+        "probe": "exempt",
+        "why": "Changes the caller's club's own payment settings (the record comes from the session scope); the body names no record."
+      }
+    }
+  }
+}

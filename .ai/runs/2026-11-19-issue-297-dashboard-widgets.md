@@ -1,6 +1,6 @@
 # Run: issue #297 — E12-S07 an administrator sees bank statements and cash, order campaigns and charges without a payer on the dashboard
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 297`, label `cezar`): build phase 7 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C09; REQ-C02 dashboard mount; TEST-C10, TEST-C04 dashboard; AC-C09, AC-C02 in part).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 297`, label `cezar`): build phase 7 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C09; REQ-C02 dashboard mount; TEST-C10, TEST-C04 dashboard; AC-C09, AC-C02 in part).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (Contract 5 names the `only=counts` parameter, approved); issue #297; branch `feat/issue-297-admin-dashboard-bank-cash-charges`; worktree `.ai/cezar/worktrees/8ffd0f22-…`. Dependencies #292 (E12-S02) and #296 (E12-S06) closed and merged.
 
 ## Steps

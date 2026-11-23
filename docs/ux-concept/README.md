@@ -22,7 +22,7 @@ The subject is a **small multi-section club** (association), with a football aca
 | **Coach / instructor** ("Wojtek", "Piotr", "Anna") | runs 1–3 groups, often on a contract; paid "base + units" | know who will come; attendance in 30 s; substitution without arguing about money; one announcement to the group; book the pitch for a tournament without phoning | attendance list, closing a session, reporting an absence, cancellation, announcement + text for the group chat, facility calendar and booking, tournament, view of own units | phone | polls get lost in the chat; substitutions and bookings by phone |
 | **Section coordinator** ("Wojtek" — academy, "Aneta" — Basen) | responsible for the groups, schedule and coaches of one or more sections | a schedule without collisions; see sessions without a coach; quickly assign a substitute coach; one announcement to the whole section; a register of difficult cases; run the section page | groups and rosters, activity wizard, sessions "needing a coach" and "unsettled", substitutions, section coach units report, cases, section public content | phone for daily work (`/club` in the staff context: substitutes, cancellations, announcements — D-029); desktop for configuration (panel) | schedule in their head and in Excel; substitutions by phone |
 | **Club administrator** ("Aneta", may also act as treasurer) | runs the club after hours: people, roles, money, facility | know who is overdue without Excel; automatic charge generation and discounts; coach settlement and municipality report in one click; decide on external requests; control what the club publishes | person and family records, accounts, roles, fee schedules, discounts, charges, recording payments, approving requests, zones and rates, reports, publication settings | desktop | manual reminders; coach units and Orlik (municipal sports pitch complex) hours from memory |
-| **Treasurer** ("Beata") | responsible only for the club's money | know who is overdue and who holds cash; reconcile the bank statement and cash from coaches without Excel | charges, statements, cash, order campaigns, settlements with coaches — no access to person records, groups or facilities | role held back (D-030): until a real treasurer has checked it, the club administrator does this work in the panel | cash from coaches "on trust", a notebook of payments |
+| **Treasurer** ("Beata") | responsible only for the club's money | know who is overdue and who holds cash; reconcile the bank statement and cash from coaches without Excel | charges, statements, cash, order campaigns, settlements with coaches — no access to person records, groups or facilities | panel (`/backend`) at phone width or on a desktop: the dashboard and Finance only (DD-33, D-029); the role is no longer held back ([D-037](../../.ai/specs/research/decisions/D-037-treasurer-role-released.md), built in #432), and the club administrator may still do this work | cash from coaches "on trust", a notebook of payments |
 | **Facility attendant** ("Tomek") | opens and closes the Orlik, enforces the rules | know who is at the facility today; enter a booking after a phone call; keep the log and report an incident | Today at the facility, log, incident, rental by phone, `no_show` | phone (`/club/facility`, D-029) | notebook, phone calls to the club |
 | **Guest — parent looking for activities** | someone from outside the club | see what sections and activities exist, for whom, when, at what price, who runs them; whom to contact | club page, section page, materials | phone / desktop | no single source of information about the club |
 | **External renter** (another club, school, company) | wants to rent the Orlik or the small hall | see free slots; submit a request without phoning; know whether it was accepted | public facility calendar, request, email confirmation, email with the decision | desktop / phone | calls the club, cannot see free hours |
@@ -172,7 +172,7 @@ flowchart LR
   subgraph BCK[Panel /backend — desktop sidebar]
     B01[B-01 Dashboard] --> KLUB[Club: B-04/B-05 Sections, B-06 Places, B-07 Institutions and contracts, B-02 Settings, B-03 Publication]
     B01 --> LUDZIE[People: B-09 People, B-10 Person record]
-    B01 --> ZAJ[Classes: B-11/B-12 Groups, B-13/B-14 Activities, B-15 Sessions, B-16 Coach units report, B-17 Declaration policies]
+    B01 --> ZAJ[Classes: B-11/B-12 Groups, B-13/B-14 Activities, B-T1…B-T3 Club events, B-15 Sessions, B-16 Coach units report, B-17 Declaration policies]
     B01 --> KOM[Communication: B-18 Threads and cases, B-19 Thread]
     B01 --> FIN[Finance: B-20 Fees and discounts, B-21/B-22 Charges, B-29 Bank statements, B-30/B-31/B-32 Order campaigns, B-33 Cash to settle]
     B01 --> OBJ[Facility: B-23 Calendar, B-24 Rentals, B-25 Requests, B-26 Zones and rates, B-27 Log and incidents, B-28 Municipality report]
@@ -202,9 +202,10 @@ This section follows *Menu structure* of [the navigation spec](../../.ai/specs/2
 | People | 1 | People | `/backend/people/persons` | `people.view` | — ("Import" header button → `/backend/people/imports`) | — |
 | Classes | 1 | Groups | `/backend/groups/groups` | `groups.view` | Groups · External teams · Seasons | — |
 | | 2 | Activities | `/backend/activities/activities` | `activities.view` | — | — |
-| | 3 | Sessions | `/backend/activities/occurrences` | `activities.view` | — (perspectives of B-15) | sessions needing a coach |
-| | 4 | Coach units report | `/backend/activities/reports/coach-units` | `activities.reports.view` | — | — |
-| | 5 | Declaration policies | `/backend/activities/policies` | `activities.view` | — | — |
+| | 3 | Club events | `/backend/activities/club-events` | `activities.view` | — (views Upcoming · Past · Cancelled of B-T1) | — |
+| | 4 | Sessions | `/backend/activities/occurrences` | `activities.view` | — (perspectives of B-15) | sessions needing a coach |
+| | 5 | Coach units report | `/backend/activities/reports/coach-units` | `activities.reports.view` | — | — |
+| | 6 | Declaration policies | `/backend/activities/policies` | `activities.view` | — | — |
 | Communication | 1 | Threads and cases | `/backend/communication/threads` | `communication.post` | All · Cases (`/backend/communication/cases`, `communication.cases.manage`) | — |
 | Finance | 1 | Fees and discounts | `/backend/payments/fees` | `payments.manage` | Fees · Discounts (`/backend/payments/discounts`) · Settings (`/backend/payments/settings`) | — |
 | | 2 | Charges | `/backend/payments/charges` | `payments.view` | — (perspectives of B-21) | — |
@@ -218,7 +219,7 @@ This section follows *Menu structure* of [the navigation spec](../../.ai/specs/2
 | | 5 | Log and incidents | `/backend/facilities/logs` | `facilities.log.write` | Log · Incidents (`/incidents`) · Bans (`/bans`, `facilities.incidents.manage`) · Maintenance (`/maintenance`, `facilities.maintenance.manage`) | — |
 | | 6 | Municipality report | `/backend/facilities/reports/owner` | `facilities.reports.view` | Municipality report · Rented hours (`/reports/rented-hours`) | — |
 
-Platform groups (media, integrations and the rest) follow the six. A coordinator sees Sections in Club and no Finance; an attendant sees only Facility. The top bar holds "Interfejs członkowski", the link to `/club`.
+Platform groups (media, integrations and the rest) follow the six. A coordinator sees Sections in Club and no Finance; an attendant sees only Facility; a treasurer sees only Finance ([D-037](../../.ai/specs/research/decisions/D-037-treasurer-role-released.md)). The top bar holds "Interfejs członkowski", the link to `/club`.
 
 **Member bottom bar and More (`/club`).** The same bar on every member page; an entry is shown when the person holds its feature. In the header: the child switcher (guardian) and the context switcher ("as guardian / as coach") — only when the person has more than one context; a coach-only person starts in the staff context.
 
@@ -238,7 +239,7 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | More | Orders (e.g. kit) | `/club/orders` | `payments.orders.place` |
 | More | My groups' payments | `/club/coach/payments` | `payments.groups.view` |
 | More | Accept cash | `/club/cash` | `payments.cash.record` |
-| More | Admin panel | `/backend` | grant `club_admin`, `coordinator` or `facility_operator` |
+| More | Admin panel | `/backend` | grant `club_admin`, `coordinator`, `facility_operator` or `treasurer` |
 | More | Sign out | `POST /api/auth/logout` | always |
 
 **Landing after sign-in** (only when the sign-in answered with the platform default; an explicit `redirect` is kept):
@@ -246,13 +247,13 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | Person | Lands on |
 |---|---|
 | Account linked to no person | `/backend` with the notice |
-| Holds `facilities.log.write`; no ward, no participant membership; no `coach`, `coordinator` or `club_admin` grant | `/club/facility` |
-| Holds the `club_admin` grant; no ward, no participant membership, no `coach` grant | `/backend` |
+| Holds `facilities.log.write`; no ward, no participant membership; no `coach`, `coordinator`, `club_admin` or `treasurer` grant | `/club/facility` |
+| Holds the `club_admin` or the `treasurer` grant; no ward, no participant membership, no `coach` grant | `/backend` |
 | Everyone else with `people.self` — guardian, participant, coach, coordinator, an administrator who is also a parent or a coach | `/club` |
 
 **Public header (`/p/[clubSlug]`).** Club · Sections · Facilities (when the facility calendar block is on) · Events (when the events block is on) · Sign in (`/login?club={slug}`); footer: contact, rules, privacy policy (`/privacy` of the `content` module). Blocks follow the publication settings (B-03).
 
-**Phone first ([D-029](../../.ai/specs/research/decisions/D-029-phone-first-for-every-role-but-the-administrator.md)).** Every role except the club administrator — guardians, participants, coaches and instructors, coordinators and the attendant — does its work on the member pages under `/club` at phone width. The panel serves the administrator and adds a desk layout for coordinators' configuration; it never replaces a role's phone path. The treasurer role is held back ([D-030](../../.ai/specs/research/decisions/D-030-unblock-held-back-work.md)): the administrator does the treasurer's work, and B-33 with its menu item waits for #118. Screens in this concept that give a non-administrator task only a B- screen (for example the coach's cancellation, announcement and one-off event) are gaps to close, tracked in issues #97, #102, #139 and #140.
+**Phone first ([D-029](../../.ai/specs/research/decisions/D-029-phone-first-for-every-role-but-the-administrator.md)).** Every role except the club administrator — guardians, participants, coaches and instructors, coordinators and the attendant — does its work on the member pages under `/club` at phone width. The panel serves the administrator and adds a desk layout for coordinators' configuration; it never replaces a role's phone path. The treasurer is no longer held back ([D-037](../../.ai/specs/research/decisions/D-037-treasurer-role-released.md), superseding that part of [D-030](../../.ai/specs/research/decisions/D-030-unblock-held-back-work.md)): the treasurer role (#245, built in #432) works in the panel with the dashboard and the Finance group only, B-33 included (#118), at phone width as well as on a desktop; the administrator may still do the treasurer's work. Screens in this concept that give a non-administrator task only a B- screen (for example the coach's cancellation, announcement and one-off event) are gaps to close, tracked in issues #97, #102, #139 and #140.
 
 ### 3.2 Route index
 
@@ -289,6 +290,7 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
 | B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` (own row on the phone: `activities.reports.view_own`) | 2 |
 | B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
+| B-T1 / B-T2 / B-T3 | `/backend/activities/club-events`, `…/create`, `…/[id]` | Club events (list, form, record with Details · Parts · Files) | `activities.view` / `activities.manage` | [club events spec](../../.ai/specs/2026-11-18-vereino-club-events-with-parts.md) |
 | B-18 / B-19 | `/backend/communication/threads` (tabs: All, Cases = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
 | B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
 | B-21 / B-22 | `/backend/payments/charges` (perspectives incl. Overdue), `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |

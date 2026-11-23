@@ -228,6 +228,15 @@ export function generationDue(input: {
 }
 
 /**
+ * Whether the daily job records the generation it planned (#666): a plan that creates no charge and skips none — a new
+ * club without fee schedules or rosters yet — is not recorded, so the month stays ungenerated and a later daily run
+ * generates it once fees exist. The manual generation records every plan.
+ */
+export function automaticGenerationRecorded(plan: { created: number; skipped: number }): boolean {
+  return plan.created > 0 || plan.skipped > 0
+}
+
+/**
  * Whether a charge's payer is reminded of it today (DD-C09): past its due date in the club's calendar, fewer than four
  * reminders so far, and either none yet (the day after the due date at the earliest) or seven days since the last one.
  * The status, payer and source checks belong to the query.

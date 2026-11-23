@@ -1,5 +1,6 @@
 {
   "club_core.audit.settings.update": "Update club settings",
+  "club_core.audit.clubs.provision": "Set up the club address",
   "club_core.audit.sections.create": "Create a section",
   "club_core.audit.sections.update": "Change a section",
   "club_core.audit.sections.delete": "Delete a section",
@@ -366,6 +367,7 @@
   "club_core.contracts.errors.rates": "Check the coach rates.",
   "club_core.contracts.errors.paymentDeadlineDays": "Enter a whole number of days from 0 to {max}.",
   "club_core.errors.public_slug_taken": "This address is already taken. Choose another one.",
+  "club_core.errors.slug_reserved": "This address is reserved for the service itself. Choose another one.",
   "club_core.errors.publication_slug_required": "Set the page address before publishing the club page.",
   "club_core.errors.publication_requests_need_calendar": "Online requests require the facility calendar to be enabled.",
   "club_core.errors.section_public_slug_required": "Set the page address before making the section public.",

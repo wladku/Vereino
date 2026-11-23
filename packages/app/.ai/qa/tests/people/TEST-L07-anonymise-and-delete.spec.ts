@@ -29,7 +29,7 @@ import { uiText, uiTextIn } from '../_fixtures/ui-text'
 // People life-cycle spec phase L6 (#308; REQ-L05, J-L04, AC-L06): TEST-L07 — a former person with a payment this year
 // and an open charge: anonymising without a recorded request and with the open charge answers 409 with the reasons
 // (the charge named), a wrong last name 422; then contact and identity fields are null at once, the name stays with
-// the hold date (31 December five years on) for the administrator only, a coordinator reads "Former member", a name
+// the hold date (31 December six years on, #526) for the administrator only, a coordinator reads "Former member", a name
 // search finds nothing, an undo of an earlier edit and a return are refused (409 `person_anonymized`), a second
 // anonymisation too, and another organization's person is untouched; the daily job run after the hold clears the
 // name. A former person without payments loses the name at once (`erasureHoldUntil` null) — done in the browser
@@ -309,8 +309,8 @@ test('TEST-L07 anonymising a former person: refusals, the retention hold, Former
     const kasiaRows = await seedErasureRows(club, kasia, paidCharge)
     const controlRows = await seedErasureRows(club, control, null)
 
-    // Anonymised: contact and identity data null at once, the name kept until 31 December five years on.
-    const holdUntil = `${String(Number(calendarDate().slice(0, 4)) + 5)}-12-31`
+    // Anonymised: contact and identity data null at once, the name kept until 31 December six years on (the accounting period, #526).
+    const holdUntil = `${String(Number(calendarDate().slice(0, 4)) + 6)}-12-31`
     const done = await anonymize(request, admin, kasia, { requestId, confirmLastName: ` ${lastName.toUpperCase()} ` })
     expect(done.status, JSON.stringify(done.body)).toBe(200)
     expect(done.body?.erasureHoldUntil).toBe(holdUntil)
