@@ -21,6 +21,7 @@ import {
   parseOffboardOptions,
   parseRestoreOptions,
   parseRowJson,
+  presentTables,
   redactExportRow,
   safeAttachmentLocation,
   slugReleaseAt,
@@ -65,6 +66,22 @@ describe('clubTables', () => {
 
 describe('uncoveredTables and missingTables', () => {
   const covered = clubTables([{ module: 'payments', tables: ['payments_fees'] }])
+
+  it('covers the run-time vector_search table, as an index, whether or not the database has it yet (QA on #677)', () => {
+    expect(covered.find((entry) => entry.table === 'vector_search')).toEqual({
+      module: 'search',
+      table: 'vector_search',
+      key: 'tenant',
+      kind: 'derived',
+      optional: true,
+    })
+    expect(uncoveredTables(['vector_search'], covered)).toEqual([])
+    const withoutIt = covered.map((entry) => entry.table).filter((table) => table !== 'vector_search')
+    expect(missingTables(withoutIt, covered)).toEqual([])
+    expect(presentTables(withoutIt, covered).map((entry) => entry.table)).not.toContain('vector_search')
+    const withIt = covered.map((entry) => entry.table)
+    expect(presentTables(withIt, covered)).toEqual(covered)
+  })
 
   it('names the tenant tables no list covers, sorted', () => {
     expect(uncoveredTables(['payments_fees', 'users', 'z_new', 'a_new'], covered)).toEqual(['a_new', 'z_new'])

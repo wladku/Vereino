@@ -36,6 +36,7 @@ import {
   archiveScopeViolations,
   parseManifest,
   parseRowJson,
+  presentTables,
   redactExportRow,
   safeAttachmentLocation,
   uncoveredTables,
@@ -151,10 +152,12 @@ type ClubTargets = { tables: ClubTable[]; insertOrder: ClubTable[]; catalogue: C
  */
 async function clubTargets(container: AwilixContainer, em: EntityManager): Promise<ClubTargets> {
   const catalogue = await readCatalogue(em)
-  const tables = clubTables(moduleContributors(container))
-  const uncovered = uncoveredTables(catalogue.tenantTables, tables)
-  const missing = missingTables([...catalogue.columns.keys()], tables)
+  const listed = clubTables(moduleContributors(container))
+  const existing = [...catalogue.columns.keys()]
+  const uncovered = uncoveredTables(catalogue.tenantTables, listed)
+  const missing = missingTables(existing, listed)
   if (uncovered.length > 0 || missing.length > 0) throw new ClubCatalogError(uncovered, missing)
+  const tables = presentTables(existing, listed)
   const byName = new Map(tables.map((entry) => [entry.table, entry]))
   const insertOrder = orderForInsert(
     tables.map((entry) => entry.table),

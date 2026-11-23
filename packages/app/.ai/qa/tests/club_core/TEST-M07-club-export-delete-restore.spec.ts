@@ -12,7 +12,8 @@ import { APP_ROOT, call, createPerson, uniqueSuffix } from '../_fixtures/club'
 import { getSettings, png, publicGet, publish, upload } from '../_fixtures/publication'
 
 // TEST-M07 (many clubs spec phase 4, REQ-M06, AC-M06, BR-M4, J-M03; E22-S06, #632): two clubs on one instance. Club A
-// gets data in several modules (a person with encrypted columns, a logo file, a published page). The operator commands
+// gets data in several modules (a person with encrypted columns, a logo file, a published page), and both clubs a
+// row in the run-time `vector_search` table a running instance has. The operator commands
 // refuse to delete before notice and during the notice period; `export-club` writes one archive with a file per module
 // and the logo file, decrypted; `delete-club` after the notice leaves only the slug's tombstone and the one deletion
 // audit entry of club A in any table with a `tenant_id`, nothing in the user-keyed tables and no logo file, while club B
@@ -151,6 +152,36 @@ async function tamperedArchive(
   return target
 }
 
+/**
+ * Creates the pgvector driver's `vector_search` table when the database does not have it yet (the columns the driver
+ * creates, a 3-dimension embedding) and adds one row per club. Returns whether the table was created here, so the test
+ * drops it again.
+ */
+async function seedVectorRows(clubs: Club[]): Promise<boolean> {
+  return withClient(async (client) => {
+    const existing = await client.query(`select 1 from information_schema.tables where table_name = 'vector_search'`)
+    const create = existing.rowCount === 0
+    if (create) {
+      await client.query(`create extension if not exists vector`)
+      await client.query(
+        `create table vector_search (
+           id uuid primary key default gen_random_uuid(), driver_id text not null, entity_id text not null,
+           record_id text not null, tenant_id uuid not null, organization_id uuid null, checksum text not null,
+           embedding vector(3) not null, created_at timestamptz not null default now(),
+           updated_at timestamptz not null default now())`,
+      )
+    }
+    for (const club of clubs) {
+      await client.query(
+        `insert into vector_search (driver_id, entity_id, record_id, tenant_id, organization_id, checksum, embedding)
+         values ('pgvector', 'people:person', $1, $2, $3, 'm07', '[0,0,0]')`,
+        [club.organizationId, club.tenantId, club.organizationId],
+      )
+    }
+    return create
+  })
+}
+
 async function signIn(request: APIRequestContext, superToken: string, club: Club, email: string, password: string) {
   const reset = await call(request, 'PUT', '/api/auth/users', superToken, { data: { id: club.adminUserId, password } })
   expect(reset.status, JSON.stringify(reset.body)).toBe(200)
@@ -172,6 +203,7 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
   const stagingUrl = new URL(baseUrl.toString())
   stagingUrl.pathname = `/${stagingName}`
   const clubs: Club[] = []
+  let createdVectorTable = false
   try {
     const clubA = createClubCli(slugA, emailA)
     clubs.push(clubA)
@@ -188,7 +220,11 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     await publish(request, tokenA, slugA, ['contact'])
     const logoBefore = await publicGet(request, `/api/club_core/public/${slugA}/logo`)
     expect(logoBefore.status).toBe(200)
+    // A running instance has the pgvector driver's run-time `vector_search` table (no migration creates it); the
+    // commands must cover it like any index. One vector row per club; the staging database below has no such table.
+    createdVectorTable = await seedVectorRows([clubA, clubB])
     const rowsB = await tenantRows(clubB.tenantId)
+    expect(rowsB).toMatchObject({ vector_search: 1 })
 
     // Deletion needs a notice, and the notice period must end; the slug must be confirmed.
     expect(clubCli(['delete-club', '--slug', slugA, '--confirm', slugA]).output).toEqual({
@@ -353,6 +389,9 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     await withClient((client) => client.query(`drop database if exists "${stagingName}" with (force)`)).catch(
       () => undefined,
     )
+    if (createdVectorTable) {
+      await withClient((client) => client.query(`drop table if exists vector_search`)).catch(() => undefined)
+    }
     fs.rmSync(work, { recursive: true, force: true })
     for (const club of clubs) {
       await deleteUserIfExists(request, superToken, club.adminUserId).catch(() => undefined)

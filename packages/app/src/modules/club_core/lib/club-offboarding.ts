@@ -35,7 +35,11 @@ export type ClubTableKey = 'tenant' | 'user' | 'tenant_row'
  */
 export type ClubTableKind = 'data' | 'derived' | 'secret'
 
-export type ClubTable = { module: string; table: string; key: ClubTableKey; kind: ClubTableKind }
+/**
+ * `optional`: a table the platform creates at run time, not by a migration (the pgvector driver's `vector_search`), so
+ * a database may not have it yet. It is covered when present and not reported missing when absent.
+ */
+export type ClubTable = { module: string; table: string; key: ClubTableKey; kind: ClubTableKind; optional?: true }
 
 function platform(module: string, kind: ClubTableKind, tables: string[], key: ClubTableKey = 'tenant'): ClubTable[] {
   return tables.map((table) => ({ module, table, key, kind }))
@@ -112,6 +116,9 @@ export const PLATFORM_CLUB_TABLES: readonly ClubTable[] = [
     'indexer_status_logs',
   ]),
   ...platform('search', 'derived', ['search_tokens']),
+  // Created by `@open-mercato/search`'s pgvector driver on first use (`CREATE TABLE IF NOT EXISTS vector_search`), not
+  // by a migration: a freshly migrated database has no such table, a running instance has it (QA on #677).
+  { module: 'search', table: 'vector_search', key: 'tenant', kind: 'derived', optional: true },
 ]
 
 /** A Vereino module's tables as its contributor declares them (`@/modules/foundation` `ClubDataContributor`). */
@@ -147,13 +154,22 @@ export function uncoveredTables(tenantTables: readonly string[], covered: readon
   return tenantTables.filter((table) => !known.has(table)).sort()
 }
 
-/** Listed tables the database does not have (a module disabled, or a platform table renamed), sorted. */
+/**
+ * Listed tables the database does not have (a module disabled, or a platform table renamed), sorted. An `optional`
+ * table (created at run time) is never missing.
+ */
 export function missingTables(existing: readonly string[], covered: readonly ClubTable[]): string[] {
   const present = new Set(existing)
   return covered
+    .filter((entry) => !entry.optional && !present.has(entry.table))
     .map((entry) => entry.table)
-    .filter((table) => !present.has(table))
     .sort()
+}
+
+/** The listed tables the database has: every table but an `optional` one that is not created yet. */
+export function presentTables(existing: readonly string[], covered: readonly ClubTable[]): ClubTable[] {
+  const present = new Set(existing)
+  return covered.filter((entry) => !entry.optional || present.has(entry.table))
 }
 
 /** A foreign key: `table` references `references`. */
