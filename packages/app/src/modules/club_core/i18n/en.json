@@ -791,5 +791,10 @@
   "club_core.privacy.kids.item3": "Only the people who need it can see it: your coaches and the people who run the club. Your name never appears on the club's public pages.",
   "club_core.privacy.kids.item4": "We keep it while you are in the club. A year after you leave, we remove what we no longer need. We keep only what the club must keep for its accounts.",
   "club_core.privacy.kids.item5": "You can ask what we know about you and ask us to fix it or delete it. Your parent, your coach or the club board will help you.",
-  "club_core.privacy.kids.item6": "If you think we are doing something wrong with your information, you or your parent can complain to the data protection office (UODO)."
+  "club_core.privacy.kids.item6": "If you think we are doing something wrong with your information, you or your parent can complain to the data protection office (UODO).",
+  "club_core.landing.title": "Vereino",
+  "club_core.landing.findClub": "Find your club",
+  "club_core.landing.exampleSlug": "your-club",
+  "club_core.landing.hint": "Every club has its own address, such as {example}. Open the link your club gave you, or the one in its e-mails.",
+  "club_core.landing.signIn": "Sign in to manage the service"
 }

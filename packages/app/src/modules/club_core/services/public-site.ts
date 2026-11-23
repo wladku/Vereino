@@ -229,6 +229,13 @@ export type ClubCorePublicSite = {
    */
   clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
   /**
+   * The club a request's host names (many clubs spec phase 3, DD-M02; #631): its trusted tenant and organization and
+   * whether its page is published, or null for a slug that names no club. The same slug lookup as every public read
+   * (D-024/D-026; the spec's *System scope* list) — answered for an unpublished club too, because its sign-in page and
+   * member pages live at its address whether or not it publishes a page. Nothing else about the club leaves here.
+   */
+  clubForHost(clubSlug: string): Promise<{ tenantId: string; organizationId: string; published: boolean } | null>
+  /**
    * The header of the public pages of a club whose tenant and organization are already trusted — a sessionless page
    * whose token record named the club (the request confirmation of `facilities`, #261). No slug lookup: the settings
    * row is read inside that scope; `not_found` without a public slug, `disabled` while the page is off.
@@ -797,6 +804,24 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       const found = await findClub(db, clubSlug)
       if (found.status !== 'ok') return found
       return { status: 'ok', value: await frameOf(db, found.value) }
+    },
+
+    async clubForHost(clubSlug) {
+      const db = em()
+      if (!isPublicSlug(clubSlug)) return null
+      const found = await lookupClubByPublicSlug(db, clubSlug)
+      if (!found) return null
+      const settings = await db.findOne(
+        ClubSettings,
+        { id: found.settingsId, tenantId: found.tenantId, organizationId: found.organizationId, deletedAt: null },
+        { fields: ['id', 'publication'] },
+      )
+      if (!settings) return null
+      return {
+        tenantId: found.tenantId,
+        organizationId: found.organizationId,
+        published: resolvePublication(settings.publication).enabled,
+      }
     },
 
     async clubFrameForScope(scope) {
