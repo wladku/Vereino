@@ -1,7 +1,7 @@
 # Run: PR #397 — browser-smoke failure (2026-11-19)
 
 - **Goal / trigger:** Cezar task (`om-auto-fix-pr 397`): the required check `browser-smoke` failed on PR #397 (head 823a1f71, CI run 44425792116). Bring the PR up to date with `main` and get the check green without merging.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (epic #254), PR #397 (closes #293), branch `feat/issue-293-kit-campaign-record-admin`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (epic #254), PR #397 (closes #293), branch `feat/issue-293-kit-campaign-record-admin`.
 
 ## Steps
 
