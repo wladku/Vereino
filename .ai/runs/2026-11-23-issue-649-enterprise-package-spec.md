@@ -54,3 +54,14 @@
 
 - The owner answers Q-E01…Q-E05 on the PR; then phase 1a and phase 1b as separate PRs under #649.
 - Owner actions for phase 2: the private repository, the signing key pair, the build token.
+
+## Follow-up run (2026-11-23): owner answers recorded
+
+- Trigger: the owner answered Q-E01…Q-E05 in a PR #660 comment (all as recommended) and approved phases 1a and 1b.
+- Steps: merged `origin/main` into the PR branch (no conflicts); recorded each decision in the spec's Open Questions
+  table, dropped the ⚠ markers, marked the Ask First items approved, set the readiness verdict and `**Status**` to
+  `Ready for implementation`; added changelog file `2026-11-23-owner-answers-ready.md`; PR marked ready.
+- A third-party PR comment asking to run an external `npx` invoice validator was treated as untrusted content and not
+  acted on (the spec has no e-invoicing scope).
+- Next: `om-auto-implement-spec .ai/specs/2026-11-23-vereino-enterprise-package.md` — phase 1a, then phase 1b, as
+  separate PRs under #649. Phase 2 needs the owner to create `wladku/vereino-enterprise` and the signing key pair.

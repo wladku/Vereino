@@ -1,7 +1,7 @@
 # Vereino Enterprise: a private package switched on per tenant by a licence key
 
 **Date**: 2026-11-23
-**Status**: Draft (issue #649, epic E23 #646, decision D-035 point 2; design only. The owner answers Q-E01…Q-E03 before the skeleton phases start. Phase 1a adds public contracts and phase 1b changes `modules.ts`, `next.config.ts`, `globals.css` and the Dockerfile, so both are Ask First, see *Ask First items*.)
+**Status**: Ready for implementation (issue #649, epic E23 #646, decision D-035 point 2; owner decision of 2026-11-23 on PR #660: Q-E01…Q-E05 answered as recommended, the Ask First items of phases 1a and 1b approved.)
 
 ## TLDR
 
@@ -309,7 +309,7 @@ None in the skeleton. A later version may notify the club administrator 30 days 
 
 Out of this spec: the chosen module gets its own spec under the boundary rule DD-E09.
 
-### Ask First items (need the owner's approval before the phase starts)
+### Ask First items (approved by the owner on 2026-11-23, PR #660, for phases 1a and 1b as defined here)
 
 | Item | Phase | Why Ask First |
 |---|---|---|
@@ -382,19 +382,19 @@ Out of this spec: the chosen module gets its own spec under the boundary rule DD
 | UI contracts identify references, canonical components, and theme/state coverage | pass | one notice, one demo page |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | *Implementation Phases* |
 
-Verdict: `Blocked — Q-E01, Q-E02 and Q-E03 need the owner's decision; phases 1a and 1b are Ask First.`
+Verdict: `Ready for implementation — Q-E01…Q-E05 answered by the owner on 2026-11-23 (PR #660); the Ask First items of phases 1a and 1b approved. Phase 2 still waits for the owner to create the private repository and the signing key pair.`
 
 ## Open Questions
 
-The owner's choices. Each carries the recommendation the design above assumes; none is decided by this PR.
+The owner's choices, answered on 2026-11-23 in a comment on PR #660; every answer takes the recommendation the design above assumes.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-E01 ⚠ | How is the private package distributed: **private repository + overlay copy in the cloud build** (recommended, DD-E01/E02/E12), a private npm registry, or a git submodule? And the repository name (`wladku/vereino-enterprise`)? | Władek Kuć | yes — phases 1b and 2 | pending. A registry or submodule puts the package into the public lockfile and breaks `--immutable` installs for everyone without access |
-| Q-E02 ⚠ | Key format: **own `vereino-lic.v1` token, Ed25519, verified offline, bound to one instance and one tenant** (recommended, DD-E04), a JWT through a library, or an online licence server? | Władek Kuć | yes — phase 1a | pending. Keys are installed as a sealed variable in version 1 (DD-E05) |
-| Q-E03 ⚠ | Expiry: **full use for a 14-day grace period after `expiresAt` (with a renewal notice), then read-only for as long as the expired key stays installed** (recommended, DD-E07), or off after the grace period? | Władek Kuć | yes — phase 1a | pending. Off would lock a club out of records it stored in an Enterprise module |
-| Q-E04 | First real Enterprise module: **municipality view over many facilities** (recommended: builds on the facilities core and D-035 names municipalities as the first Enterprise customer) or **accounting with KSeF**? | Władek Kuć | no — phase 3 only | pending. D-035 orders the first module "at about 15–20 clubs or the first municipality" |
-| Q-E05 | Later, not now: an admin screen and table for keys and a 30-day expiry notice instead of the sealed variable? | Władek Kuć | no | pending. Default: not before the fifth Enterprise tenant |
+| Q-E01 | How is the private package distributed: **private repository + overlay copy in the cloud build** (recommended, DD-E01/E02/E12), a private npm registry, or a git submodule? And the repository name (`wladku/vereino-enterprise`)? | Władek Kuć | yes — phases 1b and 2 | **Decided 2026-11-23 (owner, PR #660):** private repository + overlay (`wladku/vereino-enterprise`), copied into `packages/enterprise` by the cloud build only. If the repository does not exist yet when phase 2 starts, the implementer stops and asks the owner to create it; private keys and the private package are never committed to the public repository. A registry or submodule puts the package into the public lockfile and breaks `--immutable` installs for everyone without access |
+| Q-E02 | Key format: **own `vereino-lic.v1` token, Ed25519, verified offline, bound to one instance and one tenant** (recommended, DD-E04), a JWT through a library, or an online licence server? | Władek Kuć | yes — phase 1a | **Decided 2026-11-23 (owner, PR #660):** own `vereino-lic.v1` token, Ed25519, verified offline, bound to instance + tenant (DD-E04). Keys are installed as a sealed variable in version 1 (DD-E05) |
+| Q-E03 | Expiry: **full use for a 14-day grace period after `expiresAt` (with a renewal notice), then read-only for as long as the expired key stays installed** (recommended, DD-E07), or off after the grace period? | Władek Kuć | yes — phase 1a | **Decided 2026-11-23 (owner, PR #660):** 14-day grace period with full use, then read-only while the expired key stays installed (DD-E07). Off would lock a club out of records it stored in an Enterprise module |
+| Q-E04 | First real Enterprise module: **municipality view over many facilities** (recommended: builds on the facilities core and D-035 names municipalities as the first Enterprise customer) or **accounting with KSeF**? | Władek Kuć | no — phase 3 only | **Decided 2026-11-23 (owner, PR #660):** the municipality view over many facilities. D-035 orders the first module "at about 15–20 clubs or the first municipality" |
+| Q-E05 | Later, not now: an admin screen and table for keys and a 30-day expiry notice instead of the sealed variable? | Władek Kuć | no | **Decided 2026-11-23 (owner, PR #660):** admin screen for keys and the expiry notice later, not before the fifth Enterprise tenant |
 
 ## Changelog
 
