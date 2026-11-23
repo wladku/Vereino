@@ -348,6 +348,7 @@ describe('people error codes', () => {
       ['departure_request_exists', 409],
       ['departure_request_minor', 422],
       ['departure_request_not_open', 409],
+      ['person_not_found', 404],
       ['pesel_duplicate', 409],
       ['pesel_invalid', 422],
       ['phone_invalid', 422],

@@ -2,6 +2,7 @@ import { asFunction, asValue } from 'awilix'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { createClubCoreContracts } from './services/contracts'
+import { CLUB_CORE_DATA_EXPORT_CONTRIBUTOR, dataExportContribution } from './services/data-export-contribution'
 import { CLUB_CORE_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { createClubCoreDirectory } from './services/directory'
 import { createClubCorePlacesService } from './services/places'
@@ -68,6 +69,9 @@ export function register(container: AppContainer) {
     // `hasRegistration` — a leaving person's contracts end on the last day, with the undo and the contract events after
     // the commit. Stateless: the caller's EntityManager, inside the departure's transaction.
     [CLUB_CORE_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
+    // `people.dataExport.club_core` (person data export spec DD-X01, #527): the subject's contracts for the art. 15/20
+    // file, which `people` reads with `hasRegistration`. Stateless: the caller's EntityManager.
+    [CLUB_CORE_DATA_EXPORT_CONTRIBUTOR]: asValue(dataExportContribution),
     // The request container is passed in, so the optional block providers are found with `hasRegistration`.
     [CLUB_CORE_PUBLIC_SITE]: asFunction((cradle: { em: EntityManager }) =>
       createClubCorePublicSite(() => cradle.em, container),

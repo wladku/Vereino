@@ -14,6 +14,7 @@ import type { AwilixContainer } from 'awilix'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { createLogger } from '@open-mercato/shared/lib/logger'
+import { clubAccent, type ClubAccent } from '@vereino/core'
 import { ClubSettings, Place, PlaceFile, Section, SectionMaterial } from '../data/entities'
 import { lookupClubByPublicSlug } from '../data/queries'
 import { effectiveLogo, nameInitial, type LogoSource } from '../lib/files'
@@ -72,6 +73,8 @@ export type PublicClubPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    /** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+    accent: ClubAccent | null
     nav: PublicClubNav
   }
   /** The tiles of the public sections; `shortDescription` is the section's tile text (UX parity spec REQ-U02). */
@@ -90,6 +93,8 @@ export type PublicSectionPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    /** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+    accent: ClubAccent | null
     nav: PublicClubNav
   }
   section: { name: string; slug: string; logo: PublicLogo }
@@ -117,6 +122,8 @@ export type PublicClubFrame = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    /** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+    accent: ClubAccent | null
     nav: PublicClubNav
   }
   /** Every block the club publishes (e.g. `online_requests` for the public places, #124). */
@@ -170,6 +177,8 @@ export type PublicClubEventPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    /** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+    accent: ClubAccent | null
     nav: PublicClubNav
   }
   event: Omit<PublicClubEvent, 'posterFileId' | 'funders' | 'days'> & {
@@ -193,6 +202,8 @@ export type PublicEventsPage = {
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    /** The club's colour and the text colour on it (#486); null uses the default, `--primary`. */
+    accent: ClubAccent | null
     nav: PublicClubNav
   }
   sections: { name: string; slug: string }[]
@@ -402,7 +413,10 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
     }
   }
 
-  /** Section logo ?? club logo ?? the initial of the club name (glossary *Logo*). */
+  /**
+   * Section logo ?? club logo ?? the initial of the section's own name (glossary *Logo*; #486: tiles of sections without
+   * any logo must not all show the club's letter).
+   */
   function sectionLogoOf(club: FoundClub, section: Section, clubLogo: PublicLogo): PublicLogo {
     const logo = effectiveLogo({
       sectionLogoId: section.logoAttachmentId ?? null,
@@ -416,7 +430,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
         initial: nameInitial(section.name),
       }
     }
-    return clubLogo
+    return clubLogo.url ? clubLogo : { url: null, source: 'initial', initial: nameInitial(section.name) }
   }
 
   /** The registered providers whose block the club publishes, in token order. */
@@ -470,6 +484,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
         logo: clubLogoOf(club, name),
         contact: contactOf(club),
         links: linksOf(club),
+        accent: clubAccent(club.settings.accentColor),
         nav: navOf(club),
       },
       publishedBlocks: publishedBlocks(club.publication),
@@ -600,6 +615,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             logo: clubLogo,
             contact: contactOf(club),
             links: linksOf(club),
+            accent: clubAccent(club.settings.accentColor),
             nav: navOf(club),
           },
           sections: sections.map((section) => ({
@@ -658,6 +674,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             logo: clubLogo,
             contact: contactOf(club),
             links: linksOf(club),
+            accent: clubAccent(club.settings.accentColor),
             nav: navOf(club),
           },
           section: { name: section.name, slug: sectionSlug, logo: sectionLogoOf(club, section, clubLogo) },
@@ -714,6 +731,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             logo: clubLogo,
             contact: contactOf(club),
             links: linksOf(club),
+            accent: clubAccent(club.settings.accentColor),
             nav: navOf(club),
           },
           sections: sections.map((section) => ({ name: section.name, slug: section.publicSlug as string })),

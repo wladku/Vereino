@@ -27,6 +27,14 @@ export const publicClubLinksSchema = z
   .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
   .describe("The club's rules and privacy policy in the page footer; null while not set")
 
+/** The club's colour on its public pages (#486): the header strip, the hero and the fallback logo. */
+export const publicClubAccentSchema = z
+  .object({ color: z.string(), foreground: z.enum(['#000000', '#ffffff']) })
+  .nullable()
+  .describe(
+    "The club's colour (`#rrggbb`) and the text colour on it (black or white, the higher contrast); null uses the default theme colour (#486)",
+  )
+
 /** The optional links of the public header (#261). */
 export const publicClubNavSchema = z
   .object({ facilities: z.boolean(), events: z.boolean() })

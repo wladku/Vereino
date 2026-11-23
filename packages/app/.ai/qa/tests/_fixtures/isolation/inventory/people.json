@@ -171,6 +171,9 @@
         "body": { "id": "$B:memberPerson", "changes": { "image": true } }
       }
     },
+    "/api/people/persons/[id]/data-export": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" } }
+    },
     "/api/people/persons/[id]/photo": {
       "GET": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" } },
       "POST": {

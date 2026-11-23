@@ -16,6 +16,7 @@ import {
   rescheduleTemplate,
 } from './emails/templates'
 import notificationTypes from './notifications'
+import { FACILITIES_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { FACILITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
 import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
@@ -70,6 +71,9 @@ export function register(container: AppContainer) {
     // with `hasRegistration` — a leaving person's place maintainer rows are removed, with the undo, the maintainer
     // events and the role sync after the commit.
     [FACILITIES_DEPARTURE_CONTRIBUTOR]: asFunction(() => createDepartureContribution(container)).scoped(),
+    // `people.dataExport.facilities` (person data export spec DD-X01, #527): the subject's rentals, entry bans,
+    // internal bookings, maintainer rows and reported incidents for the art. 15/20 file, staff actions as counts.
+    [FACILITIES_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     // #128 (DD-36): the places a person maintains, read by `people` for the scope grant and the derived role.
     [FACILITIES_MAINTAINER_SCOPE_PROVIDER]: asValue(createMaintainerScopeProvider()),
   })

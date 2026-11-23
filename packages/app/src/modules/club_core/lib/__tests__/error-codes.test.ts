@@ -24,6 +24,7 @@ describe('club_core error codes', () => {
       },
       { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
       { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
+      { code: 'accent_color_invalid', status: 422, messageKey: 'club_core.errors.accent_color_invalid' },
       { code: 'consent_text_too_long', status: 422, messageKey: 'club_core.errors.consent_text_too_long' },
       { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },
       { code: 'section_name_length', status: 422, messageKey: 'club_core.errors.section_name_length' },
