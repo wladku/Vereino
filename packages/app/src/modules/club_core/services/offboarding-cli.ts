@@ -135,8 +135,10 @@ async function execute<T>(
   }
 }
 
-async function offboard(container: AwilixContainer, argv: string[]): Promise<void> {
+async function offboard(argv: string[]): Promise<void> {
   const opts = options('offboard-club', parseOffboardOptions(readRaw(argv)))
+  // Options are checked before the app boots, so a usage error prints its line before any log line.
+  const container = await createRequestContainer()
   const club = await liveClub('offboard-club', container, opts.slug)
   const result = await execute<{ noticeAt: string | null; deleteAfter: string | null; changed: boolean }>(
     'offboard-club',
@@ -149,8 +151,9 @@ async function offboard(container: AwilixContainer, argv: string[]): Promise<voi
   print({ status, slug: club.slug, ...scopeOf(club), noticeAt: result.noticeAt, deleteAfter: result.deleteAfter })
 }
 
-async function exportCommand(container: AwilixContainer, argv: string[]): Promise<void> {
+async function exportCommand(argv: string[]): Promise<void> {
   const opts = options('export-club', parseExportOptions(readRaw(argv)))
+  const container = await createRequestContainer()
   const club = await liveClub('export-club', container, opts.slug)
   const { summary } = await execute<{ summary: ClubExportSummary }>(
     'export-club',
@@ -172,8 +175,9 @@ async function exportCommand(container: AwilixContainer, argv: string[]): Promis
   })
 }
 
-async function deleteCommand(container: AwilixContainer, argv: string[]): Promise<void> {
+async function deleteCommand(argv: string[]): Promise<void> {
   const opts = options('delete-club', parseDeleteOptions(readRaw(argv)))
+  const container = await createRequestContainer()
   const club = await lookupClubForOffboarding(emOf(container), opts.slug)
   if (!club) return refuse('delete-club', { status: 'refused', reason: 'club_not_found', slug: opts.slug })
   const now = new Date()
@@ -254,8 +258,9 @@ function restoreOutput(outcome: ClubRestoreSummary | ClubRestoreRefusal, dryRun:
   }
 }
 
-async function restoreCommand(container: AwilixContainer, argv: string[]): Promise<void> {
+async function restoreCommand(argv: string[]): Promise<void> {
   const opts = options('restore-club', parseRestoreOptions(readRaw(argv)))
+  const container = await createRequestContainer()
   const plan = await readClubArchive(opts.archive)
   if ('status' in plan) return refuse('restore-club', plan)
   const scope = { tenantId: plan.manifest.club.tenantId, organizationId: plan.manifest.club.organizationId }
@@ -280,9 +285,8 @@ async function restoreCommand(container: AwilixContainer, argv: string[]): Promi
 
 /** Runs one of the offboarding commands with its arguments. */
 export async function runOffboardingCli(command: OffboardingCommand, argv: string[]): Promise<void> {
-  const container = await createRequestContainer()
-  if (command === 'offboard-club') return offboard(container, argv)
-  if (command === 'export-club') return exportCommand(container, argv)
-  if (command === 'delete-club') return deleteCommand(container, argv)
-  return restoreCommand(container, argv)
+  if (command === 'offboard-club') return offboard(argv)
+  if (command === 'export-club') return exportCommand(argv)
+  if (command === 'delete-club') return deleteCommand(argv)
+  return restoreCommand(argv)
 }

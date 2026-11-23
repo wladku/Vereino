@@ -324,7 +324,11 @@ export async function exportClub(
     checksums,
   }
   zip.file(CLUB_ARCHIVE_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`)
-  const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+  const bytes = await zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  })
   await fs.mkdir(path.dirname(target), { recursive: true })
   await fs.writeFile(target, bytes, { flag: 'wx', mode: 0o600 })
   const digest = sha256(bytes)
@@ -606,9 +610,12 @@ export async function restoreClub(
       summary.tables.push({ module: table.module, table: table.table, rows: rows.length })
     }
     const attachments = new Map(
-      (archiveRows(plan, { module: 'attachments', table: 'attachments' } as ManifestTable) as unknown as AttachmentRow[]).map(
-        (row) => [row.id, row],
-      ),
+      (
+        archiveRows(plan, {
+          module: 'attachments',
+          table: 'attachments',
+        } as ManifestTable) as unknown as AttachmentRow[]
+      ).map((row) => [row.id, row]),
     )
     const factory = container.resolve<StorageDriverFactory>('storageDriverFactory')
     for (const file of plan.manifest.files) {
@@ -616,14 +623,22 @@ export async function restoreClub(
       const entry = plan.zip.file(file.path)
       if (!attachment || !entry) continue
       const driver = await factory.resolveForPartition(attachment.partition_code)
-      await driver.store({
-        partitionCode: attachment.partition_code,
-        storagePath: attachment.storage_path,
-        buffer: await entry.async('nodebuffer'),
-        fileName: attachment.file_name,
-        tenantId: club.tenantId,
-        orgId: club.organizationId,
-      })
+      const buffer = await entry.async('nodebuffer')
+      // A storage shared by two databases (a staging copy next to the instance) may still hold the very same file.
+      const stored = await driver.read(attachment.partition_code, attachment.storage_path).then(
+        (found) => sha256(found.buffer),
+        () => null,
+      )
+      if (stored !== file.sha256) {
+        await driver.store({
+          partitionCode: attachment.partition_code,
+          storagePath: attachment.storage_path,
+          buffer,
+          fileName: attachment.file_name,
+          tenantId: club.tenantId,
+          orgId: club.organizationId,
+        })
+      }
       summary.files += 1
     }
   })

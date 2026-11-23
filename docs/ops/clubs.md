@@ -156,8 +156,66 @@ account, so it is refused, and a run with another e-mail would create a second t
 The administrator lost the invitation or it expired (48 hours): run the finish command above. While the
 administrator has no password it sends a new 48-hour link and the old one stops working; nothing else changes.
 
+## A club leaves: notice, export, deletion
+
+A club that ends its agreement gets its data and is then deleted from the shared instance (many clubs spec phase 4,
+REQ-M06, J-M03; #632). Four operator commands, run in a shell on the production app service; each prints one JSON
+line with a `status`, and a refusal exits 1 before anything is written.
+
+1. **Record the notice** the day the club gives it:
+
+   ```bash
+   yarn mercato club_core offboard-club --slug orlik-zielonka
+   ```
+
+   It stores the notice and the deletion date, 30 days later (`--notice-days` from 30 to 365 when the agreement gives
+   a longer period; a shorter one is refused — owner's decision Q-M06). `status: "offboarded"` prints `noticeAt` and
+   `deleteAfter`; running it again changes nothing (`unchanged`), and the date never moves. If the club stays after
+   all, `--cancel` withdraws the notice (`cancelled`).
+2. **Export the club** during the notice, and hand the file to the club's administrator through a private channel
+   (never as an e-mail attachment):
+
+   ```bash
+   yarn mercato club_core export-club --slug orlik-zielonka --out /tmp/orlik-zielonka-2026-12-01.zip
+   ```
+
+   One ZIP archive in open formats: `manifest.json` (the club, the export time, every table with its row count, the
+   checksums), one `data/<module>.json` per module with `{ <table>: rows[] }` — the Vereino modules and the platform
+   (`auth`, `directory`, `attachments`, `audit_logs` …) — and every attachment under `files/<id>/`. Encrypted columns
+   are decrypted, so the club can read everything. The file is written readable only by the operator, next to a
+   `.sha256` file; `status: "exported"` prints its path, checksum, size, file count and rows per module, and the audit
+   log records the export with the file name and checksum. The archive holds the club's **accounting records**
+   (charges, payments, cash handovers, bank imports and statements): the club keeps them for the legal period from
+   now on (`docs/compliance/retention.md` R1). Sign-in tokens, API keys, provider credentials and search indexes are
+   not exported. `missingFiles` lists attachments whose file storage no longer had; tell the club. Delete your copy
+   of the archive once the club confirmed it has it.
+3. **Delete the club** after the notice period:
+
+   ```bash
+   yarn mercato club_core delete-club --slug orlik-zielonka --confirm orlik-zielonka --dry-run
+   yarn mercato club_core delete-club --slug orlik-zielonka --confirm orlik-zielonka
+   ```
+
+   The dry run prints the rows per table it would delete. The real run unregisters the club's schedules, deletes every
+   row of the club's tenant from every table in one transaction — the Vereino modules' tables (each module names them
+   in `lib/club-tables.ts`), the platform tables of `PLATFORM_CLUB_TABLES` (`club_core/lib/club-offboarding.ts`), and
+   the sessions, password resets and role links of the club's users — then the attachment files and the club's cache
+   entries, and prints the counts (`status: "deleted"`). It refuses `not_offboarded` without a notice and
+   `notice_running` (with `deleteAfter`) before the date. It also refuses `tables_not_covered` when the database has
+   a table with a `tenant_id` column that no list names (a new module table or a platform upgrade): add the table to
+   its module's `lib/club-tables.ts` or to `PLATFORM_CLUB_TABLES` in a pull request first. Two rows stay: the club's
+   one audit entry of the deletion (counts only) and the settings row as the slug's **tombstone** (`deleted_at` set,
+   contact data cleared), so the club's old links reach no new club for 90 days (BR-M4). The data-encryption key is
+   derived from the master secret and the tenant id (Q-M07), so there is no key to destroy until a key store holds
+   the keys; the club's rows stay in the backups until those copies expire (`docs/ops/backups.md`, at most about 13
+   months).
+4. **Release the slug** after 90 days: the same `delete-club` command prints `already_deleted` with `slugReleaseAt`
+   until then, and `slug_released` once it removed the tombstone.
+
+A deleted club can be brought back from its archive with `restore-club` (`backups.md` → *Restoring one club*).
+
 ## Related
 
 - `deploy.md` — releases, the per-club setup commands after a release, the first deploy of an environment.
 - `monitoring.md` — the jobs and e-mail checks.
-- `backups.md` — the backup and restore runbook; a club's export and deletion come with phase 4 (#632).
+- `backups.md` — the backup and restore runbook, and restoring one club from its export (#632).

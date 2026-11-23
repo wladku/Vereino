@@ -132,3 +132,42 @@ e-mails from the restore point); `docs/ops/restore.md` is written with the runbo
 
 The automated version of this drill, against a Testcontainers database and an S3-compatible server instead of
 production, runs with `yarn test:backup` and in the `Backup drill` workflow whenever the job changes and weekly.
+
+## Restoring one club
+
+All clubs share one database (many clubs spec DD-M01), so the nightly dump can only bring back **all** of them at
+once. One club is restored from its own archive instead (`club_core export-club`, `docs/ops/clubs.md`) — taken when it
+leaves, or from a staging copy restored from the nightly dump when one club lost data (#632):
+
+```bash
+yarn mercato club_core restore-club --in /path/orlik-zielonka.zip --dry-run
+yarn mercato club_core restore-club --in /path/orlik-zielonka.zip
+```
+
+It checks the manifest and the checksum of every module file and attachment, then refuses — before writing — a
+database that holds the club's tenant (`tenant_exists`), a slug another club holds (`slug_taken`), any row of the club
+(`club_rows_exist`, with the tables) or a schema without a column of the archive (`schema_mismatch`; migrate the
+target first). A deleted club's tombstone is replaced. In one transaction it inserts every table in foreign-key order,
+encrypts the decrypted columns again with the target's key for the club's tenant, and writes the attachment files back
+through the storage driver; `status: "restored"` prints the rows per module. Then rebuild the indexes, which are not exported
+(`yarn mercato query_index rebuild-all --tenant <tenantId>`, `yarn mercato search reindex --tenant <tenantId>`); sign-in tokens, API keys and provider credentials (Stripe) were not exported
+and are set up again by the club. The audit log records the restore.
+
+### Single-club restore drill
+
+Run it once before the second real club is onboarded, then with the quarterly drill above. The integration test
+TEST-M07 runs the same steps on every pull request that touches it.
+
+1. Note the start time (UTC). Start an empty PostgreSQL 17 as in step 2 of the drill above, with a database
+   `staging`, and migrate it from the release you run: `DATABASE_URL=<staging url> yarn db:migrate` (a scratch
+   database only — never a dev or production one).
+2. Export a synthetic club from staging, or a real club with its administrator's consent:
+   `yarn mercato club_core export-club --slug <slug> --out ~/drill/<slug>.zip`.
+3. Restore it into the scratch database: `DATABASE_URL=<scratch url> yarn mercato club_core restore-club --in
+   ~/drill/<slug>.zip`. The scratch database needs the same `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (or key store) as
+   the source only to read old backups; the archive itself is decrypted.
+4. Export it again from the scratch database (`DATABASE_URL=<scratch url> … export-club --out ~/drill/check.zip`)
+   and compare the two archives: every `data/<module>.json` must be equal except `data/audit_logs.json` (the restore
+   adds its entry).
+5. Remove the scratch database and `~/drill`, and append a record to `docs/ops/restore-drills.md` with the template
+   above (backup restored = the archive's file name, RTO = time to step 4).

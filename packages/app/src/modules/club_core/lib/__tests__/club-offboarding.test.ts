@@ -149,7 +149,10 @@ describe('command options', () => {
       ok: true,
       options: { slug: 'orlik', out: '/tmp/orlik.ZIP' },
     })
-    expect(parseExportOptions({ slug: 'orlik' })).toEqual({ ok: false, problems: [{ option: 'out', problem: 'required' }] })
+    expect(parseExportOptions({ slug: 'orlik' })).toEqual({
+      ok: false,
+      problems: [{ option: 'out', problem: 'required' }],
+    })
     expect(parseExportOptions({ slug: 'orlik', out: '/tmp/orlik.tar' })).toEqual({
       ok: false,
       problems: [{ option: 'out', problem: 'invalid' }],
