@@ -1,0 +1,220 @@
+{
+  "$comment": "Cross-club isolation probes of the people routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/people/departure-requests": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "subjectPersonId": "$B:plainPerson" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": { "subjectPersonId": "$B:plainPerson", "requesterKind": "club", "lastDay": "$A:nextWeek" }
+      },
+      "PUT": { "probe": "foreign-id", "body": { "id": "$B:departureRequest", "reason": "Probe" } }
+    },
+    "/api/people/departures": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": { "personIds": ["$B:plainPerson"], "lastDay": "$A:nextWeek", "previewToken": "probe" }
+      }
+    },
+    "/api/people/departures/preview": {
+      "POST": { "probe": "foreign-ref", "body": { "personIds": ["$B:plainPerson"], "lastDay": "$A:nextWeek" } }
+    },
+    "/api/people/first-administrator": {
+      "GET": { "probe": "read" },
+      "POST": {
+        "probe": "foreign-ref",
+        "body": { "userId": "$B:adminUser", "firstName": "Probe", "lastName": "Probe" },
+        "expect": [403],
+        "why": "The route needs the platform feature auth.users.create, which no club role holds; every caller of club A is refused before any lookup."
+      }
+    },
+    "/api/people/guardianships": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "personId": "$B:childPerson" } }],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "guardianPersonId": "$A:guardianPerson", "wardPersonId": "$B:childPerson", "validFrom": "$A:today" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "guardianPersonId": "$B:guardianPerson", "wardPersonId": "$A:plainPerson", "validFrom": "$A:today" }
+        }
+      ],
+      "PUT": { "probe": "foreign-id", "body": { "id": "$B:guardianship", "isPrimaryPayer": true } }
+    },
+    "/api/people/guardianships/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:guardianship" } }
+    },
+    "/api/people/guardianships/[id]/consents": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:guardianship" },
+        "body": { "id": "$B:guardianship", "consents": { "image": true } }
+      }
+    },
+    "/api/people/guardianships/[id]/end": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:guardianship" }, "body": { "id": "$B:guardianship" } }
+    },
+    "/api/people/imports": {
+      "GET": { "probe": "read" },
+      "POST": {
+        "probe": "exempt",
+        "why": "Creates an import from an uploaded file in the caller's club; the request names no record, so it cannot address club B. The created import is read back by the GET probes."
+      }
+    },
+    "/api/people/imports/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:import" } }
+    },
+    "/api/people/imports/[id]/cancel": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:import" }, "body": { "id": "$B:import" } }
+    },
+    "/api/people/imports/[id]/commit": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:import" }, "body": { "id": "$B:import" } }
+    },
+    "/api/people/imports/[id]/rows": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:import" } }
+    },
+    "/api/people/imports/[id]/rows/[rowId]": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:import", "rowId": "$B:importRow" },
+          "body": { "action": "skip" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:import", "rowId": "$B:importRow" },
+          "body": { "action": "skip" }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:import", "rowId": "$A:importRow" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:importRowUpdatedAt" },
+          "body": { "action": "match", "personId": "$B:plainPerson" }
+        }
+      ]
+    },
+    "/api/people/me": {
+      "GET": { "probe": "read" },
+      "PUT": {
+        "probe": "exempt",
+        "why": "Changes only the caller's own person (taken from the session); the body names no record."
+      }
+    },
+    "/api/people/me/consents": {
+      "PUT": {
+        "probe": "exempt",
+        "why": "Changes only the caller's own consents (the person comes from the session); the body names no record."
+      }
+    },
+    "/api/people/me/departure-requests": {
+      "GET": { "probe": "read" },
+      "POST": {
+        "probe": "foreign-ref",
+        "roles": ["member", "guardian"],
+        "body": { "subjectPersonIds": ["$B:childPerson"], "lastDay": "$A:nextWeek" },
+        "expect": [403],
+        "why": "A member names only themself or their own wards: any other person id, club B's or one that exists nowhere, answers 403 scope_denied alike."
+      }
+    },
+    "/api/people/me/departure-requests/[batchId]": {
+      "DELETE": {
+        "probe": "foreign-id",
+        "roles": ["member", "guardian"],
+        "params": { "batchId": "$B:departureBatch" },
+        "expect": [409],
+        "why": "The member withdraws only their own open request: any batch id that is not one answers 409 departure_request_not_open, an unknown id the same."
+      }
+    },
+    "/api/people/persons": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:plainPerson" } },
+        { "probe": "read", "query": { "groupId": "$B:group" } }
+      ],
+      "POST": {
+        "probe": "exempt",
+        "why": "Creates a person in the caller's club; the body names no other record. The created person is read back by the GET probes."
+      },
+      "PUT": { "probe": "foreign-id", "body": { "id": "$B:plainPerson", "firstName": "Probe" } }
+    },
+    "/api/people/persons/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:plainPerson" } },
+      "DELETE": { "probe": "foreign-id", "params": { "id": "$B:plainPerson" }, "body": { "id": "$B:plainPerson" } }
+    },
+    "/api/people/persons/[id]/account": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:plainPerson" },
+        "body": { "id": "$B:plainPerson", "email": "probe-628@example.org" }
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:memberPerson" },
+        "body": { "id": "$B:memberPerson", "blocked": true }
+      },
+      "DELETE": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" }, "body": { "id": "$B:memberPerson" } }
+    },
+    "/api/people/persons/[id]/account/invitation": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" }, "body": { "id": "$B:memberPerson" } }
+    },
+    "/api/people/persons/[id]/anonymize": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:plainPerson" },
+        "body": { "id": "$B:plainPerson", "requestId": "$B:departureRequest", "confirmLastName": "Bezkonta" }
+      }
+    },
+    "/api/people/persons/[id]/consents": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:memberPerson" },
+        "body": { "id": "$B:memberPerson", "changes": { "image": true } }
+      }
+    },
+    "/api/people/persons/[id]/photo": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" } },
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:memberPerson" },
+        "body": { "$multipart": { "file": { "$file": "png" } } }
+      },
+      "DELETE": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" } }
+    },
+    "/api/people/persons/[id]/return": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:plainPerson" }, "body": { "id": "$B:plainPerson" } }
+    },
+    "/api/people/role-assignments": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "personId": "$B:coachPerson" } }],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "personId": "$B:plainPerson", "role": "coach", "sectionId": "$A:section", "validFrom": "$A:today" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "personId": "$A:plainPerson", "role": "coach", "sectionId": "$B:section", "validFrom": "$A:today" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "personId": "$A:plainPerson",
+            "role": "facility_operator",
+            "placeId": "$B:place",
+            "validFrom": "$A:today"
+          }
+        }
+      ],
+      "PUT": { "probe": "foreign-id", "body": { "id": "$B:coachAssignment", "validTo": "$A:nextWeek" } }
+    },
+    "/api/people/role-assignments/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:coachAssignment" } }
+    },
+    "/api/people/role-assignments/[id]/end": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:coachAssignment" },
+        "body": { "id": "$B:coachAssignment" }
+      }
+    }
+  }
+}

@@ -13,7 +13,7 @@ import {
   mercato,
 } from '../_fixtures/club'
 
-// TEST-F01 (foundation spec): `authorizeScoped` inside `people.persons.update` — cross-organization 403, stale lock
+// TEST-F01 (foundation spec): `authorizeScoped` inside `people.persons.update` — cross-organization 404 (#628), stale lock
 // token 409, missing or malformed lock token 400 (S5.2), two concurrent writers (second 409), acting role in the log
 // context, undo and redo re-authorized against the current scope, and a job command recorded as `system`.
 test.describe.configure({ timeout: 300_000 })
@@ -65,7 +65,7 @@ test('TEST-F01 authorizeScoped: scope, lock, concurrency, acting role, undo and 
     const winner = racers.find((result) => result.status === 200)
     token = String(winner?.body?.updatedAt)
 
-    // Cross-organization update → 403 scope_denied.
+    // Cross-organization update → 404, like a record that does not exist (#628: a 403 would tell the id exists).
     const second = await createSecondOrganization(request, club)
     const foreignPersonId = await createPerson(request, second.adminToken, { firstName: 'Obca', lastName: 'Osoba' })
     const foreignDetail = await getPerson(request, second.adminToken, foreignPersonId)
@@ -73,8 +73,7 @@ test('TEST-F01 authorizeScoped: scope, lock, concurrency, acting role, undo and 
       data: { id: foreignPersonId, firstName: 'Hijack' },
       headers: { [OPTIMISTIC_LOCK_HEADER]: String(foreignDetail.body?.updatedAt) },
     })
-    expect(crossOrg.status, JSON.stringify(crossOrg.body)).toBe(403)
-    expect(crossOrg.body?.code).toBe('scope_denied')
+    expect(crossOrg.status, JSON.stringify(crossOrg.body)).toBe(404)
     expect((await getPerson(request, second.adminToken, foreignPersonId)).body?.firstName).toBe('Obca')
 
     // An allowed undo restores the previous value.
