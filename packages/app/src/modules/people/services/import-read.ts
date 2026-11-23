@@ -2,13 +2,15 @@
 // staged rows (decrypted values) paged and filtered by classification. Every read is narrowed to the trusted tenant
 // and organization; the routes check the caller's `club_admin` grant with `assertInScope` first. With the optional
 // `groups.membershipImporter` hook (#65), a preview row shows whether its group name resolves, and a committed import
-// with waiting rows says that a re-run can create their memberships.
+// with waiting rows says that a re-run can create their memberships. One import also shows its commit's progress job
+// (#585), which the record page polls while the commit runs.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findAndCountWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { Person, PersonImport, PersonImportRow } from '../data/entities'
 import { GROUPS_NOT_ENABLED, type NormalizedImportRow } from '../lib/import-rules'
 import type { ClubScope } from './club-clock'
+import { findImportCommitProgress, type ImportCommitProgressView } from './import-progress'
 import { membershipImporter, type MembershipImporter } from './membership-importer'
 
 export type PersonRefView = { personId: string; name: string | null }
@@ -31,6 +33,11 @@ export type ImportView = {
   pendingDecisions: number
   /** A committed import with rows waiting for a membership, and the `groups` hook registered: a re-run can help. */
   canCreateMemberships: boolean
+  /**
+   * The commit's progress job (#585) while it runs and for two minutes after it ends; null in the import list and
+   * without a job.
+   */
+  commitProgress: ImportCommitProgressView | null
   updatedAt: string
 }
 
@@ -92,6 +99,7 @@ function importView(
   names: Map<string, string>,
   pending: Map<string, number>,
   hook: boolean,
+  commitProgress: ImportCommitProgressView | null = null,
 ): ImportView {
   return {
     id: record.id,
@@ -110,6 +118,7 @@ function importView(
     fileAvailable: Boolean(record.fileAttachmentId),
     pendingDecisions: record.status === 'previewed' ? (pending.get(record.id) ?? 0) : 0,
     canCreateMemberships: hook && record.status === 'committed' && (record.summary.membershipsPending ?? 0) > 0,
+    commitProgress,
     updatedAt: record.updatedAt.toISOString(),
   }
 }
@@ -153,7 +162,8 @@ export async function findImport(container: AwilixContainer, scope: ClubScope, i
   if (!record) return null
   const names = await personNames(em, scope, [record.createdByPersonId, record.committedByPersonId])
   const hook = membershipImporter(container) !== null
-  return importView(record, names, await pendingCounts(em, scope, [record.id]), hook)
+  const progress = record.status === 'cancelled' ? null : await findImportCommitProgress(container, scope, record.id)
+  return importView(record, names, await pendingCounts(em, scope, [record.id]), hook, progress)
 }
 
 /** What the commit would do with each preview row's group, by group name (#65). */

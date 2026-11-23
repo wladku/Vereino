@@ -872,5 +872,8 @@
   "people.erasure.module.facilities": "facilities",
   "people.club.leave.errors.summary": "Check the request",
   "people.club.leave.errors.whoRequired": "Choose at least one person.",
-  "people.club.today.shortcuts": "Shortcuts"
+  "people.club.today.shortcuts": "Shortcuts",
+  "people.errors.import_progress_unavailable": "The import could not report its progress, so nothing was committed. Try again in a moment.",
+  "people.imports.record.committing": "Committing the import…",
+  "people.imports.record.committingRows": "Committing the import: {processed} of {total} rows"
 }

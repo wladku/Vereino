@@ -83,6 +83,18 @@ export const importViewSchema = z.object({
   canCreateMemberships: z
     .boolean()
     .describe('Committed, with rows waiting for a membership, and `groups` registers its hook: a commit re-run helps'),
+  commitProgress: z
+    .object({
+      jobId: z.uuid(),
+      status: z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+      processedCount: z.number(),
+      totalCount: z.number().nullable(),
+      progressPercent: z.number(),
+    })
+    .nullable()
+    .describe(
+      "The commit's `ProgressService` job while it runs and for two minutes after it ends (#585); null in the list and without a job",
+    ),
   updatedAt: z.string(),
 })
 
