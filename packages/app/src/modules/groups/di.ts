@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { audienceProviderToken } from '@vereino/core'
 import { groupAudienceProvider, sectionAudienceProvider } from './services/audience'
+import { GROUPS_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { GROUPS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { createGroupDirectory } from './services/group-directory'
 import { GROUPS_MEMBERSHIP_CONTRIBUTION, membershipContribution } from './services/membership-contribution'
@@ -50,6 +51,10 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  *
  * `groups.publicCatalog` (club spec DD-28, DD-29; #91): the public groups block of a section's public page, which
  * `club_core` reads with `hasRegistration` (`club_core/services/public-blocks.ts`).
+ *
+ * `people.dataExport.groups` (person data export spec DD-X01, #527): the subject's memberships for the art. 15/20 file,
+ * which `people` reads with `hasRegistration` (`people/services/data-export.ts`). It reads with the caller's
+ * EntityManager; the container gives the club's day for each membership's status.
  */
 export function register(container: AppContainer) {
   container.register({
@@ -59,6 +64,7 @@ export function register(container: AppContainer) {
     [GROUPS_PERSON_FILTER]: asValue(personFilter),
     [GROUPS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
     [GROUPS_PUBLIC_CATALOG]: asFunction(() => createPublicCatalog(container)).scoped(),
+    [GROUPS_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     [audienceProviderToken('section')]: asValue(sectionAudienceProvider),
     [audienceProviderToken('group')]: asValue(groupAudienceProvider),
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.

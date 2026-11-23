@@ -14,6 +14,7 @@ import {
 import { ORDER_LINK_TTL_MS } from './lib/orders'
 import notificationTypes from './notifications'
 import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-service'
+import { PAYMENTS_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { PAYMENTS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
@@ -73,6 +74,11 @@ export function register(container: AppContainer) {
     // `hasRegistration` — cash a leaving person holds blocks the departure, open charges warn; `retentionHoldUntil`
     // for the erasure (phase L6). Stateless: the caller's EntityManager.
     [PAYMENTS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
+    // `people.dataExport.payments` (person data export spec DD-X01, #527): the data export contributor `people` reads
+    // with `hasRegistration` — charges, payments, checkouts, payer codes, orders, matched transfers and order links of
+    // the subject, other persons redacted, staff actions counted. Read only, in the caller's EntityManager; the other
+    // persons' names through `people.personDirectory`.
+    [PAYMENTS_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
   })
   // The gateway registries live on `globalThis`, so registering again for every container replaces the same entry.
