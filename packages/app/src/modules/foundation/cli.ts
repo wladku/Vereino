@@ -51,8 +51,7 @@ function readOptions(argv: string[]) {
 }
 
 const USAGE = {
-  'club-jobs':
-    'Usage: mercato foundation club-jobs <status [--job <key>] | sweep [--job <key>] [--now <ISO instant>]>',
+  'club-jobs': 'Usage: mercato foundation club-jobs <status [--job <key>] | sweep [--job <key>] [--now <ISO instant>]>',
   'retire-club-schedules':
     'Usage: mercato foundation retire-club-schedules [--job <key>] [--dry-run] [--now <ISO instant>]',
   'restore-club-schedules': 'Usage: mercato foundation restore-club-schedules [--job <key>]',
