@@ -8,9 +8,12 @@
 // the platform commands `auth.users.update` (`email`, `isConfirmed`) and `auth.users.delete`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { User } from '@open-mercato/core/modules/auth/data/entities'
+import { PasswordReset, User } from '@open-mercato/core/modules/auth/data/entities'
+import InviteUserEmail from '@open-mercato/core/modules/auth/emails/InviteUserEmail'
 import ResetPasswordEmail from '@open-mercato/core/modules/auth/emails/ResetPasswordEmail'
+import { INVITE_TOKEN_TTL_MS } from '@open-mercato/core/modules/auth/lib/inviteToken'
 import { withTenantHintUrl } from '@open-mercato/core/modules/auth/lib/tenantHint'
+import { generateAuthToken, hashAuthToken } from '@open-mercato/core/modules/auth/lib/tokenHash'
 import type { AuthService } from '@open-mercato/core/modules/auth/services/authService'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
@@ -209,6 +212,68 @@ export async function resendInvitation(
     return { sentAt, warning: 'invite_email_failed' }
   }
   return { sentAt }
+}
+
+export type AccountInvitationResult = {
+  /** When the link stops working (the platform's invitation lifetime, 48 hours). */
+  expiresAt: string
+  /** The link exists but the e-mail failed; the operator sends it again. */
+  warning?: 'invite_email_failed'
+}
+
+/**
+ * Invites the first administrator of a club the operator created (many clubs spec J-M01 step 3; #630): the platform's
+ * own invitation — a one-time link to set the password, valid 48 hours (`INVITE_TOKEN_TTL_MS`), stored only as its
+ * hash, the same row the platform's "Resend invite" writes — sent in the club's name. The link is tied to the user
+ * row, not looked up by e-mail, so it reaches this user even when the address has an account in another club. No
+ * password is ever set or shown by the operator. A user outside `scope` answers `scope_denied`.
+ */
+export async function sendAccountInvitation(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userId: string,
+  clubName: string,
+): Promise<AccountInvitationResult> {
+  const user = await scopedUser(container, scope, userId)
+  if (!user) return foundationErrors.throw('scope_denied')
+  const em = container.resolve<EntityManager>('em').fork()
+  const rawToken = generateAuthToken()
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS)
+  await em
+    .persist(em.create(PasswordReset, { user, token: hashAuthToken(rawToken), expiresAt, createdAt: new Date() }))
+    .flush()
+  const inviteUrl = withTenantHintUrl(`${getSecurityEmailBaseUrl()}/reset/${rawToken}`, user.tenantId)
+  const { translate } = await resolveTranslations()
+  const params = { club: clubName }
+  const copy = {
+    preview: translate('foundation.account.clubInvitation.preview', 'Set up your account', params),
+    title: translate('foundation.account.clubInvitation.title', 'You are the administrator of {club}', params),
+    body: translate(
+      'foundation.account.clubInvitation.body',
+      'An account was created for you as the administrator of {club}. Click the link below to set your password. This link will expire in 48 hours.',
+      params,
+    ),
+    cta: translate('foundation.account.clubInvitation.cta', 'Set up your password', params),
+    hint: translate(
+      'foundation.account.clubInvitation.hint',
+      'If you did not expect this invitation, you can safely ignore this e-mail.',
+      params,
+    ),
+  }
+  try {
+    await emailSender(container).send({
+      to: user.email,
+      subject: translate('foundation.account.clubInvitation.subject', 'Your invitation to {club}', params),
+      // Called, not `createElement`-ed, as the platform does: the e-mail capture of test mode reads the expanded tree.
+      react: InviteUserEmail({ inviteUrl, copy }),
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+    })
+  } catch (error: unknown) {
+    logger.error('Failed to send the club administrator invitation', { err: error, userId: user.id })
+    return { expiresAt: expiresAt.toISOString(), warning: 'invite_email_failed' }
+  }
+  return { expiresAt: expiresAt.toISOString() }
 }
 
 export type UpdateAccountInput = { email?: string; blocked?: boolean }
