@@ -22,8 +22,7 @@ const seedAgeCategories: ModuleCli = {
     const org = typeof values.org === 'string' ? values.org : undefined
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato groups seed-age-categories --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] groups seed-age-categories: invalid options')
     }
     const container = await createRequestContainer()
     const created = await seedAgeCategoryDictionary(container, { tenantId: tenant, organizationId: org })

@@ -221,3 +221,29 @@ export function vereinoStatusPillConfigs({ files, ignores = [] }) {
   if (files.length === 0) return []
   return [{ name: 'vereino/status-pill', files, ignores, rules: STATUS_PILL_RESTRICTIONS }]
 }
+
+// A module CLI command fails by throwing (#642, lesson `mercato-module-cli-exit-code`): `mercato` ends with
+// `process.exit(code ?? 0)` after a command that returns, so a `process.exitCode` set in `ModuleCli.run` is lost and
+// the run exits 0 after a usage error or a failed step.
+export const MODULE_CLI_EXIT_CODE_RESTRICTIONS = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: "AssignmentExpression > MemberExpression.left[object.name='process'][property.name='exitCode']",
+      message:
+        "`mercato` drops `process.exitCode` and exits 0: write the usage to stderr and `throw new Error('[internal] …')` (lesson `mercato-module-cli-exit-code`, #642).",
+    },
+  ],
+}
+
+// The exit-code rule for the `cli.ts` of every Vereino module.
+export function vereinoModuleCliConfigs({ moduleIds }) {
+  if (moduleIds.length === 0) return []
+  return [
+    {
+      name: 'vereino/module-cli-exit-code',
+      files: moduleIds.map((id) => `src/modules/${id}/cli.ts`),
+      rules: MODULE_CLI_EXIT_CODE_RESTRICTIONS,
+    },
+  ]
+}
