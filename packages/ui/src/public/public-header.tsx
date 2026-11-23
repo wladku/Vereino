@@ -1,10 +1,11 @@
 // The header of every public club page (navigation spec REQ-N09, mockup `publicShell`; E09-S07 #261): the club's logo
 // and name linking to its page, then Club · Sections · Facilities · Events · Sign in and the header's end (the language
-// switcher). One labelled `nav` landmark with `aria-current` on the current link (`publicNavLinks`); under 480 px the links sit on
-// a second row that scrolls sideways. A page that does not know its club yet (loading, an error, a missing page) shows
-// only its title. Framework-free and without state: the router's link component, the current path, the links' flags
-// (`publicNavLinks`) and every string come in through props. The club's colour (#486) draws a strip along the top of
-// the header and the fallback logo's box; the frame sets the colour (`clubAccentStyle`) on its root element.
+// switcher). One labelled `nav` landmark with `aria-current` on the current link (`publicNavLinks`). From 768 px (`md`)
+// everything sits in one row and a long club name truncates before any link loses room (#488); below that the links
+// sit on a second row that scrolls sideways. A page that does not know its club yet (loading, an error, a missing page)
+// shows only its title. Framework-free and without state: the router's link component, the current path, the links'
+// flags (`publicNavLinks`) and every string come in through props. The club's colour (#486) draws a strip along the top
+// of the header and the fallback logo's box; the frame sets the colour (`clubAccentStyle`) on its root element.
 import * as React from 'react'
 import type { MemberLinkProps } from '#tsx/member/member-shell'
 import { publicClubHref, publicNavLinks, type PublicHeaderLabels, type PublicNavFlags } from '#src/public/public-nav'
@@ -68,7 +69,11 @@ function LogoMark({ logo }: { logo: PublicHeaderLogo }) {
 
 export function PublicHeader({ club, title, labels, pathname, Link, wide = false, headerEnd }: PublicHeaderProps) {
   const width = wide ? 'max-w-5xl' : 'max-w-3xl'
-  const end = headerEnd ? <div className="order-2 min-[480px]:order-3">{headerEnd}</div> : null
+  const end = headerEnd ? (
+    <div className="order-2 shrink-0 md:order-3" data-testid="public-header-end">
+      {headerEnd}
+    </div>
+  ) : null
   if (!club) {
     return (
       <header className="bg-card border-b" data-testid="public-header">
@@ -85,21 +90,29 @@ export function PublicHeader({ club, title, labels, pathname, Link, wide = false
   return (
     <header className="bg-card border-b" data-testid="public-header">
       <div aria-hidden="true" className="bg-club-accent h-1" data-testid="public-header-accent" />
-      <div className={`mx-auto flex ${width} flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2`}>
-        <Link
-          href={publicClubHref(club.slug)}
-          className="text-foreground order-1 flex min-h-11 min-w-0 items-center gap-3 rounded-md font-semibold"
-          data-testid="public-club-link"
-        >
-          <LogoMark logo={club.logo} />
-          <span className="truncate">{club.name}</span>
-        </Link>
+      <div
+        className={`mx-auto flex ${width} flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 md:flex-nowrap`}
+      >
+        {/* The name takes the room the links leave and truncates (its full text in `title`, #488); the links keep
+            their own width and scroll only once the name is down to its minimum, so a long name never covers them. */}
+        <div className="order-1 flex min-w-0 flex-1 basis-0 md:min-w-24" data-testid="public-header-club">
+          <Link
+            href={publicClubHref(club.slug)}
+            className="text-foreground flex min-h-11 min-w-0 items-center gap-3 rounded-md font-semibold"
+            data-testid="public-club-link"
+          >
+            <LogoMark logo={club.logo} />
+            <span className="truncate" title={club.name} data-testid="public-header-club-name">
+              {club.name}
+            </span>
+          </Link>
+        </div>
         <nav
           aria-label={labels.nav}
-          className="order-3 -mx-2 w-full overflow-x-auto min-[480px]:order-2 min-[480px]:mx-0 min-[480px]:w-auto min-[480px]:flex-1"
+          className="order-3 -mx-2 w-full overflow-x-auto md:order-2 md:mx-0 md:w-auto md:min-w-0"
           data-testid="public-nav"
         >
-          <ul className="flex items-center gap-1 min-[480px]:justify-end">
+          <ul className="flex items-center gap-1">
             {links.map((link) => (
               <li key={link.id} className="shrink-0">
                 <Link
