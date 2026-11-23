@@ -78,7 +78,12 @@ untouched, the export round-trips into an empty staging database); `docs/ops/bac
   (`"msg":"pg pool created with options"`): in production mode the logger prints JSON lines after the command's line.
   Fixed (options checked before boot; the test picks the line with `status`) and recorded as a lesson. Second run
   failed: `TypeError: Cannot read properties of null (reading 'async')` — the test read the `data/` directory entry of
-  the ZIP; fixed. Final result: see the PR.
+  the ZIP; fixed. Third: the club has two people (administrator and Zofia), expectation fixed. Fourth: the restored
+  administrator's API call answered 401 — `getAuthToken` returned its cached pre-deletion token, whose session the
+  deletion had (correctly) removed; the test clears the cache (lesson `get-auth-token-caches-tokens-per-credentials`).
+- Final: `yarn test:integration:vereino --filter TEST-M07-club` on a fresh production build — 1 passed (32 s).
+- `yarn verify` (full) — all 22 steps passed (after fixing 17 lint errors and 8 hardcoded-string findings in the new
+  throw messages). `yarn guard` — no blocking findings (warning: `AGENTS.md` changed — the D-024 note).
 
 ## Open problems / next steps
 
