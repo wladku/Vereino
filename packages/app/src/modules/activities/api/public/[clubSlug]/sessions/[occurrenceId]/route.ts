@@ -53,6 +53,12 @@ const pageSchema = z.object({
     links: z
       .object({ rules: z.string().nullable(), privacyPolicy: z.string().nullable() })
       .describe("The club's rules and privacy policy in the page footer; null while not set"),
+    accent: z
+      .object({ color: z.string(), foreground: z.enum(['#000000', '#ffffff']) })
+      .nullable()
+      .describe(
+        "The club's colour (`#rrggbb`) and the text colour on it (black or white, the higher contrast); null uses the default theme colour (#486)",
+      ),
     nav: z
       .object({ facilities: z.boolean(), events: z.boolean() })
       .describe(

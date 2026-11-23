@@ -3,7 +3,8 @@
 // switcher). One labelled `nav` landmark with `aria-current` on the current link (`publicNavLinks`); under 480 px the links sit on
 // a second row that scrolls sideways. A page that does not know its club yet (loading, an error, a missing page) shows
 // only its title. Framework-free and without state: the router's link component, the current path, the links' flags
-// (`publicNavLinks`) and every string come in through props.
+// (`publicNavLinks`) and every string come in through props. The club's colour (#486) draws a strip along the top of
+// the header and the fallback logo's box; the frame sets the colour (`clubAccentStyle`) on its root element.
 import * as React from 'react'
 import type { MemberLinkProps } from '#tsx/member/member-shell'
 import { publicClubHref, publicNavLinks, type PublicHeaderLabels, type PublicNavFlags } from '#src/public/public-nav'
@@ -38,7 +39,7 @@ const NAV_LINK_CLASS =
 const NAV_CURRENT_CLASS = `${NAV_LINK_CLASS} text-foreground font-semibold underline underline-offset-4`
 const NAV_IDLE_CLASS = `${NAV_LINK_CLASS} text-muted-foreground hover:text-foreground`
 
-/** Decorative: the club's name stands next to it. */
+/** Decorative: the club's name stands next to it. The initial sits on the club's colour (#486). */
 function LogoMark({ logo }: { logo: PublicHeaderLogo }) {
   if (logo.url) {
     return (
@@ -56,7 +57,7 @@ function LogoMark({ logo }: { logo: PublicHeaderLogo }) {
   return (
     <span
       aria-hidden="true"
-      className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md text-lg font-semibold"
+      className="bg-club-accent text-club-accent-foreground flex size-10 shrink-0 items-center justify-center rounded-md text-lg font-semibold"
       data-testid="public-logo-initial"
       data-logo-source="initial"
     >
@@ -83,6 +84,7 @@ export function PublicHeader({ club, title, labels, pathname, Link, wide = false
   const links = publicNavLinks({ slug: club.slug, nav: club.nav, pathname, labels })
   return (
     <header className="bg-card border-b" data-testid="public-header">
+      <div aria-hidden="true" className="bg-club-accent h-1" data-testid="public-header-accent" />
       <div className={`mx-auto flex ${width} flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2`}>
         <Link
           href={publicClubHref(club.slug)}
