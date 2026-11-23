@@ -1,0 +1,1 @@
+| 2026-11-23 | Initial draft (E23-S03, #649): Vereino Enterprise as a private package in a private repository, overlay install in the cloud build, modules registered behind `VEREINO_ENTERPRISE`, Ed25519 per-tenant licence keys verified offline, one gate service `enterpriseFeatures`, read-only after expiry, boundary rule; owner choices left as Open Questions Q-E01…Q-E05 |
