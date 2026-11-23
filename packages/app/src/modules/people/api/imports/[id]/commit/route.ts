@@ -5,6 +5,8 @@
 // the import's lock token in the platform optimistic-lock header. On a committed import with waiting rows and the hook
 // registered, the call re-runs only those rows' memberships and writes nothing else; otherwise a second commit answers
 // 409 `import_already_committed`. A `review` row without a decision answers 422 `import_review_pending` (`rowNos`).
+// The first commit runs inside a `ProgressService` job the import view shows (#585); a progress service that does not
+// answer refuses it with 503 `import_progress_unavailable` and the import stays `previewed`.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -57,6 +59,12 @@ export const openApi: OpenApiRouteDoc = {
           schema: errorSchema,
         },
         { status: 422, description: '`import_review_pending` (`rowNos`)', schema: errorSchema },
+        {
+          status: 503,
+          description:
+            '`import_progress_unavailable` — the progress job could not be created or advanced; nothing was written and the import stays `previewed`',
+          schema: errorSchema,
+        },
       ],
     },
   },
