@@ -1,0 +1,1 @@
+| 2026-11-22 | Initial draft (E22-S01, #627): many clubs on one instance under D-034; tenant per club, club subdomains, sweep jobs, onboarding/offboarding, per-club limits, capacity target; owner choices left as Open Questions Q-M01…Q-M06 |
